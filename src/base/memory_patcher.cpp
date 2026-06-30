@@ -1,6 +1,7 @@
 #include "base/error_handling.h"
 
 #include "base/CrashHandler.h"
+#include "base/logger.h"
 #include "base/memory_patcher.h"
 
 #include <algorithm>
@@ -18,7 +19,19 @@ bool g_patching_enabled = true;
 namespace PY4GW {
 
 MemoryPatcher::~MemoryPatcher() {
-    PY4GW_ASSERT(!(g_patching_enabled && IsValid() && GetIsActive()));
+    if (!(IsValid() && GetIsActive())) {
+        return;
+    }
+
+    CrashContextScope context("shutdown", "memory_patcher", "destructor_restore");
+    Logger::Instance().LogWarning(
+        "[memory_patcher] Active patch survived to destructor; restoring original bytes during teardown.",
+        "memory_patcher");
+
+    if (g_patching_enabled) {
+        PatchActual(false);
+    }
+    active_ = false;
 }
 
 void MemoryPatcher::EnableHooks() {

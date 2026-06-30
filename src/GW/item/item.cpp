@@ -4,11 +4,70 @@
 
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
 #include "base/logger.h"
 #include "base/patterns.h"
 #include "base/scanner.h"
 
+#include "GW/ui/ui.h"
+
+#include <array>
+#include <atomic>
+#include <unordered_map>
+
+namespace GW::Context {
+extern SalvageSessionInfo* g_salvage_context;
+}
+
 namespace GW::item {
+
+using ItemClickFn = void(__fastcall*)(uint32_t* bag_id, void* edx, ItemClickParam* param);
+using DoActionFn = void(__cdecl*)(uint32_t identifier);
+using VoidFn = void(__cdecl*)();
+using EquipItemFn = void(__cdecl*)(uint32_t item_id, uint32_t agent_id);
+using DropItemFn = void(__cdecl*)(uint32_t item_id, uint32_t quantity);
+using MoveItemFn = void(__cdecl*)(uint32_t item_id, uint32_t quantity, uint32_t bag_index, uint32_t slot);
+using SalvageStartFn = void(__cdecl*)(uint32_t salvage_kit_id, uint32_t salvage_session_id, uint32_t item_id);
+using IdentifyItemFn = void(__cdecl*)(uint32_t identification_kit_id, uint32_t item_id);
+using PingWeaponSetFn = void(__cdecl*)(uint32_t agent_id, uint32_t weapon_item_id, uint32_t offhand_item_id);
+using ChangeGoldFn = void(__cdecl*)(uint32_t character_gold, uint32_t storage_gold);
+using ChangeEquipmentVisibilityFn = void(__cdecl*)(uint32_t equipment_state, uint32_t equip_type);
+using GetPvPItemUpgradeInfoNameFn = void(__cdecl*)(uint32_t pvp_item_upgrade_id, uint32_t name_or_description, wchar_t** name_out, wchar_t** description_out);
+
+bool ResolveStorageOpenAddress();
+bool ResolveItemClickFunction();
+bool ResolveUseItemFunction();
+bool ResolveEquipItemFunction();
+bool ResolveMoveItemFunction();
+bool ResolveDropItemFunction();
+bool ResolveSalvagePopupUICallback();
+bool ResolveDropGoldAndSalvage();
+bool ResolveSalvageStartFunction();
+bool ResolveIdentifyItemFunction();
+bool ResolveDestroyItemFunction();
+bool ResolveChangeEquipmentVisibilityFunction();
+bool ResolveChangeGoldFunction();
+bool ResolveOpenLockedChestFunction();
+bool ResolvePingWeaponSetFunction();
+bool ResolvePvPItemUpgradeArray();
+bool ResolvePvPItemArray();
+bool ResolveCompositeModelInfoArray();
+bool ResolvePvPItemUpgradeNameFunction();
+bool ResolveItemFormulas();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+
+void __fastcall OnItemClick(uint32_t* bag_index, void* edx, ItemClickParam* param);
+void __cdecl OnUseItem(uint32_t item_id);
+void __cdecl OnMoveItem(uint32_t item_id, uint32_t quantity, uint32_t bag_index, uint32_t slot);
+void __cdecl OnPingWeaponSet(uint32_t agent_id, uint32_t weapon_item_id, uint32_t offhand_item_id);
+void __cdecl OnChangeGold(uint32_t character_gold, uint32_t storage_gold);
+void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wparam, void*);
+void OnPingWeaponSet_UIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wparam, void*);
+void OnSalvagePopup_UICallback(ui::InteractionMessage* message, void* wParam, void* lParam);
 
 DoActionFn g_use_item_func = nullptr;
 DoActionFn g_use_item_original = nullptr;
@@ -34,13 +93,6 @@ DoActionFn g_open_locked_chest_func = nullptr;
 PingWeaponSetFn g_ping_weapon_set_func = nullptr;
 PingWeaponSetFn g_ping_weapon_set_original = nullptr;
 GetPvPItemUpgradeInfoNameFn g_pvp_item_upgrade_name_func = nullptr;
-uint32_t* g_storage_open_addr = nullptr;
-SalvageSessionInfo* g_salvage_context = nullptr;
-PvPItemUpgradeArray g_unlocked_pvp_item_upgrade_array;
-PvPItemInfoArray g_pvp_item_array;
-CompositeModelInfoArray* g_composite_model_info_array = nullptr;
-ItemFormula* g_item_formulas = nullptr;
-uint32_t g_item_formula_count = 0;
 PY4GW::HookEntry g_ui_message_entry;
 const std::array<ui::UIMessage, 3> g_ui_messages_to_hook = {
     ui::UIMessage::kSendUseItem,
@@ -68,7 +120,7 @@ void __fastcall OnItemClick(uint32_t* bag_index, void* edx, ItemClickParam* para
         status.blocked = true;
     if (bag) {
         for (auto& it : g_item_click_callbacks) {
-            it.second(&status, param->type, slot, bag);
+            it.second(&status, static_cast<uint32_t>(static_cast<Constants::ItemClickType>(param->type)), slot, bag);
             ++status.altitude;
         }
     }
@@ -85,7 +137,7 @@ void __cdecl OnUseItem(uint32_t item_id) {
 
 void __cdecl OnMoveItem(uint32_t item_id, uint32_t quantity, uint32_t bag_index, uint32_t slot) {
     PY4GW::HookBase::EnterHook();
-    MoveItemUIMessage packet = { item_id, quantity, bag_index, slot };
+    ui::packet::kSendMoveItem packet = { item_id, quantity, bag_index, slot };
     ui::SendUIMessage(ui::UIMessage::kSendMoveItem, &packet);
     PY4GW::HookBase::LeaveHook();
 }
@@ -115,15 +167,15 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
     }
     case ui::UIMessage::kSendMoveItem: {
         PY4GW_ASSERT(wparam);
-        const auto* packet = static_cast<MoveItemUIMessage*>(wparam);
+        const auto* packet = static_cast<ui::packet::kSendMoveItem*>(wparam);
         if (!status->blocked && !CanAccessXunlaiChest()) {
             const auto* item = GetItemById(packet->item_id);
-            const auto* bag = GetBagByIndex(packet->bag_index);
+            const auto* bag = GetBagByIndex(packet->bag_id);
             if (IsStorageItem(item) || IsStorageBag(bag))
                 status->blocked = true;
         }
         if (!status->blocked) {
-            g_move_item_original(packet->item_id, packet->quantity, packet->bag_index, packet->slot);
+            g_move_item_original(packet->item_id, packet->quantity, packet->bag_id, packet->slot);
         }
         break;
     }
@@ -153,10 +205,10 @@ void OnSalvagePopup_UICallback(ui::InteractionMessage* message, void* wParam, vo
     g_salvage_popup_uicallback_original(message, wParam, lParam);
     switch (message->message_id) {
     case ui::UIMessage::kInitFrame:
-        g_salvage_context = *reinterpret_cast<SalvageSessionInfo**>(message->wParam);
+        Context::g_salvage_context = *reinterpret_cast<SalvageSessionInfo**>(message->wParam);
         break;
     case ui::UIMessage::kDestroyFrame:
-        g_salvage_context = nullptr;
+        Context::g_salvage_context = nullptr;
         break;
     default:
         break;
@@ -333,15 +385,7 @@ void Exit() {
     g_ping_weapon_set_func = nullptr;
     g_ping_weapon_set_original = nullptr;
     g_pvp_item_upgrade_name_func = nullptr;
-    g_storage_open_addr = nullptr;
-    g_salvage_context = nullptr;
-    g_unlocked_pvp_item_upgrade_array.m_buffer = nullptr;
-    g_unlocked_pvp_item_upgrade_array.m_size = 0;
-    g_pvp_item_array.m_buffer = nullptr;
-    g_pvp_item_array.m_size = 0;
-    g_composite_model_info_array = nullptr;
-    g_item_formulas = nullptr;
-    g_item_formula_count = 0;
+    Context::g_salvage_context = nullptr;
     g_item_click_callbacks.clear();
 }
 

@@ -21,7 +21,7 @@ namespace PY4GW::python_runtime {
 
 namespace {
 
-std::unique_ptr<py::scoped_interpreter> g_python_runtime;
+py::scoped_interpreter* g_python_runtime = nullptr;
 PyThreadState* g_python_thread_state = nullptr;
 ScriptState g_script_state = ScriptState::Stopped;
 std::string g_selected_script_path;
@@ -198,7 +198,7 @@ PYBIND11_EMBEDDED_MODULE(Py4GW, m) {
 
 bool Initialize() {
     try {
-        g_python_runtime = std::make_unique<py::scoped_interpreter>();
+        g_python_runtime = new py::scoped_interpreter();
         py::module_ sys = py::module_::import("sys");
         const auto root = process_manager::GetModuleDirectory();
         if (!root.empty()) {
@@ -212,19 +212,24 @@ bool Initialize() {
         return true;
     } catch (const std::exception& error) {
         Logger::Instance().LogError(std::string("Python initialization failed: ") + error.what());
-        g_python_runtime.reset();
+        delete g_python_runtime;
+        g_python_runtime = nullptr;
         return false;
     }
 }
 
 void Shutdown() {
+    if (!g_python_runtime) {
+        return;
+    }
     if (g_python_thread_state != nullptr) {
         PyEval_RestoreThread(g_python_thread_state);
         g_python_thread_state = nullptr;
     }
     ClearScriptEnvironment();
     g_console_scope = py::object();
-    g_python_runtime.reset();
+    delete g_python_runtime;
+    g_python_runtime = nullptr;
 }
 
 void ExecutePythonUpdate() {

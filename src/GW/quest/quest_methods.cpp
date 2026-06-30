@@ -3,17 +3,21 @@
 #include "GW/quest/quest.h"
 
 #include "GW/context/context.h"
-#include "GW/context/world_context.h"
+#include "GW/context/world.h"
 #include "GW/ui/ui.h"
 
 #include <cwchar>
 
 namespace GW::quest {
 
-GW::Constants::QuestID GetActiveQuestId() {
-    auto* world = Context::GetWorldContext();
-    return world ? world->active_quest_id : static_cast<GW::Constants::QuestID>(0);
-}
+using RequestQuestInfoFn = void(__cdecl*)(uint32_t identifier);
+using RequestQuestDataFn = void(__cdecl*)(uint32_t identifier, bool update_markers);
+using DoActionFn = void(__cdecl*)(uint32_t identifier);
+
+extern RequestQuestInfoFn g_request_quest_info_func;
+extern RequestQuestDataFn g_request_quest_data_func;
+extern DoActionFn g_set_active_quest_func;
+extern DoActionFn g_abandon_quest_func;
 
 bool SetActiveQuestId(GW::Constants::QuestID quest_id) {
     if (!(g_set_active_quest_func && GetQuest(quest_id))) {
@@ -40,12 +44,7 @@ bool AbandonQuestId(GW::Constants::QuestID quest_id) {
 }
 
 Context::Quest* GetActiveQuest() {
-    return GetQuest(GetActiveQuestId());
-}
-
-Context::QuestLog* GetQuestLog() {
-    auto* world = Context::GetWorldContext();
-    return world && world->quest_log.valid() ? &world->quest_log : nullptr;
+    return GetQuest(Context::GetActiveQuestId());
 }
 
 Context::Quest* GetQuest(GW::Constants::QuestID quest_id) {
@@ -53,7 +52,7 @@ Context::Quest* GetQuest(GW::Constants::QuestID quest_id) {
         return nullptr;
     }
 
-    auto* quest_log = GetQuestLog();
+    auto* quest_log = Context::GetQuestLog();
     if (!quest_log) {
         return nullptr;
     }

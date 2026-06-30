@@ -2,24 +2,84 @@
 
 #include "GW/skillbar/skillbar.h"
 
-#include "GW/context/game_context.h"
+#include "base/hook_types.h"
+#include "base/logger.h"
+
+#include "GW/context/account.h"
+#include "GW/context/context.h"
+#include "GW/context/world.h"
+#include "GW/game_thread/game_thread.h"
+#include "GW/map/map.h"
+#include "GW/ui/ui.h"
+
+#include "GW/context/game.h"
+#include "GW/context/party.h"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 #include <vector>
+
+namespace {
+
+constexpr char kBase64ToValue[128] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
+    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
+    -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
+    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
+    -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
+};
+
+constexpr unsigned char kBase64Table[65] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+int WriteBits(int val, char* buff, int count = 6) {
+    for (int i = 0; i < count; i++) {
+        buff[i] = ((val >> i) & 1);
+    }
+    return count;
+}
+
+int ReadBits(char** str, int n) {
+    int val = 0;
+    char* s = *str;
+    for (int i = 0; i < n; i++) {
+        val |= (*s++ << i);
+    }
+    *str = s;
+    return val;
+}
+
+}  // namespace
 
 namespace GW::skillbar {
 
+using UseSkillFn = void(__cdecl*)(uint32_t, uint32_t, uint32_t, uint32_t);
+using LoadSkillsFn = void(__cdecl*)(uint32_t agent_id, uint32_t skill_ids_count, uint32_t* skill_ids);
+using LoadAttributesFn = void(__cdecl*)(uint32_t agent_id, uint32_t attribute_count, uint32_t* attribute_ids, uint32_t* attribute_values);
+using ChangeSecondaryFn = void(__cdecl*)(uint32_t agent_id, uint32_t profession);
+
+extern uint32_t g_attribute_array_count;
+extern UseSkillFn g_use_skill_func;
+extern LoadSkillsFn g_load_skills_func;
+extern LoadAttributesFn g_load_attributes_func;
+extern ChangeSecondaryFn g_change_secondary_func;
+extern std::unordered_map<PY4GW::HookEntry*, UseSkillCallback> g_use_skill_callbacks;
+
 Skill* GetSkillConstantData(Constants::SkillID skill_id) {
-    Skill* arr = g_skill_array_addr;
+    Skill* arr = Context::GetSkillArray();
     return arr ? &arr[static_cast<uint32_t>(skill_id)] : nullptr;
 }
 
 AttributeInfo* GetAttributeConstantData(Constants::Attribute attribute_id) {
-    if (!g_attribute_array_addr || g_attribute_array_count <= static_cast<uint32_t>(attribute_id))
+    auto* attribute_info = Context::GetAttributeInfoArray();
+    if (!attribute_info || g_attribute_array_count <= static_cast<uint32_t>(attribute_id))
         return nullptr;
-    return &g_attribute_array_addr[static_cast<uint32_t>(attribute_id)];
+    return &attribute_info[static_cast<uint32_t>(attribute_id)];
 }
 
 bool ChangeSecondProfession(Constants::Profession profession, uint32_t hero_index) {
@@ -53,13 +113,13 @@ bool EncodeSkillTemplate(const SkillTemplate& in, char* build_code_result, size_
     char bitStr[bufSize];
     size_t offset = 0;
 
-    offset += _WriteBits(14, &bitStr[offset], 4);
-    offset += _WriteBits(0, &bitStr[offset], 4);
+    offset += WriteBits(14, &bitStr[offset], 4);
+    offset += WriteBits(0, &bitStr[offset], 4);
 
     int bits_per_prof = 4;
-    offset += _WriteBits(static_cast<int>((bits_per_prof - 4) * 0.5), &bitStr[offset], 2);
-    offset += _WriteBits(static_cast<int>(in.primary), &bitStr[offset], bits_per_prof);
-    offset += _WriteBits(static_cast<int>(in.secondary), &bitStr[offset], bits_per_prof);
+    offset += WriteBits(static_cast<int>((bits_per_prof - 4) * 0.5), &bitStr[offset], 2);
+    offset += WriteBits(static_cast<int>(in.primary), &bitStr[offset], bits_per_prof);
+    offset += WriteBits(static_cast<int>(in.secondary), &bitStr[offset], bits_per_prof);
 
     int bits_per_attr = 4;
     int attrib_count = 0;
@@ -73,13 +133,13 @@ bool EncodeSkillTemplate(const SkillTemplate& in, char* build_code_result, size_
         }
         attrib_count++;
     }
-    offset += _WriteBits(attrib_count, &bitStr[offset], 4);
-    offset += _WriteBits(bits_per_attr - 4, &bitStr[offset], 4);
+    offset += WriteBits(attrib_count, &bitStr[offset], 4);
+    offset += WriteBits(bits_per_attr - 4, &bitStr[offset], 4);
     for (const Attribute& attribute : in.attributes) {
         if (attribute.attribute != Constants::Attribute::None
             && attribute.points != 0) {
-            offset += _WriteBits(static_cast<int>(attribute.attribute), &bitStr[offset], bits_per_attr);
-            offset += _WriteBits(static_cast<int>(attribute.points), &bitStr[offset], 4);
+            offset += WriteBits(static_cast<int>(attribute.attribute), &bitStr[offset], bits_per_attr);
+            offset += WriteBits(static_cast<int>(attribute.points), &bitStr[offset], 4);
         }
     }
 
@@ -90,11 +150,11 @@ bool EncodeSkillTemplate(const SkillTemplate& in, char* build_code_result, size_
             bits_per_skill = tmp;
         }
     }
-    offset += _WriteBits(bits_per_skill - 8, &bitStr[offset], 4);
+    offset += WriteBits(bits_per_skill - 8, &bitStr[offset], 4);
     for (const Constants::SkillID skill : in.skills) {
-        offset += _WriteBits(static_cast<int>(skill), &bitStr[offset], bits_per_skill);
+        offset += WriteBits(static_cast<int>(skill), &bitStr[offset], bits_per_skill);
     }
-    offset += _WriteBits(0, &bitStr[offset], 1);
+    offset += WriteBits(0, &bitStr[offset], 1);
 
     size_t backfill_length = 6 * 27;
     while (offset < backfill_length) {
@@ -114,8 +174,8 @@ bool EncodeSkillTemplate(const SkillTemplate& in, char* build_code_result, size_
         return false;
     }
     for (size_t i = 0; i < needed_length; i++) {
-        int value = _ReadBits(&it, 6);
-        build_code_result[i] = static_cast<char>(_g_Base64Table[value]);
+        int value = ReadBits(&it, 6);
+        build_code_result[i] = static_cast<char>(kBase64Table[value]);
     }
     build_code_result[needed_length] = '\0';
     return true;
@@ -135,34 +195,34 @@ bool DecodeSkillTemplate(SkillTemplate* result, const char* temp) {
 
     size_t bitStrLen = 0;
     for (size_t i = 0; i < len; i++) {
-        int numeric_value = _g_Base64ToValue[static_cast<unsigned char>(temp[i])];
+        int numeric_value = kBase64ToValue[static_cast<unsigned char>(temp[i])];
         if (numeric_value == -1) {
             char buf[256];
             snprintf(buf, sizeof(buf), "Invalid base64 character '%c' in string '%s'\n", temp[i], temp);
             Logger::Instance().LogError(buf, "skillbar");
             return false;
         }
-        bitStrLen += _WriteBits(numeric_value, &bitStr[bitStrLen], 6);
+        bitStrLen += WriteBits(numeric_value, &bitStr[bitStrLen], 6);
     }
 
     char* it = bitStr;
     char* end = bitStr + 6 * len;
 
-    int header = _ReadBits(&it, 4);
+    int header = ReadBits(&it, 4);
     if (header != 0 && header != 14) {
         char buf[128];
         snprintf(buf, sizeof(buf), "Template header '%d' not valid.", header);
         Logger::Instance().LogError(buf, "skillbar");
         return false;
     }
-    if (header == 14) _ReadBits(&it, 4);
-    int bits_per_prof = 2 * _ReadBits(&it, 2) + 4;
-    Constants::ProfessionByte prof1 = static_cast<Constants::ProfessionByte>(_ReadBits(&it, bits_per_prof));
-    Constants::ProfessionByte prof2 = static_cast<Constants::ProfessionByte>(_ReadBits(&it, bits_per_prof));
+    if (header == 14) ReadBits(&it, 4);
+    int bits_per_prof = 2 * ReadBits(&it, 2) + 4;
+    Constants::ProfessionByte prof1 = static_cast<Constants::ProfessionByte>(ReadBits(&it, bits_per_prof));
+    Constants::ProfessionByte prof2 = static_cast<Constants::ProfessionByte>(ReadBits(&it, bits_per_prof));
     if (prof1 <= Constants::ProfessionByte::None || prof2 < Constants::ProfessionByte::None || prof1 > Constants::ProfessionByte::Dervish || prof2 > Constants::ProfessionByte::Dervish)
         return false;
 
-    attrib_count = _ReadBits(&it, 4);
+    attrib_count = ReadBits(&it, 4);
     if (attrib_count >= static_cast<int>(_countof(result->attributes))) {
         char buf[256];
         snprintf(buf, sizeof(buf), "Found too many attributes %d in the template '%s'\n", attrib_count, temp);
@@ -170,11 +230,11 @@ bool DecodeSkillTemplate(SkillTemplate* result, const char* temp) {
         return false;
     }
 
-    int bits_per_attr = _ReadBits(&it, 4) + 4;
+    int bits_per_attr = ReadBits(&it, 4) + 4;
     bool is_primary_attribute = false;
     for (int i = 0; i < attrib_count; i++) {
-        uint32_t attrib_id = static_cast<uint32_t>(_ReadBits(&it, bits_per_attr));
-        int attrib_val = _ReadBits(&it, 4);
+        uint32_t attrib_id = static_cast<uint32_t>(ReadBits(&it, bits_per_attr));
+        int attrib_val = ReadBits(&it, 4);
         if (attrib_id >= g_attribute_array_count) {
             char buf[128];
             snprintf(buf, sizeof(buf), "Attribute id %u is out of range. (count = %u)\n", attrib_id, g_attribute_array_count);
@@ -211,10 +271,10 @@ bool DecodeSkillTemplate(SkillTemplate* result, const char* temp) {
         result->attributes[i].points = 0;
     }
 
-    int bits_per_skill = _ReadBits(&it, 4) + 8;
+    int bits_per_skill = ReadBits(&it, 4) + 8;
     for (skill_count = 0; skill_count < static_cast<int>(_countof(result->skills)); skill_count++) {
         if (it + bits_per_skill > end) break;
-        int skill_id = _ReadBits(&it, bits_per_skill);
+        int skill_id = ReadBits(&it, bits_per_skill);
         if (skill_id > SKILL_MAX) {
             char buf[128];
             snprintf(buf, sizeof(buf), "Skill id %d is out of range. (max = %d)\n", skill_id, SKILL_MAX);
@@ -309,9 +369,6 @@ bool LoadSkillTemplate(const char* temp, uint32_t hero_index) {
     Context::PartyInfo* info = party_ctx->player_party;
     if (!info) return false;
 
-    agent::PlayerArray* players = agent::GetPlayerArray();
-    if (!players) return false;
-
     agent::AgentLiving* me = agent::GetControlledCharacter();
     if (!me) return false;
     Context::HeroPartyMemberArray& heroes = info->heroes;
@@ -399,13 +456,8 @@ int GetSkillSlot(Constants::SkillID skill_id) {
     return -1;
 }
 
-SkillbarArray* GetSkillbarArray() {
-    auto* w = Context::GetWorldContext();
-    return w && w->skillbar.valid() ? &w->skillbar : nullptr;
-}
-
 Skillbar* GetPlayerSkillbar() {
-    SkillbarArray* sba = GetSkillbarArray();
+    SkillbarArray* sba = Context::GetSkillbarArray();
     uint32_t player_id = sba ? agent::GetControlledCharacterId() : 0;
     if (!player_id) return nullptr;
     for (auto& sb : *sba) {
@@ -417,7 +469,7 @@ Skillbar* GetPlayerSkillbar() {
 
 Skillbar* GetHeroSkillbar(const uint32_t hero_index) {
     if (hero_index > 7) return nullptr;
-    SkillbarArray* sba = GetSkillbarArray();
+    SkillbarArray* sba = Context::GetSkillbarArray();
     uint32_t player_id = sba ? agent::GetHeroAgentID(hero_index) : 0;
     if (!player_id) return nullptr;
     for (auto& sb : *sba) {
@@ -440,7 +492,7 @@ SkillTemplate GetSkillTemplate(const uint32_t hero_index) {
     if (!agent_id) return {};
     const auto skillbar = GetHeroSkillbar(hero_index);
     if (!skillbar) return {};
-    const auto skillbar_array = GetSkillbarArray();
+    const auto skillbar_array = Context::GetSkillbarArray();
     if (!skillbar_array) return {};
     std::vector<Skillbar> skillbars(skillbar_array->begin(), skillbar_array->end());
     SkillTemplate skill_template{};

@@ -5,6 +5,8 @@
 #include "base/CrashHandler.h"
 #include "base/logger.h"
 
+#include <atomic>
+
 namespace GW::trade {
 
 std::atomic<bool> g_initialized = false;

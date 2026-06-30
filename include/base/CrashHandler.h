@@ -36,6 +36,8 @@ public:
 
     void Initialize();
     void Terminate();
+    void SetDumpGenerationEnabled(bool enabled);
+    bool IsDumpGenerationEnabled() const;
 
     bool OnException(EXCEPTION_POINTERS* info, const char* source, bool recoverable);
     std::string CrashDirUtf8() const;

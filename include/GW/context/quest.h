@@ -40,4 +40,7 @@ namespace GW::Context {
 
     using QuestLog = GW::GWArray<Quest>;
 
+    GW::Constants::QuestID GetActiveQuestId();
+    QuestLog* GetQuestLog();
+
 }  // namespace GW::Context

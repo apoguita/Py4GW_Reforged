@@ -10,15 +10,36 @@
 
 namespace GW::events {
 
-SendEventMessageFn g_send_event_message_func = nullptr;
-SendEventMessageFn g_send_event_message_original = nullptr;
-std::unordered_map<EventID, std::vector<CallbackEntry>> g_callbacks;
-std::atomic<bool> g_initialized = false;
+    using SendEventMessageFn = uint32_t(__cdecl*)(void* event_context, uint32_t unk1, Constants::EventID event_id, void* data_buffer, uint32_t data_length);
+
+    struct CallbackEntry {
+        int altitude = 0;
+        PY4GW::HookEntry* entry = nullptr;
+        EventCallback callback;
+    };
+
+    bool ResolveSendEventMessageTarget();
+    bool Init();
+    void EnableHooks();
+    void DisableHooks();
+    void Exit();
+
+    SendEventMessageFn g_send_event_message_func = nullptr;
+    SendEventMessageFn g_send_event_message_original = nullptr;
+    std::unordered_map<Constants::EventID, std::vector<CallbackEntry>> g_callbacks;
+    std::atomic<bool> g_initialized = false;
 
 uint32_t __cdecl OnSendEventMessage(
     void* event_context,
     uint32_t unk1,
-    EventID event_id,
+    Constants::EventID event_id,
+    void* data_buffer,
+    uint32_t data_length);
+
+uint32_t __cdecl OnSendEventMessage(
+    void* event_context,
+    uint32_t unk1,
+    Constants::EventID event_id,
     void* data_buffer,
     uint32_t data_length) {
     PY4GW::HookBase::EnterHook();
@@ -126,6 +147,40 @@ void Shutdown() {
     Exit();
     PY4GW::HookBase::Deinitialize();
     g_initialized = false;
+}
+
+void RegisterEventCallback(
+    PY4GW::HookEntry* entry,
+    Constants::EventID event_id,
+    const EventCallback& callback,
+    int altitude) {
+    auto found = g_callbacks.find(event_id);
+    if (found == g_callbacks.end()) {
+        g_callbacks[event_id] = std::vector<CallbackEntry>();
+    }
+
+    auto it = g_callbacks[event_id].begin();
+    while (it != g_callbacks[event_id].end()) {
+        if (it->altitude > altitude) {
+            break;
+        }
+        ++it;
+    }
+
+    g_callbacks[event_id].insert(it, CallbackEntry{altitude, entry, callback});
+}
+
+void RemoveEventCallback(PY4GW::HookEntry* entry) {
+    for (auto& callbacks : g_callbacks) {
+        auto it = callbacks.second.begin();
+        while (it != callbacks.second.end()) {
+            if (it->entry == entry) {
+                callbacks.second.erase(it);
+                return;
+            }
+            ++it;
+        }
+    }
 }
 
 }  // namespace GW::events

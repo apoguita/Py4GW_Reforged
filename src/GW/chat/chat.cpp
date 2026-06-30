@@ -4,16 +4,57 @@
 
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
 #include "base/logger.h"
 #include "base/memory_patcher.h"
 #include "base/patterns.h"
 #include "base/scanner.h"
 
+#include "GW/ui/ui.h"
+
+#include <array>
+#include <atomic>
+#include <map>
 #include <string>
+#include <unordered_map>
 #include <cwctype>
 #include <shellapi.h>
 
 namespace GW::chat {
+
+using GetChannelColorFn = Color*(__cdecl*)(Color* color, Channel chan);
+using SendChatFn = void(__cdecl*)(wchar_t* message, uint32_t agent_id);
+using RecvWhisperFn = void(__cdecl*)(uint32_t transaction_id, wchar_t* player_name, wchar_t* message);
+using StartWhisperFn = void(__fastcall*)(ui::Frame* ctx, uint32_t edx, wchar_t* name);
+using AddToChatLogFn = void(__cdecl*)(wchar_t* message, uint32_t channel);
+using PrintChatMessageFn = void(__fastcall*)(void* ctx, uint32_t edx, Channel channel, wchar_t* message, FILETIME timestamp, uint32_t is_reprint);
+
+bool ResolveGetSenderColorFunction();
+bool ResolveGetMessageColorFunction();
+bool ResolveSendChatFunction();
+bool ResolveStartWhisperFunction();
+bool ResolveAddToChatLogFunction();
+bool ResolveChatBufferAddress();
+bool ResolveRecvWhisperFunction();
+bool ResolvePrintChatMessageFunction();
+bool ResolveIsTypingFrameId();
+bool ResolveUICallbackAssignEditableText();
+bool ResolveUICallbackChatLogLine();
+bool ResolveChatTimestampsPatch();
+Color* __cdecl OnGetSenderColor(Color* color, Channel chan);
+Color* __cdecl OnGetMessageColor(Color* color, Channel chan);
+void __cdecl OnSendChat(wchar_t* message, uint32_t agent_id);
+void __cdecl OnRecvWhisper(uint32_t transaction_id, wchar_t* player_name, wchar_t* message);
+void __fastcall OnStartWhisper(ui::Frame* ctx, uint32_t edx, wchar_t* name);
+void __cdecl OnAddToChatLog(wchar_t* message, uint32_t channel);
+void __fastcall OnPrintChatMessage(void* ctx, uint32_t edx, Channel channel, wchar_t* message, FILETIME timestamp, uint32_t is_reprint);
+void __cdecl OnUICallback_ChatLogLine(ui::InteractionMessage* message, void* wParam, void* lParam);
+void __cdecl OnUICallback_AssignEditableText(ui::InteractionMessage* message, void* wParam, void* lParam);
+void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wparam, void* lparam);
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
 
 GetChannelColorFn g_get_sender_color_func = nullptr;
 GetChannelColorFn g_get_sender_color_original = nullptr;
@@ -29,8 +70,6 @@ AddToChatLogFn g_add_to_chat_log_func = nullptr;
 AddToChatLogFn g_add_to_chat_log_original = nullptr;
 PrintChatMessageFn g_print_chat_message_func = nullptr;
 PrintChatMessageFn g_print_chat_message_original = nullptr;
-ChatBuffer** g_chat_buffer_addr = nullptr;
-uint32_t* g_is_typing_frame_id = nullptr;
 ui::UIInteractionCallback g_uicallback_chat_log_line_func = nullptr;
 ui::UIInteractionCallback g_uicallback_chat_log_line_original = nullptr;
 ui::UIInteractionCallback g_uicallback_assign_editable_text_func = nullptr;
@@ -67,6 +106,7 @@ static void wcs_tolower(wchar_t* s) {
         s[i] = std::towlower(s[i]);
     }
 }
+
 
 static wchar_t* ChatMessageWithTimestamp(const wchar_t* message, const Channel channel, const FILETIME timestamp) {
     FILETIME timestamp2;
@@ -107,23 +147,10 @@ static wchar_t* ChatMessageWithTimestamp(const wchar_t* message, const Channel c
     return buffer;
 }
 
-void ForceRedrawChatLog() {
-    game_thread::Enqueue([]() {
-        const auto log = ui::GetFrameByLabel(L"Log");
-        if (!(log && log->IsCreated() && log->IsVisible())) {
-            return;
-        }
-        struct {
-            ui::FlagPreference pref = ui::FlagPreference::ShowChatTimestamps;
-            uint32_t val = static_cast<uint32_t>(ui::GetPreference(ui::FlagPreference::ShowChatTimestamps));
-        } packet;
-        ui::SendUIMessage(ui::UIMessage::kPreferenceFlagChanged, &packet);
-    });
-}
 
 Color* __cdecl OnGetSenderColor(Color* color, Channel chan) {
     PY4GW::HookBase::EnterHook();
-    GetColorPacket packet = { color, chan };
+    ui::packet::kGetColor packet = { color, chan };
     *packet.color = g_chat_sender_color[chan];
     ui::SendUIMessage(ui::UIMessage::kGetSenderColor, &packet);
     PY4GW::HookBase::LeaveHook();
@@ -132,7 +159,7 @@ Color* __cdecl OnGetSenderColor(Color* color, Channel chan) {
 
 Color* __cdecl OnGetMessageColor(Color* color, Channel chan) {
     PY4GW::HookBase::EnterHook();
-    GetColorPacket packet = { color, chan };
+    ui::packet::kGetColor packet = { color, chan };
     *packet.color = g_chat_message_color[chan];
     ui::SendUIMessage(ui::UIMessage::kGetMessageColor, &packet);
     PY4GW::HookBase::LeaveHook();
@@ -141,28 +168,28 @@ Color* __cdecl OnGetMessageColor(Color* color, Channel chan) {
 
 void __cdecl OnSendChat(wchar_t* message, uint32_t agent_id) {
     PY4GW::HookBase::EnterHook();
-    SendChatMessagePacket packet = { message, agent_id };
+    ui::packet::kSendChatMessage packet = { message, agent_id };
     ui::SendUIMessage(ui::UIMessage::kSendChatMessage, &packet);
     PY4GW::HookBase::LeaveHook();
 }
 
 void __cdecl OnRecvWhisper(uint32_t transaction_id, wchar_t* player_name, wchar_t* message) {
     PY4GW::HookBase::EnterHook();
-    RecvWhisperPacket packet = { transaction_id, player_name, message };
+    ui::packet::kRecvWhisper packet = { transaction_id, player_name, message };
     ui::SendUIMessage(ui::UIMessage::kRecvWhisper, &packet);
     PY4GW::HookBase::LeaveHook();
 }
 
 void __fastcall OnStartWhisper(ui::Frame* ctx, uint32_t, wchar_t* name) {
     PY4GW::HookBase::EnterHook();
-    StartWhisperPacket packet = { name };
+    ui::packet::kStartWhisper packet = { name };
     ui::SendUIMessage(ui::UIMessage::kStartWhisper, &packet, ctx);
     PY4GW::HookBase::LeaveHook();
 }
 
 void __cdecl OnAddToChatLog(wchar_t* message, uint32_t channel) {
     PY4GW::HookBase::EnterHook();
-    LogChatMessagePacket packet = { message, static_cast<Channel>(channel) };
+    ui::packet::kLogChatMessage packet = { message, static_cast<Channel>(channel) };
     ui::SendUIMessage(ui::UIMessage::kLogChatMessage, &packet);
     PY4GW::HookBase::LeaveHook();
 }
@@ -170,7 +197,7 @@ void __cdecl OnAddToChatLog(wchar_t* message, uint32_t channel) {
 void __fastcall OnPrintChatMessage(void* ctx, uint32_t, Channel channel, wchar_t* message, FILETIME timestamp, uint32_t is_reprint) {
     PY4GW::HookBase::EnterHook();
     g_chat_window_context = ctx;
-    PrintChatMessagePacket packet = { channel, message, timestamp, is_reprint };
+    ui::packet::kPrintChatMessage packet = { channel, message, timestamp, is_reprint };
     ui::SendUIMessage(ui::UIMessage::kPrintChatMessage, &packet);
     PY4GW::HookBase::LeaveHook();
 }
@@ -179,16 +206,12 @@ void __cdecl OnUICallback_ChatLogLine(ui::InteractionMessage* message, void* wPa
     PY4GW::HookBase::EnterHook();
     switch (static_cast<uint32_t>(message->message_id)) {
     case 0x4A: {
-        g_show_timestamps = ui::GetPreference(ui::FlagPreference::ShowChatTimestamps);
+        g_show_timestamps = ui::GetPreference(Constants::FlagPreference::ShowChatTimestamps);
         if (g_show_timestamps != g_block_chat_timestamps.GetIsActive()) {
             g_block_chat_timestamps.TogglePatch();
         }
 
-        struct Packet {
-            wchar_t* message;
-            Channel channel;
-            FILETIME timestamp;
-        }* packet = static_cast<Packet*>(wParam);
+        auto* packet = static_cast<ui::packet::ChatLogLine*>(wParam);
 
         const auto old_message = packet->message;
 
@@ -211,8 +234,9 @@ void __cdecl OnUICallback_ChatLogLine(ui::InteractionMessage* message, void* wPa
 
 void __cdecl OnUICallback_AssignEditableText(ui::InteractionMessage* message, void* wParam, void* lParam) {
     PY4GW::HookBase::EnterHook();
-    if (message->message_id == ui::UIMessage::kDestroyFrame && g_is_typing_frame_id && *g_is_typing_frame_id == message->frame_id) {
-        *g_is_typing_frame_id = 0;
+    auto* is_typing_frame_id = Context::GetIsTypingFrameIdAddress();
+    if (message->message_id == ui::UIMessage::kDestroyFrame && is_typing_frame_id && *is_typing_frame_id == message->frame_id) {
+        *is_typing_frame_id = 0;
     }
     g_uicallback_assign_editable_text_original(message, wParam, lParam);
     PY4GW::HookBase::LeaveHook();
@@ -224,7 +248,7 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
     }
     switch (message_id) {
     case ui::UIMessage::kSendChatMessage: {
-        const auto packet = static_cast<SendChatMessagePacket*>(wparam);
+        const auto packet = static_cast<ui::packet::kSendChatMessage*>(wparam);
         if (GetChannel(*packet->message) == CHANNEL_COMMAND) {
             int argc = 0;
             LPWSTR* argv = CommandLineToArgvW(packet->message + 1, &argc);
@@ -247,7 +271,7 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
     } break;
     case ui::UIMessage::kStartWhisper: {
         if (g_start_whisper_original) {
-            const auto packet = static_cast<StartWhisperPacket*>(wparam);
+            const auto packet = static_cast<ui::packet::kStartWhisper*>(wparam);
             const auto frame = lparam ? static_cast<ui::Frame*>(lparam) : ui::GetFrameByLabel(L"Chat");
             if (frame) {
                 g_start_whisper_original(frame, 0, packet->player_name);
@@ -256,7 +280,7 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
         }
     } break;
     case ui::UIMessage::kLogChatMessage: {
-        const auto packet = static_cast<LogChatMessagePacket*>(wparam);
+        const auto packet = static_cast<ui::packet::kLogChatMessage*>(wparam);
         if (g_transient_chat_message && wcscmp(packet->message, g_transient_chat_message) == 0) {
             status->blocked = true;
             return;
@@ -267,14 +291,14 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
         }
     } break;
     case ui::UIMessage::kPrintChatMessage: {
-        const auto packet = static_cast<PrintChatMessagePacket*>(wparam);
+        const auto packet = static_cast<ui::packet::kPrintChatMessage*>(wparam);
         if (g_print_chat_message_original) {
             g_print_chat_message_original(g_chat_window_context, 0, packet->channel, packet->message, packet->timestamp, packet->is_reprint);
             return;
         }
     } break;
     case ui::UIMessage::kRecvWhisper: {
-        const auto packet = static_cast<RecvWhisperPacket*>(wparam);
+        const auto packet = static_cast<ui::packet::kRecvWhisper*>(wparam);
         if (g_recv_whisper_original) {
             g_recv_whisper_original(packet->transaction_id, packet->from, packet->message);
             return;
@@ -487,8 +511,6 @@ void Exit() {
     g_add_to_chat_log_original = nullptr;
     g_print_chat_message_func = nullptr;
     g_print_chat_message_original = nullptr;
-    g_chat_buffer_addr = nullptr;
-    g_is_typing_frame_id = nullptr;
     g_uicallback_chat_log_line_func = nullptr;
     g_uicallback_chat_log_line_original = nullptr;
     g_uicallback_assign_editable_text_func = nullptr;

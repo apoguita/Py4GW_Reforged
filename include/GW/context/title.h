@@ -43,4 +43,6 @@ namespace GW::Context {
 
     using TitleArray = GW::GWArray<Title>;
 
+    TitleClientData* GetTitleClientData();
+
 }  // namespace GW::Context

@@ -85,7 +85,7 @@ namespace GW::Context {
         wchar_t* pet_name;
         uint32_t model_file_id1;
         uint32_t model_file_id2;
-        HeroBehavior behavior;
+        Constants::HeroBehavior behavior;
         uint32_t locked_target_id;
 
     };
@@ -297,5 +297,14 @@ namespace GW::Context {
     static_assert(offsetof(WorldContext, players) == 0x80C, "WorldContext::players offset mismatch");
     static_assert(offsetof(WorldContext, title_tiers) == 0x82C, "WorldContext::title_tiers offset mismatch");
     static_assert(sizeof(WorldContext) == 0x854, "WorldContext size mismatch");
+
+    MerchItemArray* GetMerchantItemsArray();
+    MapAgentArray* GetMapAgentArray();
+    AgentEffectsArray* GetPartyEffectsArray();
+    SkillbarArray* GetSkillbarArray();
+    MissionMapIconArray* GetMissionMapIconArray();
+    NPCArray* GetNPCArray();
+    PlayerArray* GetPlayerArray();
+    TitleArray* GetTitleArray();
 
 }  // namespace GW::Context

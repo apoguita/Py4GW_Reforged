@@ -8,7 +8,21 @@
 #include "base/scanner.h"
 #include "GW/ui/ui.h"
 
+#include <atomic>
+
 namespace GW::quest {
+
+using RequestQuestInfoFn = void(__cdecl*)(uint32_t identifier);
+using RequestQuestDataFn = void(__cdecl*)(uint32_t identifier, bool update_markers);
+using DoActionFn = void(__cdecl*)(uint32_t identifier);
+
+bool ResolveRequestQuestFunctions();
+bool ResolveSetActiveQuestAndAbandon();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
 
 RequestQuestInfoFn g_request_quest_info_func = nullptr;
 RequestQuestDataFn g_request_quest_data_func = nullptr;

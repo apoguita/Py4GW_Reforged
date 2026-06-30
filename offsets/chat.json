@@ -82,5 +82,90 @@
       "offset": "0x5",
       "section": "text"
     }
+  },
+  "resolvers": {
+    "get_sender_color_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "get_sender_color_func", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "get_message_color_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "get_message_color_func", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "send_chat_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "send_chat_func", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "start_whisper_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "start_whisper_func", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "add_to_chat_log_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "add_to_chat_log_func", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "chat_buffer_addr": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_ref", "op": "scan", "pattern": "chat_buffer_addr", "out": "scan" },
+        { "name": "deref_ptr", "op": "dereference", "in": "scan", "out": "candidate" },
+        { "name": "validate_ptr", "op": "validate_section", "in": "candidate", "section": "data", "out": "final" }
+      ]
+    },
+    "recv_whisper_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "recv_whisper_func", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "print_chat_message_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_anchor", "op": "scan", "pattern": "print_chat_message_anchor", "out": "anchor" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "anchor", "out": "final" }
+      ]
+    },
+    "is_typing_frame_id": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_anchor", "op": "scan", "pattern": "is_typing_assertion", "out": "anchor" },
+        { "name": "scan_frame_id_ref", "op": "scan_in_range", "pattern": "is_typing_frame_id_sub", "start": "anchor", "end": "anchor", "end_add": "0x40", "out": "frame_id_ref" },
+        { "name": "deref_ptr", "op": "dereference", "in": "frame_id_ref", "out": "candidate" },
+        { "name": "validate_ptr", "op": "validate_section", "in": "candidate", "section": "data", "out": "final" }
+      ]
+    },
+    "uicallback_assign_editable_text_func": {
+      "steps": [
+        { "name": "find_string_use", "op": "find_use_of_string", "pattern": "uicallback_assign_editable_text", "out": "string_use" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "string_use", "out": "final" }
+      ]
+    },
+    "uicallback_chat_log_line_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_ref", "op": "scan", "pattern": "uicallback_chat_log_assertion", "out": "ref" },
+        { "name": "deref_ptr", "op": "dereference", "in": "ref", "out": "candidate" },
+        { "name": "validate_ptr", "op": "validate_section", "in": "candidate", "section": "text", "out": "final" }
+      ]
+    },
+    "chat_timestamps_patch_addr": {
+      "steps": [
+        { "name": "scan_patch_addr", "op": "scan", "pattern": "chat_timestamps_patch", "out": "final" }
+      ]
+    }
   }
 }

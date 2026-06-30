@@ -1,24 +1,23 @@
 #include "base/error_handling.h"
 
+#include "GW/context/context.h"
 #include "GW/friend_list/friend_list.h"
 
 #include <array>
 #include <cwchar>
 #include <cstring>
+#include <unordered_map>
 
 namespace GW::friend_list {
 
-Context::FriendList* GetFriendList() {
-    return reinterpret_cast<Context::FriendList*>(g_friend_list_addr);
-}
+using SetOnlineStatusFn = void(__cdecl*)(Constants::FriendStatus status);
+using AddFriendFn = void(__cdecl*)(const wchar_t* name, const wchar_t* alias, Constants::FriendType type);
+using RemoveFriendFn = void(__cdecl*)(const uint8_t* uuid, const wchar_t* name, uint32_t arg8);
 
-bool SetFriendListStatus(Context::FriendStatus status) {
-    if (!g_set_online_status_func) {
-        return false;
-    }
-    g_set_online_status_func(status);
-    return true;
-}
+extern SetOnlineStatusFn g_set_online_status_func;
+extern AddFriendFn g_add_friend_func;
+extern RemoveFriendFn g_remove_friend_func;
+extern std::unordered_map<PY4GW::HookEntry*, FriendStatusCallback> g_friend_status_callbacks;
 
 void RegisterFriendStatusCallback(
     PY4GW::HookEntry* entry,
@@ -34,19 +33,19 @@ void RemoveFriendStatusCallback(PY4GW::HookEntry* entry) {
     }
 }
 
-Context::Friend* GetFriend(const wchar_t* alias, const wchar_t* charname, Context::FriendType type) {
+Context::Friend* GetFriend(const wchar_t* alias, const wchar_t* charname, Constants::FriendType type) {
     if (!(alias || charname)) {
         return nullptr;
     }
 
-    const auto* friend_list = GetFriendList();
+    const auto* friend_list = Context::GetFriendList();
     if (!friend_list) {
         return nullptr;
     }
 
     auto& friends = friend_list->friends;
     for (auto friend_entry : friends) {
-        if (!(friend_entry && (type == Context::FriendType::Unknow || friend_entry->type == type))) {
+        if (!(friend_entry && (type == Constants::FriendType::Unknow || friend_entry->type == type))) {
             continue;
         }
         if (alias && std::wcsncmp(friend_entry->alias, alias, std::size(friend_entry->alias)) == 0) {
@@ -60,7 +59,7 @@ Context::Friend* GetFriend(const wchar_t* alias, const wchar_t* charname, Contex
 }
 
 Context::Friend* GetFriend(uint32_t index) {
-    const auto* friend_list = GetFriendList();
+    const auto* friend_list = Context::GetFriendList();
     if (!friend_list || index >= friend_list->friends.size()) {
         return nullptr;
     }
@@ -68,7 +67,7 @@ Context::Friend* GetFriend(uint32_t index) {
 }
 
 Context::Friend* GetFriend(const uint8_t* uuid) {
-    const auto* friend_list = GetFriendList();
+    const auto* friend_list = Context::GetFriendList();
     if (!friend_list) {
         return nullptr;
     }
@@ -82,20 +81,20 @@ Context::Friend* GetFriend(const uint8_t* uuid) {
     return nullptr;
 }
 
-uint32_t GetNumberOfFriends(Context::FriendType type) {
-    const auto* friend_list = GetFriendList();
+uint32_t GetNumberOfFriends(Constants::FriendType type) {
+    const auto* friend_list = Context::GetFriendList();
     if (!friend_list) {
         return 0;
     }
 
     switch (type) {
-    case Context::FriendType::Friend:
+    case Constants::FriendType::Friend:
         return friend_list->number_of_friend;
-    case Context::FriendType::Ignore:
+    case Constants::FriendType::Ignore:
         return friend_list->number_of_ignore;
-    case Context::FriendType::Player:
+    case Constants::FriendType::Player:
         return friend_list->number_of_partner;
-    case Context::FriendType::Trade:
+    case Constants::FriendType::Trade:
         return friend_list->number_of_trade;
     default:
         return 0;
@@ -103,20 +102,28 @@ uint32_t GetNumberOfFriends(Context::FriendType type) {
 }
 
 uint32_t GetNumberOfIgnores() {
-    return GetNumberOfFriends(Context::FriendType::Ignore);
+    return GetNumberOfFriends(Constants::FriendType::Ignore);
 }
 
 uint32_t GetNumberOfPartners() {
-    return GetNumberOfFriends(Context::FriendType::Player);
+    return GetNumberOfFriends(Constants::FriendType::Player);
 }
 
 uint32_t GetNumberOfTraders() {
-    return GetNumberOfFriends(Context::FriendType::Trade);
+    return GetNumberOfFriends(Constants::FriendType::Trade);
 }
 
-Context::FriendStatus GetMyStatus() {
-    const auto* friend_list = GetFriendList();
-    return friend_list ? friend_list->player_status : Context::FriendStatus::Offline;
+Constants::FriendStatus GetMyStatus() {
+    const auto* friend_list = Context::GetFriendList();
+    return friend_list ? friend_list->player_status : Constants::FriendStatus::Offline;
+}
+
+bool SetFriendListStatus(Constants::FriendStatus status) {
+    if (!g_set_online_status_func) {
+        return false;
+    }
+    g_set_online_status_func(status);
+    return true;
 }
 
 bool AddFriend(const wchar_t* name, const wchar_t* alias) {
@@ -134,7 +141,7 @@ bool AddFriend(const wchar_t* name, const wchar_t* alias) {
         use_alias = buffer;
     }
 
-    g_add_friend_func(name, use_alias, Context::FriendType::Friend);
+    g_add_friend_func(name, use_alias, Constants::FriendType::Friend);
     delete[] buffer;
     return true;
 }
@@ -154,7 +161,7 @@ bool AddIgnore(const wchar_t* name, const wchar_t* alias) {
         use_alias = buffer;
     }
 
-    g_add_friend_func(name, use_alias, Context::FriendType::Ignore);
+    g_add_friend_func(name, use_alias, Constants::FriendType::Ignore);
     delete[] buffer;
     return true;
 }

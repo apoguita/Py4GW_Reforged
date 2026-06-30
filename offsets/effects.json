@@ -13,5 +13,18 @@
       "offset": "0x9",
       "section": "text"
     }
+  },
+  "resolvers": {
+    "post_process_effect_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "post_process_target", "out": "final" }
+      ]
+    },
+    "drop_buff_func": {
+      "steps": [
+        { "name": "scan_callsite", "op": "scan", "pattern": "drop_buff_callsite", "out": "callsite" },
+        { "name": "resolve_target", "op": "function_from_near_call", "in": "callsite", "out": "final" }
+      ]
+    }
   }
 }

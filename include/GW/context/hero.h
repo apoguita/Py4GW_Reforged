@@ -2,6 +2,7 @@
 
 #include "base/error_handling.h"
 
+#include "GW/common/constants/hero.h"
 #include "GW/common/game_pos.h"
 #include "GW/common/gw_array.h"
 
@@ -11,17 +12,11 @@ namespace GW::Context {
 
     using AgentID = uint32_t;
 
-    enum class HeroBehavior : uint32_t {
-        Fight,
-        Guard,
-        AvoidCombat
-    };
-
     struct HeroFlag { // total: 0x20/36
         /* +h0000 */ uint32_t hero_id;
         /* +h0004 */ AgentID  agent_id;
         /* +h0008 */ uint32_t level;
-        /* +h000C */ HeroBehavior hero_behavior;
+        /* +h000C */ Constants::HeroBehavior hero_behavior;
         /* +h0010 */ Vec2f flag;
         /* +h0018 */ uint32_t h0018;
         /* +h001C */ AgentID locked_target_id;

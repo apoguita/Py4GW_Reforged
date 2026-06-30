@@ -13,5 +13,19 @@
       "offset": "-0x35",
       "section": "text"
     }
+  },
+  "resolvers": {
+    "transact_item_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "transact_item_target", "out": "candidate" },
+        { "name": "validate_target", "op": "validate_section", "in": "candidate", "section": "text", "out": "final" }
+      ]
+    },
+    "request_quote_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "request_quote_target", "out": "candidate" },
+        { "name": "validate_target", "op": "validate_section", "in": "candidate", "section": "text", "out": "final" }
+      ]
+    }
   }
 }

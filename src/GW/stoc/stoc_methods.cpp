@@ -4,6 +4,27 @@
 
 namespace GW::StoC {
 
+using StoCHandlerFn = bool(__cdecl*)(Packet::StoC::PacketBase* packet);
+
+struct StoCHandler {
+    uint32_t* packet_template = nullptr;
+    uint32_t template_size = 0;
+    StoCHandlerFn handler_func = nullptr;
+};
+
+using StoCHandlerArray = GW::GWArray<StoCHandler>;
+
+struct CallbackEntry {
+    int altitude = 0;
+    PY4GW::HookEntry* entry = nullptr;
+    PacketCallback callback;
+};
+
+extern CRITICAL_SECTION g_mutex;
+extern bool g_mutex_initialized;
+extern StoCHandlerArray* g_game_server_handlers;
+extern std::vector<std::vector<CallbackEntry>> g_packet_entries;
+
 void SafeInitializeCriticalSection(CRITICAL_SECTION* mtx);
 bool __cdecl StoCHandler_Func(Packet::StoC::PacketBase* packet);
 bool OriginalHandler(Packet::StoC::PacketBase* packet);

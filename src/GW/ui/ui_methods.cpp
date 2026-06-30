@@ -14,6 +14,128 @@
 #include <cwchar>
 #include <string>
 
+namespace GW::ui {
+
+using SendUIMessageFn = void(__cdecl*)(UIMessage message_id, void* wparam, void* lparam);
+using SendFrameUIMessageFn = void(__fastcall*)(GW::GWArray<UIInteractionCallback>* callbacks, void* edx, UIMessage message_id, void* wparam, void* lparam);
+using SendFrameUIMessageByIdFn = void(__cdecl*)(uint32_t frame_id, UIMessage message_id, void* wparam, void* lparam);
+using CreateHashFromWcharFn = uint32_t(__cdecl*)(const wchar_t* value, int seed);
+using GetChildFrameIdFn = uint32_t(__cdecl*)(uint32_t parent_frame_id, uint32_t child_offset);
+using FindRelatedFrameFn = uint32_t(__cdecl*)(uint32_t frame_id, uint32_t relation_kind, uint32_t start_after_id);
+using GetRootFrameFn = Frame*(__cdecl*)();
+using LoadSettingsFn = void(__cdecl*)(uint32_t size, uint8_t* data);
+using SetWindowVisibleFn = void(__cdecl*)(uint32_t window_id, uint32_t is_visible, void* wparam, void* lparam);
+using SetWindowPositionFn = void(__cdecl*)(uint32_t window_id, Context::WindowPosition* info, void* wparam, void* lparam);
+using ValidateAsyncDecodeStrFn = void(__cdecl*)(const wchar_t* value, DecodeStr_Callback callback, void* wparam);
+using DoAsyncDecodeStrFn = uint32_t(__fastcall*)(void* ecx, void* edx, wchar_t* encoded_str, DecodeStr_Callback callback, void* wparam);
+using TitleBinarySearchFn = uint32_t(__fastcall*)(void* table, void* edx, void* key, uint32_t* result_entry);
+using GetTitleFn = const wchar_t*(__fastcall*)(void* nonclient);
+using DrawOnCompassFn = void(__cdecl*)(uint32_t session_id, uint32_t point_count, CompassPoint* points);
+using CreateUIComponentFn = uint32_t(__cdecl*)(uint32_t frame_id, uint32_t component_flags, uint32_t tab_index, void* event_callback, wchar_t* name_enc, wchar_t* component_label);
+using DestroyUIComponentFn = bool(__cdecl*)(uint32_t frame_id);
+using FrameNewSubclassFn = uint32_t(__cdecl*)(uint32_t frame_id, void* subclass_proc, uint32_t msg_id);
+using SetTooltipFn = void(__cdecl*)(TooltipInfo** tooltip);
+using TypedComponentPassthroughFn = void(__cdecl*)(void* param_1, void* param_2, void* param_3, void* param_4, void* param_5);
+using GetFlagPreferenceFn = bool(__cdecl*)(uint32_t flag_pref_id);
+using SetFlagPreferenceFn = void(__cdecl*)(uint32_t flag_pref_id, bool value);
+using GetStringPreferenceFn = wchar_t*(__cdecl*)(uint32_t string_pref_id);
+using SetStringPreferenceFn = void(__cdecl*)(uint32_t string_pref_id, wchar_t* value);
+using GetEnumPreferenceFn = uint32_t(__cdecl*)(uint32_t choice_pref_id);
+using SetEnumPreferenceFn = void(__cdecl*)(uint32_t choice_pref_id, uint32_t value);
+using GetNumberPreferenceFn = uint32_t(__cdecl*)(uint32_t number_pref_id);
+using SetNumberPreferenceFn = void(__cdecl*)(uint32_t number_pref_id, uint32_t value);
+using GetGraphicsRendererValueFn = uint32_t(__cdecl*)(void* graphics_renderer_ptr, uint32_t metric_id);
+using SetGraphicsRendererValueFn = void(__cdecl*)(void* graphics_renderer, uint32_t renderer_mode, uint32_t metric_id, uint32_t value);
+using GetGameRendererModeFn = uint32_t(__cdecl*)(uint32_t game_renderer_context);
+using SetGameRendererModeFn = void(__cdecl*)(uint32_t game_renderer_context, uint32_t game_renderer_mode);
+using GetGameRendererMetricFn = uint32_t(__cdecl*)(uint32_t game_renderer_context, uint32_t game_renderer_mode, uint32_t metric_key);
+using SetInGameShadowQualityFn = void(__cdecl*)(uint32_t value);
+using SetInGameStaticPreferenceFn = void(__cdecl*)(uint32_t static_preference_id, uint32_t value);
+using TriggerTerrainRerenderFn = void(__cdecl*)();
+using SetInGameUIScaleFn = void(__cdecl*)(uint32_t value);
+using SetVolumeFn = void(__cdecl*)(uint32_t volume_id, float amount);
+using SetMasterVolumeFn = void(__cdecl*)(float amount);
+
+struct UIMessageCallbackEntry {
+    int altitude;
+    PY4GW::HookEntry* entry;
+    UIMessageCallback callback;
+};
+
+struct FrameUIMessageCallbackEntry {
+    int altitude;
+    PY4GW::HookEntry* entry;
+    FrameUIMessageCallback callback;
+};
+
+struct CreateUIComponentCallbackEntry {
+    int altitude;
+    PY4GW::HookEntry* entry;
+    CreateUIComponentCallback callback;
+};
+
+extern SendUIMessageFn g_send_ui_message_original;
+extern SendFrameUIMessageFn g_send_frame_ui_message_original;
+extern CreateHashFromWcharFn g_create_hash_from_wchar_func;
+extern GetChildFrameIdFn g_get_child_frame_id_func;
+extern GetRootFrameFn g_get_root_frame_func;
+extern CreateUIComponentFn g_create_ui_component_func;
+extern DestroyUIComponentFn g_destroy_ui_component_func;
+extern TypedComponentPassthroughFn g_typed_component_passthrough_func;
+extern FrameNewSubclassFn g_frame_new_subclass_func;
+extern GetStringPreferenceFn g_get_string_preference_func;
+extern GetFlagPreferenceFn g_get_flag_preference_func;
+extern GetEnumPreferenceFn g_get_enum_preference_func;
+extern GetNumberPreferenceFn g_get_number_preference_func;
+extern SetStringPreferenceFn g_set_string_preference_func;
+extern SetFlagPreferenceFn g_set_flag_preference_func;
+extern SetEnumPreferenceFn g_set_enum_preference_func;
+extern SetNumberPreferenceFn g_set_number_preference_func;
+extern SetInGameStaticPreferenceFn g_set_in_game_static_preference_func;
+extern TriggerTerrainRerenderFn g_trigger_terrain_rerender_func;
+extern SetInGameShadowQualityFn g_set_in_game_shadow_quality_func;
+extern SetInGameUIScaleFn g_set_in_game_ui_scale_func;
+extern SetVolumeFn g_set_volume_func;
+extern SetMasterVolumeFn g_set_master_volume_func;
+extern GetGraphicsRendererValueFn g_get_graphics_renderer_value_func;
+extern SetGraphicsRendererValueFn g_set_graphics_renderer_value_func;
+extern SetGameRendererModeFn g_set_game_renderer_mode_func;
+extern GetGameRendererModeFn g_get_game_renderer_mode_func;
+extern GetGameRendererMetricFn g_get_game_renderer_metric_func;
+extern uint32_t* g_command_line_number_buffer;
+extern GetFlagPreferenceFn g_get_command_line_flag_func;
+extern GetStringPreferenceFn g_get_command_line_string_func;
+extern GetNumberPreferenceFn g_get_command_line_number_func;
+extern uint32_t g_create_flat_button_dialog_subclass_type;
+extern UIInteractionCallback g_button_frame_callback;
+extern UIInteractionCallback g_ctl_button_proc_callback;
+extern UIInteractionCallback g_text_button_frame_callback;
+extern UIInteractionCallback g_scrollable_frame_callback;
+extern UIInteractionCallback g_text_label_frame_callback;
+extern UIInteractionCallback g_frame_list_callback;
+extern UIInteractionCallback g_dropdown_frame_callback;
+extern UIInteractionCallback g_slider_frame_callback;
+extern UIInteractionCallback g_slider_frame_wrapper_callback;
+extern UIInteractionCallback g_editable_text_frame_callback;
+extern UIInteractionCallback g_progress_bar_callback;
+extern UIInteractionCallback g_tabs_frame_callback;
+extern bool g_typed_component_callbacks_initialized;
+extern CRITICAL_SECTION g_callback_mutex;
+extern bool g_callback_mutex_initialized;
+extern std::unordered_map<UIMessage, std::vector<UIMessageCallbackEntry>> g_ui_message_callbacks;
+extern std::unordered_map<UIMessage, std::vector<FrameUIMessageCallbackEntry>> g_frame_ui_message_callbacks;
+extern std::vector<CreateUIComponentCallbackEntry> g_create_ui_component_callbacks;
+extern bool g_open_links;
+extern SetWindowVisibleFn g_set_window_visible_func;
+extern SetWindowPositionFn g_set_window_position_func;
+extern DrawOnCompassFn g_draw_on_compass_func;
+extern LoadSettingsFn g_load_settings_func;
+extern TitleBinarySearchFn g_title_binary_search_func;
+extern GetTitleFn g_get_title_func;
+extern ValidateAsyncDecodeStrFn g_validate_async_decode_str_func;
+
+}  // namespace GW::ui
+
 namespace {
 
 using namespace GW;
@@ -52,13 +174,7 @@ bool SendValueChangedMessage(ui::Frame* frame, const TValue& value) {
         return false;
     }
 
-    struct ValueChangedPacket {
-        uint32_t child_offset_id;
-        uint32_t frame_id;
-        uint32_t field_8;
-        TValue value;
-        uint32_t field_10;
-    } packet = {};
+    ui::packet::ValueChangedPacket<TValue> packet = {};
     packet.child_offset_id = FrameField(frame, 0xBC);
     packet.frame_id = FrameField(frame, 0xB8);
     packet.field_8 = 7;
@@ -242,15 +358,32 @@ bool EncStrValidate(const wchar_t*& data, const wchar_t* term) {
 }
 
 bool PrefsInitialised() {
-    return ui::g_preferences_initialized_addr &&
-        *reinterpret_cast<const uint32_t*>(ui::g_preferences_initialized_addr) == 1;
+    const auto addr = Context::GetPreferencesInitializedAddress();
+    return addr && *reinterpret_cast<const uint32_t*>(addr) == 1;
 }
 
-uint32_t ClampPreference(ui::NumberPreference pref, uint32_t value) {
-    if (!(ui::g_number_preference_options_addr && PrefsInitialised() && pref < ui::NumberPreference::Count)) {
+auto* NumberPreferenceOptions() {
+    return Context::GetNumberPreferenceOptions();
+}
+
+auto* EnumPreferenceOptions() {
+    return Context::GetEnumPreferenceOptions();
+}
+
+auto* FrameArray() {
+    return Context::GetFrameArray();
+}
+
+auto* CurrentTooltipPtr() {
+    return Context::GetCurrentTooltipPtr();
+}
+
+uint32_t ClampPreference(Constants::NumberPreference pref, uint32_t value) {
+    auto* options = NumberPreferenceOptions();
+    if (!(options && PrefsInitialised() && pref < Constants::NumberPreference::Count)) {
         return value;
     }
-    const auto& info = ui::g_number_preference_options_addr[static_cast<uint32_t>(pref)];
+    const auto& info = options[static_cast<uint32_t>(pref)];
     if ((info.flags & 0x1) != 0 && info.clamp_proc) {
         return info.clamp_proc(static_cast<uint32_t>(pref), value);
     }
@@ -274,10 +407,11 @@ Frame* GetRootFrame() {
 }
 
 Frame* GetFrameById(uint32_t frame_id) {
-    if (!(g_frame_array && g_frame_array->valid() && frame_id < g_frame_array->size())) {
+    auto* frame_array = FrameArray();
+    if (!(frame_array && frame_id < frame_array->size())) {
         return nullptr;
     }
-    return (*g_frame_array)[frame_id];
+    return (*frame_array)[frame_id];
 }
 
 Frame* GetParentFrame(Frame* frame) {
@@ -305,7 +439,7 @@ Frame* GetChildFrame(Frame* parent, std::initializer_list<uint32_t> child_offset
     return GetFrameById(id);
 }
 
-Frame* GetRelatedFrameById(uint32_t frame_id, FrameChild relation_kind, uint32_t start_after_id) {
+Frame* GetRelatedFrameById(uint32_t frame_id, Constants::FrameChild relation_kind, uint32_t start_after_id) {
     Frame* frame = GetFrameById(frame_id);
     if (!frame) {
         return nullptr;
@@ -313,22 +447,23 @@ Frame* GetRelatedFrameById(uint32_t frame_id, FrameChild relation_kind, uint32_t
 
     Frame* start_after = start_after_id ? GetFrameById(start_after_id) : nullptr;
     switch (relation_kind) {
-        case FrameChild::FirstChild:
-        case FrameChild::LastChild: {
-            if (!(g_frame_array && g_frame_array->valid())) {
+        case Constants::FrameChild::FirstChild:
+        case Constants::FrameChild::LastChild: {
+            auto* frame_array = FrameArray();
+            if (!frame_array) {
                 return nullptr;
             }
             Frame* best = nullptr;
-            uint32_t best_offset = relation_kind == FrameChild::FirstChild ? 0xFFFFFFFFu : 0;
+            uint32_t best_offset = relation_kind == Constants::FrameChild::FirstChild ? 0xFFFFFFFFu : 0;
             const uint32_t start_offset = start_after
                 ? start_after->child_offset_id
-                : (relation_kind == FrameChild::FirstChild ? 0 : 0xFFFFFFFFu);
-            for (auto* candidate : *g_frame_array) {
+                : (relation_kind == Constants::FrameChild::FirstChild ? 0 : 0xFFFFFFFFu);
+            for (auto* candidate : *frame_array) {
                 if (!candidate || candidate->relation.GetParent() != frame) {
                     continue;
                 }
                 const uint32_t offset = candidate->child_offset_id;
-                if (relation_kind == FrameChild::FirstChild) {
+                if (relation_kind == Constants::FrameChild::FirstChild) {
                     if (offset > start_offset && offset < best_offset) {
                         best = candidate;
                         best_offset = offset;
@@ -340,9 +475,10 @@ Frame* GetRelatedFrameById(uint32_t frame_id, FrameChild relation_kind, uint32_t
             }
             return best;
         }
-        case FrameChild::NextSibling:
-        case FrameChild::PrevSibling: {
-            if (!(g_frame_array && g_frame_array->valid())) {
+        case Constants::FrameChild::NextSibling:
+        case Constants::FrameChild::PrevSibling: {
+            auto* frame_array = FrameArray();
+            if (!frame_array) {
                 return nullptr;
             }
             Frame* parent = frame->relation.GetParent();
@@ -351,13 +487,13 @@ Frame* GetRelatedFrameById(uint32_t frame_id, FrameChild relation_kind, uint32_t
             }
             const uint32_t my_offset = frame->child_offset_id;
             Frame* best = nullptr;
-            uint32_t best_offset = relation_kind == FrameChild::NextSibling ? 0xFFFFFFFFu : 0;
-            for (auto* candidate : *g_frame_array) {
+            uint32_t best_offset = relation_kind == Constants::FrameChild::NextSibling ? 0xFFFFFFFFu : 0;
+            for (auto* candidate : *frame_array) {
                 if (!candidate || candidate == frame || candidate->relation.GetParent() != parent) {
                     continue;
                 }
                 const uint32_t offset = candidate->child_offset_id;
-                if (relation_kind == FrameChild::NextSibling) {
+                if (relation_kind == Constants::FrameChild::NextSibling) {
                     if (offset > my_offset && offset < best_offset) {
                         best = candidate;
                         best_offset = offset;
@@ -373,7 +509,7 @@ Frame* GetRelatedFrameById(uint32_t frame_id, FrameChild relation_kind, uint32_t
     return nullptr;
 }
 
-Frame* GetRelatedFrame(Frame* frame, FrameChild relation_kind, Frame* start_after) {
+Frame* GetRelatedFrame(Frame* frame, Constants::FrameChild relation_kind, Frame* start_after) {
     if (!frame) {
         return nullptr;
     }
@@ -396,10 +532,11 @@ uint32_t GetHashByLabel(const std::string& label) {
 
 Frame* GetFrameByLabel(const wchar_t* frame_label) {
     const uint32_t hash = GetHashByLabel(frame_label);
-    if (!(hash && g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!(hash && frame_array)) {
         return nullptr;
     }
-    for (auto* frame : *g_frame_array) {
+    for (auto* frame : *frame_array) {
         if (frame && frame->relation.frame_hash_id == hash) {
             return frame;
         }
@@ -413,11 +550,12 @@ uint32_t GetFrameIDByLabel(const wchar_t* frame_label) {
 }
 
 uint32_t GetFrameIDByHash(uint32_t hash) {
-    if (!(hash && g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!(hash && frame_array)) {
         return 0;
     }
-    for (uint32_t frame_id = 0; frame_id < g_frame_array->size(); ++frame_id) {
-        auto* frame = (*g_frame_array)[frame_id];
+    for (uint32_t frame_id = 0; frame_id < frame_array->size(); ++frame_id) {
+        auto* frame = (*frame_array)[frame_id];
         if (frame && frame->relation.frame_hash_id == hash) {
             return frame_id;
         }
@@ -446,10 +584,11 @@ uint32_t GetChildFrameID(uint32_t parent_hash, std::vector<uint32_t> child_offse
 }
 
 Frame* GetChildFromNameHash(Frame* parent, uint32_t name_hash) {
-    if (!(parent && name_hash && g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!(parent && name_hash && frame_array)) {
         return nullptr;
     }
-    for (auto* frame : *g_frame_array) {
+    for (auto* frame : *frame_array) {
         if (frame && frame->relation.GetParent() == parent && frame->relation.frame_hash_id == name_hash) {
             return frame;
         }
@@ -459,10 +598,11 @@ Frame* GetChildFromNameHash(Frame* parent, uint32_t name_hash) {
 
 std::vector<uint32_t> GetOverlayFrames() {
     std::vector<uint32_t> result;
-    if (!(g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!frame_array) {
         return result;
     }
-    for (auto* frame : *g_frame_array) {
+    for (auto* frame : *frame_array) {
         if (frame && frame->IsCreated()) {
             result.push_back(frame->frame_id);
         }
@@ -472,10 +612,11 @@ std::vector<uint32_t> GetOverlayFrames() {
 
 std::vector<uint32_t> GetPopupFrames() {
     std::vector<uint32_t> result;
-    if (!(g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!frame_array) {
         return result;
     }
-    for (auto* frame : *g_frame_array) {
+    for (auto* frame : *frame_array) {
         if (frame && frame->IsCreated()) {
             result.push_back(frame->frame_id);
         }
@@ -705,17 +846,11 @@ bool SelectDropdownOption(Frame* frame, uint32_t value) {
         return false;
     }
 
-    struct ValueChangedPacket {
-        uint32_t child_offset_id;
-        uint32_t frame_id;
-        uint32_t field_8;
-        uint32_t selected_index;
-        uint32_t field_10;
-    } packet = {};
+    ui::packet::ValueChangedPacket<uint32_t> packet = {};
     packet.child_offset_id = frame->child_offset_id;
     packet.frame_id = frame->frame_id;
     packet.field_8 = 7;
-    packet.selected_index = index;
+    packet.value = index;
     return SendFrameUIMessage(GetParentFrame(frame), UIMessage(static_cast<uint32_t>(0x31)), &packet, nullptr);
 }
 
@@ -1154,46 +1289,47 @@ bool Keypress(ControlAction key, Frame* target) {
 }
 
 GW::Constants::Language GetTextLanguage() {
-    return static_cast<GW::Constants::Language>(GetPreference(NumberPreference::TextLanguage));
+    return static_cast<GW::Constants::Language>(GetPreference(Constants::NumberPreference::TextLanguage));
 }
 
-uint32_t GetPreference(EnumPreference pref) {
-    return g_get_enum_preference_func && PrefsInitialised() && pref < EnumPreference::Count
+uint32_t GetPreference(Constants::EnumPreference pref) {
+    return g_get_enum_preference_func && PrefsInitialised() && pref < Constants::EnumPreference::Count
         ? g_get_enum_preference_func(static_cast<uint32_t>(pref))
         : 0;
 }
 
-uint32_t GetPreferenceOptions(EnumPreference pref, uint32_t** options_out) {
-    if (!(g_enum_preference_options_addr && pref < EnumPreference::Count)) {
+uint32_t GetPreferenceOptions(Constants::EnumPreference pref, uint32_t** options_out) {
+    auto* options = EnumPreferenceOptions();
+    if (!(options && pref < Constants::EnumPreference::Count)) {
         return 0;
     }
-    const auto& info = g_enum_preference_options_addr[static_cast<uint32_t>(pref)];
+    const auto& info = options[static_cast<uint32_t>(pref)];
     if (options_out) {
         *options_out = info.options;
     }
     return info.options_count;
 }
 
-uint32_t GetPreference(NumberPreference pref) {
-    return g_get_number_preference_func && PrefsInitialised() && pref < NumberPreference::Count
+uint32_t GetPreference(Constants::NumberPreference pref) {
+    return g_get_number_preference_func && PrefsInitialised() && pref < Constants::NumberPreference::Count
         ? g_get_number_preference_func(static_cast<uint32_t>(pref))
         : 0;
 }
 
-wchar_t* GetPreference(StringPreference pref) {
-    return g_get_string_preference_func && PrefsInitialised() && pref < StringPreference::Count
+wchar_t* GetPreference(Constants::StringPreference pref) {
+    return g_get_string_preference_func && PrefsInitialised() && pref < Constants::StringPreference::Count
         ? g_get_string_preference_func(static_cast<uint32_t>(pref))
         : nullptr;
 }
 
-bool GetPreference(FlagPreference pref) {
-    return g_get_flag_preference_func && PrefsInitialised() && pref < FlagPreference::Count
+bool GetPreference(Constants::FlagPreference pref) {
+    return g_get_flag_preference_func && PrefsInitialised() && pref < Constants::FlagPreference::Count
         ? g_get_flag_preference_func(static_cast<uint32_t>(pref))
         : false;
 }
 
-bool SetPreference(EnumPreference pref, uint32_t value) {
-    if (!(g_set_enum_preference_func && PrefsInitialised() && g_get_enum_preference_func && pref < EnumPreference::Count)) {
+bool SetPreference(Constants::EnumPreference pref, uint32_t value) {
+    if (!(g_set_enum_preference_func && PrefsInitialised() && g_get_enum_preference_func && pref < Constants::EnumPreference::Count)) {
         return false;
     }
     if (!game_thread::IsInGameThread()) {
@@ -1217,13 +1353,13 @@ bool SetPreference(EnumPreference pref, uint32_t value) {
     }
 
     switch (pref) {
-        case EnumPreference::AntiAliasing:
+        case Constants::EnumPreference::AntiAliasing:
             if (value == 2) {
                 value = 1;
             }
             break;
-        case EnumPreference::TerrainQuality:
-        case EnumPreference::ShaderQuality:
+        case Constants::EnumPreference::TerrainQuality:
+        case Constants::EnumPreference::ShaderQuality:
             if (value == 0) {
                 value = 1;
             }
@@ -1237,25 +1373,25 @@ bool SetPreference(EnumPreference pref, uint32_t value) {
     game_thread::Enqueue([pref] {
         uint32_t current_value = GetPreference(pref);
         switch (pref) {
-            case EnumPreference::AntiAliasing:
+            case Constants::EnumPreference::AntiAliasing:
                 g_set_graphics_renderer_value_func(nullptr, 2, 5, current_value);
                 g_set_graphics_renderer_value_func(nullptr, 0, 5, current_value);
                 break;
-            case EnumPreference::ShaderQuality:
+            case Constants::EnumPreference::ShaderQuality:
                 g_set_graphics_renderer_value_func(nullptr, 2, 9, current_value);
                 g_set_graphics_renderer_value_func(nullptr, 0, 9, current_value);
                 break;
-            case EnumPreference::ShadowQuality:
+            case Constants::EnumPreference::ShadowQuality:
                 g_set_in_game_shadow_quality_func(current_value);
                 break;
-            case EnumPreference::TerrainQuality:
+            case Constants::EnumPreference::TerrainQuality:
                 g_set_in_game_static_preference_func(2, current_value);
                 g_trigger_terrain_rerender_func();
                 break;
-            case EnumPreference::Reflections:
+            case Constants::EnumPreference::Reflections:
                 g_set_in_game_static_preference_func(1, current_value);
                 break;
-            case EnumPreference::InterfaceSize:
+            case Constants::EnumPreference::InterfaceSize:
                 g_set_in_game_ui_scale_func(current_value);
                 break;
             default:
@@ -1266,7 +1402,7 @@ bool SetPreference(EnumPreference pref, uint32_t value) {
     return true;
 }
 
-bool SetPreference(NumberPreference pref, uint32_t value) {
+bool SetPreference(Constants::NumberPreference pref, uint32_t value) {
     if (!PrefsInitialised()) {
         return false;
     }
@@ -1278,7 +1414,7 @@ bool SetPreference(NumberPreference pref, uint32_t value) {
     }
 
     value = ClampPreference(pref, value);
-    const bool ok = g_set_number_preference_func && pref < NumberPreference::Count
+    const bool ok = g_set_number_preference_func && pref < Constants::NumberPreference::Count
         ? (g_set_number_preference_func(static_cast<uint32_t>(pref), value), true)
         : false;
     if (!ok) {
@@ -1288,71 +1424,71 @@ bool SetPreference(NumberPreference pref, uint32_t value) {
     game_thread::Enqueue([pref] {
         uint32_t current_value = GetPreference(pref);
         switch (pref) {
-            case NumberPreference::EffectsVolume:
+            case Constants::NumberPreference::EffectsVolume:
                 if (g_set_volume_func) {
                     g_set_volume_func(0, static_cast<float>(current_value) / 100.f);
                 }
                 break;
-            case NumberPreference::DialogVolume:
+            case Constants::NumberPreference::DialogVolume:
                 if (g_set_volume_func) {
                     g_set_volume_func(4, static_cast<float>(current_value) / 100.f);
                 }
                 break;
-            case NumberPreference::BackgroundVolume:
+            case Constants::NumberPreference::BackgroundVolume:
                 if (g_set_volume_func) {
                     g_set_volume_func(1, static_cast<float>(current_value) / 100.f);
                 }
                 break;
-            case NumberPreference::MusicVolume:
+            case Constants::NumberPreference::MusicVolume:
                 if (g_set_volume_func) {
                     g_set_volume_func(3, static_cast<float>(current_value) / 100.f);
                 }
                 break;
-            case NumberPreference::UIVolume:
+            case Constants::NumberPreference::UIVolume:
                 if (g_set_volume_func) {
                     g_set_volume_func(2, static_cast<float>(current_value) / 100.f);
                 }
                 break;
-            case NumberPreference::MasterVolume:
+            case Constants::NumberPreference::MasterVolume:
                 if (g_set_master_volume_func) {
                     g_set_master_volume_func(static_cast<float>(current_value) / 100.f);
                 }
                 break;
-            case NumberPreference::FullscreenGamma:
+            case Constants::NumberPreference::FullscreenGamma:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0x4, current_value);
                 g_set_graphics_renderer_value_func(nullptr, 0, 0x4, current_value);
                 break;
-            case NumberPreference::TextureQuality:
+            case Constants::NumberPreference::TextureQuality:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0xD, current_value);
                 g_set_graphics_renderer_value_func(nullptr, 0, 0xD, current_value);
                 break;
-            case NumberPreference::RefreshRate:
+            case Constants::NumberPreference::RefreshRate:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0x8, current_value);
                 g_set_graphics_renderer_value_func(nullptr, 0, 0x8, current_value);
                 break;
-            case NumberPreference::UseBestTextureFiltering:
+            case Constants::NumberPreference::UseBestTextureFiltering:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0xC, current_value);
                 g_set_graphics_renderer_value_func(nullptr, 0, 0xC, current_value);
                 break;
-            case NumberPreference::ScreenBorderless:
+            case Constants::NumberPreference::ScreenBorderless:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0x10, current_value);
                 break;
-            case NumberPreference::WindowPosX:
+            case Constants::NumberPreference::WindowPosX:
                 g_set_graphics_renderer_value_func(nullptr, 2, 6, current_value);
                 break;
-            case NumberPreference::WindowPosY:
+            case Constants::NumberPreference::WindowPosY:
                 g_set_graphics_renderer_value_func(nullptr, 2, 7, current_value);
                 break;
-            case NumberPreference::WindowSizeX:
+            case Constants::NumberPreference::WindowSizeX:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0xA, current_value);
                 break;
-            case NumberPreference::WindowSizeY:
+            case Constants::NumberPreference::WindowSizeY:
                 g_set_graphics_renderer_value_func(nullptr, 2, 0xB, current_value);
                 break;
-            case NumberPreference::ScreenSizeX:
+            case Constants::NumberPreference::ScreenSizeX:
                 g_set_graphics_renderer_value_func(nullptr, 0, 0xA, current_value);
                 break;
-            case NumberPreference::ScreenSizeY:
+            case Constants::NumberPreference::ScreenSizeY:
                 g_set_graphics_renderer_value_func(nullptr, 0, 0xB, current_value);
                 break;
             default:
@@ -1363,8 +1499,8 @@ bool SetPreference(NumberPreference pref, uint32_t value) {
     return true;
 }
 
-bool SetPreference(StringPreference pref, wchar_t* value) {
-    if (!(g_set_string_preference_func && PrefsInitialised() && pref < StringPreference::Count)) {
+bool SetPreference(Constants::StringPreference pref, wchar_t* value) {
+    if (!(g_set_string_preference_func && PrefsInitialised() && pref < Constants::StringPreference::Count)) {
         return false;
     }
     if (!game_thread::IsInGameThread()) {
@@ -1377,8 +1513,8 @@ bool SetPreference(StringPreference pref, wchar_t* value) {
     return true;
 }
 
-bool SetPreference(FlagPreference pref, bool value) {
-    if (!(g_set_flag_preference_func && PrefsInitialised() && pref < FlagPreference::Count)) {
+bool SetPreference(Constants::FlagPreference pref, bool value) {
+    if (!(g_set_flag_preference_func && PrefsInitialised() && pref < Constants::FlagPreference::Count)) {
         return false;
     }
     if (!game_thread::IsInGameThread()) {
@@ -1389,7 +1525,7 @@ bool SetPreference(FlagPreference pref, bool value) {
     }
     g_set_flag_preference_func(static_cast<uint32_t>(pref), value);
     switch (pref) {
-        case FlagPreference::IsWindowed: {
+        case Constants::FlagPreference::IsWindowed: {
             uint32_t pref_value = value ? 2 : 0;
             uint32_t renderer_value = g_get_game_renderer_mode_func ? g_get_game_renderer_mode_func(0) : 0;
             if (g_set_game_renderer_mode_func && pref_value != renderer_value) {
@@ -1407,9 +1543,10 @@ void SetOpenLinks(bool toggle) {
     g_open_links = toggle;
 }
 
-WindowPosition* GetWindowPosition(WindowID window_id) {
-    return (g_window_positions_array && window_id < WindowID_Count)
-        ? &g_window_positions_array[window_id]
+Context::WindowPosition* GetWindowPosition(WindowID window_id) {
+    auto* window_positions = Context::GetWindowPositionsArray();
+    return (window_positions && window_id < WindowID_Count)
+        ? &window_positions[window_id]
         : nullptr;
 }
 
@@ -1421,7 +1558,7 @@ bool SetWindowVisible(WindowID window_id, bool is_visible) {
     return true;
 }
 
-bool SetWindowPosition(WindowID window_id, WindowPosition* info) {
+bool SetWindowPosition(WindowID window_id, Context::WindowPosition* info) {
     if (!(g_set_window_position_func && window_id < WindowID_Count)) {
         return false;
     }
@@ -1444,21 +1581,21 @@ void LoadSettings(size_t size, uint8_t* data) {
 }
 
 ArrayByte* GetSettings() {
-    return reinterpret_cast<ArrayByte*>(g_game_settings_addr);
+    return reinterpret_cast<ArrayByte*>(Context::GetGameSettingsAddress());
 }
 
 bool GetIsUIDrawn() {
-    auto* ui_drawn = reinterpret_cast<uint32_t*>(g_ui_drawn_addr);
+    auto* ui_drawn = reinterpret_cast<uint32_t*>(Context::GetUIDrawnAddress());
     return ui_drawn ? (*ui_drawn == 0) : true;
 }
 
 bool GetIsShiftScreenShot() {
-    auto* shift_screen = reinterpret_cast<uint32_t*>(g_shift_screen_addr);
+    auto* shift_screen = reinterpret_cast<uint32_t*>(Context::GetShiftScreenAddress());
     return shift_screen ? (*shift_screen != 0) : false;
 }
 
 bool GetIsWorldMapShowing() {
-    auto* world_map_state = reinterpret_cast<uint32_t*>(g_world_map_state_addr);
+    auto* world_map_state = reinterpret_cast<uint32_t*>(Context::GetWorldMapStateAddress());
     return world_map_state ? ((*world_map_state & 0x80000U) != 0) : false;
 }
 
@@ -1508,7 +1645,8 @@ bool ShowFrame(Frame* frame, bool show) {
 }
 
 const wchar_t* GetFrameTitle(Frame* frame) {
-    if (!(frame && g_get_title_func && g_title_binary_search_func && g_title_table_addr)) {
+    const auto title_table_addr = Context::GetTitleTableAddress();
+    if (!(frame && g_get_title_func && g_title_binary_search_func && title_table_addr)) {
         return nullptr;
     }
 
@@ -1519,7 +1657,7 @@ const wchar_t* GetFrameTitle(Frame* frame) {
 
     uint32_t result_entry = 0;
     const uint32_t found = g_title_binary_search_func(
-        reinterpret_cast<void*>(g_title_table_addr),
+        reinterpret_cast<void*>(title_table_addr),
         nullptr,
         reinterpret_cast<void*>(nonclient),
         &result_entry);
@@ -1557,12 +1695,12 @@ bool GetFrameStateBit(Frame* frame, uint32_t bit) {
 
 uint32_t GetFrameLimit() {
     uint32_t frame_limit = g_command_line_number_buffer
-        ? g_command_line_number_buffer[static_cast<uint32_t>(NumberCommandLineParameter::FPS)]
+        ? g_command_line_number_buffer[static_cast<uint32_t>(Constants::NumberCommandLineParameter::FPS)]
         : 0;
     uint32_t vsync_enabled = g_get_graphics_renderer_value_func ? g_get_graphics_renderer_value_func(nullptr, 0xF) : 0;
     uint32_t monitor_refresh_rate = g_get_graphics_renderer_value_func ? g_get_graphics_renderer_value_func(nullptr, 0x16) : 0;
     if (!frame_limit) {
-        switch (GetPreference(EnumPreference::FrameLimiter)) {
+        switch (GetPreference(Constants::EnumPreference::FrameLimiter)) {
             case 1:
                 frame_limit = 30;
                 break;
@@ -1584,16 +1722,17 @@ uint32_t GetFrameLimit() {
 
 bool SetFrameLimit(uint32_t value) {
     return g_command_line_number_buffer
-        ? (g_command_line_number_buffer[static_cast<uint32_t>(NumberCommandLineParameter::FPS)] = value, true)
+        ? (g_command_line_number_buffer[static_cast<uint32_t>(Constants::NumberCommandLineParameter::FPS)] = value, true)
         : false;
 }
 
 std::vector<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>> GetFrameHierarchy() {
     std::vector<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>> hierarchy;
-    if (!(g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!frame_array) {
         return hierarchy;
     }
-    for (auto* frame : *g_frame_array) {
+    for (auto* frame : *frame_array) {
         if (!(frame && frame->IsCreated() && frame->IsVisible())) {
             continue;
         }
@@ -1624,12 +1763,13 @@ std::vector<std::pair<uint32_t, uint32_t>> GetFrameCoordsByHash(uint32_t frame_h
 
 std::vector<uint32_t> GetFrameArray() {
     std::vector<uint32_t> frame_ids;
-    if (!(g_frame_array && g_frame_array->valid())) {
+    auto* frame_array = FrameArray();
+    if (!frame_array) {
         return frame_ids;
     }
-    frame_ids.reserve(g_frame_array->size());
-    for (uint32_t frame_id = 0; frame_id < g_frame_array->size(); ++frame_id) {
-        if ((*g_frame_array)[frame_id]) {
+    frame_ids.reserve(frame_array->size());
+    for (uint32_t frame_id = 0; frame_id < frame_array->size(); ++frame_id) {
+        if ((*frame_array)[frame_id]) {
             frame_ids.push_back(frame_id);
         }
     }
@@ -1668,15 +1808,7 @@ bool ButtonFrame::MouseAction(packet::ActionState action) {
         return false;
     }
 
-    struct MouseActionPacket {
-        uint32_t frame_id;
-        uint32_t child_offset_id;
-        packet::ActionState current_state;
-        uint32_t* wparam;
-        uint32_t field_10;
-        uint32_t field_14;
-        uint32_t field_18;
-    } packet = {};
+    packet::ButtonMouseActionPacket packet = {};
     packet.frame_id = frame_id;
     packet.child_offset_id = child_offset_id;
     packet.current_state = action;
@@ -1935,8 +2067,8 @@ bool ProgressBar::SetColorId(uint32_t color_id) {
     return color_id < 9 && SendFrameUIMessage(ValueFrame(this), UIMessage(static_cast<uint32_t>(0x65)), reinterpret_cast<void*>(color_id), nullptr);
 }
 
-bool ProgressBar::SetStyle(ProgressBarStyle style) {
-    PY4GW_ASSERT(style <= ProgressBarStyle::kOlive);
+bool ProgressBar::SetStyle(Constants::ProgressBarStyle style) {
+    PY4GW_ASSERT(style <= Constants::ProgressBarStyle::kOlive);
     return SendFrameUIMessage(ValueFrame(this), UIMessage(static_cast<uint32_t>(100)), reinterpret_cast<void*>(static_cast<uintptr_t>(style)), nullptr);
 }
 
@@ -2127,15 +2259,15 @@ ScrollableFrame* ScrollableFrame::Create(uint32_t parent_frame_id, uint32_t flag
     return reinterpret_cast<ScrollableFrame*>(CreateScrollableFrame(parent_frame_id, flags, child_offset_id, context, const_cast<wchar_t*>(frame_label)));
 }
 
-bool ScrollableFrame::SetSortHandler(SortHandlerFn sort_handler) {
+bool ScrollableFrame::SetSortHandler(SortHandler sort_handler) {
     return SendFrameUIMessage(this, UIMessage(static_cast<uint32_t>(0x7FFFFFF4)), reinterpret_cast<void*>(sort_handler), nullptr);
 }
 
-ScrollableFrame::SortHandlerFn ScrollableFrame::GetSortHandler() {
+ScrollableFrame::SortHandler ScrollableFrame::GetSortHandler() {
     auto* page = GetChildFrame(this, 0);
     page = GetChildFrame(page, 0);
     auto* context = GetFrameContext(page);
-    return context ? *reinterpret_cast<SortHandlerFn*>(reinterpret_cast<uintptr_t>(context) + 0xC) : nullptr;
+    return context ? *reinterpret_cast<SortHandler*>(reinterpret_cast<uintptr_t>(context) + 0xC) : nullptr;
 }
 
 bool ScrollableFrame::ClearItems() {
@@ -2387,7 +2519,8 @@ uint32_t EncStrToUInt32(const wchar_t* enc_str) {
 }
 
 TooltipInfo* GetCurrentTooltip() {
-    return g_current_tooltip_ptr && *g_current_tooltip_ptr ? **g_current_tooltip_ptr : nullptr;
+    auto* current_tooltip_ptr = CurrentTooltipPtr();
+    return current_tooltip_ptr && *current_tooltip_ptr ? **current_tooltip_ptr : nullptr;
 }
 
 void RegisterUIMessageCallback(PY4GW::HookEntry* entry, UIMessage message_id, const UIMessageCallback& callback, int altitude) {

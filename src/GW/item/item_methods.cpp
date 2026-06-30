@@ -1,18 +1,49 @@
 #include "base/error_handling.h"
 
+#include "GW/agent/agent.h"
+#include "GW/context/account.h"
 #include "GW/item/item.h"
 
 #include "GW/context/context.h"
-#include "GW/context/account_context.h"
-#include "GW/context/game_context.h"
-#include "GW/context/item_context.h"
+#include "GW/context/game.h"
+#include "GW/context/item.h"
+#include "GW/context/world.h"
 #include "GW/map/map.h"
 #include "GW/stoc/stoc.h"
 #include "GW/ui/ui.h"
 
 #include <algorithm>
+#include <unordered_map>
 
 namespace GW::item {
+
+using ItemClickFn = void(__fastcall*)(uint32_t* bag_id, void* edx, ItemClickParam* param);
+using DoActionFn = void(__cdecl*)(uint32_t identifier);
+using VoidFn = void(__cdecl*)();
+using EquipItemFn = void(__cdecl*)(uint32_t item_id, uint32_t agent_id);
+using DropItemFn = void(__cdecl*)(uint32_t item_id, uint32_t quantity);
+using MoveItemFn = void(__cdecl*)(uint32_t item_id, uint32_t quantity, uint32_t bag_index, uint32_t slot);
+using SalvageStartFn = void(__cdecl*)(uint32_t salvage_kit_id, uint32_t salvage_session_id, uint32_t item_id);
+using IdentifyItemFn = void(__cdecl*)(uint32_t identification_kit_id, uint32_t item_id);
+using PingWeaponSetFn = void(__cdecl*)(uint32_t agent_id, uint32_t weapon_item_id, uint32_t offhand_item_id);
+using ChangeGoldFn = void(__cdecl*)(uint32_t character_gold, uint32_t storage_gold);
+using ChangeEquipmentVisibilityFn = void(__cdecl*)(uint32_t equipment_state, uint32_t equip_type);
+using GetPvPItemUpgradeInfoNameFn = void(__cdecl*)(uint32_t pvp_item_upgrade_id, uint32_t name_or_description, wchar_t** name_out, wchar_t** description_out);
+
+extern DoActionFn g_use_item_func;
+extern EquipItemFn g_equip_item_func;
+extern DropItemFn g_drop_item_func;
+extern PingWeaponSetFn g_ping_weapon_set_func;
+extern MoveItemFn g_move_item_func;
+extern DoActionFn g_drop_gold_func;
+extern ChangeGoldFn g_change_gold_func;
+extern SalvageStartFn g_salvage_start_func;
+extern IdentifyItemFn g_identify_item_func;
+extern DoActionFn g_destroy_item_func;
+extern VoidFn g_salvage_session_complete_func;
+extern ChangeEquipmentVisibilityFn g_change_equipment_visibility_func;
+extern GetPvPItemUpgradeInfoNameFn g_pvp_item_upgrade_name_func;
+extern std::unordered_map<PY4GW::HookEntry*, ItemClickCallback> g_item_click_callbacks;
 
 static uint32_t GetSalvageSessionId() {
     const auto* w = Context::GetWorldContext();
@@ -27,7 +58,7 @@ bool CanAccessXunlaiChest() {
 }
 
 bool IsStorageBag(const Bag* bag) {
-    return bag && bag->bag_type == Context::BagType::Storage;
+    return bag && bag->bag_type == Constants::BagType::Storage;
 }
 
 bool IsStorageItem(const Item* item) {
@@ -38,29 +69,10 @@ bool CanInteractWithItem(const Item* item) {
     return item && !IsStorageItem(item) || CanAccessXunlaiChest();
 }
 
-SalvageSessionInfo* GetSalvageSessionInfo() {
-    return g_salvage_context;
-}
-
-ItemArray* GetItemArray() {
-    auto* i = Context::GetItemContext();
-    return i && i->item_array.valid() ? &i->item_array : nullptr;
-}
-
-Inventory* GetInventory() {
-    auto* i = Context::GetItemContext();
-    return i ? i->inventory : nullptr;
-}
-
-Bag** GetBagArray() {
-    auto* i = GetInventory();
-    return i ? i->bags : nullptr;
-}
-
 Bag* GetBag(Constants::Bag bag_id) {
     if (!(bag_id > Constants::Bag::None && bag_id < Constants::Bag::Max))
         return nullptr;
-    Bag** bags = GetBagArray();
+    Bag** bags = Context::GetBagArray();
     return bags ? bags[static_cast<unsigned>(bag_id)] : nullptr;
 }
 
@@ -91,7 +103,7 @@ Item* GetHoveredItem() {
 }
 
 Item* GetItemById(uint32_t item_id) {
-    ItemArray* items = item_id ? GetItemArray() : nullptr;
+    ItemArray* items = item_id ? Context::GetItemArray() : nullptr;
     return items && item_id < items->size() ? items->at(item_id) : nullptr;
 }
 
@@ -159,7 +171,7 @@ bool UseItemByModelId(uint32_t model_id, int bag_start, int bag_end) {
 
 uint32_t CountItemByModelId(uint32_t model_id, int bag_start, int bag_end) {
     uint32_t itemcount = 0;
-    Bag** bags = GetBagArray();
+    Bag** bags = Context::GetBagArray();
     if (!bags) return 0;
 
     for (int bagIndex = bag_start; bagIndex <= bag_end; ++bagIndex) {
@@ -176,7 +188,7 @@ uint32_t CountItemByModelId(uint32_t model_id, int bag_start, int bag_end) {
 }
 
 Item* GetItemByModelId(uint32_t model_id, int bag_start, int bag_end) {
-    Bag** bags = GetBagArray();
+    Bag** bags = Context::GetBagArray();
     if (!bags) return nullptr;
 
     for (int bagIndex = bag_start; bagIndex <= bag_end; ++bagIndex) {
@@ -193,7 +205,7 @@ Item* GetItemByModelId(uint32_t model_id, int bag_start, int bag_end) {
 }
 
 Item* GetItemByModelIdAndModifiers(uint32_t model_id, const ItemModifier* modifiers, uint32_t modifiers_len, int bag_start, int bag_end) {
-    Bag** bags = GetBagArray();
+    Bag** bags = Context::GetBagArray();
     if (!(bags && modifiers_len && modifiers))
         return nullptr;
 
@@ -212,12 +224,12 @@ Item* GetItemByModelIdAndModifiers(uint32_t model_id, const ItemModifier* modifi
 }
 
 uint32_t GetGoldAmountOnCharacter() {
-    auto* i = GetInventory();
+    auto* i = Context::GetInventory();
     return i ? i->gold_character : 0;
 }
 
 uint32_t GetGoldAmountInStorage() {
-    auto* i = GetInventory();
+    auto* i = Context::GetInventory();
     return i ? i->gold_storage : 0;
 }
 
@@ -293,9 +305,10 @@ bool IdentifyItem(uint32_t identification_kit_id, uint32_t item_id) {
 }
 
 bool SalvageSessionCancel() {
-    if (!g_salvage_context)
+    auto* salvage_context = Context::GetSalvageSessionInfo();
+    if (!salvage_context)
         return false;
-    auto* btn = ui::GetChildFrame(ui::GetFrameById(g_salvage_context->frame_id), 1);
+    auto* btn = ui::GetChildFrame(ui::GetFrameById(salvage_context->frame_id), 1);
     return ui::ButtonClick(btn);
 }
 
@@ -308,17 +321,18 @@ bool DestroyItem(uint32_t item_id) {
 }
 
 bool SalvageMaterials() {
-    if (!g_salvage_context)
+    auto* salvage_context = Context::GetSalvageSessionInfo();
+    if (!salvage_context)
         return false;
-    const auto prev_context = *g_salvage_context;
-    g_salvage_context->chosen_salvagable = 3;
-    g_salvage_context->salvagable_1 = 0;
-    g_salvage_context->salvagable_2 = 0;
-    g_salvage_context->salvagable_3 = 0;
-    auto* btn = ui::GetChildFrame(ui::GetFrameById(g_salvage_context->frame_id), 2);
+    const auto prev_context = *salvage_context;
+    salvage_context->chosen_salvagable = 3;
+    salvage_context->salvagable_1 = 0;
+    salvage_context->salvagable_2 = 0;
+    salvage_context->salvagable_3 = 0;
+    auto* btn = ui::GetChildFrame(ui::GetFrameById(salvage_context->frame_id), 2);
     bool ok = ui::ButtonClick(btn);
-    if (g_salvage_context)
-        *g_salvage_context = prev_context;
+    if (salvage_context)
+        *salvage_context = prev_context;
     return ok;
 }
 
@@ -331,11 +345,12 @@ void OpenXunlaiWindow(bool anniversary_pane_unlocked) {
 }
 
 Constants::StoragePane GetStoragePage() {
-    return static_cast<Constants::StoragePane>(ui::GetPreference(ui::NumberPreference::StorageBagPage));
+    return static_cast<Constants::StoragePane>(ui::GetPreference(Constants::NumberPreference::StorageBagPage));
 }
 
 bool GetIsStorageOpen() {
-    return g_storage_open_addr && *g_storage_open_addr != 0;
+    const auto* storage_open_addr = Context::GetStorageOpenAddress();
+    return storage_open_addr && *storage_open_addr != 0;
 }
 
 void AsyncGetItemName(const Item* item, std::wstring& name) {
@@ -372,11 +387,11 @@ uint32_t GetEquipmentVisibilityState() {
     return w ? w->equipment_status : 0;
 }
 
-EquipmentStatus GetEquipmentVisibility(EquipmentType type) {
-    return static_cast<EquipmentStatus>((GetEquipmentVisibilityState() >> static_cast<uint32_t>(type)) & 0x3);
+Constants::EquipmentStatus GetEquipmentVisibility(Constants::EquipmentType type) {
+    return static_cast<Constants::EquipmentStatus>((GetEquipmentVisibilityState() >> static_cast<uint32_t>(type)) & 0x3);
 }
 
-bool SetEquipmentVisibility(EquipmentType type, EquipmentStatus state) {
+bool SetEquipmentVisibility(Constants::EquipmentType type, Constants::EquipmentStatus state) {
     if (GetEquipmentVisibility(type) == state)
         return true;
     if (!g_change_equipment_visibility_func)
@@ -407,7 +422,9 @@ const PvPItemUpgradeInfo* GetPvPItemUpgrade(uint32_t pvp_item_upgrade_idx) {
 }
 
 const PvPItemUpgradeArray& GetPvPItemUpgradesArray() {
-    return g_unlocked_pvp_item_upgrade_array;
+    static const PvPItemUpgradeArray empty = {};
+    const auto* arr = Context::GetPvPItemUpgradeArray();
+    return arr ? *arr : empty;
 }
 
 const PvPItemInfo* GetPvPItemInfo(uint32_t pvp_item_idx) {
@@ -419,7 +436,9 @@ const PvPItemInfo* GetPvPItemInfo(uint32_t pvp_item_idx) {
 }
 
 const PvPItemInfoArray& GetPvPItemInfoArray() {
-    return g_pvp_item_array;
+    static const PvPItemInfoArray empty = {};
+    const auto* arr = Context::GetPvPItemInfoArray();
+    return arr ? *arr : empty;
 }
 
 const CompositeModelInfo* GetCompositeModelInfo(uint32_t model_file_id) {
@@ -431,7 +450,9 @@ const CompositeModelInfo* GetCompositeModelInfo(uint32_t model_file_id) {
 }
 
 const CompositeModelInfoArray& GetCompositeModelInfoArray() {
-    return *g_composite_model_info_array;
+    static const CompositeModelInfoArray empty = {};
+    const auto* arr = Context::GetCompositeModelInfoArrayPtr();
+    return arr ? *arr : empty;
 }
 
 bool GetPvPItemUpgradeEncodedName(uint32_t pvp_item_upgrade_idx, wchar_t** out) {
@@ -455,9 +476,11 @@ bool GetPvPItemUpgradeEncodedDescription(uint32_t pvp_item_upgrade_idx, wchar_t*
 }
 
 const ItemFormula* GetItemFormula(const Item* item) {
-    if (!(item && g_item_formulas && item->item_formula < g_item_formula_count))
+    auto* item_formulas = Context::GetItemFormulas();
+    const auto item_formula_count = Context::GetItemFormulaCount();
+    if (!(item && item_formulas && item->item_formula < item_formula_count))
         return nullptr;
-    return &g_item_formulas[item->item_formula];
+    return &item_formulas[item->item_formula];
 }
 
 }  // namespace GW::item

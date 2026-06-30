@@ -2,19 +2,14 @@
 
 #include "GW/player/player.h"
 
-#include "GW/context/char_context.h"
+#include "GW/context/character.h"
 #include "GW/context/context.h"
-#include "GW/context/world_context.h"
+#include "GW/context/world.h"
 
 #include <cwchar>
 #include <cwctype>
 
 namespace {
-
-GW::Context::TitleArray* GetTitleArray() {
-    auto* world = GW::Context::GetWorldContext();
-    return world && world->titles.valid() ? &world->titles : nullptr;
-}
 
 int wcsncasecmp(const wchar_t* s1, const wchar_t* s2, size_t n) {
     if (s1 == s2) {
@@ -40,6 +35,14 @@ int wcsncasecmp(const wchar_t* s1, const wchar_t* s2, size_t n) {
 }  // namespace
 
 namespace GW::player {
+
+using RemoveActiveTitleFn = void(__cdecl*)();
+using SetActiveTitleFn = void(__cdecl*)(uint32_t identifier);
+using DepositFactionFn = void(__cdecl*)(uint32_t always_0, uint32_t allegiance, uint32_t amount);
+
+extern RemoveActiveTitleFn g_remove_active_title_func;
+extern SetActiveTitleFn g_set_active_title_func;
+extern DepositFactionFn g_deposit_faction_func;
 
 bool SetActiveTitle(GW::Constants::TitleID title_id) {
     if (!g_set_active_title_func) {
@@ -67,11 +70,6 @@ uint32_t GetAmountOfPlayersInInstance() {
     return world && world->players.valid() ? world->players.size() - 1U : 0U;
 }
 
-Context::PlayerArray* GetPlayerArray() {
-    auto* world = Context::GetWorldContext();
-    return world && world->players.valid() ? &world->players : nullptr;
-}
-
 PlayerNumber GetPlayerNumber() {
     auto* character = Context::GetCharContext();
     return character ? character->player_number : 0;
@@ -82,7 +80,7 @@ Context::Player* GetPlayerByID(uint32_t player_id) {
         player_id = GetPlayerNumber();
     }
 
-    auto* players = GetPlayerArray();
+    auto* players = Context::GetPlayerArray();
     return players && player_id < players->size() ? &players->at(player_id) : nullptr;
 }
 
@@ -105,7 +103,7 @@ Context::Player* GetPlayerByName(const wchar_t* name) {
         return nullptr;
     }
 
-    auto* players = GetPlayerArray();
+    auto* players = Context::GetPlayerArray();
     if (!players) {
         return nullptr;
     }
@@ -122,7 +120,7 @@ Context::Player* GetPlayerByName(const wchar_t* name) {
 }
 
 Context::Title* GetTitleTrack(GW::Constants::TitleID title_id) {
-    auto* titles = GetTitleArray();
+    auto* titles = Context::GetTitleArray();
     if (!(titles && titles->size() > static_cast<uint32_t>(title_id))) {
         return nullptr;
     }
@@ -135,7 +133,7 @@ GW::Constants::TitleID GetActiveTitleId() {
         return GW::Constants::TitleID::None;
     }
 
-    auto* titles = GetTitleArray();
+    auto* titles = Context::GetTitleArray();
     if (!titles) {
         return GW::Constants::TitleID::None;
     }
@@ -154,7 +152,7 @@ Context::Title* GetActiveTitle() {
 
 std::vector<int> GetTitleIDs() {
     std::vector<int> title_ids;
-    auto* titles = GetTitleArray();
+    auto* titles = Context::GetTitleArray();
     if (!titles) {
         return title_ids;
     }
@@ -167,7 +165,8 @@ std::vector<int> GetTitleIDs() {
 }
 
 Context::TitleClientData* GetTitleData(GW::Constants::TitleID title_id) {
-    return g_title_data ? &g_title_data[static_cast<uint32_t>(title_id)] : nullptr;
+    auto* title_data = Context::GetTitleClientData();
+    return title_data ? &title_data[static_cast<uint32_t>(title_id)] : nullptr;
 }
 
 bool DepositFaction(uint32_t allegiance) {

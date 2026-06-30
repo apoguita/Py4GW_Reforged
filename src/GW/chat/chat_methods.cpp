@@ -1,15 +1,54 @@
 #include "base/error_handling.h"
 
+#include "base/logger.h"
+
 #include "GW/chat/chat.h"
 
+#include "GW/game_thread/game_thread.h"
 #include "GW/ui/ui.h"
 
 #include <cstdarg>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 namespace GW::chat {
+    using GetChannelColorFn = Color*(__cdecl*)(Color* color, Channel chan);
+    using SendChatFn = void(__cdecl*)(wchar_t* message, uint32_t agent_id);
+    using RecvWhisperFn = void(__cdecl*)(uint32_t transaction_id, wchar_t* player_name, wchar_t* message);
+    using StartWhisperFn = void(__fastcall*)(ui::Frame* ctx, uint32_t edx, wchar_t* name);
+    using AddToChatLogFn = void(__cdecl*)(wchar_t* message, uint32_t channel);
+    using PrintChatMessageFn = void(__fastcall*)(void* ctx, uint32_t edx, Channel channel, wchar_t* message, FILETIME timestamp, uint32_t is_reprint);
+
+    extern AddToChatLogFn g_add_to_chat_log_func;
+    extern SendChatFn g_send_chat_func;
+    extern const wchar_t* g_transient_chat_message;
+    extern GetChannelColorFn g_get_sender_color_func;
+    extern GetChannelColorFn g_get_message_color_func;
+    extern GetChannelColorFn g_get_sender_color_original;
+    extern GetChannelColorFn g_get_message_color_original;
+    extern std::map<Channel, Color> g_chat_sender_color;
+    extern std::map<Channel, Color> g_chat_message_color;
+    extern std::unordered_map<std::wstring, ChatCommandCallback> g_chat_command_hook_entries;
+    extern bool g_timestamp_24h_format;
+    extern bool g_timestamp_seconds;
+    extern Color g_timestamps_color;
+
+    void ForceRedrawChatLog() {
+        game_thread::Enqueue([]() {
+            const auto log = ui::GetFrameByLabel(L"Log");
+            if (!(log && log->IsCreated() && log->IsVisible())) {
+                return;
+            }
+            struct {
+                Constants::FlagPreference pref = Constants::FlagPreference::ShowChatTimestamps;
+                uint32_t val = static_cast<uint32_t>(ui::GetPreference(Constants::FlagPreference::ShowChatTimestamps));
+            } packet;
+            ui::SendUIMessage(ui::UIMessage::kPreferenceFlagChanged, &packet);
+            });
+    }
 
 Channel GetChannel(char opcode) {
     switch (opcode) {
@@ -28,20 +67,22 @@ Channel GetChannel(wchar_t opcode) {
     return GetChannel(static_cast<char>(opcode));
 }
 
-ChatBuffer* GetChatLog() {
-    return g_chat_buffer_addr ? *g_chat_buffer_addr : nullptr;
+Context::ChatBuffer* GetChatLog() {
+    auto* chat_buffer_addr = Context::GetChatBufferAddress();
+    return chat_buffer_addr ? *chat_buffer_addr : nullptr;
 }
 
 bool AddToChatLog(wchar_t* message, uint32_t channel) {
     if (!(g_add_to_chat_log_func && message && *message)) {
         return false;
     }
-    LogChatMessagePacket packet = { message, static_cast<Channel>(channel) };
+    ui::packet::kLogChatMessage packet = { message, static_cast<Channel>(channel) };
     return ui::SendUIMessage(ui::UIMessage::kLogChatMessage, &packet);
 }
 
 bool GetIsTyping() {
-    return g_is_typing_frame_id && *g_is_typing_frame_id != 0;
+    const auto* is_typing_frame_id = Context::GetIsTypingFrameIdAddress();
+    return is_typing_frame_id && *is_typing_frame_id != 0;
 }
 
 bool SendChat(char channel, const wchar_t* msg) {
@@ -193,7 +234,7 @@ void GetDefaultColors(Channel chan, Color* sender, Color* message) {
 }
 
 void ToggleTimestamps(bool enable) {
-    ui::SetPreference(ui::FlagPreference::ShowChatTimestamps, enable);
+    ui::SetPreference(Constants::FlagPreference::ShowChatTimestamps, enable);
 }
 
 void SetTimestampsFormat(bool use_24h, bool show_timestamp_seconds) {

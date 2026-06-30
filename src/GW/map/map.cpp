@@ -4,30 +4,75 @@
 
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
 #include "base/logger.h"
 #include "base/memory_patcher.h"
 #include "GW/game_thread/game_thread.h"
 #include "GW/ui/ui.h"
 
+#include <atomic>
+#include <string>
+
+namespace GW::Context {
+extern GW::Constants::ServerRegion* g_region_id_addr;
+extern AreaInfo* g_area_info_addr;
+extern MapTypeInstanceInfo* g_map_type_instance_infos;
+extern uint32_t g_map_type_instance_infos_size;
+extern uintptr_t g_instance_info_ptr;
+extern InstanceInfo* g_instance_info;
+extern WorldMapContext* g_world_map_context;
+extern MissionMapContext* g_mission_map_context;
+}
+
 namespace GW::map {
+
+using QueryAltitudeFn = int(__cdecl*)(const GamePos* point, float radius, float* altitude, Vec3f* terrain_normal);
+using VoidFn = void(__cdecl*)();
+using DoActionFn = void(__cdecl*)(uint32_t);
+
+bool ResolveSkipCinematic();
+bool ResolveRegionId();
+bool ResolveAreaInfo();
+bool ResolveInstanceInfo();
+bool ResolveQueryAltitude();
+bool ResolveBypassTolerancePatch();
+bool ResolveEnterChallengeFunctions();
+bool ResolveMapTypeInstanceInfos();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+
+void OnEnterChallengeMission_Hook(uint32_t identifier);
+void OnEnterChallengeMission_UIMessage(PY4GW::HookStatus* status, ui::UIMessage msg_id, void* wparam, void*);
+
+struct MapTestState {
+    bool active = false;
+    uint32_t map_id = 0;
+    uint32_t alt_map_id = 0;
+    int number = 2;
+    uint32_t count = 3;
+    uint32_t delay_ms = 0;
+    uint32_t timeout_ms = 10000;
+    uint32_t message_id = 0;
+    uint32_t tries = 0;
+    uint64_t t0 = 0;
+    uint64_t t1 = 0;
+    uint64_t t2 = 0;
+    bool seen = false;
+    uint32_t phase = 0;
+    std::string status = "idle";
+};
 
 QueryAltitudeFn g_query_altitude_func = nullptr;
 VoidFn g_skip_cinematic_func = nullptr;
 VoidFn g_cancel_enter_challenge_mission_func = nullptr;
 DoActionFn g_enter_challenge_mission_func = nullptr;
 DoActionFn g_enter_challenge_mission_original = nullptr;
-GW::Constants::ServerRegion* g_region_id_addr = nullptr;
-Context::AreaInfo* g_area_info_addr = nullptr;
-MapTypeInstanceInfo* g_map_type_instance_infos = nullptr;
-uint32_t g_map_type_instance_infos_size = 0;
-uintptr_t g_instance_info_ptr = 0;
-InstanceInfo* g_instance_info = nullptr;
 PY4GW::MemoryPatcher g_bypass_tolerance_patch;
 PY4GW::HookEntry g_enter_challenge_mission_hook_entry;
 std::atomic<bool> g_initialized = false;
-
-WorldMapContext* g_world_map_context = nullptr;
-MissionMapContext* g_mission_map_context = nullptr;
 MapTestState g_map_test_state;
 
 namespace {
@@ -37,10 +82,10 @@ namespace {
     void OnWorldMap_UICallback(ui::InteractionMessage* message, void* wParam, void* lParam) {
         world_map_ui_callback_ret(message, wParam, lParam);
         if (message && message->wParam) {
-            g_world_map_context = *reinterpret_cast<WorldMapContext**>(message->wParam);
+            Context::g_world_map_context = *reinterpret_cast<Context::WorldMapContext**>(message->wParam);
         }
         if (message && message->message_id == ui::UIMessage::kDestroyFrame) {
-            g_world_map_context = nullptr;
+            Context::g_world_map_context = nullptr;
         }
     }
 
@@ -50,10 +95,10 @@ namespace {
     void OnMissionMap_UICallback(ui::InteractionMessage* message, void* wParam, void* lParam) {
         mission_map_ui_callback_ret(message, wParam, lParam);
         if (message && message->wParam) {
-            g_mission_map_context = *reinterpret_cast<MissionMapContext**>(message->wParam);
+            Context::g_mission_map_context = *reinterpret_cast<Context::MissionMapContext**>(message->wParam);
         }
         if (message && message->message_id == ui::UIMessage::kDestroyFrame) {
-            g_mission_map_context = nullptr;
+            Context::g_mission_map_context = nullptr;
         }
     }
 
@@ -225,42 +270,12 @@ namespace {
 
     bool ResolveMissionMapUICallback() {
         CrashContextScope context("startup", "map", "resolve_mission_map_ui_callback");
-        const auto* pattern = PY4GW::Patterns::Get("map.mission_map_ui_callback");
-        if (!pattern) {
-            Logger::Instance().LogError("Missing or invalid pattern: map.mission_map_ui_callback", "map");
-            return false;
-        }
-        const uintptr_t address = PY4GW::Scanner::Find(
-            pattern->pattern.c_str(),
-            pattern->mask.c_str(),
-            pattern->offset,
-            pattern->section);
-        mission_map_ui_callback_func = reinterpret_cast<ui::UIInteractionCallback>(
-            PY4GW::Scanner::ToFunctionStart(address));
-        return Logger::AssertAddress(
-            "MissionMap_UICallback_Func",
-            reinterpret_cast<uintptr_t>(mission_map_ui_callback_func),
-            "map");
+        return PY4GW::Patterns::Resolve("map.mission_map_ui_callback_func", &mission_map_ui_callback_func);
     }
 
     bool ResolveWorldMapUICallback() {
         CrashContextScope context("startup", "map", "resolve_world_map_ui_callback");
-        const auto* pattern = PY4GW::Patterns::Get("map.world_map_ui_callback");
-        if (!pattern) {
-            Logger::Instance().LogError("Missing or invalid pattern: map.world_map_ui_callback", "map");
-            return false;
-        }
-        const uintptr_t address = PY4GW::Scanner::Find(
-            pattern->pattern.c_str(),
-            pattern->mask.c_str(),
-            pattern->offset,
-            pattern->section);
-        world_map_ui_callback_func = reinterpret_cast<ui::UIInteractionCallback>(
-            PY4GW::Scanner::ToFunctionStart(address));
-        return Logger::AssertAddress(
-            "WorldMap_UICallback_Func",
-            reinterpret_cast<uintptr_t>(world_map_ui_callback_func),
-            "map");
+        return PY4GW::Patterns::Resolve("map.world_map_ui_callback_func", &world_map_ui_callback_func);
     }
 }  // namespace
 
@@ -382,19 +397,19 @@ void Exit() {
     world_map_ui_callback_ret = nullptr;
     mission_map_ui_callback_func = nullptr;
     mission_map_ui_callback_ret = nullptr;
-    g_world_map_context = nullptr;
-    g_mission_map_context = nullptr;
-    g_instance_info = nullptr;
+    Context::g_world_map_context = nullptr;
+    Context::g_mission_map_context = nullptr;
+    Context::g_instance_info = nullptr;
     g_skip_cinematic_func = nullptr;
     g_cancel_enter_challenge_mission_func = nullptr;
     g_enter_challenge_mission_func = nullptr;
     g_enter_challenge_mission_original = nullptr;
     g_query_altitude_func = nullptr;
-    g_region_id_addr = nullptr;
-    g_area_info_addr = nullptr;
-    g_map_type_instance_infos = nullptr;
-    g_map_type_instance_infos_size = 0;
-    g_instance_info_ptr = 0;
+    Context::g_region_id_addr = nullptr;
+    Context::g_area_info_addr = nullptr;
+    Context::g_map_type_instance_infos = nullptr;
+    Context::g_map_type_instance_infos_size = 0;
+    Context::g_instance_info_ptr = 0;
 }
 
 bool Initialize() {

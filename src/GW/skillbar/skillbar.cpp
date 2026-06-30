@@ -4,17 +4,40 @@
 
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
 #include "base/logger.h"
 #include "base/patterns.h"
 #include "base/scanner.h"
 
+#include "GW/context/context.h"
+#include "GW/ui/ui.h"
+
+#include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <unordered_map>
 
 namespace GW::skillbar {
 
-Skill* g_skill_array_addr = nullptr;
-AttributeInfo* g_attribute_array_addr = nullptr;
+using UseSkillFn = void(__cdecl*)(uint32_t, uint32_t, uint32_t, uint32_t);
+using LoadSkillsFn = void(__cdecl*)(uint32_t agent_id, uint32_t skill_ids_count, uint32_t* skill_ids);
+using LoadAttributesFn = void(__cdecl*)(uint32_t agent_id, uint32_t attribute_count, uint32_t* attribute_ids, uint32_t* attribute_values);
+using ChangeSecondaryFn = void(__cdecl*)(uint32_t agent_id, uint32_t profession);
+
+bool ResolveSkillArray();
+bool ResolveAttributeArray();
+bool ResolveUseSkillFunction();
+bool ResolveTemplatesFunctions();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+
+void __cdecl OnUseSkill(uint32_t agent_id, uint32_t slot, uint32_t target, uint32_t call_target);
+void OnLoadSkillbar(uint32_t agent_id, uint32_t skill_ids_count, uint32_t* skill_ids);
+void OnLoadSkillbarUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wparam, void* lparam);
+
 uint32_t g_attribute_array_count = 0x33;
 UseSkillFn g_use_skill_func = nullptr;
 UseSkillFn g_use_skill_original = nullptr;
@@ -40,9 +63,12 @@ void __cdecl OnUseSkill(uint32_t agent_id, uint32_t slot, uint32_t target, uint3
 
 void OnLoadSkillbar(uint32_t agent_id, uint32_t skill_ids_count, uint32_t* skill_ids) {
     PY4GW::HookBase::EnterHook();
-    OnLoadSkillbar_UIMessage_Packet packet;
-    packet.agent_id = agent_id;
-    memcpy(packet.skill_ids, skill_ids, skill_ids_count * sizeof(*skill_ids));
+    uint32_t skill_ids_buffer[8] = {};
+    memcpy(skill_ids_buffer, skill_ids, skill_ids_count * sizeof(*skill_ids));
+    ui::packet::kSendLoadSkillbar packet{
+        agent_id,
+        skill_ids_buffer
+    };
     ui::SendUIMessage(ui::UIMessage::kSendLoadSkillbar, &packet);
     PY4GW::HookBase::LeaveHook();
 }
@@ -53,8 +79,8 @@ void OnLoadSkillbarUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id
         return;
     }
     if (g_load_skills_original) {
-        OnLoadSkillbar_UIMessage_Packet* pack = static_cast<OnLoadSkillbar_UIMessage_Packet*>(wparam);
-        g_load_skills_original(pack->agent_id, _countof(pack->skill_ids), pack->skill_ids);
+        auto* pack = static_cast<ui::packet::kSendLoadSkillbar*>(wparam);
+        g_load_skills_original(pack->agent_id, 8, pack->skill_ids);
     }
 }
 
@@ -152,12 +178,12 @@ bool Init() {
 
     {
         char buf[128];
-        snprintf(buf, sizeof(buf), "[SCAN] SkillArray = %p", static_cast<void*>(g_skill_array_addr));
+        snprintf(buf, sizeof(buf), "[SCAN] SkillArray = %p", static_cast<void*>(Context::GetSkillArray()));
         Logger::Instance().LogInfo(buf);
     }
     {
         char buf[128];
-        snprintf(buf, sizeof(buf), "[SCAN] AttributeArray = %p", static_cast<void*>(g_attribute_array_addr));
+        snprintf(buf, sizeof(buf), "[SCAN] AttributeArray = %p", static_cast<void*>(Context::GetAttributeInfoArray()));
         Logger::Instance().LogInfo(buf);
     }
     {
@@ -213,8 +239,6 @@ void Exit() {
 
     g_use_skill_callbacks.clear();
 
-    g_skill_array_addr = nullptr;
-    g_attribute_array_addr = nullptr;
     g_use_skill_func = nullptr;
     g_use_skill_original = nullptr;
     g_load_skills_func = nullptr;

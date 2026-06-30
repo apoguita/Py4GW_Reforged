@@ -3,9 +3,18 @@
 #include "GW/effects/effects.h"
 
 #include "GW/context/context.h"
-#include "GW/context/world_context.h"
+#include "GW/context/world.h"
+
+#include <atomic>
 
 namespace GW::effects {
+
+using PostProcessEffectFn = void(__cdecl*)(uint32_t intensity, uint32_t tint);
+using DropBuffFn = void(__cdecl*)(uint32_t buff_id);
+
+extern PostProcessEffectFn g_post_process_effect_original;
+extern DropBuffFn g_drop_buff_func;
+extern std::atomic<uint32_t> g_alcohol_level;
 
 uint32_t GetAlcoholLevel() {
     return g_alcohol_level.load();
@@ -17,13 +26,8 @@ void GetDrunkAf(uint32_t intensity, uint32_t tint) {
     }
 }
 
-Context::AgentEffectsArray* GetPartyEffectsArray() {
-    Context::WorldContext* world = Context::GetWorldContext();
-    return world && world->party_effects.valid() ? &world->party_effects : nullptr;
-}
-
 Context::AgentEffects* GetAgentEffectsArray(uint32_t agent_id) {
-    Context::AgentEffectsArray* agent_effects = GetPartyEffectsArray();
+    Context::AgentEffectsArray* agent_effects = Context::GetPartyEffectsArray();
     if (!agent_effects) {
         return nullptr;
     }

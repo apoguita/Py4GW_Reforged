@@ -1,11 +1,41 @@
 #include "base/error_handling.h"
 
+#include "GW/agent/agent.h"
+#include "GW/chat/chat.h"
+#include "GW/context/context.h"
+#include "GW/context/world.h"
+#include "GW/game_thread/game_thread.h"
+#include "GW/map/map.h"
+#include "GW/player/player.h"
 #include "GW/party/party.h"
+#include "GW/skillbar/skillbar.h"
+#include "GW/ui/ui.h"
 
 #include <cstdio>
 #include <cmath>
 
 namespace GW::party {
+
+using PartySearchSeekFn = void(__cdecl*)(uint32_t search_type, const wchar_t* advertisement, uint32_t unk);
+using PartySearchButtonCallbackFn = void(__fastcall*)(void* context, uint32_t edx, uint32_t* wparam);
+using DoActionFn = void(__cdecl*)(uint32_t identifier);
+using FlagHeroAgentFn = void(__cdecl*)(uint32_t agent_id, GW::GamePos* pos);
+using FlagAllFn = void(__cdecl*)(GW::GamePos* pos);
+using SetHeroBehaviorFn = void(__cdecl*)(uint32_t agent_id, Constants::HeroBehavior behavior);
+using LockPetTargetFn = bool(__cdecl*)(uint32_t pet_agent_id, uint32_t target_id);
+using CommandHotKeyDisableAiFn = void(__cdecl*)(uint32_t hero_agent_id, uint32_t zero_based_skill_slot);
+
+extern PartySearchSeekFn g_party_search_seek_func;
+extern PartySearchButtonCallbackFn g_party_search_button_callback_func;
+extern PartySearchButtonCallbackFn g_party_window_button_callback_func;
+extern DoActionFn g_set_ready_status_func;
+extern DoActionFn g_set_difficulty_func;
+extern FlagHeroAgentFn g_flag_hero_agent_func;
+extern FlagAllFn g_flag_all_func;
+extern SetHeroBehaviorFn g_set_hero_behavior_func;
+extern LockPetTargetFn g_lock_pet_target_func;
+extern CommandHotKeyDisableAiFn g_command_hot_key_disable_ai_func;
+extern bool g_tick_work_as_toggle;
 
 void set_tick_toggle(bool enable) {
     g_tick_work_as_toggle = enable;
@@ -313,7 +343,7 @@ bool unflag_all() {
     return flag_all(GamePos(HUGE_VALF, HUGE_VALF, 0));
 }
 
-bool set_hero_behavior(uint32_t agent_id, Context::HeroBehavior behavior) {
+bool set_hero_behavior(uint32_t agent_id, Constants::HeroBehavior behavior) {
     auto w = Context::GetWorldContext();
     if (!(w && g_set_hero_behavior_func && w->hero_flags.size()))
         return false;
@@ -332,7 +362,7 @@ bool set_hero_skill_ai_enabled(uint32_t hero_agent_id, uint32_t skill_slot, bool
     if (!g_command_hot_key_disable_ai_func || !hero_agent_id || skill_slot < 1 || skill_slot > 8)
         return false;
 
-    skillbar::SkillbarArray* skillbars = skillbar::GetSkillbarArray();
+    skillbar::SkillbarArray* skillbars = Context::GetSkillbarArray();
     if (!skillbars)
         return false;
 
@@ -358,7 +388,7 @@ bool set_hero_skill_ai_enabled(uint32_t hero_agent_id, uint32_t skill_slot, bool
     return true;
 }
 
-bool set_pet_behavior(Context::HeroBehavior behavior, uint32_t lock_target_id) {
+bool set_pet_behavior(Constants::HeroBehavior behavior, uint32_t lock_target_id) {
     auto w = Context::GetWorldContext();
     if (!(w && g_set_hero_behavior_func && g_lock_pet_target_func && w->pets.size()))
         return false;
@@ -367,7 +397,7 @@ bool set_pet_behavior(Context::HeroBehavior behavior, uint32_t lock_target_id) {
     if (!pet_info)
         return false;
     uint32_t target_agent_id = 0;
-    if (behavior == Context::HeroBehavior::Fight) {
+    if (behavior == Constants::HeroBehavior::Fight) {
         const auto target = static_cast<agent::AgentLiving*>(
             lock_target_id ? agent::GetAgentByID(lock_target_id) : agent::GetTarget());
         if (!(target && target->GetIsLivingType() &&

@@ -6,6 +6,19 @@
 
 namespace GW::game_thread {
 
+struct CallbackEntry {
+    int altitude = 0;
+    PY4GW::HookEntry* entry = nullptr;
+    GameThreadCallback callback;
+};
+
+extern CRITICAL_SECTION g_mutex;
+extern bool g_mutex_initialized;
+extern std::atomic<bool> g_initialized;
+extern std::atomic<bool> g_in_game_thread;
+extern std::vector<std::function<void()>> g_singleshot_callbacks;
+extern std::vector<CallbackEntry> g_callbacks;
+
 void ClearCalls() {
     if (!g_initialized || !g_mutex_initialized) {
         return;
@@ -29,17 +42,6 @@ void Enqueue(std::function<void()> callback) {
         g_singleshot_callbacks.push_back(std::move(callback));
     }
     ::LeaveCriticalSection(&g_mutex);
-}
-
-bool IsInGameThread() {
-    if (!g_initialized || !g_mutex_initialized) {
-        return false;
-    }
-
-    ::EnterCriticalSection(&g_mutex);
-    const bool result = g_in_game_thread;
-    ::LeaveCriticalSection(&g_mutex);
-    return result;
 }
 
 void RegisterGameThreadCallback(
@@ -75,6 +77,17 @@ void RemoveGameThreadCallback(PY4GW::HookEntry* entry) {
     if (it != g_callbacks.end()) {
         g_callbacks.erase(it);
     }
+}
+
+bool IsInGameThread() {
+    if (!g_initialized || !g_mutex_initialized) {
+        return false;
+    }
+
+    ::EnterCriticalSection(&g_mutex);
+    const bool result = g_in_game_thread;
+    ::LeaveCriticalSection(&g_mutex);
+    return result;
 }
 
 }  // namespace GW::game_thread

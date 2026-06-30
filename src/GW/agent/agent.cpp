@@ -4,13 +4,45 @@
 
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
 #include "base/logger.h"
 #include "base/patterns.h"
 #include "base/scanner.h"
 
+#include "GW/ui/ui.h"
+
+#include <array>
+#include <atomic>
 #include <string>
 
 namespace GW::agent {
+
+using SendDialogFn = void(__cdecl*)(uint32_t dialog_id);
+using ChangeTargetFn = void(__cdecl*)(uint32_t agent_id, uint32_t auto_target_id);
+using CallTargetFn = void(__cdecl*)(Constants::CallTargetType type, uint32_t agent_id);
+using MoveToFn = void(__cdecl*)(float* pos);
+using DoWorldActionFn = void(__cdecl*)(Constants::WorldActionId action_id, uint32_t agent_id, bool suppress_call_target);
+
+bool ResolveChangeTargetFunction();
+bool ResolveAgentArrayAddress();
+bool ResolvePlayerAgentIdAddress();
+bool ResolveSendAgentDialogFunction();
+bool ResolveSendGadgetDialogFunction();
+bool ResolveMoveToFunction();
+bool ResolveDoWorldActionFunction();
+bool ResolveCallTargetFunction();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+
+void __cdecl OnSendAgentDialog(uint32_t dialog_id);
+void __cdecl OnSendGadgetDialog(uint32_t dialog_id);
+void __cdecl OnChangeTarget(uint32_t agent_id, uint32_t auto_target_id);
+void __cdecl OnCallTarget(Constants::CallTargetType type, uint32_t target_id);
+void __cdecl OnDoWorldAction(Constants::WorldActionId action_id, uint32_t agent_id, bool suppress_call_target);
+void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wparam, void* lparam);
 
 SendDialogFn g_send_agent_dialog_func = nullptr;
 SendDialogFn g_send_agent_dialog_original = nullptr;
@@ -23,8 +55,6 @@ CallTargetFn g_call_target_original = nullptr;
 MoveToFn g_move_to_func = nullptr;
 DoWorldActionFn g_do_world_action_func = nullptr;
 DoWorldActionFn g_do_world_action_original = nullptr;
-uintptr_t g_agent_array_addr = 0;
-uintptr_t g_player_agent_id_addr = 0;
 uint32_t g_dialog_agent_id = 0;
 uint32_t g_current_target_id = 0;
 PY4GW::HookEntry g_ui_message_entry;
@@ -60,21 +90,21 @@ void __cdecl OnSendGadgetDialog(uint32_t dialog_id) {
 
 void __cdecl OnChangeTarget(uint32_t agent_id, uint32_t auto_target_id) {
     PY4GW::HookBase::EnterHook();
-    SendChangeTargetPacket packet{ agent_id, auto_target_id };
+    ui::packet::kSendChangeTarget packet{ agent_id, auto_target_id };
     ui::SendUIMessage(ui::UIMessage::kSendChangeTarget, &packet);
     PY4GW::HookBase::LeaveHook();
 }
 
-void __cdecl OnCallTarget(Context::CallTargetType type, uint32_t target_id) {
+void __cdecl OnCallTarget(Constants::CallTargetType type, uint32_t target_id) {
     PY4GW::HookBase::EnterHook();
-    SendCallTargetPacket packet{ type, target_id };
+    ui::packet::kSendCallTarget packet{ type, target_id };
     ui::SendUIMessage(ui::UIMessage::kSendCallTarget, &packet);
     PY4GW::HookBase::LeaveHook();
 }
 
-void __cdecl OnDoWorldAction(Context::WorldActionId action_id, uint32_t agent_id, bool suppress_call_target) {
+void __cdecl OnDoWorldAction(Constants::WorldActionId action_id, uint32_t agent_id, bool suppress_call_target) {
     PY4GW::HookBase::EnterHook();
-    SendWorldActionPacket packet{ action_id, agent_id, suppress_call_target };
+    ui::packet::kSendWorldAction packet{ action_id, agent_id, suppress_call_target };
     ui::SendUIMessage(ui::UIMessage::kSendWorldAction, &packet);
     PY4GW::HookBase::LeaveHook();
 }
@@ -86,7 +116,7 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
 
     switch (message_id) {
     case ui::UIMessage::kDialogBody: {
-        const auto* packet = static_cast<ui::DialogBodyInfo*>(wparam);
+        const auto* packet = static_cast<Context::DialogBodyInfo*>(wparam);
         g_dialog_agent_id = packet ? packet->agent_id : 0;
         break;
     }
@@ -97,7 +127,7 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
         break;
     case ui::UIMessage::kSendChangeTarget:
         if (g_change_target_original) {
-            const auto* packet = static_cast<SendChangeTargetPacket*>(wparam);
+            const auto* packet = static_cast<ui::packet::kSendChangeTarget*>(wparam);
             if (packet) {
                 g_change_target_original(packet->target_id, packet->auto_target_id);
             }
@@ -109,13 +139,13 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
         }
         break;
     case ui::UIMessage::kChangeTarget: {
-        const auto* msg = static_cast<ChangeTargetUIMsg*>(wparam);
+        const auto* msg = static_cast<Context::ChangeTargetUIMsg*>(wparam);
         g_current_target_id = msg ? msg->manual_target_id : 0;
         break;
     }
     case ui::UIMessage::kSendCallTarget:
         if (g_call_target_original) {
-            const auto* packet = static_cast<SendCallTargetPacket*>(wparam);
+            const auto* packet = static_cast<ui::packet::kSendCallTarget*>(wparam);
             if (packet) {
                 g_call_target_original(packet->call_type, packet->agent_id);
             }
@@ -123,7 +153,7 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
         break;
     case ui::UIMessage::kSendWorldAction:
         if (g_do_world_action_original) {
-            const auto* packet = static_cast<SendWorldActionPacket*>(wparam);
+            const auto* packet = static_cast<ui::packet::kSendWorldAction*>(wparam);
             if (packet) {
                 g_do_world_action_original(packet->action_id, packet->agent_id, packet->suppress_call_target);
             }
@@ -247,8 +277,6 @@ void Exit() {
     g_move_to_func = nullptr;
     g_do_world_action_func = nullptr;
     g_do_world_action_original = nullptr;
-    g_agent_array_addr = 0;
-    g_player_agent_id_addr = 0;
     g_dialog_agent_id = 0;
     g_current_target_id = 0;
 }

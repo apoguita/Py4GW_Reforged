@@ -2,6 +2,7 @@
 
 #include "base/error_handling.h"
 
+#include "GW/common/constants/chat.h"
 #include "GW/common/opcodes.h"
 #include "GW/common/game_pos.h"
 
@@ -20,9 +21,6 @@ the packet name, e.g. P391 -> P391_InstanceLoadMap
 namespace GW {
     typedef uint32_t AgentID;
     typedef uint32_t ItemID;
-    namespace chat {
-        enum Channel : int;
-    }
     namespace Constants {
         enum class QuestID : uint32_t;
         enum class MapID : uint32_t;

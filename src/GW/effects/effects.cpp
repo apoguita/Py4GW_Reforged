@@ -8,7 +8,20 @@
 #include "base/patterns.h"
 #include "base/scanner.h"
 
+#include <atomic>
+
 namespace GW::effects {
+
+using PostProcessEffectFn = void(__cdecl*)(uint32_t intensity, uint32_t tint);
+using DropBuffFn = void(__cdecl*)(uint32_t buff_id);
+
+bool ResolvePostProcessEffect();
+bool ResolveDropBuff();
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+void __cdecl OnPostProcessEffect(uint32_t intensity, uint32_t tint);
 
 PostProcessEffectFn g_post_process_effect_func = nullptr;
 PostProcessEffectFn g_post_process_effect_original = nullptr;
@@ -30,7 +43,8 @@ void __cdecl OnPostProcessEffect(uint32_t intensity, uint32_t tint) {
 bool Init() {
     CrashContextScope context("startup", "effects", "init");
 
-    if (!ResolvePostProcessEffect() || !ResolveDropBuff()) {
+    if (!ResolvePostProcessEffect() || 
+        !ResolveDropBuff()) {
         return false;
     }
 

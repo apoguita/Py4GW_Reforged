@@ -2,6 +2,8 @@
 
 #include "GW/guild/guild.h"
 
+#include <atomic>
+
 namespace GW::guild {
 
 std::atomic<bool> g_initialized = false;

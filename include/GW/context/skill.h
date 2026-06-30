@@ -12,6 +12,8 @@
 
 namespace GW::Context {
 
+    struct AttributeInfo;
+
     struct Skill { // total : 0xA0/160
         /* +h0000 */ GW::Constants::SkillID skill_id;
         /* +h0004 */ uint32_t h0004;
@@ -154,5 +156,20 @@ namespace GW::Context {
     static_assert(sizeof(Effect) == 0x18, "Effect size mismatch");
     static_assert(sizeof(Buff) == 0x10, "Buff size mismatch");
     static_assert(sizeof(AgentEffects) == 0x24, "AgentEffects size mismatch");
+
+    struct SkillTemplateAttribute {
+        Constants::Attribute attribute = Constants::Attribute::None;
+        uint32_t points = 0;
+    };
+
+    struct SkillTemplate {
+        Constants::Profession primary = Constants::Profession::None;
+        Constants::Profession secondary = Constants::Profession::None;
+        Constants::SkillID skills[8] = {};
+        SkillTemplateAttribute attributes[16] = {};
+    };
+
+    Skill* GetSkillArray();
+    AttributeInfo* GetAttributeInfoArray();
 
 }  // namespace GW::Context

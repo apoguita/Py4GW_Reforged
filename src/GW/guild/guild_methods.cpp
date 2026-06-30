@@ -3,7 +3,7 @@
 #include "GW/guild/guild.h"
 
 #include "GW/context/context.h"
-#include "GW/context/guild_context.h"
+#include "GW/context/guild.h"
 #include "GW/map/map.h"
 #include "GW/ui/ui.h"
 
@@ -24,22 +24,17 @@ uint32_t GetPlayerGuildIndex() {
     return guild ? guild->player_guild_index : 0;
 }
 
-Context::GuildArray* GetGuildArray() {
-    auto* guild = Context::GetGuildContext();
-    return guild && guild->guilds.valid() ? &guild->guilds : nullptr;
-}
-
 Context::Guild* GetPlayerGuild() {
     return GetGuildInfo(GetPlayerGuildIndex());
 }
 
 Context::Guild* GetCurrentGH() {
     auto* map_info = map::GetCurrentMapInfo();
-    if (!map_info || map_info->type != Context::RegionType::GuildHall) {
+    if (!map_info || map_info->type != Constants::RegionType::GuildHall) {
         return nullptr;
     }
 
-    auto* guilds = GetGuildArray();
+    auto* guilds = Context::GetGuildArray();
     if (!guilds) {
         return nullptr;
     }
@@ -53,7 +48,7 @@ Context::Guild* GetCurrentGH() {
 }
 
 Context::Guild* GetGuildInfo(uint32_t guild_id) {
-    auto* guilds = GetGuildArray();
+    auto* guilds = Context::GetGuildArray();
     return guilds && guild_id < guilds->size() ? guilds->at(guild_id) : nullptr;
 }
 

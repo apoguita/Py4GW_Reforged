@@ -13,14 +13,57 @@
 
 namespace GW::StoC {
 
+using StoCHandlerFn = bool(__cdecl*)(Packet::StoC::PacketBase* packet);
+
+struct StoCHandler {
+    uint32_t* packet_template = nullptr;
+    uint32_t template_size = 0;
+    StoCHandlerFn handler_func = nullptr;
+};
+
+using StoCHandlerArray = GW::GWArray<StoCHandler>;
+
+struct GameServer {
+    uint8_t h0000[8];
+    struct {
+        uint8_t h0000[12];
+        struct {
+            uint8_t h0000[12];
+            void* next;
+            uint8_t h0010[12];
+            uint32_t client_codec_array[4];
+            StoCHandlerArray handlers;
+        }* ls_codec;
+        uint8_t h0010[12];
+        uint32_t client_codec_array[4];
+        StoCHandlerArray handlers;
+    }* gs_codec;
+};
+
+struct CallbackEntry {
+    int altitude = 0;
+    PY4GW::HookEntry* entry = nullptr;
+    PacketCallback callback;
+};
+
 CRITICAL_SECTION g_mutex;
 bool g_mutex_initialized = false;
 bool g_hooks_enabled = false;
 std::atomic<bool> g_initialized = false;
 size_t g_stoc_handler_count = 0;
+uintptr_t g_handler_table_addr = 0;
 StoCHandlerArray* g_game_server_handlers = nullptr;
 StoCHandler* g_original_functions = nullptr;
 std::vector<std::vector<CallbackEntry>> g_packet_entries;
+
+bool ResolveGameServerHandlers();
+void SafeInitializeCriticalSection(CRITICAL_SECTION* mtx);
+bool __cdecl StoCHandler_Func(Packet::StoC::PacketBase* packet);
+bool OriginalHandler(Packet::StoC::PacketBase* packet);
+void EnableHooks();
+void DisableHooks();
+void Init();
+void Exit();
 
 void SafeInitializeCriticalSection(CRITICAL_SECTION* mtx) {
     if (!mtx || mtx->DebugInfo) {
@@ -127,6 +170,7 @@ void Exit() {
 
     delete[] g_original_functions;
     g_original_functions = nullptr;
+    g_handler_table_addr = 0;
     g_game_server_handlers = nullptr;
     g_stoc_handler_count = 0;
     g_packet_entries.clear();

@@ -7,5 +7,12 @@
       "offset": "-0x20",
       "section": "text"
     }
+  },
+  "resolvers": {
+    "leave_game_thread_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "leave_game_thread_target", "out": "final" }
+      ]
+    }
   }
 }

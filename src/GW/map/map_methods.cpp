@@ -2,16 +2,47 @@
 
 #include "GW/map/map.h"
 
-#include "GW/context/agent_context.h"
+#include "GW/context/agent.h"
 #include "GW/context/cinematic.h"
-#include "GW/context/char_context.h"
+#include "GW/context/character.h"
 #include "GW/context/context.h"
-#include "GW/context/game_context.h"
-#include "GW/context/map_context.h"
-#include "GW/context/world_context.h"
+#include "GW/context/game.h"
+#include "GW/context/map.h"
+#include "GW/context/world.h"
 #include "GW/ui/ui.h"
 
+#include <string>
+
 namespace GW::map {
+
+using QueryAltitudeFn = int(__cdecl*)(const GamePos* point, float radius, float* altitude, Vec3f* terrain_normal);
+using VoidFn = void(__cdecl*)();
+using DoActionFn = void(__cdecl*)(uint32_t);
+
+struct MapTestState {
+    bool active = false;
+    uint32_t map_id = 0;
+    uint32_t alt_map_id = 0;
+    int number = 2;
+    uint32_t count = 3;
+    uint32_t delay_ms = 0;
+    uint32_t timeout_ms = 10000;
+    uint32_t message_id = 0;
+    uint32_t tries = 0;
+    uint64_t t0 = 0;
+    uint64_t t1 = 0;
+    uint64_t t2 = 0;
+    bool seen = false;
+    uint32_t phase = 0;
+    std::string status = "idle";
+};
+
+extern QueryAltitudeFn g_query_altitude_func;
+extern VoidFn g_skip_cinematic_func;
+extern VoidFn g_cancel_enter_challenge_mission_func;
+extern MapTestState g_map_test_state;
+void MapTestStep0();
+void MapTestSetPhase(uint32_t phase, const char* status_text);
 
 int QueryAltitude(const GamePos& pos, float radius, float& altitude, Vec3f* terrain_normal) {
     if (!g_query_altitude_func) {
@@ -47,21 +78,24 @@ bool GetIsMapUnlocked(GW::Constants::MapID map_id) {
 }
 
 GW::Constants::ServerRegion GetRegion() {
-    return g_region_id_addr ? *g_region_id_addr : GW::Constants::ServerRegion::Unknown;
+    auto* region_id = Context::GetRegionIdPtr();
+    return region_id ? *region_id : GW::Constants::ServerRegion::Unknown;
 }
 
 uintptr_t GetServerRegionPtr() {
-    return reinterpret_cast<uintptr_t>(g_region_id_addr);
+    return reinterpret_cast<uintptr_t>(Context::GetRegionIdPtr());
 }
 
-MapTypeInstanceInfo* GetMapTypeInstanceInfo(Context::RegionType map_type) {
-    const bool is_outpost = !(map_type == Context::RegionType::ExplorableZone ||
-        map_type == Context::RegionType::MissionArea ||
-        map_type == Context::RegionType::Dungeon);
-    for (size_t i = 0; i < g_map_type_instance_infos_size; ++i) {
-        if (g_map_type_instance_infos[i].map_region_type == map_type &&
-            g_map_type_instance_infos[i].is_outpost == is_outpost) {
-            return &g_map_type_instance_infos[i];
+Context::MapTypeInstanceInfo* GetMapTypeInstanceInfo(Constants::RegionType map_type) {
+    const bool is_outpost = !(map_type == Constants::RegionType::ExplorableZone ||
+        map_type == Constants::RegionType::MissionArea ||
+        map_type == Constants::RegionType::Dungeon);
+    auto* infos = Context::GetMapTypeInstanceInfos();
+    const auto count = Context::GetMapTypeInstanceInfosSize();
+    for (size_t i = 0; infos && i < count; ++i) {
+        if (infos[i].map_region_type == map_type &&
+            infos[i].is_outpost == is_outpost) {
+            return &infos[i];
         }
     }
     return nullptr;
@@ -88,8 +122,9 @@ uint32_t GetInstanceTime() {
 }
 
 GW::Constants::InstanceType GetInstanceType() {
-    auto* info = g_instance_info_ptr
-        ? *reinterpret_cast<InstanceInfo**>(g_instance_info_ptr)
+    const auto instance_info_ptr = Context::GetInstanceInfoPtr();
+    auto* info = instance_info_ptr
+        ? *reinterpret_cast<Context::InstanceInfo**>(instance_info_ptr)
         : nullptr;
     return info ? info->instance_type : GW::Constants::InstanceType::Loading;
 }
@@ -147,11 +182,6 @@ GW::Constants::Language LanguageFromDistrict(GW::Constants::District district) {
     return GetLanguage();
 }
 
-Context::MissionMapIconArray* GetMissionMapIconArray() {
-    auto* world = Context::GetWorldContext();
-    return world && world->mission_map_icons.valid() ? &world->mission_map_icons : nullptr;
-}
-
 Context::PathingMapArray* GetPathingMap() {
     auto* map_context = Context::GetMapContext();
     if (!(map_context && map_context->sub1 && map_context->sub1->sub2)) {
@@ -174,15 +204,16 @@ Context::AreaInfo* GetMapInfo(GW::Constants::MapID map_id) {
     if (map_id == GW::Constants::MapID::None) {
         map_id = GetMapID();
     }
-    return g_area_info_addr &&
+    auto* area_info = Context::GetAreaInfoArray();
+    return area_info &&
         map_id > GW::Constants::MapID::None &&
         map_id < GW::Constants::MapID::Count
-        ? &g_area_info_addr[static_cast<uint32_t>(map_id)]
+        ? &area_info[static_cast<uint32_t>(map_id)]
         : nullptr;
 }
 
 uintptr_t GetInstanceInfoPtr() {
-    return g_instance_info_ptr;
+    return Context::GetInstanceInfoPtr();
 }
 
 bool GetIsInCinematic() {
@@ -204,14 +235,6 @@ bool CancelEnterChallenge() {
     }
     g_cancel_enter_challenge_mission_func();
     return true;
-}
-
-MissionMapContext* GetMissionMapContext() {
-    return g_mission_map_context;
-}
-
-WorldMapContext* GetWorldMapContext() {
-    return g_world_map_context;
 }
 
 bool Travel(GW::Constants::MapID map_id, GW::Constants::ServerRegion region, int district_number, GW::Constants::Language language) {

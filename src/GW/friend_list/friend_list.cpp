@@ -7,45 +7,53 @@
 #include "base/logger.h"
 #include "base/patterns.h"
 #include "base/scanner.h"
+#include "GW/common/constants/events.h"
 
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 
 namespace GW::friend_list {
 
-#pragma warning(push)
-#pragma warning(disable : 4200)
-struct EventData {
-    uint32_t event_id;
-    uint32_t unk;
-    uint32_t data_size;
-    uint32_t data[];
-};
-#pragma warning(pop)
+using FriendEventHandlerFn = void(__cdecl*)(void*, void*);
+using SetOnlineStatusFn = void(__cdecl*)(Constants::FriendStatus status);
+using AddFriendFn = void(__cdecl*)(const wchar_t* name, const wchar_t* alias, Constants::FriendType type);
+using RemoveFriendFn = void(__cdecl*)(const uint8_t* uuid, const wchar_t* name, uint32_t arg8);
+
+bool ResolveFriendListPointer();
+bool ResolveFriendEventHandler();
+bool ResolveSetOnlineStatus();
+bool ResolveAddFriend();
+bool ResolveRemoveFriend();
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+void __cdecl OnFriendEventHandler(void* unk, void* event_info);
 
 FriendEventHandlerFn g_friend_event_handler_func = nullptr;
 FriendEventHandlerFn g_friend_event_handler_original = nullptr;
 SetOnlineStatusFn g_set_online_status_func = nullptr;
 AddFriendFn g_add_friend_func = nullptr;
 RemoveFriendFn g_remove_friend_func = nullptr;
-uintptr_t g_friend_list_addr = 0;
 std::unordered_map<PY4GW::HookEntry*, FriendStatusCallback> g_friend_status_callbacks;
 std::atomic<bool> g_initialized = false;
 
 void __cdecl OnFriendEventHandler(void* unk, void* evt_info) {
     PY4GW::HookBase::EnterHook();
-    auto* event_info = static_cast<EventData*>(evt_info);
+    auto* event_info = static_cast<Context::FriendEventData*>(evt_info);
     uint8_t* uuid = nullptr;
     const wchar_t* alias = nullptr;
     switch (event_info->event_id) {
-    case 0x26:
+    case static_cast<uint32_t>(Constants::EventID::kSendFriendState):
         uuid = reinterpret_cast<uint8_t*>(&event_info->data[2]);
         alias = reinterpret_cast<wchar_t*>(&event_info->data[6]);
         break;
-    case 0x28:
+    case static_cast<uint32_t>(Constants::EventID::kLocalFriendState):
         alias = reinterpret_cast<wchar_t*>(&event_info->data[0]);
         break;
-    case 0x2C:
+    case static_cast<uint32_t>(Constants::EventID::kRecvFriendState):
         alias = reinterpret_cast<wchar_t*>(&event_info->data[4]);
         break;
     default:
@@ -75,7 +83,7 @@ void __cdecl OnFriendEventHandler(void* unk, void* evt_info) {
     if (uuid) {
         current_state = GetFriend(uuid);
     } else if (alias) {
-        current_state = GetFriend(alias, nullptr, Context::FriendType::Unknow);
+        current_state = GetFriend(alias, nullptr, Constants::FriendType::Unknow);
     }
 
     PY4GW::HookStatus hook_status = {};
@@ -92,7 +100,7 @@ void __cdecl OnFriendEventHandler(void* unk, void* evt_info) {
     if (uuid) {
         current_state = GetFriend(uuid);
     } else if (alias) {
-        current_state = GetFriend(alias, nullptr, Context::FriendType::Unknow);
+        current_state = GetFriend(alias, nullptr, Constants::FriendType::Unknow);
     }
 
     for (auto& [entry, callback] : g_friend_status_callbacks) {
@@ -150,7 +158,6 @@ void Exit() {
     g_set_online_status_func = nullptr;
     g_add_friend_func = nullptr;
     g_remove_friend_func = nullptr;
-    g_friend_list_addr = 0;
     g_friend_status_callbacks.clear();
 }
 

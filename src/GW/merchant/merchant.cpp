@@ -7,7 +7,24 @@
 #include "base/logger.h"
 #include "base/scanner.h"
 
+#include <array>
+#include <atomic>
+
 namespace GW::merchant {
+
+using TransactItemFn = void(__cdecl*)(Constants::TransactionType type, uint32_t gold_give, TransactionInfo give, uint32_t gold_recv, TransactionInfo recv);
+using RequestQuoteFn = void(__cdecl*)(Constants::TransactionType type, uint32_t unknown, QuoteInfo give, QuoteInfo recv);
+
+bool ResolveTransactItemFunction();
+bool ResolveRequestQuoteFunction();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+void __cdecl OnTransactItem(Constants::TransactionType type, uint32_t gold_give, TransactionInfo give, uint32_t gold_recv, TransactionInfo recv);
+void __cdecl OnRequestQuote(Constants::TransactionType type, uint32_t unknown, QuoteInfo give, QuoteInfo recv);
+void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wparam, void* lparam);
 
 TransactItemFn g_transact_item_func = nullptr;
 TransactItemFn g_transact_item_original = nullptr;
@@ -20,16 +37,16 @@ const std::array<ui::UIMessage, 2> g_ui_messages_to_hook = {
 };
 std::atomic<bool> g_initialized = false;
 
-void __cdecl OnTransactItem(TransactionType type, uint32_t gold_give, TransactionInfo give, uint32_t gold_recv, TransactionInfo recv) {
+void __cdecl OnTransactItem(Constants::TransactionType type, uint32_t gold_give, TransactionInfo give, uint32_t gold_recv, TransactionInfo recv) {
     PY4GW::HookBase::EnterHook();
-    TransactItemPacket packet = { type, gold_give, give, gold_recv, recv };
+    ui::packet::kSendMerchantTransactItem packet = { type, gold_give, give, gold_recv, recv };
     ui::SendUIMessage(ui::UIMessage::kSendMerchantTransactItem, &packet);
     PY4GW::HookBase::LeaveHook();
 }
 
-void __cdecl OnRequestQuote(TransactionType type, uint32_t unknown, QuoteInfo give, QuoteInfo recv) {
+void __cdecl OnRequestQuote(Constants::TransactionType type, uint32_t unknown, QuoteInfo give, QuoteInfo recv) {
     PY4GW::HookBase::EnterHook();
-    RequestQuotePacket packet = { type, unknown, give, recv };
+    ui::packet::kSendMerchantRequestQuote packet = { type, unknown, give, recv };
     ui::SendUIMessage(ui::UIMessage::kSendMerchantRequestQuote, &packet);
     PY4GW::HookBase::LeaveHook();
 }
@@ -42,14 +59,14 @@ void OnUIMessage(PY4GW::HookStatus* status, ui::UIMessage message_id, void* wpar
     switch (message_id) {
     case ui::UIMessage::kSendMerchantTransactItem: {
         if (g_transact_item_original && wparam) {
-            const auto* packet = static_cast<TransactItemPacket*>(wparam);
+            const auto* packet = static_cast<ui::packet::kSendMerchantTransactItem*>(wparam);
             g_transact_item_original(packet->type, packet->gold_give, packet->give, packet->gold_recv, packet->recv);
         }
         break;
     }
     case ui::UIMessage::kSendMerchantRequestQuote: {
         if (g_request_quote_original && wparam) {
-            const auto* packet = static_cast<RequestQuotePacket*>(wparam);
+            const auto* packet = static_cast<ui::packet::kSendMerchantRequestQuote*>(wparam);
             g_request_quote_original(packet->type, packet->unknown, packet->give, packet->recv);
         }
         break;

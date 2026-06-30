@@ -5,13 +5,20 @@
 #include <cstdint>
 
 #include "GW/common/constants/agent_ids.h"
+#include "GW/common/constants/agent.h"
+#include "GW/common/constants/chat.h"
+#include "GW/common/constants/events.h"
+#include "GW/common/constants/friend_list.h"
+#include "GW/common/constants/hero.h"
+#include "GW/common/constants/item.h"
 #include "GW/common/constants/item_ids.h"
+#include "GW/common/constants/map.h"
 #include "GW/common/constants/maps.h"
 #include "GW/common/constants/quest_ids.h"
 #include "GW/common/constants/skills.h"
+#include "GW/common/constants/ui.h"
 namespace GW {
     namespace Constants {
-
         enum class Campaign : uint32_t { Core, Prophecies, Factions, Nightfall, EyeOfTheNorth, BonusMissionPack };
         enum class Difficulty { Normal, Hard };
         enum class InstanceType { Outpost, Explorable, Loading };
@@ -132,6 +139,44 @@ namespace GW {
             Materials_Zcoins, Offhand, Gloves, Hammer = 15, Headpiece, CC_Shards,
             Key, Leggings, Gold_Coin, Quest_Item, Wand, Shield = 24, Staff = 26, Sword,
             Kit = 29, Trophy, Scroll, Daggers, Present, Minipet, Scythe, Spear, Storybook = 43, Costume, Costume_Headpiece, Unknown = 0xff
+        };
+
+        enum class EquipmentType : uint32_t {
+            Cape = 0x0,
+            Helm = 0x2,
+            CostumeBody = 0x4,
+            CostumeHeadpiece = 0x6,
+            Unknown = 0xff
+        };
+
+        enum class EquipmentStatus : uint32_t {
+            AlwaysHide,
+            HideInTownsAndOutposts,
+            HideInCombatAreas,
+            AlwaysShow
+        };
+
+        enum class ItemClickType : uint32_t {
+            Add = 2,
+            Click = 5,
+            Release = 7,
+            DoubleClick = 8,
+            Move = 9,
+            DragStart = 10,
+            DragStop = 12
+        };
+
+        enum class TransactionType : uint32_t {
+            MerchantBuy = 0x1,
+            CollectorBuy,
+            CrafterBuy,
+            WeaponsmithCustomize,
+
+            MerchantSell = 0xB,
+            TraderBuy,
+            TraderSell,
+
+            UnlockRunePriestOfBalth = 0xF
         };
 
         enum HeroID : uint32_t {

@@ -10,6 +10,22 @@
 
 namespace GW::game_thread {
 
+using LeaveGameThreadFn = void(__cdecl*)(void*);
+
+struct CallbackEntry {
+    int altitude = 0;
+    PY4GW::HookEntry* entry = nullptr;
+    GameThreadCallback callback;
+};
+
+bool ResolveLeaveGameThreadTarget();
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+void CallFunctions();
+void __cdecl OnLeaveGameThread(void* unk);
+
 CRITICAL_SECTION g_mutex;
 bool g_mutex_initialized = false;
 LeaveGameThreadFn g_leave_game_thread_func = nullptr;

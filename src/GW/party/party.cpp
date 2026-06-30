@@ -4,13 +4,43 @@
 
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
 #include "base/logger.h"
 #include "base/patterns.h"
 #include "base/scanner.h"
 
+#include "GW/ui/ui.h"
+
+#include <atomic>
 #include <cstdio>
 
 namespace GW::party {
+
+using PartySearchSeekFn = void(__cdecl*)(uint32_t search_type, const wchar_t* advertisement, uint32_t unk);
+using PartySearchButtonCallbackFn = void(__fastcall*)(void* context, uint32_t edx, uint32_t* wparam);
+using DoActionFn = void(__cdecl*)(uint32_t identifier);
+using FlagHeroAgentFn = void(__cdecl*)(uint32_t agent_id, GW::GamePos* pos);
+using FlagAllFn = void(__cdecl*)(GW::GamePos* pos);
+using SetHeroBehaviorFn = void(__cdecl*)(uint32_t agent_id, Constants::HeroBehavior behavior);
+using LockPetTargetFn = bool(__cdecl*)(uint32_t pet_agent_id, uint32_t target_id);
+using CommandHotKeyDisableAiFn = void(__cdecl*)(uint32_t hero_agent_id, uint32_t zero_based_skill_slot);
+
+bool resolve_tick_button_ui_callback();
+bool resolve_set_difficulty_func();
+bool resolve_party_search_seek_func();
+bool resolve_party_search_button_callback_func();
+bool resolve_party_window_button_callback_func();
+bool resolve_party_player_member_ui_callback();
+bool resolve_set_ready_status_func();
+bool resolve_flag_functions();
+bool resolve_set_hero_behavior_funcs();
+bool resolve_command_hotkey_disable_ai_func();
+
+bool init();
+void enable_hooks();
+void disable_hooks();
+void exit();
+void OnTickButtonUICallback(ui::InteractionMessage* message, void* wParam, void* lParam);
 
 ui::UIInteractionCallback g_tick_button_ui_callback = nullptr;
 ui::UIInteractionCallback g_tick_button_ui_callback_original = nullptr;
@@ -27,6 +57,14 @@ LockPetTargetFn g_lock_pet_target_func = nullptr;
 CommandHotKeyDisableAiFn g_command_hot_key_disable_ai_func = nullptr;
 bool g_tick_work_as_toggle = false;
 std::atomic<bool> g_initialized = false;
+
+static bool warn_if_missing_address(const char* name, uintptr_t address) {
+    if (address) {
+        return true;
+    }
+    Logger::Instance().LogWarning(std::string(name) + " is null.", "party");
+    return false;
+}
 
 static void ScanLog(const char* name, uintptr_t address) {
     char buf[128];

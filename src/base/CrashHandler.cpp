@@ -23,6 +23,7 @@ void* s_append_stack_orig = nullptr;
 bool s_symbols_ready = false;
 DWORD s_prev_policy = 0;
 bool s_policy_changed = false;
+bool s_dump_generation_enabled = false;
 
 wchar_t s_crash_dir[MAX_PATH] = {0};
 bool s_crash_dir_ready = false;
@@ -150,7 +151,7 @@ void MakeDirTree(const wchar_t* path) {
     ::CreateDirectoryW(temp, nullptr);
 }
 
-void BuildStem(wchar_t* out, size_t cap) {
+void BuildReportFolder(wchar_t* out, size_t cap) {
     SYSTEMTIME time = {};
     ::GetLocalTime(&time);
     _snwprintf_s(
@@ -317,6 +318,14 @@ void CrashHandler::Terminate() {
     Logger::Instance().LogInfo("[CrashHandler] torn down.");
 }
 
+void CrashHandler::SetDumpGenerationEnabled(bool enabled) {
+    s_dump_generation_enabled = enabled;
+}
+
+bool CrashHandler::IsDumpGenerationEnabled() const {
+    return s_dump_generation_enabled;
+}
+
 void CrashHandler::ClearCallbackFilterPolicy() {
     HMODULE kernel32 = ::GetModuleHandleW(L"kernel32.dll");
     if (!kernel32) {
@@ -451,7 +460,7 @@ uintptr_t __cdecl CrashHandler::AppendStackDetour(void* debug_info, uint32_t a2,
 
 bool CrashHandler::OnException(EXCEPTION_POINTERS* info, const char* source, bool recoverable) {
     const char* source_label = SourceLabel(source);
-    const bool write_dump = ShouldWriteDumpForSource(source);
+    const bool write_dump = s_dump_generation_enabled && ShouldWriteDumpForSource(source);
     if (::InterlockedCompareExchange(&s_handling, 1, 0) != 0) {
         if (!recoverable) {
             ::TerminateProcess(::GetCurrentProcess(), 1);
@@ -460,14 +469,20 @@ bool CrashHandler::OnException(EXCEPTION_POINTERS* info, const char* source, boo
     }
 
     if (s_crash_dir_ready) {
-        wchar_t stem[MAX_PATH] = {};
+        wchar_t report_dir[MAX_PATH] = {};
+        wchar_t report_name[128] = L"report";
         wchar_t dump_path[MAX_PATH] = {};
         wchar_t json_path[MAX_PATH] = {};
         wchar_t stack_path[MAX_PATH] = {};
-        BuildStem(stem, MAX_PATH);
-        _snwprintf_s(dump_path, MAX_PATH, _TRUNCATE, L"%s.dmp", stem);
-        _snwprintf_s(json_path, MAX_PATH, _TRUNCATE, L"%s.json", stem);
-        _snwprintf_s(stack_path, MAX_PATH, _TRUNCATE, L"%s-stack.txt", stem);
+        BuildReportFolder(report_dir, MAX_PATH);
+        MakeDirTree(report_dir);
+        const wchar_t* folder_name = wcsrchr(report_dir, L'\\');
+        folder_name = folder_name ? folder_name + 1 : report_dir;
+        wcsncpy_s(report_name, folder_name, _TRUNCATE);
+
+        _snwprintf_s(dump_path, MAX_PATH, _TRUNCATE, L"%s\\%s.dmp", report_dir, report_name);
+        _snwprintf_s(json_path, MAX_PATH, _TRUNCATE, L"%s\\%s.json", report_dir, report_name);
+        _snwprintf_s(stack_path, MAX_PATH, _TRUNCATE, L"%s\\%s-stack.txt", report_dir, report_name);
 
         const wchar_t* dump_name = wcsrchr(dump_path, L'\\');
         dump_name = dump_name ? dump_name + 1 : dump_path;
@@ -477,7 +492,7 @@ bool CrashHandler::OnException(EXCEPTION_POINTERS* info, const char* source, boo
         wchar_t gw_text_path[MAX_PATH] = {};
         const wchar_t* gw_text_name = L"";
         if (s_gw_text[0]) {
-            _snwprintf_s(gw_text_path, MAX_PATH, _TRUNCATE, L"%s-gwtext.txt", stem);
+            _snwprintf_s(gw_text_path, MAX_PATH, _TRUNCATE, L"%s\\%s-gwtext.txt", report_dir, report_name);
             const wchar_t* slash = wcsrchr(gw_text_path, L'\\');
             gw_text_name = slash ? slash + 1 : gw_text_path;
         }
@@ -512,15 +527,20 @@ bool CrashHandler::OnException(EXCEPTION_POINTERS* info, const char* source, boo
         if (write_dump) {
             artifact_name = dump_name_u8;
         } else {
-            artifact_name = "json/stack sidecars";
+            artifact_name = "report sidecars";
+        }
+        char folder_name_u8[MAX_PATH] = {};
+        if (::WideCharToMultiByte(CP_UTF8, 0, folder_name, -1, folder_name_u8, sizeof(folder_name_u8), nullptr, nullptr) <= 0) {
+            folder_name_u8[0] = 0;
         }
         _snprintf_s(
             log_line,
             sizeof(log_line),
             _TRUNCATE,
-            "CRASH %s 0x%08lX -> see crashes\\%s\r\n",
+            "CRASH %s 0x%08lX -> see crashes\\%s\\%s\r\n",
             source_label,
             static_cast<unsigned long>(code),
+            folder_name_u8[0] ? folder_name_u8 : "?",
             artifact_name);
         AppendInjectionLog(log_line);
     }
@@ -557,7 +577,8 @@ void CrashHandler::WriteSidecar(EXCEPTION_POINTERS* info, const wchar_t* json_pa
     char escaped_context_detail[320] = {};
 
     char dump_u8[MAX_PATH] = {};
-    if (::WideCharToMultiByte(CP_UTF8, 0, dmp_name, -1, dump_u8, sizeof(dump_u8), nullptr, nullptr) > 0) {
+    if (dmp_name && dmp_name[0] &&
+        ::WideCharToMultiByte(CP_UTF8, 0, dmp_name, -1, dump_u8, sizeof(dump_u8), nullptr, nullptr) > 0) {
         JsonEscape(escaped_dump, sizeof(escaped_dump), dump_u8);
     }
     JsonEscape(escaped_gw, sizeof(escaped_gw), s_gw_text);
@@ -592,7 +613,7 @@ void CrashHandler::WriteSidecar(EXCEPTION_POINTERS* info, const wchar_t* json_pa
             static_cast<unsigned long>(address));
     JAppend(json, "  \"faulting_tid\": %lu,\n", ::GetCurrentThreadId());
     JAppend(json, "  \"dump_generated\": %s,\n", dump_generated ? "true" : "false");
-    JAppend(json, "  \"dump_file\": \"%s\"", escaped_dump);
+    JAppend(json, "  \"dump_file\": \"%s\"", dump_generated ? escaped_dump : "");
     if (escaped_gw_name[0]) {
         JAppend(json, ",\n  \"gw_text_file\": \"%s\"", escaped_gw_name);
     }

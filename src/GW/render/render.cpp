@@ -5,12 +5,40 @@
 #include "base/panic.h"
 #include "base/CrashHandler.h"
 #include "base/hooker.h"
+#include "base/hook_types.h"
+#include "base/patterns.h"
+#include "base/scanner.h"
+#include "GW/context/context.h"
 #include "GW/ui/ui.h"
 
-namespace GW::render {
+#include <atomic>
 
-GwDxContext* g_dx_context = nullptr;
-uintptr_t g_window_handle_ptr = 0;
+namespace GW::Context {
+extern GwDxContext* g_dx_context;
+extern uintptr_t g_window_handle_ptr;
+}
+
+namespace GW::render {
+using EndSceneFn = bool(__cdecl*)(GwDxContext* ctx, void* unk);
+using ResetFn = bool(__cdecl*)(GwDxContext* ctx);
+using GetTransformFn = Mat4x3f*(__cdecl*)(int transform);
+
+bool ResolveWindowHandlePointer();
+bool ResolveResetHook();
+bool ResolveEndSceneHook();
+bool ResolveGetTransformFunction();
+bool ResolveScreenCapture();
+
+bool Init();
+void EnableHooks();
+void DisableHooks();
+void Exit();
+bool WaitForRenderHooksToDrain();
+
+bool __cdecl OnEndScene(GwDxContext* ctx, void* unk);
+bool __cdecl OnReset(GwDxContext* ctx);
+void __cdecl OnScreenCapture(GwDxContext* ctx, void* unk);
+
 EndSceneFn g_end_scene_func = nullptr;
 EndSceneFn g_end_scene_original = nullptr;
 EndSceneFn g_screen_capture_func = nullptr;
@@ -57,7 +85,7 @@ bool __cdecl OnEndScene(GwDxContext* ctx, void* unk) {
 
     ::EnterCriticalSection(&g_render_lock);
     g_in_render_loop = true;
-    g_dx_context = ctx;
+    Context::g_dx_context = ctx;
     if (!g_shutting_down && g_render_callback) {
         g_render_callback(ctx->device);
     }
@@ -72,7 +100,7 @@ bool __cdecl OnEndScene(GwDxContext* ctx, void* unk) {
 bool __cdecl OnReset(GwDxContext* ctx) {
     PY4GW::HookBase::EnterHook();
     ++g_active_render_hooks;
-    g_dx_context = ctx;
+    Context::g_dx_context = ctx;
     if (!g_shutting_down && g_reset_callback) {
         g_reset_callback(ctx->device);
     }
@@ -174,8 +202,8 @@ void Exit() {
         g_render_lock_initialized = false;
     }
 
-    g_dx_context = nullptr;
-    g_window_handle_ptr = 0;
+    Context::g_dx_context = nullptr;
+    Context::g_window_handle_ptr = 0;
     g_end_scene_func = nullptr;
     g_end_scene_original = nullptr;
     g_screen_capture_func = nullptr;
