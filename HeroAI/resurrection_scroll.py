@@ -172,7 +172,7 @@ def _consume_toggle_messages() -> None:
         ConsoleLog(
             "HeroAI",
             f"Resurrection Scroll {'enabled' if latest_enabled else 'disabled'} for {account_email}",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
 
@@ -208,7 +208,7 @@ def toggle_all_accounts() -> bool:
     ConsoleLog(
         "HeroAI",
         f"Resurrection Scroll {'enabled' if new_enabled else 'disabled'} for all accounts",
-        Py4GW.Console.MessageType.Info,
+        PySystem.Console.MessageType.Info,
     )
     return new_enabled
 

@@ -697,7 +697,7 @@ def _log_hex(msg: str) -> None:
     try:
         from Py4GWCoreLib import ConsoleLog
         import Py4GW
-        ConsoleLog("HexRemoval", msg, Py4GW.Console.MessageType.Info)
+        ConsoleLog("HexRemoval", msg, PySystem.Console.MessageType.Info)
     except Exception:
         pass
 
@@ -755,8 +755,8 @@ def should_log_detection(agent_id: int, hex_skill_id: int) -> bool:
     if HEX_REMOVAL_DETECTION_THROTTLE_MS <= 0:
         return True
     try:
-        import Py4GW
-        now = int(Py4GW.Game.get_tick_count64())
+        import PySystem
+        now = int(PySystem.get_tick_count64())
     except Exception:
         return False
     key = (int(agent_id), int(hex_skill_id))

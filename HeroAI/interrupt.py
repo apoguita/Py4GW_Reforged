@@ -107,7 +107,7 @@ _LOG_PREFIX = "HeroAI.interrupt"
 
 
 def _now_ms() -> int:
-    return int(Py4GW.Game.get_tick_count64())
+    return int(PySystem.get_tick_count64())
 
 
 def _log(message: str, level: str = "Debug") -> None:
@@ -115,12 +115,12 @@ def _log(message: str, level: str = "Debug") -> None:
     if not INTERRUPT_DEBUG:
         return
     msg_type = {
-        "Debug": Py4GW.Console.MessageType.Debug,
-        "Info": Py4GW.Console.MessageType.Info,
-        "Warning": Py4GW.Console.MessageType.Warning,
-    }.get(level, Py4GW.Console.MessageType.Debug)
+        "Debug": PySystem.Console.MessageType.Debug,
+        "Info": PySystem.Console.MessageType.Info,
+        "Warning": PySystem.Console.MessageType.Warning,
+    }.get(level, PySystem.Console.MessageType.Debug)
     try:
-        Py4GW.Console.Log(_LOG_PREFIX, message, msg_type)
+        PySystem.Console.Log(_LOG_PREFIX, message, msg_type)
     except Exception:
         # Console may not be available during very early import; swallow.
         pass

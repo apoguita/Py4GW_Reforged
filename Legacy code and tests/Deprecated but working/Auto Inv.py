@@ -181,14 +181,14 @@ def ShowWindow():
         if PyImGui.begin("Auto ID & Salvager Options##AutoID&Salvage",PyImGui.WindowFlags.AlwaysAutoResize):
             if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##autosalvsave"):
                 widget_options.save_to_ini()
-                ConsoleLog(MODULE_NAME, "Settings saved to Auto Inv.ini", Py4GW.Console.MessageType.Success)
+                ConsoleLog(MODULE_NAME, "Settings saved to Auto Inv.ini", PySystem.Console.MessageType.Success)
             ImGui.show_tooltip("Save Settings")
             PyImGui.same_line(0,-1)
             if PyImGui.button(IconsFontAwesome5.ICON_SYNC + "##autosalvreload"):
                 widget_options.load_from_ini(widget_options.ini)
                 widget_options.lookup_throttle.SetThrottleTime(widget_options._LOOKUP_TIME)
                 widget_options.lookup_throttle.Reset()
-                ConsoleLog(MODULE_NAME, "Settings reloaded from Auto Inv.ini", Py4GW.Console.MessageType.Success)
+                ConsoleLog(MODULE_NAME, "Settings reloaded from Auto Inv.ini", PySystem.Console.MessageType.Success)
             ImGui.show_tooltip("Reload Settings")
             
             PyImGui.separator()
@@ -262,20 +262,20 @@ def ShowWindow():
 
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def AutoID(item_id):
     first_id_kit = Inventory.GetFirstIDKit()
     if first_id_kit == 0:
-        ConsoleLog(MODULE_NAME, "No ID Kit found in inventory", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "No ID Kit found in inventory", PySystem.Console.MessageType.Warning)
     else:
         Inventory.IdentifyItem(item_id, first_id_kit)
         
 def AutoSalvage(item_id):
     first_salv_kit = Inventory.GetFirstSalvageKit(use_lesser=True)
     if first_salv_kit == 0:
-        ConsoleLog(MODULE_NAME, "No Salvage Kit found in inventory", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "No Salvage Kit found in inventory", PySystem.Console.MessageType.Warning)
     else:
         Inventory.SalvageItem(item_id, first_salv_kit)
     
@@ -301,7 +301,7 @@ def IdentifyItems():
         
         for item_id in item_array:
             if total_uses == 0:
-                ConsoleLog(MODULE_NAME, f"Identified {current_uses} items, no more ID Kits left in inventory", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, f"Identified {current_uses} items, no more ID Kits left in inventory", PySystem.Console.MessageType.Warning)
                 yield
                 return
             
@@ -326,7 +326,7 @@ def IdentifyItems():
         yield from Routines.Yield.wait(100)
                 
     if current_uses > 0:
-        ConsoleLog(MODULE_NAME, f"Identified {current_uses} items", Py4GW.Console.MessageType.Success)
+        ConsoleLog(MODULE_NAME, f"Identified {current_uses} items", PySystem.Console.MessageType.Success)
         
 def SalvageItems():
     global widget_options
@@ -348,7 +348,7 @@ def SalvageItems():
         
         for item_id in item_array:
             if total_uses == 0:
-                ConsoleLog(MODULE_NAME, f"Salvaged {current_uses} items, no more Salvage Kits left in inventory", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, f"Salvaged {current_uses} items, no more Salvage Kits left in inventory", PySystem.Console.MessageType.Warning)
                 yield
                 return
             
@@ -408,7 +408,7 @@ def SalvageItems():
                     yield from Routines.Yield.wait(50)
                 
                 if total_uses == 0:
-                    ConsoleLog(MODULE_NAME, f"Salvaged {current_uses} items, no more Salvage Kits left in inventory", Py4GW.Console.MessageType.Warning)
+                    ConsoleLog(MODULE_NAME, f"Salvaged {current_uses} items, no more Salvage Kits left in inventory", PySystem.Console.MessageType.Warning)
                     yield
                     return
 
@@ -416,7 +416,7 @@ def SalvageItems():
                 
                 
     if current_uses > 0:
-        ConsoleLog(MODULE_NAME, f"Salvaged {current_uses} items", Py4GW.Console.MessageType.Success)
+        ConsoleLog(MODULE_NAME, f"Salvaged {current_uses} items", PySystem.Console.MessageType.Success)
         
 def IDAndSalvageItems():
     """
@@ -480,7 +480,7 @@ def DepositItems():
                 yield from Routines.Yield.wait(250)
                 
 def IDSalvageDepositItems():
-    ConsoleLog(MODULE_NAME, "Starting ID, Salvage and Deposit routine", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, "Starting ID, Salvage and Deposit routine", PySystem.Console.MessageType.Info)
     widget_options.status = "Identifying"
     yield from IdentifyItems()
     
@@ -491,7 +491,7 @@ def IDSalvageDepositItems():
     yield from DepositItems()
     
     widget_options.status = "Idle"
-    ConsoleLog(MODULE_NAME, "ID, Salvage and Deposit routine completed", Py4GW.Console.MessageType.Success)
+    ConsoleLog(MODULE_NAME, "ID, Salvage and Deposit routine completed", PySystem.Console.MessageType.Success)
 
 def main():
     global widget_options
@@ -533,7 +533,7 @@ def main():
                 
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error during initialization: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error during initialization: {str(e)}", PySystem.Console.MessageType.Error)
 
     
 if __name__ == "__main__":

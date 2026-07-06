@@ -25,10 +25,10 @@ AUTOPATH_PENDING = False
 def _log_result(message: str, message_type=None):
     global LAST_RESULT
     LAST_RESULT = message
-    Py4GW.Console.Log(
+    PySystem.Console.Log(
         MODULE_NAME,
         message,
-        message_type or Py4GW.Console.MessageType.Info,
+        message_type or PySystem.Console.MessageType.Info,
     )
 
 
@@ -41,7 +41,7 @@ def _coro_load_navmesh():
         if navmesh is None:
             _log_result(
                 "NavMesh load finished, but no navmesh is available for the current map.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
         else:
             _log_result(
@@ -96,7 +96,7 @@ def _coro_run_autopath():
 def _run_lookup():
     navmesh = AutoPathing().get_navmesh()
     if navmesh is None:
-        _log_result("No navmesh loaded. Press 'Load NavMesh' first.", Py4GW.Console.MessageType.Warning)
+        _log_result("No navmesh loaded. Press 'Load NavMesh' first.", PySystem.Console.MessageType.Warning)
         return
 
     start_id = navmesh.find_trapezoid_id_by_coord((START_X, START_Y))
@@ -129,7 +129,7 @@ def _run_lookup():
 def _run_astar():
     navmesh = AutoPathing().get_navmesh()
     if navmesh is None:
-        _log_result("No navmesh loaded. Press 'Load NavMesh' first.", Py4GW.Console.MessageType.Warning)
+        _log_result("No navmesh loaded. Press 'Load NavMesh' first.", PySystem.Console.MessageType.Warning)
         return
 
     astar = AStar(navmesh)

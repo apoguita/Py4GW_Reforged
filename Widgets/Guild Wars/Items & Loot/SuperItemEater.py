@@ -122,7 +122,7 @@ def use_to_max(items: List[Tuple[str, int, int]], title_id: int, consume_fn=None
 
     current, _, next_req = _get_title_info(title_id)
     if next_req == 0:
-        ConsoleLog(MODULE_NAME, "Title already maxed.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(MODULE_NAME, "Title already maxed.", PySystem.Console.MessageType.Info)
         return
 
     points_needed = next_req - current
@@ -145,7 +145,7 @@ def use_to_max(items: List[Tuple[str, int, int]], title_id: int, consume_fn=None
         yield from consume_fn(model_id, to_use)
         points_needed -= to_use * pts
 
-    ConsoleLog(MODULE_NAME, "Use to max complete.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, "Use to max complete.", PySystem.Console.MessageType.Info)
 
 
 def exchange_pumpkins_for_pie(quantity: int):
@@ -508,14 +508,14 @@ def _run_exchange(exchange: CollectorExchange):
     if receive_item_id == 0:
         ConsoleLog(MODULE_NAME,
                    f"[{exchange.name}] Receive item not found in collector offers -- open the collector dialog first.",
-                   Py4GW.Console.MessageType.Warning)
+                   PySystem.Console.MessageType.Warning)
         return
 
     stacks = _get_item_stacks(exchange.give_model_id)
     total  = sum(qty for _, qty in stacks)
     ConsoleLog(MODULE_NAME,
                f"[{exchange.name}] Starting: {total} -> {total // exchange.exchange_rate}",
-               Py4GW.Console.MessageType.Info)
+               PySystem.Console.MessageType.Info)
 
     while True:
         stacks = _get_item_stacks(exchange.give_model_id)
@@ -529,7 +529,7 @@ def _run_exchange(exchange: CollectorExchange):
             elapsed += 100
         yield from Routines.Yield.wait(200)
 
-    ConsoleLog(MODULE_NAME, f"[{exchange.name}] Exchange complete.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, f"[{exchange.name}] Exchange complete.", PySystem.Console.MessageType.Info)
 
 
 def _draw_exchanges_tab() -> None:

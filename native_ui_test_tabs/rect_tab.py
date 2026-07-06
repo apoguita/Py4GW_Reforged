@@ -552,15 +552,15 @@ def draw() -> None:
         TARGET_FLAGS = 0
 
     if PyImGui.button("Create"):
-        Py4GW.Game.enqueue(_create_window)
+        PyGameThread.enqueue(_create_window)
     if PyImGui.button("Apply Rect"):
-        Py4GW.Game.enqueue(_apply_rect)
+        PyGameThread.enqueue(_apply_rect)
     if PyImGui.button("Move Rect"):
-        Py4GW.Game.enqueue(_move_rect)
+        PyGameThread.enqueue(_move_rect)
     if PyImGui.button("Resize Rect"):
-        Py4GW.Game.enqueue(_resize_rect)
+        PyGameThread.enqueue(_resize_rect)
     if PyImGui.button("Close"):
-        Py4GW.Game.enqueue(_close_window)
+        PyGameThread.enqueue(_close_window)
 
     DRAW_OUTLINES = PyImGui.checkbox("Draw Outlines", DRAW_OUTLINES)
 

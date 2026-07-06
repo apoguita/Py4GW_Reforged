@@ -108,7 +108,7 @@ def AssignBuild(bot: Botting):
                 )
             ))
         case _:
-            ConsoleLog("Unsupported Profession", f"The profession '{profession}' is not supported by this bot.", Py4GW.Console.MessageType.Error, True)
+            ConsoleLog("Unsupported Profession", f"The profession '{profession}' is not supported by this bot.", PySystem.Console.MessageType.Error, True)
             bot.Stop()
             return
     yield
@@ -145,7 +145,7 @@ def _on_death(bot: Botting):
 
 
 def on_death(bot: Botting):
-    ConsoleLog("Death detected", "Player Died - Run Failed, Restarting...", Py4GW.Console.MessageType.Notice)
+    ConsoleLog("Death detected", "Player Died - Run Failed, Restarting...", PySystem.Console.MessageType.Notice)
 
     # Reset Action Queues and FSM
     ResetUnopenedChests()
@@ -165,11 +165,11 @@ def AssessLootManagement():
     global should_manage_inventory
 
     free_slots = GLOBAL_CACHE.Inventory.GetFreeSlotCount()
-    ConsoleLog("Inventory Check", f"Free Inventory Slots: {free_slots}", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Inventory Check", f"Free Inventory Slots: {free_slots}", PySystem.Console.MessageType.Info)
 
     should_manage_inventory = free_slots < 5
     if should_manage_inventory:
-        ConsoleLog("Inventory Check", f"Free Inventory Slots: {free_slots} - Managing Inventory before next run", Py4GW.Console.MessageType.Info)
+        ConsoleLog("Inventory Check", f"Free Inventory Slots: {free_slots} - Managing Inventory before next run", PySystem.Console.MessageType.Info)
 
     yield from Routines.Yield.wait(1000)
 
@@ -237,17 +237,17 @@ def ManageInventory(bot: Botting):
 def DetectChestAndOpen(bot: Botting, max_distance=4000):
     # Log
     coord = Player.GetXY()
-    ConsoleLog(BARB_SHORE_RUNNER, f"Arrived at point coordinates ::: {coord}", Py4GW.Console.MessageType.Info)
+    ConsoleLog(BARB_SHORE_RUNNER, f"Arrived at point coordinates ::: {coord}", PySystem.Console.MessageType.Info)
     # Checker for inventory
     nearby_chest_id = Routines.Agents.GetNearestChest(max_distance)
 
     # No chest found
     if nearby_chest_id == 0 or nearby_chest_id in opened_chests:
-        ConsoleLog(bot.bot_name, f"No usable chest found", Py4GW.Console.MessageType.Info)
+        ConsoleLog(bot.bot_name, f"No usable chest found", PySystem.Console.MessageType.Info)
 
     # Handle chest found
     else:
-        ConsoleLog(bot.bot_name, f"Located nearby chest ::: {nearby_chest_id}", Py4GW.Console.MessageType.Info)
+        ConsoleLog(bot.bot_name, f"Located nearby chest ::: {nearby_chest_id}", PySystem.Console.MessageType.Info)
 
         # Update build handler to signal looting state
         def set_looting_signal(is_looting: bool):
@@ -401,7 +401,7 @@ def ResetFarmLoop(bot: Botting):
 # ==================== MAIN ====================
 
 bot.SetMainRoutine(create_bot_routine)
-base_path = Py4GW.Console.get_projects_path()
+base_path = PySystem.Console.get_projects_path()
 
 
 def configure():
@@ -410,7 +410,7 @@ def configure():
 
 def main():
     bot.Update()
-    projects_path = Py4GW.Console.get_projects_path()
+    projects_path = PySystem.Console.get_projects_path()
     widgets_path = projects_path + "\\Widgets\\Config\\textures\\"
     bot.UI.draw_window(icon_path=widgets_path + "YAVB 2.0 mascot.png")
 

@@ -111,7 +111,7 @@ def draw_floating_menu():
             state.popup_height = PyImGui.get_window_height()
             state.popup_height_known = True
             if PyImGui.button(IconsFontAwesome5.ICON_RETWEET + "##Reload Widgets"):
-                ConsoleLog(state.module_name, "Reloading Widgets...", Py4GW.Console.MessageType.Info)
+                ConsoleLog(state.module_name, "Reloading Widgets...", PySystem.Console.MessageType.Info)
                 handler.discover_widgets()
             ImGui.show_tooltip("Reloads all widgets")
             PyImGui.same_line(0.0, 10)

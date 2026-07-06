@@ -87,7 +87,7 @@ def _process_pending_reports() -> None:
             pending.append((scheduled_at, prefix))
     PENDING_REPORTS[:] = pending
     for _, prefix in ready:
-        Py4GW.Game.enqueue(lambda prefix=prefix: _emit_snapshot(prefix))
+        PyGameThread.enqueue(lambda prefix=prefix: _emit_snapshot(prefix))
 
 
 def _destroy_window() -> None:
@@ -102,7 +102,7 @@ def _destroy_window() -> None:
         _log("destroy window invoke complete")
 
     LAST_STATUS = "destroy enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after destroy")
 
 
@@ -144,7 +144,7 @@ def _create_window(with_title_override: bool) -> None:
         )
 
     LAST_STATUS = "create enqueued with pending title override" if with_title_override else "create enqueued without title override"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after create")
 
 
@@ -163,7 +163,7 @@ def _apply_direct_title() -> None:
         )
 
     LAST_STATUS = "direct title set enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after direct title set")
 
 
@@ -189,7 +189,7 @@ def _draw_window() -> None:
         _apply_direct_title()
 
     if PyImGui.button("Snapshot"):
-        Py4GW.Game.enqueue(lambda: _emit_snapshot("manual snapshot"))
+        PyGameThread.enqueue(lambda: _emit_snapshot("manual snapshot"))
     PyImGui.same_line(0.0, 8.0)
     if PyImGui.button("Destroy Window"):
         _destroy_window()

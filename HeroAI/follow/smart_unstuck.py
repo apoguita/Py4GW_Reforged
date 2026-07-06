@@ -346,7 +346,7 @@ def reload_smart_unstuck_config_from_ini(force_reload: bool = False) -> None:
 
 
 def _now_ms() -> int:
-    return int(Py4GW.Game.get_tick_count64())
+    return int(PySystem.get_tick_count64())
 
 
 def _log(message: str) -> None:
@@ -356,7 +356,7 @@ def _log(message: str) -> None:
     if not hero_globals.show_followers_unstuck_overlay:
         return
     try:
-        Py4GW.Console.Log("HeroAI", message, Py4GW.Console.MessageType.Notice)
+        PySystem.Console.Log("HeroAI", message, PySystem.Console.MessageType.Notice)
     except Exception:
         pass
 
@@ -370,10 +370,10 @@ def _log_first_call_once() -> None:
         return
     _first_call_logged = True
     try:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             "HeroAI",
             "smart_unstuck: first follower tick reached (module loaded and update_smart_unstuck is being called)",
-            Py4GW.Console.MessageType.Success,
+            PySystem.Console.MessageType.Success,
         )
     except Exception:
         pass

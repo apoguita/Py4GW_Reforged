@@ -319,13 +319,13 @@ def DefensiveActions(self):
     
     if (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shadow_form)):
         if (yield from self._CastSkillID(self.deadly_paradox,extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=100)):
-            ConsoleLog(self.build_name, "Casting Deadly Paradox.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
             
         if (yield from self._CastSkillID(self.shadow_form, log=False, aftercast_delay=1750)):
-            ConsoleLog(self.build_name, "Casting Shadow Form.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
             
         if (yield from self._CastSkillID(self.shroud_of_distress,extra_condition=(not has_shroud_of_distress), log=False, aftercast_delay=1750)):
-            ConsoleLog(self.build_name, "Casting Shroud of Distress.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
             
 SF_Ass_vaettir.DefensiveActions = DefensiveActions
 

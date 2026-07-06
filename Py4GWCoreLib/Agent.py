@@ -141,7 +141,7 @@ class Agent:
     @staticmethod
     def GetNameByID(agent_id: int) -> str:
         """Get the decoded display name of an agent by its ID."""
-        enc_bytes = PyAgent.PyAgent.GetAgentEncName(agent_id)
+        enc_bytes = PyAgent.get_agent_enc_name(agent_id)
         if not enc_bytes:
             return ""
         return decode_raw(bytes(enc_bytes))
@@ -155,7 +155,7 @@ class Agent:
     @staticmethod
     def GetEncNameByID(agent_id: int) -> list[int]:
         """Get the encoded name of an agent by its ID."""
-        enc_bytes = PyAgent.PyAgent.GetAgentEncName(agent_id)
+        enc_bytes = PyAgent.get_agent_enc_name(agent_id)
         return enc_bytes
     
     @staticmethod
@@ -169,7 +169,7 @@ class Agent:
                 literal-safe form with escaped backslashes
                 (for example ``\\x171C\\x8FE8``).
         """
-        enc_bytes = PyAgent.PyAgent.GetAgentEncName(agent_id)
+        enc_bytes = PyAgent.get_agent_enc_name(agent_id)
         if not enc_bytes:
             return ""
         enc_wstr = Agent._enc_name_bytes_to_wstr(enc_bytes)
@@ -1544,10 +1544,10 @@ class Agent:
         Args: agent_id (int): The ID of the agent.
         Returns: tuple
         """
-        import Py4GW
+        import PySystem
         primary, secondary = Agent.GetProfessions(agent_id)
         primary_name, secondary_name = Agent.GetProfessionNames(agent_id)
-        projects_base_folder = Py4GW.Console.get_projects_path()
+        projects_base_folder = PySystem.Console.get_projects_path()
         
         if primary == 0:
             primary_texture = ""

@@ -6,7 +6,7 @@ from ...enums_src.UI_enums import UIMessage
 from ...Scanner import Scanner
 import ctypes
 from typing import List
-from Py4GW import Game
+import PyGameThread
 import PyPlayer
 
 class WorldActionId:
@@ -108,7 +108,7 @@ class PlayerMethods:
                 return 
             UIManager.SendUIMessage(UIMessage.kSendChangeTarget,[target.agent_id])
         
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
         
     @staticmethod
     def InteractAgent(agent_id: int, call_target: bool = False) -> None:
@@ -151,7 +151,7 @@ class PlayerMethods:
                 [action_id, agent_id, call_target]
             )
 
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
         
     @staticmethod
     def Move(x: float, y: float, zPlane: int = 0) -> None:
@@ -167,7 +167,7 @@ class PlayerMethods:
 
             MoveTo_Func.directCall(args)
         
-        Game.enqueue(_action)   
+        PyGameThread.enqueue(_action)   
         
     @staticmethod
     def DepositFaction(allegiance: int) -> None:
@@ -176,7 +176,7 @@ class PlayerMethods:
                 return
             DepositFaction_Func.directCall(0, allegiance, 5000)
         
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
         
     @staticmethod
     def SetActiveTitle(title_id: int) -> None:
@@ -185,7 +185,7 @@ class PlayerMethods:
                 return
             SetActiveTitle_Func.directCall(title_id)
         
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
         
     @staticmethod
     def RemoveActiveTitle() -> None:
@@ -194,7 +194,7 @@ class PlayerMethods:
                 return
             RemoveActiveTitle_Func.directCall()
         
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
         
     @staticmethod
     def SendChat(channel: int | str, message: str) -> bool:
@@ -263,7 +263,7 @@ class PlayerMethods:
                 False,
             )
 
-        Game.enqueue(_do_action)
+        PyGameThread.enqueue(_do_action)
 
         return True
     
@@ -320,7 +320,7 @@ class PlayerMethods:
                 False,
             )
 
-        Game.enqueue(_do_action)
+        PyGameThread.enqueue(_do_action)
         return True
 
     @staticmethod
@@ -407,7 +407,7 @@ class PlayerMethods:
                 False,
             )
 
-        Game.enqueue(_do_action)
+        PyGameThread.enqueue(_do_action)
 
     @staticmethod
     def SendRawDialog(dialog_id: int) -> None:
@@ -421,7 +421,7 @@ class PlayerMethods:
 
             UIManager.SendUIMessageRaw(UIMessage.kSendAgentDialog, dialog_id, 0)
 
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
 
     @staticmethod
     def SendSkillTrainerDialog(skill_id: int) -> None:

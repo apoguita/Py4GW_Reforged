@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-import Py4GW
+import PySystem
 
 MODULE_NAME = 'DBMgr Test'
 PRIMARY_DB_FILENAME = 'sqlite3_test.db'
@@ -17,7 +17,7 @@ class DBMgr:
         self.base_directory = Path('.')
         self.timeout = timeout
         self._database_paths: dict[str, Path] = {}
-        self.PRIMARY_DB_FILENAME = 'Py4GW_Internals.db'
+        self.PRIMARY_DB_FILENAME = 'PySystem_Internals.db'
         self.Initialize()
 
     def Initialize(self) -> None:
@@ -27,8 +27,8 @@ class DBMgr:
 
     def _get_db_root_path(self) -> Path:
         """Return the project root used to resolve relative database paths."""
-        if hasattr(Py4GW, 'Console') and hasattr(Py4GW.Console, 'get_projects_path'):
-            projects_path = Py4GW.Console.get_projects_path()
+        if hasattr(PySystem, 'Console') and hasattr(PySystem.Console, 'get_projects_path'):
+            projects_path = PySystem.Console.get_projects_path()
             if projects_path:
                 return Path(projects_path)
         return Path(os.getcwd()).resolve()
@@ -171,7 +171,7 @@ class DBMgr:
 
 
 def _has_py4gw_console() -> bool:
-    return Py4GW is not None and hasattr(Py4GW, 'Console') and hasattr(Py4GW.Console, 'Log')
+    return PySystem is not None and hasattr(PySystem, 'Console') and hasattr(PySystem.Console, 'Log')
 
 
 def _log(message: str, message_type=None) -> None:
@@ -179,8 +179,8 @@ def _log(message: str, message_type=None) -> None:
         print(f'[{MODULE_NAME}] {message}')
         return
     if message_type is None:
-        message_type = Py4GW.Console.MessageType.Notice
-    Py4GW.Console.Log(MODULE_NAME, message, message_type)
+        message_type = PySystem.Console.MessageType.Notice
+    PySystem.Console.Log(MODULE_NAME, message, message_type)
 
 
 def _assert(condition: bool, message: str) -> None:
@@ -250,7 +250,7 @@ def main() -> None:
     for row in rows:
         _log(str(row))
 
-    success_type = Py4GW.Console.MessageType.Success if _has_py4gw_console() else None
+    success_type = PySystem.Console.MessageType.Success if _has_py4gw_console() else None
     _log('DBMgr test completed successfully.', success_type)
     initialized = True
 

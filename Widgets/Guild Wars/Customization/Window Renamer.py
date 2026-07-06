@@ -16,7 +16,7 @@ def main():
     if not char_name or char_name == _last_char_name:
         return
     _last_char_name = char_name
-    Py4GW.Console.set_window_title(char_name)
+    PySystem.Console.set_window_title(char_name)
 
 def tooltip():
     PyImGui.begin_tooltip()

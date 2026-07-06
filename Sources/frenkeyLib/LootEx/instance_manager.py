@@ -1,6 +1,6 @@
 
 
-from Py4GW import Console
+import PySystem
 from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
 
 PERSISTENT = True

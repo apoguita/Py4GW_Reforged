@@ -52,7 +52,7 @@ _MERCHANT_SECTION     = "Froggy Merchant"
 _ALT_SALVAGE_SECTION  = "Froggy Alt Salvage Kits"
 _CHAR_NAMES_SECTION   = "Character Names"
 
-_settings_ini_path     = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Config", f"{BOT_NAME}.ini")
+_settings_ini_path     = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", f"{BOT_NAME}.ini")
 os.makedirs(os.path.dirname(_settings_ini_path), exist_ok=True)
 _settings_ini  = IniHandler(_settings_ini_path)
 _settings_loaded: bool = False
@@ -127,7 +127,7 @@ _current_l2_time:  float = 0.0
 _froggy_pre_snapshot: dict[int, int] = {}  # model_id -> count before chest open
 _gb_pre_snapshot:  int            = 0   # GB count before chest open
 
-_FROGGY_ICON_PATH = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Automation", "Bots", "Missions", "Dungeons", "Frog Scepter.png")
+_FROGGY_ICON_PATH = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Automation", "Bots", "Missions", "Dungeons", "Frog Scepter.png")
 
 # ==================== BOT SETUP ====================
 TEXTURE = _FROGGY_ICON_PATH
@@ -583,7 +583,7 @@ def _request_alt_salvage_kit_counts() -> Generator:
         ConsoleLog(
             BOT_NAME,
             f"[Merchant] No salvage count reply after {max_attempts} attempts ({_ALT_SALVAGE_POLL_MAX_TOTAL_MS} ms max) from: {', '.join(pending_names)}. Skipping them this check.",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
 
 
@@ -694,7 +694,7 @@ def _coro_deposit_crafting_materials_to_storage(selected_models: set[int]) -> Ge
         GLOBAL_CACHE.Inventory.OpenXunlaiWindow()
         yield from Routines.Yield.wait(1000)
     if not GLOBAL_CACHE.Inventory.IsStorageOpen():
-        ConsoleLog(BOT_NAME, "[Merchant] Storage not open; skipping crafting material deposit", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Merchant] Storage not open; skipping crafting material deposit", PySystem.Console.MessageType.Warning)
         yield
         return
 
@@ -894,7 +894,7 @@ def _check_tekks_inside_dungeon(bot: Botting) -> Generator:
 
         ok = yield from _wait_for_map("Arbor Bay")
         if not ok:
-            ConsoleLog(BOT_NAME, "[tekks] Failed to return to Arbor Bay", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[tekks] Failed to return to Arbor Bay", PySystem.Console.MessageType.Warning)
             continue
 
         # Give the map time to fully load before attempting pathfinding
@@ -919,14 +919,14 @@ def _check_tekks_inside_dungeon(bot: Botting) -> Generator:
 
         ok = yield from wait_for_map_change(BOGROOT_L1, 60)
         if not ok:
-            ConsoleLog(BOT_NAME, "[tekks] Failed to re-enter SoO Level 1 — retrying", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[tekks] Failed to re-enter SoO Level 1 — retrying", PySystem.Console.MessageType.Warning)
             continue
 
         yield from Routines.Yield.wait(2000)
         # Loop back to re-check quest state at the top
 
     # Exhausted all attempts — quest never became active
-    ConsoleLog(BOT_NAME, f"[HARD STOP] tekks quest never became active after {_max_attempts} attempts — stopping bot.", Py4GW.Console.MessageType.Error)
+    ConsoleLog(BOT_NAME, f"[HARD STOP] tekks quest never became active after {_max_attempts} attempts — stopping bot.", PySystem.Console.MessageType.Error)
     bot.Stop()
     yield
 
@@ -1110,7 +1110,7 @@ def _reenable_merchant_widgets() -> Generator:
             yield from Routines.Yield.wait(100)
 
     if _pending:
-        ConsoleLog(BOT_NAME, f"[Merchant] EnableWidget timeout — {len(_pending)} message(s) unconfirmed. Proceeding.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Merchant] EnableWidget timeout — {len(_pending)} message(s) unconfirmed. Proceeding.", PySystem.Console.MessageType.Warning)
         yield from Routines.Yield.wait(_POST_WIDGET_REENABLE_SETTLE_MS)
     else:
         ConsoleLog(BOT_NAME, "[Merchant] All widgets successfully re-enabled on all accounts")
@@ -1176,7 +1176,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
             ConsoleLog(
                 BOT_NAME,
                 f"[Merchant] {stage_name}: timeout waiting for alt completion after {timeout_ms} ms. Pending: {pending_accounts}",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
 
     # —— Step 0 (startup only): Leave current party on all accounts ————————————
@@ -1236,13 +1236,13 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
             1 for acc in _accounts
             if acc.AccountEmail != _my_email and int(acc.AgentData.Map.MapID) == _gh_map
         )
-        ConsoleLog(BOT_NAME, f"[Merchant] GH arrival timeout — {_in_gh}/{_expected_gh_alts} alts at GH. Proceeding.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Merchant] GH arrival timeout — {_in_gh}/{_expected_gh_alts} alts at GH. Proceeding.", PySystem.Console.MessageType.Warning)
 
     # wait for Merchant NPC to spawn (handles fresh GH instances)
     _npc_deadline = time.time() + 20.0
     while _find_npc_xy_by_name("Merchant") is None:
         if time.time() > _npc_deadline:
-            ConsoleLog(BOT_NAME, "[Merchant] Merchant NPC not found after 20s — proceeding anyway", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Merchant] Merchant NPC not found after 20s — proceeding anyway", PySystem.Console.MessageType.Warning)
             break
         yield from Routines.Yield.wait(500)
 
@@ -1461,11 +1461,11 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
             break
         yield from Routines.Yield.wait(250)
     else:
-        ConsoleLog(BOT_NAME, "[Party] Leader ShMem did not update in time — proceeding anyway", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Party] Leader ShMem did not update in time — proceeding anyway", PySystem.Console.MessageType.Warning)
 
     _ld = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(_my_email)
     if not _ld:
-        ConsoleLog(BOT_NAME, "[Party] Could not read leader ShMem — skipping invite", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Party] Could not read leader ShMem — skipping invite", PySystem.Console.MessageType.Warning)
         yield
         return
 
@@ -1513,7 +1513,7 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
                 acc.AgentData.Map.Language   == _ld.AgentData.Map.Language and
                 acc.AgentData.Map.District   == _ld.AgentData.Map.District)
         )
-        ConsoleLog(BOT_NAME, f"[Party] Arrival timeout — {_arrived}/{_expected_alt_count} on correct district. Proceeding.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Party] Arrival timeout — {_arrived}/{_expected_alt_count} on correct district. Proceeding.", PySystem.Console.MessageType.Warning)
 
     yield from Routines.Yield.wait(settle_ms)
 
@@ -1536,11 +1536,11 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
             yield
             return
 
-        ConsoleLog(BOT_NAME, f"[Party] Party incomplete ({_actual}/{_expected_size}) — retrying", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Party] Party incomplete ({_actual}/{_expected_size}) — retrying", PySystem.Console.MessageType.Warning)
         yield from Routines.Yield.wait(1500)
 
     _actual = Party.GetPartySize()
-    ConsoleLog(BOT_NAME, f"[Party] Still incomplete after 3 attempts ({_actual}/{_expected_size}) — proceeding", Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f"[Party] Still incomplete after 3 attempts ({_actual}/{_expected_size}) — proceeding", PySystem.Console.MessageType.Warning)
     yield
 
 def _gh_merchant_setup_for_alt_salvage_threshold() -> Generator:
@@ -1551,7 +1551,7 @@ def _gh_merchant_setup_for_alt_salvage_threshold() -> Generator:
         ConsoleLog(
             BOT_NAME,
             f"[Merchant] Alt salvage count unknown this pass: {', '.join(unknown_accounts)}",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
     if not needs_restock:
         yield
@@ -1833,7 +1833,7 @@ def _take_dungeon_entry_snapshot() -> Generator:
                 break
         if not responded:
             name = acc.AgentData.CharacterName or acc.AccountEmail
-            ConsoleLog(BOT_NAME, f"[FROGGY Stats] FROGGY snapshot timeout for: {name}", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, f"[FROGGY Stats] FROGGY snapshot timeout for: {name}", PySystem.Console.MessageType.Warning)
 
         reset_inventory_count(acc.AccountEmail, GB_MODEL_ID, GB_MODEL_ID)
         _settings_ini.write_key(_GB_SNAPSHOT_SECTION, acc_key, str(-1))
@@ -1853,7 +1853,7 @@ def _take_dungeon_entry_snapshot() -> Generator:
                 break
         if not responded:
             name = acc.AgentData.CharacterName or acc.AccountEmail
-            ConsoleLog(BOT_NAME, f"[FROGGY Stats] GB snapshot timeout for: {name}", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, f"[FROGGY Stats] GB snapshot timeout for: {name}", PySystem.Console.MessageType.Warning)
 
     yield
 
@@ -1898,7 +1898,7 @@ def _record_drops_after_loot() -> Generator:
                     break
             if not responded:
                 name = acc.AgentData.CharacterName or acc.AccountEmail
-                ConsoleLog(BOT_NAME, f"[FROGGY Stats] FROGGY count timeout for: {name}", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(BOT_NAME, f"[FROGGY Stats] FROGGY count timeout for: {name}", PySystem.Console.MessageType.Warning)
 
             reset_inventory_count(acc.AccountEmail, GB_MODEL_ID, GB_MODEL_ID)
             _settings_ini.write_key(_GB_RUN_SECTION, acc_key, str(-1))
@@ -1918,7 +1918,7 @@ def _record_drops_after_loot() -> Generator:
                     break
             if not responded:
                 name = acc.AgentData.CharacterName or acc.AccountEmail
-                ConsoleLog(BOT_NAME, f"[FROGGY Stats] GB count timeout for: {name}", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(BOT_NAME, f"[FROGGY Stats] GB count timeout for: {name}", PySystem.Console.MessageType.Warning)
 
     # Accumulate deltas for ALL accounts (leader + alts) from the INI uniformly.
     all_accounts_keys = [my_key] + [_account_key(acc.AccountEmail) for acc in alt_accounts]

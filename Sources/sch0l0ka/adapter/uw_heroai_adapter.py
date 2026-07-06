@@ -72,7 +72,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
         ConsoleLog(
             self._bot_name,
             f"[Startup] {action_label} '{widget_name}': {sent}/{len(recipients)} account(s) reached.",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     def _set_all_heroai_options(
@@ -103,7 +103,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
         ConsoleLog(
             self._bot_name,
             "[HeroAI] Adapter setup: HeroAI mode active.",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
         self._bot_instance = bot_instance
         bot_instance.Events.OnPartyMemberBehindCallback(
@@ -126,13 +126,13 @@ class UWHeroAIAdapter(UWCombatAdapter):
                 ConsoleLog(
                     self._bot_name,
                     f"[HeroAI] Disabled local widget '{widget_name}'.",
-                    Py4GW.Console.MessageType.Info,
+                    PySystem.Console.MessageType.Info,
                 )
         except Exception as e:
             ConsoleLog(
                 self._bot_name,
                 f"[HeroAI] Could not disable local widget '{widget_name}': {e}",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
 
     def _enable_widget_locally(self, widget_name: str) -> None:
@@ -145,13 +145,13 @@ class UWHeroAIAdapter(UWCombatAdapter):
                 ConsoleLog(
                     self._bot_name,
                     f"[HeroAI] Enabled local widget '{widget_name}'.",
-                    Py4GW.Console.MessageType.Info,
+                    PySystem.Console.MessageType.Info,
                 )
         except Exception as e:
             ConsoleLog(
                 self._bot_name,
                 f"[HeroAI] Could not enable local widget '{widget_name}': {e}",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
 
     def configure_startup_states(self, bot_instance) -> None:
@@ -159,7 +159,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
             lambda: ConsoleLog(
                 self._bot_name,
                 "[Startup] Enforcing HeroAI widget on all accounts.",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             ),
             "[Startup] Log HeroAI Enforcement",
         )
@@ -167,7 +167,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
             lambda: ConsoleLog(
                 self._bot_name,
                 "[Startup] Enabling HeroAI widget on all accounts.",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             ),
             "[Startup] Log Enable HeroAI",
         )
@@ -214,7 +214,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
                 f"[Startup] Widget setup complete (HeroAI mode). "
                 f"HeroAI + DhuumHelper + MerchantRules enabled "
                 f"on {len(accounts)} active account(s): {accounts}",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
         bot_instance.States.AddCustomState(_log_startup_done, "[Startup] Log Startup Done")
 
@@ -228,7 +228,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
         ConsoleLog(
             self._bot_name,
             f"[HeroAI] Step '{step_label}' — options restored (F=True C=True L=True). hero_ai={hero_ai_prop}",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     def sync_runtime(self) -> None:
@@ -249,7 +249,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
                 ConsoleLog(
                     self._bot_name,
                     "[HeroAI] WARNING: hero_ai property was False — forcing True.",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
                 self._bot_instance.config.upkeep.hero_ai._apply("active", True)
 
@@ -392,7 +392,7 @@ class UWHeroAIAdapter(UWCombatAdapter):
             ConsoleLog(
                 self._bot_name,
                 f"[HeroAI] set_flag_for_email: '{email}' not found in account data — flag skipped.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return
 

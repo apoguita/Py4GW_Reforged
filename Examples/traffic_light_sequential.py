@@ -54,7 +54,7 @@ def DrawWindow():
                     
             PyImGui.end()
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def main():
@@ -70,7 +70,7 @@ def main():
     except StopIteration:
         traffic_light_gen = None  # Coroutine finished, restart next frame if needed
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in coroutine: {e}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in coroutine: {e}", PySystem.Console.MessageType.Error)
 
 if __name__ == "__main__":
     main()

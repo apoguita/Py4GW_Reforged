@@ -110,7 +110,7 @@ def DrawWindow():
     except Exception as e:
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        Py4GW.Console.Log("LootConfigGUI", f"Error in {current_function}: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("LootConfigGUI", f"Error in {current_function}: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def configure():

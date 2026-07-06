@@ -1,5 +1,4 @@
 from ctypes import Structure, c_uint, c_uint64
-import Py4GW
 
 #region Key
 class KeyStruct(Structure):

@@ -211,7 +211,7 @@ def _ensure_devtext() -> None:
         _log(f"ensure devtext invoke result frame_id={LAST_DEVTEXT_ROOT}")
 
     LAST_STATUS = "ensure devtext enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(LAST_STATUS)
     _schedule_report("state after ensure devtext")
 
@@ -236,7 +236,7 @@ def _enqueue_state_snapshot(prefix: str) -> None:
         )
 
     LAST_STATUS = f"snapshot enqueued prefix='{prefix}'"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
 
 
 def _probe_existing() -> None:
@@ -252,7 +252,7 @@ def _probe_existing() -> None:
         )
 
     LAST_STATUS = "probe existing enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(LAST_STATUS)
     _schedule_report("state after probe existing")
 
@@ -313,7 +313,7 @@ def _create_literal_label() -> None:
             _log(f"create literal label invoke exception: {exc}")
 
     LAST_STATUS = "create literal label enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(LAST_STATUS)
     _schedule_report("state after create literal label")
 
@@ -336,7 +336,7 @@ def _clock_update_created() -> None:
         )
 
     LAST_STATUS = "clock update created enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(LAST_STATUS)
     _schedule_report("state after clock update created")
 

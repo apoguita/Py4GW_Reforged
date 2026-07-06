@@ -28,7 +28,7 @@ last_config_check_time = 0
 last_config_timestamp = 0
 last_rarity_timestamp = 0
 
-script_directory = Py4GW.Console.get_projects_path() 
+script_directory = PySystem.Console.get_projects_path() 
 # ——— Window Persistence Setup ———
 ini_window = IniHandler(os.path.join(script_directory, "Widgets", "Config", "loot_window.ini"))
 save_window_timer = Timer()
@@ -57,11 +57,11 @@ def load_nick_cycles():
             with open(NICK_CYCLES_FILE, "r") as f:
                 nick_cycles = json.load(f)
             
-            #Py4GW.Console.Log("LootManager", f"Loaded {len(nick_cycles)} entries from Nick_cycles.json")
+            #PySystem.Console.Log("LootManager", f"Loaded {len(nick_cycles)} entries from Nick_cycles.json")
         except Exception as e:
-            Py4GW.Console.Log("LootManager", f"Failed to load Nick_cycles.json: {e}")
+            PySystem.Console.Log("LootManager", f"Failed to load Nick_cycles.json: {e}")
     else:
-        Py4GW.Console.Log("LootManager","Nick_cycles.json not found", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager","Nick_cycles.json not found", Console.MessageType.Error)
 
 # --- File Handling ---
 def load_modelid_drop_data():
@@ -69,13 +69,13 @@ def load_modelid_drop_data():
         try:
             with open(MODELID_DROP_DATA_FILE, "r") as f:
                 data = json.load(f)
-            #Py4GW.Console.Log("LootManager", f"Loaded {len(data)} entries from modelid_drop_data.json")
+            #PySystem.Console.Log("LootManager", f"Loaded {len(data)} entries from modelid_drop_data.json")
             return data
         except Exception as e:
-            Py4GW.Console.Log("LootManager", f"Failed to load modelid_drop_data.json: {str(e)}", Console.MessageType.Error)
+            PySystem.Console.Log("LootManager", f"Failed to load modelid_drop_data.json: {str(e)}", Console.MessageType.Error)
 
     else:
-        Py4GW.Console.Log("LootManager","modelid_drop_data.json not found", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager","modelid_drop_data.json not found", Console.MessageType.Error)
     return []
 
 def load_rarity_filter_data():
@@ -83,12 +83,12 @@ def load_rarity_filter_data():
         try:
             with open(RARITY_FILTER_DATA_FILE, "r") as f:
                 data = json.load(f)
-            #Py4GW.Console.Log("LootManager", "Loaded rarity_filter_data.json")
+            #PySystem.Console.Log("LootManager", "Loaded rarity_filter_data.json")
             return data
         except Exception as e:
-            Py4GW.Console.Log("LootManager", f"Failed to load rarity_filter_data.json: {str(e)}", Console.MessageType.Error)
+            PySystem.Console.Log("LootManager", f"Failed to load rarity_filter_data.json: {str(e)}", Console.MessageType.Error)
     else:
-        Py4GW.Console.Log("LootManager","rarity_filter_data.json not found", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager","rarity_filter_data.json not found", Console.MessageType.Error)
     return {}
 
 def save_loot_config():
@@ -101,9 +101,9 @@ def save_loot_config():
         }
         with open(CONFIG_FILE, "w") as f:
             json.dump(config_data, f, indent=4)
-        #Py4GW.Console.Log("LootManager", "Saved loot_config.json")
+        #PySystem.Console.Log("LootManager", "Saved loot_config.json")
     except Exception as e:
-        Py4GW.Console.Log("LootManager", f"Failed to save loot_config.json: {str(e)}", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager", f"Failed to save loot_config.json: {str(e)}", Console.MessageType.Error)
 
 def save_rarity_filter_data():
     try:
@@ -117,9 +117,9 @@ def save_rarity_filter_data():
                 "green": loot_filter_singleton.loot_greens,
                 "gold_coins": loot_filter_singleton.loot_gold_coins,   # ← NEW
             }, f, indent=4)
-        #Py4GW.Console.Log("LootManager", "Saved rarity_filter_data.json")
+        #PySystem.Console.Log("LootManager", "Saved rarity_filter_data.json")
     except Exception as e:
-        Py4GW.Console.Log("LootManager", f"Failed to save rarity_filter_data.json: {str(e)}", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager", f"Failed to save rarity_filter_data.json: {str(e)}", Console.MessageType.Error)
 
 def load_loot_config():
     """
@@ -145,7 +145,7 @@ def load_loot_config():
                     saved_blacklist = data.get("blacklist", [])
                     saved_dye_whitelist = data.get("dye_whitelist", [])
         except Exception as e:
-            Py4GW.Console.Log("LootManager", f"Failed to parse {CONFIG_FILE}: {e}", Console.MessageType.Error)
+            PySystem.Console.Log("LootManager", f"Failed to parse {CONFIG_FILE}: {e}", Console.MessageType.Error)
 
     # 2) Clear the whitelist, blacklist, and dye whitelist
     loot_filter_singleton.ClearWhitelist()
@@ -243,13 +243,13 @@ def save_loot_config_to(path: str):
         }
         with open(path, "w") as f:
             json.dump(output, f, indent=4)
-        Py4GW.Console.Log("LootManager", f"[INFO] Saved loot config to: {path}")
+        PySystem.Console.Log("LootManager", f"[INFO] Saved loot config to: {path}")
     except Exception as e:
-        Py4GW.Console.Log("LootManager", f"Failed to save custom loot config: {e}", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager", f"Failed to save custom loot config: {e}", Console.MessageType.Error)
 
 def load_loot_config_from(path: str):
     if not os.path.exists(path):
-        Py4GW.Console.Log("LootManager", f"File not found: {path}", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager", f"File not found: {path}", Console.MessageType.Error)
         return
 
     try:
@@ -260,7 +260,7 @@ def load_loot_config_from(path: str):
             saved_dye_whitelist = raw.get("dye_whitelist", [])
             rarity = raw.get("rarity", {})
     except Exception as e:
-        Py4GW.Console.Log("LootManager", f"Failed to load from {path}: {e}", Console.MessageType.Error)
+        PySystem.Console.Log("LootManager", f"Failed to load from {path}: {e}", Console.MessageType.Error)
         return
 
     loot_filter_singleton.ClearWhitelist()
@@ -371,7 +371,7 @@ def setup_dye_whitelist():
     loot_filter_singleton.AddToDyeWhitelist(DyeColor.Black.value)
     loot_filter_singleton.AddToDyeWhitelist(DyeColor.White.value)
     
-    #Py4GW.Console.Log("LootManager", "Set up dye whitelist with Black and White dyes only")
+    #PySystem.Console.Log("LootManager", "Set up dye whitelist with Black and White dyes only")
 
 
 # --- GUI Functions ---
@@ -802,7 +802,7 @@ def DrawFilteredLootList():
 
         except Exception as e:
             # print errors immediately
-            Py4GW.Console.Log("LootManager", f"Error loading item ({agent_id}): {e}", Console.MessageType.Error)
+            PySystem.Console.Log("LootManager", f"Error loading item ({agent_id}): {e}", Console.MessageType.Error)
 
     # sort by distance, then render with our unified formatter
     display_list.sort(key=lambda x: x[1])
@@ -920,7 +920,7 @@ def render():
         if os.path.exists(CONFIG_FILE):
             new_timestamp = os.path.getmtime(CONFIG_FILE)
             if new_timestamp != last_config_timestamp:
-                Py4GW.Console.Log("LootManager", "Detected loot_config.json change, reloading...")
+                PySystem.Console.Log("LootManager", "Detected loot_config.json change, reloading...")
                 load_loot_config()
                 last_config_timestamp = new_timestamp
 
@@ -928,7 +928,7 @@ def render():
         if os.path.exists(RARITY_FILTER_DATA_FILE):
             new_rarity_timestamp = os.path.getmtime(RARITY_FILTER_DATA_FILE)
             if new_rarity_timestamp != last_rarity_timestamp:
-                Py4GW.Console.Log("LootManager", "Detected rarity_filter_data.json change, reloading...")
+                PySystem.Console.Log("LootManager", "Detected rarity_filter_data.json change, reloading...")
                 load_rarity_filter_settings()
                 last_rarity_timestamp = new_rarity_timestamp
 

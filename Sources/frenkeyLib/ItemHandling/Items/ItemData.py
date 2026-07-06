@@ -6,7 +6,7 @@ import os
 import traceback
 from typing import Optional
 
-from Py4GW import Console
+import PySystem
 
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.enums_src.GameData_enums import Attribute, Profession

@@ -69,7 +69,7 @@ def _log_msg(m: str) -> None:
 
 
 def _enq(fn) -> None:
-    Py4GW.Game.enqueue(fn)
+    PyGameThread.enqueue(fn)
 
 
 def _new_window(name: str) -> int:

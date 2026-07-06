@@ -258,11 +258,11 @@ def craft_item(target_model_id, required_mats, per_craft_mats, crafts=5):
         target_name = target_model_id.name if hasattr(target_model_id, "name") else str(target_model_id)
         qty = GLOBAL_CACHE.Inventory.GetModelCount(model_id)
         if qty < required_qty:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Not enough {model_name} to craft {crafts}x {target_name}. "
                 f"Required: {required_qty}, Found: {qty}",
-                Py4GW.Console.MessageType.Error,
+                PySystem.Console.MessageType.Error,
             )
             return
 
@@ -284,10 +284,10 @@ def craft_item(target_model_id, required_mats, per_craft_mats, crafts=5):
                     total_collected = 0
                     item_refs = GLOBAL_CACHE.Inventory.GetAllItemIdsByModelID(mat_id)
                     if not item_refs:
-                        Py4GW.Console.Log(
+                        PySystem.Console.Log(
                             MODULE_NAME,
                             f"Required item {mat_name} not found in bags.",
-                            Py4GW.Console.MessageType.Error,
+                            PySystem.Console.MessageType.Error,
                         )
                         return
 
@@ -304,10 +304,10 @@ def craft_item(target_model_id, required_mats, per_craft_mats, crafts=5):
                         total_collected += take_qty
 
                     if total_collected < per_craft_qty:
-                        Py4GW.Console.Log(
+                        PySystem.Console.Log(
                             MODULE_NAME,
                             f"Not enough {mat_name} for this craft: needed {per_craft_qty}, found {total_collected}.",
-                            Py4GW.Console.MessageType.Error,
+                            PySystem.Console.MessageType.Error,
                         )
                         return
 
@@ -321,11 +321,11 @@ def craft_multiple_item_at_once(target_model_id, required_mats, per_craft_mats, 
     for model_id, required_qty in required_mats.items():
         qty = GLOBAL_CACHE.Inventory.GetModelCount(model_id)
         if qty < required_qty:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Not enough {model_id} to craft {crafts}x {target_model_id}. "
                 f"Required: {required_qty}, Found: {qty}",
-                Py4GW.Console.MessageType.Error,
+                PySystem.Console.MessageType.Error,
             )
             return
 
@@ -357,10 +357,10 @@ def craft_multiple_item_at_once(target_model_id, required_mats, per_craft_mats, 
                     total_collected += take_qty
 
                 if total_collected < total_needed:
-                    Py4GW.Console.Log(
+                    PySystem.Console.Log(
                         MODULE_NAME,
                         f"Missing {mat_model_id}: needed {total_needed}, only found {total_collected}.",
-                        Py4GW.Console.MessageType.Error,
+                        PySystem.Console.MessageType.Error,
                     )
                     return
 

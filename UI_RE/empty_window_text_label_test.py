@@ -78,7 +78,7 @@ def _enqueue_state_snapshot(prefix: str) -> None:
             f"text_label_decoded='{_read_decoded(TEXT_LABEL_ID)}'"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
 
 
 def _process_pending_reports() -> None:
@@ -118,7 +118,7 @@ def _create_empty_window() -> None:
         _log(f"create empty window invoke result empty_window={EMPTY_WINDOW_ID}")
 
     LAST_STATUS = "create empty window enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(LAST_STATUS)
     _schedule_report("state after create empty window")
 
@@ -157,7 +157,7 @@ def _insert_text_label() -> None:
         )
 
     LAST_STATUS = "insert text label enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(LAST_STATUS)
     _schedule_report("state after insert text label")
 

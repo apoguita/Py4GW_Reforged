@@ -18,17 +18,17 @@ bot = Botting(BOT_NAME)
 def DetectChestAndOpen(bot: Botting, max_distance=1000, max_attempts=3):
     """Detecte et ouvre les coffres via GetNearestGadget avec tentatives multiples"""
     coord = Player.GetXY()
-    ConsoleLog(BOT_NAME, f"[DEBUG] Position: {coord}", Py4GW.Console.MessageType.Info)
+    ConsoleLog(BOT_NAME, f"[DEBUG] Position: {coord}", PySystem.Console.MessageType.Info)
     
     yield from Routines.Yield.wait(2000)
     
     for attempt in range(max_attempts):
         chest_id = Routines.Agents.GetNearestGadget(max_distance)
         
-        ConsoleLog(BOT_NAME, f"[DEBUG] Tentative {attempt + 1}/{max_attempts} - GetNearestGadget = {chest_id}", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[DEBUG] Tentative {attempt + 1}/{max_attempts} - GetNearestGadget = {chest_id}", PySystem.Console.MessageType.Warning)
         
         if chest_id == 0:
-            ConsoleLog(BOT_NAME, f"[INFO] Aucun coffre trouve (tentative {attempt + 1})", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[INFO] Aucun coffre trouve (tentative {attempt + 1})", PySystem.Console.MessageType.Info)
             if attempt < max_attempts - 1:
                 yield from Routines.Yield.wait(1000)
                 continue
@@ -36,34 +36,34 @@ def DetectChestAndOpen(bot: Botting, max_distance=1000, max_attempts=3):
                 break
         
         if chest_id in opened_chests:
-            ConsoleLog(BOT_NAME, f"[INFO] Coffre {chest_id} deja traite", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[INFO] Coffre {chest_id} deja traite", PySystem.Console.MessageType.Info)
             break
         
         chest_pos = Agent.GetXY(chest_id)
         player_num = Agent.GetPlayerNumber(chest_id)
-        ConsoleLog(BOT_NAME, f"[SUCCESS] Coffre trouve - ID:{chest_id}, PlayerNum:{player_num}", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[SUCCESS] Coffre trouve - ID:{chest_id}, PlayerNum:{player_num}", PySystem.Console.MessageType.Warning)
         
         if chest_pos:
             chest_x, chest_y = chest_pos
-            ConsoleLog(BOT_NAME, f"[ACTION] Deplacement vers ({chest_x:.0f}, {chest_y:.0f})", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[ACTION] Deplacement vers ({chest_x:.0f}, {chest_y:.0f})", PySystem.Console.MessageType.Info)
             yield from Routines.Yield.Movement.FollowPath(path_points=[(chest_x, chest_y)])
             yield from Routines.Yield.wait(500)
             
-            ConsoleLog(BOT_NAME, f"[ACTION] Interaction avec coffre {chest_id}...", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[ACTION] Interaction avec coffre {chest_id}...", PySystem.Console.MessageType.Info)
             yield from Routines.Yield.Agents.InteractWithAgentXY(chest_x, chest_y)
             yield from Routines.Yield.wait(1500)
             
             chest_still_exists = Agent.GetXY(chest_id)
             if not chest_still_exists:
-                ConsoleLog(BOT_NAME, f"[SUCCESS] Coffre {chest_id} ouvert avec succes!", Py4GW.Console.MessageType.Info)
+                ConsoleLog(BOT_NAME, f"[SUCCESS] Coffre {chest_id} ouvert avec succes!", PySystem.Console.MessageType.Info)
                 opened_chests.add(chest_id)
                 break
             else:
-                ConsoleLog(BOT_NAME, f"[WARNING] Coffre {chest_id} toujours present, nouvelle tentative...", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(BOT_NAME, f"[WARNING] Coffre {chest_id} toujours present, nouvelle tentative...", PySystem.Console.MessageType.Warning)
                 if attempt < max_attempts - 1:
                     yield from Routines.Yield.wait(500)
                 else:
-                    ConsoleLog(BOT_NAME, f"[WARNING] Abandon apres {max_attempts} tentatives, passage au suivant", Py4GW.Console.MessageType.Warning)
+                    ConsoleLog(BOT_NAME, f"[WARNING] Abandon apres {max_attempts} tentatives, passage au suivant", PySystem.Console.MessageType.Warning)
                     opened_chests.add(chest_id)
     
     yield
@@ -81,7 +81,7 @@ def CheckIfStuck(last_position, current_position, threshold=50):
 
 def UnstuckPlayer():
     """Tente de debloquer le joueur"""
-    ConsoleLog(BOT_NAME, f"[UNSTUCK] Joueur bloque detecte, tentative de deblocage...", Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f"[UNSTUCK] Joueur bloque detecte, tentative de deblocage...", PySystem.Console.MessageType.Warning)
     
     current_pos = Player.GetXY()
     offsets = [(9000, 0), (-9000, 0), (0, 9000), (0, -9000), (9500, 9500), (-9500, -9500)]
@@ -89,13 +89,13 @@ def UnstuckPlayer():
     for offset_x, offset_y in offsets:
         new_x = current_pos[0] + offset_x
         new_y = current_pos[1] + offset_y
-        ConsoleLog(BOT_NAME, f"[UNSTUCK] Tentative deplacement vers ({new_x:.0f}, {new_y:.0f})", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, f"[UNSTUCK] Tentative deplacement vers ({new_x:.0f}, {new_y:.0f})", PySystem.Console.MessageType.Info)
         yield from Routines.Yield.Movement.FollowPath(path_points=[(new_x, new_y)])
         yield from Routines.Yield.wait(500)
         
         check_pos = Player.GetXY()
         if not CheckIfStuck(current_pos, check_pos, threshold=100):
-            ConsoleLog(BOT_NAME, f"[UNSTUCK] Deblocage reussi!", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[UNSTUCK] Deblocage reussi!", PySystem.Console.MessageType.Info)
             break
     
     yield
@@ -109,13 +109,13 @@ def ResetOpenedChests():
 
 
 def _on_party_wipe(bot: "Botting"):
-    ConsoleLog(BOT_NAME, f"[WIPE] Party wipe detecte!", Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f"[WIPE] Party wipe detecte!", PySystem.Console.MessageType.Warning)
     
     while Agent.IsDead(Player.GetAgentID()):
         yield from Routines.Yield.wait(1000)
         
         if not Routines.Checks.Map.MapValid():
-            ConsoleLog(BOT_NAME, f"[WIPE] Teleporte en ville apres mort du PNJ, relance du run...", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, f"[WIPE] Teleporte en ville apres mort du PNJ, relance du run...", PySystem.Console.MessageType.Warning)
             
             yield from Routines.Yield.wait(3000)
             
@@ -125,10 +125,10 @@ def _on_party_wipe(bot: "Botting"):
             bot.config.FSM.resume()
             bot.config.FSM.jump_to_state_by_name(f"[H]{BOT_NAME}_loop_3")
             
-            ConsoleLog(BOT_NAME, f"[WIPE] Redemarrage du run depuis la boucle, team conservee", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[WIPE] Redemarrage du run depuis la boucle, team conservee", PySystem.Console.MessageType.Info)
             return
 
-    ConsoleLog(BOT_NAME, f"[WIPE] Joueur ressuscite sur place, continuation...", Py4GW.Console.MessageType.Info)
+    ConsoleLog(BOT_NAME, f"[WIPE] Joueur ressuscite sur place, continuation...", PySystem.Console.MessageType.Info)
     bot.config.FSM.pause()
     bot.config.FSM.jump_to_state_by_name(f"[H]{BOT_NAME}_loop_3")
     bot.config.FSM.resume()

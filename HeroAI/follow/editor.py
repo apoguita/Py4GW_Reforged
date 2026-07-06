@@ -170,7 +170,7 @@ ui = UIState()
 
 def _log_action(message: str):
     try:
-        Py4GW.Console.Log(MODULE_NAME, message, Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Info)
     except Exception:
         pass
 

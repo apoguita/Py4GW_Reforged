@@ -4,7 +4,7 @@ import os
 import shutil
 from typing import Optional
 
-from Py4GW import Console
+import PySystem
 import Py4GW
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.enums_src.GameData_enums import DyeColor

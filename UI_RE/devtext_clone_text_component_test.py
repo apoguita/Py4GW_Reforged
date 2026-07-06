@@ -194,7 +194,7 @@ def _create_raw_clone() -> None:
             frame_label=CLONE_LABEL,
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(f"create raw clone enqueued label='{CLONE_LABEL}'")
     _schedule_report("state after create raw clone")
 
@@ -226,7 +226,7 @@ def _create_component_clone() -> None:
         if clone_root > 0:
             GWUI.TriggerFrameRedrawByFrameId(clone_root)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create component enqueued view_root={view_root} "
         f"message=0x7FFFFFF5 flags=0x0 proc=0x{UI_MULTI_LINE_TEXT_CONTROL_PROC:X} "
@@ -252,7 +252,7 @@ def _update_current_element_text() -> None:
         if clone_root > 0:
             GWUI.TriggerFrameRedrawByFrameId(clone_root)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"update text enqueued target={target} message=0x62 "
         f"text=0x{ctypes.addressof(UPDATED_TEXT):X} value='{UPDATED_TEXT.value}'"

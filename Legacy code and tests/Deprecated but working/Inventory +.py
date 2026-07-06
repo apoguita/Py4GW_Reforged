@@ -1275,14 +1275,14 @@ def DrawAutoHandler():
         
         if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##autosalvsave"):
             global_vars.auto_widget_options.save_to_ini()
-            ConsoleLog(MODULE_NAME, "Settings saved to Auto Inv.ini", Py4GW.Console.MessageType.Success)
+            ConsoleLog(MODULE_NAME, "Settings saved to Auto Inv.ini", PySystem.Console.MessageType.Success)
         ImGui.show_tooltip("Save Settings")
         PyImGui.same_line(0,-1)
         if PyImGui.button(IconsFontAwesome5.ICON_SYNC + "##autosalvreload"):
             global_vars.auto_widget_options.load_from_ini(global_vars.auto_widget_options.ini)
             global_vars.auto_widget_options.lookup_throttle.SetThrottleTime(global_vars.auto_widget_options._LOOKUP_TIME)
             global_vars.auto_widget_options.lookup_throttle.Reset()
-            ConsoleLog(MODULE_NAME, "Settings reloaded from Auto Inv.ini", Py4GW.Console.MessageType.Success)
+            ConsoleLog(MODULE_NAME, "Settings reloaded from Auto Inv.ini", PySystem.Console.MessageType.Success)
         ImGui.show_tooltip("Reload Settings")
         
         PyImGui.separator()
@@ -1420,7 +1420,7 @@ def main():
         global_vars.auto_widget_options.lookup_throttle.SetThrottleTime(global_vars.auto_widget_options._LOOKUP_TIME)
         global_vars.auto_widget_options.lookup_throttle.Reset()
         global_vars.auto_widget_options.initialized = True
-        ConsoleLog(MODULE_NAME, "Auto Widget Options initialized", Py4GW.Console.MessageType.Success)
+        ConsoleLog(MODULE_NAME, "Auto Widget Options initialized", PySystem.Console.MessageType.Success)
         
     if not Map.IsExplorable():
         global_vars.auto_widget_options.lookup_throttle.Stop()

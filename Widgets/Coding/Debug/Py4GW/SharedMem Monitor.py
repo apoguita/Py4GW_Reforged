@@ -14,7 +14,7 @@ MODULE_NAME = "Shared Memory Monitor"
 MODULE_ICON = "Textures/Module_Icons/Shared Memory.png"
   
 SMM = GLOBAL_CACHE.ShMem    
-BASE_PATH = Py4GW.Console.get_projects_path()
+BASE_PATH = PySystem.Console.get_projects_path()
 FACTIONS_TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Faction_Icons\\"
 GAME_UI_TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Game UI\\"
 
@@ -78,7 +78,7 @@ def end_striped_table():
 #region AccountInfo
 def draw_account_info(player: AccountStruct):
 
-    current_tick = Py4GW.Game.get_tick_count64()
+    current_tick = PySystem.get_tick_count64()
     age_ms = max(0, current_tick - player.LastUpdated) # Time since update in ms
     timestamp = datetime.now() - timedelta(milliseconds=age_ms)
     milliseconds = int(timestamp.microsecond / 1000)

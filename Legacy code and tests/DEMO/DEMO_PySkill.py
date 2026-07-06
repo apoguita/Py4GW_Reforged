@@ -122,11 +122,11 @@ def main():
     
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log("PySkill_DEMO", f"ImportError encountered: {str(e)}")
+        PySystem.Console.Log("PySkill_DEMO", f"ImportError encountered: {str(e)}")
     except ValueError as e:
-        Py4GW.Console.Log("PySkill_DEMO", f"ValueError encountered: {str(e)}")
+        PySystem.Console.Log("PySkill_DEMO", f"ValueError encountered: {str(e)}")
     except Exception as e:
-        Py4GW.Console.Log("PySkill_DEMO", f"Unexpected error encountered: {str(e)}")
+        PySystem.Console.Log("PySkill_DEMO", f"Unexpected error encountered: {str(e)}")
     finally:
         pass  # Replace with your actual code
 

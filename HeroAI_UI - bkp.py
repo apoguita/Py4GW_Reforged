@@ -44,7 +44,7 @@ class HeroAIFloatingIcon:
     FLOATING_INI_KEY: str = ""
     CONFIG_INI_KEY: str = ""
     INI_INIT: bool = False
-    ICON_PATH: str = os.path.join(Py4GW.Console.get_projects_path(), "Textures", "Module_Icons", "HeroAI.png")
+    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Module_Icons", "HeroAI.png")
 
 
 window_factory = WindowFactory(HeroAIFloatingIcon.INI_PATH)
@@ -1378,7 +1378,7 @@ def main():
         if PlayersWindow is not None:
             PlayersWindow.draw_window()
     except Exception as exc:
-        Py4GW.Console.Log(HeroAIFloatingIcon.MODULE_NAME, f"Error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(HeroAIFloatingIcon.MODULE_NAME, f"Error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional, Tuple
 
-import Py4GW
-import PyCombatEvents
+import PySystem
+import PyAgentEvents
 
 from .CombatEventQueue_src import helpers
 from .enums import EventType
@@ -252,7 +252,7 @@ COMBAT_EVENTS = CombatEvents()
 try:
     CombatEvents.Enable()
 except Exception as e:
-    Py4GW.Console.Log("CombatEvents", f"Module init error: {e}", Py4GW.Console.MessageType.Error)
+    PySystem.Console.Log("CombatEvents", f"Module init error: {e}", PySystem.Console.MessageType.Error)
 
 
 EventTypes = EventType

@@ -86,10 +86,10 @@ def draw_window() -> None:
     wrapper:AgentArraySHMemWrapper | None = SystemShaMemMgr.get_agent_array_wrapper()
 
     if PyImGui.begin("Shared Memory Agent Array Test"):
-        PyImGui.text(f"Ready: {Py4GW.Game.is_shared_memory_ready()}")
-        PyImGui.text(f"Name: {Py4GW.Game.get_shared_memory_name()}")
-        PyImGui.text(f"Size: {Py4GW.Game.get_shared_memory_size()}")
-        PyImGui.text(f"Sequence (API): {Py4GW.Game.get_shared_memory_sequence()}")
+        PyImGui.text(f"Ready: {Py4GW.SharedMemory.is_ready()}")
+        PyImGui.text(f"Name: {PySystem.get_shared_memory_name()}")
+        PyImGui.text(f"Size: {Py4GW.SharedMemory.get_size()}")
+        PyImGui.text(f"Sequence (API): {Py4GW.SharedMemory.get_sequence()}")
 
         if SystemShaMemMgr.shm is None:
             PyImGui.separator()

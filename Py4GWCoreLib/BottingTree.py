@@ -1,7 +1,7 @@
 import time
 from typing import Callable, Sequence
 
-import Py4GW
+import PySystem
 from HeroAI.headless_tree import HeroAIHeadlessTree
 
 from .botting_tree_src.account_config import BottingTreeAccountConfig
@@ -172,7 +172,7 @@ class BottingTree(
         self._apply_widget_policies()
         self._apply_auto_inventory_handler_policy()
 
-        Py4GW.Console.Log('BottingTree', 'Botting tree started.', Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log('BottingTree', 'Botting tree started.', PySystem.Console.MessageType.Info)
 
     def Stop(self):
         if self.started:
@@ -186,7 +186,7 @@ class BottingTree(
             self._restore_heroai_widget_after_headless()
             self._sync_multibox_heroai_widget(False)
 
-            Py4GW.Console.Log('BottingTree', 'Botting tree stopped and reset.', Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log('BottingTree', 'Botting tree stopped and reset.', PySystem.Console.MessageType.Info)
 
     def Reset(self):
         self.tree.reset()
@@ -209,20 +209,20 @@ class BottingTree(
             self._sync_multibox_heroai_widget(True)
         self.ClearPendingMessages()
 
-        Py4GW.Console.Log('BottingTree', 'Botting tree reset.', Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log('BottingTree', 'Botting tree reset.', PySystem.Console.MessageType.Info)
 
     def Pause(self, pause: bool = True):
         if pause and not self.paused:
             self.paused = True
             self._restore_heroai_widget_after_headless()
             self._sync_multibox_heroai_widget(False)
-            Py4GW.Console.Log('BottingTree', 'Botting tree paused.', Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log('BottingTree', 'Botting tree paused.', PySystem.Console.MessageType.Info)
         elif not pause and self.paused:
             self.paused = False
             if self.started and self.IsHeadlessHeroAIEnabled():
                 self._disable_heroai_widget_for_headless()
                 self._sync_multibox_heroai_widget(True)
-            Py4GW.Console.Log('BottingTree', 'Botting tree unpaused.', Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log('BottingTree', 'Botting tree unpaused.', PySystem.Console.MessageType.Info)
 
     def IsPaused(self) -> bool:
         return self.paused

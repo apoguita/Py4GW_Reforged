@@ -1,5 +1,5 @@
 from platform import node
-import Py4GW
+import PySystem
 import os
 import PyImGui
 from Py4GWCoreLib.Player import Player
@@ -71,7 +71,7 @@ class IniManager:
             return
 
         self.defaults_path = "Defaults/"
-        self.base_path = Py4GW.Console.get_projects_path() + "/Settings/"
+        self.base_path = PySystem.Console.get_projects_path() + "/Settings/"
         self._handlers: dict[str, ConfigNode] = {}
         
 

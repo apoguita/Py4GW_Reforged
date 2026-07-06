@@ -16,11 +16,11 @@ def create_bot_routine(bot: Botting) -> None:
     bot.Wait.UntilCondition(lambda: False)
     
 def _on_death(bot: "Botting"):
-    ConsoleLog(bot.config.bot_name, "You have died.", Py4GW.Console.MessageType.Warning)                          
+    ConsoleLog(bot.config.bot_name, "You have died.", PySystem.Console.MessageType.Warning)                          
     yield  
     
 def on_death(bot: "Botting"):
-    ConsoleLog("Death detected", "running code", Py4GW.Console.MessageType.Notice)
+    ConsoleLog("Death detected", "running code", PySystem.Console.MessageType.Notice)
     ActionQueueManager().ResetAllQueues()
     fsm = bot.config.FSM
     fsm.pause()
@@ -37,7 +37,7 @@ def main():
         bot.UI.draw_window()
 
     except Exception as e:
-        Py4GW.Console.Log(bot.config.bot_name, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot.config.bot_name, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 if __name__ == "__main__":

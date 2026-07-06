@@ -4,7 +4,7 @@ import sys
 import time
 from typing import Optional
 
-from Py4GW import Console
+import PySystem
 import Py4GW
 import PyImGui
 
@@ -27,7 +27,7 @@ for module_name in list(sys.modules.keys()):
                 # importlib.reload(module_name)
                 pass
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Error reloading module {module_name}: {e}")
+            PySystem.Console.Log(MODULE_NAME, f"Error reloading module {module_name}: {e}")
             
 from Sources.frenkeyLib.MultiBoxing.messaging import HandleReceivedMessages
 from Sources.frenkeyLib.MultiBoxing.enum import RenameClientType
@@ -62,14 +62,14 @@ def configure():
         gui.draw_configure_window()
         
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error in draw(): {e}", Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}", Console.MessageType.Error)
 
 def draw():    
     try:          
         gui.draw_access_window()
         
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error in draw(): {e}",  Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}",  Console.MessageType.Error)
     
 def on_enable():
     settings.load_layouts()
@@ -80,7 +80,7 @@ def on_enable():
     pass
 
 def on_disable():
-    Py4GW.Console.Log(MODULE_NAME, "Module disabled.")
+    PySystem.Console.Log(MODULE_NAME, "Module disabled.")
     pass
 
 last_character_name : str = ""
@@ -127,7 +127,7 @@ def main():
             draw()
         
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error in draw(): {e}",  Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}",  Console.MessageType.Error)
     
     if not Routines.Checks.Map.MapValid():
         return 

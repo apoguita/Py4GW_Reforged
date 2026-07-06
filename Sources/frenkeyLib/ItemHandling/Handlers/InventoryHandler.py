@@ -47,15 +47,15 @@ class InventoryHandler:
                 else:
                     match action:
                         case ItemAction.Destroy:
-                            Py4GW.Console.Log("InventoryHandler", f"Destroying item {item_id}", Py4GW.Console.MessageType.Info)        
+                            PySystem.Console.Log("InventoryHandler", f"Destroying item {item_id}", PySystem.Console.MessageType.Info)        
                             # Inventory.DestroyItem(item_id)
                         
                         case ItemAction.Identify:
-                            Py4GW.Console.Log("InventoryHandler", f"Identifying item {item_id}", Py4GW.Console.MessageType.Info)        
+                            PySystem.Console.Log("InventoryHandler", f"Identifying item {item_id}", PySystem.Console.MessageType.Info)        
                             # Inventory.IdentifyItem(item_id)
                         
                         case ItemAction.Use:
-                            Py4GW.Console.Log("InventoryHandler", f"Using item {item_id} {item.quantity} times", Py4GW.Console.MessageType.Info)     
+                            PySystem.Console.Log("InventoryHandler", f"Using item {item_id} {item.quantity} times", PySystem.Console.MessageType.Info)     
                             for _ in range(item.quantity):   
                                 # Inventory.UseItem(item_id)
                                 pass

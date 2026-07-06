@@ -1,4 +1,4 @@
-import Py4GW
+import PySystem
 import PyImGui
 from typing import Callable, TypeAlias
 
@@ -25,7 +25,7 @@ initialized = False
 INI_KEY = ""
 INI_PATH = "Widgets/BeautifulPreSearing"
 INI_FILENAME = "BeautifulPreSearing.ini"
-projects_root = Py4GW.Console.get_projects_path()
+projects_root = PySystem.Console.get_projects_path()
 TEXTURE_PATH = f"{projects_root}/Sources/ApoSource/beautiful_pre_searing_src/resources/Beautiful Pre-Searing-banner.png"
 
 draw_move_path = True

@@ -29,7 +29,7 @@ SKELETON_TRAP_ID = 32558
 
 
 def _force_reset():
-    ConsoleLog("Skeleton Collector", "Unmanaged fail → force soft reset.", Py4GW.Console.MessageType.Warning)
+    ConsoleLog("Skeleton Collector", "Unmanaged fail → force soft reset.", PySystem.Console.MessageType.Warning)
     ActionQueueManager().ResetAllQueues()
     fsm = bot.config.FSM
     fsm.jump_to_state_by_name("[H]Killing_Skeleton_5")
@@ -74,7 +74,7 @@ def broadcast_item(model_id: int, repeat=5, use_locally=True, delay=100):
             item_id = GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id)
             if not item_id:
                 ConsoleLog("ItemBroadCaster", f"ItemId für Model {model_id} nicht gefunden.",
-                           Py4GW.Console.MessageType.Warning)
+                           PySystem.Console.MessageType.Warning)
                 break
             GLOBAL_CACHE.Inventory.UseItem(item_id)
             yield from Routines.Yield.wait(delay)
@@ -85,13 +85,13 @@ def broadcast_item(model_id: int, repeat=5, use_locally=True, delay=100):
 def broadcast_skill(skill_name: str, cast_locally=True, delay=300):
     skill_id = int(GLOBAL_CACHE.Skill.GetID(skill_name) or 0)
     if not skill_id:
-        ConsoleLog("SkillBroadCaster", f"Skill '{skill_name}' not found.", Py4GW.Console.MessageType.Error)
+        ConsoleLog("SkillBroadCaster", f"Skill '{skill_name}' not found.", PySystem.Console.MessageType.Error)
         return
 
     target_id = Player.GetTargetID()
-    ConsoleLog("SkillBroadCaster", f"Target ID is {target_id}", Py4GW.Console.MessageType.Info)
+    ConsoleLog("SkillBroadCaster", f"Target ID is {target_id}", PySystem.Console.MessageType.Info)
     if not target_id:
-        ConsoleLog("SkillBroadCaster", "No current target on main account.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog("SkillBroadCaster", "No current target on main account.", PySystem.Console.MessageType.Warning)
         return
 
     sender = Player.GetAccountEmail()

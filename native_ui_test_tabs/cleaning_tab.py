@@ -220,27 +220,27 @@ def draw() -> None:
     descendants = _get_descendants(target_frame_id)
 
     if PyImGui.button("Create Window"):
-        Py4GW.Game.enqueue(rect_tab._create_window)
+        PyGameThread.enqueue(rect_tab._create_window)
 
     PyImGui.same_line(0.0, -1.0)
     if PyImGui.button("Refresh Target"):
-        Py4GW.Game.enqueue(_refresh_target)
+        PyGameThread.enqueue(_refresh_target)
 
     PyImGui.same_line(0.0, -1.0)
     if PyImGui.button("Clear Direct Child Host"):
-        Py4GW.Game.enqueue(_clear_direct_child_host)
+        PyGameThread.enqueue(_clear_direct_child_host)
 
     PyImGui.same_line(0.0, -1.0)
     if PyImGui.button("Clear Nested Content Host"):
-        Py4GW.Game.enqueue(_clear_nested_content_host)
+        PyGameThread.enqueue(_clear_nested_content_host)
 
     PyImGui.same_line(0.0, -1.0)
     if PyImGui.button("Destroy Direct Children"):
-        Py4GW.Game.enqueue(_destroy_direct_children)
+        PyGameThread.enqueue(_destroy_direct_children)
 
     PyImGui.same_line(0.0, -1.0)
     if PyImGui.button("Destroy All Descendants"):
-        Py4GW.Game.enqueue(_destroy_descendants)
+        PyGameThread.enqueue(_destroy_descendants)
 
     PyImGui.separator()
     PyImGui.text(f"Target Label: {rect_tab.WINDOW_TITLE}")

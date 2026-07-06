@@ -27,13 +27,13 @@ def DrawWindow():
         if start_salvage and not salvage_started:
             salvage_kit_id = Inventory.GetFirstSalvageKit()
             if salvage_kit_id == 0:
-                Py4GW.Console.Log("SalvageFirst", "No salvage kit found.")
+                PySystem.Console.Log("SalvageFirst", "No salvage kit found.")
                 return False
 
             # Find the first salvageable item based on the rarity filter
             salvage_item_id = Inventory.GetFirstSalvageableItem()
             if salvage_item_id == 0:
-                Py4GW.Console.Log("SalvageFirst", "No salvageable item found.")
+                PySystem.Console.Log("SalvageFirst", "No salvageable item found.")
                 return False
 
             # Use the Salvage Kit to salvage the item

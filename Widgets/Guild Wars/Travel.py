@@ -21,7 +21,7 @@ from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import Widget, WidgetHandler, g
 MODULE_NAME = "Travel"
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-root_directory = Py4GW.Console.get_projects_path()
+root_directory = PySystem.Console.get_projects_path()
 
 save_throttle_time = 1000
 save_throttle_timer = Timer()
@@ -255,7 +255,7 @@ def configure():
                                 PyImGui.table_next_column()
                                 ImGui.show_tooltip(f"{outpost} ({id})")
                             else:
-                                Py4GW.Console.Log(MODULE_NAME, f"Favorite outpost {id} not found in outposts.", Py4GW.Console.MessageType.Warning)
+                                PySystem.Console.Log(MODULE_NAME, f"Favorite outpost {id} not found in outposts.", PySystem.Console.MessageType.Warning)
                                 
                         PyImGui.end_table()
                             
@@ -483,7 +483,7 @@ def DrawWindow():
                                 
                                 ImGui.show_tooltip(f"{outpost} ({id})")
                             else:
-                                Py4GW.Console.Log(MODULE_NAME, f"Favorite outpost {id} not found in outposts.", Py4GW.Console.MessageType.Warning)
+                                PySystem.Console.Log(MODULE_NAME, f"Favorite outpost {id} not found in outposts.", PySystem.Console.MessageType.Warning)
                                 
                         PyImGui.end_table()
                 
@@ -533,7 +533,7 @@ def DrawWindow():
                         
                         ImGui.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
                         if PyImGui.is_item_clicked(0) or (is_selected and PyImGui.is_key_pressed(Key.Enter.value)):
-                            ConsoleLog(MODULE_NAME, f"Traveling to outpost {outpost} ({id}) from history.", Py4GW.Console.MessageType.Info)
+                            ConsoleLog(MODULE_NAME, f"Traveling to outpost {outpost} ({id}) from history.", PySystem.Console.MessageType.Info)
                             click_select_outpost(io, id, i)
                             traveled = True
                             
@@ -560,7 +560,7 @@ def DrawWindow():
                             is_selected = i == outpost_index
                             ImGui.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
                             if PyImGui.is_item_clicked(0) or (is_selected and PyImGui.is_key_pressed(Key.Enter.value)):
-                                ConsoleLog(MODULE_NAME, f"Traveling to outpost {outpost} ({id}) from search results.", Py4GW.Console.MessageType.Info)
+                                ConsoleLog(MODULE_NAME, f"Traveling to outpost {outpost} ({id}) from search results.", PySystem.Console.MessageType.Info)
                                 click_select_outpost(io, id, i)                                
                                 traveled = True
                             
@@ -614,7 +614,7 @@ def DrawWindow():
 
     except Exception as e:
         is_traveling = False
-        Py4GW.Console.Log(MODULE_NAME, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(MODULE_NAME, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Debug)
 
 def ensure_on_screen(button_rect, screen_width, screen_height) -> tuple[float, float, float, float]:
     global widget_config
@@ -660,7 +660,7 @@ def TravelToOutpost(outpost_id):
     
     if not is_traveling:
         if outpost_id != Map.GetMapID():
-            ConsoleLog(MODULE_NAME, f"Traveling to outpost: {outposts[outpost_id]} ({outpost_id})", Py4GW.Console.MessageType.Debug)
+            ConsoleLog(MODULE_NAME, f"Traveling to outpost: {outposts[outpost_id]} ({outpost_id})", PySystem.Console.MessageType.Debug)
             is_traveling = True
             Map.Travel(outpost_id)
             
@@ -675,7 +675,7 @@ def TravelToOutpost(outpost_id):
                 # Remove the oldest entry
                 travel_history.pop()
     else:
-        ConsoleLog(MODULE_NAME, "Already traveling, please wait.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "Already traveling, please wait.", PySystem.Console.MessageType.Warning)
     
     if widget_config.close_after_travel:
         window_module.open = False
@@ -704,7 +704,7 @@ def main():
             DrawWindow()
             
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error in main: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(MODULE_NAME, f"Error in main: {str(e)}", PySystem.Console.MessageType.Debug)
         return False
     return True
 

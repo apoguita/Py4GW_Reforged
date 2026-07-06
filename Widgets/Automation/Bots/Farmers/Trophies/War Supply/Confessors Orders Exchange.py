@@ -24,7 +24,7 @@ def _get_order_stacks() -> List[Tuple[int, int]]:
                     if item_id > 0 and qty > 0:
                         stacks.append((item_id, qty))
         except Exception:
-            ConsoleLog(MODULE_NAME, f"Stack scan failed on bag {bag_id}.", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(MODULE_NAME, f"Stack scan failed on bag {bag_id}.", PySystem.Console.MessageType.Warning)
     return stacks
 
 
@@ -63,14 +63,14 @@ def _exchange_orders():
     if war_supply_item_id == 0:
         ConsoleLog(MODULE_NAME,
                    "War Supply not found in collector offers — make sure the collector dialog is open.",
-                   Py4GW.Console.MessageType.Warning)
+                   PySystem.Console.MessageType.Warning)
         return
 
     stacks = _get_order_stacks()
     total  = sum(qty for _, qty in stacks)
     ConsoleLog(MODULE_NAME,
                f"Starting exchange: {total} Confessor's Orders → {total // _EXCHANGE_RATE} War Supplies.",
-               Py4GW.Console.MessageType.Info)
+               PySystem.Console.MessageType.Info)
 
     while True:
         stacks = _get_order_stacks()
@@ -92,7 +92,7 @@ def _exchange_orders():
 
         yield from Routines.Yield.wait(200)   # brief settle between exchanges
 
-    ConsoleLog(MODULE_NAME, "Exchange complete.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, "Exchange complete.", PySystem.Console.MessageType.Info)
 
 
 def main():

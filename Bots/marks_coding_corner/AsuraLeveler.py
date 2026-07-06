@@ -75,7 +75,7 @@ bot.SetMainRoutine(asura_leveler)
 
 def main():
     bot.Update()
-    projects_path = Py4GW.Console.get_projects_path()
+    projects_path = PySystem.Console.get_projects_path()
     widgets_path = projects_path + "\\Bots\\marks_coding_corner\\textures\\"
     texture_icon_path = f'{widgets_path}\\asura_art.jpg'
     bot.UI.draw_window(icon_path=texture_icon_path)

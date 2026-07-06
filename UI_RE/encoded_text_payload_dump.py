@@ -134,7 +134,7 @@ def _run_literal_dump() -> None:
         ptr = int(CREATE_ENCODED_TEXT_FN.directCall(8, 7, text, 0) or 0)
         _dump_payload(f"literal '{text}'", ptr)
 
-    Py4GW.Game.enqueue(_work)
+    PyGameThread.enqueue(_work)
     LAST_STATUS = f"literal dump enqueued text='{text}'"
     _log(LAST_STATUS)
 
@@ -159,7 +159,7 @@ def _run_compare_dump() -> None:
         _dump_payload(f"compare A '{text_a}'", ptr_a)
         _dump_payload(f"compare B '{text_b}'", ptr_b)
 
-    Py4GW.Game.enqueue(_work)
+    PyGameThread.enqueue(_work)
     LAST_STATUS = f"compare dump enqueued a='{text_a}' b='{text_b}'"
     _log(LAST_STATUS)
 
@@ -181,7 +181,7 @@ def _run_string_id_dump() -> None:
         ptr = int(CREATE_ENCODED_TEXT_FROM_ID_FN.directCall(string_id) or 0)
         _dump_payload(f"string_id 0x{string_id:X}", ptr)
 
-    Py4GW.Game.enqueue(_work)
+    PyGameThread.enqueue(_work)
     LAST_STATUS = f"string-id dump enqueued id=0x{string_id:X}"
     _log(LAST_STATUS)
 
@@ -206,7 +206,7 @@ def _run_compare_string_ids_dump() -> None:
         _dump_payload(f"string_id A 0x{string_id_a:X}", ptr_a)
         _dump_payload(f"string_id B 0x{string_id_b:X}", ptr_b)
 
-    Py4GW.Game.enqueue(_work)
+    PyGameThread.enqueue(_work)
     LAST_STATUS = f"compare string-id dump enqueued a=0x{string_id_a:X} b=0x{string_id_b:X}"
     _log(LAST_STATUS)
 

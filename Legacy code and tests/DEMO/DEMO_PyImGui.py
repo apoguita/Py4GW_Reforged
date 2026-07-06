@@ -46,7 +46,7 @@ def DrawWindow():
                 PyImGui.same_line(0.0, -1.0)
                 PyImGui.set_tooltip("Button clicked!")
                 PyImGui.text("Button clicked!")
-                Py4GW.Console.Log(module_name, "Button Clicked!")
+                PySystem.Console.Log(module_name, "Button Clicked!")
             PyImGui.separator()
 
             if PyImGui.button("Increment Counter"):
@@ -164,11 +164,11 @@ def main():
     try:
         DrawWindow()
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}")
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}")
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}")
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}")
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}")
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}")
     finally:
         pass  # Replace with your actual code
 

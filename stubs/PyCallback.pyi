@@ -1,118 +1,49 @@
-from typing import Callable, List, Tuple
-from enum import IntEnum
+# PyCallback stub — Reforged Native surface (2026-07-06)
+# Frame callback scheduler with phased execution and priorities.
 
-# Matches: using CallbackId = uint64_t
+from enum import IntEnum
+from typing import Callable, Any
+
 class Phase(IntEnum):
-    PreUpdate = 0
-    Data = 1
-    Update = 2
-    
+    PreUpdate: int
+    Data: int
+    Update: int
+
 class Context(IntEnum):
-    Update = 0
-    Draw = 1
-    Main = 2
+    Update: int
+    Draw: int
+    Main: int
 
 class PyCallback:
-    """
-    Global phased callback scheduler.
-
-    All methods are static.
-    """
-
-    # -------------------------------------------------
-    # Registration
-    # -------------------------------------------------
     @staticmethod
     def Register(
         name: str,
+        fn: Callable[[], Any],
         phase: Phase,
-        fn: Callable[[], None],
         priority: int = 99,
-        context: Context = Context.Draw
-        
-    ) -> int:
-        """
-        Register or replace a callback.
-
-        Replacement rules:
-        - Same name AND same phase → replaces function, keeps id and order
-
-        Returns:
-            CallbackId
-        """
-        ...
-
-    # -------------------------------------------------
-    # Removal
-    # -------------------------------------------------
-    @staticmethod
-    def RemoveById(id: int) -> bool:
-        """
-        Remove callback by id.
-        Returns True if removed.
-        """
-        ...
+        context: Context = Context.Draw,
+    ) -> int: ...
 
     @staticmethod
-    def RemoveByName(name: str) -> bool:
-        """
-        Remove ALL callbacks matching name (any phase).
-        Returns True if at least one was removed.
-        """
-        ...
+    def RemoveById(id: int) -> None: ...
 
     @staticmethod
-    def Clear() -> None:
-        """
-        Alias for RemoveAll().
-        """
-        ...
-        
-    @staticmethod
-    def PauseById(id: int) -> bool:
-        """
-        Pause callback by id.
-        Returns True if paused.
-        """
-        ...
-        
-    @staticmethod
-    def ResumeById(id: int) -> bool:
-        """
-        Resume callback by id.
-        Returns True if resumed.
-        """
-        ...
-        
-    @staticmethod
-    def IsPaused(id: int) -> bool:
-        """
-        Check if callback is paused by id.
-        Returns True if paused.
-        """
-        ...
-        
-    @staticmethod
-    def IsRegistered(id: int) -> bool:
-        """
-        Check if callback is registered by id.
-        Returns True if registered.
-        """
-        ...
+    def RemoveByName(name: str) -> None: ...
 
     @staticmethod
-    def GetCallbackInfo() -> List[
-        Tuple[
-            int,  # id
-            str,         # name
-            int,         # phase (int)
-            int,        # context (int)
-            int,         # priority
-            int,         # order
-            bool         # paused / enabled
-        ]
-    ]:
-        """
-        Return a snapshot of all registered callbacks.
-        """
-        ...
+    def PauseById(id: int) -> None: ...
+
+    @staticmethod
+    def ResumeById(id: int) -> None: ...
+
+    @staticmethod
+    def IsPaused(id: int) -> bool: ...
+
+    @staticmethod
+    def IsRegistered(id: int) -> bool: ...
+
+    @staticmethod
+    def Clear() -> None: ...
+
+    @staticmethod
+    def GetCallbackInfo() -> list[tuple]: ...

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 InventorySlots: list[FrameInfo] = []
 auto_handler = AutoInventoryHandler()
-projects_path = Py4GW.Console.get_projects_path()
+projects_path = PySystem.Console.get_projects_path()
 full_path = projects_path + "\\Widgets\\Config\\InventoryPlus.ini"
 initialized = False
 
@@ -929,7 +929,7 @@ def update_auto_handler():
         auto_handler.lookup_throttle.SetThrottleTime(auto_handler._LOOKUP_TIME)
         auto_handler.lookup_throttle.Reset()
         auto_handler.initialized = True
-        ConsoleLog("AutoInventoryHandler", "Auto Handler Options initialized", Py4GW.Console.MessageType.Success)
+        ConsoleLog("AutoInventoryHandler", "Auto Handler Options initialized", PySystem.Console.MessageType.Success)
         
     if not Map.IsExplorable():
         auto_handler.lookup_throttle.Stop()

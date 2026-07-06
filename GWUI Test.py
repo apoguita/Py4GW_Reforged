@@ -156,7 +156,7 @@ def _create_window() -> None:
             window_title=WINDOW_TITLE,
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create window enqueued label='{WINDOW_LABEL}' rect=({WINDOW_X},{WINDOW_Y},{WINDOW_WIDTH},{WINDOW_HEIGHT}) "
         f"parent={WINDOW_PARENT_ID} child_index={WINDOW_CHILD_INDEX} flags=0x{WINDOW_FLAGS:X} "
@@ -198,7 +198,7 @@ def _create_text_label() -> None:
             or 0
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create text label enqueued parent={parent_id} child_index={TEXT_LABEL_CHILD_INDEX} "
         f"flags=0x{TEXT_LABEL_FLAGS:X} text='{TEXT_LABEL_TEXT}' component_label='{TEXT_LABEL_COMPONENT_LABEL}'"
@@ -279,7 +279,7 @@ def _set_visible(is_visible: bool) -> None:
     def _invoke() -> None:
         GWUI.SetFrameVisibleByFrameId(window_id, is_visible)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(f"set visible enqueued window={window_id} is_visible={is_visible}")
     _schedule_report(f"state after set visible {is_visible}")
 
@@ -293,7 +293,7 @@ def _set_disabled(is_disabled: bool) -> None:
     def _invoke() -> None:
         GWUI.SetFrameDisabledByFrameId(window_id, is_disabled)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(f"set disabled enqueued window={window_id} is_disabled={is_disabled}")
     _schedule_report(f"state after set disabled {is_disabled}")
 

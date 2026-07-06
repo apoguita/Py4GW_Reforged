@@ -2213,7 +2213,7 @@ class HeroAI_BaseUI:
                 from HeroAI.follow.editor import main as draw_follow_formations_editor
                 HeroAI_BaseUI.show_follow_formations_editor_window = bool(draw_follow_formations_editor())
             except Exception as e:
-                Py4GW.Console.Log("HeroAI", f"Follow formations editor failed: {e}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("HeroAI", f"Follow formations editor failed: {e}", PySystem.Console.MessageType.Error)
                 HeroAI_BaseUI.show_follow_formations_editor_window = False
 
         if hero_globals.show_flagging_window and Map.IsExplorable() and Player.GetAgentID() == GLOBAL_CACHE.Party.GetPartyLeaderID():

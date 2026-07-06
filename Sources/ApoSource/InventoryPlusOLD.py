@@ -79,7 +79,7 @@ class WidgetUI:
         if floating_game_button("O", "InvPlus", tooltip,x, y, width=13, height=13, color=color):
             self.widget_active = not self.widget_active
             message = "Active" if self.widget_active else "Inactive"
-            Py4GW.Console.Log(MODULE_NAME, f"Inventory + widget is now {message}.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(MODULE_NAME, f"Inventory + widget is now {message}.", PySystem.Console.MessageType.Info)
       
     #endregion
     #region DrawButtonStrip      
@@ -225,7 +225,7 @@ def main():
         
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 

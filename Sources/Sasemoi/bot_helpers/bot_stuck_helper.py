@@ -61,7 +61,7 @@ class BotStuckHelper:
     # Private handlers for top-level checks (each is a generator so we can `yield from` them)
     def _check_map_valid(self):
         if not Routines.Checks.Map.MapValid():
-            ConsoleLog(self.name, "Map is not valid, halting...", Py4GW.Console.MessageType.Debug, self.log_enabled)
+            ConsoleLog(self.name, "Map is not valid, halting...", PySystem.Console.MessageType.Debug, self.log_enabled)
             yield from Routines.Yield.wait(1000)
 
         # If map is valid this generator simply completes without yielding.
@@ -69,14 +69,14 @@ class BotStuckHelper:
 
     def _check_player_dead(self):
         if Agent.IsDead(Player.GetAgentID()):
-            ConsoleLog(self.name, "Player is dead, waiting...", Py4GW.Console.MessageType.Debug, self.log_enabled)
+            ConsoleLog(self.name, "Player is dead, waiting...", PySystem.Console.MessageType.Debug, self.log_enabled)
             yield from Routines.Yield.wait(1000)
         # Generator completes (returns None) when player is alive
         return None
 
     def _handle_movement_timeout(self):
         if self.movement_stuck_time >= self.MOVEMENT_TIMEOUT:
-            ConsoleLog(self.name, "Movement timeout exceeded, executing movement timeout handler...", Py4GW.Console.MessageType.Debug, self.log_enabled)
+            ConsoleLog(self.name, "Movement timeout exceeded, executing movement timeout handler...", PySystem.Console.MessageType.Debug, self.log_enabled)
             result = self.movement_timeout_handler()
 
             # If result is an iterable (but not a string/bytes), yield from it.
@@ -92,7 +92,7 @@ class BotStuckHelper:
 
     def _scheduled_stuck_command(self):
         if self.stuck_timer.IsExpired():
-            ConsoleLog(self.name, "Stuck timer expired, issuing scheduled stuck command...", Py4GW.Console.MessageType.Debug, self.log_enabled)
+            ConsoleLog(self.name, "Stuck timer expired, issuing scheduled stuck command...", PySystem.Console.MessageType.Debug, self.log_enabled)
             Player.SendChatCommand("stuck")
             self.stuck_timer.Reset()
 
@@ -101,15 +101,15 @@ class BotStuckHelper:
     def _scheduled_movement_check(self):
         if self.movement_timer.IsExpired():
             current_player_pos = Player.GetXY()
-            ConsoleLog(self.name, f"Checking movement. Old pos: {self.prev_pos}, Current pos: {current_player_pos}", Py4GW.Console.MessageType.Debug, self.log_enabled)
+            ConsoleLog(self.name, f"Checking movement. Old pos: {self.prev_pos}, Current pos: {current_player_pos}", PySystem.Console.MessageType.Debug, self.log_enabled)
 
             # Check if player has not moved significantly
             if Utils.Distance(current_player_pos, self.prev_pos) < self.MOVEMENT_NOT_MOVED_DISTANCE:
                 self.movement_stuck_time += self.MOVEMENT_INTERVAL
-                ConsoleLog(self.name, f"No significant movement detected. Bot has been stuck for: {self.movement_stuck_time}ms", Py4GW.Console.MessageType.Debug, self.log_enabled)
+                ConsoleLog(self.name, f"No significant movement detected. Bot has been stuck for: {self.movement_stuck_time}ms", PySystem.Console.MessageType.Debug, self.log_enabled)
             else:
                 self.movement_stuck_time = 0  # Reset counter if moved
-                ConsoleLog(self.name, "Significant movement detected, resetting stuck counter.", Py4GW.Console.MessageType.Debug, self.log_enabled)
+                ConsoleLog(self.name, "Significant movement detected, resetting stuck counter.", PySystem.Console.MessageType.Debug, self.log_enabled)
 
             self.prev_pos = current_player_pos
             self.movement_timer.Reset()
@@ -119,7 +119,7 @@ class BotStuckHelper:
     def _handle_custom_scenarios(self):
         for (handler_name, condition_fn, handler) in self.custom_scenarios:
             if condition_fn():
-                ConsoleLog(self.name, f"Executing stuck handler: {handler_name}", Py4GW.Console.MessageType.Debug, self.log_enabled)
+                ConsoleLog(self.name, f"Executing stuck handler: {handler_name}", PySystem.Console.MessageType.Debug, self.log_enabled)
                 result = handler()
 
                 # if handler returns a generator/iterable, yield from it; otherwise yield the result
@@ -136,7 +136,7 @@ class BotStuckHelper:
 
 
     def Run(self):
-        ConsoleLog(self.name, "Starting BotStuckHelper...", Py4GW.Console.MessageType.Debug, self.log_enabled)
+        ConsoleLog(self.name, "Starting BotStuckHelper...", PySystem.Console.MessageType.Debug, self.log_enabled)
         
         # Main lop which checks for stuck conditions in order of priority
         # Assuming the custom scenarios have priority over the base checks
@@ -152,4 +152,4 @@ class BotStuckHelper:
 
     def Toggle(self, enable: bool) -> None:
         self.is_active = enable
-        ConsoleLog(self.name, f"BotStuckHelper {'activated' if enable else 'deactivated'}.", Py4GW.Console.MessageType.Debug, self.log_enabled)
+        ConsoleLog(self.name, f"BotStuckHelper {'activated' if enable else 'deactivated'}.", PySystem.Console.MessageType.Debug, self.log_enabled)

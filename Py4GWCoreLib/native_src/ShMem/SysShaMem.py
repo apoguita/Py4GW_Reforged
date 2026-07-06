@@ -1,4 +1,4 @@
-import Py4GW
+import PySystem
 from multiprocessing import shared_memory
 from ctypes import Structure, c_uint32, c_uint64
 import ctypes
@@ -32,7 +32,7 @@ class SystemSharedMemoryManager:
     
     def __init__(self):
         if not self._initialized:
-            self.shm_name = Py4GW.Game.get_shared_memory_name()
+            self.shm_name = PySystem.get_shared_memory_name()
             self.shm: shared_memory.SharedMemory | None = None
             self.header_size = ctypes.sizeof(SharedMemoryHeader)
             self.agent_array_size = ctypes.sizeof(AgentArraySHMemStruct)
@@ -53,7 +53,7 @@ class SystemSharedMemoryManager:
             self._initialized = True
 
     def _connect(self) -> bool:
-        current_name = Py4GW.Game.get_shared_memory_name()
+        current_name = PySystem.get_shared_memory_name()
         if not current_name:
             self.close()
             self.last_error = "No shared memory name returned by Py4GW.Game."

@@ -14,7 +14,7 @@ def main():
             raise Exception("Script render failed: No instance available.")
         
     except Exception as e:
-        Py4GW.Console.Log("LUA Engine", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("LUA Engine", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
 if __name__ == "__main__":
     main()

@@ -35,8 +35,11 @@ if system_python_path:
 
 
 import Py4GW
+import PySystem
+import PyGameThread
 import PyScanner
 import PyImGui
+import PyCallback
 
 import PyAgent
 import PyPlayer
@@ -53,8 +56,8 @@ import PyQuest
 import PyPathing
 import PyUIManager
 import PyCamera
-import Py2DRenderer
-import PyCombatEvents
+import PyDXOverlay
+import PyAgentEvents
 
 from .enums import *
 from .ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
@@ -156,7 +159,7 @@ WindowVarSpec = WindowVarSpec
 class Py4GWLogger:
     def write(self, message):
         if message.strip():  # Avoid logging empty lines
-            Py4GW.Console.Log("print:", f"{message.strip()}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log("print:", f"{message.strip()}", PySystem.Console.MessageType.Info)
 
     def flush(self):  
         pass  # Required for sys.stdout but does nothing
@@ -164,7 +167,7 @@ class Py4GWLogger:
 class Py4GWLoggerError:
     def write(self, message):
         if message.strip():  # Avoid logging empty lines
-            Py4GW.Console.Log("print:", f"{message.strip()}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("print:", f"{message.strip()}", PySystem.Console.MessageType.Error)
 
     def flush(self):  
         pass  # Required for sys.stdout but does nothing

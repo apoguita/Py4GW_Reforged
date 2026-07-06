@@ -50,7 +50,7 @@ def bring_window_to_foreground(window_handle):
 
 
 def DrawWindow():
-    client_window_handle = Py4GW.Console.get_gw_window_handle()  # Obtain the game window handle
+    client_window_handle = PySystem.Console.get_gw_window_handle()  # Obtain the game window handle
     attach_thread_to_game(client_window_handle)  # Attach threads
     bring_window_to_foreground(client_window_handle)  # Ensure input focus
 

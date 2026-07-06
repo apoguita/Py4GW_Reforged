@@ -23,7 +23,7 @@ class _INTERACT:
         from ...Routines import Routines
         from ...GlobalCache import GLOBAL_CACHE
         from ...Agent import Agent
-        #ConsoleLog(MODULE_NAME, f"Interacting with agent at {coords} with dialog_id {dialog_id}", Py4GW.Console.MessageType.Info)
+        #ConsoleLog(MODULE_NAME, f"Interacting with agent at {coords} with dialog_id {dialog_id}", PySystem.Console.MessageType.Info)
         while True:
             if Agent.IsCasting(Player.GetAgentID()):
                 yield from Routines.Yield.wait(500)
@@ -32,7 +32,7 @@ class _INTERACT:
                 break
 
         result = yield from Routines.Yield.Agents.InteractWithAgentXY(*coords)
-        #ConsoleLog(MODULE_NAME, f"Interaction result: {result}", Py4GW.Console.MessageType.Info)
+        #ConsoleLog(MODULE_NAME, f"Interaction result: {result}", PySystem.Console.MessageType.Info)
         if not result:
             self._Events.on_unmanaged_fail()
             self._config.config_properties.dialog_at_succeeded.set_now("value", False)
@@ -54,7 +54,7 @@ class _INTERACT:
         from ...Routines import Routines
         from ...GlobalCache import GLOBAL_CACHE
         from ...Agent import Agent
-        #ConsoleLog(MODULE_NAME, f"Interacting with gadget at {coords}", Py4GW.Console.MessageType.Info)
+        #ConsoleLog(MODULE_NAME, f"Interacting with gadget at {coords}", PySystem.Console.MessageType.Info)
         while True:
             if Agent.IsCasting(Player.GetAgentID()):
                 yield from Routines.Yield.wait(500)
@@ -62,7 +62,7 @@ class _INTERACT:
             else:
                 break
         result = yield from Routines.Yield.Agents.InteractWithGadgetXY(*coords)
-        #ConsoleLog(MODULE_NAME, f"Interaction result: {result}", Py4GW.Console.MessageType.Info)
+        #ConsoleLog(MODULE_NAME, f"Interaction result: {result}", PySystem.Console.MessageType.Info)
         if not result:
             self._Events.on_unmanaged_fail()
             self._config.config_properties.dialog_at_succeeded._apply("value", False)

@@ -8,7 +8,7 @@ from Sources.aC_Scripts.aC_api import has_any_blessing, BlessingRunner, FLAG_DIR
 
 # ─── Paths & Configuration ─────────────────────────────────────────────────
 script_directory = os.getcwd()
-project_root     = Py4GW.Console.get_projects_path()
+project_root     = PySystem.Console.get_projects_path()
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 

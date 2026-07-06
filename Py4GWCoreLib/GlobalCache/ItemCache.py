@@ -1,6 +1,6 @@
 import PyInventory
 import PyItem
-import Py4GW
+import PySystem
 
 from Py4GWCoreLib.Py4GWcorelib import ThrottledTimer
 from Py4GWCoreLib import Bag
@@ -129,7 +129,7 @@ class RawItemCache:
             
             bag_instance = self.bags[bag]
             items = bag_instance.GetItems()
-            item_ids = [item.item_id for item in items]
+        item_ids = [item["item_id"] for item in items]
             all_item_ids.extend(item_ids)
 
         return all_item_ids
@@ -169,9 +169,10 @@ class RawItemCache:
     
     def get_item_by_id(self, item_id: int):
         for bag in self.bags.values():
-            item = bag.FindItemById(item_id)
-            if item:
-                return item
+            items = bag.GetItems()
+            for item_dict in items:
+                if item_dict["item_id"] == item_id:
+                    return PyItem.PyItem(item_id)
         
         # Check transitory cache
         item = self.transitory_items.get(item_id)
@@ -654,7 +655,7 @@ class ItemArray:
                 items = bag.GetItems()
                 all_item_ids.extend([item.item_id for item in items])
             except Exception as e:
-                Py4GW.Console.Log("GetItemArray", f"Error retrieving items from {bag_enum.name}: {str(e)}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("GetItemArray", f"Error retrieving items from {bag_enum.name}: {str(e)}", PySystem.Console.MessageType.Error)
 
         return all_item_ids
     
@@ -682,7 +683,7 @@ class ItemArray:
             try:
                 valid_bags.append(Bag(bag_id))
             except ValueError:
-                Py4GW.Console.Log("CreateBagList", f"Invalid bag ID: {bag_id}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("CreateBagList", f"Invalid bag ID: {bag_id}", PySystem.Console.MessageType.Error)
         return valid_bags
         
         

@@ -33,7 +33,7 @@ class BotSettings:
     ]
     BOUNTY_COORDS = (19505.00, 11209.00)
     BOUNTY_DIALOG = 0x85
-    TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Textures", "Skill_Icons", "[1813] - Lightbringer.jpg")
+    TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[1813] - Lightbringer.jpg")
 
 LOOP_STEP_NAME = ""
 RESIGN_STEP_NAME = ""
@@ -58,7 +58,7 @@ bot = Botting(BotSettings.BOT_NAME,
 _BOT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 _HERO_CONFIG_PATH = os.path.join(_BOT_SCRIPT_DIR, f"{BotSettings.BOT_NAME} Heroes.json")
 _HERO_ICONS_BASE = os.path.normpath(os.path.join(
-    Py4GW.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
+    PySystem.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
     "PVE Skills Unlocker", "Textures", "Skill_Icons"
 ))
 _HERO_SLOTS_COUNT = 7
@@ -581,7 +581,7 @@ def _apply_multibox_runtime_now(bot: Botting, *, broadcast_widget: bool = True) 
         ConsoleLog(
             BotSettings.BOT_NAME,
             f"Multibox runtime repaired: isolation disabled, HeroAI follow/combat enabled for {affected}/{len(accounts)} accounts.",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
 
@@ -643,7 +643,7 @@ def _rebuild_routine_if_safe(bot: Botting) -> bool:
         ConsoleLog(
             BotSettings.BOT_NAME,
             f"Could not rebuild routine after party mode change: {exc}",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         return False
 

@@ -10,7 +10,7 @@ MODULE_ICON = "Textures\\Module_Icons\\Brightclaw.png"
 
 # Optionnel : ajoute une texture custom si tu veux
 # TEXTURE = os.path.join(
-#     Py4GW.Console.get_projects_path(), "Bots", "textures", "brightclaw.png"
+#     PySystem.Console.get_projects_path(), "Bots", "textures", "brightclaw.png"
 # )
 
 bot = Botting(BOT_NAME)

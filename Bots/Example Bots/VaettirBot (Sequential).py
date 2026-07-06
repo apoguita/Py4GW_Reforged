@@ -164,7 +164,7 @@ def IsSkillBarLoaded():
         (primary_profession == "Dervish" and secondary_profession != "Assassin")):
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        ConsoleLog(MODULE_NAME, f"{current_function} - This bot requires A/Me to work, halting.", Py4GW.Console.MessageType.Error, log=True)
+        ConsoleLog(MODULE_NAME, f"{current_function} - This bot requires A/Me to work, halting.", PySystem.Console.MessageType.Error, log=True)
         return False
 
     bot_variables.skillbar.deadly_paradox = Skill.GetID("Deadly_Paradox")
@@ -180,13 +180,13 @@ def IsSkillBarLoaded():
     bot_variables.skillbar.heart_of_holy_flame = Skill.GetID("Heart_of_Holy_Flame")
     bot_variables.skillbar.pious_fury = Skill.GetID("Pious_Fury")
     
-    ConsoleLog(MODULE_NAME, f"SkillBar Loaded.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)       
+    ConsoleLog(MODULE_NAME, f"SkillBar Loaded.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)       
     return True
 
 def SetHardMode():
     global bot_variables
     ActionQueueManager().AddAction("ACTION",Party.SetHardMode)
-    ConsoleLog(MODULE_NAME, "Hard mode set.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+    ConsoleLog(MODULE_NAME, "Hard mode set.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
     
 def reset_environment():
     global bot_variables
@@ -404,22 +404,22 @@ def player_is_dead():
 
 def handle_death():
     if Agent.IsDead(Player.GetAgentID()):
-        ConsoleLog(MODULE_NAME, f"Player is dead while traversing {Map.GetMapName(Map.GetMapID())} . Reseting Environment.", Py4GW.Console.MessageType.Error, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Player is dead while traversing {Map.GetMapName(Map.GetMapID())} . Reseting Environment.", PySystem.Console.MessageType.Error, log=bot_variables.config.log_to_console)
         return True
     return False
 
 def handle_inventory_check():
     global bot_variables
     if Inventory.GetFreeSlotCount() < bot_variables.inventory_config.leave_free_slots:
-        ConsoleLog(MODULE_NAME, f"Inventory is full, going to merchant.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Inventory is full, going to merchant.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
         return True
     
     if GetIDKitsToBuy() >= bot_variables.inventory_config.keep_id_kit:
-        ConsoleLog(MODULE_NAME, f"Need to buy ID kits, going to merchant.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Need to buy ID kits, going to merchant.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
         return True
     
     if GetSalvageKitsToBuy() >= bot_variables.inventory_config.keep_salvage_kit:
-        ConsoleLog(MODULE_NAME, f"Need to buy Salvage kits, going to merchant.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Need to buy Salvage kits, going to merchant.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
         return True
     
     return False
@@ -427,17 +427,17 @@ def handle_inventory_check():
 def handle_return_inventory_check():
     global bot_variables
     if Inventory.GetFreeSlotCount() < bot_variables.inventory_config.leave_free_slots:
-        ConsoleLog(MODULE_NAME, f"Inventory is full, going to merchant.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Inventory is full, going to merchant.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
         return True
     
     count_of_id_kits = Inventory.GetModelCount(5899) #5899 model for ID kit
     if count_of_id_kits <=0:
-        ConsoleLog(MODULE_NAME, f"Need to buy ID kits, going to merchant.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Need to buy ID kits, going to merchant.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
         return True
     
     count_of_salvage_kits = Inventory.GetModelCount(2992) #2992 model for salvage kit
     if count_of_salvage_kits <=0:
-        ConsoleLog(MODULE_NAME, f"Need to buy Salvage kits, going to merchant.", Py4GW.Console.MessageType.Info, log=bot_variables.config.log_to_console)
+        ConsoleLog(MODULE_NAME, f"Need to buy Salvage kits, going to merchant.", PySystem.Console.MessageType.Info, log=bot_variables.config.log_to_console)
         return True
     
     return False
@@ -551,42 +551,42 @@ def InventoryHandler(log_to_console=False):
     if NeedsToHandleInventory():
         #going to merchant
         if log_to_console:
-            ConsoleLog(MODULE_NAME, "Going to merchant.", Py4GW.Console.MessageType.Info, log=log_to_console)
+            ConsoleLog(MODULE_NAME, "Going to merchant.", PySystem.Console.MessageType.Info, log=log_to_console)
         Routines.Sequential.Agents.InteractWithAgentByName("[Merchant]")
         
         if bot_variables.sell_config.sell_materials:
             items_to_sell = get_filtered_materials_to_sell()
             #sell materials to make space
             if log_to_console:
-                ConsoleLog(MODULE_NAME, "Selling materials.", Py4GW.Console.MessageType.Info, log=log_to_console)
+                ConsoleLog(MODULE_NAME, "Selling materials.", PySystem.Console.MessageType.Info, log=log_to_console)
             Routines.Sequential.Merchant.SellItems(items_to_sell, log_to_console)
         if log_to_console:
-            ConsoleLog(MODULE_NAME, "Buying ID and Salvage kits.", Py4GW.Console.MessageType.Info, log=log_to_console)
+            ConsoleLog(MODULE_NAME, "Buying ID and Salvage kits.", PySystem.Console.MessageType.Info, log=log_to_console)
         Routines.Sequential.Merchant.BuyIDKits(GetIDKitsToBuy(),log_to_console)
         Routines.Sequential.Merchant.BuySalvageKits(GetSalvageKitsToBuy(),log_to_console)
         
         items_to_idenfity = filter_identify_array()
         if log_to_console:
-            ConsoleLog(MODULE_NAME,f"IDing {len(items_to_idenfity)} items.", Py4GW.Console.MessageType.Info, log=log_to_console)
+            ConsoleLog(MODULE_NAME,f"IDing {len(items_to_idenfity)} items.", PySystem.Console.MessageType.Info, log=log_to_console)
         Routines.Sequential.Items.IdentifyItems(items_to_idenfity, log_to_console)
         
         items_to_salvage = filter_salvage_array()
         if log_to_console:
-            ConsoleLog(MODULE_NAME, f"Salvaging {items_to_salvage} items.", Py4GW.Console.MessageType.Info, log=log_to_console)
+            ConsoleLog(MODULE_NAME, f"Salvaging {items_to_salvage} items.", PySystem.Console.MessageType.Info, log=log_to_console)
         Routines.Sequential.Items.SalvageItems(items_to_salvage, log_to_console)
         
         if log_to_console:
-            ConsoleLog(MODULE_NAME, "Selling items.", Py4GW.Console.MessageType.Info, log=log_to_console)
+            ConsoleLog(MODULE_NAME, "Selling items.", PySystem.Console.MessageType.Info, log=log_to_console)
         if bot_variables.sell_config.sell_materials:
             items_to_sell = get_filtered_materials_to_sell()
             Routines.Sequential.Merchant.SellItems(items_to_sell, log_to_console)
             
         if log_to_console:
-            ConsoleLog(MODULE_NAME, "Depositing items.", Py4GW.Console.MessageType.Info, log=log_to_console)  
+            ConsoleLog(MODULE_NAME, "Depositing items.", PySystem.Console.MessageType.Info, log=log_to_console)  
         items_to_deposit = filter_items_to_deposit()
         Routines.Sequential.Items.DepositItems(items_to_deposit,log_to_console)
         if log_to_console:
-            ConsoleLog(MODULE_NAME, "Depositing gold.", Py4GW.Console.MessageType.Info, log=log_to_console)
+            ConsoleLog(MODULE_NAME, "Depositing gold.", PySystem.Console.MessageType.Info, log=log_to_console)
         Routines.Sequential.Items.DepositGold(bot_variables.inventory_config.keep_gold_amount, log_to_console)
     
 #endregion
@@ -653,7 +653,7 @@ def Handle_Stuck():
 def restart_due_to_stuck():
     """Logs and restarts the bot when recovery fails repeatedly."""
     global bot_variables
-    ConsoleLog(MODULE_NAME, "Player is stuck, cannot recover, restarting.", Py4GW.Console.MessageType.Error)
+    ConsoleLog(MODULE_NAME, "Player is stuck, cannot recover, restarting.", PySystem.Console.MessageType.Error)
     bot_variables.config.stuck_count = 0
     reset_environment()
 
@@ -687,7 +687,7 @@ def log_stuck_attempt(escape_location):
     global bot_vars
     player_x, player_y = Player.GetXY()
     distance = Utils.Distance((player_x, player_y), escape_location)
-    ConsoleLog("StuckHandler", f"Player is stuck, attempting to recover to {escape_location} (distance: {distance:.2f})", Py4GW.Console.MessageType.Warning)
+    ConsoleLog("StuckHandler", f"Player is stuck, attempting to recover to {escape_location} (distance: {distance:.2f})", PySystem.Console.MessageType.Warning)
 
 #endregion
 
@@ -722,7 +722,7 @@ def RunBotSequentialLogic():
             
             if not IsSkillBarLoaded():
                 reset_environment()
-                ConsoleLog(MODULE_NAME, "You need the following build: OwVUI2h5lPP8Id2BkAiAvpLBTAA", Py4GW.Console.MessageType.Error, log=True)
+                ConsoleLog(MODULE_NAME, "You need the following build: OwVUI2h5lPP8Id2BkAiAvpLBTAA", PySystem.Console.MessageType.Error, log=True)
                 break
             
             Routines.Sequential.Map.SetHardMode(log_to_console)
@@ -755,7 +755,7 @@ def RunBotSequentialLogic():
             continue
         
         #wait for aggro ball'
-        ConsoleLog(MODULE_NAME, "Waiting for left aggro ball", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "Waiting for left aggro ball", PySystem.Console.MessageType.Info, log=log_to_console)
         bot_variables.config.pause_stuck_routine = True
         sleep (15)
         bot_variables.config.pause_stuck_routine = False
@@ -765,7 +765,7 @@ def RunBotSequentialLogic():
             reset_from_jaga_moraine = False
             continue
         
-        ConsoleLog(MODULE_NAME, "Waiting for right aggro ball", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "Waiting for right aggro ball", PySystem.Console.MessageType.Info, log=log_to_console)
         bot_variables.config.pause_stuck_routine = True
         sleep (15)
         bot_variables.config.pause_stuck_routine = False
@@ -823,7 +823,7 @@ def RunBotSequentialLogic():
         reset_from_jaga_moraine = True
         bot_variables.config.pause_stuck_routine = True
         #bot_variables.is_script_running = False
-        ConsoleLog(MODULE_NAME, "Script finished.", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "Script finished.", PySystem.Console.MessageType.Info, log=log_to_console)
         time.sleep(0.1)
 #endregion
 
@@ -889,7 +889,7 @@ def JagaMoraineSkillCasting():
     log_to_console = False #bot_variables.config.log_to_console
     
     if Routines.Checks.Agents.InDanger(Range.Spellcast):
-        ConsoleLog(MODULE_NAME, "In danger, casting skills.", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "In danger, casting skills.", PySystem.Console.MessageType.Info, log=log_to_console)
         #we need to cast deadly paradox and shadow form and mantain it
         has_shadow_form = Routines.Checks.Effects.HasBuff(player_agent_id,shadow_form)
         shadow_form_buff_time_remaining = Effects.GetEffectTimeRemaining(player_agent_id,shadow_form) if has_shadow_form else 0
@@ -898,18 +898,18 @@ def JagaMoraineSkillCasting():
         if shadow_form_buff_time_remaining <= 3500: #about to expire, recast
             #** Cast Deadly Paradox **
             if Routines.Sequential.Skills.CastSkillID(deadly_paradox,extra_condition=(not has_deadly_paradox), log=log_to_console):
-                ConsoleLog(MODULE_NAME, "Casting Deadly Paradox.", Py4GW.Console.MessageType.Info, log=log_to_console)
+                ConsoleLog(MODULE_NAME, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=log_to_console)
                 sleep(0.1)
             
             # ** Cast Shadow Form **
             if Routines.Sequential.Skills.CastSkillID(shadow_form, log=log_to_console):
-                ConsoleLog(MODULE_NAME, "Casting Shadow Form.", Py4GW.Console.MessageType.Info, log=log_to_console)
+                ConsoleLog(MODULE_NAME, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=log_to_console)
                 sleep(1.25)
             return
                 
     #if were hurt, we need to cast shroud of distress 
     if Agent.GetHealth(player_agent_id) < 0.45:
-        ConsoleLog(MODULE_NAME, "Casting Shroud of Distress.", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=log_to_console)
         # ** Cast Shroud of Distress **
         if Routines.Sequential.Skills.CastSkillID(shroud_of_distress, log =log_to_console):
             sleep(1.25)
@@ -918,7 +918,7 @@ def JagaMoraineSkillCasting():
     #need to keep Channeling up
     has_channeling = Routines.Checks.Effects.HasBuff(player_agent_id,bot_variables.skillbar.channeling)
     if not has_channeling:
-        ConsoleLog(MODULE_NAME, "Casting Channeling.", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "Casting Channeling.", PySystem.Console.MessageType.Info, log=log_to_console)
         # ** Cast Channeling **
         if Routines.Sequential.Skills.CastSkillID(channeling, log =log_to_console):
             sleep(1.25)
@@ -927,7 +927,7 @@ def JagaMoraineSkillCasting():
     #Keep way of perfection up on recharge
     # ** Cast Way of Perfection **
     if Routines.Sequential.Skills.CastSkillID(way_of_perfection, log=log_to_console):
-        ConsoleLog(MODULE_NAME, "Casting Way of Perfection.", Py4GW.Console.MessageType.Info, log=log_to_console)
+        ConsoleLog(MODULE_NAME, "Casting Way of Perfection.", PySystem.Console.MessageType.Info, log=log_to_console)
         sleep(0.350)
         return
         
@@ -952,11 +952,11 @@ def JagaMoraineSkillCasting():
         if target:
             Routines.Sequential.Agents.ChangeTarget(target)
             if Routines.Sequential.Skills.CastSkillSlot(arcane_echo_slot, extra_condition=both_ready, log=log_to_console):
-                ConsoleLog(MODULE_NAME, "Casting Arcane Echo.", Py4GW.Console.MessageType.Info, log=log_to_console)
+                ConsoleLog(MODULE_NAME, "Casting Arcane Echo.", PySystem.Console.MessageType.Info, log=log_to_console)
                 sleep(2)
             else:
                 if Routines.Sequential.Skills.CastSkillSlot(arcane_echo_slot, log=log_to_console):
-                    ConsoleLog(MODULE_NAME, "Casting Echoed Wastrel.", Py4GW.Console.MessageType.Info, log=log_to_console)
+                    ConsoleLog(MODULE_NAME, "Casting Echoed Wastrel.", PySystem.Console.MessageType.Info, log=log_to_console)
                     sleep(0.350)
                     return
         target = GetNotHexedEnemy()  
@@ -1145,7 +1145,7 @@ def DrawWindow():
     except Exception as e:
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        Py4GW.Console.Log(MODULE_NAME, f"Error in {current_function}: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error in {current_function}: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 #endregion
@@ -1177,7 +1177,7 @@ def main():
 
         
     except Exception as e:
-        ConsoleLog(MODULE_NAME,f"Error: {str(e)}",Py4GW.Console.MessageType.Error,log=True)
+        ConsoleLog(MODULE_NAME,f"Error: {str(e)}",PySystem.Console.MessageType.Error,log=True)
 
 if __name__ == "__main__":
     main()

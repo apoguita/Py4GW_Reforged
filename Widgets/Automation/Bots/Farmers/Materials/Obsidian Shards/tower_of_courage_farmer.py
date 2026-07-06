@@ -31,7 +31,7 @@ loot_policy = importlib.reload(loot_policy)
 
 BOT_NAME = 'Tower of Courage Obsidian Shard Farmer'
 MODULE_ICON = 'Textures\\Module_Icons\\Tower of Courage Obsidian Shard Farmer.png'
-BOT_TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), MODULE_ICON)
+BOT_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), MODULE_ICON)
 
 TEMPLE_OF_THE_AGES = name_to_map_id['Temple of the Ages']
 FISSURE_OF_WOE = name_to_map_id['The Fissure of Woe']
@@ -325,7 +325,7 @@ def _begin_failure_recovery(bot_instance: Botting, reason: str) -> None:
     ConsoleLog(
         BOT_NAME,
         f'Run failed ({runtime.failed_runs} total failures). Recovering from {reason}.',
-        Py4GW.Console.MessageType.Warning,
+        PySystem.Console.MessageType.Warning,
     )
     ActionQueueManager().ResetAllQueues()
     build.EnableUpkeep(False)
@@ -336,7 +336,7 @@ def _begin_failure_recovery(bot_instance: Botting, reason: str) -> None:
 def _recover_from_failure(bot_instance: Botting, reason: str):
     yield from Routines.Yield.wait(DEATH_RECOVERY_SETTLE_MS)
     yield from recover_to_temple(resign_if_alive=False)
-    ConsoleLog(BOT_NAME, f'Recovery finished after {reason}.', Py4GW.Console.MessageType.Info)
+    ConsoleLog(BOT_NAME, f'Recovery finished after {reason}.', PySystem.Console.MessageType.Info)
     bot_instance.config.FSM.jump_to_state_by_name('Ensure Temple')
     bot_instance.config.FSM.resume()
     yield
@@ -351,7 +351,7 @@ def advance_failure_recovery(bot_instance: Botting) -> None:
     except StopIteration:
         runtime.recovery_coroutine = None
     except Exception as exc:
-        ConsoleLog(BOT_NAME, f'Recovery sequence failed: {exc}', Py4GW.Console.MessageType.Error)
+        ConsoleLog(BOT_NAME, f'Recovery sequence failed: {exc}', PySystem.Console.MessageType.Error)
         runtime.recovery_coroutine = None
         bot_instance.config.FSM.resume()
 
@@ -450,7 +450,7 @@ def _get_merchant_rules_widget():
 def stop_safely(bot_instance: Botting, reason: str) -> None:
     runtime.stop_reason = reason
     build.EnableUpkeep(False)
-    ConsoleLog(BOT_NAME, reason, Py4GW.Console.MessageType.Error)
+    ConsoleLog(BOT_NAME, reason, PySystem.Console.MessageType.Error)
     bot_instance.Stop()
 
 
@@ -465,7 +465,7 @@ def run_merchant_rules_checkpoint(bot_instance: Botting):
         widget_handler.enable_widget('MerchantRules')
         yield from Routines.Yield.wait(1000)
 
-    ConsoleLog(BOT_NAME, 'Traveling to Guild Hall for MerchantRules checkpoint.', Py4GW.Console.MessageType.Info)
+    ConsoleLog(BOT_NAME, 'Traveling to Guild Hall for MerchantRules checkpoint.', PySystem.Console.MessageType.Info)
     Map.TravelGH()
     if not (
         yield from wait_for_condition(
@@ -482,7 +482,7 @@ def run_merchant_rules_checkpoint(bot_instance: Botting):
         stop_safely(bot_instance, 'MerchantRules checkpoint stopped: MerchantRules widget was not found.')
         return
 
-    ConsoleLog(BOT_NAME, 'Starting MerchantRules Execute Here.', Py4GW.Console.MessageType.Info)
+    ConsoleLog(BOT_NAME, 'Starting MerchantRules Execute Here.', PySystem.Console.MessageType.Info)
     widget._queue_execute_here()
     yield from Routines.Yield.wait(MERCHANT_RULES_POLL_MS)
 
@@ -503,7 +503,7 @@ def run_merchant_rules_checkpoint(bot_instance: Botting):
         stop_safely(bot_instance, f'MerchantRules checkpoint stopped: fewer than {MIN_FREE_SLOTS} free slots remain.')
         return
 
-    ConsoleLog(BOT_NAME, 'MerchantRules checkpoint completed.', Py4GW.Console.MessageType.Success)
+    ConsoleLog(BOT_NAME, 'MerchantRules checkpoint completed.', PySystem.Console.MessageType.Success)
     yield from Routines.Yield.Map.TravelToOutpost(
         TEMPLE_OF_THE_AGES,
         log=True,
@@ -565,19 +565,19 @@ def enter_fissure_of_woe():
         ConsoleLog(
             BOT_NAME,
             'FoW entry skipped because Temple of the Ages is not loaded.',
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         return
 
     if not (yield from follow_path([TEMPLE_STATUE_COORD], timeout=MOVEMENT_TIMEOUT_MS, tolerance=MOVE_TOLERANCE)):
-        ConsoleLog(BOT_NAME, 'Failed to reach the Temple statue.', Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, 'Failed to reach the Temple statue.', PySystem.Console.MessageType.Warning)
         return
 
     Player.SendChatCommand('kneel')
     yield from Routines.Yield.wait(ENTRY_KNEEL_WAIT_MS)
     champion_id = yield from wait_for_champion_of_balthazar()
     if not champion_id:
-        ConsoleLog(BOT_NAME, 'Champion of Balthazar did not appear after /kneel.', Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, 'Champion of Balthazar did not appear after /kneel.', PySystem.Console.MessageType.Warning)
         return
 
     champion_position = Agent.GetXY(champion_id)
@@ -588,7 +588,7 @@ def enter_fissure_of_woe():
             tolerance=CHAMPION_INTERACT_TOLERANCE,
         )
     ):
-        ConsoleLog(BOT_NAME, 'Failed to reach the Champion of Balthazar.', Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, 'Failed to reach the Champion of Balthazar.', PySystem.Console.MessageType.Warning)
         return
 
     yield from Routines.Yield.Player.InteractAgent(champion_id, log=False)
@@ -604,7 +604,7 @@ def enter_fissure_of_woe():
             timeout=MAP_LOAD_TIMEOUT_MS,
         )
     ):
-        ConsoleLog(BOT_NAME, 'FoW entry failed to confirm a map load.', Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, 'FoW entry failed to confirm a map load.', PySystem.Console.MessageType.Warning)
 
 
 def run_tower_of_courage_farm():
@@ -613,7 +613,7 @@ def run_tower_of_courage_farm():
 
     try:
         if not Map.IsMapIDMatch(Map.GetMapID(), FISSURE_OF_WOE):
-            ConsoleLog(BOT_NAME, 'Tower of Courage run started outside FoW.', Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, 'Tower of Courage run started outside FoW.', PySystem.Console.MessageType.Warning)
             return
 
         build.StartRun()
@@ -789,10 +789,10 @@ def run_tower_of_courage_farm():
 def reset_run():
     if runtime.last_run_succeeded:
         runtime.completed_runs += 1
-        ConsoleLog(BOT_NAME, f'Run {runtime.completed_runs} completed.', Py4GW.Console.MessageType.Success)
+        ConsoleLog(BOT_NAME, f'Run {runtime.completed_runs} completed.', PySystem.Console.MessageType.Success)
     else:
         runtime.failed_runs += 1
-        ConsoleLog(BOT_NAME, f'Run failed ({runtime.failed_runs} total failures).', Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f'Run failed ({runtime.failed_runs} total failures).', PySystem.Console.MessageType.Warning)
 
     build.EnableUpkeep(False)
     yield from recover_to_temple(resign_if_alive=True)
@@ -827,7 +827,7 @@ def cast_skill_slot_when_ready(slot: int, skill_name: str, ready_timeout_ms: int
                     return not Agent.IsDead(Player.GetAgentID())
         yield from Routines.Yield.wait(100)
 
-    ConsoleLog(BOT_NAME, f'{skill_name} was not cast in time.', Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f'{skill_name} was not cast in time.', PySystem.Console.MessageType.Warning)
     return False
 
 
@@ -903,7 +903,7 @@ def wait_for_condition(condition, timeout_ms: int, step_ms: int = 100) -> bool:
 
 
 def log_opening_phase(message: str) -> None:
-    ConsoleLog(BOT_NAME, f'Opening phase: {message}', Py4GW.Console.MessageType.Info)
+    ConsoleLog(BOT_NAME, f'Opening phase: {message}', PySystem.Console.MessageType.Info)
 
 
 def has_nearby_abyssal() -> bool:
@@ -922,7 +922,7 @@ def wait_for_ranger_kill_skills() -> bool:
             return True
         yield from Routines.Yield.wait(100)
 
-    ConsoleLog(BOT_NAME, 'Ranger kill skills did not recharge in time.', Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, 'Ranger kill skills did not recharge in time.', PySystem.Console.MessageType.Warning)
     return False
 
 

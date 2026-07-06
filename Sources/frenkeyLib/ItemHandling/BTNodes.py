@@ -646,7 +646,7 @@ class BTNodes:
                     if item is None or not item.is_valid or not item.is_inventory_item:
                         continue
                     
-                    Py4GW.Console.Log(node.name, f"Destroying '{item.names.full}' (ID: {item.id}) from bag {item.bag.name} slot {item.slot} quantity {item.quantity}")
+                    PySystem.Console.Log(node.name, f"Destroying '{item.names.full}' (ID: {item.id}) from bag {item.bag.name} slot {item.slot} quantity {item.quantity}")
                     Inventory.DestroyItem(item.id)
                     destroyed_any = True
 
@@ -712,10 +712,10 @@ class BTNodes:
             def _reset_state(node: BehaviorTree.Node):
                 node.blackboard.pop(state_key, None)
 
-            def _debug(message: str, msg_type: int = Py4GW.Console.MessageType.Info):
+            def _debug(message: str, msg_type: int = PySystem.Console.MessageType.Info):
                 if not debug_enabled:
                     return
-                Py4GW.Console.Log("BTNodes.Items.SalvageItem", message, msg_type)
+                PySystem.Console.Log("BTNodes.Items.SalvageItem", message, msg_type)
             
             def _resolve_preferred_kit(valid_model_ids: tuple[ModelID, ...]) -> int:
                 if preferred_kit_id is None or preferred_kit_id <= 0:
@@ -844,7 +844,7 @@ class BTNodes:
                 now = time.monotonic()
 
                 if Inventory.GetFreeSlotCount() <= 0:
-                    _debug(f"Cannot salvage item {item.id}: no free inventory slots.", Py4GW.Console.MessageType.Warning)
+                    _debug(f"Cannot salvage item {item.id}: no free inventory slots.", PySystem.Console.MessageType.Warning)
                     return BehaviorTree.NodeState.FAILURE
 
                 # Start salvage once per item.
@@ -864,7 +864,7 @@ class BTNodes:
                             f"Failed to resolve valid salvage kit for item={item.id} mode={mode.name}. "
                             f"kit_id={kit_id} kit_model={(kit.model_id if kit else 'None')} "
                             f"item_rarity={item.rarity.name} item_identified={item.is_identified}.",
-                            Py4GW.Console.MessageType.Warning,
+                            PySystem.Console.MessageType.Warning,
                         )
                         return BehaviorTree.NodeState.FAILURE
 
@@ -906,7 +906,7 @@ class BTNodes:
                         _debug(f"Selected salvage option {mode.name} for item={item.id}.")
                         return BehaviorTree.NodeState.RUNNING
                     else:
-                        _debug(f"Failed to select salvage option {mode.name} for item={item.id}; cancelling.", Py4GW.Console.MessageType.Warning)
+                        _debug(f"Failed to select salvage option {mode.name} for item={item.id}; cancelling.", PySystem.Console.MessageType.Warning)
                         UIManagerExtensions.CancelSalvageOption()
                         return BehaviorTree.NodeState.FAILURE
 
@@ -926,7 +926,7 @@ class BTNodes:
                     try:
                         inventory_instance.FinishSalvage()
                     except Exception as exc:
-                        _debug(f"FinishSalvage failed for item={item.id}: {exc!r}.", Py4GW.Console.MessageType.Warning)
+                        _debug(f"FinishSalvage failed for item={item.id}: {exc!r}.", PySystem.Console.MessageType.Warning)
                         return BehaviorTree.NodeState.FAILURE
                     state.confirm_clicked_at = now
                     return BehaviorTree.NodeState.RUNNING
@@ -977,7 +977,7 @@ class BTNodes:
                         f"mod_confirm:{UIManagerExtensions.ConfirmModMaterialSalvageVisible()}, "
                         f"unidentified:{UIManagerExtensions.IsSalvageWindowNoIdentifiedOpen()}}} "
                         f"free_slots={Inventory.GetFreeSlotCount()}.",
-                        Py4GW.Console.MessageType.Warning,
+                        PySystem.Console.MessageType.Warning,
                     )
                     node.blackboard.pop(state_key, None)
                     return BehaviorTree.NodeState.FAILURE
@@ -1090,7 +1090,7 @@ class BTNodes:
                                     stack_item.quantity += qty_to_move  # simulate the move in the cache to get correct available space for subsequent stacks of the same item
                                     
                                     if qty <= 0:
-                                        Py4GW.Console.Log("GetTransferInstructions", f"Planned to move {qty_to_move} of '{item.names.plain}' (ID: {item.id}) to Material Storage bag {Bag.Material_Storage.name} slot {slot}")
+                                        PySystem.Console.Log("GetTransferInstructions", f"Planned to move {qty_to_move} of '{item.names.plain}' (ID: {item.id}) to Material Storage bag {Bag.Material_Storage.name} slot {slot}")
                                         break
                         
                         if qty <= 0:
@@ -1117,7 +1117,7 @@ class BTNodes:
                             stack_item.quantity += qty_to_move  # simulate the move in the cache to get correct available space for subsequent stacks of the same item
                             
                             if qty <= 0:
-                                Py4GW.Console.Log("GetTransferInstructions", f"Item quantity reduced to 0, moving on to next item.")
+                                PySystem.Console.Log("GetTransferInstructions", f"Item quantity reduced to 0, moving on to next item.")
                                 break
                     
                     
@@ -1178,7 +1178,7 @@ class BTNodes:
                     for dest in bag.values():
                         for item, qty in dest.items:
                             Inventory.MoveItem(item.id, dest.bag.value, dest.slot, qty)
-                            Py4GW.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to bag {dest.bag.name} slot {dest.slot}")
+                            PySystem.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to bag {dest.bag.name} slot {dest.slot}")
                             moved_any = True
                 
                 return BehaviorTree.NodeState.SUCCESS if moved_any else BehaviorTree.NodeState.FAILURE
@@ -1215,7 +1215,7 @@ class BTNodes:
                     for dest in bag.values():
                         for item, qty in dest.items:
                             Inventory.MoveItem(item.id, dest.bag.value, dest.slot, qty)
-                            Py4GW.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to bag {dest.bag.name} slot {dest.slot}")
+                            PySystem.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to bag {dest.bag.name} slot {dest.slot}")
                             moved_any = True
                 
                 return BehaviorTree.NodeState.SUCCESS if moved_any else BehaviorTree.NodeState.FAILURE
@@ -1295,7 +1295,7 @@ class BTNodes:
                     for dest in bag.values():
                         for item, qty in dest.items:
                             Inventory.MoveItem(item.id, dest.bag.value, dest.slot, qty)
-                            Py4GW.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to bag {dest.bag.name} slot {dest.slot}")
+                            PySystem.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to bag {dest.bag.name} slot {dest.slot}")
 
                 return BehaviorTree.NodeState.SUCCESS
 
@@ -1367,7 +1367,7 @@ class BTNodes:
                 for dest in transfer_instructions.values():
                     for item, qty in dest.items:
                         Inventory.MoveItem(item.id, dest.bag.value, dest.slot, qty)
-                        Py4GW.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to Material Storage slot {dest.slot}")
+                        PySystem.Console.Log(node.name, f"Moving {qty} of '{item.names.plain}' (ID: {item.id}) to Material Storage slot {dest.slot}")
                         moved_any = True
 
                 return BTNodes._success_if(moved_any or succeed_if_already_filled)
@@ -1417,7 +1417,7 @@ class BTNodes:
                             continue
                         
                         Inventory.MoveItem(source_item.id, target_bag.value, target_slot, qty_to_move)
-                        Py4GW.Console.Log(node.name, f"Moved {qty_to_move} of '{source_item.names.plain}' (ID: {source_item.id}) from bag {source_bag.name} slot {source_slot} to bag {target_bag.name} slot {target_slot}")
+                        PySystem.Console.Log(node.name, f"Moved {qty_to_move} of '{source_item.names.plain}' (ID: {source_item.id}) from bag {source_bag.name} slot {source_slot} to bag {target_bag.name} slot {target_slot}")
                         moved_any = True
                         target_item.quantity += qty_to_move
                         source_item.quantity -= qty_to_move

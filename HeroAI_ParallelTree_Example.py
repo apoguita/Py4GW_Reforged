@@ -42,13 +42,13 @@ def _build_planner_tree() -> BehaviorTree:
     def _set_outbound_status(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         node.blackboard["planner_status"] = "Planner moving to destination"
         node.blackboard["planner_owner"] = "Planner"
-        Py4GW.Console.Log("HeroAIParallelTreeExample", f"Starting outbound move to {node.blackboard.get('move_test_target')}.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("HeroAIParallelTreeExample", f"Starting outbound move to {node.blackboard.get('move_test_target')}.", PySystem.Console.MessageType.Info)
         return BehaviorTree.NodeState.SUCCESS
 
     def _set_return_status(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         node.blackboard["planner_status"] = "Planner returning to origin"
         node.blackboard["planner_owner"] = "Planner"
-        Py4GW.Console.Log("HeroAIParallelTreeExample", f"Starting return move to {node.blackboard.get('move_test_origin')}.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("HeroAIParallelTreeExample", f"Starting return move to {node.blackboard.get('move_test_origin')}.", PySystem.Console.MessageType.Info)
         return BehaviorTree.NodeState.SUCCESS
 
     def _complete_test(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
@@ -56,7 +56,7 @@ def _build_planner_tree() -> BehaviorTree:
         node.blackboard["move_test_status"] = "Finished"
         node.blackboard["planner_status"] = "Planner move test finished"
         node.blackboard["planner_owner"] = "Planner"
-        Py4GW.Console.Log("HeroAIParallelTreeExample", "Move test completed.", Py4GW.Console.MessageType.Success)
+        PySystem.Console.Log("HeroAIParallelTreeExample", "Move test completed.", PySystem.Console.MessageType.Success)
         return BehaviorTree.NodeState.SUCCESS
 
     def _idle(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
@@ -163,10 +163,10 @@ def draw_widget():
             bb["move_reason"] = ""
             bb["move_path_index"] = 0
             bb["move_path_count"] = 0
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 "HeroAIParallelTreeExample",
                 f"Armed move test from {(float(origin_x), float(origin_y))} to {(float(move_test_x), float(move_test_y))}.",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
             if not botting_tree.IsStarted():
                 botting_tree.Start()

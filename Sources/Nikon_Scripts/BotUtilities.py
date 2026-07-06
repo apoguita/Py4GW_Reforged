@@ -497,7 +497,7 @@ class ReportsProgress():
                         self.Log(f"Bag: {bag}, Slot: {slot}")
             self.Log(f"Total Slots Full: {totalSlotsFull}")
 
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if issubclass(type(self.window), BasicWindow):
             self.window.Log(text, msgType)
 
@@ -548,7 +548,7 @@ class ReportsProgress():
             
             return 0
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetNearestPickupItem error {str(e)}")
+            PySystem.Console.Log("Utilities", f"GetNearestPickupItem error {str(e)}")
 
     def ExecuteTimedStep(self, state, function):
         if not self.step_transition_threshold_timer.IsRunning():
@@ -564,7 +564,7 @@ class ReportsProgress():
             if callable(function):
                 function()
         except:
-            self.Log(f"Calling function {function.__name__} failed", Py4GW.Console.MessageType.Error)
+            self.Log(f"Calling function {function.__name__} failed", PySystem.Console.MessageType.Error)
     
     def ShouldForceTransitionStep(self, custom_threshold=300000):        
         if not self.step_transition_threshold_timer.IsRunning():
@@ -574,7 +574,7 @@ class ReportsProgress():
         elapsed = self.step_transition_threshold_timer.HasElapsed(custom_threshold)
 
         if elapsed:
-            self.Log("Forced Step Transition", Py4GW.Console.MessageType.Warning)
+            self.Log("Forced Step Transition", PySystem.Console.MessageType.Warning)
             self.step_transition_threshold_timer.Stop()
         return elapsed
     
@@ -662,7 +662,7 @@ class SalvageFsm(FSM):
                         execute_fn=lambda: self.EndSalvageLoop(),
                         transition_delay_ms=150)
     
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if isinstance(self.window, BasicWindow):            
             self.window.Log(text, msgType)
 
@@ -674,7 +674,7 @@ class SalvageFsm(FSM):
             if callable(function):
                 function()
         except Exception as e:
-            self.Log(f"Calling function {function.__name__} failed. {str(e)}", Py4GW.Console.MessageType.Error)
+            self.Log(f"Calling function {function.__name__} failed. {str(e)}", PySystem.Console.MessageType.Error)
 
     def UpdateState(self, state):
         if isinstance(self.window, BasicWindow):
@@ -810,7 +810,7 @@ class IdentifyFsm(FSM):
             if callable(function):
                 function()
         except Exception as e:
-            self.window.Log(f"Calling function {function.__name__} failed. {str(e)}", Py4GW.Console.MessageType.Error)
+            self.window.Log(f"Calling function {function.__name__} failed. {str(e)}", PySystem.Console.MessageType.Error)
 
     def UpdateState(self, state):
         if issubclass(type(self.window), BasicWindow):
@@ -1022,7 +1022,7 @@ class InventoryFsm(FSM):
         self.deposit_items = depo_items
         self.deposit_mats = depo_mats
             
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if not self.logFunc:
             return
         self.logFunc(text, msgType)
@@ -1039,7 +1039,7 @@ class InventoryFsm(FSM):
             if callable(function):
                 function()
         except:
-            self.Log(f"Calling function {function.__name__} failed", Py4GW.Console.MessageType.Error)
+            self.Log(f"Calling function {function.__name__} failed", PySystem.Console.MessageType.Error)
 
     def SetupSalvageRoutine(self):
         if self.salvager and isinstance(self.salvager, SalvageFsm):
@@ -1229,7 +1229,7 @@ class InventoryFsm(FSM):
                 value = Item.Properties.GetValue(item_id) * 2 # value is reported is sell value not buy value
                 Trading.Merchant.BuyItem(item_id, value)
             else:
-                Py4GW.Console.Log("Buy ID Kits", f"No ID kits available from merchant.",Py4GW.Console.MessageType.Info)        
+                PySystem.Console.Log("Buy ID Kits", f"No ID kits available from merchant.",PySystem.Console.MessageType.Info)        
 
     def BuyIdKitsComplete(self):
         if not self.idItems:
@@ -1464,7 +1464,7 @@ def CheckIfInventoryHasItem(itemModelId, count=1):
                     if testCount >= count:
                         return True
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetInventoryHasItem: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetInventoryHasItem: {str(e)}", PySystem.Console.MessageType.Error)
 
     return False
 
@@ -1494,7 +1494,7 @@ def GetItemIdFromModelId(itemModelId, min_count = 1):
                         if count >= min_count:
                             return itemIds
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetItemIdFromModelId: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetItemIdFromModelId: {str(e)}", PySystem.Console.MessageType.Error)
 
     return 0
 
@@ -1514,7 +1514,7 @@ def GetModelIdCount(model_id):
                 if item.model_id == model_id:
                     count += item.quantity
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetItemIdFromModelId: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetItemIdFromModelId: {str(e)}", PySystem.Console.MessageType.Error)
 
     return count
 '''
@@ -1574,7 +1574,7 @@ def GetInventoryNonKeepItemsByBagSlot(keepSlots = [], logFunc = None):
                                 all_item_ids.append(item)
 
     except Exception as e:
-        Py4GW.Console.Log("GetInventoryItemsToSellByBagSlot", f"error in function: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("GetInventoryItemsToSellByBagSlot", f"error in function: {str(e)}", PySystem.Console.MessageType.Error)
 
     return all_item_ids
 
@@ -1603,7 +1603,7 @@ def GetItems(bags):
             all_item_ids.extend(items_in_bag)
         
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetItems: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetItems: {str(e)}", PySystem.Console.MessageType.Error)
 
     return all_item_ids
 
@@ -1627,7 +1627,7 @@ def GetItemBagSlotList(bags):
             all_item_ids.append((bag_enum.value, slots))
                 
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetItemBagSlotList: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetItemBagSlotList: {str(e)}", PySystem.Console.MessageType.Error)
 
     return all_item_ids
 
@@ -1662,7 +1662,7 @@ def GetInventoryItemSlots(bags=None):
             all_item_ids.append((bag_enum.value, slots))
         
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetInventoryItemSlots: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetInventoryItemSlots: {str(e)}", PySystem.Console.MessageType.Error)
 
     return all_item_ids
 
@@ -1685,7 +1685,7 @@ def GetInventorySalvageKitCount(bags=None) -> int:
                     quantity += item.quantity
         
         except Exception as e:
-            Py4GW.Console.Log("Utilities", f"GetInventoryItemSlots: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Utilities", f"GetInventoryItemSlots: {str(e)}", PySystem.Console.MessageType.Error)
 
     return quantity
 

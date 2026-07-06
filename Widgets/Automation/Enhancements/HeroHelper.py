@@ -10,7 +10,7 @@ MODULE_NAME = "Hero Helper"
 MODULE_ICON = "Textures/Module_Icons/Hero Helper.png"
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-root_directory = Py4GW.Console.get_projects_path()
+root_directory = PySystem.Console.get_projects_path()
 INI_FILE_LOCATION = os.path.join(root_directory, "Widgets/Config/HeroHelper.ini")
 
 ini_handler = IniHandler(INI_FILE_LOCATION)
@@ -352,7 +352,7 @@ class Helper:
         if message:
             Helper.console_logs.append(message)
             Helper.console_logs = Helper.console_logs[-5:]
-            Py4GW.Console.Log(MODULE_NAME, message, Py4GW.Console.MessageType.Notice)
+            PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Notice)
 
     hero_skill_cache = []
     @staticmethod

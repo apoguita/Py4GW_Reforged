@@ -79,7 +79,7 @@ class FSM_Config:
     def _stop_execution(self):
         self.script_running = False
         self.FSM.stop()
-        Py4GW.Console.Log(MODULE_NAME, "Script stopped.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(MODULE_NAME, "Script stopped.", PySystem.Console.MessageType.Info)
         yield from Routines.Yield.wait(100)
         
     def _prepare_for_battle(self):
@@ -176,7 +176,7 @@ class FSM_Config:
                     yield from Routines.Yield.wait(250)
 
                     if not items_withdrawn:
-                        Py4GW.Console.Log(MODULE_NAME, "Failed to withdraw cupcakes from storage.", Py4GW.Console.MessageType.Error)
+                        PySystem.Console.Log(MODULE_NAME, "Failed to withdraw cupcakes from storage.", PySystem.Console.MessageType.Error)
 
         yield from Routines.Yield.wait(250)
         
@@ -199,7 +199,7 @@ class FSM_Config:
                     yield from Routines.Yield.wait(250)
 
                     if not items_withdrawn:
-                        Py4GW.Console.Log(MODULE_NAME, "Failed to withdraw honeycombs from storage.", Py4GW.Console.MessageType.Error)
+                        PySystem.Console.Log(MODULE_NAME, "Failed to withdraw honeycombs from storage.", PySystem.Console.MessageType.Error)
 
     def PopImp(self):
         summoning_stone = ModelID.Igneous_Summoning_Stone.value
@@ -295,13 +295,13 @@ class FSM_Config:
     def Endroutine(self):
         self.script_running = False
         self.FSM.stop()
-        Py4GW.Console.Log(MODULE_NAME, "Script ended.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(MODULE_NAME, "Script ended.", PySystem.Console.MessageType.Info)
         yield from Routines.Yield.wait(100)
     
     def WaitforMapLoad(self, target_map_id):
         wait_of_map_load = yield from Routines.Yield.Map.WaitforMapLoad(target_map_id)
         if not wait_of_map_load:
-            Py4GW.Console.Log(MODULE_NAME, "Map load failed.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, "Map load failed.", PySystem.Console.MessageType.Error)
             yield from self._stop_execution()
         yield from Routines.Yield.wait(1000)
         
@@ -445,7 +445,7 @@ class FSM_Config:
         
         cancel_button_frame_id = UIManager.GetFrameIDByHash(784833442)  # Cancel button frame ID
         if not cancel_button_frame_id:
-            Py4GW.Console.Log(MODULE_NAME, "Cancel button frame ID not found.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, "Cancel button frame ID not found.", PySystem.Console.MessageType.Error)
             yield from self._stop_execution()
             return
         
@@ -458,7 +458,7 @@ class FSM_Config:
         
         cancel_button_frame_id = UIManager.GetFrameIDByHash(784833442)
         if not cancel_button_frame_id:
-            Py4GW.Console.Log(MODULE_NAME, "Cancel button frame ID not found.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, "Cancel button frame ID not found.", PySystem.Console.MessageType.Error)
             yield from self._stop_execution()
             return
         
@@ -508,13 +508,13 @@ class FSM_Config:
             iron_in_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(ModelID.Iron_Ingot.value)
             
             if iron_in_storage < 5:
-                Py4GW.Console.Log(MODULE_NAME, "Not enough Iron Ingots (5) to craft weapons.", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(MODULE_NAME, "Not enough Iron Ingots (5) to craft weapons.", PySystem.Console.MessageType.Error)
                 yield from self._stop_execution()
                 return
 
             items_withdrawn = GLOBAL_CACHE.Inventory.WithdrawItemFromStorageByModelID(ModelID.Iron_Ingot.value, 5)
             if not items_withdrawn:
-                Py4GW.Console.Log(MODULE_NAME, "Failed to withdraw (5) Iron Ingots from storage.", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(MODULE_NAME, "Failed to withdraw (5) Iron Ingots from storage.", PySystem.Console.MessageType.Error)
                 yield from self._stop_execution()
                 return
             
@@ -540,7 +540,7 @@ class FSM_Config:
                 GLOBAL_CACHE.Inventory.EquipItem(crafted_weapon, Player.GetAgentID())
                 yield from Routines.Yield.wait(500)
             else:
-                Py4GW.Console.Log(MODULE_NAME, "Crafted weapon not found in inventory.", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(MODULE_NAME, "Crafted weapon not found in inventory.", PySystem.Console.MessageType.Error)
                 yield from self._stop_execution()
                 return
         else:
@@ -1046,7 +1046,7 @@ def main():
     
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
     

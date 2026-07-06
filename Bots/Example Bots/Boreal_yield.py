@@ -75,7 +75,7 @@ def LoadSkillBar():
 def IsSkillBarLoaded():
     primary_profession, secondary_profession = Agent.GetProfessionNames(Player.GetAgentID())
     if primary_profession != "Assassin" and secondary_profession != "Assassin":
-        Py4GW.Console.Log("Boreal Bot", f"IsSkillBarLoaded - This bot requires A/Any or Any/A to work, halting.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("Boreal Bot", f"IsSkillBarLoaded - This bot requires A/Any or Any/A to work, halting.", PySystem.Console.MessageType.Error)
         return False
     return True
                

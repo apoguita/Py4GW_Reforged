@@ -442,7 +442,7 @@ class ButtonLayout:
         min_width = 100
         PyImGui.push_item_width(min_width)
         if self.button_period.draw(width=min_width):
-            Py4GW.Console.Log("Calendar", "Period button clicked.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log("Calendar", "Period button clicked.", PySystem.Console.MessageType.Info)
         PyImGui.pop_item_width()
         ImGui.show_tooltip("Select period")
 
@@ -503,8 +503,8 @@ def draw_month(cal: Calendar, width: int = 300, height: int = 265):
                         if PyImGui.button(str(day.day), 30, 30):
                             calendar.set_date(day.year, day.month, day.day)   # 👈 this makes clicked date active
 
-                            Py4GW.Console.Log("Calendar", f"Clicked raw day: {day}", Py4GW.Console.MessageType.Info)
-                            Py4GW.Console.Log("Calendar", f"Global calendar set to: {calendar.current}", Py4GW.Console.MessageType.Info)
+                            PySystem.Console.Log("Calendar", f"Clicked raw day: {day}", PySystem.Console.MessageType.Info)
+                            PySystem.Console.Log("Calendar", f"Global calendar set to: {calendar.current}", PySystem.Console.MessageType.Info)
 
 
 
@@ -633,10 +633,10 @@ def get_script_path_for_model(model: int) -> Optional[str]:
             if file_model_id == model_id:
                 return full_path
     except Exception as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             "script loader",
             f"Error scanning for model {model_id}: {str(e)}",
-            Py4GW.Console.MessageType.Error,
+            PySystem.Console.MessageType.Error,
         )
 
     return None
@@ -653,10 +653,10 @@ def _get_widget_enabled_var_name(widget: WidgetLike) -> str:
 def _save_widget_enabled_state(widget: WidgetLike) -> bool:
     manager_ini_key = widget_handler.MANAGER_INI_KEY
     if not manager_ini_key:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Widget Manager INI key is unavailable while updating '{widget.plain_name}'.",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         return False
 
@@ -677,10 +677,10 @@ def _set_widget_enabled(widget: WidgetLike, enabled: bool) -> bool:
         else:
             widget.disable()
     except Exception as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Failed to {'enable' if enabled else 'disable'} '{widget.plain_name}': {e}",
-            Py4GW.Console.MessageType.Error,
+            PySystem.Console.MessageType.Error,
         )
         return False
 
@@ -706,32 +706,32 @@ def _disable_owned_farm(reason: str) -> bool:
 
     widget = widget_handler.get_widget_info(owned_nicholas_farm_widget_id)
     if widget is None:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Owned farm '{owned_nicholas_farm_widget_id}' is no longer registered; clearing ownership.",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         owned_nicholas_farm_widget_id = None
         return False
 
     if widget.enabled:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Disabling owned farm '{widget.plain_name}' ({reason}).",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
         if not _set_widget_enabled(widget, False):
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Widget Manager state did not fully update while disabling owned farm '{widget.plain_name}'.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
     else:
         _save_widget_enabled_state(widget)
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Owned farm '{widget.plain_name}' was already disabled ({reason}); clearing ownership.",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     owned_nicholas_farm_widget_id = None
@@ -743,17 +743,17 @@ def _request_farm_enable(script_path: str, item_name: str) -> None:
 
     widget = _resolve_widget_for_script(script_path)
     if widget is None:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Unable to map farm script to a Widget Manager entry: {script_path}",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         return
 
-    Py4GW.Console.Log(
+    PySystem.Console.Log(
         MODULE_NAME,
         f"Requesting Widget Manager enable for Nicholas farm '{widget.plain_name}' ({item_name}).",
-        Py4GW.Console.MessageType.Info,
+        PySystem.Console.MessageType.Info,
     )
 
     if owned_nicholas_farm_widget_id and owned_nicholas_farm_widget_id != widget.name:
@@ -761,57 +761,57 @@ def _request_farm_enable(script_path: str, item_name: str) -> None:
 
     if widget.enabled:
         if not _save_widget_enabled_state(widget):
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Widget Manager state did not fully update while syncing enabled farm '{widget.plain_name}'.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
         if owned_nicholas_farm_widget_id == widget.name:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Nicholas farm '{widget.plain_name}' is already enabled and still owned by Calendar.",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
         else:
             owned_nicholas_farm_widget_id = None
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Nicholas farm '{widget.plain_name}' was already enabled; Calendar will not claim ownership.",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
         return
 
     if _set_widget_enabled(widget, True):
         owned_nicholas_farm_widget_id = widget.name
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Enabled Nicholas farm '{widget.plain_name}' via Widget Manager; Calendar now owns this enablement.",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
     else:
         owned_nicholas_farm_widget_id = None
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Widget Manager failed to enable Nicholas farm '{widget.plain_name}'.",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
 
 
 def _disable_calendar_widget(reason: str) -> None:
     calendar_widget = widget_handler.get_widget_info(MODULE_NAME)
     if calendar_widget is None:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Calendar widget entry was not found while handling '{reason}'.",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         _disable_owned_farm(reason)
         return
 
-    Py4GW.Console.Log(
+    PySystem.Console.Log(
         MODULE_NAME,
         f"Disabling Calendar widget ({reason}).",
-        Py4GW.Console.MessageType.Info,
+        PySystem.Console.MessageType.Info,
     )
     _set_widget_enabled(calendar_widget, False)
 
@@ -1011,7 +1011,7 @@ def main():
             return
         DrawDayWindow()
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 if __name__ == "__main__":

@@ -219,7 +219,7 @@ def _apply_resource_only() -> None:
         )
 
     _report_state("state before resource-only")
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after resource-only")
 
 

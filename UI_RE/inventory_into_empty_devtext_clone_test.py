@@ -122,7 +122,7 @@ def _open_inventory() -> None:
     def _invoke() -> None:
         UIManager.Keypress(ControlAction.ControlAction_ToggleInventoryWindow.value, 0)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log("open inventory enqueued")
     _schedule_report("state after open inventory")
 
@@ -132,7 +132,7 @@ def _ensure_devtext() -> None:
         frame_id = int(GWUI.OpenDevTextWindow() or 0)
         _log(f"ensure devtext invoke result frame_id={frame_id}")
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log("ensure devtext enqueued")
     _schedule_report("state after ensure devtext")
 
@@ -174,7 +174,7 @@ def _create_empty_clone() -> None:
             f"pos=({TARGET_X},{TARGET_Y}) size=({TARGET_WIDTH},{TARGET_HEIGHT})"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "create empty clone enqueued"
     _log(LAST_STATUS)
     _schedule_report("state after create empty clone")
@@ -282,7 +282,7 @@ def _create_inventory_into_empty_clone() -> None:
             GWUI.TriggerFrameRedrawByFrameId(CREATED_FRAME_ID)
             GWUI.TriggerFrameRedrawByFrameId(parent_id)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = f"create inventory into empty devtext clone enqueued mode='{parent_mode_name}'"
     _log(LAST_STATUS)
     _schedule_report("state after create inventory into empty devtext clone")

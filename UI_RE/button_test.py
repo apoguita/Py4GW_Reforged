@@ -12,7 +12,7 @@ CtlTextBtnProc = engine-level text button (EXE FUN_00616c00).
 No IUi:: wrapper, no image list dependency, cold-creation safe.
 
 REQUIRES rebuilt DLL for create_text_button_frame_by_frame_id binding.
-All native calls go through Py4GW.Game.enqueue() — game thread safe.
+All native calls go through PyGameThread.enqueue() — game thread safe.
 """
 import Py4GW
 import PyImGui
@@ -76,7 +76,7 @@ def _create_window_and_button_impl():
 
 
 def create_window_and_button():
-    Py4GW.Game.enqueue(_create_window_and_button_impl)
+    PyGameThread.enqueue(_create_window_and_button_impl)
     global g_last_status
     g_last_status = "create enqueued"
 
@@ -94,7 +94,7 @@ def _check_pushed_impl():
 
 
 def check_pushed():
-    Py4GW.Game.enqueue(_check_pushed_impl)
+    PyGameThread.enqueue(_check_pushed_impl)
     global g_last_status
     g_last_status = "check enqueued"
 
@@ -110,7 +110,7 @@ def _simulate_click_impl():
 
 
 def simulate_click():
-    Py4GW.Game.enqueue(_simulate_click_impl)
+    PyGameThread.enqueue(_simulate_click_impl)
     global g_last_status
     g_last_status = "click enqueued"
 
@@ -129,7 +129,7 @@ def _update_caption_impl(text: str):
 
 
 def update_caption(text: str):
-    Py4GW.Game.enqueue(lambda: _update_caption_impl(text))
+    PyGameThread.enqueue(lambda: _update_caption_impl(text))
     global g_last_status
     g_last_status = "caption enqueued"
 
@@ -145,7 +145,7 @@ def _cleanup_impl():
 
 
 def cleanup():
-    Py4GW.Game.enqueue(_cleanup_impl)
+    PyGameThread.enqueue(_cleanup_impl)
     global g_last_status
     g_last_status = "cleanup enqueued"
 

@@ -11,7 +11,7 @@ class LogItem:
     """
         LogItem - Log window list item.
         text    - (str) text to show in log window, with timestamp optional
-        msgType - (Py4GW.Console.MessageType) message type, changes color Info == White, Error == Red
+        msgType - (PySystem.Console.MessageType) message type, changes color Info == White, Error == Red
     """
     def __init__(self, text, msgType):
         self.text = text
@@ -23,7 +23,7 @@ class LogWindow:
 
         Function:
         Log - (str)(LogItem) log to add, text or LogItem instance.
-        Log - (str)(Py4GW.Console.MessageType) log text to add with optional message type.
+        Log - (str)(PySystem.Console.MessageType) log text to add with optional message type.
         DrawWindow - (void) Draws the child window section, enumerating all LogItems showing them sorted by order of add (descending)
     """
     output = []
@@ -52,9 +52,9 @@ class LogWindow:
         PyImGui.text("Logs:")
         PyImGui.begin_child("OutputLog", (0.0, -60.0),False, int(PyImGui.WindowFlags.HorizontalScrollbar))        
         for _, logg in enumerate(self.output):
-            if logg.msgType == Py4GW.Console.MessageType.Info:
+            if logg.msgType == PySystem.Console.MessageType.Info:
                 PyImGui.text_wrapped(logg.text)
-            elif logg.msgType == Py4GW.Console.MessageType.Warning:
+            elif logg.msgType == PySystem.Console.MessageType.Warning:
                 PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (1, 1, 0, 1)) 
                 PyImGui.text_wrapped(logg.text)
                 PyImGui.pop_style_color(1)
@@ -310,7 +310,7 @@ class BasicWindow:
                         all_item_ids.append((bag_enum.value, item))
 
         except Exception as e:
-            Py4GW.Console.Log("GetInventoryItems", f"error in function: {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("GetInventoryItems", f"error in function: {str(e)}", PySystem.Console.MessageType.Error)
 
         return all_item_ids
 
@@ -328,7 +328,7 @@ class BasicWindow:
         if self.Logger:
             self.Logger.ClearLog()
                        
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if self.Logger:
            self.Logger.Log(text, msgType)
 ### --- BASIC WINDOW --- ###
@@ -374,7 +374,7 @@ class SalvageFsm(FSM):
                         execute_fn=lambda: self.EndSalvageLoop(),
                         transition_delay_ms=150)
     
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if isinstance(self.window, BasicWindow):
             self.window.Log(text, msgType)
 
@@ -386,7 +386,7 @@ class SalvageFsm(FSM):
             if callable(function):
                 function()
         except Exception as e:
-            self.Log(f"Calling function {function.__name__} failed. {str(e)}", Py4GW.Console.MessageType.Error)
+            self.Log(f"Calling function {function.__name__} failed. {str(e)}", PySystem.Console.MessageType.Error)
 
     def UpdateState(self, state):
         if isinstance(self.window, BasicWindow):
@@ -520,7 +520,7 @@ class IdentifyFsm(FSM):
             if callable(function):
                 function()
         except Exception as e:
-            self.window.Log(f"Calling function {function.__name__} failed. {str(e)}", Py4GW.Console.MessageType.Error)
+            self.window.Log(f"Calling function {function.__name__} failed. {str(e)}", PySystem.Console.MessageType.Error)
 
     def UpdateState(self, state):
         if issubclass(type(self.window), BasicWindow):
@@ -627,7 +627,7 @@ def main():
                 salvager.update()
 
     except Exception as e:
-        Py4GW.Console.Log(widget_name, f"Error in main: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(widget_name, f"Error in main: {str(e)}", PySystem.Console.MessageType.Debug)
         return False
     return True
 

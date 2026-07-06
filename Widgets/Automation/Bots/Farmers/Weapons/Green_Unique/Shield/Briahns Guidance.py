@@ -14,7 +14,7 @@ from Py4GWCoreLib import Map, Agent, Player
 BOT_NAME = "Briahn's Shield Farm"
 MODULE_ICON = "Textures\\Module_Icons\\Briahn's Guidance.png"
 TEXTURE = os.path.join(
-    Py4GW.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures", "briahns_guidance.png"
+    PySystem.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures", "briahns_guidance.png"
 )
 OUTPOST_TO_TRAVEL_KODASH = Map.GetMapIDByName('The Kodash Bazaar')
 OUTPOST_TO_TRAVEL_HONUR_HILL = Map.GetMapIDByName('Honur Hill')

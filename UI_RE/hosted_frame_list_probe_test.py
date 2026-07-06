@@ -213,7 +213,7 @@ def _create_empty_window() -> None:
             f"rect=({TARGET_X},{TARGET_Y},{TARGET_WIDTH},{TARGET_HEIGHT})"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "create window enqueued"
     _log(
         f"create window enqueued label='{WINDOW_LABEL}' title='{WINDOW_TITLE}' "
@@ -259,7 +259,7 @@ def _insert_hosted_text_host() -> None:
             f"callback=0x{init_single_text_host_proc:X} frame_id={frame_id}"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "insert host enqueued"
     _log(
         f"insert host enqueued parent={parent_id} child_slot=0x{child_slot:X} "
@@ -307,7 +307,7 @@ def _replace_terminal_with_frame_list() -> None:
             f"relay={relay} terminal={terminal}"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "replace terminal enqueued"
     _log(
         f"replace terminal enqueued view_root={view_root} message=0x7FFFFFF5 "
@@ -365,7 +365,7 @@ def _insert_text_labels() -> None:
             f"count={count} created={created}"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "insert text labels enqueued"
     _log(f"insert text labels enqueued terminal={terminal} count={count}")
     _schedule_report("state after insert text labels")

@@ -19,5 +19,6 @@ class Pointers_SHMemStruct(Structure):
         ("AvailableCharacters", c_void_p),
         ("PartyContext", c_void_p),
         ("ServerRegionContext", c_void_p),
+        ("Camera", c_void_p),
     ]
 

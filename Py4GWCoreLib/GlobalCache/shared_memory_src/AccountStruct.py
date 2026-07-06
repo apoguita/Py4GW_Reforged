@@ -1,5 +1,5 @@
 from ctypes import Structure, c_uint, c_bool, c_wchar, c_uint64
-import Py4GW
+import PySystem
 from PyParty import HeroPartyMember, PetInfo
 from Py4GWCoreLib import ThrottledTimer
 from .Globals import (
@@ -267,7 +267,7 @@ class AccountStruct(Structure):
                     account_in_aggro = bool(account.InAggro)
                     if account_in_aggro:
                         party_in_aggro = True
-                now = Py4GW.Game.get_tick_count64()
+                now = PySystem.get_tick_count64()
                 stay_alert = self.InAggroTick64 > 0 and now - self.InAggroTick64 < IN_AGGRO_STAY_ALERT_TIME
                 try:
                     from HeroAI.settings import Settings
@@ -296,7 +296,7 @@ class AccountStruct(Structure):
                     self.InAggroTick64 = 0
             except Exception:
                 self.InAggro = bool(Routines.Checks.Agents.InAggro(Range.Earshot.value))
-                self.InAggroTick64 = Py4GW.Game.get_tick_count64() if self.InAggro else 0
+                self.InAggroTick64 = PySystem.get_tick_count64() if self.InAggro else 0
 
         meta_timer = _get_slot_timer(_player_meta_timers, slot_index, SHMEM_PLAYER_META_UPDATE_THROTTLE_MS)
         if force_full or meta_timer.IsExpired():
@@ -363,7 +363,7 @@ class AccountStruct(Structure):
             _update_inventory_bags()
             inventory_timer.Reset()
 
-        self.LastUpdated = Py4GW.Game.get_tick_count64()
+        self.LastUpdated = PySystem.get_tick_count64()
         
     def from_hero_context(self, hero_data: HeroPartyMember, slot_index: int) -> None:
         from ...Map import Map
@@ -391,8 +391,8 @@ class AccountStruct(Structure):
         # - GetHeroSlotByHeroData can find this slot by HeroID
         # - _is_slot_active doesn't treat this slot as expired (LastUpdated=0),
         #   preventing GetEmptySlot from recycling it before the map finishes loading.
-        self.AgentData.HeroID = hero_data.hero_id.GetID()
-        self.LastUpdated = Py4GW.Game.get_tick_count64()
+        self.AgentData.HeroID = hero_data.hero_id
+        self.LastUpdated = PySystem.get_tick_count64()
 
         if Map.IsMapLoading(): return
         if not Player.IsPlayerLoaded(): return
@@ -422,10 +422,10 @@ class AccountStruct(Structure):
         self.AgentData.TargetID = 0
         self.AgentData.LoginNumber = 0
         self.AgentData.AgentID = agent_id
-        self.AgentData.CharacterName = hero_data.hero_id.GetName()
+        self.AgentData.CharacterName = PyParty.Hero(hero_data.hero_id).GetName()
         if self.AgentData.OwnerAgentID == 0:
             self.AgentData.OwnerAgentID = Party.Players.GetAgentIDByLoginNumber(hero_data.owner_player_id)
-        self.AgentData.HeroID = hero_data.hero_id.GetID()
+        self.AgentData.HeroID = hero_data.hero_id
         
 
         meta_timer = _get_slot_timer(_hero_meta_timers, slot_index, SHMEM_HERO_EXTRA_UPDATE_THROTTLE_MS)
@@ -485,7 +485,7 @@ class AccountStruct(Structure):
                     self.UnlockedSkills.reset()
                 _hero_static_stage[slot_index] = (static_stage + 1) % 3
             static_timer.Reset()
-        self.LastUpdated = Py4GW.Game.get_tick_count64()
+        self.LastUpdated = PySystem.get_tick_count64()
         
     def from_pet_context(self, pet_data: PetInfo, slot_index: int) -> None:
         from ...Map import Map
@@ -599,5 +599,5 @@ class AccountStruct(Structure):
                     self.UnlockedSkills.reset()
                 _pet_static_stage[slot_index] = (static_stage + 1) % 3
             static_timer.Reset()
-        self.LastUpdated = Py4GW.Game.get_tick_count64()
+        self.LastUpdated = PySystem.get_tick_count64()
         

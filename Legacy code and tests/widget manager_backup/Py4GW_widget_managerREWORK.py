@@ -129,7 +129,7 @@ class WidgetHandler:
         if widgets_path:
             self.widgets_path = os.path.abspath(widgets_path)
         else:
-            base_dir = Py4GW.Console.get_projects_path()
+            base_dir = PySystem.Console.get_projects_path()
             self.widgets_path = os.path.join(base_dir, self._widgets_folder)
             
         self.MANAGER_INI_KEY = ""
@@ -177,7 +177,7 @@ class WidgetHandler:
     def _set_widget_state(self, name: str, state: bool):
         widget = self.widgets.get(name)
         if not widget:
-            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", PySystem.Console.MessageType.Warning)
             return
         
         widget.enabled = state
@@ -187,16 +187,16 @@ class WidgetHandler:
                 try:
                     widget.on_enable()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error during on_enable of widget {name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error during on_enable of widget {name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
                                 
         elif not state:
             if widget.on_disable:
                 try:
                     widget.on_disable()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error during on_disable of widget {name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error during on_disable of widget {name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
             
         IniManager().set(self.MANAGER_INI_KEY, "widget_enabled", widget.enabled, name)
         IniManager().save_vars(self.MANAGER_INI_KEY)
@@ -208,10 +208,10 @@ class WidgetHandler:
         self._set_widget_state(name, False)
         
     def _log_success(self, message: str):
-        ConsoleLog("WidgetManager", message, Py4GW.Console.MessageType.Info)
+        ConsoleLog("WidgetManager", message, PySystem.Console.MessageType.Info)
     
     def _log_error(self, message: str):
-        ConsoleLog("WidgetManager", message, Py4GW.Console.MessageType.Error)
+        ConsoleLog("WidgetManager", message, PySystem.Console.MessageType.Error)
         
     def is_widget_enabled(self, name: str) -> bool:
         widget = self.widgets.get(name)
@@ -370,7 +370,7 @@ class WidgetHandler:
         style = ImGui.get_style()
         
         if ImGui.icon_button(IconsFontAwesome5.ICON_RETWEET + "##Reload Widgets", 40):
-            ConsoleLog(module_name, "Reloading Widgets...", Py4GW.Console.MessageType.Info)
+            ConsoleLog(module_name, "Reloading Widgets...", PySystem.Console.MessageType.Info)
             widget_manager.widget_initialized = False
             widget_manager.discover()
             widget_manager.widget_initialized = True        
@@ -509,8 +509,8 @@ class WidgetHandler:
                 try:
                     widget_info.minimal()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error executing minimal of widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error executing minimal of widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
             if pause_optional and widget_info.optional:
                 continue
@@ -519,8 +519,8 @@ class WidgetHandler:
                 try:
                     widget_info.main()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
         if not ui_enabled:
             style.Alpha = alpha
@@ -535,8 +535,8 @@ class WidgetHandler:
                     widget_info.configure()
                     
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
       
     def get_widget_info(self, name: str) -> Widget | None:
         return self.widgets.get(name, None)  
@@ -544,7 +544,7 @@ class WidgetHandler:
     def set_widget_configuring(self, name: str, value: bool = True):
         widget = self.widgets.get(name)
         if not widget:
-            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", PySystem.Console.MessageType.Warning)
             return
         widget.configuring = value
  
@@ -587,8 +587,8 @@ def main():
             widget_manager.execute_configuring_widgets()
 
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, traceback.format_exc(), Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, traceback.format_exc(), PySystem.Console.MessageType.Error)
 
 if __name__ == "__main__":
     main()

@@ -156,7 +156,7 @@ def _create_extra_weapon_slot() -> None:
             or 0
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create extra slot enqueued parent={root} child_offset=0x{LAST_CHILD_OFFSET:X} "
         f"callback=0x{callback:X} wparam=4"

@@ -35,7 +35,7 @@ class XunlaiModule:
         self.MODULE_NAME = "Xunlai"
         self.inventory_frame = inventory_frame
         self.show_transfer_buttons = True
-        projects_path = Py4GW.Console.get_projects_path()
+        projects_path = PySystem.Console.get_projects_path()
         full_path = projects_path + "\\Widgets\\Config\\InventoryPlus.ini"
         self.ini = IniHandler(full_path)
         self.show_transfer_buttons = self.ini.read_bool("XunlaiOptions", "show_transfer_buttons", self.show_transfer_buttons)   

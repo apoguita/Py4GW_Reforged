@@ -267,7 +267,7 @@ class SF_Assassin_Hells_Precipice(BuildMgr):
             yield from Routines.Yield.wait(150)
             
             # Log current map id and name
-            ConsoleLog(self.build_name, f"Current Map ID: {current_map_id}, Name: {Map.GetMapName(current_map_id)}", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, f"Current Map ID: {current_map_id}, Name: {Map.GetMapName(current_map_id)}", PySystem.Console.MessageType.Info, log=False)
 
 
 
@@ -322,7 +322,7 @@ class SF_Assassin_Hells_Precipice(BuildMgr):
         best_target = best_15deg if best_15deg else best_30deg
 
         if not best_target:
-            ConsoleLog(self.build_name, "Deaths Charge Handler ::: No valid target in 15° or 30° cone → skip", Py4GW.Console.MessageType.Debug)
+            ConsoleLog(self.build_name, "Deaths Charge Handler ::: No valid target in 15° or 30° cone → skip", PySystem.Console.MessageType.Debug)
             return
 
         ex, ey = Agent.GetXY(best_target)
@@ -331,7 +331,7 @@ class SF_Assassin_Hells_Precipice(BuildMgr):
         ConsoleLog(
             self.build_name,
             f"Chosen enemy at ({ex:.1f}, {ey:.1f}) | Cone: {'15°' if best_target == best_15deg else '30°'} | Distance={target_dist:.1f}",
-            Py4GW.Console.MessageType.Debug
+            PySystem.Console.MessageType.Debug
         )
 
         if ShowDXoverlay:

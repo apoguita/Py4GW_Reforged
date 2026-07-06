@@ -24,7 +24,7 @@ def IdentifyCheckedItems(id_checkboxes: Dict[int, bool]):
         if checked:
             first_id_kit = Inventory.GetFirstIDKit()
             if first_id_kit == 0:
-                Py4GW.Console.Log(MODULE_NAME, "No ID Kit found in inventory.", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(MODULE_NAME, "No ID Kit found in inventory.", PySystem.Console.MessageType.Warning)
                 return
             
             item_instance = PyItem.PyItem(item_id)
@@ -42,7 +42,7 @@ def IdentifyCheckedItems(id_checkboxes: Dict[int, bool]):
             id_checkboxes[item_id] = False
         yield from Routines.Yield.wait(50)
         
-    ConsoleLog(MODULE_NAME, f"Identified {identified_items} items.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, f"Identified {identified_items} items.", PySystem.Console.MessageType.Info)
 
 
 def get_first_full_material_stack():
@@ -93,7 +93,7 @@ def SalvageCheckedItems(salvage_checkboxes: Dict[int, bool], keep_salvage_kits: 
     WINDOW_WAIT_BUDGET_MS = 3000
 
     total_to_salvage = sum(1 for _, checked in salvage_checkboxes.items() if checked)
-    ConsoleLog(MODULE_NAME, f"Starting salvage for {total_to_salvage} items.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, f"Starting salvage for {total_to_salvage} items.", PySystem.Console.MessageType.Info)
 
     for item_id, checked in items_to_salvage:
         if not checked:
@@ -102,7 +102,7 @@ def SalvageCheckedItems(salvage_checkboxes: Dict[int, bool], keep_salvage_kits: 
         while checked:
             first_salv_kit = Inventory.GetFirstSalvageKit(use_lesser=True)
             if first_salv_kit == 0:
-                Py4GW.Console.Log(MODULE_NAME, "No Salvage Kit found in inventory.", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(MODULE_NAME, "No Salvage Kit found in inventory.", PySystem.Console.MessageType.Warning)
                 return
 
             quantity = Item.Properties.GetQuantity(item_id)
@@ -198,7 +198,7 @@ def SalvageCheckedItems(salvage_checkboxes: Dict[int, bool], keep_salvage_kits: 
             # Refresh status for the next iteration
             checked = salvage_checkboxes.get(item_id, False)
 
-    ConsoleLog(MODULE_NAME, f"Salvaged {salvaged_items} items.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, f"Salvaged {salvaged_items} items.", PySystem.Console.MessageType.Info)
     
 #region MerchantCheckedItems
     
@@ -218,11 +218,11 @@ def MerchantCheckedItems(merchant_checkboxes: Dict[int, bool]):
         return 10 if _is_material_trader() else 1
 
     if _is_merchant():
-        ConsoleLog(MODULE_NAME, "Selling to regular merchants is not yet supported.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "Selling to regular merchants is not yet supported.", PySystem.Console.MessageType.Warning)
         return
 
     if not merchant_checkboxes:
-        ConsoleLog(MODULE_NAME, "No items selected for selling.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "No items selected for selling.", PySystem.Console.MessageType.Warning)
         return
 
     required_quantity = _get_merchant_minimum_quantity()
@@ -237,13 +237,13 @@ def MerchantCheckedItems(merchant_checkboxes: Dict[int, bool]):
         while True:
             item_array = ItemArray.GetItemArray(bag_list)
             if item_id not in item_array:
-                #ConsoleLog(MODULE_NAME, f"Item {item_id} no longer in inventory.", Py4GW.Console.MessageType.Info)
+                #ConsoleLog(MODULE_NAME, f"Item {item_id} no longer in inventory.", PySystem.Console.MessageType.Info)
                 merchant_checkboxes[item_id] = False
                 break
 
             quantity = Item.Properties.GetQuantity(item_id)
             if quantity < required_quantity:
-                #ConsoleLog(MODULE_NAME, f"Item {item_id} has quantity {quantity} which is below required {required_quantity}.", Py4GW.Console.MessageType.Info)
+                #ConsoleLog(MODULE_NAME, f"Item {item_id} has quantity {quantity} which is below required {required_quantity}.", PySystem.Console.MessageType.Info)
                 merchant_checkboxes[item_id] = False
                 break
 
@@ -256,13 +256,13 @@ def MerchantCheckedItems(merchant_checkboxes: Dict[int, bool]):
                     break
 
             if quoted_value == 0:
-                ConsoleLog(MODULE_NAME, f"Item {item_id} has no value, skipping.", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, f"Item {item_id} has no value, skipping.", PySystem.Console.MessageType.Warning)
                 merchant_checkboxes[item_id] = False
                 break
 
             # Proceed with sale
             GLOBAL_CACHE.Trading.Trader.SellItem(item_id, quoted_value)
-            #ConsoleLog(MODULE_NAME, f"Sold item {item_id} for {quoted_value}.", Py4GW.Console.MessageType.Success)
+            #ConsoleLog(MODULE_NAME, f"Sold item {item_id} for {quoted_value}.", PySystem.Console.MessageType.Success)
 
             # Wait for confirmation
             while True:
@@ -273,7 +273,7 @@ def MerchantCheckedItems(merchant_checkboxes: Dict[int, bool]):
             sold_items += required_quantity  # Assumed fixed chunk sold
             ammount_sold += quoted_value * required_quantity
 
-    ConsoleLog(MODULE_NAME, f"Merchant sold {sold_items} items for a total of {ammount_sold} gold.", Py4GW.Console.MessageType.Info)
+    ConsoleLog(MODULE_NAME, f"Merchant sold {sold_items} items for a total of {ammount_sold} gold.", PySystem.Console.MessageType.Info)
 
 #region BuyMerchantItems
 def BuyMerchantItems(merchant_item_list, selected_index, quantity):
@@ -289,7 +289,7 @@ def BuyMerchantItems(merchant_item_list, selected_index, quantity):
         return 10 if _is_material_trader() else 1
 
     if selected_index < 0 or selected_index >= len(merchant_item_list):
-        ConsoleLog(MODULE_NAME, "Invalid merchant selection.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "Invalid merchant selection.", PySystem.Console.MessageType.Warning)
         return
 
     item_id = merchant_item_list[selected_index]
@@ -299,7 +299,7 @@ def BuyMerchantItems(merchant_item_list, selected_index, quantity):
         ConsoleLog(
             MODULE_NAME,
             f"Minimum quantity required is {required_quantity}.",
-            Py4GW.Console.MessageType.Warning
+            PySystem.Console.MessageType.Warning
         )
         return
 
@@ -316,11 +316,11 @@ def BuyMerchantItems(merchant_item_list, selected_index, quantity):
                 break
 
         if cost == 0:
-            ConsoleLog(MODULE_NAME, f"Item {item_id} has no price, skipping.", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(MODULE_NAME, f"Item {item_id} has no price, skipping.", PySystem.Console.MessageType.Warning)
             return
 
         GLOBAL_CACHE.Trading.Trader.BuyItem(item_id, cost)
-        #ConsoleLog(MODULE_NAME,f"Bought {required_quantity} units of item {item_id} for {cost}g.", Py4GW.Console.MessageType.Success)
+        #ConsoleLog(MODULE_NAME,f"Bought {required_quantity} units of item {item_id} for {cost}g.", PySystem.Console.MessageType.Success)
 
         while True:
             yield from Routines.Yield.wait(50)
@@ -334,6 +334,6 @@ def BuyMerchantItems(merchant_item_list, selected_index, quantity):
     ConsoleLog(
         MODULE_NAME,
         f"Purchase complete: {total_items_bought} items bought for a total of {total_gold_spent} gold.",
-        Py4GW.Console.MessageType.Info
+        PySystem.Console.MessageType.Info
     )
 

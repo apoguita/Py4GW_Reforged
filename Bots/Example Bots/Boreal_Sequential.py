@@ -105,7 +105,7 @@ def IsSkillBarLoaded():
     if primary_profession != "Assassin" and secondary_profession != "Assassin":
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        Py4GW.Console.Log("Boreal Bot", f"{current_function} - This bot requires A/Any or Any/A to work, halting.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("Boreal Bot", f"{current_function} - This bot requires A/Any or Any/A to work, halting.", PySystem.Console.MessageType.Error)
         return False
     return True
                

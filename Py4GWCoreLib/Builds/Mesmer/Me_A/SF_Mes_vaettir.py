@@ -94,18 +94,18 @@ class SF_Mes_vaettir(BuildMgr):
                     self.deadly_paradox, extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=100
                 )
             ):
-                ConsoleLog(self.build_name, "Casting Deadly Paradox.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
 
             if (yield from self._CastSkillID(self.shadow_form, log=False, aftercast_delay=1750)):
-                ConsoleLog(self.build_name, "Casting Shadow Form.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
 
         if player_hp < 0.7 and (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shroud_of_distress)):
             yield from self._CastSkillID(self.shroud_of_distress, log=False, aftercast_delay=500)
-            ConsoleLog(self.build_name, "Casting Shroud for defense.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Shroud for defense.", PySystem.Console.MessageType.Info, log=False)
 
         if player_hp < 0.8 and (yield from Routines.Yield.Skills.IsSkillIDUsable(self.way_of_perfection)):
             yield from self._CastSkillID(self.way_of_perfection, log=False, aftercast_delay=500)
-            ConsoleLog(self.build_name, "Casting Way of Perfection for defense.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Way of Perfection for defense.", PySystem.Console.MessageType.Info, log=False)
 
         if player_hp < 0.25 and (yield from Routines.Yield.Skills.IsSkillIDUsable(self.heart_of_shadow)):
             yield from self.CastHeartOfShadow()
@@ -113,7 +113,7 @@ class SF_Mes_vaettir(BuildMgr):
     def CastShroudOfDistress(self):
         player_agent_id = Player.GetAgentID()
         if Agent.GetHealth(player_agent_id) < 0.45:
-            ConsoleLog(self.build_name, "Casting Shroud of Distress.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
             # ** Cast Shroud of Distress **
             yield from self._CastSkillID(self.shroud_of_distress, log=False, aftercast_delay=1750)
 
@@ -223,10 +223,10 @@ class SF_Mes_vaettir(BuildMgr):
                         self.deadly_paradox, extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=200
                     )
                 ):
-                    ConsoleLog(self.build_name, "Casting Deadly Paradox.", Py4GW.Console.MessageType.Info, log=False)
+                    ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
                 GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
                 if (yield from self._CastSkillID(self.shadow_form, log=False, aftercast_delay=1950)):
-                    ConsoleLog(self.build_name, "Casting Shadow Form.", Py4GW.Console.MessageType.Info, log=False)
+                    ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
                     return
 
         has_shroud_of_distress = Routines.Checks.Effects.HasBuff(player_agent_id, self.shroud_of_distress)
@@ -234,7 +234,7 @@ class SF_Mes_vaettir(BuildMgr):
             shadow_form_buff_time_remaining > 8000
             and (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shroud_of_distress))
         ):
-            ConsoleLog(self.build_name, "Casting Shroud of Distress.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
             # ** Cast Shroud of Distress **
             GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
             if (yield from self._CastSkillID(self.shroud_of_distress, log=False, aftercast_delay=1950)):
@@ -242,13 +242,13 @@ class SF_Mes_vaettir(BuildMgr):
 
         has_mantra_of_earth = Routines.Checks.Effects.HasBuff(player_agent_id, self.mantra_of_earth)
         if not has_mantra_of_earth:
-            ConsoleLog(self.build_name, "Casting Mantra Of Earth.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Mantra Of Earth.", PySystem.Console.MessageType.Info, log=False)
             # ** Cast mantra of earth **
             if (yield from self._CastSkillID(self.mantra_of_earth, log=False, aftercast_delay=200)):
                 return
 
         if (yield from self._CastSkillID(self.way_of_perfection, log=False, aftercast_delay=1000)):
-            ConsoleLog(self.build_name, "Casting Way of Perfection.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Way of Perfection.", PySystem.Console.MessageType.Info, log=False)
             return
 
         if not self.in_killing_routine:
@@ -306,11 +306,11 @@ class SF_Mes_vaettir(BuildMgr):
                 if is_wastrels_slot_ready and is_arcane_echo_slot_ready:
                     yield from self._CastSkillSlot(self.arcane_echo_slot, log=False, aftercast_delay=1200)
                     Player.Interact(target, False)
-                    ConsoleLog(self.build_name, "Casting Arcane Echo.", Py4GW.Console.MessageType.Info, log=False)
+                    ConsoleLog(self.build_name, "Casting Arcane Echo.", PySystem.Console.MessageType.Info, log=False)
                 elif is_arcane_echo_slot_ready:
                     yield from self._CastSkillSlot(self.arcane_echo_slot, log=False, aftercast_delay=500)
                     Player.Interact(target, False)
-                    ConsoleLog(self.build_name, "Casting Echoed Wastrel.", Py4GW.Console.MessageType.Info, log=False)
+                    ConsoleLog(self.build_name, "Casting Echoed Wastrel.", PySystem.Console.MessageType.Info, log=False)
 
             target = GetNotHexedEnemy()
             if target and not Routines.Checks.Skills.IsSkillSlotReady(self.arcane_echo_slot):

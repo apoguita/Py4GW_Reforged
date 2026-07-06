@@ -1,6 +1,6 @@
 import ctypes
 from operator import index
-import Py4GW
+import PySystem
 from PyParty import HeroPartyMember, PetInfo
 from ctypes import Structure, c_float
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
@@ -78,7 +78,7 @@ class AllAccounts(Structure):
         slot_active = slot_data.IsSlotActive    
         last_updated = slot_data.LastUpdated
         
-        base_timestamp = Py4GW.Game.get_tick_count64()
+        base_timestamp = PySystem.get_tick_count64()
         
         if slot_active and (base_timestamp - last_updated) < SHMEM_SUBSCRIBE_TIMEOUT_MILLISECONDS:
             return True
@@ -209,7 +209,7 @@ class AllAccounts(Structure):
             return candidates[0]
 
         try:
-            local_hwnd = int(Py4GW.Console.get_gw_window_handle() or 0)
+            local_hwnd = int(PySystem.Console.get_gw_window_handle() or 0)
         except Exception:
             local_hwnd = 0
 
@@ -322,7 +322,7 @@ class AllAccounts(Structure):
         slot_data = self.AccountData[index]
         if not slot_data.IsSlotActive:
             return False
-        return (Py4GW.Game.get_tick_count64() - slot_data.LastUpdated) >= SHMEM_SUBSCRIBE_TIMEOUT_MILLISECONDS
+        return (PySystem.get_tick_count64() - slot_data.LastUpdated) >= SHMEM_SUBSCRIBE_TIMEOUT_MILLISECONDS
 
     def GetEmptySlot(self, allow_expired_reclaim: bool = True) -> int:
         """Find the first empty or safely reclaimable slot in shared memory."""
@@ -345,7 +345,7 @@ class AllAccounts(Structure):
             slot_data = self.AccountData[i]
             slot_active = slot_data.IsSlotActive 
             last_updated = slot_data.LastUpdated
-            base_timestamp = Py4GW.Game.get_tick_count64()
+            base_timestamp = PySystem.get_tick_count64()
             if slot_active and (base_timestamp - last_updated) >= SHMEM_SUBSCRIBE_TIMEOUT_MILLISECONDS:
                 expired_slots.append(i)
                 
@@ -369,7 +369,7 @@ class AllAccounts(Structure):
         for index in expired_slots:
             account_data = self.AccountData[index]
             if (account_data.IsHero and 
-                account_data.AgentData.HeroID == hero_data.hero_id.GetID() and
+                account_data.AgentData.HeroID == hero_data.hero_id and
                 (
                     account_data.AccountEmail == owner_email or
                     account_data.AgentData.OwnerAgentID == owner_id
@@ -397,34 +397,34 @@ class AllAccounts(Structure):
     def SubmitAccountData(self, account_email: str) -> int:
         """Submit account data to shared memory. Returns the slot index or -1 on failure."""
         if not account_email:
-            ConsoleLog(SHMEM_MODULE_NAME, "Account email is empty.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, "Account email is empty.", PySystem.Console.MessageType.Error)
             return -1
         
         slot_index = self.GetPlayerExpiredSlot(account_email)
         if slot_index == -1:
             slot_index = self.GetEmptySlot(allow_expired_reclaim=True)
         if slot_index == -1:
-            ConsoleLog(SHMEM_MODULE_NAME, "No empty slot available to submit account data.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, "No empty slot available to submit account data.", PySystem.Console.MessageType.Error)
             return -1
         
         new_account = AccountStruct()
         new_account.from_context(account_email, slot_index)
         
-        Key = KeyStruct().AsPlayerKey(Py4GW.Console.get_gw_window_handle())
+        Key = KeyStruct().AsPlayerKey(PySystem.Console.get_gw_window_handle())
         self.Keys[slot_index] = new_account.Key = Key
         self.AccountData[slot_index] = new_account
         
 
         
-        ConsoleLog(SHMEM_MODULE_NAME, f"Submitted account data for {account_email} at slot {slot_index}.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(SHMEM_MODULE_NAME, f"Submitted account data for {account_email} at slot {slot_index}.", PySystem.Console.MessageType.Info)
         return slot_index
     
     def SubmitHeroData(self, hero_data: HeroPartyMember) -> int:
         """Submit hero data to shared memory. Returns the slot index or -1 on failure."""
         from ...Party import Party
         owner_id = Party.Players.GetAgentIDByLoginNumber(hero_data.owner_player_id)
-        retry_key = (int(hero_data.hero_id.GetID()), int(owner_id))
-        now = Py4GW.Game.get_tick_count64()
+        retry_key = (int(hero_data.hero_id), int(owner_id))
+        now = PySystem.get_tick_count64()
         if now < _HERO_SUBMIT_RETRY_AFTER.get(retry_key, 0):
             return -1
 
@@ -439,17 +439,17 @@ class AllAccounts(Structure):
         new_account = AccountStruct()
         new_account.from_hero_context(hero_data, slot_index)
         
-        Key = KeyStruct().AsHeroKey(Py4GW.Console.get_gw_window_handle(), int(hero_data.hero_id.GetID()))
+        Key = KeyStruct().AsHeroKey(PySystem.Console.get_gw_window_handle(), int(hero_data.hero_id))
         self.Keys[slot_index] = new_account.Key = Key
         self.AccountData[slot_index] = new_account
 
-        ConsoleLog(SHMEM_MODULE_NAME, f"Submitted hero data for HeroID {hero_data.hero_id.GetID()} at slot {slot_index}.", Py4GW.Console.MessageType.Debug, log=False)
+        ConsoleLog(SHMEM_MODULE_NAME, f"Submitted hero data for HeroID {hero_data.hero_id} at slot {slot_index}.", PySystem.Console.MessageType.Debug, log=False)
         return slot_index
     
     def SubmitPetData(self, pet_data: PetInfo) -> int:
         """Submit pet data to shared memory. Returns the slot index or -1 on failure."""
         retry_key = (int(pet_data.agent_id), int(pet_data.owner_agent_id))
-        now = Py4GW.Game.get_tick_count64()
+        now = PySystem.get_tick_count64()
         if now < _PET_SUBMIT_RETRY_AFTER.get(retry_key, 0):
             return -1
 
@@ -464,11 +464,11 @@ class AllAccounts(Structure):
         new_account = AccountStruct()
         new_account.from_pet_context(pet_data, slot_index)
         
-        Key = KeyStruct().AsPetKey(Py4GW.Console.get_gw_window_handle(), 0)
+        Key = KeyStruct().AsPetKey(PySystem.Console.get_gw_window_handle(), 0)
         self.Keys[slot_index] = new_account.Key = Key
         self.AccountData[slot_index] = new_account
         
-        ConsoleLog(SHMEM_MODULE_NAME, f"Submitted pet data for AgentID {pet_data.agent_id} at slot {slot_index}.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(SHMEM_MODULE_NAME, f"Submitted pet data for AgentID {pet_data.agent_id} at slot {slot_index}.", PySystem.Console.MessageType.Info)
         return slot_index
     
     def SetPlayerData(self, account_email: str):
@@ -530,7 +530,7 @@ class AllAccounts(Structure):
             return -1
         
         """Find the index of the account with the given email."""
-        hwnd = Py4GW.Console.get_gw_window_handle()
+        hwnd = PySystem.Console.get_gw_window_handle()
         own_index = self._find_player_slot_by_key(account_email, hwnd)
         if own_index != -1:
             return own_index
@@ -574,8 +574,8 @@ class AllAccounts(Structure):
         from ...Party import Party
         from ...Player import Player
         all_accounts = self.AccountData
-        hero_id = hero_data.hero_id.GetID()
-        key_slot = self._find_slot_by_key(Py4GW.Console.get_gw_window_handle(), 1, int(hero_id))
+        hero_id = hero_data.hero_id
+        key_slot = self._find_slot_by_key(PySystem.Console.get_gw_window_handle(), 1, int(hero_id))
         if key_slot != -1:
             return key_slot
         owner_agent_id = Party.Players.GetAgentIDByLoginNumber(hero_data.owner_player_id)
@@ -603,7 +603,7 @@ class AllAccounts(Structure):
         """Find the index of the pet with the given ID."""
         from ...Player import Player
         owner_email = Player.GetAccountEmail()
-        key_slot = self._find_slot_by_key(Py4GW.Console.get_gw_window_handle(), 2, 0)
+        key_slot = self._find_slot_by_key(PySystem.Console.get_gw_window_handle(), 2, 0)
         if key_slot != -1:
             return key_slot
         all_accounts = self.AccountData
@@ -769,7 +769,7 @@ class AllAccounts(Structure):
         if index != -1 and self._is_visible_account(index):
             return self.HeroAIOptions[index]
         else:
-            ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", Py4GW.Console.MessageType.Error, log = False)
+            ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", PySystem.Console.MessageType.Error, log = False)
             return None
 
     def GetHeroAIOptionsByPartyNumber(self, party_number: int) -> HeroAIOptionStruct | None:
@@ -788,7 +788,7 @@ class AllAccounts(Structure):
         if index != -1 and self._is_visible_account(index):
             self.HeroAIOptions[index] = options
         else:
-            ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", Py4GW.Console.MessageType.Error, log = False)
+            ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", PySystem.Console.MessageType.Error, log = False)
 
     def SetHeroAIPropertyByEmail(self, account_email: str, property_name: str, value):
         """Set a specific HeroAI property for the account with the given email."""
@@ -803,15 +803,15 @@ class AllAccounts(Structure):
                 if 0 <= skill_index < SHMEM_MAX_NUMBER_OF_SKILLS:
                     options.Skills[skill_index] = value
                 else:
-                    ConsoleLog(SHMEM_MODULE_NAME, f"Invalid skill index: {skill_index}.", Py4GW.Console.MessageType.Error)
+                    ConsoleLog(SHMEM_MODULE_NAME, f"Invalid skill index: {skill_index}.", PySystem.Console.MessageType.Error)
                 return
             
             if hasattr(options, property_name):
                 setattr(options, property_name, value)
             else:
-                ConsoleLog(SHMEM_MODULE_NAME, f"Property {property_name} does not exist in HeroAIOptions.", Py4GW.Console.MessageType.Error)
+                ConsoleLog(SHMEM_MODULE_NAME, f"Property {property_name} does not exist in HeroAIOptions.", PySystem.Console.MessageType.Error)
         else:
-            ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", Py4GW.Console.MessageType.Error, log = False)
+            ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", PySystem.Console.MessageType.Error, log = False)
     
     def GetMapsFromPlayers(self):
         """Get a list of unique maps from all active players."""
@@ -900,19 +900,19 @@ class AllAccounts(Structure):
         normalized_extra_data = tuple(str(ExtraData[i]) if i < len(ExtraData) else "" for i in range(4))
         
         if index == -1:
-            ConsoleLog(SHMEM_MODULE_NAME, f"Receiver account {receiver_email} not found.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, f"Receiver account {receiver_email} not found.", PySystem.Console.MessageType.Error)
             return -1
         
         if not receiver_email:
-            ConsoleLog(SHMEM_MODULE_NAME, "Receiver email is empty.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, "Receiver email is empty.", PySystem.Console.MessageType.Error)
             return -1
 
         if not sender_email:
-            ConsoleLog(SHMEM_MODULE_NAME, "Sender email is empty.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, "Sender email is empty.", PySystem.Console.MessageType.Error)
             return -1
 
         if not self._can_communicate(sender_email, receiver_email):
-            ConsoleLog(SHMEM_MODULE_NAME, f"Cannot communicate between {sender_email} and {receiver_email} (isolated or different groups).", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(SHMEM_MODULE_NAME, f"Cannot communicate between {sender_email} and {receiver_email} (isolated or different groups).", PySystem.Console.MessageType.Warning)
             return -1
         
         for i in range(SHMEM_MAX_PLAYERS):
@@ -957,7 +957,7 @@ class AllAccounts(Structure):
             message.ExtraData = (arr_type * 4)(*packed)
             message.Active = True
             message.Running = False
-            message.Timestamp = Py4GW.Game.get_tick_count64()
+            message.Timestamp = PySystem.get_tick_count64()
             return i
 
         return -1
@@ -995,11 +995,11 @@ class AllAccounts(Structure):
             if message.ReceiverEmail == account_email:
                 message.Running = True
                 message.Active = True
-                message.Timestamp = Py4GW.Game.get_tick_count64()
+                message.Timestamp = PySystem.get_tick_count64()
             else:
-                ConsoleLog(SHMEM_MODULE_NAME, f"Message at index {message_index} does not belong to {account_email}.", Py4GW.Console.MessageType.Error)
+                ConsoleLog(SHMEM_MODULE_NAME, f"Message at index {message_index} does not belong to {account_email}.", PySystem.Console.MessageType.Error)
         else:
-            ConsoleLog(SHMEM_MODULE_NAME, f"Invalid message index: {message_index}.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, f"Invalid message index: {message_index}.", PySystem.Console.MessageType.Error)
             
     def MarkMessageAsFinished(self, account_email: str, message_index: int):
         """Mark a specific message as finished."""
@@ -1017,20 +1017,20 @@ class AllAccounts(Structure):
                 empty = [self._str_to_c_wchar_array("", SHMEM_MAX_CHAR_LEN) for _ in range(4)]
                 message.ExtraData = (arr_type * 4)(*empty)
 
-                message.Timestamp = Py4GW.Game.get_tick_count64()
+                message.Timestamp = PySystem.get_tick_count64()
                 message.Running = False
                 message.Active = False
             else:
                 ConsoleLog(
                     SHMEM_MODULE_NAME,
                     f"Message at index {message_index} does not belong to {account_email}.",
-                    Py4GW.Console.MessageType.Error
+                    PySystem.Console.MessageType.Error
                 )
         else:
             ConsoleLog(
                 SHMEM_MODULE_NAME,
                 f"Invalid message index: {message_index}.",
-                Py4GW.Console.MessageType.Error
+                PySystem.Console.MessageType.Error
             )
 
     #region Whiteboard (cross-hero cast-intent)
@@ -1039,7 +1039,7 @@ class AllAccounts(Structure):
         """Gated debug log for whiteboard state transitions."""
         if not WHITEBOARD_DEBUG:
             return
-        ConsoleLog("Whiteboard", msg, Py4GW.Console.MessageType.Info)
+        ConsoleLog("Whiteboard", msg, PySystem.Console.MessageType.Info)
 
     def _wb_kind_display(self, kind_id: int) -> str:
         try:
@@ -1090,7 +1090,7 @@ class AllAccounts(Structure):
             return
         intent = self.Intents[index]
         if intent.Active:
-            lifetime = int(Py4GW.Game.get_tick_count64()) - int(intent.PostedAtTick)
+            lifetime = int(PySystem.get_tick_count64()) - int(intent.PostedAtTick)
             self._wb_log(
                 int(intent.KindID),
                 f"CLEAR slot={index} email='{intent.OwnerEmail}' "
@@ -1103,7 +1103,7 @@ class AllAccounts(Structure):
         if not owner_email:
             return 0
         count = 0
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
         for i in range(SHMEM_MAX_INTENTS):
             intent = self.Intents[i]
             if intent.Active and intent.OwnerEmail == owner_email:
@@ -1133,7 +1133,7 @@ class AllAccounts(Structure):
         if not owner_email:
             return 0
         count = 0
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
         for i in range(SHMEM_MAX_INTENTS):
             intent = self.Intents[i]
             if not intent.Active:
@@ -1174,7 +1174,7 @@ class AllAccounts(Structure):
         Every lock is a lease. Past or missing expiry is rejected so no caller
         can create a permanent lock.
         """
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
         if not owner_email or kind_id <= 0 or target_id < 0:
             return -1
         if int(expires_at_tick) <= now:

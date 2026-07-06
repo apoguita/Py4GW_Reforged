@@ -571,7 +571,7 @@ class Kabob_Farm(ReportsProgress):
                         self.pyMerchant.collector_buy_item(item, 0, turn_in, [1])
 
         except Exception as e:
-            self.Log(f"Error in Exchanging Kabobs: {str(e)}", Py4GW.Console.MessageType.Error)
+            self.Log(f"Error in Exchanging Kabobs: {str(e)}", PySystem.Console.MessageType.Error)
 
     def ExchangeKabobsDone(self):
         return not CheckIfInventoryHasItem(ModelID.Chunk_Of_Drake_Flesh)
@@ -581,7 +581,7 @@ class Kabob_Farm(ReportsProgress):
             self.Log("Bags Full - Manually Handle")
             self.InternalStop()
 
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if self.window:
             self.window.Log(text, msgType)
     ### --- SETUP --- ###
@@ -603,7 +603,7 @@ class Kabob_Farm(ReportsProgress):
         primary_profession, secondary = Agent.GetProfessionNames(Player.GetAgentID())
         
         if primary_profession != "Dervish":        
-            self.Log("Bot Requires Dervish Primary", Py4GW.Console.MessageType.Error)            
+            self.Log("Bot Requires Dervish Primary", PySystem.Console.MessageType.Error)            
             self.InternalStop()
             return False        
         elif secondary != "Assassin":
@@ -679,7 +679,7 @@ class Kabob_Farm(ReportsProgress):
             # Try to follow the path based on pathing points and movement handler.
             Routines.Movement.FollowPath(self.kabob_pathing_move_to_kill_handler, self.movement_Handler)
         except Exception as e:
-            Py4GW.Console.Log("Run To Drakes", str(e), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Run To Drakes", str(e), PySystem.Console.MessageType.Error)
 
     def RunToDrakesDone(self):
         if not self.kabob_step_done_timer.IsRunning():
@@ -797,7 +797,7 @@ class Kabob_Farm(ReportsProgress):
                     return True
                                     
         except Exception as e:
-            Py4GW.Console.Log("StayAlive", str(e), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("StayAlive", str(e), PySystem.Console.MessageType.Error)
         
         return False
 
@@ -899,7 +899,7 @@ class Kabob_Farm(ReportsProgress):
                         # Normal Attack
                         Player.Interact(target)
         except Exception as e:
-            Py4GW.Console.Log("Kill Loop Error", f"Kill Loop Error {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Kill Loop Error", f"Kill Loop Error {str(e)}", PySystem.Console.MessageType.Error)
 
     def KillLoopComplete(self):
         try:
@@ -916,7 +916,7 @@ class Kabob_Farm(ReportsProgress):
 
             return False
         except:
-            self.Log("Kill Loop Error", Py4GW.Console.MessageType.Error)
+            self.Log("Kill Loop Error", PySystem.Console.MessageType.Error)
 
     # If issues comment internals and call super().CanPickUp()
     def CanPickUp(self, agentId, player_id):
@@ -975,7 +975,7 @@ class Kabob_Farm(ReportsProgress):
 
                 Player.Interact(item)
         except Exception as e:
-            Py4GW.Console.Log("Loot Loop", f"Error during looting {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Loot Loop", f"Error during looting {str(e)}", PySystem.Console.MessageType.Error)
 
     def LootLoopComplete(self):
         try:
@@ -991,7 +991,7 @@ class Kabob_Farm(ReportsProgress):
                     return True
 
         except Exception as e:
-            Py4GW.Console.Log("Loot Loop Complete", f"Error during looting {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Loot Loop Complete", f"Error during looting {str(e)}", PySystem.Console.MessageType.Error)
     
         return False
     
@@ -1063,7 +1063,7 @@ class Kabob_Farm(ReportsProgress):
                 self.kabob_stuck_timer.Reset()
                 self.player_stuck = False
         except Exception as e:
-            Py4GW.Console.Log("Handle Stuck", f"Error during checking stuck {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Handle Stuck", f"Error during checking stuck {str(e)}", PySystem.Console.MessageType.Error)
   
     def ApplySelections(self, main_item_collect_count, id_items, collect_coins, collect_events, collect_items_white, collect_items_blue, \
                         collect_items_grape, collect_items_gold, collect_dye, sell_items, sell_items_white, \
@@ -1143,17 +1143,17 @@ def main():
                 kabob_Routine.Update()
                 
     except ImportError as e:
-        Py4GW.Console.Log(bot_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

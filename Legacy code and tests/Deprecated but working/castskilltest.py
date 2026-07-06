@@ -74,7 +74,7 @@ class OutpostRunnerDA:
                 # Check if player has "Crippled" condition (implementation dependent)
                 if  Agent.IsCrippled(player_id):
                     ConsoleLog(self.name, "Crippled! Using 'I Am Unstoppable!'", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     if Routines.Yield.Skills.CastSkillID(self.i_am_unstoppable, log=False, aftercast_delay=100):
                         yield from Routines.Yield.wait(100)
                         continue
@@ -92,7 +92,7 @@ class OutpostRunnerDA:
                         break
                 if caster_found:
                     ConsoleLog(self.name, "Approaching casters: activating Shadow Form.", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     if Routines.Yield.Skills.CastSkillID(self.shadow_form, log=False, aftercast_delay=1750):
                         yield from Routines.Yield.wait(1750)
                         continue
@@ -102,7 +102,7 @@ class OutpostRunnerDA:
                 has_shroud = Routines.Checks.Effects.HasBuff(player_id, self.shroud_of_distress)
                 if not has_shroud and Routines.Checks.Skills.IsSkillSlotReady(self.shroud_slot):
                     ConsoleLog(self.name, "Health low! Casting Shroud of Distress.", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     if Routines.Yield.Skills.CastSkillID(self.shroud_of_distress, log=False, aftercast_delay=1750):
                         yield from Routines.Yield.wait(1750)
                         continue
@@ -113,7 +113,7 @@ class OutpostRunnerDA:
             has_dwarven = Routines.Checks.Effects.HasBuff(player_id, self.dwarven_stability)
             if not has_pious:
                 ConsoleLog(self.name, "Maintaining speed: refreshing Pious Haste (with Zealous Renewal).", 
-                           Py4GW.Console.MessageType.Info, log=False)
+                           PySystem.Console.MessageType.Info, log=False)
                 # Cast Dwarven Stability first if it's down, to extend stance duration
                 if not has_dwarven and Routines.Checks.Skills.IsSkillSlotReady(self.dwarven_slot):
                     Routines.Yield.Skills.CastSkillID(self.dwarven_stability, log=False, aftercast_delay=250)
@@ -125,14 +125,14 @@ class OutpostRunnerDA:
                 # Now activate Pious Haste (stance)
                 if Routines.Yield.Skills.CastSkillID(self.pious_haste, log=False, aftercast_delay=1000):
                     ConsoleLog(self.name, "Activated Pious Haste (25%–50% speed buff).", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     yield from Routines.Yield.wait(1000)
                 continue  # restart loop after updating speed buffs
             if not has_dwarven:
                 # Dwarven Stability fell off (recast to maintain stance extension and KD immunity)
                 if Routines.Yield.Skills.CastSkillID(self.dwarven_stability, log=False, aftercast_delay=250):
                     ConsoleLog(self.name, "Recasting Dwarven Stability (extending stances).", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     yield from Routines.Yield.wait(250)
                     continue
 
@@ -167,7 +167,7 @@ class OutpostRunnerDA:
                     GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")  # stop other actions
                     yield from Routines.Yield.Agents.ChangeTarget(target_enemy)
                     ConsoleLog(self.name, "Surrounded! Shadow stepping to furthest front enemy (Death's Charge).", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     if Routines.Yield.Skills.CastSkillID(self.deaths_charge, log=False, aftercast_delay=1000):
                         yield from Routines.Yield.wait(1000)
                         # After teleporting, drop target to avoid fighting
@@ -193,7 +193,7 @@ class OutpostRunnerDA:
                     GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
                     yield from Routines.Yield.Agents.ChangeTarget(target_enemy)
                     ConsoleLog(self.name, "Using Heart of Shadow on rear target to leap forward.", 
-                               Py4GW.Console.MessageType.Info, log=False)
+                               PySystem.Console.MessageType.Info, log=False)
                     if Routines.Yield.Skills.CastSkillID(self.heart_of_shadow, log=False, aftercast_delay=500):
                         yield from Routines.Yield.wait(500)
                         Player.ChangeTarget(0)

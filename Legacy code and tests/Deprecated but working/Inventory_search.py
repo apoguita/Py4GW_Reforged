@@ -9,9 +9,9 @@ class ItemDataHandler:
         try:
             with open("item_data.json", "w") as file:
                 json.dump(item_data, file)
-            ConsoleLog(MODULE_NAME, "Item data written successfully.",Py4GW.Console.MessageType.Info)
+            ConsoleLog(MODULE_NAME, "Item data written successfully.",PySystem.Console.MessageType.Info)
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Error writing item data: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, f"Error writing item data: {e}", PySystem.Console.MessageType.Error)
             
     def ConstructItemData(self, item_id):
         item_data = {
@@ -36,7 +36,7 @@ def DrawWindow():
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Window error: {e}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Window error: {e}", PySystem.Console.MessageType.Error)
 
 
 # ========== Main Loop ==========

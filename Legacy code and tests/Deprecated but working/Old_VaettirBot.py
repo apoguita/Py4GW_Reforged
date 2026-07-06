@@ -260,7 +260,7 @@ def IsSkillBarLoaded():
     primary_profession, secondary_profession = Agent.GetProfessionNames(Player.GetAgentID())
     if primary_profession != "Assassin" and secondary_profession != "Mesmer":
         current_function = inspect.currentframe().f_code.co_name
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - This bot requires A/Me to work, halting.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - This bot requires A/Me to work, halting.", PySystem.Console.MessageType.Error)
         ResetEnvironment()
         StopBot()
         return False
@@ -276,7 +276,7 @@ def IsSkillBarLoaded():
     
     
     #bot_vars.skill_caster.skills = SkillBar.GetSkillbar()
-    Py4GW.Console.Log(bot_vars.window_module.module_name, f"SkillBar Loaded.", Py4GW.Console.MessageType.Info)       
+    PySystem.Console.Log(bot_vars.window_module.module_name, f"SkillBar Loaded.", PySystem.Console.MessageType.Info)       
     return True
 
 def set_waiting_routine():
@@ -578,7 +578,7 @@ def SellingMaterialsComplete():
     items_to_sell = ItemArray.Filter.ByCondition(items_to_sell, lambda item_id: Item.Type.IsMaterial(item_id))
 
     if len(items_to_sell) == 0:
-        Py4GW.Console.Log("Sell Materials", f"Finished selling materials.",Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Sell Materials", f"Finished selling materials.",PySystem.Console.MessageType.Info)
         return True
 
     return False
@@ -600,7 +600,7 @@ def buy_id_kits():
             Trading.Merchant.BuyItem(item_id, value)
             buy_id_kit_timer.Reset()
     else:
-        Py4GW.Console.Log("Buy ID Kits", f"No ID kits available from merchant.",Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Buy ID Kits", f"No ID kits available from merchant.",PySystem.Console.MessageType.Info)
 
 buy_salvage_kit_timer = Timer()
 buy_salvage_kit_timer.Start()
@@ -611,7 +611,7 @@ def buy_id_kits_complete():
     kits_in_inv = Inventory.GetModelCount(5899)
 
     if kits_in_inv >= id_kits:
-        Py4GW.Console.Log("Buy Salvage Kits", f"Finished buying ID kits.",Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Buy Salvage Kits", f"Finished buying ID kits.",PySystem.Console.MessageType.Info)
         return True
 
     return False
@@ -638,7 +638,7 @@ def buy_salvage_kits_complete():
     kits_in_inv = Inventory.GetModelCount(2992)
 
     if kits_in_inv >= salv_kits:
-        Py4GW.Console.Log("Buy Salvage Kits", f"Finished buying salvage kits.",Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Buy Salvage Kits", f"Finished buying salvage kits.",PySystem.Console.MessageType.Info)
         return True
 
     return False
@@ -674,7 +674,7 @@ def DepositItemsComplete():
 
 
     if len(items_to_deposit) == 0 or free_slots == 0:
-        Py4GW.Console.Log("Deposit Items", f"Finished depositing items.",Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Deposit Items", f"Finished depositing items.",PySystem.Console.MessageType.Info)
         return True
 
     return False
@@ -708,7 +708,7 @@ def handle_end_state_machine():
     global bot_vars
     bot_vars.window_statistics.lap_timer.Reset()
     if not InventoryCheck():
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Loop restarted.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Loop restarted.", PySystem.Console.MessageType.Info)
         FSM_vars.state_machine.jump_to_state_by_name("End State Machine Loop")
 
 
@@ -738,7 +738,7 @@ def FollowPathwithDelayTimer(path_handler,follow_handler, log_actions=False, del
                 if point is not None:
                     follow_handler.move_to_waypoint(point[0], point[1])
                     if log_actions:
-                        Py4GW.Console.Log("FollowPath", f"Moving to {point}", Py4GW.Console.MessageType.Info)
+                        PySystem.Console.Log("FollowPath", f"Moving to {point}", PySystem.Console.MessageType.Info)
 
 
 class build:
@@ -1242,12 +1242,12 @@ def IsEnemyBehind (agent_id):
 def CastSkill (skill_id):
     global bot_vars
     SkillBar.UseSkill(SkillBar.GetSlotBySkillID(skill_id))
-    #Py4GW.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(skill_id)}, slot: {SkillBar.GetSlotBySkillID(skill_id)}", Py4GW.Console.MessageType.Info)
+    #PySystem.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(skill_id)}, slot: {SkillBar.GetSlotBySkillID(skill_id)}", PySystem.Console.MessageType.Info)
  
 def CastSkill2(skill_slot):
     global bot_vars, aftercast
     SkillBar.UseSkill(skill_slot)
-    #Py4GW.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(SkillBar.GetSkillIDBySlot(skill_slot))}, slot: {skill_slot}", Py4GW.Console.MessageType.Info)
+    #PySystem.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(SkillBar.GetSkillIDBySlot(skill_slot))}, slot: {skill_slot}", PySystem.Console.MessageType.Info)
 
 def assign_skill_ids():
     global skillbar
@@ -1778,7 +1778,7 @@ def DrawWindow():
 
     except Exception as e:
         current_function = inspect.currentframe().f_code.co_name
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Error in {current_function}: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Error in {current_function}: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def Handle_Stuck():
@@ -1788,7 +1788,7 @@ def Handle_Stuck():
             FSM_vars.auto_stuck_command_timer.Reset()
 
     if FSM_vars.stuck_count > 10:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Player is stuck, cannot recover, restarting.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Player is stuck, cannot recover, restarting.", PySystem.Console.MessageType.Error)
         FSM_vars.stuck_count = 0
         bot_vars.forced_restart = True
                     
@@ -1808,7 +1808,7 @@ def Handle_Stuck():
             FSM_vars.stuck_count += 1
             player_x, player_y = Player.GetXY()
             distance = Utils.Distance((player_x, player_y), (escape_location[0], escape_location[1]))
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"Player is stuck, attempting to recover", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"Player is stuck, attempting to recover", PySystem.Console.MessageType.Warning)
     else:
         new_player_x, new_player_y = Player.GetXY()
         if FSM_vars.old_player_x != new_player_x or FSM_vars.old_player_y != new_player_y:
@@ -1854,17 +1854,17 @@ def main():
                     FSM_vars.non_movement_timer.Stop()
 
     except ImportError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

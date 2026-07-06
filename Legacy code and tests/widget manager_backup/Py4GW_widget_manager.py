@@ -135,14 +135,14 @@ class WidgetHandler:
                         widget.on_enable()
 
                     except Exception as e:
-                        ConsoleLog("WidgetHandler", f"Error during on_enable of widget {widget.name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                        ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                        ConsoleLog("WidgetHandler", f"Error during on_enable of widget {widget.name}: {str(e)}", PySystem.Console.MessageType.Error)
+                        ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
-                ConsoleLog("WidgetHandler", f"Loaded widget: {widget.name}", Py4GW.Console.MessageType.Info)
+                ConsoleLog("WidgetHandler", f"Loaded widget: {widget.name}", PySystem.Console.MessageType.Info)
 
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Failed to load widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Failed to load widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     
     def discover_widgets(self):
         try:
@@ -151,8 +151,8 @@ class WidgetHandler:
             self._load_all_from_dir()
             
         except Exception as e:
-            ConsoleLog("WidgetHandler", f"Unexpected error during widget discovery: {str(e)}", Py4GW.Console.MessageType.Error)
-            ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+            ConsoleLog("WidgetHandler", f"Unexpected error during widget discovery: {str(e)}", PySystem.Console.MessageType.Error)
+            ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
     def load_widget(self, widget_path):
         spec = importlib.util.spec_from_file_location("widget", widget_path)
@@ -190,8 +190,8 @@ class WidgetHandler:
                 try:
                     widget_info.minimal()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error executing minimal of widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error executing minimal of widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
                     
             if pause_optional and widget_info.optional:                        
                 continue
@@ -201,8 +201,8 @@ class WidgetHandler:
                     widget_info.main()
                     
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
         if not ui_enabled:
             style.Alpha = alpha
@@ -220,8 +220,8 @@ class WidgetHandler:
                     widget_info.configure()
                     
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Error executing widget {widget_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
     def get_widget_info(self, name: str) -> Widget | None:
         return self.widgets.get(name, None)
@@ -229,7 +229,7 @@ class WidgetHandler:
     def set_widget_configuring(self, name: str, value: bool = True):
         widget = self.widgets.get(name)
         if not widget:
-            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", PySystem.Console.MessageType.Warning)
             return
         widget.configuring = value
         
@@ -248,7 +248,7 @@ class WidgetHandler:
     def _set_widget_state(self, name: str, state: bool):
         widget = self.widgets.get(name)
         if not widget:
-            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("WidgetHandler", f"Widget '{name}' not found", PySystem.Console.MessageType.Warning)
             return
         
         widget.enabled = state
@@ -258,16 +258,16 @@ class WidgetHandler:
                 try:
                     widget.on_enable()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error during on_enable of widget {name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error during on_enable of widget {name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
                                 
         elif not state:
             if widget.on_disable:
                 try:
                     widget.on_disable()
                 except Exception as e:
-                    ConsoleLog("WidgetHandler", f"Error during on_disable of widget {name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Error during on_disable of widget {name}: {str(e)}", PySystem.Console.MessageType.Error)
+                    ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
             
         widget.save_widget_state()
 
@@ -329,7 +329,7 @@ def draw_widget_ui():
     style = ImGui.get_style()
     
     if ImGui.icon_button(IconsFontAwesome5.ICON_RETWEET + "##Reload Widgets", 40):
-        ConsoleLog(module_name, "Reloading Widgets...", Py4GW.Console.MessageType.Info)
+        ConsoleLog(module_name, "Reloading Widgets...", PySystem.Console.MessageType.Info)
         initialized = False
         handler.discover_widgets()
         initialized = True        
@@ -443,21 +443,21 @@ def main():
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
         # Catch-all for any other unexpected exceptions
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         # Optional: Code that will run whether an exception occurred or not
-        #Py4GW.Console.Log(module_name, "Execution of Main() completed", Py4GW.Console.MessageType.Info)
+        #PySystem.Console.Log(module_name, "Execution of Main() completed", PySystem.Console.MessageType.Info)
         # Place any cleanup tasks here
         pass
 

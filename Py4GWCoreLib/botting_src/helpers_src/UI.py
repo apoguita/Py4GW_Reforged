@@ -19,7 +19,6 @@ class _UI:
     
     def iter_cancel_skill_reward_window(self):
         from ...Routines import Routines
-        import Py4GW
         from ...UIManager import UIManager
         global bot  
         yield from Routines.Yield.wait(500)

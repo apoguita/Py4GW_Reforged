@@ -234,10 +234,10 @@ class BotConfig:
 
     def _set_on_follow_path_failed(self, on_follow_path_failed: Callable[[], bool]) -> None:
         from ..Py4GWcorelib import ConsoleLog
-        import Py4GW
+        import PySystem
         self.on_follow_path_failed = on_follow_path_failed
         if self.config_properties.log_actions.is_active():
-            ConsoleLog("OnFollowPathFailed", f"Set OnFollowPathFailed to {on_follow_path_failed}", Py4GW.Console.MessageType.Info)
+            ConsoleLog("OnFollowPathFailed", f"Set OnFollowPathFailed to {on_follow_path_failed}", PySystem.Console.MessageType.Info)
 
 
     #FSM HELPERS

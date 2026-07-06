@@ -165,13 +165,13 @@ class _Items:
                 trade_model_ids: list[int], quantity_list: list[int]):
         from ...Routines import Routines
         from ...Py4GWcorelib import ConsoleLog
-        import Py4GW
+        import PySystem
         result = yield from Routines.Yield.Items.CraftItem(output_model_id=output_model_id,
                                                             cost=cost,
                                                             trade_model_ids=trade_model_ids,
                                                             quantity_list=quantity_list)
         if not result:
-            ConsoleLog("CraftItem", f"Failed to craft item ({output_model_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftItem", f"Failed to craft item ({output_model_id}).", PySystem.Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return False
 
@@ -179,11 +179,11 @@ class _Items:
 
     def _equip(self, model_id: int):
         from ...Routines import Routines
-        import Py4GW
+        import PySystem
         from ...Py4GWcorelib import ConsoleLog
         result = yield from Routines.Yield.Items.EquipItem(model_id)
         if not result:
-            ConsoleLog("EquipItem", f"Failed to equip item ({model_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("EquipItem", f"Failed to equip item ({model_id}).", PySystem.Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return False
 
@@ -197,7 +197,7 @@ class _Items:
         from ...GlobalCache import GLOBAL_CACHE
         from ...Routines import Routines
         from ...enums import Bags
-        import Py4GW
+        import PySystem
 
         def _bag_is_populated() -> bool:
             target_container_item = GLOBAL_CACHE.Inventory.GetBagContainerItem(target_bag)
@@ -212,7 +212,7 @@ class _Items:
             ConsoleLog(
                 "EquipInventoryBag",
                 f"Item model {model_id} not found in inventory.",
-                Py4GW.Console.MessageType.Error,
+                PySystem.Console.MessageType.Error,
             )
             self._Events.on_unmanaged_fail()
             return False
@@ -234,7 +234,7 @@ class _Items:
             ConsoleLog(
                 "EquipInventoryBag",
                 f"Native UseItem did not populate bag {target_bag}; trying backpack slot double-click fallback for model {model_id}.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
                 log=False,
             )
             yield from Routines.Yield.wait(250)
@@ -247,7 +247,7 @@ class _Items:
             ConsoleLog(
                 "EquipInventoryBag",
                 f"Fallback move to backpack slot 0 failed for model {model_id}.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
                 log=False,
             )
 
@@ -267,7 +267,7 @@ class _Items:
                 f"container_item={GLOBAL_CACHE.Inventory.GetBagContainerItem(target_bag)} "
                 f"size={GLOBAL_CACHE.Inventory.GetBagSize(target_bag)}."
             ),
-            Py4GW.Console.MessageType.Error,
+            PySystem.Console.MessageType.Error,
         )
         self._Events.on_unmanaged_fail()
         return False
@@ -279,7 +279,7 @@ class _Items:
     def _equip_on_hero(self, hero_type, model_id: int):
         from ...Routines import Routines
         from ...GlobalCache import GLOBAL_CACHE
-        import Py4GW
+        import PySystem
         from ...Py4GWcorelib import ConsoleLog
         from ...enums_src.Hero_enums import HeroType
 
@@ -298,14 +298,14 @@ class _Items:
             if found_hero_type == hero_type:
                 item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(model_id)
                 if not item_id:
-                    ConsoleLog("EquipOnHero", f"Item model {model_id} not found in inventory.", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("EquipOnHero", f"Item model {model_id} not found in inventory.", PySystem.Console.MessageType.Error)
                     self._Events.on_unmanaged_fail()
                     return False
                 GLOBAL_CACHE.Inventory.EquipItem(item_id, hero_agent_id)
                 yield from Routines.Yield.wait(750)
                 return True
 
-        ConsoleLog("EquipOnHero", f"Hero {hero_type} not found in party.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog("EquipOnHero", f"Hero {hero_type} not found in party.", PySystem.Console.MessageType.Warning)
         return False
 
     @_yield_step(label="EquipOnHero", counter_key="EQUIP_ON_HERO")
@@ -317,10 +317,10 @@ class _Items:
     def destroy(self, model_id: int) -> Generator[Any, Any, bool]:
         from ...Routines import Routines
         from ...Py4GWcorelib import ConsoleLog
-        import Py4GW
+        import PySystem
         result = yield from Routines.Yield.Items.DestroyItem(model_id)
         if not result:
-            ConsoleLog("DestroyItem", f"Failed to destroy item ({model_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DestroyItem", f"Failed to destroy item ({model_id}).", PySystem.Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return False
 
@@ -371,11 +371,11 @@ class _Items:
     def _move_model_to_bag_slot(self, model_id:int, bag_id:int, slot:int):
         from ...GlobalCache import GLOBAL_CACHE
         from ...Routines import Routines
-        import Py4GW
+        import PySystem
         from ...Py4GWcorelib import ConsoleLog
         result = GLOBAL_CACHE.Inventory.MoveModelToBagSlot(model_id, bag_id, slot)
         if not result:
-            ConsoleLog("MoveModelToBagSlot", f"Failed to move item ({model_id}) to bag {bag_id} slot {slot}.", Py4GW.Console.MessageType.Error)
+            ConsoleLog("MoveModelToBagSlot", f"Failed to move item ({model_id}) to bag {bag_id} slot {slot}.", PySystem.Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return False
         yield from Routines.Yield.wait(250)  # Small wait to ensure the item is moved
@@ -454,10 +454,10 @@ class _Items:
     def withdraw(self, model_id:int, quantity:int) -> Generator[Any, Any, bool]:
         from ...Routines import Routines
         from ...Py4GWcorelib import ConsoleLog
-        import Py4GW
+        import PySystem
         result = yield from Routines.Yield.Items.WithdrawItems(model_id, quantity)
         if not result:
-            ConsoleLog("WithdrawItems", f"Failed to withdraw ({quantity}) items from storage.", Py4GW.Console.MessageType.Error)
+            ConsoleLog("WithdrawItems", f"Failed to withdraw ({quantity}) items from storage.", PySystem.Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return False
 
@@ -781,21 +781,21 @@ class _Items:
         from ...Player import Player
         from ...Py4GWcorelib import ConsoleLog
         from ...Item import has_active_party_summon, has_summoning_sickness
-        import Py4GW
+        import PySystem
 
         if has_summoning_sickness():
-            ConsoleLog("UseSummoningStone", "Skipped: Summoning Sickness is active", Py4GW.Console.MessageType.Debug, log=False)
+            ConsoleLog("UseSummoningStone", "Skipped: Summoning Sickness is active", PySystem.Console.MessageType.Debug, log=False)
             return
 
         if has_active_party_summon():
-            ConsoleLog("UseSummoningStone", "Skipped: summoned ally already active", Py4GW.Console.MessageType.Debug, log=False)
+            ConsoleLog("UseSummoningStone", "Skipped: summoned ally already active", PySystem.Console.MessageType.Debug, log=False)
             return
         
         # Priority 1: Legionnaire Summoning Crystal
         legionnaire_id = GLOBAL_CACHE.Inventory.GetFirstModelID(ModelID.Legionnaire_Summoning_Crystal.value)
         if legionnaire_id:
             GLOBAL_CACHE.Inventory.UseItem(legionnaire_id)
-            ConsoleLog("UseSummoningStone", "Used Legionnaire Summoning Crystal", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog("UseSummoningStone", "Used Legionnaire Summoning Crystal", PySystem.Console.MessageType.Info, log=False)
             yield from Routines.Yield.wait(500)
             return
         
@@ -805,7 +805,7 @@ class _Items:
             igneous_id = GLOBAL_CACHE.Inventory.GetFirstModelID(ModelID.Igneous_Summoning_Stone.value)
             if igneous_id:
                 GLOBAL_CACHE.Inventory.UseItem(igneous_id)
-                ConsoleLog("UseSummoningStone", "Used Igneous Summoning Stone", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog("UseSummoningStone", "Used Igneous Summoning Stone", PySystem.Console.MessageType.Info, log=False)
                 yield from Routines.Yield.wait(500)
                 return
         
@@ -836,12 +836,12 @@ class _Items:
             item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(summon_model)
             if item_id:
                 GLOBAL_CACHE.Inventory.UseItem(item_id)
-                ConsoleLog("UseSummoningStone", f"Used summoning stone (model_id: {summon_model})", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog("UseSummoningStone", f"Used summoning stone (model_id: {summon_model})", PySystem.Console.MessageType.Info, log=False)
                 yield from Routines.Yield.wait(500)
                 return
         
         # No summoning stones found
-        ConsoleLog("UseSummoningStone", "No summoning stones found in inventory", Py4GW.Console.MessageType.Debug)
+        ConsoleLog("UseSummoningStone", "No summoning stones found in inventory", PySystem.Console.MessageType.Debug)
 
     @_yield_step(label="UseItemByModelID", counter_key="USE_ITEM_BY_MODEL_ID")
     def use_item_by_model_id(self, model_id: int) -> Generator[Any, Any, None]:

@@ -292,7 +292,7 @@ def _summarize_logic_block(block_text: str) -> str:
 
 
 def _resolve_project_root() -> Path:
-	project_path = Py4GW.Console.get_projects_path()
+	project_path = PySystem.Console.get_projects_path()
 	if project_path:
 		try:
 			return Path(project_path).resolve()
@@ -460,10 +460,10 @@ def _reload_custom_skill_modules() -> None:
 		try:
 			importlib.reload(module)
 		except Exception as exc:  # noqa: BLE001
-			Py4GW.Console.Log(
+			PySystem.Console.Log(
 				MODULE_NAME,
 				f"Failed to reload {module_name}: {exc}",
-				Py4GW.Console.MessageType.Warning,
+				PySystem.Console.MessageType.Warning,
 			)
 
 
@@ -525,7 +525,7 @@ def _reload_heroai_runtime_skills() -> None:
 	except Exception as exc:  # noqa: BLE001
 		results.append(f"Init failed: {exc}")
 	if results:
-		Py4GW.Console.Log(MODULE_NAME, "; ".join(results), Py4GW.Console.MessageType.Info)
+		PySystem.Console.Log(MODULE_NAME, "; ".join(results), PySystem.Console.MessageType.Info)
 
 
 # Ensure the in-memory skills reflect the latest source files when the widget loads.
@@ -820,15 +820,15 @@ def _persist_skill_type(skill_id: int, type_enum: SkillType) -> tuple[bool, str]
 
 def _change_skill_target(skill_id: int, new_enum: Skilltarget) -> bool:
 	if skill_id <= 0:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			"Cannot modify the target of an empty skill slot.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return False
 	success, message = _persist_skill_target(skill_id, new_enum)
-	message_type = Py4GW.Console.MessageType.Info if success else Py4GW.Console.MessageType.Error
-	Py4GW.Console.Log(MODULE_NAME, message, message_type)
+	message_type = PySystem.Console.MessageType.Info if success else PySystem.Console.MessageType.Error
+	PySystem.Console.Log(MODULE_NAME, message, message_type)
 	if success:
 		_refresh_custom_skills()
 	return success
@@ -836,15 +836,15 @@ def _change_skill_target(skill_id: int, new_enum: Skilltarget) -> bool:
 
 def _change_skill_nature(skill_id: int, new_enum: SkillNature) -> bool:
 	if skill_id <= 0:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			"Cannot modify the nature of an empty skill slot.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return False
 	success, message = _persist_skill_nature(skill_id, new_enum)
-	message_type = Py4GW.Console.MessageType.Info if success else Py4GW.Console.MessageType.Error
-	Py4GW.Console.Log(MODULE_NAME, message, message_type)
+	message_type = PySystem.Console.MessageType.Info if success else PySystem.Console.MessageType.Error
+	PySystem.Console.Log(MODULE_NAME, message, message_type)
 	if success:
 		_refresh_custom_skills()
 	return success
@@ -852,15 +852,15 @@ def _change_skill_nature(skill_id: int, new_enum: SkillNature) -> bool:
 
 def _change_skill_type(skill_id: int, new_enum: SkillType) -> bool:
 	if skill_id <= 0:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			"Cannot modify the skill type of an empty skill slot.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return False
 	success, message = _persist_skill_type(skill_id, new_enum)
-	message_type = Py4GW.Console.MessageType.Info if success else Py4GW.Console.MessageType.Error
-	Py4GW.Console.Log(MODULE_NAME, message, message_type)
+	message_type = PySystem.Console.MessageType.Info if success else PySystem.Console.MessageType.Error
+	PySystem.Console.Log(MODULE_NAME, message, message_type)
 	if success:
 		_refresh_custom_skills()
 	return success
@@ -959,15 +959,15 @@ def _persist_condition_scalar(skill_id: int, condition_name: str, new_value: flo
 
 def _change_condition_bool(skill_id: int, condition_name: str, new_value: bool) -> bool:
 	if skill_id <= 0:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			"Cannot modify conditions of an empty skill slot.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return False
 	success, message = _persist_condition_flag(skill_id, condition_name, new_value)
-	message_type = Py4GW.Console.MessageType.Info if success else Py4GW.Console.MessageType.Error
-	Py4GW.Console.Log(MODULE_NAME, message, message_type)
+	message_type = PySystem.Console.MessageType.Info if success else PySystem.Console.MessageType.Error
+	PySystem.Console.Log(MODULE_NAME, message, message_type)
 	if success:
 		_refresh_custom_skills()
 	return success
@@ -992,15 +992,15 @@ def _apply_condition_bool_change(skill_id: int, condition_name: str, desired_val
 
 def _change_condition_scalar(skill_id: int, condition_name: str, new_value: float | int) -> bool:
 	if skill_id <= 0:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			"Cannot modify conditions of an empty skill slot.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return False
 	success, message = _persist_condition_scalar(skill_id, condition_name, new_value)
-	message_type = Py4GW.Console.MessageType.Info if success else Py4GW.Console.MessageType.Error
-	Py4GW.Console.Log(MODULE_NAME, message, message_type)
+	message_type = PySystem.Console.MessageType.Info if success else PySystem.Console.MessageType.Error
+	PySystem.Console.Log(MODULE_NAME, message, message_type)
 	if success:
 		_refresh_custom_skills()
 	return success
@@ -1030,10 +1030,10 @@ def _apply_condition_scalar_change(skill_id: int, condition_name: str, pending_v
 	treat_as_float = isinstance(default_value, float)
 	parsed_value = _parse_numeric_input(pending_value, treat_as_float)
 	if parsed_value is None:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			f"Invalid value for {condition_name}.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return
 	if not _change_condition_scalar(skill_id, condition_name, parsed_value):
@@ -1105,15 +1105,15 @@ def _persist_condition_list(skill_id: int, condition_name: str, new_values: list
 
 def _change_condition_list(skill_id: int, condition_name: str, new_values: list[int]) -> bool:
 	if skill_id <= 0:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			"Cannot modify conditions of an empty skill slot.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return False
 	success, message = _persist_condition_list(skill_id, condition_name, new_values)
-	message_type = Py4GW.Console.MessageType.Info if success else Py4GW.Console.MessageType.Error
-	Py4GW.Console.Log(MODULE_NAME, message, message_type)
+	message_type = PySystem.Console.MessageType.Info if success else PySystem.Console.MessageType.Error
+	PySystem.Console.Log(MODULE_NAME, message, message_type)
 	if success:
 		_refresh_custom_skills()
 	return success
@@ -1143,10 +1143,10 @@ def _apply_condition_list_change(skill_id: int, condition_name: str, pending_val
 		return
 	parsed_values = _parse_list_input(pending_value)
 	if parsed_values is None:
-		Py4GW.Console.Log(
+		PySystem.Console.Log(
 			MODULE_NAME,
 			f"Invalid list for {condition_name}. Use comma-separated numeric IDs.",
-			Py4GW.Console.MessageType.Warning,
+			PySystem.Console.MessageType.Warning,
 		)
 		return
 	if not _change_condition_list(skill_id, condition_name, parsed_values):
@@ -1406,10 +1406,10 @@ def _apply_condition_value_generic(skill_id: int, condition_name: str, raw_value
 			value_text = str(raw_value) if raw_value is not None else ""
 		_apply_condition_list_change(skill_id, condition_name, value_text)
 		return
-	Py4GW.Console.Log(
+	PySystem.Console.Log(
 		MODULE_NAME,
 		f"Condition {condition_name} not supported for editing.",
-		Py4GW.Console.MessageType.Warning,
+		PySystem.Console.MessageType.Warning,
 	)
 
 
@@ -2143,7 +2143,7 @@ def main() -> None:
 	try:
 		_draw_window()
 	except Exception as exc:
-		Py4GW.Console.Log(MODULE_NAME, f"Error in main: {exc}", Py4GW.Console.MessageType.Error)
+		PySystem.Console.Log(MODULE_NAME, f"Error in main: {exc}", PySystem.Console.MessageType.Error)
 
 
 def tooltip():

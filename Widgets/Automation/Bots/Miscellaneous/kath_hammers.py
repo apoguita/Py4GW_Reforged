@@ -35,7 +35,7 @@ bot.SetMainRoutine(routine)
 
 def main():
     bot.Update()
-    IMAGE = os.path.join(Py4GW.Console.get_projects_path(), "Textures", "Item Models", "22374-Hammer_of_Kathandrax.png")
+    IMAGE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Item Models", "22374-Hammer_of_Kathandrax.png")
     bot.UI.draw_window(icon_path=IMAGE)
 
 def tooltip():

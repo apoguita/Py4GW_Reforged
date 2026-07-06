@@ -1,6 +1,6 @@
 import Py4GW
 import os
-projects_base_path = Py4GW.Console.get_projects_path()
+projects_base_path = PySystem.Console.get_projects_path()
 ac_folder_path = os.path.join(projects_base_path, "Sources", "aC_Scripts")
 
 from Py4GWCoreLib import *

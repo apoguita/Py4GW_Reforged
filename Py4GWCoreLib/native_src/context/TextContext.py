@@ -31,8 +31,6 @@ File slot array entries (TextFileSlotStruct, 0x24 bytes each):
 import ctypes
 from ctypes import Structure, POINTER, c_uint32, c_uint8, cast
 
-import PyPointers
-
 from .GameContext import GameContextStruct
 
 

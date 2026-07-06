@@ -44,7 +44,7 @@ try:
     # -----------------------------------------------------------------------
     # Config / INI
     # -----------------------------------------------------------------------
-    _root = Py4GW.Console.get_projects_path()
+    _root = PySystem.Console.get_projects_path()
     _ini_path = os.path.join(_root, "Widgets", "Config", "ResurrectionScroll.ini")
     os.makedirs(os.path.dirname(_ini_path), exist_ok=True)
 
@@ -335,7 +335,7 @@ def configure():
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"configure error: {e}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"configure error: {e}", PySystem.Console.MessageType.Error)
 
 
 def tooltip():
@@ -365,4 +365,4 @@ def main():
     try:
         _tick()
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"main error: {e}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"main error: {e}", PySystem.Console.MessageType.Error)

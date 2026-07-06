@@ -85,7 +85,7 @@ class BridgeClientState:
 
     def get_hwnd(self) -> int:
         try:
-            return int(Py4GW.Console.get_gw_window_handle())
+            return int(PySystem.Console.get_gw_window_handle())
         except Exception:
             return 0
 
@@ -452,54 +452,54 @@ def _invoke_class_method(target: Any, class_name: str, params: dict[str, Any], r
 class _ConsoleBridge:
     @staticmethod
     def load(path: str) -> None:
-        Py4GW.Console.load(str(path))
+        PySystem.Console.load(str(path))
 
     @staticmethod
     def run() -> None:
-        Py4GW.Console.run()
+        PySystem.Console.run()
 
     @staticmethod
     def stop() -> None:
-        Py4GW.Console.stop()
+        PySystem.Console.stop()
 
     @staticmethod
     def pause() -> None:
-        Py4GW.Console.pause()
+        PySystem.Console.pause()
 
     @staticmethod
     def resume() -> None:
-        Py4GW.Console.resume()
+        PySystem.Console.resume()
 
     @staticmethod
     def status() -> str:
-        return str(Py4GW.Console.status())
+        return str(PySystem.Console.status())
 
     @staticmethod
     def defer_load(path: str, delay_ms: int = 1000) -> None:
-        Py4GW.Console.defer_load(str(path), int(delay_ms))
+        PySystem.Console.defer_load(str(path), int(delay_ms))
 
     @staticmethod
     def defer_run(delay_ms: int = 1000) -> None:
-        Py4GW.Console.defer_run(int(delay_ms))
+        PySystem.Console.defer_run(int(delay_ms))
 
     @staticmethod
     def defer_stop(delay_ms: int = 1000) -> None:
-        Py4GW.Console.defer_stop(int(delay_ms))
+        PySystem.Console.defer_stop(int(delay_ms))
 
     @staticmethod
     def defer_load_and_run(path: str, delay_ms: int = 1000) -> None:
-        Py4GW.Console.defer_load_and_run(str(path), int(delay_ms))
+        PySystem.Console.defer_load_and_run(str(path), int(delay_ms))
 
     @staticmethod
     def defer_stop_load_and_run(path: str, delay_ms: int = 1000) -> None:
-        Py4GW.Console.defer_stop_load_and_run(str(path), int(delay_ms))
+        PySystem.Console.defer_stop_load_and_run(str(path), int(delay_ms))
 
     @staticmethod
     def get_projects_path() -> str:
         try:
-            return str(Py4GW.Game.GetProjectsPath())
+            return str(PySystem.Console.get_projects_path())
         except Exception:
-            return str(Py4GW.Console.get_projects_path())
+            return str(PySystem.Console.get_projects_path())
 
 
 def _namespace_registry() -> dict[str, dict[str, Any]]:
@@ -1096,7 +1096,7 @@ def main():
     except Exception as exc:
         STATE.last_error = f"main: {exc}"
         try:
-            Py4GW.Console.Log(MODULE_NAME, traceback.format_exc(), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, traceback.format_exc(), PySystem.Console.MessageType.Error)
         except Exception:
             pass
 

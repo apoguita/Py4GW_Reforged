@@ -24,7 +24,7 @@ from Widgets.Automation.Multiboxing.CombatPrep import CombatPrep
 
 BOT_NAME = "Voltaic Spear Farm [BETA]"
 TEXTURE = os.path.join(
-    Py4GW.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures", "voltaic_spear.png"
+    PySystem.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures", "voltaic_spear.png"
 )
 OUTPOST_TO_TRAVEL = Map.GetMapIDByName('Umbral Grotto')
 VERDANT_CASCADES_MAP_ID = 566

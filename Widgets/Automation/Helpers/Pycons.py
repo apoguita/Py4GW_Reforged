@@ -280,7 +280,7 @@ try:
         return True
 
     def _get_floating_icon_path() -> str:
-        return os.path.join(Py4GW.Console.get_projects_path(), MODULE_ICON)
+        return os.path.join(PySystem.Console.get_projects_path(), MODULE_ICON)
 
     def _set_main_window_visible(visible: bool, *, persist: bool = False, expand_on_show: bool = True):
         value = bool(visible)

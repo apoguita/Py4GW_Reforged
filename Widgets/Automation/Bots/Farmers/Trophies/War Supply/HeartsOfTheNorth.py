@@ -361,7 +361,7 @@ def _load_navmesh_object(bot) -> None:
         if AutoPathing().get_navmesh() is not None:
             return  # Already loaded for this map
     except Exception as e:
-        Py4GW.Console.Log("Navmesh", f"Navmesh check failed: {e}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Navmesh", f"Navmesh check failed: {e}", PySystem.Console.MessageType.Warning)
     def _load_coro():
         yield from AutoPathing().load_pathing_maps()
     GLOBAL_CACHE.Coroutines.append(_load_coro())
@@ -418,13 +418,13 @@ def DoCraftLongbow(bot: Botting):
     for weapon_id, mats, qtys in _LONGBOW_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 5000, mats, qtys)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -557,14 +557,14 @@ def EnterQuest(bot: Botting) -> None:
         deadline = time.time() + 5.0
         while not PyDialog.PyDialog.is_dialog_active():
             if time.time() > deadline:
-                ConsoleLog(MODULE_NAME, "[EnterQuest] Timed out waiting for Keiran's dialog", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, "[EnterQuest] Timed out waiting for Keiran's dialog", PySystem.Console.MessageType.Warning)
                 return
             yield from Routines.Yield.wait(150)
 
         # Read the first button's dialog_id as the dynamic base
         buttons = [b for b in PyDialog.PyDialog.get_active_dialog_buttons() if getattr(b, "dialog_id", 0) != 0]
         if not buttons:
-            ConsoleLog(MODULE_NAME, "[EnterQuest] No dialog buttons found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(MODULE_NAME, "[EnterQuest] No dialog buttons found", PySystem.Console.MessageType.Warning)
             return
 
         base_id = buttons[0].dialog_id
@@ -686,7 +686,7 @@ def _ensure_ini_initialized() -> bool:
     if account_email == _settings_ini_account_email and _settings_ini is not None:
         return True
 
-    base_path = Py4GW.Console.get_projects_path()
+    base_path = PySystem.Console.get_projects_path()
     if not base_path:
         return False
 
@@ -1473,14 +1473,14 @@ def _draw_hotn_window(icon_path: str) -> None:
 
 def main():
     try:
-        projects_path = Py4GW.Console.get_projects_path()
+        projects_path = PySystem.Console.get_projects_path()
         full_path = projects_path + "\\Sources\\ApoSource\\textures\\"
 
         bot.Update()
         _draw_hotn_window(full_path + "Keiran_art.png")
 
     except Exception as e:
-        Py4GW.Console.Log(bot.config.bot_name, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot.config.bot_name, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 

@@ -7,7 +7,7 @@ MODULE_NAME = "Ferndale (Vanquish)"
 MODULE_ICON = "Textures\\Module_Icons\\Vanquish - Ferndale.png"
 
 BOT_NAME = "VQ Ferndale"
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
 HOUSE_ZU_HELZER = 77
 FERNDALE = 210
 

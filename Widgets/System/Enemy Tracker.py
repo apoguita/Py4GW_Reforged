@@ -51,7 +51,7 @@ class EnemyTrackerConfig:
     MAIN_INI_KEY: str = ""
     FLOATING_INI_KEY: str = ""
     INI_INIT: bool = False
-    ICON_PATH: str = os.path.join(Py4GW.Console.get_projects_path(), "crossed swords.png")
+    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "crossed swords.png")
     DEFAULT_NAME_LANGUAGE: str = "en"
     NAME_LANGUAGE_CODES: ClassVar[dict[int, str]] = {
         0: "en",
@@ -183,7 +183,7 @@ class EnemyTracker:
         self.vars = shared_vars if shared_vars is not None else EnemyTrackerVars()
         if shared_vars is None:
             _set_shared_vars(self.vars)
-        self.data_root = os.path.join(Py4GW.Console.get_projects_path(), EnemyTrackerConfig.DATA_DIRNAME)
+        self.data_root = os.path.join(PySystem.Console.get_projects_path(), EnemyTrackerConfig.DATA_DIRNAME)
         self.data_path = os.path.join(self.data_root, EnemyTrackerConfig.DATA_FILENAME)
         self.data_dir = os.path.dirname(self.data_path)
         self._lock = EnemyTrackerLock(self.data_dir)
@@ -200,7 +200,7 @@ class EnemyTracker:
                     self.vars.data_dirty = True
             self._load_name_data()
         except Exception as exc:
-            Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Failed to load data: {exc}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Failed to load data: {exc}", PySystem.Console.MessageType.Warning)
 
     def _name_data_path(self, language: str) -> str:
         language_key = str(language or EnemyTrackerConfig.DEFAULT_NAME_LANGUAGE).strip()
@@ -223,7 +223,7 @@ class EnemyTracker:
                     data = json.load(handle)
                 self.vars.name_records[language] = self._normalize_name_records(dict(data.get("names", {})))
             except Exception as exc:
-                Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Failed to load {filename}: {exc}", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Failed to load {filename}: {exc}", PySystem.Console.MessageType.Warning)
 
     def _merge_disk_data(self) -> bool:
         """Re-read disk files and merge into in-memory state.
@@ -284,10 +284,10 @@ class EnemyTracker:
                         existing["inferred_secondary"] = disk_record["inferred_secondary"]
                         had_new = True
             except Exception as exc:
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     EnemyTrackerConfig.MODULE_NAME,
                     f"Merge disk data: failed to read enemy data: {exc}",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
 
         # --- Merge name data ---
@@ -315,10 +315,10 @@ class EnemyTracker:
                                 lang_names.append(name)
                                 had_new = True
                 except Exception as exc:
-                    Py4GW.Console.Log(
+                    PySystem.Console.Log(
                         EnemyTrackerConfig.MODULE_NAME,
                         f"Merge disk data: failed to read names from {filename}: {exc}",
-                        Py4GW.Console.MessageType.Warning,
+                        PySystem.Console.MessageType.Warning,
                     )
 
         return had_new
@@ -327,7 +327,7 @@ class EnemyTracker:
         had_own_dirty = force or self.vars.data_dirty or self.vars.names_dirty
         if not had_own_dirty:
             return
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
         if not force and now - self.vars.last_save_ms < 2000:
             return
 
@@ -367,7 +367,7 @@ class EnemyTracker:
             self.vars.names_dirty = False
             self.vars.last_save_ms = now
         except Exception as exc:
-            Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Failed to save data: {exc}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Failed to save data: {exc}", PySystem.Console.MessageType.Warning)
         finally:
             self._lock.release()
 
@@ -533,7 +533,7 @@ class EnemyTracker:
                 json.dump(payload, handle, indent=2, sort_keys=True)
             return True
         except Exception as exc:
-            Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Export failed: {exc}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Export failed: {exc}", PySystem.Console.MessageType.Warning)
             return False
 
     def import_bundle_from(self, path: str) -> bool:
@@ -566,7 +566,7 @@ class EnemyTracker:
                 self._save_data_if_needed(force=True, lock_timeout_ms=30000)
             return imported_any
         except Exception as exc:
-            Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Import failed: {exc}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Import failed: {exc}", PySystem.Console.MessageType.Warning)
             return False
 
     def _normalize_records(self, records: dict[str, dict]) -> dict[str, dict]:
@@ -903,7 +903,7 @@ def scanner_main():
         state = _ensure_state()
         state._poll()
     except Exception as exc:
-        Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Scanner error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Scanner error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -921,7 +921,7 @@ def ui_main():
         state = _ensure_state()
         state.floating_button.draw(EnemyTrackerConfig.FLOATING_INI_KEY)
     except Exception as exc:
-        Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 

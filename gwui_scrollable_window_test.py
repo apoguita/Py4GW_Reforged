@@ -168,7 +168,7 @@ def _create_window() -> None:
             window_title=WINDOW_TITLE,
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create window enqueued label='{WINDOW_LABEL}' title='{WINDOW_TITLE}' "
         f"rect=({WINDOW_X},{WINDOW_Y},{WINDOW_WIDTH},{WINDOW_HEIGHT})"
@@ -201,7 +201,7 @@ def _create_scrollable() -> None:
             LAST_SCROLLABLE_ID = 0
             _log(f"create scrollable invoke error={exc}")
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create scrollable enqueued window={window.frame_id} content={window.get_content_frame_id()} "
         f"child_index={SCROLLABLE_CHILD_INDEX} flags=0x{SCROLLABLE_FLAGS:X} label='{SCROLLABLE_LABEL}'"
@@ -250,7 +250,7 @@ def _insert_text_labels() -> None:
             LAST_TEXT_LABEL_IDS = created_ids
             _log(f"insert text labels invoke error={exc}")
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"insert text labels enqueued scrollable={scrollable.frame_id} "
         f"count={TEXT_LABEL_COUNT} flags=0x{TEXT_LABEL_FLAGS:X} prefix='{TEXT_LABEL_PREFIX}'"
@@ -267,7 +267,7 @@ def _clear_scrollable_items() -> None:
     def _invoke() -> None:
         scrollable.clear_items()
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(f"clear scrollable items enqueued scrollable={scrollable.frame_id}")
     _schedule_report("state after clear scrollable items")
 

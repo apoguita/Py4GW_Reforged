@@ -1,7 +1,7 @@
 from enum import Enum, IntEnum
 import os
 
-from Py4GW import Console
+import PySystem
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.ItemCache import Bag_enum
 from Py4GWCoreLib.enums import ModelID

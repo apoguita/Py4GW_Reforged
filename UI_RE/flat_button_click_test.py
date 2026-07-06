@@ -210,7 +210,7 @@ def _read_button_state() -> None:
 
 def _enqueue(fn):
     """Helper: enqueue a callable onto the game thread."""
-    Py4GW.Game.enqueue(fn)
+    PyGameThread.enqueue(fn)
 
 
 # ── Step 1: Create Window ─────────────────────────────────────────────

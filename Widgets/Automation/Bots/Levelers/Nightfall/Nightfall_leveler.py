@@ -484,14 +484,14 @@ def DoCraftArmorWithDoubleMats(bot: Botting):
     for item_id, mats, qtys in armor_pieces:
         result = yield from Routines.Yield.Items.CraftItem(item_id, 75, mats, qtys)
         if not result:
-            ConsoleLog("CraftArmorWithDoubleMats", f"Failed to craft item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftArmorWithDoubleMats", f"Failed to craft item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
 
         result = yield from Routines.Yield.Items.EquipItem(item_id)
         if not result:
-            ConsoleLog("CraftArmorWithDoubleMats", f"Failed to equip item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftArmorWithDoubleMats", f"Failed to equip item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -681,14 +681,14 @@ def CraftArmor(bot: Botting):
     for item_id, mats, qtys in armor_pieces:
         result = yield from Routines.Yield.Items.CraftItem(item_id, 75, mats, qtys)
         if not result:
-            ConsoleLog("CraftArmor", f"Failed to craft item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftArmor", f"Failed to craft item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
 
         result = yield from Routines.Yield.Items.EquipItem(item_id)
         if not result:
-            ConsoleLog("CraftArmor", f"Failed to equip item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftArmor", f"Failed to equip item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -706,14 +706,14 @@ def CraftWeapon(bot: Botting):
     for weapon_id, mats, qtys in weapon_pieces:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 50, mats, qtys)
         if not result:
-            ConsoleLog("CraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
 
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("CraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -731,14 +731,14 @@ def Craft1stWeapon(bot: Botting):
     for weapon_id, mats, qtys in weapon_pieces:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 20, mats, qtys)
         if not result:
-            ConsoleLog("CraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
 
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("CraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -1959,7 +1959,7 @@ def _draw_texture():
     global iconwidth
     level = Agent.GetLevel(Player.GetAgentID())
 
-    path = os.path.join(Py4GW.Console.get_projects_path(),"Bots", "Leveling", "Nightfall","Nightfall_leveler-art.png")
+    path = os.path.join(PySystem.Console.get_projects_path(),"Bots", "Leveling", "Nightfall","Nightfall_leveler-art.png")
     size = (float(iconwidth), float(iconwidth))
     tint = (255, 255, 255, 255)
     border_col = (0, 0, 0, 0)  # <- ints, not normalized floats

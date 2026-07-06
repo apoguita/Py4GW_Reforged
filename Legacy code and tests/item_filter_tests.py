@@ -48,7 +48,7 @@ def filter_weapon_mods_test(item_ids: list[int]):
             
             print(f"Item '{string_table.decode(bytes(PyItem.GetCompleteNameEnc(item_id)))}' ({item_id}) has a vampiric strength upgrade (Damage: {damage}%, Health Degeneration: -{degen}).")
 
-folder_path = os.path.join(Py4GW.Console.get_projects_path(), "Settings", "item_filters")
+folder_path = os.path.join(PySystem.Console.get_projects_path(), "Settings", "item_filters")
 
 LOOT_CONFIG = LootConfig()
 SALVAGE_CONFIG = SalvageConfig()

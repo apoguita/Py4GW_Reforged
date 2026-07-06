@@ -87,7 +87,7 @@ class WidgetHandler:
             os.makedirs(self.base_path, exist_ok=True)
             with open(self.global_ini_path, "w") as f:
                 config.write(f)
-            ConsoleLog("WidgetHandler", "Updated global config with missing defaults", Py4GW.Console.MessageType.Info)
+            ConsoleLog("WidgetHandler", "Updated global config with missing defaults", PySystem.Console.MessageType.Info)
 
     def _initialize_account_config(self):
         config = configparser.ConfigParser()
@@ -115,7 +115,7 @@ class WidgetHandler:
             os.makedirs(self.account_path, exist_ok=True)
             with open(self.account_ini_path, "w") as f:
                 config.write(f)
-            ConsoleLog("WidgetHandler", "Updated account config with missing defaults", Py4GW.Console.MessageType.Info)
+            ConsoleLog("WidgetHandler", "Updated account config with missing defaults", PySystem.Console.MessageType.Info)
     
     def _read_setting(self, section, key, default=None, *, force_account=False, force_global=False):
         parser = configparser.ConfigParser()
@@ -134,7 +134,7 @@ class WidgetHandler:
             try:
                 parser.read(path)
             except configparser.Error as e:
-                ConsoleLog("WidgetHandler", f"[Warning] Corrupt INI file: {path} ({e})", Py4GW.Console.MessageType.Warning)
+                ConsoleLog("WidgetHandler", f"[Warning] Corrupt INI file: {path} ({e})", PySystem.Console.MessageType.Warning)
                 continue  # Try next file
 
             if parser.has_section(section) and parser.has_option(section, key):
@@ -254,7 +254,7 @@ class WidgetHandler:
                         current[key] = val
                         self._write_setting(section, key, str(val), to_account=use_account_settings(), force=True)
 
-                    ConsoleLog("WidgetHandler", f"Updated widget '{section}' with default category/subcategory", Py4GW.Console.MessageType.Info)
+                    ConsoleLog("WidgetHandler", f"Updated widget '{section}' with default category/subcategory", PySystem.Console.MessageType.Info)
 
             
     def _load_all_from_dir(self):
@@ -269,14 +269,14 @@ class WidgetHandler:
             try:
                 module = self.load_widget(path)
                 if not module:
-                    ConsoleLog("WidgetHandler", f"Skipped widget: {name} (module load failed)", Py4GW.Console.MessageType.Warning)
+                    ConsoleLog("WidgetHandler", f"Skipped widget: {name} (module load failed)", PySystem.Console.MessageType.Warning)
                     continue
                 enabled = self.widget_data_cache.get(name, {}).get("enabled", True)
                 self.widgets[name] = {"module": module, "enabled": enabled, "configuring": False}
-                ConsoleLog("WidgetHandler", f"Loaded widget: {name}", Py4GW.Console.MessageType.Info)
+                ConsoleLog("WidgetHandler", f"Loaded widget: {name}", PySystem.Console.MessageType.Info)
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Failed to load widget {name}: {e}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Failed to load widget {name}: {e}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
     def discover_widgets(self):
         try:
@@ -284,8 +284,8 @@ class WidgetHandler:
             self._load_widget_cache()
             self._load_all_from_dir()
         except Exception as e:
-            ConsoleLog("WidgetHandler", f"Widget discovery failed: {e}", Py4GW.Console.MessageType.Error)
-            ConsoleLog("WidgetHandler", traceback.format_exc(), Py4GW.Console.MessageType.Error)
+            ConsoleLog("WidgetHandler", f"Widget discovery failed: {e}", PySystem.Console.MessageType.Error)
+            ConsoleLog("WidgetHandler", traceback.format_exc(), PySystem.Console.MessageType.Error)
 
     def load_widget(self, path):
         name = os.path.splitext(os.path.basename(path))[0]
@@ -298,7 +298,7 @@ class WidgetHandler:
         try:
             spec.loader.exec_module(module)
         except Exception as e:
-            ConsoleLog("WidgetHandler", f"Failed to load widget '{name}': {e}", Py4GW.Console.MessageType.Error)
+            ConsoleLog("WidgetHandler", f"Failed to load widget '{name}': {e}", PySystem.Console.MessageType.Error)
             traceback.print_exc()
             return None
 
@@ -339,8 +339,8 @@ class WidgetHandler:
             try:
                 info["module"].main()
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Execution failed: {name} - {e}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", traceback.format_exc(), Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Execution failed: {name} - {e}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", traceback.format_exc(), PySystem.Console.MessageType.Error)
 
     def execute_configuring_widgets(self):
         for name, info in self.widgets.items():
@@ -351,8 +351,8 @@ class WidgetHandler:
                 if hasattr(info["module"], "render_ui"):
                     info["module"].render_ui()
             except Exception as e:
-                ConsoleLog("WidgetHandler", f"Configure failed: {name} - {e}", Py4GW.Console.MessageType.Error)
-                ConsoleLog("WidgetHandler", traceback.format_exc(), Py4GW.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", f"Configure failed: {name} - {e}", PySystem.Console.MessageType.Error)
+                ConsoleLog("WidgetHandler", traceback.format_exc(), PySystem.Console.MessageType.Error)
                 
     def enable_widget(self, name: str):
         self._set_widget_state(name, True)
@@ -364,7 +364,7 @@ class WidgetHandler:
         from .config_scope import use_account_settings
         widget = self.widgets.get(name)
         if not widget:
-            ConsoleLog("WidgetHandler", f"Unknown widget: {name}", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("WidgetHandler", f"Unknown widget: {name}", PySystem.Console.MessageType.Warning)
             return
 
         widget["enabled"] = enabled_state

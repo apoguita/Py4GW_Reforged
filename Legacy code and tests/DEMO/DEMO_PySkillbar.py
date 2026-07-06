@@ -134,9 +134,9 @@ def draw_window():
             skill_template = PyImGui.input_text("Template String", skill_template)
             if PyImGui.button("Load Skill Template"):
                 if skillbar_instance.LoadSkillTemplate(skill_template):
-                    Py4GW.Console.Log(Module_Name,"Template Loaded Successfully!")
+                    PySystem.Console.Log(Module_Name,"Template Loaded Successfully!")
                 else:
-                    Py4GW.Console.Log(Module_Name,"Failed to Load Template")
+                    PySystem.Console.Log(Module_Name,"Failed to Load Template")
             PyImGui.separator()
             
             # Input field for selecting skill slot (limited to 1..8)
@@ -182,12 +182,12 @@ def main():
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log("YourModule", f"ImportError encountered: {str(e)}")
+        PySystem.Console.Log("YourModule", f"ImportError encountered: {str(e)}")
     except ValueError as e:
-        Py4GW.Console.Log("YourModule", f"ValueError encountered: {str(e)}")
+        PySystem.Console.Log("YourModule", f"ValueError encountered: {str(e)}")
     except Exception as e:
         # Catch-all for any other exceptions
-        Py4GW.Console.Log("YourModule", f"Unexpected error encountered: {str(e)}")
+        PySystem.Console.Log("YourModule", f"Unexpected error encountered: {str(e)}")
     finally:
         # Optional: Code that will run whether an exception occurred or not
         # This can include cleanup tasks, logging, or final steps

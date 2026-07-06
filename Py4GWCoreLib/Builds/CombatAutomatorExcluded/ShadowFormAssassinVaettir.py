@@ -72,14 +72,14 @@ class ShadowFormAssassinVaettir(BuildMgr):
         has_deadly_paradox = Routines.Checks.Effects.HasBuff(player_agent_id, self.deadly_paradox)
         if (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shadow_form)):
             if (yield from self.CastSkillID(self.deadly_paradox,extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=100)):
-                ConsoleLog(self.build_name, "Casting Deadly Paradox.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
             if (yield from self.CastSkillID(self.shadow_form, log=False, aftercast_delay=1750)):
-                ConsoleLog(self.build_name, "Casting Shadow Form.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
                 
     def CastShroudOfDistress(self):
         player_agent_id = Player.GetAgentID()
         if Agent.GetHealth(player_agent_id) < 0.45:
-            ConsoleLog(self.build_name, "Casting Shroud of Distress.", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
             # ** Cast Shroud of Distress **
             yield from self.CastSkillID(self.shroud_of_distress, log =False, aftercast_delay=1750)
                 
@@ -167,14 +167,14 @@ class ShadowFormAssassinVaettir(BuildMgr):
                 if (yield from Routines.Yield.Skills.IsSkillIDUsable(self.shadow_form)):
                     GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
                     if (yield from self.CastSkillID(self.deadly_paradox,extra_condition=(not has_deadly_paradox), log=False, aftercast_delay=200)):
-                        ConsoleLog(self.build_name, "Casting Deadly Paradox.", Py4GW.Console.MessageType.Info, log=False)
+                        ConsoleLog(self.build_name, "Casting Deadly Paradox.", PySystem.Console.MessageType.Info, log=False)
                     GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
                     if (yield from self.CastSkillID(self.shadow_form, log=False, aftercast_delay=1950)):
-                        ConsoleLog(self.build_name, "Casting Shadow Form.", Py4GW.Console.MessageType.Info, log=False)
+                        ConsoleLog(self.build_name, "Casting Shadow Form.", PySystem.Console.MessageType.Info, log=False)
                         continue
             has_shroud_of_distress = Routines.Checks.Effects.HasBuff(player_agent_id,self.shroud_of_distress)
             if not has_shroud_of_distress:
-                ConsoleLog(self.build_name, "Casting Shroud of Distress.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Shroud of Distress.", PySystem.Console.MessageType.Info, log=False)
                 # ** Cast Shroud of Distress **
                 GLOBAL_CACHE._ActionQueueManager.ResetQueue("ACTION")
                 if (yield from self.CastSkillID(self.shroud_of_distress, log =False, aftercast_delay=1950)):
@@ -182,16 +182,16 @@ class ShadowFormAssassinVaettir(BuildMgr):
                         
             has_channeling = Routines.Checks.Effects.HasBuff(player_agent_id,self.channeling)
             if not has_channeling:
-                ConsoleLog(self.build_name, "Casting Channeling.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Channeling.", PySystem.Console.MessageType.Info, log=False)
                 # ** Cast Channeling **
                 if (yield from self.CastSkillID(self.channeling, log =False, aftercast_delay=1850)):
                     continue
             if (yield from self.CastSkillID(self.way_of_perfection, log=False, aftercast_delay=1000)):
-                ConsoleLog(self.build_name, "Casting Way of Perfection.", Py4GW.Console.MessageType.Info, log=False)
+                ConsoleLog(self.build_name, "Casting Way of Perfection.", PySystem.Console.MessageType.Info, log=False)
                 continue
             if not self.in_killing_routine or Agent.GetHealth(player_agent_id) < 0.05:
                 if Agent.GetHealth(player_agent_id) < 0.05:
-                    ConsoleLog(self.build_name, "Forcing HoS to survive, run was going to fail anyways :(", Py4GW.Console.MessageType.Warning, log=False)
+                    ConsoleLog(self.build_name, "Forcing HoS to survive, run was going to fail anyways :(", PySystem.Console.MessageType.Warning, log=False)
                 if Agent.GetHealth(player_agent_id) < 0.35 or self.stuck_counter > 0:
                     center_point1 = (10980, -21532)
                     center_point2 = (11461, -17282)
@@ -232,11 +232,11 @@ class ShadowFormAssassinVaettir(BuildMgr):
                     Player.ChangeTarget(target)
                     if (yield from self.CastSkillSlot(self.arcane_echo_slot, extra_condition=both_ready, log=False, aftercast_delay=2850)):
                         Player.Interact(target,False)
-                        ConsoleLog(self.build_name, "Casting Arcane Echo.", Py4GW.Console.MessageType.Info, log=False)
+                        ConsoleLog(self.build_name, "Casting Arcane Echo.", PySystem.Console.MessageType.Info, log=False)
                     else:
                         if (yield from self.CastSkillSlot(self.arcane_echo_slot, log=False, aftercast_delay=1000)):
                             Player.Interact(target,False)
-                            ConsoleLog(self.build_name, "Casting Echoed Wastrel.", Py4GW.Console.MessageType.Info, log=False)
+                            ConsoleLog(self.build_name, "Casting Echoed Wastrel.", PySystem.Console.MessageType.Info, log=False)
                 
                 target = GetNotHexedEnemy()  
                 if target and not Routines.Checks.Skills.IsSkillSlotReady(self.arcane_echo_slot): 

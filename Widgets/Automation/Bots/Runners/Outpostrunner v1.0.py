@@ -480,7 +480,7 @@ ATTRIBUTES = [
 ]
 
 # Cache Py4GW root
-PY4GW_ROOT = Py4GW.Console.get_projects_path()
+PY4GW_ROOT = PySystem.Console.get_projects_path()
 
 def get_full_texture_path(skill_id: int) -> str:
     """Resolve a skill ID to a full absolute texture path."""
@@ -515,7 +515,7 @@ def draw_build_window():
             if full_texture_path and os.path.exists(full_texture_path):
                 ImGui.DrawTexture(full_texture_path, 48, 48)
             else:
-                Py4GW.Console.Log("BuildViewer", f"Missing texture for skill {skill_id} -> {full_texture_path}", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log("BuildViewer", f"Missing texture for skill {skill_id} -> {full_texture_path}", PySystem.Console.MessageType.Warning)
 
             PyImGui.same_line(0, 6)
 

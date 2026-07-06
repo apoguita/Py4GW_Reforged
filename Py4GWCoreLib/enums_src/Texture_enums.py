@@ -1,5 +1,5 @@
 import os.path
-import Py4GW
+import PySystem
 
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 
@@ -10,7 +10,7 @@ Get the texture path for a given model_id.
 If not found, returns a fallback image path like '2992 not found.jpg'.
 """
 def get_texture_for_model(model_id: int | ModelID) -> str:
-    base_path = Py4GW.Console.get_projects_path() + "\\" + ITEM_MODEL_TEXTURE_PATH
+    base_path = PySystem.Console.get_projects_path() + "\\" + ITEM_MODEL_TEXTURE_PATH
     #basepath = os.path.dirname(__file__) + "\\..\\..\\" + ITEM_MODEL_TEXTURE_PATH
 
     # Handle int case

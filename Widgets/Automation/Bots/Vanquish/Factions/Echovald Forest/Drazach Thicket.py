@@ -6,7 +6,7 @@ import os
 BOT_NAME = "VQ Drazach Thicket"
 MODULE_NAME = "Drazach Thicket (Vanquish)"
 MODULE_ICON = "Textures\\Module_Icons\\Vanquish - Drazach Thicket.png"
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
 OUTPOST_TO_START = 222
 EXPLORABLE_TO_VANQUISH = 195
 HOUSE_ZU_HELZER = 77

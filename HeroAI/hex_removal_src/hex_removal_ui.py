@@ -135,7 +135,7 @@ def _log(msg: str) -> None:
     try:
         from Py4GWCoreLib import ConsoleLog
         import Py4GW
-        ConsoleLog("HexRemoval", msg, Py4GW.Console.MessageType.Info)
+        ConsoleLog("HexRemoval", msg, PySystem.Console.MessageType.Info)
     except Exception:
         pass
 

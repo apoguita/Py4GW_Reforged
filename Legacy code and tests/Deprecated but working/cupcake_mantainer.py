@@ -227,7 +227,7 @@ class BotConfig:
     def _set_on_follow_path_failed(self, on_follow_path_failed: Callable[[], bool]) -> None:
         self.on_follow_path_failed = on_follow_path_failed
         if self.log_actions:
-            ConsoleLog(MODULE_NAME, f"Set OnFollowPathFailed to {on_follow_path_failed}", Py4GW.Console.MessageType.Info)
+            ConsoleLog(MODULE_NAME, f"Set OnFollowPathFailed to {on_follow_path_failed}", PySystem.Console.MessageType.Info)
 
     def _update_player_data(self) -> None:
         self.live_data.update()
@@ -297,12 +297,12 @@ class BottingHelpers:
         return False
     
     def on_unmanaged_fail(self) -> bool:
-        ConsoleLog(MODULE_NAME, "there was an unmanaged failure, stopping bot.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "there was an unmanaged failure, stopping bot.", PySystem.Console.MessageType.Warning)
         self.parent.Stop()
         return True
         
     def default_on_unmanaged_fail(self) -> bool:
-        ConsoleLog(MODULE_NAME, "there was an unmanaged failure, stopping bot.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "there was an unmanaged failure, stopping bot.", PySystem.Console.MessageType.Warning)
         self.parent.Stop()
         return True
 
@@ -827,7 +827,7 @@ class BottingHelpers:
     def wait_for_map_load(self, target_map_id):
         wait_of_map_load = yield from Routines.Yield.Map.WaitforMapLoad(target_map_id)
         if not wait_of_map_load:
-            Py4GW.Console.Log(MODULE_NAME, "Map load failed.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, "Map load failed.", PySystem.Console.MessageType.Error)
             self.on_unmanaged_fail()
         yield from Routines.Yield.wait(1000)
 
@@ -841,7 +841,7 @@ class BottingHelpers:
         global bot  
         cancel_button_frame_id = UIManager.GetFrameIDByHash(784833442)  # Cancel button frame ID
         if not cancel_button_frame_id:
-            Py4GW.Console.Log(MODULE_NAME, "Cancel button frame ID not found.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, "Cancel button frame ID not found.", PySystem.Console.MessageType.Error)
             bot.helpers.on_unmanaged_fail()
             return
         
@@ -859,14 +859,14 @@ class BottingHelpers:
 
         item_in_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(model_id)
         if item_in_storage < quantity:
-            Py4GW.Console.Log(MODULE_NAME, f"Not enough items ({quantity}) to withdraw.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, f"Not enough items ({quantity}) to withdraw.", PySystem.Console.MessageType.Error)
             bot.helpers.on_unmanaged_fail()
             return False
 
         items_withdrawn = GLOBAL_CACHE.Inventory.WithdrawItemFromStorageByModelID(model_id, quantity)
         yield from Routines.Yield.wait(500)
         if not items_withdrawn:
-            Py4GW.Console.Log(MODULE_NAME, f"Failed to withdraw ({quantity}) items from storage.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, f"Failed to withdraw ({quantity}) items from storage.", PySystem.Console.MessageType.Error)
             bot.helpers.on_unmanaged_fail()
             return False
 
@@ -912,7 +912,7 @@ class BottingHelpers:
             GLOBAL_CACHE.Inventory.EquipItem(item_id, Player.GetAgentID())
             yield from Routines.Yield.wait(500)
         else:
-            Py4GW.Console.Log(MODULE_NAME, "Crafted weapon not found in inventory.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, "Crafted weapon not found in inventory.", PySystem.Console.MessageType.Error)
             bot.helpers.on_unmanaged_fail()
             return
 
@@ -1162,7 +1162,7 @@ def main():
 
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 if __name__ == "__main__":

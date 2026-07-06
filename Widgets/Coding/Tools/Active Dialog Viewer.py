@@ -54,7 +54,7 @@ def _draw_active_dialog() -> None:
         PyImGui.text("<empty>")
         
     if PyImGui.button("print active dialog to console"):
-        Py4GW.Console.Log(MODULE_NAME, f"{active.message}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(MODULE_NAME, f"{active.message}", PySystem.Console.MessageType.Info)
 
 
 def _draw_buttons() -> None:
@@ -108,8 +108,8 @@ def main():
             _draw_buttons()
         PyImGui.end()
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {e}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(MODULE_NAME, traceback.format_exc(), Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {e}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, traceback.format_exc(), PySystem.Console.MessageType.Error)
 
 
 if __name__ == "__main__":

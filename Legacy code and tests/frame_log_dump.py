@@ -47,7 +47,7 @@ def _trigger_hidden_action(action_value: int) -> None:
         finally:
             char_ctx.player_flags = original_flags
 
-    Py4GW.Game.enqueue(_action)
+    PyGameThread.enqueue(_action)
 
 
 def main():

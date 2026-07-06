@@ -23,7 +23,7 @@ Solution: CtlBtnProc (Path B — Flat Engine Button)
     implemented as a separate step — see create_flat_button_with_click().
 
 Architecture:
-    Python wrapper → NativeFunction (via Game.enqueue) → FrameCreate
+    Python wrapper → NativeFunction (via PyGameThread.enqueue) → FrameCreate
       → passes CtlBtnProc callback instead of IUi::UiCtlBtnProc
       → after creation, calls CtlBtnSetTextLiteral(frameId, label)
       → calls FrameSetSize(frameId, width, height) to fix thin strip
@@ -41,7 +41,7 @@ from typing import Optional
 from ...Scanner import Scanner, ScannerSection
 from ..internals.prototypes import Prototypes
 from ..internals.native_function import NativeFunction
-from Py4GW import Game
+import PyGameThread
 
 
 # ============================================================================
@@ -361,7 +361,7 @@ class ButtonMethods:
         6. FrameSetPosition(buttonId, x, y)
     """
 
-    # ── Low-level NativeFunction wrappers (all Game.enqueue'd) ──────────
+    # ── Low-level NativeFunction wrappers (all PyGameThread.enqueue'd) ──────────
 
     @staticmethod
     def frame_set_size(
@@ -379,7 +379,7 @@ class ButtonMethods:
                 ctypes.c_uint32(frame_id),
                 ctypes.cast(ctypes.byref(coord), ctypes.c_void_p),
             )
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
 
     @staticmethod
     def frame_set_position(
@@ -397,7 +397,7 @@ class ButtonMethods:
                 ctypes.c_uint32(frame_id),
                 ctypes.cast(ctypes.byref(coord), ctypes.c_void_p),
             )
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
 
     @staticmethod
     def frame_mouse_enable(
@@ -415,7 +415,7 @@ class ButtonMethods:
                 ctypes.c_uint32(0),
                 ctypes.c_uint32(0),
             )
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
 
     @staticmethod
     def frame_new_subclass(
@@ -449,7 +449,7 @@ class ButtonMethods:
                 ctypes.c_uint32(subclass_proc),
                 ctypes.c_uint32(msg_id),
             )
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
 
     # ── Convenience: Flat Button Creation ────────────────────────────────
 
@@ -566,7 +566,7 @@ class ButtonMethods:
                     )
                     print(f"[ButtonMethods] FrameNewSubclass called on parent {parent_frame_id} — click support enabled")
 
-        Game.enqueue(_action)
+        PyGameThread.enqueue(_action)
 
     # ── Legacy API (preserved for backward compatibility) ───────────────
 
@@ -604,7 +604,7 @@ class ButtonMethods:
         Synchronous version — ONLY call from game thread context.
 
         Returns the new button's frame ID, or 0 on failure.
-        This calls directCall WITHOUT Game.enqueue, so it MUST run on
+        This calls directCall WITHOUT PyGameThread.enqueue, so it MUST run on
         the game thread. Use from rendercallback/gameloop hooks only.
 
         EXE build: 06-14-2026.

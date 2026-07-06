@@ -25,7 +25,7 @@ def _dbg(msg: str) -> None:
 
 
 def _enqueue(fn):
-    Py4GW.Game.enqueue(fn)
+    PyGameThread.enqueue(fn)
 
 
 # ── Creation (flags=0 per real game protocol) ─────────────────────

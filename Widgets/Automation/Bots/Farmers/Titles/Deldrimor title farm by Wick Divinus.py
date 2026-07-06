@@ -78,7 +78,7 @@ _STUCK_SPOT_POLL_MS = 250
 _BOT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 _HERO_CONFIG_PATH = os.path.join(_BOT_SCRIPT_DIR, "Deldrimor title farm by Wick Divinus Heroes.json")
 _HERO_ICONS_BASE = os.path.normpath(os.path.join(
-    Py4GW.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
+    PySystem.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
     "PVE Skills Unlocker", "Textures", "Skill_Icons"
 ))
 _HERO_SLOTS_COUNT = 7
@@ -465,7 +465,7 @@ def _wait_for_alt_dispatch_completion(stage_name: str, message_refs: list[tuple[
             yield from Routines.Yield.wait(50)
     if pending:
         pending_accounts = ", ".join(sorted({email for email, _ in pending}))
-        ConsoleLog(MODULE_NAME, f"[Merchant] {stage_name}: timeout waiting for alt completion. Pending: {pending_accounts}", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, f"[Merchant] {stage_name}: timeout waiting for alt completion. Pending: {pending_accounts}", PySystem.Console.MessageType.Warning)
 
 
 def _wait_for_alts_on_current_map(stage_name: str, expected_alts: int, target_map_id: int, timeout_ms: int = 30000):
@@ -485,7 +485,7 @@ def _wait_for_alts_on_current_map(stage_name: str, expected_alts: int, target_ma
             yield from Routines.Yield.wait(1000)
             return
         yield from Routines.Yield.wait(500)
-    ConsoleLog(MODULE_NAME, f"[Merchant] {stage_name}: alt arrival timeout on map {target_map_id}", Py4GW.Console.MessageType.Warning)
+    ConsoleLog(MODULE_NAME, f"[Merchant] {stage_name}: alt arrival timeout on map {target_map_id}", PySystem.Console.MessageType.Warning)
 
 
 def _kick_current_party_accounts():
@@ -529,7 +529,7 @@ def _gh_merchant_setup_if_enabled(bot: Botting, outpost_id: int):
     while not Map.IsGuildHall() and time.time() < gh_deadline:
         yield from Routines.Yield.wait(500)
     if not Map.IsGuildHall():
-        ConsoleLog(MODULE_NAME, "[Merchant] Failed to reach Guild Hall, skipping merchant setup", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(MODULE_NAME, "[Merchant] Failed to reach Guild Hall, skipping merchant setup", PySystem.Console.MessageType.Warning)
         return
 
     if _party_mode == 1:
@@ -1382,7 +1382,7 @@ def _draw_title_track():
         PyImGui.text(f"+{gained:,}  ({pts_hr:,}/hr)")
 
 
-REFORGED_TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "Wick Divinus bots", "Reforged_Icon.png")
+REFORGED_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "Wick Divinus bots", "Reforged_Icon.png")
 _EXPANDED_TAB_CHILD_SIZE = (500, 620)
 # endregion
 

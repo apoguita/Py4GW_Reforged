@@ -828,8 +828,8 @@ def update():
 
     if not initialized:
         initialized = True
-        metric_names = Py4GW.Console.get_profiler_metric_names()
-        reports = Py4GW.Console.get_profiler_reports()
+        metric_names = PySystem.Console.get_profiler_metric_names()
+        reports = PySystem.Console.get_profiler_reports()
         metrics_dict = {
             name: {
                 "min": min_time,

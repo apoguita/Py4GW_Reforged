@@ -310,14 +310,14 @@ def Craft1stWeapon(bot: Botting):
     for weapon_id, mats, qtys in weapon_pieces:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 20, mats, qtys)
         if not result:
-            ConsoleLog("CraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
 
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("CraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -969,7 +969,7 @@ def type_text_keystroke(text: str, delay_ms: int = 50):
                 Keystroke.Release(Key.LShift.value)
                 yield from Routines.Yield.wait(50)
         else:
-            ConsoleLog("TextInput", f"Skipping unmapped character: '{char}'", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("TextInput", f"Skipping unmapped character: '{char}'", PySystem.Console.MessageType.Warning)
 
 
 def custom_delete_character(character_name: str, timeout_ms: int = 45000):
@@ -991,7 +991,7 @@ def custom_delete_character(character_name: str, timeout_ms: int = 45000):
 
             return True
     except Exception as e:
-        ConsoleLog("CustomDelete", f"Error in custom delete: {e}", Py4GW.Console.MessageType.Error)
+        ConsoleLog("CustomDelete", f"Error in custom delete: {e}", PySystem.Console.MessageType.Error)
         return False
 
 
@@ -1017,17 +1017,17 @@ def custom_create_character(character_name: str, campaign_name: str, profession_
 
             return True
     except Exception as e:
-        ConsoleLog("CustomCreate", f"Error in custom create: {e}", Py4GW.Console.MessageType.Error)
+        ConsoleLog("CustomCreate", f"Error in custom create: {e}", PySystem.Console.MessageType.Error)
         return False
 
 
 def LogoutAndDeleteState():
     """State: logout -> delete -> recreate -> restart routine."""
-    ConsoleLog("Reroll", "Start: Logout > Delete > Recreate", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Reroll", "Start: Logout > Delete > Recreate", PySystem.Console.MessageType.Info)
 
     char_name = yield from _resolve_character_name()
     if not char_name:
-        ConsoleLog("Reroll", "Unable to resolve character name. Abort.", Py4GW.Console.MessageType.Error)
+        ConsoleLog("Reroll", "Unable to resolve character name. Abort.", PySystem.Console.MessageType.Error)
         return
 
     primary_prof, _ = Agent.GetProfessionNames(Player.GetAgentID())
@@ -1037,10 +1037,10 @@ def LogoutAndDeleteState():
 
     RC = getattr(getattr(Routines, "Yield", None), "RerollCharacter", None)
     if not RC:
-        ConsoleLog("Reroll", "RerollCharacter API not found.", Py4GW.Console.MessageType.Error)
+        ConsoleLog("Reroll", "RerollCharacter API not found.", PySystem.Console.MessageType.Error)
         return
 
-    ConsoleLog("Reroll", f"Target='{char_name}' prof='{primary_prof}' camp='{campaign_name}'", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Reroll", f"Target='{char_name}' prof='{primary_prof}' camp='{campaign_name}'", PySystem.Console.MessageType.Info)
 
     # 1) Logout
     Map.Pregame.LogoutToCharacterSelect()
@@ -1049,7 +1049,7 @@ def LogoutAndDeleteState():
     # 2) Delete character (keystroke-based to avoid clipboard conflicts)
     success = yield from custom_delete_character(char_name)
     if not success:
-        ConsoleLog("Reroll", "Custom delete failed, falling back to framework method", Py4GW.Console.MessageType.Warning)
+        ConsoleLog("Reroll", "Custom delete failed, falling back to framework method", PySystem.Console.MessageType.Warning)
         try:
             yield from RC.DeleteCharacter(character_name_to_delete=char_name, timeout_ms=45000, log=True)
         except TypeError:
@@ -1065,14 +1065,14 @@ def LogoutAndDeleteState():
 
     if char_name in names:
         final_name = _generate_fallback_name(char_name)
-        ConsoleLog("Reroll", f"Original name still locked. Using '{final_name}'.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog("Reroll", f"Original name still locked. Using '{final_name}'.", PySystem.Console.MessageType.Warning)
     else:
         final_name = char_name
 
     # 4) Create character (keystroke-based to avoid clipboard conflicts)
     success = yield from custom_create_character(final_name, campaign_name, primary_prof)
     if not success:
-        ConsoleLog("Reroll", "Custom create failed, falling back to framework method", Py4GW.Console.MessageType.Warning)
+        ConsoleLog("Reroll", "Custom create failed, falling back to framework method", PySystem.Console.MessageType.Warning)
         yield from RC.CreateCharacter(
             character_name=final_name,
             campaign_name=campaign_name,
@@ -1083,7 +1083,7 @@ def LogoutAndDeleteState():
 
     yield from Routines.Yield.wait(7000)
 
-    ConsoleLog("Reroll", "Reroll finished. Restarting routine.", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Reroll", "Reroll finished. Restarting routine.", PySystem.Console.MessageType.Info)
     yield from Routines.Yield.wait(3000)
 
     ActionQueueManager().ResetAllQueues()
@@ -1113,7 +1113,7 @@ def _draw_texture():
     global iconwidth
     level = Agent.GetLevel(Player.GetAgentID())
 
-    projects_path = Py4GW.Console.get_projects_path()
+    projects_path = PySystem.Console.get_projects_path()
     art_path = os.path.join(projects_path, "Bots", "Leveling", "Nightfall", "Nightfall_leveler-art.png")
     fallback_path = os.path.join(projects_path, MODULE_ICON)
     has_leveler_art = os.path.exists(art_path)

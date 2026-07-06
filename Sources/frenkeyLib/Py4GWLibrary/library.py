@@ -216,7 +216,7 @@ class Py4GWLibrary:
                            
         
         except Exception as e:
-            Py4GW.Console.Log("Widget Browser", f"Error loading config: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Widget Browser", f"Error loading config: {e}", PySystem.Console.MessageType.Error)
             
         pass    
     
@@ -709,10 +709,10 @@ class Py4GWLibrary:
                 PyImGui.separator()
 
             if PyImGui.menu_item("Open Widget Folder"):
-                os.startfile(os.path.join(Py4GW.Console.get_projects_path(), "Widgets", widget.folder))
+                os.startfile(os.path.join(PySystem.Console.get_projects_path(), "Widgets", widget.folder))
 
             if PyImGui.menu_item("Open Widget File"):
-                os.startfile(os.path.join(Py4GW.Console.get_projects_path(), "Widgets", widget.folder_script_name))
+                os.startfile(os.path.join(PySystem.Console.get_projects_path(), "Widgets", widget.folder_script_name))
 
             PyImGui.end_popup()
         else:
@@ -1452,8 +1452,8 @@ class Py4GWLibrary:
                                 try:
                                     widget.tooltip()                                
                                 except Exception as e:
-                                    Py4GW.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                                    Py4GW.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                                    PySystem.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                                    PySystem.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
                                 
                         else:
                             PyImGui.show_tooltip(f"Enable/Disable {widget.name} widget")
@@ -1533,8 +1533,8 @@ class Py4GWLibrary:
                             widget.tooltip()
                             
                     except Exception as e:
-                        Py4GW.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                        Py4GW.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                        PySystem.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                        PySystem.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
                 else:
                     PyImGui.show_tooltip(f"Enable/Disable {widget.name} widget")
                     

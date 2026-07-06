@@ -1257,7 +1257,7 @@ class SkillManager:
                 self.custom_skill_data = SkillManager.Autocombat.custom_skill_data_handler.get_skill(self.skill_id)  # Retrieve custom skill data
                                 
         def __init__(self):
-            import Py4GW
+            import PyPing
             self.unique_skills = UniqueSkills()
             self.skills: list[SkillManager.Autocombat._SkillData] = []
             self.skill_order = [0] * MAX_SKILLS
@@ -1268,7 +1268,7 @@ class SkillManager:
             weapon_aftercast = self.GetWeaponAttackAftercast()
             self.weapon_aftercast_initialized = False
             self.auto_attack_timer = ThrottledTimer(weapon_aftercast)
-            self.ping_handler = Py4GW.PingHandler()
+            self.ping_handler = PyPing.PingHandler()
             self.in_casting_routine = False
             self.aggressive_enemies_only = False
             self.is_skill_enabled = [True] * MAX_SKILLS

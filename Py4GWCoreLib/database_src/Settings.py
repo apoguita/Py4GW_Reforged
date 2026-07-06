@@ -21,7 +21,7 @@ throttle tick.
 
 **Account identification**:
     The current account is identified by email (via Player.GetAccountEmail())
-    and/or HWND (via Py4GW.Console.get_gw_window_handle()).  Account change
+    and/or HWND (via PySystem.Console.get_gw_window_handle()).  Account change
     detection checks both values and invalidates the account cache on mismatch.
 """
 
@@ -32,7 +32,6 @@ from typing import Any, Optional, cast
 from .Account import Account
 from .DBMgr import DBMgr
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
-import Py4GW
 
 
 class WidgetSettings:
@@ -835,8 +834,8 @@ class Settings(DBMgr):
     def _get_current_account_hwnd(self) -> int:
         """Return the current game window handle, or 0 if unavailable."""
         try:
-            import Py4GW
-            return int(Py4GW.Console.get_gw_window_handle() or 0)
+import PySystem
+            return int(PySystem.Console.get_gw_window_handle() or 0)
         except Exception:
             return 0
 

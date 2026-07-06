@@ -53,7 +53,7 @@ def draw_multi_table(
 # GLOBAL ANCHOR (initialized once)
 # ---------------------------------------------------------
 _anchor_walltime: datetime = datetime.now()
-_anchor_tick = Py4GW.Game.get_tick_count64()
+_anchor_tick = PySystem.get_tick_count64()
 
 
 # ---------------------------------------------------------

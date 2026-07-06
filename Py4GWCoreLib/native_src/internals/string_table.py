@@ -749,8 +749,8 @@ def load_string_table(language: int = 0) -> None:
     _load_enqueued = True
     _loaded_language = language
 
-    import Py4GW
-    Py4GW.Game.enqueue(lambda: _do_load_string_table(language))
+    import PyGameThread
+    PyGameThread.enqueue(lambda: _do_load_string_table(language))
 
 
 def _get_client_language() -> int:

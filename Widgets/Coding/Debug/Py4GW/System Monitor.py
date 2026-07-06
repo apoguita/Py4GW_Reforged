@@ -265,7 +265,7 @@ class ProfilerMetricNameCatalog:
         if Py4GW is None:
             return []
         try:
-            return list(Py4GW.Console.get_profiler_metric_names())
+            return list(PySystem.Console.get_profiler_metric_names())
         except Exception:
             return []
 
@@ -274,12 +274,12 @@ class ProfilerMetricNameCatalog:
 
         Returns:
             A list of report tuples in the format expected from
-            `Py4GW.Console.get_profiler_reports()`, or an empty list on failure.
+            `PySystem.Console.get_profiler_reports()`, or an empty list on failure.
         """
         if Py4GW is None:
             return []
         try:
-            return list(Py4GW.Console.get_profiler_reports())
+            return list(PySystem.Console.get_profiler_reports())
         except Exception:
             return []
 
@@ -298,7 +298,7 @@ class ProfilerMetricNameCatalog:
         if Py4GW is None:
             return []
         try:
-            return [float(v) for v in Py4GW.Console.get_profiler_history(name)]
+            return [float(v) for v in PySystem.Console.get_profiler_history(name)]
         except Exception:
             return []
 
@@ -310,7 +310,7 @@ class ProfilerMetricNameCatalog:
         """Clear cached profiler timing stats while keeping parsed names/indexes."""
         self.stats_by_raw_name.clear()
         self.history_by_raw_name.clear()
-        Py4GW.Console.clear_profiler_history()
+        PySystem.Console.clear_profiler_history()
 
     def get_stats(self, raw_name: str) -> dict[str, float] | None:
         """Return timing stats for a raw metric name, if available."""

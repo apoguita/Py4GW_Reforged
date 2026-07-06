@@ -108,7 +108,7 @@ def persist_settings_if_needed() -> None:
         runtime.settings_dirty = False
 
 
-def push_status(message: str, message_type=Py4GW.Console.MessageType.Info) -> None:
+def push_status(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
     runtime.status = message
     timestamp = time.strftime("%H:%M:%S")
     runtime.status_lines.append(f"{timestamp} - {message}")
@@ -152,7 +152,7 @@ def format_duration_ms(milliseconds: float) -> str:
 
 def start_spammer() -> None:
     if not active_messages():
-        push_status("Add at least one trade message before starting.", Py4GW.Console.MessageType.Warning)
+        push_status("Add at least one trade message before starting.", PySystem.Console.MessageType.Warning)
         return
 
     ActionQueueManager().ResetAllQueues()
@@ -197,7 +197,7 @@ def ensure_kamadan():
                 MAP_LOAD_TIMEOUT_MS,
             )
         ):
-            push_status("Map load did not settle in time.", Py4GW.Console.MessageType.Warning)
+            push_status("Map load did not settle in time.", PySystem.Console.MessageType.Warning)
             return False
 
     if Map.GetMapID() == KAMADAN_MAP_ID and Map.IsOutpost():
@@ -215,7 +215,7 @@ def ensure_kamadan():
         ):
             push_status(
                 "ReturnToOutpost did not transition cleanly; waiting for an outpost to become available.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return False
 
@@ -226,7 +226,7 @@ def ensure_kamadan():
         timeout=MAP_LOAD_TIMEOUT_MS,
     )
     if not travel_success:
-        push_status("Travel to Kamadan failed.", Py4GW.Console.MessageType.Warning)
+        push_status("Travel to Kamadan failed.", PySystem.Console.MessageType.Warning)
         return False
 
     return Map.GetMapID() == KAMADAN_MAP_ID and Map.IsOutpost()
@@ -247,7 +247,7 @@ def leave_group_if_needed():
             PARTY_LEAVE_TIMEOUT_MS,
         )
     ):
-        push_status("Party leave did not complete in time.", Py4GW.Console.MessageType.Warning)
+        push_status("Party leave did not complete in time.", PySystem.Console.MessageType.Warning)
         return False
     return True
 
@@ -267,7 +267,7 @@ def move_to_spam_spot():
         timeout=12000,
     )
     if not follow_success:
-        push_status("Failed to reach the spam spot.", Py4GW.Console.MessageType.Warning)
+        push_status("Failed to reach the spam spot.", PySystem.Console.MessageType.Warning)
         return False
     return distance_to(*SPAM_SPOT_COORD) <= SPAM_SPOT_REPOSITION_RADIUS
 
@@ -277,7 +277,7 @@ def send_trade_message(message: str, index: int, total: int):
         return False
 
     if Map.GetMapID() != KAMADAN_MAP_ID or not Map.IsOutpost() or Map.IsMapLoading():
-        push_status("Kamadan is no longer ready; restarting preparation.", Py4GW.Console.MessageType.Warning)
+        push_status("Kamadan is no longer ready; restarting preparation.", PySystem.Console.MessageType.Warning)
         return False
 
     runtime.current_message_index = index
@@ -316,7 +316,7 @@ def spammer_loop():
                 return
 
             if settings.auto_reposition and distance_to(*SPAM_SPOT_COORD) > SPAM_SPOT_REPOSITION_RADIUS:
-                push_status("Moved away from the spam spot; repositioning.", Py4GW.Console.MessageType.Warning)
+                push_status("Moved away from the spam spot; repositioning.", PySystem.Console.MessageType.Warning)
                 restart_cycle = True
                 break
 
@@ -341,7 +341,7 @@ def spammer_loop():
         push_status("Waiting for next send cycle.")
         while runtime.running and not runtime.cooldown_timer.HasElapsed(settings.cooldown_ms()):
             if Map.GetMapID() != KAMADAN_MAP_ID or not Map.IsOutpost() or Map.IsMapLoading():
-                push_status("Map changed during cooldown; re-preparing.", Py4GW.Console.MessageType.Warning)
+                push_status("Map changed during cooldown; re-preparing.", PySystem.Console.MessageType.Warning)
                 break
             yield from Routines.Yield.wait(250)
 
@@ -363,7 +363,7 @@ def advance_spammer() -> None:
         runtime.running = False
         runtime.cooldown_timer.Stop()
         ActionQueueManager().ResetAllQueues()
-        push_status(f"Spammer error: {exc}", Py4GW.Console.MessageType.Error)
+        push_status(f"Spammer error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -448,7 +448,7 @@ def main():
         persist_settings_if_needed()
         draw_ui()
     except Exception as exc:
-        ConsoleLog(BOT_NAME, f"Unhandled error: {exc}", Py4GW.Console.MessageType.Error)
+        ConsoleLog(BOT_NAME, f"Unhandled error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 def tooltip():

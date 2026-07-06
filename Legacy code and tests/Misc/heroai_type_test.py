@@ -144,19 +144,19 @@ def test_structure(struct_cls, struct_name):
     """Helper function to test if a structure can be instantiated."""
     try:
         instance = struct_cls()
-        Py4GW.Console.Log(MODULE_NAME, f"[SUCCEED] {struct_name} instantiated successfully.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(MODULE_NAME, f"[SUCCEED] {struct_name} instantiated successfully.", PySystem.Console.MessageType.Info)
     except AttributeError as e:
-        Py4GW.Console.Log(MODULE_NAME, f"[FAIL] {struct_name} FAILED: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"[FAIL] {struct_name} FAILED: {str(e)}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"[FAIL] {struct_name} ERROR: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(MODULE_NAME, traceback.format_exc(), Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(MODULE_NAME, f"[FAIL] {struct_name} ERROR: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, traceback.format_exc(), PySystem.Console.MessageType.Debug)
 
         
 def DrawWindow():
     try:
         if PyImGui.begin("type_tester"):
             if PyImGui.button("Run Tests"):
-                Py4GW.Console.Log(MODULE_NAME, "=== Testing ctypes Structures in types.py ===", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(MODULE_NAME, "=== Testing ctypes Structures in types.py ===", PySystem.Console.MessageType.Info)
 
                 test_structure(PlayerBuff, "PlayerBuff")
                 test_structure(PlayerStruct, "PlayerStruct")
@@ -165,12 +165,12 @@ def DrawWindow():
                 test_structure(GameOptionStruct, "GameOptionStruct")
                 test_structure(GameStruct, "GameStruct")
                 
-                Py4GW.Console.Log(MODULE_NAME, "=== Test Complete ===", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(MODULE_NAME, "=== Test Complete ===", PySystem.Console.MessageType.Info)
 
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log("tester", f"Unexpected Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("tester", f"Unexpected Error: {str(e)}", PySystem.Console.MessageType.Error)
 
 
 def main():

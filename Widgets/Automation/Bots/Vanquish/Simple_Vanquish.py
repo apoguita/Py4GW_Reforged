@@ -8,7 +8,7 @@ import time
 import random
 from Py4GWCoreLib.enums_src.Region_enums import District
 
-projects_base_path = Py4GW.Console.get_projects_path()
+projects_base_path = PySystem.Console.get_projects_path()
 ac_folder_path = os.path.join(projects_base_path, "Sources", "aC_Scripts")
 from Sources.aC_Scripts.aC_api import *
 MAPS_DIR = os.path.join(ac_folder_path,"PyQuishAI_maps")
@@ -276,10 +276,10 @@ def _build_reversed_path(vanquish_path):
 
 
 def VanquishWatchdog(bot: "Botting", completed_header_name: str):
-    ConsoleLog("VanquishWatchdog", "Vanquish Watchdog Coroutine Started", Py4GW.Console.MessageType.Debug, True)
+    ConsoleLog("VanquishWatchdog", "Vanquish Watchdog Coroutine Started", PySystem.Console.MessageType.Debug, True)
     while True:
         if Map.IsVanquishCompleted():
-            ConsoleLog("VanquishWatchdog", f"Vanquish trigger activated. Jumping to: {completed_header_name}", Py4GW.Console.MessageType.Debug, True)
+            ConsoleLog("VanquishWatchdog", f"Vanquish trigger activated. Jumping to: {completed_header_name}", PySystem.Console.MessageType.Debug, True)
             bot.Events.OnPartyWipeCallback(None)
             # Freeze timer for completed vanquish
             if _current_vq_index in _vq_timers and not _vq_timers[_current_vq_index]["done"]:
@@ -303,7 +303,7 @@ def bot_routine(bot: Botting) -> None:
     bot.config.counters.clear_all()
 
     if not _queued_vanquishes:
-        ConsoleLog(BotSettings.BOT_NAME, "No vanquishes queued!", Py4GW.Console.MessageType.Error)
+        ConsoleLog(BotSettings.BOT_NAME, "No vanquishes queued!", PySystem.Console.MessageType.Error)
         return
 
     # Events
@@ -526,14 +526,14 @@ def _stop_bot():
     global _reverse_detections, _vq_timers, _bot_start_time, _bot_total_elapsed
     # Print reverse detection summary for source file improvements
     if _reverse_detections:
-        ConsoleLog(BotSettings.BOT_NAME, "=" * 60, Py4GW.Console.MessageType.Info, True)
-        ConsoleLog(BotSettings.BOT_NAME, "REVERSE PASS ENEMY DETECTIONS (for source file updates):", Py4GW.Console.MessageType.Info, True)
-        ConsoleLog(BotSettings.BOT_NAME, "=" * 60, Py4GW.Console.MessageType.Info, True)
+        ConsoleLog(BotSettings.BOT_NAME, "=" * 60, PySystem.Console.MessageType.Info, True)
+        ConsoleLog(BotSettings.BOT_NAME, "REVERSE PASS ENEMY DETECTIONS (for source file updates):", PySystem.Console.MessageType.Info, True)
+        ConsoleLog(BotSettings.BOT_NAME, "=" * 60, PySystem.Console.MessageType.Info, True)
         for map_name, phases in _reverse_detections.items():
-            ConsoleLog(BotSettings.BOT_NAME, f"Map: {map_name}", Py4GW.Console.MessageType.Info, True)
+            ConsoleLog(BotSettings.BOT_NAME, f"Map: {map_name}", PySystem.Console.MessageType.Info, True)
             for phase, coords in sorted(phases.items()):
                 if coords:
-                    ConsoleLog(BotSettings.BOT_NAME, f"  Reverse {phase}:", Py4GW.Console.MessageType.Info, True)
+                    ConsoleLog(BotSettings.BOT_NAME, f"  Reverse {phase}:", PySystem.Console.MessageType.Info, True)
                     # Deduplicate nearby coords (within 200 units)
                     unique = []
                     for cx, cy in coords:
@@ -545,9 +545,9 @@ def _stop_bot():
                         if not is_dup:
                             unique.append((cx, cy))
                     for cx, cy in unique:
-                        ConsoleLog(BotSettings.BOT_NAME, f"    ({cx}, {cy})", Py4GW.Console.MessageType.Info, True)
-                    ConsoleLog(BotSettings.BOT_NAME, f"  Total: {len(coords)} detections, {len(unique)} unique positions", Py4GW.Console.MessageType.Info, True)
-        ConsoleLog(BotSettings.BOT_NAME, "=" * 60, Py4GW.Console.MessageType.Info, True)
+                        ConsoleLog(BotSettings.BOT_NAME, f"    ({cx}, {cy})", PySystem.Console.MessageType.Info, True)
+                    ConsoleLog(BotSettings.BOT_NAME, f"  Total: {len(coords)} detections, {len(unique)} unique positions", PySystem.Console.MessageType.Info, True)
+        ConsoleLog(BotSettings.BOT_NAME, "=" * 60, PySystem.Console.MessageType.Info, True)
     # Freeze any running timer on bot stop
     for _ti_key, _ti_val in _vq_timers.items():
         if not _ti_val["done"] and _ti_val["start"] > 0:
@@ -564,7 +564,7 @@ def _do_loop_jump(bot: "Botting", first_vq_header: str):
     """CustomState coroutine: increment loop count and jump back to first vanquish."""
     global _loop_count
     _loop_count += 1
-    ConsoleLog(BotSettings.BOT_NAME, f"Back at outpost. Starting loop #{_loop_count}. Jumping to: {first_vq_header}", Py4GW.Console.MessageType.Info, True)
+    ConsoleLog(BotSettings.BOT_NAME, f"Back at outpost. Starting loop #{_loop_count}. Jumping to: {first_vq_header}", PySystem.Console.MessageType.Info, True)
     if bot.config.FSM.current_state:
         bot.config.FSM.current_state.reset()
     bot.config.FSM.jump_to_state_by_name(first_vq_header)
@@ -574,7 +574,7 @@ def _do_loop_jump(bot: "Botting", first_vq_header: str):
 # region EVENTS
 def _conset_upkeep(bot):
     """Background coroutine: applies conset immediately, then re-checks every 30s."""
-    ConsoleLog("ConsetUpkeep", "Conset Upkeep Coroutine Started", Py4GW.Console.MessageType.Debug, True)
+    ConsoleLog("ConsetUpkeep", "Conset Upkeep Coroutine Started", PySystem.Console.MessageType.Debug, True)
     while True:
         if not _restock_conset or Map.IsOutpost():
             yield from Routines.Yield.wait(30000)
@@ -588,7 +588,7 @@ def _conset_upkeep(bot):
 
 def _pcons_upkeep(bot):
     """Background coroutine: applies pcons immediately, then re-checks every 30s."""
-    ConsoleLog("PconsUpkeep", "Pcons Upkeep Coroutine Started", Py4GW.Console.MessageType.Debug, True)
+    ConsoleLog("PconsUpkeep", "Pcons Upkeep Coroutine Started", PySystem.Console.MessageType.Debug, True)
     while True:
         if not _restock_pcons or Map.IsOutpost():
             yield from Routines.Yield.wait(30000)
@@ -927,7 +927,7 @@ def _draw_help():
 # =============================================================================
 bot.SetMainRoutine(bot_routine)
 
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
 bot.UI.override_draw_config(lambda: _draw_settings())
 bot.UI.override_draw_help(lambda: _draw_help())
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Generator, Any
 import os
-from Py4GW import Console
+import PySystem
 import PyImGui
 from Py4GWCoreLib import Key, Keystroke, Map, CHAR_MAP, Player
 from Py4GWCoreLib import (GLOBAL_CACHE, Agent, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
@@ -551,7 +551,7 @@ def _draw_texture():
     global iconwidth
     level = Agent.GetLevel(Player.GetAgentID())
 
-    path = os.path.join(Py4GW.Console.get_projects_path(),"Bots", "Leveling", "Nightfall","Nightfall_leveler-art.png")
+    path = os.path.join(PySystem.Console.get_projects_path(),"Bots", "Leveling", "Nightfall","Nightfall_leveler-art.png")
     size = (float(iconwidth), float(iconwidth))
     tint = (255, 255, 255, 255)
     border_col = (0, 0, 0, 0)  # <- ints, not normalized floats

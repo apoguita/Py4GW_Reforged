@@ -64,7 +64,7 @@ def precompute_layer_geometry(pathing_map, width, height):
     precomputed_geometry.clear()
 
     if not map_boundaries:
-        Py4GW.Console.Log(module_name, "Map boundaries are not initialized.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, "Map boundaries are not initialized.", PySystem.Console.MessageType.Error)
         return
 
     # Extract Layer 0 boundaries as primary
@@ -87,7 +87,7 @@ def precompute_layer_geometry(pathing_map, width, height):
                 geometry.append((tl_x, tl_y, tr_x, tr_y, br_x, br_y, bl_x, bl_y))
                 quad_count += 1
             except Exception as e:
-                Py4GW.Console.Log(module_name, f"Error processing trapezoid {trapezoid.id}: {str(e)}", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(module_name, f"Error processing trapezoid {trapezoid.id}: {str(e)}", PySystem.Console.MessageType.Warning)
         precomputed_geometry[layer.zplane] = geometry
 
 
@@ -99,7 +99,7 @@ def draw_minimap_layer(layer, width=500, height=500):
     global precomputed_geometry
 
     if layer.zplane not in precomputed_geometry:
-        Py4GW.Console.Log(module_name, f"No precomputed geometry for z-plane {layer.zplane}.", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log(module_name, f"No precomputed geometry for z-plane {layer.zplane}.", PySystem.Console.MessageType.Warning)
         return
 
     PyImGui.set_next_window_size(width, height)
@@ -131,7 +131,7 @@ def draw_minimap_layers(layers, width=500, height=500):
     global precomputed_geometry, reverse_y_axis
 
     if not layers or not precomputed_geometry:
-        Py4GW.Console.Log(module_name, "No layers or precomputed geometry available for drawing.", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log(module_name, "No layers or precomputed geometry available for drawing.", PySystem.Console.MessageType.Warning)
         return
 
     PyImGui.set_next_window_size(width, height)
@@ -140,7 +140,7 @@ def draw_minimap_layers(layers, width=500, height=500):
 
         for layer in layers:
             if layer.zplane not in precomputed_geometry:
-                Py4GW.Console.Log(module_name, f"No precomputed geometry for z-plane {layer.zplane}.", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(module_name, f"No precomputed geometry for z-plane {layer.zplane}.", PySystem.Console.MessageType.Warning)
                 continue
 
             for quad in precomputed_geometry[layer.zplane]:
@@ -182,57 +182,57 @@ def log_all_pathing_maps():
     """
     global pathing_map
     if pathing_map is None:
-        Py4GW.Console.Log(module_name, "No pathing maps to log. Fetch them first.", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log(module_name, "No pathing maps to log. Fetch them first.", PySystem.Console.MessageType.Warning)
         return
 
     for i, layer in enumerate(pathing_map):
-        Py4GW.Console.Log(module_name, f"Layer {i} (Z-plane: {layer.zplane})", Py4GW.Console.MessageType.Info)
-        Py4GW.Console.Log(module_name, f"  Trapezoids: {len(layer.trapezoids)}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, f"Layer {i} (Z-plane: {layer.zplane})", PySystem.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, f"  Trapezoids: {len(layer.trapezoids)}", PySystem.Console.MessageType.Info)
 
         for trapezoid in layer.trapezoids:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 module_name,
                 f"    Trapezoid {trapezoid.id}: "
                 f"XTL={trapezoid.XTL}, XTR={trapezoid.XTR}, YT={trapezoid.YT}, "
                 f"XBL={trapezoid.XBL}, XBR={trapezoid.XBR}, YB={trapezoid.YB}, "
                 f"Portals (left={trapezoid.portal_left}, right={trapezoid.portal_right}), "
                 f"Neighbors={trapezoid.neighbor_ids}",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
             )
 
-        Py4GW.Console.Log(module_name, f"  Portals: {len(layer.portals)}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, f"  Portals: {len(layer.portals)}", PySystem.Console.MessageType.Info)
         for portal in layer.portals:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 module_name,
                 f"    Portal (left_layer_id={portal.left_layer_id}, right_layer_id={portal.right_layer_id}): "
                 f"Trapezoids={portal.trapezoid_indices}, Pair={portal.pair_index}",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
             )
 
-        Py4GW.Console.Log(module_name, f"  SinkNodes: {len(layer.sink_nodes)}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, f"  SinkNodes: {len(layer.sink_nodes)}", PySystem.Console.MessageType.Info)
         for sink_node in layer.sink_nodes:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 module_name,
                 f"    SinkNode {sink_node.id}: Trapezoid IDs={sink_node.trapezoid_ids}",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
             )
 
-        Py4GW.Console.Log(module_name, f"  XNodes: {len(layer.x_nodes)}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, f"  XNodes: {len(layer.x_nodes)}", PySystem.Console.MessageType.Info)
         for x_node in layer.x_nodes:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 module_name,
                 f"    XNode {x_node.id}: Position={x_node.pos}, Direction={x_node.dir}, "
                 f"Left={x_node.left_id}, Right={x_node.right_id}",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
             )
 
-        Py4GW.Console.Log(module_name, f"  YNodes: {len(layer.y_nodes)}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, f"  YNodes: {len(layer.y_nodes)}", PySystem.Console.MessageType.Info)
         for y_node in layer.y_nodes:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 module_name,
                 f"    YNode {y_node.id}: Position={y_node.pos}, "
                 f"Left={y_node.left_id}, Right={y_node.right_id}",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
             )
 
 def DrawWindow():
@@ -258,9 +258,9 @@ def DrawWindow():
             if PyImGui.button("Get Pathing Maps!"):
                 
                 pathing_map = Map.Pathing.GetPathingMaps()
-                Py4GW.Console.Log(module_name, "Pathing maps acquired!", Py4GW.Console.MessageType.Success)
+                PySystem.Console.Log(module_name, "Pathing maps acquired!", PySystem.Console.MessageType.Success)
                 precompute_layer_geometry(pathing_map, width=500, height=500)
-                Py4GW.Console.Log(module_name, "Pathing maps precomputed!", Py4GW.Console.MessageType.Success)
+                PySystem.Console.Log(module_name, "Pathing maps precomputed!", PySystem.Console.MessageType.Success)
 
 
             if pathing_map is not None:
@@ -277,9 +277,9 @@ def DrawWindow():
                         if zplane < len(pathing_map):
                             draw_minimap_layer(pathing_map[zplane])
                         else:
-                            Py4GW.Console.Log(
+                            PySystem.Console.Log(
                                 module_name, f"No corresponding layer found for z-plane {zplane}.",
-                                Py4GW.Console.MessageType.Warning,
+                                PySystem.Console.MessageType.Warning,
                             )
             
                 if PyImGui.button("Log All Pathing Maps"):
@@ -288,7 +288,7 @@ def DrawWindow():
             PyImGui.separator()
             PyImGui.end()
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def main():
@@ -298,21 +298,21 @@ def main():
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
         # Catch-all for any other unexpected exceptions
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         # Optional: Code that will run whether an exception occurred or not
-        #Py4GW.Console.Log(module_name, "Execution of Main() completed", Py4GW.Console.MessageType.Info)
+        #PySystem.Console.Log(module_name, "Execution of Main() completed", PySystem.Console.MessageType.Info)
         # Place any cleanup tasks here
         pass
 

@@ -480,7 +480,7 @@ def FollowPathwithDelayTimer(path_handler,follow_handler, log_actions=False, del
         if point is not None:
             follow_handler.move_to_waypoint(point[0], point[1])
             if log_actions:
-                Py4GW.Console.Log("FollowPath", f"Moving to {point}", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log("FollowPath", f"Moving to {point}", PySystem.Console.MessageType.Info)
 
 def set_killing_routine():
     global FSM_vars
@@ -1238,7 +1238,7 @@ def handle_loot_baked_husk():
             if (hasattr(FSM_vars, 'loot_target_start_time') and 
                 FSM_vars.loot_target_start_time > 0 and 
                 time.time() - FSM_vars.loot_target_start_time > 10.0):
-                Py4GW.Console.Log("Baked Husk Loot", "Loot target timeout - giving up", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log("Baked Husk Loot", "Loot target timeout - giving up", PySystem.Console.MessageType.Warning)
                 FSM_vars.current_loot_target = None
                 FSM_vars.loot_target_start_time = 0.0
                 return
@@ -1257,7 +1257,7 @@ def handle_loot_baked_husk():
         # Clear loot target on any error to prevent getting stuck
         if hasattr(FSM_vars, 'current_loot_target'):
             FSM_vars.current_loot_target = None
-        Py4GW.Console.Log("Baked Husk Loot", f"Error in loot handling: {str(e)}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Baked Husk Loot", f"Error in loot handling: {str(e)}", PySystem.Console.MessageType.Warning)
 
 # Removed handle_loot_worn_belts() function since loot table will automatically pick up worn belts
 
@@ -1280,7 +1280,7 @@ def sweep_area_for_loot():
                     time.sleep(0.1)
                     
     except Exception as e:
-        Py4GW.Console.Log("Baked Husk Loot", f"Error in area sweep: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("Baked Husk Loot", f"Error in area sweep: {str(e)}", PySystem.Console.MessageType.Error)
 
 def comprehensive_loot_sweep():
     """
@@ -1300,7 +1300,7 @@ def comprehensive_loot_sweep():
             time.sleep(0.2)
             
     except Exception as e:
-        Py4GW.Console.Log("Baked Husk Loot", f"Error in comprehensive sweep: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("Baked Husk Loot", f"Error in comprehensive sweep: {str(e)}", PySystem.Console.MessageType.Error)
 
 def check_movement_stuck():
     """
@@ -1316,7 +1316,7 @@ def check_movement_stuck():
             if FSM_vars.position_stuck_time == 0.0:
                 FSM_vars.position_stuck_time = time.time()
             elif time.time() - FSM_vars.position_stuck_time > 15.0:  # 15 seconds stuck
-                Py4GW.Console.Log("Movement", "Bot appears stuck - resetting movement", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log("Movement", "Bot appears stuck - resetting movement", PySystem.Console.MessageType.Warning)
                 FSM_vars.movement_handler.reset()
                 FSM_vars.current_loot_target = None
                 FSM_vars.position_stuck_time = 0.0
@@ -1329,7 +1329,7 @@ def check_movement_stuck():
         return False
         
     except Exception as e:
-        Py4GW.Console.Log("Movement", f"Error checking movement: {str(e)}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Movement", f"Error checking movement: {str(e)}", PySystem.Console.MessageType.Warning)
         return False
 
 
@@ -1342,7 +1342,7 @@ def handle_gadget_interaction():
 
     # Simple interaction - just press semicolon to target closest object (the lever)
     if not hasattr(FSM_vars, 'lever_targeted_logged'):
-        Py4GW.Console.Log("Gadget Interaction", "Targeting lever with semicolon key", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Gadget Interaction", "Targeting lever with semicolon key", PySystem.Console.MessageType.Info)
         FSM_vars.lever_targeted_logged = True
     
     # Press semicolon to target closest object
@@ -1352,7 +1352,7 @@ def handle_gadget_interaction():
     # Press spacebar to activate the lever
     if not FSM_vars.has_interacted or (current_time - FSM_vars.last_interaction_time >= 3):
         if not hasattr(FSM_vars, 'lever_activated_logged'):
-            Py4GW.Console.Log("Gadget Interaction", "Activating lever with spacebar", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log("Gadget Interaction", "Activating lever with spacebar", PySystem.Console.MessageType.Info)
             FSM_vars.lever_activated_logged = True
         
         # Press spacebar to activate lever
@@ -1520,12 +1520,12 @@ def handle_map_path_baked_husk(map_pathing):
         Routines.Movement.FollowPath(map_pathing, FSM_vars.movement_handler)
         # Log movement status periodically
         if hasattr(FSM_vars, 'last_debug_time') and time.time() - FSM_vars.last_debug_time > 30.0:
-            Py4GW.Console.Log("Baked Husk Movement", "Continuing path movement", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log("Baked Husk Movement", "Continuing path movement", PySystem.Console.MessageType.Info)
             FSM_vars.last_debug_time = time.time()
         elif not hasattr(FSM_vars, 'last_debug_time'):
             FSM_vars.last_debug_time = time.time()
     except Exception as e:
-        Py4GW.Console.Log("Baked Husk Movement", f"Movement error: {str(e)}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Baked Husk Movement", f"Movement error: {str(e)}", PySystem.Console.MessageType.Warning)
         # Try to recover by resetting movement handler
         FSM_vars.movement_handler.reset()
         time.sleep(0.1)
@@ -2367,7 +2367,7 @@ FSM_vars.state_machine_necro_noreq.AddState(name="GOING BACK TO ASCALON", execut
 
 #DULL CARAPACES
 FSM_vars.state_machine_dull_carapaces.AddState(name="ASCALON", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ascalon_map,6,0)) if not Map.IsExplorable() else None,  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ascalon_map,6,0)) if not Map.IsExplorable() else None,  
                        exit_condition=lambda: LDoA_IsOutpost() or Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2378,7 +2378,7 @@ FSM_vars.state_machine_dull_carapaces.AddState(name="GOING OUT IN DANGEROUS LAND
                        run_once=False)
 
 FSM_vars.state_machine_dull_carapaces.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_dull_carapaces.AddState(name="GOING OUT IN DANGEROUS LANDS",
@@ -2387,7 +2387,7 @@ FSM_vars.state_machine_dull_carapaces.AddState(name="GOING OUT IN DANGEROUS LAND
                        run_once=False)
 
 FSM_vars.state_machine_dull_carapaces.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_dull_carapaces.AddState(name="FARMING LODESTONES",
@@ -2396,7 +2396,7 @@ FSM_vars.state_machine_dull_carapaces.AddState(name="FARMING LODESTONES",
                        run_once=False)
 
 FSM_vars.state_machine_dull_carapaces.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - DULL CARAPACES FARM", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()),  
                        transition_delay_ms=1000,
                        run_once=True)
 
@@ -2413,7 +2413,7 @@ FSM_vars.state_machine_dull_carapaces.AddState(name="WAITING OUTPOST MAP",
 )
 #GARGOYLE SKULLS
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)) if not Map.IsExplorable() else None,  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)) if not Map.IsExplorable() else None,  
                        exit_condition=lambda: LDoA_IsOutpost() or Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2424,11 +2424,11 @@ FSM_vars.state_machine_gargoyle_skulls.AddState(name="GOING OUT IN DANGEROUS LAN
                        run_once=False)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=5000)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="GOING OUT IN DANGEROUS LANDS",
@@ -2437,11 +2437,11 @@ FSM_vars.state_machine_gargoyle_skulls.AddState(name="GOING OUT IN DANGEROUS LAN
                        run_once=False)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=5000)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - GARGOYLE SKULLS FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=True)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="FARMING LODESTONES",
@@ -2450,13 +2450,13 @@ FSM_vars.state_machine_gargoyle_skulls.AddState(name="FARMING LODESTONES",
                        run_once=False)
 
 FSM_vars.state_machine_gargoyle_skulls.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - LDoA LVL 2-10", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - LDoA LVL 2-10", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()),  
                        transition_delay_ms=1000,
                        run_once=True)
 
 #GRAWL NECKLACES
 FSM_vars.state_machine_grawl_necklaces.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)) if not Map.IsExplorable() else None,  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)) if not Map.IsExplorable() else None,  
                        exit_condition=lambda: LDoA_IsOutpost() or Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2467,11 +2467,11 @@ FSM_vars.state_machine_grawl_necklaces.AddState(name="GOING OUT IN DANGEROUS LAN
                        run_once=False)
 
 FSM_vars.state_machine_grawl_necklaces.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_grawl_necklaces.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_grawl_necklaces.AddState(name="FARMING LODESTONES",
@@ -2480,7 +2480,7 @@ FSM_vars.state_machine_grawl_necklaces.AddState(name="FARMING LODESTONES",
                        run_once=False)
 
 FSM_vars.state_machine_grawl_necklaces.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - GRAWL NECKLACES FARM", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()),  
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2522,7 +2522,7 @@ FSM_vars.state_machine_icy_lodestones.AddState(name="LUCKILY THERE IS A PRIEST",
                        run_once=False)
 
 FSM_vars.state_machine_icy_lodestones.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - ICY LODESTONES FARM", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()), 
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - ICY LODESTONES FARM", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()), 
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2530,7 +2530,7 @@ FSM_vars.state_machine_icy_lodestones.AddState(name="COUNTER",
 
 #ENCHANTED LODESTONES
 FSM_vars.state_machine_lodestone.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - ENCHANTED LODESTONE FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)) if not Map.IsExplorable() else None,  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - ENCHANTED LODESTONE FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)) if not Map.IsExplorable() else None,  
                        exit_condition=lambda: LDoA_IsOutpost() or Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2541,11 +2541,11 @@ FSM_vars.state_machine_lodestone.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_lodestone.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - ENCHANTED LODESTONE FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - ENCHANTED LODESTONE FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_lodestone.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - ENCHANTED LODESTONE FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - ENCHANTED LODESTONE FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_lodestone.AddState(name="FARMING LODESTONES",
@@ -2555,7 +2555,7 @@ FSM_vars.state_machine_lodestone.AddState(name="FARMING LODESTONES",
 
 #RED IRIS FLOWERS
 FSM_vars.state_machine_red_iris_flowers.AddState(name="ARE WE IN ASCALON?", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ascalon_map,6,0)) if not Map.IsExplorable() else None,                                             
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ascalon_map,6,0)) if not Map.IsExplorable() else None,                                             
                        exit_condition=lambda: LDoA_IsOutpost() or Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2566,17 +2566,17 @@ FSM_vars.state_machine_red_iris_flowers.AddState(name="GOING OUT ASCALON",
                        run_once=False)
 
 FSM_vars.state_machine_red_iris_flowers.AddState(name="RUNNING OUT OF TOWN",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "RUNNING OUT OF TOWN", Py4GW.Console.MessageType.Info),Keystroke.PressAndRelease(Key.R.value)) if not Map.IsExplorable() else None,
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "RUNNING OUT OF TOWN", PySystem.Console.MessageType.Info),Keystroke.PressAndRelease(Key.R.value)) if not Map.IsExplorable() else None,
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=100,
                        run_once=True)
 
 FSM_vars.state_machine_red_iris_flowers.AddState(name="WAITING EXPLORABLE MAP",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=2000)
 
 FSM_vars.state_machine_red_iris_flowers.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_red_iris_flowers.AddState(name="PATH 1",
@@ -2605,14 +2605,14 @@ FSM_vars.state_machine_red_iris_flowers.AddState(name="PATH 5",
                        run_once=False)
 
 FSM_vars.state_machine_red_iris_flowers.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()), 
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - RED IRIS FLOWERS FARM", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()), 
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
 
 #SKELETAL LIMBS
 FSM_vars.state_machine_skele_limbs.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2623,11 +2623,11 @@ FSM_vars.state_machine_skele_limbs.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_skele_limbs.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=1000)
 
 FSM_vars.state_machine_skele_limbs.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_skele_limbs.AddState(name="GOING OUT IN DANGEROUS LANDS",
@@ -2636,11 +2636,11 @@ FSM_vars.state_machine_skele_limbs.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_skele_limbs.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=1000)
 
 FSM_vars.state_machine_skele_limbs.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SKELETAL LIMBS", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_skele_limbs.AddState(name="FARMING LODESTONES",
@@ -2650,7 +2650,7 @@ FSM_vars.state_machine_skele_limbs.AddState(name="FARMING LODESTONES",
 
 #SKALE FINS
 FSM_vars.state_machine_skale_fin.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKALE FIN FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ranik_map,6,0)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SKALE FIN FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ranik_map,6,0)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2661,11 +2661,11 @@ FSM_vars.state_machine_skale_fin.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_skale_fin.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKALE FIN FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - SKALE FIN FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=5000)
 
 FSM_vars.state_machine_skale_fin.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SKALE FIN FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SKALE FIN FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_skale_fin.AddState(name="FARMING LODESTONES",
@@ -2674,7 +2674,7 @@ FSM_vars.state_machine_skale_fin.AddState(name="FARMING LODESTONES",
                        run_once=False)
 
 FSM_vars.state_machine_skale_fin.AddState(name="COUNTER", 
-    execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO  WORN BELTS", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()), 
+    execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO  WORN BELTS", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()), 
     exit_condition=lambda: Map.IsExplorable(),
     transition_delay_ms=1000,
     run_once=True)
@@ -2695,13 +2695,13 @@ FSM_vars.state_machine_skale_fin.AddState(
 
 #SPIDER LEGS
 FSM_vars.state_machine_spider_leg.AddState(name="FORT RANIK", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ranik_map,6,0)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ranik_map,6,0)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
 
 FSM_vars.state_machine_spider_leg.AddState(name="MESSAGE", 
-                       execute_fn=lambda: Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "GOING OUT", Py4GW.Console.MessageType.Info),  
+                       execute_fn=lambda: PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "GOING OUT", PySystem.Console.MessageType.Info),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=100,
                        run_once=True)
@@ -2712,15 +2712,15 @@ FSM_vars.state_machine_spider_leg.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_spider_leg.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM","WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM","WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=1000)
 
 FSM_vars.state_machine_spider_leg.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=False)
 
 FSM_vars.state_machine_spider_leg.AddState(name="MESSAGE", 
-                       execute_fn=lambda: Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "HUNTING SPIDERS", Py4GW.Console.MessageType.Info),  
+                       execute_fn=lambda: PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "HUNTING SPIDERS", PySystem.Console.MessageType.Info),  
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=100,
                        run_once=True)
@@ -2731,7 +2731,7 @@ FSM_vars.state_machine_spider_leg.AddState(name="FARMING SPIDER LEGS",
                        run_once=False)
 
 FSM_vars.state_machine_spider_leg.AddState(name="INTERACTING WITH BASKET OF APPLES ",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "INTERACTING WITH BASKET OF APPLES", Py4GW.Console.MessageType.Info),Keystroke.PressAndRelease(Key.Numpad1.value)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "INTERACTING WITH BASKET OF APPLES", PySystem.Console.MessageType.Info),Keystroke.PressAndRelease(Key.Numpad1.value)),
                        transition_delay_ms=1000,
                        run_once=True)
 
@@ -2741,12 +2741,12 @@ FSM_vars.state_machine_spider_leg.AddState(name="INTERACTING WITH TOWN CRIER",
                        run_once=True)
 
 FSM_vars.state_machine_spider_leg.AddState(name="INTERACTING WITH TOWN CRIER",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "DROPPING THE BASKET OF APPLES", Py4GW.Console.MessageType.Info),Keystroke.PressAndRelease(Key.Numpad2.value)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "DROPPING THE BASKET OF APPLES", PySystem.Console.MessageType.Info),Keystroke.PressAndRelease(Key.Numpad2.value)),
                        transition_delay_ms=1000,
                        run_once=True)
 
 FSM_vars.state_machine_spider_leg.AddState(name="MESSAGE", 
-                       execute_fn=lambda: Py4GW.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "HUNTING SPIDERS", Py4GW.Console.MessageType.Info),  
+                       execute_fn=lambda: PySystem.Console.Log("TH3KUM1KO - SPIDER LEGS FARM", "HUNTING SPIDERS", PySystem.Console.MessageType.Info),  
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=100,
                        run_once=True)
@@ -2758,7 +2758,7 @@ FSM_vars.state_machine_spider_leg.AddState(name="FARMING SPIDER LEGS",
 
 #UNNATURAL SEEDS
 FSM_vars.state_machine_unnatural_seeds.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - UNNATURAL SEEDS FARM", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - UNNATURAL SEEDS FARM", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2769,11 +2769,11 @@ FSM_vars.state_machine_unnatural_seeds.AddState(name="GOING OUT IN DANGEROUS LAN
                        run_once=False)
 
 FSM_vars.state_machine_unnatural_seeds.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO -  UNNATURAL SEEDS FARM", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO -  UNNATURAL SEEDS FARM", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_unnatural_seeds.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  UNNATURAL SEEDS FARM", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  UNNATURAL SEEDS FARM", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=True)
 
 FSM_vars.state_machine_unnatural_seeds.AddState(name="FARMING LODESTONES",
@@ -2783,7 +2783,7 @@ FSM_vars.state_machine_unnatural_seeds.AddState(name="FARMING LODESTONES",
 
 #WORN BELTS
 FSM_vars.state_machine_worn_belts.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - WORN BELTS", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - WORN BELTS", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.barradin_map,6,0)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2794,11 +2794,11 @@ FSM_vars.state_machine_worn_belts.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_worn_belts.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO -  TH3KUM1KO - WORN BELTS", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO -  TH3KUM1KO - WORN BELTS", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_worn_belts.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  TH3KUM1KO - WORN BELTS", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  TH3KUM1KO - WORN BELTS", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=True)
 
 FSM_vars.state_machine_worn_belts.AddState(name="FARMING WORN BELTS",
@@ -2807,14 +2807,14 @@ FSM_vars.state_machine_worn_belts.AddState(name="FARMING WORN BELTS",
                        run_once=False)
 
 FSM_vars.state_machine_worn_belts.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO  WORN BELTS", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()), 
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO  WORN BELTS", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()), 
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
 
 #BAKED HUSKS
 FSM_vars.state_machine_baked_husks.AddState(name="ASHFORD ABBEY", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO BAKED HUSKS", "MOVING TO ASHFORD ABBEY", Py4GW.Console.MessageType.Info),Py4GW.Console.Log("BAKED HUSKS", "Executing travel function", Py4GW.Console.MessageType.Info),Py4GW.Console.Log("BAKED HUSKS", f"Traveling to map ID: {bot_vars.abbey_map}", Py4GW.Console.MessageType.Info),LDoA_TravelToOutpost(bot_vars.abbey_map)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO BAKED HUSKS", "MOVING TO ASHFORD ABBEY", PySystem.Console.MessageType.Info),PySystem.Console.Log("BAKED HUSKS", "Executing travel function", PySystem.Console.MessageType.Info),PySystem.Console.Log("BAKED HUSKS", f"Traveling to map ID: {bot_vars.abbey_map}", PySystem.Console.MessageType.Info),LDoA_TravelToOutpost(bot_vars.abbey_map)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2825,11 +2825,11 @@ FSM_vars.state_machine_baked_husks.AddState(name="GOING OUT IN DANGEROUS LANDS",
                        run_once=False)
 
 FSM_vars.state_machine_baked_husks.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO BAKED HUSKS", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO BAKED HUSKS", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_baked_husks.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO BAKED HUSKS", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO BAKED HUSKS", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=True)
 
 FSM_vars.state_machine_baked_husks.AddState(name="FARMING BAKED HUSKS",
@@ -2838,14 +2838,14 @@ FSM_vars.state_machine_baked_husks.AddState(name="FARMING BAKED HUSKS",
                        run_once=False)
 
 FSM_vars.state_machine_baked_husks.AddState(name="COUNTER", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO  BAKED HUSKS", "ADD COUNTER", Py4GW.Console.MessageType.Info),increment_run_counter()), 
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO  BAKED HUSKS", "ADD COUNTER", PySystem.Console.MessageType.Info),increment_run_counter()), 
                        exit_condition=lambda: Map.IsExplorable(),
                        transition_delay_ms=1000,
                        run_once=True)
 
 #CHARR GATE OPENER
 FSM_vars.state_machine_charr_gate_opener.AddState(name="ASCALON", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - CHARR GATE OPENER", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ascalon_map,6,0)) if not Map.IsExplorable() else None,  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - CHARR GATE OPENER", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ascalon_map,6,0)) if not Map.IsExplorable() else None,  
                        exit_condition=lambda: LDoA_IsOutpost() or Map.IsExplorable(),
                        transition_delay_ms=2000,
                        run_once=True)
@@ -2856,7 +2856,7 @@ FSM_vars.state_machine_charr_gate_opener.AddState(name="GOING OUT IN DANGEROUS L
                        run_once=False)
 
 FSM_vars.state_machine_charr_gate_opener.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO - CHARR GATE OPENER", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO - CHARR GATE OPENER", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_charr_gate_opener.AddState(name="GOING TO LEVER",
@@ -2865,7 +2865,7 @@ FSM_vars.state_machine_charr_gate_opener.AddState(name="GOING TO LEVER",
                        run_once=False)
 
 FSM_vars.state_machine_charr_gate_opener.AddState(name="WAITING TO STABILIZE",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO - CHARR GATE OPENER", "WAITING TO STABILIZE BEFORE LEVER INTERACTION", Py4GW.Console.MessageType.Info), None),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO - CHARR GATE OPENER", "WAITING TO STABILIZE BEFORE LEVER INTERACTION", PySystem.Console.MessageType.Info), None),
                        transition_delay_ms=1000,
                        run_once=True)
 
@@ -2886,7 +2886,7 @@ FSM_vars.state_machine_charr_gate_opener.AddState(name="WAITING YOUR SLOW PC TO 
 
 #NICHOLAS SANDFORD
 FSM_vars.state_machine_nicholas_sandford.AddState(name="BARRADIN", 
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "MOVING TO A SAFER DISTRICT", Py4GW.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ranik_map,6,0)),  
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "MOVING TO A SAFER DISTRICT", PySystem.Console.MessageType.Info),LDoA_TravelToDistrict(bot_vars.ranik_map,6,0)),  
                        exit_condition=lambda: LDoA_IsOutpost(),
                        transition_delay_ms=1000,
                        run_once=True)
@@ -2897,11 +2897,11 @@ FSM_vars.state_machine_nicholas_sandford.AddState(name="GOING OUT IN DANGEROUS L
                        run_once=False)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="WAITING YOUR SLOW PC TO LOAD",
-                       exit_condition=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "WAITING FOR EXPLORABLE MAP", Py4GW.Console.MessageType.Info),Map.IsExplorable()),
+                       exit_condition=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "WAITING FOR EXPLORABLE MAP", PySystem.Console.MessageType.Info),Map.IsExplorable()),
                        transition_delay_ms=3000)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="HEY THERE IS A FIRE ALLY",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  TH3KUM1KO - GOING TO NICHOLAS SANDFORD", "USING FIRE STONE", Py4GW.Console.MessageType.Info), useitem(30847)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  TH3KUM1KO - GOING TO NICHOLAS SANDFORD", "USING FIRE STONE", PySystem.Console.MessageType.Info), useitem(30847)),
                        run_once=True)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="GOING OUT IN DANGEROUS LANDS",
@@ -2910,22 +2910,22 @@ FSM_vars.state_machine_nicholas_sandford.AddState(name="GOING OUT IN DANGEROUS L
                        run_once=False)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="INTERACTING WITH TOWN CRIER",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "INTERACTING WITH NICHOLAS SANDFORD WITH V", Py4GW.Console.MessageType.Info),Keystroke.PressAndRelease(Key.V.value)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "INTERACTING WITH NICHOLAS SANDFORD WITH V", PySystem.Console.MessageType.Info),Keystroke.PressAndRelease(Key.V.value)),
                        transition_delay_ms=1000,
                        run_once=True)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="INTERACTING WITH TOWN CRIER",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "INTERACTING WITH NICHOLAS SANDFORD WITH SPACE", Py4GW.Console.MessageType.Info),Keystroke.PressAndRelease(Key.Space.value)),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "INTERACTING WITH NICHOLAS SANDFORD WITH SPACE", PySystem.Console.MessageType.Info),Keystroke.PressAndRelease(Key.Space.value)),
                        transition_delay_ms=1000,
                        run_once=True)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="TAKING QUEST",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "TAKING GIFTS FROM NICHOLAS SANDFORD", Py4GW.Console.MessageType.Info),Player.SendDialog(int("0x85", 16))),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "TAKING GIFTS FROM NICHOLAS SANDFORD", PySystem.Console.MessageType.Info),Player.SendDialog(int("0x85", 16))),
                        transition_delay_ms=100,
                        run_once=True)
 
 FSM_vars.state_machine_nicholas_sandford.AddState(name="TAKING QUEST",
-                       execute_fn=lambda: (Py4GW.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "TAKING GIFTS FROM NICHOLAS SANDFORD", Py4GW.Console.MessageType.Info),Player.SendDialog(int("0x86", 16))),
+                       execute_fn=lambda: (PySystem.Console.Log("TH3KUM1KO -  GOING TO NICHOLAS SANDFORD", "TAKING GIFTS FROM NICHOLAS SANDFORD", PySystem.Console.MessageType.Info),Player.SendDialog(int("0x86", 16))),
                        transition_delay_ms=100,
                        run_once=True)
 
@@ -2964,7 +2964,7 @@ class InventoryTracker:
                     quantity = Item.Properties.GetQuantity(item_id)
                     self.initial_quantities[model_id] = self.get_count_items().get(model_id, 0)
         except Exception as e:
-            Py4GW.Console.Log("INVENTORY TRACKER", f"Error initializing: {e}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log("INVENTORY TRACKER", f"Error initializing: {e}", PySystem.Console.MessageType.Warning)
 
     def get_count_items(self):
         count_items = {model_id: 0 for model_id in self.tracked_model_ids}
@@ -2978,7 +2978,7 @@ class InventoryTracker:
                     quantity = Item.Properties.GetQuantity(item_id)
                     count_items[model_id] += max(0, quantity)
         except Exception as e:
-            Py4GW.Console.Log("INVENTORY TRACKER", f"Error counting items: {e}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log("INVENTORY TRACKER", f"Error counting items: {e}", PySystem.Console.MessageType.Warning)
 
         return count_items
 
@@ -2995,7 +2995,7 @@ class InventoryTracker:
                     current_quantity = self.get_count_items().get(model_id, 0)
                     farmed_items[model_id] = max(0, current_quantity - initial_quantity)  
         except Exception as e:
-            Py4GW.Console.Log("INVENTORY TRACKER", f"Error getting farmed items: {e}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log("INVENTORY TRACKER", f"Error getting farmed items: {e}", PySystem.Console.MessageType.Warning)
 
         return farmed_items
 
@@ -3021,7 +3021,7 @@ def show_info_table_item():
 
         ImGui.table("INVENTARY", headers, data)
     except Exception as e:
-        Py4GW.Console.Log("INVENTORY DISPLAY", f"Error showing inventory: {e}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("INVENTORY DISPLAY", f"Error showing inventory: {e}", PySystem.Console.MessageType.Warning)
 
 
 
@@ -3244,7 +3244,7 @@ def DrawWindow():
     except Exception as e:
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Error in {current_function}: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Error in {current_function}: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def main():
@@ -3546,17 +3546,17 @@ def main():
             inventory_tracker.initialize()
 
     except ImportError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

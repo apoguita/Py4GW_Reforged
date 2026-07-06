@@ -1621,7 +1621,7 @@ class BuildMgr:
             if not email:
                 return False
             group_id = GLOBAL_CACHE.ShMem.GetAccountGroupByEmail(email)
-            now = Py4GW.Game.get_tick_count64()
+            now = PySystem.get_tick_count64()
             return GLOBAL_CACHE.ShMem.IsIntentClaimed(
                 int(skill_id),
                 int(target_agent_id),
@@ -1661,7 +1661,7 @@ class BuildMgr:
             except Exception:
                 pass
             cast_window_ms = max(500, activation_ms + aftercast_ms)
-            now = Py4GW.Game.get_tick_count64()
+            now = PySystem.get_tick_count64()
             expires_at = int(now) + cast_window_ms + int(SHMEM_INTENT_DEFAULT_PING_BUDGET_MS)
             GLOBAL_CACHE.ShMem.PostIntent(
                 email, int(skill_id), int(target_agent_id), int(expires_at)
@@ -2013,8 +2013,8 @@ class BuildMgr:
         
     def _debug(self,message: str, enable: bool = True) -> None:
         from Py4GWCoreLib import ConsoleLog
-        import Py4GW
-        ConsoleLog(self.build_name, message, Py4GW.Console.MessageType.Info, log=enable)
+import PySystem
+        ConsoleLog(self.build_name, message, PySystem.Console.MessageType.Info, log=enable)
 
 
 #region BuildRegistry

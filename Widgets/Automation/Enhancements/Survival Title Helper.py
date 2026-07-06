@@ -19,7 +19,7 @@ MODULE_NAME = module_name
 MODULE_ICON = "Textures/Module_Icons/Survival Title Helper.png"
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-root_directory = Py4GW.Console.get_projects_path()
+root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(root_directory, "Widgets/Config/Survival Title Helper.ini")
 
 ini_handler = IniHandler(ini_file_location)
@@ -137,12 +137,12 @@ def update_party_names():
                 #if global_vars.party_leader_name.get(agent_id, Player.GetAgentID()) != name:
                 if global_vars.party_leader_name.get(agent_id, global_vars.player_agent_id) != name:
                     global_vars.party_leader_name[agent_id] = name
-                    #Py4GW.Console.Log(module_name, f"Set Party Leader: {name}", Py4GW.Console.MessageType.Info)
+                    #PySystem.Console.Log(module_name, f"Set Party Leader: {name}", PySystem.Console.MessageType.Info)
             else:
                 #if global_vars.party_names.get(agent_id, Player.GetAgentID()) != name:
                 if global_vars.party_names.get(agent_id, global_vars.player_agent_id) != name:
                     global_vars.party_names[agent_id] = name
-                    #Py4GW.Console.Log(module_name, f"Added Player: {name} to Party", Py4GW.Console.MessageType.Info)
+                    #PySystem.Console.Log(module_name, f"Added Player: {name} to Party", PySystem.Console.MessageType.Info)
 
 def get_max_health(agent_id:int):
     global global_vars
@@ -276,17 +276,17 @@ def configure():
             ini_handler.write_key(module_name + " Config", "config_y", str(int(end_pos[1])))
 
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
     
@@ -354,7 +354,7 @@ def main():
             map_id = Map.GetMapID()
             if global_vars.last_outpost != map_id:
                 global_vars.last_outpost = map_id
-                #Py4GW.Console.Log(module_name, f"Last Outpost: {Map.GetMapName(global_vars.last_outpost)}({Map.GetMapID()})", Py4GW.Console.MessageType.Info)
+                #PySystem.Console.Log(module_name, f"Last Outpost: {Map.GetMapName(global_vars.last_outpost)}({Map.GetMapID()})", PySystem.Console.MessageType.Info)
             #reform party
             if global_vars.reform_party:
                 if global_vars.is_party_leader:
@@ -382,7 +382,7 @@ def main():
                     if health <= get_threshold(agent_id):
                         if global_vars.log_low_health:
                             global_vars.log_low_health = False
-                            Py4GW.Console.Log(module_name, f"Player: {Agent.GetNameByID(agent_id)} ({agent_id}) have low health: {round(health * max_health)}", Py4GW.Console.MessageType.Info)
+                            PySystem.Console.Log(module_name, f"Player: {Agent.GetNameByID(agent_id)} ({agent_id}) have low health: {round(health * max_health)}", PySystem.Console.MessageType.Info)
                         global_vars.low_life = True
                         global_vars.low_life_agent = agent_id
 
@@ -396,7 +396,7 @@ def main():
                     ActionQueueManager().AddAction("ACTION", Keystroke.PressAndRelease, Key.Y.value)
                     ActionQueueManager().AddAction("ACTION", Keystroke.PressAndRelease, Key.Y.value)
 #                        Keystroke.PressAndRelease(Key.Y.value)
-                    Py4GW.Console.Log(module_name, f"Traveling to: {Map.GetMapName(global_vars.last_outpost)}({global_vars.last_outpost})", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, f"Traveling to: {Map.GetMapName(global_vars.last_outpost)}({global_vars.last_outpost})", PySystem.Console.MessageType.Info)
                     global_vars.low_life = False
                     global_vars.travel_timer.Start()
 
@@ -404,17 +404,17 @@ def main():
             return
 
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

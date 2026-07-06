@@ -68,13 +68,13 @@ def _add_config_vars():
         )
         
 def on_enable():
-    Py4GW.Console.Log(MODULE_NAME, f"{MODULE_NAME} loaded successfully.")
+    PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} loaded successfully.")
 
 def on_disable():
-    Py4GW.Console.Log(MODULE_NAME, f"{MODULE_NAME} unloaded successfully.")
+    PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} unloaded successfully.")
     
 def configure():
-    Py4GW.Console.Log(MODULE_NAME, f"{MODULE_NAME} configuration opened.")
+    PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} configuration opened.")
 
 def draw():    
     global widget_filter

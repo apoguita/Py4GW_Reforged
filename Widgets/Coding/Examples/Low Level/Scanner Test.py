@@ -12,8 +12,6 @@ from Py4GWCoreLib.native_src.context.PreGameContext import (
 
 import ctypes
 from ctypes import sizeof
-import PyPointers
-from Py4GW import Game
 
 MODULE_NAME = "Scanner Test"
 MODULE_ICON = "Textures/Module_Icons/Research Code.png"

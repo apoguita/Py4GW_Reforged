@@ -217,7 +217,7 @@ def main():
                     goal_id = navmesh.find_trapezoid_id_by_coord(goal_pos)
 
                     if start_id is None or goal_id is None:
-                        Py4GW.Console.Log(MODULE_NAME, "Invalid start/goal position", Py4GW.Console.MessageType.Warning)
+                        PySystem.Console.Log(MODULE_NAME, "Invalid start/goal position", PySystem.Console.MessageType.Warning)
                     else:
                         astar = AStar(navmesh)
                         if astar.search(start_id, goal_id):
@@ -227,9 +227,9 @@ def main():
 
                             # Apply curve smoothing
                             path_result_points = chaikin_smooth_path(center_points, iterations=2)
-                            Py4GW.Console.Log(MODULE_NAME, f"Path found: {len(path_result)} steps", Py4GW.Console.MessageType.Success)
+                            PySystem.Console.Log(MODULE_NAME, f"Path found: {len(path_result)} steps", PySystem.Console.MessageType.Success)
                         else:
-                            Py4GW.Console.Log(MODULE_NAME, "No path found", Py4GW.Console.MessageType.Warning)
+                            PySystem.Console.Log(MODULE_NAME, "No path found", PySystem.Console.MessageType.Warning)
 
                 
                 if path_result_points and len(path_result_points) >= 2:
@@ -249,7 +249,7 @@ def main():
 
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 if __name__ == "__main__":

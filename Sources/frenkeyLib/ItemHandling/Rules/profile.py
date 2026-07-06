@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any, Iterator, Optional
 
-from Py4GW import Console
+import PySystem
 from Sources.frenkeyLib.ItemHandling.Rules.base_rule import BaseRule
 from Sources.frenkeyLib.ItemHandling.Rules.types import ItemAction
 

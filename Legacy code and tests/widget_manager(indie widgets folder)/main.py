@@ -31,7 +31,7 @@ def main():
 
         if account_init and is_loaded and not is_loading:
             account_init = False
-            ConsoleLog("WidgetHandler", "Initialize Account Settings", Py4GW.Console.MessageType.Info)
+            ConsoleLog("WidgetHandler", "Initialize Account Settings", PySystem.Console.MessageType.Info)
             handler._initialize_account_settings()
             handler._initialize_account_config()
             initialize_settings()
@@ -44,8 +44,8 @@ def main():
 
     except Exception as e:
         err_type = type(e).__name__
-        Py4GW.Console.Log(state.module_name, f"{err_type} encountered: {e}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(state.module_name, traceback.format_exc(), Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(state.module_name, f"{err_type} encountered: {e}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(state.module_name, traceback.format_exc(), PySystem.Console.MessageType.Error)
 
 def get_widget_handler():
     return sys.modules["_Py4GW_GLOBAL_WIDGET_HANDLER"].handler  # type: ignore[attr-defined]

@@ -27,7 +27,7 @@ def main():
             ImGui.DrawTexture(texture_file)
             
             if ImGui.ImageButton("##text_unique_name", texture_file, 64, 64):
-                Py4GW.Console.Log(MODULE_NAME, "Button clicked!", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(MODULE_NAME, "Button clicked!", PySystem.Console.MessageType.Info)
                 
             PyImGui.text("Extended Texture Drawing:")
             ImGui.DrawTextureExtended(
@@ -90,7 +90,7 @@ def main():
 
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 

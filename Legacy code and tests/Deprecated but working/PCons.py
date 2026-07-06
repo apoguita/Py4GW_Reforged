@@ -157,14 +157,14 @@ def handle_pcons():
                     if matching_items:
                         if data['internal_timer'].IsStopped() or data['internal_timer'].HasElapsed(data['internal_cooldown']):
                             data['internal_timer'].Stop()
-                            Py4GW.Console.Log(module_name, f"Using {pcon_name}.", Py4GW.Console.MessageType.Debug)
+                            PySystem.Console.Log(module_name, f"Using {pcon_name}.", PySystem.Console.MessageType.Debug)
                             ActionQueueManager().AddAction("ACTION", "UseItem", matching_items[0])
                             widget_config.aftercast_timer.Reset()
                             data['internal_timer'].Start()
                             return  # Exit after using one pcon
 
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error monitoring PCONS: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(module_name, f"Error monitoring PCONS: {str(e)}", PySystem.Console.MessageType.Debug)
 
 def DrawWindow():
     """Draw the PCONS manager window"""
@@ -231,7 +231,7 @@ def DrawWindow():
             ini_handler.write_key(module_name + " Config", "collapsed", str(new_collapsed))
 
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Debug)
 
 def main():
     """Required main function for the widget"""

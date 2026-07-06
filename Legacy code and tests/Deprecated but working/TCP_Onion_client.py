@@ -28,9 +28,9 @@ class TCPClient:
                 self.client_socket.connect((self.host, self.port))
                 self.connected = True
                 self.running = True
-                Py4GW.Console.Log(module_name, f"Connected to server at {self.host}:{self.port}", Py4GW.Console.MessageType.Success)
+                PySystem.Console.Log(module_name, f"Connected to server at {self.host}:{self.port}", PySystem.Console.MessageType.Success)
             except socket.error as e:
-                Py4GW.Console.Log(module_name, f"Error connecting to server: {e}", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(module_name, f"Error connecting to server: {e}", PySystem.Console.MessageType.Warning)
             finally:
                 self.retry_timer.Reset()
 
@@ -39,9 +39,9 @@ class TCPClient:
         if self.client_socket and self.connected:
             try:
                 self.client_socket.sendall(message.encode())
-                Py4GW.Console.Log(module_name, f"Sent: {message}", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(module_name, f"Sent: {message}", PySystem.Console.MessageType.Info)
             except socket.error as e:
-                Py4GW.Console.Log(module_name, f"Error sending message: {e}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(module_name, f"Error sending message: {e}", PySystem.Console.MessageType.Error)
                 self.cleanup()
 
     def receive_messages(self):
@@ -53,13 +53,13 @@ class TCPClient:
                         data = self.client_socket.recv(self.buffer_size)
                         if data:
                             message = data.decode()
-                            Py4GW.Console.Log(module_name, f"Received: {message}", Py4GW.Console.MessageType.Info)
+                            PySystem.Console.Log(module_name, f"Received: {message}", PySystem.Console.MessageType.Info)
                         else:
-                            Py4GW.Console.Log(module_name, "Server disconnected.", Py4GW.Console.MessageType.Warning)
+                            PySystem.Console.Log(module_name, "Server disconnected.", PySystem.Console.MessageType.Warning)
                             self.cleanup()
                             break
                     except socket.error as e:
-                        Py4GW.Console.Log(module_name, f"Error receiving message: {e}", Py4GW.Console.MessageType.Error)
+                        PySystem.Console.Log(module_name, f"Error receiving message: {e}", PySystem.Console.MessageType.Error)
                         self.cleanup()
                         break
 
@@ -69,9 +69,9 @@ class TCPClient:
             if self.client_socket:
                 try:
                     self.client_socket.close()
-                    Py4GW.Console.Log(module_name, "Client socket closed.", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, "Client socket closed.", PySystem.Console.MessageType.Info)
                 except socket.error as e:
-                    Py4GW.Console.Log(module_name, f"Error closing client socket: {e}", Py4GW.Console.MessageType.Warning)
+                    PySystem.Console.Log(module_name, f"Error closing client socket: {e}", PySystem.Console.MessageType.Warning)
                 finally:
                     self.client_socket = None
                     self.connected = False
@@ -90,11 +90,11 @@ def client_thread_function():
                 continue  # Timeout allows us to check the running flag
             except Exception as e:
                 if client.running:  # Only log errors if the client is supposed to be running
-                    Py4GW.Console.Log(module_name, f"Client thread error: {e}", Py4GW.Console.MessageType.Warning)
+                    PySystem.Console.Log(module_name, f"Client thread error: {e}", PySystem.Console.MessageType.Warning)
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Unexpected client thread error: {e}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected client thread error: {e}", PySystem.Console.MessageType.Error)
     finally:
-        Py4GW.Console.Log(module_name, "Client thread exiting.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(module_name, "Client thread exiting.", PySystem.Console.MessageType.Info)
 
 
 
@@ -110,7 +110,7 @@ def initialize_client():
         if client.connected:
             client_thread = threading.Thread(target=client_thread_function, daemon=True)
             client_thread.start()
-            Py4GW.Console.Log(module_name, "Client thread started.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(module_name, "Client thread started.", PySystem.Console.MessageType.Info)
 
 
 def stop_client():
@@ -122,16 +122,16 @@ def stop_client():
         try:
             if client.client_socket:
                 client.client_socket.close()
-                Py4GW.Console.Log(module_name, "Client socket closed.", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(module_name, "Client socket closed.", PySystem.Console.MessageType.Info)
         except Exception as e:
-            Py4GW.Console.Log(module_name, f"Error closing client socket: {e}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(module_name, f"Error closing client socket: {e}", PySystem.Console.MessageType.Warning)
         client.cleanup()
         client = None
 
     if client_thread and client_thread.is_alive():
         client_thread.join(timeout=2)  # Wait for the thread to exit
         if client_thread.is_alive():
-            Py4GW.Console.Log(module_name, "Forcefully terminating client thread.", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(module_name, "Forcefully terminating client thread.", PySystem.Console.MessageType.Warning)
             client_thread = None  # Allow the program to proceed regardless
 
 
@@ -146,17 +146,17 @@ def DrawWindow():
             if client is None or not client.connected:
                 if PyImGui.button("Connect to Server"):
                     initialize_client()
-                    Py4GW.Console.Log(module_name, "Client initialized.", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, "Client initialized.", PySystem.Console.MessageType.Info)
             else:
                 if client.connected:
                     PyImGui.text("Connected to server.")
                     if PyImGui.button("Disconnect"):
                         stop_client()
-                        Py4GW.Console.Log(module_name, "Client disconnected.", Py4GW.Console.MessageType.Info)
+                        PySystem.Console.Log(module_name, "Client disconnected.", PySystem.Console.MessageType.Info)
 
             PyImGui.end()
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -165,4 +165,4 @@ def main():
     try:
         DrawWindow()
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Unexpected error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error: {str(e)}", PySystem.Console.MessageType.Error)

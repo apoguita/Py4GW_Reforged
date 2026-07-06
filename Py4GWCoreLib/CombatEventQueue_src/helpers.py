@@ -3,14 +3,15 @@ from __future__ import annotations
 from collections import deque
 from typing import List, Set, Tuple, Optional
 
-import Py4GW
+import PySystem
+import PyGameThread
 
 from ..enums import EventType
 
 
 def _get_tick_count() -> int:
     """Get current time in milliseconds from the shared Py4GW game clock."""
-    return int(Py4GW.Game.get_tick_count64())
+    return int(PySystem.get_tick_count64())
 
 
 _events: deque = deque(maxlen=2000)
@@ -444,4 +445,4 @@ def _fire(event_name: str, *args):
         try:
             cb(*args)
         except Exception as e:
-            Py4GW.Console.Log("CombatEvents", f"Callback error in '{event_name}': {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("CombatEvents", f"Callback error in '{event_name}': {e}", PySystem.Console.MessageType.Error)

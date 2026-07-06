@@ -1,5 +1,15 @@
-from .Console import Console as Console
-from .UI import UI as UI
-from .Game import Game as Game
-from .PingHandler import PingHandler as PingHandler
+# Py4GW stub — Reforged Native surface (2026-07-06)
+# Core Py4GW module in Reforged retains only version() + SharedMemory submodule.
+# Console, Game, UI, PingHandler are relocated to PySystem, PyGameThread, etc.
 
+def version() -> str: ...
+
+class SharedMemory:
+    @staticmethod
+    def is_ready() -> bool: ...
+    @staticmethod
+    def get_name() -> str: ...
+    @staticmethod
+    def get_size() -> int: ...
+    @staticmethod
+    def get_sequence() -> int: ...

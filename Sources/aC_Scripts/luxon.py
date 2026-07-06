@@ -21,58 +21,58 @@ def _do_deposit(faction_enum, chunks):
 def deposit_5000_luxon():
     unspent = get_luxon_unspent()
     if unspent < CHUNK:
-        Py4GW.Console.Log(module_name,
+        PySystem.Console.Log(module_name,
             "Not enough Luxon points to make a deposit.",
-            Py4GW.Console.MessageType.Warning)
+            PySystem.Console.MessageType.Warning)
         return
 
     _do_deposit(LUXON_ENUM, 1)
-    Py4GW.Console.Log(module_name,
+    PySystem.Console.Log(module_name,
         f"Deposited {CHUNK} Luxon points.",
-        Py4GW.Console.MessageType.Info)
+        PySystem.Console.MessageType.Info)
 
 def deposit_all_luxon():
     unspent = get_luxon_unspent()
     chunks  = unspent // CHUNK
     if chunks == 0:
-        Py4GW.Console.Log(module_name,
+        PySystem.Console.Log(module_name,
             "Not enough Luxon points to make a deposit.",
-            Py4GW.Console.MessageType.Warning)
+            PySystem.Console.MessageType.Warning)
         return
 
     total = chunks * CHUNK
     _do_deposit(LUXON_ENUM, chunks)
-    Py4GW.Console.Log(module_name,
+    PySystem.Console.Log(module_name,
         f"Deposited {total} Luxon points.",
-        Py4GW.Console.MessageType.Info)
+        PySystem.Console.MessageType.Info)
 
 def deposit_5000_kurzick():
     unspent = get_kurzick_unspent()
     if unspent < CHUNK:
-        Py4GW.Console.Log(module_name,
+        PySystem.Console.Log(module_name,
             "Not enough Kurzick points to make a deposit.",
-            Py4GW.Console.MessageType.Warning)
+            PySystem.Console.MessageType.Warning)
         return
 
     _do_deposit(KURZICK_ENUM, 1)
-    Py4GW.Console.Log(module_name,
+    PySystem.Console.Log(module_name,
         f"Deposited {CHUNK} Kurzick points.",
-        Py4GW.Console.MessageType.Info)
+        PySystem.Console.MessageType.Info)
 
 def deposit_all_kurzick():
     unspent = get_kurzick_unspent()
     chunks  = unspent // CHUNK
     if chunks == 0:
-        Py4GW.Console.Log(module_name,
+        PySystem.Console.Log(module_name,
             "Not enough Kurzick points to make a deposit.",
-            Py4GW.Console.MessageType.Warning)
+            PySystem.Console.MessageType.Warning)
         return
 
     total = chunks * CHUNK
     _do_deposit(KURZICK_ENUM, chunks)
-    Py4GW.Console.Log(module_name,
+    PySystem.Console.Log(module_name,
         f"Deposited {total} Kurzick points.",
-        Py4GW.Console.MessageType.Info)
+        PySystem.Console.MessageType.Info)
 
 # per-tick flag to defer actions into logic_tick
 _request = None

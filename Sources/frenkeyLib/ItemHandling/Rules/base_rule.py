@@ -490,10 +490,10 @@ class UpgradeRule(BaseRule):
             instance = upgrade_cls()
             
         except Exception as ex: 
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 "UpgradeRule",
                 f"Failed to instantiate upgrade '{upgrade_class_name}' for rule '{self.name}': {type(ex).__name__}: {ex}",
-                Py4GW.Console.MessageType.Warning
+                PySystem.Console.MessageType.Warning
             )
             return
 

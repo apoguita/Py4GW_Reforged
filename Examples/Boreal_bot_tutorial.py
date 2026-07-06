@@ -61,12 +61,12 @@ def IsSkillBarLoaded(log_action = True):
     primary_profession, secondary_profession = Agent.GetProfessionNames(Player.GetAgentID())
     if primary_profession != "Assassin" and secondary_profession != "Assassin":
         current_function = inspect.currentframe().f_code.co_name
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"{current_function} - This bot requires A/Any or Any/A to work, halting.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"{current_function} - This bot requires A/Any or Any/A to work, halting.", PySystem.Console.MessageType.Error)
         StopBot()
         return False
 
     if log_action:
-        Py4GW.Console.Log(bot_vars.window_info.module_name, "Skill bar loaded successfully.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(bot_vars.window_info.module_name, "Skill bar loaded successfully.", PySystem.Console.MessageType.Info)
     return True
 
 def IsInventoryHandlingNeeded():
@@ -138,7 +138,7 @@ def DrawWindow():
             PyImGui.end()
     except Exception as e:
         current_function = inspect.currentframe().f_code.co_name
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"Error in {current_function}: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"Error in {current_function}: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def main():
@@ -170,17 +170,17 @@ def main():
             
 
     except ImportError as e:
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_info.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

@@ -8,7 +8,7 @@ def project_root() -> str:
     try:
         import Py4GW
 
-        root = str(Py4GW.Console.get_projects_path() or "").strip()
+        root = str(PySystem.Console.get_projects_path() or "").strip()
         if root:
             return os.path.normpath(root)
     except Exception:

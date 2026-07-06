@@ -508,18 +508,18 @@ def pause_all(debug: bool = False):
     if not check_combat():
         return
     if not fsm_vars.state_machine.is_paused():
-        if debug: ConsoleLog("FSM", "[DEBUG] Pausing Main FSM", Py4GW.Console.MessageType.Warning)
+        if debug: ConsoleLog("FSM", "[DEBUG] Pausing Main FSM", PySystem.Console.MessageType.Warning)
         fsm_vars.state_machine.pause()
-    if debug: ConsoleLog("FSM", "[DEBUG] Pausing Movement", Py4GW.Console.MessageType.Warning)
+    if debug: ConsoleLog("FSM", "[DEBUG] Pausing Movement", PySystem.Console.MessageType.Warning)
     set_pathing_paused(True)
 
 def resume_all(debug: bool = False):
     if check_combat():
         return
     if fsm_vars.state_machine.is_paused():
-        if debug: ConsoleLog("FSM", "[DEBUG] Resuming Main FSM", Py4GW.Console.MessageType.Warning)
+        if debug: ConsoleLog("FSM", "[DEBUG] Resuming Main FSM", PySystem.Console.MessageType.Warning)
         fsm_vars.state_machine.resume()
-    if debug: ConsoleLog("FSM", "[DEBUG] Resuming Movement", Py4GW.Console.MessageType.Warning)
+    if debug: ConsoleLog("FSM", "[DEBUG] Resuming Movement", PySystem.Console.MessageType.Warning)
     set_pathing_paused(False)
     
 def mark_flag(flag_name: str, value, debug: bool = False):
@@ -2324,17 +2324,17 @@ def main():
         fsm_vars.state_machine.update()
         
     except ImportError as e:
-        ConsoleLog(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        ConsoleLog(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        ConsoleLog(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        ConsoleLog(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        ConsoleLog(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 #endregion

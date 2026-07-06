@@ -229,7 +229,7 @@ class PartyCache:
                 return 0
             for hero in heroes:
                 if hero.agent_id == agent_id:
-                    return hero.hero_id.GetID()
+                    return hero.hero_id
             return 0
         
         def GetHeroIDByPartyPosition(self, party_position):
@@ -238,7 +238,7 @@ class PartyCache:
                 return 0
             for index, hero in enumerate(heroes):
                 if index == party_position:
-                    return hero.hero_id.GetID()
+                    return hero.hero_id
                 
         def GetHeroIdByName(self, hero_name):
             hero = PyParty.Hero(hero_name)
@@ -254,7 +254,7 @@ class PartyCache:
                 return ""
             for hero in heroes:
                 if hero.agent_id == agent_id:
-                    return hero.hero_id.GetName()
+                    return PyParty.Hero(hero.hero_id).GetName()
             return ""
 
         def GetHeroPartyPositionByAgentID(self, agent_id):

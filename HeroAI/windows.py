@@ -243,7 +243,7 @@ class HeroAI_FloatingWindows():
         else:
             if not HeroAI_FloatingWindows.init_success:
                 HeroAI_FloatingWindows.init_success = True
-                Py4GW.Console.Log("HeroAI", "HeroAI initialized successfully.", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log("HeroAI", "HeroAI initialized successfully.", PySystem.Console.MessageType.Info)
         
             
                    

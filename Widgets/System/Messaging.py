@@ -864,7 +864,7 @@ def MerchantItems(index: int, message: SharedMessageStruct):
             if ini_path and ini_section and ini_key:
                 import os as _os
                 if not _os.path.isabs(ini_path):
-                    ini_path = _os.path.join(Py4GW.Console.get_projects_path(), ini_path)
+                    ini_path = _os.path.join(PySystem.Console.get_projects_path(), ini_path)
                 IniHandler(ini_path).write_key(ini_section, ini_key, str(salvage_kits_in_inv))
         finally:
             _merchant_busy = False
@@ -1870,7 +1870,7 @@ def SetWindowGeometry(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.set_window_geometry(int(message.Params[0]), int(message.Params[1]), int(message.Params[2]), int(message.Params[3]))
+    PySystem.Console.set_window_geometry(int(message.Params[0]), int(message.Params[1]), int(message.Params[2]), int(message.Params[3]))
     yield from Routines.Yield.wait(1500)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "SetWindowGeometry message processed and finished.", Console.MessageType.Info, False)
@@ -1883,7 +1883,7 @@ def SetWindowActive(index: int, message: SharedMessageStruct):
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
     
-    Py4GW.Console.set_window_active()
+    PySystem.Console.set_window_active()
     
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
@@ -1901,7 +1901,7 @@ def SetWindowTitle(index: int, message: SharedMessageStruct):
     extra = tuple(_c_wchar_array_to_str(arr) for arr in message.ExtraData)
     title = extra[0] if extra else ""
 
-    Py4GW.Console.set_window_title(title)
+    PySystem.Console.set_window_title(title)
 
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
@@ -1916,7 +1916,7 @@ def SetBorderless(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.set_borderless(bool(message.Params[0]))
+    PySystem.Console.set_borderless(bool(message.Params[0]))
     yield from Routines.Yield.wait(1000)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "SetBorderless message processed and finished.", Console.MessageType.Info, False)
@@ -1928,7 +1928,7 @@ def SetAlwaysOnTop(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.set_always_on_top(bool(message.Params[0]))
+    PySystem.Console.set_always_on_top(bool(message.Params[0]))
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "SetAlwaysOnTop message processed and finished.", Console.MessageType.Info, False)
@@ -1940,7 +1940,7 @@ def FlashWindow(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.flash_window()
+    PySystem.Console.flash_window()
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "FlashWindow message processed and finished.", Console.MessageType.Info, False)
@@ -1952,7 +1952,7 @@ def RequestAttention(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.request_attention()
+    PySystem.Console.request_attention()
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "RequestAttention message processed and finished.", Console.MessageType.Info, False)
@@ -1964,7 +1964,7 @@ def SetTransparentClickThrough(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.transparent_click_through(bool(message.Params[0]))
+    PySystem.Console.transparent_click_through(bool(message.Params[0]))
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "SetTransparentClickThrough message processed and finished.", Console.MessageType.Info, False)
@@ -1976,7 +1976,7 @@ def SetOpacity(index: int, message: SharedMessageStruct):
     if sender_data is None:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
-    Py4GW.Console.adjust_window_opacity(int(message.Params[0]))
+    PySystem.Console.adjust_window_opacity(int(message.Params[0]))
     yield from Routines.Yield.wait(100)
     GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
     ConsoleLog(MODULE_NAME, "SetOpacity message processed and finished.", Console.MessageType.Info, False)

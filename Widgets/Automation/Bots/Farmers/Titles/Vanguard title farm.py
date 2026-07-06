@@ -16,7 +16,7 @@ BOT_NAME = "Vanguard Title Farm"
 MODULE_NAME = BOT_NAME
 MODULE_ICON = "Textures/Skill_Icons/[2233] - Ebon Battle Standard of Honor.jpg"
 
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
 DALADA_UPLANDS_OUTPOST_ID = 648
 DALADA_UPLANDS_MAP_ID = 647
 ENABLE_COMBAT_MODE_STEP_NAME = "[H]Enable Combat Mode_1"
@@ -106,7 +106,7 @@ _pcon_restock_target: int = _DEFAULT_PCON_RESTOCK_TARGET
 _BOT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 _HERO_CONFIG_PATH = os.path.join(_BOT_SCRIPT_DIR, f"{BOT_NAME} Heroes.json")
 _HERO_ICONS_BASE = os.path.normpath(os.path.join(
-    Py4GW.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
+    PySystem.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
     "PVE Skills Unlocker", "Textures", "Skill_Icons"
 ))
 _HERO_SLOTS_COUNT = 7
@@ -911,7 +911,7 @@ def _draw_title_track():
         PyImGui.text(f"+{gained:,}  ({pts_hr:,}/hr)")
 
 
-REFORGED_TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Textures", "Skill_Icons", "[2233] - Ebon Battle Standard of Honor.jpg")
+REFORGED_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[2233] - Ebon Battle Standard of Honor.jpg")
 _EXPANDED_TAB_CHILD_SIZE = (500, 620)
 # endregion
 

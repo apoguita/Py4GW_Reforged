@@ -8,7 +8,7 @@ class LogItem:
     """
         LogItem - Log window list item.
         text    - (str) text to show in log window, with timestamp optional
-        msgType - (Py4GW.Console.MessageType) message type, changes color Info == White, Error == Red
+        msgType - (PySystem.Console.MessageType) message type, changes color Info == White, Error == Red
     """
     def __init__(self, text, msgType):
         self.text = text
@@ -21,7 +21,7 @@ class LogWindow:
 
         Function:
         Log - (str)(LogItem) log to add, text or LogItem instance.
-        Log - (str)(Py4GW.Console.MessageType) log text to add with optional message type.
+        Log - (str)(PySystem.Console.MessageType) log text to add with optional message type.
         DrawWindow - (void) Draws the child window section, enumerating all LogItems showing them sorted by order of add (descending)
     """
     output = []
@@ -32,13 +32,13 @@ class LogWindow:
                 if type(log) == LogItem:
                     self.Log(log.text, log.msgType)
                 elif type(log) == str:
-                    self.Log(log, Py4GW.Console.MessageType.Info)
+                    self.Log(log, PySystem.Console.MessageType.Info)
     def ClearLog(self):
         if self.output:
                 self.output.clear()
 
     # create a new LogItem from string and apply message type.
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         now = datetime.now()
         log_now = now.strftime("%H:%M:%S")
         text = f"[{log_now}] {text}"
@@ -50,9 +50,9 @@ class LogWindow:
         PyImGui.text("Logs:")
         PyImGui.begin_child("OutputLog", (0.0, -60.0), False, int(PyImGui.WindowFlags.HorizontalScrollbar))        
         for _, logg in enumerate(self.output):
-            if logg.msgType == Py4GW.Console.MessageType.Info:
+            if logg.msgType == PySystem.Console.MessageType.Info:
                 PyImGui.text(logg.text)
-            elif logg.msgType == Py4GW.Console.MessageType.Warning:
+            elif logg.msgType == PySystem.Console.MessageType.Warning:
                 PyImGui.text_colored(logg.text, (1, 1, 0, 1))
             else:
                 PyImGui.text_colored(logg.text, (1 ,0, 0, 1))
@@ -416,7 +416,7 @@ class BasicWindow:
         if self.Logger:
             self.Logger.ClearLog()
                        
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if self.Logger:
            self.Logger.Log(text, msgType)
 

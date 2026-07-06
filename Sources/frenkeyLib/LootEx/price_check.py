@@ -9,7 +9,7 @@ from Sources.frenkeyLib.LootEx.cache import Cached_Item
 from datetime import datetime
 from typing import Callable, Generator, Optional
 
-from Py4GW import Console
+import PySystem
 
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.Merchant import Trading

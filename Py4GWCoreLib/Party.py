@@ -168,7 +168,7 @@ class Party:
         hero_id = hero_id.value if isinstance(hero_id, HeroType) else hero_id
         party_heroes = Party.GetHeroes()
         player_id = Player.GetLoginNumber()
-        hero_index = next((i for i, h in enumerate(party_heroes) if h.hero_id.GetID() == hero_id and h.owner_player_id == player_id), None)
+        hero_index = next((i for i, h in enumerate(party_heroes) if h.hero_id == hero_id and h.owner_player_id == player_id), None)
         if hero_index is not None:
             return hero_index + 1 
         
@@ -499,7 +499,7 @@ class Party:
             heroes = Party.GetHeroes()
             for hero in heroes:
                 if hero.agent_id == agent_id:
-                    return hero.hero_id.GetID()
+                    return hero.hero_id
 
 
         @staticmethod
@@ -514,7 +514,7 @@ class Party:
             heroes = Party.GetHeroes()
             for index, hero in enumerate(heroes):
                 if index == hero_position:
-                    return hero.hero_id.GetID()
+                    return hero.hero_id
 
         @staticmethod
         @frame_cache(category="Party.Heroes", source_lib="GetHeroAgentIDByHeroID")
@@ -552,7 +552,7 @@ class Party:
             heroes = Party.GetHeroes()
             for hero in heroes:
                 if hero.agent_id == agent_id:
-                    return hero.hero_id.GetName()
+                    return PyParty.Hero(hero.hero_id).GetName()
             return ""
 
         @staticmethod

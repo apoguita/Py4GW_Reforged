@@ -7,7 +7,7 @@ import ctypes
 MODULE_NAME = "Frame Tester"
 MODULE_ICON = "Textures/Module_Icons/Frame Tester.png"
 
-projects_root = Py4GW.Console.get_projects_path()
+projects_root = PySystem.Console.get_projects_path()
 json_file_name = f"{projects_root}\\Py4GWCoreLib\\frame_aliases.json"
 
 overlay = Overlay()

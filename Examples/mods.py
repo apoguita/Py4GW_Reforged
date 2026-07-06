@@ -230,20 +230,20 @@ def main():
             for item_id in item_array:
                 mods = GetMods(item_id,armor_mods)
                 for mod in mods:
-                    Py4GW.Console.Log('Mods', f'ItemID: {item_id} contains mod: {mod}', Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log('Mods', f'ItemID: {item_id} contains mod: {mod}', PySystem.Console.MessageType.Info)
 
     except ImportError as e:
-        Py4GW.Console.Log('BOT', f'ImportError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'ImportError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log('BOT', f'ValueError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'ValueError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log('BOT', f'TypeError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'TypeError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log('BOT', f'Unexpected error encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Unexpected error encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     finally:
         pass
 

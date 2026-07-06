@@ -133,7 +133,7 @@ def _load_navmesh_object(bot) -> None:
             navmesh = nav
             return
     except Exception as e:
-        Py4GW.Console.Log("Navmesh", f"Navmesh load failed: {e}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Navmesh", f"Navmesh load failed: {e}", PySystem.Console.MessageType.Warning)
     def _load_coro():
         yield from AutoPathing().load_pathing_maps()
         nav = AutoPathing().get_navmesh()
@@ -206,13 +206,13 @@ def DoCraftShortbow(bot: Botting):
     for weapon_id, mats, qtys in _SHORTBOW_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 5000, mats, qtys)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -227,13 +227,13 @@ def DoCraftLongbow(bot: Botting):
     for weapon_id, mats, qtys in _LONGBOW_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 5000, mats, qtys)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -563,7 +563,7 @@ bot.UI.override_draw_config(lambda: _draw_settings(bot))
 
 def main():
     try:
-        projects_path = Py4GW.Console.get_projects_path()
+        projects_path = PySystem.Console.get_projects_path()
         full_path = projects_path + "\\Sources\\ApoSource\\textures\\"
         main_child_dimensions: Tuple[int, int] = (350, 275)
         
@@ -643,7 +643,7 @@ def main():
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log(bot.config.bot_name, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot.config.bot_name, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ import time
 
 MODULE_NAME = "Quest Data Viewer"
 MODULE_ICON = "Textures\\Module_Icons\\Quest Data Viewer.png"
-BASE_PATH = Py4GW.Console.get_projects_path()
+BASE_PATH = PySystem.Console.get_projects_path()
 TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Faction_Icons\\"
 
 # ===============================

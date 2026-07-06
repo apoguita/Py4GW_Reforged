@@ -1,7 +1,7 @@
 import ctypes
 from typing import Optional
 
-import Py4GW
+import PySystem
 import PyUIManager
 
 from .native_src.methods.PlayerMethods import (

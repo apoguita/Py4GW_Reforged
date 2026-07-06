@@ -247,7 +247,7 @@ def _create_window() -> None:
         )
         _log(f"  CreateWindow returned frame_id={LAST_WINDOW_ID}")
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_ACTION = "create_window"
     _log("  enqueued CreateWindow")
     _schedule_report("state after CreateWindow")
@@ -318,7 +318,7 @@ def _create_button() -> None:
             import traceback
             traceback.print_exc()
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_ACTION = f"create_button_{call_id}"
     _log(f"[call #{call_id}] enqueued button creation")
     _schedule_report(f"state after CreateButton #{call_id}")
@@ -342,7 +342,7 @@ def _destroy_button() -> None:
             _error(f"Destroy failed: {exc}")
         LAST_BUTTON_ID = 0
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_ACTION = "destroy_button"
     _schedule_report("state after DestroyButton")
 
@@ -364,7 +364,7 @@ def _destroy_window() -> None:
         except Exception as exc:
             _error(f"Destroy failed: {exc}")
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_WINDOW_ID = 0
     LAST_ACTION = "destroy_window"
     _schedule_report("state after DestroyWindow")

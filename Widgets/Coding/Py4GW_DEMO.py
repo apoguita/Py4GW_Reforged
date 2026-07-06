@@ -77,7 +77,7 @@ def ShowQuestWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowQuestWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowQuestWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -288,7 +288,7 @@ def ShowMerchantWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowMerchantWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowMerchantWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -486,7 +486,7 @@ def ShowPy4GW_Window_main():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPy4GW_Window_main: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPy4GW_Window_main: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -520,7 +520,7 @@ def ShowEffectsWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowEffectsWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowEffectsWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def ShowSkillbarWindow():
@@ -599,7 +599,7 @@ def ShowSkillbarWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowAgentArrayWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowAgentArrayWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def ShowSkillDataWindow(skill_id):
@@ -834,7 +834,7 @@ def ShowSkillDataWindow(skill_id):
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowSkillDataWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowSkillDataWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 PySkill_window_state.values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -865,7 +865,7 @@ def ShowSkillWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowSkillWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowSkillWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 inventory_handler = PyInventory.PyInventory()
@@ -909,18 +909,18 @@ def ShowInventoryWindow():
                 # Get the first available Salvage Kit
                 salvage_kit_id = GLOBAL_CACHE.Inventory.GetFirstSalvageKit()
                 if salvage_kit_id == 0:
-                    Py4GW.Console.Log("SalvageFirst", "No salvage kit found.")
+                    PySystem.Console.Log("SalvageFirst", "No salvage kit found.")
                     return False
 
                 # Find the first salvageable item based on the rarity filter
                 salvage_item_id = GLOBAL_CACHE.Inventory.GetFirstSalvageableItem()
                 if salvage_item_id == 0:
-                    Py4GW.Console.Log("SalvageFirst", "No salvageable item found.")
+                    PySystem.Console.Log("SalvageFirst", "No salvageable item found.")
                     return False
 
                 # Use the Salvage Kit to salvage the item
                 GLOBAL_CACHE.Inventory.SalvageItem(salvage_item_id,salvage_kit_id)
-                Py4GW.Console.Log("SalvageFirst", f"Started salvaging item with Item ID: {salvage_item_id} using Salvage Kit ID: {salvage_kit_id}")
+                PySystem.Console.Log("SalvageFirst", f"Started salvaging item with Item ID: {salvage_item_id} using Salvage Kit ID: {salvage_kit_id}")
 
             if PyImGui.button("Handle Salvage UI"):
                 inventory_handler.AcceptSalvageWindow()
@@ -943,7 +943,7 @@ def ShowInventoryWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowInventoryWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowInventoryWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def format_binary_grouped(value: int, group_size: int = 4) -> str:
@@ -1140,7 +1140,7 @@ def ShowItemDataWindow(item_id):
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowItemWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowItemWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 PyItem_window_state.values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -1174,7 +1174,7 @@ def ShowItemWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowItemWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowItemWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 PyParty_window_state.values = [0, 0, "Ogden Stonehealer", 0, 0, 0, 0, 0, 0, 0, 0]
@@ -1406,7 +1406,7 @@ def ShowPartyWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPartyWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPartyWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 PyPlayer_window_state.values = [0, 0, "", 0.0, 0.0, 0, 0, 0, 0, 0, 0]
@@ -1579,7 +1579,7 @@ def ShowPlayerWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPlayerWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPlayerWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def ShowAgentArrayWindow():
@@ -1620,7 +1620,7 @@ def ShowAgentArrayWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowAgentArrayWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowAgentArrayWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def ShowGadgetAgentData(agent_id):
@@ -1671,7 +1671,7 @@ def ShowGadgetAgentData(agent_id):
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowItemAgentData: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowItemAgentData: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -1713,7 +1713,7 @@ def ShowItemAgentData(agent_id):
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowItemAgentData: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowItemAgentData: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -1904,7 +1904,7 @@ def ShowLivingAgentData(agent_id):
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowLivingAgentData: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowLivingAgentData: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -1987,7 +1987,7 @@ def draw_agent_window(agent_id):
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in draw_agent_window: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in draw_agent_window: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -2071,7 +2071,7 @@ def ShowPyAgentWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyAgentWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyAgentWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -2168,7 +2168,7 @@ def ShowPyImGuiExtraMaplWindow():
 
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiExtraMaplWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiExtraMaplWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 PyMap_Travel_Window_state.window_name = "PyMap Travel DEMO"
@@ -2205,7 +2205,7 @@ def ShowPyImGuiTravelWindow():
 
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiTravelWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiTravelWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -2297,7 +2297,7 @@ def ShowPyMapWindow():
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in ShowPyMapWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyMapWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
                     
@@ -2343,13 +2343,13 @@ def ShowPyImGuiMiscelaneousWindow():
             PyImGui.same_line(0.0, -1.0)
             
             if PyImGui.button("Hover Me!"):
-                Py4GW.Console.Log(module_name,"Button clicked!")
+                PySystem.Console.Log(module_name,"Button clicked!")
             PyImGui.show_tooltip("This is a tooltip for the button.")
 
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiMiscelaneousWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiMiscelaneousWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 ImGui_tables_window_state.window_name = "PyImGui Tables DEMO"
@@ -2404,7 +2404,7 @@ def ShowPyImGuiTablesWindow():
 
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiTablesWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiTablesWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 ImGui_input_fields_window_state.window_name = "PyImGui Input Fields DEMO"
@@ -2453,7 +2453,7 @@ def ShowPyImGuiInputFieldsWindow():
        PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiInputFieldsWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiInputFieldsWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 ImGui_selectables_window_state.window_name = "PyImGui Selectables DEMO"
@@ -2491,7 +2491,7 @@ def ShowPyImGuiSelectablesWindow():
        PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiSelectablesWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiSelectablesWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -2557,7 +2557,7 @@ def ShowPyImGuiDemoWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in ShowPyImGuiDemoWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in ShowPyImGuiDemoWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -2678,7 +2678,7 @@ def DrawWindow():
         PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def CloseAllWindows():
@@ -2752,21 +2752,21 @@ def main():
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
         # Catch-all for any other unexpected exceptions
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         # Optional: Code that will run whether an exception occurred or not
-        #Py4GW.Console.Log(module_name, "Execution of Main() completed", Py4GW.Console.MessageType.Info)
+        #PySystem.Console.Log(module_name, "Execution of Main() completed", PySystem.Console.MessageType.Info)
         # Place any cleanup tasks here
         pass
 

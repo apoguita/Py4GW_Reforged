@@ -731,7 +731,7 @@ class Soup_Farm(ReportsProgress):
                         self.pyMerchant.collector_buy_item(item, 0, turn_in, buy)
 
         except Exception as e:
-            self.Log(f"Error in Exchanging soup: {str(e)}", Py4GW.Console.MessageType.Error)
+            self.Log(f"Error in Exchanging soup: {str(e)}", PySystem.Console.MessageType.Error)
 
     def ExchangeSoupsDone(self):
         return not CheckIfInventoryHasItem(ModelID.Skale_Fin, 2)
@@ -741,7 +741,7 @@ class Soup_Farm(ReportsProgress):
             self.Log("Bags Full - Manually Handle")
             self.Stop()
 
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if self.window:
             self.window.Log(text, msgType)
     ### --- SETUP --- ###
@@ -763,7 +763,7 @@ class Soup_Farm(ReportsProgress):
         primary, _ = Agent.GetProfessionNames(Player.GetAgentID())
         
         if primary != "Dervish":        
-            self.Log("Bot Requires Dervish Primary", Py4GW.Console.MessageType.Error)            
+            self.Log("Bot Requires Dervish Primary", PySystem.Console.MessageType.Error)            
             self.InternalStop()
             return False        
         # elif secondary != "Assassin":
@@ -809,7 +809,7 @@ class Soup_Farm(ReportsProgress):
             # Try to follow the path based on pathing points and movement handler.
             Routines.Movement.FollowPath(path_handler, movement_handler)
         except Exception as e:
-            Py4GW.Console.Log("Run To Drakes", str(e), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Run To Drakes", str(e), PySystem.Console.MessageType.Error)
 
     def RunToSkaleDone(self, path_handler, movement_handler):
         if not self.soup_step_done_timer.IsRunning():
@@ -885,7 +885,7 @@ class Soup_Farm(ReportsProgress):
                 if shards_time_remain < 4000 and IsSkillReadyById(self.skillBar.sand_shards) and HasEnoughEnergy(self.skillBar.sand_shards) and len(enemies) > 1:
                     CastSkillByIdAndSlot(self.skillBar.sand_shards, self.skillBar.sand_shards_slot)
         except Exception as e:
-            Py4GW.Console.Log("StayAlive", str(e), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("StayAlive", str(e), PySystem.Console.MessageType.Error)
 
     def Kill(self):
         if not self.soup_second_timer.IsRunning():
@@ -960,7 +960,7 @@ class Soup_Farm(ReportsProgress):
                             return
                     Player.Interact(target)
         except Exception as e:
-            Py4GW.Console.Log("Kill Loop Error", f"Kill Loop Error {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Kill Loop Error", f"Kill Loop Error {str(e)}", PySystem.Console.MessageType.Error)
 
     def KillLoopComplete(self):
         try:
@@ -982,7 +982,7 @@ class Soup_Farm(ReportsProgress):
 
             return False
         except:
-            self.Log("Kill Loop Error", Py4GW.Console.MessageType.Error)
+            self.Log("Kill Loop Error", PySystem.Console.MessageType.Error)
 
     # If issues comment internals and call super().CanPickUp()
     def CanPickUp(self, agentId, player_id):
@@ -1041,7 +1041,7 @@ class Soup_Farm(ReportsProgress):
 
                 Player.Interact(item)
         except Exception as e:
-            Py4GW.Console.Log("Loot Loop", f"Error during looting {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Loot Loop", f"Error during looting {str(e)}", PySystem.Console.MessageType.Error)
 
     def LootLoopComplete(self):
         try:
@@ -1058,7 +1058,7 @@ class Soup_Farm(ReportsProgress):
 
             return False
         except Exception as e:
-            Py4GW.Console.Log("Loot Loop Complete", f"Error during looting {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Loot Loop Complete", f"Error during looting {str(e)}", PySystem.Console.MessageType.Error)
     
     def GetSoupCollected(self):
         return self.soup_collected
@@ -1162,17 +1162,17 @@ def main():
                 soup_Routine.Update()
                 
     except ImportError as e:
-        Py4GW.Console.Log(bot_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

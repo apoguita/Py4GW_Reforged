@@ -271,7 +271,7 @@ def _apply_resource_only(root_id: int, target_name: str) -> None:
         )
 
     _report_state(f"state before resource-only target={target_name}", root_id)
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report(f"state after resource-only target={target_name}", target_name)
 
 
@@ -297,7 +297,7 @@ def _remove_last_resource_from_clone() -> None:
         )
 
     _report_state("state before remove resource target=clone", root_id)
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after remove resource target=clone", "clone")
 
 
@@ -328,7 +328,7 @@ def _apply_text_only_to_clone() -> None:
         )
 
     _report_state("state before text-only target=clone", root_id)
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after text-only target=clone", "clone")
 
 
@@ -366,7 +366,7 @@ def _remove_resource_then_apply_text_to_clone() -> None:
         )
 
     _report_state("state before remove+text target=clone", root_id)
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after remove+text target=clone", "clone")
 
 

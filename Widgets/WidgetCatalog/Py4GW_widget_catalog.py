@@ -1102,7 +1102,7 @@ class WidgetCatalogWindow:
     SEARCH_ENTRY_PATH_PREFIX = "@search_entry_"
     FAVORITES_PATH = "@favorites"
     ACTIVE_PATH = "@active"
-    FOLDER_ICON_ATLAS = os.path.join(Py4GW.Console.get_projects_path(),"Widgets","WidgetCatalog", "folder icons.png")
+    FOLDER_ICON_ATLAS = os.path.join(PySystem.Console.get_projects_path(),"Widgets","WidgetCatalog", "folder icons.png")
     FOLDER_ICON_UVS = {
         "folder_up": ((0.0, 0.0), (0.5, 0.33)),
         "config_active": ((0.5, 0.0), (1.0, 0.33)),
@@ -1132,7 +1132,7 @@ class WidgetCatalogWindow:
         self._virtual_scope_cache: dict[str, list[str]] = {}
         self._virtual_search_cache: dict[str, list[str]] = {}
         self.floating_button = ImGui.FloatingIcon(
-            icon_path=os.path.join(Py4GW.Console.get_projects_path(), "python_icon_round.png"),
+            icon_path=os.path.join(PySystem.Console.get_projects_path(), "python_icon_round.png"),
             window_id="##widget_catalog_floating_button",
             window_name="Widget Catalog Toggle",
             tooltip_visible="Hide UI",
@@ -1148,7 +1148,7 @@ class WidgetCatalogWindow:
 
     @staticmethod
     def _projects_root() -> str:
-        return os.path.normpath(Py4GW.Console.get_projects_path())
+        return os.path.normpath(PySystem.Console.get_projects_path())
 
     @classmethod
     def _default_floating_icon_path(cls) -> str:
@@ -1698,8 +1698,8 @@ class WidgetCatalogWindow:
                 widget.tooltip()
                 return
             except Exception as e:
-                Py4GW.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                Py4GW.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                PySystem.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
 
         if not PyImGui.begin_tooltip():
             return

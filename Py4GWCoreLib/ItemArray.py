@@ -1,4 +1,4 @@
-import Py4GW
+import PySystem
 
 from Py4GWCoreLib.py4gwcorelib_src.FrameCache import frame_cache
 
@@ -21,7 +21,7 @@ class ItemArray:
                 # Convert the integer to Bag enum and add to the list
                 bags_to_check.append(Bag(bag_id))
             except ValueError:
-                Py4GW.Console.Log("CreateBagList",f"Invalid bag ID: {bag_id}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("CreateBagList",f"Invalid bag ID: {bag_id}", PySystem.Console.MessageType.Error)
 
         return bags_to_check
 
@@ -50,7 +50,7 @@ class ItemArray:
                 all_item_ids.extend(item_ids_in_bag)
 
             except Exception as e:
-                Py4GW.Console.Log("GetItemArray", f"Error retrieving items from {bag_enum.name}: {str(e)}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("GetItemArray", f"Error retrieving items from {bag_enum.name}: {str(e)}", PySystem.Console.MessageType.Error)
     
         return all_item_ids
 

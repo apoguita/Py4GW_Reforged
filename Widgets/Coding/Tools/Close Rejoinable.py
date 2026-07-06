@@ -12,7 +12,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 
 
-project_path = Py4GW.Console.get_projects_path()
+project_path = PySystem.Console.get_projects_path()
 MODULE_NAME = "Close Rejoinable"
 MODULE_ICON = os.path.join("Textures", "Module_Icons", "Research Code.png")
 

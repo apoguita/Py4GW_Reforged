@@ -1,5 +1,5 @@
 import PyPlayer
-import Py4GW
+import PySystem
 
 from .enums import *
 from .native_src.internals.helpers import encoded_wstr_to_str
@@ -28,7 +28,7 @@ class Player:
     def _hwnd_account_fallback() -> str:
         """Deterministic ASCII-safe account identifier for unsupported/missing email cases."""
         try:
-            hwnd = int(Py4GW.Console.get_gw_window_handle() or 0)
+            hwnd = int(PySystem.Console.get_gw_window_handle() or 0)
         except Exception:
             hwnd = 0
         value = f"{hwnd}@Py4GW"
@@ -847,10 +847,10 @@ class Player:
         from . import Dialog
 
         if button_number < 0:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 "Player.SendAutomaticDialog",
                 f"Invalid button number: {button_number}. Button numbers start at 0.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return
 
@@ -860,25 +860,25 @@ class Player:
                 if getattr(button, "dialog_id", 0) != 0
             ]
         except Exception as e:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 "Player.SendAutomaticDialog",
                 f"Failed to read active dialog buttons: {e}",
-                Py4GW.Console.MessageType.Error,
+                PySystem.Console.MessageType.Error,
             )
             return
         if not available_buttons:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 "Player.SendAutomaticDialog",
                 "No active dialog buttons are currently available.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return
 
         if button_number >= len(available_buttons):
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 "Player.SendAutomaticDialog",
                 f"Requested button {button_number}, but only indices 0..{len(available_buttons) - 1} are available.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return
 

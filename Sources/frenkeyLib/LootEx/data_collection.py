@@ -4,7 +4,7 @@ import os
 import re
 from typing import Optional, Sequence
 
-from Py4GW import Console
+import PySystem
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.ItemCache import Bag_enum
 from Py4GWCoreLib.Player import Player

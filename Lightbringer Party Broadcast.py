@@ -1,6 +1,6 @@
 import PyImGui
 
-from Py4GWCoreLib import GLOBAL_CACHE, Party, Player, Py4GW, SharedCommandType, TitleID
+from Py4GWCoreLib import GLOBAL_CACHE, Party, Player, PySystem, SharedCommandType, TitleID
 
 
 MODULE_NAME = 'Lightbringer Party Broadcast'
@@ -70,7 +70,7 @@ def _set_lightbringer_for_party() -> None:
             sent_count += 1
 
     STATE.last_status = f'Set local Lightbringer and sent {sent_count} party message(s).'
-    Py4GW.Console.Log(MODULE_NAME, STATE.last_status, Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log(MODULE_NAME, STATE.last_status, PySystem.Console.MessageType.Info)
 
 
 def configure():

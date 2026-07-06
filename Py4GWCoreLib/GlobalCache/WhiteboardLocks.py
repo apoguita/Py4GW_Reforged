@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import Py4GW
+import PySystem
 
 from Py4GWCoreLib.enums_src.Whiteboard_enums import (
     WhiteboardClaimStrength,
@@ -74,7 +74,7 @@ def is_minion_lock_blocked(corpse_agent_id: int, now_tick: int | None = None) ->
         if not email:
             return False
         if now_tick is None:
-            now_tick = int(Py4GW.Game.get_tick_count64())
+            now_tick = int(PySystem.get_tick_count64())
         return bool(GLOBAL_CACHE.ShMem.IsLockBlocked(
             int(WhiteboardLockKind.MINION_CORPSE),
             MINION_LOCK_KEY,
@@ -95,7 +95,7 @@ def filter_unlocked_minion_corpses(corpse_agent_ids: list[int]) -> list[int]:
     """Return corpses not currently held by a Minion Lock."""
     if not corpse_agent_ids:
         return []
-    now_tick = int(Py4GW.Game.get_tick_count64())
+    now_tick = int(PySystem.get_tick_count64())
     return [
         int(corpse_id)
         for corpse_id in corpse_agent_ids
@@ -113,7 +113,7 @@ def post_minion_lock(corpse_agent_id: int, skill_id: int = 0, aftercast_delay: i
         email, group_id = _owner_context()
         if not email:
             return -1
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
         expires_at = now + _skill_lock_duration_ms(
             int(skill_id),
             int(aftercast_delay),
@@ -146,7 +146,7 @@ def is_resurrection_lock_blocked(dead_ally_agent_id: int, now_tick: int | None =
         if not email:
             return False
         if now_tick is None:
-            now_tick = int(Py4GW.Game.get_tick_count64())
+            now_tick = int(PySystem.get_tick_count64())
         return bool(GLOBAL_CACHE.ShMem.IsLockBlocked(
             int(WhiteboardLockKind.RESURRECT_TARGET),
             RESURRECTION_LOCK_KEY,
@@ -167,7 +167,7 @@ def filter_unlocked_resurrection_targets(dead_ally_agent_ids: list[int]) -> list
     """Return dead allies not currently held by a Resurrection Lock."""
     if not dead_ally_agent_ids:
         return []
-    now_tick = int(Py4GW.Game.get_tick_count64())
+    now_tick = int(PySystem.get_tick_count64())
     return [
         int(agent_id)
         for agent_id in dead_ally_agent_ids
@@ -186,7 +186,7 @@ def get_resurrection_lock_owner(dead_ally_agent_id: int, now_tick: int | None = 
         if not email:
             return "", -1
         if now_tick is None:
-            now_tick = int(Py4GW.Game.get_tick_count64())
+            now_tick = int(PySystem.get_tick_count64())
 
         winner = None
         for slot_index, intent in GLOBAL_CACHE.ShMem.GetAllAccounts().GetAllIntents():
@@ -221,7 +221,7 @@ def post_resurrection_lock(dead_ally_agent_id: int, skill_id: int = 0, aftercast
         email, group_id = _owner_context()
         if not email:
             return -1
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
 
         owner_email, owner_slot = get_resurrection_lock_owner(dead_ally_agent_id, now)
         if owner_email:
@@ -261,7 +261,7 @@ def is_hex_removal_lock_blocked(hexed_ally_agent_id: int, now_tick: int | None =
         if not email:
             return False
         if now_tick is None:
-            now_tick = int(Py4GW.Game.get_tick_count64())
+            now_tick = int(PySystem.get_tick_count64())
         return bool(GLOBAL_CACHE.ShMem.IsLockBlocked(
             int(WhiteboardLockKind.HEX_REMOVAL_TARGET),
             HEX_REMOVAL_LOCK_KEY,
@@ -282,7 +282,7 @@ def filter_unlocked_hex_targets(hexed_ally_agent_ids: list[int]) -> list[int]:
     """Return hexed allies not currently held by a Hex Removal Lock."""
     if not hexed_ally_agent_ids:
         return []
-    now_tick = int(Py4GW.Game.get_tick_count64())
+    now_tick = int(PySystem.get_tick_count64())
     return [
         int(agent_id)
         for agent_id in hexed_ally_agent_ids
@@ -306,7 +306,7 @@ def post_hex_removal_lock(hexed_ally_agent_id: int, skill_id: int = 0, aftercast
         email, group_id = _owner_context()
         if not email:
             return -1
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
 
         # Drop expired-but-not-yet-swept entries so a stale lock can't suppress a fresh POST.
         for slot_index, intent in GLOBAL_CACHE.ShMem.GetAllAccounts().GetAllIntents():
@@ -378,7 +378,7 @@ def is_buff_target_lock_blocked(buffed_ally_agent_id: int, key_id: int = BUFF_TA
         if not email:
             return False
         if now_tick is None:
-            now_tick = int(Py4GW.Game.get_tick_count64())
+            now_tick = int(PySystem.get_tick_count64())
         return bool(GLOBAL_CACHE.ShMem.IsLockBlocked(
             int(WhiteboardLockKind.BUFF_TARGET),
             int(key_id),
@@ -411,7 +411,7 @@ def post_buff_target_lock(
         email, group_id = _owner_context()
         if not email:
             return -1
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
 
         # Drop expired-but-not-yet-swept entries so a stale lock can't suppress a fresh POST.
         for slot_index, intent in GLOBAL_CACHE.ShMem.GetAllAccounts().GetAllIntents():
@@ -462,7 +462,7 @@ def claim_resurrection_target(dead_ally_agent_ids: list[int], skill_id: int = 0,
             return 0
 
         for dead_ally_id in dead_ally_agent_ids:
-            now = int(Py4GW.Game.get_tick_count64())
+            now = int(PySystem.get_tick_count64())
             owner_email, _ = get_resurrection_lock_owner(int(dead_ally_id), now)
             if owner_email:
                 if owner_email == email:
@@ -496,7 +496,7 @@ def filter_unlocked_buff_targets(ally_agent_ids: list[int], key_id: int = BUFF_T
     """Return allies not currently held by a buff-target lock for ``key_id``."""
     if not ally_agent_ids:
         return []
-    now_tick = int(Py4GW.Game.get_tick_count64())
+    now_tick = int(PySystem.get_tick_count64())
     return [
         int(agent_id)
         for agent_id in ally_agent_ids
@@ -515,7 +515,7 @@ def is_loot_lock_blocked(item_agent_id: int, now_tick: int | None = None) -> boo
         if not email:
             return False
         if now_tick is None:
-            now_tick = int(Py4GW.Game.get_tick_count64())
+            now_tick = int(PySystem.get_tick_count64())
         return bool(GLOBAL_CACHE.ShMem.IsLockBlocked(
             int(WhiteboardLockKind.LOOT_ITEM),
             LOOT_LOCK_KEY,
@@ -536,7 +536,7 @@ def filter_unlocked_loot_items(item_agent_ids: list[int]) -> list[int]:
     """Return ground items not currently held by a loot lock."""
     if not item_agent_ids:
         return []
-    now_tick = int(Py4GW.Game.get_tick_count64())
+    now_tick = int(PySystem.get_tick_count64())
     return [
         int(agent_id)
         for agent_id in item_agent_ids
@@ -554,7 +554,7 @@ def post_loot_lock(item_agent_id: int, minimum_ms: int = LOOT_LOCK_MIN_DURATION_
         email, group_id = _owner_context()
         if not email:
             return -1
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
 
         for slot_index, intent in GLOBAL_CACHE.ShMem.GetAllAccounts().GetAllIntents():
             if intent.OwnerEmail != email:

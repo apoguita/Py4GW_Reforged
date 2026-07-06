@@ -2,7 +2,8 @@ import ctypes
 import struct
 
 import PyImGui
-import PyPointers
+
+from Py4GWCoreLib.native_src.ShMem.SysShaMem import SystemShaMemMgr
 
 from Py4GWCoreLib.native_src.context.InstanceInfoContext import (
     AreaInfoStruct,
@@ -94,8 +95,9 @@ class State:
 
     def resolve_pointers(self) -> dict[str, int]:
         pointers = {name: 0 for name in self.TARGETS}
+        SSM = SystemShaMemMgr.get_pointers_struct()
         try:
-            pointers["CurrentMapInfo"] = _safe_ptr(PyPointers.PyPointers.GetAreaInfoPtr())
+            pointers["CurrentMapInfo"] = _safe_ptr(SSM.InstanceInfo) if SSM else 0  # GetAreaInfoPtr had no shmem equivalent
         except Exception:
             pass
         try:
@@ -103,23 +105,23 @@ class State:
         except Exception:
             pass
         try:
-            pointers["MapContext"] = _safe_ptr(PyPointers.PyPointers.GetMapContextPtr())
+            pointers["MapContext"] = _safe_ptr(SSM.MapContext) if SSM else 0
         except Exception:
             pass
         try:
-            pointers["GameContext"] = _safe_ptr(PyPointers.PyPointers.GetGameContextPtr())
+            pointers["GameContext"] = _safe_ptr(SSM.GameContext) if SSM else 0
         except Exception:
             pass
         try:
-            pointers["WorldContext"] = _safe_ptr(PyPointers.PyPointers.GetWorldContextPtr())
+            pointers["WorldContext"] = _safe_ptr(SSM.WorldContext) if SSM else 0
         except Exception:
             pass
         try:
-            pointers["CharContext"] = _safe_ptr(PyPointers.PyPointers.GetCharContextPtr())
+            pointers["CharContext"] = _safe_ptr(SSM.CharContext) if SSM else 0
         except Exception:
             pass
         try:
-            pointers["AgentContext"] = _safe_ptr(PyPointers.PyPointers.GetAgentContextPtr())
+            pointers["AgentContext"] = _safe_ptr(SSM.AgentContext) if SSM else 0
         except Exception:
             pass
         try:

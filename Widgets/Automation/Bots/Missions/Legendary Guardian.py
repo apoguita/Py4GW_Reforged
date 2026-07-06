@@ -665,7 +665,7 @@ def FollowPathwithDelayTimer(path_handler,follow_handler, log_actions=False, del
         if point is not None:
             follow_handler.move_to_waypoint(point[0], point[1])
             if log_actions:
-                Py4GW.Console.Log("FollowPath", f"Moving to {point}", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log("FollowPath", f"Moving to {point}", PySystem.Console.MessageType.Info)
 
 def handle_quest_interaction():
     global FSM_vars
@@ -1516,48 +1516,48 @@ def main():
                     FSM_vars.state_machine_TheWilds.update()  
 
     except ImportError as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"ImportError encountered: {str(e)}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"Stack trace: {traceback.format_exc()}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
     except ValueError as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"ValueError encountered: {str(e)}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"Stack trace: {traceback.format_exc()}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
     except TypeError as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"TypeError encountered: {str(e)}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"Stack trace: {traceback.format_exc()}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
     except Exception as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"Unexpected error encountered: {str(e)}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             f"Stack trace: {traceback.format_exc()}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
     finally:
         pass

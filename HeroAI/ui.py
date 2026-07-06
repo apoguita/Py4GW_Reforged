@@ -5,7 +5,7 @@ import math
 import os
 import random
 from typing import Optional
-from Py4GW import Console
+import PySystem
 import PyImGui
 from HeroAI import resurrection_scroll
 from HeroAI import windows

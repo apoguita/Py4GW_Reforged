@@ -2,7 +2,7 @@ import os
 import re
 from typing import TYPE_CHECKING, Callable, Protocol, cast
 
-import Py4GW
+import PySystem
 import PyImGui
 
 from ..GlobalCache import GLOBAL_CACHE
@@ -245,7 +245,7 @@ class _BottingTreeUI:
         return re.sub(r'[^A-Za-z0-9_-]+', '_', value).strip('_') or 'BottingTree'
 
     def _default_icon_path(self) -> str:
-        return os.path.join(Py4GW.Console.get_projects_path(), 'python_icon_round.png')
+        return os.path.join(PySystem.Console.get_projects_path(), 'python_icon_round.png')
 
     def _ensure_window_factory(self) -> bool:
         if self._window_factory_ready and self._window_factory is not None:
@@ -370,7 +370,7 @@ class _BottingTreeUI:
         self.draw_help_fn = draw_fn
 
     def PrintMessageToConsole(self, source: str, message: str) -> None:
-        Py4GW.Console.Log(source, message, Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(source, message, PySystem.Console.MessageType.Info)
 
     def _draw_texture(self, icon_path: str = '', size: tuple[float, float] = (96.0, 96.0)) -> None:
         if self.draw_texture_fn is not None:

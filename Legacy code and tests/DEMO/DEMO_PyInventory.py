@@ -262,11 +262,11 @@ def main():
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log("YourModule", f"ImportError encountered: {str(e)}")
+        PySystem.Console.Log("YourModule", f"ImportError encountered: {str(e)}")
     except ValueError as e:
-        Py4GW.Console.Log("YourModule", f"ValueError encountered: {str(e)}")
+        PySystem.Console.Log("YourModule", f"ValueError encountered: {str(e)}")
     except Exception as e:
-        Py4GW.Console.Log("YourModule", f"Unexpected error encountered: {str(e)}")
+        PySystem.Console.Log("YourModule", f"Unexpected error encountered: {str(e)}")
     finally:
         # Optional: Code that will run whether an exception occurred or not
         pass  # Replace with your actual code

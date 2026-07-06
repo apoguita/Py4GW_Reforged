@@ -48,9 +48,9 @@ class NamedPipeServer:
                 0,  # Default timeout
                 None
             )
-            Py4GW.Console.Log(module_name, f"Named pipe server created on {self.pipe_name}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(module_name, f"Named pipe server created on {self.pipe_name}", PySystem.Console.MessageType.Info)
         except pywintypes.error as e:
-            Py4GW.Console.Log(module_name, f"Error creating named pipe: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(module_name, f"Error creating named pipe: {e}", PySystem.Console.MessageType.Error)
             self.cleanup()
 
     def wait_for_client(self):
@@ -62,16 +62,16 @@ class NamedPipeServer:
                     # Attempt to connect
                     win32pipe.ConnectNamedPipe(self.pipe_handle, None)
                     self.client_connected = True
-                    Py4GW.Console.Log(module_name, "Client connected successfully.", Py4GW.Console.MessageType.Success)
+                    PySystem.Console.Log(module_name, "Client connected successfully.", PySystem.Console.MessageType.Success)
                 except pywintypes.error as e:
                     # Handle expected error codes
                     if e.winerror == 535:  # ERROR_PIPE_CONNECTED: Client already connected
                         self.client_connected = True
-                        Py4GW.Console.Log(module_name, "Client already connected.", Py4GW.Console.MessageType.Info)
+                        PySystem.Console.Log(module_name, "Client already connected.", PySystem.Console.MessageType.Info)
                     elif e.winerror == 231:  # ERROR_PIPE_LISTENING: Pipe is listening, no client connected yet
-                        Py4GW.Console.Log(module_name, "Pipe server is still listening.", Py4GW.Console.MessageType.Info)
+                        PySystem.Console.Log(module_name, "Pipe server is still listening.", PySystem.Console.MessageType.Info)
                     else:
-                        Py4GW.Console.Log(module_name, f"Error during client connection attempt: {e}", Py4GW.Console.MessageType.Warning)
+                        PySystem.Console.Log(module_name, f"Error during client connection attempt: {e}", PySystem.Console.MessageType.Warning)
                 finally:
                     # Reset the retry timer regardless of the outcome
                     self.retry_timer.Reset()
@@ -81,9 +81,9 @@ class NamedPipeServer:
         if self.pipe_handle and self.client_connected:
             try:
                 win32file.WriteFile(self.pipe_handle, message.encode())
-                Py4GW.Console.Log(module_name, f"Sent: {message}", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(module_name, f"Sent: {message}", PySystem.Console.MessageType.Info)
             except pywintypes.error as e:
-                Py4GW.Console.Log(module_name, f"Error sending message: {e}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(module_name, f"Error sending message: {e}", PySystem.Console.MessageType.Error)
                 self.handle_disconnect()
 
     def receive_message(self):
@@ -92,10 +92,10 @@ class NamedPipeServer:
             try:
                 result, data = win32file.ReadFile(self.pipe_handle, self.buffer_size)
                 message = data.decode()
-                Py4GW.Console.Log(module_name, f"Received: {message}", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(module_name, f"Received: {message}", PySystem.Console.MessageType.Info)
                 return message
             except pywintypes.error as e:
-                Py4GW.Console.Log(module_name, f"Error receiving message: {e}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(module_name, f"Error receiving message: {e}", PySystem.Console.MessageType.Error)
                 self.handle_disconnect()
                 return None
 
@@ -104,9 +104,9 @@ class NamedPipeServer:
         if self.pipe_handle and self.client_connected:
             try:
                 win32pipe.DisconnectNamedPipe(self.pipe_handle)
-                Py4GW.Console.Log(module_name, "Client disconnected. Pipe instance released.", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(module_name, "Client disconnected. Pipe instance released.", PySystem.Console.MessageType.Info)
             except pywintypes.error as e:
-                Py4GW.Console.Log(module_name, f"Error during disconnection: {e}", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(module_name, f"Error during disconnection: {e}", PySystem.Console.MessageType.Warning)
             finally:
                 self.client_connected = False
 
@@ -117,13 +117,13 @@ class NamedPipeServer:
                 # Disconnect the pipe if it is connected
                 if self.client_connected:
                     win32pipe.DisconnectNamedPipe(self.pipe_handle)
-                    Py4GW.Console.Log(module_name, "Pipe instance disconnected.", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, "Pipe instance disconnected.", PySystem.Console.MessageType.Info)
 
                 # Close the pipe handle
                 win32file.CloseHandle(self.pipe_handle)
-                Py4GW.Console.Log(module_name, "Named pipe server stopped.", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log(module_name, "Named pipe server stopped.", PySystem.Console.MessageType.Info)
             except pywintypes.error as e:
-                Py4GW.Console.Log(module_name, f"Error during cleanup: {e}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log(module_name, f"Error during cleanup: {e}", PySystem.Console.MessageType.Error)
             finally:
                 # Reset internal state
                 self.pipe_handle = None
@@ -162,18 +162,18 @@ def DrawWindow():
             if server is None:
                 if PyImGui.button("Start Server"):
                     initialize_pipe("python_to_python")
-                    Py4GW.Console.Log(module_name, "Pipe server started.", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, "Pipe server started.", PySystem.Console.MessageType.Info)
             else:
                 if PyImGui.button("Stop Server"):
                     if server.client_connected:
                         server.handle_disconnect()  # Ensure proper disconnection
                     server.cleanup()  # Cleanup the pipe
                     server = None
-                    Py4GW.Console.Log(module_name, "Pipe server stopped.", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, "Pipe server stopped.", PySystem.Console.MessageType.Info)
 
             PyImGui.end()
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -184,4 +184,4 @@ def main():
         if server is not None:
             handle_pipe_communication()
     except Exception as e:
-        Py4GW.Console.Log(module_name, f"Unexpected error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error: {str(e)}", PySystem.Console.MessageType.Error)

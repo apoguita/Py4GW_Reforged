@@ -10,7 +10,7 @@ from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, Mode
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
 from Py4GWCoreLib.enums_src.Hero_enums import HeroType
-from Py4GW import Game
+import PyGameThread
 
 from Widgets.Automation.Helpers.Pycons import TEAM_SETTINGS_CACHE_MS
 
@@ -21,7 +21,7 @@ MODULE_CATEGORY = "Helpers"
 MODULE_TAGS = ["automation", "skills", "elite", "capture", "botting"]
 MODULE_DESCRIPTION = "An advanced automation bot for capturing elite skills from bosses throughout Guild Wars.\n\nFeatures:\n• Automated pathing to elite skill bosses across all campaigns\n• Intelligent boss detection and engagement system\n• Automatic Signet of Capture usage for skill learning\n• Support for all 10 professions with 151+ elite skills\n• Color-coded skill availability (Blue/Available, Green/Captured, Red/Map Locked)\n• Smart map access checking and unlock requirements\n• Progress tracking and capture status monitoring\n• Built-in safety features and stuck detection\n\nCredits:\n• Originally developed by Kendor with help from Wick Divinus and Simfoniya\n• Adapted for Py4GW widget system by Kendor"
 
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Automation", "Helpers", "Elite Skills", "elite_skills_capture.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Automation", "Helpers", "Elite Skills", "elite_skills_capture.png")
 
 def tooltip():
     PyImGui.begin_tooltip()
@@ -3837,8 +3837,8 @@ def ClickSkillFrame(skill_id: int):
     
     if UIManager.FrameExists(skill_frame):
         ConsoleLog("ClickSkillFrame", f"Skill frame {skill_id} exists, clicking it", log=True)
-        # Use Game.enqueue like the Factions Character Leveler example
-        Game.enqueue(lambda fid=skill_frame: UIManager.TestMouseClickAction(fid, 0, 0))
+        # Use PyGameThread.enqueue like the Factions Character Leveler example
+        PyGameThread.enqueue(lambda fid=skill_frame: UIManager.TestMouseClickAction(fid, 0, 0))
         yield from Routines.Yield.wait(200)
         
         # Wait 1 second before clicking capture button

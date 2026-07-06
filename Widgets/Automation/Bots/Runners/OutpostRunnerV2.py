@@ -19,7 +19,7 @@ import math
 import time
 import PyImGui
 import importlib.util
-projects_base_path = Py4GW.Console.get_projects_path()
+projects_base_path = PySystem.Console.get_projects_path()
 ac_folder_path = os.path.join(projects_base_path, "Sources", "aC_Scripts")
 from Sources.aC_Scripts.aC_api import *
 RUNS_DIR = os.path.join(ac_folder_path, "OutpostRunner", "maps")
@@ -86,7 +86,7 @@ def bot_routine(bot: Botting) -> None:
     global _current_run_index, _run_tries
 
     if not _queued_runs:
-        ConsoleLog(BotSettings.BOT_NAME, "No runs queued!", Py4GW.Console.MessageType.Error)
+        ConsoleLog(BotSettings.BOT_NAME, "No runs queued!", PySystem.Console.MessageType.Error)
         bot.States.AddCustomState(lambda: _stop_bot(), "StopBot")
         return
 
@@ -356,7 +356,7 @@ def _draw_help():
 # =============================================================================
 bot.SetMainRoutine(bot_routine)
 
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Textures", "Skill_Icons", "[1543] - Pious Haste.jpg")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[1543] - Pious Haste.jpg")
 bot.UI.override_draw_config(lambda: _draw_settings())
 bot.UI.override_draw_help(lambda: _draw_help())
 

@@ -2400,10 +2400,10 @@ def HandleAutoQuest(
 
         if resolved_pos is None:
             if use_npc_model_or_enc_str is None:
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     module_name,
                     "HandleAutoQuest failed: no position or NPC model provided.",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
                 return BehaviorTree.NodeState.FAILURE
 
@@ -2411,20 +2411,20 @@ def HandleAutoQuest(
             if agent_id == 0:
                 if require_quest_marker:
                     return BehaviorTree.NodeState.RUNNING
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     module_name,
                     f"HandleAutoQuest failed: could not resolve NPC model {use_npc_model_or_enc_str}.",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
                 return BehaviorTree.NodeState.FAILURE
             agent_x, agent_y = Agent.GetXY(agent_id)
             resolved_pos = (agent_x, agent_y)
 
         if log:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 module_name,
                 f"HandleAutoQuest start: pos={resolved_pos} buttons={buttons} npc={use_npc_model_or_enc_str}",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
         return BehaviorTree.NodeState.SUCCESS
 
@@ -2567,12 +2567,12 @@ def HandleQuest(
         nonlocal resolved_pos
         if resolved_pos is None:
             if use_npc_model_or_enc_str is None:
-                Py4GW.Console.Log(MODULE_NAME, f"HandleQuest failed: no position or NPC model provided for quest {quest_id} in mode {mode}.", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(MODULE_NAME, f"HandleQuest failed: no position or NPC model provided for quest {quest_id} in mode {mode}.", PySystem.Console.MessageType.Warning)
                 return BehaviorTree.NodeState.FAILURE
 
             agent_id = int(RoutinesAgents.GetAgentIDByModelOrEncStr(use_npc_model_or_enc_str) or 0)
             if agent_id == 0:
-                Py4GW.Console.Log(MODULE_NAME, f"HandleQuest failed: could not resolve NPC model {use_npc_model_or_enc_str} for quest {quest_id}.", Py4GW.Console.MessageType.Warning)
+                PySystem.Console.Log(MODULE_NAME, f"HandleQuest failed: could not resolve NPC model {use_npc_model_or_enc_str} for quest {quest_id}.", PySystem.Console.MessageType.Warning)
                 return BehaviorTree.NodeState.FAILURE
             agent_x, agent_y = Agent.GetXY(agent_id)
             resolved_pos = (agent_x, agent_y)
@@ -2582,16 +2582,16 @@ def HandleQuest(
         node.blackboard[blackboard_completion_key] = _quest_completed()
         Quest.RequestQuestInfo(int(quest_id), update_marker=True)
         if log:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"HandleQuest start: quest={quest_id} mode={mode} pos={resolved_pos} dialog={dialog_id} npc={use_npc_model_or_enc_str}",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
         if mode == Questmode.Accept and _quest_in_log():
-            Py4GW.Console.Log(MODULE_NAME, f"HandleQuest accept failed: quest {quest_id} already in log.", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(MODULE_NAME, f"HandleQuest accept failed: quest {quest_id} already in log.", PySystem.Console.MessageType.Warning)
             return BehaviorTree.NodeState.FAILURE
         if mode in (Questmode.Complete, Questmode.Step) and not _quest_in_log():
-            Py4GW.Console.Log(MODULE_NAME, f"HandleQuest {mode} failed: quest {quest_id} not in log.", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(MODULE_NAME, f"HandleQuest {mode} failed: quest {quest_id} not in log.", PySystem.Console.MessageType.Warning)
             return BehaviorTree.NodeState.FAILURE
         return BehaviorTree.NodeState.SUCCESS
     

@@ -11,7 +11,7 @@ def get_script_path_for_model(model: int) -> Optional[str]:
     Resolve the script filename for a given model ID.
     Returns the full path if found, otherwise None.
     """
-    base_path = Py4GW.Console.get_projects_path()
+    base_path = PySystem.Console.get_projects_path()
     bots_path = os.path.join(base_path, "Bots", "Nicholas the Traveler")
 
     try:
@@ -19,10 +19,10 @@ def get_script_path_for_model(model: int) -> Optional[str]:
             if file.startswith(f"{model}-") and file.endswith(".py"):
                 return os.path.join(bots_path, file)
     except Exception as e:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             "script loader",
             f"Error scanning for model {model}: {str(e)}",
-            Py4GW.Console.MessageType.Error,
+            PySystem.Console.MessageType.Error,
         )
 
     return None
@@ -37,21 +37,21 @@ def main():
             if PyImGui.button("load model script"):
                 script_path = get_script_path_for_model(model)
                 if script_path:
-                    Py4GW.Console.Log(
+                    PySystem.Console.Log(
                         "script loader",
                         f"Loading script from {script_path}",
-                        Py4GW.Console.MessageType.Info,
+                        PySystem.Console.MessageType.Info,
                     )
-                    Py4GW.Console.defer_stop_load_and_run(script_path)
+                    PySystem.Console.defer_stop_load_and_run(script_path)
                 else:
-                    Py4GW.Console.Log(
+                    PySystem.Console.Log(
                         "script loader",
                         f"No script found for model {model}",
-                        Py4GW.Console.MessageType.Error,
+                        PySystem.Console.MessageType.Error,
                     )
 
     except Exception as e:
-        Py4GW.Console.Log("script loader", f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("script loader", f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 

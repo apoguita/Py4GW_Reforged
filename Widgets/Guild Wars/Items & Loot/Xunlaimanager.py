@@ -36,7 +36,7 @@ INI_KEY = "Xunlai Manager"
 INI_RELATIVE_PATH = "Settings/{account}/Inventory/XunlaiManager/xunlai_manager.ini"
 
 
-project_root = Py4GW.Console.get_projects_path()  # Absolute root path of the Py4GW installation
+project_root = PySystem.Console.get_projects_path()  # Absolute root path of the Py4GW installation
 save_timer = ThrottledTimer(500)                   # Prevents writing the INI on every frame
 _account_check_timer = ThrottledTimer(2000)        # Throttles Player.GetAccountEmail() to once every 2 s
 ini_handler = None                                 # IniHandler instance; created on first account load

@@ -61,7 +61,7 @@ def DrawFlagFormation(center_x: float, center_y: float, formation_name: str):
         formation_name (str): Name of the formation to draw (must exist in `formations` dict).
     """
     if formation_name not in formations:
-        Py4GW.Console.Log(MODULE_NAME, f"Formation '{formation_name}' not found.", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log(MODULE_NAME, f"Formation '{formation_name}' not found.", PySystem.Console.MessageType.Warning)
         return
 
     Overlay().BeginDraw()

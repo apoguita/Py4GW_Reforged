@@ -12,7 +12,7 @@ from typing import List, Dict, Optional
 BOT_NAME = "VQ Mount Qinkai"
 MODULE_NAME = "Mount Qinkai (Vanquish)"
 MODULE_ICON = "Textures\\Module_Icons\\Vanquish - Mount Qinkai.png"
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
 OUTPOST_TO_TRAVEL = 389 # Mount Qinkai outpost
 CAVALON= 193 # Cavalon for faction donation
 LOAD_RESUME_STABLE_MS = 1500
@@ -69,7 +69,7 @@ _party_mode: int = 1  # 0 = Single Account with Heroes, 1 = Multiboxing
 _BOT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 _HERO_CONFIG_PATH = os.path.join(_BOT_SCRIPT_DIR, f"{BOT_NAME} Heroes.json")
 _HERO_ICONS_BASE = os.path.normpath(os.path.join(
-    Py4GW.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
+    PySystem.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
     "PVE Skills Unlocker", "Textures", "Skill_Icons"
 ))
 _HERO_SLOTS_COUNT = 7
@@ -601,7 +601,7 @@ def _wait_for_alt_dispatch_completion(stage_name: str, message_refs: list[tuple[
             yield from Routines.Yield.wait(50)
     if pending:
         pending_accounts = ", ".join(sorted({email for email, _ in pending}))
-        ConsoleLog(BOT_NAME, f"[Merchant] {stage_name}: timeout waiting for alt completion. Pending: {pending_accounts}", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Merchant] {stage_name}: timeout waiting for alt completion. Pending: {pending_accounts}", PySystem.Console.MessageType.Warning)
 
 
 def _wait_for_alts_on_current_map(stage_name: str, expected_alts: int, target_map_id: int, timeout_ms: int = 30000):
@@ -622,7 +622,7 @@ def _wait_for_alts_on_current_map(stage_name: str, expected_alts: int, target_ma
             yield from Routines.Yield.wait(1000)
             return
         yield from Routines.Yield.wait(500)
-    ConsoleLog(BOT_NAME, f"[Merchant] {stage_name}: alt arrival timeout on map {target_map_id}", Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f"[Merchant] {stage_name}: alt arrival timeout on map {target_map_id}", PySystem.Console.MessageType.Warning)
 
 
 def _gh_merchant_setup_if_enabled(bot: Botting, outpost_id: int):
@@ -647,7 +647,7 @@ def _gh_merchant_setup_if_enabled(bot: Botting, outpost_id: int):
     while not Map.IsGuildHall() and time.time() < gh_deadline:
         yield from Routines.Yield.wait(500)
     if not Map.IsGuildHall():
-        ConsoleLog(BOT_NAME, "[Merchant] Failed to reach Guild Hall, skipping merchant setup", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Merchant] Failed to reach Guild Hall, skipping merchant setup", PySystem.Console.MessageType.Warning)
         return
 
     yield from _wait_for_alts_on_current_map("travel_gh_arrival", expected_gh_alts, int(Map.GetMapID()), timeout_ms=60000)
@@ -716,7 +716,7 @@ def _gh_merchant_setup_if_enabled(bot: Botting, outpost_id: int):
             yield from _coro_sell_rare_mats_at_trader(rx, ry, _JADEITE_SHARD_MODELS)
             yield from _wait_for_alt_dispatch_completion("sell_jadeite_shards", jadeite_refs, SharedCommandType.MerchantMaterials)
         else:
-            ConsoleLog(BOT_NAME, "[Merchant] No Rare Material Trader found - skipping Jadeite Shard sale", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Merchant] No Rare Material Trader found - skipping Jadeite Shard sale", PySystem.Console.MessageType.Warning)
 
     if _merchant_buy_ectos:
         if rare_xy:
@@ -746,7 +746,7 @@ def _gh_merchant_setup_if_enabled(bot: Botting, outpost_id: int):
                 )
             yield from _wait_for_alt_dispatch_completion("buy_ectoplasm", buy_ecto_refs, SharedCommandType.MerchantMaterials)
         else:
-            ConsoleLog(BOT_NAME, "[Merchant] Ecto buy skipped - no Rare Material Trader found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Merchant] Ecto buy skipped - no Rare Material Trader found", PySystem.Console.MessageType.Warning)
 
     if _merchant_alt_wait_ms > 0:
         yield from Routines.Yield.wait(_merchant_alt_wait_ms)

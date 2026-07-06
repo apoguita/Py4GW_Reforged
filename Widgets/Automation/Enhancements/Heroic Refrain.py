@@ -35,7 +35,7 @@ from Py4GWCoreLib import Player, Party, PyImGui, IniHandler, Timer
 
 # ─── Make sure "heroic_refrain" is on the import path ──────────────────
 script_directory = os.path.dirname(os.path.abspath(__file__))
-project_root     = Py4GW.Console.get_projects_path()
+project_root     = PySystem.Console.get_projects_path()
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 

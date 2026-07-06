@@ -1169,7 +1169,7 @@ class Salad_Farm(ReportsProgress):
                         self.pyMerchant.collector_buy_item(item, 0, turn_in, buy)
 
         except Exception as e:
-            self.Log(f"Error in Exchanging Salad: {str(e)}", Py4GW.Console.MessageType.Error)
+            self.Log(f"Error in Exchanging Salad: {str(e)}", PySystem.Console.MessageType.Error)
 
     def ExchangeSaladsDone(self):
         return not CheckIfInventoryHasItem(ModelID.Iboga_Petal, 2)
@@ -1179,7 +1179,7 @@ class Salad_Farm(ReportsProgress):
             self.Log("Bags Full - Manually Handle")
             self.Stop()
 
-    def Log(self, text, msgType=Py4GW.Console.MessageType.Info):
+    def Log(self, text, msgType=PySystem.Console.MessageType.Info):
         if self.window:
             self.window.Log(text, msgType)
     ### --- SETUP --- ###
@@ -1200,7 +1200,7 @@ class Salad_Farm(ReportsProgress):
         primary, secondary = Agent.GetProfessionNames(Player.GetAgentID())
         
         if primary != Professions.Name.Dervish and secondary != Professions.Name.Elementalist and primary != Professions.Name.Elementalist and secondary != Professions.Name.Dervish :        
-            self.Log("Bot Requires D/E or E/D", Py4GW.Console.MessageType.Error)            
+            self.Log("Bot Requires D/E or E/D", PySystem.Console.MessageType.Error)            
             self.InternalStop()
             return False
         else:
@@ -1239,7 +1239,7 @@ class Salad_Farm(ReportsProgress):
             # Try to follow the path based on pathing points and movement handler.
             Routines.Movement.FollowPath(path_handler, movement_handler)
         except Exception as e:
-            Py4GW.Console.Log("Run To Drakes", str(e), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Run To Drakes", str(e), PySystem.Console.MessageType.Error)
 
     def RunToGroupDone(self, path_handler, movement_handler):
         if not self.salad_step_done_timer.IsRunning():
@@ -1314,7 +1314,7 @@ class Salad_Farm(ReportsProgress):
             if hp < dangerHp and regen_time_remain < 3000 and HasEnoughEnergy(self.skillBar.regen) and IsSkillReadyById(self.skillBar.regen):
                 CastSkillByIdAndSlot(self.skillBar.regen, self.skillBar.regen_slot)
         except Exception as e:
-            Py4GW.Console.Log("StayAlive", str(e), Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("StayAlive", str(e), PySystem.Console.MessageType.Error)
 
     def Kill(self):
         if not self.salad_second_timer.IsRunning():
@@ -1354,7 +1354,7 @@ class Salad_Farm(ReportsProgress):
                       
                     Player.Interact(enemy)
         except Exception as e:
-            Py4GW.Console.Log("Kill Loop Error", f"Kill Loop Error {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Kill Loop Error", f"Kill Loop Error {str(e)}", PySystem.Console.MessageType.Error)
 
     def KillLoopComplete(self):
         try:
@@ -1374,7 +1374,7 @@ class Salad_Farm(ReportsProgress):
 
             return False
         except:
-            self.Log("Kill Loop Error", Py4GW.Console.MessageType.Error)
+            self.Log("Kill Loop Error", PySystem.Console.MessageType.Error)
 
     # If issues comment internals and call super().CanPickUp()
     def CanPickUp(self, agentId, player_id):
@@ -1435,7 +1435,7 @@ class Salad_Farm(ReportsProgress):
 
                 Player.Interact(item)
         except Exception as e:
-            Py4GW.Console.Log("Loot Loop", f"Error during looting {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Loot Loop", f"Error during looting {str(e)}", PySystem.Console.MessageType.Error)
 
     def LootLoopComplete(self):
         try:
@@ -1453,7 +1453,7 @@ class Salad_Farm(ReportsProgress):
 
             return False
         except Exception as e:
-            Py4GW.Console.Log("Loot Loop Complete", f"Error during looting {str(e)}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Loot Loop Complete", f"Error during looting {str(e)}", PySystem.Console.MessageType.Error)
     
     def CheckFirstGroupComplete(self):
         done = self.LootLoopComplete() or self.ShouldForceTransitionStep()
@@ -1573,17 +1573,17 @@ def main():
                 salad_Routine.Update()
                 
     except ImportError as e:
-        Py4GW.Console.Log(bot_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

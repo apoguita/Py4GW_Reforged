@@ -818,7 +818,7 @@ def _dispatch_clone_test() -> None:
         except Exception as exc:
             print(f"[{MODULE_NAME}] component clone error: {exc}")
 
-    Py4GW.Game.enqueue(_action)
+    PyGameThread.enqueue(_action)
     print(f"[{MODULE_NAME}] component clone enqueued")
 
 
@@ -941,7 +941,7 @@ def run_clone_test() -> None:
         _dispatch_clone_test()
         print(f"[{MODULE_NAME}] diagnostic end")
 
-    Py4GW.Game.enqueue(_action)
+    PyGameThread.enqueue(_action)
 
 
 def update_frame_anchors() -> None:

@@ -48,21 +48,21 @@ QUICK_ACTIONS_MENU_ICON_GAP = 4.0
 QUICK_ACTIONS_MENU_REASON_WIDTH = 130.0
 
 PROFILE_VERSION = 32
-CONFIG_DIR = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Config", "MerchantRules")
+CONFIG_DIR = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "MerchantRules")
 SHARED_PROFILES_DIR = os.path.join(CONFIG_DIR, "Profiles")
 RECOVERY_DIR = os.path.join(CONFIG_DIR, "Recovery")
-DATA_DIR = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Data")
+DATA_DIR = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Data")
 CATALOG_PATH = os.path.join(DATA_DIR, "merchant_rules_catalog.json")
 DROP_DATA_PATH = os.path.join(DATA_DIR, "modelid_drop_data.json")
 ITEM_HANDLING_ITEMS_CATALOG_PATH = os.path.join(
-    Py4GW.Console.get_projects_path(),
+    PySystem.Console.get_projects_path(),
     "Sources",
     "frenkeyLib",
     "ItemHandling",
     "Items",
     "items.json",
 )
-MODS_DATA_DIR = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "marks_sources", "mods_data")
+MODS_DATA_DIR = os.path.join(PySystem.Console.get_projects_path(), "Sources", "marks_sources", "mods_data")
 RUNES_CATALOG_PATH = os.path.join(MODS_DATA_DIR, "runes.json")
 SEARCH_RESULT_LIMIT = 12
 TRAVEL_TIMEOUT_MS = 20000
@@ -4936,7 +4936,7 @@ class MerchantRulesWidget:
         return _get_config_path_for_account_key(account_key)
 
     def _get_floating_icon_path(self) -> str:
-        return os.path.join(Py4GW.Console.get_projects_path(), MODULE_ICON)
+        return os.path.join(PySystem.Console.get_projects_path(), MODULE_ICON)
 
     def _ensure_floating_ui_key(self) -> str:
         if self.floating_ui_ini_key:

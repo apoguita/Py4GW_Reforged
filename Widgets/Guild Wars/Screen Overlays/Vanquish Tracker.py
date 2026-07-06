@@ -17,7 +17,7 @@ MODULE_ICON = "Textures\\Module_Icons\\Vanquish Monitor.png"
 
 module_name = "Vanquish Monitor"
 
-root_path =  Py4GW.Console.get_projects_path()
+root_path =  PySystem.Console.get_projects_path()
 script_path = os.path.join(root_path, "Widgets/Config/Vanquish.ini")
 
 ini_handler = IniHandler(script_path)

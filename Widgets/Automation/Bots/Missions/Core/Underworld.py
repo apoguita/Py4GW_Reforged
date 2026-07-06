@@ -63,7 +63,7 @@ MODULE_ICON = "Textures/Module_Icons/Underworld.png"
 BOT_NAME    = "Underworld"
 
 # ── Persistent configuration (INI file) ──────────────────────────────────────
-_ini_file = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot.ini")
+_ini_file = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot.ini")
 _ini = IniHandler(_ini_file)
 
 # ── Consumable definitions ──────────────────────────────────────────────────
@@ -466,17 +466,17 @@ def _restart_main_loop(bot_instance: Botting, reason: str) -> None:
     try:
         if target:
             fsm.jump_to_state_by_name(target)
-            ConsoleLog(BOT_NAME, f"[WIPE] {reason} – restarting at {target}.", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[WIPE] {reason} – restarting at {target}.", PySystem.Console.MessageType.Info)
         else:
-            ConsoleLog(BOT_NAME, "[WIPE] MAIN_LOOP header missing, restarting from first state.", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[WIPE] MAIN_LOOP header missing, restarting from first state.", PySystem.Console.MessageType.Warning)
             fsm.jump_to_state_by_step_number(0)
     except (ValueError, IndexError):
         # ValueError  – state name not found; IndexError – states list empty
-        ConsoleLog(BOT_NAME, f"[WIPE] Header '{target}' not found, restarting from first state.", Py4GW.Console.MessageType.Error)
+        ConsoleLog(BOT_NAME, f"[WIPE] Header '{target}' not found, restarting from first state.", PySystem.Console.MessageType.Error)
         try:
             fsm.jump_to_state_by_step_number(0)
         except (ValueError, IndexError):
-            ConsoleLog(BOT_NAME, "[WIPE] FSM has no states – cannot restart.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(BOT_NAME, "[WIPE] FSM has no states – cannot restart.", PySystem.Console.MessageType.Error)
     finally:
         fsm.resume()
 
@@ -550,7 +550,7 @@ def _enqueue_imprisoned_spirits_flags(bot_instance: Botting) -> None:
             if email and email.lower() not in known:
                 right_emails.append(email)
                 ImprisonedSpiritsSettings.set_team(email, "right")
-                ConsoleLog(BOT_NAME, f"[Imprisoned] Auto-assigned '{email}' to right team.", Py4GW.Console.MessageType.Info)
+                ConsoleLog(BOT_NAME, f"[Imprisoned] Auto-assigned '{email}' to right team.", PySystem.Console.MessageType.Info)
 
         assignments: list[tuple[str, int, float, float]] = []
         cb_idx = 0
@@ -566,7 +566,7 @@ def _enqueue_imprisoned_spirits_flags(bot_instance: Botting) -> None:
                 continue
             x, y = LEFT_POINTS[left_pt]
             assignments.append((email, cb_idx, float(x), float(y)))
-            ConsoleLog(BOT_NAME, f"[Imprisoned] Left  [{cb_idx}] {email} \u2192 ({x},{y})", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[Imprisoned] Left  [{cb_idx}] {email} \u2192 ({x},{y})", PySystem.Console.MessageType.Info)
             cb_idx  += 1
             left_pt += 1
 
@@ -581,7 +581,7 @@ def _enqueue_imprisoned_spirits_flags(bot_instance: Botting) -> None:
                 continue
             x, y = RIGHT_POINTS[right_pt]
             assignments.append((email, cb_idx, float(x), float(y)))
-            ConsoleLog(BOT_NAME, f"[Imprisoned] Right [{cb_idx}] {email} \u2192 ({x},{y})", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[Imprisoned] Right [{cb_idx}] {email} \u2192 ({x},{y})", PySystem.Console.MessageType.Info)
             cb_idx   += 1
             right_pt += 1
 
@@ -591,7 +591,7 @@ def _enqueue_imprisoned_spirits_flags(bot_instance: Botting) -> None:
                 break
             x, y = LEFT_POINTS[left_pt]
             assignments.append((email, cb_idx, float(x), float(y)))
-            ConsoleLog(BOT_NAME, f"[Imprisoned] Overflow→Left  [{cb_idx}] {email} \u2192 ({x},{y})", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[Imprisoned] Overflow→Left  [{cb_idx}] {email} \u2192 ({x},{y})", PySystem.Console.MessageType.Info)
             cb_idx  += 1
             left_pt += 1
 
@@ -601,12 +601,12 @@ def _enqueue_imprisoned_spirits_flags(bot_instance: Botting) -> None:
                 break
             x, y = RIGHT_POINTS[right_pt]
             assignments.append((email, cb_idx, float(x), float(y)))
-            ConsoleLog(BOT_NAME, f"[Imprisoned] Overflow→Right [{cb_idx}] {email} \u2192 ({x},{y})", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[Imprisoned] Overflow→Right [{cb_idx}] {email} \u2192 ({x},{y})", PySystem.Console.MessageType.Info)
             cb_idx   += 1
             right_pt += 1
 
         _get_adapter().batch_set_flags(assignments)
-        ConsoleLog(BOT_NAME, f"[Imprisoned] Flagged {len(assignments)} account(s) total.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, f"[Imprisoned] Flagged {len(assignments)} account(s) total.", PySystem.Console.MessageType.Info)
 
     bot_instance.States.AddCustomState(_set_team_flags, "Set Imprisoned Spirits Team Flags")
 
@@ -679,7 +679,7 @@ def EnqueueDialogUntilQuestActive(
         ConsoleLog(
             BOT_NAME,
             f"[QuestDialog] Quest {target_quest_id} was not set after retries.",
-            Py4GW.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Warning,
         )
         _append_debug_watchdog_log(
             f"Quest {target_quest_id} still not active after retries."
@@ -879,7 +879,7 @@ def _move_with_unstuck(
                 ConsoleLog(
                     BOT_NAME,
                     f"[Move] Overall timeout ({overall_timeout_s:.0f}s) reached for ({tx:.0f},{ty:.0f}). Aborting.",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
                 return
 
@@ -919,7 +919,7 @@ def _move_with_unstuck(
                     ConsoleLog(
                         BOT_NAME,
                         f"[Move] Stuck at ({px:.0f},{py:.0f}) → ({tx:.0f},{ty:.0f}). Recovering.",
-                        Py4GW.Console.MessageType.Warning,
+                        PySystem.Console.MessageType.Warning,
                     )
                     Player.SendChatCommand("stuck")
                     yield from Routines.Yield.wait(1000)
@@ -933,7 +933,7 @@ def _move_with_unstuck(
                         ConsoleLog(
                             BOT_NAME,
                             f"[Move] Trying offset waypoint ({offset_pt[0]:.0f},{offset_pt[1]:.0f})",
-                            Py4GW.Console.MessageType.Info,
+                            PySystem.Console.MessageType.Info,
                         )
                         yield from Routines.Yield.Movement.FollowPath(
                             path_points=[offset_pt],
@@ -1064,7 +1064,7 @@ def _coro_dhuum_spirit_form_watchdog(bot: Botting):
                         ConsoleLog(
                             BOT_NAME,
                             f"[Dhuum] {email} lost Spirit Form — flag restored to ({ox:.0f}, {oy:.0f}).",
-                            Py4GW.Console.MessageType.Info,
+                            PySystem.Console.MessageType.Info,
                         )
                         _append_debug_watchdog_log(f"Flag restored -> {email} ({ox:.0f}, {oy:.0f})")
                     except Exception:
@@ -1081,7 +1081,7 @@ def _coro_dhuum_spirit_form_watchdog(bot: Botting):
                     ConsoleLog(
                         BOT_NAME,
                         f"[Dhuum] {email} gained Spirit Form — repositioning flag to ghost area.",
-                        Py4GW.Console.MessageType.Info,
+                        PySystem.Console.MessageType.Info,
                     )
                     _append_debug_watchdog_log(
                         f"Spirit Form detected -> {email} saved=({cur[0]:.0f}, {cur[1]:.0f})" if cur else
@@ -1103,7 +1103,7 @@ def _coro_dhuum_spirit_form_watchdog(bot: Botting):
                 ConsoleLog(
                     BOT_NAME,
                     f"[Dhuum] Spirit Form watchdog error for {email}: {_e}",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
 
 
@@ -1293,7 +1293,7 @@ def Enter_UW(bot_instance: Botting):
         name, mid = UW_ENTRYPOINTS.get(key, UW_ENTRYPOINTS[DEFAULT_UW_ENTRYPOINT_KEY])
         _enter_ep[0] = name
         _enter_ep[1] = mid
-        ConsoleLog(BOT_NAME, f"[Enter] Entry point resolved: {name} (map {mid})", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, f"[Enter] Entry point resolved: {name} (map {mid})", PySystem.Console.MessageType.Info)
 
     def _travel_to_entrypoint() -> None:
         import random
@@ -1876,7 +1876,7 @@ def Dhuum(bot_instance: Botting):
 
         sacrifice_emails = DhuumSettings.SacrificeEmails
         if not sacrifice_emails:
-            ConsoleLog(BOT_NAME, "[Dhuum] No sacrifice accounts configured in Dhuum settings.", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Dhuum] No sacrifice accounts configured in Dhuum settings.", PySystem.Console.MessageType.Warning)
             return
 
         cb_flagged_emails: list[str] = []
@@ -1893,13 +1893,13 @@ def Dhuum(bot_instance: Botting):
             cb_flagged_emails.append(email)
 
         if not cb_flagged_emails:
-            ConsoleLog(BOT_NAME, "[Dhuum] No sacrifice accounts found in shared memory.", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Dhuum] No sacrifice accounts found in shared memory.", PySystem.Console.MessageType.Warning)
             return
 
         ConsoleLog(
             BOT_NAME,
             f"[Dhuum] Flagged {len(cb_flagged_emails)} sacrifice account(s): {cb_flagged_emails}",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     def _flag_survivor_accounts() -> None:
@@ -1929,13 +1929,13 @@ def Dhuum(bot_instance: Botting):
             cb_flagged_emails.append(email)
 
         if not cb_flagged_emails:
-            ConsoleLog(BOT_NAME, "[Dhuum] No survivor accounts to flag.", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, "[Dhuum] No survivor accounts to flag.", PySystem.Console.MessageType.Info)
             return
 
         ConsoleLog(
             BOT_NAME,
             f"[Dhuum] Flagged {len(cb_flagged_emails)} survivor account(s): {cb_flagged_emails}",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     
@@ -1949,7 +1949,7 @@ def Dhuum(bot_instance: Botting):
     def _coro_follow_king_to_destination():
         """Follow model 2403 until it reaches the area around the destination coords."""
         deadline = time.time() + _KING_TIMEOUT_S
-        ConsoleLog(BOT_NAME, "[Dhuum] Waiting for the King to walk to position ...", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, "[Dhuum] Waiting for the King to walk to position ...", PySystem.Console.MessageType.Info)
         while time.time() < deadline:
             king_id = next(
                 (a for a in AgentArray.GetAgentArray() if Agent.IsValid(a) and int(Agent.GetModelID(a)) == _KING_MODEL_ID),
@@ -1963,7 +1963,7 @@ def Dhuum(bot_instance: Botting):
 
             # Stop following once the King has reached his destination
             if Utils.Distance((kx, ky), (_KING_TARGET_X, _KING_TARGET_Y)) <= _KING_DEST_RADIUS:
-                ConsoleLog(BOT_NAME, "[Dhuum] King has reached the position.", Py4GW.Console.MessageType.Info)
+                ConsoleLog(BOT_NAME, "[Dhuum] King has reached the position.", PySystem.Console.MessageType.Info)
                 return
 
             # Move towards the King if we are too far away
@@ -1973,7 +1973,7 @@ def Dhuum(bot_instance: Botting):
 
             yield from Routines.Yield.wait(500)
 
-        ConsoleLog(BOT_NAME, "[Dhuum] Timed out waiting for the King - continuing anyway.", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Dhuum] Timed out waiting for the King - continuing anyway.", PySystem.Console.MessageType.Warning)
 
     bot_instance.States.AddCustomState(lambda: _toggle_wait_for_party(False), "Disable WaitIfPartyMemberTooFar")
     bot_instance.States.AddCustomState(lambda: _toggle_move_to_party_member_if_dead(False), "Disable MoveToPartyMemberIfDead")
@@ -2112,7 +2112,7 @@ def Dhuum(bot_instance: Botting):
             None,
         )
         if chest_id is None:
-            ConsoleLog(BOT_NAME, "[Dhuum] Underworld Chest not found for looting!", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Dhuum] Underworld Chest not found for looting!", PySystem.Console.MessageType.Warning)
             return
 
         my_email = Player.GetAccountEmail()
@@ -2123,7 +2123,7 @@ def Dhuum(bot_instance: Botting):
             if acc.AgentData.Map.MapID == current_map_id
         ]
 
-        ConsoleLog(BOT_NAME, f"[Dhuum] Looting chest with {len(same_map_accounts)} account(s)", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, f"[Dhuum] Looting chest with {len(same_map_accounts)} account(s)", PySystem.Console.MessageType.Info)
 
         for account in same_map_accounts:
             email = str(account.AccountEmail)
@@ -2134,9 +2134,9 @@ def Dhuum(bot_instance: Botting):
                 params=(chest_id, 0, 0, 0),
             )
             if msg_index < 0:
-                ConsoleLog(BOT_NAME, f"[Dhuum] Failed to send InteractWithTarget to {email}", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(BOT_NAME, f"[Dhuum] Failed to send InteractWithTarget to {email}", PySystem.Console.MessageType.Warning)
             else:
-                ConsoleLog(BOT_NAME, f"[Dhuum] Sent InteractWithTarget (chest) to {email}", Py4GW.Console.MessageType.Info)
+                ConsoleLog(BOT_NAME, f"[Dhuum] Sent InteractWithTarget (chest) to {email}", PySystem.Console.MessageType.Info)
             yield from Routines.Yield.wait(5000)
 
     bot_instance.States.AddCustomState(
@@ -2208,7 +2208,7 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
         widget_handler = get_widget_handler()
         if not widget_handler.is_widget_enabled(_MR_WIDGET_NAME):
             widget_handler.enable_widget(_MR_WIDGET_NAME)
-            Py4GW.Console.Log(BOT_NAME, "Enabled MerchantRules widget on leader.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(BOT_NAME, "Enabled MerchantRules widget on leader.", PySystem.Console.MessageType.Info)
 
         sender_email = Player.GetAccountEmail()
         all_accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
@@ -2223,21 +2223,21 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
                 (_MR_WIDGET_NAME, "", "", ""),
             )
         if followers:
-            Py4GW.Console.Log(BOT_NAME, f"Sent EnableWidget '{_MR_WIDGET_NAME}' to {len(followers)} follower(s).", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(BOT_NAME, f"Sent EnableWidget '{_MR_WIDGET_NAME}' to {len(followers)} follower(s).", PySystem.Console.MessageType.Info)
             yield from Routines.Yield.wait(1000)
 
         widget = _get_merchant_rules_widget()
         if widget is None:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 BOT_NAME,
                 "MerchantRules widget not found after enabling. Skipping inventory refill.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return
 
         # ── 1. Travel the leader to the Guild Hall first ──────────────
         if not Map.IsGuildHall():
-            Py4GW.Console.Log(BOT_NAME, "Traveling to Guild Hall for MerchantRules.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(BOT_NAME, "Traveling to Guild Hall for MerchantRules.", PySystem.Console.MessageType.Info)
             Map.TravelGH()
             yield from Routines.Yield.wait(3000)
             elapsed = 0
@@ -2247,7 +2247,7 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
 
         # ── 2. Tell each follower to travel to their own Guild Hall ──
         if followers:
-            Py4GW.Console.Log(BOT_NAME, f"Sending TravelToGuildHall to {len(followers)} follower(s).", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(BOT_NAME, f"Sending TravelToGuildHall to {len(followers)} follower(s).", PySystem.Console.MessageType.Info)
             for account in followers:
                 target_email = str(account.AccountEmail)
                 GLOBAL_CACHE.ShMem.SendMessage(
@@ -2260,7 +2260,7 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
 
         # ── 3. Wait until ALL accounts are on the same map as the leader ─
         leader_map_id = int(Map.GetMapID())
-        Py4GW.Console.Log(BOT_NAME, f"Waiting for all accounts to arrive in Guild Hall (map {leader_map_id}).", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(BOT_NAME, f"Waiting for all accounts to arrive in Guild Hall (map {leader_map_id}).", PySystem.Console.MessageType.Info)
         elapsed = 0
         all_arrived = False
         while elapsed < _GH_TRAVEL_TIMEOUT_MS:
@@ -2275,12 +2275,12 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
             elapsed += _POLL_MS
 
         if not all_arrived:
-            Py4GW.Console.Log(BOT_NAME, "Not all accounts reached the Guild Hall. Continuing anyway.", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(BOT_NAME, "Not all accounts reached the Guild Hall. Continuing anyway.", PySystem.Console.MessageType.Warning)
 
         yield from Routines.Yield.wait(2000)
 
         # ── 4. Execute MerchantRules on the leader (Execute Here) ─────
-        Py4GW.Console.Log(BOT_NAME, "Starting MerchantRules Execute Here (leader).", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(BOT_NAME, "Starting MerchantRules Execute Here (leader).", PySystem.Console.MessageType.Info)
         widget._queue_execute_here()
         yield from Routines.Yield.wait(_POLL_MS)
 
@@ -2290,11 +2290,11 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
             elapsed += _POLL_MS
 
         if widget.execution_running:
-            Py4GW.Console.Log(BOT_NAME, "MerchantRules leader execution timed out.", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(BOT_NAME, "MerchantRules leader execution timed out.", PySystem.Console.MessageType.Warning)
         elif widget.last_error:
-            Py4GW.Console.Log(BOT_NAME, f"MerchantRules leader error: {widget.last_error}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(BOT_NAME, f"MerchantRules leader error: {widget.last_error}", PySystem.Console.MessageType.Warning)
         else:
-            Py4GW.Console.Log(BOT_NAME, "MerchantRules leader execution completed.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(BOT_NAME, "MerchantRules leader execution completed.", PySystem.Console.MessageType.Info)
 
         # ── 5. Send MerchantRules EXECUTE to all followers ────────────
         if not followers:
@@ -2315,10 +2315,10 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
             )
             if msg_idx != -1:
                 sent_refs.append((target_email, int(msg_idx)))
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     BOT_NAME,
                     f"Sent MerchantRules execute to {target_email}.",
-                    Py4GW.Console.MessageType.Info,
+                    PySystem.Console.MessageType.Info,
                 )
 
         if not sent_refs:
@@ -2336,9 +2336,9 @@ def _do_merchant_rules_refill(bot_instance: Botting) -> None:
             elapsed += _POLL_MS
 
         if not all_done:
-            Py4GW.Console.Log(BOT_NAME, "MerchantRules follower execution timed out on some accounts.", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(BOT_NAME, "MerchantRules follower execution timed out on some accounts.", PySystem.Console.MessageType.Warning)
         else:
-            Py4GW.Console.Log(BOT_NAME, "MerchantRules follower execution completed on all accounts.", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(BOT_NAME, "MerchantRules follower execution completed on all accounts.", PySystem.Console.MessageType.Info)
 
     bot_instance.Wait.UntilOnOutpost()
     bot_instance.config.FSM.AddYieldRoutineStep(
@@ -2445,7 +2445,7 @@ def _log_successful_run() -> None:
         with open(_WIPE_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(entry)
     except OSError as exc:
-        ConsoleLog(BOT_NAME, f"[Run] Could not write run log: {exc}", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Run] Could not write run log: {exc}", PySystem.Console.MessageType.Warning)
     # Persist per-quest instance uptimes for the avg column.
     if _quest_completion_times:
         for quest_name in _QUEST_ORDER:
@@ -2456,8 +2456,8 @@ def _log_successful_run() -> None:
             with open(_QUEST_TIMES_FILE, "w", encoding="utf-8") as f:
                 _json.dump(_quest_times_log, f, indent=2)
         except OSError as exc:
-            ConsoleLog(BOT_NAME, f"[Run] Could not write quest times log: {exc}", Py4GW.Console.MessageType.Warning)
-    ConsoleLog(BOT_NAME, "[Run] Successful run logged.", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, f"[Run] Could not write quest times log: {exc}", PySystem.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, "[Run] Successful run logged.", PySystem.Console.MessageType.Info)
 
 def Wait_for_Spawns(bot_instance: Botting, x, y):
     _TIMEOUT_S = 20.0
@@ -2607,7 +2607,7 @@ def _draw_imprisoned_spirits_settings() -> None:
         PyImGui.end_table()
 
 
-_ARMOR_JSON_FILE = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Config", "EquippedArmor.json")
+_ARMOR_JSON_FILE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "EquippedArmor.json")
 _ARMOR_SLOT_NAMES = {2: "Chest", 3: "Legs", 4: "Head", 5: "Feet", 6: "Hands"}
 
 _armor_edit_email: str | None = None
@@ -2640,7 +2640,7 @@ def _save_armor_json(email: str, normal: dict[str, int], sacrifice: dict[str, in
             json.dump(all_armor, f, indent=2)
         os.replace(tmp, _ARMOR_JSON_FILE)
     except Exception as e:
-        ConsoleLog(BOT_NAME, f"Armor JSON save error: {e}", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"Armor JSON save error: {e}", PySystem.Console.MessageType.Warning)
 
 
 def _input_int_val(result: object, current: int) -> int:
@@ -2805,7 +2805,7 @@ def _draw_quest_settings():
             bot.Stop()
         bot.config.initialized = False
         bot.config.FSM.states.clear()
-        ConsoleLog(BOT_NAME, f"[Settings] Bot mode switched to '{new_mode}' — FSM will rebuild on next Start.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, f"[Settings] Bot mode switched to '{new_mode}' — FSM will rebuild on next Start.", PySystem.Console.MessageType.Info)
     _current = (BotSettings.Repeat, BotSettings.UseCons, BotSettings.HardMode, BotSettings.BotMode)
     if _current != _snapshot:
         BotSettings.save()
@@ -2983,8 +2983,8 @@ def _draw_settings():
         PyImGui.end_tab_bar()
 
 
-_WIPE_LOG_FILE = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot_wipes.log")
-_QUEST_TIMES_FILE = os.path.join(Py4GW.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot_quest_times.json")
+_WIPE_LOG_FILE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot_wipes.log")
+_QUEST_TIMES_FILE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot_quest_times.json")
 
 def _load_quest_times_log() -> dict[str, list[int]]:
     """Load per-quest elapsed-second lists from the JSON log, or return empty dict."""
@@ -3033,15 +3033,15 @@ def _log_wipe_step(fsm) -> None:
         with open(_WIPE_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(entry)
     except OSError as exc:
-        ConsoleLog(BOT_NAME, f"[WIPE] Could not write wipe log: {exc}", Py4GW.Console.MessageType.Warning)
-    ConsoleLog(BOT_NAME, f"[WIPE] Logged wipe at step: {step_name} [{header}]", Py4GW.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[WIPE] Could not write wipe log: {exc}", PySystem.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f"[WIPE] Logged wipe at step: {step_name} [{header}]", PySystem.Console.MessageType.Warning)
 
 
 def OnPartyWipe(bot: "Botting"):
     global _planned_resign
     if _planned_resign:
         _planned_resign = False
-        ConsoleLog(BOT_NAME, "[WIPE] Party wipe after planned resign – ignored.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(BOT_NAME, "[WIPE] Party wipe after planned resign – ignored.", PySystem.Console.MessageType.Info)
         return
     fsm = bot.config.FSM
     _log_wipe_step(fsm)
@@ -3050,7 +3050,7 @@ def OnPartyWipe(bot: "Botting"):
 
 
 def _on_party_wipe(bot: "Botting"):
-    ConsoleLog(BOT_NAME, "[WIPE] Party wipe detected!", Py4GW.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, "[WIPE] Party wipe detected!", PySystem.Console.MessageType.Warning)
 
     while True:
         yield from Routines.Yield.wait(1000)
@@ -3060,7 +3060,7 @@ def _on_party_wipe(bot: "Botting"):
         # Without this guard the while loop would exit prematurely and resume the FSM
         # mid-transition, leading to a crash.
         if not Routines.Checks.Map.MapValid():
-            ConsoleLog(BOT_NAME, "[WIPE] Returned to outpost after wipe, restarting run...", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[WIPE] Returned to outpost after wipe, restarting run...", PySystem.Console.MessageType.Warning)
             yield from Routines.Yield.wait(3000)
             # Do NOT call _restart_main_loop() here — we are inside FSM.update()'s
             # managed-coroutines loop, so calling fsm.resume() would un-pause the FSM
@@ -3075,7 +3075,7 @@ def _on_party_wipe(bot: "Botting"):
             continue
 
         if not Agent.IsDead(player_id):
-            ConsoleLog(BOT_NAME, "[WIPE] Player resurrected in instance, resuming...", Py4GW.Console.MessageType.Info)
+            ConsoleLog(BOT_NAME, "[WIPE] Player resurrected in instance, resuming...", PySystem.Console.MessageType.Info)
             _request_wipe_restart("Player resurrected in instance")
             return
 
@@ -3212,7 +3212,7 @@ def main():
             _get_adapter().sync_runtime()
             # Watchdog: callback sometimes misses wipes — detect return to outpost by map ID
             if _entered_dungeon and Map.GetMapID() == 138:
-                ConsoleLog(BOT_NAME, "[WIPE] Watchdog: back in outpost (map 138) without wipe callback — restarting.", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(BOT_NAME, "[WIPE] Watchdog: back in outpost (map 138) without wipe callback — restarting.", PySystem.Console.MessageType.Warning)
                 _pending_wipe_recovery = False  # consume pending flag so we don't restart twice
                 _restart_main_loop(bot, "Watchdog: returned to map 138")
         # If a wipe-recovery was requested by a managed coroutine, perform the FSM
@@ -3233,7 +3233,7 @@ def main():
         if Routines.Checks.Map.MapValid():
             bot.Update()
         bot.UI.draw_window(
-            icon_path=os.path.join(Py4GW.Console.get_projects_path(), MODULE_ICON),
+            icon_path=os.path.join(PySystem.Console.get_projects_path(), MODULE_ICON),
             main_child_dimensions=(350, 570),
             additional_ui=_draw_main_additional_ui,
             extra_tabs=[("Run Log", _draw_run_log)],
@@ -3248,7 +3248,7 @@ def main():
         if "list.remove" in str(exc):
             ConsoleLog(BOT_NAME,
                        "[WARN] Transient FSM coroutine list error (non-fatal) — bot continues.",
-                       Py4GW.Console.MessageType.Warning)
+                       PySystem.Console.MessageType.Warning)
         else:
             _log_crash(exc, _tb.format_exc())
             raise

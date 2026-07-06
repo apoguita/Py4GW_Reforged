@@ -172,17 +172,17 @@ class YAVB:
 
         match severity:
             case LogConsole.LogSeverity.INFO:
-                console_severity = Py4GW.Console.MessageType.Info
+                console_severity = PySystem.Console.MessageType.Info
             case LogConsole.LogSeverity.WARNING:
-                console_severity = Py4GW.Console.MessageType.Warning
+                console_severity = PySystem.Console.MessageType.Warning
             case LogConsole.LogSeverity.ERROR:
-                console_severity = Py4GW.Console.MessageType.Error
+                console_severity = PySystem.Console.MessageType.Error
             case LogConsole.LogSeverity.CRITICAL:
-                console_severity = Py4GW.Console.MessageType.Performance
+                console_severity = PySystem.Console.MessageType.Performance
             case LogConsole.LogSeverity.SUCCESS:
-                console_severity = Py4GW.Console.MessageType.Success
+                console_severity = PySystem.Console.MessageType.Success
             case _:
-                console_severity = Py4GW.Console.MessageType.Info
+                console_severity = PySystem.Console.MessageType.Info
             
         ConsoleLog(f"{self.name}", f"{message} - {extra_info}", console_severity,log= self.detailed_logging)
         

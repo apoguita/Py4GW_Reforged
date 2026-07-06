@@ -420,7 +420,7 @@ def draw_event_log_tab():
     """Draw the event log tab - shows real-time events from callbacks."""
     # Status display
     try:
-        import PyCombatEvents
+        import PyAgentEvents
         queue = PyCombatEvents.GetCombatEventQueue()
         is_init = queue.IsInitialized()
         raw_events = CombatEvents.GetEvents()
@@ -1028,7 +1028,7 @@ def draw_debug_tab():
                 if _stances:
                     PyImGui.text("  Active stances:")
                     for agent_id, (skill_id, start, end) in list(_stances.items())[:10]:
-                        remaining = max(0, end - Py4GW.Game.get_tick_count64())
+                        remaining = max(0, end - PySystem.get_tick_count64())
                         PyImGui.text(f"    {get_agent_name(agent_id)}: {get_skill_name(skill_id)} ({int(remaining)}ms)")
                 else:
                     PyImGui.text("  Active stances: none")
@@ -1045,7 +1045,7 @@ def draw_debug_tab():
                             else:
                                 _, _, end = data
                                 is_estimated = False
-                            remaining = max(0, int(end - Py4GW.Game.get_tick_count64()))
+                            remaining = max(0, int(end - PySystem.get_tick_count64()))
                             est_marker = " estimated" if is_estimated else ""
                             PyImGui.text(f"    {get_agent_name(agent_id)}: {get_skill_name(skill_id)} {remaining}ms{est_marker}")
                             shown += 1

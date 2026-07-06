@@ -29,7 +29,7 @@ _last_run_ok = False
 
 def _log(message: str) -> None:
     global _logs
-    Py4GW.Console.Log(MODULE_NAME, message, Py4GW.Console.MessageType.Notice)
+    PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Notice)
     _logs.append(message)
     if len(_logs) > LOG_LIMIT:
         _logs = _logs[-LOG_LIMIT:]

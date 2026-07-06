@@ -2,7 +2,7 @@ from enum import IntEnum
 from typing import Optional, Union, TypeVar
 import ctypes
 from .prototypes import NativeFunctionPrototype, Prototypes
-import Py4GW
+import PyGameThread
 from ...Scanner import Scanner
 
 T = TypeVar("T")
@@ -173,7 +173,7 @@ class NativeFunction:
                 fn = self.prototype.build()(self.func_ptr)
                 return fn(*args)
 
-        Py4GW.Game.enqueue(_invoke)
+        PyGameThread.enqueue(_invoke)
         
     def __repr__(self):
         status = "Initialized" if self.is_valid() else "Not Initialized"

@@ -29,7 +29,7 @@ class MysticHealingSupport:
     def SetupHealingParty(bot: Botting, hero_list: list[tuple[HeroType, str]] = default_hero_template_list):
         '''Sets up the party with specified Mystic Healing Support heroes.'''
 
-        ConsoleLog("Mystic Healing Support", "Setting up party with Mystic Healing Support Heroes...", Py4GW.Console.MessageType.Info)
+        ConsoleLog("Mystic Healing Support", "Setting up party with Mystic Healing Support Heroes...", PySystem.Console.MessageType.Info)
         bot.Party.LeaveParty()
         for i, (hero_type, template) in enumerate(hero_list):
             bot.Party.AddHero(hero_type.value)
@@ -43,7 +43,7 @@ class MysticHealingSupport:
     def InitHeroComanagedRoutines(bot: Botting, hero_list: list[HeroType] = default_hero_list):
         '''Initialize Mystic Healing Support routines for a given list of heroes.'''
 
-        ConsoleLog("Mystic Healing Support", "Initializing Mystic Healing Support Routines for Heroes...", Py4GW.Console.MessageType.Info)
+        ConsoleLog("Mystic Healing Support", "Initializing Mystic Healing Support Routines for Heroes...", PySystem.Console.MessageType.Info)
         for i, hero_type in enumerate(hero_list):
             bot.States.AddManagedCoroutine(
                 _get_coroutine_name(hero_type.name),
@@ -54,7 +54,7 @@ class MysticHealingSupport:
     @staticmethod
     def RemoveHeroComanagedRoutines(bot: Botting, hero_list: list[HeroType] = default_hero_list):
         '''Removes the Mystic Healing Support routines for a given list of heroes.'''
-        ConsoleLog("Mystic Healing Support", "Removing Mystic Healing Support Routines for Heroes...", Py4GW.Console.MessageType.Info)
+        ConsoleLog("Mystic Healing Support", "Removing Mystic Healing Support Routines for Heroes...", PySystem.Console.MessageType.Info)
         for hero_type in hero_list:
             bot.States.RemoveManagedCoroutine(_get_coroutine_name(hero_type.name))
 
@@ -62,7 +62,7 @@ class MysticHealingSupport:
 def _healing_support_routine(hero_id: int, hero_index: int = 0, delay_ms: int = 0):
     '''Coroutine that provides Mystic Healing support for a specified hero.'''
    
-    ConsoleLog("[Mystic Healing Support]", f"Starting healing support routine for hero ID: {hero_id} at party index {hero_index}", Py4GW.Console.MessageType.Debug)
+    ConsoleLog("[Mystic Healing Support]", f"Starting healing support routine for hero ID: {hero_id} at party index {hero_index}", PySystem.Console.MessageType.Debug)
 
     delay_timer = ThrottledTimer(delay_ms)
     delay_timer.Start()

@@ -30,7 +30,7 @@ class _WAIT:
             map_name=target_map_name,
         )
         if not wait_of_map_load:
-            Py4GW.Console.Log("Wait for map load", "Map load failed.", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("Wait for map load", "Map load failed.", PySystem.Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             
     def _coro_until_condition(self, condition: Callable[[], bool], duration: int=1000):

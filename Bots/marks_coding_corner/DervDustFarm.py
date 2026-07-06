@@ -497,7 +497,7 @@ bot.SetMainRoutine(dust_farm_bot)
 
 def main():
     bot.Update()
-    TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures" , "dust_art.png")
+    TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures" , "dust_art.png")
     bot.UI.draw_window(icon_path=TEXTURE)
 
 

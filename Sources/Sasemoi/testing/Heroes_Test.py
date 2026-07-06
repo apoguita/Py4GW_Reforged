@@ -25,7 +25,7 @@ hero_template_list = [
 ]
 
 def SetupHeroManagedCoroutine(hero_type, hero_index):
-    ConsoleLog("Hero Testing", "Setting up Gwen Mystic Healing Support Routine...", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Hero Testing", "Setting up Gwen Mystic Healing Support Routine...", PySystem.Console.MessageType.Info)
     yield from _healing_support_routine(hero_type.value, hero_index=hero_index, delay_ms=0)
 
 def create_bot_routine(bot: Botting) -> None:
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     main()
 
 def _healing_support_routine(hero_id: int, hero_index: int = 1, delay_ms: int = 0):
-    ConsoleLog("[Mystic Healing Support]", f"Starting healing support routine for hero ID: {hero_id} at party index {hero_index}", Py4GW.Console.MessageType.Info)
+    ConsoleLog("[Mystic Healing Support]", f"Starting healing support routine for hero ID: {hero_id} at party index {hero_index}", PySystem.Console.MessageType.Info)
 
     delay_timer = ThrottledTimer(delay_ms)
     delay_timer.Start()

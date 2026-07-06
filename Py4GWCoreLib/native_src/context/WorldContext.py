@@ -1,5 +1,3 @@
-import PyPointers
-from Py4GW import Game
 import math
 
 from ctypes import (

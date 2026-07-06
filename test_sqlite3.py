@@ -33,7 +33,7 @@ _last_run_ok = False
 def _log(message: str) -> None:
     """Log to Py4GW and keep a small in-memory history for the test window."""
     global _logs
-    Py4GW.Console.Log(MODULE_NAME, message, Py4GW.Console.MessageType.Notice)
+    PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Notice)
     _logs.append(message)
     if len(_logs) > LOG_LIMIT:
         _logs = _logs[-LOG_LIMIT:]
@@ -55,7 +55,7 @@ def _assert(condition: bool, message: str) -> None:
 
 def _projects_data_path() -> Path:
     """Return the test artifact root under the projects data directory."""
-    return Path(Py4GW.Console.get_projects_path()).resolve() / "data" / "dbmgr_tests"
+    return Path(PySystem.Console.get_projects_path()).resolve() / "data" / "dbmgr_tests"
 
 
 def _workspace_root() -> Path:
@@ -65,7 +65,7 @@ def _workspace_root() -> Path:
 
 def _data_root() -> Path:
     """Return the DBMgr data root that all managed files should live under."""
-    return Path(Py4GW.Console.get_projects_path()).resolve() / "data"
+    return Path(PySystem.Console.get_projects_path()).resolve() / "data"
 
 
 def _backup_folder() -> Path:

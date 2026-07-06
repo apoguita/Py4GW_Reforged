@@ -707,22 +707,22 @@ loot = Loot()
 
 # region helper functions
 def Debug(message, title='Log', msg_type='Debug'):
-    py4gw_msg_type = Py4GW.Console.MessageType.Debug
+    py4gw_msg_type = PySystem.Console.MessageType.Debug
     if msg_type == 'Debug':
-        py4gw_msg_type = Py4GW.Console.MessageType.Debug
+        py4gw_msg_type = PySystem.Console.MessageType.Debug
     elif msg_type == 'Error':
-        py4gw_msg_type = Py4GW.Console.MessageType.Error
+        py4gw_msg_type = PySystem.Console.MessageType.Error
     elif msg_type == 'Info':
-        py4gw_msg_type = Py4GW.Console.MessageType.Info
+        py4gw_msg_type = PySystem.Console.MessageType.Info
     elif msg_type == 'Notice':
-        py4gw_msg_type = Py4GW.Console.MessageType.Notice
+        py4gw_msg_type = PySystem.Console.MessageType.Notice
     elif msg_type == 'Performance':
-        py4gw_msg_type = Py4GW.Console.MessageType.Performance
+        py4gw_msg_type = PySystem.Console.MessageType.Performance
     elif msg_type == 'Success':
-        py4gw_msg_type = Py4GW.Console.MessageType.Success
+        py4gw_msg_type = PySystem.Console.MessageType.Success
     elif msg_type == 'Warning':
-        py4gw_msg_type = Py4GW.Console.MessageType.Warning
-    Py4GW.Console.Log(title, str(message), py4gw_msg_type)
+        py4gw_msg_type = PySystem.Console.MessageType.Warning
+    PySystem.Console.Log(title, str(message), py4gw_msg_type)
 
 
 def DisableHeroAIWidget():
@@ -1631,7 +1631,7 @@ class Draw:
             PyImGui.pop_style_color(8)
         except Exception as e:
             current_function = inspect.currentframe().f_code.co_name  # type: ignore
-            Py4GW.Console.Log('BOT', f'Error in {current_function}: {str(e)}', Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log('BOT', f'Error in {current_function}: {str(e)}', PySystem.Console.MessageType.Error)
             raise
 
 
@@ -1672,17 +1672,17 @@ def main():
                     bot_vars.fsm_inv.update()
 
     except ImportError as e:
-        Py4GW.Console.Log('BOT', f'ImportError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'ImportError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log('BOT', f'ValueError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'ValueError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log('BOT', f'TypeError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'TypeError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log('BOT', f'Unexpected error encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Unexpected error encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     finally:
         pass
 

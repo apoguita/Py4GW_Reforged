@@ -1,4 +1,4 @@
-import Py4GW
+import PySystem
 import PyImGui
 
 from Py4GWCoreLib import GLOBAL_CACHE, Item
@@ -24,8 +24,8 @@ class State:
 state = State()
 
 
-def _log(message: str, msg_type=Py4GW.Console.MessageType.Info) -> None:
-    Py4GW.Console.Log(MODULE_NAME, message, msg_type)
+def _log(message: str, msg_type=PySystem.Console.MessageType.Info) -> None:
+    PySystem.Console.Log(MODULE_NAME, message, msg_type)
     state.last_status = message
 
 
@@ -38,7 +38,7 @@ def _refresh_offered_item_id() -> None:
             break
 
     if state.request_item_id == 0:
-        _log(f"No crafter offer found for model {state.receive_model_id}", Py4GW.Console.MessageType.Warning)
+        _log(f"No crafter offer found for model {state.receive_model_id}", PySystem.Console.MessageType.Warning)
     else:
         _log(f"Resolved request item id {state.request_item_id} from receive model {state.receive_model_id}")
 
@@ -73,7 +73,7 @@ def _resolve_trade_item_ids() -> tuple[list[int], list[int]] | None:
         if remaining_quantity > 0:
             _log(
                 f"Could not resolve enough bag item ids for model {model_id} qty {required_quantity}",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             return None
 
@@ -82,7 +82,7 @@ def _resolve_trade_item_ids() -> tuple[list[int], list[int]] | None:
 
 def _send_exchange() -> None:
     if state.request_item_id <= 0:
-        _log("Request item id is 0. Resolve it first or enter it manually.", Py4GW.Console.MessageType.Warning)
+        _log("Request item id is 0. Resolve it first or enter it manually.", PySystem.Console.MessageType.Warning)
         return
 
     trade_payload = _resolve_trade_item_ids()
@@ -107,10 +107,10 @@ def _send_exchange() -> None:
 def _click_customize_weapon() -> None:
     frame_id = UIManager.GetFrameIDByCustomLabel(frame_label="Merchant.CustomizeWeaponButton")
     if frame_id <= 0:
-        _log("Customize weapon button alias was not resolved.", Py4GW.Console.MessageType.Warning)
+        _log("Customize weapon button alias was not resolved.", PySystem.Console.MessageType.Warning)
         return
     if not UIManager.FrameExists(frame_id):
-        _log(f"Customize weapon button frame {frame_id} is not visible.", Py4GW.Console.MessageType.Warning)
+        _log(f"Customize weapon button frame {frame_id} is not visible.", PySystem.Console.MessageType.Warning)
         return
 
     UIManager.FrameClick(frame_id)
@@ -175,7 +175,7 @@ def main() -> None:
     try:
         draw_window()
     except Exception as exc:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {exc}", PySystem.Console.MessageType.Error)
 
 
 if __name__ == "__main__":

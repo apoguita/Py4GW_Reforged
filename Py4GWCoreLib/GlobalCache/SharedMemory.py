@@ -15,7 +15,7 @@ import math
 from multiprocessing import shared_memory
 from PyParty import HeroPartyMember, PetInfo
 from Py4GWCoreLib import SharedCommandType
-import Py4GW
+import PySystem
 import PyQuest
 from .shared_memory_src.Globals import (
     SHMEM_MODULE_NAME,
@@ -67,16 +67,16 @@ class Py4GWSharedMemoryManager:
         # Create or attach shared memory
         try:
             self.shm = shared_memory.SharedMemory(name=self.shm_name)
-            ConsoleLog(SHMEM_MODULE_NAME, "Attached to existing shared memory.", Py4GW.Console.MessageType.Info)
+            ConsoleLog(SHMEM_MODULE_NAME, "Attached to existing shared memory.", PySystem.Console.MessageType.Info)
             
         except FileNotFoundError:
             self.shm = shared_memory.SharedMemory(name=self.shm_name, create=True, size=self.size)
             self.ResetAllData()  # Initialize all player data
             
-            ConsoleLog(SHMEM_MODULE_NAME, "Shared memory area created.", Py4GW.Console.MessageType.Success)
+            ConsoleLog(SHMEM_MODULE_NAME, "Shared memory area created.", PySystem.Console.MessageType.Success)
             
         except BufferError:
-            ConsoleLog(SHMEM_MODULE_NAME, "Shared memory area already exists but could not be attached.", Py4GW.Console.MessageType.Error)
+            ConsoleLog(SHMEM_MODULE_NAME, "Shared memory area already exists but could not be attached.", PySystem.Console.MessageType.Error)
             raise
 
         self._hero_update_timer = ThrottledTimer(SHMEM_HERO_UPDATE_THROTTLE_MS)
@@ -89,7 +89,7 @@ class Py4GWSharedMemoryManager:
         
     #Base Methods
     def GetBaseTimestamp(self):
-        return Py4GW.Game.get_tick_count64()
+        return PySystem.get_tick_count64()
     
     @frame_cache(category="SharedMemory", source_lib="GetAllAccounts")
     def GetAllAccounts(self) -> AllAccounts:
@@ -291,7 +291,7 @@ class Py4GWSharedMemoryManager:
         if not account_email: return None
         acc = self.GetAllAccounts().GetAccountDataFromEmail(account_email)
         if acc: return acc
-        ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", Py4GW.Console.MessageType.Error, log = False)
+        ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", PySystem.Console.MessageType.Error, log = False)
         return None
      
     @frame_cache(category="SharedMemory", source_lib="GetAccountDataFromPartyNumber")
@@ -299,7 +299,7 @@ class Py4GWSharedMemoryManager:
         """Get player data for the account with the given party number."""
         acc = self.GetAllAccounts().GetAccountDataFromPartyNumber(party_number)
         if acc: return acc
-        ConsoleLog(SHMEM_MODULE_NAME, f"Party number {party_number} not found.", Py4GW.Console.MessageType.Error, log = False)
+        ConsoleLog(SHMEM_MODULE_NAME, f"Party number {party_number} not found.", PySystem.Console.MessageType.Error, log = False)
         return None
     
     @frame_cache(category="SharedMemory", source_lib="AccountHasEffect")
@@ -602,7 +602,7 @@ class Py4GWSharedMemoryManager:
             self._pet_update_timer.Reset()
         if self._intent_sweep_timer.IsExpired():
             self._intent_sweep_timer.Reset()
-            now = Py4GW.Game.get_tick_count64()
+            now = PySystem.get_tick_count64()
             # Inline sweep; the ThrottledTimer above already rate-limits
             # and iterating 64 slots is cheap. Bypasses the WHITEBOARD_SWEEP
             # ActionQueue since no code in this repo drains named queues

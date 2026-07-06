@@ -6,7 +6,7 @@ import PyImGui
 import importlib.util
 import time
 import random
-projects_base_path = Py4GW.Console.get_projects_path()
+projects_base_path = PySystem.Console.get_projects_path()
 BOUNTIES_DIR = os.path.join(projects_base_path,"Sources","ZaishenBounty")
 
 MODULE_NAME = "Zaishen Bounty"
@@ -195,7 +195,7 @@ def bot_routine(bot: Botting) -> None:
     bot.config.counters.clear_all()
 
     if not _queued_bounties:
-        ConsoleLog(BotSettings.BOT_NAME, "No bounties queued!", Py4GW.Console.MessageType.Error)
+        ConsoleLog(BotSettings.BOT_NAME, "No bounties queued!", PySystem.Console.MessageType.Error)
         return
 
     # Events
@@ -355,7 +355,7 @@ def _do_loop_jump(bot: "Botting", first_bounty_header: str):
     _loop_count += 1
     ConsoleLog(BotSettings.BOT_NAME,
                f"Back at outpost. Starting loop #{_loop_count}. Jumping to: {first_bounty_header}",
-               Py4GW.Console.MessageType.Info, True)
+               PySystem.Console.MessageType.Info, True)
     if bot.config.FSM.current_state:
         bot.config.FSM.current_state.reset()
     bot.config.FSM.jump_to_state_by_name(first_bounty_header)
@@ -667,7 +667,7 @@ def _draw_help():
 # =============================================================================
 bot.SetMainRoutine(bot_routine)
 
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Textures", "Module_Icons", "ZaishenBounty.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Module_Icons", "ZaishenBounty.png")
 bot.UI.override_draw_config(lambda: _draw_settings())
 bot.UI.override_draw_help(lambda: _draw_help())
 

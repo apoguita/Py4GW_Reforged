@@ -115,7 +115,7 @@ def _open_inventory() -> None:
     def _invoke() -> None:
         UIManager.Keypress(ControlAction.ControlAction_ToggleInventoryWindow.value, 0)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log("open inventory enqueued")
     _schedule_report("state after open inventory")
 
@@ -249,7 +249,7 @@ def _create_inventory_style_component() -> None:
                 )
             GWUI.TriggerFrameRedrawByFrameId(CREATED_FRAME_ID)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"create component enqueued parent={parent_id} child_offset=0x{TARGET_CHILD_OFFSET:X} "
         f"callback_count={len(callbacks)} primary_callback=0x{primary_callback:X} "

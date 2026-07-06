@@ -286,7 +286,7 @@ class ModelPopUp:
 
             PyImGui.end_table()
 
-        exports_dir = os.path.join(Py4GW.Console.get_projects_path(), "Settings", "Exports")
+        exports_dir = os.path.join(PySystem.Console.get_projects_path(), "Settings", "Exports")
         export_path = os.path.join(exports_dir, f"{self._export_filename}.txt") if self._export_filename else ""
         if export_path:
             if PyImGui.button("Export"):
@@ -340,7 +340,7 @@ class ModelPopUp:
 
         if self._ini_section and self._ini_var_name and self._ini_relative_path:
             from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
-            base_path = Py4GW.Console.get_projects_path() + "/Settings/"
+            base_path = PySystem.Console.get_projects_path() + "/Settings/"
             current_email = IniManager().get_account_email()
             excluded = {"Defaults", "Global", "Exports"}
             other_accounts = [
@@ -982,7 +982,7 @@ class InventoryPlusWidget:
         self._context_last_rebuild_time: float = 0.0
         self._CONTEXT_FALLBACK_INTERVAL: float = 0.5  # seconds
         self._xunlai_sort_icon_path = os.path.join(
-            Py4GW.Console.get_projects_path(),
+            PySystem.Console.get_projects_path(),
             "Sources",
             "frenkeyLib",
             "LootEx",
@@ -1014,7 +1014,7 @@ class InventoryPlusWidget:
             candidate_paths.append(os.path.join(os.path.dirname(current_file), "Xunlaimanager.py"))
         candidate_paths.append(
             os.path.join(
-                Py4GW.Console.get_projects_path(),
+                PySystem.Console.get_projects_path(),
                 "Widgets",
                 "Guild Wars",
                 "Items & Loot",
@@ -1582,7 +1582,7 @@ class InventoryPlusWidget:
             self.auto_inventory_handler.lookup_throttle.SetThrottleTime(self.auto_inventory_handler._LOOKUP_TIME)
             self.auto_inventory_handler.lookup_throttle.Reset()
             self.auto_inventory_handler.runtime_initialized = True
-            ConsoleLog("AutoInventoryHandler", "Auto Handler Options initialized", Py4GW.Console.MessageType.Success)
+            ConsoleLog("AutoInventoryHandler", "Auto Handler Options initialized", PySystem.Console.MessageType.Success)
             
         if not Map.IsExplorable():
             self.auto_inventory_handler.lookup_throttle.Stop()
@@ -2665,7 +2665,7 @@ class InventoryPlusWidget:
                                     ConsoleLog(
                                         self.module_name,
                                         f"[SellQty] apply item={item_id} old={old_qty} new={updated_qty} max={max_qty} batch={batch_size}",
-                                        Py4GW.Console.MessageType.Info
+                                        PySystem.Console.MessageType.Info
                                     )
                                 if updated_qty != old_qty:
                                     self.merchant_sell_quantities[item_id] = updated_qty

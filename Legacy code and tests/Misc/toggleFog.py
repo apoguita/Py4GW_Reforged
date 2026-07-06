@@ -17,11 +17,11 @@ def DrawWindow():
         if PyImGui.begin("Py4GW", flags):
 
             if PyImGui.button("Toggle Fog"):
-                Py4GW.Game.SetFog(fog)
+                PyCamera.PyCamera().SetFog(fog)
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log("tester", f"Unexpected Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("tester", f"Unexpected Error: {str(e)}", PySystem.Console.MessageType.Error)
 
 def main():
     """Runs every frame."""

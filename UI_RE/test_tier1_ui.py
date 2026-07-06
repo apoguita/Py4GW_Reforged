@@ -1,7 +1,7 @@
 """
 Tier 1 UI Control Test Panel (2026-06-04)
 =========================================
-All native calls go through Py4GW.Game.enqueue() — game thread safe.
+All native calls go through PyGameThread.enqueue() — game thread safe.
 All debug output via print() to console — nothing on screen.
 
 REQUIRES rebuilt DLL for the new Create bindings to exist.
@@ -21,7 +21,7 @@ def _dbg(msg: str) -> None:
 
 def _enqueue(fn):
     """Enqueue a callable on the game thread."""
-    Py4GW.Game.enqueue(fn)
+    PyGameThread.enqueue(fn)
 
 
 # ═══════════════════════════════════════════════════════════════════

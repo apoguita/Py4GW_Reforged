@@ -37,10 +37,10 @@ LOG_TAIL_LINE_COUNT = 20
 
 def _log(message: str, level: int = None) -> None:
     if level is None:
-        level = Py4GW.Console.MessageType.Info
+        level = PySystem.Console.MessageType.Info
     print(f"[{MODULE_NAME}] {message}")
     try:
-        Py4GW.Console.Log(MODULE_NAME, message, level)
+        PySystem.Console.Log(MODULE_NAME, message, level)
     except Exception:
         pass
 
@@ -89,7 +89,7 @@ def _set_status(message: str) -> None:
 
 def _safe_status() -> str:
     try:
-        return str(Py4GW.Console.status())
+        return str(PySystem.Console.status())
     except Exception as exc:
         return f"status_error: {exc}"
 
@@ -108,17 +108,17 @@ def _load_only() -> None:
     if not path or not os.path.exists(path):
         _set_status(f"script_missing: {path}")
         return
-    Py4GW.Console.load(path)
+    PySystem.Console.load(path)
     _set_status(f"loaded: {path}")
 
 
 def _run_only() -> None:
-    Py4GW.Console.run()
+    PySystem.Console.run()
     _set_status(f"run_requested status={_safe_status()}")
 
 
 def _stop_only() -> None:
-    Py4GW.Console.stop()
+    PySystem.Console.stop()
     _set_status(f"stop_requested status={_safe_status()}")
 
 
@@ -127,7 +127,7 @@ def _defer_reload_run() -> None:
     if not path or not os.path.exists(path):
         _set_status(f"script_missing: {path}")
         return
-    Py4GW.Console.defer_stop_load_and_run(path, max(0, int(DELAY_MS_INPUT)))
+    PySystem.Console.defer_stop_load_and_run(path, max(0, int(DELAY_MS_INPUT)))
     _set_status(f"reload_run_enqueued delay_ms={DELAY_MS_INPUT}")
 
 
@@ -266,10 +266,10 @@ def main() -> None:
         return
 
     try:
-        PROJECTS_PATH = Py4GW.Game.GetProjectsPath()
+        PROJECTS_PATH = PySystem.Console.get_projects_path()
     except Exception:
         try:
-            PROJECTS_PATH = Py4GW.Console.get_projects_path()
+            PROJECTS_PATH = PySystem.Console.get_projects_path()
         except Exception:
             PROJECTS_PATH = os.getcwd()
 

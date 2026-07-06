@@ -110,7 +110,7 @@ def AuspiciousBeginnings(bot: Botting) -> None:
 
 bot.SetMainRoutine(create_bot_routine)
 
-projects_path = Py4GW.Console.get_projects_path()
+projects_path = PySystem.Console.get_projects_path()
 full_path = projects_path + "\\Sources\\ApoSource\\textures\\"
 
 def main():

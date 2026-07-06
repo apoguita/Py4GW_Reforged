@@ -1,4 +1,4 @@
-import Py4GW
+import PySystem
 import PyPathing
 import math
 import heapq
@@ -436,7 +436,7 @@ class NavMesh:
         if "trap_id_to_layer" in data:
             nav.trap_id_to_layer = data["trap_id_to_layer"]
 
-        Py4GW.Console.Log("NavMesh", f"Loaded NavMesh for map {map_id} with {len(nav.portal_graph)} connections and {len(nav.trapezoids)} trapezoids.", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("NavMesh", f"Loaded NavMesh for map {map_id} with {len(nav.portal_graph)} connections and {len(nav.trapezoids)} trapezoids.", PySystem.Console.MessageType.Info)
         return nav
 
 
@@ -468,23 +468,23 @@ class AStar:
         if start_id is None:
             start_id = self.navmesh.find_nearest_trapezoid_id(start_pos[0], start_pos[1])
             if start_id is not None:
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     "A-Star",
                     f"Recovered missing start trapezoid via nearest lookup: {start_id} for {start_pos}",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
 
         if goal_id is None:
             goal_id = self.navmesh.find_nearest_trapezoid_id(goal_pos[0], goal_pos[1])
             if goal_id is not None:
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     "A-Star",
                     f"Recovered missing goal trapezoid via nearest lookup: {goal_id} for {goal_pos}",
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
 
         if start_id is None or goal_id is None:
-            Py4GW.Console.Log("A-Star", f"Invalid start or goal trapezoid: {start_id}, {goal_id}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("A-Star", f"Invalid start or goal trapezoid: {start_id}, {goal_id}", PySystem.Console.MessageType.Error)
             return False
 
         open_list: List[AStarNode] = []
@@ -509,7 +509,7 @@ class AStar:
                     heapq.heappush(open_list, AStarNode(neighbor, new_cost, priority, current.id))
                     came_from[neighbor] = current.id
 
-        Py4GW.Console.Log("A-Star", f"Path not found from {start_id} to {goal_id}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("A-Star", f"Path not found from {start_id} to {goal_id}", PySystem.Console.MessageType.Warning)
         return False
 
     def _reconstruct(self, came_from: Dict[int, int], end_id: int):

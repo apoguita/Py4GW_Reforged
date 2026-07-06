@@ -146,7 +146,7 @@ def _open_original_devtext() -> None:
     def _invoke() -> None:
         GWUI.OpenDevTextWindow()
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log("open original DevText enqueued")
     _schedule_report("state after open original")
 
@@ -181,7 +181,7 @@ def _insert_text_host_frame() -> None:
             or 0
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(
         f"insert text host enqueued parent={parent_id} child_slot=0x{child_slot:X} "
         f"callback=0x{proc:X} label='{FRAME_LABEL}'"
@@ -203,7 +203,7 @@ def _apply_text_to_inserted() -> None:
         GWUI.SetMultilineLabelByFrameId(target, "Py4GW inserted text host\nSecond line")
         GWUI.SetLabelByFrameId(target, "Py4GW inserted text host")
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log(f"apply text enqueued target={target}")
     _schedule_report("state after apply text")
 

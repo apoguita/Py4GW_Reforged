@@ -421,7 +421,7 @@ def _enqueue_literal_caption() -> None:
         )
 
     _report_state("state before literal caption")
-    Py4GW.Game.enqueue(_apply_caption)
+    PyGameThread.enqueue(_apply_caption)
     LAST_STATUS = "literal caption enqueued"
     _log(f"literal caption enqueued root={root_id} text='{title_text}'")
     _schedule_source_report("state after literal caption delay")
@@ -489,7 +489,7 @@ def _spawn_raw_window_then_string_id_caption() -> None:
         f"pos=({TARGET_X},{TARGET_Y}) size=({TARGET_WIDTH},{TARGET_HEIGHT}) string_id=0x{string_id:X}"
     )
     _report_state("state immediately after raw create before string-id caption")
-    Py4GW.Game.enqueue(_apply_caption)
+    PyGameThread.enqueue(_apply_caption)
     _schedule_source_report("state after raw create + string-id caption delay")
 
 
@@ -555,7 +555,7 @@ def _spawn_empty_window_then_string_id_caption() -> None:
         f"pos=({TARGET_X},{TARGET_Y}) size=({TARGET_WIDTH},{TARGET_HEIGHT}) string_id=0x{string_id:X}"
     )
     _report_state("state immediately after empty create before string-id caption")
-    Py4GW.Game.enqueue(_apply_caption)
+    PyGameThread.enqueue(_apply_caption)
     _schedule_source_report("state after empty create + string-id caption delay")
 
 
@@ -621,7 +621,7 @@ def _spawn_raw_window_with_literal_caption() -> None:
         f"pos=({TARGET_X},{TARGET_Y}) size=({TARGET_WIDTH},{TARGET_HEIGHT}) text='{title_text}'"
     )
     _report_state("state immediately after raw create before caption")
-    Py4GW.Game.enqueue(_apply_caption)
+    PyGameThread.enqueue(_apply_caption)
     _schedule_source_report("state after raw create + caption delay")
 
 
@@ -687,7 +687,7 @@ def _spawn_empty_window_with_literal_caption() -> None:
         f"pos=({TARGET_X},{TARGET_Y}) size=({TARGET_WIDTH},{TARGET_HEIGHT}) text='{title_text}'"
     )
     _report_state("state immediately after empty create before caption")
-    Py4GW.Game.enqueue(_apply_caption)
+    PyGameThread.enqueue(_apply_caption)
     _schedule_source_report("state after empty create + caption delay")
 
 
@@ -720,7 +720,7 @@ def _enqueue_string_id_caption() -> None:
         )
 
     _report_state("state before string-id caption")
-    Py4GW.Game.enqueue(_apply_caption)
+    PyGameThread.enqueue(_apply_caption)
     LAST_STATUS = "string-id caption enqueued"
     _log(f"string-id caption enqueued root={root_id} string_id=0x{string_id:X}")
     _schedule_source_report("state after string-id caption delay")

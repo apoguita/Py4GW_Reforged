@@ -271,7 +271,7 @@ class RouteBuilderWidget:
                 self._validate_all_waypoints()
                 return
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Navmesh load failed: {e}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log(MODULE_NAME, f"Navmesh load failed: {e}", PySystem.Console.MessageType.Warning)
         self._navmesh_loading = True
         def _load_coro():
             yield from AutoPathing().load_pathing_maps()
@@ -1036,7 +1036,7 @@ class RouteBuilderWidget:
             radius = max(5.0, min(20.0, 5.0 * self.zoom_factor))
             PyImGui.draw_list_add_circle_filled(sx, sy, radius, self.COLOR_PLAYER.to_color(), 12)
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Player draw error: {e}", Py4GW.Console.MessageType.Debug)
+            PySystem.Console.Log(MODULE_NAME, f"Player draw error: {e}", PySystem.Console.MessageType.Debug)
 
     def _draw_pin(self, sx: float, sy: float, color: int) -> None:
         """Draw a map-pin icon centered at (sx, sy)."""
@@ -1301,7 +1301,7 @@ class RouteBuilderWidget:
             if x != 0.0 or y != 0.0:
                 self.player_pos = (x, y)
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Player position read error: {e}", Py4GW.Console.MessageType.Debug)
+            PySystem.Console.Log(MODULE_NAME, f"Player position read error: {e}", PySystem.Console.MessageType.Debug)
 
         # Track game map (no auto-switch — user controls dropdown)
         current_id = Map.GetMapID()
@@ -1352,7 +1352,7 @@ def draw():
         try:
             widget.draw()
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Draw error: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, f"Draw error: {e}", PySystem.Console.MessageType.Error)
 
 
 def update():
@@ -1361,7 +1361,7 @@ def update():
         try:
             widget.update()
         except Exception as e:
-            Py4GW.Console.Log(MODULE_NAME, f"Update error: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(MODULE_NAME, f"Update error: {e}", PySystem.Console.MessageType.Error)
 
 
 def tooltip():

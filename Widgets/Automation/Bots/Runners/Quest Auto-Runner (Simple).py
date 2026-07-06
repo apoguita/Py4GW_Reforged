@@ -120,11 +120,11 @@ def _model_id_value(name: str, default: int = 0) -> int:
 # -------------------------
 import Py4GW
 try:
-    script_directory = Py4GW.Console.get_projects_path()
+    script_directory = PySystem.Console.get_projects_path()
 except NameError:
     script_directory = os.getcwd()
 
-root_directory = Py4GW.Console.get_projects_path()
+root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(root_directory, "Widgets/Config/Quest Auto-Runner.ini")
 ini_handler = IniHandler(ini_file_location)
 

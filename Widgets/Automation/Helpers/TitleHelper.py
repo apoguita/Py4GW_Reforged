@@ -10,7 +10,7 @@ from Sources.aC_Scripts.Titlehelper import ItemSelector
 
 # === Paths and Constants ===
 script_directory = os.path.dirname(os.path.abspath(__file__))
-project_root = Py4GW.Console.get_projects_path()
+project_root = PySystem.Console.get_projects_path()
 BASE_DIR = os.path.join(project_root, "Widgets/Config")
 os.makedirs(BASE_DIR, exist_ok=True)
 
@@ -120,8 +120,8 @@ def main():
             pass
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Unexpected error: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(MODULE_NAME, traceback.format_exc(), Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Unexpected error: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, traceback.format_exc(), PySystem.Console.MessageType.Error)
 
 
 if __name__ == "__main__":

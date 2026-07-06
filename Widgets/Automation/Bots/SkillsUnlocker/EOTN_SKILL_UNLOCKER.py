@@ -12,8 +12,8 @@ from Py4GWCoreLib.ImGui import ImGui
 BOT_NAME = "Skills Unlocker"
 MODULE_NAME = BOT_NAME
 
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Bots", "SkillsUnlocker", "skills_unlocker.png")
-ICONS_PATH = os.path.join(Py4GW.Console.get_projects_path(), "Bots", "SkillsUnlocker", "icons")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "SkillsUnlocker", "skills_unlocker.png")
+ICONS_PATH = os.path.join(PySystem.Console.get_projects_path(), "Bots", "SkillsUnlocker", "icons")
 
 bot = Botting(
     bot_name=BOT_NAME,
@@ -154,11 +154,11 @@ except Exception:
     pass
 
 DEBUG = True
-def _log(msg: str, mt=Py4GW.Console.MessageType.Warning):
+def _log(msg: str, mt=PySystem.Console.MessageType.Warning):
     if not DEBUG:
         return
     try:
-        Py4GW.Console.Log(MODULE_NAME, msg, mt)
+        PySystem.Console.Log(MODULE_NAME, msg, mt)
     except Exception:
         pass
 
@@ -215,7 +215,7 @@ def _stop_clear_start_and_jump(step_name: str):
     cfg = getattr(bot, "config", None)
     fsm = getattr(cfg, "FSM", None) if cfg else None
     if not cfg or not fsm:
-        _log("[RUN] No config/FSM found", Py4GW.Console.MessageType.Error)
+        _log("[RUN] No config/FSM found", PySystem.Console.MessageType.Error)
         return
 
     # ---- STOP + CLEAR ----
@@ -251,7 +251,7 @@ def _stop_clear_start_and_jump(step_name: str):
         fsm.jump_to_state_by_name(step_name)
         jumped = True
     except Exception as e:
-        _log(f"[RUN] jump failed: {e}", Py4GW.Console.MessageType.Error)
+        _log(f"[RUN] jump failed: {e}", PySystem.Console.MessageType.Error)
         return
 
     # Prefer resume (doesn't reset again)
@@ -277,7 +277,7 @@ def _stop_clear_start_and_jump(step_name: str):
         except Exception:
             pass
 
-    _log(f"[RUN] stop/clear -> jump -> start : {step_name}", Py4GW.Console.MessageType.Warning)
+    _log(f"[RUN] stop/clear -> jump -> start : {step_name}", PySystem.Console.MessageType.Warning)
 
 # Anchor step (jumpable)
 _INIT_DONE = False
@@ -289,9 +289,9 @@ def _ensure_built():
         _set_bot_started(True)
         bot.Update()
         _INIT_DONE = True
-        _log("[INIT] FSM built", Py4GW.Console.MessageType.Warning)
+        _log("[INIT] FSM built", PySystem.Console.MessageType.Warning)
     except Exception as e:
-        _log(f"[INIT] failed: {e}", Py4GW.Console.MessageType.Error)
+        _log(f"[INIT] failed: {e}", PySystem.Console.MessageType.Error)
 
 def _anchor() -> Generator:
     yield

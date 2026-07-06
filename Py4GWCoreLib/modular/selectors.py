@@ -97,7 +97,7 @@ def resolve_agent_xy_from_step(
 def _matches_encoded_name(agent_id: int, encoded_names: tuple[tuple[int, ...], ...]) -> bool:
     if not encoded_names:
         return False
-    agent_enc_name = PyAgent.PyAgent.GetAgentEncName(agent_id)
+    agent_enc_name = PyAgent.get_agent_enc_name(agent_id)
     if not agent_enc_name:
         return False
     agent_enc_tuple = tuple(int(value) for value in agent_enc_name)

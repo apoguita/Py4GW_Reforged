@@ -360,4 +360,4 @@ class SF_Derv_Runner(BuildMgr):
             yield from Routines.Yield.wait(100)
             
             # Log current map id and name
-            ConsoleLog(self.build_name, f"Current Map ID: {current_map_id}, Name: {Map.GetMapName(current_map_id)}", Py4GW.Console.MessageType.Info, log=False)
+            ConsoleLog(self.build_name, f"Current Map ID: {current_map_id}, Name: {Map.GetMapName(current_map_id)}", PySystem.Console.MessageType.Info, log=False)

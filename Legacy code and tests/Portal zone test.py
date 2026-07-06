@@ -3,7 +3,7 @@ import Py4GW
 import os
 
 BOT_NAME = "Portal zone test"
-TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
 Kaineg = 194
 
 bot = Botting(BOT_NAME,
@@ -109,7 +109,7 @@ def tooltip():
     PyImGui.bullet_text("Developed by Wick Divinus")
     PyImGui.end_tooltip()
 
-REFORGED_TEXTURE = os.path.join(Py4GW.Console.get_projects_path(), "Sources", "Wick Divinus bots", "Reforged_Icon.png")
+REFORGED_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "Wick Divinus bots", "Reforged_Icon.png")
 def main():
     bot.Update()
     bot.UI.draw_window(icon_path=REFORGED_TEXTURE)

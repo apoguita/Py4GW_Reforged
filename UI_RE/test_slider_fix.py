@@ -32,7 +32,7 @@ def _dbg(msg):
 
 
 def _enqueue(fn):
-    Py4GW.Game.enqueue(fn)
+    PyGameThread.enqueue(fn)
 
 
 # ── Step 1: Create container window ──────────────────────────────

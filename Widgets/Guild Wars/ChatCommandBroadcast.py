@@ -61,7 +61,7 @@ def DrawWindow():
             window_module.process_window()
         window_module.end()
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(MODULE_NAME, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Debug)
 
 def configure():
     pass
@@ -71,7 +71,7 @@ def main():
         check_inbox()
         DrawWindow()
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error in main: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(MODULE_NAME, f"Error in main: {str(e)}", PySystem.Console.MessageType.Debug)
         return False
     return True
 

@@ -172,7 +172,7 @@ class SurfaceCapture:
         started = PACKET_SNIFFER.initialize()
         if not started:
             self._status = 'Start failed: unified PacketSniffer initialization returned False'
-            self._log(self._status, Py4GW.Console.MessageType.Error)
+            self._log(self._status, PySystem.Console.MessageType.Error)
             PACKET_SNIFFER.terminate()
             return False
 
@@ -182,7 +182,7 @@ class SurfaceCapture:
         self._log(
             f'Capture started. focus={self._scenario_focus} stoc_filter={self._format_header_filter(self.interesting_stoc)} '
             f'ctos_filter={self._format_header_filter(self.interesting_ctos)}',
-            Py4GW.Console.MessageType.Success,
+            PySystem.Console.MessageType.Success,
         )
         return True
 
@@ -191,7 +191,7 @@ class SurfaceCapture:
         PACKET_SNIFFER.terminate()
         self._capturing = False
         self._status = f'Stopped. StoC={len(self._stoc_packets)} CToS={len(self._ctos_packets)}'
-        self._log(self._status, Py4GW.Console.MessageType.Info)
+        self._log(self._status, PySystem.Console.MessageType.Info)
 
     def drain(self) -> None:
         logs = PACKET_SNIFFER.get_logs()
@@ -213,7 +213,7 @@ class SurfaceCapture:
     def mark(self, label: str) -> None:
         self.drain()
         marker = CaptureMarker(
-            tick=int(Py4GW.Game.get_tick_count64()),
+            tick=int(PySystem.get_tick_count64()),
             label=label,
             stoc_index=len(self._stoc_packets),
             ctos_index=len(self._ctos_packets),
@@ -221,7 +221,7 @@ class SurfaceCapture:
         self._markers.append(marker)
         self._log(
             f"Marker '{label}' at StoC={marker.stoc_index} CToS={marker.ctos_index}",
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
 
     def reset_baseline(self, label: str = 'baseline') -> None:
@@ -231,19 +231,19 @@ class SurfaceCapture:
         self._markers.clear()
         self._log(
             f"Baseline '{label}' set at StoC={self._baseline_stoc_index} CToS={self._baseline_ctos_index}",
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
 
     def dump_summary(self) -> None:
         self._log(
             f'Capture summary: focus={self._scenario_focus} StoC={len(self._stoc_packets)} CToS={len(self._ctos_packets)} '
             f'markers={len(self._markers)} baseline=({self._baseline_stoc_index},{self._baseline_ctos_index})',
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
         for marker in self._markers:
             self._log(
                 f"[marker] {marker.label} tick={marker.tick} stoc_index={marker.stoc_index} ctos_index={marker.ctos_index}",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
 
     def dump_interesting(self) -> None:
@@ -273,7 +273,7 @@ class SurfaceCapture:
     def dump_between_last_two_markers(self) -> None:
         self.dump_summary()
         if len(self._markers) < 2:
-            self._log('Need at least two markers to dump a phase window.', Py4GW.Console.MessageType.Warning)
+            self._log('Need at least two markers to dump a phase window.', PySystem.Console.MessageType.Warning)
             return
         start_marker = self._markers[-2]
         end_marker = self._markers[-1]
@@ -313,7 +313,7 @@ class SurfaceCapture:
         if len(self._markers) == 1:
             self._log(
                 'Using baseline -> latest marker as the phase window.',
-                Py4GW.Console.MessageType.Notice,
+                PySystem.Console.MessageType.Notice,
             )
             end_marker = self._markers[-1]
             self._dump_header_summary(
@@ -330,7 +330,7 @@ class SurfaceCapture:
         if len(self._markers) < 2:
             self._log(
                 'No complete phase markers found. Falling back to summary since baseline.',
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             self.dump_header_summary_since_baseline()
             return
@@ -367,7 +367,7 @@ class SurfaceCapture:
         if len(self._markers) == 1:
             self._log(
                 'Using baseline -> latest marker as the phase window.',
-                Py4GW.Console.MessageType.Notice,
+                PySystem.Console.MessageType.Notice,
             )
             end_marker = self._markers[-1]
             self._dump_unique_payloads(
@@ -386,7 +386,7 @@ class SurfaceCapture:
         if len(self._markers) < 2:
             self._log(
                 'No complete phase markers found. Falling back to payload grouping since baseline.',
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             self.dump_unique_payloads_since_baseline(max_per_header=max_per_header)
             return
@@ -410,7 +410,7 @@ class SurfaceCapture:
         if not self._markers:
             self._log(
                 'No markers recorded. Falling back to recent filtered packets since baseline.',
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
             self.dump_since_baseline()
             return
@@ -418,7 +418,7 @@ class SurfaceCapture:
         if len(self._markers) == 1:
             self._log(
                 'Using baseline -> latest marker packet window.',
-                Py4GW.Console.MessageType.Notice,
+                PySystem.Console.MessageType.Notice,
             )
             for index in range(self._baseline_stoc_index, min(marker.stoc_index, len(self._stoc_packets))):
                 packet = self._stoc_packets[index]
@@ -443,31 +443,31 @@ class SurfaceCapture:
             return
         guild_ctx = GWContext.Guild.GetContext()
         if not guild_ctx:
-            self._log('Guild runtime snapshot: GuildContext is unavailable.', Py4GW.Console.MessageType.Warning)
+            self._log('Guild runtime snapshot: GuildContext is unavailable.', PySystem.Console.MessageType.Warning)
             return
         self._log(
             f'Guild runtime snapshot: player_name={guild_ctx.player_name_str!r} '
             f'player_guild_index={int(guild_ctx.player_guild_index)} '
             f'player_guild_rank={int(guild_ctx.player_guild_rank)}',
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
         guilds = guild_ctx.guild_array or []
-        self._log(f'Guild runtime snapshot: guild_count={len(guilds)}', Py4GW.Console.MessageType.Notice)
+        self._log(f'Guild runtime snapshot: guild_count={len(guilds)}', PySystem.Console.MessageType.Notice)
         for index, guild in enumerate(guilds):
             self._log(
                 f"[guild {index}] index={int(guild.index)} features=0x{int(guild.features):08X} "
                 f"name={guild.name_str!r} tag={guild.tag_str!r}",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
         roster = guild_ctx.player_roster or []
-        self._log(f'Guild runtime snapshot: roster_count={len(roster)}', Py4GW.Console.MessageType.Notice)
+        self._log(f'Guild runtime snapshot: roster_count={len(roster)}', PySystem.Console.MessageType.Notice)
         for index, member in enumerate(roster):
             self._log(
                 f"[roster {index}] name_ptr={member.name_str!r} invited_name={member.invited_name_str!r} "
                 f"current_name={member.current_name_str!r} inviter_name={member.inviter_name_str!r} "
                 f"promoter_name={member.promoter_name_str!r} offline={int(member.offline)} "
                 f"status={int(member.status)} member_type={int(member.member_type)}",
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
 
     def _dump_window(self, direction: str, packets: list[PacketRecord], center: int, before: int, after: int) -> None:
@@ -490,14 +490,14 @@ class SurfaceCapture:
                 continue
             grouped[packet.header].append(packet)
         if not grouped:
-            self._log(f'[{direction}] No packets matched the current filter.', Py4GW.Console.MessageType.Warning)
+            self._log(f'[{direction}] No packets matched the current filter.', PySystem.Console.MessageType.Warning)
             self._log_missing_focus_diagnosis(direction, all_grouped)
             self._log_unfiltered_header_summary(direction, all_grouped)
             return
         self._log(
             f'[{direction}] analyzing {self._scenario_label.lower()} focus={self._scenario_focus} '
             f'headers={self._format_header_filter(interesting_headers)}',
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
         self._log_present_focus_diagnosis(direction, grouped)
         for header, header_packets in sorted(grouped.items(), key=lambda item: (-len(item[1]), item[0])):
@@ -509,7 +509,7 @@ class SurfaceCapture:
                 f'[{direction}] summary {name} header=0x{header:04X} count={len(header_packets)} '
                 f'unique_payloads={unique_payloads} sizes={sizes} first_tick={header_packets[0].tick} '
                 f'last_tick={header_packets[-1].tick} sample={self._short_hex(sample.raw)}',
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
 
     def _dump_unique_payloads(
@@ -527,7 +527,7 @@ class SurfaceCapture:
                 continue
             headers[packet.header][packet.raw].append(packet)
         if not headers:
-            self._log(f'[{direction}] No packets matched the current filter.', Py4GW.Console.MessageType.Warning)
+            self._log(f'[{direction}] No packets matched the current filter.', PySystem.Console.MessageType.Warning)
             flattened_groups: dict[int, list[PacketRecord]] = defaultdict(list)
             for header, payload_groups in all_headers.items():
                 for packet_group in payload_groups.values():
@@ -538,14 +538,14 @@ class SurfaceCapture:
         self._log(
             f'[{direction}] grouping payloads for {self._scenario_label.lower()} focus={self._scenario_focus} '
             f'headers={self._format_header_filter(interesting_headers)}',
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
         for header in sorted(headers):
             payload_groups = headers[header]
             name = PACKET_SNIFFER.get_packet_name(direction, header)
             self._log(
                 f'[{direction}] unique payloads {name} header=0x{header:04X} groups={len(payload_groups)}',
-                Py4GW.Console.MessageType.Notice,
+                PySystem.Console.MessageType.Notice,
             )
             ranked_groups = sorted(payload_groups.items(), key=lambda item: (-len(item[1]), item[0]))
             omitted = max(0, len(ranked_groups) - max_per_header)
@@ -556,12 +556,12 @@ class SurfaceCapture:
                     f'[{direction}]   group count={len(group_packets)} size={sample.size} '
                     f'ticks={group_packets[0].tick}->{group_packets[-1].tick} '
                     f'decoded={decoded} raw={self._hex_dump(raw)}',
-                    Py4GW.Console.MessageType.Info,
+                    PySystem.Console.MessageType.Info,
                 )
             if omitted:
                 self._log(
                     f'[{direction}]   ... omitted_groups={omitted}',
-                    Py4GW.Console.MessageType.Info,
+                    PySystem.Console.MessageType.Info,
                 )
 
     def _log_unfiltered_header_summary(
@@ -571,12 +571,12 @@ class SurfaceCapture:
         max_headers: int = 8,
     ) -> None:
         if not grouped:
-            self._log(f'[{direction}] No packets were captured in this window.', Py4GW.Console.MessageType.Warning)
+            self._log(f'[{direction}] No packets were captured in this window.', PySystem.Console.MessageType.Warning)
             return
         self._log(
             f'[{direction}] unfiltered fallback summary for {self._scenario_label.lower()} '
             f'(showing top {max_headers} headers seen in this window)',
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
         for header, header_packets in sorted(grouped.items(), key=lambda item: (-len(item[1]), item[0]))[:max_headers]:
             name = PACKET_SNIFFER.get_packet_name(direction, header)
@@ -584,7 +584,7 @@ class SurfaceCapture:
             self._log(
                 f'[{direction}] fallback {name} header=0x{header:04X} count={len(header_packets)} sizes={sizes} '
                 f'sample={self._short_hex(header_packets[0].raw)}',
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
 
     def _log_unfiltered_payload_groups(
@@ -594,26 +594,26 @@ class SurfaceCapture:
         max_headers: int = 6,
     ) -> None:
         if not grouped:
-            self._log(f'[{direction}] No packets were captured in this window.', Py4GW.Console.MessageType.Warning)
+            self._log(f'[{direction}] No packets were captured in this window.', PySystem.Console.MessageType.Warning)
             return
         self._log(
             f'[{direction}] unfiltered fallback payload groups for {self._scenario_label.lower()} '
             f'(showing top {max_headers} headers seen in this window)',
-            Py4GW.Console.MessageType.Notice,
+            PySystem.Console.MessageType.Notice,
         )
         ranked_headers = sorted(grouped.items(), key=lambda item: (-sum(len(v) for v in item[1].values()), item[0]))
         for header, payload_groups in ranked_headers[:max_headers]:
             name = PACKET_SNIFFER.get_packet_name(direction, header)
             self._log(
                 f'[{direction}] fallback groups {name} header=0x{header:04X} groups={len(payload_groups)}',
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
             best_raw, best_packets = sorted(payload_groups.items(), key=lambda item: (-len(item[1]), item[0]))[0]
             sample = best_packets[0]
             decoded = PACKET_SNIFFER.decode_packet(direction, sample.header, sample.size, sample.raw)
             self._log(
                 f'[{direction}]   sample count={len(best_packets)} size={sample.size} decoded={decoded} raw={self._hex_dump(best_raw)}',
-                Py4GW.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info,
             )
 
     def _log_missing_focus_diagnosis(
@@ -631,13 +631,13 @@ class SurfaceCapture:
                     'Guild diagnosis: this window did not include guild load-time replay. '
                     'Only tick/movement/chat noise was captured, so guild roster/table packets were not observed. '
                     'Start capture before travel and keep it running through arrival/load completion.',
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
         elif self._scenario_key == 'call_target':
             self._log(
                 'Call-target diagnosis: the current StoC focus headers were not observed in this window. '
                 'If the action definitely happened, the announcement path may use different opcodes on this build.',
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
 
     def _log_present_focus_diagnosis(
@@ -660,7 +660,7 @@ class SurfaceCapture:
                 self._log(
                     'Guild diagnosis: guild identity traffic is present, but guild roster member packets were not observed'
                     f'{extra_text}. This window looks like guild-table/bootstrap data, not full member-table population.',
-                    Py4GW.Console.MessageType.Warning,
+                    PySystem.Console.MessageType.Warning,
                 )
 
     def _log_packet(self, index: int, packet: PacketRecord, direction_override: str | None = None) -> None:
@@ -669,7 +669,7 @@ class SurfaceCapture:
         decoded = PACKET_SNIFFER.decode_packet(direction, packet.header, packet.size, packet.raw)
         self._log(
             f'[{direction} #{index}] {name} tick={packet.tick} size={packet.size} copied={len(packet.raw)} decoded={decoded} raw={self._hex_dump(packet.raw)}',
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     @staticmethod
@@ -683,7 +683,7 @@ class SurfaceCapture:
         return raw[:limit].hex(' ') + ' ...'
 
     def _log(self, message: str, message_type: object) -> None:
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             self.module_name,
             f'[scenario={self._scenario_key}:{self._scenario_label}] {message}',
             message_type,

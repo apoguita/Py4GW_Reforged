@@ -64,7 +64,7 @@ def _process_pending_reports() -> None:
             pending.append((scheduled_at, prefix))
     PENDING_REPORTS[:] = pending
     for _, prefix in ready:
-        Py4GW.Game.enqueue(lambda prefix=prefix: _emit_snapshot(prefix))
+        PyGameThread.enqueue(lambda prefix=prefix: _emit_snapshot(prefix))
 
 
 def _viewport_height() -> float:
@@ -273,7 +273,7 @@ def _create_empty_window(with_override: bool) -> None:
         if with_override
         else "create empty baseline enqueued"
     )
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after empty create")
 
 
@@ -292,7 +292,7 @@ def _apply_direct_setter() -> None:
         )
 
     LAST_STATUS = "direct setter enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after direct setter")
 
 
@@ -321,7 +321,7 @@ def _apply_native_literal_caption() -> None:
         )
 
     LAST_STATUS = "native literal title enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after native literal")
 
 
@@ -334,7 +334,7 @@ def _destroy_window() -> None:
         _log("destroy invoke complete")
 
     LAST_STATUS = "destroy enqueued"
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _schedule_report("state after destroy")
 
 
@@ -369,7 +369,7 @@ def _draw_window() -> None:
         _apply_native_literal_caption()
 
     if PyImGui.button("Snapshot"):
-        Py4GW.Game.enqueue(lambda: _emit_snapshot("manual snapshot"))
+        PyGameThread.enqueue(lambda: _emit_snapshot("manual snapshot"))
     PyImGui.same_line(0.0, 8.0)
     if PyImGui.button("Destroy"):
         _destroy_window()

@@ -226,7 +226,7 @@ def _open_inventory() -> None:
     def _invoke() -> None:
         UIManager.Keypress(ControlAction.ControlAction_ToggleInventoryWindow.value, 0)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     _log("open inventory enqueued")
     _schedule_report("state after open inventory")
 
@@ -268,7 +268,7 @@ def _create_empty_window() -> None:
             f"pos=({TARGET_X},{TARGET_Y}) size=({TARGET_WIDTH},{TARGET_HEIGHT})"
         )
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "create empty window enqueued"
     _log(LAST_STATUS)
     _schedule_report("state after empty create")
@@ -293,7 +293,7 @@ def _destroy_created_component() -> None:
         if root > 0:
             GWUI.TriggerFrameRedrawByFrameId(root)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     CREATED_FRAME_ID = 0
     LAST_STATUS = f"destroy created component frame_id={frame_id}"
     _log(LAST_STATUS)
@@ -352,7 +352,7 @@ def _create_inventory_contract_component() -> None:
         if root > 0:
             GWUI.TriggerFrameRedrawByFrameId(root)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = f"create component enqueued parent_mode='{parent_mode_name}'"
     _log(LAST_STATUS)
     _schedule_report("state after create component")
@@ -403,7 +403,7 @@ def _create_stuffed_inventory_clone() -> None:
             GWUI.TriggerFrameRedrawByFrameId(CREATED_FRAME_ID)
             GWUI.TriggerFrameRedrawByFrameId(parent_id)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "stuff inventory clone create enqueued"
     _log(LAST_STATUS)
     _schedule_report("state after stuff inventory clone")
@@ -453,7 +453,7 @@ def _fit_created_clone_to_empty_window() -> None:
         GWUI.TriggerFrameRedrawByFrameId(created_id)
         GWUI.TriggerFrameRedrawByFrameId(shell_root)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     LAST_STATUS = "fit created clone to empty window enqueued"
     _log(LAST_STATUS)
     _schedule_report("state after fit created clone")

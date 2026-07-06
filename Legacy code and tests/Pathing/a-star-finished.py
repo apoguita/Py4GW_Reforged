@@ -231,7 +231,7 @@ class AStar:
         goal_id = self.navmesh.find_trapezoid_id_by_coord(goal_pos)
 
         if start_id is None or goal_id is None:
-            Py4GW.Console.Log("A-Star", "Invalid start or goal trapezoid", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("A-Star", "Invalid start or goal trapezoid", PySystem.Console.MessageType.Error)
             return False
 
         open_list: List[AStarNode] = []
@@ -256,7 +256,7 @@ class AStar:
                     heapq.heappush(open_list, AStarNode(neighbor, new_cost, priority, current.id))
                     came_from[neighbor] = current.id
 
-        Py4GW.Console.Log("A-Star", f"Path not found from {start_id} to {goal_id}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("A-Star", f"Path not found from {start_id} to {goal_id}", PySystem.Console.MessageType.Warning)
         return False
 
     def _reconstruct(self, came_from: Dict[int, int], end_id: int):

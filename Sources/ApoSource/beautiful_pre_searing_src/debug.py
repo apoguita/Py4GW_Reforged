@@ -175,8 +175,8 @@ def dump_tree_diagnostics(botting_tree: BottingTree, selected_debug_tree_name: s
     payload = build_tree_diagnostic_dump(botting_tree, selected_debug_tree_name)
     print(payload)
     PyImGui.set_clipboard_text(payload)
-    Py4GW.Console.Log(
+    PySystem.Console.Log(
         "Beautiful Pre-Searing",
         "Tree diagnostics dumped to stdout and copied to clipboard.",
-        Py4GW.Console.MessageType.Info,
+        PySystem.Console.MessageType.Info,
     )

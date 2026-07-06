@@ -414,7 +414,7 @@ class MerchantModule:
             PyImGui.pop_item_width()
             PyImGui.table_next_column()
             if PyImGui.button(IconsFontAwesome5.ICON_SHOPPING_CART + "##MerchBuyButton", width=40, height=40):
-                #ConsoleLog(MODULE_NAME, "Buying items from merchant.", Py4GW.Console.MessageType.Info)
+                #ConsoleLog(MODULE_NAME, "Buying items from merchant.", PySystem.Console.MessageType.Info)
                 GLOBAL_CACHE.Coroutines.append(BuyMerchantItems(merchant_item_list.copy(), self.selected_combo_merchant, self.merchant_buy_quantity))
             ImGui.show_tooltip("Buy items.")
             

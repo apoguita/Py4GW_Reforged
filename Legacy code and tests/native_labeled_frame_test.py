@@ -25,11 +25,11 @@ def _resolve_base_dir() -> str:
         return os.path.dirname(os.path.abspath(__file__))
     except NameError:
         try:
-            return Py4GW.Game.GetProjectsPath()
+            return PySystem.Console.get_projects_path()
         except Exception:
             pass
         try:
-            return Py4GW.Console.get_projects_path()
+            return PySystem.Console.get_projects_path()
         except Exception:
             return os.getcwd()
 
@@ -52,7 +52,7 @@ def _log(message: str) -> None:
     line = f"[{MODULE_NAME}] {message}"
     print(line)
     try:
-        Py4GW.Console.Log(MODULE_NAME, message, Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Info)
     except Exception:
         pass
     try:
@@ -66,7 +66,7 @@ def _log_error(message: str) -> None:
     line = f"[{MODULE_NAME}] {message}"
     print(line)
     try:
-        Py4GW.Console.Log(MODULE_NAME, message, Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, message, PySystem.Console.MessageType.Error)
     except Exception:
         pass
     try:
@@ -186,7 +186,7 @@ def _dispatch_devtext_keypress() -> None:
 
 def _enqueue_open_devtext() -> None:
     global LAST_STATUS
-    Py4GW.Game.enqueue(_dispatch_devtext_keypress)
+    PyGameThread.enqueue(_dispatch_devtext_keypress)
     LAST_STATUS = "devtext_open_enqueued"
     _log("DevText open enqueued")
 
@@ -238,7 +238,7 @@ def _dispatch_clone() -> None:
 
 def _enqueue_clone() -> None:
     global LAST_STATUS
-    Py4GW.Game.enqueue(_dispatch_clone)
+    PyGameThread.enqueue(_dispatch_clone)
     LAST_STATUS = "clone_enqueued"
     _log("Clone enqueued")
 

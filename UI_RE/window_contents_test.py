@@ -99,7 +99,7 @@ def _create_window_only() -> None:
         g_last_status = f"window={g_window_id}"
         _log(g_last_status)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     g_last_status = "create window enqueued"
 
 
@@ -121,7 +121,7 @@ def _create_scrollable_content() -> None:
         g_last_status = f"framelist={g_frame_list_id}"
         _log(g_last_status)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     g_last_status = "create scrollable enqueued"
 
 
@@ -145,7 +145,7 @@ def _add_text_item(text: str) -> None:
         g_last_status = f"added item={item_id}, total={len(g_item_ids)}"
         _log(g_last_status)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     g_last_status = "add item enqueued"
 
 
@@ -167,7 +167,7 @@ def _create_scrollable_window(items: list[str]) -> None:
         g_last_status = f"one-step window={g_window_id}"
         _log(g_last_status)
 
-    Py4GW.Game.enqueue(_invoke)
+    PyGameThread.enqueue(_invoke)
     g_last_status = "one-step enqueued"
 
 

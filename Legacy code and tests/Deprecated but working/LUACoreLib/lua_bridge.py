@@ -41,7 +41,7 @@ class LuaBridge:
             for i, v in ipairs(args) do
                 output = output .. tostring(v) .. " "
             end
-            Py4GW.Console.Log("LuaBridge", output, Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log("LuaBridge", output, PySystem.Console.MessageType.Info)
         end
 
         print("[LUA Bridge] Updated package.path: " .. package.path)
@@ -71,9 +71,9 @@ class LuaBridge:
             with open(self.script_dir / self.script_name, 'r') as f:
                 self.script_executed = self.lua.execute(f.read())
         except FileNotFoundError as e:
-            Py4GW.Console.Log("LUA Bridge", f"File Not Found: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("LUA Bridge", f"File Not Found: {e}", PySystem.Console.MessageType.Error)
         except Exception as e:
-            Py4GW.Console.Log("LUA Bridge", f"Unexpected error while loading Lua scripts: {e}", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log("LUA Bridge", f"Unexpected error while loading Lua scripts: {e}", PySystem.Console.MessageType.Error)
 
     def execute_lua_script(self):
         return self.script_executed

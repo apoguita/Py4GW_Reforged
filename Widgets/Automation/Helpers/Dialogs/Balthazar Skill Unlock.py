@@ -75,7 +75,7 @@ class BalthazarSkillUnlockWidget:
         self.skill_catalog = self._load_skill_catalog()
 
     def _candidate_skill_json_paths(self) -> List[str]:
-        project_root = str(Py4GW.Console.get_projects_path() or "")
+        project_root = str(PySystem.Console.get_projects_path() or "")
         script_dir = os.path.dirname(globals().get("__file__", MODULE_NAME))
         candidates = []
         if project_root:

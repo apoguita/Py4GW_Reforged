@@ -17,7 +17,7 @@ class FloatingIconVars:
     MAIN_INI_KEY: str = ""
     FLOATING_INI_KEY: str = ""
     INI_INIT: bool = False
-    ICON_PATH: str = os.path.join(Py4GW.Console.get_projects_path(), "python_icon_round.png")
+    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "python_icon_round.png")
 
 
 class FloatingButtonExample:
@@ -84,7 +84,7 @@ def main():
         state = _ensure_state()
         state.floating_button.draw(FloatingIconVars.FLOATING_INI_KEY)
     except Exception as exc:
-        Py4GW.Console.Log(FloatingIconVars.MODULE_NAME, f"Error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(FloatingIconVars.MODULE_NAME, f"Error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 

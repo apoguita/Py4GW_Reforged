@@ -13,7 +13,7 @@ from .Textures import TextureSliceMode, ThemeTextures, TextureState
 from .WindowModule import WindowModule
 from .IconsFontAwesome5 import IconsFontAwesome5
 import PyImGui
-import Py4GW
+import PySystem
 
 #region ImGui
 class ImGui:
@@ -3661,7 +3661,7 @@ class ImGui:
 
         # Set up a scrollable child window
         if PyImGui.begin_child(f"ScrollableTextArea_{title}", size=(window_width, content_height), border=True, flags=PyImGui.WindowFlags.HorizontalScrollbar):
-            PyImGui.text_wrapped(text_content + "\n" + Py4GW.Console.GetCredits())
+            PyImGui.text_wrapped(text_content + "\n" + PySystem.get_credits())
             PyImGui.end_child()
     
     @staticmethod
@@ -4018,7 +4018,7 @@ class ImGui:
     class gw_window():
         _state = {}
         
-        projects_path = Py4GW.Console.get_projects_path()
+        projects_path = PySystem.Console.get_projects_path()
         
         TEXTURE_FOLDER = projects_path + "\\Textures\\Game UI\\"
         FRAME_ATLAS = "ui_window_frame_atlas.png"

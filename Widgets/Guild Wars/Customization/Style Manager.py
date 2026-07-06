@@ -31,7 +31,7 @@ class ImGuiDev:
    
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-root_directory = Py4GW.Console.get_projects_path()
+root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(
     root_directory, "Widgets/Config/Style Manager.ini")
 ini_handler = IniHandler(ini_file_location)
@@ -549,7 +549,7 @@ def on_enable():
     global selected_theme
     selected_theme = StyleTheme[py4_gw_ini_handler.read_key(
         "settings", "style_theme", StyleTheme.ImGui.name)]
-    Py4GW.Console.Log(MODULE_NAME, f"Enabled Style Manager with theme: {selected_theme.name}", Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log(MODULE_NAME, f"Enabled Style Manager with theme: {selected_theme.name}", PySystem.Console.MessageType.Info)
     set_theme(selected_theme)
         
 def DrawWindow():
@@ -888,8 +888,8 @@ def main():
             DrawWindow()
 
     except Exception as e:
-        Py4GW.Console.Log(
-            MODULE_NAME, f"Error in main: {str(e)}", Py4GW.Console.MessageType.Debug)
+        PySystem.Console.Log(
+            MODULE_NAME, f"Error in main: {str(e)}", PySystem.Console.MessageType.Debug)
         return False
     return True
 

@@ -86,12 +86,12 @@ class UIManager:
         Update IO events for registered frame IDs.
         """
         import PyImGui
-        from Py4GW import Game
+        import PySystem
         from .enums_src.IO_enums import MouseButton
 
         io = PyImGui.get_io()
         mouse_pos = (io.mouse_pos_x, io.mouse_pos_y)
-        timestamp = Game.get_tick_count64()
+        timestamp = PySystem.get_tick_count64()
         
         for frame_id in UIManager.frame_id_callbacks:
             if not UIManager.FrameExists(frame_id):

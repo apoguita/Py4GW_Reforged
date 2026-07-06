@@ -27,7 +27,7 @@ class EnemyTrackerConfig:
     MAIN_INI_KEY: str = ""
     FLOATING_INI_KEY: str = ""
     INI_INIT: bool = False
-    ICON_PATH: str = os.path.join(Py4GW.Console.get_projects_path(), "crossed swords.png")
+    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "crossed swords.png")
     DEFAULT_NAME_LANGUAGE: str = "en"
 
 
@@ -39,7 +39,7 @@ ENEMY_BAR_DEBUG_STARTUP_LOGGED = False
 def _enemy_bar_debug(message: str) -> None:
     if not ENEMY_BAR_DEBUG:
         return
-    Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"[EnemyBarDebug] {message}", Py4GW.Console.MessageType.Warning)
+    PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"[EnemyBarDebug] {message}", PySystem.Console.MessageType.Warning)
 
 
 def _call_target(agent_id: int, interact: bool = False) -> bool:
@@ -134,7 +134,7 @@ class EnemyBarWidget:
         hovered = PyImGui.is_item_hovered()
         clicked = PyImGui.is_item_clicked(0)
         io = PyImGui.get_io()
-        now = int(Py4GW.Game.get_tick_count64())
+        now = int(PySystem.get_tick_count64())
         mouse_x = float(getattr(io, "mouse_pos_x", 0.0))
         mouse_y = float(getattr(io, "mouse_pos_y", 0.0))
         double_clicked = False
@@ -1223,7 +1223,7 @@ def scanner_main():
             return
         _ensure_state()
     except Exception as exc:
-        Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Scanner error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Scanner error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -1248,7 +1248,7 @@ def ui_main():
         state.draw_world_agent_markers()
         state.draw_mission_map_range_ring()
     except Exception as exc:
-        Py4GW.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Error: {exc}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(EnemyTrackerConfig.MODULE_NAME, f"Error: {exc}", PySystem.Console.MessageType.Error)
         raise
 
 

@@ -1,6 +1,6 @@
 import ctypes
 from typing import Optional
-from Py4GW import Console
+import PySystem
 import PyImGui
 from Py4GWCoreLib import ImGui, Overlay
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE

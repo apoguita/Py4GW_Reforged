@@ -197,11 +197,11 @@ def main():
         draw_crafter_window()
 
     except ImportError as e:
-        Py4GW.Console.Log(Module_Name, f"ImportError encountered: {str(e)}")
+        PySystem.Console.Log(Module_Name, f"ImportError encountered: {str(e)}")
     except ValueError as e:
-        Py4GW.Console.Log(Module_Name, f"ValueError encountered: {str(e)}")
+        PySystem.Console.Log(Module_Name, f"ValueError encountered: {str(e)}")
     except Exception as e:
-        Py4GW.Console.Log(Module_Name, f"Unexpected error encountered: {str(e)}")
+        PySystem.Console.Log(Module_Name, f"Unexpected error encountered: {str(e)}")
 
 if __name__ == "__main__":
     main()

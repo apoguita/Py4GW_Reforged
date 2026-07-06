@@ -64,7 +64,7 @@ class TitleHelper:
 
         self._cache_starting_points()
 
-        Py4GW.Console.Log("TitleHelper", "Helper state has been reset.")
+        PySystem.Console.Log("TitleHelper", "Helper state has been reset.")
 
     def _cache_starting_points(self):
         for title_id in self.start_points:
@@ -88,15 +88,15 @@ class TitleHelper:
 
     def _use_item_group(self, model_ids, counter_attr, empty_attr):
         for model_id in model_ids:
-            Py4GW.Console.Log("TitleHelper", f"Trying modelid: {model_id} ({model_id.value})")
+            PySystem.Console.Log("TitleHelper", f"Trying modelid: {model_id} ({model_id.value})")
             item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(model_id.value)
             if item_id:
-                Py4GW.Console.Log("TitleHelper", f"Using item id: {item_id} for modelid: {model_id}")
+                PySystem.Console.Log("TitleHelper", f"Using item id: {item_id} for modelid: {model_id}")
                 GLOBAL_CACHE.Inventory.UseItem(item_id)
                 setattr(self, counter_attr, getattr(self, counter_attr) + 1)
                 return True
         setattr(self, empty_attr, True)
-        Py4GW.Console.Log("TitleHelper", "No items found in inventory for this category.")
+        PySystem.Console.Log("TitleHelper", "No items found in inventory for this category.")
         return False
     
     def run(self):

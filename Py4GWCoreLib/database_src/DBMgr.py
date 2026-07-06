@@ -42,14 +42,14 @@ _PRIMARY_SETUP_RE = re.compile(r"^\d+_")
 def _get_projects_path() -> Path:
     """Resolve the base path for database storage.
 
-    Tries Py4GW.Console.get_projects_path() first.
+    Tries PySystem.Console.get_projects_path() first.
     Falls back to os.getcwd() if Py4GW is not available.
     """
     try:
-        import Py4GW
+        import PySystem
 
-        if hasattr(Py4GW, "Console") and hasattr(Py4GW.Console, "get_projects_path"):
-            path = Py4GW.Console.get_projects_path()
+        if hasattr(PySystem, "Console") and hasattr(PySystem.Console, "get_projects_path"):
+            path = PySystem.Console.get_projects_path()
             if path:
                 return Path(path).resolve()
     except Exception:
@@ -309,7 +309,7 @@ class DBMgr:
 
     @staticmethod
     def _log(message: str, severity: str = "Info") -> None:
-        """Log a message through Py4GW.Console.Log with print() fallback.
+        """Log a message through PySystem.Console.Log with print() fallback.
 
         Args:
             message: The message text.
@@ -318,8 +318,8 @@ class DBMgr:
         try:
             import Py4GW
 
-            msg_type = getattr(Py4GW.Console.MessageType, severity, Py4GW.Console.MessageType.Notice)
-            Py4GW.Console.Log(MODULE_NAME, message, msg_type)
+            msg_type = getattr(PySystem.Console.MessageType, severity, PySystem.Console.MessageType.Notice)
+            PySystem.Console.Log(MODULE_NAME, message, msg_type)
         except Exception:
             print(f"[{MODULE_NAME}] [{severity}] {message}")
 

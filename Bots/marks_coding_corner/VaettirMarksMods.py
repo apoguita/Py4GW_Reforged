@@ -310,13 +310,13 @@ def kill_enemies(bot: Botting):
         current_time = Utils.GetBaseTimestamp()
         delta = current_time - start_time
         if delta > timeout and timeout > 0:
-            ConsoleLog("Killing Routine", "Timeout reached, restarting.", Py4GW.Console.MessageType.Error)
+            ConsoleLog("Killing Routine", "Timeout reached, restarting.", PySystem.Console.MessageType.Error)
             fsm = bot.config.FSM
             fsm.jump_to_state_by_name("[H]Town Routines_1")
             return
 
         if Agent.IsDead(Player.GetAgentID()):
-            ConsoleLog("Killing Routine", "Player is dead, restarting.", Py4GW.Console.MessageType.Warning)
+            ConsoleLog("Killing Routine", "Player is dead, restarting.", PySystem.Console.MessageType.Warning)
             fsm = bot.config.FSM
             fsm.jump_to_state_by_name("[H]Town Routines_1")
         yield from Routines.Yield.wait(1000)
@@ -327,7 +327,7 @@ def kill_enemies(bot: Botting):
     if isinstance(build, SF_Ass_vaettir) or isinstance(build, SF_Mes_vaettir):
         build.SetKillingRoutine(False)
         build.SetRoutineFinished(finished_routine)
-    ConsoleLog("Killing Routine", "Finished Killing Routine", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Killing Routine", "Finished Killing Routine", PySystem.Console.MessageType.Info)
     yield from Routines.Yield.wait(1000)  # Wait a bit to ensure the enemies are dead
 
 
@@ -342,7 +342,7 @@ def assign_build(bot: Botting):
             ConsoleLog(
                 "Unsupported Profession",
                 f"The profession '{profession}' is not supported by this bot.",
-                Py4GW.Console.MessageType.Error,
+                PySystem.Console.MessageType.Error,
             )
             bot.Stop()
             return
@@ -379,7 +379,7 @@ def _wait_for_aggro_ball(bot: Botting, side_label: str, cycle_timeout: int = 150
     global in_waiting_routine
     from Py4GWCoreLib.Agent import Agent
     ConsoleLog(
-        f"Waiting for {side_label} Aggro Ball", "Waiting for enemies to ball up.", Py4GW.Console.MessageType.Info
+        f"Waiting for {side_label} Aggro Ball", "Waiting for enemies to ball up.", PySystem.Console.MessageType.Info
     )
 
     in_waiting_routine = True
@@ -394,7 +394,7 @@ def _wait_for_aggro_ball(bot: Botting, side_label: str, cycle_timeout: int = 150
             # hard exit if player dies
             if Agent.IsDead(Player.GetAgentID()):
                 ConsoleLog(
-                    f"{side_label} Aggro Ball Wait", "Player is dead, exiting wait.", Py4GW.Console.MessageType.Warning
+                    f"{side_label} Aggro Ball Wait", "Player is dead, exiting wait.", PySystem.Console.MessageType.Warning
                 )
                 yield
                 return
@@ -419,7 +419,7 @@ def _wait_for_aggro_ball(bot: Botting, side_label: str, cycle_timeout: int = 150
 
             if all_in_adjacent:
                 ConsoleLog(
-                    f"{side_label} Aggro Ball Wait", "Enemies balled up successfully.", Py4GW.Console.MessageType.Info
+                    f"{side_label} Aggro Ball Wait", "Enemies balled up successfully.", PySystem.Console.MessageType.Info
                 )
                 break  # exit early
 
@@ -428,7 +428,7 @@ def _wait_for_aggro_ball(bot: Botting, side_label: str, cycle_timeout: int = 150
             ConsoleLog(
                 f"{side_label} Aggro Ball Wait",
                 f"Timeout reached {cycle_timeout * 100}ms, exiting without ball.",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
 
     finally:
@@ -447,7 +447,7 @@ def wait_for_ball(bot: Botting, side_label: str, cycle_timeout: int = 150):
 def wait_for_right_aggro_ball(bot: Botting, use_hos_after=True):
     from Py4GWCoreLib.Agent import Agent
     global in_waiting_routine
-    ConsoleLog("Waiting for Right Aggro Ball", "Waiting for enemies to ball up.", Py4GW.Console.MessageType.Info)
+    ConsoleLog("Waiting for Right Aggro Ball", "Waiting for enemies to ball up.", PySystem.Console.MessageType.Info)
 
     in_waiting_routine = True
 
@@ -527,7 +527,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
     global old_player_position
     global in_killing_routine
 
-    ConsoleLog("Stuck Detection", "Starting Stuck Detection Coroutine.", Py4GW.Console.MessageType.Info, True)
+    ConsoleLog("Stuck Detection", "Starting Stuck Detection Coroutine.", PySystem.Console.MessageType.Info, True)
 
     def is_within_tolerance(pos1, pos2, tolerance=100):
         dx = pos1[0] - pos2[0]
@@ -537,13 +537,13 @@ def handle_stuck_jaga_moraine(bot: Botting):
 
     while True:
         if not Routines.Checks.Map.MapValid():
-            ConsoleLog("Stuck Detection", "Map is not valid, waiting...", Py4GW.Console.MessageType.Debug, False)
+            ConsoleLog("Stuck Detection", "Map is not valid, waiting...", PySystem.Console.MessageType.Debug, False)
             yield from Routines.Yield.wait(1000)
             continue
 
         if Agent.IsDead(Player.GetAgentID()):
             ConsoleLog(
-                "Stuck Detection", "Player is dead, exiting stuck handler.", Py4GW.Console.MessageType.Debug, False
+                "Stuck Detection", "Player is dead, exiting stuck handler.", PySystem.Console.MessageType.Debug, False
             )
             yield from Routines.Yield.wait(1000)
             continue
@@ -555,7 +555,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
             ConsoleLog(
                 "HandleStuck",
                 "Instance time exceeded 7 minutes, force resigning.",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
                 True,
             )
             stuck_counter = 0
@@ -572,7 +572,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
             ConsoleLog(
                 "Stuck Detection",
                 "In waiting routine, resetting stuck counter.",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
                 False,
             )
             stuck_counter = 0
@@ -585,7 +585,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
         # Finished routine check
         if finished_routine:
             ConsoleLog(
-                "Stuck Detection", "Finished routine, resetting stuck counter.", Py4GW.Console.MessageType.Debug, False
+                "Stuck Detection", "Finished routine, resetting stuck counter.", PySystem.Console.MessageType.Debug, False
             )
             stuck_counter = 0
             if isinstance(build, SF_Ass_vaettir) or isinstance(build, SF_Mes_vaettir):
@@ -599,7 +599,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
             ConsoleLog(
                 "Stuck Detection",
                 "In killing routine, resetting stuck counter.",
-                Py4GW.Console.MessageType.Debug,
+                PySystem.Console.MessageType.Debug,
                 False,
             )
             stuck_counter = 0
@@ -615,7 +615,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
                 ConsoleLog(
                     "Stuck Detection",
                     "Stuck timer expired, sending /stuck command.",
-                    Py4GW.Console.MessageType.Debug,
+                    PySystem.Console.MessageType.Debug,
                     False,
                 )
                 Player.SendChatCommand("stuck")
@@ -626,20 +626,20 @@ def handle_stuck_jaga_moraine(bot: Botting):
                 ConsoleLog(
                     "Stuck Detection",
                     f"Checking movement. Old pos: {old_player_position}, Current pos: {current_player_pos}",
-                    Py4GW.Console.MessageType.Debug,
+                    PySystem.Console.MessageType.Debug,
                     False,
                 )
 
                 if is_within_tolerance(old_player_position, current_player_pos, 50):
                     ConsoleLog(
-                        "Stuck Detection", "Player is stuck, sending /stuck command.", Py4GW.Console.MessageType.Warning
+                        "Stuck Detection", "Player is stuck, sending /stuck command.", PySystem.Console.MessageType.Warning
                     )
                     Player.SendChatCommand("stuck")
                     stuck_counter += 1
                     ConsoleLog(
                         "Stuck Detection",
                         f"Stuck counter incremented to {stuck_counter}.",
-                        Py4GW.Console.MessageType.Debug,
+                        PySystem.Console.MessageType.Debug,
                         False,
                     )
                     if isinstance(build, SF_Ass_vaettir) or isinstance(build, SF_Mes_vaettir):
@@ -650,7 +650,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
                     ConsoleLog(
                         "Stuck Detection",
                         "Player moved, resetting stuck counter to 0.",
-                        Py4GW.Console.MessageType.Info,
+                        PySystem.Console.MessageType.Info,
                         False,
                     )
                     stuck_counter = 0
@@ -661,7 +661,7 @@ def handle_stuck_jaga_moraine(bot: Botting):
 
             if stuck_counter >= 10:
                 ConsoleLog(
-                    "Stuck Detection", "Unrecoverable stuck detected, resetting.", Py4GW.Console.MessageType.Error
+                    "Stuck Detection", "Unrecoverable stuck detected, resetting.", PySystem.Console.MessageType.Error
                 )
                 stuck_counter = 0
                 if isinstance(build, SF_Ass_vaettir) or isinstance(build, SF_Mes_vaettir):
@@ -669,11 +669,11 @@ def handle_stuck_jaga_moraine(bot: Botting):
                 Player.SendChatCommand("resign")
                 continue
         else:
-            ConsoleLog("Stuck Detection", "Not in Jaga Moraine", Py4GW.Console.MessageType.Info, False)
+            ConsoleLog("Stuck Detection", "Not in Jaga Moraine", PySystem.Console.MessageType.Info, False)
             yield from Routines.Yield.wait(1000)
             continue
 
-        ConsoleLog("Stuck Detection", "waiting for next check.", Py4GW.Console.MessageType.Info, False)
+        ConsoleLog("Stuck Detection", "waiting for next check.", PySystem.Console.MessageType.Info, False)
         yield from Routines.Yield.wait(500)
         continue
 
@@ -712,7 +712,7 @@ def configure():
 
 def main():
     bot.Update()
-    projects_path = Py4GW.Console.get_projects_path()
+    projects_path = PySystem.Console.get_projects_path()
     widgets_path = projects_path + "\\Bots\\marks_coding_corner\\textures\\"
     bot.UI.draw_window(icon_path=widgets_path + "vaettir_icon.png")
 

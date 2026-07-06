@@ -150,7 +150,7 @@ class UWCombatAdapter(ABC):
         from Py4GWCoreLib.Py4GWcorelib import Utils
 
         try:
-            ConsoleLog(self._bot_name, "Party member behind — stopping and waiting.", Py4GW.Console.MessageType.Info)
+            ConsoleLog(self._bot_name, "Party member behind — stopping and waiting.", PySystem.Console.MessageType.Info)
             yield from Routines.Yield.Movement.StopMovement()
 
             emit_count = 0
@@ -161,10 +161,10 @@ class UWCombatAdapter(ABC):
 
             while self._is_any_party_account_behind():
                 if not Routines.Checks.Map.MapValid():
-                    ConsoleLog(self._bot_name, "Map invalid — aborting wait.", Py4GW.Console.MessageType.Warning)
+                    ConsoleLog(self._bot_name, "Map invalid — aborting wait.", PySystem.Console.MessageType.Warning)
                     return
                 if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
-                    ConsoleLog(self._bot_name, "Party wiped — aborting wait.", Py4GW.Console.MessageType.Warning)
+                    ConsoleLog(self._bot_name, "Party wiped — aborting wait.", PySystem.Console.MessageType.Warning)
                     return
 
                 yield from bot_instance.Wait._coro_for_time(500)
@@ -180,7 +180,7 @@ class UWCombatAdapter(ABC):
                     # Re-stop movement in case something else issued a move
                     yield from Routines.Yield.Movement.StopMovement()
 
-            ConsoleLog(self._bot_name, "All party members in range — resuming.", Py4GW.Console.MessageType.Info)
+            ConsoleLog(self._bot_name, "All party members in range — resuming.", PySystem.Console.MessageType.Info)
 
         finally:
             bot_instance.config.FSM.resume()

@@ -1,4 +1,4 @@
-import Py2DRenderer
+import PyDXOverlay
 import PyOverlay
 
 class DXOverlay:

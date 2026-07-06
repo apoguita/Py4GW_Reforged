@@ -19,7 +19,7 @@ import sys
 try:
     import plotly
 except ImportError:
-    Py4GW.Console.Log("GWMapper", "Plotly not installed...Installing...", Py4GW.Console.MessageType.Error)
+    PySystem.Console.Log("GWMapper", "Plotly not installed...Installing...", PySystem.Console.MessageType.Error)
     subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly"])
 import plotly.graph_objects as go
 
@@ -49,7 +49,7 @@ def GetTimer():
         return True
     if timer_check != 0 and timer.get_elapsed_time() > 0:
         if timer.has_elapsed(timer_check):
-            # Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stopping timer. Elapsed_time = {FSM_vars.casting_timer.get_elapsed_time()}", Py4GW.Console.MessageType.Info)
+            # PySystem.Console.Log(bot_vars.window_module.module_name, f"Stopping timer. Elapsed_time = {FSM_vars.casting_timer.get_elapsed_time()}", PySystem.Console.MessageType.Info)
             player_timer_check = 0
             timer.reset()
             return True
@@ -88,7 +88,7 @@ def GetPlayerCoords():
         player_xy.append(new_coord)
 
     # Debug log to track coordinates
-    Py4GW.Console.Log("GWMapper", f"New player coordinates: {new_coord}", Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log("GWMapper", f"New player coordinates: {new_coord}", PySystem.Console.MessageType.Info)
 
 
 
@@ -100,7 +100,7 @@ def GetEnemyCoords():
     enemy_array = AgentArray.GetEnemyArray()
     alive_enemies = AgentArray.Filter.ByAttribute(enemy_array, 'IsAlive')
     if not alive_enemies:
-        Py4GW.Console.Log("Enemy Array", "No enemies found.", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Enemy Array", "No enemies found.", PySystem.Console.MessageType.Warning)
         return  # Stop the function if no enemies
 
     # Generate a list of (agent_id, x, y) tuples using list comprehension
@@ -133,7 +133,7 @@ def GetEnemyCoords():
 
 
 
-    Py4GW.Console.Log("Enemy Array", f"Enemies: {enemy_xy}", Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log("Enemy Array", f"Enemies: {enemy_xy}", PySystem.Console.MessageType.Info)
 
 
 def GetAllyCoords():
@@ -143,7 +143,7 @@ def GetAllyCoords():
     ally_array = AgentArray.GetAllyArray()
 
     if not ally_array:
-        Py4GW.Console.Log("Ally Array", "No Ally NPC found.", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Ally Array", "No Ally NPC found.", PySystem.Console.MessageType.Warning)
         return  # Stop the function if no enemies
 
     # Generate a list of (agent_id, x, y) tuples using list comprehension
@@ -195,7 +195,7 @@ def GetCartoCoords():
     cart_xy.append(new_coord)
 
     # Debug log to track coordinates
-    Py4GW.Console.Log("GWMapper", f"New Cartography coordinates: {new_coord}", Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log("GWMapper", f"New Cartography coordinates: {new_coord}", PySystem.Console.MessageType.Info)
 
 def GetCustomCoords():
     global custom_xy
@@ -217,7 +217,7 @@ def GetCustomCoords():
     custom_xy.append(new_coord)
 
     # Debug log to track coordinates
-    Py4GW.Console.Log("GWMapper", f"New {custom_name} coordinates: {new_coord}", Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log("GWMapper", f"New {custom_name} coordinates: {new_coord}", PySystem.Console.MessageType.Info)
 
 
 
@@ -261,17 +261,17 @@ def CoordLogger(log_type, log_name, data, header="GWMapper"):
                 log_file.write(f" {item}\n")
 
         # Log success message to the console
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             "GWMapper",
             f"{log_type.capitalize()} data logged to {file_path}",
-            Py4GW.Console.MessageType.Info
+            PySystem.Console.MessageType.Info
         )
     except Exception as e:
         # Log any error that occurs
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             "GWMapper",
             f"Failed to log {log_type} data: {str(e)}",
-            Py4GW.Console.MessageType.Error
+            PySystem.Console.MessageType.Error
         )
 
 def CoordMapper():
@@ -288,20 +288,20 @@ def CoordMapper():
     # Step 2: Create the directory if it doesn't exist
     try:
         os.makedirs(save_dir, exist_ok=True)  # Create directories as needed
-        Py4GW.Console.Log("GWMapper", f"Directory created or already exists: {save_dir}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("GWMapper", f"Directory created or already exists: {save_dir}", PySystem.Console.MessageType.Info)
     except Exception as e:
-        Py4GW.Console.Log("GWMapper", f"Error creating directory: {save_dir}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("GWMapper", f"Error creating directory: {save_dir}", PySystem.Console.MessageType.Error)
 
     # Step 3: Verify that the directory exists
     if os.path.exists(save_dir):
-        Py4GW.Console.Log("GWMapper", f"Directory verified: {save_dir}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("GWMapper", f"Directory verified: {save_dir}", PySystem.Console.MessageType.Info)
     else:
-        Py4GW.Console.Log("GWMapper", f"Directory does not exist: {save_dir}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("GWMapper", f"Directory does not exist: {save_dir}", PySystem.Console.MessageType.Error)
 
     # Create the plot
     fig = go.Figure()
     if player_xy:
-        Py4GW.Console.Log("Coordinate Logger", "Mapping player coordinates...", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Coordinate Logger", "Mapping player coordinates...", PySystem.Console.MessageType.Info)
         fig.add_trace(go.Scatter(
             x=[coord[0] for coord in player_xy],
             y=[coord[1] for coord in player_xy],
@@ -312,7 +312,7 @@ def CoordMapper():
 
     # Add enemy coordinates (check if dictionary is not empty)
     if enemy_xy:
-        Py4GW.Console.Log("Coordinate Logger", "Mapping enemy coordinates...", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Coordinate Logger", "Mapping enemy coordinates...", PySystem.Console.MessageType.Info)
         for agent_id, coords in enemy_xy.items():
             if coords:
                 fig.add_trace(go.Scatter(
@@ -324,12 +324,12 @@ def CoordMapper():
                 ))
                 enemy_traces.append(len(fig.data) - 1)
             else:
-                Py4GW.Console.Log("Coordinate Logger", f"Skipping empty coordinates for enemy {agent_id}",
-                                  Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("Coordinate Logger", f"Skipping empty coordinates for enemy {agent_id}",
+                                  PySystem.Console.MessageType.Error)
 
     # Add ally coordinates (check if dictionary is not empty)
     if ally_xy:
-        Py4GW.Console.Log("Coordinate Logger", "Mapping ally coordinates...", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Coordinate Logger", "Mapping ally coordinates...", PySystem.Console.MessageType.Info)
         for agent_id, coords in ally_xy.items():
             if coords:
                 fig.add_trace(go.Scatter(
@@ -341,12 +341,12 @@ def CoordMapper():
                 ))
                 ally_traces.append(len(fig.data) - 1)
             else:
-                Py4GW.Console.Log("Coordinate Logger", f"Skipping empty coordinates for ally {agent_id}",
-                                  Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("Coordinate Logger", f"Skipping empty coordinates for ally {agent_id}",
+                                  PySystem.Console.MessageType.Error)
 
     # Add cartography coordinates (check if list is not empty)
     if cart_xy:
-        Py4GW.Console.Log("Coordinate Logger", "Adding cartography coordinates...", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Coordinate Logger", "Adding cartography coordinates...", PySystem.Console.MessageType.Info)
         fig.add_trace(go.Scatter(
             x=[coord[0] for coord in cart_xy],
             y=[coord[1] for coord in cart_xy],
@@ -357,7 +357,7 @@ def CoordMapper():
 
     # Add custom coordinates (check if list is not empty)
     if custom_xy:
-        Py4GW.Console.Log("Coordinate Logger", "Adding custom coordinates...", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log("Coordinate Logger", "Adding custom coordinates...", PySystem.Console.MessageType.Info)
         fig.add_trace(go.Scatter(
             x=[coord[0] for coord in custom_xy],
             y=[coord[1] for coord in custom_xy],
@@ -563,7 +563,7 @@ def DrawWindow():
             PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 
@@ -576,25 +576,25 @@ def main():
         if Map.IsMapReady():
             DrawWindow()
         else:
-            Py4GW.Console.Log(module_name, f"Map not ready", Py4GW.Console.MessageType.Error)
+            PySystem.Console.Log(module_name, f"Map not ready", PySystem.Console.MessageType.Error)
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
         # Catch-all for any other unexpected exceptions
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         # Optional: Code that will run whether an exception occurred or not
-        # Py4GW.Console.Log(module_name, "Execution of Main() completed", Py4GW.Console.MessageType.Info)
+        # PySystem.Console.Log(module_name, "Execution of Main() completed", PySystem.Console.MessageType.Info)
         # Place any cleanup tasks here
         pass
 

@@ -9,7 +9,7 @@ user32 = ctypes.WinDLL("user32", use_last_error=True)
 window_module = ImGui.WindowModule('Skillbar+', window_name = 'Skillbar+', window_flags = PyImGui.WindowFlags.AlwaysAutoResize)
 
 class SkillBarPlus:
-    ini = IniHandler(os.path.join(Py4GW.Console.get_projects_path(), "Widgets/Config/Skillbar +.ini"))
+    ini = IniHandler(os.path.join(PySystem.Console.get_projects_path(), "Widgets/Config/Skillbar +.ini"))
     
     class SkillsPlus:
         overlay         = PyOverlay.Overlay()
@@ -382,7 +382,7 @@ def configure():
 
     except Exception as e:
         current_function = inspect.currentframe().f_code.co_name # type: ignore
-        Py4GW.Console.Log('BOT', f'Error in {current_function}: {str(e)}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Error in {current_function}: {str(e)}', PySystem.Console.MessageType.Error)
         raise
     
 def tooltip():
@@ -442,17 +442,17 @@ def main():
                     sbp.auto.click_timer.Reset()
 
     except ImportError as e:
-        Py4GW.Console.Log('Compass+', f'ImportError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'ImportError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log('Compass+', f'ValueError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'ValueError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log('Compass+', f'TypeError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'TypeError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log('Compass+', f'Unexpected error encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Unexpected error encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     finally:
         pass
 

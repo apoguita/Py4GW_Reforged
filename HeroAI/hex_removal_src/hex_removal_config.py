@@ -88,13 +88,13 @@ _cache_state: ConfigState | None = None
 def _log(msg: str) -> None:
     try:
         from Py4GWCoreLib import ConsoleLog
-        ConsoleLog("HexRemoval", msg, Py4GW.Console.MessageType.Info)
+        ConsoleLog("HexRemoval", msg, PySystem.Console.MessageType.Info)
     except Exception:
         pass
 
 
 def _projects_settings_root() -> str:
-    return os.path.join(Py4GW.Console.get_projects_path(), "Settings")
+    return os.path.join(PySystem.Console.get_projects_path(), "Settings")
 
 
 def _path_for(email: str, character_name: str) -> str:

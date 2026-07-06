@@ -1,91 +1,18 @@
-# PyItem.pyi - Auto-generated .pyi file for PyItem module
+# PyItem stub — Reforged Native surface (2026-07-06)
+# Matches item_bindings.cpp. PyItem class + ItemModifier + ItemTypeClass + DyeInfo.
 
-from typing import Any, List, overload
-from enum import Enum, IntEnum
+from typing import List, Any
+from enum import IntEnum
 
-# Enum DyeColor (SafeDyeColor)
-class DyeColor:
-    NoColor: int
-    Blue: int
-    Green: int
-    Purple: int
-    Red: int
-    Yellow: int
-    Brown: int
-    Orange: int
-    Silver: int
-    Black: int
-    Gray: int
-    White: int
-    Pink: int
-
-# Enum ItemType (SafeItemType)
-class ItemType:
-    Salvage: int
-    Axe: int
-    Bag: int
-    Boots: int
-    Bow: int
-    Bundle: int
-    Chestpiece: int
-    Rune_Mod: int
-    Usable: int
-    Dye: int
-    Materials_or_Zcoins: int
-    Offhand: int
-    Gloves: int
-    Hammer: int
-    Headpiece: int
-    CC_Shards: int
-    Key: int
-    Leggings: int
-    Gold_Coin: int
-    Quest_Item: int
-    Wand: int
-    Shield: int
-    Staff: int
-    Sword: int
-    Kit: int
-    Trophy: int
-    Scroll: int
-    Daggers: int
-    Present: int
-    Minipet: int
-    Scythe: int
-    Spear: int
-    Storybook: int
-    Costume: int
-    Costume_Headpiece: int
-    Unknown: int
-
-# Enum SalvageAllType
-class SalvageAllType:
-    Nothing: int
-    White: int
-    BlueAndLower: int
-    PurpleAndLower: int
-    GoldAndLower: int
-
-# Enum IdentifyAllType
-class IdentifyAllType:
-    Nothing: int
-    All: int
-    Blue: int
-    Purple: int
-    Gold: int
-
-# Enum Rarity
 class Rarity(IntEnum):
-    White = 0
-    Blue = 1
-    Purple = 2
-    Gold = 3
-    Green = 4
+    White: int = 0
+    Blue: int = 1
+    Purple: int = 2
+    Gold: int = 3
+    Green: int = 4
 
-# Class ItemModifier (SafeItemModifier)
 class ItemModifier:
     def __init__(self, identifier: int) -> None: ...
-    
     def GetIdentifier(self) -> int: ...
     def GetArg1(self) -> int: ...
     def GetArg2(self) -> int: ...
@@ -94,38 +21,25 @@ class ItemModifier:
     def GetModBits(self) -> int: ...
     def ToString(self) -> str: ...
 
-# Class ItemTypeClass (SafeItemTypeClass)
 class ItemTypeClass:
     def __init__(self, item_type: int) -> None: ...
-    
     def ToInt(self) -> int: ...
     def GetName(self) -> str: ...
-    
-    def __eq__(self, other: Any) -> bool: ...
-    def __ne__(self, other: Any) -> bool: ...
 
-# Class DyeColorClass (SafeDyeColorClass)
 class DyeColorClass:
     def __init__(self, dye_color: int) -> None: ...
     def ToInt(self) -> int: ...
     def ToString(self) -> str: ...
 
-# Class DyeInfo (SafeDyeInfoClass)
 class DyeInfo:
     dye_tint: int
     dye1: DyeColorClass
     dye2: DyeColorClass
     dye3: DyeColorClass
     dye4: DyeColorClass
-
-    @overload
     def __init__(self) -> None: ...
-    @overload
-    def __init__(self, dye_info: Any) -> None: ...
     def ToString(self) -> str: ...
 
-
-# Class Item (SafeItem)
 class PyItem:
     item_id: int
     agent_id: int
@@ -168,7 +82,6 @@ class PyItem:
     is_identified: bool
     is_prefix_upgradable: bool
     is_suffix_upgradable: bool
-    is_stackable: bool
     is_usable: bool
     is_tradable: bool
     is_inscription: bool
@@ -182,15 +95,16 @@ class PyItem:
     def RequestName(self) -> None: ...
     def IsItemNameReady(self) -> bool: ...
     def GetName(self) -> str: ...
-    def GetCompositeModelIDs(self) -> list[int]: ...
+    def GetInfoString(self) -> List[int]: ...
+    def GetNameEnc(self) -> List[int]: ...
+    def GetCompleteNameEnc(self) -> List[int]: ...
+    def GetSingleItemName(self) -> List[int]: ...
     def IsItemValid(self, item_id: int) -> bool: ...
-        
+
     @staticmethod
-    def GetInfoString(agent_id: int) -> list[int]: ...
-    @staticmethod
-    def GetNameEnc(agent_id: int) -> list[int]: ...
-    @staticmethod
-    def GetCompleteNameEnc(agent_id: int) -> list[int]: ...
-    @staticmethod
-    def GetSingleItemName(agent_id: int) -> list[int]: ...
-    
+    def GetCompositeModelIDs(item_id: int) -> List[int]: ...
+
+# ── Module-level free functions ──
+def use_item_by_id(item_id: int) -> bool: ...
+def equip_item_by_id(item_id: int, agent_id: int = 0) -> bool: ...
+def drop_item_by_id(item_id: int, quantity: int = 1) -> bool: ...

@@ -56,13 +56,13 @@ INI_PATH = "Widgets/WidgetManagerV2"
 INI_FILENAME = "WidgetManagerV2.ini"
 
 def on_enable():
-    Py4GW.Console.Log(MODULE_NAME, f"{MODULE_NAME} loaded successfully.")
+    PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} loaded successfully.")
 
 def on_disable():
-    Py4GW.Console.Log(MODULE_NAME, f"{MODULE_NAME} unloaded successfully.")
+    PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} unloaded successfully.")
     
 def configure():
-    Py4GW.Console.Log(MODULE_NAME, f"{MODULE_NAME} configuration opened.")
+    PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} configuration opened.")
 
 def draw_node(INI_KEY: str, parent_node: WidgetTreeNode, depth: int = 0):
         style = ImGui.get_style()
@@ -133,8 +133,8 @@ def draw_widget(widget: Widget):
                 if widget.tooltip:
                     widget.tooltip()
             except Exception as e:
-                Py4GW.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", Py4GW.Console.MessageType.Error)
-                Py4GW.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+                PySystem.Console.Log("WidgetHandler", f"Error during tooltip of widget {widget.folder_script_name}: {str(e)}", PySystem.Console.MessageType.Error)
+                PySystem.Console.Log("WidgetHandler", f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
         else:
             PyImGui.show_tooltip(f"Enable/Disable {display_name} widget")
 
@@ -198,7 +198,7 @@ def draw():
             button_width = (PyImGui.get_content_region_avail()[0] - 15)/ 4
                                 
             if ImGui.icon_button(IconsFontAwesome5.ICON_RETWEET + "##Reload Widgets", button_width):
-                Py4GW.Console.Log("Widget Manager", "Reloading Widgets...", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log("Widget Manager", "Reloading Widgets...", PySystem.Console.MessageType.Info)
                 
                 widget_manager.widget_initialized = False
                 widget_manager.discovered = False

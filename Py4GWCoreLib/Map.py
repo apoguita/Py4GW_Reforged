@@ -2064,8 +2064,8 @@ class Map:
         @staticmethod
         def InCharacterSelectScreen() -> bool:
             """Check if in character select screen."""
-            from Py4GW import Game
-            result = Game.InCharacterSelectScreen()
+            import PySystem
+            result = PySystem.in_character_select_screen()
             return result
         
         @staticmethod

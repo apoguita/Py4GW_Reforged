@@ -1,6 +1,6 @@
 import ctypes
 
-from Py4GW import Console
+import PySystem
 import PyImGui
 
 from Py4GWCoreLib import Routines

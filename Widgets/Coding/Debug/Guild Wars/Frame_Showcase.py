@@ -19,7 +19,7 @@ MODULE_ICON = "Textures/Module_Icons/Frame Tester.png"
 
 THROTTLE_TREE_MS = 2000
 LOG_BUFFER_SIZE = 500
-projects_root = Py4GW.Console.get_projects_path()
+projects_root = PySystem.Console.get_projects_path()
 json_file_name = os.path.join(projects_root, "Py4GWCoreLib", "frame_aliases.json")
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Tuple, Generator, Any
 import os, time
 import PyImGui
-from Py4GW import Game
+import PyGameThread
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Bags, Botting,
                           AutoPathing, ImGui, ActionQueueManager, Map, Agent, Player, UIManager, GWUI, HeroType, Skill, AgentArray)
 from Py4GWCoreLib.Builds.Any.KeiranThackerayEOTN import KeiranThackerayEOTN
@@ -85,7 +85,7 @@ def _load_navmesh_object(bot) -> None:
             navmesh = nav
             return
     except Exception as e:
-        Py4GW.Console.Log("Navmesh", f"Navmesh load failed: {e}", Py4GW.Console.MessageType.Warning)
+        PySystem.Console.Log("Navmesh", f"Navmesh load failed: {e}", PySystem.Console.MessageType.Warning)
     def _load_coro():
         yield from AutoPathing().load_pathing_maps()
         nav = AutoPathing().get_navmesh()
@@ -108,10 +108,10 @@ def QuestLoop(quest_id, quest_x, quest_y, quest_dialog, mode="accept", quest_npc
         npc_id = Routines.Agents.GetAgentIDByModelID(quest_npc)
 
     if quest_x == 0 and quest_y == 0:
-        ConsoleLog(label, f"NPC{quest_npc}", Py4GW.Console.MessageType.Info)
+        ConsoleLog(label, f"NPC{quest_npc}", PySystem.Console.MessageType.Info)
         npc_id = Routines.Agents.GetAgentIDByModelID(quest_npc)
         quest_x, quest_y = Agent.GetXY(npc_id)
-        ConsoleLog(label, f"X{quest_x} Y{quest_y}", Py4GW.Console.MessageType.Info)
+        ConsoleLog(label, f"X{quest_x} Y{quest_y}", PySystem.Console.MessageType.Info)
     
     def loop_condition():
         if mode == "complete":
@@ -134,7 +134,7 @@ def QuestLoop(quest_id, quest_x, quest_y, quest_dialog, mode="accept", quest_npc
             return bot.Quest.GetActiveQuest() == quest_id
 
     while loop_condition() and attempts < 5:
-        ConsoleLog(label, f"Attempting to {action_inf} quest #{quest_id}", Py4GW.Console.MessageType.Info)
+        ConsoleLog(label, f"Attempting to {action_inf} quest #{quest_id}", PySystem.Console.MessageType.Info)
         yield from bot.Move._coro_xy_and_dialog(quest_x, quest_y, quest_dialog)
         if multi != 0:
             yield from bot.Move._coro_xy_and_dialog(quest_x, quest_y, multi)
@@ -142,12 +142,12 @@ def QuestLoop(quest_id, quest_x, quest_y, quest_dialog, mode="accept", quest_npc
         attempts += 1
 
     if success_condition():
-        ConsoleLog(label, f"Successfully {action_past} quest #{quest_id}", Py4GW.Console.MessageType.Info)
+        ConsoleLog(label, f"Successfully {action_past} quest #{quest_id}", PySystem.Console.MessageType.Info)
         return
     else:
         fsm = bot.config.FSM
         fsm.pause()
-        ConsoleLog(label, f"The bot attempted and failed to {action_inf} quest #{quest_id}. The bot has stopped.", Py4GW.Console.MessageType.Info)
+        ConsoleLog(label, f"The bot attempted and failed to {action_inf} quest #{quest_id}. The bot has stopped.", PySystem.Console.MessageType.Info)
 
 #region Battle configuration
 def ConfigurePacifistEnv(bot: Botting) -> None:
@@ -454,12 +454,12 @@ def _craft_armor_set(bot: Botting, armor_key: str, gold_cost: int):
         result = yield from Routines.Yield.Items.CraftItem(item_id, gold_cost, mats, qtys)
         yield from Routines.Yield.wait(500)
         if not result:
-            ConsoleLog("CraftArmor", f"Failed to craft item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftArmor", f"Failed to craft item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         result = yield from Routines.Yield.Items.EquipItem(item_id)
         if not result:
-            ConsoleLog("CraftArmor", f"Failed to equip item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftArmor", f"Failed to equip item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -602,7 +602,7 @@ def VerifyMaxArmorMaterials(bot: Botting) -> bool:
 
     if missing:
         for model_id, current, needed in missing:
-            ConsoleLog("CraftMaxArmor", f"Missing material {model_id}: have {current}, need {needed}.", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftMaxArmor", f"Missing material {model_id}: have {current}, need {needed}.", PySystem.Console.MessageType.Error)
         bot.helpers.Events.on_unmanaged_fail()
         return False
     return True
@@ -632,7 +632,7 @@ def BuyMaxArmorMaterials(material_type: str = "common"):
 
 def DoCraftMaxArmor(bot: Botting):
     if any(item_id == 0 for item_id, _, _ in _get_max_armor_data()["pieces"]):
-        ConsoleLog("CraftMaxArmor", "Missing armor piece mapping for current profession.", Py4GW.Console.MessageType.Error)
+        ConsoleLog("CraftMaxArmor", "Missing armor piece mapping for current profession.", PySystem.Console.MessageType.Error)
         bot.helpers.Events.on_unmanaged_fail()
         return False
 
@@ -640,14 +640,14 @@ def DoCraftMaxArmor(bot: Botting):
         result = yield from Routines.Yield.Items.CraftItem(item_id, 1000, mats, qtys)
         yield from Routines.Yield.wait(500)
         if not result:
-            ConsoleLog("CraftMaxArmor", f"Failed to craft item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftMaxArmor", f"Failed to craft item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
 
         result = yield from Routines.Yield.Items.EquipItem(item_id)
         if not result:
-            ConsoleLog("CraftMaxArmor", f"Failed to equip item ({item_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("CraftMaxArmor", f"Failed to equip item ({item_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -667,13 +667,13 @@ def DoCraftWeapon(bot: Botting):
     for weapon_id, mats, qtys in _WEAPON_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 100, mats, qtys)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -693,13 +693,13 @@ def DoCraftShortbow(bot: Botting):
     for weapon_id, mats, qtys in _SHORTBOW_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 5000, mats, qtys)
         if not result:
-            ConsoleLog("DoCraftShortbow", f"Failed to craft shortbow ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftShortbow", f"Failed to craft shortbow ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("DoCraftShortbow", f"Failed to equip shortbow ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftShortbow", f"Failed to equip shortbow ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -717,13 +717,13 @@ def DoCraftLongbow(bot: Botting):
     for weapon_id, mats, qtys in _LONGBOW_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 5000, mats, qtys)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to craft weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
         result = yield from Routines.Yield.Items.EquipItem(weapon_id)
         if not result:
-            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", Py4GW.Console.MessageType.Error)
+            ConsoleLog("DoCraftWeapon", f"Failed to equip weapon ({weapon_id}).", PySystem.Console.MessageType.Error)
             bot.helpers.Events.on_unmanaged_fail()
             return False
         yield
@@ -1554,12 +1554,12 @@ def Farm_Until_Level_20(bot: Botting):
 
     def _level_check_entry():
         level = Player.GetLevel()
-        ConsoleLog("FarmUntil20", f"[Farm] Entry level check: level={level}", Py4GW.Console.MessageType.Info)
+        ConsoleLog("FarmUntil20", f"[Farm] Entry level check: level={level}", PySystem.Console.MessageType.Info)
         if level >= 20:
             fsm = bot.config.FSM
             target_step = _resolve_waypoint_state_name(fsm, NEXT_STEP_AFTER_FARM)
             if not target_step:
-                ConsoleLog("FarmUntil20", f"[Farm] Target state not found: {NEXT_STEP_AFTER_FARM}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("FarmUntil20", f"[Farm] Target state not found: {NEXT_STEP_AFTER_FARM}", PySystem.Console.MessageType.Error)
                 yield
                 return
             fsm.pause()
@@ -1598,12 +1598,12 @@ def Farm_Until_Level_20(bot: Botting):
         deadline = time.time() + 5.0
         while not PyDialog.PyDialog.is_dialog_active():
             if time.time() > deadline:
-                ConsoleLog(MODULE_NAME, "[FarmAB] Timed out waiting for Keiran's dialog", Py4GW.Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, "[FarmAB] Timed out waiting for Keiran's dialog", PySystem.Console.MessageType.Warning)
                 return
             yield from Routines.Yield.wait(150)
         buttons = [b for b in PyDialog.PyDialog.get_active_dialog_buttons() if getattr(b, "dialog_id", 0) != 0]
         if not buttons:
-            ConsoleLog(MODULE_NAME, "[FarmAB] No dialog buttons found", Py4GW.Console.MessageType.Warning)
+            ConsoleLog(MODULE_NAME, "[FarmAB] No dialog buttons found", PySystem.Console.MessageType.Warning)
             return
         base_id = buttons[0].dialog_id
         target_id = base_id + _AB_DIALOG_OFFSET
@@ -1659,12 +1659,12 @@ def Farm_Until_Level_20(bot: Botting):
 
     def _level_check_and_loop():
         level = Player.GetLevel()
-        ConsoleLog("FarmUntil20", f"[Farm] End-of-run level check: level={level}", Py4GW.Console.MessageType.Info)
+        ConsoleLog("FarmUntil20", f"[Farm] End-of-run level check: level={level}", PySystem.Console.MessageType.Info)
         if level < 20:
             fsm = bot.config.FSM
             target_step = _resolve_waypoint_state_name(fsm, FARM_PREPARE_STEP)
             if not target_step:
-                ConsoleLog("FarmUntil20", f"[Farm] Target state not found: {FARM_PREPARE_STEP}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("FarmUntil20", f"[Farm] Target state not found: {FARM_PREPARE_STEP}", PySystem.Console.MessageType.Error)
                 yield
                 return
             fsm.pause()
@@ -2459,8 +2459,8 @@ def AddHenchmenLA():
 
 def switchFilter():
     # Switch to profession sort
-    Game.enqueue(lambda: UIManager.SendUIMessage(UIMessage.kPreferenceValueChanged,[18,2], False))
-    Game.enqueue(lambda: UIManager.SendUIMessage(UIMessage.kPreferenceValueChanged,[17,4], False))
+    PyGameThread.enqueue(lambda: UIManager.SendUIMessage(UIMessage.kPreferenceValueChanged,[18,2], False))
+    PyGameThread.enqueue(lambda: UIManager.SendUIMessage(UIMessage.kPreferenceValueChanged,[17,4], False))
     yield from Routines.Yield.wait(500)
     return
 
@@ -2474,9 +2474,9 @@ def TrainSkills():
         UIManager.GetChildFrameID(secondary_skills_grandparent, secondary_skills_offset + [860, 0]),  # Signet of Disruption
     ]
     for skill_frame_id in skills_to_train_frames:
-        Game.enqueue(lambda fid=skill_frame_id: UIManager.TestMouseClickAction(fid, 0, 0))
+        PyGameThread.enqueue(lambda fid=skill_frame_id: UIManager.TestMouseClickAction(fid, 0, 0))
         yield from Routines.Yield.wait(200)
-        Game.enqueue(lambda: UIManager.FrameClick(UIManager.GetFrameIDByHash(4162812990)))
+        PyGameThread.enqueue(lambda: UIManager.FrameClick(UIManager.GetFrameIDByHash(4162812990)))
         yield from Routines.Yield.wait(200)
     return
 
@@ -2535,7 +2535,7 @@ iconwidth = 96
 def _draw_texture():
     global iconwidth
     level = Agent.GetLevel(Player.GetAgentID())
-    path = os.path.join(Py4GW.Console.get_projects_path(),"Sources", "ApoSource", "textures","factions_leveler_art.png")
+    path = os.path.join(PySystem.Console.get_projects_path(),"Sources", "ApoSource", "textures","factions_leveler_art.png")
     size = (float(iconwidth), float(iconwidth))
     tint = (255, 255, 255, 255)
     border_col = (0, 0, 0, 0)  # <- ints, not normalized floats
@@ -2641,7 +2641,7 @@ def _draw_direct_nav():
         if PyImGui.button("Dump FSM Header States to Console"):
             for s in bot.config.FSM.states:
                 if s.name.startswith("[H]"):
-                    Py4GW.Console.Log(bot.config.bot_name, s.name, Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(bot.config.bot_name, s.name, PySystem.Console.MessageType.Info)
         current_section = ""
         for step_num, waypoint in WAYPOINTS.items():
             if waypoint.section and waypoint.section != current_section:
@@ -2657,10 +2657,10 @@ def _draw_direct_nav():
                 if PyImGui.button(f"Go to Step##step_{step_num}"):
                     target_state = _resolve_waypoint_state_name(bot.config.FSM, waypoint.step_name)
                     if not target_state:
-                        Py4GW.Console.Log(
+                        PySystem.Console.Log(
                             bot.config.bot_name,
                             f"Waypoint state not found: {waypoint.step_name}",
-                            Py4GW.Console.MessageType.Error,
+                            PySystem.Console.MessageType.Error,
                         )
                         PyImGui.tree_pop()
                         continue
@@ -2677,7 +2677,7 @@ def main():
         bot.UI.draw_window(additional_ui=_draw_direct_nav)
 
     except Exception as e:
-        Py4GW.Console.Log(bot.config.bot_name, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot.config.bot_name, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 def tooltip():

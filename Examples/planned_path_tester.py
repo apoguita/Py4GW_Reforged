@@ -34,12 +34,12 @@ def main():
             if PyImGui.button("Plan Path"):
                 script_running = True
                 GLOBAL_CACHE.Coroutines.append(plan_path_coroutine())
-                ConsoleLog(MODULE_NAME, "Path planning started.", Py4GW.Console.MessageType.Info)
+                ConsoleLog(MODULE_NAME, "Path planning started.", PySystem.Console.MessageType.Info)
 
             if PyImGui.button("Stop Path Planning"):
                 script_running = False
                 GLOBAL_CACHE.Coroutines.clear()
-                ConsoleLog(MODULE_NAME, "Path planning stopped.", Py4GW.Console.MessageType.Info)
+                ConsoleLog(MODULE_NAME, "Path planning stopped.", PySystem.Console.MessageType.Info)
 
             x, y, z = Agent.GetXYZ(Player.GetAgentID())
             mouse_x, mouse_y, mouse_z = Overlay().GetMouseWorldPos()
@@ -55,7 +55,7 @@ def main():
         PyImGui.end()
 
     except Exception as e:
-        Py4GW.Console.Log(MODULE_NAME, f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 

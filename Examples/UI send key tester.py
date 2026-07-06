@@ -33,7 +33,7 @@ def main():
                 last_toggle = toggle
 
     except Exception as e:
-        Py4GW.Console.Log("send key", f"Error: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("send key", f"Error: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 if __name__ == "__main__":

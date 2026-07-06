@@ -1,6 +1,6 @@
 #region FSM
 
-import Py4GW
+import PySystem
 import traceback
 from typing import Optional
 
@@ -484,7 +484,7 @@ class FSM:
                         on_timeout()
                     except Exception as e:
                         if self.log_actions:
-                            ConsoleLog("FSM", f"Error in on_timeout for state '{name}': {e}", Py4GW.Console.MessageType.Error)
+                            ConsoleLog("FSM", f"Error in on_timeout for state '{name}': {e}", PySystem.Console.MessageType.Error)
                 return True
             return False
 
@@ -521,7 +521,7 @@ class FSM:
             target_state = self._get_state_by_name(target_state_name)
             if target_state:
                 if self.log_actions:
-                    ConsoleLog("FSM", f"{self.name}: Event '{event_name}' triggered transition from '{self.current_state.name}' to '{target_state.name}'", Py4GW.Console.MessageType.Info)
+                    ConsoleLog("FSM", f"{self.name}: Event '{event_name}' triggered transition from '{self.current_state.name}' to '{target_state.name}'", PySystem.Console.MessageType.Info)
 
                 # --- Perform Transition ---
                 original_state_name = self.current_state.name
@@ -531,7 +531,7 @@ class FSM:
                     try:
                         self.on_transition(original_state_name, target_state.name)
                     except Exception as e:
-                         ConsoleLog("FSM", f"Error in on_transition callback during event '{event_name}': {e}", Py4GW.Console.MessageType.Error)
+                         ConsoleLog("FSM", f"Error in on_transition callback during event '{event_name}': {e}", PySystem.Console.MessageType.Error)
 
 
                 self.current_state = target_state
@@ -542,24 +542,24 @@ class FSM:
                 return True
             else:
                 # Log error: target state name defined but not found
-                ConsoleLog("FSM", f"{self.name}: Event '{event_name}' defined transition to unknown state '{target_state_name}' from state '{self.current_state.name}'", Py4GW.Console.MessageType.Error)
+                ConsoleLog("FSM", f"{self.name}: Event '{event_name}' defined transition to unknown state '{target_state_name}' from state '{self.current_state.name}'", PySystem.Console.MessageType.Error)
                 return False
         else:
             # Event not handled by the current state
             if self.log_actions:
-                 ConsoleLog("FSM", f"{self.name}: Event '{event_name}' triggered but not handled by current state '{self.current_state.name}'", Py4GW.Console.MessageType.Debug)
+                 ConsoleLog("FSM", f"{self.name}: Event '{event_name}' triggered but not handled by current state '{self.current_state.name}'", PySystem.Console.MessageType.Debug)
             return False
 
     def update(self):
         
         if not self.current_state:
             if self.log_actions:
-                ConsoleLog("FSM", f"{self.name}: FSM has not been started.", Py4GW.Console.MessageType.Warning)
+                ConsoleLog("FSM", f"{self.name}: FSM has not been started.", PySystem.Console.MessageType.Warning)
             return
         
         if self.finished:
             if self.log_actions:
-                ConsoleLog("FSM", f"{self.name}: FSM has finished.", Py4GW.Console.MessageType.Warning)
+                ConsoleLog("FSM", f"{self.name}: FSM has finished.", PySystem.Console.MessageType.Warning)
             return
         
         # Advance self-managed coroutines (same pattern as GLOBAL_CACHE.Coroutines)
@@ -583,7 +583,7 @@ class FSM:
                 
         if self.paused:
             if self.log_actions:
-                ConsoleLog("FSM", f"{self.name}: FSM is paused.", Py4GW.Console.MessageType.Warning)
+                ConsoleLog("FSM", f"{self.name}: FSM is paused.", PySystem.Console.MessageType.Warning)
             return
         
 
@@ -594,7 +594,7 @@ class FSM:
             return
 
         if self.log_actions:
-            ConsoleLog("FSM", f"{self.name}: Executing state: {current_state.name}", Py4GW.Console.MessageType.Info)
+            ConsoleLog("FSM", f"{self.name}: Executing state: {current_state.name}", PySystem.Console.MessageType.Info)
         current_state.execute()
 
         # State can be externally reset/replaced during execute().
@@ -615,14 +615,14 @@ class FSM:
                 try:
                     self.on_transition(original_state_name, next_state_polling.name)
                 except Exception as e:
-                    ConsoleLog("FSM", f"Error in on_transition callback during polling transition: {e}", Py4GW.Console.MessageType.Error)
+                    ConsoleLog("FSM", f"Error in on_transition callback during polling transition: {e}", PySystem.Console.MessageType.Error)
             
             self.current_state = next_state_polling
             self.current_state.reset()
             self.current_state.enter()
 
             if self.log_actions:
-                ConsoleLog("FSM", f"{self.name}: Transitioning to state: {self.current_state.name}", Py4GW.Console.MessageType.Info)
+                ConsoleLog("FSM", f"{self.name}: Transitioning to state: {self.current_state.name}", PySystem.Console.MessageType.Info)
             return
 
         final_state_name = current_state.name
@@ -630,13 +630,13 @@ class FSM:
         self.finished = True
 
         if self.log_actions:
-            ConsoleLog("FSM", f"{self.name}: Reached the final state: {final_state_name}. FSM has completed.", Py4GW.Console.MessageType.Success)
+            ConsoleLog("FSM", f"{self.name}: Reached the final state: {final_state_name}. FSM has completed.", PySystem.Console.MessageType.Success)
         
         if self.on_complete:
             try:
                 self.on_complete()
             except Exception as e:
-                ConsoleLog("FSM", f"Error in on_complete callback: {e}", Py4GW.Console.MessageType.Error)
+                ConsoleLog("FSM", f"Error in on_complete callback: {e}", PySystem.Console.MessageType.Error)
 
     def is_started(self):
         """Check whether the FSM has been started."""
@@ -654,7 +654,7 @@ class FSM:
                 self.current_state.reset() # Reset the state upon jumping to it
                 self.current_state.enter()
                 if self.log_actions:
-                    Py4GW.Console.Log("FSM", f"{self.name}: Jumped to state: {self.current_state.name}", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log("FSM", f"{self.name}: Jumped to state: {self.current_state.name}", PySystem.Console.MessageType.Info)
                 return
         raise ValueError(f"State with name '{state_name}' not found.")
     
@@ -665,7 +665,7 @@ class FSM:
             self.current_state.reset() # Reset the state upon jumping to it
             self.current_state.enter()
             if self.log_actions:
-                Py4GW.Console.Log("FSM", f"{self.name}: Jumped to state: {self.current_state.name}", Py4GW.Console.MessageType.Info)
+                PySystem.Console.Log("FSM", f"{self.name}: Jumped to state: {self.current_state.name}", PySystem.Console.MessageType.Info)
             return
         raise IndexError(f"State index '{index}' is out of range.")
 
@@ -737,7 +737,7 @@ class FSM:
             if hasattr(gen, "__next__") and hasattr(gen, "send"):
                 return gen
         except Exception as e:
-            ConsoleLog("FSM", f"{self.name}: Error creating generator: {e}", Py4GW.Console.MessageType.Error)
+            ConsoleLog("FSM", f"{self.name}: Error creating generator: {e}", PySystem.Console.MessageType.Error)
         return None
 
     def _add_managed(self, gen):

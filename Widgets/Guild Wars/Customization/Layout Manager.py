@@ -162,7 +162,7 @@ class WindowLayouts:
     def __init__(self):
         self.layouts: list[LayoutConfig] = []
         self.all_accounts: list[ClientConfig] = []
-        self.projects_path = Py4GW.Console.get_projects_path()
+        self.projects_path = PySystem.Console.get_projects_path()
         self.accounts_file = os.path.join(self.projects_path, "accounts.json")
 
         # existing UI state...
@@ -279,7 +279,7 @@ class WindowLayouts:
         # Save into layouts
         self.all_accounts = unique_accounts
         self.save_layouts()
-        #Py4GW.Console.Log("Layout Manager", f"Loaded {len(self.all_accounts)} accounts from accounts.json")
+        #PySystem.Console.Log("Layout Manager", f"Loaded {len(self.all_accounts)} accounts from accounts.json")
 
     def get_remaining_accounts_from_shmem(self):
         """
@@ -312,7 +312,7 @@ class WindowLayouts:
         # Save into layouts
         self.all_accounts += unique_accounts
         self.save_layouts()
-        #Py4GW.Console.Log("Layout Manager", f"Loaded {len(unique_accounts)} accounts from shmem.")
+        #PySystem.Console.Log("Layout Manager", f"Loaded {len(unique_accounts)} accounts from shmem.")
 
     def pick_save_path(self,default_name="layout.json"):
         from tkinter import filedialog

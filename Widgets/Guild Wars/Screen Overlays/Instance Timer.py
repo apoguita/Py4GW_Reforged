@@ -16,7 +16,7 @@ MODULE_NAME = "Instance Timer"
 MODULE_ICON = "Textures/Module_Icons/Instance Timer.png"
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
-root_directory = Py4GW.Console.get_projects_path()
+root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(root_directory, "Widgets/Config/InstanceTimer.ini")
 
 ini_handler = IniHandler(ini_file_location)

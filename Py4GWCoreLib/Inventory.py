@@ -1,4 +1,4 @@
-import Py4GW
+import PySystem
 import PyInventory
 from typing import TypedDict, cast
 
@@ -330,19 +330,19 @@ class Inventory:
         # Get the first ID Kit
         id_kit_id = Inventory.GetFirstIDKit()
         if id_kit_id == 0:
-            Py4GW.Console.Log("IdentifyFirst", "No ID Kit found.")
+            PySystem.Console.Log("IdentifyFirst", "No ID Kit found.")
             return False
 
         # Find the first unidentified item based on the rarity filter
         unid_item_id = Inventory.GetFirstUnidentifiedItem()
         if unid_item_id == 0:
-            Py4GW.Console.Log("IdentifyFirst", "No unidentified item found.")
+            PySystem.Console.Log("IdentifyFirst", "No unidentified item found.")
             return False
 
         # Use the ID Kit to identify the item
         inventory = PyInventory.PyInventory()
         inventory.IdentifyItem(id_kit_id, unid_item_id)
-        Py4GW.Console.Log("IdentifyFirst", f"Identified item with Item ID: {unid_item_id} using ID Kit ID: {id_kit_id}")
+        PySystem.Console.Log("IdentifyFirst", f"Identified item with Item ID: {unid_item_id} using ID Kit ID: {id_kit_id}")
         return True
 
     @staticmethod
@@ -370,19 +370,19 @@ class Inventory:
         # Get the first available Salvage Kit
         salvage_kit_id = Inventory.GetFirstSalvageKit()
         if salvage_kit_id == 0:
-            Py4GW.Console.Log("SalvageFirst", "No salvage kit found.")
+            PySystem.Console.Log("SalvageFirst", "No salvage kit found.")
             return False
 
         # Find the first salvageable item based on the rarity filter
         salvage_item_id = Inventory.GetFirstSalvageableItem()
         if salvage_item_id == 0:
-            Py4GW.Console.Log("SalvageFirst", "No salvageable item found.")
+            PySystem.Console.Log("SalvageFirst", "No salvageable item found.")
             return False
 
         # Use the Salvage Kit to salvage the item
         inventory = PyInventory.PyInventory()
         inventory.Salvage(salvage_kit_id, salvage_item_id)
-        Py4GW.Console.Log("SalvageFirst", f"Started salvaging item with Item ID: {salvage_item_id} using Salvage Kit ID: {salvage_kit_id}")
+        PySystem.Console.Log("SalvageFirst", f"Started salvaging item with Item ID: {salvage_item_id} using Salvage Kit ID: {salvage_kit_id}")
 
         return False
 

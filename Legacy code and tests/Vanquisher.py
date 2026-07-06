@@ -3,7 +3,7 @@ import PyImGui, Py4GW
 import os
 
 MODULE_NAME = "Vanquisher"
-TEXTURE =  os.path.join(Py4GW.Console.get_projects_path(), "Bots\\Vanquish\\Vanquisher.png")
+TEXTURE =  os.path.join(PySystem.Console.get_projects_path(), "Bots\\Vanquish\\Vanquisher.png")
 
 
 def scan_scripts(base_path: str) -> dict[str, dict[str, list[str]]]:
@@ -68,7 +68,7 @@ def tooltip():
     PyImGui.end_tooltip()
 
 def Draw_Window():
-    base_path = os.path.join(Py4GW.Console.get_projects_path(), "Bots\\Vanquish\\")
+    base_path = os.path.join(PySystem.Console.get_projects_path(), "Bots\\Vanquish\\")
     campaigns = scan_scripts(base_path)
    
     if PyImGui.begin(MODULE_NAME, PyImGui.WindowFlags.AlwaysAutoResize):
@@ -98,14 +98,14 @@ def Draw_Window():
                                             display_name = os.path.splitext(script_file)[0]
                                             if PyImGui.button(display_name):
                                                 full_path = os.path.join(base_path, campaign_name, area_name, script_file)
-                                                Py4GW.Console.defer_stop_load_and_run(full_path,delay_ms=500)
+                                                PySystem.Console.defer_stop_load_and_run(full_path,delay_ms=500)
                                         PyImGui.tree_pop()
                                 PyImGui.tree_pop()
                         PyImGui.end_tab_item()
                     if PyImGui.begin_tab_item("PyQuish"):
                         if PyImGui.button("Launch PyQuish"):
-                            pyquish_path = os.path.join(Py4GW.Console.get_projects_path(), "Bots\\aC_Scripts\\PyQuishAI.py")
-                            Py4GW.Console.defer_stop_load_and_run(pyquish_path, delay_ms=500)
+                            pyquish_path = os.path.join(PySystem.Console.get_projects_path(), "Bots\\aC_Scripts\\PyQuishAI.py")
+                            PySystem.Console.defer_stop_load_and_run(pyquish_path, delay_ms=500)
                         PyImGui.end_tab_item()
                     PyImGui.end_tab_bar()
                 

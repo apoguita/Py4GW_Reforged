@@ -233,14 +233,14 @@ class AutoHandlderModule:
             
             if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##autosalvsave"):
                 self.auto_handler.save_to_ini()
-                ConsoleLog(self.MODULE_NAME, "Settings saved to Auto Inv.ini", Py4GW.Console.MessageType.Success)
+                ConsoleLog(self.MODULE_NAME, "Settings saved to Auto Inv.ini", PySystem.Console.MessageType.Success)
             ImGui.show_tooltip("Save Settings")
             PyImGui.same_line(0,-1)
             if PyImGui.button(IconsFontAwesome5.ICON_SYNC + "##autosalvreload"):
                 self.auto_handler.load_from_ini()
                 self.auto_handler.lookup_throttle.SetThrottleTime(self.auto_handler._LOOKUP_TIME)
                 self.auto_handler.lookup_throttle.Reset()
-                ConsoleLog(self.MODULE_NAME, "Settings reloaded from Auto Inv.ini", Py4GW.Console.MessageType.Success)
+                ConsoleLog(self.MODULE_NAME, "Settings reloaded from Auto Inv.ini", PySystem.Console.MessageType.Success)
             ImGui.show_tooltip("Reload Settings")
             
             PyImGui.separator()
@@ -384,7 +384,7 @@ class AutoHandlderModule:
             auto_handler.lookup_throttle.SetThrottleTime(auto_handler._LOOKUP_TIME)
             auto_handler.lookup_throttle.Reset()
             auto_handler.initialized = True
-            ConsoleLog(self.MODULE_NAME, "Auto Handler Widget Options initialized", Py4GW.Console.MessageType.Success)
+            ConsoleLog(self.MODULE_NAME, "Auto Handler Widget Options initialized", PySystem.Console.MessageType.Success)
             
         if not Map.IsExplorable():
             auto_handler.lookup_throttle.Stop()

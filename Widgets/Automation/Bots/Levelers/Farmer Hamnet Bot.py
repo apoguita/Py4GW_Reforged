@@ -51,17 +51,17 @@ def write_to_log_file(level, message):
 
 def log_info(message):
     """Log info messages to both console and file"""
-    Py4GW.Console.Log(module_name, message, Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log(module_name, message, PySystem.Console.MessageType.Info)
     write_to_log_file("INFO", message)
 
 def log_success(message):
     """Log success messages to both console and file"""
-    Py4GW.Console.Log(module_name, message, Py4GW.Console.MessageType.Success)
+    PySystem.Console.Log(module_name, message, PySystem.Console.MessageType.Success)
     write_to_log_file("SUCCESS", message)
 
 def log_error(message):
     """Log error messages to both console and file"""
-    Py4GW.Console.Log(module_name, message, Py4GW.Console.MessageType.Error)
+    PySystem.Console.Log(module_name, message, PySystem.Console.MessageType.Error)
     write_to_log_file("ERROR", message)
 
 def is_in_town():

@@ -372,20 +372,20 @@ def _snap_launch_path_coroutine(goal_x: float, goal_y: float, mm: "MissionMap"):
             # Ensure movement/draw logic has at least one waypoint even when planner returns empty.
             mm.snap_current_path = [(float(goal_x), float(goal_y))]
             import Py4GW
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 MODULE_NAME,
                 f"Snap path was empty; using direct fallback waypoint at ({goal_x:.1f}, {goal_y:.1f}).",
-                Py4GW.Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )
         else:
             mm.snap_current_path = computed_path
     except Exception as e:
         mm.snap_current_path = [(float(goal_x), float(goal_y))]
         import Py4GW
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Snap path computation failed ({goal_x:.1f}, {goal_y:.1f}): {e}",
-            Py4GW.Console.MessageType.Error,
+            PySystem.Console.MessageType.Error,
         )
     finally:
         mm.snap_path_computing = False
@@ -409,10 +409,10 @@ def _snap_launch_bt_move_coroutine(goal_x: float, goal_y: float, mm: "MissionMap
             yield from Routines.Yield.wait(100)
     except Exception as e:
         import Py4GW
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"Snap movement failed to start or tick ({goal_x:.1f}, {goal_y:.1f}): {e}",
-            Py4GW.Console.MessageType.Error,
+            PySystem.Console.MessageType.Error,
         )
     finally:
         if move_tree is not None:
@@ -2156,7 +2156,7 @@ def draw():
     
     except Exception as e:
         import Py4GW
-        Py4GW.Console.Log("Mission Map +", str(e), Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log("Mission Map +", str(e), PySystem.Console.MessageType.Error)
     finally:
         if INI_KEY:
             IniManager().save_vars(INI_KEY)

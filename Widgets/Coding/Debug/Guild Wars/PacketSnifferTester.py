@@ -47,26 +47,26 @@ def _decode_packet(direction: str, header: int, size: int, raw: bytes) -> str:
 
 
 def _dump_packets() -> None:
-    Py4GW.Console.Log(
+    PySystem.Console.Log(
         MODULE_NAME,
         f"Dumping capture: StoC={len(_stoc_packets)} CToS={len(_ctos_packets)}",
-        Py4GW.Console.MessageType.Info,
+        PySystem.Console.MessageType.Info,
     )
 
     for index, (header, size, raw) in enumerate(_stoc_packets):
         decoded = _decode_packet("StoC", header, size, raw)
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"[StoC #{index}] {decoded} copied={len(raw)} raw={_hex_preview(raw)}",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
     for index, (header, size, raw) in enumerate(_ctos_packets):
         decoded = _decode_packet("CToS", header, size, raw)
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             MODULE_NAME,
             f"[CToS #{index}] {decoded} copied={len(raw)} raw={_hex_preview(raw)}",
-            Py4GW.Console.MessageType.Info,
+            PySystem.Console.MessageType.Info,
         )
 
 
@@ -80,13 +80,13 @@ def _start_capture() -> None:
     started = PACKET_SNIFFER.initialize()
     if not started:
         _last_status = "Start failed: unified PacketSniffer initialization returned False"
-        Py4GW.Console.Log(MODULE_NAME, _last_status, Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, _last_status, PySystem.Console.MessageType.Error)
         PACKET_SNIFFER.terminate()
         return
 
     _capturing = True
     _last_status = "Capturing"
-    Py4GW.Console.Log(MODULE_NAME, "Capture started.", Py4GW.Console.MessageType.Success)
+    PySystem.Console.Log(MODULE_NAME, "Capture started.", PySystem.Console.MessageType.Success)
 
 
 def _stop_capture() -> None:
@@ -96,7 +96,7 @@ def _stop_capture() -> None:
     PACKET_SNIFFER.terminate()
     _capturing = False
     _last_status = f"Stopped. StoC={len(_stoc_packets)} CToS={len(_ctos_packets)}"
-    Py4GW.Console.Log(MODULE_NAME, _last_status, Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log(MODULE_NAME, _last_status, PySystem.Console.MessageType.Info)
     _dump_packets()
 
 

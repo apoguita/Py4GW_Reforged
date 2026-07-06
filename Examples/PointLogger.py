@@ -157,7 +157,7 @@ def DrawWindow():
 
             if started:
                 if timer.HasElapsed(polling_time *1000):
-                    Py4GW.Console.Log(module_name, f"({int(player_x)}, {int(player_y)}),", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name, f"({int(player_x)}, {int(player_y)}),", PySystem.Console.MessageType.Info)
                     timer.Reset()
 
             PyImGui.separator()
@@ -176,7 +176,7 @@ def DrawWindow():
 
             if PyImGui.button("print new path"):
                 for coord in new_path:
-                    Py4GW.Console.Log(module_name,f"({int(coord[0])}, {int(coord[1])}),", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log(module_name,f"({int(coord[0])}, {int(coord[1])}),", PySystem.Console.MessageType.Info)
 
             draw_original_route = ImGui.toggle_button("Draw Original Route", draw_original_route)
             draw_new_route = ImGui.toggle_button("Draw New Route", draw_new_route)
@@ -232,7 +232,7 @@ def DrawWindow():
             PyImGui.end()
     except Exception as e:
         # Log and re-raise exception to ensure the main script can handle it
-        Py4GW.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Error in DrawWindow: {str(e)}", PySystem.Console.MessageType.Error)
         raise
 
 # main function must exist in every script and is the entry point for your script's execution.
@@ -249,21 +249,21 @@ def main():
 
     # Handle specific exceptions to provide detailed error messages
     except ImportError as e:
-        Py4GW.Console.Log(module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
         # Catch-all for any other unexpected exceptions
-        Py4GW.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         # Optional: Code that will run whether an exception occurred or not
-        #Py4GW.Console.Log(module_name, "Execution of Main() completed", Py4GW.Console.MessageType.Info)
+        #PySystem.Console.Log(module_name, "Execution of Main() completed", PySystem.Console.MessageType.Info)
         # Place any cleanup tasks here
         pass
 

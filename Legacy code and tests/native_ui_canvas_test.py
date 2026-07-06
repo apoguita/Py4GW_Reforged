@@ -202,7 +202,7 @@ def _dispatch_devtext_refresh_cycle() -> bool:
 def _open_devtext_button_action() -> None:
     global LAST_STATUS
 
-    Py4GW.Game.enqueue(_dispatch_devtext_keypress)
+    PyGameThread.enqueue(_dispatch_devtext_keypress)
     LAST_STATUS = "DevText keypress enqueued"
     _log(LAST_STATUS)
 
@@ -210,7 +210,7 @@ def _open_devtext_button_action() -> None:
 def _enqueue_action(callback, label: str) -> None:
     global LAST_STATUS
 
-    Py4GW.Game.enqueue(callback)
+    PyGameThread.enqueue(callback)
     LAST_STATUS = f"{label} enqueued"
     _log(LAST_STATUS)
 
@@ -653,7 +653,7 @@ def _create_text_label_for_parent(parent_id: int, context_label: str = "CreateTe
             and DEVTEXT_ROOT_ID
             and parent_id == DEVTEXT_PARENT_ID
         ):
-            Py4GW.Game.enqueue(_dispatch_devtext_refresh_cycle)
+            PyGameThread.enqueue(_dispatch_devtext_refresh_cycle)
             _log("DevText refresh enqueued")
     return frame_id
 

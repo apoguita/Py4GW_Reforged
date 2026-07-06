@@ -4,15 +4,15 @@ MODULE_NAME = "Compass+"
 MODULE_ICON = "Textures\\Module_Icons\\Compass+.png"
 
 def Debug(message, title = 'DEBUG', msg_type = 'Debug'):
-    py4gw_msg_type = Py4GW.Console.MessageType.Debug
-    if   msg_type == 'Debug':       py4gw_msg_type = Py4GW.Console.MessageType.Debug
-    elif msg_type == 'Error':       py4gw_msg_type = Py4GW.Console.MessageType.Error
-    elif msg_type == 'Info':        py4gw_msg_type = Py4GW.Console.MessageType.Info
-    elif msg_type == 'Notice':      py4gw_msg_type = Py4GW.Console.MessageType.Notice
-    elif msg_type == 'Performance': py4gw_msg_type = Py4GW.Console.MessageType.Performance
-    elif msg_type == 'Success':     py4gw_msg_type = Py4GW.Console.MessageType.Success
-    elif msg_type == 'Warning':     py4gw_msg_type = Py4GW.Console.MessageType.Warning
-    Py4GW.Console.Log(title, str(message), py4gw_msg_type)
+    py4gw_msg_type = PySystem.Console.MessageType.Debug
+    if   msg_type == 'Debug':       py4gw_msg_type = PySystem.Console.MessageType.Debug
+    elif msg_type == 'Error':       py4gw_msg_type = PySystem.Console.MessageType.Error
+    elif msg_type == 'Info':        py4gw_msg_type = PySystem.Console.MessageType.Info
+    elif msg_type == 'Notice':      py4gw_msg_type = PySystem.Console.MessageType.Notice
+    elif msg_type == 'Performance': py4gw_msg_type = PySystem.Console.MessageType.Performance
+    elif msg_type == 'Success':     py4gw_msg_type = PySystem.Console.MessageType.Success
+    elif msg_type == 'Warning':     py4gw_msg_type = PySystem.Console.MessageType.Warning
+    PySystem.Console.Log(title, str(message), py4gw_msg_type)
 
 class Marker:
     def __init__(self, name, visible, size, shape, color, fill_range = None, fill_color = None, model_id = None):
@@ -41,7 +41,7 @@ class Ring:
 class Compass():
     window_module = ImGui.WindowModule('Compass+',window_name='Compass+', window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
     window_pos = (1200,400)
-    ini = IniHandler(os.path.join(Py4GW.Console.get_projects_path(), "Widgets/Config/Compass +.ini"))
+    ini = IniHandler(os.path.join(PySystem.Console.get_projects_path(), "Widgets/Config/Compass +.ini"))
     config_loaded = False
 
     imgui = PyImGui
@@ -936,7 +936,7 @@ def configure():
 
     except Exception as e:
         current_function = inspect.currentframe().f_code.co_name # type: ignore
-        Py4GW.Console.Log('BOT', f'Error in {current_function}: {str(e)}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('BOT', f'Error in {current_function}: {str(e)}', PySystem.Console.MessageType.Error)
         raise
 
 def main():
@@ -945,17 +945,17 @@ def main():
         compass.Update()
 
     except ImportError as e:
-        Py4GW.Console.Log('Compass+', f'ImportError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'ImportError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log('Compass+', f'ValueError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'ValueError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log('Compass+', f'TypeError encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'TypeError encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log('Compass+', f'Unexpected error encountered: {str(e)}', Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Unexpected error encountered: {str(e)}', PySystem.Console.MessageType.Error)
+        PySystem.Console.Log('Compass+', f'Stack trace: {traceback.format_exc()}', PySystem.Console.MessageType.Error)
     finally:
         pass
 

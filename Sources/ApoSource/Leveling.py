@@ -4,7 +4,7 @@ import PyImGui, Py4GW
 import os
 
 MODULE_NAME = "Leveling"
-LEVELING_SCRIPTS_PATH = os.path.join(Py4GW.Console.get_projects_path(), "Bots", "Leveling")
+LEVELING_SCRIPTS_PATH = os.path.join(PySystem.Console.get_projects_path(), "Bots", "Leveling")
 PROPHECIES_TEXTURE =  os.path.join(LEVELING_SCRIPTS_PATH, "Prophecies-art.png")
 FACTIONS_TEXTURE =  os.path.join(LEVELING_SCRIPTS_PATH, "Factions-art.png")
 NIGHTFALL_TEXTURE =  os.path.join(LEVELING_SCRIPTS_PATH, "Nightfall-art.png")
@@ -52,7 +52,7 @@ def tooltip():
     PyImGui.end_tooltip()
 
 def RunAndClose(script_path: str, delay_ms: int = 500):
-    Py4GW.Console.defer_stop_load_and_run(script_path, delay_ms=delay_ms)
+    PySystem.Console.defer_stop_load_and_run(script_path, delay_ms=delay_ms)
     handler = get_widget_handler()
     handler.disable_widget("Leveling")
     

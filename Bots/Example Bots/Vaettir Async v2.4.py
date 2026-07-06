@@ -371,7 +371,7 @@ def get_filtered_loot_array():
 
     # --- Logging block is now after calculations ---
     if final_filtered_count == 0 and initial_nearby_count > 0:
-         Py4GW.Console.Log(bot_vars.window_module.module_name, f"[Debug] get_filtered_loot_array: Initial Nearby={initial_nearby_count}, Valid Owner={valid_owner_count}, Pre-Filter={pre_filter_count}, Final Filtered={final_filtered_count}", Py4GW.Console.MessageType.Info)
+         PySystem.Console.Log(bot_vars.window_module.module_name, f"[Debug] get_filtered_loot_array: Initial Nearby={initial_nearby_count}, Valid Owner={valid_owner_count}, Pre-Filter={pre_filter_count}, Final Filtered={final_filtered_count}", PySystem.Console.MessageType.Info)
          # Optional: Log model IDs here if needed
 
     return AgentArray.Sort.ByDistance(filtered_agent_ids, Player.GetXY())
@@ -436,7 +436,7 @@ def finished_looting():
 
         # Log only if we were actually attempting to loot (flag is True)
         if looting_state_entered:
-             Py4GW.Console.Log(bot_vars.window_module.module_name, f"[Debug] Exiting 'Loot routine'. Reason: {reason.strip()}", Py4GW.Console.MessageType.Warning) # Use Warning to make it stand out
+             PySystem.Console.Log(bot_vars.window_module.module_name, f"[Debug] Exiting 'Loot routine'. Reason: {reason.strip()}", PySystem.Console.MessageType.Warning) # Use Warning to make it stand out
              looting_state_entered = False # Reset flag for next time ONLY when exiting
 
         # --- End logging block ---
@@ -597,7 +597,7 @@ def DepositGold():
         # --- ADDED Confirmation Log ---
         # Format the number with commas for readability
         log_message = f"[Deposit] Deposited {gold_to_deposit:,} gold to Xunlai Chest." 
-        Py4GW.Console.Log(bot_vars.window_module.module_name, log_message, Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(bot_vars.window_module.module_name, log_message, PySystem.Console.MessageType.Info)
         # --- END Added Log ---
 
         return True # Indicate deposit was performed
@@ -664,7 +664,7 @@ def IsSkillBarLoaded():
     if primary_profession != "Assassin" and primary_profession != "Mesmer":
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - This bot requires either A/Me or Me/A to work, halting.", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - This bot requires either A/Me or Me/A to work, halting.", PySystem.Console.MessageType.Error)
         ResetEnvironment()
         StopBot()
         return False
@@ -678,7 +678,7 @@ def IsSkillBarLoaded():
     skillbar.arcane_echo = SkillBar.GetSkillIDBySlot(7)
     skillbar.channeling = SkillBar.GetSkillIDBySlot(8)
     
-    Py4GW.Console.Log(bot_vars.window_module.module_name, f"SkillBar Loaded.", Py4GW.Console.MessageType.Info)       
+    PySystem.Console.Log(bot_vars.window_module.module_name, f"SkillBar Loaded.", PySystem.Console.MessageType.Info)       
     return True
     
 #region inventory
@@ -693,13 +693,13 @@ def HasThingsToSell(log = False):
     frame = inspect.currentframe()
     current_function = frame.f_code.co_name if frame else "Unknown"
     if log:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - Initial items: {items_to_sell}", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - Initial items: {items_to_sell}", PySystem.Console.MessageType.Info)
 
     # General material filtering
     if not bot_vars.config_vars.sell_materials:
         items_to_sell = ItemArray.Filter.ByCondition(items_to_sell, lambda item_id: not Item.Type.IsMaterial(item_id))
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering out all materials: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering out all materials: {items_to_sell}", PySystem.Console.MessageType.Info)
     else:
         # Filter specific materials if 'sell_materials' is enabled
         filtered_items = []
@@ -720,33 +720,33 @@ def HasThingsToSell(log = False):
         # Replace 'items_to_sell' with filtered items
         items_to_sell = filtered_items
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering specific materials: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering specific materials: {items_to_sell}", PySystem.Console.MessageType.Info)
 
     # Filter based on rarity
     if not bot_vars.config_vars.sell_whites:
         items_to_sell = ItemArray.Filter.ByCondition(items_to_sell, lambda item_id: not Item.Rarity.IsWhite(item_id))
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering whites: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering whites: {items_to_sell}", PySystem.Console.MessageType.Info)
 
     if not bot_vars.config_vars.sell_blues:
         items_to_sell = ItemArray.Filter.ByCondition(items_to_sell, lambda item_id: not Item.Rarity.IsBlue(item_id))
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering blues: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering blues: {items_to_sell}", PySystem.Console.MessageType.Info)
 
     if not bot_vars.config_vars.sell_purples:
         items_to_sell = ItemArray.Filter.ByCondition(items_to_sell, lambda item_id: not Item.Rarity.IsPurple(item_id))
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering purples: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering purples: {items_to_sell}", PySystem.Console.MessageType.Info)
 
     if not bot_vars.config_vars.sell_golds:
         items_to_sell = ItemArray.Filter.ByCondition(items_to_sell, lambda item_id: not Item.Rarity.IsGold(item_id))
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering golds: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - After filtering golds: {items_to_sell}", PySystem.Console.MessageType.Info)
 
     # Check if there are any remaining items to sell
     if len(items_to_sell) > 0:
         if log:
-            Py4GW.Console.Log(bot_vars.window_module.module_name, f"{current_function} - We have Items to sell: {items_to_sell}", Py4GW.Console.MessageType.Info)
+            PySystem.Console.Log(bot_vars.window_module.module_name, f"{current_function} - We have Items to sell: {items_to_sell}", PySystem.Console.MessageType.Info)
         return True
 
     return False
@@ -964,10 +964,10 @@ def SellMaterials(log=False):
 
         if value == 0:
             if log:
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     bot_vars.window_module.module_name,
                     f"[Sell] Skipped item {item_id} (qty: {quantity}) because value is 0",
-                    Py4GW.Console.MessageType.Warning
+                    PySystem.Console.MessageType.Warning
                 )
             continue
 
@@ -977,17 +977,17 @@ def SellMaterials(log=False):
         bot_vars.sell_to_vendor_action_queue.add_action(Trading.Merchant.SellItem, item_id, quantity * value) # Keeping original 'cost' logic for now
 
         if log:
-            Py4GW.Console.Log(
+            PySystem.Console.Log(
                 bot_vars.window_module.module_name,
                 f"[Sell] Queued item {item_id} for sale (qty: {quantity}, value: {value})",
-                Py4GW.Console.MessageType.Info
+                PySystem.Console.MessageType.Info
             )
 
     if log and len(items) == 0: # --- MODIFIED: Check length of 'items' (filtered list), not queue ---
-        Py4GW.Console.Log(
+        PySystem.Console.Log(
             bot_vars.window_module.module_name,
             "[Sell] No items matched filters for sale.",
-            Py4GW.Console.MessageType.Info
+            PySystem.Console.MessageType.Info
         )
 
       
@@ -1057,7 +1057,7 @@ def DepositItems():
         queued_count += 1
 
     # Keep this final summary log if you find it useful
-    Py4GW.Console.Log(bot_vars.window_module.module_name, f"[Deposit] Finished queuing {queued_count} items for deposit.", Py4GW.Console.MessageType.Info)
+    PySystem.Console.Log(bot_vars.window_module.module_name, f"[Deposit] Finished queuing {queued_count} items for deposit.", PySystem.Console.MessageType.Info)
 
 
 def DepositItemsComplete():
@@ -1154,10 +1154,10 @@ def handle_end_state_machine():
     #bot_vars.window_statistics.lap_timer.Reset()
     inventory_check_result = InventoryCheck() # Store result
     if not inventory_check_result: # If InventoryCheck is FALSE (means inventory IS full / needs handling)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"[Debug] Inventory full or needs handling. Jumping to 'End State Machine Loop' (triggers Outpost return).", Py4GW.Console.MessageType.Info)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"[Debug] Inventory full or needs handling. Jumping to 'End State Machine Loop' (triggers Outpost return).", PySystem.Console.MessageType.Info)
         FSM_vars.state_machine.jump_to_state_by_name("End State Machine Loop")
     else: # InventoryCheck is TRUE (means inventory is NOT full / okay to continue)
-         Py4GW.Console.Log(bot_vars.window_module.module_name, f"[Debug] Inventory OK. Proceeding to 'Exit Jaga Moraine' state.", Py4GW.Console.MessageType.Info)
+         PySystem.Console.Log(bot_vars.window_module.module_name, f"[Debug] Inventory OK. Proceeding to 'Exit Jaga Moraine' state.", PySystem.Console.MessageType.Info)
 
 
 def FollowPathwithDelayTimer(path_handler,follow_handler, log_actions=False, delay=50):
@@ -1186,7 +1186,7 @@ def FollowPathwithDelayTimer(path_handler,follow_handler, log_actions=False, del
                 if point is not None:
                     follow_handler.move_to_waypoint(point[0], point[1])
                     if log_actions:
-                        Py4GW.Console.Log("FollowPath", f"Moving to {point}", Py4GW.Console.MessageType.Info)
+                        PySystem.Console.Log("FollowPath", f"Moving to {point}", PySystem.Console.MessageType.Info)
 
 
 class build:
@@ -1713,12 +1713,12 @@ def IsEnemyBehind (agent_id):
 def CastSkill (skill_id):
     global bot_vars
     SkillBar.UseSkill(SkillBar.GetSlotBySkillID(skill_id))
-    #Py4GW.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(skill_id)}, slot: {SkillBar.GetSlotBySkillID(skill_id)}", Py4GW.Console.MessageType.Info)
+    #PySystem.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(skill_id)}, slot: {SkillBar.GetSlotBySkillID(skill_id)}", PySystem.Console.MessageType.Info)
  
 def CastSkill2(skill_slot):
     global bot_vars
     SkillBar.UseSkill(skill_slot)
-    #Py4GW.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(SkillBar.GetSkillIDBySlot(skill_slot))}, slot: {skill_slot}", Py4GW.Console.MessageType.Info)
+    #PySystem.Console.Log(bot_vars.window_module.module_name, f"Cast {Skill.GetName(SkillBar.GetSkillIDBySlot(skill_slot))}, slot: {skill_slot}", PySystem.Console.MessageType.Info)
 
 def assign_skill_ids():
     global skillbar
@@ -2387,7 +2387,7 @@ def DrawWindow():
     except Exception as e:
         frame = inspect.currentframe()
         current_function = frame.f_code.co_name if frame else "Unknown"
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Error in {current_function}: {str(e)}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Error in {current_function}: {str(e)}", PySystem.Console.MessageType.Error)
         raise
     
 #endregion
@@ -2433,9 +2433,9 @@ def restart_due_to_stuck():
     global FSM_vars, bot_vars
     if Map.GetMapID() == bot_vars.starting_map:
         return
-    Py4GW.Console.Log(bot_vars.window_module.module_name, 
+    PySystem.Console.Log(bot_vars.window_module.module_name, 
                       "Player is stuck, cannot recover, restarting.", 
-                      Py4GW.Console.MessageType.Error)
+                      PySystem.Console.MessageType.Error)
     FSM_vars.stuck_count = 0
     bot_vars.forced_restart = True
     ResetEnvironment()
@@ -2572,17 +2572,17 @@ def main():
             bot_vars.deposit_action_queue.execute_next() 
             
     except ImportError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except ValueError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"ValueError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except TypeError as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"TypeError encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     except Exception as e:
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", Py4GW.Console.MessageType.Error)
-        Py4GW.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", Py4GW.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Unexpected error encountered: {str(e)}", PySystem.Console.MessageType.Error)
+        PySystem.Console.Log(bot_vars.window_module.module_name, f"Stack trace: {traceback.format_exc()}", PySystem.Console.MessageType.Error)
     finally:
         pass
 

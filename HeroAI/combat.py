@@ -625,7 +625,7 @@ class CombatClass:
             if not email:
                 return
             group_id = GLOBAL_CACHE.ShMem.GetAccountGroupByEmail(email)
-            expires_at = int(Py4GW.Game.get_tick_count64()) + 1500
+            expires_at = int(PySystem.get_tick_count64()) + 1500
             GLOBAL_CACHE.ShMem.PostLock(
                 email,
                 int(WhiteboardLockKind.CALL_TARGET),
@@ -1531,7 +1531,7 @@ class CombatClass:
                 return False
              
 
-        #Py4GW.Console.Log("AreCastConditionsMet", f"feature count: {feature_count}, No of features {number_of_features}", Py4GW.Console.MessageType.Info)
+        #PySystem.Console.Log("AreCastConditionsMet", f"feature count: {feature_count}, No of features {number_of_features}", PySystem.Console.MessageType.Info)
         
         if feature_count == number_of_features:
             return True
@@ -1881,11 +1881,11 @@ class CombatClass:
             now_ms = int(Utils.GetBaseTimestamp())
             target_drunk_level = 2
             drunk_level = self.GetDrunkLevel()
-            Py4GW.Console.Log("HeroAI", f"Drunken Master: drunk level = {drunk_level}", Py4GW.Console.MessageType.Debug)
+            PySystem.Console.Log("HeroAI", f"Drunken Master: drunk level = {drunk_level}", PySystem.Console.MessageType.Debug)
 
             if drunk_level >= target_drunk_level:
                 self._next_alcohol_recheck_ms = 0
-                Py4GW.Console.Log("HeroAI", f"Already drunk (level {drunk_level}), skipping alcohol", Py4GW.Console.MessageType.Debug)
+                PySystem.Console.Log("HeroAI", f"Already drunk (level {drunk_level}), skipping alcohol", PySystem.Console.MessageType.Debug)
                 return False
 
             if now_ms < self._next_alcohol_recheck_ms:
@@ -1904,7 +1904,7 @@ class CombatClass:
                     item_id = GLOBAL_CACHE.Item.GetItemIdFromModelID(alcohol_model_id)
                     if not item_id:
                         continue
-                    Py4GW.Console.Log("HeroAI", f"Using alcohol item_id {item_id}", Py4GW.Console.MessageType.Info)
+                    PySystem.Console.Log("HeroAI", f"Using alcohol item_id {item_id}", PySystem.Console.MessageType.Info)
                     GLOBAL_CACHE.Inventory.UseItem(item_id)
                     drinks_used += 1
                     drinks_needed -= 1
@@ -1919,9 +1919,9 @@ class CombatClass:
                 return True
 
             self._next_alcohol_recheck_ms = 0
-            Py4GW.Console.Log("HeroAI", "No alcohol found in inventory", Py4GW.Console.MessageType.Debug)
+            PySystem.Console.Log("HeroAI", "No alcohol found in inventory", PySystem.Console.MessageType.Debug)
         except Exception as e:
-            Py4GW.Console.Log("HeroAI", f"Error in UseAlcoholIfAvailable: {e}", Py4GW.Console.MessageType.Warning)
+            PySystem.Console.Log("HeroAI", f"Error in UseAlcoholIfAvailable: {e}", PySystem.Console.MessageType.Warning)
         return False
 
     def IsAlcoholTopoffPending(self) -> bool:
@@ -1956,7 +1956,7 @@ class CombatClass:
             if not email:
                 return False
             group_id = GLOBAL_CACHE.ShMem.GetAccountGroupByEmail(email)
-            now = Py4GW.Game.get_tick_count64()
+            now = PySystem.get_tick_count64()
             return GLOBAL_CACHE.ShMem.IsLockBlocked(
                 int(WhiteboardLockKind.COOLDOWN),
                 int(skill.skill_id),
@@ -1997,7 +1997,7 @@ class CombatClass:
                 + extra_ms
                 + int(SHMEM_INTENT_DEFAULT_PING_BUDGET_MS)
             )
-            expires_at = int(Py4GW.Game.get_tick_count64()) + int(lease_ms)
+            expires_at = int(PySystem.get_tick_count64()) + int(lease_ms)
             GLOBAL_CACHE.ShMem.PostLock(
                 email,
                 int(WhiteboardLockKind.COOLDOWN),
@@ -2054,10 +2054,10 @@ class CombatClass:
                     self.ResetSkillPointer()
                     return False
 
-                Py4GW.Console.Log(
+                PySystem.Console.Log(
                     "HeroAI",
                     f"Skipping alcohol skill {skill_id}: drunk level {drunk_level} is below 2 and no alcohol was consumed",
-                    Py4GW.Console.MessageType.Debug,
+                    PySystem.Console.MessageType.Debug,
                 )
                 self.ResetSkillPointer()
                 return False
