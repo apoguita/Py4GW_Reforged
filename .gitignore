@@ -10,6 +10,7 @@ data/*.db-wal
 data/*.db-shm
 Py4GW.ini
 .opencode
+.backups
 AGENTS.md
 CLAUDE.md
 
