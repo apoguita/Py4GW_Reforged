@@ -65,14 +65,14 @@ class Compass():
 
         player_pos = (1.0,1.0)
 
-        snapped_pos = PyOverlay.Point2D(1,1)
+        snapped_pos = PyOverlay.Vec2f(1,1)
         snapped_size = 1
 
         display_size = PyOverlay.Overlay().GetDisplaySize()
-        detached_pos = PyOverlay.Point2D(round(display_size.x/2),round(display_size.y/2))
+        detached_pos = PyOverlay.Vec2f(round(display_size.x/2),round(display_size.y/2))
         detached_size = 400
 
-        current_pos = PyOverlay.Point2D(1,1)
+        current_pos = PyOverlay.Vec2f(1,1)
         current_size = 400
 
         rotation = 0.0
@@ -90,7 +90,7 @@ class Compass():
                 if compass_x > 100000 or compass_y > 100000:
                     return
 
-                self.snapped_pos = PyOverlay.Point2D(compass_x,compass_y)
+                self.snapped_pos = PyOverlay.Vec2f(compass_x,compass_y)
                 self.snapped_size = round(Map.MiniMap.GetScale(coords))
 
                 self.current_pos = self.snapped_pos
@@ -235,7 +235,7 @@ class Compass():
         self.position.snap_to_game       = self.ini.read_bool('position', 'snap_to_game',       self.position.snap_to_game)
         self.position.always_point_north = self.ini.read_bool('position', 'always_point_north', self.position.always_point_north)
         self.position.culling            = self.ini.read_int('position',  'culling',            self.position.culling)
-        self.position.detached_pos = PyOverlay.Point2D(
+        self.position.detached_pos = PyOverlay.Vec2f(
                                            self.ini.read_int('position',  'detached_x',         self.position.detached_pos.x),
                                            self.ini.read_int('position',  'detached_y',         self.position.detached_pos.y))
         self.position.detached_size      = self.ini.read_int('position',  'detached_size',      self.position.detached_size)
@@ -817,11 +817,11 @@ def configure():
 
                     if PyImGui.button('Snap to Screen Center'):
                         display_size = PyOverlay.Overlay().GetDisplaySize()
-                        compass.position.detached_pos = PyOverlay.Point2D(round(display_size.x/2),round(display_size.y/2))
+                        compass.position.detached_pos = PyOverlay.Vec2f(round(display_size.x/2),round(display_size.y/2))
 
                     x = PyImGui.slider_int('X Position', compass.position.detached_pos.x, compass.position.current_size, round(compass.position.display_size.x - compass.position.current_size))
                     y = PyImGui.slider_int('Y Position', compass.position.detached_pos.y, compass.position.current_size, round(compass.position.display_size.y - compass.position.current_size))
-                    compass.position.detached_pos  = PyOverlay.Point2D(x,y)
+                    compass.position.detached_pos  = PyOverlay.Vec2f(x,y)
                     compass.position.detached_size = PyImGui.slider_int('Scale', compass.position.detached_size, 100, 1000)
                 PyImGui.unindent(10)
 

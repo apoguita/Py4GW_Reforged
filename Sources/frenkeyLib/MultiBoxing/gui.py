@@ -817,7 +817,7 @@ class GUI:
                             # Console.set_window_geometry(own_region.x, own_region.y, own_region.w, own_region.h)
                             # Console.set_borderless(False)
         
-            PyImGui.set_cursor_pos(4, 4)
+            PyImGui.set_cursor_pos((4, 4))
             if ImGui.icon_button(IconsFontAwesome5.ICON_GRIP, 25, 18):
                 position_clients(self.settings.get_account_mail(), self.settings.regions, self.settings.accounts)
             

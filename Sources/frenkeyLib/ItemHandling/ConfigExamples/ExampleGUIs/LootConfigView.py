@@ -469,7 +469,7 @@ class LootConfigView:
                     PyImGui.dummy(32, 32)
                     
                     if False and item and map_ready:
-                        PyImGui.set_cursor_pos(x, y)
+                        PyImGui.set_cursor_pos((x, y))
                         ImGui.DrawTexture(item.gw_dat_file_path, 32, 32)
                         
                     PyImGui.table_next_column()

@@ -1,6 +1,5 @@
-import Py4GW
+from __future__ import annotations
 import PyImGui
-from PyAgent import Profession, AttributeClass
 from Py4GWCoreLib import *
 import webbrowser
 from fractions import Fraction

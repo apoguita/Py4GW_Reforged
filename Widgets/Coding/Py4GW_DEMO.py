@@ -1,6 +1,7 @@
 
 from Py4GWCoreLib import *
 from Py4GWCoreLib.enums import FactionAllegiance
+import PyPing
 
 #This script is intended to be a showcase of every Methos and all the data that can be accessed from Py4GW
 #current status, not complete
@@ -48,7 +49,7 @@ def calculate_grid_layout(total_buttons):
     return columns, rows
 
 
-ping_handler = Py4GW.PingHandler()
+ping_handler = PyPing.PingHandler()
 timer_instance = Timer()
 show_mouse_world_pos = False
 show_area_rings = False

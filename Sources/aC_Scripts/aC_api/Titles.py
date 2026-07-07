@@ -113,7 +113,7 @@ def display_title_progress(title_name, title_id, tiers):
     cx = start_x + (avail_width - tw) / 2
     cy = start_y   + (bh         - th) / 2  - 1
 
-    PyImGui.set_cursor_pos(cx, cy)
+    PyImGui.set_cursor_pos((cx, cy))
     PyImGui.text(overlay)
 
     PyImGui.pop_style_color(1)
@@ -184,7 +184,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
     center_x = start_x + (avail_width - text_width) / 2
     center_y = start_y + (bar_height - text_height) / 2 + y_offset
 
-    PyImGui.set_cursor_pos(center_x, center_y)
+    PyImGui.set_cursor_pos((center_x, center_y))
     PyImGui.text(rep_overlay)
 
     PyImGui.pop_style_color(1)
@@ -216,7 +216,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
     y_offset2 = -1
     center_x2 = start_x2 + (avail_width2 - text_width2) / 2
     center_y2 = start_y2 + (bar_height2 - text_height2) / 2 + y_offset2
-    PyImGui.set_cursor_pos(center_x2, center_y2)
+    PyImGui.set_cursor_pos((center_x2, center_y2))
     PyImGui.text(unspent_overlay)                # ← now uses the correct variable
     PyImGui.pop_style_color(1)
 

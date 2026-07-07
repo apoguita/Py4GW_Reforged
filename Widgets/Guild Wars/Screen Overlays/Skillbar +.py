@@ -65,10 +65,10 @@ class SkillBarPlus:
 
         def DrawBackground(self, coords, color):
             left, top, right, bottom = coords
-            self.overlay.DrawQuadFilled(PyOverlay.Point2D(left,top),
-                                        PyOverlay.Point2D(right,top),
-                                        PyOverlay.Point2D(right,bottom),
-                                        PyOverlay.Point2D(left,bottom),
+            self.overlay.DrawQuadFilled(PyOverlay.Vec2f(left,top),
+                                        PyOverlay.Vec2f(right,top),
+                                        PyOverlay.Vec2f(right,bottom),
+                                        PyOverlay.Vec2f(left,bottom),
                                         color)
             
         def DrawDurationBar(self, id, coords, duration, remaining):
@@ -84,17 +84,17 @@ class SkillBarPlus:
             top += self.duration_offset
             bottom = top + int(text_height*.75 + 4)
             self.duration_bar_height = bottom - top
-            self.overlay.DrawQuadFilled(PyOverlay.Point2D(left,top),
-                                        PyOverlay.Point2D(right,top),
-                                        PyOverlay.Point2D(right,bottom + 2),
-                                        PyOverlay.Point2D(left,bottom + 2),
+            self.overlay.DrawQuadFilled(PyOverlay.Vec2f(left,top),
+                                        PyOverlay.Vec2f(right,top),
+                                        PyOverlay.Vec2f(right,bottom + 2),
+                                        PyOverlay.Vec2f(left,bottom + 2),
                                         self.duration_bg)
             
             bar_length = int(((right - 1) - (left + 1))*percentage)
-            self.overlay.DrawQuadFilled(PyOverlay.Point2D(left + 1,top + 1),
-                                        PyOverlay.Point2D(left + bar_length,top + 1),
-                                        PyOverlay.Point2D(left + bar_length,bottom + 1),
-                                        PyOverlay.Point2D(left + 1,bottom + 1),
+            self.overlay.DrawQuadFilled(PyOverlay.Vec2f(left + 1,top + 1),
+                                        PyOverlay.Vec2f(left + bar_length,top + 1),
+                                        PyOverlay.Vec2f(left + bar_length,bottom + 1),
+                                        PyOverlay.Vec2f(left + 1,bottom + 1),
                                         self.duration_bar)
             
             width = right - left

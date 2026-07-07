@@ -4,6 +4,10 @@ from types import ModuleType
 import re
 import traceback
 import PySystem
+import PyPing
+import PyGameThread
+import PyDXOverlay
+import PyAgentEvents
 import PyImGui
 from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER, HotKey
 from Py4GWCoreLib.ImGui_src.Style import Style
@@ -1709,7 +1713,7 @@ class Py4GWLibrary:
                 PyImGui.end_group()
                         
                 if widget.has_configure_property and self.show_configure_button:
-                    PyImGui.set_cursor_pos(available_width - 10, 2)
+                    PyImGui.set_cursor_pos((available_width - 10, 2))
                     configuring = ImGui.toggle_icon_button(IconsFontAwesome5.ICON_COG, widget.configuring, self.BUTTON_HEIGHT, self.BUTTON_HEIGHT)
                     if configuring != widget.configuring:
                         widget.set_configuring(configuring)
@@ -1822,7 +1826,7 @@ class Py4GWLibrary:
                 ImGui.pop_font()
                                 
                 if widget.has_configure_property:
-                    PyImGui.set_cursor_pos(available_width - 10, 2)
+                    PyImGui.set_cursor_pos((available_width - 10, 2))
                     configuring = ImGui.toggle_icon_button(IconsFontAwesome5.ICON_COG, widget.configuring, self.BUTTON_HEIGHT, self.BUTTON_HEIGHT)
                     if configuring != widget.configuring:
                         widget.set_configuring(configuring)
@@ -1880,12 +1884,12 @@ class Py4GWLibrary:
             button_size = PyImGui.get_content_region_avail()[0] * (1 if win_hovered else 0.8)
             
             if not win_hovered:
-                PyImGui.set_cursor_pos((self.win_size[0] - button_size) / 2, (self.win_size[1] - button_size) / 2)
+                PyImGui.set_cursor_pos(((self.win_size[0] - button_size) / 2, (self.win_size[1] - button_size) / 2))
             
             cx, cy = PyImGui.get_cursor_pos()
             ImGui.image(self.big_logo, (button_size, button_size))
-            PyImGui.set_cursor_pos(cx, cy)
-            PyImGui.invisible_button("##widget_manager_one_button_drag", button_size, button_size)
+            PyImGui.set_cursor_pos((cx, cy))
+            PyImGui.invisible_button("##widget_manager_one_button_drag", (button_size, button_size))
 
             drag_delta = PyImGui.get_mouse_drag_delta(0, 6.0)
             is_dragging_button = PyImGui.is_item_active() and PyImGui.is_mouse_dragging(0, 6.0)
@@ -1992,6 +1996,18 @@ class Widget:
         
         module = importlib.util.module_from_spec(spec)
         sys.modules[unique_name] = module
+        
+        # Inject migrated module aliases into the widget's namespace
+        import PySystem
+        import PyPing
+        import PyGameThread
+        import PyDXOverlay
+        import PyAgentEvents
+        module.PySystem = PySystem
+        module.PyPing = PyPing
+        module.PyGameThread = PyGameThread
+        module.PyDXOverlay = PyDXOverlay
+        module.PyAgentEvents = PyAgentEvents
         
         try:
             spec.loader.exec_module(module)

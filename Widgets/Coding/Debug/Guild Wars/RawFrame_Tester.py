@@ -379,10 +379,10 @@ def DrawFrame(frame_id:int, draw_color:int):
         return
     
     left, top, right, bottom = GetFrameCoords(frame_id)
-    p1 = PyOverlay.Point2D(left, top)
-    p2 = PyOverlay.Point2D(right, top)
-    p3 = PyOverlay.Point2D(right, bottom)
-    p4 = PyOverlay.Point2D(left, bottom)
+    p1 = PyOverlay.Vec2f(left, top)
+    p2 = PyOverlay.Vec2f(right, top)
+    p3 = PyOverlay.Vec2f(right, bottom)
+    p4 = PyOverlay.Vec2f(left, bottom)
     _overlay.BeginDraw()
     _overlay.DrawQuadFilled(p1,p2,p3,p4, draw_color)
     _overlay.EndDraw()

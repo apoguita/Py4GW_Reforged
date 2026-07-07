@@ -1163,7 +1163,7 @@ class InventoryPlusWidget:
             if sort_running:
                 PyImGui.begin_disabled(True)
                 if use_texture_button:
-                    PyImGui.invisible_button(f"##{icon_label}_disabled", icon_button_size, icon_button_size)
+                    PyImGui.invisible_button(f"##{icon_label}_disabled", (icon_button_size, icon_button_size))
                     item_rect_min = PyImGui.get_item_rect_min()
                     ImGui.DrawTextureInDrawList(
                         item_rect_min,
@@ -1180,7 +1180,7 @@ class InventoryPlusWidget:
             else:
                 clicked = False
                 if use_texture_button:
-                    clicked = PyImGui.invisible_button(f"##{icon_label}", icon_button_size, icon_button_size)
+                    clicked = PyImGui.invisible_button(f"##{icon_label}", (icon_button_size, icon_button_size))
                     item_rect_min = PyImGui.get_item_rect_min()
                     tint = (255, 255, 255, 255) if PyImGui.is_item_hovered() else (235, 235, 235, 255)
                     ImGui.DrawTextureInDrawList(

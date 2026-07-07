@@ -1,6 +1,7 @@
 from typing import Optional
 import Py4GW
 import PyImGui
+import PySystem
 
 from Py4GWCoreLib import Timer, UIManager
 from Py4GWCoreLib import GLOBAL_CACHE
@@ -407,7 +408,7 @@ def DrawWindow():
                 icon_rect[2:],
             )
             
-            PyImGui.invisible_button("##Open Travel Window", button_rect[2], button_rect[3])
+            PyImGui.invisible_button("##Open Travel Window", (button_rect[2], button_rect[3]))
 
             item_hovered = PyImGui.is_item_hovered()
             item_active = PyImGui.is_item_active()

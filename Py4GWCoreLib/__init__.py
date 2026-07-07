@@ -37,9 +37,23 @@ if system_python_path:
 import Py4GW
 import PySystem
 import PyGameThread
+import PyPing
 import PyScanner
 import PyImGui
 import PyCallback
+
+# ── Vec2 compatibility: PyImGui set_cursor_pos / set_cursor_screen_pos accept a single
+#    Vec2 tuple in Reforged (not two scalar floats). Monkey-patch to accept both forms.
+_PyImGui_set_cursor_pos = PyImGui.set_cursor_pos
+_PyImGui_set_cursor_screen_pos = PyImGui.set_cursor_screen_pos
+def _vec2_set_cursor_pos(*args):
+    if len(args) == 1: return _PyImGui_set_cursor_pos(args[0])
+    return _PyImGui_set_cursor_pos(args)
+def _vec2_set_cursor_screen_pos(*args):
+    if len(args) == 1: return _PyImGui_set_cursor_screen_pos(args[0])
+    return _PyImGui_set_cursor_screen_pos(args)
+PyImGui.set_cursor_pos = _vec2_set_cursor_pos
+PyImGui.set_cursor_screen_pos = _vec2_set_cursor_screen_pos
 
 import PyAgent
 import PyPlayer
@@ -58,6 +72,15 @@ import PyUIManager
 import PyCamera
 import PyDXOverlay
 import PyAgentEvents
+
+# Inject PySystem, PyPing, PyGameThread into builtins so all widget modules
+# (loaded dynamically via importlib) can access them without explicit import.
+import builtins
+builtins.PySystem = PySystem
+builtins.PyPing = PyPing
+builtins.PyGameThread = PyGameThread
+builtins.PyDXOverlay = PyDXOverlay
+builtins.PyAgentEvents = PyAgentEvents
 
 from .enums import *
 from .ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
@@ -117,6 +140,9 @@ GamePos = GamePos
 
 Py4Gw = Py4GW
 Py4GW = Py4GW
+PySystem = PySystem
+PyGameThread = PyGameThread
+PyPing = PyPing
 PyScanner = PyScanner
 PyImGui = PyImGui
 
@@ -134,8 +160,8 @@ PyOverlay = PyOverlay
 PyQuest = PyQuest
 PyUIManager = PyUIManager
 PyCamera = PyCamera
-Py2DRenderer = Py2DRenderer
-PyCombatEvents = PyCombatEvents
+PyDXOverlay = PyDXOverlay
+PyAgentEvents = PyAgentEvents
 GLOBAL_CACHE = GLOBAL_CACHE
 AutoPathing = AutoPathing
 IconsFontAwesome5 = IconsFontAwesome5

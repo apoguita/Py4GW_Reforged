@@ -351,7 +351,7 @@ class SalvageFsm(FSM):
     salvager_ping_check_1 = "Salvaging"
     salvager_finish = "Finish Salvage"
 
-    def __init__(self, window=BasicWindow(), name="SalvageFsm", logFunc=None, pingHandler=Py4GW.PingHandler()):
+    def __init__(self, window=BasicWindow(), name="SalvageFsm", logFunc=None, pingHandler=PyPing.PingHandler()):
         super().__init__(name)
 
         self.window = window

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Protocol
 
 import Py4GW
+import PyPing
 from Py4GWCoreLib import Player, GLOBAL_CACHE, SpiritModelID, Timer, Agent, Routines, Range, Allegiance, AgentArray, Utils
 from Py4GWCoreLib import Weapon, Effects
 from Py4GWCoreLib.enums import SPIRIT_BUFF_MAP, ModelID
@@ -110,7 +111,7 @@ class CombatClass:
         self.aftercast: int = 0
         self.aftercast_timer = Timer()
         self.aftercast_timer.Start()
-        self.ping_handler = Py4GW.PingHandler()
+        self.ping_handler = PyPing.PingHandler()
         self.oldCalledTarget: int = 0
         self.auto_call_target_id: int = 0
         self.auto_call_target_called: bool = False

@@ -2138,8 +2138,8 @@ def DrawWindow():
                         z1 = overlay.FindZ(x1, y1)
                         x2,y2 = drawing_path[i + 1]
                         z2 = overlay.FindZ(x2, y2)
-                        pos1 = PyOverlay.Point3D(x1, y1, z1)
-                        pos2 = PyOverlay.Point3D(x2, y2, z2)
+                        pos1 = PyOverlay.Vec3f(x1, y1, z1)
+                        pos2 = PyOverlay.Vec3f(x2, y2, z2)
                         #overlay.DrawLine3D(pos1, pos2,0xFFFFFFFF, 2.0)
 
             if PyImGui.collapsing_header("Config"):

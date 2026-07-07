@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from Py4GW import PingHandler
+import PyPing
 import PyImGui
 
 from Py4GWCoreLib import *
@@ -852,7 +852,7 @@ class HealthData:
             #  ICON: HEXED  (down arrow)
             # -----------------------------------------
             if self.player.AgentData.Is_Hexed:
-                PyImGui.set_cursor_pos(x, icon_y)
+                PyImGui.set_cursor_pos((x, icon_y))
                 ImGui.DrawTextureExtended(
                     texture_path=GAME_UI_TEXTURE_BASE_PATH + "ui_skill_identifier.png",
                     size=(16, 16),
@@ -867,7 +867,7 @@ class HealthData:
             #  ICON: CONDITIONED  (faded down arrow)
             # -----------------------------------------
             if self.player.AgentData.Is_Conditioned:
-                PyImGui.set_cursor_pos(x, icon_y)
+                PyImGui.set_cursor_pos((x, icon_y))
                 ImGui.DrawTextureExtended(
                     texture_path=GAME_UI_TEXTURE_BASE_PATH + "ui_skill_identifier.png",
                     size=(16, 16),
@@ -882,7 +882,7 @@ class HealthData:
             #  ICON: ENCHANTED  (up arrow)
             # -----------------------------------------
             if self.player.AgentData.Is_Enchanted:
-                PyImGui.set_cursor_pos(x, icon_y)
+                PyImGui.set_cursor_pos((x, icon_y))
                 ImGui.DrawTextureExtended(
                     texture_path=GAME_UI_TEXTURE_BASE_PATH + "ui_skill_identifier.png",
                     size=(16, 16),
@@ -897,7 +897,7 @@ class HealthData:
             #  ICON: WEAPON SPELLED  (weapon spell icon)
             # -----------------------------------------
             if self.player.AgentData.Is_WeaponSpelled:
-                PyImGui.set_cursor_pos(x, icon_y - 2)
+                PyImGui.set_cursor_pos((x, icon_y - 2))
                 ImGui.DrawTextureExtended(
                     texture_path=GAME_UI_TEXTURE_BASE_PATH + "ui_skill_identifier.png",
                     size=(20, 20),

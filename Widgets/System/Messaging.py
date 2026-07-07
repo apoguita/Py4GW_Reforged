@@ -13,6 +13,7 @@ from Py4GWCoreLib import Console
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import LootConfig
 import PyImGui
+import PySystem
 from Py4GWCoreLib import Range, TitleID
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Utils, ImGui, Color, ColorPalette

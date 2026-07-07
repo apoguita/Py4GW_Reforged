@@ -1579,7 +1579,7 @@ class Py4GWLibrary:
             
             cx, cy = PyImGui.get_cursor_pos()
             ImGui.image("python_icon_round.png", (button_size, button_size))              
-            PyImGui.set_cursor_pos(cx, cy)
+            PyImGui.set_cursor_pos((cx, cy))
             ImGui.dummy(button_size, button_size)
             if in_radius:       
                 if PyImGui.is_item_clicked(0):

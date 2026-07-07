@@ -392,7 +392,7 @@ class HeroAI_RichPlayerPanelRenderer:
             ImGui.progress_bar(current_health, width, height)
             style.FrameRounding.pop_style_var()
             style.PlotHistogram.pop_color()
-            PyImGui.set_cursor_pos(xpos, ypos)
+            PyImGui.set_cursor_pos((xpos, ypos))
 
         ImGui.dummy(width, height)
         fraction = (max(0.0, min(1.0, current_health)) if max_health > 0 else 0.0)
@@ -515,7 +515,7 @@ class HeroAI_RichPlayerPanelRenderer:
             ImGui.progress_bar(current_energy, width, height)
             style.FrameRounding.pop_style_var()
             style.PlotHistogram.pop_color()
-            PyImGui.set_cursor_pos(xpos, ypos)
+            PyImGui.set_cursor_pos((xpos, ypos))
 
         ImGui.dummy(width, height)
 

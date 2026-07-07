@@ -65,7 +65,7 @@ class Pin:
         PyImGui.draw_list_add_circle(self.location[0] + self.radius, self.location[1] + self.radius, self.radius, PACKED_GREY, 4, 3)
 
     def _post_draw(self):
-        self.is_pressed = PyImGui.invisible_button("pin_button", self.radius * 2, self.radius * 2)
+        self.is_pressed = PyImGui.invisible_button("pin_button", (self.radius * 2, self.radius * 2))
         self.is_hovered = PyImGui.is_item_hovered()
         self.is_dragged = PyImGui.is_item_active() and PyImGui.is_mouse_dragging(0, -1.0)
         PyImGui.set_cursor_screen_pos(self.location[0], self.location[1] + self.radius * 2)
@@ -262,7 +262,7 @@ class NodeSpace:
         
     def draw_node(self, node: Node):
         PyImGui.push_id(f"Ldraw{node.id}")
-        PyImGui.set_cursor_pos(node.x, node.y)
+        PyImGui.set_cursor_pos((node.x, node.y))
         if node.hovered:
             PyImGui.push_style_color(PyImGui.ImGuiCol.ChildBg, (0.30, 0.15, 0.2, 1.0))
         else:
@@ -283,11 +283,11 @@ class NodeSpace:
             node.x += dx
             node.y += dy
             PyImGui.reset_mouse_drag_delta(0)
-        PyImGui.set_cursor_pos(pos[0], pos[1] + self.SPACER)
+        PyImGui.set_cursor_pos((pos[0], pos[1] + self.SPACER))
         node.draw_header()
         PyImGui.end_child()
         PyImGui.pop_style_color(1)
-        PyImGui.set_cursor_pos(2, pos[1] + node.header_height + self.SPACER)
+        PyImGui.set_cursor_pos((2, pos[1] + node.header_height + self.SPACER))
         pin: Pin
         out_pins: List[Pin] = list()
         for pin in node.pins:
@@ -298,11 +298,11 @@ class NodeSpace:
                 pin.location = pos
                 pin._draw()
                 PyImGui.set_cursor_screen_pos(pos[0], pos[1] + self.SPACER + pin.radius * 2)
-        PyImGui.set_cursor_pos(node.side_padding, node.header_height)
+        PyImGui.set_cursor_pos((node.side_padding, node.header_height))
         PyImGui.begin_child(f"LogicBody", (node.width, node.height), border=False)
         node.draw_body()
         PyImGui.end_child()
-        PyImGui.set_cursor_pos(node.side_padding * 2 + node.width, node.header_height)
+        PyImGui.set_cursor_pos((node.side_padding * 2 + node.width, node.header_height))
         for pin in out_pins:
             pos = PyImGui.get_cursor_screen_pos()
             PyImGui.set_cursor_screen_pos(pos[0] - pin.radius * 2 - self.SPACER, pos[1] + self.SPACER)
@@ -401,7 +401,7 @@ class NodeSpace:
         self._handle_creating_new_nodes(screen_x, screen_y, mouse_x, mouse_y, screen_pos)
         self._handle_space_edges()
         self._draw_links()
-        PyImGui.set_cursor_pos(pos[0], pos[1])
+        PyImGui.set_cursor_pos((pos[0], pos[1]))
         self._handle_drag_and_link(mouse_x, mouse_y)
         PyImGui.end_child()
         PyImGui.end_child()

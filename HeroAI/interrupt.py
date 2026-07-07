@@ -12,6 +12,7 @@ Consumed by two evaluators:
 from __future__ import annotations
 
 import Py4GW
+import PyPing
 from Py4GWCoreLib import (
     GLOBAL_CACHE,
     Agent,
@@ -333,7 +334,7 @@ cast_observer = CastObserver()
 # --- Shared helpers ---
 
 
-_PING_HANDLER = Py4GW.PingHandler()
+_PING_HANDLER = PyPing.PingHandler()
 
 
 def _get_player_fast_casting_level() -> int:

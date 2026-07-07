@@ -591,10 +591,10 @@ def draw_debug_window(win_id):
             if globals()[key]:
                 # Fall back: manual draw using window position
                 left, top, right, bottom = coords
-                p1 = PyOverlay.Point2D(left, top)
-                p2 = PyOverlay.Point2D(right, top)
-                p3 = PyOverlay.Point2D(right, bottom)
-                p4 = PyOverlay.Point2D(left, bottom)
+                p1 = PyOverlay.Vec2f(left, top)
+                p2 = PyOverlay.Vec2f(right, top)
+                p3 = PyOverlay.Vec2f(right, bottom)
+                p4 = PyOverlay.Vec2f(left, bottom)
                 _overlay = PyOverlay.Overlay()
                 _overlay.BeginDraw()
                 _overlay.DrawQuad(p1, p2, p3, p4, Color(0,255,0,255).to_color(), thickness=3)

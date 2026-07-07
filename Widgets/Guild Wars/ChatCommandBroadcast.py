@@ -1,5 +1,6 @@
 import Py4GW
 import PyImGui
+import PySystem
 from Py4GWCoreLib import ImGui, GLOBAL_CACHE, Player, Map
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog
 from Py4GWCoreLib.enums import Key

@@ -28,7 +28,7 @@ class Style:
 
             if var.img_style_enum:                
                 if var.value2 is not None:
-                    PyImGui.push_style_var2(var.img_style_enum, var.value1, var.value2)
+                    PyImGui.push_style_var_vec2(var.img_style_enum, (var.value1, var.value2))
                 else:
                     PyImGui.push_style_var(var.img_style_enum, var.value1)
 
@@ -37,7 +37,7 @@ class Style:
         def push_style_var_direct(self, value1: float, value2: float | None = None):
             if self.img_style_enum:                
                 if value2 is not None:
-                    PyImGui.push_style_var2(self.img_style_enum, value1, value2)
+                    PyImGui.push_style_var_vec2(self.img_style_enum, (value1, value2))
                 else:
                     PyImGui.push_style_var(self.img_style_enum, value1)
         

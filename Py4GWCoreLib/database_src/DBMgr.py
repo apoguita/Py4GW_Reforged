@@ -316,7 +316,6 @@ class DBMgr:
             severity: One of 'Error', 'Warning', 'Notice', 'Info', 'Debug'.
         """
         try:
-            import Py4GW
 
             msg_type = getattr(PySystem.Console.MessageType, severity, PySystem.Console.MessageType.Notice)
             PySystem.Console.Log(MODULE_NAME, message, msg_type)

@@ -5,6 +5,7 @@ import traceback
 from tkinter import filedialog
 
 import PyImGui
+import PySystem
 
 from Py4GWCoreLib import ColorPalette, IconsFontAwesome5, Py4GW
 from Py4GWCoreLib.ImGui import ImGui
@@ -525,7 +526,7 @@ class WidgetCatalogTreePanel:
         PyImGui.pop_clip_rect()
 
         PyImGui.set_cursor_screen_pos(button_x, button_y)
-        button_clicked = PyImGui.invisible_button(f"##{item.item_id}_button", button_size, button_size)
+        button_clicked = PyImGui.invisible_button(f"##{item.item_id}_button", (button_size, button_size))
         button_min = PyImGui.get_item_rect_min()
         button_max = PyImGui.get_item_rect_max()
         button_hovered = PyImGui.is_item_hovered()
