@@ -132,17 +132,10 @@ class ItemSnapshot:
     )
 
     def __init__(self, item_id: int, item_instance: Optional[PyItem] = None, bag: Optional[Bag] = None):
-        # Reforged: items from GetItems() are dicts. Always resolve to a PyItem
-        # wrapper for consistent attribute access.
-        if item_instance is not None and not isinstance(item_instance, dict):
-            inst_id = item_instance.item_id
-        elif item_instance is not None:
-            inst_id = item_instance.get("item_id", 0)
-        else:
-            inst_id = 0
+        inst_id = item_instance.item_id if item_instance is not None else 0
         if inst_id != item_id:
             item_instance = None
-        # Always use PyItem wrapper — never keep raw dicts as item instances
+        # Always use PyItem wrapper
         item = Item.item_instance(item_id) if item_id > 0 and inst_id == item_id else None
 
         self.id: int = item_id
@@ -199,18 +192,15 @@ class ItemSnapshot:
     @classmethod
     @frame_cache(category="LazyItemSnapshot", source_lib="from_item_id")
     def from_item_id(cls, item_id: int, item_instance: Optional[PyItem] = None) -> Optional['ItemSnapshot']:
-        # Reforged: items may be dicts from PyInventory.GetItems()
+        # Reforged: items may be dicts from PyInventory.GetItems() — handled by Py4GWCoreLib monkey-patch
         if item_instance is not None:
-            inst_id = item_instance.get("item_id") if isinstance(item_instance, dict) else item_instance.item_id
-            if item_id != inst_id:
+            if item_id != item_instance.item_id:
                 item_instance = None
         if item_instance is None and item_id > 0:
             item_instance = Item.item_instance(item_id)
         if item_instance is None:
             return None
-        inst_id = item_instance.get("item_id") if isinstance(item_instance, dict) else item_instance.item_id
-        # Reforged: items from GetItems() are dicts without methods.
-        # Assume valid if we have a non-zero item_id.
+        inst_id = item_instance.item_id
         is_valid = inst_id > 0
         return cls(inst_id, item_instance) if is_valid else None
 
@@ -419,9 +409,8 @@ class ItemSnapshot:
             bag_snapshot[slot] = None
 
         for item in inventory_bag.GetItems():
-            # Reforged returns items as dicts; legacy returned objects with .slot
-            slot = item.get("slot") if isinstance(item, dict) else item.slot
-            item_id = item.get("item_id") if isinstance(item, dict) else item.item_id
+            slot = item.slot
+            item_id = item.item_id
             bag_snapshot[slot] = ItemSnapshot.from_item_id(item_id, item) if item else None
 
         return bag_snapshot

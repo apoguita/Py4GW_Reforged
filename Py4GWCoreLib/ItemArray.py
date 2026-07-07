@@ -46,7 +46,7 @@ class ItemArray:
                 items_in_bag = bag_instance.GetItems()
             
                 # Extract item IDs and append to the result list
-                item_ids_in_bag = [item["item_id"] for item in items_in_bag]
+                item_ids_in_bag = [item.item_id for item in items_in_bag]
                 all_item_ids.extend(item_ids_in_bag)
 
             except Exception as e:

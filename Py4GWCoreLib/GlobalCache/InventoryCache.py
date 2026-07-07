@@ -11,8 +11,7 @@ from .ItemCache import RawItemCache, Bag_enum, ItemCache
 class InventoryCache:
     @staticmethod
     def _item_id(item):
-        """Reforged: PyInventory.Bag.GetItems() returns dicts."""
-        return item.get("item_id", 0) if isinstance(item, dict) else item.item_id
+        return item.item_id
 
     def __init__(self, action_queue_manager, raw_item_cache, item_cache):
         self._raw_item_cache:RawItemCache = raw_item_cache

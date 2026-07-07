@@ -1,1000 +1,1252 @@
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:46] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:46] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:47] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:47] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:48] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:48] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:48] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:48] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:48] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:48] [Py4GW] Python environment reset.
-[2026-07-07 11:30:48] [Py4GW] Script stopped.
-[2026-07-07 11:30:49] [Py4GW] Script compiled successfully.
-[2026-07-07 11:30:49] [Py4GW] main() function found.
-[2026-07-07 11:30:49] [Py4GW] Script started.
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:49] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:49] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:50] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:50] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:51] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:51] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:52] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:52] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_bar: True
-[2026-07-07 11:30:53] [print:] [DEMO] tab noarg=False p_open=True=True closable=(False, True)
-[2026-07-07 11:30:53] [print:] [DEMO] begin_tab_item(Data): False
-[2026-07-07 11:30:53] [Py4GW] Python environment reset.
-[2026-07-07 11:30:53] [Py4GW] Script stopped.
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 608.4290112081223, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:20] [print:] Exception ignored in:
+[2026-07-07 16:53:20] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:20] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:20] [print:] return fn()
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:20] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:20] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:20] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:20] [print:] TypeError
+[2026-07-07 16:53:20] [print:] :
+[2026-07-07 16:53:20] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 635.055305796482, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:21] [print:] Exception ignored in:
+[2026-07-07 16:53:21] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:21] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:21] [print:] return fn()
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:21] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:21] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:21] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:21] [print:] TypeError
+[2026-07-07 16:53:21] [print:] :
+[2026-07-07 16:53:21] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0
+[2026-07-07 16:53:22] [print:] Exception ignored in:
+[2026-07-07 16:53:22] [print:] 'Coding\\Debug\\Py4GW/System Monitor.py'
+[2026-07-07 16:53:22] [print:] Traceback (most recent call last):
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\py4gwcorelib_src\WidgetManager.py", line 2102, in callback_wrapper
+[2026-07-07 16:53:22] [print:] return fn()
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 1295, in draw
+[2026-07-07 16:53:22] [print:] bar_clicked = _draw_top_usage_stacked_bar(usage_rows)
+[2026-07-07 16:53:22] [print:] File "C:\Users\Apo\Py4GW_Reforged\Widgets\Coding\Debug\Py4GW\System Monitor.py", line 882, in _draw_top_usage_stacked_bar
+[2026-07-07 16:53:22] [print:] if PyImGui.invisible_button(f"##usage_stack_{idx}", seg_w, max(1.0, inner_y2 - inner_y1)):
+[2026-07-07 16:53:22] [print:] TypeError
+[2026-07-07 16:53:22] [print:] :
+[2026-07-07 16:53:22] [print:] invisible_button(): incompatible function arguments. The following argument types are supported:
+    1. (str_id: str, size: PyImGui.Vec2, flags: typing.SupportsInt | typing.SupportsIndex = 0) -> bool
+
+Invoked with: '##usage_stack_0', 625.093011021695, 20.0

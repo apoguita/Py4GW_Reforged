@@ -93,6 +93,14 @@ def _vec2_dummy(*args):
     return _PyImGui_dummy(args)
 PyImGui.dummy = _vec2_dummy
 
+# ── invisible_button compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
+_PyImGui_invisible_button = PyImGui.invisible_button
+def _vec2_invisible_button(str_id, *args):
+    if len(args) >= 2 and isinstance(args[0], (int, float)) and isinstance(args[1], (int, float)):
+        return _PyImGui_invisible_button(str_id, (args[0], args[1]), *args[2:])
+    return _PyImGui_invisible_button(str_id, *args)
+PyImGui.invisible_button = _vec2_invisible_button
+
 # ── begin_tab_item: Reforged binding requires explicit p_open=True;
 #    legacy code calls begin_tab_item(label) with no p_open → defaults nullptr → returns False. ──
 _PyImGui_begin_tab_item = PyImGui.begin_tab_item
@@ -105,6 +113,19 @@ import PyPlayer
 import PyParty
 import PyItem
 import PyInventory
+
+# ── Reforged: PyInventory.Bag.GetItems() returns dicts.
+#    Convert each dict to a SimpleNamespace so all legacy attribute-access
+#    callers (item.model_id, item.item_id, item.quantity, item.slot, …)
+#    work retroactively. ──
+import types as _types
+_Bag = PyInventory.Bag
+_orig_Bag_GetItems = _Bag.GetItems
+def _wrapped_Bag_GetItems(self):
+    items = _orig_Bag_GetItems(self)
+    return [_types.SimpleNamespace(**item) if isinstance(item, dict) else item for item in (items or [])]
+_Bag.GetItems = _wrapped_Bag_GetItems
+
 import PySkill
 import PySkillbar
 import PyMerchant

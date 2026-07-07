@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 import Py4GW
 import PyImGui
+import PyProfiler
 import Py4GW.UI as UI
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette
@@ -278,7 +279,7 @@ class ProfilerMetricNameCatalog:
         if Py4GW is None:
             return []
         try:
-            return list(PySystem.Console.get_profiler_metric_names())
+            return list(PyProfiler.get_metric_names())
         except Exception:
             return []
 
@@ -287,12 +288,12 @@ class ProfilerMetricNameCatalog:
 
         Returns:
             A list of report tuples in the format expected from
-            `PySystem.Console.get_profiler_reports()`, or an empty list on failure.
+            `PyProfiler.get_reports()`, or an empty list on failure.
         """
         if Py4GW is None:
             return []
         try:
-            return list(PySystem.Console.get_profiler_reports())
+            return list(PyProfiler.get_reports())
         except Exception:
             return []
 
@@ -311,7 +312,7 @@ class ProfilerMetricNameCatalog:
         if Py4GW is None:
             return []
         try:
-            return [float(v) for v in PySystem.Console.get_profiler_history(name)]
+            return [float(v) for v in PyProfiler.get_history(name)]
         except Exception:
             return []
 
@@ -323,7 +324,7 @@ class ProfilerMetricNameCatalog:
         """Clear cached profiler timing stats while keeping parsed names/indexes."""
         self.stats_by_raw_name.clear()
         self.history_by_raw_name.clear()
-        PySystem.Console.clear_profiler_history()
+        PyProfiler.reset()
 
     def get_stats(self, raw_name: str) -> dict[str, float] | None:
         """Return timing stats for a raw metric name, if available."""
