@@ -51,9 +51,9 @@ class Settings:
         self.scraper_window_visible: bool = False
 
 
-        self.settings_file_path = os.path.join(Console.get_projects_path(), "Widgets", "Config", "LootEx", f"{Player.GetAccountEmail()}.json")
-        self.profiles_path = os.path.join(Console.get_projects_path(), "Widgets", "Config", "LootEx", "Profiles")
-        self.data_collection_path = os.path.join(Console.get_projects_path(), "Widgets", "Config", "DataCollection")         
+        self.settings_file_path = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "LootEx", f"{Player.GetAccountEmail()}.json")
+        self.profiles_path = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "LootEx", "Profiles")
+        self.data_collection_path = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "DataCollection")         
         self.current_character: str = ""
         
         self.inventory_frame_exists: bool = False
@@ -147,7 +147,7 @@ class Settings:
             "auto_even_consets" : self.auto_even_consets,
         }
         # ConsoleLog(
-        #     "LootEx", f"Saving settings to '{self.settings_file_path}'...", Console.MessageType.Debug)
+        #     "LootEx", f"Saving settings to '{self.settings_file_path}'...", PySystem.Console.MessageType.Debug)
         if self.settings_file_path == "":
             return
         
@@ -212,5 +212,5 @@ class Settings:
             ConsoleLog(
                 "LootEx",
                 f"Settings file for {Player.GetAccountEmail()} not found. Using default settings.",
-                Console.MessageType.Warning,
+                PySystem.Console.MessageType.Warning,
             )

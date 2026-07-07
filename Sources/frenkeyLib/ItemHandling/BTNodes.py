@@ -52,7 +52,7 @@ from typing import Any, Callable, Optional, cast
 
 import Py4GW
 import PyInventory
-from PyItem import DyeColor
+from Py4GWCoreLib.enums_src.GameData_enums import DyeColor
 
 from Py4GWCoreLib.Inventory import Inventory
 from Py4GWCoreLib.Item import Bag, Item

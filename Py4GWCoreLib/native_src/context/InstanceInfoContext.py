@@ -138,10 +138,10 @@ class InstanceInfo:
         return InstanceInfo._ptr    
     @staticmethod
     def _update_ptr():
-        from ..ShMem.SysShaMem import SystemShaMemMgr
-        if (SSM := SystemShaMemMgr.get_pointers_struct()) is None: return
-        ptr = SSM.InstanceInfo
-        #ptr = InstanceInfo_GetPtr.read_ptr()  # legacy pattern scan — replaced by shmem
+        # Use the legacy pattern scan.  The C++ shared memory publishes
+        # g_instance_info_ptr (address of a code reference) rather than the
+        # actual InstanceInfo*, so the SSM dereference path gives garbage.
+        ptr = InstanceInfo_GetPtr.read_ptr()
         InstanceInfo._ptr = ptr
         if not ptr:
             InstanceInfo._cached_ctx = None

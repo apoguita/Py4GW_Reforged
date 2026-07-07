@@ -217,7 +217,7 @@ class UI:
         )
         self.style = ex_style.ExStyle()
         file_directory = os.path.dirname(os.path.abspath(__file__))
-        self.textures_folder = os.path.join(Console.get_projects_path(), "Textures")
+        self.textures_folder = os.path.join(PySystem.Console.get_projects_path(), "Textures")
         self.icon_textures_path = os.path.join(file_directory, "textures")
         self.item_textures_path = os.path.join(self.textures_folder, "Items")
         
@@ -920,7 +920,7 @@ class UI:
                     ConsoleLog(
                         "LootEx",
                         f"Profile changed to {profile_names[selected_index]}",
-                        Console.MessageType.Info,
+                        PySystem.Console.MessageType.Info,
                     )
                     self.settings.SetProfile(profile_names[selected_index])                
                     self.settings.save()
@@ -1559,7 +1559,7 @@ class UI:
                         ConsoleLog(
                             "LootEx",
                             "Merging diffs into self.data...",
-                            Console.MessageType.Info,
+                            PySystem.Console.MessageType.Info,
                         )
 
                         messaging.SendMergingMessage()
@@ -1578,7 +1578,7 @@ class UI:
                                 if os.path.exists(source_path):
                                     if not os.path.exists(dest_path):
                                         shutil.copy2(source_path, dest_path)
-                                        ConsoleLog("LootEx", f"Moved texture for Item {item.name}", Console.MessageType.Info)
+                                        ConsoleLog("LootEx", f"Moved texture for Item {item.name}", PySystem.Console.MessageType.Info)
                         pass
 
                     def on_test_button_clicked():
@@ -1696,7 +1696,7 @@ class UI:
                 ConsoleLog(
                     "LootEx",
                     "Fetching material prices from the wiki...",
-                    Console.MessageType.Info,
+                    PySystem.Console.MessageType.Info,
                 )
                 
                 def assign_material_price(item_id, price):
@@ -1710,7 +1710,7 @@ class UI:
                     ConsoleLog(
                         "LootEx",
                         f"Assigned price {utility.Util.format_currency(price)} to material {item.material.name} (Item ID: {item_id})",
-                        Console.MessageType.Info,
+                        PySystem.Console.MessageType.Info,
                     )
                     item.material.vendor_value = price
                     item.material.vendor_updated = datetime.now()
@@ -1868,7 +1868,7 @@ class UI:
                     PyImGui.close_current_popup()
                 else:
                     ConsoleLog("LootEx", "Profile name already exists!",
-                            Console.MessageType.Error)
+                            PySystem.Console.MessageType.Error)
 
             if profile_exists:
                 PyImGui.pop_style_color(4)
@@ -1990,7 +1990,7 @@ class UI:
                         for i, nick_item in enumerate(self.data.Nick_Cycle):
                              
                             if nick_item.weeks_until_next_nick is None:
-                                # ConsoleLog("LootEx", f"Nick item '{nick_item.name}' has no 'weeks_until_next_nick' value set! But next week is {nick_item.next_nick_week}", Console.MessageType.Warning)
+                                # ConsoleLog("LootEx", f"Nick item '{nick_item.name}' has no 'weeks_until_next_nick' value set! But next week is {nick_item.next_nick_week}", PySystem.Console.MessageType.Warning)
                                 continue
 
                             if nick_item.weeks_until_next_nick > 0 and nick_item.weeks_until_next_nick > self.settings.profile.nick_weeks_to_keep:
@@ -2587,7 +2587,7 @@ class UI:
                     ConsoleLog(
                         "LootEx",
                         "Filter name already exists!",
-                        Console.MessageType.Error,
+                        PySystem.Console.MessageType.Error,
                     )
 
             if filter_exists:
@@ -4834,7 +4834,7 @@ class UI:
                         ConsoleLog(
                             "LootEx",
                             f"Checking for expensive runes from merchant with price threshold: {self.entered_price_threshold}",
-                            Console.MessageType.Info,
+                            PySystem.Console.MessageType.Info,
                         )
                         
                         item_ids = Merchant.Trading.Trader.GetOfferedItems()
@@ -4860,7 +4860,7 @@ class UI:
                                 ConsoleLog(
                                     "LootEx",
                                     f"Rune {rune.full_name} has price {utility.Util.format_currency(rune.vendor_value)} which is above the threshold. Marking as valuable.",
-                                    Console.MessageType.Info,
+                                    PySystem.Console.MessageType.Info,
                                 )
                                 self.settings.profile.set_rune(rune.identifier, True, self.mark_to_sell_runes)
                                 
@@ -4876,7 +4876,7 @@ class UI:
                         ConsoleLog(
                             "LootEx",
                             "Price threshold must be greater than 0!",
-                            Console.MessageType.Error,
+                            PySystem.Console.MessageType.Error,
                         )
 
                 self.show_price_check_popup = False
@@ -5314,7 +5314,7 @@ class UI:
                         # Display crafting queue items
                         for crafting_action in inventory_handler.crafting_queue:
                             if crafting_action.recipe is None or crafting_action.recipe.item is None:
-                                ConsoleLog("LootEx", "Invalid crafting action in queue.", Console.MessageType.Warning)
+                                ConsoleLog("LootEx", "Invalid crafting action in queue.", PySystem.Console.MessageType.Warning)
                                 continue
                             
                             PyImGui.table_next_column()
@@ -5478,7 +5478,7 @@ class UI:
     
     def assign_scraped_data(self, data_item : models.Item, scraped_item : ScrapedItem):
         data_item.assign_scraped_data(scraped_item, self.data)
-        ConsoleLog("LootEx", f"Assigned data for item: {data_item.name}", Console.MessageType.Info)
+        ConsoleLog("LootEx", f"Assigned data for item: {data_item.name}", PySystem.Console.MessageType.Info)
         self.data.SaveItems(True)
     
     def get_matching_scraped_items(self, search_name: str, required_similarity : float) -> list[ScrapedItem]:
@@ -5614,7 +5614,7 @@ class UI:
                                             self.filtered_scraped_items[key] = scraped_item
                                     
                                     if not self.filtered_scraped_items:
-                                        ConsoleLog("LootEx", f"No exact matches found for '{search_name}'. Trying partial match...", Console.MessageType.Info)                                                                 
+                                        ConsoleLog("LootEx", f"No exact matches found for '{search_name}'. Trying partial match...", PySystem.Console.MessageType.Info)                                                                 
                                         item_name_words = english_name.split(" ")
                                         
                                         for (key, scraped_item) in self.data.ScrapedItems.items():                                    

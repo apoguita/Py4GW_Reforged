@@ -53,7 +53,7 @@ def SenquaValeRoutine(bot: Botting) -> None:
 
 
 bot.SetMainRoutine(create_bot_routine)
-base_path = Console.get_projects_path()
+base_path = PySystem.Console.get_projects_path()
 
 
 def configure():
@@ -62,7 +62,7 @@ def configure():
 
 def main():
     bot.Update()
-    projects_path = Console.get_projects_path()
+    projects_path = PySystem.Console.get_projects_path()
     widgets_path = projects_path + "\\Widgets\\Config\\textures\\"
     bot.UI.draw_window(icon_path=widgets_path + "YAVB 2.0 mascot.png")
 

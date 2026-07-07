@@ -761,7 +761,7 @@ def draw_map_data():
     global _selected_view, SECTION_INFO, map_vars
     if PyImGui.begin_tab_bar("MapDataTabBar"):
         if PyImGui.begin_tab_item("Map##MapInfoTab"):
-            
+            PyImGui.text("Map Info Tab")
             draw_main_map_tab() # Map Info Tab
             
             PyImGui.end_tab_item()
@@ -798,3 +798,4 @@ def draw_map_data():
             PyImGui.end_tab_item()
             
         PyImGui.end_tab_bar()
+

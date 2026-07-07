@@ -1534,7 +1534,7 @@ def draw_hero_panel(window: WindowModule, account_data: AccountStruct, cached_da
     window.collapse = collapsed if style.Theme != StyleTheme.Guild_Wars else window.collapse
     
     if window.collapse != window_info.collapsed or window.changed or window.open != window_info.open:            
-        if Console.is_window_active():
+        if PySystem.Console.is_window_active():
             window_info.open = window.open
             window_info.collapsed = window.collapse
             window_info.x = round(window.window_pos[0])
@@ -1773,7 +1773,7 @@ def draw_command_panel(window: WindowModule, cached_data: CacheData):
         window.process_window()
         
         if window.changed:                
-            if Console.is_window_active():                
+            if PySystem.Console.is_window_active():                
                 window_info = settings.get_hero_panel_info(window.window_name)
                 
                 if window_info:
@@ -1948,7 +1948,7 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
     if window.begin():
         explorable = Map.IsExplorable()
         
-        is_window_active = Console.is_window_active()
+        is_window_active = PySystem.Console.is_window_active()
 
         if ImGui.begin_child("##HotbarCommandsChild" + hotbar.identifier, (width, height), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
             if PyImGui.is_rect_visible(width, height):
@@ -2253,7 +2253,7 @@ def draw_dialog_overlay(cached_data: CacheData, messages: list[tuple[int, Shared
     pyimgui_io = PyImGui.get_io()
     mouse_pos = (pyimgui_io.mouse_pos_x, pyimgui_io.mouse_pos_y)
     
-    if Console.is_window_active(): 
+    if PySystem.Console.is_window_active(): 
         sorted_frames = sorted(frame_coords, key=lambda x: (x[1][1], x[1][0]))  # Sort by Y, then X
                
         for i, (frame_id, frame) in enumerate(sorted_frames):                

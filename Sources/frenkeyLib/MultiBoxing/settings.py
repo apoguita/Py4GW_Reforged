@@ -116,7 +116,7 @@ class Settings:
         self.regions.clear()
         
     def save_settings(self):
-        folder_path = Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing"
+        folder_path = PySystem.Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing"
         try:
             import os
             if not os.path.exists(folder_path):
@@ -140,15 +140,15 @@ class Settings:
             ConsoleLog(MODULE_NAME, f"Settings saved to {folder_path}\\settings.json")
             
         except Exception as e:
-            ConsoleLog(MODULE_NAME, f"Error saving settings: {e}", Console.MessageType.Error)
+            ConsoleLog(MODULE_NAME, f"Error saving settings: {e}", PySystem.Console.MessageType.Error)
         
     def load_settings(self):
-        folder_path = Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing"
+        folder_path = PySystem.Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing"
         try:
             import os
             file_path = f"{folder_path}\\settings.json"
             if not os.path.exists(file_path):
-                ConsoleLog(MODULE_NAME, f"Settings file does not exist at {file_path}, using defaults.", Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, f"Settings file does not exist at {file_path}, using defaults.", PySystem.Console.MessageType.Warning)
                 return
             
             import json
@@ -167,16 +167,16 @@ class Settings:
             ConsoleLog(MODULE_NAME, f"Settings loaded from {file_path}")
                 
         except Exception as e:
-            ConsoleLog(MODULE_NAME, f"Error loading settings: {e}", Console.MessageType.Error)
+            ConsoleLog(MODULE_NAME, f"Error loading settings: {e}", PySystem.Console.MessageType.Error)
 
     def save_layout(self, name: str):
         if not name:
-            ConsoleLog(MODULE_NAME, "Layout name is empty, cannot save layout.", Console.MessageType.Warning)
+            ConsoleLog(MODULE_NAME, "Layout name is empty, cannot save layout.", PySystem.Console.MessageType.Warning)
             return
         
         try:
             import os
-            folder_path = Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing\\Layouts"
+            folder_path = PySystem.Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing\\Layouts"
 
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
@@ -195,20 +195,20 @@ class Settings:
                 self.layouts.append(name)  # Add to layouts list if not already present
                 
         except Exception as e:
-            ConsoleLog(MODULE_NAME, f"Error saving layout '{name}': {e}", Console.MessageType.Error)
+            ConsoleLog(MODULE_NAME, f"Error saving layout '{name}': {e}", PySystem.Console.MessageType.Error)
     
     def load_layout(self, name: str):
         if not name or name == "None":
-            ConsoleLog(MODULE_NAME, "Layout name is empty or 'None', cannot load layout.", Console.MessageType.Warning)
+            ConsoleLog(MODULE_NAME, "Layout name is empty or 'None', cannot load layout.", PySystem.Console.MessageType.Warning)
             return
         
         try:
             import os
-            folder_path = Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing\\Layouts"
+            folder_path = PySystem.Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing\\Layouts"
             file_path = f"{folder_path}\\{name}.json"
 
             if not os.path.exists(file_path):
-                ConsoleLog(MODULE_NAME, f"Layout file '{file_path}' does not exist.", Console.MessageType.Warning)
+                ConsoleLog(MODULE_NAME, f"Layout file '{file_path}' does not exist.", PySystem.Console.MessageType.Warning)
                 return
 
             with open(file_path, "r") as f:
@@ -229,12 +229,12 @@ class Settings:
                 position_clients(self.get_account_mail(), self.regions, self.accounts)      
                 
         except Exception as e:
-            ConsoleLog(MODULE_NAME, f"Error loading layout '{name}': {e}", Console.MessageType.Error)
+            ConsoleLog(MODULE_NAME, f"Error loading layout '{name}': {e}", PySystem.Console.MessageType.Error)
         
     def load_layouts(self):
         
         import os
-        folder_path = Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing\\Layouts"
+        folder_path = PySystem.Console.get_projects_path() + "\\Widgets\\Config\\MultiBoxing\\Layouts"
         self.layouts = ["None"]  # Reset to default
         
         if not os.path.exists(folder_path):

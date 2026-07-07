@@ -9,11 +9,19 @@ from Py4GWCoreLib import WindowID
 from .ItemCache import RawItemCache, Bag_enum, ItemCache
 
 class InventoryCache:
+    @staticmethod
+    def _item_id(item):
+        """Reforged: PyInventory.Bag.GetItems() returns dicts."""
+        return item.get("item_id", 0) if isinstance(item, dict) else item.item_id
+
     def __init__(self, action_queue_manager, raw_item_cache, item_cache):
         self._raw_item_cache:RawItemCache = raw_item_cache
         self.item_cache:ItemCache = item_cache
         self._inventory_instance = PyInventory.PyInventory()
         self._action_queue_manager:ActionQueueManager = action_queue_manager
+
+    def GetBagCount(self) -> int:
+        return len(self._raw_item_cache.bags) if self._raw_item_cache.bags else 0
 
 
     def GetInventorySpace(self):
@@ -78,7 +86,7 @@ class InventoryCache:
 
             for item in bag.GetItems():
                 if 0 <= item.slot < size:
-                    item_slots[item.slot] = item.item_id
+                    item_slots[item.slot] = self._item_id(item)
 
             result.extend(item_slots)
 
@@ -104,8 +112,8 @@ class InventoryCache:
         item_ids = []
         for bag in bag_array:
             for item in bag.GetItems():
-                if item.item_id:
-                    item_ids.append(item.item_id)
+                if self._item_id(item):
+                    item_ids.append(self._item_id(item))
         return item_ids
 
     def GetItemCount(self, item_id: int) -> int:
@@ -126,7 +134,7 @@ class InventoryCache:
 
         for bag in bags:
             for item in bag.GetItems():
-                if item.item_id == item_id:
+                if self._item_id(item) == item_id:
                     total_quantity += item.quantity
 
         return total_quantity
@@ -237,14 +245,14 @@ class InventoryCache:
 
         for bag in bags:
             for item in bag.GetItems():
-                if self.item_cache.Usage.IsIDKit(item.item_id):
+                if self.item_cache.Usage.IsIDKit(self._item_id(item)):
                     id_kits.append(item)
 
         if not id_kits:
             return 0
 
-        id_kit_with_lowest_uses = min(id_kits, key=lambda item: self.item_cache.Usage.GetUses(item.item_id))
-        return id_kit_with_lowest_uses.item_id
+        id_kit_with_lowest_uses = min(id_kits, key=lambda item: self.item_cache.Usage.GetUses(self._item_id(item)))
+        return self._item_id(id_kit_with_lowest_uses)
     
 
     def GetFirstUnidentifiedItem(self) -> int:
@@ -264,8 +272,8 @@ class InventoryCache:
 
         for bag in bags:
             for item in bag.GetItems():
-                if not self.item_cache.Usage.IsIdentified(item.item_id):
-                    return item.item_id
+                if not self.item_cache.Usage.IsIdentified(self._item_id(item)):
+                    return self._item_id(item)
 
         return 0
 
@@ -292,17 +300,17 @@ class InventoryCache:
 
         for bag in bags:
             for item in bag.GetItems():
-                if not self.item_cache.Usage.IsSalvageKit(item.item_id):
+                if not self.item_cache.Usage.IsSalvageKit(self._item_id(item)):
                     continue
-                if use_lesser and not self.item_cache.Usage.IsLesserKit(item.item_id):
+                if use_lesser and not self.item_cache.Usage.IsLesserKit(self._item_id(item)):
                     continue
                 kits.append(item)
 
         if not kits:
             return 0
 
-        best_kit = min(kits, key=lambda item: self.item_cache.Usage.GetUses(item.item_id))
-        return best_kit.item_id
+        best_kit = min(kits, key=lambda item: self.item_cache.Usage.GetUses(self._item_id(item)))
+        return self._item_id(best_kit)
 
     def GetFirstSalvageableItem(self) -> int:
         """
@@ -321,8 +329,8 @@ class InventoryCache:
 
         for bag in bags:
             for item in bag.GetItems():
-                if self.item_cache.Usage.IsSalvageable(item.item_id):
-                    return item.item_id
+                if self.item_cache.Usage.IsSalvageable(self._item_id(item)):
+                    return self._item_id(item)
 
         return 0
     
@@ -346,7 +354,7 @@ class InventoryCache:
         for bag in bags:
             for item in bag.GetItems():
                 if item.model_id == model_id:
-                    return item.item_id
+                    return self._item_id(item)
 
         return 0
     
@@ -371,7 +379,7 @@ class InventoryCache:
         for bag in bags:
             for item in bag.GetItems():
                 if item.model_id == model_id:
-                    item_ids.append(item.item_id)
+                    item_ids.append(self._item_id(item))
         return item_ids
     
     def GetfirstModelIDInStorage(self, model_id: int) -> int:
@@ -404,7 +412,7 @@ class InventoryCache:
         for bag in bags:
             for item in bag.GetItems():
                 if item.model_id == model_id:
-                    return item.item_id
+                    return self._item_id(item)
 
         return 0
 
@@ -561,7 +569,7 @@ class InventoryCache:
 
         for bag in bags:
             for item in bag.GetItems():
-                if item.item_id == item_id:
+                if self._item_id(item) == item_id:
                     return bag.id, item.slot
 
         return None, None
@@ -621,11 +629,11 @@ class InventoryCache:
                         continue
 
                     if is_dye:
-                        item_dye_info = self.item_cache.Customization.GetDyeInfo(item.item_id)
+                        item_dye_info = self.item_cache.Customization.GetDyeInfo(self._item_id(item))
                         if item_dye_info.dye1.ToInt() != dye1_to_match:
                             continue
 
-                    current_qty = self.item_cache.Properties.GetQuantity(item.item_id)
+                    current_qty = self.item_cache.Properties.GetQuantity(self._item_id(item))
                     if current_qty < MAX_STACK_SIZE:
                         space_left = MAX_STACK_SIZE - current_qty
                         to_move = min(space_left, remaining_quantity)
@@ -699,11 +707,11 @@ class InventoryCache:
                         continue
 
                     if is_dye:
-                        item_dye_info = self.item_cache.Customization.GetDyeInfo(item.item_id)
+                        item_dye_info = self.item_cache.Customization.GetDyeInfo(self._item_id(item))
                         if item_dye_info.dye1.ToInt() != dye1_to_match:
                             continue
 
-                    item_qty = self.item_cache.Properties.GetQuantity(item.item_id)
+                    item_qty = self.item_cache.Properties.GetQuantity(self._item_id(item))
                     if item_qty < MAX_STACK_SIZE:
                         space_left = MAX_STACK_SIZE - item_qty
                         to_move = min(space_left, remaining_quantity)

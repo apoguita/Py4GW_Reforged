@@ -238,7 +238,7 @@ class ItemData:
         
         return dict(sorted(data.items(), key=lambda item: item[0]))
 
-project_path = Console.get_projects_path()
+project_path = PySystem.Console.get_projects_path()
 default_item_json_path = os.path.join(project_path, "Sources", "frenkeyLib", "ItemHandling", "Items", "items.json")
 item_json_path = os.path.join(project_path, "Sources", "frenkeyLib", "ItemHandling", "Items", "items copy.json")
 if not os.path.exists(item_json_path):
@@ -292,15 +292,15 @@ class ItemDataContainer():
                         try:
                             item_data = ItemData.from_json(item_data_dict)
                         except Exception as item_error:
-                            Console.Log(
+                            PySystem.Console.Log(
                                 "ItemDataContainer",
                                 f"Error parsing item '{item_type_name}/{item_model_id}': {type(item_error).__name__}: {item_error}",
-                                Console.MessageType.Error
+                                PySystem.Console.MessageType.Error
                             )
-                            Console.Log(
+                            PySystem.Console.Log(
                                 "ItemDataContainer",
                                 traceback.format_exc(),
-                                Console.MessageType.Error
+                                PySystem.Console.MessageType.Error
                             )
                             continue
                         
@@ -312,9 +312,9 @@ class ItemDataContainer():
                             
                         self.data[item_data.item_type][item_data.model_id] = item_data
             
-                Console.Log("ItemDataContainer", f"Loaded item data for {sum(len(items) for items in self.data.values())} items across {len(self.data)} item types.", Console.MessageType.Success)
+                PySystem.Console.Log("ItemDataContainer", f"Loaded item data for {sum(len(items) for items in self.data.values())} items across {len(self.data)} item types.", PySystem.Console.MessageType.Success)
         except Exception as e:
-            Console.Log("ItemDataContainer", f"Error loading item data: {e}", Console.MessageType.Error)
+            PySystem.Console.Log("ItemDataContainer", f"Error loading item data: {e}", PySystem.Console.MessageType.Error)
         
     
     def save_data(self):
@@ -322,10 +322,10 @@ class ItemDataContainer():
             with open(item_json_path, "w", encoding="utf-8") as f:
                 json_data = {item_type.name: {str(item_data.model_id): item_data.to_json() for item_data in items.values()} for item_type, items in self.data.items()}
                 json.dump(json_data, f, indent=4, ensure_ascii=False)
-                Console.Log("ItemDataContainer", f"Saved item data for {sum(len(items) for items in self.data.values())} items across {len(self.data)} item types.", Console.MessageType.Success)
+                PySystem.Console.Log("ItemDataContainer", f"Saved item data for {sum(len(items) for items in self.data.values())} items across {len(self.data)} item types.", PySystem.Console.MessageType.Success)
                 self.requires_save = False
         except Exception as e:
-            Console.Log("ItemDataContainer", f"Error saving item data: {e}", Console.MessageType.Error)
+            PySystem.Console.Log("ItemDataContainer", f"Error saving item data: {e}", PySystem.Console.MessageType.Error)
 
     def save_data_if_queued(self):
         if not self.requires_save:

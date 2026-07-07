@@ -69,7 +69,8 @@ class PartyCache:
             return -1
         agent_id = Player.GetAgentID()
         players = self.GetPlayers()
-        for i in range(self.GetPlayerCount()):
+        count = min(self.GetPlayerCount(), len(players))
+        for i in range(count):
             player_id = self.Players.GetAgentIDByLoginNumber(players[i].login_number)
             if player_id == agent_id:
                 return i
@@ -112,26 +113,32 @@ class PartyCache:
         return self._party_instance.is_party_leader
         
     def SetTickasToggle(self, enabled):
-        self._action_queue_manager.AddAction("ACTION", self._party_instance.tick.SetTickToggle, enabled)
+        tick = self._party_instance.tick
+        fn = tick.SetTickToggle if hasattr(tick, 'SetTickToggle') else (lambda e: None)
+        self._action_queue_manager.AddAction("ACTION", fn, enabled)
     
     def IsAllTicked(self):
-        return self._party_instance.tick.IsTicked()
+        # Reforged: tick is a bare bool, not a PartyTick object
+        tick = self._party_instance.tick
+        return tick.IsTicked() if hasattr(tick, 'IsTicked') else bool(tick)
     
     def IsPlayerTicked (self, party_number):
         return self._party_instance.GetIsPlayerTicked(party_number)
     
     def SetTicked(self, ticked):
-        self._action_queue_manager.AddAction("ACTION", self._party_instance.tick.SetTicked, ticked)
+        import PyParty
+        self._action_queue_manager.AddAction("ACTION", PyParty.tick, ticked)
         
     def ToggleTicked(self):
+        import PyParty
         agent_id = Player.GetAgentID()
         login_number = self.Players.GetLoginNumberByAgentID(agent_id)
         party_number = self.Players.GetPartyNumberFromLoginNumber(login_number)
         
         if self.IsPlayerTicked(party_number):
-            self._action_queue_manager.AddAction("ACTION", self._party_instance.tick.SetTicked, False)
+            self._action_queue_manager.AddAction("ACTION", PyParty.tick, False)
         else:
-            self._action_queue_manager.AddAction("ACTION", self._party_instance.tick.SetTicked, True)
+            self._action_queue_manager.AddAction("ACTION", PyParty.tick, True)
             
     def SetHardMode(self):
         if self.IsHardModeUnlocked() and self.IsNormalMode():

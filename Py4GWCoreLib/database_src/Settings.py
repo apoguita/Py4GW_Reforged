@@ -381,6 +381,18 @@ class Settings(DBMgr):
             except Exception:
                 pass
 
+        # Auto-register: email is available from the game but the account row
+        # doesn't exist yet.  Insert a minimal row so subsequent lookups succeed.
+        if account_id is None and email and email.strip():
+            try:
+                account_id = int(Account().Insert(
+                    Account.ACCOUNT_TABLE,
+                    ['Email', 'Password', 'GW_Client_Path', 'HWND'],
+                    [email.strip(), '', '', hwnd],
+                ))
+            except Exception:
+                pass
+
         return account_id
 
     def _refresh_account_identity(self) -> bool:

@@ -42,6 +42,13 @@ import PyScanner
 import PyImGui
 import PyCallback
 
+# ── Legacy Console: inject into builtins so all legacy code (100+ bare
+#    `Console.xxx()` and `ConsoleLog()` calls) works without per-file migration. ──
+import builtins
+from .py4gwcorelib_src.Console import ConsoleLog
+builtins.Console = PySystem.Console
+builtins.ConsoleLog = ConsoleLog
+
 # ── Vec2 compatibility: PyImGui set_cursor_pos / set_cursor_screen_pos accept a single
 #    Vec2 tuple in Reforged (not two scalar floats). Monkey-patch to accept both forms.
 _PyImGui_set_cursor_pos = PyImGui.set_cursor_pos
@@ -54,6 +61,44 @@ def _vec2_set_cursor_screen_pos(*args):
     return _PyImGui_set_cursor_screen_pos(args)
 PyImGui.set_cursor_pos = _vec2_set_cursor_pos
 PyImGui.set_cursor_screen_pos = _vec2_set_cursor_screen_pos
+
+# ── Vec2 slicing: Reforged PyImGui.Vec2 doesn't support [:2] slicing used
+#    pervasively in legacy code. Monkey-patch __getitem__ to handle slices. ──
+_Vec2 = PyImGui.Vec2
+_Vec2_orig_getitem = _Vec2.__getitem__
+def _vec2_getitem(self, key):
+    if isinstance(key, slice):
+        return tuple(self[i] for i in range(*key.indices(2)))
+    return _Vec2_orig_getitem(self, key)
+_Vec2.__getitem__ = _vec2_getitem
+
+# ── is_rect_visible compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
+_PyImGui_is_rect_visible = PyImGui.is_rect_visible
+def _vec2_is_rect_visible(*args):
+    if len(args) == 1: return _PyImGui_is_rect_visible(args[0])
+    return _PyImGui_is_rect_visible(args)   # (w, h) tuple works as Vec2
+PyImGui.is_rect_visible = _vec2_is_rect_visible
+
+# ── push_style_var2 compatibility: legacy code calls push_style_var2(var, x, y);
+#    Reforged exposes push_style_var_vec2(var, (x, y)). ──
+_PyImGui_push_style_var_vec2 = PyImGui.push_style_var_vec2
+def _push_style_var2(var, x, y):
+    _PyImGui_push_style_var_vec2(var, (x, y))
+PyImGui.push_style_var2 = _push_style_var2
+
+# ── dummy compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
+_PyImGui_dummy = PyImGui.dummy
+def _vec2_dummy(*args):
+    if len(args) == 1: return _PyImGui_dummy(args[0])
+    return _PyImGui_dummy(args)
+PyImGui.dummy = _vec2_dummy
+
+# ── begin_tab_item: Reforged binding requires explicit p_open=True;
+#    legacy code calls begin_tab_item(label) with no p_open → defaults nullptr → returns False. ──
+_PyImGui_begin_tab_item = PyImGui.begin_tab_item
+def _tab_item(label, p_open=True, flags=0):
+    return _PyImGui_begin_tab_item(label, p_open, flags)
+PyImGui.begin_tab_item = _tab_item
 
 import PyAgent
 import PyPlayer

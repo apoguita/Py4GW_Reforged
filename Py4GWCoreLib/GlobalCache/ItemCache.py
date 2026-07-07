@@ -113,7 +113,8 @@ class RawItemCache:
 
         bag_instance = self.bags[bag]
         items = bag_instance.GetItems()
-        item_ids = [item.item_id for item in items]
+        # Reforged: GetItems() returns dicts
+        item_ids = [item["item_id"] if isinstance(item, dict) else item.item_id for item in items]
         
         return item_ids
                     
@@ -653,7 +654,7 @@ class ItemArray:
         for bag_enum, bag in zip(bags_to_check, bags):
             try:
                 items = bag.GetItems()
-                all_item_ids.extend([item.item_id for item in items])
+                all_item_ids.extend([item["item_id"] if isinstance(item, dict) else item.item_id for item in items])
             except Exception as e:
                 PySystem.Console.Log("GetItemArray", f"Error retrieving items from {bag_enum.name}: {str(e)}", PySystem.Console.MessageType.Error)
 

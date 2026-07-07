@@ -47,7 +47,7 @@ class RuleProfile:
 
     @staticmethod
     def get_profiles_directory() -> str:
-        project_path = Console.get_projects_path()
+        project_path = PySystem.Console.get_projects_path()
         profile_dir = os.path.join(project_path, "Widgets", "Config", "ItemHandling", "Profiles")
         os.makedirs(profile_dir, exist_ok=True)
         return profile_dir

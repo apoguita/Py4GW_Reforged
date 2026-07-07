@@ -7,7 +7,7 @@ class Keystroke:
         Purpose: Get the PyScanCodeKeystroke instance for sending keystrokes.
         Returns: PyScanCodeKeystroke
         """
-        return PyKeystroke.PyScanCodeKeystroke()
+        return PyKeystroke.PyKeyHandler()
 
 
     @staticmethod

@@ -147,6 +147,123 @@ def draw_list_add_quad_filled(p1: Tuple[float, float], p2: Tuple[float, float], 
 def get_io() -> Any: ...
 
 # ═══════════════ WINDOW ═══════════════════════════════════
+class WindowFlags(IntEnum):
+    NoFlag = 0
+    NoTitleBar = 1
+    NoResize = 2
+    NoMove = 4
+    NoScrollbar = 8
+    NoScrollWithMouse = 16
+    NoCollapse = 32
+    AlwaysAutoResize = 64
+    NoBackground = 128
+    NoSavedSettings = 256
+    NoMouseInputs = 512
+    MenuBar = 1024
+    HorizontalScrollbar = 2048
+    NoFocusOnAppearing = 4096
+    NoBringToFrontOnFocus = 8192
+    AlwaysVerticalScrollbar = 16384
+    AlwaysHorizontalScrollbar = 32768
+    NoNavInputs = 65536
+    NoNavFocus = 131072
+    UnsavedDocument = 262144
+    NoNav = 196608
+    NoDecoration = 43
+    NoInputs = 66048
+    NavFlattened = 524288
+    ChildWindow = 1048576
+    Tooltip = 2097152
+    Popup = 4194304
+    Modal = 8388608
+    ChildMenu = 16777216
+
+class SelectableFlags(IntEnum):
+    NoFlag = 0
+    DontClosePopups = 1
+    SpanAllColumns = 2
+    AllowDoubleClick = 4
+    Disabled = 8
+    AllowItemOverlap = 16
+
+class TableFlags(IntEnum):
+    NoFlag = 0
+    Resizable = 1
+    Reorderable = 2
+    Hideable = 4
+    Sortable = 8
+    NoSavedSettings = 16
+    ContextMenuInBody = 32
+    RowBg = 64
+    BordersInnerH = 128
+    BordersOuterH = 256
+    BordersInnerV = 512
+    BordersOuterV = 1024
+    Borders = 1920
+    NoBordersInBody = 2048
+    SizingFixedFit = 4096
+    SizingFixedSame = 8192
+    SizingStretchProp = 16384
+    SizingStretchSame = 32768
+    NoHostExtendX = 65536
+    NoHostExtendY = 131072
+    NoKeepColumnsVisible = 262144
+    PreciseWidths = 524288
+    NoClip = 1048576
+    PadOuterX = 2097152
+    NoPadOuterX = 4194304
+    NoPadInnerX = 8388608
+    ScrollX = 16777216
+    ScrollY = 33554432
+    SortMulti = 67108864
+    SortTristate = 134217728
+
+class TableColumnFlags(IntEnum):
+    NoFlag = 0
+    DefaultHide = 1
+    DefaultSort = 2
+    WidthStretch = 4
+    WidthFixed = 8
+    NoResize = 16
+    NoReorder = 32
+    NoHide = 64
+    NoClip = 128
+    NoSort = 256
+    NoSortAscending = 512
+    NoSortDescending = 1024
+    IndentEnable = 2048
+    IndentDisable = 4096
+
+class InputTextFlags(IntEnum):
+    NoFlag = 0
+    CharsDecimal = 1
+    CharsHexadecimal = 2
+    CharsUppercase = 4
+    CharsNoBlank = 8
+    AutoSelectAll = 16
+    EnterReturnsTrue = 32
+    CallbackCompletion = 64
+    CallbackHistory = 128
+    CallbackAlways = 256
+    CallbackCharFilter = 512
+    AllowTabInput = 1024
+    CtrlEnterForNewLine = 2048
+    NoHorizontalScroll = 4096
+    ReadOnly = 8192
+    Password = 16384
+    NoUndoRedo = 32768
+    CharsScientific = 65536
+
+class ImGuiComboFlags(IntEnum):
+    NoFlag = 0
+    PopupAlignLeft = 1
+    HeightSmall = 2
+    HeightRegular = 4
+    HeightLarge = 8
+    HeightLargest = 16
+    NoArrowButton = 32
+    NoPreview = 64
+
 def begin(name: str, *args) -> bool:
     """Overloads: (name) / (name, flags) / (name, p_open, flags). Returns visible bool."""
     ...

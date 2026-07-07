@@ -115,7 +115,7 @@ class CollectionEntry(Item):
             self.is_account_data = item_data.is_account_data            
             
     def request_name(self):
-        ConsoleLog("LootEx DataCollector", f"Requesting name for item ID: {self.item_id}...", Console.MessageType.Debug)
+        ConsoleLog("LootEx DataCollector", f"Requesting name for item ID: {self.item_id}...", PySystem.Console.MessageType.Debug)
         GLOBAL_CACHE._ActionQueueManager.AddAction("ACTION", lambda: GLOBAL_CACHE.Item.GetName(self.item_id))
         self.status = CollectionStatus.NameRequested
         
@@ -328,7 +328,7 @@ class CollectionEntry(Item):
 
                     if server_language in data.Weapon_Mods[mod.WeaponMod.identifier].names and data.Weapon_Mods[mod.WeaponMod.identifier].names[server_language] is not None:
                         # ConsoleLog(
-                        #     "LootEx", f"Mod name already exists for {self.server_language.name}: {data.Weapon_Mods[index].names[self.server_language]} ({item_id})", Console.MessageType.Debug)
+                        #     "LootEx", f"Mod name already exists for {self.server_language.name}: {data.Weapon_Mods[index].names[self.server_language]} ({item_id})", PySystem.Console.MessageType.Debug)
                         continue
 
                     if mod.WeaponMod.mod_type == ModType.Prefix:
@@ -337,7 +337,7 @@ class CollectionEntry(Item):
 
                     if mod.WeaponMod.mod_type == ModType.Inherent:
                         ConsoleLog(
-                            "LootEx", f"Setting Inherent mod name for: {data.Weapon_Mods[mod.WeaponMod.identifier].applied_name} to {mod_name}", Console.MessageType.Debug)
+                            "LootEx", f"Setting Inherent mod name for: {data.Weapon_Mods[mod.WeaponMod.identifier].applied_name} to {mod_name}", PySystem.Console.MessageType.Debug)
                         data.Weapon_Mods[mod.WeaponMod.identifier].set_name(
                             mod_name, server_language)
                         DataCollector().modified_weapon_mods[mod.WeaponMod.identifier] = data.Weapon_Mods[mod.WeaponMod.identifier]
@@ -345,7 +345,7 @@ class CollectionEntry(Item):
 
                     if mod.WeaponMod.mod_type == ModType.Suffix:
                         ConsoleLog(
-                            "LootEx", f"Setting Suffix mod name for: {data.Weapon_Mods[mod.WeaponMod.identifier].applied_name} to {mod_name}", Console.MessageType.Debug)
+                            "LootEx", f"Setting Suffix mod name for: {data.Weapon_Mods[mod.WeaponMod.identifier].applied_name} to {mod_name}", PySystem.Console.MessageType.Debug)
                         data.Weapon_Mods[mod.WeaponMod.identifier].set_name(
                             mod_name, server_language)
                         save_weapon_mods = True
@@ -401,7 +401,7 @@ class DataCollector:
         account_file = os.path.join(self.settings.data_collection_path, account_mail, "items.json")
         account_items = {}
         
-        ConsoleLog("LootEx DataCollector", f"Loading existing collected items from {account_file}...", Console.MessageType.Info)
+        ConsoleLog("LootEx DataCollector", f"Loading existing collected items from {account_file}...", PySystem.Console.MessageType.Info)
         if os.path.exists(account_file):
             with open(account_file, 'r', encoding='utf-8') as file:
                 account_items = json.load(file)
@@ -505,7 +505,7 @@ class DataCollector:
     
     def reset(self):
         if self.collected_items:
-            ConsoleLog("LootEx DataCollector", f"Resetting data collector. Cleared {len(self.collected_items)} collected items.", Console.MessageType.Info)
+            ConsoleLog("LootEx DataCollector", f"Resetting data collector. Cleared {len(self.collected_items)} collected items.", PySystem.Console.MessageType.Info)
         
         # self.throttle.Stop()
         self.fetched_cycles = 0
@@ -537,7 +537,7 @@ class DataCollector:
         if not english_name or english_name == "":
             return
         
-        ConsoleLog("LootEx DataCollector", f"Auto-assigning scraped data for item: {english_name}...", Console.MessageType.Info)
+        ConsoleLog("LootEx DataCollector", f"Auto-assigning scraped data for item: {english_name}...", PySystem.Console.MessageType.Info)
         
         from Sources.frenkeyLib.LootEx.data import Data
         data = Data()
@@ -587,8 +587,8 @@ class DataCollector:
                 if entry.status == CollectionStatus.RequiresSave:
                     entry.status = CollectionStatus.DataCollected
                 
-            if Console.is_window_active():
-                # ConsoleLog("LootEx DataCollector", f"Notifying other accounts about updated data...", Console.MessageType.Info)
+            if PySystem.Console.is_window_active():
+                # ConsoleLog("LootEx DataCollector", f"Notifying other accounts about updated data...", PySystem.Console.MessageType.Info)
                 messaging.SendMergingMessage()
                 pass
             
@@ -598,7 +598,7 @@ class DataCollector:
         if item is None:
             return
         
-        ConsoleLog("LootEx DataCollector", f"Queueing auto-assignment of scraped data for item: {item.names.get(ServerLanguage.English, '')}...", Console.MessageType.Info)
+        ConsoleLog("LootEx DataCollector", f"Queueing auto-assignment of scraped data for item: {item.names.get(ServerLanguage.English, '')}...", PySystem.Console.MessageType.Info)
         
         if not self.wiki_scraped_items.get((item.item_type, item.model_id), False):
             GLOBAL_CACHE._ActionQueueManager.AddAction("ACTION", lambda: self.auto_assign_scraped_data(item))
@@ -613,7 +613,7 @@ class DataCollector:
             return
         
         if not self.settings.collect_items:
-            ConsoleLog("LootEx DataCollector", f"Data collection is disabled in settings. Skipping item ID: {item_id}.", Console.MessageType.Debug, self.LOG_DATA_COLLECTION)
+            ConsoleLog("LootEx DataCollector", f"Data collection is disabled in settings. Skipping item ID: {item_id}.", PySystem.Console.MessageType.Debug, self.LOG_DATA_COLLECTION)
             return
         
         if server_language == ServerLanguage.Unknown:
@@ -649,7 +649,7 @@ class DataCollector:
                 if GLOBAL_CACHE.Item.IsNameReady(item_id):
                     name = GLOBAL_CACHE.Item.GetName(item_id)
                     
-                    ConsoleLog("LootEx DataCollector", f"Collected name for item ID: {item_id} | {entry.model_id} | {entry.item_type}: {name}", Console.MessageType.Debug, self.LOG_DATA_COLLECTION)
+                    ConsoleLog("LootEx DataCollector", f"Collected name for item ID: {item_id} | {entry.model_id} | {entry.item_type}: {name}", PySystem.Console.MessageType.Debug, self.LOG_DATA_COLLECTION)
                     
                     if not name or name == "No Item" or name == "Unknown":
                         entry.request_name()

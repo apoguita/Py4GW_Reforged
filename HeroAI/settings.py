@@ -104,7 +104,7 @@ class Settings:
         
         self._instance_initialized = True
         
-        base_path = Console.get_projects_path()
+        base_path = PySystem.Console.get_projects_path()
         self.ini_path = os.path.join(base_path, "Widgets", "Config", "HeroAI.ini")
         
         self.save_requested = False        
@@ -218,7 +218,7 @@ class Settings:
         return self._initialized and self.account_email == account_email
 
     def initialize_account_config(self):
-        base_path = Console.get_projects_path()        
+        base_path = PySystem.Console.get_projects_path()        
         account_email = Player.GetAccountEmail()
         
         if account_email:
@@ -417,7 +417,7 @@ class Settings:
         ):
             return self.account_ini_handler
 
-        base_path = Console.get_projects_path()
+        base_path = PySystem.Console.get_projects_path()
         config_dir = os.path.join(base_path, "Widgets", "Config", "Accounts", resolved_email)
         os.makedirs(config_dir, exist_ok=True)
         return IniHandler(os.path.join(config_dir, "HeroAI.ini"))

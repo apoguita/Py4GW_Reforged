@@ -14,7 +14,7 @@ MODULE_NAME = __file__.split("\\")[-2]
 
 def set_window_active(acc: AccountStruct, settings: Settings, ctrl_pressed: bool = False):
     try:
-        ConsoleLog(MODULE_NAME, f"Setting window active for account: {acc.AccountEmail}", Console.MessageType.Info,False)
+        ConsoleLog(MODULE_NAME, f"Setting window active for account: {acc.AccountEmail}", PySystem.Console.MessageType.Info,False)
         account_mail = settings.get_account_mail()
         
         # if ctrl_pressed:
@@ -38,16 +38,16 @@ def is_window_active() -> bool:
     try:
         # user32 = ctypes.windll.user32
         # foreground_window = user32.GetForegroundWindow()
-        # gw_window = Console.get_gw_window_handle()
-        return Console.is_window_active()
+        # gw_window = PySystem.Console.get_gw_window_handle()
+        return PySystem.Console.is_window_active()
     
     except Exception as e:
-        ConsoleLog(MODULE_NAME, f"Error checking if window is active: {e}", Console.MessageType.Error)
+        ConsoleLog(MODULE_NAME, f"Error checking if window is active: {e}", PySystem.Console.MessageType.Error)
         return False
 
 def set_window_title(title: str):
     try:
-        Console.set_window_title(title)
+        PySystem.Console.set_window_title(title)
     except Exception as e:
         ConsoleLog(MODULE_NAME, f"Error setting window title: {e}", message_type=1)
     pass

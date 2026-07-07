@@ -62,7 +62,7 @@ class ImGuiIniReader:
             return f"ImGuiWindowConfig(pos={self.pos}, size={self.size}, collapsed={self.collapsed})"
         
     def __init__(self):
-        self.path = Path(Console.get_projects_path(), "imgui.ini")
+        self.path = Path(PySystem.Console.get_projects_path(), "imgui.ini")
         self.windows: dict[str, "ImGuiIniReader.ImGuiWindowConfig"] = {}
         self._parse()
 

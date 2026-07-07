@@ -1,0 +1,656 @@
+{
+  "sections": [
+    {
+      "section": "env",
+      "ok": true,
+      "python": "3.13.0 (tags/v3.13.0:60403a5, Oct  7 2024, 09:21:06) [MSC v.1941 32 bit (Intel)]",
+      "platform": "win32",
+      "timestamp": "2026-07-07T11:00:11.669541",
+      "instanceinfo_fix_applied": false
+    },
+    {
+      "section": "layouts",
+      "ok": true,
+      "structs": {
+        "Pointers_SHMemStruct": {
+          "sizeof": 64,
+          "fields": 16
+        },
+        "AgentArraySHMemStruct": {
+          "sizeof": 33660,
+          "fields": 16
+        },
+        "SharedMemoryHeader": {
+          "sizeof": 24,
+          "fields": 5
+        },
+        "CharContextStruct": {
+          "sizeof": 1088,
+          "fields": 34
+        },
+        "WorldContextStruct": {
+          "sizeof": 2132,
+          "fields": 107
+        },
+        "InstanceInfoStruct": {
+          "sizeof": 20,
+          "fields": 5
+        },
+        "GameContextStruct": {
+          "sizeof": 92,
+          "fields": 23
+        },
+        "PreGameContextStruct": {
+          "sizeof": 256,
+          "fields": 44
+        }
+      }
+    },
+    {
+      "section": "ssm_raw",
+      "ok": true,
+      "shm_attached": true,
+      "shm_name": "Py4GW_Runtime_14576_001B0C56",
+      "shm_size": 36864,
+      "expected_size": 33748,
+      "last_error": "",
+      "header": {
+        "version": 1,
+        "total_size": 33748,
+        "sequence": 1698,
+        "pid": 14576,
+        "hwnd": "0x001B0C56"
+      },
+      "pointers": {
+        "count": 16,
+        "nonzero": 12,
+        "sizeof": 64,
+        "fields": {
+          "MissionMapContext": "0x00000000",
+          "WorldMapContext": "0x00000000",
+          "GameplayContext": "0x09D45BA0",
+          "InstanceInfo": "0x0052481A",
+          "MapContext": "0x282B0560",
+          "GameContext": "0x0175AA60",
+          "PreGameContext": "0x00000000",
+          "WorldContext": "0x0179BC18",
+          "CharContext": "0x0179C680",
+          "AgentContext": "0x01790358",
+          "CinematicContext": "0x0178ED30",
+          "GuildContext": "0x01790E58",
+          "AvailableCharacters": "0x00000000",
+          "PartyContext": "0x016C8EA8",
+          "ServerRegionContext": "0x00942308",
+          "Camera": "0x00946918"
+        }
+      },
+      "agent_array": {
+        "max_size": 300,
+        "count": 59,
+        "ref_counts": {
+          "AllArray": 59,
+          "AllyArray": 41,
+          "NeutralArray": 0,
+          "EnemyArray": 0,
+          "SpiritPetArray": 0,
+          "MinionArray": 0,
+          "NPCMinipetArray": 16,
+          "LivingArray": 57,
+          "ItemArray": 0,
+          "OwnedItemArray": 0,
+          "GadgetArray": 2,
+          "DeadAllyArray": 0,
+          "DeadEnemyArray": 0
+        },
+        "first_10": [
+          {
+            "i": 0,
+            "ptr": "0x24C0F388",
+            "id": 1
+          },
+          {
+            "i": 1,
+            "ptr": "0x266697C8",
+            "id": 2
+          },
+          {
+            "i": 2,
+            "ptr": "0x2666AA38",
+            "id": 3
+          },
+          {
+            "i": 3,
+            "ptr": "0x2666A100",
+            "id": 4
+          },
+          {
+            "i": 4,
+            "ptr": "0x24B31EF8",
+            "id": 5
+          },
+          {
+            "i": 5,
+            "ptr": "0x24B32BE0",
+            "id": 6
+          },
+          {
+            "i": 6,
+            "ptr": "0x24B32DB8",
+            "id": 7
+          },
+          {
+            "i": 7,
+            "ptr": "0x24C89D18",
+            "id": 8
+          },
+          {
+            "i": 8,
+            "ptr": "0x24C88348",
+            "id": 9
+          },
+          {
+            "i": 9,
+            "ptr": "0x24C88520",
+            "id": 10
+          }
+        ]
+      }
+    },
+    {
+      "section": "contexts",
+      "ok": true,
+      "contexts": {
+        "CharContext": {
+          "ptr_hex": "0x0179C680",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "player_name_str": {
+              "raw": "Fezzik The Untamed",
+              "fmt": "Fezzik The Untamed",
+              "ok": true
+            },
+            "token1": {
+              "raw": 3752450985,
+              "fmt": "3752450985",
+              "ok": true
+            },
+            "map_id": {
+              "raw": 642,
+              "fmt": "642",
+              "ok": true
+            },
+            "current_map_id": {
+              "raw": 642,
+              "fmt": "642",
+              "ok": true
+            },
+            "observe_map_id": {
+              "raw": 642,
+              "fmt": "642",
+              "ok": true
+            },
+            "token2": {
+              "raw": 856351330,
+              "fmt": "856351330",
+              "ok": true
+            },
+            "language": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "WorldContext": {
+          "ptr_hex": "0x0179BC18",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "experience": {
+              "raw": 12508146,
+              "fmt": "12508146",
+              "ok": true
+            },
+            "level": {
+              "raw": 20,
+              "fmt": "20",
+              "ok": true
+            },
+            "morale": {
+              "raw": 100,
+              "fmt": "100",
+              "ok": true
+            },
+            "foes_killed": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "AccAgentContext": {
+          "ptr_hex": "0x01790358",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "instance_timer": {
+              "raw": 29636444,
+              "fmt": "29636444",
+              "ok": true
+            },
+            "rand1": {
+              "raw": 892375869,
+              "fmt": "892375869",
+              "ok": true
+            },
+            "rand2": {
+              "raw": 2322071362,
+              "fmt": "2322071362",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "MapContext": {
+          "ptr_hex": "0x282B0560",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "map_type": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            },
+            "map_id": {
+              "raw": 642,
+              "fmt": "642",
+              "ok": true
+            },
+            "h0080": {
+              "raw": 641075032,
+              "fmt": "641075032",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "GuildContext": {
+          "ptr_hex": "0x01790E58",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {},
+          "errors": []
+        },
+        "PreGameContext": {
+          "ptr_hex": "0x00000000",
+          "ptr_nonzero": false,
+          "cached_ctx": "None",
+          "samples": {},
+          "errors": []
+        },
+        "CinematicContext": {
+          "ptr_hex": "0x0178ED30",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "h0000": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            },
+            "h0004": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "GameplayContext": {
+          "ptr_hex": "0x09D45BA0",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "mission_map_zoom": {
+              "raw": 1.0,
+              "fmt": "1.000",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "WorldMapContext": {
+          "ptr_hex": "0x00000000",
+          "ptr_nonzero": false,
+          "cached_ctx": "None",
+          "samples": {},
+          "errors": []
+        },
+        "MissionMapContext": {
+          "ptr_hex": "0x00000000",
+          "ptr_nonzero": false,
+          "cached_ctx": "None",
+          "samples": {},
+          "errors": []
+        },
+        "PartyContext": {
+          "ptr_hex": "0x016C8EA8",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {},
+          "errors": []
+        },
+        "TextParser": {
+          "ptr_hex": "0x01790B30",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "language_id": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            },
+            "entries_per_file": {
+              "raw": 1024,
+              "fmt": "1024",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "ServerRegion": {
+          "ptr_hex": "0x00942308",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "region_id": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            }
+          },
+          "errors": []
+        },
+        "AvailableCharacters": {
+          "ptr_hex": "0x00000000",
+          "ptr_nonzero": false,
+          "cached_ctx": "None",
+          "samples": {},
+          "errors": []
+        },
+        "InstanceInfo": {
+          "ptr_hex": "0x00DC5D08",
+          "ptr_nonzero": true,
+          "cached_ctx": "VALID",
+          "samples": {
+            "instance_type": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            },
+            "terrain_count": {
+              "raw": 640899440,
+              "fmt": "640899440",
+              "ok": true
+            }
+          },
+          "errors": [],
+          "area_info": {
+            "campaign": {
+              "raw": 4,
+              "fmt": "4",
+              "ok": true
+            },
+            "continent": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            },
+            "region": {
+              "raw": 19,
+              "fmt": "19",
+              "ok": true
+            },
+            "type": {
+              "raw": 10,
+              "fmt": "10",
+              "ok": true
+            },
+            "flags": {
+              "raw": 0,
+              "fmt": "0",
+              "ok": true
+            },
+            "min_party_size": {
+              "raw": 1,
+              "fmt": "1",
+              "ok": true
+            },
+            "max_party_size": {
+              "raw": 8,
+              "fmt": "8",
+              "ok": true
+            },
+            "min_level": {
+              "raw": 1,
+              "fmt": "1",
+              "ok": true
+            },
+            "max_level": {
+              "raw": 20,
+              "fmt": "20",
+              "ok": true
+            }
+          },
+          "instance_type_plausible": false
+        }
+      }
+    },
+    {
+      "section": "agentarray_api",
+      "ok": true,
+      "results": {
+        "GetAgentArray": "len=59",
+        "GetAllyArray": "len=41",
+        "GetEnemyArray": "len=0",
+        "GetNeutralArray": "len=0",
+        "GetSpiritPetArray": "len=0",
+        "GetMinionArray": "len=0",
+        "GetNPCMinipetArray": "len=16",
+        "GetItemArray": "len=0",
+        "GetGadgetArray": "len=2",
+        "GetDeadAllyArray": "len=0",
+        "GetDeadEnemyArray": "len=0"
+      }
+    },
+    {
+      "section": "email_chain",
+      "ok": true,
+      "steps": {
+        "IsMapReady": "True",
+        "GWContext.Map.IsValid": true,
+        "GWContext.Char.IsValid": true,
+        "GWContext.InstanceInfo.IsValid": true,
+        "GWContext.World.IsValid": true,
+        "GetAccountEmail_raw": "apoguita@gmail.com",
+        "char_ctx.player_email_encoded": "apoguita@gmail.com",
+        "char_ctx.player_email_decoded": "apoguita@gmail.com"
+      }
+    },
+    {
+      "section": "demo_map_parity",
+      "ok": true,
+      "queries": {
+        "GetInstanceTypeName": "Outpost",
+        "GetMapID": "642",
+        "GetMapName": "Eye of the North outpost",
+        "GetCampaign": "(4, 'Eye Of The North')",
+        "GetContinent": "(0, 'Kryta')",
+        "IsGuildHall": false,
+        "GetRegion": "(0, 'America')",
+        "GetRegionType": "(10, 'Outpost')",
+        "GetDistrict": "1",
+        "GetLanguage": "(0, 'English')",
+        "GetAmountOfPlayersInInstance": "32",
+        "GetMaxPartySize": "8",
+        "GetFoesKilled": "0",
+        "GetFoesToKill": "0",
+        "IsVanquishable": false,
+        "IsVanquishComplete": false,
+        "IsInCinematic": false,
+        "HasEnterChallengeButton": false,
+        "IsMapUnlocked": true,
+        "GetMinPartySize": "1",
+        "GetMaxLevel": "20",
+        "IsMapReady": true,
+        "IsMapDataLoaded": true,
+        "IsMapLoading": false,
+        "IsObservingMatch": false,
+        "IsExplorable": false,
+        "GetInstanceUptime": "29636444"
+      },
+      "gates": {
+        "GWContext.Map.IsValid": true,
+        "GWContext.Char.IsValid": true,
+        "GWContext.InstanceInfo.IsValid": true,
+        "GWContext.World.IsValid": true,
+        "GWContext.Party.IsValid": true,
+        "CharContext.current_map_id": 642,
+        "CharContext.observe_map_id": 642,
+        "InstanceInfo.instance_type": 0,
+        "PyParty.is_party_loaded": true,
+        "PyParty.party_id": 2,
+        "PyParty.players": 1,
+        "PyParty.players[0].login_number": 25,
+        "PyParty.players[0].called_target_id": 0,
+        "PyParty.players[0].state": "N/A",
+        "PyParty.heroes": 0,
+        "PyParty.henchmen": 0,
+        "PyParty.party_player_count": 1,
+        "PyParty.party_hero_count": 0,
+        "PyParty.party_size": 1,
+        "Player.GetPlayerNumber": 25
+      }
+    },
+    {
+      "section": "party_demo",
+      "ok": true,
+      "queries": {
+        "GetPartyID": "2",
+        "GetPartySize": "1",
+        "GetPlayerCount": "1",
+        "GetHeroCount": "0",
+        "GetHenchmanCount": "0",
+        "IsPartyLoaded": "True",
+        "IsPartyLeader": "True",
+        "IsPartyDefeated": "False",
+        "IsHardMode": "False",
+        "IsHardModeUnlocked": "True",
+        "IsNormalMode": "True",
+        "IsAllTicked": "False",
+        "players_count": 1,
+        "players": [
+          {
+            "i": 0,
+            "login_number": 25,
+            "state": "N/A",
+            "called_target_id": 0,
+            "agent_id": 45,
+            "name": "Fezzik The Untamed"
+          }
+        ],
+        "GetPartyLeaderID": 45,
+        "GetOwnPartyNumber": 0,
+        "IsPlayerTicked": false,
+        "heroes_count": 0
+      }
+    },
+    {
+      "section": "demo_full",
+      "ok": true,
+      "queries": {
+        "player.GetAgentID": "45",
+        "player.GetName": "Fezzik The Untamed",
+        "player.GetAccountName": "Fractal Pain",
+        "player.GetAccountEmail": "apoguita@gmail.com",
+        "player.GetPlayerNumber": "25",
+        "player.GetLevel": "20",
+        "player.GetExperience": "12508146",
+        "player.GetMorale": "100",
+        "inv.GetHoveredItemID": "0",
+        "inv.GetFirstIDKit": "ERROR: AttributeError: 'dict' object has no attribute 'item_id'",
+        "inv.GetFirstSalvageKit": "ERROR: AttributeError: 'dict' object has no attribute 'item_id'",
+        "inv.GetFirstUnidentifiedItem": "2460",
+        "inv.GetFirstSalvageableItem": "2460",
+        "inv.GetGoldOnCharacter": "10000",
+        "inv.GetGoldInStorage": "855494",
+        "inv.IsStorageOpen": "False",
+        "inv.GetFreeSlotCount": "60",
+        "inv.GetBagCount": "22",
+        "agent.IsAlive": "True",
+        "agent.IsDead": "False",
+        "agent.GetHP": "ERROR: AttributeError: type object 'Agent' has no attribute 'GetHP'",
+        "agent.GetMaxHP": "ERROR: AttributeError: type object 'Agent' has no attribute 'GetMaxHP'",
+        "agent.GetEnergy": "1.0",
+        "agent.GetMaxEnergy": "24",
+        "agent.GetPrimary": "ERROR: AttributeError: type object 'Agent' has no attribute 'GetPrimary'",
+        "agent.GetSecondary": "ERROR: AttributeError: type object 'Agent' has no attribute 'GetSecondary'",
+        "agent.GetXY": "(-1072.30126953125, 3281.786376953125)",
+        "skillbar.GetSkillbar": "[330, 2107, 336, 2423, 343, 3426, 412, 436]",
+        "skillbar.GetSkillIDBySlot0": "ERROR: IndexError: Skill slot out of range (must be between 1 and 8) Given: 0",
+        "skillbar.GetSkillIDBySlot1": "330",
+        "quest.GetActiveQuestId": "ERROR: AttributeError: type object 'Quest' has no attribute 'GetActiveQuestId'"
+      }
+    },
+    {
+      "section": "inventory_demo",
+      "ok": true,
+      "queries": {
+        "inv.GetHoveredItemID": "0",
+        "inv.GetFirstIDKit": "ERROR: AttributeError: 'dict' object has no attribute 'item_id'",
+        "inv.GetFirstSalvageKit": "ERROR: AttributeError: 'dict' object has no attribute 'item_id'",
+        "inv.GetFirstUnidentifiedItem": "2460",
+        "inv.GetFirstSalvageableItem": "2460",
+        "inv.GetGoldOnCharacter": "10000",
+        "inv.GetGoldInStorage": "855494",
+        "inv.IsStorageOpen": "False",
+        "inv.GetFreeSlotCount": "60",
+        "inv.GetBagCount": "22",
+        "sample_item_id": 2460,
+        "item.GetItemType": "(22, 'Wand')",
+        "item.GetModelID": "927",
+        "item.GetModelFileID": "164882",
+        "item.GetSlot": "1",
+        "item.GetAgentID": "0",
+        "item.GetAgentItemID": "2460",
+        "item.Rarity.GetRarity": "(0, 'White')",
+        "item.Rarity.IsWhite": "True",
+        "item.Rarity.IsBlue": "False",
+        "item.Rarity.IsPurple": "False",
+        "item.Rarity.IsGold": "False",
+        "item.Rarity.IsGreen": "False",
+        "item.Properties.IsCustomized": "False",
+        "item.Properties.GetValue": "50",
+        "item.Properties.GetQuantity": "1",
+        "item.Properties.IsEquipped": "False",
+        "item.Properties.GetProfession": "11",
+        "item.Properties.GetInteraction": "570425408",
+        "item.Type.IsWeapon": "True",
+        "item.Type.IsArmor": "False",
+        "item.Type.IsInventoryItem": "True",
+        "item.Type.IsStorageItem": "False",
+        "item.Type.IsMaterial": "False",
+        "item.Type.IsRareMaterial": "False",
+        "item.Type.IsZCoin": "False",
+        "item.Type.IsTome": "False",
+        "item.Usage.IsUsable": "False",
+        "item.Usage.GetUses": "1",
+        "item.Dye.GetColor": "ERROR: AttributeError: 'ItemCache' object has no attribute 'Dye'",
+        "item.Mods.GetModCount": "ERROR: AttributeError: 'ItemCache' object has no attribute 'Mods'"
+      }
+    }
+  ]
+}

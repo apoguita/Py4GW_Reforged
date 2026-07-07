@@ -10,7 +10,7 @@ from Py4GWCoreLib.enums_src.Item_enums import ItemType
 ALL_BAGS = GLOBAL_CACHE.ItemArray.CreateBagList(*range(Bag_enum.Backpack.value, Bag_enum.Max.value))
 XUNLAI_STORAGE = GLOBAL_CACHE.ItemArray.CreateBagList(*range(Bag_enum.Storage_1.value, Bag_enum.Storage_14.value + 1))
 CHARACTER_INVENTORY = GLOBAL_CACHE.ItemArray.CreateBagList(*range(Bag_enum.Backpack.value, Bag_enum.Equipment_Pack.value + 1), Bag_enum.Equipped_Items.value)
-ITEM_TEXTURE_FOLDER = os.path.join(Console.get_projects_path(), "Textures", "Items")
+ITEM_TEXTURE_FOLDER = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Items")
 
 MAX_CHARACTER_GOLD = 100000
 MAX_VAULT_GOLD = 1000000

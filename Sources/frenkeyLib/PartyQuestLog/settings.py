@@ -26,7 +26,7 @@ class Settings:
         
         self.__class__._initialized = True
         
-        base_path = Console.get_projects_path()
+        base_path = PySystem.Console.get_projects_path()
         self.ini_path = os.path.join(base_path, "Widgets", "Config", "PartyQuestLog.ini")
         
         self.save_requested = False        
