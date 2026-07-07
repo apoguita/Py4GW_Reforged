@@ -119,7 +119,7 @@ class SynchronizedActionQueue:
         self.queue = deque() # Use deque for efficient FIFO operations        
         self.action_queue_timer = Timer()
         self.action_queue_timer.Start()
-        self.ping_handler = Py4GW.PingHandler() # Use pinghandler to sync with game
+        self.ping_handler = PyPing.PingHandler() # Use pinghandler to sync with game
         self.logFunc = logFunc
 
     def add_action(self, action, *args, **kwargs):
@@ -639,7 +639,7 @@ class SalvageFsm(FSM):
     salvager_ping_check_1 = "Salvaging"
     salvager_finish = "Finish Salvage"
 
-    def __init__(self, window=BasicWindow(), name="SalvageFsm", logFunc=None, pingHandler=Py4GW.PingHandler()):
+    def __init__(self, window=BasicWindow(), name="SalvageFsm", logFunc=None, pingHandler=PyPing.PingHandler()):
         super().__init__(name)
 
         self.window = window
@@ -932,7 +932,7 @@ class InventoryFsm(FSM):
         self.gold_to_keep = goldToKeep
         self.logFunc = logFunc
         
-        self.ping_handler = Py4GW.PingHandler()
+        self.ping_handler = PyPing.PingHandler()
         self.salvager = SalvageFsm(self.window, self.salvager_name, self.logFunc, self.ping_handler)
 
         self.AddState(name=self.inventory_setup_salv,

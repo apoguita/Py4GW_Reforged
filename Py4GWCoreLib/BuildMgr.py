@@ -9,7 +9,7 @@ from pathlib import Path
 import random
 from typing import TYPE_CHECKING, Any, Callable, cast
 
-import Py4GW
+import PySystem
 
 if TYPE_CHECKING:
     from HeroAI.custom_skill import CustomSkillClass
@@ -2013,7 +2013,6 @@ class BuildMgr:
         
     def _debug(self,message: str, enable: bool = True) -> None:
         from Py4GWCoreLib import ConsoleLog
-import PySystem
         ConsoleLog(self.build_name, message, PySystem.Console.MessageType.Info, log=enable)
 
 

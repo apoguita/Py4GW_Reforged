@@ -2497,9 +2497,9 @@ class UI:
                                 PyImGui.draw_list_add_rect_filled(rect[0], rect[1], rect[2], rect[3], Utils.RGBToColor(frame_color[0], frame_color[1], frame_color[2], 50), 1.0, 0)                                                     
                                                             
                             cursor = PyImGui.get_cursor_pos()
-                            # PyImGui.set_cursor_pos(cursor[0] + (frame_size * count), cursor[1])
+                            # PyImGui.set_cursor_pos((cursor[0] + (frame_size * count), cursor[1])
                             ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
-                            PyImGui.set_cursor_pos(cursor[0], cursor[1] + ((frame_size[1] - skin_size) / 2))
+                            PyImGui.set_cursor_pos((cursor[0], cursor[1] + ((frame_size[1] - skin_size) / 2))
                                                                   
                             ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
                             
@@ -2698,7 +2698,7 @@ class UI:
                     PyImGui.draw_list_add_rect(screen_cursor[0], screen_cursor[1], screen_cursor[0] + remaining_size[0], screen_cursor[1] + size, self.style.Selected_Item.color_int, 1.0, 0, 2.0)
                 
                 cursor = PyImGui.get_cursor_pos()
-                PyImGui.set_cursor_pos(cursor[0] + padding, cursor[1] + padding)
+                PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                 
                 ImGui.begin_child(f"skin_texture_child{rule.skin}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                 if texture.endswith(((".jpg",".png"))) and os.path.exists(texture):
@@ -2773,7 +2773,7 @@ class UI:
                     PyImGui.draw_list_add_rect(cursor[0], cursor[1], cursor[0] + remaining_size[0], cursor[1] + size, self.style.Selected_Item.color_int, 1.0, 0, 2.0)
                 
                 cursor = PyImGui.get_cursor_pos()
-                PyImGui.set_cursor_pos(cursor[0] + padding, cursor[1] + padding)
+                PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                 
                 ImGui.begin_child(f"skin_texture_child{skin}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                 if texture.endswith((".jpg",".png")) and os.path.exists(texture):
@@ -2906,7 +2906,7 @@ class UI:
                     PyImGui.draw_list_add_rect(cursor[0], cursor[1], cursor[0] + remaining_size[0], cursor[1] + remaining_size[1], self.style.Selected_Colored_Item.color_int, 1.0, 0, 2.0)
                 
                 cursor = PyImGui.get_cursor_pos()
-                PyImGui.set_cursor_pos(cursor[0] + padding, cursor[1] + padding)
+                PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                 
                 ImGui.begin_child(f"skin_texture_child{item.model_id}_{item.inventory_icon or ""}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                 if texture.endswith((".jpg",".png")) and os.path.exists(texture):
@@ -3155,7 +3155,7 @@ class UI:
                         ImGui.begin_child(f"selected_rule {rule.skin}", (size, size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                         if texture_exists:
                             cursor = PyImGui.get_cursor_pos()
-                            PyImGui.set_cursor_pos(cursor[0] + padding, cursor[1] + padding)
+                            PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                             ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
                         else:            
                             ImGui.push_font("Bold", 28)
@@ -3206,9 +3206,9 @@ class UI:
                                     PyImGui.draw_list_add_rect_filled(rect[0], rect[1], rect[2], rect[3], Utils.RGBToColor(frame_color[0], frame_color[1], frame_color[2], 50), 1.0, 0)                                                     
                                                                 
                                 cursor = PyImGui.get_cursor_pos()
-                                # PyImGui.set_cursor_pos(cursor[0] + (frame_size * count), cursor[1])
+                                # PyImGui.set_cursor_pos((cursor[0] + (frame_size * count), cursor[1])
                                 ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
-                                PyImGui.set_cursor_pos(cursor[0], cursor[1] + ((frame_size[1] - skin_size) / 2))
+                                PyImGui.set_cursor_pos((cursor[0], cursor[1] + ((frame_size[1] - skin_size) / 2))
                                 
                                 if texture_exists:                                        
                                     ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
@@ -5449,7 +5449,7 @@ class UI:
                 x,y = PyImGui.get_cursor_pos()
                 ImGui.dummy(64, 64)
                 
-                PyImGui.set_cursor_pos(x, y)
+                PyImGui.set_cursor_pos((x, y)
                 ImGui.image(data_item.texture_file, (64, 64))
             else:
                 ImGui.dummy(64, 64)
@@ -5673,21 +5673,21 @@ class UI:
         ImGui.begin_child(f"ImageToggle{id}{texture_path}", (width, height), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)
         
         # cursor = PyImGui.get_cursor_pos()
-        PyImGui.set_cursor_pos(padding[0], padding[1])
+        PyImGui.set_cursor_pos((padding[0], padding[1])
         
         if texture_path:
             ImGui.DrawTextureExtended(texture_path=texture_path, size=texture_size, tint=tint)
         else:
             ImGui.push_font("Bold", 28)
             text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
-            PyImGui.set_cursor_pos((size[0] - text_size[0]) / 2, (size[1] - (28 - 6)) / 2)
+            PyImGui.set_cursor_pos(((size[0] - text_size[0]) / 2, (size[1] - (28 - 6)) / 2)
             ImGui.text_colored(IconsFontAwesome5.ICON_QUESTION, (tint[0] / 255, tint[1] / 255, tint[2] / 255, tint[3] / 255))
             ImGui.pop_font()
             pass
                 
         if label:
             PyImGui.push_style_color(PyImGui.ImGuiCol.Text, Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 255 if selected else 200 if hovered else 125)))
-            PyImGui.set_cursor_pos(size[0] + 5, (size[1] - label_size[1]) / 2 + 3)
+            PyImGui.set_cursor_pos((size[0] + 5, (size[1] - label_size[1]) / 2 + 3)
             ImGui.text(label)
             PyImGui.pop_style_color(1)
         
@@ -6079,7 +6079,7 @@ class RichTextRenderer:
             if tok.type == "newline":
                 x = cursor_x_start
                 y += line_height
-                PyImGui.set_cursor_pos(x, y)
+                PyImGui.set_cursor_pos((x, y)
                 continue
 
             if tok.type == "font_push":
@@ -6104,9 +6104,9 @@ class RichTextRenderer:
                 if x + w > cursor_x_start + max_width:
                     x = cursor_x_start
                     y += line_height
-                    PyImGui.set_cursor_pos(x, y)
+                    PyImGui.set_cursor_pos((x, y)
 
-                PyImGui.set_cursor_pos(x, y)
+                PyImGui.set_cursor_pos((x, y)
                 ImGui.image(tok.texture_path, (w, h), tok.uv0 or (0, 0), tok.uv1 or (1, 1))
                 x += w
                 continue
@@ -6116,10 +6116,10 @@ class RichTextRenderer:
                 if x + size[0] > cursor_x_start + max_width:
                     x = cursor_x_start
                     y += line_height
-                    PyImGui.set_cursor_pos(x, y)
+                    PyImGui.set_cursor_pos((x, y)
                     
-                PyImGui.set_cursor_pos(x, y)
+                PyImGui.set_cursor_pos((x, y)
                 PyImGui.text_unformatted(tok.text)
                 x += size[0]
 
-        PyImGui.set_cursor_pos(cursor_x_start, y + line_height)
+        PyImGui.set_cursor_pos((cursor_x_start, y + line_height)

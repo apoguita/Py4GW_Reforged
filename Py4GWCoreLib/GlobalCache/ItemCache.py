@@ -129,7 +129,7 @@ class RawItemCache:
             
             bag_instance = self.bags[bag]
             items = bag_instance.GetItems()
-        item_ids = [item["item_id"] for item in items]
+            item_ids = [item["item_id"] for item in items]
             all_item_ids.extend(item_ids)
 
         return all_item_ids

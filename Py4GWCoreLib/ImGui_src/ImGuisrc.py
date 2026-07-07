@@ -373,7 +373,21 @@ class ImGui:
     def calc_text_size(text : str) : return PyImGui.calc_text_size(text)
     
     @staticmethod
-    def invisible_button(label: str, width: float, height: float) : return PyImGui.invisible_button(label, int(width), int(height))
+    def invisible_button(label: str, width: float, height: float) : return PyImGui.invisible_button(label, (int(width), int(height)))
+
+    @staticmethod
+    def set_cursor_pos(*args):
+        """Compatible with both (x, y) scalar and ((x, y),) tuple forms."""
+        if len(args) == 1:
+            return PyImGui.set_cursor_pos(args[0])
+        return PyImGui.set_cursor_pos(args)
+
+    @staticmethod
+    def set_cursor_screen_pos(*args):
+        """Compatible with both (x, y) scalar and ((x, y),) tuple forms."""
+        if len(args) == 1:
+            return PyImGui.set_cursor_screen_pos(args[0])
+        return PyImGui.set_cursor_screen_pos(args)
 
     @staticmethod
     def selectable(label: str, selected: bool, flags: PyImGui.SelectableFlags = PyImGui.SelectableFlags.NoFlag, size: Tuple[float, float] = (0.0, 0.0)) : return PyImGui.selectable(label, selected, flags, (int(size[0]), int(size[1])))
@@ -487,7 +501,7 @@ class ImGui:
     def color_edit4(label: str, color: Tuple[float, float, float, float]): return PyImGui.color_edit4(label, color)
 
     @staticmethod
-    def dummy(width: float, height: float) : return PyImGui.dummy(int(width), int(height))
+    def dummy(width: float, height: float) : return PyImGui.dummy((int(width), int(height)))
 
     @staticmethod
     def _draw_decorator(decorator : TextDecorator, color_int : int | None = None) -> None:
@@ -635,7 +649,7 @@ class ImGui:
 
             x0, y0 = PyImGui.get_cursor_pos()
             
-            PyImGui.set_cursor_pos(x, y)
+            PyImGui.set_cursor_pos((x, y))
             markdown_color = ImGui.get_markdown_color(text) if render_markdown and color is None else None
             render_color = markdown_color.color_tuple if markdown_color is not None else color
             
@@ -647,7 +661,7 @@ class ImGui:
             _, _, item_rect_size = ImGui.get_item_rect()
             
             #Restore cursor position
-            PyImGui.set_cursor_pos(x0, y0)
+            PyImGui.set_cursor_pos((x0, y0))
             ImGui.dummy(*item_rect_size)
 
         ImGui._with_font(_draw, text, font_size, font_style)
@@ -719,7 +733,7 @@ class ImGui:
         btn_padding = (current_style_var.value1, current_style_var.value2 or 0)
         
         if current_style_var.img_style_enum:
-            PyImGui.push_style_var2(current_style_var.img_style_enum, btn_padding[0], btn_padding[1]) 
+            PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1])) 
 
         if style.Theme not in ImGui.Textured_Themes:
             button_colors = []
@@ -965,7 +979,7 @@ class ImGui:
         current_style_var = style.ButtonPadding.get_current()
         
         if current_style_var.img_style_enum:
-            PyImGui.push_style_var2(current_style_var.img_style_enum, current_style_var.value1, current_style_var.value2 or 0) 
+            PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (current_style_var.value1, current_style_var.value2 or 0)) 
             
         clicked = False
     
@@ -1162,7 +1176,7 @@ class ImGui:
         scale = max(min(float(width), float(height)) / 35.0, 1.0) if width and height else 1.0
         
         if current_style_var.img_style_enum:
-            PyImGui.push_style_var2(current_style_var.img_style_enum, btn_padding[0], btn_padding[1]) 
+            PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1])) 
         
         #NON THEMED
         if style.Theme not in ImGui.Textured_Themes:
@@ -1308,7 +1322,7 @@ class ImGui:
         style = ImGui.get_style()
         current_style_var = style.ButtonPadding.get_current()
         if current_style_var.img_style_enum:
-            PyImGui.push_style_var2(current_style_var.img_style_enum, current_style_var.value1, current_style_var.value2 or 0)
+            PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (current_style_var.value1, current_style_var.value2 or 0))
             
         clicked = False
     
@@ -1507,7 +1521,7 @@ class ImGui:
         btn_padding = (width / 8, height / 8)
         
         if current_style_var.img_style_enum:
-            PyImGui.push_style_var2(current_style_var.img_style_enum, btn_padding[0], btn_padding[1])             
+            PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1]))             
         
         #NON THEMED
         if style.Theme not in ImGui.Textured_Themes:
@@ -1642,7 +1656,7 @@ class ImGui:
         btn_padding = (width / 8, height / 8)
         
         if current_style_var.img_style_enum:
-            PyImGui.push_style_var2(current_style_var.img_style_enum, btn_padding[0], btn_padding[1])   
+            PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1]))   
             
         #NON THEMED
         if style.Theme not in ImGui.Textured_Themes:
@@ -2447,7 +2461,7 @@ class ImGui:
         style = ImGui.get_style()
         style.Hyperlink.get_current().push_color()
         
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
         ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0,))
         ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0,))
         ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0,))
@@ -3390,7 +3404,7 @@ class ImGui:
             PyImGui.WindowFlags.NoBackground
         )
 
-        PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding, -1, -0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (-1, -0))
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding,0.0)
         PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 0, 0, 0))  # Fully transparent
         
@@ -3457,7 +3471,7 @@ class ImGui:
             PyImGui.WindowFlags.NoBackground
         )
 
-        PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding, -1, -0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (-1, -0))
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding, 0.0)
 
         PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 0, 0, 0))  # Fully transparent
@@ -3497,9 +3511,9 @@ class ImGui:
             PyImGui.WindowFlags.NoScrollWithMouse |
             PyImGui.WindowFlags.AlwaysAutoResize  ) 
         
-        PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding,0.0,0.0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding,0.0)
-        PyImGui.push_style_var2(ImGuiStyleVar.FramePadding, 3, 5)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.FramePadding, (3, 5))
         PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color.to_tuple_normalized())
         
         result = state
@@ -3800,7 +3814,7 @@ class ImGui:
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding,0.0)
         PyImGui.push_style_var(ImGuiStyleVar.WindowPadding,0.0)
         PyImGui.push_style_var(ImGuiStyleVar.WindowBorderSize,0.0)
-        PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding,0.0,0.0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         
         flags=( PyImGui.WindowFlags.NoCollapse | 
                 PyImGui.WindowFlags.NoTitleBar |
@@ -3978,12 +3992,12 @@ class ImGui:
                 scale = self.hover_icon_scale if window_hovered else self.idle_icon_scale
                 image_size = PyImGui.get_content_region_avail()[0] * scale
                 centered_pos = (window_size[0] - image_size) / 2
-                PyImGui.set_cursor_pos(centered_pos, centered_pos)
+                PyImGui.set_cursor_pos((centered_pos, centered_pos))
 
                 cursor_pos = PyImGui.get_cursor_pos()
                 ImGui.image(self.icon_path, (image_size, image_size))
-                PyImGui.set_cursor_pos(cursor_pos[0], cursor_pos[1])
-                PyImGui.invisible_button(f"{self.window_id}_hitbox", image_size, image_size)
+                PyImGui.set_cursor_pos((cursor_pos[0], cursor_pos[1]))
+                PyImGui.invisible_button(f"{self.window_id}_hitbox", (image_size, image_size))
 
                 drag_delta = PyImGui.get_mouse_drag_delta(0, self.drag_threshold)
                 is_dragging = PyImGui.is_item_active() and PyImGui.is_mouse_dragging(0, self.drag_threshold)
@@ -4105,7 +4119,7 @@ class ImGui:
                 internal_flags =  PyImGui.WindowFlags.NoTitleBar | PyImGui.WindowFlags.NoBackground
                 
         
-            PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding, 0, 0)
+            PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0, 0))
             
             opened = PyImGui.begin(name, internal_flags)
             state["collapsed"] = PyImGui.is_window_collapsed()
@@ -4456,7 +4470,7 @@ class ImGui:
             padding = 8.0
             PyImGui.begin_child("ContentArea",(content_width, content_height), False, PyImGui.WindowFlags.NoFlag)
 
-            PyImGui.set_cursor_pos(padding, padding)  # Manually push content in from top-left
+            PyImGui.set_cursor_pos((padding, padding))  # Manually push content in from top-left
             PyImGui.push_style_color(PyImGui.ImGuiCol.ChildBg, (0, 0, 0, 0)) 
             
             inner_width = content_width - (padding * 2)

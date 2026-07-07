@@ -1,6 +1,5 @@
 from turtle import title
 
-from PyParty import Hero
 from Py4GWCoreLib import Map, Agent, Player, GLOBAL_CACHE, Color, ImGui
 from Py4GWCoreLib import ProfessionShort, Campaign, Routines, Utils
 from Py4GWCoreLib.native_src.context.WorldContext import AttributeStruct

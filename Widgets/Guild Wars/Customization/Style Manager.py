@@ -580,7 +580,7 @@ def DrawWindow():
                         ImGui.show_tooltip(disclaimer_text)
                     
                     
-                PyImGui.set_cursor_pos(125, cursor_y)
+                PyImGui.set_cursor_pos((125, cursor_y))
                 
                 # PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 5)
                 remaining = PyImGui.get_content_region_avail()

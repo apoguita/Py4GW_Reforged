@@ -169,7 +169,7 @@ def draw_health_bar(width: float, height: float, max_health: float, current_heal
         ImGui.progress_bar(current_health, width, height)
         style.FrameRounding.pop_style_var()
         style.PlotHistogram.pop_color()            
-        PyImGui.set_cursor_pos(xpos, ypos)
+        PyImGui.set_cursor_pos((xpos, ypos))
     
     ImGui.dummy(width, height)
 
@@ -1079,7 +1079,7 @@ def draw_buttons(account_data: AccountStruct, cached_data: CacheData, message_qu
         status = get_status()
         is_command_queued = is_queued(command, clear=True)
         
-        if (draw_textures and PyImGui.invisible_button(btn_id, btn_size, btn_size)) or (not draw_textures and ImGui.button(btn_id, btn_size, btn_size)):
+        if (draw_textures and PyImGui.invisible_button(btn_id, (btn_size, btn_size))) or (not draw_textures and ImGui.button(btn_id, btn_size, btn_size)):
             if is_command_queued:
                 return               
             
@@ -1551,7 +1551,7 @@ def draw_button(id_suffix: str, icon: str, w : float = 0, h : float = 0, active 
     style = ImGui.get_style()
     draw_textures = style.Theme in ImGui.Textured_Themes    
     btn_id = f"##{id_suffix}"    
-    clicked = (draw_textures and PyImGui.invisible_button(btn_id, w, h)) or (not draw_textures and ImGui.button(btn_id, w, h))
+    clicked = (draw_textures and PyImGui.invisible_button(btn_id, (w, h))) or (not draw_textures and ImGui.button(btn_id, w, h))
 
 
     hovered = PyImGui.is_item_hovered()

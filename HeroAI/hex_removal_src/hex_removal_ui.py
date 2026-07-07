@@ -526,7 +526,7 @@ def _draw_hex_row(skill_id: int, name: str, texture_path: str) -> None:
             _State.expanded_hexes.add(name)
 
     icon_x = row_start_x + 8
-    PyImGui.set_cursor_pos(icon_x, row_start_y + (_ROW_HEIGHT - _ICON_SIZE) // 2)
+    PyImGui.set_cursor_pos((icon_x, row_start_y + (_ROW_HEIGHT - _ICON_SIZE) // 2))
     if texture_path:
         ImGui.DrawTexture(texture_path, _ICON_SIZE, _ICON_SIZE)
     else:
@@ -552,7 +552,7 @@ def _draw_hex_row(skill_id: int, name: str, texture_path: str) -> None:
         _log(f"'{name}' - reset to default")
         _set_status(f"Reset '{name}' to default.", True)
 
-    PyImGui.set_cursor_pos(row_start_x, row_start_y + _ROW_HEIGHT + 2)
+    PyImGui.set_cursor_pos((row_start_x, row_start_y + _ROW_HEIGHT + 2))
 
     if is_expanded:
         _draw_hex_configure(name, entry)

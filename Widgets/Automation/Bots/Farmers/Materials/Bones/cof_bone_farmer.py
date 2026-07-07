@@ -297,7 +297,7 @@ class Combat:
 
         activation = GLOBAL_CACHE.Skill.Data.GetActivation(skill_id)
         aftercast = GLOBAL_CACHE.Skill.Data.GetAftercast(skill_id)
-        return max(activation * 1000 + aftercast * 750 + Py4GW.PingHandler().GetCurrentPing() + 50, 500)
+        return max(activation * 1000 + aftercast * 750 + PyPing.PingHandler().GetCurrentPing() + 50, 500)
 
 
 class ProcessInventory:
@@ -1651,7 +1651,7 @@ def main():
         Draw().Run()
 
         # throttle script calls
-        ping = Py4GW.PingHandler().GetCurrentPing() + 50
+        ping = PyPing.PingHandler().GetCurrentPing() + 50
         if bot_vars.timers.throttle.HasElapsed(max(ping, bot_vars.timers.checks.throttle)):
             bot_vars.timers.throttle.Reset()
             # execute script

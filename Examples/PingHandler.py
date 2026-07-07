@@ -1,12 +1,13 @@
 # Necessary Imports
 import Py4GW        #Miscelanious functions and classes
+import PyPing
 import PyImGui     #ImGui wrapper
 import traceback    #traceback to log stack traces
 # End Necessary Imports
 import Py4GWcorelib as CoreLib
 
 module_name = "Ping Handler DEMO"
-ping_handler = Py4GW.PingHandler()
+ping_handler = PyPing.PingHandler()
 
 def DrawTextWithTitle(title, text_content, lines_visible=10):
     """

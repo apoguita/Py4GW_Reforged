@@ -26,10 +26,10 @@ def DrawFrameCached(left: float,
                     draw_color: int,
                     batch: bool = False):
 
-    p1 = PyOverlay.Point2D(int(left),  int(top))
-    p2 = PyOverlay.Point2D(int(right), int(top))
-    p3 = PyOverlay.Point2D(int(right), int(bottom))
-    p4 = PyOverlay.Point2D(int(left),  int(bottom))
+    p1 = PyOverlay.Vec2f(int(left),  int(top))
+    p2 = PyOverlay.Vec2f(int(right), int(top))
+    p3 = PyOverlay.Vec2f(int(right), int(bottom))
+    p4 = PyOverlay.Vec2f(int(left),  int(bottom))
 
     if not batch:
         _overlay.BeginDraw()

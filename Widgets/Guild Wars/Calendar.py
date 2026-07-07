@@ -6,6 +6,7 @@ import os
 
 
 import PyImGui
+import PySystem
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import IconsFontAwesome5

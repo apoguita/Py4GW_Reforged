@@ -3077,7 +3077,7 @@ def _draw_toggle_icon_window():
 			PyImGui.text("CM")
 
 		PyImGui.set_cursor_screen_pos(cursor_x, cursor_y)
-		clicked_toggle = PyImGui.invisible_button("##XunlaiManagerToggleButton", icon_window_size, icon_window_size)
+		clicked_toggle = PyImGui.invisible_button("##XunlaiManagerToggleButton", (icon_window_size, icon_window_size))
 
 		if clicked_toggle:
 			WINDOW_OPEN = not WINDOW_OPEN

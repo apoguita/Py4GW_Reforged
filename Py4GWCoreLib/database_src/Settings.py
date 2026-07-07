@@ -834,7 +834,7 @@ class Settings(DBMgr):
     def _get_current_account_hwnd(self) -> int:
         """Return the current game window handle, or 0 if unavailable."""
         try:
-import PySystem
+            import PySystem
             return int(PySystem.Console.get_gw_window_handle() or 0)
         except Exception:
             return 0

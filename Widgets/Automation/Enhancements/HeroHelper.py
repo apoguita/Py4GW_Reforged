@@ -1,5 +1,5 @@
 from Py4GWCoreLib import *
-import Py4GW
+import PyPing
 
 from collections import namedtuple
 import os
@@ -680,7 +680,7 @@ class Helper:
     def get_aftercast(skill_id):
         activation = Skill.Data.GetActivation(skill_id)
         aftercast = Skill.Data.GetAftercast(skill_id)
-        ping = Py4GW.PingHandler().GetCurrentPing()
+        ping = PyPing.PingHandler().GetCurrentPing()
         return max(activation * 1000 + aftercast * 750 + ping + 50, 500)
     
     @staticmethod
