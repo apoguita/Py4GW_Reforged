@@ -3,6 +3,8 @@
 Comprehensive library reference for the Python-C++-Ghidra interface in the Py4GW project.
 Read this first before any RE work. `AGENTS.md` points here for tool paths and mappings.
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, with runtime addresses resolved from `offsets\<module>.json` pattern data (not hardcoded). This **replaces legacy GWCA**. GWCA names and the paths under `C:\Users\Apo\Py4GW\vendor\gwca\` are kept throughout these docs as **legacy cross-references** — the canonical function nomenclature and how a subsystem worked pre-Reforged — but they are **no longer the source of truth** for current code; find the live implementation in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses describe the actual game and remain valid regardless of wrapper.
+
 ## How To Use This File
 
 1. **Reverse-engineer on `Gw.wasm` first, map to `Gw.exe` last** — see "WASM-First Workflow" below. This is the default method for every RE task here.
@@ -28,11 +30,30 @@ Do the *understanding* on `/Gw.wasm`; enter the stripped `/Gw.exe` only to pin t
 
 | Layer | Location | Purpose | Interface |
 |-------|----------|---------|-----------|
-| **C++/GWCA** | `Py4GW\vendor\gwca\` | Original GWCA source, function discovery patterns | `Scanner::Find*`, hooks, structs |
-| **Python/Native** | `Py4GWCoreLib\native_src\` | Python port of GWCA primitives | `NativeFunction`, `PlayerMethods`, `Scanner` |
+| **C++ (Reforged Native)** — *current backend* | `Py4GW_Reforged_Native\src\GW\`, `include\GW\`, `offsets\*.json` | Migrated managers + JSON-resolved runtime addresses. Replaces GWCA. | pattern `Resolve*`, hooks, `GW::<module>` structs |
+| **C++ (legacy GWCA)** — *cross-reference only* | `Py4GW\vendor\gwca\` | Original GWCA source: historical technique + canonical function nomenclature | `Scanner::Find*`, hooks, structs |
+| **Python/Native** | `Py4GWCoreLib\native_src\` | Python port of native primitives | `NativeFunction`, `PlayerMethods`, `Scanner` |
 | **Ghidra** | MCP bridge (2 programs loaded) | Static analysis of Gw.exe + Gw.wasm | `mcp__ghidra__*` tools over MCP |
 
-### C++/GWCA Source Layout
+### C++ Source Layout (current: Reforged Native)
+
+Each Guild Wars subsystem is a module under `src\GW\<module>\` + `include\GW\<module>\` (namespace `GW::<module>`). The `<module>.h` header declares named ownership of every resolved symbol; `<module>_patterns.cpp` holds the `Resolve*` calls; runtime addresses come from `offsets\<module>.json` (byte patterns/masks + step resolvers), never hardcoded.
+
+```text
+Py4GW_Reforged_Native\
+|-- src\GW\               # implementation, per-module folders
+|   |-- agent\  player\  item\  party\  map\  ui\  native_ui\  game_thread\  ...
+|   `-- GuildWars.cpp     # kInitSteps: per-module Initialize/Shutdown ordering
+|-- include\GW\           # headers (symbol ownership, structs, lifecycle)
+|   |-- <module>\<module>.h
+|   |-- context\          # shared GW entity/context struct layouts (Agent, NPC, Item, …)
+|   `-- common\constants\ # enums (UIMessage in common\constants\ui.h, Allegiance, …)
+`-- offsets\              # <module>.json pattern data (agent.json, ui.json, native_ui.json, …)
+```
+
+### C++ Source Layout (legacy GWCA — cross-reference only)
+
+Retained for historical technique and canonical nomenclature; **not** where current code lives.
 
 ```text
 Py4GW\vendor\gwca\

@@ -1,5 +1,7 @@
 # CPP ↔ WASM ↔ EXE Mapping Guide
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 A manual translation procedure for Guild Wars reverse-engineering.
 Lets you locate a function in any of three sources (Py4GW/GWCA cpp source,
 the WASM build with symbols, the EXE build that's stripped) and bridge between them.

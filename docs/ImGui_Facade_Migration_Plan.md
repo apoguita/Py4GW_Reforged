@@ -4,6 +4,8 @@
 
 This document is an implementation-grade migration specification for the new `Py4GWCoreLib.ImGui` API.
 
+This file is the reconciled source of truth. If earlier intake notes, planning notes, or stale proposal fragments disagree with this document, this document wins.
+
 Its purpose is to let a future implementation pass redesign the new ImGui facade with minimal ambiguity. It is intentionally more detailed than a normal design note. The goal is that the next model should be able to read this file and know:
 
 - what the new API is trying to become
@@ -106,32 +108,33 @@ The target authoring experience is:
 ```python
 from Py4GWCoreLib.ImGui import ImGui
 
-ui = ImGui.default
-
-with ui.window('Party', open=show_party) as win:
+with ImGui.window('Party', open=show_party) as win:
     show_party = win.open
     if not win.entered:
         return
 
-    ui.text('Members')
+    ImGui.text('Members')
 
-    with ui.table('members', 3) as table:
+    with ImGui.table('members', 3) as table:
         if table.entered:
             ...
 ```
 
-And:
+For local modifiers, readability should take priority over compactness. This means the API should **not** teach chained one-line context managers like `with ImGui.id(...), ImGui.style.color(...):` as the normal usage pattern.
+
+The preferred style should instead look like one of these:
 
 ```python
-with ui.id(agent_id), ui.style.color(PyImGui.Col.Text, (1, 0, 0, 1)):
-    ui.text('Danger')
+with ImGui.id(agent_id):
+    with ImGui.text_color((1, 0, 0, 1)):
+        ImGui.text('Danger')
 ```
 
 And eventually:
 
 ```python
-search = ui.state.text('inventory.search')
-enabled = ui.state.bool('inventory.enabled', default=True)
+search = ImGui.state.text('inventory.search')
+enabled = ImGui.state.bool('inventory.enabled', default=True)
 ```
 
 The end-state design should prioritize:
@@ -143,17 +146,339 @@ The end-state design should prioritize:
 - runtime-managed temporary state
 - readable local styling and nesting
 
+The key readability rule is:
+
+- structural containers such as `window`, `table`, `popup`, and `tree_node` should use `with`
+- local visual or ID modifiers should favor explicit semantic names
+- comma-joined multi-context-manager one-liners should not be the primary documented style
+- every scoped construct should follow one common evaluation rule
+
+
+## Common Evaluation Rule
+
+This API should adopt one cohesive rule across all scoped elements:
+
+- every `with ImGui.*(...) as scope:` returns a scope result object
+- every scope result exposes `entered: bool`
+- the caller checks `if not scope.entered:` or `if scope.entered:` consistently
+- no scope should silently switch to a different control-flow contract
+
+This means the design should not mix:
+
+```python
+with ImGui.window('Party') as win:
+    if not win.entered:
+        return
+```
+
+with:
+
+```python
+with ImGui.table('members', 3):
+    ...
+```
+
+That inconsistency would make the API harder to learn than a slightly more explicit common pattern.
+
+### Required consequence
+
+All scopes must participate in the same public protocol.
+
+Examples:
+
+```python
+with ImGui.window('Party', open=show_party) as win:
+    if not win.entered:
+        show_party = win.open
+        return
+    show_party = win.open
+    ...
+```
+
+```python
+with ImGui.table('members', 3) as table:
+    if not table.entered:
+        return
+    ...
+```
+
+```python
+with ImGui.id('party.members') as id_scope:
+    if not id_scope.entered:
+        return
+    ...
+```
+
+For scopes like `id`, `item_width`, or `text_color`, `entered` will effectively always be `True`, but they should still expose the same result protocol so the system remains uniform.
+
+
+## Final Decisions Locked By This Plan
+
+The next implementation pass should treat the following points as settled decisions, not open design questions.
+
+### 1. The evaluation property name is `entered`
+
+The public evaluation property is:
+
+- `scope.entered`
+
+Do not rename it to:
+
+- `active`
+- `rendered`
+- `opened`
+- `ok`
+- `should_render`
+
+Reason:
+
+- `entered` is already used throughout this plan
+- it maps well to ImGui begin/end semantics
+- it is short, explicit, and neutral enough to work across all scope kinds
+
+### 2. Window and closeable scopes expose `.open`
+
+For scopes that conceptually own an open/close flag, the public result property is:
+
+- `scope.open`
+
+This applies to:
+
+- `window(...)`
+- `popup_modal(...)`
+- any future closeable scope type
+
+The first migration should keep the state-copy pattern explicit:
+
+```python
+with ImGui.window('Party', open=show_party) as win:
+    if not win.entered:
+        show_party = win.open
+        return show_party
+    show_party = win.open
+    ...
+```
+
+Do not introduce alternative first-pass contracts such as:
+
+- mutating external variables by reference
+- callback-based `on_close`
+- hidden runtime auto-writeback
+- key-bound `open_state=` abstractions
+
+Those can be explored later, but they are explicitly out of scope for this migration.
+
+### 3. The implementation should introduce `_runtime.py`
+
+The runtime class should live in:
+
+- [Py4GWCoreLib/ImGui_src/_runtime.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_runtime.py:1)
+
+Reason:
+
+- `_core.py` currently carries historical meaning
+- the new design is no longer just a "core helper"
+- `_runtime.py` makes the ownership model obvious to future maintainers
+
+`_core.py` may temporarily remain as a compatibility forwarding module during migration, but the target ownership should move to `_runtime.py`.
+
+### 4. The public calling shape is direct `ImGui.*(...)`
+
+The preferred public call style is:
+
+```python
+from Py4GWCoreLib.ImGui import ImGui
+
+ImGui.text('Hello')
+
+with ImGui.window('Party') as win:
+    if not win.entered:
+        return
+    ...
+```
+
+This plan does not approve these as the primary public style:
+
+- `ui = ImGui()`
+- `with ImGui().window(...)`
+- `ui = ImGui`
+
+Reason:
+
+- the user explicitly wants direct calls with no alias
+- the resulting shape is closer to `PyImGui`
+- it keeps the public call sites shorter and more discoverable
+
+Architectural consequence:
+
+- `ImGui` is the singleton shared runtime object exposed by the module
+- `ImGuiRuntime` remains the internal assembled implementation type
+- runtime-owned state such as `_StateStore` and `_StackTracker` therefore lives on that shared runtime object
+
+### 4.1 `ImGui.create()` is not part of the approved design
+
+This migration does not approve:
+
+- `ImGui.create()`
+
+Not even as an "advanced" or secondary public API.
+
+Reason:
+
+- it conflicts with the chosen direct-call singleton shape
+- it reintroduces a second construction story for the same API
+- it weakens the clarity of `ImGui` as the one public runtime object
+- if isolated runtimes are ever needed for internal testing or experiments, that can remain an internal `ImGuiRuntime` concern rather than a public facade feature
+
+So the public contract is:
+
+- `from Py4GWCoreLib.ImGui import ImGui`
+- call `ImGui.window(...)`, `ImGui.text(...)`, `ImGui.state.*(...)`, etc.
+- do not expose `ImGui.create()` from the facade
+
+### 5. The primary usage model remains `with`
+
+This migration does not replace the context-manager model with callbacks, lambdas, decorators, or builder-style deferred trees.
+
+The official model is:
+
+- `with` for structural scopes
+- `with` for temporary local modifiers
+- one common `scope.entered` rule everywhere
+
+Reason:
+
+- it directly models begin/end and push/pop symmetry
+- it gives exception safety naturally
+- it is the clearest Python feature for scoped temporary UI state
+
+### 6. Explicit nesting is the preferred readability policy
+
+The documented preferred style is:
+
+```python
+with ImGui.id('party.members') as id_scope:
+    if not id_scope.entered:
+        return
+    with ImGui.item_width(140) as width_scope:
+        if not width_scope.entered:
+            return
+        with ImGui.table('members', 3) as table:
+            if not table.entered:
+                return
+            ...
+```
+
+The migration must not pivot to:
+
+- comma-joined multi-context-manager one-liners as the main style
+- opaque bundling helpers like `ImGui.local(...)` as the main style
+- "magic" scopes that silently suppress caller evaluation only for some scope kinds
+
+### 7. The first migration is allowed to be explicit rather than clever
+
+The goal of the first implementation pass is:
+
+- correctness
+- consistency
+- readability
+
+It is not:
+
+- minimum line count
+- minimum nesting depth
+- aggressive abstraction of every repetitive immediate-mode pattern
+
+If a design choice is between "slightly verbose but obvious" and "short but mentally dense", prefer the obvious form.
+
+### 8. `_StateStore` is runtime-persistent, not frame-local
+
+`_StateStore` lives for the lifetime of the `ImGuiRuntime` instance.
+
+That means:
+
+- `ImGui.state.bool('key')` returns persistent runtime-owned state
+- `ImGui.state.text('key')` returns persistent runtime-owned state
+- `ImGui.frame()` does not clear state
+- state is cleared only by explicit calls such as `ImGui.state.reset(key)` or `ImGui.state.clear()`
+
+Reason:
+
+- frame-local state would make the helper nearly useless for real immediate-mode authoring
+- the whole point of `ImGui.state.*(...)` is to reduce repetitive caller-side persistence boilerplate
+
+### 9. `_StackTracker` uses two different severities for two different failures
+
+The policy is:
+
+- immediate underflow in `_StackTracker.pop(...)` is a programmer error and should raise `RuntimeError`
+- end-of-frame imbalance detected by `ImGui.frame()` should log by default, not raise, unless a future strict mode is deliberately added
+
+Reason:
+
+- underflow means the implementation attempted an impossible pop and should fail fast
+- frame imbalance diagnostics are valuable in production-style UI rendering and should not necessarily tear down rendering immediately
+
+So the first migration should implement:
+
+- `pop(kind)` -> raises on underflow
+- `frame().__exit__(...)` -> logs imbalance through project logging, does not raise by default
+
+### 10. `_CompositeScope.entered` aggregates with logical `all`
+
+`ImGui.scoped(...)` must follow the same public rule as every other scope.
+
+That means:
+
+- the object returned from `with ImGui.scoped(...) as scope:` must expose `scope.entered`
+- `scope.entered` is `True` only if every nested sub-scope entered successfully
+- in other words, composite evaluation is `all(child.entered for child in children)`
+
+This also means `_CompositeScope.__enter__()` should not return raw `self` without an `entered` contract. It should return a result object or itself with a fully defined `.entered`.
+
+### 11. Font naming is intentionally split by role
+
+The public naming split is:
+
+- `ImGui.font(font_handle)` or `ImGui.font(font_obj)` -> temporary font scope factory
+- `ImGui.font_obj` -> current font getter/property
+
+Reason:
+
+- `font(...)` reads naturally as "use this font temporarily"
+- `font_obj` is clearly a getter-like data/property name, not a scope factory
+
+The implementation pass should not rename `ImGui.font(...)` to `push_font(...)` as the primary path.
+
+### 12. `ImGui_src/__init__.py` is internal-only after migration
+
+Its role after migration should be one of the following:
+
+- a minimal internal convenience re-export for `ImGui_src`
+- or an almost-empty package marker
+
+It must not become:
+
+- a second public entry point
+- the preferred import surface for users
+- a parallel facade competing with `Py4GWCoreLib.ImGui`
+
+Documentation and examples should always point to:
+
+- `from Py4GWCoreLib.ImGui import ImGui`
+
+The shared runtime model is the approved public contract for this migration.
+
 
 ## Public API Concept
 
 The runtime object should become the main product.
 
-The module-level class in [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1) should expose:
+The module-level facade in [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1) should expose:
 
-- `ImGui.default`
-- `ImGui.create()`
+- `ImGui`
 
-The runtime object returned by these should expose:
+The exported `ImGui` object should expose:
 
 - structural scope factories
 - widgets
@@ -168,103 +493,202 @@ The following is the recommended conceptual shape. The exact file split may vary
 
 ### Structural scopes
 
-- `ui.window(...)`
-- `ui.child(...)`
-- `ui.group()`
-- `ui.menu_bar()`
-- `ui.main_menu_bar()`
-- `ui.menu(...)`
-- `ui.popup(...)`
-- `ui.popup_modal(...)`
-- `ui.popup_context_item(...)`
-- `ui.popup_context_window(...)`
-- `ui.popup_context_void(...)`
-- `ui.tooltip()`
-- `ui.table(...)`
-- `ui.tab_bar(...)`
-- `ui.tab_item(...)`
-- `ui.combo(...)`
-- `ui.list_box(...)`
-- `ui.drag_drop_source(...)`
-- `ui.drag_drop_target()`
-- `ui.tree_node(...)`
-- `ui.multi_select(...)`
+- `ImGui.window(...)`
+- `ImGui.child(...)`
+- `ImGui.group()`
+- `ImGui.menu_bar()`
+- `ImGui.main_menu_bar()`
+- `ImGui.menu(...)`
+- `ImGui.popup(...)`
+- `ImGui.popup_modal(...)`
+- `ImGui.popup_context_item(...)`
+- `ImGui.popup_context_window(...)`
+- `ImGui.popup_context_void(...)`
+- `ImGui.tooltip()`
+- `ImGui.table(...)`
+- `ImGui.tab_bar(...)`
+- `ImGui.tab_item(...)`
+- `ImGui.combo(...)`
+- `ImGui.list_box(...)`
+- `ImGui.drag_drop_source(...)`
+- `ImGui.drag_drop_target()`
+- `ImGui.tree_node(...)`
+- `ImGui.multi_select(...)`
 
 ### Local stack scopes
 
-- `ui.style.color(...)`
-- `ui.style.var(...)`
-- `ui.font(...)`
-- `ui.item_width(...)`
-- `ui.text_wrap(...)`
-- `ui.item_flag(...)`
-- `ui.button_repeat(...)`
-- `ui.id(...)`
-- `ui.clip_rect(...)`
-- `ui.disabled(...)`
+- `ImGui.style.color(...)`
+- `ImGui.style.var(...)`
+- `ImGui.font(...)`
+- `ImGui.text_color(...)`
+- `ImGui.item_width(...)`
+- `ImGui.text_wrap(...)`
+- `ImGui.item_flag(...)`
+- `ImGui.button_repeat(...)`
+- `ImGui.id(...)`
+- `ImGui.clip_rect(...)`
+- `ImGui.disabled(...)`
 
 ### Layout helpers
 
-- `ui.separator()`
-- `ui.same_line(...)`
-- `ui.new_line()`
-- `ui.spacing()`
-- `ui.indent(...)`
-- `ui.unindent(...)`
-- `ui.dummy(...)`
+- `ImGui.separator()`
+- `ImGui.same_line(...)`
+- `ImGui.new_line()`
+- `ImGui.spacing()`
+- `ImGui.indent(...)`
+- `ImGui.unindent(...)`
+- `ImGui.dummy(...)`
 
 ### Text helpers
 
-- `ui.text(...)`
-- `ui.text_colored(...)`
-- `ui.text_disabled(...)`
-- `ui.text_wrapped(...)`
-- `ui.bullet_text(...)`
-- `ui.label_text(...)`
+- `ImGui.text(...)`
+- `ImGui.text_colored(...)`
+- `ImGui.text_disabled(...)`
+- `ImGui.text_wrapped(...)`
+- `ImGui.bullet_text(...)`
+- `ImGui.label_text(...)`
 
 ### Widget helpers
 
-- `ui.button(...)`
-- `ui.small_button(...)`
-- `ui.invisible_button(...)`
-- `ui.arrow_button(...)`
-- `ui.checkbox(...)`
-- `ui.radio_button(...)`
-- `ui.selectable(...)`
-- `ui.progress_bar(...)`
+- `ImGui.button(...)`
+- `ImGui.small_button(...)`
+- `ImGui.invisible_button(...)`
+- `ImGui.arrow_button(...)`
+- `ImGui.checkbox(...)`
+- `ImGui.radio_button(...)`
+- `ImGui.selectable(...)`
+- `ImGui.progress_bar(...)`
 
 ### Input helpers
 
-- `ui.input.text(...)`
-- `ui.input.text_with_hint(...)`
-- `ui.input.text_multiline(...)`
-- `ui.input.float(...)`
-- `ui.input.float2(...)`
-- `ui.input.float3(...)`
-- `ui.input.float4(...)`
-- `ui.input.int(...)`
-- `ui.input.int2(...)`
-- `ui.input.int3(...)`
-- `ui.input.int4(...)`
-- `ui.input.double(...)`
-- `ui.input.combo(...)`
-- `ui.input.list_box(...)`
+- `ImGui.input.text(...)`
+- `ImGui.input.text_with_hint(...)`
+- `ImGui.input.text_multiline(...)`
+- `ImGui.input.float(...)`
+- `ImGui.input.float2(...)`
+- `ImGui.input.float3(...)`
+- `ImGui.input.float4(...)`
+- `ImGui.input.int(...)`
+- `ImGui.input.int2(...)`
+- `ImGui.input.int3(...)`
+- `ImGui.input.int4(...)`
+- `ImGui.input.double(...)`
+- `ImGui.input.combo(...)`
+- `ImGui.input.list_box(...)`
 
 ### State helpers
 
-- `ui.state.bool(...)`
-- `ui.state.text(...)`
-- `ui.state.int(...)`
-- `ui.state.float(...)`
-- `ui.state.choice(...)`
-- `ui.state.get(...)`
-- `ui.state.set(...)`
-- `ui.state.reset(...)`
+- `ImGui.state.bool(...)`
+- `ImGui.state.text(...)`
+- `ImGui.state.int(...)`
+- `ImGui.state.float(...)`
+- `ImGui.state.choice(...)`
+- `ImGui.state.get(...)`
+- `ImGui.state.set(...)`
+- `ImGui.state.reset(...)`
 
 ### Safety helpers
 
-- `ui.scoped(...)`
-- `ui.frame(...)`
+- `ImGui.scoped(...)`
+- `ImGui.frame(...)`
+
+
+## Readability Policy
+
+This migration should explicitly optimize for readable call sites, not just fewer lines.
+
+### Preferred patterns
+
+#### Structural scopes
+
+Structural UI containers should use explicit `with` blocks:
+
+```python
+with ImGui.window('Party', open=show_party) as win:
+    if not win.entered:
+        show_party = win.open
+        return
+    ...
+```
+
+```python
+with ImGui.table('members', 3) as table:
+    if not table.entered:
+        return
+    ...
+```
+
+This is one of the strongest parts of the proposal and should remain central.
+
+#### Single local modifier
+
+If there is only one local modifier, a direct scope is clear:
+
+```python
+with ImGui.text_color((1, 0, 0, 1)) as color_scope:
+    if not color_scope.entered:
+        return
+    ImGui.text('Danger')
+```
+
+#### Two local modifiers
+
+If there are only one or two modifiers, nested scopes are preferable to a compressed one-liner:
+
+```python
+with ImGui.id(agent_id) as id_scope:
+    if not id_scope.entered:
+        return
+    with ImGui.text_color((1, 0, 0, 1)) as color_scope:
+        if not color_scope.entered:
+            return
+        ImGui.text('Danger')
+```
+
+This is longer than `with ImGui.id(...), ImGui.text_color(...):`, but significantly easier to read.
+
+#### Many local modifiers
+
+When local setup becomes noisy, still prefer explicit nested scopes over opaque shorthand unless a helper proves clearly more readable in real usage:
+
+```python
+with ImGui.id(agent_id) as id_scope:
+    if not id_scope.entered:
+        return
+    with ImGui.item_width(120) as width_scope:
+        if not width_scope.entered:
+            return
+        with ImGui.text_color((1, 0, 0, 1)) as color_scope:
+            if not color_scope.entered:
+                return
+            ImGui.text('Danger')
+```
+
+### Discouraged patterns
+
+The following should be considered legal-but-discouraged, and should not be used in primary examples:
+
+```python
+with ImGui.id(agent_id), ImGui.style.color(PyImGui.Col.Text, (1, 0, 0, 1)):
+    ImGui.text('Danger')
+```
+
+Reason:
+
+- it compresses too much state setup into one line
+- it makes the code look clever rather than clear
+- it exposes low-level styling mechanics in places where the reader likely only cares about intent
+
+### Design consequence
+
+The API should provide semantic helpers for common local styling so that callers do not constantly need to write low-level `style.color(enum, value)` code.
+
+Recommended semantic helpers include:
+
+- `ImGui.text_color(color)`
+- `ImGui.item_width(width)`
+- `ImGui.alpha(value)` if useful
+- `ImGui.enabled()` / `ImGui.disabled(...)`
 
 
 ## Recommended Naming Policy
@@ -277,6 +701,7 @@ Good:
 - `id(...)`
 - `style.color(...)`
 - `style.var(...)`
+- `text_color(...)`
 - `item_width(...)`
 
 Avoid as primary API:
@@ -288,6 +713,18 @@ Avoid as primary API:
 Reason:
 
 Users should think in terms of temporary context, not stack primitives.
+
+### Semantic aliases should exist for common styling cases
+
+Low-level `ImGui.style.color(enum, value)` should remain available, but it should not be the only readable way to express common intent.
+
+Recommended semantic wrappers:
+
+- `ImGui.text_color(color)` wraps `ImGui.style.color(PyImGui.Col.Text, color)`
+- `ImGui.disabled(...)` remains semantic and clear
+- optionally more semantic wrappers may be added later if real usage justifies them
+
+The goal is not to create dozens of tiny aliases for every enum. The goal is to cover the small number of style intents that appear constantly in real UI code.
 
 ### Widget methods should remain action-oriented
 
@@ -338,21 +775,7 @@ Recommended shape:
 ```python
 from .ImGui_src._runtime import ImGuiRuntime
 
-
-class ImGui:
-    """
-    Public facade for the standalone Reforged ImGui API.
-
-    - `ImGui.default` is the shared runtime instance.
-    - `ImGui.create()` creates a new isolated runtime instance.
-    - This module is intentionally separate from ImGui_Legacy.
-    """
-
-    default: ImGuiRuntime = ImGuiRuntime()
-
-    @staticmethod
-    def create() -> ImGuiRuntime:
-        return ImGuiRuntime()
+ImGui = ImGuiRuntime()
 
 
 __all__ = ['ImGui']
@@ -362,6 +785,48 @@ Important intent:
 
 - the public module should become small and authoritative
 - it should expose the public contract, not an index of mixin files
+- its small size is intentional, not a sign that it is "empty"
+
+Why one import is enough:
+
+- `_runtime.py` is where the full runtime type is assembled
+- `ImGuiRuntime` already pulls together mixins, scope factories, grouped surfaces, state helpers, and safety helpers
+- callers do not need those internal pieces re-exported separately from `ImGui.py`
+- once `ImGui` is imported, the entire API is reachable through that object
+
+The key mental model is:
+
+- `ImGui.py` is the public door
+- `ImGuiRuntime` is the actual house
+- `ImGui` is the one shared house instance the user walks into
+
+So this is correct:
+
+```python
+from Py4GWCoreLib.ImGui import ImGui
+
+with ImGui.window('Party') as win:
+    ...
+```
+
+And this is the intended consequence:
+
+- `ImGui.window(...)`
+- `ImGui.table(...)`
+- `ImGui.text(...)`
+- `ImGui.input.text(...)`
+- `ImGui.style.color(...)`
+- `ImGui.state.bool(...)`
+
+all work because the shared runtime object owns the full assembled API.
+
+What `ImGui.py` must not become again:
+
+- a shallow import hub that re-exports many unrelated internals
+- a second copy of runtime assembly logic
+- a misleading "index" whose size is padded just to look substantial
+
+Its value is not in having many lines. Its value is in being the single, stable, obvious import path for the new API.
 
 
 ### 2. Main runtime
@@ -500,6 +965,9 @@ class ImGuiRuntime(
     def font(self, idx: int = 0):
         return _FontScope(self, idx)
 
+    def text_color(self, color):
+        return self.style.text_color(color)
+
     def item_width(self, width: float):
         return _ItemWidthScope(self, width)
 
@@ -537,6 +1005,9 @@ Key design intent:
 - one runtime object owns everything meaningful
 - sub-surfaces are properties bound to the runtime instance
 - scope objects receive the runtime instance so they can report stack activity
+- common local styling should have semantic wrappers so callers do not have to think in raw enum terms
+- explicit nested local scopes are preferred over opaque grouped shorthand
+- all scope-returning APIs must share the same caller-side `.entered` contract
 
 
 ### 3. Scope result types
@@ -674,6 +1145,7 @@ Intent:
 
 - unconditional scope endings are always performed after a successful entry
 - conditional endings occur only if the scope actually opened/entered
+- both categories still expose the same public `.entered` evaluation rule
 
 
 ### 5. Example: window scope
@@ -753,7 +1225,15 @@ class _StyleSurface:
 
     def var(self, idx: int, value):
         return _StyleVarScope(self._runtime, idx, value)
+
+    def text_color(self, color):
+        return _StyleColorScope(self._runtime, PyImGui.Col.Text, color)
 ```
+
+Intent:
+
+- `style.color(...)` remains the low-level escape hatch
+- `text_color(...)` is the preferred readable API for a very common case
 
 
 ### 9. Input surface
@@ -848,6 +1328,7 @@ class _StateSurface:
 Important design note:
 
 State is runtime-local, not module-global.
+State is runtime-persistent across frames until explicitly reset or cleared.
 
 
 ### 11. Stack tracker
@@ -885,6 +1366,11 @@ class _StackTracker:
         return result
 ```
 
+Severity policy:
+
+- underflow is an exception
+- end-of-frame imbalance is a diagnostic log by default
+
 
 ### 12. Composite scope helper
 
@@ -898,15 +1384,25 @@ class _CompositeScope:
     def __init__(self, *scopes):
         self._scopes = scopes
         self._stack = ExitStack()
+        self.entered = True
 
     def __enter__(self):
         for scope in self._scopes:
-            self._stack.enter_context(scope)
+            result = self._stack.enter_context(scope)
+            entered = getattr(result, 'entered', bool(result))
+            self.entered = self.entered and bool(entered)
         return self
 
     def __exit__(self, exc_type, exc, tb):
         return self._stack.__exit__(exc_type, exc, tb)
 ```
+
+Important usage note:
+
+- `ImGui.scoped(...)` should exist as a power tool
+- it should not be the primary usage pattern shown in introductory examples
+- primary examples should prefer explicit nested scopes
+- its `.entered` value is the logical `all(...)` of the child scopes it entered
 
 
 ### 13. Frame scope
@@ -927,10 +1423,14 @@ class _FrameScope:
         diff = self._runtime._stack_tracker.diff(self._snapshot)
         if diff:
             # replace with project logging strategy
-            raise RuntimeError(f'ImGui stack imbalance detected: {diff}')
+            self._runtime._log_stack_imbalance(diff)
 ```
 
-In production, logging may be preferable to throwing, but this is the conceptual safety mechanism.
+The default contract for the first migration is:
+
+- log imbalance at frame end
+- do not raise by default
+- reserve hard-fail behavior for immediate underflow and future optional strict mode
 
 
 ## Scope Classification Table
@@ -992,7 +1492,8 @@ Tasks:
 2. Introduce unconditional vs conditional scope base classes.
 3. Refactor all existing scope classes to inherit from the appropriate base.
 4. Make window results explicitly expose `.entered` and `.open`.
-5. Keep temporary `__bool__` compatibility if helpful.
+5. Make every scoped API participate in the same public `.entered` evaluation rule, even where entered is mechanically always `True`.
+6. Keep temporary `__bool__` compatibility if helpful.
 
 Expected outcome:
 
@@ -1032,16 +1533,19 @@ Tasks:
    - `id`
    - `combo`
    - `list_box`
+   - `text_color`
 2. Keep temporary aliases:
    - `push_font`
    - `id_scope`
    - `combo_scope`
    - `list_box_scope`
 3. Add `style.color` and `style.var` as preferred paths.
+4. Explicitly avoid using comma-joined multi-scope `with` examples in docs.
 
 Expected outcome:
 
 - the API starts to read like a toolkit instead of a translated C binding
+- common local modifier usage becomes clearer instead of denser
 
 
 ### Phase 4: Composition and frame-safety helpers
@@ -1053,8 +1557,8 @@ Target files:
 
 Tasks:
 
-1. Add `ui.scoped(...)`
-2. Add `ui.frame()`
+1. Add `ImGui.scoped(...)`
+2. Add `ImGui.frame()`
 3. Add mismatch diagnostics
 
 Expected outcome:
@@ -1073,13 +1577,13 @@ Tasks:
 
 1. Make the module-level class authoritative and small.
 2. Expose only:
-   - `ImGui.default`
-   - `ImGui.create()`
+   - `ImGui`
 3. Move explanatory docs into the module/class docstrings.
 
 Expected outcome:
 
 - `ImGui.py` becomes the clear entry point rather than an index of internals
+- callers use the shared runtime through `ImGui`
 
 
 ### Phase 6: Compatibility review and cleanup
@@ -1089,6 +1593,122 @@ Tasks:
 1. Audit any early new-API call sites.
 2. Switch them to preferred names if they exist.
 3. Remove deprecated compatibility aliases only after confirming adoption.
+
+
+## File-By-File Execution Map
+
+This section is the concrete implementation map the next model should follow.
+
+### [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1)
+
+Target responsibility:
+
+- public entry point only
+- exports `ImGui`
+- instantiates one shared `ImGuiRuntime` object
+- exposes that object as `ImGui`
+
+Must not contain:
+
+- legacy imports
+- raw wrapper re-exports from many internal modules
+- UI behavior logic
+- alternative public import stories that bypass the facade
+
+### [Py4GWCoreLib/ImGui_src/_runtime.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_runtime.py:1)
+
+Target responsibility:
+
+- owns `ImGuiRuntime`
+- owns grouped surfaces
+- owns runtime state store
+- owns stack tracker
+- owns top-level scope factories
+- acts as the conceptual center of the API
+
+Must absorb from current `_core.py`:
+
+- the runtime/mixin composition role
+- current top-level scope factories
+- current runtime-owned properties and helpers
+
+### [Py4GWCoreLib/ImGui_src/_core.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_core.py:1)
+
+Target responsibility during migration:
+
+- temporary compatibility shim only, if needed
+
+End-state preference:
+
+- either removed
+- or reduced to a minimal forwarding import with a clear deprecation comment
+
+### [Py4GWCoreLib/ImGui_src/_scopes.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_scopes.py:1)
+
+Target responsibility:
+
+- scope result classes
+- base scope classes
+- unconditional-end scopes
+- conditional-end scopes
+- composite scope helper
+- frame validation scope
+
+Must be rewritten around:
+
+- explicit `entered`
+- explicit `open`
+- correct end-call behavior
+- runtime tracker hooks
+
+### Existing feature modules under `ImGui_src/`
+
+Files:
+
+- `_layout.py`
+- `_text.py`
+- `_widgets.py`
+- `_input.py`
+- `_items.py`
+- `_window.py`
+- `_tree_tables.py`
+- `_popups.py`
+- `_docking.py`
+- `_system.py`
+
+Target responsibility:
+
+- keep mixin-style direct wrappers and high-level helper methods grouped by domain
+- avoid letting them own lifecycle policy
+- defer scope semantics to `_runtime.py` and `_scopes.py`
+
+Rule:
+
+- feature modules should define behavior-facing methods
+- scope lifecycle correctness should not be duplicated separately inside each feature module
+
+### [Py4GWCoreLib/ImGui_src/__init__.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/__init__.py:1)
+
+Target responsibility:
+
+- internal package convenience only, if retained
+
+Must not become:
+
+- a public import target for documentation
+- a second facade
+- the place where runtime policy is defined
+
+### Optional new helper modules
+
+These are acceptable if they simplify the implementation:
+
+- `_state.py`
+- `_style_surface.py`
+- `_input_surface.py`
+- `_tracking.py`
+
+They are optional because the public API shape matters more than the private file split.
 
 
 ## Compatibility Policy During Migration
@@ -1104,6 +1724,30 @@ Compatibility is acceptable only where it smooths transition inside the new API.
 - `list_box_scope(...)` delegates to `list_box(...)`
 - `id_scope(...)` delegates to `id(...)`
 - `bool(scope_result)` delegates to `scope_result.entered`
+
+
+## Compatibility Matrix
+
+This table freezes the preferred canonical names versus allowed temporary aliases.
+
+| Canonical API | Temporary Compatibility Alias | Keep Long-Term |
+|---|---|---|
+| `ImGui.font(...)` | `ImGui.push_font(...)` | No |
+| `ImGui.style.color(...)` | `ImGui.style_color(...)` | No |
+| `ImGui.style.var(...)` | `ImGui.style_var(...)` | No |
+| `ImGui.combo(...)` | `ImGui.combo_scope(...)` | No |
+| `ImGui.list_box(...)` | `ImGui.list_box_scope(...)` | No |
+| `ImGui.id(...)` | `ImGui.id_scope(...)` | No |
+| `scope.entered` | `bool(scope)` | No |
+| `ImGui.window(...)` | `ImGui().window(...)` | No |
+| `ImGui.window(...)` | `ui.window(...)` as primary documented style | No |
+| `ImGui.font_obj` | alternate public getter names invented during migration | No |
+
+Rule:
+
+- the left column is the documented API
+- the middle column is migration-only
+- the right column should remain `No` unless this document is revised deliberately
 
 ### Unacceptable compatibility
 
@@ -1159,12 +1803,14 @@ The migration should be considered complete only if all of the following are tru
 ### Ergonomics
 
 - common code reads naturally:
-  - `with ui.window(...)`
-  - `with ui.table(...)`
-  - `with ui.style.color(...)`
-  - `with ui.id(...)`
+  - `with ImGui.window(...)`
+  - `with ImGui.table(...)`
+  - `with ImGui.text_color(...)`
+  - `with ImGui.id(...)`
+- every scoped construct follows the same explicit `.entered` evaluation rule
 - push/pop implementation detail is not the primary naming model
 - no confusing module-level aliases are required
+- the documented style avoids comma-joined multi-context-manager one-liners for local modifiers
 
 ### Safety
 
@@ -1177,6 +1823,85 @@ The migration should be considered complete only if all of the following are tru
 - `ImGui.py` is a true public entry point
 - the runtime object is the main conceptual API
 - the new facade remains fully isolated from `ImGui_Legacy`
+
+
+## Canonical Usage Patterns
+
+These examples are the blessed usage style for the first migration. New examples and early adopters should follow them unless this document is intentionally revised.
+
+### 1. Standard window
+
+```python
+with ImGui.window('Party', open=show_party) as win:
+    if not win.entered:
+        show_party = win.open
+        return show_party
+    show_party = win.open
+
+    ImGui.text('Members')
+```
+
+### 2. Window plus table
+
+```python
+with ImGui.window('Party', open=show_party) as win:
+    if not win.entered:
+        show_party = win.open
+        return show_party
+    show_party = win.open
+
+    with ImGui.table('members', 3) as table:
+        if not table.entered:
+            return show_party
+        ...
+```
+
+### 3. Local semantic modifier
+
+```python
+with ImGui.text_color((1, 0, 0, 1)) as color_scope:
+    if not color_scope.entered:
+        return
+    ImGui.text('Danger')
+```
+
+### 4. Explicit nested local setup
+
+```python
+with ImGui.id('party.members') as id_scope:
+    if not id_scope.entered:
+        return
+    with ImGui.item_width(140) as width_scope:
+        if not width_scope.entered:
+            return
+        with ImGui.table('members', 3) as table:
+            if not table.entered:
+                return
+            ...
+```
+
+### 5. Runtime state usage
+
+```python
+search = ImGui.state.text('party.search')
+enabled = ImGui.state.bool('party.enabled', default=True)
+selected_index = ImGui.state.int('party.selected_index', default=0)
+```
+
+### 6. Advanced composition helper
+
+`ImGui.scoped(...)` is allowed, but it is not the primary teaching style.
+
+Example:
+
+```python
+with ImGui.scoped(ImGui.id('party.members'), ImGui.item_width(140)) as scope:
+    if not scope.entered:
+        return
+    ...
+```
+
+This helper exists for advanced composition, not as the default readability story.
 
 
 ## Risks and Pitfalls
@@ -1209,25 +1934,27 @@ This example captures the intended direction.
 ```python
 from Py4GWCoreLib.ImGui import ImGui
 
-ui = ImGui.default
-
 
 def draw_party_window(show_party: bool) -> bool:
-    with ui.frame():
-        with ui.window('Party', open=show_party) as win:
-            show_party = win.open
+    with ImGui.frame():
+        with ImGui.window('Party', open=show_party) as win:
             if not win.entered:
+                show_party = win.open
                 return show_party
+            show_party = win.open
 
-            search = ui.state.text('party.search')
-            ui.text('Members')
+            search = ImGui.state.text('party.search')
+            ImGui.text('Members')
 
-            with ui.scoped(
-                ui.id('party.members'),
-                ui.style.var(PyImGui.StyleVar.CellPadding, (4, 2)),
-            ):
-                with ui.table('members', 3) as table:
-                    if table.entered:
+            with ImGui.id('party.members') as id_scope:
+                if not id_scope.entered:
+                    return show_party
+                with ImGui.item_width(140) as width_scope:
+                    if not width_scope.entered:
+                        return show_party
+                    with ImGui.table('members', 3) as table:
+                        if not table.entered:
+                            return show_party
                         ...
 
     return show_party
@@ -1248,9 +1975,13 @@ The next implementation pass should follow this exact intent:
 
 1. Rebuild `_scopes.py` around unconditional versus conditional end behavior.
 2. Introduce explicit result objects with `.entered` and `.open`.
-3. Make the runtime own stacks, state, and grouped surfaces.
-4. Add `style`, `input`, and `state` as coherent sub-surfaces.
-5. Add `scoped(...)` and `frame(...)`.
-6. Make `ImGui.py` the public contract, not merely an index.
-7. Keep total separation from `ImGui_Legacy`.
-
+3. Enforce one common caller-side evaluation rule for every scoped API.
+4. Make the runtime own stacks, state, and grouped surfaces.
+5. Add `style`, `input`, and `state` as coherent sub-surfaces.
+6. Add semantic local helpers such as `text_color(...)`.
+7. Add `scoped(...)` and `frame(...)`, but treat `scoped(...)` as an advanced helper rather than the primary readability story.
+8. Make `ImGui.py` the public contract, not merely an index.
+9. Keep total separation from `ImGui_Legacy`.
+10. Implement the file ownership described in `File-By-File Execution Map`.
+11. Treat `Canonical Usage Patterns` as the documentation source of truth for examples.
+12. Do not invent alternative evaluation/property naming during implementation.

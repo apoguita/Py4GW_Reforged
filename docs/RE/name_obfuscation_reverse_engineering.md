@@ -1,5 +1,7 @@
 # Name Obfuscation Reverse Engineering
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 ## Scope
 
 This document records the current reverse-engineering state of the name-obfuscation feature used by Py4GW.
@@ -532,9 +534,9 @@ The local native layer already gives a concrete model for the runtime guild stor
 
 Relevant structs:
 
-- `GWCA\\Include\\GWCA\\Context\\GuildContext.h`
-- `GWCA\\Include\\GWCA\\GameEntities\\Guild.h`
-- `GWCA\\Source\\GuildMgr.cpp`
+- `Py4GW_Reforged_Native\include\GW\context\guild.h` (legacy cross-ref: `GWCA\\Include\\GWCA\\Context\\GuildContext.h`)
+- `Py4GW_Reforged_Native\include\GW\context\guild.h` (legacy cross-ref: `GWCA\\Include\\GWCA\\GameEntities\\Guild.h`)
+- `Py4GW_Reforged_Native\src\GW\guild\` (legacy cross-ref: `GWCA\\Source\\GuildMgr.cpp`)
 
 Important runtime anchors:
 

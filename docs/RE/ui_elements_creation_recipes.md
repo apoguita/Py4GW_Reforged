@@ -1,5 +1,7 @@
 # GW UI Elements — Corrected Creation Recipes (Ghidra-verified)
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 > Reverse-engineered from `Gw.wasm` (symbols) + `Gw.exe (06-14)` via a 40-agent Ghidra swarm
 > (2 independent angles per topic + per-topic consensus), 2026-06-30. Every claim below is
 > backed by a decompile. Supersedes the prior (partly-wrong) frame-list-item recipes.
@@ -248,7 +250,7 @@ UiCtlBtnToggleProc (0x00886370) is a SEPARATE box-art toggle (uses a different i
 
 ### C++ fix plan
 
-In include/py_ui.h and vendor/gwca/Source/UIMgr.cpp:
+In include/py_ui.h and Py4GW_Reforged_Native/src/GW/native_ui/ (legacy cross-ref: vendor/gwca/Source/UIMgr.cpp):
 1) STOP routing checkbox/radio to the flat proc: remove "checkbox"/"radio" from the ResolveCtlBtnProc branch in BOTH AddControlItemByFrameId (~line 4547) and ResolveNamedControlProc (~line 4593). Remove any use of item_flags 0x10000 for checkboxes.
 2) Route the checkbox helper to the existing CreateCheckboxFrame (UIMgr.cpp:2184) = CreateButtonFrame(parent, component_flags|0x8000, child_index, name_enc, label) with ButtonFrame_Callback = IUi::UiCtlBtnProc (already resolved at UIMgr.cpp:1421 via "!s_btnCheckImageList"). Pass component_flags = 0x300; the helper ORs 0x8000.
 3) Create it as a DIRECT CHILD of a real window/GroupHeader via CreateUIComponent with an auto-incremented child_index (loop already at UIMgr.cpp:2042-2046). Do NOT create via AddControlItemByFrameId/CtlFrameListCreateItem (frame-list item path) — that is what causes full-width stretch and skips class-init.

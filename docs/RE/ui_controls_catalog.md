@@ -1,5 +1,7 @@
 # Guild Wars UI Controls Catalog
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 > **EXE Version**: 05-30-2026  
 > **Project**: UI Elements Universe Discovery (Phases 1–3, 2026-06-04)  
 > **Total FrameProc Types Cataloged**: 39
@@ -361,8 +363,8 @@ These types use **single self-contained FrameProcs** — they handle all message
 
 | File | Role |
 |------|------|
-| `Py4GW\vendor\gwca\Include\GWCA\Managers\UIMgr.h` | GWCA struct hierarchy, API declarations |
-| `Py4GW\vendor\gwca\Source\UIMgr.cpp` | C++ implementations for all wrapped controls |
+| `Py4GW_Reforged_Native\include\GW\native_ui\native_ui.h` (legacy cross-ref: `Py4GW\vendor\gwca\Include\GWCA\Managers\UIMgr.h`) | Struct hierarchy, API declarations |
+| `Py4GW_Reforged_Native\src\GW\native_ui\` (legacy cross-ref: `Py4GW\vendor\gwca\Source\UIMgr.cpp`) | C++ implementations for all wrapped controls |
 | `Py4GW\include\py_ui.h` | C++ Python bindings |
 | `Py4GW\src\py_ui.cpp` | Python `.def_static()` registrations |
 | `Py4GW_python_files\stubs\PyUIManager.pyi` | Python type stubs |

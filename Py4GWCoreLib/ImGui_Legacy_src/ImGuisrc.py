@@ -334,7 +334,7 @@ class ImGui_Legacy:
     @staticmethod
     def begin_with_close(name: str, p_open: Optional[bool] = None, flags: int = PyImGui.WindowFlags.NoFlag) -> tuple[bool, bool]:
         if not ImGui_Legacy._is_textured_theme():
-            return PyImGui.begin(name, p_open if p_open is not None else True, flags)
+            return PyImGui.begin_with_close(name, p_open if p_open is not None else True, flags)
         
         if name not in WindowModule._windows:
             WindowModule._windows[name] = WindowModule(name, window_flags=flags)

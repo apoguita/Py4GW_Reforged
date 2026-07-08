@@ -1,5 +1,7 @@
 # Native GW Window Creation Investigation
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 ## Purpose
 This note captures the current verified model for Guild Wars native UI window creation in the Python/C++ stack, separates it from the overlay/ImGui_Legacy helper layer, and seeds the next REVA/Ghidra passes with a reusable function catalog instead of rediscovering the same targets each time.
 
@@ -156,7 +158,7 @@ Files:
 
 - `Py4GWCoreLib/UIManager.py`
 - `/Py4GW/include/py_ui.h`
-- `/Py4GW/vendor/gwca/Source/UIMgr.cpp`
+- `Py4GW_Reforged_Native/src/GW/native_ui/` (legacy cross-ref: `/Py4GW/vendor/gwca/Source/UIMgr.cpp`)
 
 Role:
 
@@ -197,7 +199,7 @@ The current Python wrapper used by the proven DevText path is:
 2. `UIManager.CreateWindowByFrameId(...)` in `Py4GWCoreLib/UIManager.py`
 3. `UIManager::CreateWindowByFrameId(...)` in `/Py4GW/include/py_ui.h`
 4. `UIManager::CreateLabeledFrameByFrameId(...)` in `/Py4GW/include/py_ui.h`
-5. `GW::UI::CreateUIComponent(...)` in `/Py4GW/vendor/gwca/Source/UIMgr.cpp`
+5. `GW::UI::CreateUIComponent(...)` in `Py4GW_Reforged_Native/src/GW/native_ui/` (legacy cross-ref: `/Py4GW/vendor/gwca/Source/UIMgr.cpp`)
 6. `UIManager::SetFrameControllerAnchorMarginsByFrameIdEx(...)` in `/Py4GW/include/py_ui.h`
 7. `UIManager::TriggerFrameRedrawByFrameId(...)` in `/Py4GW/include/py_ui.h`
 
@@ -248,7 +250,7 @@ Source:
 
 - `UIManager.CreateTextLabelFrameByFrameId(...)`
 - `UIManager.CreateScrollableFrameByFrameId(...)`
-- `InitializeTypedComponentCallbacks()` in `/Py4GW/vendor/gwca/Source/UIMgr.cpp`
+- `InitializeTypedComponentCallbacks()` in `Py4GW_Reforged_Native/src/GW/native_ui/` (legacy cross-ref: `/Py4GW/vendor/gwca/Source/UIMgr.cpp`)
 
 Properties:
 
@@ -400,28 +402,28 @@ Goal:
 
 ## Current Conclusion (Updated 2026-05-31)
 
-### âœ… REGRESSION FIXED (2026-05-31)
+### ✅ REGRESSION FIXED (2026-05-31)
 
 **Root cause**: The `ResolveCompositeRootControlProc` byte-pattern scan failed because the EXE was patched on 2026-05-30. The CRProc stack frame changed from `SUB ESP, 0x11C` to `SUB ESP, 0x120` (prologue bytes: `55 8B EC 81 EC 20 01 00 00`). The old Ghidra analysis was stale. Additionally, `FindAssertion` with a non-zero line number fails due to PUSH instruction encoding mismatch in the scanner algorithm.
 
 **Fix**: Replace byte-pattern-only resolution with a two-layer strategy:
-1. **Primary**: `FindAssertion("UiCtlDlg.cpp", "!s_imgList", 0, 0)` â€” string-based, portable across patches
+1. **Primary**: `FindAssertion("UiCtlDlg.cpp", "!s_imgList", 0, 0)` — string-based, portable across patches
 2. **Fallback**: Byte-pattern `\x81\xEC\x20\x01\x00\x00...` with 24-char mask and prologue validation
 
-No hardcoded addresses. Runtime base differs from Ghidra static `0x00400000` â€” all resolution must use runtime-safe patterns.
+No hardcoded addresses. Runtime base differs from Ghidra static `0x00400000` — all resolution must use runtime-safe patterns.
 
 **Proven resolution** (from Python diagnostic):
 ```
-Scanner.FindAssertion("UiCtlDlg.cpp", "!s_imgList", 0, 0) â†’ 0x00EB697B
-Scanner.ToFunctionStart(assertion, 0x110) â†’ 0x00EB6880 (CRProc)
+Scanner.FindAssertion("UiCtlDlg.cpp", "!s_imgList", 0, 0) → 0x00EB697B
+Scanner.ToFunctionStart(assertion, 0x110) → 0x00EB6880 (CRProc)
 ```
 Runtime slide: `0x00EB6880 - 0x00851180 = 0x00665600` (EXE loaded at non-standard base).
 
-### Working (Current â€” 2026-05-31)
-1. **`CreateContainerWindow()`** (existing GWCA) creates a bare `CContainerFrame` â€” works.
-2. **`FrameNewSubclass(frame, Ui_CompositeRootControlProc, 0x59)`** â€” works via `FindAssertion` resolution.
+### Working (Current — 2026-05-31)
+1. **`CreateContainerWindow()`** (existing GWCA) creates a bare `CContainerFrame` — works.
+2. **`FrameNewSubclass(frame, Ui_CompositeRootControlProc, 0x59)`** — works via `FindAssertion` resolution.
 3. **Mouse interaction**: `FrameMouseEnable(frame, 0xFFFFFFFF, 0)` after `FrameNewSubclass`.
-4. **Python-only window creation**: Proven â€” CRProc resolved via Scanner + NativeFunction, chrome installed with `directCall()` on game thread.
+4. **Python-only window creation**: Proven — CRProc resolved via Scanner + NativeFunction, chrome installed with `directCall()` on game thread.
 
 ### Resolution Method (Canonical)
 
@@ -432,34 +434,34 @@ Runtime slide: `0x00EB6880 - 0x00851180 = 0x00665600` (EXE loaded at non-standar
 | `FrameNewSubclass` | `FindAssertion` | `("FrApi.cpp", "frameId", 0x467, 0)` |
 | `FrameMouseEnable` | `FindAssertion` | `("FrApi.cpp", "frameId", 0x540, 0)` |
 
-### âš ï¸ REGRESSION (2026-05-31 â€” Old)
+### ⚠️ REGRESSION (2026-05-31 — Old)
 
 **An unauthorized `git checkout` reverted all uncommitted working-tree changes for py_ui.h**, losing the proven mouse-fix code. The functions were reconstructed from documentation but had incorrect byte patterns (stale Ghidra data) and wrong line numbers for FindAssertion. See `docs/RE/title_rendering_research.md` for full regression details.
 
-### Working (Before Regression â€” 2026-05-30)
-1. **`CreateContainerWindow()`** (existing GWCA) creates a bare `CContainerFrame` with no content, no chrome â€” cold-startable with no state dependencies.
-2. **`FrameNewSubclass(frame, Ui_CompositeRootControlProc, 0x59)`** (exposed via `ResolveFrameNewSubclass`) installs the window chrome â€” title bar, close button, resize handles.
+### Working (Before Regression — 2026-05-30)
+1. **`CreateContainerWindow()`** (existing GWCA) creates a bare `CContainerFrame` with no content, no chrome — cold-startable with no state dependencies.
+2. **`FrameNewSubclass(frame, Ui_CompositeRootControlProc, 0x59)`** (exposed via `ResolveFrameNewSubclass`) installs the window chrome — title bar, close button, resize handles.
 3. **Mouse interaction**: Fixed via `FrameMouseEnable(frame, 0xFFFFFFFF, 0)` called AFTER `FrameNewSubclass`. `CContainerFrame::FrameProc` clears CMouse flags (`frame+0x98`) to 0 on msg 9 (twice: during FrameCreate and forwarded via `Ui_DispatchToFrameHierarchy` in CRProc). `FrameMouseEnable` (= `Ui_UpdateFrameFlagMaskById` at EXE `0x0060ffd0`) restores all flags. Function resolvable via `FindAssertion("FrApi.cpp", "frameId", 0x540, 0)` with byte-pattern fallback.
 
-### NOT Working (Fundamental Issue â€” RESOLVED 2026-06-02) âœ…
+### NOT Working (Fundamental Issue — RESOLVED 2026-06-02) ✅
 
-4. **Title/caption text**: **RESOLVED.** The root cause was non-unique byte patterns for `Ui_SetFrameText` â€” the function prologue matches 16 locations in FrApi.cpp. `Scanner::Find` returned wrong function. **Fix:** Derive `Ui_SetFrameText` from DevText's call site (find "DlgDevText" string â†’ scan forward for CALLs â†’ second CALL = `Ui_SetFrameText`). Combined with `PerFrameInvalidate(0xFFFFFFFF)`, this stores text and triggers full per-frame CContent invalidation.
+4. **Title/caption text**: **RESOLVED.** The root cause was non-unique byte patterns for `Ui_SetFrameText` — the function prologue matches 16 locations in FrApi.cpp. `Scanner::Find` returned wrong function. **Fix:** Derive `Ui_SetFrameText` from DevText's call site (find "DlgDevText" string → scan forward for CALLs → second CALL = `Ui_SetFrameText`). Combined with `PerFrameInvalidate(0xFFFFFFFF)`, this stores text and triggers full per-frame CContent invalidation.
 
-**Working API**: `PyUIManager.UIManager.send_title_msg_5e(frame_id, title)` â€” delegates to `SetFrameTitleAndInvalidate()` which:
-1. Calls `Ui_CreateEncodedText(8, 7, "title", 0)` â†’ encoded wchar_t*
-2. Calls `Ui_SetFrameText(frame, encoded)` â†’ stores text at frame+0xCC
-3. Calls `PerFrameInvalidate(frame_id, 0xFFFFFFFF)` â†’ sets all paint mask bits + dirty list enqueue
-4. CRProc msg 0x08 renders the title âœ…
+**Working API**: `PyUIManager.UIManager.send_title_msg_5e(frame_id, title)` — delegates to `SetFrameTitleAndInvalidate()` which:
+1. Calls `Ui_CreateEncodedText(8, 7, "title", 0)` → encoded wchar_t*
+2. Calls `Ui_SetFrameText(frame, encoded)` → stores text at frame+0xCC
+3. Calls `PerFrameInvalidate(frame_id, 0xFFFFFFFF)` → sets all paint mask bits + dirty list enqueue
+4. CRProc msg 0x08 renders the title ✅
 
 See `docs/RE/title_rendering_research.md` for the complete investigation and all 11 failed approaches.
 
 ### Title Rendering Pipeline (2026-05-31 Findings)
 
 The title rendering chain has 4 requirements:
-1. âœ… Text stored via `Ui_SetFrameText` â†’ attached-text table (Path B)
-2. âœ… CRProc installed on frame via `FrameNewSubclass`
-3. âŒ **CContent element 4 invalidation + per-frame dirty list enqueue** â€” MISSING
-4. âœ… Frame shown via GWCA `ShowFrame` or native `Ui_ShowFrame`
+1. ✅ Text stored via `Ui_SetFrameText` → attached-text table (Path B)
+2. ✅ CRProc installed on frame via `FrameNewSubclass`
+3. ❌ **CContent element 4 invalidation + per-frame dirty list enqueue** — MISSING
+4. ✅ Frame shown via GWCA `ShowFrame` or native `Ui_ShowFrame`
 
 Step 3 requires `CContent::Invalidate(frame+4, element=4, flags=0xFFFFFFFF)` which both sets the paint mask AND enqueues the frame into the per-frame dirty linked list. `Ui_SetFrameText` uses `Ui_QueueGlobalUiUpdate` which writes to the GLOBAL context (`DAT_00bb55e0`), not the frame-specific CContent.
 
@@ -471,35 +473,35 @@ The only native path that performs per-frame CContent invalidation is `CNonclien
 |----------|--------|------------|
 | `Ui_CompositeRootControlProc` | `FindAssertion` | `("UiCtlDlg.cpp", "!s_imgList", 0, 0)` |
 | `Ui_CreateEncodedText` | `Find` | `\x55\x8B\xEC\x51\x56\x57\xE8\x00\x00\x00\x00\x8B\x48\x18\xE8\x00\x00\x00\x00\x8B\xF8` / `xxxxxxx????xxxx????xx` |
-| `Ui_SetFrameText` | **DevText call-site derivation** | Find "DlgDevText" string â†’ first CALL = UiCreateEncodedText â†’ second CALL = UiSetFrameText. Do NOT use byte pattern (matches 16 functions). |
+| `Ui_SetFrameText` | **DevText call-site derivation** | Find "DlgDevText" string → first CALL = UiCreateEncodedText → second CALL = UiSetFrameText. Do NOT use byte pattern (matches 16 functions). |
 | `FrameMouseEnable` | `FindAssertion` | `("FrApi.cpp", "frameId", 0x540, 0)` |
 | `FrameNewSubclass` | `FindAssertion` | `("FrApi.cpp", "frameId", 0x467, 0)` |
 | `CContainerFrame::FrameProc` | `FindAssertion` | `("UiPlacementContainer.cpp", "itemFrame", 0x43, 0)` |
-| `PerFrameInvalidate` | `Find` | `\x8D\x48\x04\x53\x6A\x04\xE8` / `xxxxxxx` â†’ ToFunctionStart(-0x57) |
+| `PerFrameInvalidate` | `Find` | `\x8D\x48\x04\x53\x6A\x04\xE8` / `xxxxxxx` → ToFunctionStart(-0x57) |
 
-**IMPORTANT**: Byte-pattern scans on function prologues are fragile across EXE patches (e.g., stack frame size can change: `0x11C`â†’`0x120`). **Always prefer `FindAssertion` as the primary strategy**. `Ui_SetFrameText` MUST be resolved via DevText call-site derivation, NOT byte pattern.
+**IMPORTANT**: Byte-pattern scans on function prologues are fragile across EXE patches (e.g., stack frame size can change: `0x11C`→`0x120`). **Always prefer `FindAssertion` as the primary strategy**. `Ui_SetFrameText` MUST be resolved via DevText call-site derivation, NOT byte pattern.
 
 ### Known Issues
 
-- **`[X]` close button**: Works â€” handled by CNonclient framework, not msg 0x0A.
-- **Mouse interaction**: Works â€” fixed via `FrameMouseEnable(0xFFFFFFFF, 0)` after `FrameNewSubclass`.
-- **Title rendering**: âœ… RESOLVED (2026-06-02) â€” via `send_title_msg_5e` â†’ `SetFrameTitleAndInvalidate`. Key fix: DevText call-site derived `Ui_SetFrameText` instead of broken byte pattern.
+- **`[X]` close button**: Works — handled by CNonclient framework, not msg 0x0A.
+- **Mouse interaction**: Works — fixed via `FrameMouseEnable(0xFFFFFFFF, 0)` after `FrameNewSubclass`.
+- **Title rendering**: ✅ RESOLVED (2026-06-02) — via `send_title_msg_5e` → `SetFrameTitleAndInvalidate`. Key fix: DevText call-site derived `Ui_SetFrameText` instead of broken byte pattern.
 - **Byte pattern fragility**: Byte patterns encoding stack frame sizes break across EXE patches. `FindAssertion` is immune. The 2026-05-30 EXE patch changed CRProc from `SUB ESP, 0x11C` to `SUB ESP, 0x120`.
 
-### âœ… 2026-06-03 Cleanup â€” Shared Resolver Consolidation
+### ✅ 2026-06-03 Cleanup — Shared Resolver Consolidation
 
 The C++ code in `py_ui.h` was refactored to eliminate duplicated resolution logic:
 
-1. **`ResolveCreateEncodedText()`** â€” new shared resolver (~line 32 in `py_ui.h`, before `UIManagerTitleHook`). Single source of truth for `Ui_CreateEncodedText` pattern resolution with prologue validation. Used by `SetFrameTitleByFrameId`, `AttachCompositeRootToFrame`, and the title hook namespace. Replaces 3 previously duplicated inline scans.
+1. **`ResolveCreateEncodedText()`** — new shared resolver (~line 32 in `py_ui.h`, before `UIManagerTitleHook`). Single source of truth for `Ui_CreateEncodedText` pattern resolution with prologue validation. Used by `SetFrameTitleByFrameId`, `AttachCompositeRootToFrame`, and the title hook namespace. Replaces 3 previously duplicated inline scans.
 
-2. **`ResolveSetFrameText()`** â€” new shared helper that extracts the DevText call-site derivation for `Ui_SetFrameText`. Used by both `SetFrameTitleByFrameId` and `AttachCompositeRootToFrame`. Eliminates duplicated call-site-walking logic.
+2. **`ResolveSetFrameText()`** — new shared helper that extracts the DevText call-site derivation for `Ui_SetFrameText`. Used by both `SetFrameTitleByFrameId` and `AttachCompositeRootToFrame`. Eliminates duplicated call-site-walking logic.
 
-3. **Static address comments removed** â€” All hardcoded-address-bearing comments (3 locations in `py_ui.h`) were removed. Function resolution is now exclusively via runtime assertion/pattern scanning.
+3. **Static address comments removed** — All hardcoded-address-bearing comments (3 locations in `py_ui.h`) were removed. Function resolution is now exclusively via runtime assertion/pattern scanning.
 
-4. **`ProcessFrameControllerUpdateByFrameId()`** â€” `AttachCompositeRootToFrame` now calls the existing `ProcessFrameControllerUpdateByFrameId` rather than resolving a raw `layout_fn` pointer via a weak byte-pattern scan.
+4. **`ProcessFrameControllerUpdateByFrameId()`** — `AttachCompositeRootToFrame` now calls the existing `ProcessFrameControllerUpdateByFrameId` rather than resolving a raw `layout_fn` pointer via a weak byte-pattern scan.
 
-5. **Canonical Python API** â€” `create_container_window_with_title(x, y, width, height, title)` added as a one-call titled container window creation. The older `create_window` (DevText clone path) is retained for backward compatibility.
+5. **Canonical Python API** — `create_container_window_with_title(x, y, width, height, title)` added as a one-call titled container window creation. The older `create_window` (DevText clone path) is retained for backward compatibility.
 
-6. **Stubs updated** â€” `stubs/PyUIManager.pyi` now includes all ~22 previously-missing C++ binding signatures.
+6. **Stubs updated** — `stubs/PyUIManager.pyi` now includes all ~22 previously-missing C++ binding signatures.
 
 See `docs/RE/window_creation_architecture.md` for the updated canonical API reference.

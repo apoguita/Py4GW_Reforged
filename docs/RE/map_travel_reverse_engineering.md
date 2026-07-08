@@ -1,4 +1,6 @@
-# Guild Wars Map Travel â€” Reverse Engineering (2026-06-08)
+# Guild Wars Map Travel — Reverse Engineering (2026-06-08)
+
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
 
 EXE build: 05-30-2026 | Scope: Full end-to-end pipeline + travel-back blocking experiments
 
@@ -122,23 +124,23 @@ Operational conclusion:
 ## 1. Pipeline Overview
 
 ```
-World Map Click â†’ OnLocationTagNotifyDoubleClick â†’ OnTravelAttempt
-  â†’ kTravel (0x10000183) â†’ IUi::MapSelect â†’ GameRedirectMission
-  â†’ Auth Server â†’ OnRedirect â†’ GameJoin â†’ OnLoadMap
-  â†’ PlayerLoadMap â†’ Loading Screen â†’ MissionCliOnEnterWorld
-  â†’ GameEnterWorld â†’ [arrived]
+World Map Click → OnLocationTagNotifyDoubleClick → OnTravelAttempt
+  → kTravel (0x10000183) → IUi::MapSelect → GameRedirectMission
+  → Auth Server → OnRedirect → GameJoin → OnLoadMap
+  → PlayerLoadMap → Loading Screen → MissionCliOnEnterWorld
+  → GameEnterWorld → [arrived]
 ```
 
-## 2. Key Functions â€” WASM â†” EXE Mappings
+## 2. Key Functions — WASM ↔ EXE Mappings
 
 | Function | WASM | EXE | Scanner Pattern |
 |----------|------|-----|-----------------|
 | `MissionCliOnErrorRedirect` | `ram:80ca0d96` | `0x00849230` | `55 8B EC 8B 45 08 53 56 57 8B 70 04` |
 | `MissionCliOnRedirect` | `ram:80ca3ac2` | `0x00849990` | `55 8B EC 8B 45 08 83 EC 08 8B 40 20` |
 | `MissionClient::GameJoin` | `ram:80ce01aa` | `0x0084b4f0` | `55 8B EC 83 EC 14` |
-| `GameRedirectMission` | `ram:80ce1ad1` | `0x0084b770` | `81 8E 90 01 00 00 00 02 00 00 BA 2C` â†’ `ToFunctionStart` |
+| `GameRedirectMission` | `ram:80ce1ad1` | `0x0084b770` | `81 8E 90 01 00 00 00 02 00 00 BA 2C` → `ToFunctionStart` |
 | `GameEnterWorld` | `ram:80ce0cdb` | TBD | TBD |
-| `MsgSendReadyToPlay` | `ram:80ce82ce` | `0x0084cf80` | `C7 45 E8 90 00 00 00` â†’ `ToFunctionStart` |
+| `MsgSendReadyToPlay` | `ram:80ce82ce` | `0x0084cf80` | `C7 45 E8 90 00 00 00` → `ToFunctionStart` |
 | `PropGet` | `ram:8000ac03` | `0x0047f510` | `8B 0D ?? ?? ?? ?? 64 A1 2C 00 00 00 8B 04 88 8B 80 08 00 00 00 C3` |
 | `GameLeave` | `ram:80ce1569` | `0x0084b610` | `55 8B EC 8B 45 08 8B 88 90 01 00 00` |
 | `NetGameClientGameRedirect` | `ram:80d0d2b3` | `0x0048e970` | TBD |
@@ -167,12 +169,12 @@ World Map Click â†’ OnLocationTagNotifyDoubleClick â†’ OnTravelAttempt
 ### State Machine
 
 ```
-IDLE â†’ REDIRECTING(0x200) â†’ REDIRECT_RECEIVED(0x210) â†’ JOINING(0x230) â†’ IN_GAME(0x238) â†’ LEAVING(0x23A) â†’ DISCONNECTED
+IDLE → REDIRECTING(0x200) → REDIRECT_RECEIVED(0x210) → JOINING(0x230) → IN_GAME(0x238) → LEAVING(0x23A) → DISCONNECTED
 ```
 
-### Redirect Params (@ +0x1FCâ€“0x228)
+### Redirect Params (@ +0x1FC–0x228)
 
-Every call to `GameRedirectMission` does `MemZero(context+0x1FC, 0x2C)` â€” clears all 44 bytes before writing new params. Each call overwrites previous redirect state.
+Every call to `GameRedirectMission` does `MemZero(context+0x1FC, 0x2C)` — clears all 44 bytes before writing new params. Each call overwrites previous redirect state.
 
 | Offset | Size | Field |
 |--------|------|-------|
@@ -183,9 +185,9 @@ Every call to `GameRedirectMission` does `MemZero(context+0x1FC, 0x2C)` â€”
 | 0x21C | 4 | redirect_district |
 | 0x220 | 4 | redirect_language |
 
-### Server Response Params (@ +0x1C8â€“0x1F8)
+### Server Response Params (@ +0x1C8–0x1F8)
 
-Stored separately from redirect params â€” survives `MemZero` at 0x1FC.
+Stored separately from redirect params — survives `MemZero` at 0x1FC.
 
 | Offset | Size | Field |
 |--------|------|-------|
@@ -195,7 +197,7 @@ Stored separately from redirect params â€” survives `MemZero` at 0x1FC.
 | 0x1EC | 4 | security_token |
 | 0x1F0 | 4 | district / guild_seq |
 
-### Join Params (@ +0x194â€“0x1C4)
+### Join Params (@ +0x194–0x1C4)
 
 Stored by `GameJoin`.
 
@@ -212,7 +214,7 @@ Stored by `GameJoin`.
 
 ### Observer State Flag
 
-`context[0x2A8] >> 4 & 1` â€” true when player is in observer mode. Bypasses most travel validation in `IUi::MapSelect`.
+`context[0x2A8] >> 4 & 1` — true when player is in observer mode. Bypasses most travel validation in `IUi::MapSelect`.
 
 ## 4. Denial Paths (18 total)
 
@@ -226,35 +228,35 @@ Stored by `GameJoin`.
 | 6 | `MapGetMissionTagFlags` | Mission not unlocked | Tag bit 0 = 0 |
 | 7 | `MapGetMissionTagFlags` | `data[0x40]==0 && data[0x44]==0` | Challenge incomplete |
 | 8 | `MapGetMissionTagFlags` | `data[0x10] & 0x20` | Blocking flag |
-| 9â€“12 | `GmTerritoryCanTravel` | Territory invalid, cross-region, GH blocked | Return false |
-| 13 | `MissionCliOnErrorRedirect` | Server error type 0x11 | Fatal â€” re-redirect |
+| 9–12 | `GmTerritoryCanTravel` | Territory invalid, cross-region, GH blocked | Return false |
+| 13 | `MissionCliOnErrorRedirect` | Server error type 0x11 | Fatal — re-redirect |
 | 14 | `MissionCliOnErrorRedirect` | Server error non-fatal | Silent re-redirect |
 | 15 | `PartyCliOnRedirectCancelError` | Party leader cancels | Chat error + UI msg |
 | 16 | `PlayerLoadMap` | File not in .dat archive | Cleanup + fail msg |
 | 17 | `GameJoin` | Map system not ready | Early return |
 | 18 | `MissionCliObserveGame` | Game not in observe table | Assertion |
 
-### Territory â†’ Region Mapping
+### Territory → Region Mapping
 
 | Territory | Region | Guild Hall? |
 |-----------|--------|-------------|
-| 0â€“4 | 0 | Yes |
+| 0–4 | 0 | Yes |
 | 5 | 6 | No |
 | 6 | 7 | No |
 
-`GmTerritoryCanTravel(from, to)`: same region allows travel. GH sentinel `0xFFFFFFFE` only allowed from territories 0â€“4.
+`GmTerritoryCanTravel(from, to)`: same region allows travel. GH sentinel `0xFFFFFFFE` only allowed from territories 0–4.
 
 ## 5. Server-Side Arrival Check
 
-`PlayerLoadMap` â†’ `MsgSendReadyToPlay()` sends `{GUID, 0x90}` via `MsgConnSendStruct(conn, 0x14, &packet)`. Server receives this and checks permissions.
+`PlayerLoadMap` → `MsgSendReadyToPlay()` sends `{GUID, 0x90}` via `MsgConnSendStruct(conn, 0x14, &packet)`. Server receives this and checks permissions.
 
-If map is locked: server sends `OnErrorRedirect` with mission code and territory `0xFFFFFFFD`. Client handler calls `GameRedirectMission(context, mission, 0xFFFFFFFD, 0, 0xFFFFFFFF)` â€” sends player back to default territory.
+If map is locked: server sends `OnErrorRedirect` with mission code and territory `0xFFFFFFFD`. Client handler calls `GameRedirectMission(context, mission, 0xFFFFFFFD, 0, 0xFFFFFFFF)` — sends player back to default territory.
 
 **Multiple MsgSendReadyToPlay paths exist:**
-1. `context[0x3C] != 0 && is_first_load && !ad_playing` â†’ direct call
-2. `context[0x3C] != 0 && !is_first_load` â†’ falls through to path 3
-3. `context[0x3C] == 0 && file_found` â†’ direct call
-4. `GameQueueReadyToPlay()` sets flag â†’ deferred call later
+1. `context[0x3C] != 0 && is_first_load && !ad_playing` → direct call
+2. `context[0x3C] != 0 && !is_first_load` → falls through to path 3
+3. `context[0x3C] == 0 && file_found` → direct call
+4. `GameQueueReadyToPlay()` sets flag → deferred call later
 
 ## 6. Observer Mode Bypass
 
@@ -264,10 +266,10 @@ When `MissionCliIsObserver()` returns true, `IUi::MapSelect` skips: party checks
 
 ```python
 mt_step0(): send kTravel to TARGET map
-  â†’ Wait for loading anchor (kLoadMapContext via OnMapTestUIMessage)
-mt_step1(): send 3Ã— kTravel to CANCEL map (795, district 2)
-  â†’ Auth server notified â†’ game server disconnect
-  â†’ MapTest detects disconnect â†’ retries from step0
+  → Wait for loading anchor (kLoadMapContext via OnMapTestUIMessage)
+mt_step1(): send 3× kTravel to CANCEL map (795, district 2)
+  → Auth server notified → game server disconnect
+  → MapTest detects disconnect → retries from step0
 ```
 
 The cancel redirect pre-empts the server's travel-back. Client disconnects from target, but the retry loop reconnects. Eventually one cycle succeeds.
@@ -343,9 +345,9 @@ Current logging behavior:
 |----------|--------|
 | Block OnRedirect + OnErrorRedirect together | Immediate kick |
 | Block OnErrorRedirect only | ~5s timeout then kick |
-| Cancel from OnMapTestUIMessage during loading | Immediate disconnect (authâ†’game server notification) |
+| Cancel from OnMapTestUIMessage during loading | Immediate disconnect (auth→game server notification) |
 | Cancel redirect back to current server | Error's OnRedirect never caught by hook |
-| Block MsgSendReadyToPlay (always) | Player stuck in loading forever â€” no error, no kick, frozen |
+| Block MsgSendReadyToPlay (always) | Player stuck in loading forever — no error, no kick, frozen |
 | Block MsgSendReadyToPlay (first only) | First call blocked, server still sent OnErrorRedirect via another path |
 | Redirect error back to target via GameRedirectMission hook | Logging complete; bypass still unresolved |
 
@@ -489,43 +491,43 @@ Authoritative emitted scenario labels:
 
 Any references in this section to older buttons such as `Plain Probe`, `Owned Probe`, or `Rewrite EXP` should be treated as stale historical notes, not the active workflow.
 
-- **"travel"** â€” full MapTest bot tree (original working approach)
-- **"test ready block"** â€” enables `block_ready_to_play`, sends travel
-- **"test redirect block"** â€” enables `block_redirect_to_target`, sends travel
+- **"travel"** — full MapTest bot tree (original working approach)
+- **"test ready block"** — enables `block_ready_to_play`, sends travel
+- **"test redirect block"** — enables `block_redirect_to_target`, sends travel
 
 Current active surface in the cleaned widget:
 
-- `Plain Probe (445)` Ã¢â‚¬â€ unowned observer baseline
-- `Owned Probe (81)` Ã¢â‚¬â€ owned control path
-- `Rewrite EXP (445)` Ã¢â‚¬â€ rollback rewrite experiment
+- `Plain Probe (445)` — unowned observer baseline
+- `Owned Probe (81)` — owned control path
+- `Rewrite EXP (445)` — rollback rewrite experiment
 
 ### Debug Output Fields
 
-`rtp_calls` / `rtp_blocked` / `rtp_active` â€” MsgSendReadyToPlay counters
-`rdr_calls` / `rdr_hits` / `rdr_active` â€” redirect-to-target counters
-`reason` / `action` â€” what each hook did on last call
-`seq` / `handler` / `blocked` â€” hook call tracking
-`mission` / `region_or_type` / `map_or_territory` â€” packet contents
+`rtp_calls` / `rtp_blocked` / `rtp_active` — MsgSendReadyToPlay counters
+`rdr_calls` / `rdr_hits` / `rdr_active` — redirect-to-target counters
+`reason` / `action` — what each hook did on last call
+`seq` / `handler` / `blocked` — hook call tracking
+`mission` / `region_or_type` / `map_or_territory` — packet contents
 
-`travel_redirect_log` Ã¢â‚¬â€ shared native redirect-event stream printed by `GodTools.py`
+`travel_redirect_log` — shared native redirect-event stream printed by `GodTools.py`
 
 Additional debug fields now in active use:
 
 - `travel_path_summary` - derived outcome line for `ready_to_play_sent`, `redirect_items_loop`, or `load_loop_after_rewrite`
 - `load_info_path` - compact view of the observed `INSTANCE_LOAD_INFO` state sequence
 
-- `packet_u32_00` ... `packet_u32_30` Ã¢â‚¬â€ raw packet preview for redirect/error handlers
+- `packet_u32_00` ... `packet_u32_30` — raw packet preview for redirect/error handlers
 - these fields were added specifically to classify the OnErrorRedirect packet family
 - caller_label / caller_va / caller_return_address - identifies which code path emitted each redirect call
 
 ## 9. Key Insights
 
 1. **MemZero at context+0x1FC** is the critical overwrite point. Each `GameRedirectMission` call destroys previous redirect state.
-2. **Auth server notifies game server** â€” sending any redirect (even cancel) causes target game server to disconnect client. The disconnect is inevitable.
-3. **MsgSendReadyToPlay blocking works** â€” prevents server from checking permissions, prevents OnErrorRedirect. But leaves player stuck in loading (GameEnterWorld never fires).
-4. **Multiple MsgSendReadyToPlay paths** â€” blocking only the first call is insufficient; other paths trigger later.
-5. **OnErrorRedirect fires during loading** â€” before GameEnterWorld. Server sends it independently of ready signal in some cases.
-6. **GameRedirectMission hook can redirect errors back to target** â€” pending test.
+2. **Auth server notifies game server** — sending any redirect (even cancel) causes target game server to disconnect client. The disconnect is inevitable.
+3. **MsgSendReadyToPlay blocking works** — prevents server from checking permissions, prevents OnErrorRedirect. But leaves player stuck in loading (GameEnterWorld never fires).
+4. **Multiple MsgSendReadyToPlay paths** — blocking only the first call is insufficient; other paths trigger later.
+5. **OnErrorRedirect fires during loading** — before GameEnterWorld. Server sends it independently of ready signal in some cases.
+6. **GameRedirectMission hook can redirect errors back to target** — pending test.
 
 Additional current insights:
 
@@ -785,8 +787,8 @@ Conclusion:
 
 | File | Purpose |
 |------|---------|
-| `Py4GW\vendor\gwca\Source\MapMgr.cpp` | Hooks, toggles, debug counters, shared redirect log |
-| `Py4GW\vendor\gwca\Include\GWCA\Managers\MapMgr.h` | Public API |
+| `Py4GW_Reforged_Native\src\GW\map\` (legacy cross-ref: `Py4GW\vendor\gwca\Source\MapMgr.cpp`) | Hooks, toggles, debug counters, shared redirect log |
+| `Py4GW_Reforged_Native\include\GW\map\map.h` (legacy cross-ref: `Py4GW\vendor\gwca\Include\GWCA\Managers\MapMgr.h`) | Public API |
 | `Py4GW\src\Py4GW_UI.cpp` | Python bindings for `map_test_*`, travel debug, and redirect logs |
 | `Py4GW_python_files\GodTools.py` | Bot-tree launcher plus RE probes, packet capture, travel debug UI, redirect-log output |
 | `.opencode/projects/re/map-travel/` | Full project pool + status |
@@ -868,7 +870,7 @@ All 20 stages confirmed via WASM decompilation as of 2026-06-12.
 | 14 | `CharCliOnMapInitStart` | `ram:80c1c9e2` | Map bounds allocation |
 | 15 | `CharCliOnMapInit` | `ram:80c1bd0e` | Compressed map data chunks |
 | 16 | `CharCliOnMapInit` | `ram:80c1bd0e` | Decompression trigger |
-| 17 | `MissionCliOnEnterWorld` | `ram:80ca093e` | Gate check â†’ GameEnterWorld |
+| 17 | `MissionCliOnEnterWorld` | `ram:80ca093e` | Gate check → GameEnterWorld |
 | 18 | `MissionClient::GameEnterWorld` | `ram:80ce0cdb` | ENTERED_WORLD commitment |
 | 19 | `MissionClient::MsgSendFailedToLoad` | `ram:80ce7d98` | File not found fallback |
 | 20 | `MissionClient::Disconnect` | `ram:80cdff99` | Cascade disconnect |
@@ -879,42 +881,42 @@ All 20 stages confirmed via WASM decompilation as of 2026-06-12.
 
 ### Path A: Normal (World Map)
 ```
-IUi::MapSelect â†’ PartyCliTravelMission â†’ GameRedirectMission â†’ OnRedirect â†’ GameJoin
+IUi::MapSelect → PartyCliTravelMission → GameRedirectMission → OnRedirect → GameJoin
 ```
 Checks: territory (`GmTerritoryCanTravel`), party consent, mission_locked, tag_flags.
 
 ### Path B: Observer-Bypass (Normal dispatch, reduced checks)
 ```
-IUi::MapSelect â†’ if MissionCliIsObserver() â†’ SKIP PartyCliTravelMission â†’ GameRedirectMission
+IUi::MapSelect → if MissionCliIsObserver() → SKIP PartyCliTravelMission → GameRedirectMission
 ```
 Same auth+redirect pipeline, skips party/territory checks.
 
 ### Path C: Observer-Alt (0x8E protocol)
 ```
-MissionCliObserveGame â†’ MsgSendObserveGame(0x8E) â†’ Server 0x1D â†’ OnNetMsg â†’ GameJoin
+MissionCliObserveGame → MsgSendObserveGame(0x8E) → Server 0x1D → OnNetMsg → GameJoin
 ```
 Skips auth server entirely. Converges at GameJoin.
 
 ### Path D: Reconnect Travel (BYPASSES AUTH SERVER)
 ```
-IUi::CompleteLogin â†’ if createParams & 2 â†’ GameRedirectReconnectValidate â†’ GameRedirectReconnect â†’ ReadReconnectData(0x0B) â†’ GameJoin DIRECTLY
+IUi::CompleteLogin → if createParams & 2 → GameRedirectReconnectValidate → GameRedirectReconnect → ReadReconnectData(0x0B) → GameJoin DIRECTLY
 ```
 NO auth server redirect. Reads saved reconnect data from archive file 0x0B.
 
 ### Path E: Travel-on-Login (0xB2 packet)
 ```
-PartyCliTravelMissionLogin â†’ MsgSendTravelMissionLogin â†’ sends [0xB2 | param] packet
+PartyCliTravelMissionLogin → MsgSendTravelMissionLogin → sends [0xB2 | param] packet
 ```
 
 ### Path F: Sentinel Redirect (0xFFFFFFFD)
 ```
-IUi::MapSelect type=2 â†’ GameRedirectMission(1, 0, 0xFFFFFFFD, 0, 0xFFFFFFFF)
+IUi::MapSelect type=2 → GameRedirectMission(1, 0, 0xFFFFFFFD, 0, 0xFFFFFFFF)
 ```
 Error recovery sentinel territory.
 
 ### Path G: GM Within-Map Teleport
 ```
-CWorldMap::OnFrameMsgKeyDown (Ctrl+Shift+T) â†’ CharCliPlayerOrderTeleport
+CWorldMap::OnFrameMsgKeyDown (Ctrl+Shift+T) → CharCliPlayerOrderTeleport
 ```
 Within current map only. Gated on `MissionCliIsGameMaster()`.
 
@@ -931,7 +933,7 @@ Within current map only. Gated on `MissionCliIsGameMaster()`.
 | 0x08 | ENTERED_WORLD | `GameEnterWorld` | `Context::Reset` |
 | 0x10 | REDIRECT_RECEIVED | `MissionCliOnRedirect` | `Context::Reset` |
 | 0x20 | JOINING | `GameJoin` | `Context::Reset` |
-| 0x40 | LOGIN_INIT_REQUIRED | `OnNetMsg` (0x1E, 0x1F) | â€” |
+| 0x40 | LOGIN_INIT_REQUIRED | `OnNetMsg` (0x1E, 0x1F) | — |
 | 0x80 | MAP_DATA_RCVD | `MissionCliOnMapData` | `Context::Reset` |
 | 0x200 | REDIRECTING | `GameRedirectMission` | `Context::Reset` |
 
@@ -939,18 +941,18 @@ Within current map only. Gated on `MissionCliIsGameMaster()`.
 
 | Bit | Mask | Name | Check Function | Set By |
 |-----|------|------|---------------|--------|
-| 0 | 0x01 | BASE_FLAG | â€” | `MissionCliOnAccessRights` |
-| 1 | 0x02 | CONNECTED | `MissionCliIsConnected()` â†’ `(ctx[0x2a8]>>1)&1` | `MissionCliOnAccessRights` |
-| 2 | 0x04 | DEVELOPER | `MissionCliIsDeveloper()` â†’ `(ctx[0x2a8]>>2)&1` | `MissionCliOnAccessRights` |
-| 3 | 0x08 | GAME_MASTER | `MissionCliIsGameMaster()` â†’ `(ctx[0x2a8]>>3)&1` | `MissionCliOnAccessRights` |
-| 4 | 0x10 | OBSERVER | `MissionCliIsObserver()` â†’ `(ctx[0x2a8]>>4)&1` | `MissionCliOnMapData` |
+| 0 | 0x01 | BASE_FLAG | — | `MissionCliOnAccessRights` |
+| 1 | 0x02 | CONNECTED | `MissionCliIsConnected()` → `(ctx[0x2a8]>>1)&1` | `MissionCliOnAccessRights` |
+| 2 | 0x04 | DEVELOPER | `MissionCliIsDeveloper()` → `(ctx[0x2a8]>>2)&1` | `MissionCliOnAccessRights` |
+| 3 | 0x08 | GAME_MASTER | `MissionCliIsGameMaster()` → `(ctx[0x2a8]>>3)&1` | `MissionCliOnAccessRights` |
+| 4 | 0x10 | OBSERVER | `MissionCliIsObserver()` → `(ctx[0x2a8]>>4)&1` | `MissionCliOnMapData` |
 
 ### Offset 0x2A8 Access Rights Mapping
 
 `MissionCliOnAccessRights` reads server packet[4] and maps:
-- Packet bit 0 â†’ `ctx[0x2a8]` bit 0 (BASE_FLAG)
-- Packet bit 1 â†’ `ctx[0x2a8]` bit 2 (DEVELOPER)
-- Packet bit 2 â†’ `ctx[0x2a8]` bit 3 (GAME_MASTER)
+- Packet bit 0 → `ctx[0x2a8]` bit 0 (BASE_FLAG)
+- Packet bit 1 → `ctx[0x2a8]` bit 2 (DEVELOPER)
+- Packet bit 2 → `ctx[0x2a8]` bit 3 (GAME_MASTER)
 
 Bits 1 and 4 are set by separate handlers:
 - Bit 1 (CONNECTED) also set by `OnNetMsg` (0x1E)
@@ -966,10 +968,10 @@ The sole caller of `GameEnterWorld`. Location: `ram:80ca093e` (428 bytes).
 
 Two conditions, either is sufficient:
 
-1. **`ctx[0x238] != 0`** â€” map metadata present (set by `MissionCliOnMapData`, packet[0x0C])
-2. **`ctx[0x2A8] & 0x10`** â€” observer flag set (set by `MissionCliOnMapData`, packet[0x18])
+1. **`ctx[0x238] != 0`** — map metadata present (set by `MissionCliOnMapData`, packet[0x0C])
+2. **`ctx[0x2A8] & 0x10`** — observer flag set (set by `MissionCliOnMapData`, packet[0x18])
 
-If **NEITHER** is true, `GameEnterWorld` is NOT called â€” arrival is blocked.
+If **NEITHER** is true, `GameEnterWorld` is NOT called — arrival is blocked.
 
 ### Pseudocode
 
@@ -983,10 +985,10 @@ def OnEnterWorld(packet, dispatchParam):
     elif (context[0x2a8] & 0x10) != 0:   # Observer flag set?
         pass  # proceed (uses context for prefetch)
     else:
-        return EARLY                     # ðŸš« DENIAL: neither flag set
+        return EARLY                     # 🚫 DENIAL: neither flag set
 
     ManifestStartPrefetch(context)        # Start content download
-    GameEnterWorld(context)               # ðŸŽ¯ Commit arrival
+    GameEnterWorld(context)               # 🎯 Commit arrival
 ```
 
 ### Key Insight
@@ -1070,10 +1072,10 @@ The reconnect path reads saved data from archive file 0x0B (0x49 bytes) and call
 |--------|------|-------|-------|
 | 0x00 | 1 | version | Must be 0x01 |
 | 0x01 | 4 | build_id | Must match `BuildId()` |
-| 0x05 | 51 | mission_data | Context state from last `GameEnterWorld` (offsets 0x194â€“0x1C0) |
-| 0x38 | 16 | guid | 4Ã— uint32 character GUID |
+| 0x05 | 51 | mission_data | Context state from last `GameEnterWorld` (offsets 0x194–0x1C0) |
+| 0x38 | 16 | guid | 4× uint32 character GUID |
 | 0x41 | 4 | timestamp | UTC minutes since 2001 |
-| 0x45 | 4 | crc32 | CRC32 over bytes 0x00â€“0x44 |
+| 0x45 | 4 | crc32 | CRC32 over bytes 0x00–0x44 |
 
 ### Validation Chain (all client-side, forgeable)
 
@@ -1087,9 +1089,9 @@ The reconnect path reads saved data from archive file 0x0B (0x49 bytes) and call
 `IUi::CompleteLogin` checks `(*UiGetCreateParams() & 2)`. If set:
 
 ```
-â†’ GameRedirectReconnectValidate(GUID) â€” checks reconnect GUID matches
-â†’ if valid â†’ GameRedirectReconnect()
-  â†’ ReadReconnectData() â†’ GameJoin() directly
+→ GameRedirectReconnectValidate(GUID) — checks reconnect GUID matches
+→ if valid → GameRedirectReconnect()
+  → ReadReconnectData() → GameJoin() directly
 ```
 
 `UiGetCreateParams()` returns `&DAT_ram_005a8770` (global).
@@ -1111,7 +1113,7 @@ If we can:
 2. Force the reconnect GUID validation to pass
 3. Set `createParams` bit 2
 
-We could force `GameJoin()` with ANY map_id, EMission, and NetAddress. The reconnect data contains the full game server address + mission params. The CRC32 and GUID check are the only guards â€” **both are client-side and forgeable**. This is the highest-ranked exploit vector.
+We could force `GameJoin()` with ANY map_id, EMission, and NetAddress. The reconnect data contains the full game server address + mission params. The CRC32 and GUID check are the only guards — **both are client-side and forgeable**. This is the highest-ranked exploit vector.
 
 ---
 
@@ -1125,7 +1127,7 @@ We could force `GameJoin()` with ANY map_id, EMission, and NetAddress. The recon
 **EXE**: `0x00847dd0`  
 **WASM**: `ram:80c9990c`  
 **Prototype**: `void(uint gameType, EMission mission, ETerritory territory, uint district, ELanguage language)`  
-**Self-contained**: fetches context via `PropGet(0x11)` â€” no context pointer argument needed
+**Self-contained**: fetches context via `PropGet(0x11)` — no context pointer argument needed
 
 ### Python NativeFunction Usage
 
@@ -1137,7 +1139,7 @@ from Py4GWCoreLib.Game import Game
 Travel = NativeFunction.from_address(
     name="MissionCliGameRedirectMission",
     address=0x00847dd0,
-    prototype=Prototypes["Void_U32_U32_U32_U32_U32"],  # 5Ã— uint32
+    prototype=Prototypes["Void_U32_U32_U32_U32_U32"],  # 5× uint32
 )
 
 # In a frame-safe context:
@@ -1158,39 +1160,39 @@ This is identical to what `IUi::MapSelect` does as a type-2 error-recovery fallb
 
 | Check | Normal World-Map Path | Direct Call |
 |-------|----------------------|-------------|
-| `MapGetMissionTagFlags & 1` (tag_flags) | âœ… Enforced â€” blocks travel if unset | âŒ **SKIPPED** |
-| `target_data[0x12] & 1` (mission_locked) | âœ… Enforced in `OnTravelAttempt` | âŒ **SKIPPED** |
-| `GmTerritoryCanTravel` (territory validation) | âœ… Enforced in `IUi::MapSelect` | âŒ **SKIPPED** |
-| Party leader consent (`PartyCliTravelMission`) | âœ… Enforced â€” server-coordinated | âŒ **SKIPPED** |
-| `MissionCliIsConnected()` | âœ… Enforced | âŒ **SKIPPED** |
-| `MissionCliIsCreatingCharacter()` | âœ… Enforced | âŒ **SKIPPED** |
-| Observer-mode game type validation | âœ… Full mask check (`0x64004`) | ðŸŸ¡ **Minimal** (gameType â‰¤ 0x10 only) |
-| Auth server redirect | âœ… `NetGameClientGameRedirect` | âœ… **SAME** |
+| `MapGetMissionTagFlags & 1` (tag_flags) | ✅ Enforced — blocks travel if unset | ❌ **SKIPPED** |
+| `target_data[0x12] & 1` (mission_locked) | ✅ Enforced in `OnTravelAttempt` | ❌ **SKIPPED** |
+| `GmTerritoryCanTravel` (territory validation) | ✅ Enforced in `IUi::MapSelect` | ❌ **SKIPPED** |
+| Party leader consent (`PartyCliTravelMission`) | ✅ Enforced — server-coordinated | ❌ **SKIPPED** |
+| `MissionCliIsConnected()` | ✅ Enforced | ❌ **SKIPPED** |
+| `MissionCliIsCreatingCharacter()` | ✅ Enforced | ❌ **SKIPPED** |
+| Observer-mode game type validation | ✅ Full mask check (`0x64004`) | 🟡 **Minimal** (gameType ≤ 0x10 only) |
+| Auth server redirect | ✅ `NetGameClientGameRedirect` | ✅ **SAME** |
 
 ### Territory Mapping
 
 | Territory | Region | Guild Hall Access? | Notes |
 |-----------|--------|--------------------|-------|
-| 0â€“4 | 0 | Yes (0xFFFFFFFE sentinel) | Interchangeable within region |
+| 0–4 | 0 | Yes (0xFFFFFFFE sentinel) | Interchangeable within region |
 | 5 | 6 | No | |
 | 6 | 7 | No | |
 
-Territories 0-4 are functionally equivalent â€” any will work for region 0 maps. The `GmTerritoryCanTravel` restriction (same-region only) is bypassed entirely by the direct call.
+Territories 0-4 are functionally equivalent — any will work for region 0 maps. The `GmTerritoryCanTravel` restriction (same-region only) is bypassed entirely by the direct call.
 
 ### GameType
 
-- Valid range: â‰¤ 0x10 (the ONLY check enforced)
-- Values sourced from `ConstGetMissionClientData(EMission)` â†’ `MissionClientData*` at offset `+0x0C`
-- `MissionClientData` struct is 0x7C bytes Ã— 882 entries
+- Valid range: ≤ 0x10 (the ONLY check enforced)
+- Values sourced from `ConstGetMissionClientData(EMission)` → `MissionClientData*` at offset `+0x0C`
+- `MissionClientData` struct is 0x7C bytes × 882 entries
 - For most outposts: `gameType = 1`
 - For guild halls: `gameType = 4`
 
-### âš ï¸ Server-Side Validation Warning
+### ⚠️ Server-Side Validation Warning
 
 **This bypass is client-side only.** The server still validates the redirect when it processes the auth server redirect packet (`0x25`/`0x29`). If the server rejects the map/territory combination:
 
 1. Server sends `MissionCliOnErrorRedirect` with the mission code and territory `0xFFFFFFFD`
-2. Client calls `GameRedirectMission(mission, 0xFFFFFFFD, 0, 0xFFFFFFFF)` â€” sends player back to fallback
+2. Client calls `GameRedirectMission(mission, 0xFFFFFFFD, 0, 0xFFFFFFFF)` — sends player back to fallback
 3. Player arrives at default outpost for that territory
 
 For unowned maps (maps the player doesn't own), the server will always reject via this error path. The most reliable approach combines this direct call with the existing cancel-race `MapTest` harness exposed through `Py4GW.UI.UI.map_test_*`.
@@ -1198,10 +1200,10 @@ For unowned maps (maps the player doesn't own), the server will always reject vi
 ### Bridging Method Used
 
 String-anchoring from WASM assertion strings to their EXE counterparts:
-- `"RedirectMission: %d %08x"` â†’ `FUN_0084b770` (GameRedirectMission) @ `0x0084b770`
-- `"gameType < GAME_TYPES"` â†’ same function, confirms identity
-- Caller of `FUN_0084b770` â†’ `FUN_00847dd0` (MissionCliGameRedirectMission) @ `0x00847dd0`
-- `"index < arrsize(s_missionClientData)"` â†’ `FUN_005a6b00` (ConstGetMissionClientData) @ `0x005a6b00`
+- `"RedirectMission: %d %08x"` → `FUN_0084b770` (GameRedirectMission) @ `0x0084b770`
+- `"gameType < GAME_TYPES"` → same function, confirms identity
+- Caller of `FUN_0084b770` → `FUN_00847dd0` (MissionCliGameRedirectMission) @ `0x00847dd0`
+- `"index < arrsize(s_missionClientData)"` → `FUN_005a6b00` (ConstGetMissionClientData) @ `0x005a6b00`
 
 ---
 
@@ -1362,8 +1364,8 @@ Why this is a problem:
 Current project direction:
 
 - **authoritative travel-bypass / handover logic belongs in C++**
-  - `Py4GW\vendor\gwca\Source\MapMgr.cpp`
-  - `Py4GW\vendor\gwca\Include\GWCA\Managers\MapMgr.h`
+  - `Py4GW_Reforged_Native\src\GW\map\` (legacy cross-ref: `Py4GW\vendor\gwca\Source\MapMgr.cpp`)
+  - `Py4GW_Reforged_Native\include\GW\map\map.h` (legacy cross-ref: `Py4GW\vendor\gwca\Include\GWCA\Managers\MapMgr.h`)
 - **Python should only expose thin bindings**
   - `Py4GW\src\Py4GW_UI.cpp`
 - **`GodTools.py` should remain a test harness / UI surface**

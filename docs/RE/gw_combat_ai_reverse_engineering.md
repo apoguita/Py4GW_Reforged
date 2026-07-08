@@ -1,5 +1,7 @@
 # Guild Wars Combat AI Reverse Engineering
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 Date: 2026-05-20 (updated with WASM pass — 2026-05-30: combat agent data structures, EXE↔WASM mapping, callback system, pressure state)
 Program: `/Gw.exe(Symbols)` and `/Gw.wasm`
 Tooling: REVA / Ghidra MCP
@@ -742,7 +744,7 @@ GWCA's native `Skill` layout already documents these three fields as string ids:
 
 Relevant local source:
 
-- `vendor/gwca/Include/GWCA/GameEntities/Skill.h`
+- `Py4GW_Reforged_Native/include/GW/context/skill.h` (legacy cross-ref: `vendor/gwca/Include/GWCA/GameEntities/Skill.h`)
 - `src/py_skills.cpp`
 
 That means the game does not store full decoded skill descriptions in the constant skill record.

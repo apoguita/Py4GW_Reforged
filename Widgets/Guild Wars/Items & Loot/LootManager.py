@@ -457,7 +457,7 @@ def DrawWindow():
             )
             PyImGui.tree_pop()
 
-        # â€”â€”â€” Save/Load Configs â€”â€”â€”
+        #  Save/Load Configs”
         PyImGui.separator()
         PyImGui.text("Save/Load Configs")
         PyImGui.separator()
@@ -589,7 +589,7 @@ def DrawWindow():
                             loot_filter_singleton.AddToWhitelist(model_id)
                 save_loot_config()
 
-        # â€”â€” Single-item Whitelist/Blacklist â€”â€”
+        # Single-item Whitelist/Blacklist”
         PyImGui.separator()
         PyImGui.text("Single items - By ModelID")
         PyImGui.separator()
@@ -807,7 +807,7 @@ def DrawFilteredLootList():
     # sort by distance, then render with our unified formatter
     display_list.sort(key=lambda x: x[1])
     for mid, dist in display_list:
-        PyImGui.text(f"{_format_model_id(mid)} â€” {dist:.1f} units")
+        PyImGui.text(f"{_format_model_id(mid)} ” {dist:.1f} units")
 
     PyImGui.end()
 

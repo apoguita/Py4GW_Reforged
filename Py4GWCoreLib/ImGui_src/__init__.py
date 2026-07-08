@@ -1,3 +1,1 @@
-from ._core import ImGui
-
-ui = ImGui()
+"""Internal package for the Reforged ImGui implementation."""

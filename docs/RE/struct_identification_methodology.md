@@ -1,5 +1,7 @@
 # Struct Identification Methodology
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 > **Status**: Proven on PreGameContext (2026-06-06). Reusable on any GW context struct.
 > **Goal**: Take a known-but-incomplete C++ context struct and recover its full layout, field types, sizes, and semantics from Ghidra-compiled WASM + EXE binaries.
 > **Running Example**: `PreGameContext` (aka `CScene`) — was wrong in both Python and C++ GWCA; now fully resolved at 0x100 bytes with all 50+ fields named.
@@ -43,9 +45,9 @@ Before starting, ensure you have:
 
 | Resource | Path | Role |
 |----------|------|------|
-| **GWCA C++ headers** | `Py4GW\vendor\gwca\Include\GWCA\Context\` | Current (possibly wrong) struct definitions |
+| **C++ context headers** | `Py4GW_Reforged_Native\include\GW\context\` (legacy cross-ref: `Py4GW\vendor\gwca\Include\GWCA\Context\`) | Current (possibly wrong) struct definitions |
 | **Python ctypes structs** | `Py4GWCoreLib\native_src\context\` | Python-facing struct definitions (may differ from C++) |
-| **GWCA source** | `Py4GW\vendor\gwca\Source\GWCA.cpp` | Shows how the context pointer is discovered (assertion strings, pattern scans) |
+| **C++ context source** | `Py4GW_Reforged_Native\src\GW\context\` (legacy cross-ref: `Py4GW\vendor\gwca\Source\GWCA.cpp`) | Shows how the context pointer is discovered (assertion strings, pattern scans) |
 | **Ghidra WASM** | `/Gw.wasm` (via MCP) | Primary RE target — full debug symbols, all function names |
 | **Ghidra EXE** | `/Gw.exe(Symbols)` (via MCP) | x86 cross-reference — stripped names but cleaner decompiler output |
 | **Assertion string catalog** | `.opencode/skills/gw-bridging/SKILL.md` | Known assertion strings for bridging WASM↔EXE |
@@ -571,8 +573,8 @@ Some init values carry semantic meaning:
 | Artifact | Path |
 |----------|------|
 | Python struct (final) | `Py4GWCoreLib\native_src\context\PreGameContext.py` |
-| C++ header (final) | `Py4GW\vendor\gwca\Include\GWCA\Context\PreGameContext.h` |
-| GWCA access pattern | `Py4GW\vendor\gwca\Source\GWCA.cpp:131-133` |
+| C++ header (final) | `Py4GW_Reforged_Native\include\GW\context\pregame.h` (legacy cross-ref: `Py4GW\vendor\gwca\Include\GWCA\Context\PreGameContext.h`) |
+| C++ access pattern | `Py4GW_Reforged_Native\src\GW\context\` (legacy cross-ref: `Py4GW\vendor\gwca\Source\GWCA.cpp:131-133`) |
 | WASM constructor | `CScene::CScene` @ `ram:80f59983` |
 | WASM FrameProc | `IUi::PregameSceneProc` @ `ram:80f64cf6` |
 | EXE constructor | `0x004ac010` |

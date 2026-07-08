@@ -1,5 +1,7 @@
 # GW UI Controls - Master Catalog (Ghidra swarm, 2026-07-01)
 
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+
 > Produced by a 56-agent Ghidra swarm (model RE + multi-angle discovery + per-control deep RE + fixes)
 > against Gw.exe build 06-14-2026 (program "/Gw.exe (06-14)") and Gw.wasm (named symbols).
 > **166 distinct UI control FrameProcs discovered**; **120 deep-cataloged** (40 in §3 + 80 in §4).

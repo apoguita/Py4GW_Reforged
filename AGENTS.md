@@ -6,6 +6,13 @@
 - README explicitly targets Python 3.13.0 32-bit for injected/runtime work. Do not casually switch interpreter versions when debugging launcher or injection issues.
 - `Py4GWCoreLib/__init__.py` is a broad convenience facade, not a minimal import surface: it manually appends system `site-packages`, re-exports most high-level modules, and redirects `sys.stdout`/`sys.stderr` into the Py4GW console. Avoid treating `import Py4GWCoreLib` as a neutral import when debugging startup/import side effects.
 
+## Backend: legacy GWCA → Reforged Native (active migration)
+
+- The `Py4GW.dll` this Python library loads is built by a **separate sibling C++ project, `Py4GW_Reforged_Native`** (`C:\Users\Apo\Py4GW_Reforged_Native`) — a 32-bit injected DLL that embeds CPython (pybind11), hooks D3D9, and renders ImGui. It is a ground-up rework **replacing the legacy GWCA backend**, itself under parity migration (GWCA managers → `GW/<module>/`). Build there is CMake (`cmake -S . -B build -A Win32` / `vs2022-win32` presets) — no build command from this Python repo applies to it.
+- This Python library reaches the game via **two data paths**: the **bindings path** (`Py*` embedded modules, type-stubbed in `stubs/*.pyi`) and the **context path** (ctypes structs from shared memory, read by `Py4GWCoreLib/native_src/context/*.py`).
+- The library is being repointed from the legacy GWCA-era binding surface to the Reforged Native surface; session log in `docs/migration_to_reforged/`. Assume Reforged names in new code: `Py2DRenderer`→`PyDXOverlay`, `PyCombatEvents`→`PyAgentEvents`, `PyPointers` retired, `Py4GW.Console.*`→`PySystem.Console.*`, `Py4GW.Game.*`→`PySystem`/`PyGameThread`, `Point2D/3D`→`Vec2f/Vec3f`, `PyScanCodeKeystroke`→`PyKeyHandler`. Reforged `Py*` classes favor getter methods + module-level functions over legacy data fields.
+- `Py4GWCoreLib.ImGui` is being rebuilt as a new Reforged-only facade (specs: `docs/ImGui_Facade_Migration_Plan.md`, `docs/ImGui_Implementation_Correction_Instructions.md`); strictly separate from `ImGui_Legacy`, single `ImGui = ImGuiRuntime()` singleton.
+
 ## Docs Hierarchy
 
 - `docs/Py4GW_Conceptual_Model.md` is the canonical architecture/source-of-truth document for project layers and terminology.
@@ -17,6 +24,7 @@
 ## RE (Reverse Engineering) — `docs/RE/`
 
 - **WASM-first workflow (do this by default).** Reverse-engineer on `/Gw.wasm` first, then map the confirmed result to `/Gw.exe`. The WASM retains full debug symbols (`CCharAgent::GetConsiderColor`, `FrameCreate`, `CtlTextMl::Markup`, …), so behaviour, control flow, struct fields, and call chains are far faster and less error-prone to read there. The EXE is stripped (`FUN_xxxxxxxx`) — only enter it at the **end**, to resolve the concrete address the injector needs. Reading architecture in the EXE first is slow and mistake-prone. Watch for genuine ABI differences (WASM `call_indirect` table indices vs. x86 real pointers; possible `Color4b`/struct channel-order repacks) — the architecture transfers, but re-confirm low-level calling/ABI details on the EXE. When calling Ghidra MCP tools, always pass the explicit `program` path (the project has multiple same-named `Gw.exe` images; a name-omitted call silently hits the wrong one). See `docs/RE/CPP_WASM_MAPPING.md` for the translation procedure.
+- **Authoritative C++ backend is now `Py4GW_Reforged_Native`, not GWCA.** The migrated managers live at `C:\Users\Apo\Py4GW_Reforged_Native\src\GW\<module>\` + `include\GW\<module>\` (each module declares named ownership of every resolved symbol; `<module>_patterns.cpp` holds the `Resolve*` functions), and runtime addresses come from `Py4GW_Reforged_Native\offsets\<module>.json` (byte patterns/masks + step resolvers), **not** hardcoded. See that repo's `docs/06-pattern-json-system.md`, `docs/module-migration-guide.md`, and `docs/gwca-manager-dependency-map.md`. The legacy GWCA tree at `C:\Users\Apo\Py4GW\vendor\gwca\` still exists and is a useful cross-reference for how a subsystem worked pre-Reforged, but it is no longer the source of truth. The `Gw.exe`/`Gw.wasm` address tables below describe the actual game and remain valid regardless of wrapper.
 - **Start with `docs/RE/reverse_engineering_reference.md`** — the comprehensive library reference. Covers the three-layer architecture (Python `native_src`, C++ GWCA, Ghidra), key function catalogs with EXE↔WASM↔CPP mappings, bridging techniques, UI message dispatch architecture, and workflows for adding new functions.
 - `docs/RE/CPP_WASM_MAPPING.md` — the full CPP↔WASM↔EXE translation procedure with worked examples and pitfall notes.
 - `docs/RE/rosetta_stone.txt` — GwA2 (AutoIt) to Py4GW function mapping reference.
@@ -31,8 +39,9 @@
 
 | Layer | Path | Key Files |
 |-------|------|-----------|
-| **C++ (GWCA)** | `C:\Users\Apo\Py4GW\vendor\gwca\Source\` | `AgentMgr.cpp`, `UIMgr.cpp`, `GameThreadMgr.cpp` |
-| **C++ (GWCA headers)** | `C:\Users\Apo\Py4GW\vendor\gwca\Include\GWCA\` | `Managers/AgentMgr.h`, `Utilities/Scanner.h` |
+| **C++ (Reforged Native, primary)** | `C:\Users\Apo\Py4GW_Reforged_Native\src\GW\<module>\` + `include\GW\<module>\` | `<module>.cpp`/`.h`, `<module>_patterns.cpp` (`Resolve*` fns) |
+| **C++ pattern/offset data** | `C:\Users\Apo\Py4GW_Reforged_Native\offsets\` | `agent.json`, `ui.json`, `native_ui.json`, … (byte patterns + resolvers) |
+| **C++ (legacy GWCA, cross-ref only)** | `C:\Users\Apo\Py4GW\vendor\gwca\` | `Source/AgentMgr.cpp`, `Include/GWCA/Managers/AgentMgr.h` |
 | **Python native** | `Py4GWCoreLib\native_src\` | `methods/PlayerMethods.py`, `internals/native_function.py` |
 | **Python Scanner** | `Py4GWCoreLib\Scanner.py` | FindAssertion, FindInRange, ToFunctionStart |
 | **Ghidra EXE** | `/Gw.exe(Symbols)` via MCP | 18,017 functions, x86:LE:32, base `0x00400000` |
@@ -57,14 +66,15 @@ The game uses a **hash table** (`THashTable<IFrame::Msg::CHandler>` at `DAT_ram_
 - `0x100000xx` — server→client notifications (~90 mapped, ~15 unknown, ~6 newly discovered via WASM)
 - `0x300000xx` — client→server commands (~30 mapped, all send-to-server actions)
 
-The authoritative UIMessage enum is at `C:\Users\Apo\Py4GW\vendor\gwca\Include\GWCA\Managers\UIMgr.h:294` (~120 entries). To discover missing messages, either hook `SendUIMessage_Func` at runtime (GWCA already does this) or run a Ghidra script against WASM callers of `FrameMsgSendRegistered`. Full procedure including the script is in `docs/RE/reverse_engineering_reference.md` Section 4.
+The authoritative UIMessage enum is now the migrated `enum class UIMessage : uint32_t` in `C:\Users\Apo\Py4GW_Reforged_Native\include\GW\common\constants\ui.h` (aliased as `GW::ui::UIMessage` in `include\GW\ui\ui.h`). The legacy GWCA enum at `C:\Users\Apo\Py4GW\vendor\gwca\Include\GWCA\Managers\UIMgr.h` remains a cross-reference. To discover missing messages, either hook the send path at runtime (Reforged Native registers UI-message callbacks; legacy GWCA hooked `SendUIMessage_Func`) or run a Ghidra script against WASM callers of `FrameMsgSendRegistered`. Full procedure including the script is in `docs/RE/reverse_engineering_reference.md` Section 4.
 
 ### RE Tool Locations
 
 | Layer | Path | Key Files |
 |-------|------|-----------|
-| **C++ (GWCA)** | `C:\Users\Apo\Py4GW\vendor\gwca\Source\` | `AgentMgr.cpp`, `UIMgr.cpp`, `GameThreadMgr.cpp` |
-| **C++ (GWCA headers)** | `C:\Users\Apo\Py4GW\vendor\gwca\Include\GWCA\` | `Managers/AgentMgr.h`, `Utilities/Scanner.h` |
+| **C++ (Reforged Native, primary)** | `C:\Users\Apo\Py4GW_Reforged_Native\src\GW\<module>\` + `include\GW\<module>\` | `<module>.cpp`/`.h`, `<module>_patterns.cpp` (`Resolve*` fns) |
+| **C++ pattern/offset data** | `C:\Users\Apo\Py4GW_Reforged_Native\offsets\` | `agent.json`, `ui.json`, `native_ui.json`, … (byte patterns + resolvers) |
+| **C++ (legacy GWCA, cross-ref only)** | `C:\Users\Apo\Py4GW\vendor\gwca\` | `Source/AgentMgr.cpp`, `Include/GWCA/Managers/AgentMgr.h` |
 | **Python native** | `Py4GWCoreLib\native_src\` | `methods/PlayerMethods.py`, `internals/native_function.py` |
 | **Python Scanner** | `Py4GWCoreLib\Scanner.py` | FindAssertion, FindInRange, ToFunctionStart |
 | **Ghidra EXE** | `/Gw.exe(Symbols)` via MCP | 18,017 functions, x86:LE:32, base `0x00400000` |
