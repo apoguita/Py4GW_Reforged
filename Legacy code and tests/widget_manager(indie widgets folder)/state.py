@@ -1,4 +1,4 @@
-from Py4GWCoreLib import ImGui, PyImGui
+from Py4GWCoreLib import ImGui_Legacy, PyImGui
 from .handler import handler
 
 module_name = "WidgetManager"
@@ -90,7 +90,7 @@ floating_custom_colors = {
 }
 
 # Menu window and layout state
-window_module = ImGui.WindowModule(module_name, window_name="Widgets", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+window_module = ImGui_Legacy.WindowModule(module_name, window_name="Widgets", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 window_x = handler._read_setting_int(module_name, "omx", 100)
 window_y = handler._read_setting_int(module_name, "omy", 100)
 window_module.window_pos = (window_x, window_y)

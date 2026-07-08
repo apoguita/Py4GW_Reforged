@@ -12,15 +12,15 @@ class Botconfig:
         self.is_script_running = False  
         self.log_to_console = True
         self.routine_finished = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 class BOTVARIABLES:
     def __init__(self):
         self.config = Botconfig()
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 bot_variables = BOTVARIABLES()
-bot_variables.config.window_module = ImGui.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+bot_variables.config.window_module = ImGui_Legacy.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 #endregion
 
 coroutines = GLOBAL_CACHE.Coroutines
@@ -163,7 +163,7 @@ def pre_run_checks(log_to_console):
     return True
 
 def RunBotSequentialLogic():
-    """Thread function that manages counting based on ImGui button presses."""
+    """Thread function that manages counting based on ImGui_Legacy button presses."""
     global bot_variables
     while True:
         if not bot_variables.config.is_script_running:

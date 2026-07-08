@@ -3,7 +3,7 @@ import PyImGui
 from typing import Dict
 
 
-from Py4GWCoreLib import ImGui, get_texture_for_model
+from Py4GWCoreLib import ImGui_Legacy, get_texture_for_model
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import ItemArray
 from Py4GWCoreLib import Item
@@ -85,8 +85,8 @@ class IdentifyModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
 
         table_flags = (
             PyImGui.TableFlags.BordersInnerV |
@@ -157,9 +157,9 @@ class IdentifyModule:
 
             PyImGui.table_next_column()
             texture_file = get_texture_for_model(ModelID.Superior_Identification_Kit)
-            if ImGui.ImageButton("##text_unique_name", texture_file, 45, 45):
+            if ImGui_Legacy.ImageButton("##text_unique_name", texture_file, 45, 45):
                 GLOBAL_CACHE.Coroutines.append(IdentifyCheckedItems(self.id_checkboxes))
-            ImGui.show_tooltip("Identify selected items.")    
+            ImGui_Legacy.show_tooltip("Identify selected items.")    
 
             PyImGui.end_table()
                         
@@ -201,7 +201,7 @@ class IdentifyModule:
                         self.id_checkboxes[item_id] = False
                     
                     left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
-                    self.id_checkboxes[item_id] = ImGui.floating_checkbox(
+                    self.id_checkboxes[item_id] = ImGui_Legacy.floating_checkbox(
                         f"{item_id}", 
                         self.id_checkboxes[item_id], 
                         right -25, 

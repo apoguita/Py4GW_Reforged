@@ -1,7 +1,7 @@
 # Agent Name-Tag Coloring (`PyAgentTagColor`)
 
-Recolor agent overhead **name tags** (players, NPCs, enemies) — and the shared
-consider/target ring — **using the game's own renderer**. No ImGui/overlay
+Recolor agent overhead **name tags** (players, NPCs, enemies) â€” and the shared
+consider/target ring â€” **using the game's own renderer**. No ImGui_Legacy/overlay
 drawing, no packet faking: the feature detours the native color resolver the
 engine itself calls, so the tags are drawn by Guild Wars in the color you choose.
 
@@ -16,7 +16,7 @@ Guild Wars decides an agent tag's color in a single resolver
 (`CCharAgent::GetConsiderColor`, EXE `FUN_007f02e0`) that reads the agent's
 allegiance/team/state and writes an ARGB color, which the name-tag renderer then
 draws. `PyAgentTagColor` installs a MinHook detour on that resolver: it lets the
-game compute its default, then — for agents matching a rule — overwrites the
+game compute its default, then â€” for agents matching a rule â€” overwrites the
 color in place. Because the game re-runs the resolver on every tag update, the
 override is durable (unlike a one-shot UI message, which the game would overwrite).
 
@@ -38,12 +38,12 @@ Use `.to_dx_color()` (ARGB), **not** `.to_color()` (that is ABGR, for the overla
 ## Python API
 
 Embedded module `PyAgentTagColor` (import directly). Rule precedence:
-**per-agent → per-allegiance → game default.**
+**per-agent â†’ per-allegiance â†’ game default.**
 
 | Function | Description |
 |----------|-------------|
 | `enable()` / `disable()` / `is_enabled()` | Master gate. The detour stays installed; disabling just short-circuits it (game defaults return). |
-| `is_hook_installed()` | `True` if the resolver detour resolved and installed at DLL init. If `False`, the DLL is stale/mismatched — rebuild + reinject. |
+| `is_hook_installed()` | `True` if the resolver detour resolved and installed at DLL init. If `False`, the DLL is stale/mismatched â€” rebuild + reinject. |
 | `set_agent_color(agent_id, argb)` | Override one agent's tag color (highest precedence). |
 | `remove_agent_color(agent_id)` | Drop that per-agent override. |
 | `set_allegiance_color(allegiance, argb)` | Override a whole category. `allegiance` is 1=Ally, 2=Neutral, 3=Enemy, 4=SpiritPet, 5=Minion, 6=NpcMinipet. |
@@ -77,7 +77,7 @@ PyAgentTagColor.clear_rules()
 - **You must `enable()`.** Setting rules alone does nothing; the detour only
   applies rules while enabled.
 - **Tags recolor when the game re-resolves them.** A tag only repaints while it
-  is being drawn — hold **Ctrl** or turn on "always show names" so tags are
+  is being drawn â€” hold **Ctrl** or turn on "always show names" so tags are
   visible and re-resolved. A rule set for an off-screen/hidden tag applies as
   soon as that tag next renders.
 - **Overrides also affect the consider/target ring**, which shares the resolver.
@@ -85,10 +85,10 @@ PyAgentTagColor.clear_rules()
 - **Never call `read_consider_color` on non-living agents.** Items, gadgets, and
   signposts are not char agents; the underlying resolver asserts and would crash
   the client. The native module guards this (returns `0`), and the harness only
-  enumerates living agents — but if you write your own loop, filter to living
+  enumerates living agents â€” but if you write your own loop, filter to living
   agents (e.g. `AgentArray.GetEnemyArray()` / `GetAllyArray()` / `GetNeutralArray()`).
 - **Item ground labels are not covered.** Item rarity color is markup-based, a
-  different (unimplemented) mechanism — see the RE doc §4.
+  different (unimplemented) mechanism â€” see the RE doc Â§4.
 
 ## Default colors (for reference)
 

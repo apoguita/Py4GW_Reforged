@@ -1,6 +1,6 @@
 import Py4GW
 from Py4GWCoreLib import Timer
-from Py4GWCoreLib import ImGui, PyImGui
+from Py4GWCoreLib import ImGui_Legacy, PyImGui
 from Py4GWCoreLib import GLOBAL_CACHE, Agent
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import ModelID, TitleID
@@ -226,7 +226,7 @@ class Botconfig:
         self.non_movement_timer = Timer()
         self.old_player_x = 0.0
         self.old_player_y = 0.0
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 class BOTVARIABLES:
     def __init__(self):
@@ -240,7 +240,7 @@ class BOTVARIABLES:
         self.skillbar = build()
         
 bot_variables = BOTVARIABLES()
-bot_variables.config.window_module = ImGui.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+bot_variables.config.window_module = ImGui_Legacy.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 #endregion
 
@@ -991,7 +991,7 @@ def SkillHandler():
         yield
 
         
-#region ImGui
+#region ImGui_Legacy
 
 def DrawWindow():
     global bot_variables

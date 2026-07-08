@@ -9,7 +9,7 @@ import PyImGui
 from Py4GWCoreLib import GLOBAL_CACHE, Map, Py4GW, Range
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.AgentArray import AgentArray
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.Overlay import Overlay
 from Py4GWCoreLib.Party import Party
@@ -130,7 +130,7 @@ class EnemyBarWidget:
     def draw(self, row_id: int, progress: float, label: str, fill_color: int) -> EnemyBarInteraction:
         progress = max(0.0, min(1.0, float(progress)))
 
-        ImGui.invisible_button(f"##enemy_bar_{row_id}", self.width, self.height)
+        ImGui_Legacy.invisible_button(f"##enemy_bar_{row_id}", self.width, self.height)
         hovered = PyImGui.is_item_hovered()
         clicked = PyImGui.is_item_clicked(0)
         io = PyImGui.get_io()
@@ -183,7 +183,7 @@ class EnemyBarWidget:
                 self._last_click_by_id[int(row_id)] = (now, mouse_x, mouse_y)
                 self._debug_log(row_id, "click_armed", at_ms=now)
 
-        item_min, item_max, item_size = ImGui.get_item_rect()
+        item_min, item_max, item_size = ImGui_Legacy.get_item_rect()
         x1, y1 = item_min
         x2, y2 = item_max
 
@@ -282,7 +282,7 @@ class EnemyTracker:
     SCANNER_RADIUS = float(Range.SafeCompass.value)
 
     def __init__(self) -> None:
-        self.floating_button = ImGui.FloatingIcon(
+        self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=EnemyTrackerConfig.ICON_PATH,
             window_id="##floating_icon_enemy_tracker_button",
             window_name="Enemy Tracker Toggle",
@@ -581,7 +581,7 @@ class EnemyTracker:
         return max(value_min, min(value_max, int(value)))
 
     def _slider_with_input_int(self, label: str, value: int, value_min: int, value_max: int) -> int:
-        new_value = int(ImGui.slider_int(label, int(value), value_min, value_max))
+        new_value = int(ImGui_Legacy.slider_int(label, int(value), value_min, value_max))
         PyImGui.same_line(0, 6)
         edited_value = PyImGui.input_int(f"##{label}_input", new_value)
         return self._clamp_int(edited_value, value_min, value_max)
@@ -687,7 +687,7 @@ class EnemyTracker:
             _enemy_bar_debug(f"call button clicked agent_id={row.agent_id} name={row.name}")
             _call_target(row.agent_id, interact=self.ui.interact_with_called_target)
         call_hovered = PyImGui.is_item_hovered()
-        call_item_min, call_item_max, _ = ImGui.get_item_rect()
+        call_item_min, call_item_max, _ = ImGui_Legacy.get_item_rect()
         call_x1, call_y1 = call_item_min
         call_x2, call_y2 = call_item_max
         if call_hovered:
@@ -705,7 +705,7 @@ class EnemyTracker:
         row_y1 = min(call_y1, y1)
         row_x2 = max(call_x2, x2)
         row_y2 = max(call_y2, y2)
-        row_hovered = ImGui.is_mouse_in_rect((row_x1, row_y1, row_x2 - row_x1, row_y2 - row_y1))
+        row_hovered = ImGui_Legacy.is_mouse_in_rect((row_x1, row_y1, row_x2 - row_x1, row_y2 - row_y1))
         _enemy_bar_debug(
             f"row geometry agent_id={row.agent_id} "
             f"call_rect=({round(call_x1,1)},{round(call_y1,1)},{round(call_x2,1)},{round(call_y2,1)}) "
@@ -907,7 +907,7 @@ class EnemyTracker:
             skill_id = int(skill.get("id", 0))
             selected = self.ui.atlas_selected_skill_id == skill_id
             texture_path = GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(skill_id)
-            if ImGui.image_toggle_button(f"enemy_atlas_skill_{skill_id}_{index}", texture_path, selected, 42, 42):
+            if ImGui_Legacy.image_toggle_button(f"enemy_atlas_skill_{skill_id}_{index}", texture_path, selected, 42, 42):
                 self.ui.atlas_selected_skill_id = skill_id
 
             if PyImGui.is_item_hovered():
@@ -926,9 +926,9 @@ class EnemyTracker:
             skill_id = int(skill.get("id", 0) or 0)
             texture_path = GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(skill_id) if skill_id > 0 else ""
             if texture_path:
-                ImGui.DrawTexture(texture_path, icon_size, icon_size)
+                ImGui_Legacy.DrawTexture(texture_path, icon_size, icon_size)
             else:
-                ImGui.dummy(icon_size, icon_size)
+                ImGui_Legacy.dummy(icon_size, icon_size)
 
             if PyImGui.is_item_hovered():
                 self._draw_skill_tooltip(skill_id, skill)
@@ -1018,7 +1018,7 @@ class EnemyTracker:
         return
 
     def draw_window(self) -> None:
-        expanded, open_ = ImGui.BeginWithClose(
+        expanded, open_ = ImGui_Legacy.BeginWithClose(
             ini_key=EnemyTrackerConfig.MAIN_INI_KEY,
             name=EnemyTrackerConfig.MODULE_NAME,
             p_open=self.floating_button.visible,
@@ -1043,7 +1043,7 @@ class EnemyTracker:
                     PyImGui.end_tab_item()
                 PyImGui.end_tab_bar()
 
-        ImGui.End(EnemyTrackerConfig.MAIN_INI_KEY)
+        ImGui_Legacy.End(EnemyTrackerConfig.MAIN_INI_KEY)
 
     def _draw_agent_mission_map_marker(self, agent_id: int, color: int) -> None:
         if agent_id <= 0 or not Agent.IsValid(agent_id):
@@ -1144,8 +1144,8 @@ class EnemyTracker:
         )
         PyImGui.set_next_window_pos(left, top)
         PyImGui.set_next_window_size(width, height)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 0.0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0.0, 0.0)
         try:
             if PyImGui.begin("##enemy_tracker_mission_map_range_ring", flags):
                 color = Utils.RGBToColor(80, 190, 255, 230)

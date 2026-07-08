@@ -1,7 +1,7 @@
 
 import PyImGui
 import Py4GW
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import UIManager
@@ -55,8 +55,8 @@ class ColorizeModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
         
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         
         if PyImGui.begin("ColorizeButtons", flags):
             

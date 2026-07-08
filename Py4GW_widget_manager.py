@@ -1,7 +1,7 @@
 from typing import Optional
 import PyImGui
 from Py4GWCoreLib.IniManager import IniManager
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.enums_src.IO_enums import Key
 import Widgets.WidgetCatalog.Py4GW_widget_catalog as widget_catalog
 
@@ -125,9 +125,9 @@ def main():
             
                 py4_gw_library.draw_window()
             else:
-                if ImGui.Begin(ini_key=INI_KEY, name="Widget Manager", flags=PyImGui.WindowFlags.AlwaysAutoResize):
+                if ImGui_Legacy.Begin(ini_key=INI_KEY, name="Widget Manager", flags=PyImGui.WindowFlags.AlwaysAutoResize):
                     widget_manager.draw_ui(INI_KEY)
-                ImGui.End(INI_KEY)
+                ImGui_Legacy.End(INI_KEY)
         else:
             widget_catalog.draw()
             

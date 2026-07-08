@@ -3,7 +3,7 @@ from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Overlay import Overlay
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import Color
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.Pathing import AutoPathing
@@ -179,9 +179,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Path Planner", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

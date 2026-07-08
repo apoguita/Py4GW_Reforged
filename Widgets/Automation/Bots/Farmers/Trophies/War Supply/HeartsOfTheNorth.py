@@ -6,7 +6,7 @@ import time
 from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib.Builds.Any.KeiranThackerayEOTN import KeiranThackerayEOTN
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
-                          Map, ImGui, IniManager, ActionQueueManager, Agent, Player, AgentArray,
+                          Map, ImGui_Legacy, IniManager, ActionQueueManager, Agent, Player, AgentArray,
                           Pathing, TitleID, TITLE_TIERS)
 from Py4GWCoreLib import *
 
@@ -20,7 +20,7 @@ _HOTN_DIALOG_BASE_OFFSET = 0xE  # first HotN mission (AB) is always base_id + 0x
 class MissionConfig:
     name: str
     map_id: int
-    mission_slot: int           # 0=AB, 1=AVoB, 2=SitJ, 3=Rise — added to base_id + 0xE at runtime
+    mission_slot: int           # 0=AB, 1=AVoB, 2=SitJ, 3=Rise â€” added to base_id + 0xE at runtime
     run_movement_fn: Callable   # fn(bot: Botting) -> adds mission-specific movement states
 
 
@@ -84,7 +84,7 @@ class BotSettings:
 
     # Vanguard title cache (populated at start and after each successful run)
     VANGUARD_RANK: int = 0
-    VANGUARD_TIER_NAME: str = "–"
+    VANGUARD_TIER_NAME: str = "â€“"
     VANGUARD_POINTS: int = 0
 
     # Run timing
@@ -242,7 +242,7 @@ _MISSION_COL_LABEL: dict[str, str] = {
     "Rise - WIP":                  "Rise",
 }
 
-# Fixed order for sequence mode: AB → AVoB → SitJ → Rise
+# Fixed order for sequence mode: AB â†’ AVoB â†’ SitJ â†’ Rise
 SEQUENCE_ORDER: list[str] = [
     "Auspicious Beginnings",
     "A Vengance of Blades - WIP",
@@ -696,7 +696,7 @@ def _ensure_ini_initialized() -> bool:
     _settings_ini = IniHandler(ini_path)
     _settings_ini_account_email = account_email
 
-    # ── Load persisted settings ───────────────────────────────────────────────
+    # â”€â”€ Load persisted settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _S = "Settings"
     BotSettings.GOLD_THRESHOLD_DEPOSIT = _settings_ini.read_int( _S, "gold_threshold", BotSettings.GOLD_THRESHOLD_DEPOSIT)
     BotSettings.CUSTOM_BOW_ID          = _settings_ini.read_int( _S, "custom_bow_id",  BotSettings.CUSTOM_BOW_ID)
@@ -704,7 +704,7 @@ def _ensure_ini_initialized() -> bool:
     BotSettings.DEBUG                  = _settings_ini.read_bool(_S, "debug",          BotSettings.DEBUG)
     BotSettings.SHOW_HELP              = _settings_ini.read_bool(_S, "show_help",      BotSettings.SHOW_HELP)
 
-    # ── Load persisted statistics ─────────────────────────────────────────────
+    # â”€â”€ Load persisted statistics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _SS = "Statistics"
     BotSettings.TOTAL_RUNS      = _settings_ini.read_int(  _SS, "total_runs",      0)
     BotSettings.SUCCESSFUL_RUNS = _settings_ini.read_int(  _SS, "successful_runs", 0)
@@ -877,8 +877,8 @@ def _draw_mission_selector(width: int = 340) -> None:
     """
     Mission selector rendered as two rows of highlighted buttons.
 
-    Row 1  ─ one button per mission (abbreviated label, full name as tooltip).
-    Row 2  ─ full-width "All Missions (Sequence)" button.
+    Row 1  â”€ one button per mission (abbreviated label, full name as tooltip).
+    Row 2  â”€ full-width "All Missions (Sequence)" button.
 
     The active selection is highlighted with an amber tint.
     """
@@ -906,7 +906,7 @@ def _draw_mission_selector(width: int = 340) -> None:
     btn_w    = max(1, (width - gap * (n - 1)) // n)
     btn_h    = 30
 
-    # ── Row 1: individual mission buttons ────────────────────────────────────
+    # â”€â”€ Row 1: individual mission buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     for i, (name, short) in enumerate(zip(MISSION_NAMES, _SHORT_LABELS)):
         is_sel = (selected_idx == i)
         bg, hov, act = (SEL_BG, SEL_HOV, SEL_ACT) if is_sel else (OPT_BG, OPT_HOV, OPT_ACT)
@@ -929,7 +929,7 @@ def _draw_mission_selector(width: int = 340) -> None:
         if i < n - 1:
             PyImGui.same_line(0, gap)
 
-    # ── Row 2: full-width sequence button (disabled until sequence mode is ready) ──
+    # â”€â”€ Row 2: full-width sequence button (disabled until sequence mode is ready) â”€â”€
     _DISABLED_BTN = (0.35, 0.35, 0.35, 1.0)
     _DISABLED_TXT = (0.55, 0.55, 0.55, 1.0)
 
@@ -948,7 +948,7 @@ def _draw_mission_selector(width: int = 340) -> None:
         PyImGui.text(f"  Current: {SEQUENCE_ORDER[seq_idx]} ({seq_idx + 1}/{len(SEQUENCE_ORDER)})")
 
 
-_ROW_H = 26  # table row min-height — shared by table_next_row and centering helpers
+_ROW_H = 26  # table row min-height â€” shared by table_next_row and centering helpers
 
 
 def _vcenter() -> None:
@@ -985,7 +985,7 @@ def _draw_stats_tab():
     """Statistics tab content."""
     global _reset_confirm
 
-    # ── Per-mission stats table ───────────────────────────────────────────────
+    # â”€â”€ Per-mission stats table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Columns: label | mission 1 | mission 2 | mission 3 | mission 4
     _missions = list(BotSettings.MISSION_STATS.items())
     _ncols = 1 + len(_missions)
@@ -999,23 +999,23 @@ def _draw_stats_tab():
         for _ in _missions:
             PyImGui.table_setup_column("")
 
-        # ── Header row (manual, for centred labels) ───────────────────────────
+        # â”€â”€ Header row (manual, for centred labels) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _hdr_color = 26 | (38 << 8) | (51 << 16) | (255 << 24)
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_bg_color(2, _hdr_color, -1)
-        PyImGui.table_set_column_index(0)   # label column — leave blank
+        PyImGui.table_set_column_index(0)   # label column â€” leave blank
         for _i, (_mname, _ms) in enumerate(_missions, 1):
             PyImGui.table_set_column_index(_i)
             _ctext(_MISSION_COL_LABEL.get(_mname) or _mname)
 
-        # ── Runs ──────────────────────────────────────────────────────────────
+        # â”€â”€ Runs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Runs")
         for _i, (_, _ms) in enumerate(_missions, 1):
             PyImGui.table_set_column_index(_i)
             _rtext(str(_ms.total_runs))
 
-        # ── Successful ────────────────────────────────────────────────────────
+        # â”€â”€ Successful â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Successful")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1024,7 +1024,7 @@ def _draw_stats_tab():
             _rtext(str(_ms.successful_runs))
             PyImGui.pop_style_color(1)
 
-        # ── Failed ────────────────────────────────────────────────────────────
+        # â”€â”€ Failed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Failed")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1033,7 +1033,7 @@ def _draw_stats_tab():
             _rtext(str(_ms.failed_runs))
             PyImGui.pop_style_color(1)
 
-        # ── Success % ─────────────────────────────────────────────────────────
+        # â”€â”€ Success % â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Success %")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1042,14 +1042,14 @@ def _draw_stats_tab():
             _rtext(_ms.success_rate())
             PyImGui.pop_style_color(1)
 
-        # ── Avg Time ──────────────────────────────────────────────────────────
+        # â”€â”€ Avg Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Avg Time")
         for _i, (_, _ms) in enumerate(_missions, 1):
             PyImGui.table_set_column_index(_i)
             _rtext(_ms.average_time())
 
-        # ── Fastest ───────────────────────────────────────────────────────────
+        # â”€â”€ Fastest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Fastest")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1058,7 +1058,7 @@ def _draw_stats_tab():
             _rtext(_ms.fastest_time())
             PyImGui.pop_style_color(1)
 
-        # ── Slowest ───────────────────────────────────────────────────────────
+        # â”€â”€ Slowest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Slowest")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1067,7 +1067,7 @@ def _draw_stats_tab():
             _rtext(_ms.slowest_time())
             PyImGui.pop_style_color(1)
 
-        # ── Gold ──────────────────────────────────────────────────────────────
+        # â”€â”€ Gold â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Gold")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1076,7 +1076,7 @@ def _draw_stats_tab():
             _rtext(f"{1000 * _ms.successful_runs:,}")
             PyImGui.pop_style_color(1)
 
-        # ── War Supplies ──────────────────────────────────────────────────────
+        # â”€â”€ War Supplies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("War Supplies")
         for _i, (_, _ms) in enumerate(_missions, 1):
@@ -1096,13 +1096,13 @@ def _draw_stats_tab():
     if PyImGui.begin_table("VanguardTable", 2, _vflags):
         PyImGui.table_setup_column("", PyImGui.TableColumnFlags.WidthStretch, 0.4)
         PyImGui.table_setup_column("", PyImGui.TableColumnFlags.WidthStretch, 0.6)
-        # ── Header row ────────────────────────────────────────────────────
+        # â”€â”€ Header row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         _hdr_color = 26 | (38 << 8) | (51 << 16) | (255 << 24)
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_bg_color(2, _hdr_color, -1)
         PyImGui.table_set_column_index(0); _ctext("Vanguard Rank")
         PyImGui.table_set_column_index(1); _ctext("Runs to Max")
-        # ── Data row ──────────────────────────────────────────────────────
+        # â”€â”€ Data row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0)
         if is_maxed:
@@ -1121,7 +1121,7 @@ def _draw_stats_tab():
 
     PyImGui.separator()
     if PyImGui.collapsing_header("Reset"):
-        _reset_confirm = PyImGui.checkbox("Confirm reset — this cannot be undone", _reset_confirm)
+        _reset_confirm = PyImGui.checkbox("Confirm reset â€” this cannot be undone", _reset_confirm)
         _avail = PyImGui.get_content_region_avail()
         _reset_w = int(_avail[0]) if _avail[0] > 0 else 340
         if _reset_confirm:
@@ -1187,7 +1187,7 @@ bot.UI.override_draw_config(lambda: _draw_settings(bot))
 
 def _draw_hotn_help() -> None:
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color, IconsFontAwesome5
+    from Py4GWCoreLib import ImGui_Legacy, Color, IconsFontAwesome5
 
     header_color = Color(255, 200, 100, 255)
     green_color  = Color(100, 220, 100, 255)
@@ -1196,11 +1196,11 @@ def _draw_hotn_help() -> None:
 
     PyImGui.push_text_wrap_pos(PyImGui.get_cursor_pos_x() + 380.0)
 
-    # ── Title ─────────────────────────────────────────────────────────────────
+    # â”€â”€ Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     PyImGui.spacing()
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Hearts of the North - Bot Help", header_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.spacing()
     PyImGui.text_wrapped("Welcome to the complete Hearts of the North farming bot. This bot is still in development. As additional missions have been mapped they will be added. Expect issues with WIP missions, but feel free to test.")
@@ -1212,7 +1212,7 @@ def _draw_hotn_help() -> None:
     PyImGui.bullet_text("Advanced statistics to track lifetime stats.")
     PyImGui.spacing()
 
-    # ── Requirements ──────────────────────────────────────────────────────────
+    # â”€â”€ Requirements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if PyImGui.collapsing_header("Currently Working Missions"):
         PyImGui.indent(10)
         PyImGui.text_colored(IconsFontAwesome5.ICON_CHECK         + "  Auspicious Beginnings",    green_color.to_tuple_normalized())
@@ -1223,7 +1223,7 @@ def _draw_hotn_help() -> None:
         PyImGui.unindent(10)
         PyImGui.spacing()
 
-    # ── Quest Phases ──────────────────────────────────────────────────────────
+    # â”€â”€ Quest Phases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if PyImGui.collapsing_header("Optimized Farming"):
         PyImGui.spacing()
         PyImGui.text_wrapped("General Notes")
@@ -1258,12 +1258,12 @@ def _draw_hotn_help() -> None:
         PyImGui.bullet_text("Anniversary Suffixes do not work, as far as I know")
         PyImGui.spacing()
 
-    # ── Known Issues / Tips ───────────────────────────────────────────────────
+    # â”€â”€ Known Issues / Tips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if PyImGui.collapsing_header("Tips & Known Issues"):
         PyImGui.bullet_text("TODO: Add tips and known quirks here.")
         PyImGui.spacing()
 
-    # ── Close button (centered, bottom) ───────────────────────────────────────
+    # â”€â”€ Close button (centered, bottom) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     PyImGui.separator()
     PyImGui.spacing()
     btn_label = "Close Help"
@@ -1286,18 +1286,18 @@ def _draw_hotn_window(icon_path: str) -> None:
     """
     Fully custom window for Hearts of the North.
 
-    Layout of the Main tab child (top → bottom):
+    Layout of the Main tab child (top â†’ bottom):
         Header table  (icon | bot-name / step / status)
-        ───────────────────────────────────────────────
-        ▶ Start / ■ Stop  button
-        ═══════════════════════════════════════════════  ← thin separator
+        â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        â–¶ Start / â–  Stop  button
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•  â† thin separator
         Mission selector  (sequence checkbox + combo)
-        ───────────────────────────────────────────────
-        Overall Progress  [████░░░░]
-        Step Progress     [██░░░░░░]
+        â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Overall Progress  [â–ˆâ–ˆâ–ˆâ–ˆâ–‘â–‘â–‘â–‘]
+        Step Progress     [â–ˆâ–ˆâ–‘â–‘â–‘â–‘â–‘â–‘]
     """
-    from Py4GWCoreLib import ImGui, IniManager, Color, Routines
-    from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+    from Py4GWCoreLib import ImGui_Legacy, IniManager, Color, Routines
+    from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
     from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, Console
     from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 
@@ -1305,7 +1305,7 @@ def _draw_hotn_window(icon_path: str) -> None:
     CHILD_W,  CHILD_H  = 410, 400
     ICON_W             = 96
 
-    # ── Window state INI (position/size) ─────────────────────────────────────
+    # â”€â”€ Window state INI (position/size) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if not bot.config.ini_key_initialized:
         bot.config.ini_key = IniManager().ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
@@ -1318,12 +1318,12 @@ def _draw_hotn_window(icon_path: str) -> None:
     if not bot.config.ini_key:
         return
 
-    # ── Per-account settings/statistics INI (lazy, requires account email) ───
+    # â”€â”€ Per-account settings/statistics INI (lazy, requires account email) â”€â”€â”€
     _ensure_ini_initialized()
     _write_settings()
 
-    # ── Outer window ─────────────────────────────────────────────────────────
-    if ImGui.Begin(
+    # â”€â”€ Outer window â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if ImGui_Legacy.Begin(
         ini_key=bot.config.ini_key,
         name=bot.config.bot_name,
         p_open=True,
@@ -1331,19 +1331,19 @@ def _draw_hotn_window(icon_path: str) -> None:
     ):
         if PyImGui.begin_tab_bar(bot.config.bot_name + "_tabs"):
 
-            # ── Help tab ──────────────────────────────────────────────────────
+            # â”€â”€ Help tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if BotSettings.SHOW_HELP and PyImGui.begin_tab_item("Help"):
                 bot.UI._draw_help_child()
                 PyImGui.dummy(WINDOW_W, 0)
                 PyImGui.end_tab_item()
 
-            # ── Main tab ─────────────────────────────────────────────────────
+            # â”€â”€ Main tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Main"):
                 PyImGui.dummy(WINDOW_W, 0)
                 _avail = PyImGui.get_content_region_avail()
                 inner_w = int(_avail[0]) if _avail[0] > 0 else (CHILD_W - 10)
 
-                # ── Header table ──────────────────────────────────────────────
+                # â”€â”€ Header table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 (current_header_step, header_for_current,
                  current_step, total_steps, step_name, finished) = bot.UI._find_current_header_step()
 
@@ -1360,33 +1360,33 @@ def _draw_hotn_window(icon_path: str) -> None:
 
                     PyImGui.table_set_column_index(1)
                     PyImGui.dummy(0, 3)
-                    ImGui.push_font("Regular", 22)
+                    ImGui_Legacy.push_font("Regular", 22)
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, Color(255, 255, 0, 255).to_tuple_normalized())
                     PyImGui.text(bot.config.bot_name)
                     PyImGui.pop_style_color(1)
-                    ImGui.pop_font()
+                    ImGui_Legacy.pop_font()
 
-                    # ── Active mission label ───────────────────────────────────
+                    # â”€â”€ Active mission label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     _active_label = "All Missions (Sequence)" if BotSettings.SEQUENCE_MODE else BotSettings.SELECTED_MISSION
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.65, 0.85, 1.0, 1.0))
                     PyImGui.text(_active_label)
                     PyImGui.pop_style_color(1)
 
-                    ImGui.push_font("Bold", 18)
+                    ImGui_Legacy.push_font("Bold", 18)
                     PyImGui.text(f"[{max(current_header_step, 0)}] {header_for_current or 'Not started'}")
-                    ImGui.pop_font()
+                    ImGui_Legacy.pop_font()
 
                     if total_steps <= 0:
-                        PyImGui.text("Step: —/— - (No steps)")
+                        PyImGui.text("Step: â€”/â€” - (No steps)")
                     elif finished:
                         PyImGui.text(f"Step: {total_steps-1}/{total_steps-1} - (Finished)")
                     else:
-                        PyImGui.text(f"Step: {current_step}/{max(total_steps-1, 0)} - {step_name or '(…?)'}")
+                        PyImGui.text(f"Step: {current_step}/{max(total_steps-1, 0)} - {step_name or '(â€¦?)'}")
 
                     if not bot.config.fsm_running and finished:
                         bot.config.state_description = "Finished"
                     PyImGui.text(f"Status: {bot.config.state_description}")
-                    # ── Current run timer + mission average ──────────────────────
+                    # â”€â”€ Current run timer + mission average â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     _ms_active = BotSettings.MISSION_STATS.get(BotSettings.SELECTED_MISSION)
                     _avg = _ms_active.average_time() if _ms_active else "--:--"
                     if BotSettings.CURRENT_RUN_START_TIME > 0:
@@ -1399,11 +1399,11 @@ def _draw_hotn_window(icon_path: str) -> None:
                         PyImGui.text(f"Run: --:--  |  Avg: {_avg}")
                     PyImGui.end_table()
 
-                # ── Mission selector ───────────────────────────────────────────
+                # â”€â”€ Mission selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 #PyImGui.separator()
                 _draw_mission_selector(inner_w)
 
-                # ── Start / Stop button ────────────────────────────────────────
+                # â”€â”€ Start / Stop button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 PyImGui.separator()
                 btn_icon   = IconsFontAwesome5.ICON_STOP_CIRCLE if bot.config.fsm_running else IconsFontAwesome5.ICON_PLAY_CIRCLE
                 btn_legend = "  Stop" if bot.config.fsm_running else "  Start"
@@ -1420,7 +1420,7 @@ def _draw_hotn_window(icon_path: str) -> None:
                         bot.config.state_description = "Running"
                         bot.config.FSM.restart()
 
-                # ── Progress bars ──────────────────────────────────────────────
+                # â”€â”€ Progress bars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 if total_steps > 1:
                     fraction = current_step / float(total_steps - 1)
                 else:
@@ -1439,7 +1439,7 @@ def _draw_hotn_window(icon_path: str) -> None:
 
                 PyImGui.end_tab_item()
 
-            # ── Navigation tab ────────────────────────────────────────────────
+            # â”€â”€ Navigation tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Navigation"):
                 PyImGui.dummy(WINDOW_W, 0)
                 PyImGui.text("Jump to step (filtered by step index):")
@@ -1448,19 +1448,19 @@ def _draw_hotn_window(icon_path: str) -> None:
                 bot.UI.draw_fsm_tree_selector_ranged(child_size=(CHILD_W, CHILD_H))
                 PyImGui.end_tab_item()
 
-            # ── Settings tab ──────────────────────────────────────────────────
+            # â”€â”€ Settings tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Settings"):
                 bot.UI._draw_settings_child()
                 PyImGui.dummy(WINDOW_W, 0)
                 PyImGui.end_tab_item()
 
-            # ── Debug tab ─────────────────────────────────────────────────────
+            # â”€â”€ Debug tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Debug"):
                 bot.UI.draw_debug_window()
                 PyImGui.dummy(WINDOW_W, 0)
                 PyImGui.end_tab_item()
 
-            # ── Statistics tab ────────────────────────────────────────────────
+            # â”€â”€ Statistics tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Statistics"):
                 _draw_stats_tab()                
                 PyImGui.dummy(WINDOW_W, 0)
@@ -1468,7 +1468,7 @@ def _draw_hotn_window(icon_path: str) -> None:
 
             PyImGui.end_tab_bar()
 
-    ImGui.End(bot.config.ini_key)
+    ImGui_Legacy.End(bot.config.ini_key)
 
 
 def main():

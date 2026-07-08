@@ -149,9 +149,9 @@ builtins.PyDXOverlay = PyDXOverlay
 builtins.PyAgentEvents = PyAgentEvents
 
 from .enums import *
-from .ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+from .ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from .Map import *
-from .ImGui import *
+from .ImGui_Legacy import *
 from .model_data import *
 from .Agent import *
 from .Player import *

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import PyImGui
 
-from Py4GWCoreLib import GLOBAL_CACHE, ImGui
+from Py4GWCoreLib import GLOBAL_CACHE, ImGui_Legacy
 from Py4GWCoreLib.GlobalCache.HexRemovalPriority import (
     HEX_REMOVAL_PRIORITY,
     HexRemovalEntry,
@@ -210,9 +210,9 @@ def _draw_settings_section() -> None:
     PyImGui.dummy(0, 12)
 
     # === Debug section (plain bold header) ===
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Debug")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 4)
 
@@ -237,9 +237,9 @@ def _draw_settings_section() -> None:
     PyImGui.dummy(0, 16)
 
     # === Reset config section ===
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Reset config")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 4)
 
@@ -267,9 +267,9 @@ def _draw_hard_reset_modal() -> None:
     ):
         return
 
-    ImGui.push_font("Bold", 16)
+    ImGui_Legacy.push_font("Bold", 16)
     PyImGui.text_colored("Hard reset - confirm", _DANGER_COLOR)
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 4)
     PyImGui.text("This will:")
@@ -369,9 +369,9 @@ def _draw_info_two_col_table(
 def _draw_info_section() -> None:
     PyImGui.dummy(0, 6)
 
-    ImGui.push_font("Bold", 16)
+    ImGui_Legacy.push_font("Bold", 16)
     PyImGui.text("How Hex Removal works")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 4)
 
@@ -382,9 +382,9 @@ def _draw_info_section() -> None:
     )
 
     PyImGui.dummy(0, 10)
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Priorities")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 2)
     _draw_info_two_col_table("info_priorities", _INFO_LABEL_COL_W, [
@@ -395,9 +395,9 @@ def _draw_info_section() -> None:
     ])
 
     PyImGui.dummy(0, 10)
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Roles")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 2)
     _draw_info_two_col_table("info_roles", _INFO_LABEL_COL_W, [
@@ -407,9 +407,9 @@ def _draw_info_section() -> None:
     ])
 
     PyImGui.dummy(0, 10)
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Profession overrides")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.text_wrapped(
         "Profession overrides take precedence over the role priority. Example: "
@@ -418,9 +418,9 @@ def _draw_info_section() -> None:
     )
 
     PyImGui.dummy(0, 10)
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Per-row controls")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 2)
     _draw_info_two_col_table("info_row_controls", _INFO_LABEL_COL_W, [
@@ -430,9 +430,9 @@ def _draw_info_section() -> None:
     ])
 
     PyImGui.dummy(0, 10)
-    ImGui.push_font("Bold", 14)
+    ImGui_Legacy.push_font("Bold", 14)
     PyImGui.text("Settings tab")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.dummy(0, 2)
     _draw_info_two_col_table("info_settings", _INFO_LABEL_COL_W, [
@@ -528,7 +528,7 @@ def _draw_hex_row(skill_id: int, name: str, texture_path: str) -> None:
     icon_x = row_start_x + 8
     PyImGui.set_cursor_pos((icon_x, row_start_y + (_ROW_HEIGHT - _ICON_SIZE) // 2))
     if texture_path:
-        ImGui.DrawTexture(texture_path, _ICON_SIZE, _ICON_SIZE)
+        ImGui_Legacy.DrawTexture(texture_path, _ICON_SIZE, _ICON_SIZE)
     else:
         PyImGui.text("?")
     if PyImGui.is_item_hovered():
@@ -538,9 +538,9 @@ def _draw_hex_row(skill_id: int, name: str, texture_path: str) -> None:
 
     text_y = row_start_y + (_ROW_HEIGHT - _NAME_FONT_SIZE - 4) // 2
     PyImGui.set_cursor_pos(row_start_x + _NAME_COLUMN_X, text_y)
-    ImGui.push_font(_NAME_FONT, _NAME_FONT_SIZE)
+    ImGui_Legacy.push_font(_NAME_FONT, _NAME_FONT_SIZE)
     PyImGui.text(name.replace("_", " "))
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
 
     PyImGui.set_cursor_pos(row_start_x + _CHIPS_COLUMN_X, text_y)
     _draw_priority_chips(entry)

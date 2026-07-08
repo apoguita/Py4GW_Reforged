@@ -53,7 +53,7 @@ class LuaBridge:
         self.lua.globals()['Effects'] = Effects
         self.lua.globals()['Enums'] = enums
         self.lua.globals()['PyImGui'] = PyImGui
-        self.lua.globals()['ImGui'] = ImGui
+        self.lua.globals()['ImGui_Legacy'] = ImGui_Legacy
         self.lua.globals()['Inventory'] = Inventory
         self.lua.globals()['Item'] = Item
         self.lua.globals()['ItemArray'] = ItemArray

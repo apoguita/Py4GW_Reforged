@@ -1,4 +1,4 @@
-from Py4GWCoreLib import ImGui, Color, TitleID
+from Py4GWCoreLib import ImGui_Legacy, Color, TitleID
 import PyImGui, Py4GW
 import os
 
@@ -35,9 +35,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Vanquisher Dashboard", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 
@@ -76,7 +76,7 @@ def Draw_Window():
             # --- LEFT COLUMN: Texture Art ---
             PyImGui.table_next_column()
             if PyImGui.begin_child("##TextureChild",  (280, 370), True, flags=PyImGui.WindowFlags.NoFlag):
-                ImGui.DrawTexture(texture_path=TEXTURE, width=275, height=350)
+                ImGui_Legacy.DrawTexture(texture_path=TEXTURE, width=275, height=350)
             PyImGui.end_child()
 
             # --- RIGHT COLUMN: Tree View ---

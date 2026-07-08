@@ -1,16 +1,16 @@
 from enum import IntEnum
 from typing import override
 import PyImGui
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, Utils
 
 ##import Style from Py4GWCoreLib as UIStyle
-from Py4GWCoreLib.ImGui import Style as UIStyle
+from Py4GWCoreLib._legacy_facade import Style as UIStyle
 
 
 class StyleVar:
-    def __init__(self, img_style_enum: ImGui.ImGuiStyleVar, value1: float, value2: float | None = None):
-        self.img_style_enum: ImGui.ImGuiStyleVar = img_style_enum
+    def __init__(self, img_style_enum: ImGui_Legacy.ImGuiStyleVar, value1: float, value2: float | None = None):
+        self.img_style_enum: ImGui_Legacy.ImGuiStyleVar = img_style_enum
         self.value1: float = value1
         self.value2: float | None = value2
         
@@ -103,7 +103,7 @@ class ExStyle:
         self._initialized = True
         self.pushed_colors = 0
         self.pushed_vars = 0
-        self.theme : UIStyle.StyleTheme = ImGui.Selected_Style.Theme
+        self.theme : UIStyle.StyleTheme = ImGui_Legacy.Selected_Style.Theme
                 
         self.Info_Icon : StyleColor = StyleColor(245, 172, 47, 255)
         self.Selected_Item : StyleColor = StyleColor(100, 100, 100, 150)
@@ -126,7 +126,7 @@ class ExStyle:
             return
         
         match theme:
-            case UIStyle.StyleTheme.ImGui:                
+            case UIStyle.StyleTheme.ImGui_Legacy:                
                 self.Info_Icon : StyleColor = StyleColor(245, 172, 47, 255)
                 self.Selected_Item : StyleColor = StyleColor(100, 100, 100, 150)
                 self.Hovered_Item : StyleColor = StyleColor(128, 128, 128, 100)

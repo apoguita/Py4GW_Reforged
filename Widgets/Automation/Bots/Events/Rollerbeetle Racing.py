@@ -200,7 +200,7 @@ class BotVars:
     def __init__(self, map_id=0):
         self.starting_map = map_id
         self.bot_started = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
         self.variables = {}
         self.run_count = 0
         self.initial_medals = 0
@@ -216,7 +216,7 @@ class BotVars:
         self.result_did_not_finish = 0
 
 bot_vars = BotVars(map_id=ROLLERBEETLE_RACING_OUTPOST_ID)
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name="Rollerbeetle Racing Bot", window_size=(250, 325))
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name="Rollerbeetle Racing Bot", window_size=(250, 325))
 
 class StateMachineVars:
     def __init__(self):
@@ -443,7 +443,7 @@ def DrawWindow():
                 ("Did Not Finish", f"{bot_vars.result_did_not_finish}"),
             ]
 
-            ImGui.table("Bot Stats", headers, data)
+            ImGui_Legacy.table("Bot Stats", headers, data)
 
             current_state = FSM_vars.state_machine.get_current_step_name() if FSM_vars.state_machine else "None"
             if IsBotStarted():
@@ -571,14 +571,14 @@ def UseSkills():
         return
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Rollerbeetle Racing Bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

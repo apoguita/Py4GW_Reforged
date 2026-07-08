@@ -8,7 +8,7 @@ MODULE_NAME = "tester for everything"
 fog = False
 
 def DrawWindow():
-    """ImGui draw function that runs every frame."""
+    """ImGui_Legacy draw function that runs every frame."""
     global fog
     try:
         flags = PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.AlwaysAutoResize

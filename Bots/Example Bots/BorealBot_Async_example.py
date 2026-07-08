@@ -10,11 +10,11 @@ class BotVars:
     def __init__(self, map_id=0):
         self.starting_map = map_id
         self.bot_started = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
         self.variables = {}
 
 bot_vars = BotVars(map_id=675) #boreal station
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name="Boreal Chest Runner 1.0", window_size=(300, 300))
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name="Boreal Chest Runner 1.0", window_size=(300, 300))
 
 class StateMachineVars:
         def __init__(self):
@@ -193,7 +193,7 @@ def DrawWindow():
                         ("State Machine is finished:", f"{FSM_vars.state_machine.is_finished()}"),
                     ]
 
-                    ImGui.table("state machine info", headers, data)
+                    ImGui_Legacy.table("state machine info", headers, data)
 
                     PyImGui.text("FollowXY Pathing")
                     headers = ["Value","Data"]
@@ -209,7 +209,7 @@ def DrawWindow():
                         ("is moving", f"{Agent.IsMoving(Player.GetAgentID())}"),
                     ]
 
-                    ImGui.table("follow info", headers, data)
+                    ImGui_Legacy.table("follow info", headers, data)
                     PyImGui.end_tab_item()
 
                 if PyImGui.begin_tab_item("Skillbar"):

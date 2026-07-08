@@ -125,7 +125,7 @@ class PCons:
                                   name, str(data['active']))
 
 widget_config = PCons()
-window_module = ImGui.WindowModule(module_name,window_name="PCons Manager", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+window_module = ImGui_Legacy.WindowModule(module_name,window_name="PCons Manager", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 window_x = ini_handler.read_int(module_name +str(" Config"), "x", 100)
 window_y = ini_handler.read_int(module_name +str(" Config"), "y", 100)
@@ -214,7 +214,7 @@ def DrawWindow():
                     #    PyImGui.pop_style_color(1)            
                     
                     if PyImGui.is_item_hovered():
-                        ImGui.show_tooltip(f"Effect ID: {data['effect_id']}, Model ID: {data['model_id']}")
+                        ImGui_Legacy.show_tooltip(f"Effect ID: {data['effect_id']}, Model ID: {data['model_id']}")
                         
                     
 

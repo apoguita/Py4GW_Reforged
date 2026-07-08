@@ -1,5 +1,5 @@
 from cProfile import label
-from Py4GWCoreLib import ImGui, Color, Player, IconsFontAwesome5, Color, ColorPalette, GLOBAL_CACHE, SharedCommandType, ConsoleLog, Utils
+from Py4GWCoreLib import ImGui_Legacy, Color, Player, IconsFontAwesome5, Color, ColorPalette, GLOBAL_CACHE, SharedCommandType, ConsoleLog, Utils
 import PyImGui
 import Py4GW
 import PyOverlay
@@ -417,7 +417,7 @@ class WindowLayouts:
             layout = self.layouts[lidx]
             client = layout.clients[cidx]
 
-            # unique window title/id (ImGui uses text before ## as visible, after ## as unique id)
+            # unique window title/id (ImGui_Legacy uses text before ## as visible, after ## as unique id)
             title = f"Edit Client: {client.email}##{lidx}:{cidx}"
             if PyImGui.begin(title, True, PyImGui.WindowFlags.AlwaysAutoResize):
 
@@ -637,9 +637,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Layout Manager", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

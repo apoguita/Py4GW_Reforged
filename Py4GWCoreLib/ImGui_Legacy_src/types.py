@@ -10,7 +10,7 @@ class ControlAppearance(Enum):
     Danger = 2
 
 class StyleTheme(IntEnum):
-    ImGui = 0
+    ImGui_Legacy = 0
     Guild_Wars = 1
     Minimalus = 2
     Smoke = 3
@@ -62,8 +62,8 @@ class Alignment(IntEnum):
     '''
     
     # bit layout:
-    # bits 0–2 : horizontal (0–4)
-    # bits 3–5 : vertical   (0–4)
+    # bits 0â€“2 : horizontal (0â€“4)
+    # bits 3â€“5 : vertical   (0â€“4)
 
     AboveLeftOf    = (VerticalAlignment.Above  << _V_SHIFT) | HorizontalAlignment.LeftOf
     AboveLeft      = (VerticalAlignment.Above  << _V_SHIFT) | HorizontalAlignment.Left

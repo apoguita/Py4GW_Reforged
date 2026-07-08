@@ -5,7 +5,7 @@ import PySystem
 
 from Py4GWCoreLib import Timer, UIManager
 from Py4GWCoreLib import GLOBAL_CACHE
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import ThemeTextures
 from Py4GWCoreLib import Style
 from Py4GWCoreLib import Map
@@ -15,7 +15,7 @@ from Py4GWCoreLib import Color, ColorPalette
 import json
 import os
 
-from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, ThrottledTimer, Utils
 from Py4GWCoreLib.enums import Key
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import Widget, WidgetHandler, get_widget_handler
@@ -94,7 +94,7 @@ class Config:
 widget_config = Config()
 widget_config.load()
 
-window_module = ImGui.WindowModule(
+window_module = ImGui_Legacy.WindowModule(
     MODULE_NAME, 
     window_name="Travel", 
     window_size=(235, 145),
@@ -104,7 +104,7 @@ window_module = ImGui.WindowModule(
 )
 
 new_favorite = 0
-config_module = ImGui.WindowModule(f"Config {MODULE_NAME}", window_name="Travel##config", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize, can_close=True)
+config_module = ImGui_Legacy.WindowModule(f"Config {MODULE_NAME}", window_name="Travel##config", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize, can_close=True)
 outposts = dict(zip(Map.GetOutpostIDs(), Map.GetOutpostNames()))
 outposts = {id: outpost.replace("outpost", "") for id, outpost in outposts.items() if outpost}  # Filter out empty names
 outpost_index = 0
@@ -141,11 +141,11 @@ def tooltip():
     PyImGui.begin_tooltip()
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.image(MODULE_ICON, (32, 32))
+    ImGui_Legacy.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
-    ImGui.push_font("Regular", 20)
-    ImGui.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
-    ImGui.pop_font()
+    ImGui_Legacy.push_font("Regular", 20)
+    ImGui_Legacy.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.spacing()
     PyImGui.separator()
@@ -194,7 +194,7 @@ def configure():
         
         if PyImGui.begin_tab_bar("##TravelConfigTabs"):                
             if PyImGui.begin_tab_item("Favorites"):
-                show_favorites = ImGui.checkbox("Show Favorites on Travel Window", widget_config.show_favorites)
+                show_favorites = ImGui_Legacy.checkbox("Show Favorites on Travel Window", widget_config.show_favorites)
                 if show_favorites != widget_config.show_favorites:
                     widget_config.show_favorites = show_favorites
                     widget_config.request_save()
@@ -212,7 +212,7 @@ def configure():
                 PyImGui.push_item_width(300)
                 new_favorite = PyImGui.combo("##NewFavorite", new_favorite, outpost_names)
                 PyImGui.same_line(0, 5)
-                if ImGui.button("Add Favorite", 150):
+                if ImGui_Legacy.button("Add Favorite", 150):
                     if new_favorite >= 0 and new_favorite < len(outposts):
                         id = outpost_ids[new_favorite]
                         
@@ -249,12 +249,12 @@ def configure():
                                 PyImGui.text(f"{id}")
                                 PyImGui.table_next_column()
                                 
-                                if ImGui.button(f"Remove##{id}", 75, 25):
+                                if ImGui_Legacy.button(f"Remove##{id}", 75, 25):
                                     widget_config.favorites.remove(id)
                                     widget_config.request_save()
                                     
                                 PyImGui.table_next_column()
-                                ImGui.show_tooltip(f"{outpost} ({id})")
+                                ImGui_Legacy.show_tooltip(f"{outpost} ({id})")
                             else:
                                 PySystem.Console.Log(MODULE_NAME, f"Favorite outpost {id} not found in outposts.", PySystem.Console.MessageType.Warning)
                                 
@@ -263,21 +263,21 @@ def configure():
                 PyImGui.end_tab_item()
             
             if PyImGui.begin_tab_item("General"):
-                show_history = ImGui.checkbox("Show Travel History on Travel Window", widget_config.show_travel_history)
+                show_history = ImGui_Legacy.checkbox("Show Travel History on Travel Window", widget_config.show_travel_history)
                 if show_history != widget_config.show_travel_history:
                     widget_config.show_travel_history = show_history
                     widget_config.request_save()
                 
-                ImGui.text_aligned(f"Travel History Length ({widget_config.history_length})", width=100, height=24, alignment=Alignment.MidLeft)
+                ImGui_Legacy.text_aligned(f"Travel History Length ({widget_config.history_length})", width=100, height=24, alignment=Alignment.MidLeft)
                 PyImGui.same_line(0, 2)
-                history_length = ImGui.slider_int(f"##Travel History Length", widget_config.history_length, 1, 20)
+                history_length = ImGui_Legacy.slider_int(f"##Travel History Length", widget_config.history_length, 1, 20)
                 if history_length != widget_config.history_length:
                     widget_config.history_length = max(1, min(20, history_length))
                     widget_config.request_save()
                 
-                ImGui.text_aligned("Travel Button Size", width=100, height=24, alignment=Alignment.MidLeft)
+                ImGui_Legacy.text_aligned("Travel Button Size", width=100, height=24, alignment=Alignment.MidLeft)
                 PyImGui.same_line(0, 2)
-                button_size = ImGui.slider_int(f"##Travel Button Size", widget_config.button_size, 32, 256)
+                button_size = ImGui_Legacy.slider_int(f"##Travel Button Size", widget_config.button_size, 32, 256)
                 if button_size != widget_config.button_size:
                     widget_config.button_size = max(32, min(256, button_size))
                     widget_config.request_save()
@@ -312,18 +312,18 @@ def configure():
         pass
 
 def themed_floating_button(button_rect : tuple[float, float, float, float]):
-    match(ImGui.get_style().Theme):
+    match(ImGui_Legacy.get_style().Theme):
         case Style.StyleTheme.Guild_Wars:
             ThemeTextures.Button_Background.value.get_texture().draw_in_drawlist(
                 button_rect[:2], 
                 button_rect[2:],
-                tint=(255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_rect) else (200, 200, 200, 255),
+                tint=(255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_rect) else (200, 200, 200, 255),
             )
             
             ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
                 button_rect[:2], 
                 button_rect[2:],
-                tint=(255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_rect) else (200, 200, 200, 255),
+                tint=(255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_rect) else (200, 200, 200, 255),
             )
             
         case Style.StyleTheme.Minimalus:
@@ -332,7 +332,7 @@ def themed_floating_button(button_rect : tuple[float, float, float, float]):
                 button_rect[1] + 1,
                 button_rect[0] + button_rect[2] -1,
                 button_rect[1] + button_rect[3] -1,
-                Utils.RGBToColor(48, 48, 48, 150) if ImGui.is_mouse_in_rect(button_rect) else Utils.RGBToColor(0, 0, 0, 150),
+                Utils.RGBToColor(48, 48, 48, 150) if ImGui_Legacy.is_mouse_in_rect(button_rect) else Utils.RGBToColor(0, 0, 0, 150),
                 0,
                 0,
             )   
@@ -342,7 +342,7 @@ def themed_floating_button(button_rect : tuple[float, float, float, float]):
                 button_rect[1] + 1,
                 button_rect[0] + button_rect[2] -1,
                 button_rect[1] + button_rect[3] -1,
-                Utils.RGBToColor(255, 255, 255, 75) if ImGui.is_mouse_in_rect(button_rect) else Utils.RGBToColor(200, 200, 200, 50),
+                Utils.RGBToColor(255, 255, 255, 75) if ImGui_Legacy.is_mouse_in_rect(button_rect) else Utils.RGBToColor(200, 200, 200, 50),
                 0,
                 0,
                 1,
@@ -350,13 +350,13 @@ def themed_floating_button(button_rect : tuple[float, float, float, float]):
             
             pass
         
-        case Style.StyleTheme.ImGui:
+        case Style.StyleTheme.ImGui_Legacy:
             PyImGui.draw_list_add_rect_filled(
                 button_rect[0] + 1,
                 button_rect[1] + 1,
                 button_rect[0] + button_rect[2] -1,
                 button_rect[1] + button_rect[3] -1,
-                Utils.RGBToColor(51, 76, 102, 255) if ImGui.is_mouse_in_rect(button_rect) else Utils.RGBToColor(26, 38, 51, 255),
+                Utils.RGBToColor(51, 76, 102, 255) if ImGui_Legacy.is_mouse_in_rect(button_rect) else Utils.RGBToColor(26, 38, 51, 255),
                 4,
                 0,
             )   
@@ -384,7 +384,7 @@ def DrawWindow():
             return
         
         padding = widget_config.button_size * 0.05
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         button_rect = (widget_config.button_position[0], widget_config.button_position[1], widget_config.button_size, widget_config.button_size)
         ## Ensure the button is within the screen bounds
         io = PyImGui.get_io()  
@@ -398,7 +398,7 @@ def DrawWindow():
         style.WindowPadding.pop_style_var_direct()
         
         if win_open:
-            is_hovered = ImGui.is_mouse_in_rect(button_rect)
+            is_hovered = ImGui_Legacy.is_mouse_in_rect(button_rect)
             button_size = PyImGui.get_content_region_avail()[0] * (1 if is_hovered else 0.8)
             
             icon_rect = (button_rect[0] + (button_rect[2] - button_size) / 2, button_rect[1] + (button_rect[3] - button_size) / 2, button_size, button_size)
@@ -436,7 +436,7 @@ def DrawWindow():
             if PyImGui.is_mouse_released(0):
                 is_dragging = False
 
-            ImGui.show_tooltip("Click to open travel window\nDrag to reposition button")
+            ImGui_Legacy.show_tooltip("Click to open travel window\nDrag to reposition button")
             
             PyImGui.end()
         
@@ -447,7 +447,7 @@ def DrawWindow():
         window_y = widget_config.button_position[1]
         
         if window_y + window_module.window_size[1] > screen_height:
-            window_y = screen_height - window_module.window_size[1] - (ImGui.get_style().Theme is Style.StyleTheme.Guild_Wars and 10 or 0)
+            window_y = screen_height - window_module.window_size[1] - (ImGui_Legacy.get_style().Theme is Style.StyleTheme.Guild_Wars and 10 or 0)
             
         if window_x + window_module.window_size[0] > screen_width:
             window_x = widget_config.button_position[0] - window_module.window_size[0] - 10
@@ -462,7 +462,7 @@ def DrawWindow():
         if window_module.begin():
             search_focused = False
             
-            style = ImGui.get_style()
+            style = ImGui_Legacy.get_style()
             
             if widget_config.favorites and widget_config.show_favorites:
                 if PyImGui.is_rect_visible(0, 20):
@@ -477,12 +477,12 @@ def DrawWindow():
                             
                             if outpost:
                                 PyImGui.table_next_column()
-                                if ImGui.button(generate_initials(outpost), PyImGui.get_content_region_avail()[0], 25):
+                                if ImGui_Legacy.button(generate_initials(outpost), PyImGui.get_content_region_avail()[0], 25):
                                     click_select_outpost(io, id, 0)
                                     traveled = True
                             
                                 
-                                ImGui.show_tooltip(f"{outpost} ({id})")
+                                ImGui_Legacy.show_tooltip(f"{outpost} ({id})")
                             else:
                                 PySystem.Console.Log(MODULE_NAME, f"Favorite outpost {id} not found in outposts.", PySystem.Console.MessageType.Warning)
                                 
@@ -491,7 +491,7 @@ def DrawWindow():
                 PyImGui.separator()
 
             PyImGui.push_item_width(250)
-            changed, search = ImGui.search_field("##Search Outpost", search_outpost, "Search ...", PyImGui.InputTextFlags.AutoSelectAll)
+            changed, search = ImGui_Legacy.search_field("##Search Outpost", search_outpost, "Search ...", PyImGui.InputTextFlags.AutoSelectAll)
             if changed and search != search_outpost:
                 search_outpost = search                
                 search = search_outpost.lower()
@@ -516,7 +516,7 @@ def DrawWindow():
             
                 if PyImGui.begin_child("##OutpostList", (0, items_height), False, PyImGui.WindowFlags.NoFlag):                                
                     travel_history_len = len(filtered_history)
-                    ImGui.push_font("Italic", 12)
+                    ImGui_Legacy.push_font("Italic", 12)
                     PyImGui.indent(10)
                     
                     for i, (id, outpost) in enumerate(filtered_history):
@@ -525,26 +525,26 @@ def DrawWindow():
                         y = PyImGui.get_cursor_pos_y()
                         x = PyImGui.get_cursor_pos_x()
                         
-                        ImGui.push_font("Regular", 8)
+                        ImGui_Legacy.push_font("Regular", 8)
                         PyImGui.set_cursor_pos_y(y + 2)
-                        ImGui.text(IconsFontAwesome5.ICON_HISTORY)
-                        ImGui.pop_font()
+                        ImGui_Legacy.text(IconsFontAwesome5.ICON_HISTORY)
+                        ImGui_Legacy.pop_font()
                         
                         PyImGui.set_cursor_pos(x + 20, y)
                         
-                        ImGui.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
+                        ImGui_Legacy.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
                         if PyImGui.is_item_clicked(0) or (is_selected and PyImGui.is_key_pressed(Key.Enter.value)):
                             ConsoleLog(MODULE_NAME, f"Traveling to outpost {outpost} ({id}) from history.", PySystem.Console.MessageType.Info)
                             click_select_outpost(io, id, i)
                             traveled = True
                             
                         is_favorite = id in widget_config.favorites
-                        ImGui.show_tooltip(f"Travel to {outpost} ({id})\n\n{("Add as favorite with Shift + Left Click" if not is_favorite else "Remove from favorites with Shift + Left Click")}")
+                        ImGui_Legacy.show_tooltip(f"Travel to {outpost} ({id})\n\n{("Add as favorite with Shift + Left Click" if not is_favorite else "Remove from favorites with Shift + Left Click")}")
                                                                                        
                         if is_selected:
                             PyImGui.set_scroll_here_y(0.5)
                             
-                    ImGui.pop_font()
+                    ImGui_Legacy.pop_font()
                     
                     if filtered_history and search and filtered_outposts:
                         PyImGui.spacing()
@@ -553,27 +553,27 @@ def DrawWindow():
                     
                     PyImGui.unindent(10)
                     
-                    ImGui.push_font("Regular", 14)
+                    ImGui_Legacy.push_font("Regular", 14)
                     if filtered_outposts and search:
                         for i in range(travel_history_len, len(filtered_outposts) + travel_history_len):
                             id, outpost = filtered_outposts[i - travel_history_len]
 
                             is_selected = i == outpost_index
-                            ImGui.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
+                            ImGui_Legacy.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
                             if PyImGui.is_item_clicked(0) or (is_selected and PyImGui.is_key_pressed(Key.Enter.value)):
                                 ConsoleLog(MODULE_NAME, f"Traveling to outpost {outpost} ({id}) from search results.", PySystem.Console.MessageType.Info)
                                 click_select_outpost(io, id, i)                                
                                 traveled = True
                             
                             is_favorite = id in widget_config.favorites
-                            ImGui.show_tooltip(f"Travel to {outpost}\n\n{("Add as favorite with Shift + Left Click" if not is_favorite else "Remove from favorites with Shift + Left Click")}")
+                            ImGui_Legacy.show_tooltip(f"Travel to {outpost}\n\n{("Add as favorite with Shift + Left Click" if not is_favorite else "Remove from favorites with Shift + Left Click")}")
                                     
                             if is_selected:
                                 PyImGui.set_scroll_here_y(0.5)
                                 
                     
                     
-                    ImGui.pop_font()
+                    ImGui_Legacy.pop_font()
         
                     if click_timer.IsExpired():
                         max_index = (len(filtered_outposts) if search and filtered_outposts else 0) + travel_history_len - 1
@@ -598,7 +598,7 @@ def DrawWindow():
             
             if PyImGui.is_mouse_clicked(0):
                 window_rect = (window_x, window_y, window_module.window_size[0], window_module.window_size[1])     
-                if not ImGui.is_mouse_in_rect(button_rect) and not ImGui.is_mouse_in_rect(window_rect):
+                if not ImGui_Legacy.is_mouse_in_rect(button_rect) and not ImGui_Legacy.is_mouse_in_rect(window_rect):
                     window_module.open = False
                                  
                                    

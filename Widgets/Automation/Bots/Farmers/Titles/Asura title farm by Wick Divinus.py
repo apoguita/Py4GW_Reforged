@@ -3,7 +3,7 @@ from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, ModelID, Agent, Player
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums_src.Title_enums import TitleID, TITLE_TIERS
 from Py4GWCoreLib.botting_src.property import Property
-from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
+from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
 import Py4GW
 import os
 import random
@@ -147,7 +147,7 @@ _hero_config_dirty: bool = False
 _hero_config_status: str = ""
 _hero_import_source_index: int = 0
 
-# (model_id, effect_skill_name) â€” single source of truth for consumable use & restock
+# (model_id, effect_skill_name) Ã¢â‚¬â€ single source of truth for consumable use & restock
 CONSET_ITEMS: list[tuple[int, str]] = [
     (ModelID.Essence_Of_Celerity.value, "Essence_of_Celerity_item_effect"),
     (ModelID.Grail_Of_Might.value,      "Grail_of_Might_item_effect"),
@@ -778,11 +778,11 @@ def _on_party_wipe(bot: "Botting"):
     while Agent.IsDead(Player.GetAgentID()):
         yield from bot.Wait._coro_for_time(1000)
         if not Routines.Checks.Map.MapValid() or not Routines.Checks.Map.IsExplorable():
-            # Map invalid â†’ release FSM and exit
+            # Map invalid Ã¢â€ â€™ release FSM and exit
             bot.config.FSM.resume()
             return
 
-    # Player revived on same map â†’ jump to recovery step
+    # Player revived on same map Ã¢â€ â€™ jump to recovery step
     if not Routines.Checks.Map.MapValid() or not Routines.Checks.Map.IsExplorable():
         bot.config.FSM.resume()
         return
@@ -1061,10 +1061,10 @@ def _draw_hero_icon(hero_id: int, size: int = 24):
     if path:
         try:
             cx, cy = PyImGui.get_cursor_screen_pos()
-            ImGui.DrawTextureInDrawList(pos=(float(cx), float(cy)), size=(float(size), float(size)), texture_path=path)
+            ImGui_Legacy.DrawTextureInDrawList(pos=(float(cx), float(cy)), size=(float(size), float(size)), texture_path=path)
         except Exception:
             try:
-                ImGui.DrawTexture(texture_path=path, width=size, height=size)
+                ImGui_Legacy.DrawTexture(texture_path=path, width=size, height=size)
             except Exception:
                 pass
     PyImGui.dummy(int(size), int(size))
@@ -1433,14 +1433,14 @@ def _draw_settings(bot: Botting):
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Asura Title Farm", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

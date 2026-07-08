@@ -1,6 +1,6 @@
 from Py4GWCoreLib import *
 
-# — define these three color‐tuples so display_title_progress can use them —
+# â€” define these three colorâ€tuples so display_title_progress can use them â€”
 icon_teal         = Color(33, 51, 58, 255).to_tuple_normalized()  # teal for all icons
 heading_gray      = Color(139, 131, 99, 255).to_tuple_normalized()  # bright gray for section headings
 text_color        = Color(139, 131, 99, 255).to_tuple_normalized()  # off-white for body text
@@ -71,7 +71,7 @@ lightbringer_tiers = [
 
 def display_title_progress(title_name, title_id, tiers):
     """
-    Renders a title exactly as Guild Wars 1 does—but with a slim, teal‐colored bar
+    Renders a title exactly as Guild Wars 1 doesâ€”but with a slim, tealâ€colored bar
     whose overlay text is horizontally centered.
     """
     title = Player.GetTitle(title_id)
@@ -98,7 +98,7 @@ def display_title_progress(title_name, title_id, tiers):
     fraction = max(0.0, min(1.0, fraction))
     overlay = f"{points:,} / {cap:,}"
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 2.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0.0, 2.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogram,       icon_teal)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogramHovered, icon_teal)
 
@@ -124,11 +124,11 @@ def display_title_progress(title_name, title_id, tiers):
 
 def display_faction(title_name, title_id, get_data_func, tier_list):
     """
-    Renders two centered‐overlay, slim teal bars for Kurzick/Luxon:
-      1) “Steward of the Luxons (6)”
-         ───────────────────────── (bar with “1,745,000 / 1,850,000” centered)
-      2) “Luxon”
-         ───────────────────────── (bar with “22,620 / 37,000” centered)
+    Renders two centeredâ€overlay, slim teal bars for Kurzick/Luxon:
+      1) â€œSteward of the Luxons (6)â€
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ (bar with â€œ1,745,000 / 1,850,000â€ centered)
+      2) â€œLuxonâ€
+         â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ (bar with â€œ22,620 / 37,000â€ centered)
     """
     # 1) Retrieve data from the game API
     current_unspent, total_earned, max_unspent = get_data_func()
@@ -164,7 +164,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
         rep_fraction = max(0.0, min(1.0, rep_fraction))
     rep_overlay = f"{points:,} / {next_rep_threshold:,}"
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 2.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0.0, 2.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogram,       icon_teal)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogramHovered, icon_teal)
 
@@ -201,7 +201,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
     unspent_fraction = float(current_unspent) / max_unspent if max_unspent else 0.0
     unspent_overlay = f"{current_unspent:,} / {max_unspent:,}"
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 2.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0.0, 2.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogram,       icon_teal)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogramHovered, icon_teal)
 
@@ -217,7 +217,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
     center_x2 = start_x2 + (avail_width2 - text_width2) / 2
     center_y2 = start_y2 + (bar_height2 - text_height2) / 2 + y_offset2
     PyImGui.set_cursor_pos((center_x2, center_y2))
-    PyImGui.text(unspent_overlay)                # ← now uses the correct variable
+    PyImGui.text(unspent_overlay)                # â† now uses the correct variable
     PyImGui.pop_style_color(1)
 
     PyImGui.pop_style_color(2)

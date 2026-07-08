@@ -8,9 +8,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Color Picker & Stylist", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 
@@ -72,13 +72,13 @@ def main():
             print("Copied to clipboard!")  
             
             
-        PyImGui.text_colored("Button Color:", button_color)
-        PyImGui.text_colored("Hovered Color:", hovered_color)
-        PyImGui.text_colored("Active Color:", active_color)
+        PyImGui.text_colored(PyImGui.Vec4(*button_color), "Button Color:")
+        PyImGui.text_colored(PyImGui.Vec4(*hovered_color), "Hovered Color:")
+        PyImGui.text_colored(PyImGui.Vec4(*active_color), "Active Color:")
         
-        PyImGui.push_style_color(PyImGui.ImGuiCol.Button, button_color)
-        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, hovered_color)
-        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, active_color)
+        PyImGui.push_style_color(PyImGui.ImGuiCol.Button, PyImGui.Vec4(*button_color))
+        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, PyImGui.Vec4(*hovered_color))
+        PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, PyImGui.Vec4(*active_color))
         if PyImGui.button("Copy To Clipboard##allcolors"):
             PyImGui.set_clipboard_text(
                 f"button_color = Color{rgb_button_color.to_tuple()}\n"

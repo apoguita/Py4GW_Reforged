@@ -1,21 +1,21 @@
 from Py4GWCoreLib import *
 
-MODULE_NAME = "ImGui DEMO"
-MODULE_ICON = "Textures/Module_Icons/ImGui.png"
+MODULE_NAME = "ImGui_Legacy DEMO"
+MODULE_ICON = "Textures/Module_Icons/ImGui_Legacy.png"
 
 def tooltip():
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
-    PyImGui.text_colored("ImGui Official Demo", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.push_font("Regular", 20)
+    PyImGui.text_colored("ImGui_Legacy Official Demo", title_color.to_tuple_normalized())
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 
     # Description
-    PyImGui.text("This widget launches the official Dear ImGui demonstration window.")
+    PyImGui.text("This widget launches the official Dear ImGui_Legacy demonstration window.")
     PyImGui.text("It serves as the primary visual documentation for all UI widgets,")
     PyImGui.text("layouts, and styling options available in the library.")
     PyImGui.spacing()

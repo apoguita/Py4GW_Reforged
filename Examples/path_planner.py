@@ -33,7 +33,7 @@ def main():
             if PyImGui.button("Capture End Position"):
                 last_goal_pos = (-14961, 11453, player_z_plane)
             
-            update_path_by_mouse_coords = ImGui.toggle_button(
+            update_path_by_mouse_coords = ImGui_Legacy.toggle_button(
                 "Update Path by Mouse Coordinates",
                 update_path_by_mouse_coords
             )

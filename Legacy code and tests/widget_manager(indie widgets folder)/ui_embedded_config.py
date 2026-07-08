@@ -1,4 +1,4 @@
-from Py4GWCoreLib import UIManager, EnumPreference, PyImGui, ImGui, Utils
+from Py4GWCoreLib import UIManager, EnumPreference, PyImGui, ImGui_Legacy, Utils
 from . import state
 from .handler import handler
 from .config_scope import use_account_settings
@@ -54,8 +54,8 @@ def draw_embedded_widget_config():
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0.25, 0.25, 0.25, 1.0)) # light on hover
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0.15, 0.15, 0.15, 1.0))  # darker when clicked
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (1.0, 1.0, 1.0, 1.0))            # pure white
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.FrameRounding, 4.0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.FramePadding , 0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FrameRounding, 4.0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FramePadding , 0)
         x_off, y_off = ui_button_size_offsets.get(ui_size, (5, 6))
         PyImGui.set_next_window_pos(button_x + x_off, button_y + y_off)
         if PyImGui.begin("##floating_config_button", button_flags):
@@ -88,7 +88,7 @@ def draw_embedded_widget_config():
                 UIManager().DrawFrame(UIManager.GetChildFrameID(1431953425, [1,4294967294]), Utils.RGBToColor(0, 0, 0, 255))
                 UIManager().DrawFrame(UIManager.GetChildFrameID(1431953425, [1,4294967295]), Utils.RGBToColor(0, 0, 0, 255))
 
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,4.0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,4.0)
             # PyImGui.push_style_color(PyImGui.ImGuiCol.FrameBg , (0.0, 0.0, 0.0, 1.0))
             PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0.05, 0.05, 0.05, 1.0))
             top_offset, height_offset = ui_offsets.get(ui_size, (25, 23))

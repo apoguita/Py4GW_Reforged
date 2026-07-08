@@ -1,4 +1,4 @@
-from Py4GWCoreLib import (Botting, Routines, GLOBAL_CACHE,Agent,  ModelID, ImGui, Player)
+from Py4GWCoreLib import (Botting, Routines, GLOBAL_CACHE,Agent,  ModelID, ImGui_Legacy, Player)
 
 bot = Botting("NF Leveler")
      
@@ -440,19 +440,19 @@ def _draw_texture():
     border_col = (0, 0, 0, 0)  # <- ints, not normalized floats
 
     if level <= 3:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.0, 0.0),   uv1=(0.25, 1.0),
                                   tint=tint, border_color=border_col)
     elif level <= 5:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.25, 0.0), uv1=(0.5, 1.0),
                                   tint=tint, border_color=border_col)
     elif level <= 10:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.5, 0.0),  uv1=(0.75, 1.0),
                                   tint=tint, border_color=border_col)
     else:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.75, 0.0), uv1=(1.0, 1.0),
                                   tint=tint, border_color=border_col)
 

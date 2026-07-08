@@ -5,7 +5,7 @@ import os
 import PyImGui
 from Sources.frenkeyLib.Polymock import gui, combat, state
 
-from Py4GWCoreLib import Map, Routines, ImGui, Color
+from Py4GWCoreLib import Map, Routines, ImGui_Legacy, Color
 from Py4GWCoreLib.Py4GWcorelib import ThrottledTimer
 
 importlib.reload(gui)
@@ -26,9 +26,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Polymock Auto-Battler", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

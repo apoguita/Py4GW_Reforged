@@ -3,7 +3,7 @@ from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import Player
 from Py4GWCoreLib import TitleID
-from Py4GWCoreLib import ImGui, Color
+from Py4GWCoreLib import ImGui_Legacy, Color
 from Py4GWCoreLib import Quest
 import PyImGui
 
@@ -25,9 +25,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Set title on map load", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     
     PyImGui.spacing()
     PyImGui.separator()
@@ -117,14 +117,14 @@ lightbringer_map_names = {
 }
 
 
-# Quest ID → Title override
+# Quest ID â†’ Title override
 # If any of these quest IDs are present in the quest log, the mapped title is applied
 # (quest-based overrides take priority over map-name matching)
 # Quest IDs can be verified by checking the GW wiki or logging Quest.GetQuestLogIds()
 quest_title_overrides = {
-    # EotN — Dwarven intro quest chain (Deldrimor title)
+    # EotN â€” Dwarven intro quest chain (Deldrimor title)
     897: TitleID.Deldrimor,   # O Brave New World
-    # EotN — Norn quest (Norn title)
+    # EotN â€” Norn quest (Norn title)
     873: TitleID.Norn,        # Service: In Defense of the Eye
 }
 

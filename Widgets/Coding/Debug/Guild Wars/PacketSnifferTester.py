@@ -11,7 +11,7 @@ from __future__ import annotations
 import Py4GW
 import PyImGui
 
-from Py4GWCoreLib import Color, ImGui
+from Py4GWCoreLib import Color, ImGui_Legacy
 from Py4GWCoreLib.PacketSniffer import SNIFFER as PACKET_SNIFFER
 
 MODULE_NAME = "Packet Sniffer Tester"
@@ -131,9 +131,9 @@ def draw_window() -> None:
 def tooltip() -> None:
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255).to_tuple_normalized()
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Packet Sniffer Tester", title_color)
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.text("Single-button packet capture test.")
     PyImGui.bullet_text("Start capture")

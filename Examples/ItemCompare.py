@@ -8,7 +8,7 @@ json_file_path = "modifiers.json"
 
 from enum import Enum
 
-window_module = ImGui.WindowModule("Item Compare", window_name="Item Compare", window_size=(300, 300))
+window_module = ImGui_Legacy.WindowModule("Item Compare", window_name="Item Compare", window_size=(300, 300))
 
 
 class ModifierInfo:
@@ -1276,7 +1276,7 @@ def ShowItemComparisonWindow():
                 ("AgentId:", Item.GetAgentID(item1_id), Item.GetAgentID(item2_id)),
                 ("AgentItemID:", Item.GetAgentItemID(item1_id), Item.GetAgentItemID(item2_id)),
             ]
-            ImGui.table("Item comparison common info", headers, data)
+            ImGui_Legacy.table("Item comparison common info", headers, data)
 
             # Modifier comparison
             if PyImGui.collapsing_header("Modifiers"):
@@ -1369,7 +1369,7 @@ def ShowItemComparisonWindow():
                     else:
                         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (1.0, 0.0, 0.0, 1.0))  # Red for different mods
 
-                    ImGui.table(f"Item Modifiers Comparison {identifier}", headers, data)
+                    ImGui_Legacy.table(f"Item Modifiers Comparison {identifier}", headers, data)
                     PyImGui.pop_style_color(1)
 
             # Close window

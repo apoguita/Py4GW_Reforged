@@ -28,7 +28,7 @@ The class is designed to make repeated settings access cheap during runtime. Ins
 2. singleton-style shared runtime instance
 3. in-memory caches for widget/global/current-account settings
 4. deferred persistence through a throttled flush callback
-5. convenience helpers for widget code and ImGui window persistence
+5. convenience helpers for widget code and ImGui_Legacy window persistence
 
 The important architectural split is:
 
@@ -302,7 +302,7 @@ Any other type raises `ValueError`.
 
 ## Window Persistence Helpers
 
-The class also contains an ImGui window persistence layer built on top of normal settings storage.
+The class also contains an ImGui_Legacy window persistence layer built on top of normal settings storage.
 
 Relevant APIs:
 

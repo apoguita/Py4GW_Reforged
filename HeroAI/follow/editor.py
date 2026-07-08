@@ -6,7 +6,7 @@ import uuid
 import PyImGui
 import Py4GW
 
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.enums_src.GameData_enums import Range
@@ -1224,7 +1224,7 @@ def _draw_control_window():
     if not ui.show_control_window:
         return
     PyImGui.set_next_window_size((390, 0), PyImGui.ImGuiCond.Once)
-    if ImGui.Begin(SETTINGS_INI_KEY, "Formation Control", flags=PyImGui.WindowFlags.AlwaysAutoResize):
+    if ImGui_Legacy.Begin(SETTINGS_INI_KEY, "Formation Control", flags=PyImGui.WindowFlags.AlwaysAutoResize):
         if PyImGui.button("Close Editor"):
             ui.close_requested = True
             ui.show_control_window = False
@@ -1331,7 +1331,7 @@ def _draw_control_window():
             PyImGui.separator()
             PyImGui.text_wrapped(ui.last_status)
 
-    ImGui.End(SETTINGS_INI_KEY)
+    ImGui_Legacy.End(SETTINGS_INI_KEY)
 
 
 def _draw_editor_window():
@@ -1340,7 +1340,7 @@ def _draw_editor_window():
     target_w = 560
     target_h = 620
     PyImGui.set_next_window_size((target_w, target_h), PyImGui.ImGuiCond.Once)
-    if ImGui.Begin(SETTINGS_INI_KEY, "Formation Editor", flags=PyImGui.WindowFlags.NoFlag):
+    if ImGui_Legacy.Begin(SETTINGS_INI_KEY, "Formation Editor", flags=PyImGui.WindowFlags.NoFlag):
         if PyImGui.begin_tab_bar("FormationEditorTabs"):
             if PyImGui.begin_tab_item("Generator"):
                 _draw_generator_tab()
@@ -1355,7 +1355,7 @@ def _draw_editor_window():
                 _draw_visual_tab()
                 PyImGui.end_tab_item()
             PyImGui.end_tab_bar()
-    ImGui.End(SETTINGS_INI_KEY)
+    ImGui_Legacy.End(SETTINGS_INI_KEY)
 
 
 def _draw_canvas_window():
@@ -1364,9 +1364,9 @@ def _draw_canvas_window():
     target_w = ui.canvas_size[0] + 32
     target_h = ui.canvas_size[1] + 72
     PyImGui.set_next_window_size((target_w, target_h), PyImGui.ImGuiCond.Once)
-    if ImGui.Begin(SETTINGS_INI_KEY, "Formation Canvas", flags=PyImGui.WindowFlags.NoFlag):
+    if ImGui_Legacy.Begin(SETTINGS_INI_KEY, "Formation Canvas", flags=PyImGui.WindowFlags.NoFlag):
         _draw_canvas_tab()
-    ImGui.End(SETTINGS_INI_KEY)
+    ImGui_Legacy.End(SETTINGS_INI_KEY)
 
 
 def _draw_3d_overlay():

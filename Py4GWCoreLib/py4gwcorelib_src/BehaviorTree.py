@@ -58,7 +58,7 @@ import PyImGui
 from .Color import Color, ColorPalette
 from .Utils import Utils
 from ..Py4GWcorelib import ConsoleLog, Console
-from ..ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+from ..ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 
 
 # --------------------------------------------------------

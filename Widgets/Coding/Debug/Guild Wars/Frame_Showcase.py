@@ -3,7 +3,7 @@
 # ========================================================================
 import Py4GW
 from Py4GWCoreLib import (UIManager, Color, Utils, ManagedWindowSpec, WindowFactory, WindowVarSpec)
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.IniManager import IniManager
 import PyImGui, PyUIManager, PyCallback, PyOverlay
 import json, ctypes, os, time
@@ -132,7 +132,7 @@ class FrameNode:
 
             if expanded:
                 PyImGui.same_line(0, -1)
-                self._show_inline_data = ImGui.toggle_button(
+                self._show_inline_data = ImGui_Legacy.toggle_button(
                     f"Data##ftsn_{self.frame_id}", self._show_inline_data, width=60, height=17
                 )
                 if _config.keep_data_updated:
@@ -145,7 +145,7 @@ class FrameNode:
                             ("Type:", str(self.type)),
                             ("Template:", str(self.template_type)),
                         ]
-                        ImGui.table(f"ftsn_inline_{self.frame_id}", headers, data)
+                        ImGui_Legacy.table(f"ftsn_inline_{self.frame_id}", headers, data)
                 PyImGui.separator()
                 for child in self.children:
                     if not self.tree._active_filter or child._matches_search():
@@ -154,7 +154,7 @@ class FrameNode:
         else:
             PyImGui.text_colored(tree_label, col)
             PyImGui.same_line(0, -1)
-            self._show_inline_data = ImGui.toggle_button(
+            self._show_inline_data = ImGui_Legacy.toggle_button(
                 f"Data##ftsn_{self.frame_id}", self._show_inline_data, width=60, height=17
             )
             if _config.keep_data_updated:
@@ -167,7 +167,7 @@ class FrameNode:
                         ("Type:", str(self.type)),
                         ("Template:", str(self.template_type)),
                     ]
-                    ImGui.table(f"ftsn_inline_{self.frame_id}", headers, data)
+                    ImGui_Legacy.table(f"ftsn_inline_{self.frame_id}", headers, data)
             PyImGui.separator()
 
         # Right-click detection on the label just rendered (works for both tree_node and text_colored)
@@ -1026,7 +1026,7 @@ class FrameInspector:
         ]
         headers = ["Field", "Value"]
         data = [(name, str(val)) for name, val in fields]
-        ImGui.table(f"finsp_pos_tbl_{self.frame_id}", headers, data)
+        ImGui_Legacy.table(f"finsp_pos_tbl_{self.frame_id}", headers, data)
 
     def _render_relations(self):
         r = self._frame_obj.relation
@@ -1150,11 +1150,11 @@ class FrameInspector:
             self._raw_field_row("Field105_0x1C4", f.field105_0x1c4),
         ])
 
-        ImGui.table(f"finsp_rf_tbl_{self.frame_id}", headers, data)
+        ImGui_Legacy.table(f"finsp_rf_tbl_{self.frame_id}", headers, data)
 
 
 # ========================================================================
-# InspectorManager — Dynamic Inspector Windows via ImGui.BeginWithClose
+# InspectorManager — Dynamic Inspector Windows via ImGui_Legacy.BeginWithClose
 # ========================================================================
 class InspectorManager:
     """Manages N dynamic inspector windows, one per frame_id."""
@@ -1202,13 +1202,13 @@ class InspectorManager:
             title += f"###finsp_win_{fid}"
 
             initial_open = IniManager().getBool(ini_key, "open", True, section="Window")
-            expanded, open_ = ImGui.BeginWithClose(ini_key, title, p_open=initial_open)
+            expanded, open_ = ImGui_Legacy.BeginWithClose(ini_key, title, p_open=initial_open)
 
             if expanded and open_:
                 if fid in self._inspectors:
                     self._inspectors[fid].render(ini_key, title)
 
-            ImGui.End(ini_key)
+            ImGui_Legacy.End(ini_key)
 
             if not open_:
                 IniManager().set(ini_key, "open", False, section="Window")
@@ -1310,7 +1310,7 @@ class FrameShowcase:
 
                 PyImGui.end_tab_bar()
 
-        ImGui.End(_window_factory.key("main"))
+        ImGui_Legacy.End(_window_factory.key("main"))
 
         # Clean up callbacks when main window is closed
         if not open_:
@@ -1345,9 +1345,9 @@ def main():
 def tooltip():
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Frame Showcase", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     PyImGui.text("Comprehensive UIManager Feature Explorer & Tester.")

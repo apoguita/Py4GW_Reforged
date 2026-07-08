@@ -1,6 +1,6 @@
 # Necessary Imports
 import Py4GW        #Miscelanious functions and classes
-import ImGui_Py     #ImGui wrapper
+import ImGui_Py     #ImGui_Legacy wrapper
 import traceback    #traceback to log stack traces
 # End Necessary Imports
 

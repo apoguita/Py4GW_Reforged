@@ -1,17 +1,17 @@
 import PyImGui
 
-from py4gwui_src._layout import _LayoutMethods
-from py4gwui_src._text import _TextMethods
-from py4gwui_src._widgets import _WidgetMethods
-from py4gwui_src._color_image import _ColorImageMethods
-from py4gwui_src._tree_tables import _TreeTableMethods
-from py4gwui_src._popups import _PopupMenuMethods
-from py4gwui_src._input import _InputStateMethods
-from py4gwui_src._items import _ItemMethods
-from py4gwui_src._window import _WindowMethods
-from py4gwui_src._docking import _DockingMethods
-from py4gwui_src._system import _SystemMethods
-from py4gwui_src._scopes import (
+from ._layout import _LayoutMethods
+from ._text import _TextMethods
+from ._widgets import _WidgetMethods
+from ._color_image import _ColorImageMethods
+from ._tree_tables import _TreeTableMethods
+from ._popups import _PopupMenuMethods
+from ._input import _InputStateMethods
+from ._items import _ItemMethods
+from ._window import _WindowMethods
+from ._docking import _DockingMethods
+from ._system import _SystemMethods
+from ._scopes import (
     _ScopeResult, _CloseableResult,
     _WindowScope, _ChildScope, _GroupScope, _DisabledScope,
     _MenuBarScope, _MainMenuBarScope, _MenuScope,
@@ -27,7 +27,7 @@ from py4gwui_src._scopes import (
 )
 
 
-class Py4GWUI(
+class ImGui(
     _LayoutMethods,
     _TextMethods,
     _WidgetMethods,

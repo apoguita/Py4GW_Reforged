@@ -3,7 +3,7 @@ from typing import Optional
 import PySystem
 import PyImGui
 
-from Py4GWCoreLib import IconsFontAwesome5, ImGui
+from Py4GWCoreLib import IconsFontAwesome5, ImGui_Legacy
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, Utils
 from Py4GWCoreLib.enums import Profession, Rarity
 from Sources.frenkeyLib.Core import ex_style
@@ -38,7 +38,7 @@ class GUI:
             texture = CoreTextures.get_profession_texture(profession, hovered)
             
             if texture:
-                ImGui.DrawTextureExtended(texture_path=texture, size=(size, size), tint=tint)
+                ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(size, size), tint=tint)
             else:
                 PyImGui.dummy(size, size)
     
@@ -125,13 +125,13 @@ class GUI:
             rect = (screen_cursor[0], screen_cursor[1], screen_cursor[0] + frame_size[0], screen_cursor[1] + frame_size[1])           
             PyImGui.draw_list_add_rect_filled(rect[0], rect[1], rect[2], rect[3], Utils.RGBToColor(frame_color[0], frame_color[1], frame_color[2], 50), 1.0, 0)                                                     
                                         
-        ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
+        ImGui_Legacy.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
         
         if texture_exists and texture:     
             PyImGui.set_cursor_screen_pos(screen_cursor[0] + padding[0], screen_cursor[1] + padding[1])                                  
-            ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
+            ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
         else:
-            ImGui.push_font("Bold", int(skin_size * factor))        
+            ImGui_Legacy.push_font("Bold", int(skin_size * factor))        
             text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
             
             PyImGui.set_cursor_screen_pos(screen_cursor[0] + ((frame_size[0] - text_size[0]) / 2), screen_cursor[1] + ((frame_size[1] - text_size[1]) / 2))
@@ -139,7 +139,7 @@ class GUI:
                 PyImGui.ImGuiCol.Text, (texture_color[0] / 255, texture_color[1] / 255, texture_color[2] / 255, texture_color[3] / 255))
             PyImGui.text(IconsFontAwesome5.ICON_QUESTION)  
             PyImGui.pop_style_color(1)
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
 
         if PyImGui.is_item_clicked(0) and is_hovered: 
             selected = not selected 
@@ -169,7 +169,7 @@ class GUI:
         
         if background:
             window_style = ex_style.ExStyle()
-            imgui_style = ImGui.get_style()
+            imgui_style = ImGui_Legacy.get_style()
             color = imgui_style.ButtonActive if is_clicked else imgui_style.ButtonHovered if is_hovered else imgui_style.Button
             
             PyImGui.draw_list_add_rect_filled(rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3], color.color_int, imgui_style.FrameRounding.value1, 0)
@@ -178,9 +178,9 @@ class GUI:
         
         PyImGui.set_cursor_screen_pos(screen_cursor[0] + padding[0], screen_cursor[1] + padding[1])
         if is_hovered and hovered_texture_path:
-            ImGui.DrawTextureExtended(hovered_texture_path, (texture_size[0], texture_size[1]))
+            ImGui_Legacy.DrawTextureExtended(hovered_texture_path, (texture_size[0], texture_size[1]))
         else:
-            ImGui.DrawTextureExtended(texture_path, (texture_size[0], texture_size[1]), tint=tint)
+            ImGui_Legacy.DrawTextureExtended(texture_path, (texture_size[0], texture_size[1]), tint=tint)
         
         return is_clicked
     

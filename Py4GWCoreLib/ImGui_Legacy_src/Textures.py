@@ -217,7 +217,7 @@ class GameTexture:
         mode: Optional[TextureSliceMode] = None,
     ):
         """Draw with precomputed UVs using 4-direction margins."""
-        from .ImGuisrc import ImGui
+        from .ImGuisrc import ImGui_Legacy
         mode = mode or self.mode
         x, y = pos
         w, h = size
@@ -238,7 +238,7 @@ class GameTexture:
             if not uv_region:
                 return
 
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 pos=(x + dx, y + dy),
                 size=(dw, dh),
                 texture_path=self.texture,
@@ -342,8 +342,8 @@ class ThemeTexture:
             self.textures[theme] = texture
 
     def get_texture(self, theme: StyleTheme | None = None) -> GameTexture:
-        from .ImGuisrc import ImGui
-        theme = theme or ImGui.get_style().Theme
+        from .ImGuisrc import ImGui_Legacy
+        theme = theme or ImGui_Legacy.get_style().Theme
         return self.textures.get(theme, self.textures.get(StyleTheme.Guild_Wars, ThemeTexture.PlaceHolderTexture))
 
 class ThemeTextures(Enum):  

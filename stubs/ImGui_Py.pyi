@@ -251,7 +251,7 @@ from typing import Tuple, List, Any
 # Functions
 
 def get_io() -> ImGuiIO:
-    """Retrieves ImGui IO settings.
+    """Retrieves ImGui_Legacy IO settings.
     Returns: ImGuiIO object with input/output settings.
     """
     pass
@@ -412,7 +412,7 @@ def get_scroll_y() -> float:
 
 def get_style() -> 'ImGuiStyle':
     """
-    Returns the current style settings of the ImGui context.
+    Returns the current style settings of the ImGui_Legacy context.
 
     :return: A reference to the ImGuiStyle object which can be used to modify style settings.
     """
@@ -443,7 +443,7 @@ class ImGuiStyle:
 
 def get_cursor_pos() -> Tuple[float, float]:
     """
-    Returns the current cursor position in ImGui, relative to the current window.
+    Returns the current cursor position in ImGui_Legacy, relative to the current window.
 
     :return: A tuple containing the x and y position of the cursor in the current window.
     """
@@ -475,10 +475,10 @@ def get_cursor_start_pos() -> Tuple[float, float]:
 
 def is_rect_visible(size: Tuple[float, float]) -> bool:
     """
-    Checks if a rectangle of the given size is visible in ImGui.
+    Checks if a rectangle of the given size is visible in ImGui_Legacy.
 
     This function takes a tuple representing the size (width, height) of a rectangle 
-    and checks whether it is currently visible in the ImGui window.
+    and checks whether it is currently visible in the ImGui_Legacy window.
 
     :param size: A tuple containing the width and height of the rectangle.
     :return: Returns True if the rectangle is visible, False otherwise.

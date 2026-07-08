@@ -1,6 +1,6 @@
 # Necessary Imports
 import Py4GW        #Miscelanious functions and classes
-import PyImGui     #ImGui wrapper
+import PyImGui     #ImGui_Legacy wrapper
 
 # End Necessary Imports
 
@@ -33,7 +33,7 @@ def DrawWindow():
     global module_name
     global state
 
-    # Begin the ImGui window with MenuBar flag
+    # Begin the ImGui_Legacy window with MenuBar flag
     if PyImGui.begin("PyImGui Demo Window"):
         PyImGui.text("Basic Widgets")
         PyImGui.separator()

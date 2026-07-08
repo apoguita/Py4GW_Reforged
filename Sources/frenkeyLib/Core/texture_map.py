@@ -1,7 +1,7 @@
 from enum import Enum, IntEnum
 import os
 
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog
 from Py4GWCoreLib.enums import Profession
 
@@ -39,7 +39,7 @@ class MapTexture():
     
     def draw(self, size : tuple[float, float], state: TextureState = TextureState.Normal, tint = (255, 255, 255, 255), border_color = (255, 255, 255, 0)):        
         uv = self.get_uv(state)        
-        ImGui.DrawTextureExtended(self.texture, size, (uv[0], uv[1]), (uv[2], uv[3]), tint, border_color)
+        ImGui_Legacy.DrawTextureExtended(self.texture, size, (uv[0], uv[1]), (uv[2], uv[3]), tint, border_color)
 
 class CoreTextures(Enum):
     PROFESSION_ICON_SQUARE = "profession_icon_square_{}.png"

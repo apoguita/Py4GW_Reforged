@@ -1,13 +1,13 @@
 from Py4GWCoreLib import *
 from collections import deque, defaultdict
 
-# —— Constants ——
+# â€”â€” Constants â€”â€”
 NPC_DIALOG_HASH    = 3856160816
 DEFAULT_OFFSET     = [2, 0, 0, 1]
 # will be updated at runtime if detection succeeds
 DIALOG_CHILD_OFFSET = list(DEFAULT_OFFSET)
 
-# —— Helpers ——
+# â€”â€” Helpers â€”â€”
 def is_npc_dialog_visible() -> bool:
     """Return True if the NPC-dialog frame exists and is visible."""
     fid = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
@@ -92,7 +92,7 @@ def get_dialog_button_ids(debug: bool = False) -> list[int]:
     primary = UIManager.GetAllChildFrameIDs(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
     if primary:
         if debug:
-            ConsoleLog("DialogTester", f"Primary offset IDs → {primary}", Console.MessageType.Info)
+            ConsoleLog("DialogTester", f"Primary offset IDs â†’ {primary}", Console.MessageType.Info)
         visible_primary = []
         for fid in primary:
             if UIManager.IsVisible(fid):
@@ -104,7 +104,7 @@ def get_dialog_button_ids(debug: bool = False) -> list[int]:
         sorted_primary = [fid for fid, _ in UIManager.SortFramesByVerticalPosition(visible_primary)]
         if sorted_primary:
             if debug:
-                ConsoleLog("DialogTester", f"Using offset-filtered choices → {sorted_primary}", Console.MessageType.Info)
+                ConsoleLog("DialogTester", f"Using offset-filtered choices â†’ {sorted_primary}", Console.MessageType.Info)
             return sorted_primary
 
     # fallback: BFS over entire frame array
@@ -141,7 +141,7 @@ def get_dialog_button_ids(debug: bool = False) -> list[int]:
     sorted_pairs = UIManager.SortFramesByVerticalPosition(visible)
     sorted_ids = [fid for fid, _ in sorted_pairs]
     if debug:
-        ConsoleLog("DialogTester", f"BFS-based filtered choices → {sorted_ids}", Console.MessageType.Info)
+        ConsoleLog("DialogTester", f"BFS-based filtered choices â†’ {sorted_ids}", Console.MessageType.Info)
     return sorted_ids
 
 
@@ -172,8 +172,8 @@ def click_dialog_button(choice: int, debug: bool = False) -> bool:
         ConsoleLog("DialogTester", f"Clicked & queued frame {target} (choice #{choice})", Console.MessageType.Info)
     return True
 
-# —— ImGui window ——
-window = ImGui.WindowModule(
+# â€”â€” ImGui_Legacy window â€”â€”
+window = ImGui_Legacy.WindowModule(
     "Dialog Tester",
     window_name="Dialog Tester",
     window_size=(360, 240),
@@ -197,7 +197,7 @@ def on_ui():
             types.append(None)
 
     PyImGui.text(f"Dialog Visible : {vis}")
-    PyImGui.text(f"Choices Found  : {len(ids)} → {ids}")
+    PyImGui.text(f"Choices Found  : {len(ids)} â†’ {ids}")
     PyImGui.text(f"Template Types: {types}")
     PyImGui.separator()
 

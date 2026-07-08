@@ -1,7 +1,7 @@
 from Py4GWCoreLib import*
 import time, Py4GW
 import traceback
-from Py4GWCoreLib import Key,  Map, ImGui, Botting, ActionQueue, Agent
+from Py4GWCoreLib import Key,  Map, ImGui_Legacy, Botting, ActionQueue, Agent
 
 
 #VARIABLES
@@ -27,7 +27,7 @@ class BotVars:
         self.barradin_map = 163 #BARRADIN ESTATE
         self.ranik_map = 166 #FORT RANIK
         self.bot_started = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
         self.variables = {}
         self.CharrAtTheGate = 46
 
@@ -51,7 +51,7 @@ area_distance = GameAreas()
 action_queue = ActionQueue()
 
 bot_vars = BotVars(map_id=148) #ASCALON
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name, (300, 300), (0, 0), PyImGui.WindowFlags.AlwaysAutoResize)
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name, (300, 300), (0, 0), PyImGui.WindowFlags.AlwaysAutoResize)
 agent_id = Player.GetAgentID()
 
 #COORDS
@@ -3019,7 +3019,7 @@ def show_info_table_item():
 
             data.append((name, farmed_text))
 
-        ImGui.table("INVENTARY", headers, data)
+        ImGui_Legacy.table("INVENTARY", headers, data)
     except Exception as e:
         PySystem.Console.Log("INVENTORY DISPLAY", f"Error showing inventory: {e}", PySystem.Console.MessageType.Warning)
 
@@ -3069,7 +3069,7 @@ def show_info_table_run():
         ("EXPERIENCE", f"{experience}/{required_experience}"),
     ]
 
-    ImGui.table("PLAYER INFO", headers_info, data_info)
+    ImGui_Legacy.table("PLAYER INFO", headers_info, data_info)
 
 
 #GUI

@@ -1,7 +1,7 @@
 import PyImGui
 
 import PyCallback
-from Py4GWCoreLib import ImGui, Color
+from Py4GWCoreLib import ImGui_Legacy, Color
 from Py4GWCoreLib.IniManager import IniManager
 
 show_disabled = False
@@ -56,8 +56,8 @@ def draw_window():
         for ph_id in grouped[ctx_id]:
             grouped[ctx_id][ph_id].sort(key=lambda x: (x[4], x[5]))
 
-    # 4. Draw the ImGui Window
-    if ImGui.Begin(INI_KEY,"Callback Monitor"):
+    # 4. Draw the ImGui_Legacy Window
+    if ImGui_Legacy.Begin(INI_KEY,"Callback Monitor"):
         
         # --- TOTALS SUMMARY ---
         total_cbs = len(callback_list)
@@ -127,16 +127,16 @@ def draw_window():
         if PyImGui.button("Clear All Callbacks"):
             PyCallback.PyCallback.Clear()
 
-        ImGui.End(INI_KEY)
+        ImGui_Legacy.End(INI_KEY)
         
 def tooltip():
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Frame Callback Monitor", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

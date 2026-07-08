@@ -40,7 +40,7 @@ area_distance = GameAreas()
 class BotVars:
     def __init__(self, map_id=0):
         self.bot_started = False
-        self.window_module:ImGui.WindowModule
+        self.window_module:ImGui_Legacy.WindowModule
         self.variables = {}
 
         #HEROES SECTION
@@ -210,7 +210,7 @@ class BotVars:
         self.TheWilds_CoordinateList_6 = [(-10063, -4381),(-9887, -5138),(-9653, -5695),(-10485, -6260)]
 
 bot_vars = BotVars() 
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name="TH3KUM1KO'S LEGENDARY GUARDIAN BOT", window_size=(800, 800), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name="TH3KUM1KO'S LEGENDARY GUARDIAN BOT", window_size=(800, 800), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 timer_instance = Timer()
 elapsed_time = timer_instance.GetElapsedTime()
@@ -1564,14 +1564,14 @@ def main():
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Legendary Guardian Bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

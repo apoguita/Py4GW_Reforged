@@ -4,7 +4,7 @@ import Py4GW
 from typing import Dict
 
 
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import ItemArray
 from Py4GWCoreLib import Item
@@ -58,12 +58,12 @@ class XunlaiModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
         
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         
         if PyImGui.begin("XunlaiButtons", flags):
-            self.show_transfer_buttons = ImGui.toggle_button(IconsFontAwesome5.ICON_CARET_SQUARE_RIGHT, self.show_transfer_buttons, width=20, height=20)
-            ImGui.show_tooltip("Show Deposit/Withdraw Buttons")
+            self.show_transfer_buttons = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_CARET_SQUARE_RIGHT, self.show_transfer_buttons, width=20, height=20)
+            ImGui_Legacy.show_tooltip("Show Deposit/Withdraw Buttons")
             PyImGui.same_line(0,-1)
             PyImGui.text("|")
             PyImGui.same_line(0,-1)  
@@ -87,7 +87,7 @@ class XunlaiModule:
                     continue
                 
                 left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
-                if ImGui.floating_button(caption=IconsFontAwesome5.ICON_CARET_SQUARE_RIGHT,
+                if ImGui_Legacy.floating_button(caption=IconsFontAwesome5.ICON_CARET_SQUARE_RIGHT,
                                         name=f"DepositButton{item_id}",
                                         x=right-25, 
                                         y=bottom-25, 
@@ -119,7 +119,7 @@ class XunlaiModule:
                     continue
                 
                 left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
-                if ImGui.floating_button(caption=IconsFontAwesome5.ICON_CARET_SQUARE_LEFT,
+                if ImGui_Legacy.floating_button(caption=IconsFontAwesome5.ICON_CARET_SQUARE_LEFT,
                                         name=f"WithdrawButton{item_id}",
                                         x=right-25, 
                                         y=bottom-25, 

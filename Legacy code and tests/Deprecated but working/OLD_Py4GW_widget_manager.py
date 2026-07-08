@@ -159,7 +159,7 @@ handler = sys.modules["_Py4GW_GLOBAL_WIDGET_HANDLER"].handler
 enable_all = ini_handler.read_bool(module_name, "enable_all", True)
 old_enable_all = enable_all
 
-window_module = ImGui.WindowModule(module_name, window_name="Widgets", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+window_module = ImGui_Legacy.WindowModule(module_name, window_name="Widgets", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 window_x = ini_handler.read_int(module_name, "x", 100)
 window_y = ini_handler.read_int(module_name, "y", 100)
@@ -210,7 +210,7 @@ def draw_widget_ui():
         initialized = False
         handler.discover_widgets()
         initialized = True
-    ImGui.show_tooltip("Reloads all widgets")
+    ImGui_Legacy.show_tooltip("Reloads all widgets")
     PyImGui.same_line(0.0, 10)
     
     toggle_label = IconsFontAwesome5.ICON_TOGGLE_ON if enable_all else IconsFontAwesome5.ICON_TOGGLE_OFF
@@ -223,7 +223,7 @@ def draw_widget_ui():
         ini_handler.write_key(module_name, "enable_all", str(enable_all))
     if is_enabled:
         PyImGui.pop_style_color(3)
-    ImGui.show_tooltip("Toggle all widgets")
+    ImGui_Legacy.show_tooltip("Toggle all widgets")
     
     PyImGui.separator()
 
@@ -266,7 +266,7 @@ def draw_widget_ui():
                 PyImGui.table_set_column_index(1)
                 if info["enabled"]:
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, cat_color)
-                info["configuring"] = ImGui.toggle_button(IconsFontAwesome5.ICON_COG + f"##Configure{name}", info["configuring"])
+                info["configuring"] = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COG + f"##Configure{name}", info["configuring"])
                 if info["enabled"]:
                     PyImGui.pop_style_color(1)
 

@@ -6,7 +6,7 @@ MODULE_NAME = "Skillbar +"
 MODULE_ICON = "Textures/Module_Icons/SkillBar+.png"
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
-window_module = ImGui.WindowModule('Skillbar+', window_name = 'Skillbar+', window_flags = PyImGui.WindowFlags.AlwaysAutoResize)
+window_module = ImGui_Legacy.WindowModule('Skillbar+', window_name = 'Skillbar+', window_flags = PyImGui.WindowFlags.AlwaysAutoResize)
 
 class SkillBarPlus:
     ini = IniHandler(os.path.join(PySystem.Console.get_projects_path(), "Widgets/Config/Skillbar +.ini"))
@@ -53,9 +53,9 @@ class SkillBarPlus:
                    PyImGui.WindowFlags.NoMouseInputs     |
                    PyImGui.WindowFlags.AlwaysAutoResize) 
             
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0)
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowBorderSize, 0)
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowBorderSize, 0)
+            PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0, 0)
             
             if PyImGui.begin(caption, flags):
                 PyImGui.text(text)
@@ -72,7 +72,7 @@ class SkillBarPlus:
                                         color)
             
         def DrawDurationBar(self, id, coords, duration, remaining):
-            ImGui.push_font("Regular", self.duration_font)
+            ImGui_Legacy.push_font("Regular", self.duration_font)
 
             percentage = remaining/duration
             remaining = math.floor(remaining) if remaining > 1 else round(remaining,1)
@@ -104,7 +104,7 @@ class SkillBarPlus:
 
             self.DrawText(id, str(remaining), left + (width - text_width)/2, 3 + top + (height - text_height)/2, text_width, text_height)
 
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
 
         def Draw(self):
             self.overlay.BeginDraw()
@@ -147,7 +147,7 @@ class SkillBarPlus:
                     width = right - left
                     height = bottom - top
 
-                    ImGui.push_font("Regular", self.font_size)
+                    ImGui_Legacy.push_font("Regular", self.font_size)
                     
                     text_width, text_height = PyImGui.calc_text_size(str(recharge))
                     text_width = text_width
@@ -155,7 +155,7 @@ class SkillBarPlus:
 
                     self.DrawText(f'skill{i}', str(recharge), left + (width - text_width)/2, top + (height - text_height)/2, text_width, text_height)
 
-                    ImGui.pop_font()
+                    ImGui_Legacy.pop_font()
 
             self.overlay.EndDraw()
 
@@ -190,9 +190,9 @@ class SkillBarPlus:
                    PyImGui.WindowFlags.AlwaysAutoResize) 
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, Utils.ColorToTuple(self.bg_color))
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0)
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowBorderSize, 0)
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 2, 2)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowBorderSize, 0)
+            PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 2, 2)
             
             if PyImGui.begin(caption, flags):
                 PyImGui.text(text)
@@ -225,7 +225,7 @@ class SkillBarPlus:
 
                 _, _, right, bottom = UIManager.GetFrameCoords(frame_id)
 
-                ImGui.push_font("Regular", self.font_size)
+                ImGui_Legacy.push_font("Regular", self.font_size)
                 time_remaining = str(time_remaining)
                 text_width, text_height = PyImGui.calc_text_size(time_remaining)
                 text_width = text_width + 4
@@ -233,7 +233,7 @@ class SkillBarPlus:
 
                 self.DrawText(f'effect{skill_id}', time_remaining, right - text_width, bottom - text_height, text_width, text_height)
 
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
 
         def Config(self):
             if PyImGui.collapsing_header(f'Effects'):
@@ -282,7 +282,7 @@ class SkillBarPlus:
 
                     texture_path = GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(SkillBar.GetSkillIDBySlot(i + 1))
                     if texture_path:
-                        if ImGui.ImageButton(f'##slot_{i}', texture_path, icon_size, icon_size):
+                        if ImGui_Legacy.ImageButton(f'##slot_{i}', texture_path, icon_size, icon_size):
                             self.slots[i] = not self.slots[i]
                         PyImGui.same_line(offset,-1)
                         offset += icon_size + 14
@@ -390,9 +390,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Skillbar +", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     
     PyImGui.spacing()
     PyImGui.separator()

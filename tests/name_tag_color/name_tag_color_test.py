@@ -29,7 +29,7 @@ import PyImGui
 
 MODULE_NAME = "Name-Tag Color Test"
 
-# Py4GW exec's this script as a string, so __file__ may be undefined — fall back
+# Py4GW exec's this script as a string, so __file__ may be undefined â€” fall back
 # to the known abs path (mirrors UI_RE harnesses).
 try:
     _BASE = os.path.dirname(os.path.abspath(__file__))
@@ -273,7 +273,7 @@ def dump_status() -> None:
 
 
 def main() -> None:
-    """Per-frame ImGui window. Acts only on button clicks; polls a live status line."""
+    """Per-frame ImGui_Legacy window. Acts only on button clicks; polls a live status line."""
     global _ui_agent_id, _ui_color_hex
 
     if not PyImGui.begin(MODULE_NAME):
@@ -283,7 +283,7 @@ def main() -> None:
     # --- Module status (live) ---
     st = _status()
     if not st.get("import_ok"):
-        PyImGui.text_colored("PyAgentTagColor NOT loaded — rebuild + reinject the DLL.", (1.0, 0.4, 0.4, 1.0))
+        PyImGui.text_colored("PyAgentTagColor NOT loaded â€” rebuild + reinject the DLL.", (1.0, 0.4, 0.4, 1.0))
         if _last_error:
             PyImGui.text(f"import error: {_last_error}")
     else:

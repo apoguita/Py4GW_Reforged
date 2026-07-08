@@ -1,6 +1,6 @@
 
 from Py4GWCoreLib import PyImGui, Agent
-from Py4GWCoreLib import ImGui 
+from Py4GWCoreLib import ImGui_Legacy 
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Allegiance
 from Py4GWCoreLib import Color
@@ -14,7 +14,7 @@ LOG_ACTIONS = True
 
 
 #region WinwowStup
-window_module = ImGui.WindowModule(
+window_module = ImGui_Legacy.WindowModule(
     MODULE_NAME, 
     window_name="Agent Info Viewer", 
     window_size=(0, 0),
@@ -23,7 +23,7 @@ window_module = ImGui.WindowModule(
 
 #endregion
 
-#region ImGui
+#region ImGui_Legacy
 SELECTED_ALLIEGANCE = 0
 SELECTED_AGENT_INDEX = 0 
 SELECTED_AGENT_ID = 0    
@@ -186,7 +186,7 @@ def DrawMainWindow():
             for attribute in attributes:
                 data.append((attribute.GetName(), str(attribute.level_base), str(attribute.level)))
 
-            ImGui.table(f"Attributes Info##attinfo{_AGENT_ID}", headers, data)
+            ImGui_Legacy.table(f"Attributes Info##attinfo{_AGENT_ID}", headers, data)
             
         PyImGui.text_colored("Is Living", _colored_bool(Agent.IsLiving(_AGENT_ID)))
         PyImGui.same_line(0, -1)
@@ -455,7 +455,7 @@ def DrawMainWindow():
                 _format_agent_row("Target:", target),
             ]
 
-            ImGui.table("Nearest Agents Data",headers,data)
+            ImGui_Legacy.table("Nearest Agents Data",headers,data)
             
             PyImGui.text("Targetting:")
             PyImGui.push_item_width(175)
@@ -557,9 +557,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Agent Info Viewer", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

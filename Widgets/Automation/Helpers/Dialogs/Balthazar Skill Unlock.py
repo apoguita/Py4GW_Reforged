@@ -4,7 +4,7 @@ import time
 from typing import List, Optional
 
 import Py4GW
-from Py4GWCoreLib import Agent, Color, Console, ConsoleLog, ImGui, Map, Party, Player, PyImGui, Skill
+from Py4GWCoreLib import Agent, Color, Console, ConsoleLog, ImGui_Legacy, Map, Party, Player, PyImGui, Skill
 
 MODULE_NAME = "Balthazar Skill Unlock"
 MODULE_ICON = "Textures/Module_Icons/Skill Learner.png"
@@ -544,9 +544,9 @@ class BalthazarSkillUnlockWidget:
 def tooltip() -> None:
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored(MODULE_NAME, title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.text("Search or enter a skill ID, then send the Balthazar unlock dialog.")
     PyImGui.text("The helper verifies result by watching unlocked-skill bits and Balthazar faction.")

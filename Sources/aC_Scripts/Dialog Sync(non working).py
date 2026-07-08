@@ -1,6 +1,6 @@
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # File: Dialog Sync.py   (no move_interact_blessing_npc fallback)
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 import os
 import tempfile
@@ -31,9 +31,9 @@ from Sources.aC_Scripts.aC_api import (
     get_dialog_button_count,
 )
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Constants & Paths
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 FLAG_DIR = os.path.join(tempfile.gettempdir(), "GuildWarsNPCSync")
 os.makedirs(FLAG_DIR, exist_ok=True)
 SECTION = "NPC_SYNC"
@@ -41,52 +41,52 @@ SECTION = "NPC_SYNC"
 WINDOW_INI_PATH   = os.path.join(FLAG_DIR, "npc_sync_window.ini")
 ini_window        = IniHandler(WINDOW_INI_PATH)
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Throttles & Timers
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _npc_sync_timer    = ThrottledTimer(1000)   # run FSM at most once per second
 save_window_timer  = Timer()
 save_window_timer.Start()
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Window State (persisted)
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 win_x            = ini_window.read_int(SECTION, "window_x", 100)
 win_y            = ini_window.read_int(SECTION, "window_y", 100)
 win_collapsed    = ini_window.read_bool(SECTION, "window_collapsed", False)
 first_run_window = True
 
-# ──────────────────────────────────────────────────────────────────────────────
-# FSM Constants (only used for “Come Here” and “Choice” on followers)
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# FSM Constants (only used for â€œCome Hereâ€ and â€œChoiceâ€ on followers)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 IDLE, MOVING_LEADER, IN_DIALOG, CHOICE_DONE = range(4)
 DIALOG_RESET_TIMEOUT = 2.0
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Shared‐memory “Leader State” (on each follower)
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Sharedâ€memory â€œLeader Stateâ€ (on each follower)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 leader_target_agent = 0        # NPC agent ID last broadcast by leader
-leader_choice       = -1       # Dialog‐button index last broadcast
-leader_position     = None     # (x, y, timestamp) last “Come Here” broadcast
+leader_choice       = -1       # Dialogâ€button index last broadcast
+leader_position     = None     # (x, y, timestamp) last â€œCome Hereâ€ broadcast
 leader_position_ts  = 0.0      # timestamp component of leader_position
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Per‐follower runtime variables
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Perâ€follower runtime variables
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 last_choice_time    = None
 state               = IDLE
 last_leader_pos     = None    # (x, y, timestamp) follower is moving toward
 last_processed_lts  = 0.0     # last processed timestamp for position
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Helpers
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def get_email_for_agent(agent_id: int) -> str | None:
     """
     SharedMemory does not expose GetAccountDataFromAgentID, so we iterate
-    over GetAllAccountData and match PlayerID → agent_id.
+    over GetAllAccountData and match PlayerID â†’ agent_id.
     """
     for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
         if int(account.AgentData.AgentID) == agent_id:
@@ -94,13 +94,13 @@ def get_email_for_agent(agent_id: int) -> str | None:
     return None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Leader‐side “broadcast” functions
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Leaderâ€side â€œbroadcastâ€ functions
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def broadcast_target_to_party(agent_id: int):
     """
-    Leader calls this to notify all followers: “NPC agent_id is our next target.”
+    Leader calls this to notify all followers: â€œNPC agent_id is our next target.â€
     We put agent_id into Params[0] so that InteractWithTarget can pick it up.
     """
     leader_email = Player.GetAccountEmail()
@@ -129,7 +129,7 @@ def broadcast_target_to_party(agent_id: int):
 
 def broadcast_choice_to_party(choice_idx: int):
     """
-    Leader calls this to notify all followers: “Click dialog button = choice_idx.”
+    Leader calls this to notify all followers: â€œClick dialog button = choice_idx.â€
     """
     leader_email = Player.GetAccountEmail()
     if not leader_email:
@@ -157,8 +157,8 @@ def broadcast_choice_to_party(choice_idx: int):
 
 def broadcast_position_to_party(x: float, y: float):
     """
-    Leader calls this to notify all followers: “Move to (x, y).”
-    We do not broadcast (0, 0); that is treated as a no‐op.
+    Leader calls this to notify all followers: â€œMove to (x, y).â€
+    We do not broadcast (0, 0); that is treated as a noâ€op.
     """
     if x == 0.0 and y == 0.0:
         return
@@ -187,14 +187,14 @@ def broadcast_position_to_party(x: float, y: float):
     )
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Reset & Initialize
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def reset_sync():
     """
-    Clear all local “leader_*” state on the follower and return the FSM to IDLE.
-    Broadcast only “clear target” to followers. No zero‐choice or zero‐position.
+    Clear all local â€œleader_*â€ state on the follower and return the FSM to IDLE.
+    Broadcast only â€œclear targetâ€ to followers. No zeroâ€choice or zeroâ€position.
     """
     global leader_target_agent, leader_choice, leader_position, leader_position_ts
     global last_choice_time, state, last_leader_pos, last_processed_lts
@@ -218,9 +218,9 @@ def setup():
     """
     reset_sync()
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Main Logic Loop (called once per frame/tick)
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def run_logic_if_needed():
     global last_choice_time, state, last_leader_pos, last_processed_lts
@@ -229,19 +229,19 @@ def run_logic_if_needed():
     me        = Player.GetAgentID()
     is_leader = (GLOBAL_CACHE.Party.GetPartyLeaderID() == me)
 
-    # ── 1) If I am the leader, skip the follower FSM entirely ──
+    # â”€â”€ 1) If I am the leader, skip the follower FSM entirely â”€â”€
     if is_leader:
         return
 
-    # ── 2) Followers only: throttle to once per second ──
+    # â”€â”€ 2) Followers only: throttle to once per second â”€â”€
     if not _npc_sync_timer.IsExpired():
         return
 
-    # ── 3) Validate map for followers ──
+    # â”€â”€ 3) Validate map for followers â”€â”€
     if not Routines.Checks.Map.MapValid():
         return
 
-    # ── 4) Followers: React to “leader_position” (Come Here) ──
+    # â”€â”€ 4) Followers: React to â€œleader_positionâ€ (Come Here) â”€â”€
     if leader_position is not None:
         lx, ly, lts = leader_position
         if not (lx == 0.0 and ly == 0.0):
@@ -257,16 +257,16 @@ def run_logic_if_needed():
                 cx, cy    = Player.GetXY()
                 tx, ty, _ = last_leader_pos
                 if math.dist((cx, cy), (tx, ty)) < 50.0:
-                    ConsoleLog("NPCSync", "Arrived at leader’s spot", Console.MessageType.Info)
+                    ConsoleLog("NPCSync", "Arrived at leaderâ€™s spot", Console.MessageType.Info)
                     last_leader_pos = None
                     state           = IDLE
 
-    # ── 5) Followers: Cancel/Reset if leader cleared target and position ──
+    # â”€â”€ 5) Followers: Cancel/Reset if leader cleared target and position â”€â”€
     if state != IDLE and leader_target_agent == 0 and (leader_position is None or (leader_position[0] == 0.0 and leader_position[1] == 0.0)):
         reset_sync()
         return
 
-    # ── 6) Followers: In‐dialog “wait for leader’s choice” ──
+    # â”€â”€ 6) Followers: Inâ€dialog â€œwait for leaderâ€™s choiceâ€ â”€â”€
     if state == IN_DIALOG:
         if leader_choice and leader_choice != last_choice:
             click_dialog_button(leader_choice)
@@ -274,7 +274,7 @@ def run_logic_if_needed():
             last_choice_time = time.time()
             state            = CHOICE_DONE
 
-    # ── 7) Followers: After pressing choice, wait for dialog to close ──
+    # â”€â”€ 7) Followers: After pressing choice, wait for dialog to close â”€â”€
     elif state == CHOICE_DONE:
         if is_npc_dialog_visible():
             leader_choice = -1
@@ -284,9 +284,9 @@ def run_logic_if_needed():
             reset_sync()
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# UI Rendering (ImGui) – only draw when you are the leader
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# UI Rendering (ImGui_Legacy) â€“ only draw when you are the leader
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def render_ui():
     global win_x, win_y, win_collapsed, first_run_window
@@ -307,7 +307,7 @@ def render_ui():
     new_collapsed = PyImGui.is_window_collapsed()
     end_pos      = PyImGui.get_window_pos()
 
-    # ── Leader UI: “Come Here” (Running Man) ──
+    # â”€â”€ Leader UI: â€œCome Hereâ€ (Running Man) â”€â”€
     if PyImGui.button(IconsFontAwesome5.ICON_RUNNING):
         if Routines.Checks.Map.MapValid():
             x, y = Player.GetXY()
@@ -320,11 +320,11 @@ def render_ui():
 
     PyImGui.same_line(0.0, -1.0)
 
-    # ── Leader UI: “Go Interact” (Phone) ──
+    # â”€â”€ Leader UI: â€œGo Interactâ€ (Phone) â”€â”€
     if PyImGui.button(IconsFontAwesome5.ICON_PHONE):
         tid = Player.GetTargetID()
         if tid:
-            # 1) Update module‐level variable
+            # 1) Update moduleâ€level variable
             leader_target_agent = tid
 
             # 2) Broadcast to followers
@@ -343,12 +343,12 @@ def render_ui():
 
     PyImGui.same_line(0.0, -1.0)
 
-    # ── Leader UI: “Reset Sync” (↻) ──
+    # â”€â”€ Leader UI: â€œReset Syncâ€ (â†») â”€â”€
     if PyImGui.button(IconsFontAwesome5.ICON_SYNC):
         reset_sync()
-        broadcast_target_to_party(0)   # clear agent‐ID for followers
+        broadcast_target_to_party(0)   # clear agentâ€ID for followers
 
-    # ── Leader UI: “All Click Button i” when in dialog ──
+    # â”€â”€ Leader UI: â€œAll Click Button iâ€ when in dialog â”€â”€
     if is_npc_dialog_visible():
         count = get_dialog_button_count()
         for i in range(1, count + 1):
@@ -362,7 +362,7 @@ def render_ui():
 
     PyImGui.end()
 
-    # ── Save window position/collapsed every 15s ──
+    # â”€â”€ Save window position/collapsed every 15s â”€â”€
     if save_window_timer.HasElapsed(15000):
         if (end_pos[0], end_pos[1]) != (win_x, win_y):
             win_x, win_y = int(end_pos[0]), int(end_pos[1])
@@ -374,18 +374,18 @@ def render_ui():
         save_window_timer.Reset()
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Entry Points
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def main():
-    # 1) Process incoming messages (e.g. follower: target broadcast → InteractWithTarget)
+    # 1) Process incoming messages (e.g. follower: target broadcast â†’ InteractWithTarget)
     ProcessMessages()
 
-    # 2) Run the follower FSM for “Come Here” and “Choice” (leader skips this entirely)
+    # 2) Run the follower FSM for â€œCome Hereâ€ and â€œChoiceâ€ (leader skips this entirely)
     run_logic_if_needed()
 
-    # 3) Draw leader’s UI (followers see nothing)
+    # 3) Draw leaderâ€™s UI (followers see nothing)
     render_ui()
 
 

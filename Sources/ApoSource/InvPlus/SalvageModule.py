@@ -3,7 +3,7 @@ import PyImGui
 from typing import Dict
 
 
-from Py4GWCoreLib import ImGui, get_texture_for_model
+from Py4GWCoreLib import ImGui_Legacy, get_texture_for_model
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import ItemArray
 from Py4GWCoreLib import Item
@@ -94,8 +94,8 @@ class SalvageModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
 
         table_flags = (
             PyImGui.TableFlags.BordersInnerV |
@@ -178,11 +178,11 @@ class SalvageModule:
 
             PyImGui.table_next_column()
             texture_file = get_texture_for_model(ModelID.Salvage_Kit)
-            if ImGui.ImageButton("##text_unique_name", texture_file, 45, 45):
+            if ImGui_Legacy.ImageButton("##text_unique_name", texture_file, 45, 45):
                 GLOBAL_CACHE.Coroutines.append(SalvageCheckedItems(self.salvage_checkboxes,
                                                                    self.keep_salvage_kits, 
                                                                    self.deposit_materials))
-            ImGui.show_tooltip("Salvage selected items.")    
+            ImGui_Legacy.show_tooltip("Salvage selected items.")    
             
             PyImGui.table_next_column()
             self.deposit_materials = PyImGui.checkbox("Deposit Materials", self.deposit_materials)
@@ -232,7 +232,7 @@ class SalvageModule:
                         self.salvage_checkboxes[item_id] = False
                     
                     left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
-                    self.salvage_checkboxes[item_id] = ImGui.floating_checkbox(
+                    self.salvage_checkboxes[item_id] = ImGui_Legacy.floating_checkbox(
                         f"{item_id}", 
                         self.salvage_checkboxes[item_id], 
                         right -25, 

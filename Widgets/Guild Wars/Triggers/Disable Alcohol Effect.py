@@ -2,7 +2,7 @@ import Py4GW
 import PyImGui
 
 from Py4GWCoreLib.Effect import Effects
-from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
+from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Routines import Routines
@@ -21,9 +21,9 @@ def tooltip():
     PyImGui.begin_tooltip()
 
     # Title
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored(MODULE_NAME, title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     

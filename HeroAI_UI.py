@@ -3,6 +3,7 @@ import math
 from typing import Optional
 
 import PyImGui
+import PySystem
 
 from HeroAI.cache_data import CacheData, INI_DIR
 from HeroAI.utils import IsHeroFlagged
@@ -11,10 +12,10 @@ from HeroAI.commands import HeroAICommands
 from Py4GWCoreLib import Py4GW
 from Py4GWCoreLib import Agent, Color, GLOBAL_CACHE, ConsoleLog, ManagedWindowSpec, Player, SharedCommandType, Utils, WindowFactory, WindowVarSpec
 from Py4GWCoreLib.Map import Map
-from Py4GWCoreLib.ImGui import ImGui
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
-from Py4GWCoreLib.ImGui_src.Textures import TextureState, ThemeTexture, ThemeTextures
-from Py4GWCoreLib.ImGui_src.types import ImGuiStyleVar, StyleTheme
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.ImGui_Legacy_src.Textures import TextureState, ThemeTexture, ThemeTextures
+from Py4GWCoreLib.ImGui_Legacy_src.types import ImGuiStyleVar, StyleTheme
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.enums import ImguiFonts
 from Py4GWCoreLib.enums_src.GameData_enums import Allegiance, Profession, ProfessionShort, Range
@@ -180,7 +181,7 @@ class HealthState:
 def get_frame_texture_for_effect(skill_id: int):
     is_elite = GLOBAL_CACHE.Skill.Flags.IsElite(skill_id)
     texture_state = TextureState.Normal if not is_elite else TextureState.Active
-    theme = ImGui.get_style().Theme if ImGui.get_style().Theme in ImGui.Textured_Themes else StyleTheme.Guild_Wars
+    theme = ImGui_Legacy.get_style().Theme if ImGui_Legacy.get_style().Theme in ImGui_Legacy.Textured_Themes else StyleTheme.Guild_Wars
 
     if GLOBAL_CACHE.Skill.Flags.IsHex(skill_id):
         frame_texture = ThemeTextures.Effect_Frame_Hex.value.get_texture(theme)
@@ -275,7 +276,7 @@ class HeroAI_PlayerPanelRenderer:
         if game_option is None:
             return
 
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         table_width, _ = get_panel_dimensions(self.appearance_window.get_panel_scale())
         btn_size = (table_width / 5) - 4
         skill_size = (table_width / NUMBER_OF_SKILLS) - 8
@@ -286,34 +287,34 @@ class HeroAI_PlayerPanelRenderer:
         if PyImGui.begin_table(f"FollowerGameOptionTable##{identifier}", 3, 0, 0, btn_size + 2):
             PyImGui.table_next_row()
             PyImGui.table_next_column()
-            following = ImGui.toggle_button(IconsFontAwesome5.ICON_RUNNING + f"##Following{identifier}", game_option.Following, btn_size * 1.45, btn_size)
+            following = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_RUNNING + f"##Following{identifier}", game_option.Following, btn_size * 1.45, btn_size)
             if following != game_option.Following:
                 game_option.Following = following
-            ImGui.show_tooltip("Follow / Avoidance")
+            ImGui_Legacy.show_tooltip("Follow / Avoidance")
 
             PyImGui.table_next_column()
-            looting = ImGui.toggle_button(IconsFontAwesome5.ICON_COINS + f"##Looting{identifier}", game_option.Looting, btn_size * 1.45, btn_size)
+            looting = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COINS + f"##Looting{identifier}", game_option.Looting, btn_size * 1.45, btn_size)
             if looting != game_option.Looting:
                 game_option.Looting = looting
-            ImGui.show_tooltip("Looting")
+            ImGui_Legacy.show_tooltip("Looting")
 
             PyImGui.table_next_column()
-            combat = ImGui.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + f"##Combat{identifier}", game_option.Combat, btn_size * 1.45, btn_size)
+            combat = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + f"##Combat{identifier}", game_option.Combat, btn_size * 1.45, btn_size)
             if combat != game_option.Combat:
                 game_option.Combat = combat
-            ImGui.show_tooltip("Combat")
+            ImGui_Legacy.show_tooltip("Combat")
             PyImGui.end_table()
 
         if self.appearance_window.get_show_player_skill_toggles():
-            style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui.Textured_Themes else 0, 3 if style.Theme not in ImGui.Textured_Themes else 2)
+            style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui_Legacy.Textured_Themes else 0, 3 if style.Theme not in ImGui_Legacy.Textured_Themes else 2)
             if PyImGui.begin_table(f"FollowerSkillsTable##{identifier}", NUMBER_OF_SKILLS, 0, 0, (btn_size / 3)):
                 PyImGui.table_next_row()
                 for i in range(NUMBER_OF_SKILLS):
                     PyImGui.table_next_column()
-                    skill_active = ImGui.toggle_button(f"{i + 1}##Skill{i}{identifier}", game_option.Skills[i], skill_size, skill_size)
+                    skill_active = ImGui_Legacy.toggle_button(f"{i + 1}##Skill{i}{identifier}", game_option.Skills[i], skill_size, skill_size)
                     if skill_active != game_option.Skills[i]:
                         game_option.Skills[i] = skill_active
-                    ImGui.show_tooltip(f"Skill {i + 1}")
+                    ImGui_Legacy.show_tooltip(f"Skill {i + 1}")
                 PyImGui.end_table()
             style.ButtonPadding.pop_style_var()
 
@@ -381,22 +382,22 @@ class HeroAI_RichPlayerPanelRenderer:
         hexed: bool = False,
         has_weaponspell: bool = False,
     ) -> bool:
-        style = ImGui.get_style()
-        draw_textures = style.Theme in ImGui.Textured_Themes
+        style = ImGui_Legacy.get_style()
+        draw_textures = style.Theme in ImGui_Legacy.Textured_Themes
         pips = Utils.calculate_health_pips(max_health, regen)
 
         if not draw_textures:
             xpos, ypos = PyImGui.get_cursor_pos()
             style.PlotHistogram.push_color(state.rgb_tuple)
             style.FrameRounding.push_style_var(0)
-            ImGui.progress_bar(current_health, width, height)
+            ImGui_Legacy.progress_bar(current_health, width, height)
             style.FrameRounding.pop_style_var()
             style.PlotHistogram.pop_color()
             PyImGui.set_cursor_pos((xpos, ypos))
 
-        ImGui.dummy(width, height)
+        ImGui_Legacy.dummy(width, height)
         fraction = (max(0.0, min(1.0, current_health)) if max_health > 0 else 0.0)
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         width = item_rect_max[0] - item_rect_min[0]
         height = item_rect_max[1] - item_rect_min[1]
         item_rect = (item_rect_min[0] + 1, item_rect_min[1], width - 2, height)
@@ -482,7 +483,7 @@ class HeroAI_RichPlayerPanelRenderer:
                 pip_pos = text_rect[0] - 5 - pip_size[0]
                 for i in range(abs(int(pips))):
                     pip_texture.value.get_texture().draw_in_drawlist((pip_pos - (i * pip_step), pip_y), pip_size)
-            PyImGui.draw_list_add_rect(item_rect_min[0], item_rect_min[1], item_rect_min[0] + item_rect_size[0], item_rect_min[1] + item_rect_size[1], style.Border.color_int, 0, 0, 1)
+            PyImGui.draw_list_add_rect(item_rect_min[0], item_rect_min[1], item_rect_min[0] + item_rect_size[0], item_rect_min[1] + item_rect_size[1], style.Border.color_int, 0, 1)
         else:
             pip_char = IconsFontAwesome5.ICON_ANGLE_RIGHT if pips > 0 else IconsFontAwesome5.ICON_ANGLE_LEFT
             pip_string = "".join([pip_char for _ in range(abs(int(pips)))])
@@ -504,23 +505,23 @@ class HeroAI_RichPlayerPanelRenderer:
         current_energy: float,
         regen: float,
     ) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         pips = Utils.calculate_energy_pips(max_energy, regen)
-        draw_textures = style.Theme in ImGui.Textured_Themes
+        draw_textures = style.Theme in ImGui_Legacy.Textured_Themes
 
         if not draw_textures:
             xpos, ypos = PyImGui.get_cursor_pos()
             style.PlotHistogram.push_color((30, 94, 153, 255))
             style.FrameRounding.push_style_var(0)
-            ImGui.progress_bar(current_energy, width, height)
+            ImGui_Legacy.progress_bar(current_energy, width, height)
             style.FrameRounding.pop_style_var()
             style.PlotHistogram.pop_color()
             PyImGui.set_cursor_pos((xpos, ypos))
 
-        ImGui.dummy(width, height)
+        ImGui_Legacy.dummy(width, height)
 
         fraction = (max(0.0, min(1.0, current_energy)) if max_energy > 0 else 0.0)
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         width = item_rect_max[0] - item_rect_min[0]
         height = item_rect_max[1] - item_rect_min[1]
         item_rect = (item_rect_min[0], item_rect_min[1], width, height)
@@ -540,8 +541,7 @@ class HeroAI_RichPlayerPanelRenderer:
         text_size = PyImGui.calc_text_size(display_label)
         text_rect = (item_rect[0] + ((width - text_size[0]) / 2), item_rect[1] + ((height - text_size[1]) / 2) + self._scale(3), text_size[0], text_size[1])
         PyImGui.draw_list_add_text(
-            text_rect[0],
-            text_rect[1],
+            text_rect[0], text_rect[1],
             style.Text.color_int,
             display_label,
         )
@@ -559,7 +559,7 @@ class HeroAI_RichPlayerPanelRenderer:
                 pip_pos = text_rect[0] - 5 - pip_size[0]
                 for i in range(abs(int(pips))):
                     pip_texture.value.get_texture().draw_in_drawlist((pip_pos - (i * pip_step), pip_y), pip_size)
-            PyImGui.draw_list_add_rect(item_rect_min[0], item_rect_min[1], item_rect_min[0] + item_rect_size[0], item_rect_min[1] + item_rect_size[1], style.Border.color_int, 0, 0, 1)
+            PyImGui.draw_list_add_rect(item_rect_min[0], item_rect_min[1], item_rect_min[0] + item_rect_size[0], item_rect_min[1] + item_rect_size[1], style.Border.color_int, 0, 1)
         else:
             pip_char = IconsFontAwesome5.ICON_ANGLE_RIGHT if pips > 0 else IconsFontAwesome5.ICON_ANGLE_LEFT
             pip_string = "".join([pip_char for _ in range(abs(int(pips)))])
@@ -643,25 +643,25 @@ class HeroAI_RichPlayerPanelRenderer:
     def _show_skill_tooltip(self, skill: CachedSkillInfo, show_usage=True) -> None:
         if not skill or not skill.skill_id:
             return
-        PyImGui.set_next_window_size((300, 0), PyImGui.ImGuiCond.Always)
-        if ImGui.begin_tooltip():
-            ImGui.push_font("Regular", 14)
-            ImGui.text_colored(f"{skill.name} (ID: {skill.skill_id})", Color(227, 211, 165, 255).color_tuple)
-            ImGui.pop_font()
-            ImGui.separator()
+        PyImGui.set_next_window_size(300, 0, PyImGui.ImGuiCond.Always)
+        if ImGui_Legacy.begin_tooltip():
+            ImGui_Legacy.push_font("Regular", 14)
+            ImGui_Legacy.text_colored(f"{skill.name} (ID: {skill.skill_id})", Color(227, 211, 165, 255).color_tuple)
+            ImGui_Legacy.pop_font()
+            ImGui_Legacy.separator()
             if skill.description:
-                ImGui.text_wrapped(skill.description)
+                ImGui_Legacy.text_wrapped(skill.description)
             if show_usage:
                 PyImGui.spacing()
                 gray_color = Color(150, 150, 150, 255)
-                ImGui.push_font("Regular", 12)
-                ImGui.text_colored("Click to use on current target", gray_color.color_tuple)
+                ImGui_Legacy.push_font("Regular", 12)
+                ImGui_Legacy.text_colored("Click to use on current target", gray_color.color_tuple)
                 PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 2)
-                ImGui.text_colored("Ctrl + Click to use on self", gray_color.color_tuple)
+                ImGui_Legacy.text_colored("Ctrl + Click to use on self", gray_color.color_tuple)
                 PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 2)
-                ImGui.text_colored("Shift + Click to toggle active/inactive", gray_color.color_tuple)
-                ImGui.pop_font()
-            ImGui.end_tooltip()
+                ImGui_Legacy.text_colored("Shift + Click to toggle active/inactive", gray_color.color_tuple)
+                ImGui_Legacy.pop_font()
+            ImGui_Legacy.end_tooltip()
 
     def _get_skill_target(self, account, cached_skill: CachedSkillInfo) -> int | None:
         if not cached_skill or cached_skill.skill_id == 0:
@@ -678,8 +678,8 @@ class HeroAI_RichPlayerPanelRenderer:
 
     def _draw_rich_skill_bar(self, account, options) -> None:
         skill_size = self._scale(float(RICH_BAR_HEIGHT))
-        style = ImGui.get_style()
-        draw_textures = style.Theme in ImGui.Textured_Themes
+        style = ImGui_Legacy.get_style()
+        draw_textures = style.Theme in ImGui_Legacy.Textured_Themes
         texture_theme = style.Theme if draw_textures else StyleTheme.Guild_Wars
         for slot, skill_info in enumerate(account.AgentData.Skillbar.Skills):
             skill_id = int(skill_info.Id)
@@ -687,13 +687,13 @@ class HeroAI_RichPlayerPanelRenderer:
                 self.skill_cache[skill_id] = CachedSkillInfo(skill_id)
             skill = self.skill_cache[skill_id]
             if skill.texture_path:
-                ImGui.image(skill.texture_path, (skill_size, skill_size), uv0=(0.0625, 0.0625) if draw_textures else (0, 0), uv1=(0.9375, 0.9375) if draw_textures else (1, 1))
+                ImGui_Legacy.image(skill.texture_path, (skill_size, skill_size), uv0=(0.0625, 0.0625) if draw_textures else (0, 0), uv1=(0.9375, 0.9375) if draw_textures else (1, 1))
                 if PyImGui.is_item_hovered():
                     self._show_skill_tooltip(skill)
             else:
-                ImGui.dummy(skill_size, skill_size)
+                ImGui_Legacy.dummy(skill_size, skill_size)
                 item_rect_min = PyImGui.get_item_rect_min()
-                PyImGui.draw_list_add_rect(item_rect_min[0], item_rect_min[1], item_rect_min[0] + skill_size, item_rect_min[1] + skill_size, Color(50, 50, 50, 255).color_int, 0, 0, 2)
+                PyImGui.draw_list_add_rect(item_rect_min[0], item_rect_min[1], item_rect_min[0] + skill_size, item_rect_min[1] + skill_size, Color(50, 50, 50, 255).color_int, 0, 2)
                 if slot < NUMBER_OF_SKILLS - 1:
                     PyImGui.same_line(0, 0)
                 continue
@@ -711,7 +711,7 @@ class HeroAI_RichPlayerPanelRenderer:
                 PyImGui.draw_list_add_text(
                     item_rect_min[0] + ((skill_size - text_size[0]) / 2),
                     item_rect_min[1] + ((skill_size - text_size[1]) / 2),
-                    ImGui.get_style().Text.color_int,
+                    ImGui_Legacy.get_style().Text.color_int,
                     recharge_seconds,
                 )
             elif casting_skill == skill.skill_id:
@@ -721,7 +721,7 @@ class HeroAI_RichPlayerPanelRenderer:
                 adrenaline_fraction = adrenaline / skill.adrenaline_cost if skill.adrenaline_cost > 0 else 0.0
                 adrenaline_fraction = max(0.0, min(adrenaline_fraction, 1.0))
                 fill_rect = (item_rect_min[0], item_rect_min[1], skill_size, skill_size - (skill_size * adrenaline_fraction))
-                PyImGui.draw_list_add_rect_filled(fill_rect[0], fill_rect[1], fill_rect[0] + fill_rect[2], fill_rect[1] + fill_rect[3], Color(0, 0, 0, 150).color_int, 0, 0)
+                PyImGui.draw_list_add_rect_filled(fill_rect[0], fill_rect[1], fill_rect[0] + fill_rect[2], fill_rect[1] + fill_rect[3], Color(0, 0, 0, 150).color_int, 0)
                 PyImGui.draw_list_add_line(fill_rect[0], fill_rect[1] + fill_rect[3], fill_rect[0] + fill_rect[2], fill_rect[1] + fill_rect[3], Color(0, 0, 0, 255).color_int, 1)
 
             if not options.Skills[slot]:
@@ -729,7 +729,7 @@ class HeroAI_RichPlayerPanelRenderer:
                     hovered = PyImGui.is_item_hovered()
                     ThemeTextures.Cancel.value.get_texture(texture_theme).draw_in_drawlist(PyImGui.get_item_rect_min(), (skill_size, skill_size), state=TextureState.Hovered if hovered else TextureState.Normal)
                 else:
-                    PyImGui.draw_list_add_rect_filled(item_rect_min[0], item_rect_min[1], item_rect_min[0] + skill_size, item_rect_min[1] + skill_size, Color(89, 0, 0, 120).color_int, 0, 0)
+                    PyImGui.draw_list_add_rect_filled(item_rect_min[0], item_rect_min[1], item_rect_min[0] + skill_size, item_rect_min[1] + skill_size, Color(89, 0, 0, 120).color_int, 0)
 
             account_email = Player.GetAccountEmail()
             queued_skill_messages = self.message_cache.get(account_email, {}).get(SharedCommandType.UseSkill, {})
@@ -773,13 +773,13 @@ class HeroAI_RichPlayerPanelRenderer:
         PyImGui.open_popup("Enter Skill Template Code")
         PyImGui.set_window_pos(500, 100, PyImGui.ImGuiCond.Always)
         if PyImGui.begin_popup("Enter Skill Template Code"):
-            self.template_code = ImGui.input_text("##template_code", self.template_code)
-            if ImGui.button("Load"):
+            self.template_code = ImGui_Legacy.input_text("##template_code", self.template_code)
+            if ImGui_Legacy.button("Load"):
                 GLOBAL_CACHE.ShMem.SendMessage(Player.GetAccountEmail(), account.AccountEmail, SharedCommandType.LoadSkillTemplate, ExtraData=(self.template_code, 0, 0, 0))
                 self.template_popup_open = False
                 PyImGui.close_current_popup()
             PyImGui.same_line(0, 10)
-            if ImGui.button("Cancel"):
+            if ImGui_Legacy.button("Cancel"):
                 PyImGui.close_current_popup()
                 self.template_popup_open = False
             if PyImGui.is_mouse_clicked(0) and not PyImGui.is_any_item_hovered():
@@ -788,16 +788,16 @@ class HeroAI_RichPlayerPanelRenderer:
             PyImGui.end_popup()
 
     def _draw_buffs_and_upkeeps(self, account, skill_size: float = 28):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         hard_mode_effect_id = 1912
         effects = [effect for effect in account.AgentData.Buffs.Buffs if effect.Type == 2]
         upkeeps = [effect for effect in account.AgentData.Buffs.Buffs if effect.Type == 1]
 
         def draw_buff(effect: CachedSkillInfo, duration: float, remaining: float, draw_effect_frame: bool = True, size: float = skill_size):
             if not effect.texture_path:
-                ImGui.dummy(size, size)
+                ImGui_Legacy.dummy(size, size)
             else:
-                ImGui.image(effect.texture_path, (size, size), uv0=(0.125, 0.125) if not draw_effect_frame else (0.0625, 0.0625), uv1=(0.875, 0.875) if not draw_effect_frame else (0.9375, 0.9375))
+                ImGui_Legacy.image(effect.texture_path, (size, size), uv0=(0.125, 0.125) if not draw_effect_frame else (0.0625, 0.0625), uv1=(0.875, 0.875) if not draw_effect_frame else (0.9375, 0.9375))
 
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()
@@ -807,16 +807,16 @@ class HeroAI_RichPlayerPanelRenderer:
 
             if duration > 0 and remaining:
                 progress_background_rect = (item_rect_min[0] + 2, item_rect_max[1] - 4, item_rect_max[0] - 2, item_rect_max[1] - 1)
-                PyImGui.draw_list_add_rect_filled(progress_background_rect[0], progress_background_rect[1], progress_background_rect[2], progress_background_rect[3], Color(0, 0, 0, 255).color_int, 0, 0)
+                PyImGui.draw_list_add_rect_filled(progress_background_rect[0], progress_background_rect[1], progress_background_rect[2], progress_background_rect[3], Color(0, 0, 0, 255).color_int, 0)
                 progress_rect = (progress_background_rect[0] + 1, progress_background_rect[1] + 1, progress_background_rect[2] - 2, progress_background_rect[3] - 1)
                 fraction = remaining / (duration * 1000.0)
                 progress_width = (progress_rect[2] - progress_rect[0]) * fraction
-                PyImGui.draw_list_add_rect_filled(progress_rect[0], progress_rect[1], progress_rect[0] + progress_width, progress_rect[3], effect.progress_color, 0, 0)
+                PyImGui.draw_list_add_rect_filled(progress_rect[0], progress_rect[1], progress_rect[0] + progress_width, progress_rect[3], effect.progress_color, 0)
                 remaining_text = f"{remaining/1000:.0f}" if remaining >= 1000 else f"{remaining/1000:.1f}".lstrip("0")
                 text_size = PyImGui.calc_text_size(remaining_text)
                 offset_x = (size - text_size[0]) / 2
                 offset_y = (size - text_size[1]) / 2
-                PyImGui.draw_list_add_rect_filled(item_rect_min[0] + offset_x - 1, item_rect_min[1] + offset_y - 1, item_rect_min[0] + offset_x + text_size[0] + 1, item_rect_min[1] + offset_y + text_size[1] + 1, Color(0, 0, 0, 150).color_int, 2, 0)
+                PyImGui.draw_list_add_rect_filled(item_rect_min[0] + offset_x - 1, item_rect_min[1] + offset_y - 1, item_rect_min[0] + offset_x + text_size[0] + 1, item_rect_min[1] + offset_y + text_size[1] + 1, Color(0, 0, 0, 150).color_int, 2)
                 PyImGui.draw_list_add_text(item_rect_min[0] + offset_x, item_rect_min[1] + offset_y, style.Text.color_int, remaining_text)
 
             if PyImGui.is_item_hovered():
@@ -825,8 +825,8 @@ class HeroAI_RichPlayerPanelRenderer:
         def draw_morale(morale: int, size: float = skill_size):
             morale_display = f"{('+' if morale > 100 else '-')}{abs(100 - morale)}%"
             texture = ThemeTextures.DeathPenalty.value.get_texture() if morale < 100 else ThemeTextures.MoraleBoost.value.get_texture()
-            ImGui.push_font("Regular", 11)
-            ImGui.dummy(size, size)
+            ImGui_Legacy.push_font("Regular", 11)
+            ImGui_Legacy.dummy(size, size)
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()
             item_rect = (item_rect_min[0], item_rect_min[1], item_rect_max[0] - item_rect_min[0], item_rect_max[1] - item_rect_min[1])
@@ -835,21 +835,21 @@ class HeroAI_RichPlayerPanelRenderer:
             offset_x = (size - text_size[0]) / 2
             offset_y = (size - text_size[1])
             PyImGui.draw_list_add_text(item_rect[0] + offset_x, item_rect[1] + offset_y, Color(201, 188, 145, 255).color_int, morale_display)
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
             PyImGui.table_next_column()
 
         def draw_hardmode():
             if any(effect.SkillId == hard_mode_effect_id for effect in effects):
                 to_kill = Map.GetFoesToKill()
                 texture = ThemeTextures.HardMode.value.get_texture(StyleTheme.Guild_Wars) if to_kill > 0 else ThemeTextures.HardModeCompleted.value.get_texture(StyleTheme.Guild_Wars)
-                ImGui.dummy(skill_size + 1, skill_size + 1)
-                item_rect_min, _item_rect_max, _item_rect_size = ImGui.get_item_rect()
+                ImGui_Legacy.dummy(skill_size + 1, skill_size + 1)
+                item_rect_min, _item_rect_max, _item_rect_size = ImGui_Legacy.get_item_rect()
                 texture.draw_in_drawlist(item_rect_min[:2], (skill_size + 1, skill_size + 1))
                 PyImGui.table_next_column()
 
         if any(upkeeps):
             upkeep_size = self._scale(24)
-            ImGui.dummy(0, upkeep_size)
+            ImGui_Legacy.dummy(0, upkeep_size)
             PyImGui.same_line(0, 0)
             for upkeep in upkeeps:
                 if upkeep.SkillId == 0:
@@ -864,7 +864,7 @@ class HeroAI_RichPlayerPanelRenderer:
 
         avail = PyImGui.get_content_region_avail()[0]
         style.CellPadding.push_style_var(0, 0)
-        if ImGui.begin_table("##effects_table" + account.AccountEmail, max(1, round(avail / skill_size)), PyImGui.TableFlags.SizingFixedFit):
+        if ImGui_Legacy.begin_table("##effects_table" + account.AccountEmail, max(1, round(avail / skill_size)), PyImGui.TableFlags.SizingFixedFit):
             PyImGui.table_next_row()
             PyImGui.table_next_column()
             if account.AgentData.Morale not in [0, 100]:
@@ -884,16 +884,16 @@ class HeroAI_RichPlayerPanelRenderer:
             for _effect_id, (effect, remaining, duration) in player_effects.items():
                 draw_buff(effect, duration, remaining, True, 28)
                 PyImGui.table_next_column()
-            ImGui.end_table()
+            ImGui_Legacy.end_table()
         style.CellPadding.pop_style_var()
         PyImGui.new_line()
 
     def _draw_buffs_bar(self, account):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding, 0.0)
         PyImGui.push_style_var(ImGuiStyleVar.WindowPadding, 0.0)
         PyImGui.push_style_var(ImGuiStyleVar.WindowBorderSize, 0.0)
-        PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         flags = (
             PyImGui.WindowFlags.NoCollapse |
             PyImGui.WindowFlags.NoTitleBar |
@@ -906,8 +906,8 @@ class HeroAI_RichPlayerPanelRenderer:
         )
         win_pos = PyImGui.get_window_pos()
         win_size = PyImGui.get_window_size()
-        PyImGui.set_next_window_pos((win_pos[0], win_pos[1] + win_size[1] + (13 if style.Theme == StyleTheme.Guild_Wars else 4)), PyImGui.ImGuiCond.Always)
-        PyImGui.set_next_window_size((win_size[0], 0), PyImGui.ImGuiCond.Always)
+        PyImGui.set_next_window_pos(win_pos[0], win_pos[1] + win_size[1] + (13 if style.Theme == StyleTheme.Guild_Wars else 4), PyImGui.ImGuiCond.Always)
+        PyImGui.set_next_window_size(win_size[0], 0, PyImGui.ImGuiCond.Always)
         opened = PyImGui.begin("##Buffs Bar" + account.AccountEmail, True, flags)
         PyImGui.pop_style_var(4)
         if opened:
@@ -929,7 +929,7 @@ class HeroAI_RichPlayerPanelRenderer:
         control_height = self._scale(20)
 
         if height > 0:
-            if ImGui.begin_child("##bars" + account.AccountEmail, (panel_width, height)):
+            if ImGui_Legacy.begin_child("##bars" + account.AccountEmail, (panel_width, height)):
                 curr_avail = PyImGui.get_content_region_avail()
                 health_state, deep_wounded, enchanted, conditioned, hexed, has_weaponspell = self._get_conditioned(account)
                 health_clicked = self._draw_health_bar_local(
@@ -961,7 +961,7 @@ class HeroAI_RichPlayerPanelRenderer:
                     PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - row_overlap)
                     self._draw_rich_skill_bar(account, options)
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
         opt_dict = {
             "Following": options.Following,
@@ -972,9 +972,9 @@ class HeroAI_RichPlayerPanelRenderer:
         PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - self._scale(2))
         control_row_width = panel_width
         for name, value in opt_dict.items():
-            ImGui.push_font("Regular", 10)
-            active = ImGui.toggle_button(name + f"##{account.AccountEmail}", value, control_row_width / len(opt_dict) - self._scale(3), control_height)
-            ImGui.pop_font()
+            ImGui_Legacy.push_font("Regular", 10)
+            active = ImGui_Legacy.toggle_button(name + f"##{account.AccountEmail}", value, control_row_width / len(opt_dict) - self._scale(3), control_height)
+            ImGui_Legacy.pop_font()
             if active != value:
                 setattr(options, name, active)
             PyImGui.same_line(0, 2)
@@ -1124,14 +1124,14 @@ class HeroAI_AppearanceWindow:
 
                 PyImGui.unindent(20)
 
-        ImGui.End(window_factory.key("appearance"))
+        ImGui_Legacy.End(window_factory.key("appearance"))
 
 
 class HeroAI_MainWindow:
     def __init__(self, appearance_window: HeroAI_AppearanceWindow) -> None:
         self.appearance_window = appearance_window
         self.player_renderer = HeroAI_PlayerPanelRenderer(appearance_window)
-        self.floating_button = ImGui.FloatingIcon(
+        self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=HeroAIFloatingIcon.ICON_PATH,
             window_id="##floating_icon_example_button",
             window_name="Floating Icon Example Toggle",
@@ -1150,7 +1150,7 @@ class HeroAI_MainWindow:
         if expanded:
             self.DrawPanelButtons()
 
-        ImGui.End(window_factory.key("main"))
+        ImGui_Legacy.End(window_factory.key("main"))
 
     def DrawPanelButtons(self):
         global cached_data
@@ -1183,7 +1183,7 @@ class HeroAI_MainWindow:
                         if 0 <= skill_index < NUMBER_OF_SKILLS:
                             account_options.Skills[skill_index] = cached_data.global_options.Skills[skill_index]
 
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         table_width, _ = get_panel_dimensions(self.appearance_window.get_panel_scale())
         btn_size = (table_width / 5) - 4
         skill_size = (table_width / NUMBER_OF_SKILLS) - 8
@@ -1194,54 +1194,54 @@ class HeroAI_MainWindow:
         if PyImGui.begin_table(f"GameOptionTable##{"Global"}", 5, 0, 0, btn_size + 2):
             PyImGui.table_next_row()
             PyImGui.table_next_column()
-            following = ImGui.toggle_button(IconsFontAwesome5.ICON_RUNNING + "##Following" + "Global", cached_data.global_options.Following, btn_size, btn_size)
+            following = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_RUNNING + "##Following" + "Global", cached_data.global_options.Following, btn_size, btn_size)
             if following != cached_data.global_options.Following:
                 cached_data.global_options.Following = following
                 set_global_option("Following")
-            ImGui.show_tooltip("Follow / Avoidance")
+            ImGui_Legacy.show_tooltip("Follow / Avoidance")
 
             PyImGui.table_next_column()
-            looting = ImGui.toggle_button(IconsFontAwesome5.ICON_COINS + "##Looting" + "Global", cached_data.global_options.Looting, btn_size, btn_size)
+            looting = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COINS + "##Looting" + "Global", cached_data.global_options.Looting, btn_size, btn_size)
             if looting != cached_data.global_options.Looting:
                 cached_data.global_options.Looting = looting
                 set_global_option("Looting")
-            ImGui.show_tooltip("Looting")
+            ImGui_Legacy.show_tooltip("Looting")
 
             PyImGui.table_next_column()
 
-            combat = ImGui.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + "##Combat" + "Global", cached_data.global_options.Combat, btn_size, btn_size)
+            combat = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + "##Combat" + "Global", cached_data.global_options.Combat, btn_size, btn_size)
             if combat != cached_data.global_options.Combat:
                 cached_data.global_options.Combat = combat
                 set_global_option("Combat")
-            ImGui.show_tooltip("Combat")
+            ImGui_Legacy.show_tooltip("Combat")
 
             PyImGui.table_next_column()
             PyImGui.text("|")
 
             PyImGui.table_next_column()
             show_appearance = self.appearance_window.is_open()
-            new_show_appearance = ImGui.toggle_button(IconsFontAwesome5.ICON_COG + "##Appearance" + "Global", show_appearance, btn_size, btn_size)
+            new_show_appearance = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COG + "##Appearance" + "Global", show_appearance, btn_size, btn_size)
             if new_show_appearance != show_appearance:
                 self.appearance_window.set_open(new_show_appearance)
-            ImGui.show_tooltip("Appearance")
+            ImGui_Legacy.show_tooltip("Appearance")
             PyImGui.end_table()
 
         if self.appearance_window.get_show_main_skill_toggles():
-            style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui.Textured_Themes else 0, 3 if style.Theme not in ImGui.Textured_Themes else 2)
+            style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui_Legacy.Textured_Themes else 0, 3 if style.Theme not in ImGui_Legacy.Textured_Themes else 2)
             if PyImGui.begin_table(f"SkillsTable##{"Global"}", NUMBER_OF_SKILLS, 0, 0, (btn_size / 3)):
                 PyImGui.table_next_row()
                 for i in range(NUMBER_OF_SKILLS):
                     PyImGui.table_next_column()
-                    skill_active = ImGui.toggle_button(f"{i + 1}##Skill{i}" + "Global", cached_data.global_options.Skills[i], skill_size, skill_size)
+                    skill_active = ImGui_Legacy.toggle_button(f"{i + 1}##Skill{i}" + "Global", cached_data.global_options.Skills[i], skill_size, skill_size)
                     if skill_active != cached_data.global_options.Skills[i]:
                         cached_data.global_options.Skills[i] = skill_active
                         set_global_option("Skills", i)
-                    ImGui.show_tooltip(f"Skill {i + 1}")
+                    ImGui_Legacy.show_tooltip(f"Skill {i + 1}")
                 PyImGui.end_table()
             style.ButtonPadding.pop_style_var()
 
         if self.appearance_window.get_show_players() and not self.appearance_window.get_show_players_in_separate_window():
-            PyImGui.dummy(0, 10)
+            PyImGui.dummy((0, 10))
             PyImGui.separator()
 
             if PyImGui.collapsing_header("Players##EmbeddedPlayers"):
@@ -1284,7 +1284,7 @@ class HeroAI_MainWindow:
         if game_option is None:
             return
 
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         table_width, _ = get_panel_dimensions(self.appearance_window.get_panel_scale())
         btn_size = (table_width / 5) - 4
         skill_size = (table_width / NUMBER_OF_SKILLS) - 8
@@ -1295,34 +1295,34 @@ class HeroAI_MainWindow:
         if PyImGui.begin_table(f"FollowerGameOptionTable##{identifier}", 3, 0, 0, btn_size + 2):
             PyImGui.table_next_row()
             PyImGui.table_next_column()
-            following = ImGui.toggle_button(IconsFontAwesome5.ICON_RUNNING + f"##Following{identifier}", game_option.Following, btn_size * 1.45, btn_size)
+            following = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_RUNNING + f"##Following{identifier}", game_option.Following, btn_size * 1.45, btn_size)
             if following != game_option.Following:
                 game_option.Following = following
-            ImGui.show_tooltip("Follow / Avoidance")
+            ImGui_Legacy.show_tooltip("Follow / Avoidance")
 
             PyImGui.table_next_column()
-            looting = ImGui.toggle_button(IconsFontAwesome5.ICON_COINS + f"##Looting{identifier}", game_option.Looting, btn_size* 1.45, btn_size)
+            looting = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COINS + f"##Looting{identifier}", game_option.Looting, btn_size* 1.45, btn_size)
             if looting != game_option.Looting:
                 game_option.Looting = looting
-            ImGui.show_tooltip("Looting")
+            ImGui_Legacy.show_tooltip("Looting")
 
             PyImGui.table_next_column()
-            combat = ImGui.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + f"##Combat{identifier}", game_option.Combat, btn_size* 1.45, btn_size)
+            combat = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + f"##Combat{identifier}", game_option.Combat, btn_size* 1.45, btn_size)
             if combat != game_option.Combat:
                 game_option.Combat = combat
-            ImGui.show_tooltip("Combat")
+            ImGui_Legacy.show_tooltip("Combat")
             PyImGui.end_table()
 
         if self.appearance_window.get_show_player_skill_toggles():
-            style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui.Textured_Themes else 0, 3 if style.Theme not in ImGui.Textured_Themes else 2)
+            style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui_Legacy.Textured_Themes else 0, 3 if style.Theme not in ImGui_Legacy.Textured_Themes else 2)
             if PyImGui.begin_table(f"FollowerSkillsTable##{identifier}", NUMBER_OF_SKILLS, 0, 0, (btn_size / 3)):
                 PyImGui.table_next_row()
                 for i in range(NUMBER_OF_SKILLS):
                     PyImGui.table_next_column()
-                    skill_active = ImGui.toggle_button(f"{i + 1}##Skill{i}{identifier}", game_option.Skills[i], skill_size, skill_size)
+                    skill_active = ImGui_Legacy.toggle_button(f"{i + 1}##Skill{i}{identifier}", game_option.Skills[i], skill_size, skill_size)
                     if skill_active != game_option.Skills[i]:
                         game_option.Skills[i] = skill_active
-                    ImGui.show_tooltip(f"Skill {i + 1}")
+                    ImGui_Legacy.show_tooltip(f"Skill {i + 1}")
                 PyImGui.end_table()
             style.ButtonPadding.pop_style_var()
 
@@ -1362,7 +1362,7 @@ class HeroAI_PlayersWindow:
 
                 display_name = self.player_renderer.get_window_title(account)
                 window_title = f"{player_index}. {display_name}##HeroAIPlayerWindow{player_index}"
-                style = ImGui.get_style()
+                style = ImGui_Legacy.get_style()
                 out_of_range = is_account_outside_compass_range(account)
                 push_compact_player_window_spacing(style)
                 if out_of_range:
@@ -1398,10 +1398,10 @@ class HeroAI_PlayersWindow:
                 header_label = f"{player_index}. {display_name}##ControlPlayer{player_index}"
                 out_of_range = is_account_outside_compass_range(account)
                 if out_of_range:
-                    push_out_of_range_header_colors(ImGui.get_style())
+                    push_out_of_range_header_colors(ImGui_Legacy.get_style())
                 header_open = PyImGui.collapsing_header(header_label)
                 if out_of_range:
-                    pop_out_of_range_header_colors(ImGui.get_style())
+                    pop_out_of_range_header_colors(ImGui_Legacy.get_style())
                 if header_open:
                     if self.appearance_window.get_use_rich_player_panels():
                         self.player_renderer.draw_rich_panel(
@@ -1413,7 +1413,7 @@ class HeroAI_PlayersWindow:
                         self.player_renderer.draw_simple_panel(account.AccountEmail, account_options)
                 PyImGui.spacing()
 
-        ImGui.End(window_factory.key("players"))
+        ImGui_Legacy.End(window_factory.key("players"))
 
 FloatingButton: HeroAI_MainWindow | None = None
 AppearanceWindow: HeroAI_AppearanceWindow | None = None
@@ -1478,14 +1478,14 @@ def configure():
 def tooltip():
     import PyImGui
     from Py4GWCoreLib.py4gwcorelib_src.Color import Color
-    from Py4GWCoreLib.ImGui import ImGui
+    from Py4GWCoreLib._legacy_facade import ImGui_Legacy
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("HeroAI: Multibox Combat Engine", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

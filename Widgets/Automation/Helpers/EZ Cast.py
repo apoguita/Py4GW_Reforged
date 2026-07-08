@@ -9,7 +9,7 @@ from Py4GWCoreLib import IniHandler
 from Py4GWCoreLib import PyImGui
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Timer
-from Py4GWCoreLib import Color, ImGui
+from Py4GWCoreLib import Color, ImGui_Legacy
 import Py4GWCoreLib as GW
 from Py4GWCoreLib.native_src.context.WorldContext import AttributeStruct
 import time
@@ -33,7 +33,7 @@ os.makedirs(BASE_DIR, exist_ok=True)
 
 cached_data = CacheData()
 
-# ——— Window Persistence Setup ———
+# â€”â€”â€” Window Persistence Setup â€”â€”â€”
 ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
 save_window_timer = Timer()
 save_window_timer.Start()
@@ -45,7 +45,7 @@ COLLAPSED = "collapsed"
 X_POS = "x"
 Y_POS = "y"
 
-# load last‐saved window state (fallback to 100,100 / un-collapsed)
+# load lastâ€saved window state (fallback to 100,100 / un-collapsed)
 window_x = ini_window.read_int(MODULE_NAME, X_POS, 100)
 window_y = ini_window.read_int(MODULE_NAME, Y_POS, 100)
 window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, False)
@@ -275,7 +275,7 @@ class SkillData(SkillDataOG):
         PyImGui.begin_group()
         texture_path = GW.GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(self.skill_id)
         pos = PyImGui.get_cursor_pos()
-        ImGui.DrawTexture(texture_path, 24, 24)
+        ImGui_Legacy.DrawTexture(texture_path, 24, 24)
         PyImGui.set_cursor_pos(pos[0], pos[1])
         PyImGui.dummy(24, 24)
 
@@ -866,10 +866,10 @@ def DrawGenericSkills():
             PyImGui.same_line(0, -1)
             if cache.combat:
                 PyImGui.push_style_color(PyImGui.ImGuiCol.SliderGrab, (
-                1, 0.5, 0.5, 1))  # ImGui::PushStyleColor(ImGuiCol_Text, sf::Color(255, 255, 255, 255));)
+                1, 0.5, 0.5, 1))  # ImGui_Legacy::PushStyleColor(ImGuiCol_Text, sf::Color(255, 255, 255, 255));)
             else :
                 PyImGui.push_style_color(PyImGui.ImGuiCol.SliderGrab, (
-                    0, 0.5, 0.5, 1))  # ImGui::PushStyleColor(ImGuiCol_Text, sf::Color(255, 255, 255, 255));)
+                    0, 0.5, 0.5, 1))  # ImGui_Legacy::PushStyleColor(ImGuiCol_Text, sf::Color(255, 255, 255, 255));)
             cache.combat_range_slider = PyImGui.slider_int("##combatsliderRange", cache.combat_range_slider, 0,
                                                            cache.combat_ranges[len(cache.combat_ranges) - 1])
             PyImGui.pop_style_color(1)
@@ -954,20 +954,20 @@ def draw_widget(cached_data):
 
         # Styles for the Headers
         PyImGui.push_style_color(PyImGui.ImGuiCol.Header, (
-        1, 0.1, 0.1, 0.5))  # ImGui::PushStyleColor(ImGuiCol_Header, sf::Color(0, 0, 0, 0));
+        1, 0.1, 0.1, 0.5))  # ImGui_Legacy::PushStyleColor(ImGuiCol_Header, sf::Color(0, 0, 0, 0));
         PyImGui.push_style_color(PyImGui.ImGuiCol.Border, (
-        0.1, 0.1, 0.2, 1))  # ImGui::PushStyleColor(ImGuiCol_Border, sf::Color(255, 255, 255, 255));
+        0.1, 0.1, 0.2, 1))  # ImGui_Legacy::PushStyleColor(ImGuiCol_Border, sf::Color(255, 255, 255, 255));
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (
-        1, 1, 1, 1))  # ImGui::PushStyleColor(ImGuiCol_Text, sf::Color(255, 255, 255, 255));
-        # ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
+        1, 1, 1, 1))  # ImGui_Legacy::PushStyleColor(ImGuiCol_Text, sf::Color(255, 255, 255, 255));
+        # ImGui_Legacy::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
         DrawGenericSkills()
         DrawRefrainMaintainer()
         DrawSmartCast()
         if cache.dev_mode:
             DrawAuraOfTheAssassin()
             DrawQuickAttack()
-        PyImGui.pop_style_color(3)  # ImGui::PopStyleColor(3);
-        # PyImGui.pop_style_var() # ImGui::PopStyleVar();
+        PyImGui.pop_style_color(3)  # ImGui_Legacy::PopStyleColor(3);
+        # PyImGui.pop_style_var() # ImGui_Legacy::PopStyleVar();
 
     PyImGui.end()
     if save_window_timer.HasElapsed(1000):
@@ -988,9 +988,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("EZ Cast - By Dharmanatrix", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

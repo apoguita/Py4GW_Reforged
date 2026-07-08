@@ -12,20 +12,20 @@ class Botconfig:
         self.is_script_running = False  
         self.log_to_console = True
         self.routine_finished = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 class BOTVARIABLES:
     def __init__(self):
         self.action_queue = ActionQueueNode(100)
         self.loot_queue = ActionQueueNode(1250)
         self.config = Botconfig()
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 
 MAIN_THREAD_NAME = "RunBotSequentialLogic"
 
 bot_variables = BOTVARIABLES()
-bot_variables.config.window_module = ImGui.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+bot_variables.config.window_module = ImGui_Legacy.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 thread_manager = MultiThreading(1)
 #endregion
@@ -161,7 +161,7 @@ def pre_run_checks(log_to_console):
 
 
 def RunBotSequentialLogic():
-    """Thread function that manages counting based on ImGui button presses."""
+    """Thread function that manages counting based on ImGui_Legacy button presses."""
     global MAIN_THREAD_NAME, bot_variables
     try:
         while True:

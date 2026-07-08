@@ -24,7 +24,7 @@ MATERIAL_STACK_MAX = 250              # Maximum quantity per material stack slot
 SLOW_MODE_DELAY_MIN = 0.8             # Minimum seconds between moves in Slow Mode
 SLOW_MODE_DELAY_MAX = 1.0             # Maximum seconds between moves in Slow Mode
 
-# Runtime toggle states — persisted per-account in the INI file
+# Runtime toggle states â€” persisted per-account in the INI file
 ANNIVERSARY_SLOT_UNLOCKED = False  # Whether the 14th storage pane is available
 SHOW_SETTINGS = False              # Whether the settings panel is expanded
 SHOW_DEBUG = False                 # Whether debug log output is enabled
@@ -46,7 +46,7 @@ _last_saved_anniversary_slot_unlocked = False      # Tracks whether the annivers
 _selected_settings_account = ""                    # Account selected in the settings copy-from dropdown
 _last_window_width = float(COMPACT_WINDOW_MIN_WIDTH)  # Cached window width used for anchor positioning
 
-# Idle-performance: throttled stats cache — avoids scanning all storage bags every frame
+# Idle-performance: throttled stats cache â€” avoids scanning all storage bags every frame
 _idle_refresh_timer = ThrottledTimer(2000)         # how often to recompute bag stats and sort quality
 _cache_needs_refresh = True                        # set True to force immediate refresh (e.g. after sort)
 _cached_available_bags = []                        # last result of _get_available_storage_bags
@@ -58,21 +58,21 @@ _cached_total_items = 0
 _cached_correct_ratio = 1.0
 
 # UIManager anchor-position state.  GW recycles numeric frame IDs when windows are
-# destroyed and recreated, so the vault frame ID is NEVER cached permanently — it is
+# destroyed and recreated, so the vault frame ID is NEVER cached permanently â€” it is
 # re-resolved from the stable window hash every frame (a cheap in-memory GW read).
 # Only the optional JSON custom-label fallback touches disk, so that lookup is throttled
 # and its result is re-validated by hash before reuse.
 _anchor_label_frame_id = 0                         # last frame ID resolved via the JSON alias
 _anchor_label_lookup_timer = ThrottledTimer(1000)  # throttles re-reading the JSON alias file
 
-# Per-bag filter state — keyed by bag_enum.value
+# Per-bag filter state â€” keyed by bag_enum.value
 _allowed_types_by_storage = {}              # type-name lists allowed per pane
 _selected_allowed_type_idx_by_storage = {}  # selected list index in the type UI list
 _selected_add_type_idx_by_storage = {}      # selected combo-box index for adding a type
 _allowed_model_ids_by_storage = {}          # model-ID lists allowed per pane
 _selected_allowed_model_id_idx_by_storage = {}  # selected list index in the model-ID UI list
 _model_id_input_by_storage = {}             # current integer input value for adding a model ID
-_selected_allowed_entry_kind_by_storage = {}    # "type" or "model" — which filter list is focused
+_selected_allowed_entry_kind_by_storage = {}    # "type" or "model" â€” which filter list is focused
 
 # Sort engine constants and live state
 SORT_STEPS_PER_FRAME = 8          # Max item moves executed per frame in normal mode
@@ -80,7 +80,7 @@ MAX_AUTO_SORT_RETRIES = 3         # How many placement retry rounds are allowed 
 MATERIAL_MAX_RESCAN_PASSES = 3    # Max deposit rescans when partial moves occurred
 SORT_DRAIN_TIMEOUT = 15.0         # Max seconds to wait for the shared ACTION queue to drain post-sort
 _sort_task_state = None           # Active sort task dict; None when idle
-_sort_progress_ratio = 0.0        # 0.0–1.0 progress shown in the UI progress bar
+_sort_progress_ratio = 0.0        # 0.0â€“1.0 progress shown in the UI progress bar
 _sort_progress_text = ""          # Human-readable status shown next to the progress bar
 _sort_done_until = 0.0            # Keep progress bar visible until this monotonic timestamp
 _material_storage_quantities_live = {}  # Snapshot of Material Storage quantities, refreshed each tick
@@ -274,7 +274,7 @@ def _get_item_quantity(item, default: int = 1) -> int:
 # Material storage helpers
 # -----------------------------------------------------------------------------
 def _get_material_storage_quantities_by_model() -> dict:
-	"""Return a dict mapping model_id → current quantity in Material Storage (capped at MATERIAL_STACK_MAX)."""
+	"""Return a dict mapping model_id â†’ current quantity in Material Storage (capped at MATERIAL_STACK_MAX)."""
 	quantities_by_model = {}
 	try:
 		material_bag = PyInventory.Bag(Bags.MaterialStorage.value, Bags.MaterialStorage.name)
@@ -294,7 +294,7 @@ def _get_material_storage_quantities_by_model() -> dict:
 
 
 def _is_material_storage_full_for_model(model_id: int) -> bool:
-	"""Return True when the live Material Storage snapshot shows a full stack (≥250) for model_id."""
+	"""Return True when the live Material Storage snapshot shows a full stack (â‰¥250) for model_id."""
 	if int(model_id) <= 0:
 		return False
 	quantity = int(_material_storage_quantities_live.get(int(model_id), 0))
@@ -926,12 +926,12 @@ def _build_allowed_type_map(available_storage_bags):
 	"""Build lookup structures for the sort engine based on the per-pane filter settings.
 
 	Returns:
-		allowed_by_bag         — type lists keyed by bag_enum
-		allowed_models_by_bag  — model-ID lists keyed by bag_enum
-		filtered_bags_by_type  — bags that explicitly accept a given type name
-		filtered_bags_by_model_id — bags that explicitly accept a given model ID
-		wildcard_bags          — bags with no type or model restrictions
-		wildcard_model_bags    — bags with no model-ID restrictions
+		allowed_by_bag         â€” type lists keyed by bag_enum
+		allowed_models_by_bag  â€” model-ID lists keyed by bag_enum
+		filtered_bags_by_type  â€” bags that explicitly accept a given type name
+		filtered_bags_by_model_id â€” bags that explicitly accept a given model ID
+		wildcard_bags          â€” bags with no type or model restrictions
+		wildcard_model_bags    â€” bags with no model-ID restrictions
 	"""
 	allowed_by_bag = {}
 	allowed_models_by_bag = {}
@@ -1014,8 +1014,8 @@ def _collect_storage_item_entries(available_storage_bags):
 	"""Scan all available storage panes and return a snapshot of every item.
 
 	Returns:
-		entries    — list of item dicts (item_id, type_name, model_id, quantity, bag_enum, slot, …)
-		bag_states — dict mapping bag_enum to {size, occupied_slots, free_slots}
+		entries    â€” list of item dicts (item_id, type_name, model_id, quantity, bag_enum, slot, â€¦)
+		bag_states â€” dict mapping bag_enum to {size, occupied_slots, free_slots}
 	"""
 	bag_states = {}
 	entries = []
@@ -1507,7 +1507,7 @@ def _consolidate_items_to_back(
 	"""
 	move_actions = 0
 
-	# ── Step 1: identify eligible wildcard bags and per-bag non-consolidatable slot sets ──
+	# â”€â”€ Step 1: identify eligible wildcard bags and per-bag non-consolidatable slot sets â”€â”€
 	eligible_bags_ordered = []
 	nc_slots_by_bag = {}  # bag_enum -> set of slots occupied by non-consolidatable items
 
@@ -1542,7 +1542,7 @@ def _consolidate_items_to_back(
 
 	eligible_bags_set = set(eligible_bags_ordered)
 
-	# ── Step 2: build combined ordered list of movable (bag, slot) positions ──
+	# â”€â”€ Step 2: build combined ordered list of movable (bag, slot) positions â”€â”€
 	# Iterate panes in order; within each pane iterate slots in order.
 	# Slots occupied by non-consolidatable items are excluded.
 	combined_movable = []  # [(bag_enum, slot), ...]
@@ -1554,7 +1554,7 @@ def _consolidate_items_to_back(
 			if slot not in nc_slots:
 				combined_movable.append((bag_enum, slot))
 
-	# ── Step 3: collect all consolidatable items from all eligible bags ──
+	# â”€â”€ Step 3: collect all consolidatable items from all eligible bags â”€â”€
 	all_consolidatable = []
 	for entry in entries:
 		be = entry.get("bag_enum")
@@ -1572,7 +1572,7 @@ def _consolidate_items_to_back(
 	if n_items <= 1 or len(combined_movable) < n_items:
 		return 0, True
 
-	# ── Step 4: sort items and assign the LAST N combined movable positions as targets ──
+	# â”€â”€ Step 4: sort items and assign the LAST N combined movable positions as targets â”€â”€
 	all_consolidatable_sorted = sorted(
 		all_consolidatable,
 		key=lambda e: (
@@ -1586,14 +1586,14 @@ def _consolidate_items_to_back(
 		for i in range(n_items)
 	}
 
-	# ── Step 5: build (bag_enum, slot) -> entry for all items in eligible bags ──
+	# â”€â”€ Step 5: build (bag_enum, slot) -> entry for all items in eligible bags â”€â”€
 	slot_to_entry = {}  # (bag_enum, slot) -> entry
 	for entry in entries:
 		be = entry.get("bag_enum")
 		if be in eligible_bags_set and entry.get("quantity", 0) > 0:
 			slot_to_entry[(be, entry["slot"])] = entry
 
-	# ── Step 6: execute moves in sorted order ──
+	# â”€â”€ Step 6: execute moves in sorted order â”€â”€
 	# move_actions counts only successful PLACEMENTS (not evictions).
 	# max_move_actions limits placements per call so the progress bar advances smoothly.
 	for desired_entry in all_consolidatable_sorted:
@@ -1625,7 +1625,7 @@ def _consolidate_items_to_back(
 				continue
 			slot_to_entry.pop((target_bag, target_slot), None)
 			slot_to_entry[(free_bag, free_slot)] = occupant
-			# Eviction is not counted in move_actions — only placements are
+			# Eviction is not counted in move_actions â€” only placements are
 
 		src_bag = desired_entry.get("bag_enum")
 		src_slot = desired_entry.get("slot")
@@ -1765,7 +1765,7 @@ def _execute_move_plan(entries, bag_states, move_plan, available_storage_bags, m
 			occupant_id = slot_to_id.get((target_bag, target_slot))
 
 			if occupant_id is None:
-				# Target slot is free — move directly
+				# Target slot is free â€” move directly
 				src_bag, src_slot = entry["bag_enum"], entry["slot"]
 				if _move_entry_to_slot(entry, target_bag, target_slot, bag_states):
 					slot_to_id.pop((src_bag, src_slot), None)
@@ -1776,11 +1776,11 @@ def _execute_move_plan(entries, bag_states, move_plan, available_storage_bags, m
 				made_progress = True
 
 			elif occupant_id in pending:
-				# Occupant also needs to move — wait for it to free the slot
+				# Occupant also needs to move â€” wait for it to free the slot
 				pass
 
 			else:
-				# Occupant has no planned move — evict it, then place our item
+				# Occupant has no planned move â€” evict it, then place our item
 				free_bag, free_slot = _find_any_free_slot(bag_states, available_storage_bags)
 				if free_bag is None:
 					continue
@@ -1825,7 +1825,7 @@ def _execute_move_plan(entries, bag_states, move_plan, available_storage_bags, m
 					broke = True
 				break
 			if not broke:
-				break  # Truly stuck — no free slots
+				break  # Truly stuck â€” no free slots
 
 	return plan_moves_done, len(pending) == 0
 
@@ -2379,7 +2379,7 @@ def _process_phase_compact(task, ctx):
 		_update_sort_progress_state(task)
 		return True
 
-	# All bags compacted — decide next phase
+	# All bags compacted â€” decide next phase
 	if ctx.get("consolidate_to_back", False):
 		task["phase"] = "consolidate_back"
 		# Pre-count how many consolidatable items are not already at their target positions
@@ -2427,7 +2427,7 @@ def _process_phase_consolidate_back(task, ctx):
 		_set_sort_task_move_delay(task)
 
 	if completed:
-		# Phase done — all items are in place (or couldn't be moved)
+		# Phase done â€” all items are in place (or couldn't be moved)
 		if AUTO_DEPOSIT_MATERIALS and not bool(task.get("post_material_phase_done", False)):
 			task["post_material_phase_done"] = True
 			_start_material_phase(task, ctx["available_storage_bags"], "finalize")
@@ -2676,7 +2676,7 @@ def _calculate_correct_item_progress(available_storage_bags):
 
 
 def _sort_storage_items(available_storage_bags):
-	"""Synchronous (blocking) sort — runs all phases to completion in a single call.
+	"""Synchronous (blocking) sort â€” runs all phases to completion in a single call.
 
 	Used as a fallback / legacy path. The async task system (_start_sort_task) is preferred
 	for the interactive overlay since it spreads work across frames.
@@ -2810,7 +2810,7 @@ def _get_available_storage_bags(anniversary_slot_unlocked: bool):
 	Storage1-13 are regular purchasable panes (up to 13 total).
 	Storage14 is the anniversary pane.
 
-	GW accurately reports GetSize() > 0 only for purchased panes and 0 for unpurchased ones —
+	GW accurately reports GetSize() > 0 only for purchased panes and 0 for unpurchased ones â€”
 	there is no phantom preview slot.  The anniversary checkbox acts as a manual override in
 	case GW does not report Storage14 correctly for a given account.
 	"""
@@ -2834,7 +2834,7 @@ def _get_available_storage_bags(anniversary_slot_unlocked: bool):
 	available_bags = [b for b in bag_order if _get_storage_bag_info(b)["available"]]
 
 	if not anniversary_slot_unlocked and available_bags:
-		available_bags.pop()  # GW reports one phantom slot ahead — remove it.
+		available_bags.pop()  # GW reports one phantom slot ahead â€” remove it.
 
 	return available_bags
 
@@ -2945,7 +2945,7 @@ def _get_storage_anchor_position(anchor_window_width=None):
 
 	The vault frame ID is re-resolved from its stable window hash every frame rather
 	than cached, because GW recycles numeric frame IDs when windows are destroyed and
-	recreated — a stale cached ID would otherwise make the overlay "lose its hook" and
+	recreated â€” a stale cached ID would otherwise make the overlay "lose its hook" and
 	snap onto an unrelated frame.  GetFrameCoords / FrameExists are fast per-frame GW
 	memory reads with no file I/O.
 	"""
@@ -2982,7 +2982,7 @@ def _get_storage_anchor_position(anchor_window_width=None):
 			pass
 
 	# Last resort: the hardcoded chest frame ID, but only when it really is the vault
-	# window — the hash guard prevents anchoring onto an unrelated recycled frame.
+	# window â€” the hash guard prevents anchoring onto an unrelated recycled frame.
 	if _frame_matches_xunlai(CHEST_FRAME_ID):
 		try:
 			left, top, right, bottom = UIManager.GetFrameCoords(CHEST_FRAME_ID)
@@ -3002,7 +3002,7 @@ def _get_storage_anchor_position(anchor_window_width=None):
 # UI rendering and interactions
 # -----------------------------------------------------------------------------
 def _draw_storage_hover_modelid_tooltip(available_storage_bags):
-	"""Show an ImGui tooltip with type and model info when hovering over a storage item."""
+	"""Show an ImGui_Legacy tooltip with type and model info when hovering over a storage item."""
 	try:
 		hovered_item_id = int(GLOBAL_CACHE.Inventory.GetHoveredItemID())
 	except Exception:
@@ -3043,7 +3043,7 @@ def _draw_storage_hover_modelid_tooltip(available_storage_bags):
 
 
 def _draw_toggle_icon_window():
-	"""Draw the 40×40 frameless icon button that toggles the main Xunlai Manager panel."""
+	"""Draw the 40Ã—40 frameless icon button that toggles the main Xunlai Manager panel."""
 	global WINDOW_OPEN
 
 	icon_window_size = 40.0
@@ -3059,7 +3059,7 @@ def _draw_toggle_icon_window():
 		| PyImGui.WindowFlags.NoCollapse
 		| PyImGui.WindowFlags.NoBackground
 	)
-	PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+	PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
 	if PyImGui.begin("##XunlaiManagerToggle", icon_window_flags):
 		icon_path = MODULE_ICON
 		absolute_icon_path = os.path.join(project_root, MODULE_ICON)
@@ -3071,7 +3071,7 @@ def _draw_toggle_icon_window():
 		cursor_x, cursor_y = PyImGui.get_cursor_screen_pos()
 		draw_pos = (cursor_x + icon_offset, cursor_y + icon_offset)
 		try:
-			ImGui.DrawTextureInDrawList(draw_pos, (icon_size, icon_size), icon_path)
+			ImGui_Legacy.DrawTextureInDrawList(draw_pos, (icon_size, icon_size), icon_path)
 		except Exception:
 			PyImGui.set_cursor_screen_pos(draw_pos[0] + 6.0, draw_pos[1] + 8.0)
 			PyImGui.text("CM")

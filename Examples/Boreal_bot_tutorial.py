@@ -4,7 +4,7 @@ boreal_station = 675
 
 @dataclass
 class BotVariables:
-    window_info: ImGui.WindowModule = field(default=None)
+    window_info: ImGui_Legacy.WindowModule = field(default=None)
     state: str = "Not Started"
     fsm: FSM = field(default=None)
     total_timer: Timer = field(default=None)
@@ -16,7 +16,7 @@ class BotVariables:
     gold_item_count: int = 0
     sell_to_vendor_fsm = FSM("SellToVendor")
 
-bot_vars = BotVariables(window_info = ImGui.WindowModule("Boreal Bot Tutorial",
+bot_vars = BotVariables(window_info = ImGui_Legacy.WindowModule("Boreal Bot Tutorial",
                                  window_name = "Control Panel",
                                  window_flags = PyImGui.WindowFlags.AlwaysAutoResize),
                         fsm = FSM("MainRoutine"),
@@ -121,7 +121,7 @@ def DrawWindow():
                 ("Gold Item Count", f"{bot_vars.gold_item_count}"),
             ]
 
-            ImGui.table("boreal Main window info", headers, data)
+            ImGui_Legacy.table("boreal Main window info", headers, data)
 
             PyImGui.separator()
 

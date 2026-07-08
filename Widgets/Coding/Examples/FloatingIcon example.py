@@ -3,7 +3,7 @@ import os
 import PyImGui
 
 from Py4GWCoreLib import Py4GW
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.IniManager import IniManager
 from dataclasses import dataclass
 
@@ -22,7 +22,7 @@ class FloatingIconVars:
 
 class FloatingButtonExample:
     def __init__(self) -> None:
-        self.floating_button = ImGui.FloatingIcon(
+        self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=FloatingIconVars.ICON_PATH,
             window_id="##floating_icon_example_button",
             window_name="Floating Icon Example Toggle",
@@ -35,7 +35,7 @@ class FloatingButtonExample:
         )
 
     def draw_window(self) -> None:
-        expanded, open_ = ImGui.BeginWithClose(
+        expanded, open_ = ImGui_Legacy.BeginWithClose(
             ini_key=FloatingIconVars.MAIN_INI_KEY,
             name=FloatingIconVars.MODULE_NAME,
             p_open=self.floating_button.visible,
@@ -46,7 +46,7 @@ class FloatingButtonExample:
         if expanded:
             PyImGui.text("This window is controlled by the floating icon.")
 
-        ImGui.End(FloatingIconVars.MAIN_INI_KEY)
+        ImGui_Legacy.End(FloatingIconVars.MAIN_INI_KEY)
 
 
 FloatingButton: FloatingButtonExample | None = None

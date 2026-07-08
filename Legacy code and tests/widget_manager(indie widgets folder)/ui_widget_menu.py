@@ -1,4 +1,4 @@
-from Py4GWCoreLib import PyImGui, ImGui, Utils, ConsoleLog, IconsFontAwesome5, Py4GW
+from Py4GWCoreLib import PyImGui, ImGui_Legacy, Utils, ConsoleLog, IconsFontAwesome5, Py4GW
 from .handler import handler
 from .config_scope import use_account_settings
 from . import state
@@ -85,7 +85,7 @@ def draw_widget_popup_menus():
                 if new_enabled:
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, CAT_COLOR)
 
-                item["info"]["configuring"] = ImGui.toggle_button(item["configure_id"], item["info"]["configuring"])
+                item["info"]["configuring"] = ImGui_Legacy.toggle_button(item["configure_id"], item["info"]["configuring"])
 
                 if new_enabled:
                     PyImGui.pop_style_color(1)

@@ -1,4 +1,4 @@
-from Py4GWCoreLib import ImGui, GLOBAL_CACHE, TitleID
+from Py4GWCoreLib import ImGui_Legacy, GLOBAL_CACHE, TitleID
 import PyImGui, Py4GW
 import os
 
@@ -42,7 +42,7 @@ def Draw_Window():
             # --- LEFT COLUMN: Texture Art ---
             PyImGui.table_next_column()
             if PyImGui.begin_child("##TextureChild",  (280, 370), True, flags=PyImGui.WindowFlags.NoFlag):
-                ImGui.DrawTexture(texture_path=TEXTURE, width=275, height=350)
+                ImGui_Legacy.DrawTexture(texture_path=TEXTURE, width=275, height=350)
             PyImGui.end_child()
 
             # --- RIGHT COLUMN: Tree View ---

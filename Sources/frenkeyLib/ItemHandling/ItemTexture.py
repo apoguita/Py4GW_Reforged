@@ -1,6 +1,6 @@
 import PyImGui
 
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib.Item import Item
 
 ICON_SIZE = 256.0
@@ -20,7 +20,7 @@ class ItemTexture:
     def _draw_ui_texture():
         file_id = int(0xD84CFDA9)
         texture_key = ItemTexture._make_texture_key(file_id)
-        ImGui.DrawTexture(texture_key, ICON_SIZE, ICON_SIZE)
+        ImGui_Legacy.DrawTexture(texture_key, ICON_SIZE, ICON_SIZE)
         
     @staticmethod
     def _draw_texture_row(label: str, file_id: int, texture_key: str, extra_text: str = ""):
@@ -29,7 +29,7 @@ class ItemTexture:
         if extra_text:
             PyImGui.text(extra_text)
         if texture_key:
-            ImGui.DrawTexture(texture_key, ICON_SIZE, ICON_SIZE)
+            ImGui_Legacy.DrawTexture(texture_key, ICON_SIZE, ICON_SIZE)
             PyImGui.text(texture_key)
         else:
             PyImGui.text("No file id resolved")

@@ -731,7 +731,7 @@ def DrawMainWindow():
             if PyImGui.begin_tab_item("Frame Tree"):
                 if PyImGui.collapsing_header("options"):
                     config_options.keep_data_updated = PyImGui.checkbox("Keep all frame Data Updated", config_options.keep_data_updated)
-                    #ImGui.show_tooltip("This will lower fps!")
+                    #ImGui_Legacy.show_tooltip("This will lower fps!")
                     config_options.show_frame_data = PyImGui.checkbox("Show Frame Data", config_options.show_frame_data)
                     config_options.recolor_frame_tree = PyImGui.checkbox("Recolor Frame Tree", config_options.recolor_frame_tree)
 

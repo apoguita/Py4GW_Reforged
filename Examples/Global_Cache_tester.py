@@ -95,7 +95,7 @@ def main():
                 ("Gold In Storage:", format_currency(GLOBAL_CACHE.Inventory.GetGoldInStorage())),
             ]
             
-            ImGui.table("Inventory common infochached", headers, data)
+            ImGui_Legacy.table("Inventory common infochached", headers, data)
             
             hovered_item = GLOBAL_CACHE.Inventory.GetHoveredItemID()
             

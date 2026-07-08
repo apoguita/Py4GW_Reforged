@@ -24,7 +24,7 @@ def main():
             if throttle_time != prev_throttle_time:
                 chat_timer.SetThrottleTime(throttle_time)
 
-            spam_chat = ImGui.toggle_button("Spam chat", spam_chat)
+            spam_chat = ImGui_Legacy.toggle_button("Spam chat", spam_chat)
             
             elapsed_time = FormatTime(chat_timer.GetTimeElapsed(),"mm::ss::ms")
             PyImGui.text(f"Chat timer: {elapsed_time}")

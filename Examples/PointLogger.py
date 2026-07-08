@@ -151,7 +151,7 @@ def DrawWindow():
 
             polling_time = PyImGui.input_int("Polling Time (s)", polling_time)
             
-            started = ImGui.toggle_button("Start" if not started else "Stop", started)
+            started = ImGui_Legacy.toggle_button("Start" if not started else "Stop", started)
 
             player_x, player_y = Player.GetXY()
 
@@ -178,8 +178,8 @@ def DrawWindow():
                 for coord in new_path:
                     PySystem.Console.Log(module_name,f"({int(coord[0])}, {int(coord[1])}),", PySystem.Console.MessageType.Info)
 
-            draw_original_route = ImGui.toggle_button("Draw Original Route", draw_original_route)
-            draw_new_route = ImGui.toggle_button("Draw New Route", draw_new_route)
+            draw_original_route = ImGui_Legacy.toggle_button("Draw Original Route", draw_original_route)
+            draw_new_route = ImGui_Legacy.toggle_button("Draw New Route", draw_new_route)
 
             Overlay().BeginDraw()
             route = bjora_coord_list

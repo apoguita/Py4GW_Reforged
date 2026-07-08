@@ -4,7 +4,7 @@ from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import UIManager
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 import math
 
 INVENTORY_FRAME_HASH = 291586130   
@@ -94,10 +94,10 @@ def floating_game_button(caption, name, tooltip,  x, y, width = 18, height = 18 
         PyImGui.WindowFlags.AlwaysAutoResize
     )
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemInnerSpacing, 0, 0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0, 0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.ItemInnerSpacing, 0, 0)
     
 
     result = False
@@ -113,7 +113,7 @@ def floating_game_button(caption, name, tooltip,  x, y, width = 18, height = 18 
         result = PyImGui.button(caption)
 
         PyImGui.pop_style_color(3)
-        ImGui.show_tooltip(tooltip)
+        ImGui_Legacy.show_tooltip(tooltip)
 
     PyImGui.end()
     PyImGui.pop_style_var(4)  # 4 vars were pushed
@@ -121,10 +121,10 @@ def floating_game_button(caption, name, tooltip,  x, y, width = 18, height = 18 
     return result
 
 def game_button(caption, name, tooltip, width = 18, height = 18 , color: Color = Color(255, 0, 0, 255)):
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemInnerSpacing, 0, 0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0, 0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.ItemInnerSpacing, 0, 0)
 
     result = False
 
@@ -141,7 +141,7 @@ def game_button(caption, name, tooltip, width = 18, height = 18 , color: Color =
     result = PyImGui.button(caption + name, width, height)
 
     PyImGui.pop_style_color(3)
-    ImGui.show_tooltip(tooltip)
+    ImGui_Legacy.show_tooltip(tooltip)
 
     PyImGui.pop_style_var(4)  # 4 vars were pushed
 

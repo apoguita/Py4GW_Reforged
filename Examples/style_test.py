@@ -1,9 +1,9 @@
 import PyImGui
-from Py4GWCoreLib.ImGui import Themes
+from Py4GWCoreLib.ImGui_Legacy import Themes
 
 MODULE_NAME = "Style Manager"
 
-# Start with the first theme (ImGui = 0)
+# Start with the first theme (ImGui_Legacy = 0)
 selected_index = 0
 theme_names = [t.name for t in Themes.StyleTheme]
 

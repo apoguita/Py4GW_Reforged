@@ -4,7 +4,7 @@ import PyImGui
 from HeroAI.settings import Settings
 from Py4GWCoreLib import Agent
 from Py4GWCoreLib import GLOBAL_CACHE
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import Player
@@ -17,7 +17,7 @@ from Py4GWCoreLib import ThrottledTimer
 from Py4GWCoreLib import Timer
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
 from Py4GWCoreLib.GlobalCache.WhiteboardLocks import claim_resurrection_target
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.py4gwcorelib_src.Console import Console
 from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
 
@@ -302,7 +302,7 @@ def tick() -> None:
 def draw_settings() -> None:
     _settings.ensure_initialized()
 
-    if ImGui.begin_child("##ResurrectionScrollSettingsChild", (0, 0)):
+    if ImGui_Legacy.begin_child("##ResurrectionScrollSettingsChild", (0, 0)):
         PyImGui.text("Party Members")
         PyImGui.separator()
 
@@ -346,4 +346,4 @@ def draw_settings() -> None:
         if PyImGui.button(f"{IconsFontAwesome5.ICON_SCROLL} Rebuild local cache"):
             rebuild_cache()
 
-    ImGui.end_child()
+    ImGui_Legacy.end_child()

@@ -89,7 +89,7 @@ Higher UI-facing passes built on top of that are derivative, even when they rema
 
 - `PyOverlay`
   - Primitive overlay surface that acts as the base of `Overlay`.
-  - This should be treated as the lower-level overlay primitive beneath the higher ImGui-based overlay layer.
+  - This should be treated as the lower-level overlay primitive beneath the higher ImGui_Legacy-based overlay layer.
 
 ### 2. `Py4GWCoreLib` Source-of-Truth Layer
 
@@ -103,7 +103,7 @@ Data from the foundational extraction mechanisms funnels into `Py4GWCoreLib` lib
 
 This is the point where Py4GW semantics begin. `stubs` and `native_src` are primitives; `Py4GWCoreLib` is where project/library semantics start.
 
-For UI semantics, this means modules such as `ImGui`, `DXOverlay`, `Overlay`, and `UIManager` should be treated as higher-level project-facing layers built on top of the lower-level `PyImGui` primitive interface.
+For UI semantics, this means modules such as `ImGui_Legacy`, `DXOverlay`, `Overlay`, and `UIManager` should be treated as higher-level project-facing layers built on top of the lower-level `PyImGui` primitive interface.
 
 Known modules/surfaces include:
 
@@ -114,7 +114,7 @@ Known modules/surfaces include:
 - `Context`
 - `DXOverlay`
 - `Effect`
-- `ImGui`
+- `ImGui_Legacy`
 - `Inventory`
 - `Item`
 - `ItemArray`
@@ -208,7 +208,7 @@ Known modules/surfaces include:
   - The authoritative collection of agents from the game's own agent array.
   - Includes the local player as part of that collection.
   - Acts as the collection layer for world entities.
-  - It is more than a plain list accessor; it is the project-facing classified query layer over the game’s agent collection.
+  - It is more than a plain list accessor; it is the project-facing classified query layer over the gameâ€™s agent collection.
   - It exposes both:
     - the raw full agent array
     - many pre-filtered semantic arrays such as allies, enemies, neutrals, spirits/pets, minions, NPC/minipets, items, owned items, gadgets, dead allies, and dead enemies
@@ -340,7 +340,7 @@ Known modules/surfaces include:
   - Handles trading-oriented NPC interactions.
   - This includes merchants, collectors, traders, material traders, and related trading flows.
   - The current file structure is conceptually broader than the name suggests: `Merchant.py` actually defines a `Trading` surface with multiple trading-context subcontrollers.
-  - This should therefore be treated as the project’s NPC/economy transaction layer, not just a single merchant-only wrapper.
+  - This should therefore be treated as the projectâ€™s NPC/economy transaction layer, not just a single merchant-only wrapper.
   - It exposes transaction-completion state plus specialized transaction roles:
     - `Trader`
       - quoted item / quoted value
@@ -399,7 +399,7 @@ Known modules/surfaces include:
     - attribute-linked scaling, bonus scaling, and duration ranges
     - extensive categorical/type-flag checks (elite, PvE/PvP, spell, stance, enchantment, signet, attack, shout, trap, ritual, chant, disguise, etc.)
     - effect/special/animation/target/equip/argument/name-ID/description-ID/icon/texture-related metadata
-  - This means `Skill` should be treated as the primary per-skill definition/introspection/metadata layer, not just “skill data.”
+  - This means `Skill` should be treated as the primary per-skill definition/introspection/metadata layer, not just â€œskill data.â€
 
 - `Effect`
   - Handles state layered on top of an agent.
@@ -409,7 +409,7 @@ Known modules/surfaces include:
     - access to buff lists and effect lists per agent
     - buff/effect counts
     - existence checks by skill ID
-    - combined “has effect” checks across buffs and effects
+    - combined â€œhas effectâ€ checks across buffs and effects
     - effect attribute-level lookup
     - effect remaining-duration lookup
     - buff-ID lookup by skill
@@ -453,13 +453,13 @@ Known modules/surfaces include:
     - recent damage views
     - recent skill-event views
     - clearing event history
-  - This means `CombatEvents` should be treated as the project’s combat telemetry and derived combat-state layer, not merely a passive callback feed.
+  - This means `CombatEvents` should be treated as the projectâ€™s combat telemetry and derived combat-state layer, not merely a passive callback feed.
 
 #### UI, Overlay, and Runtime Presentation
 
-- `ImGui`
+- `ImGui_Legacy`
   - Higher-level UI toolkit and facade layer built on top of `PyImGui`.
-  - The top-level `ImGui.py` module is primarily a facade over `ImGui_src`, not the main implementation body.
+  - The top-level `ImGui_Legacy.py` module is primarily a facade over `ImGui_src`, not the main implementation body.
   - It packages and re-exports higher-level UI systems such as:
     - style and theme management
     - texture and themed-texture helpers
@@ -494,7 +494,7 @@ Known modules/surfaces include:
       - search fields
       - tables, tab bars, popups, child windows, progress bars
       - custom scroll-bar drawing
-  - This means `ImGui` should be treated as the higher-level themed UI toolkit layer. For base immediate-mode widgets, flags, and draw-list primitives, `PyImGui` remains the primitive base.
+  - This means `ImGui_Legacy` should be treated as the higher-level themed UI toolkit layer. For base immediate-mode widgets, flags, and draw-list primitives, `PyImGui` remains the primitive base.
 
 - `DXOverlay`
   - DirectX helper layer exposed from C++.
@@ -525,7 +525,7 @@ Known modules/surfaces include:
   - This means `DXOverlay` should be treated as the higher-level geometric/texture rendering engine for advanced overlay and map rendering work.
 
 - `Overlay`
-  - ImGui-based overlay handler.
+  - ImGui_Legacy-based overlay handler.
   - Supports full-screen overlay behavior and drawlist capabilities.
   - Includes world-to-screen and screen-to-world primitives.
   - Can draw and position UI elements in the 3D world.
@@ -550,7 +550,7 @@ Known modules/surfaces include:
 
 - `UIManager`
   - Low-level game UI interaction/control framework.
-  - It is significantly broader than a simple “send UI message” wrapper.
+  - It is significantly broader than a simple â€œsend UI messageâ€ wrapper.
   - It combines several distinct UI subsystems:
     - frame lookup and frame-tree introspection
     - frame geometry / visibility / hierarchy access
@@ -659,7 +659,7 @@ Known modules/surfaces include:
   - It is broader than composition alone and should be treated as the full party-management/control layer.
   - In addition to party composition, it exposes:
     - party identity and leader identity
-    - the local player’s own party position
+    - the local playerâ€™s own party position
     - loaded/defeated/leader state
     - party-size and member-count breakdowns
     - hard-mode unlocked / hard-mode / normal-mode state
@@ -1242,7 +1242,7 @@ Both systems implement the same broad combat pipeline:
 - compute aftercast timing
 - issue the actual skill use through `GLOBAL_CACHE.SkillBar.UseSkill`
 
-This means both systems are not simple “auto use next skill” helpers. They are full rule-driven combat schedulers.
+This means both systems are not simple â€œauto use next skillâ€ helpers. They are full rule-driven combat schedulers.
 
 #### Shared Decision Model
 
@@ -1297,13 +1297,13 @@ That engine combines:
   - `Routines.Checks`
   - custom shared-effect metadata
 
-This should be treated as a rules engine for “should this skill be cast now,” not merely as a few hardcoded exceptions.
+This should be treated as a rules engine for â€œshould this skill be cast now,â€ not merely as a few hardcoded exceptions.
 
 #### Shared Timing and Execution Model
 
 Both systems also share the same timing model:
 
-- they track an “in casting routine” state
+- they track an â€œin casting routineâ€ state
 - they calculate aftercast windows from:
   - activation
   - aftercast
@@ -1444,9 +1444,9 @@ Its core job is to sequence bot actions as a staged state machine while also run
   - groups helper families used to actually construct/schedule bot behavior
 - `subclases_src` wrappers
   - the project-facing grouped bot namespaces exposed on the bot instance itself
-  - these wrap helper/config behavior into user-facing “bot scripting” surfaces
+  - these wrap helper/config behavior into user-facing â€œbot scriptingâ€ surfaces
 
-So `BottingClass` should be understood as a façade over config, helpers, and grouped scripting namespaces.
+So `BottingClass` should be understood as a faÃ§ade over config, helpers, and grouped scripting namespaces.
 
 #### Adjacent `BottingTree` Orchestration Stack
 
@@ -1622,7 +1622,7 @@ The bot exposes a wide set of grouped scripting wrappers through `subclases_src`
 - `Templates`
 - `Quest`
 
-These are not independent engines. They are structured scripting façades that schedule work into the bot runtime.
+These are not independent engines. They are structured scripting faÃ§ades that schedule work into the bot runtime.
 
 For example:
 
@@ -1657,7 +1657,7 @@ Putting the pieces together, `Botting` should be modeled as:
   - managed coroutines for background upkeep/services
 - with helper and wrapper namespaces that act as a scripting DSL for building bots
 
-In practice, this makes `Botting` the main “automation composition” layer:
+In practice, this makes `Botting` the main â€œautomation compositionâ€ layer:
 
 - `Routines` gives reusable task units
 - combat automation gives autonomous combat execution

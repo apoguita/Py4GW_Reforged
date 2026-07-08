@@ -1,7 +1,7 @@
 # Necessary Imports
 import Py4GW        #Miscelanious functions and classes
 import PyPing
-import PyImGui     #ImGui wrapper
+import PyImGui     #ImGui_Legacy wrapper
 import traceback    #traceback to log stack traces
 # End Necessary Imports
 import Py4GWcorelib as CoreLib
@@ -35,7 +35,7 @@ def DrawTextWithTitle(title, text_content, lines_visible=10):
     if max_lines is not None:
         total_lines = min(total_lines, max_lines)
 
-    # Get the line height from ImGui
+    # Get the line height from ImGui_Legacy
     line_height = PyImGui.get_text_line_height()
     if line_height == 0:
         line_height = 10  # Set default line height if it's not valid
@@ -98,7 +98,7 @@ def DrawWindow():
                     f"Max Ping: {max_ping} ms",
                     f"Average Ping: {avg_ping} ms"]
 
-            CoreLib.ImGui.table("Ping Info Table", headers, data)
+            CoreLib.ImGui_Legacy.table("Ping Info Table", headers, data)
 
             PyImGui.end()
 

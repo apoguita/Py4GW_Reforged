@@ -54,7 +54,7 @@ def SkillHandler():
 
 
 def RunBotSequentialLogic():
-    """Thread function that manages counting based on ImGui button presses."""
+    """Thread function that manages counting based on ImGui_Legacy button presses."""
     global is_script_running
     seconds_running = 0
     while is_script_running:

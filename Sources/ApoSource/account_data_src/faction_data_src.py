@@ -1,7 +1,7 @@
 import Py4GW
 import PyImGui
 from typing import Callable
-from Py4GWCoreLib import ImGui, ColorPalette, Player
+from Py4GWCoreLib import ImGui_Legacy, ColorPalette, Player
 #region FactionData
 BASE_PATH = PySystem.Console.get_projects_path()
 TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Faction_Icons\\"
@@ -40,7 +40,7 @@ class FactionNode:
 
             # --- Column 1: Texture ---
             PyImGui.table_next_column()
-            ImGui.DrawTexture(self.texture_path, *texture_size)
+            ImGui_Legacy.DrawTexture(self.texture_path, *texture_size)
 
             # --- Column 2: Text + Bar ---
             PyImGui.table_next_column()

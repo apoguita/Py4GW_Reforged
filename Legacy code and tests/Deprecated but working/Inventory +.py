@@ -4,7 +4,7 @@ from Py4GWCoreLib import Utils
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import WindowID
 from Py4GWCoreLib import PyImGui
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import ActionQueueManager
 from Py4GWCoreLib import IconsFontAwesome5
@@ -190,8 +190,8 @@ def floating_checkbox(caption, state,x,y, color):
         PyImGui.WindowFlags.NoScrollWithMouse |
         PyImGui.WindowFlags.AlwaysAutoResize  ) 
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,0.0,0.0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding,0.0,0.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color)
        
     result = state
@@ -223,8 +223,8 @@ def floating_button(caption, name, x,y, color):
         PyImGui.WindowFlags.NoScrollWithMouse |
         PyImGui.WindowFlags.AlwaysAutoResize  ) 
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,-5,-3)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding,-5,-3)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
        
     result = False
     if PyImGui.begin(f"{caption}##invisible_buttonwindow{name}", flags):
@@ -244,7 +244,7 @@ def floating_button(caption, name, x,y, color):
 xunlai_vault_config = xunlaivault_config()
 
 
-window_module = ImGui.WindowModule(
+window_module = ImGui_Legacy.WindowModule(
     MODULE_NAME, 
     window_name="ID & Salvage", 
     window_size=(300, 200),
@@ -317,10 +317,10 @@ class TitleClass():
             global global_vars
             window_title_x = global_vars.inventory_frame_coords.left + 140
             window_title_y = global_vars.inventory_frame_coords.top + 4
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
-            flags= ImGui.PushTransparentWindow()
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
+            flags= ImGui_Legacy.PushTransparentWindow()
             
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,0.0,0.0)
+            PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding,0.0,0.0)
             PyImGui.set_next_window_pos(window_title_x, window_title_y)
             PyImGui.set_next_window_size(0, 15)
             if PyImGui.begin("##titleWindow",True, flags):
@@ -328,7 +328,7 @@ class TitleClass():
             PyImGui.end()
             PyImGui.pop_style_var(1)
 
-            ImGui.PopTransparentWindow()
+            ImGui_Legacy.PopTransparentWindow()
 
 #region Item Routines
 def AutoID(item_id):
@@ -388,13 +388,13 @@ def DrawButtonStrip():
     advance_rainbow_color()
     r, g, b, a = RGBA[0]/255.0, RGBA[1]/255.0, RGBA[2]/255.0, RGBA[3]/255.0
 
-    flags= ImGui.PushTransparentWindow()
+    flags= ImGui_Legacy.PushTransparentWindow()
 
     PyImGui.set_next_window_pos(global_vars.inventory_frame_coords.left+10, global_vars.inventory_frame_coords.top-23)
     PyImGui.set_next_window_size(0 if global_vars.inventory_frame_coords.width > 275 else global_vars.inventory_frame_coords.width, 23)
         
     if PyImGui.begin(window_module.window_name,True, flags):
-        ImGui.PopTransparentWindow()
+        ImGui_Legacy.PopTransparentWindow()
         global_vars.config.colorize_vars = ColorizeType.colorize
         if PyImGui.begin_tab_bar("##TabBar"):
             PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (r, g, b, a))
@@ -403,7 +403,7 @@ def DrawButtonStrip():
                 global_vars.config.selected_tab = TabType.colorize
                 PyImGui.end_tab_item()
             PyImGui.pop_style_color(1)
-            ImGui.show_tooltip("Inventory+")
+            ImGui_Legacy.show_tooltip("Inventory+")
             if global_vars.auto_widget_options.module_active:
                 active_tooltip = "AutoHandler is active"
             else:
@@ -411,38 +411,38 @@ def DrawButtonStrip():
             if PyImGui.begin_tab_item(IconsFontAwesome5.ICON_STOPWATCH +  "##AutoHandlerTab"):
                 global_vars.config.selected_tab = TabType.auto_handler
                 PyImGui.end_tab_item()
-            ImGui.show_tooltip(active_tooltip)
+            ImGui_Legacy.show_tooltip(active_tooltip)
             if PyImGui.begin_tab_item(IconsFontAwesome5.ICON_QUESTION +  "##IDTab"):
                 global_vars.config.colorize_vars = ColorizeType.identification
                 global_vars.config.selected_tab = TabType.identification
                 PyImGui.end_tab_item()
-            ImGui.show_tooltip("Mass ID")
+            ImGui_Legacy.show_tooltip("Mass ID")
             if PyImGui.begin_tab_item(IconsFontAwesome5.ICON_RECYCLE + "##SalvageTab"):
                 global_vars.config.colorize_vars = ColorizeType.salvage
                 global_vars.config.selected_tab = TabType.salvage
                 PyImGui.end_tab_item()
-            ImGui.show_tooltip("Mass Salvage")
+            ImGui_Legacy.show_tooltip("Mass Salvage")
             if Map.IsOutpost():
                 if PyImGui.begin_tab_item(IconsFontAwesome5.ICON_BOX_OPEN + "##XunlaiVaultTab"):
                     global_vars.config.colorize_vars = ColorizeType.vault
                     global_vars.config.selected_tab = TabType.xunlai_vault
                     PyImGui.end_tab_item()
-                ImGui.show_tooltip("Xunlai Vault")
+                ImGui_Legacy.show_tooltip("Xunlai Vault")
             """
             if PyImGui.begin_tab_item(IconsFontAwesome5.ICON_BALANCE_SCALE + "##merchantTab"):
                 global_vars.config.colorize_vars = ColorizeType.colorize
                 global_vars.config.selected_tab = TabType.mods
                 PyImGui.end_tab_item()
-            ImGui.show_tooltip("Merchant")
+            ImGui_Legacy.show_tooltip("Merchant")
             if PyImGui.begin_tab_item(IconsFontAwesome5.ICON_SEARCH + "##invsearchTab"):
                 global_vars.config.colorize_vars = ColorizeType.colorize
                 global_vars.config.selected_tab = TabType.search
                 PyImGui.end_tab_item()
-            ImGui.show_tooltip("Filter")
+            ImGui_Legacy.show_tooltip("Filter")
             """
             PyImGui.end_tab_bar()
     else:
-        ImGui.PopTransparentWindow()    
+        ImGui_Legacy.PopTransparentWindow()    
     
     PyImGui.end()
     
@@ -500,7 +500,7 @@ def eye_toggle_button(label:str, state:bool, button_color=0, hovered_color=0, ac
 def DrawColorizeBottomWindow():
     global global_vars
 
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
     flags=bottom_window_flags()
     
     PyImGui.set_next_window_pos(global_vars.inventory_frame_coords.left, global_vars.inventory_frame_coords.bottom)
@@ -516,9 +516,9 @@ def DrawColorizeBottomWindow():
         if eye_toggle_button("ColorizeEyeBtn", global_vars.hide_ui,Utils.RGBToColor(75, 125, 125, 255),Utils.RGBToColor(125, 150, 150, 255),Utils.RGBToColor(125, 150, 150, 255)):
             global_vars.hide_ui = not global_vars.hide_ui
         if global_vars.hide_ui:
-            ImGui.show_tooltip("Show UI")
+            ImGui_Legacy.show_tooltip("Show UI")
         else:
-            ImGui.show_tooltip("Hide UI")
+            ImGui_Legacy.show_tooltip("Hide UI")
             
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
@@ -527,23 +527,23 @@ def DrawColorizeBottomWindow():
         if not global_vars.hide_ui:
             if color_toggle_button("WhiteColorBtn",global_vars.colorize_config.colorize_whites, rarity_colors["White"]["frame"], rarity_colors["White"]["content"], rarity_colors["White"]["text"], 0, 0):
                 global_vars.colorize_config.colorize_whites = not global_vars.colorize_config.colorize_whites
-            ImGui.show_tooltip("Colorize Whites")   
+            ImGui_Legacy.show_tooltip("Colorize Whites")   
             PyImGui.same_line(0,-1)
             if color_toggle_button("BlueColorBtn",global_vars.colorize_config.colorize_blues, rarity_colors["Blue"]["frame"], rarity_colors["Blue"]["content"], rarity_colors["Blue"]["text"], 0, 0):
                 global_vars.colorize_config.colorize_blues = not global_vars.colorize_config.colorize_blues
-            ImGui.show_tooltip("Colorize Blues")    
+            ImGui_Legacy.show_tooltip("Colorize Blues")    
             PyImGui.same_line(0,-1)
             if color_toggle_button("PurpleColorBtn",global_vars.colorize_config.colorize_purples, rarity_colors["Purple"]["frame"], rarity_colors["Purple"]["content"], rarity_colors["Purple"]["text"], 0, 0):
                 global_vars.colorize_config.colorize_purples = not global_vars.colorize_config.colorize_purples
-            ImGui.show_tooltip("Colorize Purples")    
+            ImGui_Legacy.show_tooltip("Colorize Purples")    
             PyImGui.same_line(0,-1)
             if color_toggle_button("GoldColorBtn", global_vars.colorize_config.colorize_golds, rarity_colors["Gold"]["frame"], rarity_colors["Gold"]["content"], rarity_colors["Gold"]["text"], 0, 0):
                 global_vars.colorize_config.colorize_golds = not global_vars.colorize_config.colorize_golds
             PyImGui.same_line(0,-1)
-            ImGui.show_tooltip("Colorize Golds")
+            ImGui_Legacy.show_tooltip("Colorize Golds")
             if color_toggle_button("GreenColorBtn", global_vars.colorize_config.colorize_greens, rarity_colors["Green"]["frame"], rarity_colors["Green"]["content"], rarity_colors["Green"]["text"], 0, 0):
                 global_vars.colorize_config.colorize_greens = not global_vars.colorize_config.colorize_greens
-            ImGui.show_tooltip("Colorize Greens")
+            ImGui_Legacy.show_tooltip("Colorize Greens")
     PyImGui.end()
     PyImGui.pop_style_var(1)
     
@@ -600,7 +600,7 @@ def DrawIdentifyBottomWindow():
 
 
     
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
     flags=bottom_window_flags()
     
     PyImGui.set_next_window_pos(global_vars.inventory_frame_coords.left, global_vars.inventory_frame_coords.bottom)
@@ -617,17 +617,17 @@ def DrawIdentifyBottomWindow():
         PyImGui.push_item_width(100)
         global_vars.id_selected_item = PyImGui.combo("##IDCombo", global_vars.id_selected_item, select_item_list)
         PyImGui.pop_item_width()
-        ImGui.show_tooltip(f"Select {select_item_list[global_vars.id_selected_item]}")
+        ImGui_Legacy.show_tooltip(f"Select {select_item_list[global_vars.id_selected_item]}")
         PyImGui.same_line(0,-1)
         
         if PyImGui.button(IconsFontAwesome5.ICON_CHECK_SQUARE + "##selectidID", 0, 0):
             _set_option(True)
-        ImGui.show_tooltip(f"Select {select_item_list[global_vars.id_selected_item]}")   
+        ImGui_Legacy.show_tooltip(f"Select {select_item_list[global_vars.id_selected_item]}")   
         PyImGui.same_line(0,-1)
         
         if PyImGui.button(IconsFontAwesome5.ICON_SQUARE + "##unselectID", 0, 0):
             _set_option(False)
-        ImGui.show_tooltip(f"Clear {select_item_list[global_vars.id_selected_item]}")
+        ImGui_Legacy.show_tooltip(f"Clear {select_item_list[global_vars.id_selected_item]}")
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
         PyImGui.same_line(0,-1)
@@ -639,9 +639,9 @@ def DrawIdentifyBottomWindow():
             PyImGui.text_colored(f"{total_uses} Uses", Utils.ColorToTuple(Utils.RGBToColor(210, 90, 0, 255)))
 
         if enough_uses<0:
-            ImGui.show_tooltip(f"Need {abs(enough_uses)} more uses to ID all Items.")
+            ImGui_Legacy.show_tooltip(f"Need {abs(enough_uses)} more uses to ID all Items.")
         else:
-            ImGui.show_tooltip(f"{enough_uses} uses left after IDing all Items.")
+            ImGui_Legacy.show_tooltip(f"{enough_uses} uses left after IDing all Items.")
 
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
@@ -718,7 +718,7 @@ def DrawSalvageBottomWindow():
                if checked)
 
     
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
     flags=bottom_window_flags()
     
     PyImGui.set_next_window_pos(global_vars.inventory_frame_coords.left, global_vars.inventory_frame_coords.bottom)
@@ -735,17 +735,17 @@ def DrawSalvageBottomWindow():
         PyImGui.push_item_width(100)
         global_vars.salv_selected_item = PyImGui.combo("##IDCombo", global_vars.salv_selected_item, select_item_list)
         PyImGui.pop_item_width()
-        ImGui.show_tooltip(f"Select {select_item_list[global_vars.salv_selected_item]}")
+        ImGui_Legacy.show_tooltip(f"Select {select_item_list[global_vars.salv_selected_item]}")
         PyImGui.same_line(0,-1)
         
         if PyImGui.button(IconsFontAwesome5.ICON_CHECK_SQUARE + "##selectidSalv", 0, 0):
             _set_option(True)
-        ImGui.show_tooltip(f"Select {select_item_list[global_vars.salv_selected_item]}")   
+        ImGui_Legacy.show_tooltip(f"Select {select_item_list[global_vars.salv_selected_item]}")   
         PyImGui.same_line(0,-1)
         
         if PyImGui.button(IconsFontAwesome5.ICON_SQUARE + "##unselectSalv", 0, 0):
             _set_option(False)
-        ImGui.show_tooltip(f"Clear {select_item_list[global_vars.salv_selected_item]}")
+        ImGui_Legacy.show_tooltip(f"Clear {select_item_list[global_vars.salv_selected_item]}")
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
         PyImGui.same_line(0,-1)
@@ -757,9 +757,9 @@ def DrawSalvageBottomWindow():
             PyImGui.text_colored(f"{total_uses} Uses", Utils.ColorToTuple(Utils.RGBToColor(210, 90, 0, 255)))
 
         if enough_uses<0:
-            ImGui.show_tooltip(f"Need {abs(enough_uses)} more uses to salvage all Items.")
+            ImGui_Legacy.show_tooltip(f"Need {abs(enough_uses)} more uses to salvage all Items.")
         else:
-            ImGui.show_tooltip(f"{enough_uses} uses left after salvaging all Items.")
+            ImGui_Legacy.show_tooltip(f"{enough_uses} uses left after salvaging all Items.")
 
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
@@ -1175,7 +1175,7 @@ def show_model_id_dialog_popup():
         PyImGui.same_line(0, -1)
         global_vars.auto_widget_options.model_id_search_mode = PyImGui.radio_button("Starts With", global_vars.auto_widget_options.model_id_search_mode, 1)
 
-        # Build reverse lookup: model_id → name
+        # Build reverse lookup: model_id â†’ name
         model_id_to_name = {member.value: name for name, member in ModelID.__members__.items()}
 
         PyImGui.separator()
@@ -1247,13 +1247,13 @@ def DrawAutoHandler():
         
     UIManager().DrawFrame(content_frame, Utils.RGBToColor(0, 0, 0, 255))
     
-    #flags= ImGui.PushTransparentWindow()
+    #flags= ImGui_Legacy.PushTransparentWindow()
     
     flags = ( PyImGui.WindowFlags.NoCollapse | 
             PyImGui.WindowFlags.NoTitleBar |
             PyImGui.WindowFlags.NoResize
     )
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
     
     PyImGui.set_next_window_pos(left, top)
     PyImGui.set_next_window_size(width, height)
@@ -1266,8 +1266,8 @@ def DrawAutoHandler():
             active_button = IconsFontAwesome5.ICON_TOGGLE_OFF
             active_tooltip = "AutoHandler is inactive"
             
-        global_vars.auto_widget_options.module_active = ImGui.toggle_button(active_button + "##AutoHandlerActive", global_vars.auto_widget_options.module_active)
-        ImGui.show_tooltip(active_tooltip)
+        global_vars.auto_widget_options.module_active = ImGui_Legacy.toggle_button(active_button + "##AutoHandlerActive", global_vars.auto_widget_options.module_active)
+        ImGui_Legacy.show_tooltip(active_tooltip)
         
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
@@ -1276,14 +1276,14 @@ def DrawAutoHandler():
         if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##autosalvsave"):
             global_vars.auto_widget_options.save_to_ini()
             ConsoleLog(MODULE_NAME, "Settings saved to Auto Inv.ini", PySystem.Console.MessageType.Success)
-        ImGui.show_tooltip("Save Settings")
+        ImGui_Legacy.show_tooltip("Save Settings")
         PyImGui.same_line(0,-1)
         if PyImGui.button(IconsFontAwesome5.ICON_SYNC + "##autosalvreload"):
             global_vars.auto_widget_options.load_from_ini(global_vars.auto_widget_options.ini)
             global_vars.auto_widget_options.lookup_throttle.SetThrottleTime(global_vars.auto_widget_options._LOOKUP_TIME)
             global_vars.auto_widget_options.lookup_throttle.Reset()
             ConsoleLog(MODULE_NAME, "Settings reloaded from Auto Inv.ini", PySystem.Console.MessageType.Success)
-        ImGui.show_tooltip("Reload Settings")
+        ImGui_Legacy.show_tooltip("Reload Settings")
         
         PyImGui.separator()
         
@@ -1293,7 +1293,7 @@ def DrawAutoHandler():
         PyImGui.push_item_width(150)
         global_vars.auto_widget_options._LOOKUP_TIME = PyImGui.input_int("##lookup_time",  global_vars.auto_widget_options._LOOKUP_TIME)
         PyImGui.pop_item_width()
-        ImGui.show_tooltip("Changes will take effect after the next lookup.")
+        ImGui_Legacy.show_tooltip("Changes will take effect after the next lookup.")
         
         if not Map.IsExplorable():
             PyImGui.text("Auto Lookup only runs in explorable.")
@@ -1307,44 +1307,44 @@ def DrawAutoHandler():
             if PyImGui.begin_tab_item("Identification"):
                 if color_toggle_button("WhiteColorBtn",global_vars.auto_widget_options.id_whites, rarity_colors["White"]["frame"], rarity_colors["White"]["content"], rarity_colors["White"]["text"], 0, 0):
                     global_vars.auto_widget_options.id_whites = not global_vars.auto_widget_options.id_whites
-                ImGui.show_tooltip("Identify White Items")
+                ImGui_Legacy.show_tooltip("Identify White Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("BlueColorBtn",global_vars.auto_widget_options.id_blues, rarity_colors["Blue"]["frame"], rarity_colors["Blue"]["content"], rarity_colors["Blue"]["text"], 0, 0):
                     global_vars.auto_widget_options.id_blues = not global_vars.auto_widget_options.id_blues
-                ImGui.show_tooltip("Identify Blue Items")
+                ImGui_Legacy.show_tooltip("Identify Blue Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("PurpleColorBtn",global_vars.auto_widget_options.id_purples, rarity_colors["Purple"]["frame"], rarity_colors["Purple"]["content"], rarity_colors["Purple"]["text"], 0, 0):
                     global_vars.auto_widget_options.id_purples = not global_vars.auto_widget_options.id_purples
-                ImGui.show_tooltip("Identify Purple Items")
+                ImGui_Legacy.show_tooltip("Identify Purple Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("GoldColorBtn",global_vars.auto_widget_options.id_golds, rarity_colors["Gold"]["frame"], rarity_colors["Gold"]["content"], rarity_colors["Gold"]["text"], 0, 0):
                     global_vars.auto_widget_options.id_golds = not global_vars.auto_widget_options.id_golds
-                ImGui.show_tooltip("Identify Gold Items")
+                ImGui_Legacy.show_tooltip("Identify Gold Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("GreenColorBtn",global_vars.auto_widget_options.id_greens, rarity_colors["Green"]["frame"], rarity_colors["Green"]["content"], rarity_colors["Green"]["text"], 0, 0):
                     global_vars.auto_widget_options.id_greens = not global_vars.auto_widget_options.id_greens
-                ImGui.show_tooltip("Identify Green Items")
+                ImGui_Legacy.show_tooltip("Identify Green Items")
 
                 PyImGui.end_tab_item()
             if PyImGui.begin_tab_item("Salvage"):
                 if color_toggle_button("WhiteColorBtn",global_vars.auto_widget_options.salvage_whites, rarity_colors["White"]["frame"], rarity_colors["White"]["content"], rarity_colors["White"]["text"], 0, 0):
                     global_vars.auto_widget_options.salvage_whites = not global_vars.auto_widget_options.salvage_whites
-                ImGui.show_tooltip("Salvage White Items")
+                ImGui_Legacy.show_tooltip("Salvage White Items")
                 PyImGui.same_line(0,-1)
-                global_vars.auto_widget_options.salvage_rare_materials = ImGui.toggle_button("Rare Mats##salvageRareMaterials", global_vars.auto_widget_options.salvage_rare_materials and global_vars.auto_widget_options.salvage_whites)
-                ImGui.show_tooltip("Salvage Rare Materials")
+                global_vars.auto_widget_options.salvage_rare_materials = ImGui_Legacy.toggle_button("Rare Mats##salvageRareMaterials", global_vars.auto_widget_options.salvage_rare_materials and global_vars.auto_widget_options.salvage_whites)
+                ImGui_Legacy.show_tooltip("Salvage Rare Materials")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("BlueColorBtn",global_vars.auto_widget_options.salvage_blues, rarity_colors["Blue"]["frame"], rarity_colors["Blue"]["content"], rarity_colors["Blue"]["text"], 0, 0):
                     global_vars.auto_widget_options.salvage_blues = not global_vars.auto_widget_options.salvage_blues
-                ImGui.show_tooltip("Salvage Blue Items")
+                ImGui_Legacy.show_tooltip("Salvage Blue Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("PurpleColorBtn",global_vars.auto_widget_options.salvage_purples, rarity_colors["Purple"]["frame"], rarity_colors["Purple"]["content"], rarity_colors["Purple"]["text"], 0, 0):
                     global_vars.auto_widget_options.salvage_purples = not global_vars.auto_widget_options.salvage_purples
-                ImGui.show_tooltip("Salvage Purple Items")
+                ImGui_Legacy.show_tooltip("Salvage Purple Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("GoldColorBtn",global_vars.auto_widget_options.salvage_golds, rarity_colors["Gold"]["frame"], rarity_colors["Gold"]["content"], rarity_colors["Gold"]["text"], 0, 0):
                     global_vars.auto_widget_options.salvage_golds = not global_vars.auto_widget_options.salvage_golds
-                ImGui.show_tooltip("Salvage Gold Items")
+                ImGui_Legacy.show_tooltip("Salvage Gold Items")
                 PyImGui.separator()
                 
                 if PyImGui.collapsing_header("Ignore Items"):
@@ -1356,33 +1356,33 @@ def DrawAutoHandler():
                         
                 PyImGui.end_tab_item()
             if PyImGui.begin_tab_item("Deposit"):
-                global_vars.auto_widget_options.deposit_materials = ImGui.toggle_button("Materials", global_vars.auto_widget_options.deposit_materials)
-                ImGui.show_tooltip("Deposit Materials")
+                global_vars.auto_widget_options.deposit_materials = ImGui_Legacy.toggle_button("Materials", global_vars.auto_widget_options.deposit_materials)
+                ImGui_Legacy.show_tooltip("Deposit Materials")
                 PyImGui.same_line(0,-1)
-                global_vars.auto_widget_options.deposit_trophies = ImGui.toggle_button("Trophies", global_vars.auto_widget_options.deposit_trophies)
-                ImGui.show_tooltip("Deposit Trophies")
+                global_vars.auto_widget_options.deposit_trophies = ImGui_Legacy.toggle_button("Trophies", global_vars.auto_widget_options.deposit_trophies)
+                ImGui_Legacy.show_tooltip("Deposit Trophies")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("DepositBlueColorBtn",global_vars.auto_widget_options.deposit_blues, rarity_colors["Blue"]["frame"], rarity_colors["Blue"]["content"], rarity_colors["Blue"]["text"], 0, 0):
                     global_vars.auto_widget_options.deposit_blues = not global_vars.auto_widget_options.deposit_blues
-                ImGui.show_tooltip("Deposit Blue Items")
+                ImGui_Legacy.show_tooltip("Deposit Blue Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("DepositPurpleColorBtn",global_vars.auto_widget_options.deposit_purples, rarity_colors["Purple"]["frame"], rarity_colors["Purple"]["content"], rarity_colors["Purple"]["text"], 0, 0):
                     global_vars.auto_widget_options.deposit_purples = not global_vars.auto_widget_options.deposit_purples
-                ImGui.show_tooltip("Deposit Purple Items")
+                ImGui_Legacy.show_tooltip("Deposit Purple Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("DepositGoldColorBtn",global_vars.auto_widget_options.deposit_golds, rarity_colors["Gold"]["frame"], rarity_colors["Gold"]["content"], rarity_colors["Gold"]["text"], 0, 0):
                     global_vars.auto_widget_options.deposit_golds = not global_vars.auto_widget_options.deposit_golds
-                ImGui.show_tooltip("Deposit Gold Items")
+                ImGui_Legacy.show_tooltip("Deposit Gold Items")
                 PyImGui.same_line(0,-1)
                 if color_toggle_button("DepositGreenColorBtn",global_vars.auto_widget_options.deposit_greens, rarity_colors["Green"]["frame"], rarity_colors["Green"]["content"], rarity_colors["Green"]["text"], 0, 0):
                     global_vars.auto_widget_options.deposit_greens = not global_vars.auto_widget_options.deposit_greens
-                ImGui.show_tooltip("Deposit Green Items")
+                ImGui_Legacy.show_tooltip("Deposit Green Items")
 
                 PyImGui.separator()
                 PyImGui.text("Keep Gold:")
                 PyImGui.same_line(0,-1)
                 global_vars.auto_widget_options.keep_gold = PyImGui.input_int("##keep_gold", global_vars.auto_widget_options.keep_gold, 1, 1000, PyImGui.InputTextFlags.NoFlag)
-                ImGui.show_tooltip("Keep Gold in inventory, deposit the rest")
+                ImGui_Legacy.show_tooltip("Keep Gold in inventory, deposit the rest")
                 
                 PyImGui.end_tab_item()
             PyImGui.end_tab_bar()

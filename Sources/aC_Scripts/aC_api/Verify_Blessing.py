@@ -1,7 +1,7 @@
 from Py4GWCoreLib import *
 
 class Blessings(Enum):
-    # — Nightfall: Sunspear promotion bounties —
+    # â€” Nightfall: Sunspear promotion bounties â€”
     Corsair_Bounty   = (1794, 1842, 1971, 1972)
     Giant_Hunt       = (1853, 1963, 1964)
     Heket_Hunt       = (1837, 1838, 1977, 1978)
@@ -15,7 +15,7 @@ class Blessings(Enum):
     Undead_Hunt      = (1796, 1854, 1981, 1982)
     Insect_Hunt      = (1967)
 
-    # — Nightfall: Lightbringer promotion bounties —
+    # â€” Nightfall: Lightbringer promotion bounties â€”
     Anguish_Hunt     = (1898, 2040)
     Demon_Hunt       = (1831,)
     Dhuum_Battle     = (1844, 2030, 2031)
@@ -25,11 +25,11 @@ class Blessings(Enum):
     Monolith_Hunt    = (1847, 1848, 2034, 2035)
     Titan_Hunt       = (1851, 2041, 2042)
 
-    # — Factions —
+    # â€” Factions â€”
     Blessing_of_the_Kurzicks = (593, 912)
     Blessing_of_the_Luxons   = (1947, 1946)
 
-    # — Eye of the North —
+    # â€” Eye of the North â€”
     Dwarven_Raider           = (2445, 2446, 2447, 2448, 2549, 2565, 2566, 2567, 2568)
     Vanguard_Patrol          = (2457, 2458, 2459, 2460, 2550, 2578)
     Asuran_Bodyguard         = (2434, 2435, 2436, 2481, 2548, 2552)
@@ -40,7 +40,7 @@ class Blessings(Enum):
 
     @classmethod
     def all_ids(cls) -> list[int]:
-        """Flatten every member’s IDs into one list."""
+        """Flatten every memberâ€™s IDs into one list."""
         return [i for member in cls for i in member.ids]
 
     @classmethod
@@ -50,7 +50,7 @@ class Blessings(Enum):
 
     @classmethod
     def normalize_name(cls, name: str) -> str:
-        """Normalize a member name like Corsair_Bounty" → "Corsair Bounty"""
+        """Normalize a member name like Corsair_Bounty" â†’ "Corsair Bounty"""
         return name.replace('_', ' ').title()
 
 # Cache your player agent once
@@ -67,7 +67,7 @@ def find_first_active_blessing(me):
 def has_any_blessing(me):
     return any(Effects.EffectExists(me, sid) for sid in Blessings.all_ids())
 
-# Called once per-game‑frame by your Py4GW ImGui hook
+# Called once per-gameâ€‘frame by your Py4GW ImGui_Legacy hook
 def on_imgui_render(me):
     PyImGui.begin("Blessing Checker")
 

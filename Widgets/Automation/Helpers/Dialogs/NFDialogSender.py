@@ -5,7 +5,7 @@ import Py4GW  # type: ignore
 from HeroAI.cache_data import CacheData
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import IniHandler
-from Py4GWCoreLib import PyImGui, Color, ImGui
+from Py4GWCoreLib import PyImGui, Color, ImGui_Legacy
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Timer, Player
 
@@ -20,7 +20,7 @@ os.makedirs(BASE_DIR, exist_ok=True)
 
 cached_data = CacheData()
 
-# ——— Window Persistence Setup ———
+# â€”â€”â€” Window Persistence Setup â€”â€”â€”
 ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
 save_window_timer = Timer()
 save_window_timer.Start()
@@ -32,7 +32,7 @@ COLLAPSED = "collapsed"
 X_POS = "x"
 Y_POS = "y"
 
-# load last‐saved window state (fallback to 100,100 / un-collapsed)
+# load lastâ€saved window state (fallback to 100,100 / un-collapsed)
 window_x = ini_window.read_int(MODULE_NAME, X_POS, 100)
 window_y = ini_window.read_int(MODULE_NAME, Y_POS, 100)
 window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, False)
@@ -149,7 +149,7 @@ DIALOG_GROUPS = {
         "dialogs": [],
         "note": "Map to Tihark Orchard and talk to the NPC in the Nightfallen Garden.",
     },
-    "Jennur’s Horde (Mission)": {
+    "Jennurâ€™s Horde (Mission)": {
         "dialogs": [],
         "note": "Grab the light, run past enemies. Use it to kill 3 Harbingers. Prevent snares.",
     },
@@ -170,7 +170,7 @@ DIALOG_GROUPS = {
     },
     "A Deal's a Deal": {
         "dialogs": [(0x824701, "Start (Sahlahjar the Dead)"), (0x824701, "Accept Reward (Ritual Priest Kehmut)")],
-        "note": "Kill the Margonite group in Joko’s Domain.",
+        "note": "Kill the Margonite group in Jokoâ€™s Domain.",
     },
     "Horde of Darkness": {
         "dialogs": [
@@ -273,9 +273,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("NightFall Dialog Sender", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

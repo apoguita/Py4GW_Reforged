@@ -8,9 +8,9 @@ import PySystem
 import Py4GW
 import PyImGui
 
-from Py4GWCoreLib import ImGui, Routines
+from Py4GWCoreLib import ImGui_Legacy, Routines
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
-from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment
 from Py4GWCoreLib.Py4GWcorelib import ThrottledTimer
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
@@ -44,8 +44,8 @@ module_info = None
 
 settings = Settings()
 
-access_window = ImGui.WindowModule(MODULE_NAME, MODULE_NAME, (300, 600))
-configure_window = ImGui.WindowModule(MODULE_NAME, MODULE_NAME + " Configure", (1400, 800), can_close=True)
+access_window = ImGui_Legacy.WindowModule(MODULE_NAME, MODULE_NAME, (300, 600))
+configure_window = ImGui_Legacy.WindowModule(MODULE_NAME, MODULE_NAME + " Configure", (1400, 800), can_close=True)
 gui = GUI(configure_window, access_window)
 
 regions: list[Region] = []
@@ -195,11 +195,11 @@ def tooltip():
     PyImGui.begin_tooltip()
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.image(MODULE_ICON, (32, 32))
+    ImGui_Legacy.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
-    ImGui.push_font("Regular", 20)
-    ImGui.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
-    ImGui.pop_font()
+    ImGui_Legacy.push_font("Regular", 20)
+    ImGui_Legacy.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.spacing()
     PyImGui.separator()

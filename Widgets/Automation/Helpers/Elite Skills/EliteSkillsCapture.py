@@ -8,7 +8,7 @@ from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, Mode
                           AutoPathing, PyImGui, ActionQueueManager, Map, Agent, Player, Item,
                           IconsFontAwesome5, SkillBar, Quest, AgentArray, UIManager, Color)
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
-from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
+from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
 from Py4GWCoreLib.enums_src.Hero_enums import HeroType
 import PyGameThread
 
@@ -28,9 +28,9 @@ def tooltip():
     
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Elite Skills Capture", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     
@@ -11495,14 +11495,14 @@ class EliteSkillsGUI:
             texture_path = self.get_texture_path(skill)
 
             if texture_path:
-                ImGui.image(texture_path, (32, 32))
+                ImGui_Legacy.image(texture_path, (32, 32))
                 # Tooltip on hover - show skill description
                 if PyImGui.is_item_hovered():
                     if PyImGui.begin_tooltip():
                         # Skill name
-                        ImGui.push_font("Bold", 16)
+                        ImGui_Legacy.push_font("Bold", 16)
                         PyImGui.text(skill.display_name)
-                        ImGui.pop_font()
+                        ImGui_Legacy.pop_font()
                         
                         # Skill status
                         if is_unlocked:

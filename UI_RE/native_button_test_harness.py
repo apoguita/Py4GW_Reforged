@@ -1,5 +1,5 @@
 """
-Native Button Test Harness — CtlBtnProc (Approach 1).
+Native Button Test Harness â€” CtlBtnProc (Approach 1).
 
 Creates an empty window, then a native GW button inside it using the
 CtlBtnProc engine-level FrameProc. Every step outputs self-describing
@@ -25,14 +25,14 @@ from Py4GWCoreLib.native_src.methods.ButtonMethods import (
 )
 from Py4GWCoreLib.Scanner import Scanner, ScannerSection
 
-# ── Metadata ──────────────────────────────────────────────────────────
+# â”€â”€ Metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 MODULE_NAME = "Native Button Test Harness"
 SCRIPT_REVISION = "2026-06-17-cbtn-test-2 (EXE 06-14)"
 WINDOW_OPEN = True
 INITIALIZED = False
 READ_DELAY_SECONDS = 0.60
 
-# ── Tunable Constants ─────────────────────────────────────────────────
+# â”€â”€ Tunable Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_LABEL = "Py4GW_ButtonTest_Window"
 WINDOW_TITLE = "Py4GW Button Test"
 WINDOW_X = 200
@@ -45,7 +45,7 @@ BUTTON_CHILD_INDEX = 0x20
 BUTTON_FLAGS = 0x40000       # IME-style: flat background
 BUTTON_TEXT = "Click Me"
 
-# ── Runtime State ─────────────────────────────────────────────────────
+# â”€â”€ Runtime State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 PENDING_REPORTS: list[tuple[float, str]] = []
 LAST_WINDOW_ID = 0
 LAST_BUTTON_ID = 0
@@ -81,7 +81,7 @@ ALT_PATTERNS = [
         "pattern": b"\x48\x83\xF8\x5E\x0F\x87",
         "mask": "xxxxxx",
         "offset": -0x100,  # use ToFunctionStart to go back
-        "description": "CMP EAX,0x5E; JA — unique max message for CtlBtnProc",
+        "description": "CMP EAX,0x5E; JA â€” unique max message for CtlBtnProc",
     },
 ]
 
@@ -181,7 +181,7 @@ def _scan_frame_tree(root_id: int, depth: int = 0, max_depth: int = 3) -> None:
 
 
 # =========================================================================
-# Scanner Verification — With Fallback Pattern Search
+# Scanner Verification â€” With Fallback Pattern Search
 # =========================================================================
 
 def _find_ctlbntextliteral_with_fallback() -> Optional[int]:
@@ -198,7 +198,7 @@ def _verify_scanners() -> dict:
     """Verify all scanner-resolved addresses with fallback attempts."""
     status = {}
 
-    # ── CtlBtnProc ──
+    # â”€â”€ CtlBtnProc â”€â”€
     result = {"valid": False, "address": "0x00000000", "method": None}
     try:
         # Try primary pattern
@@ -208,7 +208,7 @@ def _verify_scanners() -> dict:
             result["method"] = "primary 26-byte pattern"
         else:
             # Try alternative pattern
-            _log("  Primary CtlBtnProc pattern failed — trying alternatives...")
+            _log("  Primary CtlBtnProc pattern failed â€” trying alternatives...")
             for alt in ALT_PATTERNS:
                 if alt["pattern"] is None:
                     continue  # skip string anchor for now
@@ -226,7 +226,7 @@ def _verify_scanners() -> dict:
         result["error"] = str(exc)
     status["CtlBtnProc"] = result
 
-    # ── FrameCreate ──
+    # â”€â”€ FrameCreate â”€â”€
     result = {"valid": False, "address": "0x00000000", "method": None}
     try:
         if FrameCreate_Func.is_valid():
@@ -240,7 +240,7 @@ def _verify_scanners() -> dict:
         result["error"] = str(exc)
     status["FrameCreate"] = result
 
-    # ── CtlBtnSetTextLiteral ──
+    # â”€â”€ CtlBtnSetTextLiteral â”€â”€
     result = {"valid": False, "address": "0x00000000", "method": None}
     try:
         if CtlBtnSetTextLiteral_Func.is_valid():
@@ -293,7 +293,7 @@ def _create_window() -> None:
 
     existing = _current_window_id()
     if existing > 0:
-        _log(f"Window already exists: frame_id={existing} — skipping creation")
+        _log(f"Window already exists: frame_id={existing} â€” skipping creation")
         LAST_WINDOW_ID = existing
         _dump_state("pre-existing window")
         return
@@ -341,13 +341,13 @@ def _create_button() -> None:
     scanner = _verify_scanners()
     if not scanner["all_valid"]:
         _error(f"Scanner resolution FAILED. Status: { {k:v for k,v in scanner.items() if k != 'all_valid'} }")
-        _log("  Cannot proceed — scanner patterns didn't match. Possible EXE version mismatch.")
+        _log("  Cannot proceed â€” scanner patterns didn't match. Possible EXE version mismatch.")
         return
 
     cb_addr = CtlBtnProc_Callback.func_ptr
     fc_addr = FrameCreate_Func.get_address()
     st_addr = CtlBtnSetTextLiteral_Func.get_address()
-    _log(f"  scanners: all valid ✓")
+    _log(f"  scanners: all valid âœ“")
     _log(f"    CtlBtnProc             = 0x{cb_addr:08X} ({scanner['CtlBtnProc']['method']})")
     _log(f"    FrameCreate            = 0x{fc_addr:08X} ({scanner['FrameCreate']['method']})")
     _log(f"    CtlBtnSetTextLiteral   = 0x{st_addr:08X} ({scanner['CtlBtnSetTextLiteral']['method']})")
@@ -458,7 +458,7 @@ def _dump_scanner_status() -> None:
     _log("--- END SCANNER ---")
 
     if not status.get("all_valid"):
-        _log("  ↓ SCANNER FAILURE — possible causes:")
+        _log("  â†“ SCANNER FAILURE â€” possible causes:")
         _log("    1. EXE build mismatch: analyzed 05-30-2026, runtime may differ")
         _log("    2. Pattern bytes changed in a newer build")
         _log("    3. Scanner looking in wrong section (TEXT vs CODE)")
@@ -471,7 +471,7 @@ def _dump_full_state() -> None:
     _dump_state("manual dump")
 
 
-# ── Individual test actions ─────────────────────────────────────────
+# â”€â”€ Individual test actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _action_verify_scanners() -> None:
     """Verify all scanner patterns resolve."""
@@ -521,7 +521,7 @@ def _action_scan_full_tree() -> None:
     """Full recursive tree scan of all windows."""
     window_id = _current_window_id()
     if window_id <= 0:
-        _log("No window — scanning root children instead.")
+        _log("No window â€” scanning root children instead.")
         _scan_frame_tree(0, max_depth=2)
     else:
         _scan_frame_tree(window_id, max_depth=4)
@@ -551,7 +551,7 @@ def _action_create_ctl_button() -> None:
 
 
 def _action_create_gwca_button() -> None:
-    """Create a button using the GWCA standard CreateButtonFrame (IUi::UiCtlBtnProc — styled)."""
+    """Create a button using the GWCA standard CreateButtonFrame (IUi::UiCtlBtnProc â€” styled)."""
     global LAST_BUTTON_ID, LAST_ACTION, CALL_COUNTER
 
     window_id = _current_window_id()
@@ -622,7 +622,7 @@ def _action_dump_full_state() -> None:
 
 
 # =========================================================================
-# ImGui Widget — Individual Test Buttons
+# ImGui_Legacy Widget â€” Individual Test Buttons
 # =========================================================================
 
 def configure():
@@ -631,7 +631,7 @@ def configure():
 
 
 def main():
-    """Main render loop — called every frame by Widget Manager."""
+    """Main render loop â€” called every frame by Widget Manager."""
     global WINDOW_OPEN, INITIALIZED, SCANNER_STATUS
 
     if not INITIALIZED:
@@ -644,11 +644,11 @@ def main():
     if not WINDOW_OPEN:
         return
 
-    # ── Begin window ──
+    # â”€â”€ Begin window â”€â”€
     if not PyImGui.begin(f"{MODULE_NAME}##{SCRIPT_REVISION}", WINDOW_OPEN):
         return
 
-    # ── Scanner Status ──
+    # â”€â”€ Scanner Status â”€â”€
     PyImGui.text_colored("=== Scanner Resolution ===", (0.4, 0.8, 1.0, 1.0))
     if not SCANNER_STATUS:
         SCANNER_STATUS = _verify_scanners()
@@ -665,11 +665,11 @@ def main():
 
     PyImGui.button("Verify Scanners", 0, 0)
     if not all_ok:
-        PyImGui.text_colored("EXE 06-14 — scanner mismatch?", (1.0, 0.6, 0.2, 1.0))
+        PyImGui.text_colored("EXE 06-14 â€” scanner mismatch?", (1.0, 0.6, 0.2, 1.0))
 
     PyImGui.separator()
 
-    # ── Window ──
+    # â”€â”€ Window â”€â”€
     PyImGui.text_colored("=== 1. Window ===", (0.4, 0.8, 1.0, 1.0))
     window_id = _current_window_id()
     if window_id > 0:
@@ -692,7 +692,7 @@ def main():
 
     PyImGui.separator()
 
-    # ── Button ──
+    # â”€â”€ Button â”€â”€
     PyImGui.text_colored("=== 2. Button ===", (0.4, 0.8, 1.0, 1.0))
     if LAST_BUTTON_ID > 0:
         PyImGui.text(f"frame_id={LAST_BUTTON_ID}  label='{BUTTON_TEXT}'")
@@ -725,7 +725,7 @@ def main():
 
     PyImGui.separator()
 
-    # ── Inspect ──
+    # â”€â”€ Inspect â”€â”€
     PyImGui.text_colored("=== 3. Inspect ===", (0.4, 0.8, 1.0, 1.0))
     PyImGui.columns(2, "insp_cols", True)
     if PyImGui.button("Dump Window State", 0, 0):
@@ -740,7 +740,7 @@ def main():
 
     PyImGui.separator()
 
-    # ── Status ──
+    # â”€â”€ Status â”€â”€
     PyImGui.text_colored("=== Status ===", (0.4, 0.8, 1.0, 1.0))
     PyImGui.text(f"Action: {LAST_ACTION}   Calls: {CALL_COUNTER}")
     ec = (1.0, 0.3, 0.3, 1.0) if LAST_ERROR else (0.5, 0.5, 0.5, 1.0)

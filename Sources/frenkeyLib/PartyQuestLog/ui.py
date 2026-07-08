@@ -5,10 +5,10 @@ import PyOverlay
 from HeroAI.ui import get_display_name
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
-from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
-from Py4GWCoreLib.ImGui_src.Textures import TextureState, ThemeTextures
-from Py4GWCoreLib.ImGui_src.WindowModule import WindowModule
-from Py4GWCoreLib.ImGui_src.types import Alignment, StyleTheme
+from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
+from Py4GWCoreLib.ImGui_Legacy_src.Textures import TextureState, ThemeTextures
+from Py4GWCoreLib.ImGui_Legacy_src.WindowModule import WindowModule
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment, StyleTheme
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Overlay import Overlay
 from Py4GWCoreLib.Player import Player
@@ -64,19 +64,19 @@ class UI():
     
     @staticmethod
     def quest_tree_node(label: str) -> bool:
-        style = ImGui.get_style()
-        style = style if style.Theme in ImGui.Textured_Themes else ImGui.Styles.get(StyleTheme.Guild_Wars, style)
+        style = ImGui_Legacy.get_style()
+        style = style if style.Theme in ImGui_Legacy.Textured_Themes else ImGui_Legacy.Styles.get(StyleTheme.Guild_Wars, style)
         style.TextTreeNode.push_color_direct(style.TextTreeNode.rgb_tuple)
         
         frame_padding = style.FramePadding.get_current()
-        ImGui.push_style_color(PyImGui.ImGuiCol.Header, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.HeaderHovered, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.HeaderActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Header, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.HeaderHovered, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.HeaderActive, (0,0,0,0))
         PyImGui.push_clip_rect(PyImGui.get_cursor_screen_pos()[0]+ 20, PyImGui.get_cursor_screen_pos()[1], 1000, 1000, True)
         new_open = PyImGui.tree_node(label)
         PyImGui.pop_clip_rect()
 
-        ImGui.pop_style_color(3)
+        ImGui_Legacy.pop_style_color(3)
         
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -88,7 +88,7 @@ class UI():
         (ThemeTextures.Collapse if new_open else ThemeTextures.Expand).value.get_texture().draw_in_drawlist(
             item_rect[:2],
             item_rect[2:],
-            state=TextureState.Hovered if ImGui.is_mouse_in_rect(item_rect) else TextureState.Normal,
+            state=TextureState.Hovered if ImGui_Legacy.is_mouse_in_rect(item_rect) else TextureState.Normal,
         )
                                 
         style.TextTreeNode.pop_color_direct()  
@@ -110,11 +110,11 @@ class UI():
         open = UI.QuestLogWindow.begin()
         
         if open:
-            style = ImGui.get_style()
+            style = ImGui_Legacy.get_style()
             grouped_quests : dict[str, list[QuestNode]] = {}
             avail = PyImGui.get_content_region_avail()
             _, height = avail[0], avail[1] / 2
-            textured = style.Theme in ImGui.Textured_Themes
+            textured = style.Theme in ImGui_Legacy.Textured_Themes
                     
             if quest_data.mission_map_quest is not None:
                 grouped_quests.setdefault(quest_data.mission_map_quest.quest_location, []).append(quest_data.mission_map_quest)
@@ -131,7 +131,7 @@ class UI():
                 grouped_quests[location] = sorted_quests
             
             style.WindowPadding.push_style_var_direct(2, 8)
-            ImGui.begin_child("QuestLogChild", (0, height), border=True)
+            ImGui_Legacy.begin_child("QuestLogChild", (0, height), border=True)
             style.WindowPadding.pop_style_var_direct()
                         
             width = PyImGui.get_content_region_avail()[0]
@@ -144,16 +144,16 @@ class UI():
                 if contains_active_quest:
                     PyImGui.set_next_item_open(True, PyImGui.ImGuiCond.Always)
                 
-                ImGui.push_font("Regular", 16)                
+                ImGui_Legacy.push_font("Regular", 16)                
                 location_open = UI.quest_tree_node(f"{location}")                    
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
                                 
                 if location_open:                    
                     style.ItemSpacing.push_style_var_direct(4, 0)
                     
                     for quest in quests:  
                         if not PyImGui.is_rect_visible(0, height_selectable):
-                            ImGui.dummy(width, height_selectable)
+                            ImGui_Legacy.dummy(width, height_selectable)
                             continue
                         
                         max_width = max(1, width - (len(accounts) * 10) - 30)
@@ -167,7 +167,7 @@ class UI():
                         cursor = PyImGui.get_cursor_screen_pos()
                         computed_rect = (cursor[0], cursor[1], width, height_selectable)
                         color = Color(200, 200, 200, 40) if quest == UI.ActiveQuest else \
-                                Color(200, 200, 200, 20) if ImGui.is_mouse_in_rect(computed_rect) else \
+                                Color(200, 200, 200, 20) if ImGui_Legacy.is_mouse_in_rect(computed_rect) else \
                                 None
                                 
                         if color:
@@ -175,9 +175,9 @@ class UI():
                             
                         style.Border.push_color_direct(color.opacity(0.1).rgb_tuple if color else (0,0,0,0))
                         style.WindowPadding.push_style_var_direct(4, 4)
-                        ImGui.begin_child(f"QuestSelectable_{quest.quest_id}", (0, height_selectable), border=True, flags=PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)  
-                        ImGui.render_tokenized_markup(tokenized_lines, max_width=max_width, COLOR_MAP=UI.COLOR_TUPLES_MAP)
-                        ImGui.end_child()
+                        ImGui_Legacy.begin_child(f"QuestSelectable_{quest.quest_id}", (0, height_selectable), border=True, flags=PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)  
+                        ImGui_Legacy.render_tokenized_markup(tokenized_lines, max_width=max_width, COLOR_MAP=UI.COLOR_TUPLES_MAP)
+                        ImGui_Legacy.end_child()
                         style.WindowPadding.pop_style_var_direct()
                                     
                         style.Border.pop_color_direct()
@@ -201,10 +201,10 @@ class UI():
                         if PyImGui.is_item_hovered():
                             if accounts: 
                                 style.ItemSpacing.push_style_var_direct(og_item_spacing.value1, og_item_spacing.value2)   
-                                ImGui.begin_tooltip()
+                                ImGui_Legacy.begin_tooltip()
                                 
                                 bullet_col_width = PyImGui.get_text_line_height()
-                                ImGui.begin_table("QuestStatusTable", 3, PyImGui.TableFlags.NoBordersInBody)
+                                ImGui_Legacy.begin_table("QuestStatusTable", 3, PyImGui.TableFlags.NoBordersInBody)
                                 PyImGui.table_setup_column("bullet", PyImGui.TableColumnFlags.WidthFixed, bullet_col_width)
                                 PyImGui.table_setup_column("professions", PyImGui.TableColumnFlags.WidthFixed, bullet_col_width * 2.5)
                                 PyImGui.table_setup_column("text", PyImGui.TableColumnFlags.WidthStretch)
@@ -230,26 +230,26 @@ class UI():
                                     prof_secondary = ProfessionShort(
                                         acc.AgentData.Profession[1]).name if acc.AgentData.Profession[1] != 0 else ""
                                     PyImGui.table_next_column()
-                                    ImGui.text(f"{prof_primary}{('/' if prof_secondary else '')}{prof_secondary}")
+                                    ImGui_Legacy.text(f"{prof_primary}{('/' if prof_secondary else '')}{prof_secondary}")
                                     
                                     PyImGui.table_next_column()
-                                    ImGui.text(name)
+                                    ImGui_Legacy.text(name)
                                 
-                                ImGui.end_table()   
+                                ImGui_Legacy.end_table()   
                                 
-                                ImGui.separator()
-                                ImGui.push_font("Regular", 12)
+                                ImGui_Legacy.separator()
+                                ImGui_Legacy.push_font("Regular", 12)
                                 for name, col in UI.QUEST_STATE_COLOR_MAP.items():
                                     style.Text.push_color_direct(col.rgb_tuple)  
                                     PyImGui.bullet_text("")
                                     style.Text.pop_color_direct()
                                     
                                     PyImGui.same_line(0, 5)
-                                    ImGui.text(f"{name}")
+                                    ImGui_Legacy.text(f"{name}")
                                     PyImGui.same_line(0, 5)
                                     
-                                ImGui.pop_font()
-                                ImGui.end_tooltip()
+                                ImGui_Legacy.pop_font()
+                                ImGui_Legacy.end_tooltip()
                                 style.ItemSpacing.pop_style_var_direct() 
                         
                         after_y = PyImGui.get_cursor_pos_y()
@@ -269,20 +269,20 @@ class UI():
                         
                         PyImGui.set_cursor_pos_y(after_y + 4)
                             
-                        # ImGui.show_tooltip(f"{acc.AccountEmail} | {acc.CharacterName} | {("Completed" if completed else "Active" if active else "Not Active")} " )
-                        # ImGui.show_tooltip(f"{name.lower().replace(" ", "_")}@gmail.com | {name} | {("Completed" if completed else "Active" if active else "Not Active")} " )
+                        # ImGui_Legacy.show_tooltip(f"{acc.AccountEmail} | {acc.CharacterName} | {("Completed" if completed else "Active" if active else "Not Active")} " )
+                        # ImGui_Legacy.show_tooltip(f"{name.lower().replace(" ", "_")}@gmail.com | {name} | {("Completed" if completed else "Active" if active else "Not Active")} " )
                         
                     style.ItemSpacing.pop_style_var_direct()
-                    ImGui.tree_pop()
+                    ImGui_Legacy.tree_pop()
                     
                 pass
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
-            ImGui.begin_child("QuestDetailsChild", (0, height - 10), border=False)
+            ImGui_Legacy.begin_child("QuestDetailsChild", (0, height - 10), border=False)
             if UI.ActiveQuest is not None:
                 UI.draw_quest_details(UI.ActiveQuest, accounts)
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
         if UI.QuestLogWindow.changed or (not UI.QuestLogWindow.open):
             pos = UI.QuestLogWindow.window_pos
@@ -308,12 +308,12 @@ class UI():
         
         PyImGui.push_clip_rect(cursor_pos[0], cursor_pos[1], text_clip, 50, True)
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, UI.COLOR_TUPLES_MAP["Header"])
-        ImGui.text("Quest Summary", font_size=16)
+        ImGui_Legacy.text("Quest Summary", font_size=16)
         PyImGui.pop_style_color(1)
         PyImGui.pop_clip_rect()
         
         PyImGui.same_line(child_width - 110, 0)
-        if ImGui.button("Abandon", 100, 20):
+        if ImGui_Legacy.button("Abandon", 100, 20):
             if PyImGui.get_io().key_ctrl:
                 ConsoleLog("Party Quest Log", f"Requesting to abandon quest '{quest.name}'...")
                 Quest.AbandonQuest(quest.quest_id)
@@ -322,21 +322,21 @@ class UI():
                     GLOBAL_CACHE.ShMem.SendMessage(Player.GetAccountEmail(), acc.AccountEmail, SharedCommandType.AbandonQuest, (quest.quest_id,0,0,0))
         
         if PyImGui.is_item_hovered():
-            ImGui.begin_tooltip()
-            ImGui.text_colored("Ctrl + Click to abandon the quest on all party members.", UI.gray_color.color_tuple)    
-            ImGui.end_tooltip()
+            ImGui_Legacy.begin_tooltip()
+            ImGui_Legacy.text_colored("Ctrl + Click to abandon the quest on all party members.", UI.gray_color.color_tuple)    
+            ImGui_Legacy.end_tooltip()
         
         PyImGui.spacing()
         
         UI.ActiveQuestObjectiveTokens = UI.ActiveQuestObjectiveTokens or Utils.TokenizeMarkupText(quest.objectives, max_width=child_width)
-        ImGui.render_tokenized_markup(UI.ActiveQuestObjectiveTokens, max_width=child_width, COLOR_MAP=UI.COLOR_TUPLES_MAP)
+        ImGui_Legacy.render_tokenized_markup(UI.ActiveQuestObjectiveTokens, max_width=child_width, COLOR_MAP=UI.COLOR_TUPLES_MAP)
 
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, UI.COLOR_TUPLES_MAP["Header"])
         PyImGui.text_wrapped(f"{quest.npc_quest_giver}")
         PyImGui.pop_style_color(1)
 
         UI.ActiveQuestDescriptionTokens = UI.ActiveQuestDescriptionTokens or Utils.TokenizeMarkupText(quest.description, max_width=child_width)
-        ImGui.render_tokenized_markup(UI.ActiveQuestDescriptionTokens, max_width=child_width, COLOR_MAP=UI.COLOR_TUPLES_MAP)
+        ImGui_Legacy.render_tokenized_markup(UI.ActiveQuestDescriptionTokens, max_width=child_width, COLOR_MAP=UI.COLOR_TUPLES_MAP)
 
         PyImGui.separator()
         PyImGui.text(f"From: {Map.GetMapName(quest.map_from)}")
@@ -547,57 +547,57 @@ class UI():
         open = UI.ConfigWindow.begin()
         
         if open:
-            style = ImGui.get_style()
+            style = ImGui_Legacy.get_style()
             
-            if ImGui.begin_tab_bar("PartyQuestLogConfigTabs"):
-                if ImGui.begin_tab_item("General Settings"):                        
+            if ImGui_Legacy.begin_tab_bar("PartyQuestLogConfigTabs"):
+                if ImGui_Legacy.begin_tab_item("General Settings"):                        
                     avail = PyImGui.get_content_region_avail()
                     _, height = avail[0], avail[1]
                     
-                    ImGui.text_aligned("Quest Log Hotkey", height=22, alignment=Alignment.MidLeft)
+                    ImGui_Legacy.text_aligned("Quest Log Hotkey", height=22, alignment=Alignment.MidLeft)
                     PyImGui.same_line(0, 5)
                     width_avail = PyImGui.get_content_region_avail()[0]
                     PyImGui.push_item_width(width_avail - 5)
-                    key, modifiers, changed = ImGui.keybinding("##HotkeyInfo", key=UI.Settings.HotKeyKey, modifiers=UI.Settings.Modifiers)
+                    key, modifiers, changed = ImGui_Legacy.keybinding("##HotkeyInfo", key=UI.Settings.HotKeyKey, modifiers=UI.Settings.Modifiers)
                     PyImGui.pop_item_width()
                     
                     if changed:
                         ConsoleLog("Party Quest Log", f"Setting new hotkey: {modifiers.name}+{key.name.replace('VK_','')}")
                         UI.Settings.set_questlog_hotkey_keys(key, modifiers)
                     
-                    show_only_in_party = ImGui.checkbox("Show Quest Log only when in a Party", UI.Settings.ShowOnlyInParty)
+                    show_only_in_party = ImGui_Legacy.checkbox("Show Quest Log only when in a Party", UI.Settings.ShowOnlyInParty)
                     if show_only_in_party != UI.Settings.ShowOnlyInParty:
                         UI.Settings.ShowOnlyInParty = show_only_in_party
                         UI.Settings.save_settings()
                         
-                    show_only_on_leader = ImGui.checkbox("Show Quest Log only when Party Leader", UI.Settings.ShowOnlyOnLeader)
+                    show_only_on_leader = ImGui_Legacy.checkbox("Show Quest Log only when Party Leader", UI.Settings.ShowOnlyOnLeader)
                     if show_only_on_leader != UI.Settings.ShowOnlyOnLeader:
                         UI.Settings.ShowOnlyOnLeader = show_only_on_leader
                         UI.Settings.save_settings()
                 
-                    show_follower_on_minimap = ImGui.checkbox("Show Follower Active Quest on Minimap", UI.Settings.ShowFollowerActiveQuestOnMinimap)
+                    show_follower_on_minimap = ImGui_Legacy.checkbox("Show Follower Active Quest on Minimap", UI.Settings.ShowFollowerActiveQuestOnMinimap)
                     if show_follower_on_minimap != UI.Settings.ShowFollowerActiveQuestOnMinimap:
                         UI.Settings.ShowFollowerActiveQuestOnMinimap = show_follower_on_minimap
                         UI.Settings.save_settings()
                         
-                    show_follower_on_mission_map = ImGui.checkbox("Show Follower Active Quest on Mission Map", UI.Settings.ShowFollowerActiveQuestOnMissionMap)
+                    show_follower_on_mission_map = ImGui_Legacy.checkbox("Show Follower Active Quest on Mission Map", UI.Settings.ShowFollowerActiveQuestOnMissionMap)
                     if show_follower_on_mission_map != UI.Settings.ShowFollowerActiveQuestOnMissionMap:
                         UI.Settings.ShowFollowerActiveQuestOnMissionMap = show_follower_on_mission_map
                         UI.Settings.save_settings()
-                    ImGui.end_tab_item()
+                    ImGui_Legacy.end_tab_item()
                 
-                if ImGui.begin_tab_item("Accounts"):
+                if ImGui_Legacy.begin_tab_item("Accounts"):
                     for acc in accounts.values():
                         name = get_display_name(acc)
                         enabled = UI.Settings.show_quests_for_accounts.get(acc.AccountEmail.lower(), True)
                         
-                        changed = ImGui.checkbox(f"Show quests for {name}", enabled)
+                        changed = ImGui_Legacy.checkbox(f"Show quests for {name}", enabled)
                         if changed != enabled:
                             UI.Settings.show_quests_for_accounts[acc.AccountEmail.lower()] = changed
                             UI.Settings.save_settings()
-                    ImGui.end_tab_item()
+                    ImGui_Legacy.end_tab_item()
                     
-                ImGui.end_tab_bar()
+                ImGui_Legacy.end_tab_bar()
                 
                 
         if UI.ConfigWindow.changed or not UI.ConfigWindow.open:

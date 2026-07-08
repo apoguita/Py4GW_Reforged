@@ -1,5 +1,5 @@
 from Py4GWCoreLib import *
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5 as Icons
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5 as Icons
 from Py4GWCoreLib.enums import Key
 import PyImGui
 
@@ -56,7 +56,7 @@ class RouteBuilderWidget:
     WAYPOINT_HIT_RADIUS = 8.0
     LINE_HIT_THRESHOLD = 10.0
     TRAP_Y_PAD = 2.5  # game-unit vertical expansion to fill inter-trapezoid gaps
-    CULL_AREA_THRESHOLD = 6.0  # skip quads below this screen-space area (px²)
+    CULL_AREA_THRESHOLD = 6.0  # skip quads below this screen-space area (pxÂ²)
     PANEL_WIDTH = 220.0
     BOTTOM_PANEL_H = 65
     HELP_TEXT_H = 40
@@ -413,7 +413,7 @@ class RouteBuilderWidget:
         cache_key = (index, w, h, cur_zoom)
 
         if cache_key not in self.quad_cache:
-            # Zoom or resize changed — clear stale entries
+            # Zoom or resize changed â€” clear stale entries
             self.quad_cache = {k: v for k, v in self.quad_cache.items() if k[3] == cur_zoom and k[1] == w and k[2] == h}
             self.quad_cache[cache_key] = self._build_layer_quads(layer, w, h)
 
@@ -737,11 +737,11 @@ class RouteBuilderWidget:
     def draw(self) -> None:
         if not Map.IsMapReady():
             return
-        if ImGui.Begin(INI_KEY, MODULE_NAME,
+        if ImGui_Legacy.Begin(INI_KEY, MODULE_NAME,
                        flags=PyImGui.WindowFlags(PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)):
             self._draw_header()
             self._draw_main_area()
-        ImGui.End(INI_KEY)
+        ImGui_Legacy.End(INI_KEY)
 
     def _switch_to_map(self, new_map_id: int) -> None:
         """Switch the viewed map, clearing waypoints and resetting view."""
@@ -762,7 +762,7 @@ class RouteBuilderWidget:
     def _draw_header(self) -> None:
         full_w = PyImGui.get_content_region_avail()[0]
 
-        # Map selector — left ~1/3 + "Current" button
+        # Map selector â€” left ~1/3 + "Current" button
         if self._selector_labels:
             PyImGui.push_item_width(full_w * 0.33)
             new_index = PyImGui.combo("##mapsel", self.selected_map_index, self._selector_labels)
@@ -770,7 +770,7 @@ class RouteBuilderWidget:
             if new_index != self.selected_map_index:
                 self._switch_to_map(self._selector_ids[new_index])
 
-            # "Current" button — switch to player's game map
+            # "Current" button â€” switch to player's game map
             PyImGui.same_line(0, 4)
             already_current = self.map_id == self._game_map_id
             if already_current:
@@ -792,7 +792,7 @@ class RouteBuilderWidget:
         PyImGui.same_line(0, 8)
         self._show_spawns = PyImGui.checkbox(f"{Icons.ICON_LOCATION_DOT} Spawns##togglespawns", self._show_spawns)
 
-        # Import / Export buttons — right-justified
+        # Import / Export buttons â€” right-justified
         import_label = f"{Icons.ICON_PASTE} Import from Clipboard##import"
         export_label = f"{Icons.ICON_COPY} Export to Clipboard##export"
         import_w = self._import_btn_w
@@ -937,7 +937,7 @@ class RouteBuilderWidget:
         c_ring_end = self.COLOR_RING_END.to_color()
         c_label = self.COLOR_LABEL.to_color()
 
-        # Path lines — colored by worst status of the two endpoints
+        # Path lines â€” colored by worst status of the two endpoints
         wps = self.waypoints
         for i in range(n_wps - 1):
             a, b = wps[i], wps[i + 1]
@@ -1169,7 +1169,7 @@ class RouteBuilderWidget:
 
         PyImGui.pop_style_color(2)  # Header, HeaderHovered
 
-        # Bottom action buttons — three across
+        # Bottom action buttons â€” three across
         full_w = PyImGui.get_content_region_avail()[0]
         gap = 4
         third_w = (full_w - gap * 2) / 3
@@ -1303,7 +1303,7 @@ class RouteBuilderWidget:
         except Exception as e:
             PySystem.Console.Log(MODULE_NAME, f"Player position read error: {e}", PySystem.Console.MessageType.Debug)
 
-        # Track game map (no auto-switch — user controls dropdown)
+        # Track game map (no auto-switch â€” user controls dropdown)
         current_id = Map.GetMapID()
         if current_id != 0 and current_id != self._game_map_id:
             old_game_id = self._game_map_id
@@ -1367,9 +1367,9 @@ def update():
 def tooltip():
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored(MODULE_NAME, title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     PyImGui.spacing()

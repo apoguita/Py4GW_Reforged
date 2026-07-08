@@ -10,7 +10,7 @@ class BotVars:
         
 
 bot_vars = BotVars()
-bot_vars.window_module = ImGui.WindowModule("Quest Handler", window_name="Quest Handler Test", window_size=(300, 300))
+bot_vars.window_module = ImGui_Legacy.WindowModule("Quest Handler", window_name="Quest Handler Test", window_size=(300, 300))
 
 quest_id_input = 0
 # Example of additional utility function

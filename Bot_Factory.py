@@ -12,7 +12,7 @@ from tkinter import messagebox
 
 import PyImGui
 
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette
@@ -431,7 +431,7 @@ class BotFactoryDetailDisplay:
             if PyImGui.begin_table("BotFactoryMainTable", 2, table_flags, table_width, 0):
                 self._draw_table()
                 PyImGui.end_table()
-            ImGui.dummy(table_width, 1)
+            ImGui_Legacy.dummy(table_width, 1)
         PyImGui.end_child()
         self._apply_pending_direct_action()
         self._draw_row_editor_modal()
@@ -489,13 +489,13 @@ class BotFactoryDetailDisplay:
         child_flags = PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse
 
         if PyImGui.begin_child(f"BotFactoryRowRender##{row_index}", (render_width, row_height), False, child_flags):
-            ImGui.push_font("Regular", self.font_size)
-            ImGui.render_tokenized_markup(
+            ImGui_Legacy.push_font("Regular", self.font_size)
+            ImGui_Legacy.render_tokenized_markup(
                 tokenized_lines,
                 max_width=render_width,
                 COLOR_MAP=self.lexer.color_tuples_map,
             )
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
         PyImGui.end_child()
 
     def set_font_size(self, font_size: int) -> None:
@@ -507,11 +507,11 @@ class BotFactoryDetailDisplay:
         return row_number_width + content_width
 
     def _measure_row_width(self, row: BotFactoryCodeRow) -> float:
-        ImGui.push_font("Regular", self.font_size)
+        ImGui_Legacy.push_font("Regular", self.font_size)
         try:
             text_width = PyImGui.calc_text_size(row.source_text if row.source_text else " ")[0]
         finally:
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
         token_spacing = max(row.markup_text.count("</c><c=") * 2.0, 0.0)
         renderer_padding = 48.0
         return max(text_width + token_spacing + renderer_padding, 120.0)
@@ -621,7 +621,7 @@ class BotFactoryDetailDisplay:
         PyImGui.text(self.modal_action or "Row Editor")
         PyImGui.separator()
         self.modal_input_text = _normalize_input_text(
-            ImGui.input_text("Row Text", self.modal_input_text, 0),
+            ImGui_Legacy.input_text("Row Text", self.modal_input_text, 0),
             self.modal_input_text,
         )
         PyImGui.spacing()
@@ -909,7 +909,7 @@ class BotFactoryDetailTabs:
         PyImGui.text("Rename Tab")
         PyImGui.separator()
         self.rename_input_text = _normalize_input_text(
-            ImGui.input_text("Tab Name", self.rename_input_text, 0),
+            ImGui_Legacy.input_text("Tab Name", self.rename_input_text, 0),
             self.rename_input_text,
         )
         PyImGui.spacing()
@@ -973,12 +973,12 @@ class BotFactoryWindow:
     def draw(self, ini_key: str) -> None:
         PyImGui.set_next_window_size_constraints((400.0, 400.0), (0.0, 0.0))
         window_flags = PyImGui.WindowFlags.MenuBar
-        if ImGui.Begin(ini_key, MODULE_NAME, flags=window_flags):
+        if ImGui_Legacy.Begin(ini_key, MODULE_NAME, flags=window_flags):
             self.menu_bar.draw()
             self.button_bar.draw()
             self.detail_tabs.draw()
         self.save_to_ini(ini_key)
-        ImGui.End(ini_key)
+        ImGui_Legacy.End(ini_key)
 
     def load_from_ini(self, ini_key: str) -> None:
         self.detail_tabs.load_from_ini(ini_key)

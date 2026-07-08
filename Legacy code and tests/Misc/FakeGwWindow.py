@@ -8,7 +8,7 @@ selected_skill = 0
 def main():
     global selected_skill
     try:
-        if ImGui.gw_window.begin(name= "MainFakeGWWindow",
+        if ImGui_Legacy.gw_window.begin(name= "MainFakeGWWindow",
                                  pos=(100, 100),
                                  size=(150, 150),
                                  collapsed=False,  
@@ -17,7 +17,7 @@ def main():
             if PyImGui.button("print hello world"):
                 print("Hello, World!")
    
-        ImGui.gw_window.end("MainFakeGWWindow")
+        ImGui_Legacy.gw_window.end("MainFakeGWWindow")
         
 
 

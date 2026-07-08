@@ -15,8 +15,8 @@ from .IconsFontAwesome5 import IconsFontAwesome5
 import PyImGui
 import PySystem
 
-#region ImGui
-class ImGui:
+#region ImGui_Legacy
+class ImGui_Legacy:
     WindowModule: TypeAlias = WindowModule
     ImGuiStyleVar: TypeAlias  = ImGuiStyleVar
     style = PyImGui.StyleConfig()
@@ -36,60 +36,60 @@ class ImGui:
     
     @staticmethod
     def get_style() -> Style:
-        return ImGui.__style_stack[0] if ImGui.__style_stack else ImGui.Selected_Style
+        return ImGui_Legacy.__style_stack[0] if ImGui_Legacy.__style_stack else ImGui_Legacy.Selected_Style
 
     @staticmethod
     def push_theme(theme: StyleTheme):
-        if not theme in ImGui.Styles:
-            ImGui.Styles[theme] = Style.load_theme(theme)
+        if not theme in ImGui_Legacy.Styles:
+            ImGui_Legacy.Styles[theme] = Style.load_theme(theme)
 
-        style = ImGui.Styles[theme]
-        ImGui.__style_stack.insert(0, style)
+        style = ImGui_Legacy.Styles[theme]
+        ImGui_Legacy.__style_stack.insert(0, style)
         style.push_style()
 
     @staticmethod
     def pop_theme():
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         style.pop_style()
 
-        if ImGui.__style_stack:
-            ImGui.__style_stack.pop(0)
+        if ImGui_Legacy.__style_stack:
+            ImGui_Legacy.__style_stack.pop(0)
 
     @staticmethod
     def set_theme(theme: StyleTheme):
-        ConsoleLog("ImGui Style", f"Setting theme to {theme.name}")
+        ConsoleLog("ImGui_Legacy Style", f"Setting theme to {theme.name}")
 
-        if not theme in ImGui.Styles:
-            ImGui.Styles[theme] = Style.load_theme(theme)
+        if not theme in ImGui_Legacy.Styles:
+            ImGui_Legacy.Styles[theme] = Style.load_theme(theme)
 
-        ImGui.Selected_Style = ImGui.Styles[theme]
-        ImGui.Selected_Style.apply_to_style_config()
+        ImGui_Legacy.Selected_Style = ImGui_Legacy.Styles[theme]
+        ImGui_Legacy.Selected_Style.apply_to_style_config()
 
     @staticmethod
     def reload_theme(theme: StyleTheme):
-        set_style = ImGui.get_style().Theme == theme
+        set_style = ImGui_Legacy.get_style().Theme == theme
 
-        ImGui.Styles[theme] = Style.load_theme(theme)        
+        ImGui_Legacy.Styles[theme] = Style.load_theme(theme)        
 
         if set_style:
-            ImGui.Selected_Style = ImGui.Styles[theme]
+            ImGui_Legacy.Selected_Style = ImGui_Legacy.Styles[theme]
 
     @staticmethod
-    def push_theme_window_style(theme: StyleTheme = StyleTheme.ImGui):
-        if not theme in ImGui.Styles:
-            ImGui.Styles[theme] = Style.load_theme(theme)
+    def push_theme_window_style(theme: StyleTheme = StyleTheme.ImGui_Legacy):
+        if not theme in ImGui_Legacy.Styles:
+            ImGui_Legacy.Styles[theme] = Style.load_theme(theme)
 
-        if theme not in ImGui.Styles:
+        if theme not in ImGui_Legacy.Styles:
             ConsoleLog("Style", f"Style {theme.name} not found.")
             return
 
-        ImGui.Styles[theme].push_style()
+        ImGui_Legacy.Styles[theme].push_style()
 
     @staticmethod
-    def pop_theme_window_style(theme: StyleTheme = StyleTheme.ImGui):
-        if theme not in ImGui.Styles:
+    def pop_theme_window_style(theme: StyleTheme = StyleTheme.ImGui_Legacy):
+        if theme not in ImGui_Legacy.Styles:
             return
-        ImGui.Styles[theme].pop_style()
+        ImGui_Legacy.Styles[theme].pop_style()
 
     #region overloads
     @staticmethod
@@ -142,8 +142,8 @@ class ImGui:
     def get_position_aligned(alignment: Alignment, parent_pos: tuple[float, float], parent_size: tuple[float, float], child_size: tuple[float, float], offset: tuple[float, float]=(0,0)) -> tuple[float, float]:  
         '''Get position (x,y) aligned within/in relation to a parent rectangle.'''  
                        
-        x = ImGui.get_x_position_aligned(alignment, parent_pos, parent_size, child_size, offset)
-        y = ImGui.get_y_position_aligned(alignment, parent_pos, parent_size, child_size, offset)
+        x = ImGui_Legacy.get_x_position_aligned(alignment, parent_pos, parent_size, child_size, offset)
+        y = ImGui_Legacy.get_y_position_aligned(alignment, parent_pos, parent_size, child_size, offset)
         
         return x, y
 
@@ -170,9 +170,9 @@ class ImGui:
         Optionally specify how much of the window must remain visible.
 
         Args:
-            min_visible_x: minimal visible width in pixels or fraction (0–1).
-            min_visible_y: minimal visible height in pixels or fraction (0–1).
-            relative: if True, interpret min_visible_* as relative (0–1 of window size).
+            min_visible_x: minimal visible width in pixels or fraction (0â€“1).
+            min_visible_y: minimal visible height in pixels or fraction (0â€“1).
+            relative: if True, interpret min_visible_* as relative (0â€“1 of window size).
 
         Returns:
             New clamped (x, y) position tuple.
@@ -214,7 +214,7 @@ class ImGui:
         pos = PyImGui.get_window_pos()
         size = PyImGui.get_window_size()
         
-        clamped_x, clamped_y = ImGui.get_clamped_to_displayport(pos=pos, size=size)        
+        clamped_x, clamped_y = ImGui_Legacy.get_clamped_to_displayport(pos=pos, size=size)        
         return (clamped_x, clamped_y) != pos
             
     @staticmethod
@@ -230,9 +230,9 @@ class ImGui:
         Optionally specify how much of the window must remain visible.
 
         Args:
-            min_visible_x: minimal visible width in pixels or fraction (0–1).
-            min_visible_y: minimal visible height in pixels or fraction (0–1).
-            relative: if True, interpret min_visible_* as relative (0–1 of window size).
+            min_visible_x: minimal visible width in pixels or fraction (0â€“1).
+            min_visible_y: minimal visible height in pixels or fraction (0â€“1).
+            relative: if True, interpret min_visible_* as relative (0â€“1 of window size).
 
         Returns:
             New clamped (x, y) position tuple.
@@ -240,7 +240,7 @@ class ImGui:
         
         pos = PyImGui.get_window_pos()
         size = PyImGui.get_window_size()
-        clamped_x, clamped_y = ImGui.get_clamped_to_displayport(pos=pos, size=size, min_visible_x=min_visible_x, min_visible_y=min_visible_y, relative=relative)
+        clamped_x, clamped_y = ImGui_Legacy.get_clamped_to_displayport(pos=pos, size=size, min_visible_x=min_visible_x, min_visible_y=min_visible_y, relative=relative)
         
         if (clamped_x, clamped_y) != pos:
             PyImGui.set_window_pos(clamped_x, clamped_y, cond)
@@ -280,7 +280,7 @@ class ImGui:
         return trimmed or ""
     
     @staticmethod
-    def _is_textured_theme() -> bool: return ImGui.get_style().Theme in ImGui.Textured_Themes
+    def _is_textured_theme() -> bool: return ImGui_Legacy.get_style().Theme in ImGui_Legacy.Textured_Themes
     
     @staticmethod
     def Begin(ini_key: str, name: str, p_open=None, flags:int=PyImGui.WindowFlags.NoFlag) -> bool:
@@ -289,7 +289,7 @@ class ImGui:
 
         # begin_with_close returns (expanded, open). Persistence must key off
         # the expanded state so collapsed windows do not save header-only sizes.
-        result, _ = ImGui.begin_with_close(name, p_open, flags)
+        result, _ = ImGui_Legacy.begin_with_close(name, p_open, flags)
 
         # mark only if window is active
         IniManager().track_window_collapsed(ini_key, result)
@@ -303,7 +303,7 @@ class ImGui:
         from Py4GWCoreLib.IniManager import IniManager
         IniManager().begin_window_config(ini_key)
 
-        expanded, open_ = ImGui.begin_with_close(name, p_open, flags)
+        expanded, open_ = ImGui_Legacy.begin_with_close(name, p_open, flags)
 
         IniManager().track_window_collapsed(ini_key, expanded)
         if expanded:
@@ -313,7 +313,7 @@ class ImGui:
     
     @staticmethod
     def begin (name: str, p_open: Optional[bool] = None, flags: int = PyImGui.WindowFlags.NoFlag) -> bool:
-        if not ImGui._is_textured_theme():
+        if not ImGui_Legacy._is_textured_theme():
             visible, _ = PyImGui.begin(name, p_open, flags)
             return visible
         
@@ -322,7 +322,7 @@ class ImGui:
 
             #imgui_ini_reader = ImGuiIniReader()
             window = None #imgui_ini_reader.get(name)
-            screen_width, screen_height = ImGui.overlay_instance.GetDisplaySize().x, ImGui.overlay_instance.GetDisplaySize().y
+            screen_width, screen_height = ImGui_Legacy.overlay_instance.GetDisplaySize().x, ImGui_Legacy.overlay_instance.GetDisplaySize().y
             #set position to the middle of the screen
             window_pos = (screen_width / 2 - 800 / 2, screen_height / 2 - 600 / 2)   
             WindowModule._windows[name].window_pos = window.pos if window else window_pos
@@ -333,7 +333,7 @@ class ImGui:
     
     @staticmethod
     def begin_with_close(name: str, p_open: Optional[bool] = None, flags: int = PyImGui.WindowFlags.NoFlag) -> tuple[bool, bool]:
-        if not ImGui._is_textured_theme():
+        if not ImGui_Legacy._is_textured_theme():
             return PyImGui.begin(name, p_open if p_open is not None else True, flags)
         
         if name not in WindowModule._windows:
@@ -408,12 +408,12 @@ class ImGui:
         Begins a selectable child region that can contain arbitrary multi-line content.
         Call `end_selectable()` afterwards and use its return value to react to clicks.
         """
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         style.WindowPadding.push_style_var_direct(5, 5)
         width = PyImGui.get_content_region_avail()[0] if size[0] == 0 else size[0]
         height = size[1] if size[1] > 0 else (PyImGui.get_text_line_height_with_spacing() + (style.FramePadding.value2 or 0) * 2)
 
-        hovered = ImGui.is_mouse_in_rect((*PyImGui.get_cursor_screen_pos(), width, height))
+        hovered = ImGui_Legacy.is_mouse_in_rect((*PyImGui.get_cursor_screen_pos(), width, height))
         pushed_child_bg = False
         pushed_border = False
 
@@ -428,7 +428,7 @@ class ImGui:
             style.ChildBg.push_color_direct(background)
             pushed_child_bg = True
 
-        ImGui.__selectable_stack.insert(0, {
+        ImGui_Legacy.__selectable_stack.insert(0, {
             "pushed_child_bg": pushed_child_bg,
             "pushed_border": pushed_border,
         })
@@ -445,11 +445,11 @@ class ImGui:
         PyImGui.end_child()
         clicked = PyImGui.is_item_clicked(0)
 
-        if not ImGui.__selectable_stack:
+        if not ImGui_Legacy.__selectable_stack:
             return clicked
 
-        state = ImGui.__selectable_stack.pop(0)
-        style = ImGui.get_style()
+        state = ImGui_Legacy.__selectable_stack.pop(0)
+        style = ImGui_Legacy.get_style()
 
         if state["pushed_child_bg"]:
             style.ChildBg.pop_color_direct()
@@ -474,7 +474,7 @@ class ImGui:
         Draws a selectable region with either wrapped label text or custom content.
         Returns True when clicked.
         """
-        opened = ImGui.begin_selectable(
+        opened = ImGui_Legacy.begin_selectable(
             id=label,
             selected=selected,
             size=size,
@@ -489,9 +489,9 @@ class ImGui:
             if draw is not None:
                 draw()
             else:
-                ImGui.text_wrapped(label.split("##", 1)[0])
+                ImGui_Legacy.text_wrapped(label.split("##", 1)[0])
 
-        return ImGui.end_selectable()
+        return ImGui_Legacy.end_selectable()
     
         
     
@@ -524,7 +524,7 @@ class ImGui:
                     item_rect_max[1] - offset,
                     item_rect_max[0],
                     item_rect_max[1] - offset + thickness,
-                    color_int if color_int else ImGui.get_style().Text.color_int,
+                    color_int if color_int else ImGui_Legacy.get_style().Text.color_int,
                     0,
                     0,
                 )
@@ -538,7 +538,7 @@ class ImGui:
                     item_rect_min[1] + (height / 2) - offset,
                     item_rect_max[0],
                     item_rect_min[1] + (height / 2) - offset + thickness,
-                    color_int if color_int else ImGui.get_style().Text.color_int,
+                    color_int if color_int else ImGui_Legacy.get_style().Text.color_int,
                     0,
                     0,
                 )
@@ -551,7 +551,7 @@ class ImGui:
                     item_rect_min[1] - offset,
                     item_rect_max[0] + offset,
                     item_rect_max[1] + offset,
-                    color_int if color_int else ImGui.get_style().Text.color_int,
+                    color_int if color_int else ImGui_Legacy.get_style().Text.color_int,
                     0,
                     0,
                 )
@@ -559,9 +559,9 @@ class ImGui:
     @staticmethod
     def _with_font(fn, text: str, font_size: int | None = None, font_style: str | None = None) -> None:
         if font_style is None: font_style = "Regular"
-        if font_size is not None: ImGui.push_font(font_style, font_size)            
+        if font_size is not None: ImGui_Legacy.push_font(font_style, font_size)            
         fn(text)
-        if font_size is not None: ImGui.pop_font()
+        if font_size is not None: ImGui_Legacy.pop_font()
 
     @staticmethod
     def get_markdown_color(text: str) -> Optional[Color]:
@@ -607,13 +607,13 @@ class ImGui:
 
     @staticmethod
     def text(text: str, font_size: int | None = None, font_style: str | None = None, render_markdown: bool = False) -> None:
-        markdown_color = ImGui.get_markdown_color(text) if render_markdown else None
+        markdown_color = ImGui_Legacy.get_markdown_color(text) if render_markdown else None
         if markdown_color is not None:
-            text = ImGui.strip_markdown(text)
-            ImGui._with_font(lambda t: PyImGui.text_colored(t, markdown_color.color_tuple), text, font_size, font_style)
+            text = ImGui_Legacy.strip_markdown(text)
+            ImGui_Legacy._with_font(lambda t: PyImGui.text_colored(t, markdown_color.color_tuple), text, font_size, font_style)
         
         else:
-            ImGui._with_font(PyImGui.text, text, font_size, font_style)
+            ImGui_Legacy._with_font(PyImGui.text, text, font_size, font_style)
 
     @staticmethod        
     def text_aligned(
@@ -651,21 +651,21 @@ class ImGui:
             x0, y0 = PyImGui.get_cursor_pos()
             
             PyImGui.set_cursor_pos((x, y))
-            markdown_color = ImGui.get_markdown_color(text) if render_markdown and color is None else None
+            markdown_color = ImGui_Legacy.get_markdown_color(text) if render_markdown and color is None else None
             render_color = markdown_color.color_tuple if markdown_color is not None else color
             
             if render_color is not None:
-                text = ImGui.strip_markdown(text) if markdown_color else text
-                ImGui.text_colored(text, render_color)
+                text = ImGui_Legacy.strip_markdown(text) if markdown_color else text
+                ImGui_Legacy.text_colored(text, render_color)
             else:
                 PyImGui.text(text)
-            _, _, item_rect_size = ImGui.get_item_rect()
+            _, _, item_rect_size = ImGui_Legacy.get_item_rect()
             
             #Restore cursor position
             PyImGui.set_cursor_pos((x0, y0))
-            ImGui.dummy(*item_rect_size)
+            ImGui_Legacy.dummy(*item_rect_size)
 
-        ImGui._with_font(_draw, text, font_size, font_style)
+        ImGui_Legacy._with_font(_draw, text, font_size, font_style)
         
     @staticmethod
     def text_centered(text: str, width: float = 0, height: float = 0, font_size: int | None = None, font_style: str | None = None) -> None:
@@ -684,42 +684,42 @@ class ImGui:
             
             PyImGui.text(text)
             
-        ImGui._with_font(_centered_text, text, font_size, font_style)        
+        ImGui_Legacy._with_font(_centered_text, text, font_size, font_style)        
 
     @staticmethod
     def text_disabled(text: str, font_size: int | None = None, font_style: str | None = None) -> None:
-        ImGui._with_font(PyImGui.text_disabled, text, font_size, font_style)
+        ImGui_Legacy._with_font(PyImGui.text_disabled, text, font_size, font_style)
 
     @staticmethod
     def text_wrapped(text: str, font_size: int | None = None, font_style: str | None = None) -> None:
-        ImGui._with_font(PyImGui.text_wrapped, text, font_size, font_style)
+        ImGui_Legacy._with_font(PyImGui.text_wrapped, text, font_size, font_style)
 
     @staticmethod
     def text_colored(text : str, color: tuple[float, float, float, float], font_size : int | None = None, font_style: str | None = None):
-        ImGui._with_font(lambda t: PyImGui.text_colored(t, color), text, font_size, font_style)
+        ImGui_Legacy._with_font(lambda t: PyImGui.text_colored(t, color), text, font_size, font_style)
 
     @staticmethod
     def text_decorated(text: str, decorator : TextDecorator = TextDecorator.None_, font_size: int | None = None, font_style: str | None = None, color: tuple[float, float, float, float] | None = None) -> None:
-        decorator_color = Color.from_tuple(color) if color else (ImGui.get_style().TextSelectedBg if decorator == TextDecorator.Highlight else ImGui.get_style().Text)
+        decorator_color = Color.from_tuple(color) if color else (ImGui_Legacy.get_style().TextSelectedBg if decorator == TextDecorator.Highlight else ImGui_Legacy.get_style().Text)
         is_highlight = decorator is TextDecorator.Highlight
                               
         if is_highlight:
-            ImGui._with_font(lambda t: PyImGui.text_colored(t, (1,0,0,1)), text, font_size, font_style)
-            ImGui._draw_decorator(decorator, decorator_color.color_int)
+            ImGui_Legacy._with_font(lambda t: PyImGui.text_colored(t, (1,0,0,1)), text, font_size, font_style)
+            ImGui_Legacy._draw_decorator(decorator, decorator_color.color_int)
             item_rect_min = PyImGui.get_item_rect_min()
             PyImGui.set_cursor_screen_pos(item_rect_min[0], item_rect_min[1])
                   
         if color is not None:
-            ImGui._with_font(lambda t: PyImGui.text_colored(t, color), text, font_size, font_style)
+            ImGui_Legacy._with_font(lambda t: PyImGui.text_colored(t, color), text, font_size, font_style)
         else:
-            ImGui._with_font(PyImGui.text, text, font_size, font_style)
+            ImGui_Legacy._with_font(PyImGui.text, text, font_size, font_style)
             
         if decorator is not TextDecorator.Highlight:
-            ImGui._draw_decorator(decorator, decorator_color.color_int)
+            ImGui_Legacy._draw_decorator(decorator, decorator_color.color_int)
             
     @staticmethod
     def text_unformatted(text : str, font_size : int | None = None, font_style: str | None = None):
-        ImGui._with_font(PyImGui.text_unformatted, text, font_size, font_style)
+        ImGui_Legacy._with_font(PyImGui.text_unformatted, text, font_size, font_style)
                
     @staticmethod
     def button(label: str, width=0.0, height=0.0, disabled: bool=False, appearance: ControlAppearance=ControlAppearance.Default) -> bool:
@@ -728,7 +728,7 @@ class ImGui:
         clicked = False
 
         if disabled: PyImGui.begin_disabled(disabled)
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         current_style_var = style.ButtonPadding.get_current()
         btn_padding = (current_style_var.value1, current_style_var.value2 or 0)
@@ -736,7 +736,7 @@ class ImGui:
         if current_style_var.img_style_enum:
             PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1])) 
 
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             button_colors = []
                 
             match (appearance):
@@ -773,15 +773,15 @@ class ImGui:
         
         #THEMED
 
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.button(label, width, height)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         display_label = label.split("##")[0]
 
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
@@ -843,9 +843,9 @@ class ImGui:
         enabled = not disabled
         if disabled: PyImGui.begin_disabled(disabled)
         
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             button_colors = []
             match (appearance):
                 case ControlAppearance.Primary:
@@ -875,15 +875,15 @@ class ImGui:
             return clicked
 
         #THEMED
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.small_button(label)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
         item_rect = (*item_rect_min, *item_rect_size)  
               
@@ -907,7 +907,7 @@ class ImGui:
             mode=TextureSliceMode.THREE_HORIZONTAL
         )
         
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
         ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
             button_texture_rect[:2],
             button_texture_rect[2:],
@@ -917,7 +917,7 @@ class ImGui:
         
         font_size = int(PyImGui.get_text_line_height()) - 1
         
-        ImGui.push_font("Regular", font_size)
+        ImGui_Legacy.push_font("Regular", font_size)
         text_size = PyImGui.calc_text_size(display_label)
         text_x = button_texture_rect[0] + ((button_texture_rect[2] - text_size[0]) / 2)
         text_y = item_rect[1] + ((item_rect[3] - text_size[1]) / 2) + 1
@@ -933,7 +933,7 @@ class ImGui:
             style.TextDisabled.get_current().color_int if disabled else style.Text.get_current().color_int,
             display_label,
         )
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
 
         PyImGui.pop_clip_rect()
                 
@@ -976,7 +976,7 @@ class ImGui:
         enabled = not disabled
         
         if disabled: PyImGui.begin_disabled(disabled)
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         current_style_var = style.ButtonPadding.get_current()
         
         if current_style_var.img_style_enum:
@@ -989,7 +989,7 @@ class ImGui:
         offset_size = round((default_font_size - fontawesome_font_size) / 2)
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             button_colors = []
             
             match (appearance):
@@ -1037,9 +1037,9 @@ class ImGui:
             text_string = "".join([run for is_icon, run in groups if not is_icon]) 
             text_size = PyImGui.calc_text_size(text_string)
             
-            ImGui.push_font("Regular", fontawesome_font_size)
+            ImGui_Legacy.push_font("Regular", fontawesome_font_size)
             font_awesome_text_size = PyImGui.calc_text_size(font_awesome_string)
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
             
             total_text_size = (text_size[0] + font_awesome_text_size[0], max(text_size[1], font_awesome_text_size[1]))
 
@@ -1050,9 +1050,9 @@ class ImGui:
 
             for is_icon, run in groups:
                 if is_icon:
-                    ImGui.push_font("Regular", fontawesome_font_size)
+                    ImGui_Legacy.push_font("Regular", fontawesome_font_size)
                 else:
-                    ImGui.push_font("Regular", default_font_size)
+                    ImGui_Legacy.push_font("Regular", default_font_size)
                 
                 text_size = PyImGui.calc_text_size(run)    
                 vertical_padding = 1 if is_icon else offset_size
@@ -1066,20 +1066,20 @@ class ImGui:
                 
                 offset = (offset[0] + text_size[0], vertical_padding)
                 
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
             
             if disabled:PyImGui.end_disabled()
             return clicked
 
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.button(label, width, height)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
         item_rect = (*item_rect_min, *item_rect_size)  
               
@@ -1090,9 +1090,9 @@ class ImGui:
         text_string = "".join([run for is_icon, run in groups if not is_icon]) 
         text_size = PyImGui.calc_text_size(text_string)        
         
-        ImGui.push_font("Regular", fontawesome_font_size)
+        ImGui_Legacy.push_font("Regular", fontawesome_font_size)
         font_awesome_text_size = PyImGui.calc_text_size(font_awesome_string)
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
         
         total_text_size = (text_size[0] + font_awesome_text_size[0], max(text_size[1], font_awesome_text_size[1]))
 
@@ -1116,7 +1116,7 @@ class ImGui:
             tint=tint,
         )
         
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
         ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
             button_texture_rect[:2],
             button_texture_rect[2:],
@@ -1132,9 +1132,9 @@ class ImGui:
 
         for is_icon, run in groups:
             if is_icon:
-                ImGui.push_font("Regular", fontawesome_font_size)
+                ImGui_Legacy.push_font("Regular", fontawesome_font_size)
             else:
-                ImGui.push_font("Regular", default_font_size)
+                ImGui_Legacy.push_font("Regular", default_font_size)
             
             text_size = PyImGui.calc_text_size(run)                
             vertical_padding = 1 if is_icon else offset_size
@@ -1148,7 +1148,7 @@ class ImGui:
             
             offset = (offset[0] + text_size[0], vertical_padding)
             
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
 
         PyImGui.pop_clip_rect()
 
@@ -1171,7 +1171,7 @@ class ImGui:
         enabled = not disabled
         clicked = False
         if disabled: PyImGui.begin_disabled(disabled)
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         current_style_var = style.ButtonPadding.get_current()
         btn_padding = (current_style_var.value1, current_style_var.value2 or 0)
         scale = max(min(float(width), float(height)) / 35.0, 1.0) if width and height else 1.0
@@ -1180,7 +1180,7 @@ class ImGui:
             PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1])) 
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             
             button_colors = [
                 style.ToggleButtonEnabled,
@@ -1214,15 +1214,15 @@ class ImGui:
             return v
         
         #THEMED
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.button(label, width, height)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
         item_rect = (*item_rect_min, *item_rect_size)  
               
@@ -1247,7 +1247,7 @@ class ImGui:
             tint=tint,
         )
         
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
         ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
             button_texture_rect[:2], 
             button_texture_rect[2:],
@@ -1320,7 +1320,7 @@ class ImGui:
         enabled = not disabled
         
         if disabled: PyImGui.begin_disabled(disabled)
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         current_style_var = style.ButtonPadding.get_current()
         if current_style_var.img_style_enum:
             PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (current_style_var.value1, current_style_var.value2 or 0))
@@ -1332,7 +1332,7 @@ class ImGui:
         offset_size = round((default_font_size - fontawesome_font_size) / 2)
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:   
+        if style.Theme not in ImGui_Legacy.Textured_Themes:   
             button_colors = [
                 style.ToggleButtonEnabled,
                 style.ToggleButtonEnabledHovered,
@@ -1373,9 +1373,9 @@ class ImGui:
             text_string = "".join([run for is_icon, run in groups if not is_icon]) 
             text_size = PyImGui.calc_text_size(text_string)
             
-            ImGui.push_font("Regular", fontawesome_font_size)
+            ImGui_Legacy.push_font("Regular", fontawesome_font_size)
             font_awesome_text_size = PyImGui.calc_text_size(font_awesome_string)
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
             
             total_text_size = (text_size[0] + font_awesome_text_size[0], max(text_size[1], font_awesome_text_size[1]))
 
@@ -1386,9 +1386,9 @@ class ImGui:
 
             for is_icon, run in groups:
                 if is_icon:
-                    ImGui.push_font("Regular", fontawesome_font_size)
+                    ImGui_Legacy.push_font("Regular", fontawesome_font_size)
                 else:
-                    ImGui.push_font("Regular", default_font_size)
+                    ImGui_Legacy.push_font("Regular", default_font_size)
                 
                 text_size = PyImGui.calc_text_size(run)   
                 vertical_padding = 1 if is_icon else offset_size
@@ -1402,7 +1402,7 @@ class ImGui:
                 
                 offset = (offset[0] + text_size[0], vertical_padding)
                 
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
             
             if disabled:PyImGui.end_disabled()
         
@@ -1411,16 +1411,16 @@ class ImGui:
                 
             return v
 
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.button(label, width, height)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
         
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
         item_rect = (*item_rect_min, *item_rect_size)  
               
@@ -1431,9 +1431,9 @@ class ImGui:
         text_string = "".join([run for is_icon, run in groups if not is_icon]) 
         text_size = PyImGui.calc_text_size(text_string)        
         
-        ImGui.push_font("Regular", fontawesome_font_size)
+        ImGui_Legacy.push_font("Regular", fontawesome_font_size)
         font_awesome_text_size = PyImGui.calc_text_size(font_awesome_string)
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
         
         total_text_size = (text_size[0] + font_awesome_text_size[0], max(text_size[1], font_awesome_text_size[1]))
 
@@ -1454,7 +1454,7 @@ class ImGui:
             tint=tint,
         )
         
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
         ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
             button_texture_rect[:2],
             button_texture_rect[2:],
@@ -1470,9 +1470,9 @@ class ImGui:
 
         for is_icon, run in groups:
             if is_icon:
-                ImGui.push_font("Regular", fontawesome_font_size)
+                ImGui_Legacy.push_font("Regular", fontawesome_font_size)
             else:
-                ImGui.push_font("Regular", default_font_size)
+                ImGui_Legacy.push_font("Regular", default_font_size)
             
             text_size = PyImGui.calc_text_size(run)                
             vertical_padding = 1 if is_icon else offset_size
@@ -1486,7 +1486,7 @@ class ImGui:
             
             offset = (offset[0] + text_size[0], vertical_padding)
             
-            ImGui.pop_font()
+            ImGui_Legacy.pop_font()
 
         PyImGui.pop_clip_rect()
                 
@@ -1507,7 +1507,7 @@ class ImGui:
                             tint: tuple[int, int, int, int] = (255, 255, 255, 255),
                             border_color: tuple[int, int, int, int] = (0, 0, 0, 0)):
         
-        return ImGui.DrawTextureExtended(texture_path, size, uv0, uv1, tint, border_color)
+        return ImGui_Legacy.DrawTextureExtended(texture_path, size, uv0, uv1, tint, border_color)
                                         
     @staticmethod
     def image_button(label: str, texture_path: str, width: float=32, height: float=32, disabled: bool=False, appearance: ControlAppearance=ControlAppearance.Default) -> bool:
@@ -1516,7 +1516,7 @@ class ImGui:
         clicked = False
         
         if disabled: PyImGui.begin_disabled(disabled)
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         current_style_var = style.ButtonPadding.get_current()
         btn_padding = (width / 8, height / 8)
@@ -1525,7 +1525,7 @@ class ImGui:
             PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1]))             
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             button_colors = []
                 
             match (appearance):
@@ -1547,10 +1547,10 @@ class ImGui:
                 for button_color in button_colors:
                     button_color.push_color()
             
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))
             clicked = PyImGui.button("##image_button " + label, width, height)
-            ImGui.pop_style_color(2)
+            ImGui_Legacy.pop_style_color(2)
             
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()
@@ -1564,7 +1564,7 @@ class ImGui:
             texture_pos = (button_texture_rect[0] + btn_padding[0], button_texture_rect[1] + (btn_padding[1] or 0))
             texture_size = (width - (btn_padding[0] * 2), height - ((btn_padding[1] or 0) * 2))
             texture_tint = (255, 255, 255, 255) if enabled else (255, 255, 255, 155)
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 texture_pos,
                 texture_size,
                 texture_path,
@@ -1582,15 +1582,15 @@ class ImGui:
             return clicked
 
         #THEMED
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.button("##image_button " + label, width, height)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
         item_rect = (*item_rect_min, *item_rect_size)
         
@@ -1614,14 +1614,14 @@ class ImGui:
         texture_pos = (item_rect[0] + 2 + btn_padding[0] + 1, item_rect[1] + (btn_padding[1] or 0))
         texture_size = (item_rect_size[0] - (btn_padding[0] * 2), item_rect_size[1] - ((btn_padding[1] or 0) * 2))
         texture_tint = (255, 255, 255, 255) if enabled else (255, 255, 255, 155)
-        ImGui.DrawTextureInDrawList(
+        ImGui_Legacy.DrawTextureInDrawList(
             texture_pos,
             texture_size,
             texture_path,
             tint=texture_tint
         )
                         
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
         ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
             button_texture_rect[:2],
             button_texture_rect[2:],
@@ -1651,7 +1651,7 @@ class ImGui:
         enabled = not disabled
         clicked = False
         if disabled: PyImGui.begin_disabled(disabled)
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         current_style_var = style.ButtonPadding.get_current()
         btn_padding = (width / 8, height / 8)
@@ -1660,7 +1660,7 @@ class ImGui:
             PyImGui.push_style_var_vec2(current_style_var.img_style_enum, (btn_padding[0], btn_padding[1]))   
             
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             button_colors = [
                 style.ToggleButtonEnabled.get_current(),
                 style.ToggleButtonEnabledHovered.get_current(),
@@ -1676,10 +1676,10 @@ class ImGui:
                     button_color.push_color()
                 
             
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))
             clicked = PyImGui.button("##image_toggle_button " + label, width, height)
-            ImGui.pop_style_color(2)
+            ImGui_Legacy.pop_style_color(2)
             
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()
@@ -1693,7 +1693,7 @@ class ImGui:
             texture_pos = (item_rect_min[0] + btn_padding[0], button_texture_rect[1] + (btn_padding[1] or 0))
             texture_size = (width - (btn_padding[0] * 2), height - ((btn_padding[1] or 0) * 2))
             texture_tint = (255, 255, 255, (255 if enabled else 155)) if v else (128, 128, 128, (255 if enabled else 155))
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 texture_pos,
                 texture_size,
                 texture_path,
@@ -1715,15 +1715,15 @@ class ImGui:
             return v
 
         #THEMED
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TextDisabled, (0, 0, 0, 0))                
         clicked = PyImGui.button("##image_toggle_button " + label, width, height)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         button_texture_rect = (item_rect_min[0] - 3, item_rect_min[1] - 4, item_rect_size[0] + 9, item_rect_size[1] + 11) if style.Theme is StyleTheme.Guild_Wars else (item_rect_min[0] - 6, item_rect_min[1] - 4, item_rect_size[0] + 12, item_rect_size[1] + 11)
         item_rect = (*item_rect_min, *item_rect_size)
         
@@ -1747,14 +1747,14 @@ class ImGui:
         texture_size = (item_rect_size[0] - (btn_padding[0] * 2), item_rect_size[1] - ((btn_padding[1] or 0) * 2))
         texture_tint = (255, 255, 255, 255) if enabled else (255, 255, 255, 155)
         
-        ImGui.DrawTextureInDrawList(
+        ImGui_Legacy.DrawTextureInDrawList(
             texture_pos,
             texture_size,
             texture_path,
             tint=texture_tint
         )
                         
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(button_texture_rect) and enabled else (200, 200, 200, 255)
         ThemeTextures.Button_Frame.value.get_texture().draw_in_drawlist(
             button_texture_rect[:2],
             button_texture_rect[2:],
@@ -1785,27 +1785,27 @@ class ImGui:
     @staticmethod
     def combo(label: str, current_item: int, items: list[str]) -> int:
         #NON THEMED 
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             return PyImGui.combo(label, current_item, items)
         #THEMED
 
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(
             PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(
+        ImGui_Legacy.push_style_color(
             PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(
+        ImGui_Legacy.push_style_color(
             PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
-        ImGui.push_style_color(
+        ImGui_Legacy.push_style_color(
             PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
-        ImGui.push_style_color(
+        ImGui_Legacy.push_style_color(
             PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
         index = PyImGui.combo(label, current_item, items)
-        ImGui.pop_style_color(6)
+        ImGui_Legacy.pop_style_color(6)
 
         frame_padding = style.FramePadding.get_current()
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         display_label = label.split("##")[0]
         label_size = PyImGui.calc_text_size(display_label)
 
@@ -1855,21 +1855,21 @@ class ImGui:
     def checkbox(label: str, is_checked: bool, disabled: bool = False) -> bool:
         enabled = not disabled
          #NON THEMED
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         new_value = is_checked
         if disabled : PyImGui.begin_disabled(disabled)
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             new_value = PyImGui.checkbox(label, is_checked)
             if disabled : PyImGui.end_disabled()
             return new_value
         #THEMED
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.CheckMark, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.CheckMark, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0,0,0,0))
         new_value = PyImGui.checkbox(label, is_checked)
-        ImGui.pop_style_color(5)
+        ImGui_Legacy.pop_style_color(5)
 
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -1905,10 +1905,10 @@ class ImGui:
     
     @staticmethod
     def radio_button(label: str, v: int, button_index: int):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         value = PyImGui.radio_button(label, v, button_index)
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes or style.Theme == StyleTheme.Minimalus:
+        if style.Theme not in ImGui_Legacy.Textured_Themes or style.Theme == StyleTheme.Minimalus:
             return value
         #THEMED
         item_rect_min = PyImGui.get_item_rect_min()
@@ -1956,8 +1956,8 @@ class ImGui:
     @staticmethod
     def input_int(label: str, v: int, min_value: int = 0, step_fast: int = 100_000, flags: int = 0) -> int:
         #NON THEMED
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             
             if min_value==0 and step_fast==100_000 and flags==0:
                 return PyImGui.input_int(label, v)
@@ -1970,18 +1970,18 @@ class ImGui:
         if min_value==0 and step_fast==100_000 and flags==0:
             x,y = PyImGui.get_cursor_screen_pos()
             
-            ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
             
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
             PyImGui.push_clip_rect(0, 0, 0, 0, False)
             new_value = PyImGui.input_int(label + "##2", v, min_value, step_fast, flags)
             PyImGui.pop_clip_rect()
-            ImGui.pop_style_color(1)
+            ImGui_Legacy.pop_style_color(1)
             
             display_label = label.split("##")[0]
             display_label = display_label or " "
@@ -2027,35 +2027,35 @@ class ImGui:
 
             PyImGui.set_cursor_screen_pos(x, y)
             new_value = PyImGui.input_int(label, new_value, min_value, step_fast, flags)
-            ImGui.pop_style_color(6)
+            ImGui_Legacy.pop_style_color(6)
 
             
             draw_pad = 3
             ThemeTextures.Collapse.value.get_texture().draw_in_drawlist(
                 (decrease_rect[0] + draw_pad, decrease_rect[1] + draw_pad + 1),
                 (button_size - draw_pad*2, button_size - draw_pad*2),
-                state=TextureState.Hovered if ImGui.is_mouse_in_rect(decrease_rect) else TextureState.Normal,
+                state=TextureState.Hovered if ImGui_Legacy.is_mouse_in_rect(decrease_rect) else TextureState.Normal,
                 tint=(255, 255, 255, 255),
             )
             ThemeTextures.Expand.value.get_texture().draw_in_drawlist(
                 (increase_rect[0] + draw_pad, increase_rect[1] + draw_pad + 1),
                 (button_size - draw_pad*2, button_size - draw_pad*2),
-                state=TextureState.Hovered if ImGui.is_mouse_in_rect(increase_rect) else TextureState.Normal,
+                state=TextureState.Hovered if ImGui_Legacy.is_mouse_in_rect(increase_rect) else TextureState.Normal,
                 tint=(255, 255, 255, 255),
             )    
         else:
             x,y = PyImGui.get_cursor_screen_pos()
-            ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
             PyImGui.push_clip_rect(0, 0, 0, 0, False)
             new_value = PyImGui.input_int(label + "##2", v, min_value, step_fast, flags)
             PyImGui.pop_clip_rect()
-            ImGui.pop_style_color(1)
+            ImGui_Legacy.pop_style_color(1)
 
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()
@@ -2085,14 +2085,14 @@ class ImGui:
             new_value = PyImGui.input_int(label, new_value, min_value, step_fast, flags)
             PyImGui.pop_item_width()
             PyImGui.pop_clip_rect()
-            ImGui.pop_style_color(6)
+            ImGui_Legacy.pop_style_color(6)
 
         return new_value
     
     @staticmethod
     def input_text(label: str, text: str, flags: int = 0) -> str:
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             return PyImGui.input_text(label, text, flags)
 
         current_inner_spacing = style.ItemInnerSpacing.get_current()
@@ -2100,17 +2100,17 @@ class ImGui:
         #THEMED
         new_value = text
         x,y = PyImGui.get_cursor_screen_pos()
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
         PyImGui.push_clip_rect(0, 0, 0, 0, False)
         new_value = PyImGui.input_text(label + "##2", text, flags)
         PyImGui.pop_clip_rect()
-        ImGui.pop_style_color(1)
+        ImGui_Legacy.pop_style_color(1)
 
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -2140,31 +2140,31 @@ class ImGui:
         new_value = PyImGui.input_text(label, new_value, flags)
         PyImGui.pop_item_width()
         PyImGui.pop_clip_rect()
-        ImGui.pop_style_color(6)
+        ImGui_Legacy.pop_style_color(6)
 
         return new_value
     
     @staticmethod
     def input_float(label: str, v: float) -> float:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             return PyImGui.input_float(label, v)
 
         current_inner_spacing = style.ItemInnerSpacing.get_current()
         #THEMED
         x,y = PyImGui.get_cursor_screen_pos()
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
         PyImGui.push_clip_rect(0, 0, 0, 0, False)
         new_value = PyImGui.input_float(label + "##2", v)
         PyImGui.pop_clip_rect()
-        ImGui.pop_style_color(1)
+        ImGui_Legacy.pop_style_color(1)
 
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -2194,7 +2194,7 @@ class ImGui:
         new_value = PyImGui.input_float(label, new_value)
         PyImGui.pop_item_width()
         PyImGui.pop_clip_rect()
-        ImGui.pop_style_color(6)
+        ImGui_Legacy.pop_style_color(6)
         return new_value
 
     @staticmethod
@@ -2214,7 +2214,7 @@ class ImGui:
                     True,
                 )
                 
-                ImGui.push_font("Regular", search_font_size)
+                ImGui_Legacy.push_font("Regular", search_font_size)
                 search_icon_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_SEARCH)
                 PyImGui.draw_list_add_text(
                     item_rect[0] + current_frame_padding.value1,
@@ -2222,7 +2222,7 @@ class ImGui:
                     style.Text.color_int,
                     IconsFontAwesome5.ICON_SEARCH,
                 )
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
                 
                 if placeholder:
                     placeholder_size = PyImGui.calc_text_size(placeholder)
@@ -2238,10 +2238,10 @@ class ImGui:
                 PyImGui.pop_clip_rect()
                     
         #NON THEMED
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         current_frame_padding = style.FramePadding.get_current()
         current_inner_spacing = style.ItemInnerSpacing.get_current()
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             new_value = PyImGui.input_text(label, text, flags)
                 
             item_rect_min = PyImGui.get_item_rect_min()
@@ -2266,17 +2266,17 @@ class ImGui:
            
         #THEMED     
         x,y = PyImGui.get_cursor_screen_pos()
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0, 0, 0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
         PyImGui.push_clip_rect(0, 0, 0, 0, False)
         new_value = PyImGui.input_text(label + "##2", text, flags)
         PyImGui.pop_clip_rect()
-        ImGui.pop_style_color(1)
+        ImGui_Legacy.pop_style_color(1)
 
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -2305,15 +2305,15 @@ class ImGui:
         new_value = PyImGui.input_text(label, new_value, flags)
         PyImGui.pop_item_width()
         PyImGui.pop_clip_rect()
-        ImGui.pop_style_color(6)
+        ImGui_Legacy.pop_style_color(6)
         _functions_tail()
                                  
         return new_value != text, new_value
     
     @staticmethod
     def slider_int(label: str, v: int, v_min: int, v_max: int) -> int:
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             return PyImGui.slider_int(label, v, v_min, v_max)
         
         current_inner_spacing = style.ItemInnerSpacing.get_current()
@@ -2321,16 +2321,16 @@ class ImGui:
         pad = style.FramePadding.get_current()
         grab_width = (pad.value2 or 0) + 18 - 5
         
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.GrabMinSize, grab_width)
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.SliderGrab, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.SliderGrabActive, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0,0,0,0))
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.GrabMinSize, grab_width)
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.SliderGrab, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.SliderGrabActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0,0,0,0))
         new_value = PyImGui.slider_int(label, v, v_min, v_max)
 
-        ImGui.pop_style_color(6)
+        ImGui_Legacy.pop_style_color(6)
         PyImGui.pop_style_var(1)
 
         display_label = label.split("##")[0]
@@ -2374,8 +2374,8 @@ class ImGui:
     
     @staticmethod
     def slider_float(label: str, v: float, v_min: float, v_max: float) -> float:
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             return PyImGui.slider_float(label, v, v_min, v_max)
         
         current_inner_spacing = style.ItemInnerSpacing.get_current()
@@ -2383,16 +2383,16 @@ class ImGui:
         pad = style.FramePadding.get_current()
         grab_width = (pad.value2 or 0) + 18 - 5
         
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.GrabMinSize, grab_width)
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.SliderGrab, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.SliderGrabActive, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0,0,0,0))
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.GrabMinSize, grab_width)
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBg, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.SliderGrab, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.SliderGrabActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0,0,0,0))
         new_value = PyImGui.slider_float(label, v, v_min, v_max)
 
-        ImGui.pop_style_color(6)
+        ImGui_Legacy.pop_style_color(6)
         PyImGui.pop_style_var(1)
 
         display_label = label.split("##")[0]
@@ -2436,8 +2436,8 @@ class ImGui:
     
     @staticmethod
     def separator():
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes or style.Theme == StyleTheme.Minimalus:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes or style.Theme == StyleTheme.Minimalus:
             PyImGui.separator()
             return
 
@@ -2459,15 +2459,15 @@ class ImGui:
         
     @staticmethod
     def hyperlink(text : str) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         style.Hyperlink.get_current().push_color()
         
-        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0,))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0,))
-        ImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0,))
+        PyImGui.push_style_var_vec2(ImGui_Legacy.ImGuiStyleVar.FramePadding, (0, 0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0,))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0,))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0,))
         clicked = PyImGui.button(text)
-        ImGui.pop_style_color(3)
+        ImGui_Legacy.pop_style_color(3)
         PyImGui.pop_style_var(1)
 
         item_rect_min = PyImGui.get_item_rect_min()
@@ -2491,8 +2491,8 @@ class ImGui:
 
     @staticmethod
     def bullet_text(text: str):
-        style = ImGui.get_style()
-        if style.Theme not in ImGui.Textured_Themes:
+        style = ImGui_Legacy.get_style()
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             PyImGui.bullet_text(text)
             return
         frame_padding = style.FramePadding.get_current()
@@ -2515,7 +2515,7 @@ class ImGui:
 
     @staticmethod
     def objective_text(text: str, completed: bool = False):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         frame_padding = style.FramePadding.get_current()
         height = PyImGui.get_text_line_height()
         
@@ -2530,7 +2530,7 @@ class ImGui:
             
             style.TextObjectiveCompleted.pop_color()
                 
-            if PyImGui.is_mouse_clicked(0) and ImGui.is_mouse_in_rect(control_rect):
+            if PyImGui.is_mouse_clicked(0) and ImGui_Legacy.is_mouse_in_rect(control_rect):
                 completed = not completed
                 
             if completed:
@@ -2547,7 +2547,7 @@ class ImGui:
             return completed
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             PyImGui.bullet_text(text)            
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()
@@ -2578,24 +2578,24 @@ class ImGui:
         
     @staticmethod
     def collapsing_header(label: str, flags: int = 0) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         frame_padding = style.FramePadding.get_current()
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             new_open = PyImGui.collapsing_header(label, flags)
             return new_open
         
         #THEMED
-        ImGui.push_style_color(PyImGui.ImGuiCol.Header, (0,255,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.HeaderHovered, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.HeaderActive, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0,180,255,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Header, (0,255,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.HeaderHovered, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.HeaderActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0,180,255,0))
         
         
         new_open = PyImGui.collapsing_header(label, flags)
         
-        ImGui.pop_style_color(4)
+        ImGui_Legacy.pop_style_color(4)
         
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -2608,11 +2608,11 @@ class ImGui:
         item_rect = (item_rect_min[0] - 2, item_rect_min[1] - 6, width + 4, height + 13)                     
         
         tint = ((style.ComboTextureBackgroundActive.get_current().rgb_tuple if PyImGui.is_item_active() else style.ComboTextureBackgroundHovered.get_current(
-        ).rgb_tuple) if ImGui.is_mouse_in_rect(item_rect) else style.ComboTextureBackground.get_current().rgb_tuple) if True else (64, 64, 64, 255)
+        ).rgb_tuple) if ImGui_Legacy.is_mouse_in_rect(item_rect) else style.ComboTextureBackground.get_current().rgb_tuple) if True else (64, 64, 64, 255)
         
         tint = (tint[0], tint[1], tint[2], 255)
 
-        frame_tint = (255, 255, 255, 255) if ImGui.is_mouse_in_rect(
+        frame_tint = (255, 255, 255, 255) if ImGui_Legacy.is_mouse_in_rect(
             item_rect) and True else (200, 200, 200, 255)
 
         ThemeTextures.CollapsingHeader_Background.value.get_texture().draw_in_drawlist(
@@ -2659,24 +2659,24 @@ class ImGui:
 
     @staticmethod
     def tree_node(label: str) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         style.TextTreeNode.get_current().push_color()
         
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             new_open = PyImGui.tree_node(label)
             style.TextTreeNode.pop_color()
             return new_open
         #THEMED
         frame_padding = style.FramePadding.get_current()
-        ImGui.push_style_color(PyImGui.ImGuiCol.Header, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.HeaderHovered, (0,0,0,0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.HeaderActive, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Header, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.HeaderHovered, (0,0,0,0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.HeaderActive, (0,0,0,0))
         PyImGui.push_clip_rect(PyImGui.get_cursor_screen_pos()[0]+ 20, PyImGui.get_cursor_screen_pos()[1], 1000, 1000, True)
         new_open = PyImGui.tree_node(label)
         PyImGui.pop_clip_rect()
 
-        ImGui.pop_style_color(3)
+        ImGui_Legacy.pop_style_color(3)
         
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -2688,7 +2688,7 @@ class ImGui:
         (ThemeTextures.Collapse if new_open else ThemeTextures.Expand).value.get_texture().draw_in_drawlist(
             item_rect[:2],
             item_rect[2:],
-            state=TextureState.Hovered if ImGui.is_mouse_in_rect(item_rect) else TextureState.Normal,
+            state=TextureState.Hovered if ImGui_Legacy.is_mouse_in_rect(item_rect) else TextureState.Normal,
         )
                                 
         style.TextTreeNode.pop_color()  
@@ -2707,9 +2707,9 @@ class ImGui:
         
     @staticmethod
     def begin_tab_bar(str_id: str) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             return PyImGui.begin_tab_bar(str_id)
         #THEMED
         open = False               
@@ -2739,9 +2739,9 @@ class ImGui:
             
     @staticmethod
     def begin_tab_item(label: str, popen: bool | None = None, flags:int = 0) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:
+        if style.Theme not in ImGui_Legacy.Textured_Themes:
             if popen is None:
                 return PyImGui.begin_tab_item(label)
             else:
@@ -2750,25 +2750,25 @@ class ImGui:
         #THEMED
         open = False
         if popen is None:
-            ImGui.push_style_color(PyImGui.ImGuiCol.Tab, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.TabActive, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.TabHovered, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Tab, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TabActive, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TabHovered, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
             open = PyImGui.begin_tab_item(label)
-            ImGui.pop_style_color(4)            
+            ImGui_Legacy.pop_style_color(4)            
             
         else:
-            ImGui.push_style_color(PyImGui.ImGuiCol.Tab, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.TabActive, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.TabHovered, (0, 0, 0, 0))
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Tab, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TabActive, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.TabHovered, (0, 0, 0, 0))
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
             
             open = PyImGui.begin_tab_item(label, popen, flags)
 
-            ImGui.pop_style_color(4)
+            ImGui_Legacy.pop_style_color(4)
         
 
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         tab_texture_rect = (item_rect_min[0] - 5, item_rect_min[1], item_rect_size[0] + 10, item_rect_size[1] - 1)
         item_rect = (*item_rect_min, *item_rect_size)
         
@@ -2784,7 +2784,7 @@ class ImGui:
         
         PyImGui.pop_clip_rect()
 
-        display_label = ImGui.trim_text_to_width(label.split("##")[0], item_rect_size[0] - 2)        
+        display_label = ImGui_Legacy.trim_text_to_width(label.split("##")[0], item_rect_size[0] - 2)        
         final_size = PyImGui.calc_text_size(display_label)
         final_w, final_h = final_size
 
@@ -2837,7 +2837,7 @@ class ImGui:
             scroll_bar_rect = (item_rect_max[0] - scroll_bar_size - window_padding[0], item_rect_min[1] + window_padding[1], item_rect_max[0] - window_padding[0], item_rect_min[1] + visible_size_y - window_padding[1])
 
             track_height = scroll_bar_rect[3] - scroll_bar_rect[1]
-            thumb_min = 20.0  # example minimum thumb size, depends on ImGui style
+            thumb_min = 20.0  # example minimum thumb size, depends on ImGui_Legacy style
             
             if scroll_max_y > 0:
                 thumb_height = (visible_size_y * visible_size_y) / (visible_size_y + scroll_max_y)
@@ -3013,12 +3013,12 @@ class ImGui:
     
     @staticmethod
     def progress_bar(fraction: float, size_arg_x: float, size_arg_y: float, overlay: str = ""):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         #NON THEMED
-        if style.Theme not in ImGui.Textured_Themes:            
-            ImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+        if style.Theme not in ImGui_Legacy.Textured_Themes:            
+            ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
             PyImGui.progress_bar(fraction, size_arg_x, size_arg_y, overlay)
-            ImGui.pop_style_color(1)
+            ImGui_Legacy.pop_style_color(1)
 
             item_rect_min = PyImGui.get_item_rect_min()
             item_rect_max = PyImGui.get_item_rect_max()       
@@ -3036,7 +3036,7 @@ class ImGui:
         PyImGui.progress_bar(fraction, size_arg_x, size_arg_y, overlay)
         PyImGui.pop_clip_rect()
         
-        item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+        item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
         
         
         width = item_rect_max[0] - item_rect_min[0]
@@ -3185,7 +3185,7 @@ class ImGui:
     #region Custom
     @staticmethod
     def DrawTexture(texture_path: str, width: float = 32.0, height: float = 32.0):
-         ImGui.overlay_instance.DrawTexture(texture_path, width, height)
+         ImGui_Legacy.overlay_instance.DrawTexture(texture_path, width, height)
         
     @staticmethod
     def DrawTextureExtended(texture_path: str, size: tuple[float, float],
@@ -3193,31 +3193,31 @@ class ImGui:
                             uv1: tuple[float, float] = (1.0, 1.0),
                             tint: tuple[int, int, int, int] = (255, 255, 255, 255),
                             border_color: tuple[int, int, int, int] = (0, 0, 0, 0)):
-         ImGui.overlay_instance.DrawTextureExtended(texture_path, size, uv0, uv1, tint, border_color)
+         ImGui_Legacy.overlay_instance.DrawTextureExtended(texture_path, size, uv0, uv1, tint, border_color)
      
     @staticmethod   
     def DrawTexturedRect(x: float, y: float, width: float, height: float, texture_path: str):
-         ImGui.overlay_instance.BeginDraw()
-         ImGui.overlay_instance.DrawTexturedRect(x, y, width, height, texture_path)
-         ImGui.overlay_instance.EndDraw()
+         ImGui_Legacy.overlay_instance.BeginDraw()
+         ImGui_Legacy.overlay_instance.DrawTexturedRect(x, y, width, height, texture_path)
+         ImGui_Legacy.overlay_instance.EndDraw()
         
     @staticmethod
     def DrawTexturedRectExtended(pos: tuple[float, float], size: tuple[float, float], texture_path: str,
                                     uv0: tuple[float, float] = (0.0, 0.0),  
                                     uv1: tuple[float, float] = (1.0, 1.0),
                                     tint: tuple[int, int, int, int] = (255, 255, 255, 255)):
-         ImGui.overlay_instance.BeginDraw()
-         ImGui.overlay_instance.DrawTexturedRectExtended(pos, size, texture_path, uv0, uv1, tint)
-         ImGui.overlay_instance.EndDraw()
+         ImGui_Legacy.overlay_instance.BeginDraw()
+         ImGui_Legacy.overlay_instance.DrawTexturedRectExtended(pos, size, texture_path, uv0, uv1, tint)
+         ImGui_Legacy.overlay_instance.EndDraw()
         
     @staticmethod
     def ImageButton(caption: str, texture_path: str, width: float = 32.0, height: float = 32.0, disabled: bool = False, appearance: ControlAppearance = ControlAppearance.Default) -> bool:
         if disabled: 
             PyImGui.begin_disabled(disabled)
             
-        result = ImGui.overlay_instance.ImageButton(caption, texture_path, width, height, frame_padding=-1)
+        result = ImGui_Legacy.overlay_instance.ImageButton(caption, texture_path, width, height, frame_padding=-1)
         if PyImGui.is_item_hovered():
-            ImGui.show_tooltip(caption)
+            ImGui_Legacy.show_tooltip(caption)
             
 
         if disabled:
@@ -3225,7 +3225,7 @@ class ImGui:
             
         return result
     
-        #return ImGui.image_button(caption, texture_path, width, height, disabled, appearance)
+        #return ImGui_Legacy.image_button(caption, texture_path, width, height, disabled, appearance)
 
     @staticmethod
     def ImageButtonExtended(caption: str, texture_path: str, size: tuple[float, float],
@@ -3234,21 +3234,21 @@ class ImGui:
                             bg_color: tuple[int, int, int, int] = (0, 0, 0, 0),
                             tint_color: tuple[int, int, int, int] = (255, 255, 255, 255),
                             frame_padding: int = -1) -> bool:
-        return  ImGui.overlay_instance.ImageButtonExtended(caption, texture_path, size, uv0, uv1, bg_color, tint_color, frame_padding)
+        return  ImGui_Legacy.overlay_instance.ImageButtonExtended(caption, texture_path, size, uv0, uv1, bg_color, tint_color, frame_padding)
     
     @staticmethod
     def DrawTextureInForegound(pos: tuple[float, float], size: tuple[float, float], texture_path: str,
                        uv0: tuple[float, float] = (0.0, 0.0),
                        uv1: tuple[float, float] = (1.0, 1.0),
                        tint: tuple[int, int, int, int] = (255, 255, 255, 255)):
-         ImGui.overlay_instance.DrawTextureInForegound(pos, size, texture_path, uv0, uv1, tint)
+         ImGui_Legacy.overlay_instance.DrawTextureInForegound(pos, size, texture_path, uv0, uv1, tint)
       
     @staticmethod  
     def DrawTextureInDrawList(pos: tuple[float, float], size: tuple[float, float], texture_path: str,
                        uv0: tuple[float, float] = (0.0, 0.0),
                        uv1: tuple[float, float] = (1.0, 1.0),
                        tint: tuple[int, int, int, int] = (255, 255, 255, 255)):
-         ImGui.overlay_instance.DrawTextureInDrawList(pos, size, texture_path, uv0, uv1, tint)
+         ImGui_Legacy.overlay_instance.DrawTextureInDrawList(pos, size, texture_path, uv0, uv1, tint)
     
     @staticmethod
     def GetModelIDTexture(model_id: int) -> str:
@@ -3308,7 +3308,7 @@ class ImGui:
         changed = False
         popup_done = False
 
-        display_text = ImGui.format_hotkey(key, modifiers)
+        display_text = ImGui_Legacy.format_hotkey(key, modifiers)
         display_label = label.split("##")[0]
         popup_id = f"##KeybindPopup_{label}"
 
@@ -3316,15 +3316,15 @@ class ImGui:
         if display_label:
             PyImGui.columns(2, f"{label}_columns", False)
 
-        if ImGui.button(display_text, -1, 0):
+        if ImGui_Legacy.button(display_text, -1, 0):
             PyImGui.open_popup(popup_id)
 
-        _, _, size = ImGui.get_item_rect()
-        ImGui.show_tooltip("Click to set hotkey")
+        _, _, size = ImGui_Legacy.get_item_rect()
+        ImGui_Legacy.show_tooltip("Click to set hotkey")
 
         if display_label:
             PyImGui.next_column()
-            ImGui.text_aligned(display_label, alignment=Alignment.MidLeft, height=size[1])
+            ImGui_Legacy.text_aligned(display_label, alignment=Alignment.MidLeft, height=size[1])
             PyImGui.end_columns()
 
         PyImGui.end_group()
@@ -3337,13 +3337,13 @@ class ImGui:
             | PyImGui.WindowFlags.NoSavedSettings
             | PyImGui.WindowFlags.NoTitleBar
         ):
-            ImGui.text_aligned("Press a key combination", alignment=Alignment.TopCenter, height=30)
+            ImGui_Legacy.text_aligned("Press a key combination", alignment=Alignment.TopCenter, height=30)
             PyImGui.separator()
             PyImGui.spacing()
-            ImGui.text_aligned("Esc to cancel", alignment=Alignment.TopCenter, height=30)
+            ImGui_Legacy.text_aligned("Esc to cancel", alignment=Alignment.TopCenter, height=30)
             PyImGui.spacing()
 
-            if ImGui.button("Clear", -1, 20):
+            if ImGui_Legacy.button("Clear", -1, 20):
                 key = Key.Unmapped
                 modifiers = ModifierKey.NoneKey
                 changed = True
@@ -3694,11 +3694,11 @@ class ImGui:
 
                 PyImGui.table_next_row()
                 PyImGui.table_set_column_index(0)
-                ImGui.objective_text("")  # draw bullet using ImGui's bullet
+                ImGui_Legacy.objective_text("")  # draw bullet using ImGui_Legacy's bullet
                 PyImGui.table_set_column_index(1)
 
                 PyImGui.push_text_wrap_pos(PyImGui.get_cursor_pos_x() + text_col_width)
-                ImGui.text_wrapped(text)
+                ImGui_Legacy.text_wrapped(text)
                 PyImGui.pop_text_wrap_pos()
 
                 PyImGui.end_table()
@@ -3711,7 +3711,7 @@ class ImGui:
             """
             bullet_col_width = PyImGui.get_text_line_height()
             text_col_width = max_width - bullet_col_width
-            style = ImGui.get_style()
+            style = ImGui_Legacy.get_style()
 
             if completed:
                 style.TextObjectiveCompleted.get_current().push_color()
@@ -3725,7 +3725,7 @@ class ImGui:
                 cursor = PyImGui.get_cursor_screen_pos()
                 texture_rect = (cursor[0], cursor[1], bullet_col_width - 2, bullet_col_width - 2)
                 
-                if style.Theme in ImGui.Textured_Themes:                                
+                if style.Theme in ImGui_Legacy.Textured_Themes:                                
                     ThemeTextures.Quest_Objective_Bullet_Point.value.get_texture().draw_in_drawlist(
                         texture_rect[:2],
                         texture_rect[2:],
@@ -3733,15 +3733,15 @@ class ImGui:
                     )
                 else:
                     PyImGui.set_cursor_screen_pos(cursor[0] - 4, cursor[1])
-                    ImGui.bullet_text("")  # draw bullet using ImGui's bullet
+                    ImGui_Legacy.bullet_text("")  # draw bullet using ImGui_Legacy's bullet
                 
                 PyImGui.table_set_column_index(1)
 
                 PyImGui.push_text_wrap_pos(PyImGui.get_cursor_pos_x() + text_col_width)
-                ImGui.text_wrapped(text)
+                ImGui_Legacy.text_wrapped(text)
                 PyImGui.pop_text_wrap_pos()
                             
-                item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
+                item_rect_min, item_rect_max, item_rect_size = ImGui_Legacy.get_item_rect()
                 if completed:
                     lines = round(item_rect_size[1] / bullet_col_width)
                     for i in range(lines):
@@ -3783,7 +3783,7 @@ class ImGui:
                     v = ""
                 if t == "text":
                     if inside_bullet:
-                        ImGui.render_wrapped_objective(v, max_width=max_width, completed=completed)
+                        ImGui_Legacy.render_wrapped_objective(v, max_width=max_width, completed=completed)
                         inside_bullet = False
                         completed = False
                     elif color_stack:
@@ -3985,7 +3985,7 @@ class ImGui:
             window_size = (self.button_size + padding * 2, self.button_size + padding * 2)
             PyImGui.set_next_window_size(window_size, PyImGui.ImGuiCond.Always)
             PyImGui.set_next_window_pos((self.position[0], self.position[1]), PyImGui.ImGuiCond.Always)
-            if ImGui.Begin(ini_key=ini_key, name=self.window_name, flags=flags):
+            if ImGui_Legacy.Begin(ini_key=ini_key, name=self.window_name, flags=flags):
                 win_pos = PyImGui.get_window_pos()
                 self.position = (win_pos[0], win_pos[1])
 
@@ -3996,7 +3996,7 @@ class ImGui:
                 PyImGui.set_cursor_pos((centered_pos, centered_pos))
 
                 cursor_pos = PyImGui.get_cursor_pos()
-                ImGui.image(self.icon_path, (image_size, image_size))
+                ImGui_Legacy.image(self.icon_path, (image_size, image_size))
                 PyImGui.set_cursor_pos((cursor_pos[0], cursor_pos[1]))
                 PyImGui.invisible_button(f"{self.window_id}_hitbox", (image_size, image_size))
 
@@ -4021,7 +4021,7 @@ class ImGui:
                 if PyImGui.is_mouse_released(0):
                     self._dragged = False
 
-            ImGui.End(ini_key)
+            ImGui_Legacy.End(ini_key)
             if self.visible and self.draw_callback is not None:
                 self.draw_callback()
             return toggled
@@ -4084,7 +4084,7 @@ class ImGui:
 
             uv0, uv1 = Utils.PixelsToUV(x0, y0, source_width, source_height, atlas_dimensions[0], atlas_dimensions[1])
 
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 pos=(x, y),
                 size=(_width, _height),
                 texture_path=texture_path,
@@ -4100,12 +4100,12 @@ class ImGui:
             collapsed: bool = False,
             pos_cond: int = PyImGui.ImGuiCond.FirstUseEver, 
             size_cond: int = PyImGui.ImGuiCond.FirstUseEver) -> bool:
-            if name not in ImGui.gw_window._state:
-                ImGui.gw_window._state[name] = {
+            if name not in ImGui_Legacy.gw_window._state:
+                ImGui_Legacy.gw_window._state[name] = {
                     "collapsed": collapsed
                 }
             
-            state = ImGui.gw_window._state[name]
+            state = ImGui_Legacy.gw_window._state[name]
 
             if size != (0.0, 0.0):
                 PyImGui.set_next_window_size(size, size_cond)
@@ -4142,36 +4142,36 @@ class ImGui:
             
             #TITLE AREA
             #LEFT TITLE
-            x0, y0, x1, y1 = ImGui.gw_window.LEFT_TITLE_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LEFT_TITLE_PIXEL_MAP
             LT_width = x1 - x0
             LT_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_left,
                 y=window_top-5,
                 width=LT_width,
                 height=LT_height,
-                pixel_map=ImGui.gw_window.LEFT_TITLE_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.TITLE_ATLAS,
-                atlas_dimensions=ImGui.gw_window.TITLE_ATLAS_DIMENSIONS,
+                pixel_map=ImGui_Legacy.gw_window.LEFT_TITLE_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.TITLE_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.TITLE_ATLAS_DIMENSIONS,
                 tint=(255, 255, 255, 255)
             )
             
             # RIGHT TITLE
-            x0, y0, x1, y1 = ImGui.gw_window.RIGHT_TITLE_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.RIGHT_TITLE_PIXEL_MAP
             rt_width = x1 - x0
             rt_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_right - rt_width,
                 y=window_top - 5,
                 width=rt_width,
                 height=rt_height,
-                pixel_map=ImGui.gw_window.RIGHT_TITLE_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.TITLE_ATLAS,
-                atlas_dimensions=ImGui.gw_window.TITLE_ATLAS_DIMENSIONS
+                pixel_map=ImGui_Legacy.gw_window.RIGHT_TITLE_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.TITLE_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.TITLE_ATLAS_DIMENSIONS
             )
             
             # CLOSE BUTTON
-            x0, y0, x1, y1 = ImGui.gw_window.CLOSE_BUTTON_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.CLOSE_BUTTON_PIXEL_MAP
             cb_width = x1 - x0
             cb_height = y1 - y0
 
@@ -4208,17 +4208,17 @@ class ImGui:
 
             #Draw close button is done after the title bar
             #TITLE BAR
-            x0, y0, x1, y1 = ImGui.gw_window.TITLE_AREA_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.TITLE_AREA_PIXEL_MAP
             title_width = int(window_width - 36)
             title_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_left + 18,
                 y=window_top - 5,
                 width=title_width,
                 height=title_height,
-                pixel_map=ImGui.gw_window.TITLE_AREA_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.TITLE_ATLAS,
-                atlas_dimensions=ImGui.gw_window.TITLE_ATLAS_DIMENSIONS,
+                pixel_map=ImGui_Legacy.gw_window.TITLE_AREA_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.TITLE_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.TITLE_ATLAS_DIMENSIONS,
                 tint=(255, 255, 255, 255)
             )
             
@@ -4244,10 +4244,10 @@ class ImGui:
                 PyImGui.set_window_collapsed(state["collapsed"], PyImGui.ImGuiCond.Always)
                 
             # Draw CLOSE BUTTON in the title bar
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 pos=(x, y),
                 size=(cb_width, cb_height),
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.CLOSE_BUTTON_ATLAS,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.CLOSE_BUTTON_ATLAS,
                 uv0=uv0,
                 uv1=uv1,
                 tint=(255, 255, 255, 255)
@@ -4267,95 +4267,95 @@ class ImGui:
             # Draw the frame around the window
             # LEFT SIDE
             #LEFT UPPER TAB
-            x0, y0, x1, y1 = ImGui.gw_window.UPPER_LEFT_TAB_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.UPPER_LEFT_TAB_PIXEL_MAP
             lut_tab_width = x1 - x0
             lut_tab_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_left,
                 y=window_top + LT_height - 5,
                 width= lut_tab_width,
                 height= lut_tab_height,
-                pixel_map=ImGui.gw_window.UPPER_LEFT_TAB_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS,
+                pixel_map=ImGui_Legacy.gw_window.UPPER_LEFT_TAB_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS,
                 tint=(255, 255, 255, 255)
             )
             
             #LEFT CORNER
-            x0, y0, x1, y1 = ImGui.gw_window.LOWER_LEFT_CORNER_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LOWER_LEFT_CORNER_PIXEL_MAP
             lc_width = x1 - x0
             lc_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_left,
                 y=window_bottom - lc_height,
                 width= lc_width,
                 height= lc_height,
-                pixel_map=ImGui.gw_window.LOWER_LEFT_CORNER_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS,
+                pixel_map=ImGui_Legacy.gw_window.LOWER_LEFT_CORNER_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS,
                 tint=(255, 255, 255, 255)
             )
             
             
             #LEFT LOWER TAB
-            x0, y0, x1, y1 = ImGui.gw_window.LOWER_LEFT_TAB_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LOWER_LEFT_TAB_PIXEL_MAP
             ll_tab_width = x1 - x0
             ll_tab_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_left,
                 y=window_bottom - lc_height -ll_tab_height,
                 width=ll_tab_width,
                 height=ll_tab_height,
-                pixel_map=ImGui.gw_window.LOWER_LEFT_TAB_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS,
+                pixel_map=ImGui_Legacy.gw_window.LOWER_LEFT_TAB_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS,
                 tint=(255, 255, 255, 255)
             )
             
             #LEFT BORDER
-            x0, y0, x1, y1 = ImGui.gw_window.LEFT_BORDER_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LEFT_BORDER_PIXEL_MAP
             left_border_width = x1 - x0
             left_border_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_left,
                 y=window_top + LT_height - 5 + lut_tab_height,
                 width= left_border_width,
                 height= int(window_height - (LT_height + lut_tab_height + ll_tab_height + lc_height) +5),
-                pixel_map=ImGui.gw_window.LEFT_BORDER_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS,
+                pixel_map=ImGui_Legacy.gw_window.LEFT_BORDER_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS,
                 tint=(255, 255, 255, 255)
             )
         
             # RIGHT SIDE
             # UPPER RIGHT TAB
-            x0, y0, x1, y1 = ImGui.gw_window.UPPER_RIGHT_TAB_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.UPPER_RIGHT_TAB_PIXEL_MAP
             urt_width = x1 - x0
             urt_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_right - urt_width,
                 y=window_top + rt_height - 5,
                 width=urt_width,
                 height=urt_height,
-                pixel_map=ImGui.gw_window.UPPER_RIGHT_TAB_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS
+                pixel_map=ImGui_Legacy.gw_window.UPPER_RIGHT_TAB_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS
             )
 
             # LOWER RIGHT CORNER
-            x0, y0, x1, y1 = ImGui.gw_window.LOWER_RIGHT_CORNER_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LOWER_RIGHT_CORNER_PIXEL_MAP
             rc_width = x1 - x0
             rc_height = y1 - y0
             corner_x = window_right - rc_width
             corner_y = window_bottom - rc_height
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_right - rc_width,
                 y=window_bottom - rc_height,
                 width=rc_width,
                 height=rc_height,
-                pixel_map=ImGui.gw_window.LOWER_RIGHT_CORNER_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS
+                pixel_map=ImGui_Legacy.gw_window.LOWER_RIGHT_CORNER_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS
             )
             # DRAG: Resize from corner
             PyImGui.set_cursor_screen_pos(corner_x-10, corner_y-10)
@@ -4367,19 +4367,19 @@ class ImGui:
                 PyImGui.set_window_size(new_window_size[0], new_window_size[1], PyImGui.ImGuiCond.Always)
 
             # LOWER RIGHT TAB
-            x0, y0, x1, y1 = ImGui.gw_window.LOWER_RIGHT_TAB_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LOWER_RIGHT_TAB_PIXEL_MAP
             lrt_width = x1 - x0
             lrt_height = y1 - y0
             tab_x = window_right - lrt_width
             tab_y = window_bottom - rc_height - lrt_height
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_right - lrt_width,
                 y=window_bottom - rc_height - lrt_height,
                 width=lrt_width,
                 height=lrt_height,
-                pixel_map=ImGui.gw_window.LOWER_RIGHT_TAB_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS
+                pixel_map=ImGui_Legacy.gw_window.LOWER_RIGHT_TAB_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS
             )
             PyImGui.set_cursor_screen_pos(tab_x-10, tab_y)
             PyImGui.invisible_button("##resize_tab_above", lrt_width+10, lrt_height)
@@ -4390,36 +4390,36 @@ class ImGui:
                 PyImGui.set_window_size(new_window_size[0], new_window_size[1], PyImGui.ImGuiCond.Always)
 
             # RIGHT BORDER
-            x0, y0, x1, y1 = ImGui.gw_window.RIGHT_BORDER_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.RIGHT_BORDER_PIXEL_MAP
             right_border_width = x1 - x0
             right_border_height = y1 - y0
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_right - right_border_width,
                 y=window_top + rt_height - 5 + urt_height,
                 width=right_border_width,
                 height=int(window_height - (rt_height + urt_height + lrt_height + rc_height) + 5),
-                pixel_map=ImGui.gw_window.RIGHT_BORDER_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS
+                pixel_map=ImGui_Legacy.gw_window.RIGHT_BORDER_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS
             )
 
             #BOTTOM BORDER
             # Tab to the left of LOWER_RIGHT_CORNER
-            x0, y0, x1, y1 = ImGui.gw_window.LOWER_RIGHT_CORNER_TAB_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LOWER_RIGHT_CORNER_TAB_PIXEL_MAP
             tab_width = x1 - x0
             tab_height = y1 - y0
             
             tab_x = window_right - rc_width - tab_width
             tab_y = window_bottom - rc_height
 
-            ImGui.gw_window.draw_region_in_drawlist(
+            ImGui_Legacy.gw_window.draw_region_in_drawlist(
                 x=window_right - rc_width - tab_width,       # left of the corner
                 y=window_bottom - rc_height,                 # same vertical alignment as corner
                 width=tab_width,
                 height=tab_height,
-                pixel_map=ImGui.gw_window.LOWER_RIGHT_CORNER_TAB_PIXEL_MAP,
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
-                atlas_dimensions=ImGui.gw_window.FRAME_ATLAS_DIMENSIONS
+                pixel_map=ImGui_Legacy.gw_window.LOWER_RIGHT_CORNER_TAB_PIXEL_MAP,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
+                atlas_dimensions=ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS
             )
             
             # DRAG: Resize from left tab
@@ -4432,20 +4432,20 @@ class ImGui:
                 PyImGui.reset_mouse_drag_delta(0)
                 PyImGui.set_window_size(new_window_size[0], new_window_size[1], PyImGui.ImGuiCond.Always)
             
-            x0, y0, x1, y1 = ImGui.gw_window.LOWER_BORDER_PIXEL_MAP
+            x0, y0, x1, y1 = ImGui_Legacy.gw_window.LOWER_BORDER_PIXEL_MAP
             border_tex_width = x1 - x0
             border_tex_height = y1 - y0
             border_start_x = window_left + lc_width
-            border_end_x = window_right - rc_width - tab_width  # ← use the actual width of LOWER_RIGHT_CORNER_TAB
+            border_end_x = window_right - rc_width - tab_width  # â† use the actual width of LOWER_RIGHT_CORNER_TAB
             border_draw_width = border_end_x - border_start_x
 
             uv0, uv1 = Utils.PixelsToUV(x0, y0, border_tex_width, border_tex_height,
-                                        ImGui.gw_window.FRAME_ATLAS_DIMENSIONS[0], ImGui.gw_window.FRAME_ATLAS_DIMENSIONS[1])
+                                        ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS[0], ImGui_Legacy.gw_window.FRAME_ATLAS_DIMENSIONS[1])
 
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 pos=(border_start_x, window_bottom - border_tex_height),
                 size=(border_draw_width, border_tex_height),
-                texture_path=ImGui.gw_window.TEXTURE_FOLDER + ImGui.gw_window.FRAME_ATLAS,
+                texture_path=ImGui_Legacy.gw_window.TEXTURE_FOLDER + ImGui_Legacy.gw_window.FRAME_ATLAS,
                 uv0=uv0,
                 uv1=uv1,
                 tint=(255, 255, 255, 255)
@@ -4483,7 +4483,7 @@ class ImGui:
         
         @staticmethod
         def end(name: str):
-            state = ImGui.gw_window._state.get(name)
+            state = ImGui_Legacy.gw_window._state.get(name)
             if not state or not state.get("_active", False):
                 return  # this window was not successfully begun, do not call end stack
 

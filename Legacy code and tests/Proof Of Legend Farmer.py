@@ -1,40 +1,40 @@
 
-# ██████╗ ██████╗  ██████╗  ██████╗ ███████╗     ██████╗ ███████╗    ████████╗██████╗ ██╗██╗   ██╗███╗   ███╗██████╗ ██╗  ██╗    
-# ██╔══██╗██╔══██╗██╔═══██╗██╔═══██╗██╔════╝    ██╔═══██╗██╔════╝    ╚══██╔══╝██╔══██╗██║██║   ██║████╗ ████║██╔══██╗██║  ██║    
-# ██████╔╝██████╔╝██║   ██║██║   ██║█████╗      ██║   ██║█████╗         ██║   ██████╔╝██║██║   ██║██╔████╔██║██████╔╝███████║    
-# ██╔═══╝ ██╔══██╗██║   ██║██║   ██║██╔══╝      ██║   ██║██╔══╝         ██║   ██╔══██╗██║██║   ██║██║╚██╔╝██║██╔═══╝ ██╔══██║    
-# ██║     ██║  ██║╚██████╔╝╚██████╔╝██║         ╚██████╔╝██║            ██║   ██║  ██║██║╚██████╔╝██║ ╚═╝ ██║██║     ██║  ██║    
-# ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝          ╚═════╝ ╚═╝            ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝    
+# â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—     â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—    â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ•—â–ˆâ–ˆâ•—   â–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ•—   â–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ•—  â–ˆâ–ˆâ•—    
+# â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â•â•    â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â•â•â•    â•šâ•â•â–ˆâ–ˆâ•”â•â•â•â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘    
+# â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—      â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—         â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â–ˆâ–ˆâ–ˆâ–ˆâ•”â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘    
+# â–ˆâ–ˆâ•”â•â•â•â• â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•      â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•         â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â• â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘    
+# â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘         â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘            â–ˆâ–ˆâ•‘   â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘ â•šâ•â• â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘    
+# â•šâ•â•     â•šâ•â•  â•šâ•â• â•šâ•â•â•â•â•â•  â•šâ•â•â•â•â•â• â•šâ•â•          â•šâ•â•â•â•â•â• â•šâ•â•            â•šâ•â•   â•šâ•â•  â•šâ•â•â•šâ•â• â•šâ•â•â•â•â•â• â•šâ•â•     â•šâ•â•â•šâ•â•     â•šâ•â•  â•šâ•â•    
 #                                                                                                                               
-#                               ███████╗ █████╗ ██████╗ ███╗   ███╗███████╗██████╗                                                                             
-#                               ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝██╔══██╗                                                                            
-#                               █████╗  ███████║██████╔╝██╔████╔██║█████╗  ██████╔╝                                                                            
-#                               ██╔══╝  ██╔══██║██╔══██╗██║╚██╔╝██║██╔══╝  ██╔══██╗                                                                            
-#                               ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗██║  ██║                                                                            
-#                               ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝                                                                                                                                                                                                                                                                                                    
+#                               â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ•—   â–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—                                                                             
+#                               â–ˆâ–ˆâ•”â•â•â•â•â•â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ–ˆâ–ˆâ•— â–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•â•â•â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—                                                                            
+#                               â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•”â–ˆâ–ˆâ–ˆâ–ˆâ•”â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—  â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•”â•                                                                            
+#                               â–ˆâ–ˆâ•”â•â•â•  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘â•šâ–ˆâ–ˆâ•”â•â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•”â•â•â•  â–ˆâ–ˆâ•”â•â•â–ˆâ–ˆâ•—                                                                            
+#                               â–ˆâ–ˆâ•‘     â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘â–ˆâ–ˆâ•‘ â•šâ•â• â–ˆâ–ˆâ•‘â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ•—â–ˆâ–ˆâ•‘  â–ˆâ–ˆâ•‘                                                                            
+#                               â•šâ•â•     â•šâ•â•  â•šâ•â•â•šâ•â•  â•šâ•â•â•šâ•â•     â•šâ•â•â•šâ•â•â•â•â•â•â•â•šâ•â•  â•šâ•â•                                                                                                                                                                                                                                                                                                    
 #
-#       ░ by torx ░
+#       â–‘ by torx â–‘
 #
-#  ┌─────────────────────────────────────────────┐
-#  │ Program : PoT Farm                          │
-#  │ Version : 1.0.0                             │
-#  │ Coded by: torx                              │
-#  │ Date    : 2025 Anniversary                  │
-#  │ Purpose : Farm proof of triumphs during     │
-#  │ GW1 anniversary event.                      │
-#  │               ########                      │
-#  │ Notes   : Use on a dervish, need an .       │
-#  │ account with /bonus for the imp or          │
-#  │ itll be slow. Also need a slot in storage   │
-#  │ English only client for adding "koss" to pt │
-#  │               ########                      │
-#  │ Setup: Make a dervish, let the starter zone │
-#  │ load then load proof_farm                   │
-#  │ Press start FSM and let it go.              │
-#  │               ########                      │
-#  │ Recommended Widgets: turn them all off -    │
-#  │ except Skip Cutscenes                       │
-#  └─────────────────────────────────────────────┘
+#  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+#  â”‚ Program : PoT Farm                          â”‚
+#  â”‚ Version : 1.0.0                             â”‚
+#  â”‚ Coded by: torx                              â”‚
+#  â”‚ Date    : 2025 Anniversary                  â”‚
+#  â”‚ Purpose : Farm proof of triumphs during     â”‚
+#  â”‚ GW1 anniversary event.                      â”‚
+#  â”‚               ########                      â”‚
+#  â”‚ Notes   : Use on a dervish, need an .       â”‚
+#  â”‚ account with /bonus for the imp or          â”‚
+#  â”‚ itll be slow. Also need a slot in storage   â”‚
+#  â”‚ English only client for adding "koss" to pt â”‚
+#  â”‚               ########                      â”‚
+#  â”‚ Setup: Make a dervish, let the starter zone â”‚
+#  â”‚ load then load proof_farm                   â”‚
+#  â”‚ Press start FSM and let it go.              â”‚
+#  â”‚               ########                      â”‚
+#  â”‚ Recommended Widgets: turn them all off -    â”‚
+#  â”‚ except Skip Cutscenes                       â”‚
+#  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 from Py4GWCoreLib import *
 import math
 import random
@@ -447,10 +447,10 @@ class BotVars:
         }
         self.character_name_logged = False
         self.request_name = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 bot_vars = BotVars()
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name=module_name, window_size=(300, 300), 
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name=module_name, window_size=(300, 300), 
                                             window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 combat_handler:SkillManager.Autocombat = SkillManager.Autocombat()
 
@@ -768,7 +768,7 @@ def check_dialog_buttons(buttons: int, size: Optional[str] = None, state_key: Op
                 print(f"[DEBUG] State '{state_key}': Same dialog frame ID {frame_id}, skipping.")
             return False
         if debug:
-            print(f"[DEBUG] State '{state_key}': Dialog frame changed from {last_id} → {frame_id}")
+            print(f"[DEBUG] State '{state_key}': Dialog frame changed from {last_id} â†’ {frame_id}")
         frame_ids[state_key] = frame_id
 
     button_ids = UIManager.GetAllChildFrameIDs(npc_dialog_hash, npc_dialog_offset)
@@ -785,7 +785,7 @@ def check_dialog_buttons(buttons: int, size: Optional[str] = None, state_key: Op
         print(f"[DEBUG] Button size = {size}")
         for fid in button_ids:
             h = PyUIManager.UIFrame(fid).position.height_on_screen
-            print(f"[DEBUG] - Frame ID {fid} → height: {h}")
+            print(f"[DEBUG] - Frame ID {fid} â†’ height: {h}")
         print(f"[DEBUG] Total Buttons (size={size}): {len(button_ids)}, Required: {buttons}")
 
     return len(button_ids) == buttons
@@ -830,7 +830,7 @@ def click_dialog_button(button: int, size: Optional[str] = None, backup: Optiona
         print(f"Requested button: {button} (size={size})")
         for fid, y in sorted_frames:
             h = PyUIManager.UIFrame(fid).position.height_on_screen
-            print(f" - Frame ID {fid} at Y={y} → height: {h}")
+            print(f" - Frame ID {fid} at Y={y} â†’ height: {h}")
         print(f"Sorted frame IDs (top to bottom): {[fid for fid, _ in sorted_frames]}")
 
     if not (0 <= index < len(sorted_frames)):
@@ -2616,7 +2616,7 @@ def draw_window():
         else:
             PyImGui.text(label)
 
-        ImGui.table(label, ["Value", "Data"], [
+        ImGui_Legacy.table(label, ["Value", "Data"], [
             ("Previous Step:", fsm.get_previous_step_name()),
             ("Current Step:", fsm.get_current_step_name()),
             ("Next Step:", fsm.get_next_step_name()),
@@ -2645,7 +2645,7 @@ def draw_window():
                 ("Proofs Deposited", bot_vars.proofs_deposited),
                 ("Success Rate", f"{bot_vars.success_rate * 100:.1f}%" if bot_vars.runs_attempted > 0 else "N/A"),
             ]
-            ImGui.table("Run Statistics", headers, data)
+            ImGui_Legacy.table("Run Statistics", headers, data)
             PyImGui.end_tab_item()
         if PyImGui.begin_tab_item("Character List"):
             PyImGui.text("Manage Character Rotation List:")
@@ -2691,7 +2691,7 @@ def draw_window():
                             ConsoleLog("CharacterList", "Cannot remove the last character name.", Console.MessageType.Warning)
 
                     PyImGui.pop_style_color(3)
-                    ImGui.show_tooltip(f"Remove '{name}'")
+                    ImGui_Legacy.show_tooltip(f"Remove '{name}'")
             if name_to_remove_index != -1:
                 removed_name = bot_vars.character_names.pop(name_to_remove_index)
                 ConsoleLog("CharacterList", f"Removed '{removed_name}' from rotation.", Console.MessageType.Info)
@@ -2862,7 +2862,7 @@ def draw_window():
                             print(f"Target Name: {agent_name}")
                         PyImGui.end_tab_item()
                 if PyImGui.begin_tab_item("Debug: Variables"):
-                    ImGui.table("Variable Info", ["Value", "Data"], [
+                    ImGui_Legacy.table("Variable Info", ["Value", "Data"], [
                             ("pause_combat_fsm:", bot_vars.pause_combat_fsm),
                             ("movement_handler.is_paused", fsm_vars.movement_handler.is_paused()),
                             ("global_combat_fsm.is_paused", fsm_vars.global_combat_fsm.is_paused()),
@@ -2891,7 +2891,7 @@ def draw_window():
                     draw_fsm_info("Combat Handler FSM", fsm_vars.global_combat_handler, False)
                     PyImGui.end_tab_item()
                 if PyImGui.begin_tab_item("Debug: FollowXY"):
-                    ImGui.table("follow info", ["Value", "Data"], [
+                    ImGui_Legacy.table("follow info", ["Value", "Data"], [
                         ("Waypoint:", fsm_vars.movement_handler.waypoint),
                         ("Following:", fsm_vars.movement_handler.is_following()),
                         ("Has Arrived:", fsm_vars.movement_handler.has_arrived()),
@@ -2971,14 +2971,14 @@ def main():
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Proof Of Legend Farmer", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

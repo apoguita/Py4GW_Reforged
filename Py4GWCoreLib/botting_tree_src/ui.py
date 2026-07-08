@@ -6,7 +6,7 @@ import PySystem
 import PyImGui
 
 from ..GlobalCache import GLOBAL_CACHE
-from ..ImGui import ImGui
+from .._legacy_facade import ImGui_Legacy
 from ..Overlay import Overlay
 from ..Player import Player
 from ..py4gwcorelib_src.Color import Color, ColorPalette
@@ -230,7 +230,7 @@ class _BottingTreeUI:
         self._show_tree = True
         self._debug_console_height = 200.0
         self._window_factory: WindowFactory | None = None
-        self._floating_button: ImGui.FloatingIcon | None = None
+        self._floating_button: ImGui_Legacy.FloatingIcon | None = None
         self._window_factory_ready = False
         self._window_args: dict[str, object] = {
             'main_child_dimensions': (350, 325),
@@ -279,14 +279,14 @@ class _BottingTreeUI:
         self._window_factory_ready = True
         return True
 
-    def _ensure_floating_button(self, icon_path: str = '') -> ImGui.FloatingIcon | None:
+    def _ensure_floating_button(self, icon_path: str = '') -> ImGui_Legacy.FloatingIcon | None:
         if not self._ensure_window_factory() or self._window_factory is None:
             return None
 
         resolved_icon_path = icon_path or self._default_icon_path()
         if self._floating_button is None:
             safe_name = self._sanitize_identifier(self.parent.bot_name)
-            self._floating_button = ImGui.FloatingIcon(
+            self._floating_button = ImGui_Legacy.FloatingIcon(
                 icon_path=resolved_icon_path,
                 window_id=f'##{safe_name}_floating_toggle_button',
                 window_name=f'{self.parent.bot_name} Toggle',
@@ -358,7 +358,7 @@ class _BottingTreeUI:
 
                 PyImGui.end_tab_bar()
 
-        ImGui.End(self._window_factory.key('main'))
+        ImGui_Legacy.End(self._window_factory.key('main'))
 
     def override_draw_texture(self, draw_fn: Callable[[], None] | None = None) -> None:
         self.draw_texture_fn = draw_fn
@@ -380,9 +380,9 @@ class _BottingTreeUI:
             return
 
         try:
-            from ..ImGui import ImGui
+            from .._legacy_facade import ImGui_Legacy
 
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_path=icon_path,
                 size=size,
                 uv0=(0.0, 0.0),

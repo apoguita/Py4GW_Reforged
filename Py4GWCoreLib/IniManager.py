@@ -242,7 +242,7 @@ class IniManager:
 
 
     # ----------------------------
-    # IniHandler API — WRAPPED
+    # IniHandler API â€” WRAPPED
     # ----------------------------
     def _get_node(self, key: str) -> ConfigNode | None:
         return self._handlers.get(key)
@@ -424,7 +424,7 @@ class IniManager:
         if begin_result:
             new_collapsed = False
         else:
-            # if Begin returned False, we cannot query ImGui for collapsed state
+            # if Begin returned False, we cannot query ImGui_Legacy for collapsed state
             # so we assume it is collapsed=True
             new_collapsed = True
 

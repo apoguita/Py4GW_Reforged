@@ -53,7 +53,7 @@ Loot_Variables = LootConfigclass()  # Initialize the LootConfigclass
 loot_filter_singleton = LootConfig()
 temp_model_id = 0
 
-window_module = ImGui.WindowModule(module_name, window_name="Loot Pickit2 Manager", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+window_module = ImGui_Legacy.WindowModule(module_name, window_name="Loot Pickit2 Manager", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 #window_x = ini_handler.read_int(module_name + str(" Config"), "x", 100)
 #window_y = ini_handler.read_int(module_name + str(" Config"), "y", 100)

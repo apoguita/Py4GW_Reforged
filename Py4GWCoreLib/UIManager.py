@@ -70,7 +70,7 @@ class UIManager:
         :return: bool: True if the mouse is over the frame, False otherwise.
         """
         import PyImGui
-        from Py4GWCoreLib.ImGui import ImGui
+        from Py4GWCoreLib._legacy_facade import ImGui_Legacy
         
         io = PyImGui.get_io()
         
@@ -78,7 +78,7 @@ class UIManager:
         width = right - left
         height = bottom - top
         
-        return ImGui.is_mouse_in_rect((left, top, width, height),(io.mouse_pos_x, io.mouse_pos_y))
+        return ImGui_Legacy.is_mouse_in_rect((left, top, width, height),(io.mouse_pos_x, io.mouse_pos_y))
     
     @staticmethod
     def _UpdateFrameIOEvents():

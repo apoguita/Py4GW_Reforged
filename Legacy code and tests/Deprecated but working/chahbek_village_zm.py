@@ -380,10 +380,10 @@ class BotVars:
         }
         self.character_name_logged = False
         self.request_name = False
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 bot_vars = BotVars()
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name=module_name, window_size=(300, 300), 
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name=module_name, window_size=(300, 300), 
                                             window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 combat_handler:SkillManager.Autocombat = SkillManager.Autocombat()
 
@@ -677,7 +677,7 @@ def check_dialog_buttons(buttons: int, size: Optional[str] = None, state_key: Op
                 print(f"[DEBUG] State '{state_key}': Same dialog frame ID {frame_id}, skipping.")
             return False
         if debug:
-            print(f"[DEBUG] State '{state_key}': Dialog frame changed from {last_id} → {frame_id}")
+            print(f"[DEBUG] State '{state_key}': Dialog frame changed from {last_id} â†’ {frame_id}")
         frame_ids[state_key] = frame_id
 
     button_ids = UIManager.GetAllChildFrameIDs(npc_dialog_hash, npc_dialog_offset)
@@ -694,7 +694,7 @@ def check_dialog_buttons(buttons: int, size: Optional[str] = None, state_key: Op
         print(f"[DEBUG] Button size = {size}")
         for fid in button_ids:
             h = PyUIManager.UIFrame(fid).position.height_on_screen
-            print(f"[DEBUG] - Frame ID {fid} → height: {h}")
+            print(f"[DEBUG] - Frame ID {fid} â†’ height: {h}")
         print(f"[DEBUG] Total Buttons (size={size}): {len(button_ids)}, Required: {buttons}")
 
     return len(button_ids) == buttons
@@ -739,7 +739,7 @@ def click_dialog_button(button: int, size: Optional[str] = None, backup: Optiona
         print(f"Requested button: {button} (size={size})")
         for fid, y in sorted_frames:
             h = PyUIManager.UIFrame(fid).position.height_on_screen
-            print(f" - Frame ID {fid} at Y={y} → height: {h}")
+            print(f" - Frame ID {fid} at Y={y} â†’ height: {h}")
         print(f"Sorted frame IDs (top to bottom): {[fid for fid, _ in sorted_frames]}")
 
     if not (0 <= index < len(sorted_frames)):
@@ -2007,7 +2007,7 @@ def draw_window():
         else:
             PyImGui.text(label)
 
-        ImGui.table(label, ["Value", "Data"], [
+        ImGui_Legacy.table(label, ["Value", "Data"], [
             ("Previous Step:", fsm.get_previous_step_name()),
             ("Current Step:", fsm.get_current_step_name()),
             ("Next Step:", fsm.get_next_step_name()),
@@ -2036,7 +2036,7 @@ def draw_window():
                 ("37 Copper Deposited x", bot_vars.proofs_deposited),
                 ("Success Rate", f"{bot_vars.success_rate * 100:.1f}%" if bot_vars.runs_attempted > 0 else "N/A"),
             ]
-            ImGui.table("Run Statistics", headers, data)
+            ImGui_Legacy.table("Run Statistics", headers, data)
             PyImGui.end_tab_item()
         if PyImGui.begin_tab_item("Character List"):
             PyImGui.text("Manage Character Rotation List:")
@@ -2082,7 +2082,7 @@ def draw_window():
                             ConsoleLog("CharacterList", "Cannot remove the last character name.", Console.MessageType.Warning)
 
                     PyImGui.pop_style_color(3)
-                    ImGui.show_tooltip(f"Remove '{name}'")
+                    ImGui_Legacy.show_tooltip(f"Remove '{name}'")
             if name_to_remove_index != -1:
                 removed_name = bot_vars.character_names.pop(name_to_remove_index)
                 ConsoleLog("CharacterList", f"Removed '{removed_name}' from rotation.", Console.MessageType.Info)
@@ -2228,7 +2228,7 @@ def draw_window():
                             print(f"Target Name: {agent_name}")
                         PyImGui.end_tab_item()
                 if PyImGui.begin_tab_item("Debug: Variables"):
-                    ImGui.table("Variable Info", ["Value", "Data"], [
+                    ImGui_Legacy.table("Variable Info", ["Value", "Data"], [
                             ("pause_combat_fsm:", bot_vars.pause_combat_fsm),
                             ("movement_handler.is_paused", fsm_vars.movement_handler.is_paused()),
                             ("global_combat_fsm.is_paused", fsm_vars.global_combat_fsm.is_paused()),
@@ -2257,7 +2257,7 @@ def draw_window():
                     draw_fsm_info("Combat Handler FSM", fsm_vars.global_combat_handler, False)
                     PyImGui.end_tab_item()
                 if PyImGui.begin_tab_item("Debug: FollowXY"):
-                    ImGui.table("follow info", ["Value", "Data"], [
+                    ImGui_Legacy.table("follow info", ["Value", "Data"], [
                         ("Waypoint:", fsm_vars.movement_handler.waypoint),
                         ("Following:", fsm_vars.movement_handler.is_following()),
                         ("Has Arrived:", fsm_vars.movement_handler.has_arrived()),

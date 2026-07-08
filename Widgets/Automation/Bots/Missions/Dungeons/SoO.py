@@ -114,7 +114,7 @@ _session_runs: int = 0
 _session_bds:  dict[str, int] = {}  # account_key -> drops this session
 _session_gb:   dict[str, int] = {}  # account_key -> drops this session
 
-# UI display toggle — not persisted
+# UI display toggle â€” not persisted
 _scramble_accounts: bool = False
 
 # Run timing anchors (in-memory, reset each run)
@@ -402,7 +402,7 @@ def farm_bds_routine(bot: Botting) -> None:
     bot.States.AddCustomState(UseSummons, "Use Summons")
     bot.Multibox.UseAllConsumables()
     _enable_hero_ai_combat()
-    # --- Path to torch area (atomisÃ©) ---
+    # --- Path to torch area (atomisÃƒÂ©) ---
     path_before_torch = [
         (-14977.9,-16480.2),
         (-15985.6,-16838.1),
@@ -715,7 +715,7 @@ def _account_key(email: str) -> str:
     return email.replace("@", "_at_").replace(".", "_")
 
 def _display_email(key: str) -> str:
-    """Reverse _account_key for display — converts storage key back to email format."""
+    """Reverse _account_key for display â€” converts storage key back to email format."""
     return key.replace("_at_", "@").replace("_", ".")
 
 def _masked_email(key: str) -> str:
@@ -1028,7 +1028,7 @@ def _handle_shandra(bot: Botting) -> Generator:
     ConsoleLog(BOT_NAME, f"[Shandra] Quest state: {state}", log=True)
 
     if state == "active":
-        ConsoleLog(BOT_NAME, "[Shandra] Quest active — proceeding to dungeon", log=True)
+        ConsoleLog(BOT_NAME, "[Shandra] Quest active â€” proceeding to dungeon", log=True)
         yield
         return
 
@@ -1037,7 +1037,7 @@ def _handle_shandra(bot: Botting) -> Generator:
         ok = yield from _interact_with_Shandra(bot, SHANDRA_QUEST_REWARD_DIALOG)
         if not ok:
             ConsoleLog(BOT_NAME, "[Shandra] Reward interaction failed", log=True)
-        ConsoleLog(BOT_NAME, "[Shandra] Reward collected — quest accept deferred to next map load", log=True)
+        ConsoleLog(BOT_NAME, "[Shandra] Reward collected â€” quest accept deferred to next map load", log=True)
         yield
         return
 
@@ -1061,7 +1061,7 @@ def _collect_shandra_reward_in_dungeon(bot: Botting) -> Generator:
     bot.Wait.ForTime(4000)
     
     if not ok:
-        ConsoleLog(BOT_NAME, "[Shandra] In-dungeon reward collection failed — will retry in Arbor Bay", log=True)
+        ConsoleLog(BOT_NAME, "[Shandra] In-dungeon reward collection failed â€” will retry in Arbor Bay", log=True)
     yield
 
 def _check_shandra_inside_dungeon(bot: Botting) -> Generator:
@@ -1081,7 +1081,7 @@ def _check_shandra_inside_dungeon(bot: Botting) -> Generator:
             yield
             return
 
-        ConsoleLog(BOT_NAME, f"[Shandra] Quest '{state}' inside dungeon — exiting to Arbor Bay", log=True)
+        ConsoleLog(BOT_NAME, f"[Shandra] Quest '{state}' inside dungeon â€” exiting to Arbor Bay", log=True)
 
         yield from Routines.Yield.Movement.FollowPath([(-15650.00, 8900.00)])
 
@@ -1093,7 +1093,7 @@ def _check_shandra_inside_dungeon(bot: Botting) -> Generator:
         # Give the map time to fully load before attempting pathfinding
         yield from Routines.Yield.wait(10000)
 
-        ConsoleLog(BOT_NAME, "[Shandra] Back in Arbor Bay — moving to Shandra", log=True)
+        ConsoleLog(BOT_NAME, "[Shandra] Back in Arbor Bay â€” moving to Shandra", log=True)
         shandra_x, shandra_y = SHANDRA_POSITION
         yield from Routines.Yield.Movement.FollowPath([
             (10218.0, -18864.0),
@@ -1112,14 +1112,14 @@ def _check_shandra_inside_dungeon(bot: Botting) -> Generator:
 
         ok = yield from wait_for_map_change(SoO_lvl1, 60)
         if not ok:
-            ConsoleLog(BOT_NAME, "[Shandra] Failed to re-enter SoO Level 1 — retrying", PySystem.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Shandra] Failed to re-enter SoO Level 1 â€” retrying", PySystem.Console.MessageType.Warning)
             continue
 
         yield from Routines.Yield.wait(2000)
         # Loop back to re-check quest state at the top
 
-    # Exhausted all attempts — quest never became active
-    ConsoleLog(BOT_NAME, f"[HARD STOP] Shandra quest never became active after {_max_attempts} attempts — stopping bot.", PySystem.Console.MessageType.Error)
+    # Exhausted all attempts â€” quest never became active
+    ConsoleLog(BOT_NAME, f"[HARD STOP] Shandra quest never became active after {_max_attempts} attempts â€” stopping bot.", PySystem.Console.MessageType.Error)
     bot.Stop()
     yield
 
@@ -1218,7 +1218,7 @@ def _disable_inventoryplus_pretravel() -> Generator:
                     _my_email, acc.AccountEmail,
                     SharedCommandType.DisableWidget, (0, 0, 0, 0), (name, "", "", ""),
                 )
-    ConsoleLog(BOT_NAME, "[Merchant] Pre-travel: InventoryPlus disabled — waiting 1.5s for alts to process")
+    ConsoleLog(BOT_NAME, "[Merchant] Pre-travel: InventoryPlus disabled â€” waiting 1.5s for alts to process")
     yield from Routines.Yield.wait(1500)
 
 
@@ -1266,7 +1266,7 @@ def _reenable_merchant_widgets() -> Generator:
             yield from Routines.Yield.wait(100)
 
     if _pending:
-        ConsoleLog(BOT_NAME, f"[Merchant] EnableWidget timeout — {len(_pending)} message(s) unconfirmed. Proceeding.", PySystem.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Merchant] EnableWidget timeout â€” {len(_pending)} message(s) unconfirmed. Proceeding.", PySystem.Console.MessageType.Warning)
         yield from Routines.Yield.wait(_POST_WIDGET_REENABLE_SETTLE_MS)
     else:
         ConsoleLog(BOT_NAME, "[Merchant] All widgets successfully re-enabled on all accounts")
@@ -1335,7 +1335,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
                 PySystem.Console.MessageType.Warning,
             )
 
-    # —— Step 0 (startup only): Leave current party on all accounts ————————————
+    # â€”â€” Step 0 (startup only): Leave current party on all accounts â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     if leave_party:
         ConsoleLog(BOT_NAME, "[Merchant] Leaving party on all accounts before GH travel")
         for acc in GLOBAL_CACHE.ShMem.GetAllAccountData():
@@ -1344,12 +1344,12 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         GLOBAL_CACHE.Party.LeaveParty()
         yield from Routines.Yield.wait(2000)
 
-    # —— Pre-travel: Disable InventoryPlus BEFORE GH entry so its auto-deposit cycle
-    #    cannot send scrolls (or other items) to storage when accounts enter GH. ——
+    # â€”â€” Pre-travel: Disable InventoryPlus BEFORE GH entry so its auto-deposit cycle
+    #    cannot send scrolls (or other items) to storage when accounts enter GH. â€”â€”
     yield from _disable_inventoryplus_pretravel()
 
-    # —— Step 1: Send ALL accounts to their own Guild Hall ———————————————————
-    # Snapshot alt count BEFORE dispatching travel — alts temporarily drop out of
+    # â€”â€” Step 1: Send ALL accounts to their own Guild Hall â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+    # Snapshot alt count BEFORE dispatching travel â€” alts temporarily drop out of
     # ShMem during map transitions so the count must be captured while everyone
     # is still fully settled in Vlox's Fall.
     _expected_gh_alts = len([
@@ -1368,7 +1368,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         yield from Routines.Yield.wait(500)
 
     if not Map.IsGuildHall():
-        ConsoleLog(BOT_NAME, "[Merchant] Failed to reach Guild Hall — skipping merchant step")
+        ConsoleLog(BOT_NAME, "[Merchant] Failed to reach Guild Hall â€” skipping merchant step")
         yield
         return
 
@@ -1384,7 +1384,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         if _in_gh >= _expected_gh_alts:
             ConsoleLog(BOT_NAME, f"[Merchant] All {_expected_gh_alts} alt(s) arrived at GH")
             break
-        ConsoleLog(BOT_NAME, f"[Merchant] {_in_gh}/{_expected_gh_alts} alt(s) at GH — waiting")
+        ConsoleLog(BOT_NAME, f"[Merchant] {_in_gh}/{_expected_gh_alts} alt(s) at GH â€” waiting")
         yield from Routines.Yield.wait(500)
     else:
         _accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
@@ -1392,20 +1392,20 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
             1 for acc in _accounts
             if acc.AccountEmail != _my_email and int(acc.AgentData.Map.MapID) == _gh_map
         )
-        ConsoleLog(BOT_NAME, f"[Merchant] GH arrival timeout — {_in_gh}/{_expected_gh_alts} alts at GH. Proceeding.", PySystem.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Merchant] GH arrival timeout â€” {_in_gh}/{_expected_gh_alts} alts at GH. Proceeding.", PySystem.Console.MessageType.Warning)
 
     # wait for Merchant NPC to spawn (handles fresh GH instances)
     _npc_deadline = time.time() + 20.0
     while _find_npc_xy_by_name("Merchant") is None:
         if time.time() > _npc_deadline:
-            ConsoleLog(BOT_NAME, "[Merchant] Merchant NPC not found after 20s — proceeding anyway", PySystem.Console.MessageType.Warning)
+            ConsoleLog(BOT_NAME, "[Merchant] Merchant NPC not found after 20s â€” proceeding anyway", PySystem.Console.MessageType.Warning)
             break
         yield from Routines.Yield.wait(500)
 
-    # —— Disable InventoryPlus on all accounts during merchant ops ——
+    # â€”â€” Disable InventoryPlus on all accounts during merchant ops â€”â€”
     yield from _disable_merchant_widgets()
 
-    # —— Step 2: Find NPC coordinates ——————————————————————————————————————————
+    # â€”â€” Step 2: Find NPC coordinates â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     _RARE_MAT_MODELS = {935, 936}  # Diamond=935, Onyx Gemstone=936
     _RARE_MAT_FILTER  = "935,936"  # encoded for ShMem dispatch
     _CRAFTING_MAT_MODELS = {
@@ -1421,7 +1421,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
     mat_xy        = _find_npc_xy_by_name("Material Trader") if _merchant_sell_materials else None
     rare_xy       = _find_npc_xy_by_name("Rare") if (_merchant_buy_ectos or _merchant_sell_rare_mats) else None
 
-    # —— Step 2.5: Store consumable crafting mats before trader sales (leader + alts)
+    # â€”â€” Step 2.5: Store consumable crafting mats before trader sales (leader + alts)
     if _merchant_store_consumable_materials:
         ConsoleLog(BOT_NAME, "[Merchant] Depositing consumable crafting materials to storage on all accounts")
         deposit_refs = _dispatch_to_alts(
@@ -1432,7 +1432,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         yield from _coro_deposit_crafting_materials_to_storage(_CRAFTING_MAT_MODELS)
         yield from _wait_for_alt_dispatch_completion("deposit_materials", deposit_refs, SharedCommandType.MerchantMaterials)
 
-    # —— Step 3: Sell materials at trader (leader + alts) —————————————————————
+    # â€”â€” Step 3: Sell materials at trader (leader + alts) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     if _merchant_sell_materials:
         if mat_xy:
             tmx, tmy = mat_xy
@@ -1448,7 +1448,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         else:
             ConsoleLog(BOT_NAME, "[Merchant] No Material Trader NPC found")
 
-        # —— Step 4: Sell leftover stacks < 10 to regular merchant (leader + alts)
+        # â€”â€” Step 4: Sell leftover stacks < 10 to regular merchant (leader + alts)
         if merchant_xy:
             mx, my = merchant_xy
             ConsoleLog(BOT_NAME, "[Merchant] Dispatching sell_merchant_leftovers to alts")
@@ -1470,7 +1470,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
                 SharedCommandType.MerchantMaterials,
             )
 
-    # —— Step 5: Sell non-salvageable gold items (anniversary weapons) to merchant —
+    # â€”â€” Step 5: Sell non-salvageable gold items (anniversary weapons) to merchant â€”
     if merchant_xy:
         mx, my = merchant_xy
         ConsoleLog(BOT_NAME, "[Merchant] Dispatching sell_nonsalvageable_golds to alts")
@@ -1486,7 +1486,7 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
             SharedCommandType.MerchantMaterials,
         )
 
-    # —— Step 6: Sell XP/insight scrolls to merchant (leader + alts) ——————————
+    # â€”â€” Step 6: Sell XP/insight scrolls to merchant (leader + alts) â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     if merchant_xy:
         mx, my = merchant_xy
         ConsoleLog(BOT_NAME, "[Merchant] Dispatching sell_scrolls to alts")
@@ -1498,10 +1498,10 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         yield from _coro_sell_scrolls(mx, my)
         yield from _wait_for_alt_dispatch_completion("sell_scrolls", sell_scroll_refs, SharedCommandType.MerchantMaterials)
 
-    # —— Step 7: Restock kits (leader + alts) — after all selling to maximise free space
+    # â€”â€” Step 7: Restock kits (leader + alts) â€” after all selling to maximise free space
     if merchant_xy:
         mx, my = merchant_xy
-        ConsoleLog(BOT_NAME, f"[Merchant] Merchant at ({mx:.0f}, {my:.0f}) — dispatching kits to alts")
+        ConsoleLog(BOT_NAME, f"[Merchant] Merchant at ({mx:.0f}, {my:.0f}) â€” dispatching kits to alts")
         kit_refs = _dispatch_to_alts(
             SharedCommandType.MerchantItems,
             (mx, my, _merchant_id_kits_target, _merchant_salvage_kits_target),
@@ -1519,9 +1519,9 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
         yield from _wait_for_alt_dispatch_completion("restock_kits", kit_refs, SharedCommandType.MerchantItems)
         yield from Routines.Yield.wait(300)
     else:
-        ConsoleLog(BOT_NAME, "[Merchant] No Merchant NPC found — skipping kit purchase")
+        ConsoleLog(BOT_NAME, "[Merchant] No Merchant NPC found â€” skipping kit purchase")
 
-    # —— Step 6: Sell Diamonds & Onyx to Rare Material Trader (leader + alts) ——
+    # â€”â€” Step 6: Sell Diamonds & Onyx to Rare Material Trader (leader + alts) â€”â€”
     if _merchant_sell_rare_mats:
         if rare_xy:
             rx, ry = rare_xy
@@ -1539,10 +1539,10 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
                 SharedCommandType.MerchantMaterials,
             )
         else:
-            ConsoleLog(BOT_NAME, "[Merchant] No Rare Material Trader found — skipping rare mat sell")
+            ConsoleLog(BOT_NAME, "[Merchant] No Rare Material Trader found â€” skipping rare mat sell")
 
-    # —— Step 7: Buy ectos from storage excess (leader + alts independently)
-    # Storage is PER-ACCOUNT in GW — each account checks its own storage independently.
+    # â€”â€” Step 7: Buy ectos from storage excess (leader + alts independently)
+    # Storage is PER-ACCOUNT in GW â€” each account checks its own storage independently.
     # Always dispatch to alts so each alt can buy if ITS OWN storage exceeds threshold.
     if _merchant_buy_ectos and rare_xy:
         rx, ry = rare_xy
@@ -1563,17 +1563,17 @@ def _gh_merchant_setup(leave_party: bool = True) -> Generator:
                 stop_threshold=_merchant_ecto_threshold,
             )
         else:
-            ConsoleLog(BOT_NAME, f"[Merchant] Leader storage ({leader_storage:,}) at/below threshold — skipping leader ecto buy")
+            ConsoleLog(BOT_NAME, f"[Merchant] Leader storage ({leader_storage:,}) at/below threshold â€” skipping leader ecto buy")
         yield from _wait_for_alt_dispatch_completion("buy_ectoplasm", buy_ecto_refs, SharedCommandType.MerchantMaterials)
     elif _merchant_buy_ectos:
-        ConsoleLog(BOT_NAME, "[Merchant] Ecto buy skipped — no Rare Material Trader found")
+        ConsoleLog(BOT_NAME, "[Merchant] Ecto buy skipped â€” no Rare Material Trader found")
 
-    # —— Step 8: Wait for alts to finish their queued actions —————————————————
+    # â€”â€” Step 8: Wait for alts to finish their queued actions â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     if _merchant_alt_wait_ms > 0:
         ConsoleLog(BOT_NAME, f"[Merchant] Final settle wait {_merchant_alt_wait_ms}ms")
         yield from Routines.Yield.wait(_merchant_alt_wait_ms)
 
-    # —— Step 9: Return to Vlox's Fall ————————————————————————————————————————
+    # â€”â€” Step 9: Return to Vlox's Fall â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
     ConsoleLog(BOT_NAME, "[Merchant] Returning to Vlox's Fall")
     yield from _coro_travel_random_district(Vloxs_Fall)
     ConsoleLog(BOT_NAME, "[Merchant] Guild Hall merchant run complete")
@@ -1617,11 +1617,11 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
             break
         yield from Routines.Yield.wait(250)
     else:
-        ConsoleLog(BOT_NAME, "[Party] Leader ShMem did not update in time — proceeding anyway", PySystem.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Party] Leader ShMem did not update in time â€” proceeding anyway", PySystem.Console.MessageType.Warning)
 
     _ld = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(_my_email)
     if not _ld:
-        ConsoleLog(BOT_NAME, "[Party] Could not read leader ShMem — skipping invite", PySystem.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, "[Party] Could not read leader ShMem â€” skipping invite", PySystem.Console.MessageType.Warning)
         yield
         return
 
@@ -1655,9 +1655,9 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
                 acc.AgentData.Map.District   == _ld.AgentData.Map.District)
         )
         if _arrived >= _expected_alt_count:
-            ConsoleLog(BOT_NAME, f"[Party] All {_expected_alt_count} alt(s) on correct district — settling")
+            ConsoleLog(BOT_NAME, f"[Party] All {_expected_alt_count} alt(s) on correct district â€” settling")
             break
-        ConsoleLog(BOT_NAME, f"[Party] {_arrived}/{_expected_alt_count} alts on correct district — waiting")
+        ConsoleLog(BOT_NAME, f"[Party] {_arrived}/{_expected_alt_count} alts on correct district â€” waiting")
         yield from Routines.Yield.wait(1000)
     else:
         _accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
@@ -1669,7 +1669,7 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
                 acc.AgentData.Map.Language   == _ld.AgentData.Map.Language and
                 acc.AgentData.Map.District   == _ld.AgentData.Map.District)
         )
-        ConsoleLog(BOT_NAME, f"[Party] Arrival timeout — {_arrived}/{_expected_alt_count} on correct district. Proceeding.", PySystem.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Party] Arrival timeout â€” {_arrived}/{_expected_alt_count} on correct district. Proceeding.", PySystem.Console.MessageType.Warning)
 
     yield from Routines.Yield.wait(settle_ms)
 
@@ -1692,11 +1692,11 @@ def _summon_and_invite_party(settle_ms: int = 1000) -> Generator:
             yield
             return
 
-        ConsoleLog(BOT_NAME, f"[Party] Party incomplete ({_actual}/{_expected_size}) — retrying", PySystem.Console.MessageType.Warning)
+        ConsoleLog(BOT_NAME, f"[Party] Party incomplete ({_actual}/{_expected_size}) â€” retrying", PySystem.Console.MessageType.Warning)
         yield from Routines.Yield.wait(1500)
 
     _actual = Party.GetPartySize()
-    ConsoleLog(BOT_NAME, f"[Party] Still incomplete after 3 attempts ({_actual}/{_expected_size}) — proceeding", PySystem.Console.MessageType.Warning)
+    ConsoleLog(BOT_NAME, f"[Party] Still incomplete after 3 attempts ({_actual}/{_expected_size}) â€” proceeding", PySystem.Console.MessageType.Warning)
     yield
 
 def _gh_merchant_setup_for_alt_salvage_threshold() -> Generator:
@@ -1735,7 +1735,7 @@ def _gh_merchant_setup_if_inventory_full() -> Generator:
     if free_slots > _inventory_slots_threshold:
         yield
         return
-    ConsoleLog(BOT_NAME, f"[Merchant] Inventory nearly full ({free_slots} free slot) — resigning to outpost then triggering GH merchant run")
+    ConsoleLog(BOT_NAME, f"[Merchant] Inventory nearly full ({free_slots} free slot) â€” resigning to outpost then triggering GH merchant run")
 
     yield from _resign_all_to_outpost_before_merchant()
     yield from Routines.Yield.wait(10000)
@@ -2155,7 +2155,7 @@ def _accumulate_gb(account_key: str, run_count: int) -> None:
 
 def _draw_bds_stats() -> None:
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
 
     _ensure_ini_initialized()
 
@@ -2202,7 +2202,7 @@ def _draw_bds_stats() -> None:
         PyImGui.TableFlags.SizingFixedFit |
         PyImGui.TableFlags.NoHostExtendX
     )
-    _COL_W = 60.0  # standard column width — header text is always the widest element
+    _COL_W = 60.0  # standard column width â€” header text is always the widest element
     _ROW_H = 22    # uniform row height for vertical-centering helpers
     _HDR_COLOR = 26 | (38 << 8) | (51 << 16) | (255 << 24)
 
@@ -2236,10 +2236,10 @@ def _draw_bds_stats() -> None:
         PyImGui.set_cursor_pos_x(PyImGui.get_cursor_pos_x() + max(0.0, avail - tw))
         PyImGui.text_colored(s, color)
 
-    # ── Header ────────────────────────────────────────────────
+    # â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _bds_icon_exists = os.path.isfile(_BDS_ICON_PATH)
     if _bds_icon_exists:
-        ImGui.image(_BDS_ICON_PATH, (24, 24))
+        ImGui_Legacy.image(_BDS_ICON_PATH, (24, 24))
         PyImGui.same_line(0, 8)
     PyImGui.text_colored("BDS Statistics", gold)
     PyImGui.separator()
@@ -2248,7 +2248,7 @@ def _draw_bds_stats() -> None:
     global _scramble_accounts
     _scramble_accounts = PyImGui.checkbox("Hide Account Names", _scramble_accounts)
 
-    # ── Table 1: Overview ─────────────────────────────────────
+    # â”€â”€ Table 1: Overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     alltime_total_bds = sum(_bds_drops.values())
     session_total_bds = sum(_session_bds.values())
 
@@ -2294,7 +2294,7 @@ def _draw_bds_stats() -> None:
 
     PyImGui.spacing()
 
-    # ── Table 2: Run Timings ───────────────────────────────────
+    # â”€â”€ Table 2: Run Timings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     PyImGui.text_colored("Run Timings", cyan)
     if PyImGui.begin_table("##bds_timings", 5, tbl_flags):
         PyImGui.table_setup_column("Floor",   PyImGui.TableColumnFlags.WidthFixed, _COL_W)
@@ -2341,7 +2341,7 @@ def _draw_bds_stats() -> None:
 
     PyImGui.spacing()
 
-    # ── Table 3: BDS Drops per account ────────────────────────
+    # â”€â”€ Table 3: BDS Drops per account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     PyImGui.text_colored("BDS Drops", cyan)
     if PyImGui.begin_table("##bds_drops", 4, tbl_flags):
         PyImGui.table_setup_column("Account",   PyImGui.TableColumnFlags.WidthStretch)
@@ -2368,7 +2368,7 @@ def _draw_bds_stats() -> None:
             PyImGui.table_set_column_index(2); _rtext(str(a_count))
             PyImGui.table_set_column_index(3); _rtext(_runs_per_drop(_total_runs, a_count))
 
-        # ── Totals footer ──
+        # â”€â”€ Totals footer â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Total")
         PyImGui.table_set_column_index(1); _rtext_colored(str(session_total), gold)
@@ -2379,7 +2379,7 @@ def _draw_bds_stats() -> None:
 
     PyImGui.spacing()
 
-    # ── Table 4: Glacial Blades Drops per account ──────────────
+    # â”€â”€ Table 4: Glacial Blades Drops per account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     PyImGui.text_colored("Glacial Blades Drops", cyan)
     if PyImGui.begin_table("##gb_drops", 4, tbl_flags):
         PyImGui.table_setup_column("Account",   PyImGui.TableColumnFlags.WidthStretch)
@@ -2406,7 +2406,7 @@ def _draw_bds_stats() -> None:
             PyImGui.table_set_column_index(2); _rtext(str(a_count))
             PyImGui.table_set_column_index(3); _rtext(_runs_per_drop(_total_runs, a_count))
 
-        # ── Totals footer ──
+        # â”€â”€ Totals footer â”€â”€
         PyImGui.table_next_row(0, _ROW_H)
         PyImGui.table_set_column_index(0); _ltext("Total")
         PyImGui.table_set_column_index(1); _rtext_colored(str(session_total), gold)
@@ -2424,7 +2424,7 @@ def _draw_bds_stats() -> None:
 _STEP_BY_NAME: Dict[str, int] = {}  # name -> global index
 _STEP_META: List[Dict[str, Any]] = []  # {idx,name,map_id,x,y}
 
-# â€œLearned shrinesâ€ per map (from rez positions)
+# Ã¢â‚¬Å“Learned shrinesÃ¢â‚¬Â per map (from rez positions)
 _SHRINES: Dict[int, List[Tuple[float, float]]] = {}
 
 _LAST_STEP_NAME: Optional[str] = None
@@ -2483,7 +2483,7 @@ def TrackCurrentStep(bot: "Botting") -> None:
     if isinstance(cur, str) and cur and cur != _LAST_STEP_NAME:
         _LAST_STEP_NAME = cur
         _LAST_STEP_IDX = _STEP_BY_NAME.get(cur, _LAST_STEP_IDX)
-        ConsoleLog("STEP", f"ðŸ‘€ {cur} (idx={_LAST_STEP_IDX})")
+        ConsoleLog("STEP", f"Ã°Å¸â€˜â‚¬ {cur} (idx={_LAST_STEP_IDX})")
 
 def _dist(ax: float, ay: float, bx: float, by: float) -> float:
     return math.hypot(ax - bx, ay - by)
@@ -2595,7 +2595,7 @@ def pickup_torch(max_scan_dist: float = 5000, attempts: int = 40) -> Generator:
                 if owner not in (0, me):
                     continue
             except Exception:
-                owner = -1  # si owner illisible, on tente quand mÃªme
+                owner = -1  # si owner illisible, on tente quand mÃƒÂªme
 
             try:
                 gid = int(Agent.GetItemAgentItemID(aid))
@@ -2641,7 +2641,7 @@ def pickup_torch(max_scan_dist: float = 5000, attempts: int = 40) -> Generator:
         if not target_agent:
             continue
 
-        # stop-move pour Ã©viter annulation
+        # stop-move pour ÃƒÂ©viter annulation
         try:
             px, py = Player.GetXY()
             Player.Move(px, py)
@@ -2676,7 +2676,7 @@ def pickup_torch(max_scan_dist: float = 5000, attempts: int = 40) -> Generator:
                 pass
             yield from Routines.Yield.wait(450)
 
-            # check disparition (ramassÃ©)
+            # check disparition (ramassÃƒÂ©)
             try:
                 still_there = bool(Agent.GetItemAgentByID(target_agent))
             except Exception:
@@ -2850,10 +2850,10 @@ def run_brazier_sequence(points: list[tuple[float, float]], interact_dist: float
 
 
 FENDI_GADGET_ID = 8934
-FENDI_SCAN_RADIUS = 700.0  # un peu plus large que 500 pour Ãªtre safe
+FENDI_SCAN_RADIUS = 700.0  # un peu plus large que 500 pour ÃƒÂªtre safe
 
 def _target_fendi_chest_agent_id() -> int:
-    """Retourne l'agent_id du coffre de Fendi (filtrÃ© par gadget_id)."""
+    """Retourne l'agent_id du coffre de Fendi (filtrÃƒÂ© par gadget_id)."""
     gadgets = AgentArray.GetGadgetArray()
     gadgets = AgentArray.Filter.ByDistance(gadgets, FENDI_CHEST_POSITION, FENDI_SCAN_RADIUS)
     gadgets = AgentArray.Sort.ByDistance(gadgets, FENDI_CHEST_POSITION)
@@ -2878,7 +2878,7 @@ def _target_fendi_chest_agent_id() -> int:
 
 
 def debug_nearby_gadgets(max_print: int = 10) -> Generator:
-    """Debug rapide si jamais tu veux vÃ©rifier les candidats autour du point."""
+    """Debug rapide si jamais tu veux vÃƒÂ©rifier les candidats autour du point."""
     gadgets = AgentArray.GetGadgetArray()
     gadgets = AgentArray.Filter.ByDistance(gadgets, FENDI_CHEST_POSITION, FENDI_SCAN_RADIUS)
     gadgets = AgentArray.Sort.ByDistance(gadgets, FENDI_CHEST_POSITION)
@@ -3123,7 +3123,7 @@ def _on_party_wipe(bot: "Botting"):
     else:
         chosen = pick_nearest_anchor(map_id, float(player_x), float(player_y))                          
 
-    ConsoleLog("Res Check", f"â†© wipe-route -> {chosen} (map={map_id}, pos=({player_x:.0f},{player_y:.0f}))")
+    ConsoleLog("Res Check", f"Ã¢â€ Â© wipe-route -> {chosen} (map={map_id}, pos=({player_x:.0f},{player_y:.0f}))")
     bot.config.FSM.jump_to_state_by_name(chosen)
 
     bot.config.FSM.resume()
@@ -3139,7 +3139,7 @@ def OnPartyWipe(bot: "Botting"):
 def S_Path(name: str, points: list[tuple[float, float]], map_id: Optional[int] = None) -> None:
     bot.States.AddHeader(name)
 
-    # âœ… Step "ancre" jumpable
+    # Ã¢Å“â€¦ Step "ancre" jumpable
     bot.States.AddCustomState(_step_anchor, name)
 
     n = len(points)
@@ -3238,7 +3238,7 @@ def _draw_merchant_settings() -> None:
     _ensure_ini_initialized()
 
     PyImGui.separator()
-    PyImGui.text("Merchant (Guild Hall) — runs once on startup")
+    PyImGui.text("Merchant (Guild Hall) â€” runs once on startup")
     PyImGui.separator()
 
     new_enabled = PyImGui.checkbox("Restock kits / sell materials on startup", _merchant_enabled)
@@ -3322,7 +3322,7 @@ bot.UI.override_draw_config(_draw_bds_settings)
 
 def _draw_bds_window_with_stats_tab() -> None:
     import PyImGui
-    from Py4GWCoreLib import ImGui, IniManager, Routines
+    from Py4GWCoreLib import ImGui_Legacy, IniManager, Routines
 
     main_child_dimensions = (500, 350)
     iconwidth = 96
@@ -3339,7 +3339,7 @@ def _draw_bds_window_with_stats_tab() -> None:
     if not bot.config.ini_key:
         return
 
-    if ImGui.Begin(
+    if ImGui_Legacy.Begin(
         ini_key=bot.config.ini_key,
         name=bot.config.bot_name,
         p_open=True,
@@ -3377,7 +3377,7 @@ def _draw_bds_window_with_stats_tab() -> None:
 
             PyImGui.end_tab_bar()
 
-    ImGui.End(bot.config.ini_key)
+    ImGui_Legacy.End(bot.config.ini_key)
 
     if Routines.Checks.Map.MapValid():
         bot.UI.DrawPath(
@@ -3389,14 +3389,14 @@ def _draw_bds_window_with_stats_tab() -> None:
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Bone Dragon Staff Farmer bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

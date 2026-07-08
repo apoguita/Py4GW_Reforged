@@ -4,7 +4,7 @@ import Py4GW
 from typing import Dict
 
 
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import Item
@@ -205,13 +205,13 @@ class AutoHandlderModule:
             
         UIManager().DrawFrame(content_frame, Utils.RGBToColor(0, 0, 0, 255))
         
-        #flags= ImGui.PushTransparentWindow()
+        #flags= ImGui_Legacy.PushTransparentWindow()
         
         flags = ( PyImGui.WindowFlags.NoCollapse | 
                 PyImGui.WindowFlags.NoTitleBar |
                 PyImGui.WindowFlags.NoResize
         )
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
         
         PyImGui.set_next_window_pos(left, top)
         PyImGui.set_next_window_size(width, height)
@@ -224,8 +224,8 @@ class AutoHandlderModule:
                 active_button = IconsFontAwesome5.ICON_TOGGLE_OFF
                 active_tooltip = "AutoHandler is inactive"
                 
-            self.auto_handler.module_active = ImGui.toggle_button(active_button + "##AutoHandlerActive", self.auto_handler.module_active)
-            ImGui.show_tooltip(active_tooltip)
+            self.auto_handler.module_active = ImGui_Legacy.toggle_button(active_button + "##AutoHandlerActive", self.auto_handler.module_active)
+            ImGui_Legacy.show_tooltip(active_tooltip)
             
             PyImGui.same_line(0,-1)
             PyImGui.text("|")
@@ -234,14 +234,14 @@ class AutoHandlderModule:
             if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##autosalvsave"):
                 self.auto_handler.save_to_ini()
                 ConsoleLog(self.MODULE_NAME, "Settings saved to Auto Inv.ini", PySystem.Console.MessageType.Success)
-            ImGui.show_tooltip("Save Settings")
+            ImGui_Legacy.show_tooltip("Save Settings")
             PyImGui.same_line(0,-1)
             if PyImGui.button(IconsFontAwesome5.ICON_SYNC + "##autosalvreload"):
                 self.auto_handler.load_from_ini()
                 self.auto_handler.lookup_throttle.SetThrottleTime(self.auto_handler._LOOKUP_TIME)
                 self.auto_handler.lookup_throttle.Reset()
                 ConsoleLog(self.MODULE_NAME, "Settings reloaded from Auto Inv.ini", PySystem.Console.MessageType.Success)
-            ImGui.show_tooltip("Reload Settings")
+            ImGui_Legacy.show_tooltip("Reload Settings")
             
             PyImGui.separator()
             
@@ -251,7 +251,7 @@ class AutoHandlderModule:
             PyImGui.push_item_width(150)
             self.auto_handler._LOOKUP_TIME = PyImGui.input_int("##lookup_time",  self.auto_handler._LOOKUP_TIME)
             PyImGui.pop_item_width()
-            ImGui.show_tooltip("Changes will take effect after the next lookup.")
+            ImGui_Legacy.show_tooltip("Changes will take effect after the next lookup.")
             
             if not Map.IsExplorable():
                 PyImGui.text("Auto Lookup only runs in explorable.")
@@ -325,17 +325,17 @@ class AutoHandlderModule:
                             
                     PyImGui.end_tab_item()
                 if PyImGui.begin_tab_item("Deposit"):
-                    self.auto_handler.deposit_materials = ImGui.toggle_button( IconsFontAwesome5.ICON_HAMMER + "##depositmaterials", self.auto_handler.deposit_materials)
-                    ImGui.show_tooltip("Deposit Materials")
+                    self.auto_handler.deposit_materials = ImGui_Legacy.toggle_button( IconsFontAwesome5.ICON_HAMMER + "##depositmaterials", self.auto_handler.deposit_materials)
+                    ImGui_Legacy.show_tooltip("Deposit Materials")
                     PyImGui.same_line(0,3)
-                    self.auto_handler.deposit_trophies = ImGui.toggle_button(IconsFontAwesome5.ICON_TROPHY + "##deposittrophies", self.auto_handler.deposit_trophies)
-                    ImGui.show_tooltip("Deposit Trophies")
+                    self.auto_handler.deposit_trophies = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_TROPHY + "##deposittrophies", self.auto_handler.deposit_trophies)
+                    ImGui_Legacy.show_tooltip("Deposit Trophies")
                     PyImGui.same_line(0,3)
-                    self.auto_handler.deposit_event_items = ImGui.toggle_button(IconsFontAwesome5.ICON_HAT_WIZARD + "##depositeventitems", self.auto_handler.deposit_event_items)
-                    ImGui.show_tooltip("Deposit Event Items")
+                    self.auto_handler.deposit_event_items = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_HAT_WIZARD + "##depositeventitems", self.auto_handler.deposit_event_items)
+                    ImGui_Legacy.show_tooltip("Deposit Event Items")
                     PyImGui.same_line(0,3)
-                    self.auto_handler.deposit_dyes = ImGui.toggle_button(IconsFontAwesome5.ICON_FLASK + "##depositdyes", self.auto_handler.deposit_dyes)
-                    ImGui.show_tooltip("Deposit Dyes")
+                    self.auto_handler.deposit_dyes = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_FLASK + "##depositdyes", self.auto_handler.deposit_dyes)
+                    ImGui_Legacy.show_tooltip("Deposit Dyes")
                     
                     PyImGui.same_line(0,3)
                     state = self.auto_handler.deposit_blues
@@ -363,7 +363,7 @@ class AutoHandlderModule:
                     PyImGui.text("Keep Gold:")
                     PyImGui.same_line(0,-1)
                     self.auto_handler.keep_gold = PyImGui.input_int("##keep_gold", self.auto_handler.keep_gold, 1, 1000, PyImGui.InputTextFlags.NoFlag)
-                    ImGui.show_tooltip("Keep Gold in inventory, deposit the rest")
+                    ImGui_Legacy.show_tooltip("Keep Gold in inventory, deposit the rest")
                     
                     PyImGui.end_tab_item()
                 PyImGui.end_tab_bar()

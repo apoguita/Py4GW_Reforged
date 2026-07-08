@@ -102,7 +102,7 @@ class UI:
                         name = self.widget_state.quest.counter_pieces[i].value.name if i < len(self.widget_state.quest.counter_pieces) else "None"
 
                         if self.widget_state.quest.counter_pieces[i].value.item_model_id != 0:
-                            ImGui.DrawTexture(
+                            ImGui_Legacy.DrawTexture(
                                 get_texture_for_model(self.widget_state.quest.counter_pieces[i].value.item_model_id),
                                 20, 20,
                             )

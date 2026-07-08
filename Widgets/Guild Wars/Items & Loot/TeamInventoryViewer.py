@@ -11,7 +11,7 @@ from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import DyeColor
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import IniHandler
 import PyImGui
 from Py4GWCoreLib import Routines
@@ -39,7 +39,7 @@ INI_WIDGET_WINDOW_PATH = os.path.join(BASE_DIR, "team_inventory_viewer.ini")
 MOD_DB = ModDatabase.load(os.path.join(project_root, "Sources/marks_sources/mods_data"))
 os.makedirs(BASE_DIR, exist_ok=True)
 
-# ——— Window Persistence Setup ———
+# â€”â€”â€” Window Persistence Setup â€”â€”â€”
 ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
 save_window_timer = Timer()
 save_window_timer.Start()
@@ -54,7 +54,7 @@ COLLAPSED = "collapsed"
 X_POS = "x"
 Y_POS = "y"
 
-# load last‐saved window state (fallback to 100,100 / un-collapsed)
+# load lastâ€saved window state (fallback to 100,100 / un-collapsed)
 window_x = ini_window.read_int(MODULE_NAME, X_POS, 1512)
 window_y = ini_window.read_int(MODULE_NAME, Y_POS, 0)
 window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, True)
@@ -142,13 +142,13 @@ ATTRIBUTES = {
     "Wind Prayers",
 }
 
-# 1. Armor runes → "of Vitae", "of Major Vigor", "of Superior Soul Reaping", …
+# 1. Armor runes â†’ "of Vitae", "of Major Vigor", "of Superior Soul Reaping", â€¦
 NON_ATTRIBUTE_RUNES = {"Vitae", "Vigor", "Attunement", "Clarity", "Purity", "Recovery", "Restoration", "Absorption"}
 ARMOR_RUNE_SUFFIXES = {
     f"of {mod}{rune}" for rune in ATTRIBUTES | NON_ATTRIBUTE_RUNES for mod in ["", "Minor ", "Major ", "Superior "]
 }
 
-# 2. Weapon grips / handles / inscriptions → "Grip of Axe Mastery", "Handle of Soul Reaping", …
+# 2. Weapon grips / handles / inscriptions â†’ "Grip of Axe Mastery", "Handle of Soul Reaping", â€¦
 WEAPON_ATTRIBUTE_SUFFIXES = {f"of {attr}" for attr in ATTRIBUTES}
 
 OTHER_WEAPON_SUFFIXES = {
@@ -822,7 +822,7 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
                 print(f"Exception fetching name for {item_id}: {e}")
                 final_name = None
 
-        # Nothing worked → cannot name item
+        # Nothing worked â†’ cannot name item
         if not final_name:
             continue
 
@@ -940,7 +940,7 @@ def get_weapon_name_from_modifiers(item):
     # --- Construct name ---
     name_parts = []
 
-    # Inherent mods like “Vampiric” or “Insightful” go before everything else
+    # Inherent mods like â€œVampiricâ€ or â€œInsightfulâ€ go before everything else
     if prefix:
         name_parts.append(prefix)
 
@@ -1015,7 +1015,7 @@ def draw_widget():
                         # === Gather all matching results across accounts ===
                         search_results = []
                         for email, account_data in TEAM_INVENTORY_CACHE.items():
-                            # Build a neat identifier like: email — [Char1, Char2]
+                            # Build a neat identifier like: email â€” [Char1, Char2]
                             character_names = list(account_data.get("Characters", {}).keys())
                             if character_names:
                                 character_block = "\n".join(f"   - {name}" for name in character_names)
@@ -1091,7 +1091,7 @@ def draw_widget():
                                     # === ICON ===
                                     PyImGui.table_next_column()
                                     if texture:
-                                        ImGui.DrawTexture(texture, 20, 20)
+                                        ImGui_Legacy.DrawTexture(texture, 20, 20)
                                     else:
                                         PyImGui.text("N/A")
 
@@ -1181,7 +1181,7 @@ def draw_widget():
                                                 # === ICON COLUMN ===
                                                 PyImGui.table_next_column()
                                                 if texture:
-                                                    ImGui.DrawTexture(texture, 20, 20)
+                                                    ImGui_Legacy.DrawTexture(texture, 20, 20)
                                                 else:
                                                     PyImGui.text("N/A")
 
@@ -1238,7 +1238,7 @@ def draw_widget():
                                             # === ICON COLUMN ===
                                             PyImGui.table_next_column()
                                             if texture:
-                                                ImGui.DrawTexture(texture, 20, 20)
+                                                ImGui_Legacy.DrawTexture(texture, 20, 20)
                                             else:
                                                 PyImGui.text("N/A")
 
@@ -1349,9 +1349,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Team Inventory Viewer", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

@@ -1,4 +1,4 @@
-from Py4GWCoreLib import GLOBAL_CACHE, Console, ConsoleLog, UIManager, UIMessage, Color, ImGui
+from Py4GWCoreLib import GLOBAL_CACHE, Console, ConsoleLog, UIManager, UIMessage, Color, ImGui_Legacy
 import PyImGui
 import struct
 from Py4GWCoreLib.native_src.internals.prototypes import Prototypes
@@ -102,12 +102,12 @@ class WorldMapContext(Structure):
         ("top_left", Vec2f),        # 0x003C
         ("bottom_right", Vec2f),    # 0x0044
 
-        ("h004c", c_uint32 * 7),    # 0x004C → 0x0068
+        ("h004c", c_uint32 * 7),    # 0x004C â†’ 0x0068
 
         ("h0068", c_float),         # 0x0068
         ("h006c", c_float),         # 0x006C
 
-        ("params", c_uint32 * 0x6D) # 0x0070 → 0x224
+        ("params", c_uint32 * 0x6D) # 0x0070 â†’ 0x224
     ]
 
 assert sizeof(WorldMapContext) == 0x224
@@ -224,9 +224,9 @@ def draw_dword_probe_table(table_id: str, label: str, values):
         # ---- float reinterpretation ----
         try:
             fval = struct.unpack("<f", struct.pack("<I", val))[0]
-            float_str = f"{fval:.3f}" if -1e6 < fval < 1e6 else "—"
+            float_str = f"{fval:.3f}" if -1e6 < fval < 1e6 else "â€”"
         except Exception:
-            float_str = "—"
+            float_str = "â€”"
 
         # ---- pointer heuristic ----
         is_ptr = 0x10000 <= val <= 0x7FFFFFFF
@@ -310,9 +310,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Scanner Test Utility", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

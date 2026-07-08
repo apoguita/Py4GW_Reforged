@@ -1,10 +1,10 @@
 
 import math
 import PyImGui
-from Py4GWCoreLib import Camera, ImGui, Player
+from Py4GWCoreLib import Camera, ImGui_Legacy, Player
 from Py4GWCoreLib.DXOverlay import DXOverlay
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
-from Py4GWCoreLib.ImGui_src.WindowModule import WindowModule
+from Py4GWCoreLib.ImGui_Legacy_src.WindowModule import WindowModule
 from Py4GWCoreLib.Overlay import Overlay
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
@@ -112,29 +112,29 @@ def draw_configure():
             "You can configure the display settings, such as colors and visibility options, to suit your preferences.\n\n"
             "Use this tool to enhance your navigation through the sulfurous areas of the game."
         )
-        ImGui.text_wrapped(text)
+        ImGui_Legacy.text_wrapped(text)
         
-        draw_flags = ImGui.checkbox("Draw Waypoint Flags", settings.draw_flags)
+        draw_flags = ImGui_Legacy.checkbox("Draw Waypoint Flags", settings.draw_flags)
         if draw_flags != settings.draw_flags:
             settings.draw_flags = draw_flags
             settings.save()
         
-        draw_paths = ImGui.checkbox("Draw Paths", settings.draw_paths)
+        draw_paths = ImGui_Legacy.checkbox("Draw Paths", settings.draw_paths)
         if draw_paths != settings.draw_paths:
             settings.draw_paths = draw_paths        
             settings.save()
             
-        path_collision = ImGui.checkbox("Use Path Collision", settings.use_path_collision)
+        path_collision = ImGui_Legacy.checkbox("Use Path Collision", settings.use_path_collision)
         if path_collision != settings.use_path_collision:
             settings.use_path_collision = path_collision        
             settings.save()
 
-        flag_color = ImGui.color_edit4("Flag Color", settings.flag_color.color_tuple)
+        flag_color = ImGui_Legacy.color_edit4("Flag Color", settings.flag_color.color_tuple)
         if flag_color is not None and not color_equal(flag_color, settings.flag_color.color_tuple):
             settings.flag_color = Color.from_tuple(flag_color)
             settings.save()
         
-        path_color = ImGui.color_edit4("Path Color", settings.path_color.color_tuple)
+        path_color = ImGui_Legacy.color_edit4("Path Color", settings.path_color.color_tuple)
         if path_color is not None and not color_equal(path_color, settings.path_color.color_tuple):
             settings.path_color = Color.from_tuple(path_color)
             settings.save()

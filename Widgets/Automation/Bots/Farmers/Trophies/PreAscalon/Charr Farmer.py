@@ -34,18 +34,18 @@ KILLING_PATH = [
 # WIPE HANDLING
 # =========================
 def _on_party_wipe(bot: "Botting"):
-    """Gère le wipe de l'équipe"""
+    """GÃ¨re le wipe de l'Ã©quipe"""
     while Routines.Checks.Player.IsDead():
         yield from bot.Wait._coro_for_time(1000)
         if not Routines.Checks.Map.MapValid():
             bot.config.FSM.resume()
             return
-    # Quand le joueur est ressuscité, reprendre au combat
+    # Quand le joueur est ressuscitÃ©, reprendre au combat
     bot.States.JumpToStepName("[H]Combat_3")
     bot.config.FSM.resume()
 
 def OnPartyWipe(bot: "Botting"):
-    """Callback appelé lors d'un wipe"""
+    """Callback appelÃ© lors d'un wipe"""
     ConsoleLog("on_party_wipe", "Party wipe detected", log=True)
     fsm = bot.config.FSM
     fsm.pause()
@@ -61,12 +61,12 @@ def UseImpStone():
     item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(30847)
     
     if item_id:
-        ConsoleLog("UseImpStone", f"Imp Stone trouvée (item_id: {item_id}), utilisation...", log=True)
+        ConsoleLog("UseImpStone", f"Imp Stone trouvÃ©e (item_id: {item_id}), utilisation...", log=True)
         GLOBAL_CACHE.Inventory.UseItem(item_id)
         yield from Routines.Yield.wait(1000)
-        ConsoleLog("UseImpStone", "Imp Stone utilisée!", log=True)
+        ConsoleLog("UseImpStone", "Imp Stone utilisÃ©e!", log=True)
     else:
-        ConsoleLog("UseImpStone", "Imp Stone non trouvée dans l'inventaire", log=True)
+        ConsoleLog("UseImpStone", "Imp Stone non trouvÃ©e dans l'inventaire", log=True)
     
     yield
 
@@ -108,11 +108,11 @@ def Routine(bot: Botting) -> None:
     
     # ===== BOUCLE AUTOMATIQUE =====
     bot.UI.PrintMessageToConsole(BOT_NAME, "Run completed - Restarting...")
-    # Retourne à "Exit Outpost" - c'est le 2ème header donc _2
+    # Retourne Ã  "Exit Outpost" - c'est le 2Ã¨me header donc _2
     bot.States.JumpToStepName("[H]Exit Outpost_2")
 
 # =========================
-# DÉMARRAGE DU BOT
+# DÃ‰MARRAGE DU BOT
 # =========================
 bot.SetMainRoutine(Routine)
 
@@ -122,14 +122,14 @@ def main():
     
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Charr Farmer Bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

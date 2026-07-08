@@ -153,7 +153,7 @@ RUN_NAME_MAP = {
     },
 }
 
-# 7) Neutral button colors (light gray → slightly brighter on hover → slightly darker on active)
+# 7) Neutral button colors (light gray â†’ slightly brighter on hover â†’ slightly darker on active)
 neutral_button        = Color(33, 51, 58, 255).to_tuple_normalized()  # default button
 neutral_button_hover  = Color(140, 140, 140, 255).to_tuple_normalized()  # hovered
 neutral_button_active = Color( 90,  90,  90, 255).to_tuple_normalized()  # pressed
@@ -328,7 +328,7 @@ def draw_ui():
             runs_raw, runs_display = get_cached_runs_for_region(selected_region)
 
             if not runs_raw:
-                PyImGui.text("⚠ No runs found in this region!")
+                PyImGui.text("âš  No runs found in this region!")
             else:
                 if selected_run not in runs_raw:
                     selected_run = runs_raw[0]
@@ -498,9 +498,9 @@ def draw_build_window():
         # --- Title ---
         dervish = os.path.join(PY4GW_ROOT, "Textures/Profession_Icons/[10] - Dervish.png")
         assasin = os.path.join(PY4GW_ROOT, "Textures/Profession_Icons/[7] - Assassin.png")
-        ImGui.DrawTexture(dervish, 30, 30)
+        ImGui_Legacy.DrawTexture(dervish, 30, 30)
         PyImGui.same_line(0, 6)
-        ImGui.DrawTexture(assasin, 30, 30)
+        ImGui_Legacy.DrawTexture(assasin, 30, 30)
         PyImGui.same_line(0, 6)
         PyImGui.text_colored("Dervish / Assassin", (1.0, 0.75, 0.0, 1.0))
         PyImGui.separator()
@@ -513,7 +513,7 @@ def draw_build_window():
             full_texture_path = get_full_texture_path(skill_id)
 
             if full_texture_path and os.path.exists(full_texture_path):
-                ImGui.DrawTexture(full_texture_path, 48, 48)
+                ImGui_Legacy.DrawTexture(full_texture_path, 48, 48)
             else:
                 PySystem.Console.Log("BuildViewer", f"Missing texture for skill {skill_id} -> {full_texture_path}", PySystem.Console.MessageType.Warning)
 

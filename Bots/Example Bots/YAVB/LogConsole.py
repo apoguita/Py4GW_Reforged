@@ -1,6 +1,6 @@
 from enum import IntEnum
 from Py4GWCoreLib import Color
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import PyImGui
 from datetime import datetime
 from typing import Optional
@@ -58,7 +58,7 @@ class LogConsole:
         self.is_snapped = is_snapped
         self.window_snapped_border = "Right"
         self.window_module_initialized = False
-        self.window_module = ImGui.WindowModule(
+        self.window_module = ImGui_Legacy.WindowModule(
             module_name=module_name,
             window_name=module_name,
             window_pos=self.window_pos,

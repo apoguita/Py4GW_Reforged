@@ -5,7 +5,7 @@ import time
 from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib.Builds.Any.KeiranThackerayEOTN import KeiranThackerayEOTN
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
-                          Map, ImGui, ActionQueueManager, Agent, Player, AgentArray, Pathing,
+                          Map, ImGui_Legacy, ActionQueueManager, Agent, Player, AgentArray, Pathing,
                           TitleID, TITLE_TIERS)
 from Py4GWCoreLib import *
 
@@ -38,7 +38,7 @@ class BotSettings:
     # Vanguard title cache (populated at start and after each successful run)
     VANGUARD_SCANNED: bool = False
     VANGUARD_RANK: int = 0
-    VANGUARD_TIER_NAME: str = "–"
+    VANGUARD_TIER_NAME: str = "â€“"
     VANGUARD_POINTS: int = 0
     VANGUARD_NEXT_REQUIRED: int | None = None
 
@@ -579,9 +579,9 @@ def main():
 
                     PyImGui.separator()
 
-                    ImGui.push_font("Regular", 18)
+                    ImGui_Legacy.push_font("Regular", 18)
                     PyImGui.text("Statistics")
-                    ImGui.pop_font()
+                    ImGui_Legacy.pop_font()
                     
                     if PyImGui.collapsing_header("Runs"):
                         # Total Runs

@@ -50,20 +50,20 @@ def DrawPlayerData(player_number):
             PyImGui.table_next_row()
             PyImGui.table_next_column()
 
-            follow_buton = ImGui.toggle_button("F", player.follow,30,30)
-            ImGui.show_tooltip("Follow")
+            follow_buton = ImGui_Legacy.toggle_button("F", player.follow,30,30)
+            ImGui_Legacy.show_tooltip("Follow")
             PyImGui.table_next_column()
-            collision_button = ImGui.toggle_button("C", player.collision,30,30)
-            ImGui.show_tooltip("Collision")
+            collision_button = ImGui_Legacy.toggle_button("C", player.collision,30,30)
+            ImGui_Legacy.show_tooltip("Collision")
             PyImGui.table_next_column()
-            looting_button = ImGui.toggle_button("L", player.looting,30,30)
-            ImGui.show_tooltip("Loot")
+            looting_button = ImGui_Legacy.toggle_button("L", player.looting,30,30)
+            ImGui_Legacy.show_tooltip("Loot")
             PyImGui.table_next_column()
-            target_button = ImGui.toggle_button("T", player.target,30,30)
-            ImGui.show_tooltip("Target")
+            target_button = ImGui_Legacy.toggle_button("T", player.target,30,30)
+            ImGui_Legacy.show_tooltip("Target")
             PyImGui.table_next_column()
-            combat_button = ImGui.toggle_button("X", player.combat,30,30)
-            ImGui.show_tooltip("Combat")
+            combat_button = ImGui_Legacy.toggle_button("X", player.combat,30,30)
+            ImGui_Legacy.show_tooltip("Combat")
 
 
             if looting_button != player.looting:
@@ -89,8 +89,8 @@ def DrawPlayerData(player_number):
                 PyImGui.table_next_row()
                 for i, skill in enumerate(player.skills):
                     PyImGui.table_next_column()
-                    skill_button = ImGui.toggle_button(f"{i+1}", skill, 20, 20)
-                    ImGui.show_tooltip(f"Skill {i+1}")
+                    skill_button = ImGui_Legacy.toggle_button(f"{i+1}", skill, 20, 20)
+                    ImGui_Legacy.show_tooltip(f"Skill {i+1}")
                     if skill_button != player.skills[i]:
                         hero_ai_handler.SetSkill(player.player_number, i+1, skill_button)
                 PyImGui.end_table()
@@ -101,20 +101,20 @@ def DrawPlayerData(player_number):
                 PyImGui.table_next_row()
                 PyImGui.table_next_column()
                 resign_button = False
-                resign_button = ImGui.toggle_button("R", resign_button,30,30)
-                ImGui.show_tooltip("Resign")
+                resign_button = ImGui_Legacy.toggle_button("R", resign_button,30,30)
+                ImGui_Legacy.show_tooltip("Resign")
                 PyImGui.table_next_column()
                 take_quest_button = False
-                take_quest_button = ImGui.toggle_button("Q", take_quest_button,30,30)
-                ImGui.show_tooltip("Take Quest")
+                take_quest_button = ImGui_Legacy.toggle_button("Q", take_quest_button,30,30)
+                ImGui_Legacy.show_tooltip("Take Quest")
                 PyImGui.table_next_column()
                 identify_button = False
-                identify_button = ImGui.toggle_button("I", identify_button,30,30)
-                ImGui.show_tooltip("Identify Items")
+                identify_button = ImGui_Legacy.toggle_button("I", identify_button,30,30)
+                ImGui_Legacy.show_tooltip("Identify Items")
                 PyImGui.table_next_column()
                 salvage_button = False
-                salvage_button = ImGui.toggle_button("S", salvage_button,30,30)
-                ImGui.show_tooltip("Salvage First Item")
+                salvage_button = ImGui_Legacy.toggle_button("S", salvage_button,30,30)
+                ImGui_Legacy.show_tooltip("Salvage First Item")
                 PyImGui.table_next_column()
                 PyImGui.end_table()
 

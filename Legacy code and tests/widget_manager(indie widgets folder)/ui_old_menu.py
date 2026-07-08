@@ -1,4 +1,4 @@
-from Py4GWCoreLib import PyImGui, ImGui, IconsFontAwesome5, ConsoleLog, Py4GW, Utils, ThrottledTimer
+from Py4GWCoreLib import PyImGui, ImGui_Legacy, IconsFontAwesome5, ConsoleLog, Py4GW, Utils, ThrottledTimer
 from .handler import handler
 from .config_scope import use_account_settings
 from . import state
@@ -30,7 +30,7 @@ def draw_old_widget_ui():
         if PyImGui.button(IconsFontAwesome5.ICON_RETWEET + "##Reload Widgets"):
             ConsoleLog(state.module_name, "Reloading Widgets...", PySystem.Console.MessageType.Info)
             handler.discover_widgets()
-        ImGui.show_tooltip("Reloads all widgets")
+        ImGui_Legacy.show_tooltip("Reloads all widgets")
         PyImGui.same_line(0.0, 10)
         
         toggle_label = IconsFontAwesome5.ICON_TOGGLE_ON if state.enable_all else IconsFontAwesome5.ICON_TOGGLE_OFF
@@ -43,7 +43,7 @@ def draw_old_widget_ui():
             handler._write_global_setting(state.module_name, "enable_all", str(state.enable_all))
         if is_enabled:
             PyImGui.pop_style_color(3)
-        ImGui.show_tooltip("Toggle all widgets")
+        ImGui_Legacy.show_tooltip("Toggle all widgets")
         PyImGui.separator()
         draw_widget_contents_old()
     PyImGui.end()
@@ -89,7 +89,7 @@ def draw_widget_contents_old():
                 PyImGui.table_set_column_index(1)
                 if info["enabled"]:
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, cat_color)
-                info["configuring"] = ImGui.toggle_button(IconsFontAwesome5.ICON_COG + f"##Configure{name}", info["configuring"])
+                info["configuring"] = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COG + f"##Configure{name}", info["configuring"])
                 if info["enabled"]:
                     PyImGui.pop_style_color(1)
 

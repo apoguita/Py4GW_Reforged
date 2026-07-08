@@ -3,7 +3,7 @@ import PyImGui
 from typing import Callable, TypeAlias
 
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.IniManager import IniManager
 
 from Sources.ApoSource.beautiful_pre_searing_src.acquire_belt_pouch import AcquireBeltPouch
@@ -416,8 +416,8 @@ def RunAllSkillsAndProfessionsTree() -> BehaviorTree:
 
 def _draw_help_marker(text: str) -> None:
     PyImGui.same_line(0, 6)
-    ImGui.text("(?)")
-    ImGui.show_tooltip(text)
+    ImGui_Legacy.text("(?)")
+    ImGui_Legacy.show_tooltip(text)
 
 
 def _draw_section_header(
@@ -428,16 +428,16 @@ def _draw_section_header(
     runner_name: str,
     runner_tree: Callable[[], BehaviorTree],
 ) -> None:
-    ImGui.text(title)
+    ImGui_Legacy.text(title)
     _draw_help_marker(tooltip)
-    ImGui.text(summary)
+    ImGui_Legacy.text(summary)
     _draw_tree_button(
         botting_tree,
         runner_name,
         runner_tree,
         start_label=f"Run Section##{runner_name}",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
 
 def _draw_compact_tree_entry(
@@ -447,16 +447,16 @@ def _draw_compact_tree_entry(
     tooltip: str,
     run_tree: BehaviorTree | TreeBuilder | None = None,
 ) -> None:
-    ImGui.text(name)
+    ImGui_Legacy.text(name)
     _draw_help_marker(tooltip)
-    ImGui.text(summary)
+    ImGui_Legacy.text(summary)
     _draw_tree_button(
         botting_tree,
         name,
         run_tree,
         start_label=f"Run##{name}",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
 
 def _draw_compact_named_steps_entry(
@@ -467,9 +467,9 @@ def _draw_compact_named_steps_entry(
     steps_builder: Callable[[], list[tuple[str, Callable[[], BehaviorTree]]]],
     sequence_name: str,
 ) -> None:
-    ImGui.text(name)
+    ImGui_Legacy.text(name)
     _draw_help_marker(tooltip)
-    ImGui.text(summary)
+    ImGui_Legacy.text(summary)
     _draw_named_steps_button(
         botting_tree,
         name,
@@ -477,43 +477,43 @@ def _draw_compact_named_steps_entry(
         sequence_name=sequence_name,
         start_label=f"Run##{name}",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
 
 def _draw_welcome_tab() -> None:
-    ImGui.push_font("Bold", 22)
-    ImGui.text("Welcome to Beautiful Pre-Searing!")
-    ImGui.pop_font()
+    ImGui_Legacy.push_font("Bold", 22)
+    ImGui_Legacy.text("Welcome to Beautiful Pre-Searing!")
+    ImGui_Legacy.pop_font()
 
-    if ImGui.collapsing_header("About this script", flags=0):
-        ImGui.text_wrapped("This script is a comprehensive collection of quests and activities for the Pre-Searing area.")
-        ImGui.text_wrapped("Use the Controls tab for all routines. Sections are grouped under compact collapsing headers.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("About this script", flags=0):
+        ImGui_Legacy.text_wrapped("This script is a comprehensive collection of quests and activities for the Pre-Searing area.")
+        ImGui_Legacy.text_wrapped("Use the Controls tab for all routines. Sections are grouped under compact collapsing headers.")
+        ImGui_Legacy.separator()
 
-    if ImGui.collapsing_header("How to use", flags=0):
-        ImGui.bullet_text("Set your looting filters")
-        ImGui.bullet_text("Deactivate Automatic Handling in Inventory+")
-        ImGui.bullet_text("Deactivate HeroAI or any other combat automator")
-        ImGui.bullet_text("Create a new character")
-        ImGui.bullet_text('Use "Run All Content" or a section runner to begin')
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("How to use", flags=0):
+        ImGui_Legacy.bullet_text("Set your looting filters")
+        ImGui_Legacy.bullet_text("Deactivate Automatic Handling in Inventory+")
+        ImGui_Legacy.bullet_text("Deactivate HeroAI or any other combat automator")
+        ImGui_Legacy.bullet_text("Create a new character")
+        ImGui_Legacy.bullet_text('Use "Run All Content" or a section runner to begin')
+        ImGui_Legacy.separator()
 
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
 
 def _draw_controls_tab(botting_tree: BottingTree) -> None:
-    ImGui.text("All routines")
+    ImGui_Legacy.text("All routines")
     _draw_help_marker("Runs the broad progression flow. Use section runners below if you want a narrower scope.")
-    ImGui.text("Starter progression, pet, weapon, belt pouch, and outpost unlocks.")
+    ImGui_Legacy.text("Starter progression, pet, weapon, belt pouch, and outpost unlocks.")
     _draw_tree_button(
         botting_tree,
         "Run All Content",
         lambda: RunAllContentTree(),
         start_label="Run All",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
-    if ImGui.collapsing_header("Getting Started"):
+    if ImGui_Legacy.collapsing_header("Getting Started"):
         _draw_section_header(
             botting_tree,
             "Getting Started",
@@ -552,7 +552,7 @@ def _draw_controls_tab(botting_tree: BottingTree) -> None:
             lambda: AcquireBeltPouch(exclude_models=ITEMS_BLACKLIST),
         )
 
-    if ImGui.collapsing_header("Outpost Unlocks"):
+    if ImGui_Legacy.collapsing_header("Outpost Unlocks"):
         _draw_section_header(
             botting_tree,
             "Outpost Unlocks",
@@ -583,7 +583,7 @@ def _draw_controls_tab(botting_tree: BottingTree) -> None:
             lambda: UnlockFortRanik(),
         )
 
-    if ImGui.collapsing_header("Farms"):
+    if ImGui_Legacy.collapsing_header("Farms"):
         _draw_section_header(
             botting_tree,
             "Farms",
@@ -600,11 +600,11 @@ def _draw_controls_tab(botting_tree: BottingTree) -> None:
             lambda: SkaleFarmLoopTree(),
         )
 
-    if ImGui.collapsing_header("Quests"):
-        ImGui.text("Quests")
+    if ImGui_Legacy.collapsing_header("Quests"):
+        ImGui_Legacy.text("Quests")
         _draw_help_marker("Standalone quest routines that do not belong under the broader setup, unlock, or farm sections.")
-        ImGui.text("Single-quest runs and quest-specific helpers.")
-        ImGui.separator()
+        ImGui_Legacy.text("Single-quest runs and quest-specific helpers.")
+        ImGui_Legacy.separator()
         _draw_compact_tree_entry(
             botting_tree,
             "Charr At The Gate",
@@ -613,7 +613,7 @@ def _draw_controls_tab(botting_tree: BottingTree) -> None:
             lambda: CharrAtTheGate(),
         )
 
-    if ImGui.collapsing_header("Skills and Professions"):
+    if ImGui_Legacy.collapsing_header("Skills and Professions"):
         _draw_section_header(
             botting_tree,
             "Skills and Professions",
@@ -649,11 +649,11 @@ def _draw_getting_started_tab(botting_tree: BottingTree) -> None:
         start_label="Run All Getting Started",
     )
 
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
-    if ImGui.collapsing_header("1. Prepare Your Character"):
-        ImGui.text_wrapped("This routine will complete important early quests that unlock essential features and quality of life improvements for the rest of the content in Pre-Searing.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("1. Prepare Your Character"):
+        ImGui_Legacy.text_wrapped("This routine will complete important early quests that unlock essential features and quality of life improvements for the rest of the content in Pre-Searing.")
+        ImGui_Legacy.separator()
 
         _draw_named_steps_button(
             botting_tree,
@@ -670,10 +670,10 @@ def _draw_getting_started_tab(botting_tree: BottingTree) -> None:
         )
 
 
-    if ImGui.collapsing_header("2. Capture Pet and Unlock Secondary Profession"):
-        ImGui.text_wrapped("This routine will capture the pet from the first quest and complete the necessary steps to unlock the secondary profession.")
-        ImGui.text_wrapped("This is a separate routine because it involves a lot of waiting for the pet capture to succeed, which can take a long time and is not required to be done early on.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("2. Capture Pet and Unlock Secondary Profession"):
+        ImGui_Legacy.text_wrapped("This routine will capture the pet from the first quest and complete the necessary steps to unlock the secondary profession.")
+        ImGui_Legacy.text_wrapped("This is a separate routine because it involves a lot of waiting for the pet capture to succeed, which can take a long time and is not required to be done early on.")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -682,11 +682,11 @@ def _draw_getting_started_tab(botting_tree: BottingTree) -> None:
             start_label="Unlock Pet",
         )
 
-    if ImGui.collapsing_header("3. Acquire a Weapon"):
-        ImGui.text_wrapped("This section will cover acquiring a weapon for your character")
-        ImGui.text_wrapped("Nevermore Flatbow is the best weapon to acquire in Pre-Searing, we will attempt to acquire it")
-        ImGui.text_wrapped("If Nevermore is not available, we will fall back to Farming material for Buying a bow with a collector")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("3. Acquire a Weapon"):
+        ImGui_Legacy.text_wrapped("This section will cover acquiring a weapon for your character")
+        ImGui_Legacy.text_wrapped("Nevermore Flatbow is the best weapon to acquire in Pre-Searing, we will attempt to acquire it")
+        ImGui_Legacy.text_wrapped("If Nevermore is not available, we will fall back to Farming material for Buying a bow with a collector")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -695,10 +695,10 @@ def _draw_getting_started_tab(botting_tree: BottingTree) -> None:
             start_label="Acquire Weapon",
         )
 
-    if ImGui.collapsing_header("4. Acquire a Belt Pouch"):
-        ImGui.text_wrapped("This section will cover acquiring a belt pouch for your character")
-        ImGui.text_wrapped("Belt pouches are a very useful item that increase your inventory space, and the one available in Pre-Searing is very easy to acquire")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("4. Acquire a Belt Pouch"):
+        ImGui_Legacy.text_wrapped("This section will cover acquiring a belt pouch for your character")
+        ImGui_Legacy.text_wrapped("Belt pouches are a very useful item that increase your inventory space, and the one available in Pre-Searing is very easy to acquire")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -720,11 +720,11 @@ def _draw_outpost_unlocks_tab(botting_tree: BottingTree) -> None:
         lambda: RunAllOutpostUnlocksTree(),
         start_label="Run All Outpost Unlocks",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
-    if ImGui.collapsing_header("5. Unlock Wizard's Folly"):
-        ImGui.text_wrapped("This routine travels from Ashford Abbey through Wizard's Folly and into Foible's Fair to unlock the outpost path.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("5. Unlock Wizard's Folly"):
+        ImGui_Legacy.text_wrapped("This routine travels from Ashford Abbey through Wizard's Folly and into Foible's Fair to unlock the outpost path.")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -733,9 +733,9 @@ def _draw_outpost_unlocks_tab(botting_tree: BottingTree) -> None:
             start_label="Unlock Wizard's Folly",
         )
                 
-    if ImGui.collapsing_header("6. Unlock Barradin State"):
-        ImGui.text_wrapped("This routine travels from Ascalon City through Green Hills County and into Barradin State to unlock the outpost path.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("6. Unlock Barradin State"):
+        ImGui_Legacy.text_wrapped("This routine travels from Ascalon City through Green Hills County and into Barradin State to unlock the outpost path.")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -744,9 +744,9 @@ def _draw_outpost_unlocks_tab(botting_tree: BottingTree) -> None:
             start_label="Unlock Barradin State",
         )
                 
-    if ImGui.collapsing_header("7. Unlock Fort Ranik"):
-        ImGui.text_wrapped("This routine travels from Ashford Abbey through Regent Valley and into Fort Ranik to unlock the outpost path.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("7. Unlock Fort Ranik"):
+        ImGui_Legacy.text_wrapped("This routine travels from Ashford Abbey through Regent Valley and into Fort Ranik to unlock the outpost path.")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -766,12 +766,12 @@ def _draw_farming_tab(botting_tree: BottingTree) -> None:
         lambda: RunAllFarmsTree(),
         start_label="Run All Farms",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
-    if ImGui.collapsing_header("1. Skale Fin Farm"):
-        ImGui.text_wrapped("Placeholder skale fin farming routine using the reusable farming helper.")
-        ImGui.text_wrapped("Update the start map, kill path, model id, and target quantity in this script if you want to customize the farm.")
-        ImGui.separator()
+    if ImGui_Legacy.collapsing_header("1. Skale Fin Farm"):
+        ImGui_Legacy.text_wrapped("Placeholder skale fin farming routine using the reusable farming helper.")
+        ImGui_Legacy.text_wrapped("Update the start map, kill path, model id, and target quantity in this script if you want to customize the farm.")
+        ImGui_Legacy.separator()
 
         _draw_tree_button(
             botting_tree,
@@ -809,7 +809,7 @@ def _draw_debug_tab() -> None:
         None,
         start_label="Start HeroAI Only",
     )
-    ImGui.separator()
+    ImGui_Legacy.separator()
 
     tree_names = [
         "Getting Started",
@@ -826,8 +826,8 @@ def _draw_debug_tab() -> None:
     current_tree_index = tree_names.index(selected_debug_tree_name) if selected_debug_tree_name in tree_names else 0
 
     if botting_tree.IsStarted():
-        ImGui.text_wrapped(f"Active routine: {selected_debug_tree_name}")
-        ImGui.text_wrapped("Stop the current routine to switch the debug context.")
+        ImGui_Legacy.text_wrapped(f"Active routine: {selected_debug_tree_name}")
+        ImGui_Legacy.text_wrapped("Stop the current routine to switch the debug context.")
     else:
         new_tree_index = PyImGui.combo("Debug Tree", current_tree_index, tree_names)
         if 0 <= new_tree_index < len(tree_names) and tree_names[new_tree_index] != selected_debug_tree_name:
@@ -863,10 +863,10 @@ def _draw_debug_tab() -> None:
     if PyImGui.button("Dump Tree Diagnostics"):
         dump_tree_diagnostics(botting_tree, selected_debug_tree_name)
     PyImGui.same_line(0, -1)
-    ImGui.text_wrapped("Prints the live tree state and copies the dump to the clipboard.")
+    ImGui_Legacy.text_wrapped("Prints the live tree state and copies the dump to the clipboard.")
 
 
-    if ImGui.collapsing_header("Draw Move Path Debug Options"):
+    if ImGui_Legacy.collapsing_header("Draw Move Path Debug Options"):
         global draw_move_path, draw_move_path_labels, draw_move_path_thickness, draw_move_waypoint_radius, draw_move_current_waypoint_radius
         draw_move_path = PyImGui.checkbox("Draw Move Path", draw_move_path)
         draw_move_path_labels = PyImGui.checkbox("Draw Path Labels", draw_move_path_labels)
@@ -946,11 +946,11 @@ def draw() -> None:
 
     botting_tree = ensure_botting_tree()
     PyImGui.set_next_window_size((BANNER_WIDTH + 20, 0))
-    if ImGui.Begin(ini_key=INI_KEY, name="Beautiful Pre-Searing", flags=PyImGui.WindowFlags.AlwaysAutoResize):
-        if ImGui.begin_tab_bar("MainTabBar##BeautifulPreSearing"):
-            if ImGui.begin_tab_item("Welcome"):
-                ImGui.DrawTexture(TEXTURE_PATH, BANNER_WIDTH, BANNER_HEIGHT)
-                ImGui.separator()
+    if ImGui_Legacy.Begin(ini_key=INI_KEY, name="Beautiful Pre-Searing", flags=PyImGui.WindowFlags.AlwaysAutoResize):
+        if ImGui_Legacy.begin_tab_bar("MainTabBar##BeautifulPreSearing"):
+            if ImGui_Legacy.begin_tab_item("Welcome"):
+                ImGui_Legacy.DrawTexture(TEXTURE_PATH, BANNER_WIDTH, BANNER_HEIGHT)
+                ImGui_Legacy.separator()
                 _draw_welcome_tab()
                 _draw_tree_button(
                     botting_tree,
@@ -958,15 +958,15 @@ def draw() -> None:
                     lambda: RunAllContentTree(),
                     start_label="Run All Content",
                 )
-                ImGui.end_tab_item()
-            if ImGui.begin_tab_item("Controls"):
+                ImGui_Legacy.end_tab_item()
+            if ImGui_Legacy.begin_tab_item("Controls"):
                 _draw_controls_tab(botting_tree)
-                ImGui.end_tab_item()
-            if ImGui.begin_tab_item("Debug"):
+                ImGui_Legacy.end_tab_item()
+            if ImGui_Legacy.begin_tab_item("Debug"):
                 _draw_debug_tab()
-                ImGui.end_tab_item()
-            ImGui.end_tab_bar()
-    ImGui.End(ini_key=INI_KEY)
+                ImGui_Legacy.end_tab_item()
+            ImGui_Legacy.end_tab_bar()
+    ImGui_Legacy.End(ini_key=INI_KEY)
 
 #region main
 def _add_config_vars() -> None:

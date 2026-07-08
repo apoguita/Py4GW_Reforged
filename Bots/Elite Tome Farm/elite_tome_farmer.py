@@ -4,7 +4,7 @@ import importlib
 import tome_targets
 importlib.reload(tome_targets)
 from Py4GW_widget_manager import get_widget_handler
-from Py4GWCoreLib import Botting, ConsoleLog, Routines, Agent, Player, ImGui, Color, GLOBAL_CACHE
+from Py4GWCoreLib import Botting, ConsoleLog, Routines, Agent, Player, ImGui_Legacy, Color, GLOBAL_CACHE
 from tome_targets import ELITE_TOME_TARGETS
 
 BOT_NAME = "Elite Tome Farmer by XLeek"
@@ -59,9 +59,9 @@ def draw_class_selector():
     if PyImGui.begin("Elite Tome Farmer - Configuration"):
 
         title_color = Color(255, 200, 100, 255)
-        ImGui.push_font("Regular", 18)
+        ImGui_Legacy.push_font("Regular", 18)
         PyImGui.text_colored("Choose the class of the tome to farm", title_color.to_tuple_normalized())
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
         PyImGui.spacing()
         PyImGui.separator()
         PyImGui.spacing()
@@ -197,9 +197,9 @@ bot.SetMainRoutine(Routine)
 def _draw_stats():
     successful = BotSettings.TOTAL_RUNS - BotSettings.FAILED_RUNS
 
-    ImGui.push_font("Regular", 18)
+    ImGui_Legacy.push_font("Regular", 18)
     PyImGui.text("Statistics")
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
 
     if _chosen_class[0]:
@@ -244,9 +244,9 @@ bot.UI.override_draw_config(lambda: _draw_stats())
 def tooltip():
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Elite Tome Farmer", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     PyImGui.text("Farm elite tomes from bosses in Hard Mode")

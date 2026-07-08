@@ -5,7 +5,7 @@ import random
 import json
 import os
 from Py4GWCoreLib import ThrottledTimer
-from Py4GWCoreLib import PyImGui, ImGui, Color
+from Py4GWCoreLib import PyImGui, ImGui_Legacy, Color
 from Py4GWCoreLib import FSM
 from Py4GWCoreLib import AutoInventoryHandler
 from Py4GWCoreLib import IniHandler
@@ -132,7 +132,7 @@ class YAVB:
         # Initialize the main window module
 
         
-        self.window_module = ImGui.WindowModule(
+        self.window_module = ImGui_Legacy.WindowModule(
             module_name=self.name,
             window_name=f"{self.name} {self.version} by {self.author}",
             window_pos=self.main_window_pos,
@@ -141,7 +141,7 @@ class YAVB:
             
         )
         
-        self.option_window_module = ImGui.WindowModule(
+        self.option_window_module = ImGui_Legacy.WindowModule(
             module_name=f"{self.name} Options",
             window_name=f"{self.name} Options",
             window_flags= PyImGui.WindowFlags(

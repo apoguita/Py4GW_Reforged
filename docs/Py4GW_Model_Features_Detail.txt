@@ -62,8 +62,8 @@ Combat systems:
 UI and runtime-facing systems:
 - `UIManager`: foundational UI frame/message orchestration and frame hierarchy system.
 - `Overlay`: singleton overlay/drawlist composition layer.
-- `DXOverlay`: structured DirectX geometry/texture rendering façade over `Py2DRenderer`.
-- `ImGui`: higher-level themed UI toolkit over `PyImGui` and `ImGui_src`.
+- `DXOverlay`: structured DirectX geometry/texture rendering faÃ§ade over `Py2DRenderer`.
+- `ImGui_Legacy`: higher-level themed UI toolkit over `PyImGui` and `ImGui_src`.
 
 Contextual systems:
 - `Context`: typed native context gateway over `native_src`.

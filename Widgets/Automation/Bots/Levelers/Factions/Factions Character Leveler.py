@@ -4,10 +4,10 @@ import os, time
 import PyImGui
 import PyGameThread
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Bags, Botting,
-                          AutoPathing, ImGui, ActionQueueManager, Map, Agent, Player, UIManager, GWUI, HeroType, Skill, AgentArray)
+                          AutoPathing, ImGui_Legacy, ActionQueueManager, Map, Agent, Player, UIManager, GWUI, HeroType, Skill, AgentArray)
 from Py4GWCoreLib.Builds.Any.KeiranThackerayEOTN import KeiranThackerayEOTN
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
-from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment
 from Py4GWCoreLib.enums_src.UI_enums import UIMessage
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 
@@ -475,7 +475,7 @@ def CraftArmor(bot: Botting):
 # Each entry: crafter NPC coords, materials to buy (common/rare as lists of (model_id, count)),
 # and pieces to craft in order: (item_id, [mats], [qtys]).
 _MAX_ARMOR_DATA = {
-    "Warrior": {  # Ascalon armor — crafter: Suki
+    "Warrior": {  # Ascalon armor â€” crafter: Suki
         "crafter":     (-891.00, -5382.00),
         "buy_common":  [(ModelID.Tanned_Hide_Square.value, 20)],
         "buy_rare":    [(ModelID.Steel_Ingot.value, 32)],
@@ -487,7 +487,7 @@ _MAX_ARMOR_DATA = {
             (23391, [ModelID.Tanned_Hide_Square.value, ModelID.Steel_Ingot.value], [25,  4]),   # Head
         ],
     },
-    "Ranger": {  # Canthan armor — crafter: Kakumei
+    "Ranger": {  # Canthan armor â€” crafter: Kakumei
         "crafter":     (-700.00, -5156.00),
         "buy_common":  [(ModelID.Bolt_Of_Cloth.value, 20)],
         "buy_rare":    [(ModelID.Fur_Square.value, 32)],
@@ -499,7 +499,7 @@ _MAX_ARMOR_DATA = {
             (23794, [ModelID.Bolt_Of_Cloth.value, ModelID.Fur_Square.value], [25,  4]),         # Head
         ],
     },
-    "Monk": {  # Shinjea armor — crafter: Ryoko
+    "Monk": {  # Shinjea armor â€” crafter: Ryoko
         "crafter":     (-1682.00, -3970.00),
         "buy_common":  [(ModelID.Bolt_Of_Cloth.value, 18)],
         "buy_rare":    [(ModelID.Roll_Of_Parchment.value, 5), (ModelID.Vial_Of_Ink.value, 4), (ModelID.Bolt_Of_Linen.value, 28)],
@@ -511,7 +511,7 @@ _MAX_ARMOR_DATA = {
             (23721, [ModelID.Roll_Of_Parchment.value, ModelID.Vial_Of_Ink.value],     [ 5,  4]),  # Head
         ],
     },
-    "Assassin": {  # Canthan armor — crafter: Kakumei
+    "Assassin": {  # Canthan armor â€” crafter: Kakumei
         "crafter":     (-700.00, -5156.00),
         "buy_common":  [(ModelID.Bolt_Of_Cloth.value, 20)],
         "buy_rare":    [(ModelID.Leather_Square.value, 32)],
@@ -523,7 +523,7 @@ _MAX_ARMOR_DATA = {
             (23435, [ModelID.Bolt_Of_Cloth.value, ModelID.Leather_Square.value], [25,  4]),     # Head
         ],
     },
-    "Mesmer": {  # Shinjea armor — crafter: Ryoko
+    "Mesmer": {  # Shinjea armor â€” crafter: Ryoko
         "crafter":     (-1682.00, -3970.00),
         "buy_common":  [(ModelID.Bolt_Of_Cloth.value, 20)],
         "buy_rare":    [(ModelID.Bolt_Of_Silk.value, 32)],
@@ -535,7 +535,7 @@ _MAX_ARMOR_DATA = {
             (23576, [ModelID.Bolt_Of_Cloth.value, ModelID.Bolt_Of_Silk.value], [25,  4]),       # Head
         ],
     },
-    "Necromancer": {  # Shinjea armor — crafter: Ryoko
+    "Necromancer": {  # Shinjea armor â€” crafter: Ryoko
         "crafter":     (-1682.00, -3970.00),
         "buy_common":  [(ModelID.Tanned_Hide_Square.value, 18), (ModelID.Bone.value, 18)],
         "buy_rare":    [(ModelID.Roll_Of_Parchment.value, 5), (ModelID.Vial_Of_Ink.value, 4)],
@@ -547,7 +547,7 @@ _MAX_ARMOR_DATA = {
             (23632, [ModelID.Roll_Of_Parchment.value,  ModelID.Vial_Of_Ink.value], [ 5,  4]),  # Head
         ],
     },
-    "Ritualist": {  # Shinjea armor — crafter: Ryoko
+    "Ritualist": {  # Shinjea armor â€” crafter: Ryoko
         "crafter":     (-1682.00, -3970.00),
         "buy_common":  [(ModelID.Bolt_Of_Cloth.value, 23)],
         "buy_rare":    [(ModelID.Leather_Square.value, 32)],
@@ -559,7 +559,7 @@ _MAX_ARMOR_DATA = {
             (23939, [ModelID.Bolt_Of_Cloth.value, ModelID.Leather_Square.value], [25,  4]),     # Head
         ],
     },
-    "Elementalist": {  # Shinjea armor — crafter: Ryoko
+    "Elementalist": {  # Shinjea armor â€” crafter: Ryoko
         "crafter":     (-1682.00, -3970.00),
         "buy_common":  [(ModelID.Bolt_Of_Cloth.value, 18), (ModelID.Pile_Of_Glittering_Dust.value, 3)],
         "buy_rare":    [(ModelID.Bolt_Of_Silk.value, 28), (ModelID.Tempered_Glass_Vial.value, 4)],
@@ -874,7 +874,7 @@ def _on_party_defeated(bot: "Botting", step_name: str):
             continue
         if Routines.Checks.Map.IsOutpost() and Map.IsMapReady():
             break
-        # Still in explorable / defeat screen — keep calling ReturnToOutpost
+        # Still in explorable / defeat screen â€” keep calling ReturnToOutpost
         if GLOBAL_CACHE.Party.IsPartyDefeated():
             GLOBAL_CACHE.Party.ReturnToOutpost()
     fsm = bot.config.FSM
@@ -918,7 +918,7 @@ def _get_mission_header_step(fsm) -> str | None:
     return None
 
 def on_party_defeated(bot: "Botting"):
-    # In AB the player is solo — OnDeathCallback fires first and handles it.
+    # In AB the player is solo â€” OnDeathCallback fires first and handles it.
     # Skip here to avoid double-recovery.
     if Map.GetMapID() == _AB_MAP_ID:
         return
@@ -1549,7 +1549,7 @@ def Farm_Until_Level_20(bot: Botting):
     HOM_MAP_ID       = 646
     AB_MAP_ID        = 849
 
-    # ── Header _32: loop entry / early exit check ──────────────────────────
+    # â”€â”€ Header _32: loop entry / early exit check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     bot.States.AddHeader("Farm Until Level 20")
 
     def _level_check_entry():
@@ -1574,12 +1574,12 @@ def Farm_Until_Level_20(bot: Botting):
     bot.States.AddCustomState(_level_check_entry, "Level Check (Farm Entry)")
     bot.States.AddCustomState(lambda: _ensure_bonus_bow(bot), "Ensure Bonus Bow (Farm)")
 
-    # Travel EotN → HOM (solo, no heroes)
+    # Travel EotN â†’ HOM (solo, no heroes)
     bot.Map.Travel(target_map_id=EOTN_MAP_ID)
     bot.Party.LeaveParty()
     bot.Move.XYAndExitMap(-4873.00, 5284.00, target_map_id=HOM_MAP_ID)
 
-    # ── Header _33: prepare for quest ─────────────────────────────────────
+    # â”€â”€ Header _33: prepare for quest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     bot.States.AddHeader("Prepare for Quest (Farm)")
     bot.Wait.ForMapLoad(target_map_id=HOM_MAP_ID)
 
@@ -1614,7 +1614,7 @@ def Farm_Until_Level_20(bot: Botting):
     bot.States.AddCustomState(lambda: _enter_ab_quest(bot), "Enter AB Quest")
     bot.Wait.ForMapLoad(target_map_id=AB_MAP_ID)
 
-    # ── Header _34: run the quest ─────────────────────────────────────────
+    # â”€â”€ Header _34: run the quest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     bot.States.AddHeader("Run Quest (Farm)")
 
     def _setup_keiran_combat():
@@ -2329,7 +2329,7 @@ def on_party_wipe_coroutine(bot: "Botting", target_name: str):
 
     fsm = bot.config.FSM
     fsm.jump_to_state_by_name(target_name)  # jump while still paused
-    fsm.resume()                            # <— important: unpause so next tick runs the target state
+    fsm.resume()                            # <â€” important: unpause so next tick runs the target state
     yield                                    # keep coroutine semantics
 
 class WaypointData:
@@ -2357,7 +2357,7 @@ def _resolve_waypoint_state_name(fsm, configured_name: str) -> str:
 WAYPOINTS: dict[int, WaypointData] = {
     # step_num : WaypointData(label, MapID, step_name, section)
     # step_name format: [H]<AddHeader text>_<1-based AddHeader call index in the routine>
-    # ── Shing Jea Island ──────────────────────────────────────────────────────
+    # â”€â”€ Shing Jea Island â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
      1: WaypointData(label="Forming A Party",               MapID=242, step_name="[H]Quest: Forming A Party_2",              section="Shing Jea Island"),
      2: WaypointData(label="Unlock Secondary Profession",   MapID=242, step_name="[H]Unlock Secondary Profession_3"),
      3: WaypointData(label="Craft Weapon",                  MapID=242, step_name="[H]Craft weapon_5"),
@@ -2371,13 +2371,13 @@ WAYPOINTS: dict[int, WaypointData] = {
     11: WaypointData(label="To Zen Daijun",                 MapID=250, step_name="[H]To Zen Daijun_18"),
     12: WaypointData(label="Complete Skills Training",      MapID=242, step_name="[H]Complete Skills Training_19"),
     13: WaypointData(label="Zen Daijun Mission",            MapID=213, step_name="[H]Zen Daijun Mission_20"),
-    # ── Factions Mainland ─────────────────────────────────────────────────────
+    # â”€â”€ Factions Mainland â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     14: WaypointData(label="To Marketplace",                MapID=KAINENG_CENTER_MAP_ID, step_name="[H]To Marketplace_21",                    section="Factions Mainland"),
     15: WaypointData(label="Craft Max Armor",               MapID=KAINENG_CENTER_MAP_ID, step_name="[H]Craft max armor_23"),
     16: WaypointData(label="Quest: The Search For A Cure",  MapID=KAINENG_CENTER_MAP_ID, step_name="[H]Quest: The Search For A Cure_25"),
     17: WaypointData(label="Quest: A Master's Burden",      MapID=KAINENG_CENTER_MAP_ID, step_name="[H]Quest: A Master's Burden_26"),
     18: WaypointData(label="To Boreal Station",             MapID=KAINENG_CENTER_MAP_ID, step_name="[H]To Boreal Station_27"),
-    # ── Eye of the North ──────────────────────────────────────────────────────
+    # â”€â”€ Eye of the North â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     19: WaypointData(label="To Eye of the North",           MapID=675, step_name="[H]To Eye of the North_28",               section="Eye of the North"),
     20: WaypointData(label="Unlock EotN Pool",              MapID=642, step_name="[H]Unlock Eye Of The North Pool_29"),
     21: WaypointData(label="To Gunnar's Hold",              MapID=642, step_name="[H]To Gunnar's Hold_30"),
@@ -2386,7 +2386,7 @@ WAYPOINTS: dict[int, WaypointData] = {
     24: WaypointData(label="Attribute Points Quest 2",      MapID=250, step_name="[H]Attribute points quest n. 2_35"),
     25: WaypointData(label="To Longeye's Edge",             MapID=644, step_name="[H]To Longeye's Edge_36"),
     26: WaypointData(label="Unlock Vaettir NPC",            MapID=650, step_name="[H]Unlock NPC for vaettir farm_37"),
-    # ── Prophecies / NF / GToB ────────────────────────────────────────────────
+    # â”€â”€ Prophecies / NF / GToB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     27: WaypointData(label="To Lion's Arch",                MapID=KAINENG_CENTER_MAP_ID, step_name="[H]To Lion's Arch_38",                    section="Prophecies / NF / GToB"),
     28: WaypointData(label="To Kamadan",                    MapID=KAINENG_CENTER_MAP_ID, step_name="[H]To Kamadan_39"),
     29: WaypointData(label="Unlock Olias",                  MapID=493, step_name="[H]Unlock Olias_41"),
@@ -2417,10 +2417,10 @@ def on_party_wipe(bot: "Botting"):
     # --- 2) Pick the nearest lower step ---
     target_step = max(lower_or_equal_steps)
 
-    # --- 3) Convert step number → FSM state name ---
+    # --- 3) Convert step number â†’ FSM state name ---
     target_name = fsm.get_state_name_by_number(target_step)
     if not target_name:
-        # The waypoint exists, but the FSM doesn’t have a state for it
+        # The waypoint exists, but the FSM doesnâ€™t have a state for it
         return
 
     # --- 4) Perform jump using your existing coroutine system ---
@@ -2541,19 +2541,19 @@ def _draw_texture():
     border_col = (0, 0, 0, 0)  # <- ints, not normalized floats
 
     if level <= 5:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.0, 0.0),   uv1=(0.25, 1.0),
                                   tint=tint, border_color=border_col)
     elif level <= 8:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.25, 0.0), uv1=(0.5, 1.0),
                                   tint=tint, border_color=border_col)
     elif level <= 9:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.5, 0.0),  uv1=(0.75, 1.0),
                                   tint=tint, border_color=border_col)
     else:
-        ImGui.DrawTextureExtended(texture_path=path, size=size,
+        ImGui_Legacy.DrawTextureExtended(texture_path=path, size=size,
                                   uv0=(0.75, 0.0), uv1=(1.0, 1.0),
                                   tint=tint, border_color=border_col)
 
@@ -2686,11 +2686,11 @@ def tooltip():
     
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.image(MODULE_ICON, (32, 32))
+    ImGui_Legacy.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
-    ImGui.push_font("Regular", 20)
-    ImGui.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
-    ImGui.pop_font()
+    ImGui_Legacy.push_font("Regular", 20)
+    ImGui_Legacy.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.spacing()
     PyImGui.separator()

@@ -78,7 +78,7 @@ global_widget_defaults = {
     "Icon Explorer": {
         "enabled": "False",
         "category": "Coding",
-        "subcategory": "ImGui",
+        "subcategory": "ImGui_Legacy",
         "icon": "ICON_EXPAND",
         "quickdock": "True",
     },
@@ -342,7 +342,7 @@ account_widget_defaults = {
     "Icon Explorer": {
         "enabled": "False",
         "category": "Coding",
-        "subcategory": "ImGui",
+        "subcategory": "ImGui_Legacy",
         "icon": "ICON_EXPAND",
         "quickdock": "True",
     },

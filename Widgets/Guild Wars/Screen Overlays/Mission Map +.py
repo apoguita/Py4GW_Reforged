@@ -2,7 +2,7 @@ from Py4GWCoreLib import PetModelID, SpiritModelID
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import GLOBAL_CACHE
 import PyImGui
-from Py4GWCoreLib import ImGui, Color
+from Py4GWCoreLib import ImGui_Legacy, Color
 from Py4GWCoreLib import DXOverlay
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib import ThrottledTimer
@@ -142,8 +142,8 @@ def FloatingSlider(caption, value,x,y,min_value, max_value, color:Color):
         PyImGui.WindowFlags.NoScrollbar |
         PyImGui.WindowFlags.AlwaysAutoResize  ) 
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,0.0,0.0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding,0.0,0.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color.to_tuple())
        
     result = value
@@ -152,7 +152,7 @@ def FloatingSlider(caption, value,x,y,min_value, max_value, color:Color):
         PyImGui.push_style_color(PyImGui.ImGuiCol.SliderGrabActive, (0.9, 0.9, 0.9, 1.0))
 
         result = PyImGui.slider_float(f"##floating_slider{caption}", value, min_value, max_value)
-        ImGui.show_tooltip(f"Enhance the zoom level of the map.")
+        ImGui_Legacy.show_tooltip(f"Enhance the zoom level of the map.")
         PyImGui.pop_style_color(2)
     PyImGui.end()
     PyImGui.pop_style_var(2)
@@ -252,9 +252,9 @@ def FloatingMoveToggle(x: float, y: float, enabled: bool, show_stop: bool = Fals
         PyImGui.WindowFlags.AlwaysAutoResize |
         PyImGui.WindowFlags.NoBackground
     )
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 2.0, 2.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 1.0, 1.0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 2.0, 2.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 1.0, 1.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0.0, 0.0, 0.0, 0.0))
 
     result = enabled
@@ -266,14 +266,14 @@ def FloatingMoveToggle(x: float, y: float, enabled: bool, show_stop: bool = Fals
         else:
             result = bool(cb)
         if PyImGui.is_item_hovered():
-            ImGui.show_tooltip("Right-click on map moves player to nearest NavMesh point. Hold Shift + Right-click to queue waypoints.")
+            ImGui_Legacy.show_tooltip("Right-click on map moves player to nearest NavMesh point. Hold Shift + Right-click to queue waypoints.")
 
         if show_stop:
             PyImGui.same_line(0, 6)
             if PyImGui.button("Stop", 44, 16):
                 stop_requested = True
             if PyImGui.is_item_hovered():
-                ImGui.show_tooltip("Stop current movement and clear queued waypoints.")
+                ImGui_Legacy.show_tooltip("Stop current movement and clear queued waypoints.")
     PyImGui.end()
 
     PyImGui.pop_style_color(1)
@@ -294,14 +294,14 @@ def FloatingMapIdStrip(x: float, y: float, map_id: int, margin: int = 8) -> None
         PyImGui.WindowFlags.AlwaysAutoResize |
         PyImGui.WindowFlags.NoBackground
     )
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 2.0, 2.0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 2.0, 2.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0.0, 0.0, 0.0, 0.0))
 
     if PyImGui.begin("##mm_map_id_strip", flags):
         PyImGui.text(f"Map ID: {int(map_id)}")
         if PyImGui.is_item_hovered():
-            ImGui.show_tooltip("Current Map ID")
+            ImGui_Legacy.show_tooltip("Current Map ID")
     PyImGui.end()
 
     PyImGui.pop_style_color(1)
@@ -324,9 +324,9 @@ def FloatingCoordsStrip(x, y, last_x, last_y, color, width=None, margin=8, label
              PyImGui.WindowFlags.NoBackground)
 
     # clean, overlay look
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 4.0, 4.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 2.0, 2.0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 4.0, 4.0)
+    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 2.0, 2.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 0, 0, 0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color.to_tuple())
 
@@ -334,7 +334,7 @@ def FloatingCoordsStrip(x, y, last_x, last_y, color, width=None, margin=8, label
         if PyImGui.button("Copy"):
             PyImGui.set_clipboard_text(f"{int(last_x)}, {int(last_y)}")
         if PyImGui.is_item_hovered():
-            ImGui.show_tooltip("Copy the last clicked coordinates.")
+            ImGui_Legacy.show_tooltip("Copy the last clicked coordinates.")
         PyImGui.same_line(0, 6)
         PyImGui.text(f"{label}: ({int(last_x)}, {int(last_y)})")
     PyImGui.end()
@@ -342,7 +342,7 @@ def FloatingCoordsStrip(x, y, last_x, last_y, color, width=None, margin=8, label
     PyImGui.pop_style_color(2)
     PyImGui.pop_style_var(3)
 
-# ── NavMesh snap helpers ──────────────────────────────────────────────
+# â”€â”€ NavMesh snap helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _snap_get_navmesh(mm: "MissionMap") -> "NavMesh | None":
     map_id = int(Map.GetMapID())
@@ -1416,7 +1416,7 @@ class MissionMap:
         # aC  ---
 
         # NavMesh right-click snap (when enabled)
-        # Detect right-clicks directly via ImGui (IO events callback was disabled)
+        # Detect right-clicks directly via ImGui_Legacy (IO events callback was disabled)
         RIGHT = 1
         if PyImGui.is_mouse_clicked(RIGHT) and not io.want_capture_mouse:
             if self.left <= mx <= self.right and self.top <= my <= self.bottom:
@@ -1571,8 +1571,8 @@ def DrawFrame():
             PyImGui.WindowFlags.NoBackground |
             PyImGui.WindowFlags.NoInputs
         )
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 0.0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0.0, 0.0)
         return PyImGui.begin("##mission_map_imgui_drawlist", flags)
 
     def _end_imgui_draw_window() -> None:
@@ -1859,7 +1859,7 @@ def DrawFrame():
         alternate_color, size = _get_alternate_color(agent_id)
         Marker(marker.Marker, item_color, alternate_color, x, y, marker.size + size, offset_angle=rotation_angle).draw()
 
-    # ── NavMesh snap overlay ────────────────────────────────────────────
+    # â”€â”€ NavMesh snap overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _snap_to_screen(gx: float, gy: float) -> tuple[float, float]:
         return RawGamePosToScreen(
             gx, gy,
@@ -1903,7 +1903,7 @@ def DrawFrame():
                     DLLine(_prev_qs[0], _prev_qs[1], _cur_qs[0], _cur_qs[1], _queue_path_color, 1.8)
                 _prev_qs = _cur_qs
 
-    # Click marker (small white ring) – hide when nearly on top of snap marker
+    # Click marker (small white ring) â€“ hide when nearly on top of snap marker
     _draw_click = _snap_click_screen is not None
     if _snap_click_screen is not None and _snap_snapped_screen is not None:
         if math.hypot(_snap_click_screen[0] - _snap_snapped_screen[0],
@@ -1939,7 +1939,7 @@ def DrawFrame():
             DLCircleFilled(_qxs, _qys, 3.0, _q_fill, 12)
             DLCircle(_qxs, _qys, 6.0, _q_ring, 14, 1.5)
             PyImGui.draw_list_add_text(_qxs + 8.0, _qys - 9.0, _q_text, str(_qi))
-    # ── end NavMesh snap overlay ────────────────────────────────────────
+    # â”€â”€ end NavMesh snap overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     _end_imgui_draw_window()
                
@@ -1948,9 +1948,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Mission Map +", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

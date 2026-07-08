@@ -4,7 +4,7 @@ import Py4GW
 from typing import Dict
 
 
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import ItemArray
 from Py4GWCoreLib import Item
@@ -177,7 +177,7 @@ class MerchantModule:
                     PyImGui.WindowFlags.NoTitleBar |
                     PyImGui.WindowFlags.NoResize
             )
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
             
             PyImGui.set_next_window_pos(left, top)
             PyImGui.set_next_window_size(width, height)
@@ -235,7 +235,7 @@ class MerchantModule:
                         self.merchant_checkboxes[item_id] = False
                     
                     left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
-                    self.merchant_checkboxes[item_id] = ImGui.floating_checkbox(
+                    self.merchant_checkboxes[item_id] = ImGui_Legacy.floating_checkbox(
                         f"{item_id}", 
                         self.merchant_checkboxes[item_id], 
                         right -25, 
@@ -314,8 +314,8 @@ class MerchantModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
         
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         
         table_flags = (
             PyImGui.TableFlags.BordersInnerV |
@@ -400,7 +400,7 @@ class MerchantModule:
             PyImGui.table_next_column()
             if PyImGui.button(IconsFontAwesome5.ICON_FILE_INVOICE_DOLLAR + "##MerchSellButton", width=40, height=40):
                 GLOBAL_CACHE.Coroutines.append(MerchantCheckedItems(self.merchant_checkboxes))
-            ImGui.show_tooltip("Sell selected items.")  
+            ImGui_Legacy.show_tooltip("Sell selected items.")  
             
             PyImGui.table_next_column()
             
@@ -416,7 +416,7 @@ class MerchantModule:
             if PyImGui.button(IconsFontAwesome5.ICON_SHOPPING_CART + "##MerchBuyButton", width=40, height=40):
                 #ConsoleLog(MODULE_NAME, "Buying items from merchant.", PySystem.Console.MessageType.Info)
                 GLOBAL_CACHE.Coroutines.append(BuyMerchantItems(merchant_item_list.copy(), self.selected_combo_merchant, self.merchant_buy_quantity))
-            ImGui.show_tooltip("Buy items.")
+            ImGui_Legacy.show_tooltip("Buy items.")
             
             PyImGui.end_table()
                         

@@ -1,4 +1,4 @@
-from Py4GWCoreLib import UIManager, Overlay, PyImGui, ImGui, IconsFontAwesome5
+from Py4GWCoreLib import UIManager, Overlay, PyImGui, ImGui_Legacy, IconsFontAwesome5
 from . import state
 from .handler import handler
 from .config_scope import use_account_settings
@@ -65,14 +65,14 @@ def quick_dock_menu():
     PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (state.quick_dock_color[0], state.quick_dock_color[1], state.quick_dock_color[2], state.quick_dock_color[3]))
 
     if PyImGui.begin("##quick_dock_toggle", PyImGui.WindowFlags.NoTitleBar | PyImGui.WindowFlags.NoResize | PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoBackground):
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.FrameRounding, 0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FrameRounding, 0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0)
         state.quick_dock_hovering_button = False
         if PyImGui.button("##toggle_ribbon", quick_dock_w, quick_dock_h):
             state.show_quick_dock_popup = not state.show_quick_dock_popup
         # PyImGui.show_tooltip("Middle Click to Lock" if state.quick_dock_unlocked else "Middle Click to Unlock")
         if PyImGui.is_item_hovered():
-            ImGui.show_tooltip("Middle-click to Lock/Unlock")
+            ImGui_Legacy.show_tooltip("Middle-click to Lock/Unlock")
             if PyImGui.is_mouse_clicked(2):
                 state.quick_dock_unlocked = not state.quick_dock_unlocked
         state.quick_dock_hovering_button = PyImGui.is_item_active()
@@ -110,9 +110,9 @@ def quick_dock_menu():
             panel_y = quick_dock_y
 
         PyImGui.set_next_window_pos(panel_x, panel_y)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.FramePadding, 0.0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.ItemSpacing, 0.0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowPadding, 0.0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0.0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.ItemSpacing, 0.0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0.0)
 
         if PyImGui.begin("##quick_dock_expanded", button_flags):
             state.last_popup_size[0], state.last_popup_size[1] = PyImGui.get_window_size()

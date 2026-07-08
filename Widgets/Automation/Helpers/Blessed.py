@@ -6,7 +6,7 @@ from typing import Set
 from Py4GWCoreLib import *
 from Sources.aC_Scripts.aC_api import has_any_blessing, BlessingRunner, FLAG_DIR
 
-# ─── Paths & Configuration ─────────────────────────────────────────────────
+# â”€â”€â”€ Paths & Configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 script_directory = os.getcwd()
 project_root     = PySystem.Console.get_projects_path()
 if project_root not in sys.path:
@@ -22,7 +22,7 @@ MODULE_ICON = "Textures\\Module_Icons\\Blessed.png"
 WINDOW_SECTION = "Get Blessed"
 win_ini_path   = os.path.join(script_directory, "Widgets", "Config", "GetBlessed_window.ini")
 
-# ─── INI Read/Write ────────────────────────────────────────────────────────
+# â”€â”€â”€ INI Read/Write â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _read_ini() -> configparser.ConfigParser:
     cp = configparser.ConfigParser()
     cp.read(INI_PATH)
@@ -39,13 +39,13 @@ def write_run_flag(val: bool):
     with open(INI_PATH, "w") as f:
         cp.write(f)
 
-# ─── UI Settings ───────────────────────────────────────────────────────────
+# â”€â”€â”€ UI Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 cfg            = _read_ini()
 LEADER_UI      = cfg.getboolean("Settings",   "LeaderUI",    fallback=True)
 PER_CLIENT_UI  = cfg.getboolean("Settings",   "PerClientUI", fallback=False)
 AUTO_RUN_ALL   = cfg.getboolean("BlessingRun","AutoRunAll",  fallback=True)
 
-# ─── Window Persistence ─────────────────────────────────────────────────────
+# â”€â”€â”€ Window Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ini_handler = IniHandler(win_ini_path)
 save_timer  = Timer(); save_timer.Start()
 win_x       = ini_handler.read_int(WINDOW_SECTION, "x", 100)
@@ -53,14 +53,14 @@ win_y       = ini_handler.read_int(WINDOW_SECTION, "y", 100)
 win_coll    = ini_handler.read_bool(WINDOW_SECTION, "collapsed", False)
 first_run   = True
 
-# ─── Runner & State ────────────────────────────────────────────────────────
+# â”€â”€â”€ Runner & State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _runner     = BlessingRunner()
 _running    = False
 _last_flag  = False
 _consumed   = False
 i_am_blessed = False
 
-# ─── Caches & Timers ───────────────────────────────────────────────────────
+# â”€â”€â”€ Caches & Timers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _sync_timer         = ThrottledTimer(2000)   # 1s
 _flag_timer         = ThrottledTimer(1500)    # 0.5s
 _logic_scan_timer   = ThrottledTimer(2200)   # 1.2s
@@ -74,7 +74,7 @@ _cached_slots       = []
 _party_cache_timer  = ThrottledTimer(5200)
 _party_cache_lines  = []
 
-# ─── Flag Directory Scan ───────────────────────────────────────────────────
+# â”€â”€â”€ Flag Directory Scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _scan_flag_files():
     global _cached_blessed_ids, _last_dir_mtime
     try:
@@ -93,7 +93,7 @@ def _scan_flag_files():
                 pass
     _cached_blessed_ids = new_set
 
-# ─── Party Cache Update ────────────────────────────────────────────────────
+# â”€â”€â”€ Party Cache Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _update_party_cache():
     global _cached_slots, _last_party_hash
     slots = Party.GetPlayers()
@@ -103,7 +103,7 @@ def _update_party_cache():
     _last_party_hash = current_hash
     _cached_slots    = list(slots)
 
-# ─── Main Logic Tick ───────────────────────────────────────────────────────
+# â”€â”€â”€ Main Logic Tick â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _blessing_logic_tick(me: int):
     global _running, _last_flag, _consumed, i_am_blessed
 
@@ -147,7 +147,7 @@ def _blessing_logic_tick(me: int):
     if _logic_scan_timer.IsExpired():
         _logic_scan_timer.Reset()
 
-# ─── UI Rendering ─────────────────────────────────────────────────────────
+# â”€â”€â”€ UI Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def on_imgui_render(me: int):
     global first_run, win_x, win_y, win_coll, _running
     global first_run, win_x, win_y, win_coll
@@ -218,7 +218,7 @@ def on_imgui_render(me: int):
         if win_coll != ini_handler.read_bool(WINDOW_SECTION, "collapsed", False):
             ini_handler.write_key(WINDOW_SECTION, "collapsed", str(win_coll))
 
-# ─── Entrypoints ──────────────────────────────────────────────────────────
+# â”€â”€â”€ Entrypoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def setup():
     pass
 
@@ -230,9 +230,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Blessed", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

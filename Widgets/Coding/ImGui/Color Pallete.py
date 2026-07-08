@@ -8,9 +8,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Color Palette Explorer", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 
@@ -41,7 +41,7 @@ def tooltip():
 def main():
     if PyImGui.begin(MODULE_NAME, PyImGui.WindowFlags.AlwaysAutoResize):
 
-        # 3 colors per row → 3 columns per color → 9 columns
+        # 3 colors per row â†’ 3 columns per color â†’ 9 columns
         if PyImGui.begin_table(
             "color_table",
             9,
@@ -74,7 +74,7 @@ def main():
                 for slot in range(3):
                     idx = i + slot
                     if idx >= total:
-                        # No more colors → leave remaining cells empty
+                        # No more colors â†’ leave remaining cells empty
                         continue
 
                     color_name = colors[idx]

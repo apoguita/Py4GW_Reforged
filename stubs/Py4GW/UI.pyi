@@ -1,6 +1,6 @@
 from typing import Any, Callable, Sequence
 
-# This module describes the recorded ImGui-style UI builder exposed by
+# This module describes the recorded ImGui_Legacy-style UI builder exposed by
 # `Py4GW.UI` / `src/Py4GW_UI.cpp`.
 # It is not the Guild Wars native frame/window creation layer.
 # Helpers such as `draw_list_add_rect_filled` render through the overlay-backed

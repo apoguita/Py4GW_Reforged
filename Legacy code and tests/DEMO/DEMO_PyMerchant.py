@@ -1,6 +1,6 @@
 # Necessary Imports
 import Py4GW        # Miscellaneous functions and classes
-import PyImGui     # ImGui wrapper
+import PyImGui     # ImGui_Legacy wrapper
 import PyInventory  # Inventory functions and classes
 import PyMerchant   # Merchant functions and classes
 
@@ -32,7 +32,7 @@ def draw_trader_window():
 
     merchant_instance.update()  # Call update to check on quote status
 
-    # Start the ImGui window
+    # Start the ImGui_Legacy window
     if PyImGui.begin("Trader Functions"):
 
         item_list = merchant_instance.get_trader_item_list()
@@ -81,7 +81,7 @@ def draw_merchant_window():
 
     merchant_instance.update()  # Call update to check on quote status
 
-    # Start the ImGui window
+    # Start the ImGui_Legacy window
     if PyImGui.begin("Merchant Functions"):
 
         item_list = merchant_instance.get_trader_item_list()
@@ -132,7 +132,7 @@ def draw_crafter_window():
 
     merchant_instance.update()  # Call update to check on quote status
 
-    # Start the ImGui window
+    # Start the ImGui_Legacy window
     if PyImGui.begin("Crafter Functions"):
 
         quoted_item_id = merchant_instance.get_quoted_item_id()

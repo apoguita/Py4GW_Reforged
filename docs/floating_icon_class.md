@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`ImGui.FloatingIcon` is a small self-contained UI controller that displays a draggable floating icon and uses that icon as an on/off switch for a callable.
+`ImGui_Legacy.FloatingIcon` is a small self-contained UI controller that displays a draggable floating icon and uses that icon as an on/off switch for a callable.
 
 Its job is not to be a generic window manager. Its job is to:
 
@@ -64,7 +64,7 @@ Current constructor fields:
 - `hover_icon_scale`: icon scale when hovered
 - `start_pos`: initial position before window config is restored
 - `window_id`: unique id used for the hitbox
-- `window_name`: ImGui window name for the floating button window
+- `window_name`: ImGui_Legacy window name for the floating button window
 - `tooltip_visible`: tooltip shown when currently enabled
 - `tooltip_hidden`: tooltip shown when currently disabled
 - `drag_threshold`: distance before motion is treated as drag instead of click
@@ -114,7 +114,7 @@ Behavior:
 
 ### `sync_begin_with_close(open_)`
 
-Helper for callers whose driven window can also be closed from a normal ImGui close button.
+Helper for callers whose driven window can also be closed from a normal ImGui_Legacy close button.
 
 If the controlled window is closed externally, the caller can push that new state back into `FloatingIcon` by calling this method.
 
@@ -127,8 +127,8 @@ This is the main runtime method.
 Behavior:
 
 1. Loads toggle state once if needed.
-2. Creates a small floating ImGui window for the icon.
-3. Lets `ImGui.Begin` and `ImGui.End` persist the floating window position, size, and collapsed state through the supplied `ini_key`.
+2. Creates a small floating ImGui_Legacy window for the icon.
+3. Lets `ImGui_Legacy.Begin` and `ImGui_Legacy.End` persist the floating window position, size, and collapsed state through the supplied `ini_key`.
 4. Draws the icon texture.
 5. Uses an invisible button as the interactive hitbox.
 6. Distinguishes drag from click using `drag_threshold`.
@@ -138,7 +138,7 @@ Behavior:
 Important distinction:
 
 - `toggle_ini_key` persists the functional on/off state
-- `ini_key` in `draw()` persists the floating button window itself through `ImGui.Begin/End`
+- `ini_key` in `draw()` persists the floating button window itself through `ImGui_Legacy.Begin/End`
 
 ## Persistence Model
 
@@ -158,7 +158,7 @@ Stored through:
 
 ### 2. Floating window persistence
 
-Handled by the normal ImGui window wrapper and `IniManager` window config flow.
+Handled by the normal ImGui_Legacy window wrapper and `IniManager` window config flow.
 
 This controls:
 
@@ -170,7 +170,7 @@ Stored through:
 
 - the `ini_key` passed to `draw()`
 
-This comes from `ImGui.Begin` / `ImGui.End`, not from `save_visibility()`.
+This comes from `ImGui_Legacy.Begin` / `ImGui_Legacy.End`, not from `save_visibility()`.
 
 ## How Drag And Click Work
 
@@ -218,7 +218,7 @@ Provide:
 
 The caller must pass an `ini_key` to `draw()` for the floating icon window itself.
 
-That key is what lets `ImGui.Begin/End` restore and persist:
+That key is what lets `ImGui_Legacy.Begin/End` restore and persist:
 
 - floating icon position
 - floating icon size
@@ -246,7 +246,7 @@ This keeps the floating icon's internal toggle state consistent with the control
 ## Minimal Usage Pattern
 
 ```python
-floating_button = ImGui.FloatingIcon(
+floating_button = ImGui_Legacy.FloatingIcon(
     icon_path="my_icon.png",
     window_name="My Floating Button",
     tooltip_visible="Hide UI",

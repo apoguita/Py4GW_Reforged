@@ -1,26 +1,26 @@
 """
-flat_button_click_test.py — Path B: Flat Engine Button Interactive Debug Panel
+flat_button_click_test.py â€” Path B: Flat Engine Button Interactive Debug Panel
 ================================================================================
 
 PyImGui widget panel that validates the button-rendering-pipeline consensus
 implementation. Provides step-by-step creation, live status polling, and
-individual debug probes — all non-blocking, frame-cycle driven.
+individual debug probes â€” all non-blocking, frame-cycle driven.
 
 Architecture:
     - Called every frame via main() by the widget manager.
     - State stored in module-level variables (no globals leak).
-    - Native calls use NativeFunction.__call__ (→ Game.enqueue internally).
+    - Native calls use NativeFunction.__call__ (â†’ Game.enqueue internally).
       NO user-written lambdas wrapping directCall().
     - Status auto-polled once per second using time.time() gating.
-    - NO while loops, NO time.sleep() — the Python thread NEVER blocks.
+    - NO while loops, NO time.sleep() â€” the Python thread NEVER blocks.
 
 Features:
-    1. Live Status — window/button frame IDs, dimensions, position, pushed state.
-    2. Step-by-step creation — 8 incremental buttons (Window → Subclass → Button → Size → Text → Input → Show → Invalidate).
-    3. Debug probes — Read Base Ptr, Read Size, Read Position, Check Pushed, Force Redraw, Do Click.
-    4. Scrollable debug log — timestamped events.
+    1. Live Status â€” window/button frame IDs, dimensions, position, pushed state.
+    2. Step-by-step creation â€” 8 incremental buttons (Window â†’ Subclass â†’ Button â†’ Size â†’ Text â†’ Input â†’ Show â†’ Invalidate).
+    3. Debug probes â€” Read Base Ptr, Read Size, Read Position, Check Pushed, Force Redraw, Do Click.
+    4. Scrollable debug log â€” timestamped events.
     5. Create/Destroy all in one click.
-    6. Auto-poll — button state polled once per second.
+    6. Auto-poll â€” button state polled once per second.
 
 Imports from ButtonMethods:
     FrameCreate_Func, CtlBtnSetTextLiteral_Func, FrameSetSize_Func,
@@ -51,11 +51,11 @@ from Py4GWCoreLib.native_src.methods.ButtonMethods import (
     CtlBtnProc_Callback,
 )
 
-# ── Metadata ──────────────────────────────────────────────────────────
+# â”€â”€ Metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 MODULE_NAME = "Flat Button Click Test"
 SCRIPT_REVISION = "2026-06-20-widget-rewrite"
 
-# ── Debug: Dump all resolved addresses at startup ─────────────────────
+# â”€â”€ Debug: Dump all resolved addresses at startup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _dump_native_addresses():
     _log("=== RESOLVED NATIVE FUNCTION ADDRESSES ===")
     for name, obj in [
@@ -83,7 +83,7 @@ def _dump_native_addresses():
         _log(f"  {m}: {'PRESENT' if exists else 'MISSING'}")
     _log("============================================")
 
-# ── Tunables ──────────────────────────────────────────────────────────
+# â”€â”€ Tunables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_TITLE = "Flat Button Test"
 WINDOW_WIDTH = 280.0
 WINDOW_HEIGHT = 160.0
@@ -100,7 +100,7 @@ BUTTON_FLAGS = 0x40000          # IME-style: flat background
 POLL_INTERVAL = 1.0             # seconds between auto-polls
 MAX_LOG_LINES = 500
 
-# ── State ─────────────────────────────────────────────────────────────
+# â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _window_id: int = 0
 _button_id: int = 0
 _window_created: bool = False
@@ -120,7 +120,7 @@ _last_status: str = "idle"
 _last_poll_time: float = 0.0
 _initialized: bool = False
 
-# Input buffers (mutated by ImGui)
+# Input buffers (mutated by ImGui_Legacy)
 _input_width: float = BUTTON_WIDTH
 _input_height: float = BUTTON_HEIGHT
 _input_text: str = BUTTON_LABEL
@@ -128,9 +128,9 @@ _input_x: float = BUTTON_X
 _input_y: float = BUTTON_Y
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Logging
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def _log(msg: str) -> None:
     timestamp = time.strftime("%H:%M:%S")
@@ -141,9 +141,9 @@ def _log(msg: str) -> None:
     print(f"[{MODULE_NAME}] {msg}")
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Frame Inspection Helpers
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def _find_child_button(parent_id: int) -> int:
     """Scan all frames to find a child of parent_id that could be the button."""
@@ -204,22 +204,22 @@ def _read_button_state() -> None:
         _button_pushed_str = "error"
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Actions (all enqueued on game thread)
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def _enqueue(fn):
     """Helper: enqueue a callable onto the game thread."""
     PyGameThread.enqueue(fn)
 
 
-# ── Step 1: Create Window ─────────────────────────────────────────────
+# â”€â”€ Step 1: Create Window â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_create_window():
     global _window_id, _window_created, _last_status, _subclass_applied
 
     if _window_id > 0:
-        _log("Window already exists — skipping creation.")
+        _log("Window already exists â€” skipping creation.")
         return
 
     _log(f"Creating window: '{WINDOW_TITLE}' ({WINDOW_WIDTH}x{WINDOW_HEIGHT})")
@@ -242,27 +242,27 @@ def action_create_window():
     _last_status = "create_window enqueued"
 
 
-# ── Step 2: Add OnFrameNotify (FrameNewSubclass) ──────────────────────
-# ⚠️ SKIP THIS STEP! GWUI.CreateWindow ALREADY attaches CRProc.
-# Calling FrameNewSubclass again DOUBLE-SUBCLASSES → CRASH.
+# â”€â”€ Step 2: Add OnFrameNotify (FrameNewSubclass) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# âš ï¸ SKIP THIS STEP! GWUI.CreateWindow ALREADY attaches CRProc.
+# Calling FrameNewSubclass again DOUBLE-SUBCLASSES â†’ CRASH.
 # Only use if creating a BARE frame (without GWUI.CreateWindow).
 
 def action_add_subclass():
     global _subclass_applied, _last_status
 
     if _subclass_applied:
-        _log("OnFrameNotify already applied — skipping.")
+        _log("OnFrameNotify already applied â€” skipping.")
         return
     if _window_id <= 0:
-        _log("ERROR: No window — create window first.")
+        _log("ERROR: No window â€” create window first.")
         return
 
-    _log(f"⚠️ SKIP: GWUI.CreateWindow already has CRProc subclass (0x{DIALOG_SUBCLASS_TYPE_ADDR:08X})")
+    _log(f"âš ï¸ SKIP: GWUI.CreateWindow already has CRProc subclass (0x{DIALOG_SUBCLASS_TYPE_ADDR:08X})")
     _log("   Double-subclassing would CRASH. Use only with bare frames.")
     _last_status = "SKIPPED: already subclassed by GWUI.CreateWindow"
 
 
-# ── Step 3: Create FrameList + Text Item ──────────────────────────────
+# â”€â”€ Step 3: Create FrameList + Text Item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Uses REAL DLL bindings (verified exist):
 #   - create_scrollable_frame_by_frame_id (not create_scrollable_content!)
 #   - add_scrollable_item_by_frame_id (not add_text_item_to_frame_list!)
@@ -274,10 +274,10 @@ def action_create_button():
     global _button_id, _button_created, _framelist_id, _last_status
 
     if _button_created:
-        _log("Button already created — skipping. Destroy first to re-create.")
+        _log("Button already created â€” skipping. Destroy first to re-create.")
         return
     if _window_id <= 0:
-        _log("ERROR: No window — create window first.")
+        _log("ERROR: No window â€” create window first.")
         return
 
     _log(f"Creating scrollable frame + item: '{_input_text}'")
@@ -324,11 +324,11 @@ def action_create_button():
     _last_status = "create_scrollable+item enqueued"
 
 
-# ── Step 4: Set Size ──────────────────────────────────────────────────
+# â”€â”€ Step 4: Set Size â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_set_size():
     if _button_id <= 0:
-        _log("ERROR: No button — create button first.")
+        _log("ERROR: No button â€” create button first.")
         return
 
     _log(f"SetSize: {_input_width}x{_input_height} on button {_button_id}")
@@ -343,13 +343,13 @@ def action_set_size():
     _last_status = "set_size enqueued"
 
 
-# ── Step 5: Set Text ──────────────────────────────────────────────────
+# â”€â”€ Step 5: Set Text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_set_text():
     global _last_status
 
     if _button_id <= 0:
-        _log("ERROR: No button — create button first.")
+        _log("ERROR: No button â€” create button first.")
         return
     if not CtlBtnSetTextLiteral_Func.is_valid():
         _log("ERROR: CtlBtnSetTextLiteral_Func not resolved")
@@ -358,7 +358,7 @@ def action_set_text():
     _log(f"SetText: '{_input_text}' on button {_button_id}")
 
     label_buf = ctypes.create_unicode_buffer(_input_text)
-    # NativeFunction.__call__ → Game.enqueue internally (no directCall, no lambda)
+    # NativeFunction.__call__ â†’ Game.enqueue internally (no directCall, no lambda)
     CtlBtnSetTextLiteral_Func(
         ctypes.c_uint32(_button_id),
         label_buf,
@@ -389,11 +389,11 @@ def action_set_text():
         _log(f"FrameContentInvalidate({_button_id}) enqueued after SetText")
 
 
-# ── Step 6: Enable Input ──────────────────────────────────────────────
+# â”€â”€ Step 6: Enable Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_enable_input():
     if _button_id <= 0:
-        _log("ERROR: No button — create button first.")
+        _log("ERROR: No button â€” create button first.")
         return
 
     _log(f"FrameMouseEnable(button={_button_id}, enable=True)")
@@ -408,11 +408,11 @@ def action_enable_input():
     _last_status = "enable_input enqueued"
 
 
-# ── Step 7: Show ──────────────────────────────────────────────────────
+# â”€â”€ Step 7: Show â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_show():
     if _button_id <= 0:
-        _log("ERROR: No button — create button first.")
+        _log("ERROR: No button â€” create button first.")
         return
 
     _log(f"ShowFrame(button={_button_id})")
@@ -427,13 +427,13 @@ def action_show():
     _last_status = "show enqueued"
 
 
-# ── Step 8: Force Redraw (FrameContentInvalidate) ─────────────────────
+# â”€â”€ Step 8: Force Redraw (FrameContentInvalidate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_invalidate():
     global _last_status
 
     if _button_id <= 0:
-        _log("ERROR: No button — create button first.")
+        _log("ERROR: No button â€” create button first.")
         return
 
     _log(f"FrameContentInvalidate(button={_button_id})")
@@ -444,7 +444,7 @@ def action_invalidate():
         _log(_last_status)
         return
 
-    # NativeFunction.__call__ → Game.enqueue internally (no directCall, no lambda)
+    # NativeFunction.__call__ â†’ Game.enqueue internally (no directCall, no lambda)
     f(
         ctypes.c_uint32(_button_id),
         ctypes.c_uint32(4),
@@ -453,7 +453,7 @@ def action_invalidate():
     _log(_last_status)
 
 
-# ── Debug Probes ──────────────────────────────────────────────────────
+# â”€â”€ Debug Probes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def probe_read_base_ptr():
     if _button_id <= 0:
@@ -487,7 +487,7 @@ def probe_check_pushed():
     _log(f"Pushed probe enqueued for button {_button_id}")
 
 
-# ── FrameContentInvalidate resolution (cached) ──────────────────────────
+# â”€â”€ FrameContentInvalidate resolution (cached) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _frame_content_invalidate_addr: int = 0
 _frame_content_invalidate_func: Any = None
@@ -543,7 +543,7 @@ def probe_force_redraw():
         _log("ERROR: FrameContentInvalidate not resolved")
         return
 
-    # NativeFunction.__call__ → Game.enqueue internally (no directCall, no lambda)
+    # NativeFunction.__call__ â†’ Game.enqueue internally (no directCall, no lambda)
     f(
         ctypes.c_uint32(_button_id),
         ctypes.c_uint32(4),
@@ -569,7 +569,7 @@ def probe_do_click():
     _last_status = "do_click enqueued"
 
 
-# ── Create / Destroy All ──────────────────────────────────────────────
+# â”€â”€ Create / Destroy All â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def action_create_all():
     """Convenience: create window + subclass + button in one go."""
@@ -650,12 +650,12 @@ def action_destroy_all():
     _last_status = "destroy_all enqueued"
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Auto-Poll (called once per second, non-blocking)
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def _auto_poll() -> None:
-    """Discover button and read state — called from render each frame when gated."""
+    """Discover button and read state â€” called from render each frame when gated."""
     global _button_id, _button_created, _last_poll_time
 
     # Discover button if window exists but button not found
@@ -680,9 +680,9 @@ def _auto_poll() -> None:
         _enqueue(_read_button_state)
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # PyImGui Panel
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def main() -> None:
     """Called each frame by the Py4GW widget manager."""
@@ -695,20 +695,20 @@ def main() -> None:
         _dump_native_addresses()
         _initialized = True
 
-    # ── Auto-poll once per second ──
+    # â”€â”€ Auto-poll once per second â”€â”€
     now = time.time()
     if now - _last_poll_time >= POLL_INTERVAL:
         _last_poll_time = now
         _auto_poll()
 
-    # ── Draw ImGui window ──
+    # â”€â”€ Draw ImGui_Legacy window â”€â”€
     if not PyImGui.begin(f"{MODULE_NAME}##flat_btn_test", True, PyImGui.WindowFlags.AlwaysAutoResize):
         PyImGui.end()
         return
 
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Section: Status
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     PyImGui.text_colored("=== Status ===", (0.4, 0.8, 1.0, 1.0))
     PyImGui.text(f"  Window frame_id:  {_window_id}")
     PyImGui.text(f"  Button frame_id:  {_button_id}")
@@ -728,9 +728,9 @@ def main() -> None:
 
     PyImGui.separator()
 
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Section: Quick Actions
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     PyImGui.text_colored("=== Quick Actions ===", (0.4, 0.8, 1.0, 1.0))
 
     if PyImGui.button("Create All (Auto)"):
@@ -741,9 +741,9 @@ def main() -> None:
 
     PyImGui.separator()
 
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Section: Step-by-Step Creation
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     PyImGui.text_colored("=== Step-by-Step Creation ===", (0.4, 0.8, 1.0, 1.0))
 
     if PyImGui.button("Step 1: Create Window"):
@@ -788,9 +788,9 @@ def main() -> None:
 
     PyImGui.separator()
 
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Section: Tunable Parameters
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     PyImGui.text_colored("=== Parameters ===", (0.4, 0.8, 1.0, 1.0))
 
     _input_text = PyImGui.input_text("Button Label", _input_text, 0) or _input_text
@@ -801,9 +801,9 @@ def main() -> None:
 
     PyImGui.separator()
 
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Section: Debug Probes
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     PyImGui.text_colored("=== Debug Probes ===", (0.7, 0.7, 0.3, 1.0))
 
     if PyImGui.button("Read Base Ptr"):
@@ -826,9 +826,9 @@ def main() -> None:
 
     PyImGui.separator()
 
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # Section: Debug Log
-    # ═══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     PyImGui.text_colored("=== Debug Log ===", (0.7, 0.7, 0.3, 1.0))
     PyImGui.text(f"  ({len(_debug_log)} entries, show last 20)")
 
@@ -850,12 +850,12 @@ def main() -> None:
     PyImGui.end()
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Widget lifecycle
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 def configure() -> None:
-    """Widget config entry point — no-op for this debug panel."""
+    """Widget config entry point â€” no-op for this debug panel."""
     pass
 
 

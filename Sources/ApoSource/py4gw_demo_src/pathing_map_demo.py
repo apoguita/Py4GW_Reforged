@@ -126,7 +126,7 @@ class PathingMapRenderer:
 
     def scale_coords(self, x, y, window_w, window_h, flip_y: bool = False):
         """
-        Scale (x, y) from world coordinates to ImGui window coordinates,
+        Scale (x, y) from world coordinates to ImGui_Legacy window coordinates,
         then apply pan + zoom.
         """
         world_w = self.map_boundaries.x_max - self.map_boundaries.x_min

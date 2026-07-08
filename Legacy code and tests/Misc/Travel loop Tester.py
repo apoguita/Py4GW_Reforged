@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Tuple, Generator, Any
 import os
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
-                          AutoPathing, ImGui, ActionQueueManager)
+                          AutoPathing, ImGui_Legacy, ActionQueueManager)
 
 
 bot = Botting("Travel Test",

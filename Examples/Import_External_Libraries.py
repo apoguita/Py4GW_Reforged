@@ -70,7 +70,7 @@ except ModuleNotFoundError as e:
 MODULE_NAME = "tester for everything"
 
 def DrawWindow():
-    """ImGui draw function that runs every frame."""
+    """ImGui_Legacy draw function that runs every frame."""
     try:
         flags = PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.AlwaysAutoResize
         if PyImGui.begin("Py4GW", flags):

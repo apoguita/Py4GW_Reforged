@@ -54,7 +54,7 @@ For project architecture, this is the single primary Python-facing source-of-tru
 
 This is where Py4GW semantics begin. `stubs` and `native_src` are primitives; `Py4GWCoreLib` is where project/library semantics start.
 
-For UI semantics, this means modules such as `ImGui`, `DXOverlay`, `Overlay`, and `UIManager` are higher-level project-facing layers built on top of the lower-level `PyImGui` primitive interface.
+For UI semantics, this means modules such as `ImGui_Legacy`, `DXOverlay`, `Overlay`, and `UIManager` are higher-level project-facing layers built on top of the lower-level `PyImGui` primitive interface.
 
 This layer includes modules and wrapper surfaces such as:
 
@@ -65,7 +65,7 @@ This layer includes modules and wrapper surfaces such as:
 - `Context` (typed native-context gateway over `native_src`, exposing structured context domains such as gameplay, world, map, party, cinematic, and pre-game state)
 - `DXOverlay` (structured DirectX geometry/texture rendering engine)
 - `Effect` (layered status-state plus buff/effect query and limited control surface)
-- `ImGui` (higher-level themed UI toolkit over `ImGui_src`, including style/theme management, textured controls, and managed window modules above raw `PyImGui`)
+- `ImGui_Legacy` (higher-level themed UI toolkit over `ImGui_src`, including style/theme management, textured controls, and managed window modules above raw `PyImGui`)
 - `Inventory` (bag/storage state, capacity accounting, and item-handling workflow/action layer)
 - `Item` (per-item definition, properties, customization, and trade introspection layer)
 - `ItemArray` (cross-bag item collection and item-set filtering/manipulation/sorting layer)

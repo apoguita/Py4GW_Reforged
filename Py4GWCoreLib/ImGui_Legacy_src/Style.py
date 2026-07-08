@@ -120,7 +120,7 @@ class Style:
             img_color_enum = data.get("img_color_enum", None)            
             self.img_color_enum = getattr(PyImGui.ImGuiCol, img_color_enum) if img_color_enum in PyImGui.ImGuiCol.__members__ else None
 
-    def __init__(self, theme: StyleTheme = StyleTheme.ImGui):
+    def __init__(self, theme: StyleTheme = StyleTheme.ImGui_Legacy):
         # Set the default style as base so we can push it and cover all
         self.Theme : StyleTheme = theme
 
@@ -411,7 +411,7 @@ class Style:
         return cls.load_from_json(default_file_path, theme) if os.path.exists(default_file_path) else cls(theme)
 
     def preview(self):
-        """Temporarily apply this Style into ImGui's live StyleConfig (not permanent)."""
+        """Temporarily apply this Style into ImGui_Legacy's live StyleConfig (not permanent)."""
         if not hasattr(self, "pyimgui_style"):
             self.pyimgui_style = PyImGui.StyleConfig()
 
@@ -436,6 +436,6 @@ class Style:
         # StyleVars are handled separately if needed (scalars/vec2s already live in StyleConfig)
 
     def apply_permanently(self):
-        """Commit current preview to ImGui's global StyleConfig (persistent)."""
+        """Commit current preview to ImGui_Legacy's global StyleConfig (persistent)."""
         if hasattr(self, "pyimgui_style"):
             self.pyimgui_style.Push()

@@ -121,7 +121,7 @@ def ShowMerchantWindow():
     try: 
         PyImGui.set_next_window_size(w_width, height_list[merchant_index])
         if PyImGui.begin(f"Merchants, Traders, Crafters and Collectors"):
-            #ImGui.DrawTextWithTitle("PyMerchant class", PyMerchant_descriptions.values[merchant_index],8)
+            #ImGui_Legacy.DrawTextWithTitle("PyMerchant class", PyMerchant_descriptions.values[merchant_index],8)
 
             if PyImGui.begin_child("Merchant Description Child", size=(w_width-20, 150),border=True, flags=PyImGui.WindowFlags.HorizontalScrollbar):
                 PyImGui.text(f"{PyMerchant_descriptions.values[merchant_index]}")
@@ -150,7 +150,7 @@ def ShowMerchantWindow():
                 data.append(("Quoted Value:", quoted_value))
                 data.append(("Transaction Complete:", transaction_complete))
 
-            ImGui.table("Trader Info", headers, data)
+            ImGui_Legacy.table("Trader Info", headers, data)
 
             if merchant_index == 1:
                 PyImGui.text("Items Offered")
@@ -312,7 +312,7 @@ def ShowPy4GW_Window_main():
         PyImGui.set_next_window_size(width, height)
         if PyImGui.begin(f"Py4GW"):
            
-            ImGui.DrawTextWithTitle("Py4GW class", Py4GW_descriptions.values[description_index],7)   
+            ImGui_Legacy.DrawTextWithTitle("Py4GW class", Py4GW_descriptions.values[description_index],7)   
 
             PyImGui.separator()
             if PyImGui.collapsing_header("PyKeystroke"):
@@ -377,7 +377,7 @@ def ShowPy4GW_Window_main():
                     ("Max Ping:", max_ping)
                  ]
 
-                ImGui.table("PingHandler info", headers, data)
+                ImGui_Legacy.table("PingHandler info", headers, data)
 
             PyImGui.separator()
             if PyImGui.collapsing_header("Timer"):
@@ -411,7 +411,7 @@ def ShowPy4GW_Window_main():
                 if PyImGui.button("Resume Timer"):
                     timer_instance.Resume()
 
-                ImGui.table("Timer info", headers, data)
+                ImGui_Legacy.table("Timer info", headers, data)
 
             if PyImGui.collapsing_header("Overlay()"):
                 if PyImGui.button("Show Overlay() Info"):
@@ -424,7 +424,7 @@ def ShowPy4GW_Window_main():
                     (mouse_x, mouse_y)
                 ]
 
-                ImGui.table("Overlay() info", headers, data)
+                ImGui_Legacy.table("Overlay() info", headers, data)
 
                 mark_target = PyImGui.checkbox("Mark Target", mark_target)
                 if mark_target:
@@ -450,14 +450,14 @@ def ShowPy4GW_Window_main():
                         (f"{x:.2f}", f"{y:.2f}", f"{z:.2f}"),
                     ]
 
-                    ImGui.table("Mouse World Position", headers, data)
+                    ImGui_Legacy.table("Mouse World Position", headers, data)
 
                     headers = ["PlayerX", "PlayerY", "PlayerZ"]
                     data = [
                         (f"{player_x:.2f}", f"{player_y:.2f}", f"{player_z:.2f}")
                     ]
 
-                    ImGui.table("Player Position", headers, data)
+                    ImGui_Legacy.table("Player Position", headers, data)
 
                 PyImGui.separator()
                 Overlay().DrawLine(100, 100, 500, 500)
@@ -505,15 +505,15 @@ def ShowEffectsWindow():
             effects_data = [(effect.effect_id, effect.skill_id, PySkill.Skill(effect.skill_id).id.GetName(), 
                             effect.duration, effect.attribute_level, effect.time_remaining) for effect in effect_list]
 
-            ImGui.table("Effects", effects_headers, effects_data)
+            ImGui_Legacy.table("Effects", effects_headers, effects_data)
 
             buffs_headers = ["Buff ID", "Skill ID","Name", "Target Agent"]
             buffs_data = [(buff.buff_id, buff.skill_id,PySkill.Skill(buff.skill_id).id.GetName(), buff.target_agent_id) for buff in buff_list]
             
-            ImGui.table("Buffs", buffs_headers, buffs_data)
+            ImGui_Legacy.table("Buffs", buffs_headers, buffs_data)
 
             PySkill_window_state.values[0] = PyImGui.input_int("Buff ID", PySkill_window_state.values[0])
-            PySkill_window_state.values[1]  = ImGui.toggle_button("Drop Buff", PySkill_window_state.values[1])
+            PySkill_window_state.values[1]  = ImGui_Legacy.toggle_button("Drop Buff", PySkill_window_state.values[1])
 
             if PySkill_window_state.values[1]:
                 GLOBAL_CACHE.Effects.DropBuff(PySkill_window_state.values[0])
@@ -553,7 +553,7 @@ def ShowSkillbarWindow():
                             ("Recharge(cast timestamp):", recharge),
                             ("Event:", event)
                         ]
-                        ImGui.table("skillbar skill info" + str(skill_slot), headers, data)
+                        ImGui_Legacy.table("skillbar skill info" + str(skill_slot), headers, data)
             
             if Party.GetHeroCount == 0:
                 PyImGui.text("No Heroes in Party")
@@ -593,7 +593,7 @@ def ShowSkillbarWindow():
                                             ("Recharge(cast timestamp):", recharge),
                                             ("Event:", event)
                                         ]
-                                        ImGui.table("hero skillbar skill info" + str(skill_slot), headers, data)
+                                        ImGui_Legacy.table("hero skillbar skill info" + str(skill_slot), headers, data)
 
                     
 
@@ -625,7 +625,7 @@ def ShowSkillDataWindow(skill_id):
                 ("Profession:", f"{profession_id} - {profession_name}")
             ]
             
-            ImGui.table("skill comon info" + str(skill_id), headers, data)
+            ImGui_Legacy.table("skill comon info" + str(skill_id), headers, data)
 
             if PyImGui.collapsing_header("Skill Data"):
 
@@ -662,7 +662,7 @@ def ShowSkillDataWindow(skill_id):
                     ("Aoe Range:", aoe_range)
                 ]
             
-                ImGui.table("skill data info" + str(skill_id), headers, data)
+                ImGui_Legacy.table("skill data info" + str(skill_id), headers, data)
 
             if PyImGui.collapsing_header("Attribute"):
                 
@@ -688,7 +688,7 @@ def ShowSkillDataWindow(skill_id):
                     ("Duration 15:", duration_15)
                 ]
             
-                ImGui.table("skill attribute info" + str(skill_id), headers, data)
+                ImGui_Legacy.table("skill attribute info" + str(skill_id), headers, data)
 
             if PyImGui.collapsing_header("Flags"):
                 is_touch_range = GLOBAL_CACHE.Skill.Flags.IsTouchRange(skill_id)
@@ -773,7 +773,7 @@ def ShowSkillDataWindow(skill_id):
                     ("Is Disguise:", is_disguise)
                 ]
                 
-                ImGui.table("skill flags info" + str(skill_id), headers, data)
+                ImGui_Legacy.table("skill flags info" + str(skill_id), headers, data)
 
             if PyImGui.collapsing_header("Animations"):
 
@@ -804,7 +804,7 @@ def ShowSkillDataWindow(skill_id):
                     ("Icon File ID 2:", icon_file_id2)
                 ]
 
-                ImGui.table("skill animations info" + str(skill_id), headers, data)
+                ImGui_Legacy.table("skill animations info" + str(skill_id), headers, data)
 
             if PyImGui.collapsing_header("ExtraData"):
                 condition = GLOBAL_CACHE.Skill.ExtraData.GetCondition(skill_id)
@@ -830,7 +830,7 @@ def ShowSkillDataWindow(skill_id):
                     ("Description ID:", description_id)
                 ]
 
-                ImGui.table("skill extra data info" + str(skill_id), headers, data)
+                ImGui_Legacy.table("skill extra data info" + str(skill_id), headers, data)
 
         PyImGui.end()
     except Exception as e:
@@ -847,7 +847,7 @@ def ShowSkillWindow():
         if PyImGui.begin(f"Skill"):
 
             description = "Skill class is in charge of handling the skills.\nIt provides methods to retrieve skill data, like skill name, description, type, etc.\nIt has methods pertinent to the skill and related to controlling skill actions."
-            ImGui.DrawTextWithTitle("AgentArray class", description,6)   
+            ImGui_Legacy.DrawTextWithTitle("AgentArray class", description,6)   
 
             hovered_skill = GLOBAL_CACHE.SkillBar.GetHoveredSkillID()
             headers = ["Hovered Skill","Name"]
@@ -855,10 +855,10 @@ def ShowSkillWindow():
                 (hovered_skill, GLOBAL_CACHE.Skill.GetName(hovered_skill).replace("_", " "))
             ]
             
-            ImGui.table("hovered info", headers, data)
+            ImGui_Legacy.table("hovered info", headers, data)
 
             PySkill_window_state.values[0] = PyImGui.input_int("SkillID", PySkill_window_state.values[0])
-            PySkill_window_state.values[1]  = ImGui.toggle_button("Show Item Data", PySkill_window_state.values[1])
+            PySkill_window_state.values[1]  = ImGui_Legacy.toggle_button("Show Item Data", PySkill_window_state.values[1])
 
             if  PySkill_window_state.values[1]:
                 ShowSkillDataWindow(PySkill_window_state.values[0])
@@ -880,7 +880,7 @@ def ShowInventoryWindow():
 
             description = """The ItemArray class is in charge of handling the items in the game.\nIt provides methods to retrieve item data, like item type, rarity, properties, etc.\n They can be filtered, sorted, and manipulated in a way that is useful for inventory analysis.\nRefer to code for complete instruction set."""
 
-            ImGui.DrawTextWithTitle("Inventory class", description,7) 
+            ImGui_Legacy.DrawTextWithTitle("Inventory class", description,7) 
             
             def format_currency(amount):
                 platinum = amount // 1000 
@@ -898,7 +898,7 @@ def ShowInventoryWindow():
                 ("Gold In Storage:", format_currency(GLOBAL_CACHE.Inventory.GetGoldInStorage())),
             ]
 
-            ImGui.table("Inventory common info", headers, data)
+            ImGui_Legacy.table("Inventory common info", headers, data)
 
             if PyImGui.button("Identify First Available Item"):
                 GLOBAL_CACHE.Inventory.IdentifyFirst()
@@ -989,7 +989,7 @@ def ShowItemDataWindow(item_id):
                 ("AgentItemID",GLOBAL_CACHE.Item.GetAgentItemID(item_id)),
             ]
 
-            ImGui.table("Item common info", headers, data)
+            ImGui_Legacy.table("Item common info", headers, data)
             
             if PyImGui.collapsing_header("Rarity"):
             
@@ -1018,7 +1018,7 @@ def ShowItemDataWindow(item_id):
                     (rarity_id,rarity_name)
                 ]
 
-                ImGui.table("Item rarity common info", headers, data)
+                ImGui_Legacy.table("Item rarity common info", headers, data)
 
             if PyImGui.collapsing_header("Properties"):
                 
@@ -1033,7 +1033,7 @@ def ShowItemDataWindow(item_id):
                     ("Interaction:",GLOBAL_CACHE.Item.Properties.GetInteraction(item_id)),
                     ("Interaction(Bin):",bin(GLOBAL_CACHE.Item.Properties.GetInteraction(item_id))),
                 ]
-                ImGui.table("Item properties common info", headers, data)
+                ImGui_Legacy.table("Item properties common info", headers, data)
 
             if PyImGui.collapsing_header("Type"):
 
@@ -1048,7 +1048,7 @@ def ShowItemDataWindow(item_id):
                     ("IsZCoin:",GLOBAL_CACHE.Item.Type.IsZCoin(item_id)),
                     ("IsTome",GLOBAL_CACHE.Item.Type.IsTome(item_id)),
                 ]
-                ImGui.table("Item properties common info", headers, data)
+                ImGui_Legacy.table("Item properties common info", headers, data)
 
             if PyImGui.collapsing_header("Usage"):
 
@@ -1066,7 +1066,7 @@ def ShowItemDataWindow(item_id):
                     ("IsIdentified:",GLOBAL_CACHE.Item.Usage.IsIdentified(item_id)),
 
                 ]
-                ImGui.table("Item usage common info", headers, data)
+                ImGui_Legacy.table("Item usage common info", headers, data)
 
             if PyImGui.collapsing_header("customization"):
 
@@ -1088,7 +1088,7 @@ def ShowItemDataWindow(item_id):
                     ("IsStackable:",GLOBAL_CACHE.Item.Customization.IsStackable(item_id)),
                     ("IsSparkly:",GLOBAL_CACHE.Item.Customization.IsSparkly(item_id)),
                 ]
-                ImGui.table("Item customization common info", headers, data)
+                ImGui_Legacy.table("Item customization common info", headers, data)
 
                 if PyImGui.collapsing_header("Modifiers"):
 
@@ -1115,7 +1115,7 @@ def ShowItemDataWindow(item_id):
                                 ("Arg1:",arg1,hex(arg1),bin(arg1)),
                                 ("Arg2:",arg2,hex(arg2),bin(arg2)),
                             ]
-                            ImGui.table("Item modifier common info"+ str(idx + 1), headers, data)
+                            ImGui_Legacy.table("Item modifier common info"+ str(idx + 1), headers, data)
 
                 if PyImGui.collapsing_header("DyeInfo"):
                     dye_info = GLOBAL_CACHE.Item.Customization.GetDyeInfo(item_id)
@@ -1136,7 +1136,7 @@ def ShowItemDataWindow(item_id):
                     ("Dye4:",dye4.ToInt(),dye4.ToString()),
                     ]
 
-                    ImGui.table("Item Dye common info", headers, data)
+                    ImGui_Legacy.table("Item Dye common info", headers, data)
 
         PyImGui.end()
     except Exception as e:
@@ -1153,7 +1153,7 @@ def ShowItemWindow():
         if PyImGui.begin(f"Items"):
 
             description = "Item class is in charge of handling the items.\nIt provides methods to retrieve ittem data. \nIn Py4GW Item Attributres are categorized in subclasses, \nbut this has no bearing on the actual item funciton."
-            ImGui.DrawTextWithTitle("Item class", description,7)   
+            ImGui_Legacy.DrawTextWithTitle("Item class", description,7)   
 
             hovered_item = GLOBAL_CACHE.Inventory.GetHoveredItemID()
 
@@ -1162,11 +1162,11 @@ def ShowItemWindow():
                 (f"{hovered_item}")
             ]
 
-            ImGui.table("Item info", headers, data)
+            ImGui_Legacy.table("Item info", headers, data)
 
             PyItem_window_state.values[0] = PyImGui.input_int("ItemID", PyItem_window_state.values[0])
 
-            PyItem_window_state.values[1]  = ImGui.toggle_button("Show Item Data",PyItem_window_state.values[1])
+            PyItem_window_state.values[1]  = ImGui_Legacy.toggle_button("Show Item Data",PyItem_window_state.values[1])
 
             if PyItem_window_state.values[1]:
                 GLOBAL_CACHE.Item.RequestName(PyItem_window_state.values[0])
@@ -1187,7 +1187,7 @@ def ShowPartyWindow():
         if PyImGui.begin(f"Party"):
 
             #description = "Party class is in charge of handling the party members.\nIt provides methods to retrieve party data, like heroes, henchmen, players and pets.\nIt has methods pertinent to the party and related to controlling party actions.\nParty members are agents, and as such, their data is retrieved from the Agent object."
-            #ImGui.DrawTextWithTitle("Party class", description,7)  
+            #ImGui_Legacy.DrawTextWithTitle("Party class", description,7)  
 
             login_number = GLOBAL_CACHE.Party.Players.GetLoginNumberByAgentID(Player.GetAgentID())
             party_number = GLOBAL_CACHE.Party.Players.GetPartyNumberFromLoginNumber(login_number)
@@ -1213,7 +1213,7 @@ def ShowPartyWindow():
                 ("Is Player Ticked:", GLOBAL_CACHE.Party.IsPlayerTicked(party_number))
             ]
 
-            ImGui.table("party info", headers, data)
+            ImGui_Legacy.table("party info", headers, data)
 
             if PyImGui.button("Toggle Party Tick"):
                 GLOBAL_CACHE.Party.ToggleTicked()
@@ -1257,7 +1257,7 @@ def ShowPartyWindow():
                         (f"Is Ticked? {'Yes' if player.is_ticked else 'No'}")
                     ]
 
-                    ImGui.table("player info"+ str(party_number), headers, data)
+                    ImGui_Legacy.table("player info"+ str(party_number), headers, data)
                     PyImGui.separator()
 
             if PyImGui.collapsing_header("Heroes"):
@@ -1324,7 +1324,7 @@ def ShowPartyWindow():
                         (f"Profession: {hero.primary.GetName()} / {hero.secondary.GetName()}")
                     ]
 
-                    ImGui.table("hero info"+ str(hero_id), headers, data)
+                    ImGui_Legacy.table("hero info"+ str(hero_id), headers, data)
                     
                     PyImGui.separator()
 
@@ -1354,7 +1354,7 @@ def ShowPartyWindow():
                         (f"Profession: {henchman.profession.GetName()}")
                     ]
 
-                    ImGui.table("henchman info"+ str(agent_id), headers, data)
+                    ImGui_Legacy.table("henchman info"+ str(agent_id), headers, data)
                     
                     PyImGui.separator()
                     
@@ -1370,7 +1370,7 @@ def ShowPartyWindow():
                         (f"Name: {Agent.GetNameByID(agent_id)}"),
                     ]
 
-                    ImGui.table("other info"+ str(agent_id), headers, data)
+                    ImGui_Legacy.table("other info"+ str(agent_id), headers, data)
                     
                     PyImGui.separator()
 
@@ -1401,7 +1401,7 @@ def ShowPartyWindow():
                     (f"Locked Target Id: {pet.locked_target_id}")
                 ]
 
-                ImGui.table("pet info", headers, data)
+                ImGui_Legacy.table("pet info", headers, data)
             
 
         PyImGui.end()
@@ -1420,7 +1420,7 @@ def ShowPlayerWindow():
         if PyImGui.begin(f"Player"):
 
             description = "The player class is in charge of handling the player agent.\nIt provides methods to retrieve player data, like name, position, target, etc.\nIt has methods pertinent to the  controlled player and related to controlling game actions from the player perspective.\nThe Player itself is an agent, and as such, its data is retrieved from the Agent object."
-            ImGui.DrawTextWithTitle("Player class", description)
+            ImGui_Legacy.DrawTextWithTitle("Player class", description)
 
             posx, posy = Player.GetXY()
 
@@ -1433,7 +1433,7 @@ def ShowPlayerWindow():
                 ("Observing ID:", Player.GetObservingID())
             ]
 
-            ImGui.table("player info", headers, data)
+            ImGui_Legacy.table("player info", headers, data)
             PyPlayer_window_state.values[0] = PyImGui.checkbox("Show agent data", PyPlayer_window_state.values[0])
 
             if PyPlayer_window_state.values[0]:
@@ -1481,7 +1481,7 @@ def ShowPlayerWindow():
                     ("Total Earned Balthazar:", total_earned_balthazar),
                     ("Max Balthazar:", max_balthazar)
                 ]
-                ImGui.table("PlayerData info", headers, data)
+                ImGui_Legacy.table("PlayerData info", headers, data)
                                 
                 if PyImGui.button("Deposit Faction"):
                     Player.DepositFaction(FactionAllegiance.Kurzick.value) 
@@ -1522,7 +1522,7 @@ def ShowPlayerWindow():
                     ("Has Tiers:", has_tiers)
                 ]
                 
-                ImGui.table("Title info", headers, data)
+                ImGui_Legacy.table("Title info", headers, data)
                 
                 if PyImGui.button("remove Current Title"):
                     Player.RemoveActiveTitle()
@@ -1616,7 +1616,7 @@ def ShowAgentArrayWindow():
 
             Refer to the class documentation to see how to use the AgentArray class
             """
-            ImGui.DrawTextWithTitle("AgentArray class", description,35)   
+            ImGui_Legacy.DrawTextWithTitle("AgentArray class", description,35)   
 
         PyImGui.end()
     except Exception as e:
@@ -1633,7 +1633,7 @@ def ShowGadgetAgentData(agent_id):
 
             if agent_id != 0:
                 description = "here you can see all the item agent data available"
-                ImGui.DrawTextWithTitle("Agentgadget " + str(agent_id), description,3)
+                ImGui_Legacy.DrawTextWithTitle("Agentgadget " + str(agent_id), description,3)
 
                 PyImGui.text("Agent Item Data:")
 
@@ -1665,7 +1665,7 @@ def ShowGadgetAgentData(agent_id):
                     data.append((f"h00D4[{i}] (binary):", bin(h00D4_val)))
 
                 # Display the table using the provided table function
-                ImGui.table("gadget item info", headers, data)
+                ImGui_Legacy.table("gadget item info", headers, data)
 
                 
 
@@ -1685,7 +1685,7 @@ def ShowItemAgentData(agent_id):
 
             if agent_id != 0:
                 description = "here you can see all the item agent data available"
-                ImGui.DrawTextWithTitle("AgentItem " + str(agent_id), description,3)
+                ImGui_Legacy.DrawTextWithTitle("AgentItem " + str(agent_id), description,3)
 
                 PyImGui.text("Agent Item Data:")
 
@@ -1708,7 +1708,7 @@ def ShowItemAgentData(agent_id):
                     ("ExtraType (binary):", bin(item_data.extra_type))
                 ]
 
-                ImGui.table("agent common info",headers,data)
+                ImGui_Legacy.table("agent common info",headers,data)
                 
 
         PyImGui.end()
@@ -1727,7 +1727,7 @@ def ShowLivingAgentData(agent_id):
 
             if agent_id != 0:
                 description = "here you can see all the living agent data available"
-                ImGui.DrawTextWithTitle("AgentLiving " + str(agent_id), description,3)
+                ImGui_Legacy.DrawTextWithTitle("AgentLiving " + str(agent_id), description,3)
 
                 PyImGui.text("Agent Living Data:")
 
@@ -1778,7 +1778,7 @@ def ShowLivingAgentData(agent_id):
                 headers = ["Data 1", "Data 2", "Data 3"]
 
                 # Call the table function to display the data
-                ImGui.table("Agent Positional Common Info", headers, formatted_data)
+                ImGui_Legacy.table("Agent Positional Common Info", headers, formatted_data)
 
                 PyImGui.text("Weapon Data:")
 
@@ -1791,7 +1791,7 @@ def ShowLivingAgentData(agent_id):
                 data = [(f"Weapon Item ID: {weapon_item_id}",f"Weapon Item Type: {weapon_item_type}"),
                         (f"Offhand Item ID: {offhand_item_id}",f"Offhand Item Type: {offhand_item_type}")]
 
-                ImGui.table("weapon data",headers,data)
+                ImGui_Legacy.table("weapon data",headers,data)
 
                 PyImGui.text("Pve properties:")
                 PyImGui.text("State:")
@@ -1799,7 +1799,7 @@ def ShowLivingAgentData(agent_id):
                 headers = ["IsPlayer", "IsNpc"]
                 data = [(f"{Agent.IsPlayer(agent_id)}",f"{Agent.IsNPC(agent_id)}"),
                         (f"IsDead: {Agent.IsDead(agent_id)}",f"IsAlive: {Agent.IsAlive(agent_id)}")]
-                ImGui.table("Agent state", headers, data)  
+                ImGui_Legacy.table("Agent state", headers, data)  
 
                 PyImGui.text("Model State:")
                 combined_data = [
@@ -1824,7 +1824,7 @@ def ShowLivingAgentData(agent_id):
                 headers = ["Data 1", "Data 2", "Data 3"]
 
                 # Call the table function to display the data
-                ImGui.table("agent living pve Info", headers, formatted_data)
+                ImGui_Legacy.table("agent living pve Info", headers, formatted_data)
 
                 PyImGui.text("Agent TypeMap Bitmasks:")
                 combined_data = [
@@ -1853,7 +1853,7 @@ def ShowLivingAgentData(agent_id):
                 headers = ["Data 1", "Data 2", "Data 3"]
 
                 # Call the table function to display the data
-                ImGui.table("agent living pve Info", headers, formatted_data)
+                ImGui_Legacy.table("agent living pve Info", headers, formatted_data)
 
                 PyImGui.text("Agent Combat Info:")
                 combined_data = [
@@ -1884,7 +1884,7 @@ def ShowLivingAgentData(agent_id):
                 headers = ["Data 1", "Data 2", "Data 3"]
 
                 # Call the table function to display the data
-                ImGui.table("agent living pve Info", headers, formatted_data)
+                ImGui_Legacy.table("agent living pve Info", headers, formatted_data)
 
                 # Format data into rows of 3 columns
                 columns = 5
@@ -1900,7 +1900,7 @@ def ShowLivingAgentData(agent_id):
                 headers = ["Data 1", "Data 2", "Data 3", "Data 4", "Data 5"]
 
                 # Call the table function to display the data
-                ImGui.table("agent living extra pve Info", headers, formatted_data)
+                ImGui_Legacy.table("agent living extra pve Info", headers, formatted_data)
 
         PyImGui.end()
     except Exception as e:
@@ -1919,7 +1919,7 @@ def draw_agent_window(agent_id):
 
             if agent_id != 0:
                 description = "in GWCA not all agents are trated equally, theres data that is not availble for some agent types, like enemies, in most cases youll have acces to all your private data and your own heroes, all the remaining agents have a limited set of data to query from"
-                ImGui.DrawTextWithTitle("Agent " + str(agent_id), description,5)
+                ImGui_Legacy.DrawTextWithTitle("Agent " + str(agent_id), description,5)
 
                 PyImGui.text("Agent common Data:")
    
@@ -1929,7 +1929,7 @@ def draw_agent_window(agent_id):
                         ("Is ItemAgent:", Agent.IsItem(agent_id)),
                         ("Is GadgetAgent:", Agent.IsGadget(agent_id))]
 
-                ImGui.table("agent common info",headers,data)
+                ImGui_Legacy.table("agent common info",headers,data)
 
                 PyImGui.text("Positional Data:")
 
@@ -1947,7 +1947,7 @@ def draw_agent_window(agent_id):
                         ("Rotation sine:", Agent.GetRotationSin(agent_id)),
                         ("Velocity (X,Y):", vel_str)]
 
-                ImGui.table("agent positional common info",headers,data)
+                ImGui_Legacy.table("agent positional common info",headers,data)
 
                 PyImGui.separator()
 
@@ -1960,18 +1960,18 @@ def draw_agent_window(agent_id):
                 for attribute in attributes:
                     data.append((attribute.GetName(), str(attribute.level_base), str(attribute.level)))
 
-                ImGui.table("Attributes Info", headers, data)
+                ImGui_Legacy.table("Attributes Info", headers, data)
 
                 PyImGui.text("Show Agent type Specific data")
 
                 if Agent.IsLiving(agent_id):
-                    PyAgent_agent_window_state.values[0] = ImGui.toggle_button("Show Living Agent Data", PyAgent_agent_window_state.values[0])
+                    PyAgent_agent_window_state.values[0] = ImGui_Legacy.toggle_button("Show Living Agent Data", PyAgent_agent_window_state.values[0])
 
                 if Agent.IsItem(agent_id):
-                    PyAgent_agent_window_state.values[1] = ImGui.toggle_button("Show Item Agent Data", PyAgent_agent_window_state.values[1])
+                    PyAgent_agent_window_state.values[1] = ImGui_Legacy.toggle_button("Show Item Agent Data", PyAgent_agent_window_state.values[1])
 
                 if Agent.IsGadget(agent_id):
-                    PyAgent_agent_window_state.values[2] = ImGui.toggle_button("Show Gadget Agent Data", PyAgent_agent_window_state.values[2])
+                    PyAgent_agent_window_state.values[2] = ImGui_Legacy.toggle_button("Show Gadget Agent Data", PyAgent_agent_window_state.values[2])
 
 
                 if PyAgent_agent_window_state.values[0]:
@@ -2006,7 +2006,7 @@ def ShowPyAgentWindow():
         PyImGui.set_next_window_size(width, height)
         if PyImGui.begin(PyAgent_window_state.window_name):
             # Show description text
-            ImGui.DrawTextWithTitle(PyAgent_window_state.window_name, description)
+            ImGui_Legacy.DrawTextWithTitle(PyAgent_window_state.window_name, description)
 
             if not Map.IsMapReady():
                     PyImGui.text_colored("Travel : Map is not ready",(1, 0, 0, 1))
@@ -2054,14 +2054,14 @@ def ShowPyAgentWindow():
                         ("TargetID",player_target),
                         ("Merchant ID:", merchant_id)]
 
-                ImGui.table("Nearest info Table",headers,data)
+                ImGui_Legacy.table("Nearest info Table",headers,data)
 
 
             # Input field for Agent ID
             PyImGui.text("Input an Agent Id to see its data")
             PyAgent_window_state.values[0] = PyImGui.input_int("Agent ID", PyAgent_window_state.values[0])
             PyImGui.separator()
-            PyAgent_window_state.values[1] = ImGui.toggle_button("AgentArray", PyAgent_window_state.values[1])
+            PyAgent_window_state.values[1] = ImGui_Legacy.toggle_button("AgentArray", PyAgent_window_state.values[1])
             # If an agent ID is entered, display agent details
             if PyAgent_window_state.values[0] != 0:
                 draw_agent_window(PyAgent_window_state.values[0])
@@ -2088,7 +2088,7 @@ def ShowPyImGuiExtraMaplWindow():
         width, height = 375,400
         PyImGui.set_next_window_size(width, height)
         if PyImGui.begin(PyMap_Extra_InfoWindow_state.window_name, PyImGui.WindowFlags.NoResize):
-            #ImGui.DrawTextWithTitle(PyMap_Extra_InfoWindow_state.window_name, description)
+            #ImGui_Legacy.DrawTextWithTitle(PyMap_Extra_InfoWindow_state.window_name, description)
 
             if not Map.IsOutpost():
                 PyImGui.text("Get to an Outpost to see this data")
@@ -2103,7 +2103,7 @@ def ShowPyImGuiExtraMaplWindow():
                         ("District:", Map.GetDistrict()),
                         ("Language:", Map.GetLanguage()[1])]
 
-                ImGui.table("Instance Info Table",headers,data)
+                ImGui_Legacy.table("Instance Info Table",headers,data)
 
                 PyImGui.separator()
 
@@ -2163,7 +2163,7 @@ def ShowPyImGuiExtraMaplWindow():
                     headers = ["Foes Killed", "Foes To Kill"]
                     data = [(Map.GetFoesKilled(), Map.GetFoesToKill())]
 
-                    ImGui.table("Vanquish Info Table",headers,data)
+                    ImGui_Legacy.table("Vanquish Info Table",headers,data)
 
         PyImGui.end()
 
@@ -2183,7 +2183,7 @@ def ShowPyImGuiTravelWindow():
         width, height = 375,360
         PyImGui.set_next_window_size(width, height)
         if PyImGui.begin(PyMap_Travel_Window_state.window_name, PyImGui.WindowFlags.NoResize):
-            ImGui.DrawTextWithTitle(PyMap_Travel_Window_state.window_name, description,8)
+            ImGui_Legacy.DrawTextWithTitle(PyMap_Travel_Window_state.window_name, description,8)
 
             if not Map.IsMapReady():
                     PyImGui.text_colored("Travel : Map is not ready",(1, 0, 0, 1))
@@ -2224,7 +2224,7 @@ def ShowPyMapWindow():
         width, height = 375,490
         PyImGui.set_next_window_size(width, height)
         if PyImGui.begin(PyMap_window_state.window_name, PyImGui.WindowFlags.NoResize):
-            ImGui.DrawTextWithTitle(PyMap_window_state.window_name, description,8)
+            ImGui_Legacy.DrawTextWithTitle(PyMap_window_state.window_name, description,8)
 
             # Instance Fields (General map data)
             PyImGui.text("Instance Information")
@@ -2251,7 +2251,7 @@ def ShowPyMapWindow():
                     ("Min Player Size:", min_player_size)
                     ]
 
-            ImGui.table("Instance Info Table",headers,data)
+            ImGui_Legacy.table("Instance Info Table",headers,data)
 
             PyImGui.separator()
 
@@ -2261,7 +2261,7 @@ def ShowPyMapWindow():
                     ("Loading:", Map.IsMapLoading()),
                     ("Ready:", Map.IsMapReady())]
 
-            ImGui.table("Map Status Info Table",headers,data)
+            ImGui_Legacy.table("Map Status Info Table",headers,data)
 
             PyImGui.separator()
 
@@ -2275,7 +2275,7 @@ def ShowPyMapWindow():
                     PyImGui.table_next_column()  # Move to the next column
 
                     selected_button_index = button_index
-                    PyMap_window_state.is_window_open[selected_button_index] = ImGui.toggle_button(button_label, PyMap_window_state.is_window_open[selected_button_index])
+                    PyMap_window_state.is_window_open[selected_button_index] = ImGui_Legacy.toggle_button(button_label, PyMap_window_state.is_window_open[selected_button_index])
                     
                     if PyMap_window_state.is_window_open[selected_button_index]:
                         title = PyMap_window_state.button_list[selected_button_index]
@@ -2321,7 +2321,7 @@ def ShowPyImGuiMiscelaneousWindow():
         PyImGui.set_next_window_size(width, height)
         if PyImGui.begin(ImGui_misc_window_state.window_name,PyImGui.WindowFlags.NoResize):
 
-            ImGui.DrawTextWithTitle(ImGui_misc_window_state.window_name, description,8)
+            ImGui_Legacy.DrawTextWithTitle(ImGui_misc_window_state.window_name, description,8)
 
             # Color Picker for RGB values
             ImGui_misc_window_state.values[0] = PyImGui.color_edit3("RGB Color Picker", ImGui_misc_window_state.values[0])
@@ -2366,7 +2366,7 @@ def ShowPyImGuiTablesWindow():
        PyImGui.set_next_window_size(width, height)
        if PyImGui.begin(ImGui_tables_window_state.window_name,PyImGui.WindowFlags.NoResize):
 
-            ImGui.DrawTextWithTitle(ImGui_tables_window_state.window_name, description,8)
+            ImGui_Legacy.DrawTextWithTitle(ImGui_tables_window_state.window_name, description,8)
 
             # Table with 3 columns and 5 rows
             if PyImGui.begin_table("Table1", 3):
@@ -2421,7 +2421,7 @@ def ShowPyImGuiInputFieldsWindow():
        PyImGui.set_next_window_size(width, height)
        if PyImGui.begin(ImGui_input_fields_window_state.window_name,PyImGui.WindowFlags.NoResize):
 
-            ImGui.DrawTextWithTitle(ImGui_input_fields_window_state.window_name, description)
+            ImGui_Legacy.DrawTextWithTitle(ImGui_input_fields_window_state.window_name, description)
 
             # Slider for float values
             ImGui_input_fields_window_state.values[0] = PyImGui.slider_float("Adjust Float", ImGui_input_fields_window_state.values[0], 0.0, 1.0)
@@ -2470,7 +2470,7 @@ def ShowPyImGuiSelectablesWindow():
        PyImGui.set_next_window_size(width, height)
        if PyImGui.begin(ImGui_selectables_window_state.window_name,PyImGui.WindowFlags.NoResize):
 
-            ImGui.DrawTextWithTitle(ImGui_selectables_window_state.window_name, description, 8)
+            ImGui_Legacy.DrawTextWithTitle(ImGui_selectables_window_state.window_name, description, 8)
 
             ImGui_selectables_window_state.values[0] = PyImGui.checkbox("Check Me!", ImGui_selectables_window_state.values[0])
             PyImGui.text(f"Checkbox is {'checked' if ImGui_selectables_window_state.values[0] else 'unchecked'}")
@@ -2503,7 +2503,7 @@ ImGui_window_state.is_window_open = [False, False, False, False, False]
 def ShowPyImGuiDemoWindow():
     global module_name
     global ImGui_window_state
-    description = "This library has hundreds of functions and demoing each of them is unpractical. \nHere you will find a demo with most useful ImGui functions aswell as an oficial DEMO.\nFor a full detailed list of methods available consult the 'stubs' folder. \nFunctions that are unavailable can be added upon request, \ncontact the autor of the library and request them to be added."
+    description = "This library has hundreds of functions and demoing each of them is unpractical. \nHere you will find a demo with most useful ImGui_Legacy functions aswell as an oficial DEMO.\nFor a full detailed list of methods available consult the 'stubs' folder. \nFunctions that are unavailable can be added upon request, \ncontact the autor of the library and request them to be added."
 
     selected_button_index = 0
     try:
@@ -2511,7 +2511,7 @@ def ShowPyImGuiDemoWindow():
         PyImGui.set_next_window_size(width, height)
 
         if PyImGui.begin(ImGui_window_state.window_name,PyImGui.WindowFlags.NoResize):
-            ImGui.DrawTextWithTitle("PyImGui ATTENTION", description)
+            ImGui_Legacy.DrawTextWithTitle("PyImGui ATTENTION", description)
 
         
             # ----- Top Section: Dynamic Tileset of Buttons -----
@@ -2527,7 +2527,7 @@ def ShowPyImGuiDemoWindow():
                     PyImGui.table_next_column()  # Move to the next column
 
                     selected_button_index = button_index
-                    ImGui_window_state.is_window_open[selected_button_index] = ImGui.toggle_button(button_label, ImGui_window_state.is_window_open[selected_button_index])
+                    ImGui_window_state.is_window_open[selected_button_index] = ImGui_Legacy.toggle_button(button_label, ImGui_window_state.is_window_open[selected_button_index])
                     
                     if ImGui_window_state.is_window_open[selected_button_index]:
                         title = ImGui_window_state.button_list[selected_button_index]
@@ -2573,7 +2573,7 @@ main_window_state.button_list = [
 ]
 
 main_window_state.description_list = [
-    "PyImGui: Provides bindings for creating and managing graphical user interfaces within the game using ImGui. \nIncludes support for text, buttons, tables, sliders, and other GUI elements.",   
+    "PyImGui: Provides bindings for creating and managing graphical user interfaces within the game using ImGui_Legacy. \nIncludes support for text, buttons, tables, sliders, and other GUI elements.",   
     "PyMap: Manages map-related functions such as handling travel, region data, instance types, and map context. \nIncludes functionality for interacting with server regions, campaigns, and continents.",    
     "PyAgent: Handles in-game entities (agents) such as players, NPCs, gadgets, and items. \nProvides methods for manipulating and interacting with agents, including movement, targeting, and context updates.",    
     "PyPlayer: Provides access to the player-specific operations.\nIncludes functionality for interacting with agents, changing targets, issuing chat commands, and other player-related actions such as moving or interacting with the game environment.",   
@@ -2623,7 +2623,7 @@ def DrawWindow():
                     PyImGui.table_next_column()  # Move to the next column
 
                     selected_button_index = button_index
-                    main_window_state.is_window_open[selected_button_index] = ImGui.toggle_button(button_label, main_window_state.is_window_open[selected_button_index])
+                    main_window_state.is_window_open[selected_button_index] = ImGui_Legacy.toggle_button(button_label, main_window_state.is_window_open[selected_button_index])
                     
                     if main_window_state.is_window_open[selected_button_index]:
                         title = main_window_state.button_list[selected_button_index]
@@ -2634,7 +2634,7 @@ def DrawWindow():
                 
             PyImGui.separator()  # Separator between sections
 
-            ImGui.DrawTextWithTitle(title, explanation_text_content)
+            ImGui_Legacy.DrawTextWithTitle(title, explanation_text_content)
             
 
             if main_window_state.is_window_open[0]:
@@ -2711,9 +2711,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Py4GW Demo", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

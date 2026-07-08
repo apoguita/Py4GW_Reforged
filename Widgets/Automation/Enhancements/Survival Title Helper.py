@@ -4,7 +4,7 @@ import Py4GW
 from Py4GWCoreLib import IniHandler, Timer, ThrottledTimer
 from Py4GWCoreLib import GLOBAL_CACHE, Agent
 from Py4GWCoreLib import PyImGui, Color
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Keystroke
 from Py4GWCoreLib import Key
@@ -201,7 +201,7 @@ class Config:
 
 widget_config = Config()
 
-config_module = ImGui.WindowModule(f"{module_name} Config", window_name=f"{module_name} Config##{module_name}", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+config_module = ImGui_Legacy.WindowModule(f"{module_name} Config", window_name=f"{module_name} Config##{module_name}", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 window_x = ini_handler.read_int(module_name + " Config", "config_x", 100)
 window_y = ini_handler.read_int(module_name + " Config", "config_y", 100)
 
@@ -295,9 +295,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Survival Title Helper", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

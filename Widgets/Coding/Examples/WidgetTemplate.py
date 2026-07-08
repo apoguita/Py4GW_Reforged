@@ -1,5 +1,5 @@
 import PyImGui
-from Py4GWCoreLib import Routines, ImGui, Color
+from Py4GWCoreLib import Routines, ImGui_Legacy, Color
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib import Database
 
@@ -20,7 +20,7 @@ INI_FILENAME = "WidgetTemplate.ini" #ini file name
 def draw_widget():
     """Draws the widget interface."""
     global INI_KEY
-    if ImGui.Begin(INI_KEY,MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
+    if ImGui_Legacy.Begin(INI_KEY,MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
         
         PyImGui.text("Add your stuff here")
         
@@ -29,7 +29,7 @@ def draw_widget():
         if new_val != val:
             SETTINGS.SetBool('TestBoolVar', 'value', new_val)
 
-    ImGui.End(INI_KEY)
+    ImGui_Legacy.End(INI_KEY)
     
 # ---------------------------------------
 # Widget lifecycle functions
@@ -50,9 +50,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored(MODULE_NAME, title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

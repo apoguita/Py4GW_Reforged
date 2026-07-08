@@ -13,24 +13,24 @@ def main():
 
             size = 32
             for size in [32, 64, 128, 256]:
-                ImGui.DrawTexture(python_logo, size, size)
+                ImGui_Legacy.DrawTexture(python_logo, size, size)
                 PyImGui.same_line(0,-1)
 
             PyImGui.separator()
-            ImGui.DrawTexturedRect(100,100, 128, 128, python_logo)
+            ImGui_Legacy.DrawTexturedRect(100,100, 128, 128, python_logo)
 
             skill_id = 826
             texture_file = GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(skill_id)
     
             
             PyImGui.text(f"Texture for skill ID {skill_id}: {texture_file}")
-            ImGui.DrawTexture(texture_file)
+            ImGui_Legacy.DrawTexture(texture_file)
             
-            if ImGui.ImageButton("##text_unique_name", texture_file, 64, 64):
+            if ImGui_Legacy.ImageButton("##text_unique_name", texture_file, 64, 64):
                 PySystem.Console.Log(MODULE_NAME, "Button clicked!", PySystem.Console.MessageType.Info)
                 
             PyImGui.text("Extended Texture Drawing:")
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_file,
                 size=(64, 64),
                 uv0=(0.0, 0.0),
@@ -39,7 +39,7 @@ def main():
                 border_color=(0, 0, 0, 0)
             )
             PyImGui.same_line(0,-1)
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_file,
                 size=(64, 64),
                 uv0=(0.0, 0.0),
@@ -49,7 +49,7 @@ def main():
             )
 
             PyImGui.same_line(0,-1)
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_file,
                 size=(64, 64),
                 uv0=(0.0, 0.0),
@@ -58,7 +58,7 @@ def main():
                 border_color=(0, 0, 0, 0)
             )
             PyImGui.same_line(0,-1)
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_file,
                 size=(64, 64),
                 uv0=(0.0, 0.0),
@@ -67,7 +67,7 @@ def main():
                 border_color=(0, 0, 0, 0)
             )
             PyImGui.same_line(0,-1)
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_file,
                 size=(64, 64),
                 uv0=(0.0, 0.0),
@@ -76,7 +76,7 @@ def main():
                 border_color=(0, 0, 0, 0)
             )
             
-            ImGui.DrawTextureExtended(
+            ImGui_Legacy.DrawTextureExtended(
                 texture_file,
                 size=(256, 256),
                 uv0=(0.3, 0.3),

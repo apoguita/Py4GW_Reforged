@@ -3,7 +3,7 @@ import PyImGui
 
 from Py4GWCoreLib import ColorPalette, get_texture_for_model
 from Py4GWCoreLib import IconsFontAwesome5
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 #from Py4GWCoreLib import LootConfig
 from Py4GWCoreLib import LootConfig
 from Py4GWCoreLib import ModelID
@@ -40,15 +40,15 @@ class LootModule:
                 PyImGui.WindowFlags.NoTitleBar |
                 PyImGui.WindowFlags.NoResize
         )
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
+        PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding,0.0)
         
         PyImGui.set_next_window_pos(left, top)
         PyImGui.set_next_window_size(width, height)
         
         if PyImGui.begin("Embedded Loot config",True, flags):
            
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+            PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+            PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
             
             if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##save_loot_config", width=25, height=25):
                 pass
@@ -94,8 +94,8 @@ class LootModule:
             if game_toggle_button("##BasicLootFilterGreenButton","Loot Green Items",state, width=20, height=20, color=color):
                 self.loot_singleton.loot_greens = not self.loot_singleton.loot_greens
             PyImGui.same_line(0,3)
-            self.loot_singleton.loot_gold_coins = ImGui.toggle_button(IconsFontAwesome5.ICON_COINS + "##BasicLootFilterGoldCoinsButton", self.loot_singleton.loot_gold_coins, width=20, height=20)
-            ImGui.show_tooltip("Loot Gold Coins")
+            self.loot_singleton.loot_gold_coins = ImGui_Legacy.toggle_button(IconsFontAwesome5.ICON_COINS + "##BasicLootFilterGoldCoinsButton", self.loot_singleton.loot_gold_coins, width=20, height=20)
+            ImGui_Legacy.show_tooltip("Loot Gold Coins")
             PyImGui.separator()
 
             if PyImGui.tree_node("Advanced Loot Filters"):
@@ -114,7 +114,7 @@ class LootModule:
                                         PyImGui.begin_group()
 
                                         state = self.loot_singleton.IsWhitelisted(item_model_id)
-                                        new_state = ImGui.image_toggle_button(
+                                        new_state = ImGui_Legacy.image_toggle_button(
                                             f"##loot_toggle_{item_model_id}",
                                             item_texture,
                                             state,

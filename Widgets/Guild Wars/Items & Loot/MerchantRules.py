@@ -4953,9 +4953,9 @@ class MerchantRulesWidget:
 
     def _ensure_floating_ui(self):
         if self.floating_button is None:
-            from Py4GWCoreLib.ImGui import ImGui
+            from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 
-            self.floating_button = ImGui.FloatingIcon(
+            self.floating_button = ImGui_Legacy.FloatingIcon(
                 icon_path=self._get_floating_icon_path(),
                 window_id=FLOATING_ICON_WINDOW_ID,
                 window_name=FLOATING_ICON_WINDOW_NAME,

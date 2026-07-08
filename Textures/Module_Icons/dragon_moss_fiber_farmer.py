@@ -1027,15 +1027,15 @@ create_bot_routine(bot)
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
 
     PyImGui.begin_tooltip()
 
     title_color = Color(255, 200, 100, 255)
 
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Dragon Moss Fiber Farmer", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
 
     PyImGui.spacing()
     PyImGui.separator()

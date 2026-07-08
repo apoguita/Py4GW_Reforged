@@ -718,7 +718,7 @@
 - Fix AbandonQuest in Quest.py
 - Miscellaneous functions and Stub Handling
 - fixed typo
-- Added ImGui.dummy
+- Added ImGui_Legacy.dummy
 - add a reload button, add a button with dynamic label
 - Merge pull request #3 from apoguita/revert-2-update_widget_manager
 - Revert "added reload option, modified layout"

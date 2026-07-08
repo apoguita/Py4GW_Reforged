@@ -7,8 +7,8 @@ from typing import Optional
 import PyImGui
 from PyItem import ItemModifier
 
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
-from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
 from Py4GWCoreLib.Item import Bag
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums_src.GameData_enums import DyeColor, Profession
@@ -341,8 +341,8 @@ class LootConfigView:
             if PyImGui.is_item_hovered():
                 PyImGui.set_next_window_size((400, 0), PyImGui.ImGuiCond.Always)
                 PyImGui.begin_tooltip()
-                ImGui.text_colored(Utils.humanize_string(rule_type_name), (255, 100, 0, 255), 15, "Bold")
-                ImGui.text_wrapped(rule_description)
+                ImGui_Legacy.text_colored(Utils.humanize_string(rule_type_name), (255, 100, 0, 255), 15, "Bold")
+                ImGui_Legacy.text_wrapped(rule_description)
                 PyImGui.end_tooltip()
 
     def _add_empty_rule(self, rule_type_name: str) -> None:
@@ -470,7 +470,7 @@ class LootConfigView:
                     
                     if False and item and map_ready:
                         PyImGui.set_cursor_pos((x, y))
-                        ImGui.DrawTexture(item.gw_dat_file_path, 32, 32)
+                        ImGui_Legacy.DrawTexture(item.gw_dat_file_path, 32, 32)
                         
                     PyImGui.table_next_column()
                     

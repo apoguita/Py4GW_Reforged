@@ -1,7 +1,7 @@
 import PyImGui
 import PySkill
 
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.Item import Item
 from Py4GWCoreLib.ItemArray import ItemArray
 
@@ -28,7 +28,7 @@ def _draw_texture_row(label: str, file_id: int, texture_key: str, extra_text: st
     if extra_text:
         PyImGui.text(extra_text)
     if texture_key:
-        ImGui.DrawTexture(texture_key, ICON_SIZE, ICON_SIZE)
+        ImGui_Legacy.DrawTexture(texture_key, ICON_SIZE, ICON_SIZE)
         PyImGui.text(texture_key)
     else:
         PyImGui.text("No file id resolved")

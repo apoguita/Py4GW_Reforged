@@ -82,7 +82,7 @@ class BotVariables:
         relics: bool = True
 
     class Gui:
-        window_module = ImGui.WindowModule(
+        window_module = ImGui_Legacy.WindowModule(
             'Bone Farmer',
             window_name='CoF Bone Farm',
             window_pos=(234, 802),
@@ -1601,9 +1601,9 @@ class Draw:
             bot_vars.gui.window_module.first_run = False
 
         try:
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowBorderSize, 0.0)
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
-            PyImGui.push_style_var(ImGui.ImGuiStyleVar.FrameRounding, 0.0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowBorderSize, 0.0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.WindowRounding, 0.0)
+            PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FrameRounding, 0.0)
 
             PyImGui.push_style_color(PyImGui.ImGuiCol.FrameBg, (0.15, 0.15, 0.15, 1))
             PyImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, (0.20, 0.20, 0.20, 1))
@@ -1688,14 +1688,14 @@ def main():
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Cof Bone Farmer Bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

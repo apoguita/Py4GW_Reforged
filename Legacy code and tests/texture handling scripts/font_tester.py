@@ -27,12 +27,12 @@ def main():
                 families = ["Regular", "Bold", "Italic", "BoldItalic"]
                 for i, font_family in enumerate(families):
                     try:
-                        ImGui.push_font(font_family, font_size)
+                        ImGui_Legacy.push_font(font_family, font_size)
                         PyImGui.text(f"{font_family} {font_size}px")
                     except ValueError as e:
                         PySystem.Console.Log(MODULE_NAME, f"Error: {str(e)}", PySystem.Console.MessageType.Error)
                     finally:
-                        ImGui.pop_font()
+                        ImGui_Legacy.pop_font()
                     
                     # Only add same_line if not the last font family
                     if i != len(families) - 1:

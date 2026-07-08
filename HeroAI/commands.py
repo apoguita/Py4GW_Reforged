@@ -3,7 +3,7 @@ from typing import Callable
 
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType

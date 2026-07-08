@@ -2,7 +2,7 @@ import Py4GW
 import math
 
 import PyImGui
-from Py4GWCoreLib import (Routines,Botting,ActionQueueManager, ConsoleLog, GLOBAL_CACHE, Agent, Utils, ImGui, Color, ColorPalette)
+from Py4GWCoreLib import (Routines,Botting,ActionQueueManager, ConsoleLog, GLOBAL_CACHE, Agent, Utils, ImGui_Legacy, Color, ColorPalette)
 from Py4GWCoreLib import ThrottledTimer, Map, Player
 from Py4GWCoreLib.enums import ModelID, Range, TitleID
 
@@ -16,8 +16,8 @@ from typing import List, Tuple
 bot = Botting(
     "YAVB 2.0",
     upkeep_birthday_cupcake_restock=1,
-    upkeep_identify_kits_restock=2,   # ← 4 ID Kits
-    upkeep_salvage_kits_restock=3     # ← 1 Salvage Kit
+    upkeep_identify_kits_restock=2,   # â† 4 ID Kits
+    upkeep_salvage_kits_restock=3     # â† 1 Salvage Kit
 )
 bot.Properties.Set("leave_empty_inventory_slots", value=6)
   
@@ -337,7 +337,7 @@ def _wait_for_aggro_ball(bot: Botting, side_label: str, cycle_timeout: int = 150
                 break  # exit early
 
         else:
-            # ← executes only if loop ran full timeout
+            # â† executes only if loop ran full timeout
             ConsoleLog(f"{side_label} Aggro Ball Wait",
                        f"Timeout reached {cycle_timeout*100}ms, exiting without ball.",
                        PySystem.Console.MessageType.Warning)
@@ -560,9 +560,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Yet Another Vaettir Bot (Y.A.V.B) 2.0", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

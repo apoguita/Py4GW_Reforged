@@ -74,7 +74,7 @@ class FSMVars:
 
 class BotVars:
     def __init__(self):
-        self.window_module = ImGui.WindowModule(
+        self.window_module = ImGui_Legacy.WindowModule(
             module_name,
             window_name="MQVQ Bot",
             window_size=(300, 300),
@@ -122,8 +122,8 @@ class FollowPathAndAggro:
         self.aggro_range        = aggro_range
         self.log_actions        = log_actions
         self._last_scanned_enemy = None
-        # ── THROTTLING STATE ───────────────────────────────────────────
-        # only re-scan if we've moved this far (¾ of aggro_range)
+        # â”€â”€ THROTTLING STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # only re-scan if we've moved this far (Â¾ of aggro_range)
         self._scan_move_thresh   = aggro_range * 0.75
         # track the last position we scanned at
         self._last_scan_pos      = Player.GetXY()
@@ -198,13 +198,13 @@ class FollowPathAndAggro:
             self.status_message = "Error getting target position."
             return
 
-        # ── target only if it’s a new one ───────────────────────────
+        # â”€â”€ target only if itâ€™s a new one â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if self._current_target_enemy != self._last_target_id:
             Player.ChangeTarget(self._current_target_enemy)
             self.change_target_calls += 1
             self._last_target_id = self._current_target_enemy
 
-        # ── move only if the coords differ ──────────────────────────
+        # â”€â”€ move only if the coords differ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         new_move = (int(tx), int(ty))
         if new_move != self._last_move_target:
             Player.Move(*new_move)
@@ -223,7 +223,7 @@ class FollowPathAndAggro:
                 # SAFETY: No next point found
                 self.status_message = "No valid next waypoint! Stopping pathing."
                 if self.log_actions:
-                    ConsoleLog("FollowPathAndAggro", "PathHandler returned None – halting movement.", Console.MessageType.Warning)
+                    ConsoleLog("FollowPathAndAggro", "PathHandler returned None â€“ halting movement.", Console.MessageType.Warning)
                 
                 # Optional fallback: reset to start or nearest point
                 if hasattr(self.path_handler, "reset"):
@@ -232,7 +232,7 @@ class FollowPathAndAggro:
                     if retry_point:
                         self._current_path_point = retry_point
                         self.follow_handler.move_to_waypoint(*retry_point)
-                        self.status_message = f"Path reset → moving to {retry_point}"
+                        self.status_message = f"Path reset â†’ moving to {retry_point}"
                         ConsoleLog("FollowPathAndAggro", f"Path reset after failure, moving to {retry_point}", Console.MessageType.Warning)
                 return  # do nothing else this tick
             
@@ -312,11 +312,11 @@ class FollowPathAndAggro:
                 self.status_message         = "Combat done. Switching to path mode."
                 return
 
-            # ── unified, throttled scan ──────────────────────────────
+            # â”€â”€ unified, throttled scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             self._current_target_enemy = self._throttled_scan()
             if not self._current_target_enemy:
                 self._mode = 'path'
-                self.status_message = "No enemies (throttled)—returning to path."
+                self.status_message = "No enemies (throttled)â€”returning to path."
                 return
 
             try:
@@ -327,13 +327,13 @@ class FollowPathAndAggro:
                 self.status_message        = "Enemy fetch failed. Returning to path."
                 return
 
-            # ── target only if it’s a new one ───────────────────────────
+            # â”€â”€ target only if itâ€™s a new one â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if self._current_target_enemy != self._last_target_id:
                 Player.ChangeTarget(self._current_target_enemy)
                 self.change_target_calls += 1
                 self._last_target_id = self._current_target_enemy
 
-            # ── move only if the coords differ ──────────────────────────
+            # â”€â”€ move only if the coords differ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             new_move = (int(tx), int(ty))
             if new_move != self._last_move_target:
                 Player.Move(*new_move)
@@ -508,7 +508,7 @@ def ResetEnvironment():
     # Remove the combat_handler.reset_all() call as it doesn't exist
 
 # --------------------------------------------------------------------------------------------------
-# NEW THEME COLORS (rename to English‐friendly names)
+# NEW THEME COLORS (rename to Englishâ€friendly names)
 # --------------------------------------------------------------------------------------------------
 
 # 1) Window & Frame backgrounds (dark charcoal, slightly translucent)
@@ -517,28 +517,28 @@ frame_bg_color        = Color(48,  48,  48, 230).to_tuple_normalized()
 frame_hover_color     = Color(68,  68,  68, 230).to_tuple_normalized()
 frame_active_color    = Color(58,  58,  58, 230).to_tuple_normalized()
 
-# 2) Body text (off‐white for maximum readability)
+# 2) Body text (offâ€white for maximum readability)
 body_text_color       = Color(139, 131, 99, 255).to_tuple_normalized()
 
-# 3) Disabled text (mid‐gray for grayed‐out buttons)
+# 3) Disabled text (midâ€gray for grayedâ€out buttons)
 disabled_text_color   = Color(140, 140, 140, 255).to_tuple_normalized()
 
-# 4) Separator lines (medium‐gray)
+# 4) Separator lines (mediumâ€gray)
 separator_color       = Color(90,  90,  90, 255).to_tuple_normalized()
 
-# 5) Header text (use the same bright off‐white as body, or tweak to slightly brighter)
-header_color          = Color(136, 117, 44, 255).to_tuple_normalized()  # “Statistics:” style: pale gold
-#    You can change (251,241,166) to any off‐white / pale‐yellow RGB you like.
+# 5) Header text (use the same bright offâ€white as body, or tweak to slightly brighter)
+header_color          = Color(136, 117, 44, 255).to_tuple_normalized()  # â€œStatistics:â€ style: pale gold
+#    You can change (251,241,166) to any offâ€white / paleâ€yellow RGB you like.
 
-# 6) Icon accent color (a more “exciting” golden‐teal that fits the palette)
+# 6) Icon accent color (a more â€œexcitingâ€ goldenâ€teal that fits the palette)
 icon_color            = Color(177, 152, 55, 255).to_tuple_normalized()
 
-# 7) Neutral button colors (light gray → slightly brighter on hover → slightly darker on active)
+# 7) Neutral button colors (light gray â†’ slightly brighter on hover â†’ slightly darker on active)
 neutral_button        = Color(33, 51, 58, 255).to_tuple_normalized()  # default button
 neutral_button_hover  = Color(140, 140, 140, 255).to_tuple_normalized()  # hovered
 neutral_button_active = Color( 90,  90,  90, 255).to_tuple_normalized()  # pressed
 
-# 8) Combo‐box header (still a dark green tint, if you prefer; otherwise gray)
+# 8) Comboâ€box header (still a dark green tint, if you prefer; otherwise gray)
 header_bg_color       = Color(33, 51, 58, 255).to_tuple_normalized()
 header_hover_color    = Color(33, 51, 58, 255).to_tuple_normalized()
 header_active_color   = Color(95, 145,  95, 255).to_tuple_normalized()
@@ -549,14 +549,14 @@ header_active_color   = Color(95, 145,  95, 255).to_tuple_normalized()
 # --------------------------------------------------------------------------------------------------
 
 def DrawWindow():
-    """Renders a single, themed ImGui window using our new neutral‐gray buttons,
-    pale‐gold headings, off‐white body text, and punchy icon color."""
+    """Renders a single, themed ImGui_Legacy window using our new neutralâ€gray buttons,
+    paleâ€gold headings, offâ€white body text, and punchy icon color."""
     # 1) Begin the window
     if not PyImGui.begin(module_name, PyImGui.WindowFlags.AlwaysAutoResize):
         PyImGui.end()
         return
 
-    # 2) Push “global” style colors: WindowBg, FrameBg, FrameBgHovered, FrameBgActive, Text, Separator
+    # 2) Push â€œglobalâ€ style colors: WindowBg, FrameBg, FrameBgHovered, FrameBgActive, Text, Separator
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg,       window_bg_color)   # push #1
     PyImGui.push_style_color(PyImGui.ImGuiCol.FrameBg,        frame_bg_color)    # push #2
     PyImGui.push_style_color(PyImGui.ImGuiCol.FrameBgHovered, frame_hover_color) # push #3
@@ -564,12 +564,12 @@ def DrawWindow():
     PyImGui.push_style_color(PyImGui.ImGuiCol.Text,           body_text_color)   # push #5
     PyImGui.push_style_color(PyImGui.ImGuiCol.Separator,      separator_color)   # push #6
 
-    # 3) Push “combo header” colors (if you still want a greenish tint for dropdowns):
+    # 3) Push â€œcombo headerâ€ colors (if you still want a greenish tint for dropdowns):
     PyImGui.push_style_color(PyImGui.ImGuiCol.Header,         header_bg_color)   # push #7
     PyImGui.push_style_color(PyImGui.ImGuiCol.HeaderHovered,  header_hover_color)# push #8
     PyImGui.push_style_color(PyImGui.ImGuiCol.HeaderActive,   header_active_color)# push #9
 
-    # 4) Push “button accent” colors (now neutral grays)
+    # 4) Push â€œbutton accentâ€ colors (now neutral grays)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Button,         neutral_button)         # push #10
     PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered,  neutral_button_hover)   # push #11
     PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive,   neutral_button_active)  # push #12
@@ -594,10 +594,10 @@ def DrawWindow():
     # ---- Pause / Resume Button (same line) ----
     PyImGui.same_line(0, 5)
     if not bot_vars.is_running:
-        # Bot not running → render “Pause bot” in disabled gray
+        # Bot not running â†’ render â€œPause botâ€ in disabled gray
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, disabled_text_color)  # push #13
         PyImGui.button("Pause bot  " + IconsFontAwesome5.ICON_PAUSE_CIRCLE, width=140)
-        PyImGui.pop_style_color(1)  # pop that single “Text” change
+        PyImGui.pop_style_color(1)  # pop that single â€œTextâ€ change
     else:
         pause_label = "Pause bot  " + IconsFontAwesome5.ICON_PAUSE_CIRCLE
         if PyImGui.button(pause_label, width=140):
@@ -611,7 +611,7 @@ def DrawWindow():
     PyImGui.text(IconsFontAwesome5.ICON_GLOBE_EUROPE)
     PyImGui.pop_style_color(1)
 
-    #   Heading “Select Region:” in pale‐gold
+    #   Heading â€œSelect Region:â€ in paleâ€gold
     PyImGui.same_line(0, 3)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, header_color)     # push #15
     PyImGui.text("Select Region:")
@@ -639,7 +639,7 @@ def DrawWindow():
         PyImGui.text(IconsFontAwesome5.ICON_MAP)
         PyImGui.pop_style_color(1)
 
-        # Heading “Select Map:” in pale‐gold
+        # Heading â€œSelect Map:â€ in paleâ€gold
         PyImGui.same_line(0, 3)
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, header_color) # push #17
         PyImGui.text("Select Map:")
@@ -733,7 +733,7 @@ def DrawWindow():
     PyImGui.pop_style_color(3)   # unwinds neutral_button, neutral_button_hover, neutral_button_active (#10,#11,#12)
     PyImGui.pop_style_color(3)   # unwinds header_bg_color, header_hover_color, header_active_color (#7,#8,#9)
     PyImGui.pop_style_color(6)   # unwinds window_bg_color, frame_bg_color, frame_hover_color, frame_active_color, body_text_color, separator_color (#1..#6)
-    # (Note: the 13–22 pushes were popped inline, so no need to pop them here.)
+    # (Note: the 13â€“22 pushes were popped inline, so no need to pop them here.)
 
     PyImGui.end()
 

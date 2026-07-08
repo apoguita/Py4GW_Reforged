@@ -1,4 +1,4 @@
-from Py4GWCoreLib import PyImGui, ImGui, IconsFontAwesome5
+from Py4GWCoreLib import PyImGui, ImGui_Legacy, IconsFontAwesome5
 from . import state
 from .handler import handler
 from .config_scope import use_account_settings, character_select
@@ -37,13 +37,13 @@ def draw_floating_menu_config():
         if new_locked != state.floating_drag_locked:
             state.floating_drag_locked = new_locked
             handler._write_setting("FloatingMenu", "floating_drag_locked", str(new_locked))
-        ImGui.show_tooltip("Prevents the floating button from being dragged")        
+        ImGui_Legacy.show_tooltip("Prevents the floating button from being dragged")        
         PyImGui.spacing()
         PyImGui.separator()
         PyImGui.spacing()
         label = "Use Custom Floating Button Colors"
         prev_enabled = draw_centered_checkbox(label, state.floating_custom_colors_enabled)
-        ImGui.show_tooltip("Overrides default floating button colors with custom values")
+        ImGui_Legacy.show_tooltip("Overrides default floating button colors with custom values")
         if prev_enabled != state.floating_custom_colors_enabled:
             state.floating_custom_colors_enabled = prev_enabled
             handler._write_setting("FloatingMenu", "use_custom_colors", str(state.floating_custom_colors_enabled), to_account=use_account_settings())
@@ -88,7 +88,7 @@ def draw_account_widget_config():
             load_global_settings()
         handler.discover_widgets()
     
-    ImGui.show_tooltip("Determines whether to load and save settings globally or per account")
+    ImGui_Legacy.show_tooltip("Determines whether to load and save settings globally or per account")
 
     PyImGui.spacing()
     PyImGui.text("Save Current Widget Settings:")
@@ -172,7 +172,7 @@ def draw_quick_dock_config():
     if enable_qd != state.enable_quick_dock:
         state.enable_quick_dock = enable_qd
         handler._write_setting("QuickDock", "enable_quick_dock", str(enable_qd), to_account=use_account_settings())
-    ImGui.show_tooltip("Enable or Disbale the Widget Dock on the edge of the screen")
+    ImGui_Legacy.show_tooltip("Enable or Disbale the Widget Dock on the edge of the screen")
     
     PyImGui.spacing()
     label = "Quick Dock Color:"
@@ -226,7 +226,7 @@ def draw_quick_dock_config():
     if qd_unlocked != state.quick_dock_unlocked:
         state.quick_dock_unlocked = qd_unlocked
         handler._write_setting("QuickDock", "unlocked", str(qd_unlocked), to_account=use_account_settings())
-    ImGui.show_tooltip("Click to lock" if state.quick_dock_unlocked else "Click to unlock")
+    ImGui_Legacy.show_tooltip("Click to lock" if state.quick_dock_unlocked else "Click to unlock")
     
     PyImGui.spacing()
     label = "Reset Quick Dock Settings"

@@ -1,4 +1,4 @@
-from Py4GWCoreLib import PyImGui, ImGui, time, Overlay, IconsFontAwesome5, Py4GW, ConsoleLog
+from Py4GWCoreLib import PyImGui, ImGui_Legacy, time, Overlay, IconsFontAwesome5, Py4GW, ConsoleLog
 from . import state
 from .handler import handler
 from .ui_widget_menu import draw_widget_popup_menus
@@ -68,8 +68,8 @@ def draw_floating_menu():
     PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, hover)
     PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive,  active)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border,        border)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.FrameBorderSize, 1.0)
-    PyImGui.push_style_var(ImGui.ImGuiStyleVar.FrameRounding, 3.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FrameBorderSize, 1.0)
+    PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.FrameRounding, 3.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (1.0, 1.0, 1.0, 1.0))
 
     PyImGui.set_next_window_pos(button_x, button_y)
@@ -113,7 +113,7 @@ def draw_floating_menu():
             if PyImGui.button(IconsFontAwesome5.ICON_RETWEET + "##Reload Widgets"):
                 ConsoleLog(state.module_name, "Reloading Widgets...", PySystem.Console.MessageType.Info)
                 handler.discover_widgets()
-            ImGui.show_tooltip("Reloads all widgets")
+            ImGui_Legacy.show_tooltip("Reloads all widgets")
             PyImGui.same_line(0.0, 10)
             is_enabled = state.enable_all
             toggle_label = IconsFontAwesome5.ICON_TOGGLE_ON if state.enable_all else IconsFontAwesome5.ICON_TOGGLE_OFF
@@ -126,7 +126,7 @@ def draw_floating_menu():
                 handler._write_global_setting(state.module_name, "state.enable_all", str(state.enable_all))
             if is_enabled:
                 PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Toggle all widgets")
+            ImGui_Legacy.show_tooltip("Toggle all widgets")
             PyImGui.separator()
             draw_widget_popup_menus()
             PyImGui.end_popup()

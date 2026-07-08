@@ -6,7 +6,7 @@ It is based on:
 
 - `Py4GWCoreLib/IniManager.py`
 - `Py4GWCoreLib/ImGui_src/ImGuisrc.py`
-- `Widgets/Coding/ImGui/Icon Explorer.py`
+- `Widgets/Coding/ImGui_Legacy/Icon Explorer.py`
 - `Widgets/Coding/Tools/Bridge Client.py`
 - `Widgets/Guild Wars/Triggers/Enter character on load.py`
 - `Widgets/WidgetCatalog/Py4GW_widget_catalog.py`
@@ -75,16 +75,16 @@ This is the `Window config` section handling:
 - `height`
 - `collapsed`
 
-This is handled through the `ImGui.Begin(...)` / `ImGui.End(...)` wrapper in `Py4GWCoreLib/ImGui_src/ImGuisrc.py`, not by `load_once()`.
+This is handled through the `ImGui_Legacy.Begin(...)` / `ImGui_Legacy.End(...)` wrapper in `Py4GWCoreLib/ImGui_src/ImGuisrc.py`, not by `load_once()`.
 
 The flow is:
 
-1. `ImGui.Begin(ini_key, ...)` calls `IniManager().begin_window_config(ini_key)`
+1. `ImGui_Legacy.Begin(ini_key, ...)` calls `IniManager().begin_window_config(ini_key)`
 2. that restores saved position, size, and collapsed state before `Begin`
 3. begin result is tracked with:
    - `track_window_collapsed(...)`
    - `mark_begin_success(...)`
-4. `ImGui.End(ini_key)` calls:
+4. `ImGui_Legacy.End(ini_key)` calls:
    - `IniManager().end_window_config(ini_key)`
    - `IniManager().save_vars(ini_key)`
 
@@ -314,7 +314,7 @@ So if you need a fresh disk read later, `load_once()` is not enough by itself.
 
 Representative file:
 
-- `Widgets/Coding/ImGui/Icon Explorer.py`
+- `Widgets/Coding/ImGui_Legacy/Icon Explorer.py`
 
 Pattern:
 
@@ -379,7 +379,7 @@ Pattern:
 
 This is the most complete example of the system being used as a real configuration layer.
 
-### Pattern E. Window-state persistence through `ImGui.Begin` / `ImGui.End`
+### Pattern E. Window-state persistence through `ImGui_Legacy.Begin` / `ImGui_Legacy.End`
 
 Representative file:
 
@@ -387,8 +387,8 @@ Representative file:
 
 Pattern:
 
-1. pass `ini_key` into `ImGui.Begin(...)`
-2. pass the same `ini_key` into `ImGui.End(...)`
+1. pass `ini_key` into `ImGui_Legacy.Begin(...)`
+2. pass the same `ini_key` into `ImGui_Legacy.End(...)`
 3. let the wrapper manage window geometry
 
 This is separate from your own custom `add_*` vars.
@@ -463,7 +463,7 @@ For a normal widget/tool:
 5. On user changes:
    - call `IniManager().set(...)`
    - then call `IniManager().save_vars(...)`
-6. If using the shared window wrapper, pair `ImGui.Begin(ini_key, ...)` with `ImGui.End(ini_key)`
+6. If using the shared window wrapper, pair `ImGui_Legacy.Begin(ini_key, ...)` with `ImGui_Legacy.End(ini_key)`
 7. Pass explicit `section=...` when reading and writing registered vars
 8. Keep `var_name` unique within the ini key
 
@@ -474,7 +474,7 @@ For Bot Factory specifically:
 - decide whether config should be account-scoped or global
 - register vars for explicit UI/app state only
 - do not assume tab state is saved unless both `section="Tabs"` and `save_vars(INI_KEY)` are used correctly
-- if using `ImGui.Begin(INI_KEY, ...)` and `ImGui.End(INI_KEY)`, that only covers window geometry plus any dirty vars flushed by `ImGui.End`
+- if using `ImGui_Legacy.Begin(INI_KEY, ...)` and `ImGui_Legacy.End(INI_KEY)`, that only covers window geometry plus any dirty vars flushed by `ImGui_Legacy.End`
 - keep reusable UI component state separate from persisted config state
 
 For a tab label example, the correct form is:
@@ -497,7 +497,7 @@ IniManager().save_vars(INI_KEY)
 - `get*()` reads memory
 - `set()` only marks dirty
 - `save_vars()` is required for registered vars to persist
-- `ImGui.Begin/End` handles window geometry separately
+- `ImGui_Legacy.Begin/End` handles window geometry separately
 - global and account-scoped keys are intentionally different systems
 - section mismatches and duplicate `var_name`s are easy failure modes
 

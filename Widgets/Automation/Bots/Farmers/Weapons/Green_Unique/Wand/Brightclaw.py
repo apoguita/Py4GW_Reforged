@@ -29,15 +29,15 @@ KILLING_PATH = [
 
 
 def _on_party_wipe(bot: "Botting"):
-    """Gère la mort complète du groupe"""
+    """GÃ¨re la mort complÃ¨te du groupe"""
     while Agent.IsDead(Player.GetAgentID()):
         yield from bot.Wait._coro_for_time(1000)
         if not Routines.Checks.Map.MapValid():
-            # Map invalide → libérer FSM et sortir
+            # Map invalide â†’ libÃ©rer FSM et sortir
             bot.config.FSM.resume()
             return
 
-    # Joueur ressuscité → reprendre au combat
+    # Joueur ressuscitÃ© â†’ reprendre au combat
     bot.States.JumpToStepName("[H]Start Combat_4")
     bot.config.FSM.resume()
 
@@ -86,14 +86,14 @@ bot.SetMainRoutine(Routine)
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Brightclaw Farmer bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

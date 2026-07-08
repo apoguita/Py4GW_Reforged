@@ -1,4 +1,4 @@
-from Py4GWCoreLib import ImGui, Color, ColorPalette
+from Py4GWCoreLib import ImGui_Legacy, Color, ColorPalette
 from Py4GW_widget_manager import get_widget_handler
 import PyImGui, Py4GW
 import os
@@ -20,9 +20,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Leveling Dashboard", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 
@@ -87,7 +87,7 @@ def Draw_Window():
         cursor_x, cursor_y = PyImGui.get_cursor_screen_pos()
 
         # Draw the image button
-        result = ImGui.ImageButton(label, texture_path=texture_path, width=size[0], height=size[1])
+        result = ImGui_Legacy.ImageButton(label, texture_path=texture_path, width=size[0], height=size[1])
             
 
         # Position for main caption
@@ -96,11 +96,11 @@ def Draw_Window():
 
         # Shadow first
         PyImGui.set_cursor_screen_pos(text_x + shadow_offset[0], text_y + shadow_offset[1])
-        ImGui.text_colored(caption, color=shadow_color, font_size=font_size, font_style=font_style)
+        ImGui_Legacy.text_colored(caption, color=shadow_color, font_size=font_size, font_style=font_style)
 
         # Main text
         PyImGui.set_cursor_screen_pos(text_x, text_y)
-        ImGui.text_colored(caption, color=text_color, font_size=font_size, font_style=font_style)
+        ImGui_Legacy.text_colored(caption, color=text_color, font_size=font_size, font_style=font_style)
 
         # Restore cursor below image
         PyImGui.set_cursor_screen_pos(cursor_x, cursor_y + size[1])

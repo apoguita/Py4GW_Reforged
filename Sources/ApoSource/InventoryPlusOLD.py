@@ -106,8 +106,8 @@ class WidgetUI:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
         
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 5, 5)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         
         if PyImGui.begin("Inventory + Tabs", flags):
             # Draw the tab icons
@@ -120,12 +120,12 @@ class WidgetUI:
                 if icon.rainbow_color:
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, icon.icon_color.to_tuple_normalized())
 
-                toggle_status =  ImGui.toggle_button(icon.icon + icon.icon_name, toggle_status, width=25, height=25)
+                toggle_status =  ImGui_Legacy.toggle_button(icon.icon + icon.icon_name, toggle_status, width=25, height=25)
                 if icon.rainbow_color:
                     PyImGui.pop_style_color(1)
                 if toggle_status:
                     self.selected_tab_icon_index = self.tab_icons.index(icon)
-                ImGui.show_tooltip(icon.icon_tooltip)
+                ImGui_Legacy.show_tooltip(icon.icon_tooltip)
                 
                 if compact_mode and (index % 2 == 0):
                     PyImGui.same_line(0, 3)
@@ -182,9 +182,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Inventory +", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     #description

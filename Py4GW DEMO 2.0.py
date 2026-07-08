@@ -6,7 +6,7 @@ from Sources.ApoSource.py4gw_demo_src.helpers import VIEW_LIST, _selected_view
 from Sources.ApoSource.py4gw_demo_src.map_demo import draw_map_data, draw_mission_map_tab, draw_mini_map_tab, draw_world_map_tab, draw_pregame_tab
 from Sources.ApoSource.py4gw_demo_src.agent_demo import draw_agents_view
 from Sources.ApoSource.py4gw_demo_src.pathing_map_demo import renderer
-from Py4GWCoreLib import Color, ImGui
+from Py4GWCoreLib import Color, ImGui_Legacy
 
 MODULE_NAME = "Py4GW DEMO 2.0"
 MODULE_ICON = "Textures/Module_Icons/Py4GW.png"
@@ -143,9 +143,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Py4GW Demo", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

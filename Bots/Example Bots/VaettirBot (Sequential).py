@@ -132,7 +132,7 @@ class Botconfig:
         self.non_movement_timer = Timer()
         self.old_player_x = 0.0
         self.old_player_y = 0.0
-        self.window_module = ImGui.WindowModule()
+        self.window_module = ImGui_Legacy.WindowModule()
 
 class BOTVARIABLES:
     def __init__(self):
@@ -146,7 +146,7 @@ class BOTVARIABLES:
         self.skillbar = build()
         
 bot_variables = BOTVARIABLES()
-bot_variables.config.window_module = ImGui.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+bot_variables.config.window_module = ImGui_Legacy.WindowModule(MODULE_NAME, window_name=MODULE_NAME, window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 #endregion
 
@@ -693,7 +693,7 @@ def log_stuck_attempt(escape_location):
 
 #region Sequential coding
 def RunBotSequentialLogic():
-    """Thread function that manages counting based on ImGui button presses."""
+    """Thread function that manages counting based on ImGui_Legacy button presses."""
     global MAIN_THREAD_NAME, bot_variables
 
     reset_from_jaga_moraine = False
@@ -969,7 +969,7 @@ def JagaMoraineSkillCasting():
 #endregion
 
 def SkillHandler():
-    """Thread function that manages counting based on ImGui button presses."""
+    """Thread function that manages counting based on ImGui_Legacy button presses."""
     global MAIN_THREAD_NAME, bot_variables
     while True:
         bjora_marches = 482 #Bjora Marches
@@ -999,7 +999,7 @@ def SkillHandler():
 
 MAIN_THREAD_NAME = "RunBotSequentialLogic"
 
-#region ImGui
+#region ImGui_Legacy
 
 def DrawWindow():
     global bot_variables

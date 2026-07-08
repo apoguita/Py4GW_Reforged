@@ -1,6 +1,6 @@
 from turtle import title
 
-from Py4GWCoreLib import Map, Agent, Player, GLOBAL_CACHE, Color, ImGui
+from Py4GWCoreLib import Map, Agent, Player, GLOBAL_CACHE, Color, ImGui_Legacy
 from Py4GWCoreLib import ProfessionShort, Campaign, Routines, Utils
 from Py4GWCoreLib.native_src.context.WorldContext import AttributeStruct
 from Py4GWCoreLib.native_src.context.AvailableCharacterContext import AvailableCharacterStruct
@@ -469,9 +469,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Account Data Monitor", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

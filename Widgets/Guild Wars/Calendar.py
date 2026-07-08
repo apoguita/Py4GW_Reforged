@@ -10,7 +10,7 @@ import PySystem
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import IconsFontAwesome5
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import IniManager
 from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import Py4GW
@@ -76,7 +76,7 @@ def expand_cycle_if_needed(day: date) -> None:
     first_week = NICHOLAS_CYCLE[0]["week"]
     last_week = NICHOLAS_CYCLE[-1]["week"]
 
-    # If the date is before the first known week → prepend one cycle
+    # If the date is before the first known week â†’ prepend one cycle
     while day < first_week:
         shifted = []
         for entry in NICHOLAS_CYCLE:
@@ -86,7 +86,7 @@ def expand_cycle_if_needed(day: date) -> None:
         NICHOLAS_CYCLE = shifted + NICHOLAS_CYCLE
         first_week = NICHOLAS_CYCLE[0]["week"]
 
-    # If the date is after the last known week → append one cycle
+    # If the date is after the last known week â†’ append one cycle
     while day > last_week:
         shifted = []
         for entry in NICHOLAS_CYCLE:
@@ -225,7 +225,7 @@ class Calendar:
     # Grid Helpers
     # -------------------------
     def month_grid(self):
-        """Return a 2D list representing the current month (weeks × days)."""
+        """Return a 2D list representing the current month (weeks Ã— days)."""
         import calendar
         cal = calendar.Calendar(firstweekday=0)  # Sunday=6
         return [
@@ -310,13 +310,13 @@ def toggle_button(label: str, v: bool, width=0, height =0, button_color:Color=Co
     
     black = Color(0, 0, 0, 255)
     if button_color == black:
-        button_color = Color.from_tuple(ImGui.style.get_color(PyImGui.ImGuiCol.Button))
+        button_color = Color.from_tuple(ImGui_Legacy.style.get_color(PyImGui.ImGuiCol.Button))
         
     if hover_color == black:
-        hover_color = Color.from_tuple(ImGui.style.get_color(PyImGui.ImGuiCol.ButtonHovered))
+        hover_color = Color.from_tuple(ImGui_Legacy.style.get_color(PyImGui.ImGuiCol.ButtonHovered))
         
     if active_color == black:
-        active_color = Color.from_tuple(ImGui.style.get_color(PyImGui.ImGuiCol.ButtonActive))
+        active_color = Color.from_tuple(ImGui_Legacy.style.get_color(PyImGui.ImGuiCol.ButtonActive))
 
     if v:
         PyImGui.push_style_color(PyImGui.ImGuiCol.Button, active_color.to_tuple_normalized())  # On color
@@ -410,19 +410,19 @@ class ButtonLayout:
         if self.button_day.is_toggled():
             self.button_trimester.set_toggled(False)
             self.button_year.set_toggled(False)
-        ImGui.show_tooltip("Month")
+        ImGui_Legacy.show_tooltip("Month")
         PyImGui.same_line(0, -1)
 
         if self.button_trimester.is_toggled():
             self.button_day.set_toggled(False)
             self.button_year.set_toggled(False)
-        ImGui.show_tooltip("Trimester")
+        ImGui_Legacy.show_tooltip("Trimester")
         PyImGui.same_line(0, -1)
 
         if self.button_year.is_toggled():
             self.button_day.set_toggled(False)
             self.button_trimester.set_toggled(False)
-        ImGui.show_tooltip("Year")
+        ImGui_Legacy.show_tooltip("Year")
         PyImGui.same_line(0, -1)
 
         # Prev button
@@ -445,7 +445,7 @@ class ButtonLayout:
         if self.button_period.draw(width=min_width):
             PySystem.Console.Log("Calendar", "Period button clicked.", PySystem.Console.MessageType.Info)
         PyImGui.pop_item_width()
-        ImGui.show_tooltip("Select period")
+        ImGui_Legacy.show_tooltip("Select period")
 
         PyImGui.same_line(0, -1)
         
@@ -502,7 +502,7 @@ def draw_month(cal: Calendar, width: int = 300, height: int = 265):
                             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, tuple(c/255 for c in colors["button_active"]))
 
                         if PyImGui.button(str(day.day), 30, 30):
-                            calendar.set_date(day.year, day.month, day.day)   # 👈 this makes clicked date active
+                            calendar.set_date(day.year, day.month, day.day)   # ðŸ‘ˆ this makes clicked date active
 
                             PySystem.Console.Log("Calendar", f"Clicked raw day: {day}", PySystem.Console.MessageType.Info)
                             PySystem.Console.Log("Calendar", f"Global calendar set to: {calendar.current}", PySystem.Console.MessageType.Info)
@@ -826,7 +826,7 @@ def on_disable():
     _disable_owned_farm("Calendar disabled or unloaded")
 
 def DrawDayCard():
-    selected_day = calendar.current   # 👈 use current calendar date, not today
+    selected_day = calendar.current   # ðŸ‘ˆ use current calendar date, not today
     current_event = get_event_for_day(selected_day)
     pve_bonus, pvp_bonus = get_weekly_bonuses(selected_day)
     nicholas = get_nicholas_for_day(selected_day)
@@ -867,16 +867,16 @@ def DrawDayCard():
             PyImGui.table_setup_column("titles", PyImGui.TableColumnFlags.WidthFixed, child_width - iconwidth)
             PyImGui.table_next_row()
             PyImGui.table_set_column_index(0)
-            ImGui.DrawTexture(get_texture_for_model(nicholas["model_id"]), iconwidth, iconwidth)
+            ImGui_Legacy.DrawTexture(get_texture_for_model(nicholas["model_id"]), iconwidth, iconwidth)
             PyImGui.table_set_column_index(1)
             if PyImGui.begin_table("Nick Info", 1, PyImGui.TableFlags.NoFlag):
                 PyImGui.table_next_row()
                 PyImGui.table_set_column_index(0)
-                ImGui.push_font("Regular", 20)
+                ImGui_Legacy.push_font("Regular", 20)
                 PyImGui.push_style_color(PyImGui.ImGuiCol.Text, ColorPalette.GetColor("yellow").to_tuple_normalized())
                 PyImGui.text("Nicholas the Traveler")
                 PyImGui.pop_style_color(1)
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
                 PyImGui.table_next_row()
                 PyImGui.table_set_column_index(0)
                 PyImGui.text(f"Item: {nicholas['item']}")
@@ -887,13 +887,13 @@ def DrawDayCard():
                     if PyImGui.button("View Map"):
                         import webbrowser
                         webbrowser.open(nicholas["map_url"])
-                    ImGui.show_tooltip("Open map in browser")
+                    ImGui_Legacy.show_tooltip("Open map in browser")
                     farm_script = get_script_path_for_model(nicholas["model_id"])
                     if farm_script:
                         PyImGui.same_line(0, -1)
                         if PyImGui.button("Load Farm"):
                             _request_farm_enable(farm_script, nicholas["item"])
-                        ImGui.show_tooltip(f"Load farm script for {nicholas['item']}")
+                        ImGui_Legacy.show_tooltip(f"Load farm script for {nicholas['item']}")
 
                     
                              
@@ -921,8 +921,8 @@ def DrawDayCard():
                     PyImGui.table_next_column()
 
                     for _, item in enumerate(current_event["dropped_items"]):
-                        ImGui.DrawTexture(get_texture_for_model(item), 48, 48)                        
-                        ImGui.show_tooltip(str(item.name))                        
+                        ImGui_Legacy.DrawTexture(get_texture_for_model(item), 48, 48)                        
+                        ImGui_Legacy.show_tooltip(str(item.name))                        
                         PyImGui.table_next_column()
                         
                     PyImGui.end_table()
@@ -975,11 +975,11 @@ def DrawDayWindow():
 
 
 def tooltip():
-    ImGui.begin_tooltip()
+    ImGui_Legacy.begin_tooltip()
     title_color = ColorPalette.GetColor("yellow")
-    ImGui.push_font("Regular", 24)
+    ImGui_Legacy.push_font("Regular", 24)
     PyImGui.text_colored("Calendar", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
 
     # Description
@@ -1003,7 +1003,7 @@ def tooltip():
     PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
     PyImGui.bullet_text("Developed by Apo")
 
-    ImGui.end_tooltip()
+    ImGui_Legacy.end_tooltip()
 
 def main():
     try:

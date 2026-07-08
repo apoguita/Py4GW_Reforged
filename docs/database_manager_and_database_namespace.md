@@ -323,7 +323,7 @@ For the full runtime model, see:
 
 ## Window Persistence
 
-`Settings` currently also contains lightweight window state helpers used by `ImGui.Begin` and `ImGui.End`.
+`Settings` currently also contains lightweight window state helpers used by `ImGui_Legacy.Begin` and `ImGui_Legacy.End`.
 
 These methods are:
 

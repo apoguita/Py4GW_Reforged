@@ -14,7 +14,7 @@ def DrawWindow():
             PyImGui.text("Skill spam #8!")
             PyImGui.separator()
             
-            is_clicked = ImGui.toggle_button("Spam", is_clicked)
+            is_clicked = ImGui_Legacy.toggle_button("Spam", is_clicked)
 
             if is_clicked and timer.HasElapsed(500):
                 SkillBar.UseSkill(8)

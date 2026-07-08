@@ -721,7 +721,7 @@ C:.
 |   |   |   |   Agent.lua
 |   |   |   |   AgentArray.lua
 |   |   |   |   Effects.lua
-|   |   |   |   ImGui.lua
+|   |   |   |   ImGui_Legacy.lua
 |   |   |   |   Inventory.lua
 |   |   |   |   Item.lua
 |   |   |   |   ItemArray.lua
@@ -777,7 +777,7 @@ C:.
 |   |   enums.py
 |   |   frame_aliases.json
 |   |   IconsFontAwesome5.py
-|   |   ImGui.py
+|   |   ImGui_Legacy.py
 |   |   Inventory.py
 |   |   Item.py
 |   |   ItemArray.py
@@ -870,8 +870,8 @@ C:.
 |           IconsFontAwesome5.cpython-312.pyc
 |           IconsFontAwesome5.cpython-313.pyc
 |           IconsFontAwesome6.cpython-312.pyc
-|           ImGui.cpython-312.pyc
-|           ImGui.cpython-313.pyc
+|           ImGui_Legacy.cpython-312.pyc
+|           ImGui_Legacy.cpython-313.pyc
 |           Inventory.cpython-312.pyc
 |           Inventory.cpython-313.pyc
 |           Item.cpython-312.pyc
@@ -932,7 +932,7 @@ C:.
 |       
 +---Styles
 |       Guild_Wars.default.json
-|       ImGui.default.json
+|       ImGui_Legacy.default.json
 |       Minimalus.default.json
 |       
 +---Textures

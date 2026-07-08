@@ -73,11 +73,11 @@ def _on_party_wipe(bot: "Botting"):
     while Agent.IsDead(Player.GetAgentID()):
         yield from bot.Wait._coro_for_time(1000)
         if not Routines.Checks.Map.MapValid():
-            # Map invalid → release FSM and exit
+            # Map invalid â†’ release FSM and exit
             bot.config.FSM.resume()
             return
 
-    # Player revived on same map → jump to recovery step
+    # Player revived on same map â†’ jump to recovery step
     bot.States.JumpToStepName("[H]Start Combat_2")
     bot.config.FSM.resume()
     
@@ -91,14 +91,14 @@ bot.SetMainRoutine(Routine)
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Asura Title Farm", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

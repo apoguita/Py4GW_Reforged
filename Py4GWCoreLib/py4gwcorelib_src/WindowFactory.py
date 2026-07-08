@@ -3,7 +3,7 @@ from typing import Any
 
 import PyImGui
 
-from ..ImGui import ImGui
+from .._legacy_facade import ImGui_Legacy
 from ..IniManager import IniManager
 
 
@@ -76,7 +76,7 @@ class WindowFactory:
 
     def begin(self, identifier: str, p_open=None) -> tuple[bool, bool]:
         spec = self._windows[identifier]
-        return ImGui.BeginWithClose(
+        return ImGui_Legacy.BeginWithClose(
             ini_key=spec.ini_key,
             name=spec.title,
             p_open=p_open,

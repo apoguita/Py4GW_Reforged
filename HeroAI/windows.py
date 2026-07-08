@@ -1,10 +1,10 @@
 from operator import index
-from Py4GWCoreLib import GLOBAL_CACHE, Map,IconsFontAwesome5, ImGui, Utils, Overlay, Range, SharedCommandType, ConsoleLog, Color, ColorPalette
+from Py4GWCoreLib import GLOBAL_CACHE, Map,IconsFontAwesome5, ImGui_Legacy, Utils, Overlay, Range, SharedCommandType, ConsoleLog, Color, ColorPalette
 from Py4GWCoreLib import UIManager, ModelID, GLOBAL_CACHE, WindowFrames
 from Py4GWCoreLib import Agent, Player
 from Py4GWCoreLib import (Routines, ActionQueueManager,Key, Keystroke, ThrottledTimer)
 from Py4GWCoreLib.IniManager import IniManager
-from Py4GWCoreLib.ImGui_src.WindowModule import WindowModule
+from Py4GWCoreLib.ImGui_Legacy_src.WindowModule import WindowModule
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct, HeroAIOptionStruct, SharedMessageStruct
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 
@@ -92,14 +92,14 @@ class HeroAI_FloatingWindows():
             clicked = False
 
             # 1. Draw the "O" layer
-            if ImGui.floating_button(f"O", name=f"O_{agent_id}", 
+            if ImGui_Legacy.floating_button(f"O", name=f"O_{agent_id}", 
                                     x=o_x, y=o_y, 
                                     width=o_w, height=o_h, 
                                     font_size=30):
                 clicked = True
 
             # 2. Draw the "+" layer with its own dimensions
-            if ImGui.floating_button(f"+", name=f"plus_{agent_id}", 
+            if ImGui_Legacy.floating_button(f"+", name=f"plus_{agent_id}", 
                                     x=plus_x, y=plus_y, 
                                     width=plus_w, height=plus_h, 
                                     font_size=45):
@@ -316,7 +316,7 @@ class HeroAI_Windows():
                     player_buffs = account.AgentData.Buffs.Buffs
                     headers = ["Skill ID", "Skill Name"]
                     data = [(buff.SkillId, GLOBAL_CACHE.Skill.GetName(buff.SkillId)) for buff in player_buffs]
-                    ImGui.table(f"{player_name} Buffs", headers, data)
+                    ImGui_Legacy.table(f"{player_name} Buffs", headers, data)
                     PyImGui.tree_pop()
 
     @staticmethod
@@ -372,7 +372,7 @@ class HeroAI_Windows():
                             (self_id, pet_id)
                         ]
 
-                        ImGui.table("Target Debug Table", headers, data)
+                        ImGui_Legacy.table("Target Debug Table", headers, data)
 
                         PyImGui.text(f"Target to Cast: {v_target}")
 
@@ -604,31 +604,31 @@ class HeroAI_Windows():
             PyImGui.table_next_row()
             PyImGui.table_next_column()
             if party_size >= 2:
-                HeroAI_Windows.HeroFlags[0] = ImGui.toggle_button("1", IsHeroFlagged(1), 30, 30)
+                HeroAI_Windows.HeroFlags[0] = ImGui_Legacy.toggle_button("1", IsHeroFlagged(1), 30, 30)
             PyImGui.table_next_column()
             if party_size >= 3:
-                HeroAI_Windows.HeroFlags[1] = ImGui.toggle_button("2", IsHeroFlagged(2),30,30)
+                HeroAI_Windows.HeroFlags[1] = ImGui_Legacy.toggle_button("2", IsHeroFlagged(2),30,30)
             PyImGui.table_next_column()
             if party_size >= 4:
-                HeroAI_Windows.HeroFlags[2] = ImGui.toggle_button("3", IsHeroFlagged(3),30,30)
+                HeroAI_Windows.HeroFlags[2] = ImGui_Legacy.toggle_button("3", IsHeroFlagged(3),30,30)
             PyImGui.table_next_row()
             PyImGui.table_next_column()
             if party_size >= 5:
-                HeroAI_Windows.HeroFlags[3] = ImGui.toggle_button("4", IsHeroFlagged(4),30,30)
+                HeroAI_Windows.HeroFlags[3] = ImGui_Legacy.toggle_button("4", IsHeroFlagged(4),30,30)
             PyImGui.table_next_column()
-            HeroAI_Windows.AllFlag = ImGui.toggle_button("A", IsHeroFlagged(0), 30, 30)
+            HeroAI_Windows.AllFlag = ImGui_Legacy.toggle_button("A", IsHeroFlagged(0), 30, 30)
             PyImGui.table_next_column()
             if party_size >= 6:
-                HeroAI_Windows.HeroFlags[4] = ImGui.toggle_button("5", IsHeroFlagged(5),30,30)
+                HeroAI_Windows.HeroFlags[4] = ImGui_Legacy.toggle_button("5", IsHeroFlagged(5),30,30)
             PyImGui.table_next_row()
             PyImGui.table_next_column()
             if party_size >= 7:
-                HeroAI_Windows.HeroFlags[5] = ImGui.toggle_button("6", IsHeroFlagged(6),30,30)
+                HeroAI_Windows.HeroFlags[5] = ImGui_Legacy.toggle_button("6", IsHeroFlagged(6),30,30)
             PyImGui.table_next_column()
             if party_size >= 8:
-                HeroAI_Windows.HeroFlags[6] = ImGui.toggle_button("7", IsHeroFlagged(7), 30, 30)
+                HeroAI_Windows.HeroFlags[6] = ImGui_Legacy.toggle_button("7", IsHeroFlagged(7), 30, 30)
             PyImGui.table_next_column()
-            HeroAI_Windows.ClearFlags = ImGui.toggle_button("X", HeroAI_Windows.HeroFlags[7],30,30)
+            HeroAI_Windows.ClearFlags = ImGui_Legacy.toggle_button("X", HeroAI_Windows.HeroFlags[7],30,30)
             PyImGui.end_table()
                     
                     
@@ -700,7 +700,7 @@ class HeroAI_Windows():
                     account.LastUpdated
                 ))
 
-        ImGui.table("Players Debug Table", headers, data)
+        ImGui_Legacy.table("Players Debug Table", headers, data)
 
     @staticmethod
     def DrawHeroesDebug(cached_data:CacheData): 
@@ -717,7 +717,7 @@ class HeroAI_Windows():
                 hero.hero_id.GetID(),
                 hero.hero_id.GetName(),
             ))
-        ImGui.table("Heroes Debug Table", headers, data)
+        ImGui_Legacy.table("Heroes Debug Table", headers, data)
 
     @staticmethod
     def DrawGameOptionsDebug(cached_data:CacheData):
@@ -741,7 +741,7 @@ class HeroAI_Windows():
             cached_data.global_options.Skills[j] for j in range(NUMBER_OF_SKILLS)
         ]
         data.append(tuple(row))
-        ImGui.table("Control Debug Table", headers, data)
+        ImGui_Legacy.table("Control Debug Table", headers, data)
 
         headers = ["Slot", "Following", "Avoidance", "Looting", "Targeting", "Combat"]
         headers += [f"Skill {j + 1}" for j in range(NUMBER_OF_SKILLS)] 
@@ -768,7 +768,7 @@ class HeroAI_Windows():
 
             data.append(tuple(row))
 
-        ImGui.table("Game Options Debug Table", headers, data)
+        ImGui_Legacy.table("Game Options Debug Table", headers, data)
 
     @staticmethod
     def DrawFlagDebug(cached_data:CacheData):
@@ -880,7 +880,7 @@ class HeroAI_Windows():
             from HeroAI.ui_base import HeroAI_BaseUI
             if PyImGui.button("Open Follow Options"):
                 HeroAI_BaseUI.show_follow_formations_quick_window = True
-            ImGui.show_tooltip("Open the base UI Follow Formations options window.")
+            ImGui_Legacy.show_tooltip("Open the base UI Follow Formations options window.")
         except Exception:
             pass
 
@@ -902,7 +902,7 @@ class HeroAI_Windows():
                 GLOBAL_CACHE.ShMem.SendMessage(sender_email, account.AccountEmail, SharedCommandType.PCon, params)
             HeroAI_Windows._last_pcon_post_ms = now_ms
 
-        if ImGui.colored_button(f"{IconsFontAwesome5.ICON_TIMES}##commands_resign", HeroAI_Windows.ButtonColors["Resign"].button_color, HeroAI_Windows.ButtonColors["Resign"].hovered_color, HeroAI_Windows.ButtonColors["Resign"].active_color):
+        if ImGui_Legacy.colored_button(f"{IconsFontAwesome5.ICON_TIMES}##commands_resign", HeroAI_Windows.ButtonColors["Resign"].button_color, HeroAI_Windows.ButtonColors["Resign"].hovered_color, HeroAI_Windows.ButtonColors["Resign"].active_color):
         #if PyImGui.button(f"{IconsFontAwesome5.ICON_TIMES}##commands_resign"):
             accounts = cached_data.party.accounts.values()
             
@@ -910,7 +910,7 @@ class HeroAI_Windows():
             for account in accounts:
                 ConsoleLog("Messaging", "Resigning account: " + account.AccountEmail)
                 GLOBAL_CACHE.ShMem.SendMessage(sender_email, account.AccountEmail, SharedCommandType.Resign, (0,0,0,0))
-        ImGui.show_tooltip("Resign Party")
+        ImGui_Legacy.show_tooltip("Resign Party")
         
         PyImGui.same_line(0,-1)
         PyImGui.text("|")
@@ -927,7 +927,7 @@ class HeroAI_Windows():
                     continue
                 ConsoleLog("Messaging", "Pixelstacking account: " + account.AccountEmail)
                 GLOBAL_CACHE.ShMem.SendMessage(sender_email, account.AccountEmail, SharedCommandType.PixelStack, (self_account.AgentData.Pos.x,self_account.AgentData.Pos.y,0,0))
-        ImGui.show_tooltip("Pixel Stack (Carto Helper)")
+        ImGui_Legacy.show_tooltip("Pixel Stack (Carto Helper)")
         
         PyImGui.same_line(0,-1)
 
@@ -946,7 +946,7 @@ class HeroAI_Windows():
                     continue
                 ConsoleLog("Messaging", f"Ordering {account.AccountEmail} to interact with target: {target}")
                 GLOBAL_CACHE.ShMem.SendMessage(sender_email, account.AccountEmail, SharedCommandType.InteractWithTarget, (target,0,0,0))
-        ImGui.show_tooltip("Interact with Target")
+        ImGui_Legacy.show_tooltip("Interact with Target")
         PyImGui.same_line(0,-1)
 
         if PyImGui.button(f"{IconsFontAwesome5.ICON_COMMENT_DOTS}##commands_takedialog"):
@@ -968,34 +968,34 @@ class HeroAI_Windows():
                     continue
                 ConsoleLog("Messaging", f"Ordering {account.AccountEmail} to interact with target: {target}")
                 GLOBAL_CACHE.ShMem.SendMessage(sender_email, account.AccountEmail, SharedCommandType.TakeDialogWithTarget, (target,0,0,0))
-        ImGui.show_tooltip("Get Dialog")
+        ImGui_Legacy.show_tooltip("Get Dialog")
         PyImGui.separator()
         if PyImGui.collapsing_header("PCons"):
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["Celerity"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["Celerity"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["Celerity"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##Esence_unique_name", HeroAI_Windows.ButtonColors["Celerity"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##Esence_unique_name", HeroAI_Windows.ButtonColors["Celerity"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Essence_Of_Celerity.value, GLOBAL_CACHE.Skill.GetID("Essence_of_Celerity_item_effect"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Esence of Celerity")
+            ImGui_Legacy.show_tooltip("Esence of Celerity")
             
             PyImGui.same_line(0,-1)
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["GrailOfMight"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["GrailOfMight"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["GrailOfMight"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##Grail_unique_name", HeroAI_Windows.ButtonColors["GrailOfMight"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##Grail_unique_name", HeroAI_Windows.ButtonColors["GrailOfMight"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Grail_Of_Might.value, GLOBAL_CACHE.Skill.GetID("Grail_of_Might_item_effect"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Grail of Might")
+            ImGui_Legacy.show_tooltip("Grail of Might")
 
             PyImGui.same_line(0,-1)
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["ArmorOfSalvation"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["ArmorOfSalvation"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["ArmorOfSalvation"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##Armor_unique_name", HeroAI_Windows.ButtonColors["ArmorOfSalvation"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##Armor_unique_name", HeroAI_Windows.ButtonColors["ArmorOfSalvation"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Armor_Of_Salvation.value, GLOBAL_CACHE.Skill.GetID("Armor_of_Salvation_item_effect"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Armor of Salvation")
+            ImGui_Legacy.show_tooltip("Armor of Salvation")
             
             PyImGui.same_line(0,-1)
             PyImGui.text("|")
@@ -1004,39 +1004,39 @@ class HeroAI_Windows():
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["CandyCane"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["CandyCane"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["CandyCane"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##CandyCane_unique_name", HeroAI_Windows.ButtonColors["CandyCane"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##CandyCane_unique_name", HeroAI_Windows.ButtonColors["CandyCane"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Rainbow_Candy_Cane.value, 0, ModelID.Honeycomb.value, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Rainbow Candy Cane / Honeycomb")
+            ImGui_Legacy.show_tooltip("Rainbow Candy Cane / Honeycomb")
             PyImGui.separator()
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["BirthdayCupcake"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["BirthdayCupcake"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["BirthdayCupcake"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##BirthdayCupcake_unique_name", HeroAI_Windows.ButtonColors["BirthdayCupcake"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##BirthdayCupcake_unique_name", HeroAI_Windows.ButtonColors["BirthdayCupcake"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Birthday_Cupcake.value, GLOBAL_CACHE.Skill.GetID("Birthday_Cupcake_skill"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Birthday Cupcake")
+            ImGui_Legacy.show_tooltip("Birthday Cupcake")
             
             PyImGui.same_line(0,-1)
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["GoldenEgg"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["GoldenEgg"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["GoldenEgg"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##GoldenEgg_unique_name", HeroAI_Windows.ButtonColors["GoldenEgg"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##GoldenEgg_unique_name", HeroAI_Windows.ButtonColors["GoldenEgg"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Golden_Egg.value, GLOBAL_CACHE.Skill.GetID("Golden_Egg_skill"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Golden Egg")
+            ImGui_Legacy.show_tooltip("Golden Egg")
             
             PyImGui.same_line(0,-1)
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["CandyCorn"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["CandyCorn"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["CandyCorn"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##CandyCorn_unique_name", HeroAI_Windows.ButtonColors["CandyCorn"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##CandyCorn_unique_name", HeroAI_Windows.ButtonColors["CandyCorn"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Candy_Corn.value, GLOBAL_CACHE.Skill.GetID("Candy_Corn_skill"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Candy Corn")
+            ImGui_Legacy.show_tooltip("Candy Corn")
             
             PyImGui.same_line(0,-1)
             PyImGui.text("|")
@@ -1045,70 +1045,70 @@ class HeroAI_Windows():
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["Alcohol"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["Alcohol"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["Alcohol"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##Alcohol_unique_name", HeroAI_Windows.ButtonColors["Alcohol"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##Alcohol_unique_name", HeroAI_Windows.ButtonColors["Alcohol"].texture_path, 32, 32):
                 pass
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Alcohol (WIP)")
+            ImGui_Legacy.show_tooltip("Alcohol (WIP)")
 
             PyImGui.separator()
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["CandyApple"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["CandyApple"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["CandyApple"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##CandyApple_unique_name", HeroAI_Windows.ButtonColors["CandyApple"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##CandyApple_unique_name", HeroAI_Windows.ButtonColors["CandyApple"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Candy_Apple.value, GLOBAL_CACHE.Skill.GetID("Candy_Apple_skill"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Candy Apple")
+            ImGui_Legacy.show_tooltip("Candy Apple")
             
             PyImGui.same_line(0,-1)
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["PumpkinPie"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["PumpkinPie"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["PumpkinPie"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##PumpkinPie_unique_name", HeroAI_Windows.ButtonColors["PumpkinPie"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##PumpkinPie_unique_name", HeroAI_Windows.ButtonColors["PumpkinPie"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Slice_Of_Pumpkin_Pie.value, GLOBAL_CACHE.Skill.GetID("Pie_Induced_Ecstasy"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Slice of Pumpkin Pie")
+            ImGui_Legacy.show_tooltip("Slice of Pumpkin Pie")
             
             PyImGui.same_line(0,-1)
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["DrakeKabob"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["DrakeKabob"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["DrakeKabob"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##DrakeKabob_unique_name", HeroAI_Windows.ButtonColors["DrakeKabob"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##DrakeKabob_unique_name", HeroAI_Windows.ButtonColors["DrakeKabob"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Slice_Of_Pumpkin_Pie.value, GLOBAL_CACHE.Skill.GetID("Drake_Skin"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Drake Kabob")
+            ImGui_Legacy.show_tooltip("Drake Kabob")
 
             PyImGui.separator()
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["SkalefinSoup"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["SkalefinSoup"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["SkalefinSoup"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##SkalefinSoup_unique_name", HeroAI_Windows.ButtonColors["SkalefinSoup"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##SkalefinSoup_unique_name", HeroAI_Windows.ButtonColors["SkalefinSoup"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Bowl_Of_Skalefin_Soup.value, GLOBAL_CACHE.Skill.GetID("Skale_Vigor"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Skalefin Soup")
+            ImGui_Legacy.show_tooltip("Skalefin Soup")
             
             PyImGui.same_line(0,-1)
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["PahnaiSalad"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["PahnaiSalad"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["PahnaiSalad"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##PahnaiSalad_unique_name", HeroAI_Windows.ButtonColors["PahnaiSalad"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##PahnaiSalad_unique_name", HeroAI_Windows.ButtonColors["PahnaiSalad"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.Pahnai_Salad.value, GLOBAL_CACHE.Skill.GetID("Pahnai_Salad_item_effect"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("Pahnai Salad")
+            ImGui_Legacy.show_tooltip("Pahnai Salad")
             
             PyImGui.same_line(0,-1)
             
             PyImGui.push_style_color(PyImGui.ImGuiCol.Button, HeroAI_Windows.ButtonColors["WarSupplies"].button_color.to_tuple_normalized())  # On color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, HeroAI_Windows.ButtonColors["WarSupplies"].hovered_color.to_tuple_normalized())  # Hover color
             PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, HeroAI_Windows.ButtonColors["WarSupplies"].active_color.to_tuple_normalized())
-            if ImGui.ImageButton("##WarSupplies_unique_name", HeroAI_Windows.ButtonColors["WarSupplies"].texture_path, 32, 32):
+            if ImGui_Legacy.ImageButton("##WarSupplies_unique_name", HeroAI_Windows.ButtonColors["WarSupplies"].texture_path, 32, 32):
                 _post_pcon_message((ModelID.War_Supplies.value, GLOBAL_CACHE.Skill.GetID("Well_Supplied"), 0, 0))
             PyImGui.pop_style_color(3)
-            ImGui.show_tooltip("War Supplies")
+            ImGui_Legacy.show_tooltip("War Supplies")
             
     @staticmethod
     def DrawDebugWindow(cached_data:CacheData):

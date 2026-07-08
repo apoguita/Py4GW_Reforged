@@ -1,5 +1,5 @@
    
-from Py4GWCoreLib import PyImGui, ImGui, Color
+from Py4GWCoreLib import PyImGui, ImGui_Legacy, Color
 from .LogConsole import LogConsole
 from .StatsMgr import RunStatistics
 from Py4GWCoreLib import Routines
@@ -58,20 +58,20 @@ class YAVB_GUI:
                     PyImGui.separator()
                     PyImGui.push_item_width(100)
                     self.parent.identification_kits_restock = PyImGui.input_int("ID Kits to Restock", self.parent.identification_kits_restock)
-                    ImGui.show_tooltip("ID Kits to Restock")
+                    ImGui_Legacy.show_tooltip("ID Kits to Restock")
                     self.parent.salvage_kits_restock = PyImGui.input_int("Salvage Kits to Restock", self.parent.salvage_kits_restock)
-                    ImGui.show_tooltip("Salvage Kits to Restock")
+                    ImGui_Legacy.show_tooltip("Salvage Kits to Restock")
                     self.parent.keep_empty_inventory_slots = PyImGui.input_int("Keep Empty Inventory Slots", self.parent.keep_empty_inventory_slots)
-                    ImGui.show_tooltip("Keep Empty Inventory Slots")
+                    ImGui_Legacy.show_tooltip("Keep Empty Inventory Slots")
                     PyImGui.pop_item_width()
                     
                 if PyImGui.collapsing_header("Bot Options"):
                     self.parent.use_cupcakes = PyImGui.checkbox("Use Cupcakes", self.parent.use_cupcakes)
-                    ImGui.show_tooltip("Withdraw 1 cupcake from inventory and use it for traversing Bjora Marches")
+                    ImGui_Legacy.show_tooltip("Withdraw 1 cupcake from inventory and use it for traversing Bjora Marches")
                     self.parent.use_pumpkin_cookies = PyImGui.checkbox("Use Pumpkin Cookies", self.parent.use_pumpkin_cookies)
-                    ImGui.show_tooltip("Use Pumpkin Cookies for clearing Death Penalty in case of death.")
+                    ImGui_Legacy.show_tooltip("Use Pumpkin Cookies for clearing Death Penalty in case of death.")
                     self.parent.pumpkin_cookies_restock = PyImGui.input_int("Pumpkin Cookies Restock", self.parent.pumpkin_cookies_restock)
-                    ImGui.show_tooltip("Number of Pumpkin Cookies to keep in inventory.")
+                    ImGui_Legacy.show_tooltip("Number of Pumpkin Cookies to keep in inventory.")
                 
                 
                 PyImGui.end_child()
@@ -118,13 +118,13 @@ class YAVB_GUI:
                     self.parent.console_log_to_file = PyImGui.checkbox("Log to File", self.parent.console_log_to_file)
                     if prev_value != self.parent.console_log_to_file:
                         self.parent.console.SetLogToFile(self.parent.console_log_to_file)
-                    ImGui.show_tooltip("Feature WIP, not implemented yet.")
+                    ImGui_Legacy.show_tooltip("Feature WIP, not implemented yet.")
                     
                     prev_value = self.parent.detailed_logging
                     self.parent.detailed_logging = PyImGui.checkbox("Detailed Logging", self.parent.detailed_logging)
                     if prev_value != self.parent.detailed_logging:
                         self.parent.LogDetailedMessage("Detailed logging",f"{'ENABLED' if self.parent.detailed_logging else 'DISABLED'}.", LogConsole.LogSeverity.INFO)
-                    ImGui.show_tooltip("Will output Extra Info to the YAVB Console,\nWill output Full Logging to the Py4GWConsole.")
+                    ImGui_Legacy.show_tooltip("Will output Extra Info to the YAVB Console,\nWill output Full Logging to the Py4GWConsole.")
                     
                     prev_value = self.parent.console_snapped
                     self.parent.console_snapped = PyImGui.checkbox("Snapped", self.parent.console_snapped)
@@ -155,17 +155,17 @@ class YAVB_GUI:
                     PyImGui.table_setup_column("titles", PyImGui.TableColumnFlags.WidthFixed, child_width - iconwidth)
                     PyImGui.table_next_row()
                     PyImGui.table_set_column_index(0)
-                    ImGui.DrawTexture(self.parent.icon, width=64, height=64)
+                    ImGui_Legacy.DrawTexture(self.parent.icon, width=64, height=64)
                     PyImGui.table_set_column_index(1)
                     if PyImGui.begin_table("YAVB Info", 1, PyImGui.TableFlags.NoFlag):
                         PyImGui.table_next_row()
                         PyImGui.table_set_column_index(0)
-                        ImGui.push_font("Regular", 20)
+                        ImGui_Legacy.push_font("Regular", 20)
                         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, Color(255, 255, 0, 255).to_tuple_normalized())
                         #PyImGui.text_scaled(f"{self.parent.GetBanner()}", Color(255, 255, 0, 255).to_tuple_normalized(), 1.4)
                         PyImGui.text(f"{self.parent.GetBanner()}")
                         PyImGui.pop_style_color(1)
-                        ImGui.pop_font()
+                        ImGui_Legacy.pop_font()
                         PyImGui.table_next_row()
                         PyImGui.table_set_column_index(0)
                         PyImGui.text_wrapped(f"{self.parent.GetTagLine()}")

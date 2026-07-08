@@ -69,10 +69,10 @@ class WindowModule:
         
     def get_theme(self) -> StyleTheme:
         """
-        Returns the current theme of the ImGui module.
+        Returns the current theme of the ImGui_Legacy module.
         """            
-        from Py4GWCoreLib import ImGui          
-        theme = self.theme if self.theme else ImGui.get_style().Theme
+        from Py4GWCoreLib import ImGui_Legacy          
+        theme = self.theme if self.theme else ImGui_Legacy.get_style().Theme
 
         return theme
             
@@ -201,7 +201,7 @@ class WindowModule:
         PyImGui.end()
     
     def __get_geometry(self):        
-        from Py4GWCoreLib import ImGui          
+        from Py4GWCoreLib import ImGui_Legacy          
 
         self.__geometry_ready = True
         has_title_bar = (int(self.window_flags) & int(PyImGui.WindowFlags.NoTitleBar)) == 0
@@ -261,13 +261,13 @@ class WindowModule:
         )
 
     def __draw_decorations(self): 
-        from Py4GWCoreLib import ImGui       
-        style = ImGui.get_style()
+        from Py4GWCoreLib import ImGui_Legacy       
+        style = ImGui_Legacy.get_style()
         
         has_title_bar = (int(self.window_flags) & int(PyImGui.WindowFlags.NoTitleBar)) == 0
         
         close_button_state = TextureState.Normal     
-        if ImGui.is_mouse_in_rect(self.__close_button_rect) and ((int(self.window_flags) & int(PyImGui.WindowFlags.NoMouseInputs)) == 0):
+        if ImGui_Legacy.is_mouse_in_rect(self.__close_button_rect) and ((int(self.window_flags) & int(PyImGui.WindowFlags.NoMouseInputs)) == 0):
             if PyImGui.is_mouse_down(0):
                 close_button_state = TextureState.Active
             else:
@@ -352,7 +352,7 @@ class WindowModule:
         PyImGui.pop_clip_rect()
         
     def __draw_title_bar_fake(self, title_bar_rect):  
-        from Py4GWCoreLib import ImGui  
+        from Py4GWCoreLib import ImGui_Legacy  
         can_interact = (int(self.window_flags) & int(PyImGui.WindowFlags.NoMouseInputs)) == 0
         
         PyImGui.set_next_window_pos(title_bar_rect[0], title_bar_rect[1])
@@ -366,8 +366,8 @@ class WindowModule:
                 PyImGui.WindowFlags.AlwaysAutoResize 
                 | PyImGui.WindowFlags.NoBackground
             )
-        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (-1, -0))
-        ImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 1, 0, 0.0))  # Fully transparent
+        PyImGui.push_style_var_vec2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, (-1, -0))
+        ImGui_Legacy.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 1, 0, 0.0))  # Fully transparent
         PyImGui.begin(f"{self.window_name}##titlebar_fake", flags)
         PyImGui.invisible_button("##titlebar_dragging_area_1", title_bar_rect[2] - (30 if self.can_close else 0), title_bar_rect[3])
         self.__dragging = (PyImGui.is_item_active() or self.__dragging) and can_interact
@@ -399,7 +399,7 @@ class WindowModule:
                 
                 
         PyImGui.end()
-        ImGui.pop_style_color(1)
+        ImGui_Legacy.pop_style_color(1)
         PyImGui.pop_style_var(1)
                             
         # Handle dragging

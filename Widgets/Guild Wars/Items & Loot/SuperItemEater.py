@@ -278,18 +278,18 @@ def _format_duration(seconds: int) -> str:
 
 
 def _pack_color(r: float, g: float, b: float, a: float) -> int:
-    """Pack RGBA floats (0.0-1.0) into an ImGui color int."""
+    """Pack RGBA floats (0.0-1.0) into an ImGui_Legacy color int."""
     return (int(a * 255) << 24) | (int(b * 255) << 16) | (int(g * 255) << 8) | int(r * 255)
 
-_PROGRESS_COLOR_T0 = _pack_color(0.40, 0.75, 1.00, 0.45)  # light blue  — tier 0 → 1
-_PROGRESS_COLOR_T1 = _pack_color(0.30, 0.85, 0.40, 0.45)  # light green — tier 1 → 2
-_PROGRESS_COLOR_T2 = _pack_color(0.85, 0.70, 0.10, 0.55)  # gold        — maxed
+_PROGRESS_COLOR_T0 = _pack_color(0.40, 0.75, 1.00, 0.45)  # light blue  â€” tier 0 â†’ 1
+_PROGRESS_COLOR_T1 = _pack_color(0.30, 0.85, 0.40, 0.45)  # light green â€” tier 1 â†’ 2
+_PROGRESS_COLOR_T2 = _pack_color(0.85, 0.70, 0.10, 0.55)  # gold        â€” maxed
 
 
 def _draw_progress_overlay(current: int, next_req: int, title_id: int) -> None:
     """Overlay a left-to-right fill on the last drawn header based on within-tier progress.
 
-    Color changes per tier:  light blue → light green → gold (maxed).
+    Color changes per tier:  light blue â†’ light green â†’ gold (maxed).
     The bar resets at each tier boundary and fills within the current tier.
     """
     tiers = TITLE_TIERS.get(title_id, [])
@@ -308,7 +308,7 @@ def _draw_progress_overlay(current: int, next_req: int, title_id: int) -> None:
                 tier_end   = tiers[i + 1].required
                 color      = _PROGRESS_COLOR_T1
             else:
-                # Maxed — full bar in gold
+                # Maxed â€” full bar in gold
                 tier_start = tiers[-1].required
                 tier_end   = tiers[-1].required
                 color      = _PROGRESS_COLOR_T2
@@ -605,13 +605,13 @@ def main():
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Item Eater", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     PyImGui.text("A utility for consuming and managing in-game items")

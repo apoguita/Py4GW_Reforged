@@ -137,7 +137,7 @@ class BotVars:
         self.show_visual_path = False
 
 bot_vars = BotVars(map_id=650) #Longeye's Ledge
-bot_vars.window_module = ImGui.WindowModule(module_name, window_name="Apoguita's Vaettir Bot", window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+bot_vars.window_module = ImGui_Legacy.WindowModule(module_name, window_name="Apoguita's Vaettir Bot", window_size=(300, 300), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
 class StateMachineVars:
         def __init__(self):
@@ -1179,7 +1179,7 @@ def GetEnergyAgentCost(skill_id, agent_id):
 
             case 1240:  # Soul Twisting
                 if Skill.Flags.IsRitual(skill_id):
-                    cost = 10  # Fixe le coût à 10
+                    cost = 10  # Fixe le coÃ»t Ã  10
 
             case 987:  # Way of the Empty Palm
                 if Skill.Data.GetCombo(skill_id) == 2 or Skill.Data.GetCombo(skill_id) == 3:  # Attaque double ou secondaire
@@ -1642,7 +1642,7 @@ def DrawWindow():
                         ]
 
                         # Render the statistics table
-                        ImGui.table("run stats table", headers, data)
+                        ImGui_Legacy.table("run stats table", headers, data)
 
                         PyImGui.end_tab_item()
 
@@ -1662,7 +1662,7 @@ def DrawWindow():
                                     ("Salvage Kits", f"{bot_vars.window_statistics.salvage_kits}"),
                                 ]
 
-                                ImGui.table("run stats table", headers, data)
+                                ImGui_Legacy.table("run stats table", headers, data)
                                 PyImGui.end_tab_item()
 
                             if PyImGui.begin_tab_item("Materials"):
@@ -1680,7 +1680,7 @@ def DrawWindow():
                                     ("Cloth", f"{bot_vars.window_statistics.cloth}"),
                                 ]
 
-                                ImGui.table("material stats table", headers, data)
+                                ImGui_Legacy.table("material stats table", headers, data)
                                 PyImGui.end_tab_item()
                             PyImGui.end_tab_bar()
                         PyImGui.end_tab_item()
@@ -1734,7 +1734,7 @@ def DrawWindow():
 
                                 ]
 
-                                ImGui.table("debuginfo table", headers, data)
+                                ImGui_Legacy.table("debuginfo table", headers, data)
 
                                 PyImGui.end_tab_item()
 
@@ -1752,7 +1752,7 @@ def DrawWindow():
                                     ("State Machine is finished:", f"{FSM_vars.state_machine.is_finished()}"),
                                 ]
 
-                                ImGui.table("state machine info", headers, data)
+                                ImGui_Legacy.table("state machine info", headers, data)
 
                                 PyImGui.text("FollowXY Pathing")
                                 headers = ["Value","Data"]
@@ -1768,7 +1768,7 @@ def DrawWindow():
                                     ("is moving", f"{Agent.IsMoving(Player.GetAgentID())}"),
                                 ]
 
-                                ImGui.table("follow info", headers, data)
+                                ImGui_Legacy.table("follow info", headers, data)
                                 PyImGui.end_tab_item()
                             PyImGui.end_tab_bar()
                         PyImGui.end_tab_item()

@@ -5,7 +5,7 @@ import webbrowser
 from datetime import datetime
 
 from Py4GWCoreLib.GlobalCache.ItemCache import Bag_enum
-from Py4GWCoreLib.ImGui_src.types import Alignment, ControlAppearance, TextDecorator
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment, ControlAppearance, TextDecorator
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 from Sources.frenkeyLib.Core.iterable import chunked
 from Sources.frenkeyLib.Core.utility import ImGuiIniReader, string_similarity
@@ -198,7 +198,7 @@ class UI:
         
         
         # self.cached_item = cache.Cached_Item(1401) 
-        self.collection_module_window : ImGui.WindowModule = ImGui.WindowModule(
+        self.collection_module_window : ImGui_Legacy.WindowModule = ImGui_Legacy.WindowModule(
             "LootEx Data Collection",
             "LootEx Data Collection",
             window_size=(800, 500),
@@ -206,7 +206,7 @@ class UI:
             can_close=True,
             collapse=collapse
         )
-        self.module_window : ImGui.WindowModule = ImGui.WindowModule(
+        self.module_window : ImGui_Legacy.WindowModule = ImGui_Legacy.WindowModule(
             "LootEx",
             "LootEx",
             window_size=window_size,
@@ -835,7 +835,7 @@ class UI:
             (width, height),
             PyImGui.ImGuiCond.Always,
         )
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         style.WindowRounding.push_style_var(0)
         style.WindowPadding.push_style_var(5, 3)
         
@@ -854,26 +854,26 @@ class UI:
         ):
             screen_cursor_pos = PyImGui.get_cursor_screen_pos()
             PyImGui.same_line(25, 0)
-            ImGui.text_decorated("LootEx disabled", decorator=TextDecorator.None_, font_style="Regular", font_size=14, color=style.Text.color_tuple)
+            ImGui_Legacy.text_decorated("LootEx disabled", decorator=TextDecorator.None_, font_style="Regular", font_size=14, color=style.Text.color_tuple)
             
             font_size = 10
             PyImGui.draw_list_add_rect_filled(screen_cursor_pos[0] + font_size / 2, screen_cursor_pos[1] - 2 + font_size / 2, screen_cursor_pos[0] + font_size - 1, screen_cursor_pos[1] - 1 + font_size + 2, Color().color_int, 0, 0)
             
             PyImGui.same_line(5, 0)
             PyImGui.set_cursor_pos_y(4)
-            ImGui.text_colored(f"{IconsFontAwesome5.ICON_EXCLAMATION_TRIANGLE}", Color(255, 40, 40, 255).color_tuple, font_style="Regular", font_size=font_size)
+            ImGui_Legacy.text_colored(f"{IconsFontAwesome5.ICON_EXCLAMATION_TRIANGLE}", Color(255, 40, 40, 255).color_tuple, font_style="Regular", font_size=font_size)
             pass
             
             wp = PyImGui.get_window_pos()
             ws = PyImGui.get_window_size()
-            if ImGui.is_mouse_in_rect((wp[0], wp[1], ws[0], ws[1])):
+            if ImGui_Legacy.is_mouse_in_rect((wp[0], wp[1], ws[0], ws[1])):
                 PyImGui.begin_tooltip()            
-                ImGui.text("LootEx is disabled to avoid conflicts")                
-                ImGui.separator()
-                ImGui.text_decorated("Conflicting Widgets:", TextDecorator.Underline)
+                ImGui_Legacy.text("LootEx is disabled to avoid conflicts")                
+                ImGui_Legacy.separator()
+                ImGui_Legacy.text_decorated("Conflicting Widgets:", TextDecorator.Underline)
                 
                 for widget in active_inventory_widgets:
-                    ImGui.bullet_text(widget)
+                    ImGui_Legacy.bullet_text(widget)
                 PyImGui.end_tooltip()
 
         PyImGui.end()
@@ -894,10 +894,10 @@ class UI:
         window_style.push_style()
                 
         if self.module_window.begin():
-            style = ImGui.get_style()
+            style = ImGui_Legacy.get_style()
             
             if self.ensure_window_on_screen:
-                ImGui.set_window_within_displayport(300, 100)
+                ImGui_Legacy.set_window_within_displayport(300, 100)
                 self.ensure_window_on_screen = False
             
             if self.settings.profile:
@@ -912,7 +912,7 @@ class UI:
                 
                 width = PyImGui.get_content_region_avail()[0]
                 PyImGui.push_item_width(width - 90)
-                selected_index = ImGui.combo(
+                selected_index = ImGui_Legacy.combo(
                     "", profile_index, profile_names)
                 PyImGui.pop_item_width()
 
@@ -927,17 +927,17 @@ class UI:
 
                 PyImGui.same_line(0, 2)
                 
-                if ImGui.icon_button(IconsFontAwesome5.ICON_PLUS, 28, 24):
+                if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_PLUS, 28, 24):
                     self.show_add_profile_popup = not self.show_add_profile_popup
                     if self.show_add_profile_popup:
                         PyImGui.open_popup("Add Profile")
                     else:
                         PyImGui.close_current_popup()
 
-                ImGui.show_tooltip("Add New Profile")
+                ImGui_Legacy.show_tooltip("Add New Profile")
                 PyImGui.same_line(0, 2)
                 
-                if ImGui.icon_button(IconsFontAwesome5.ICON_TRASH, 28, 24) and len(self.settings.profiles) > 1:
+                if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_TRASH, 28, 24) and len(self.settings.profiles) > 1:
                 # if GUI.image_button(texture_map.CoreTextures.UI_Destroy.value, (20, 20)) and len(self.settings.profiles) > 1:
                     self.show_delete_profile_popup = not self.show_delete_profile_popup
                     if self.show_delete_profile_popup:
@@ -945,7 +945,7 @@ class UI:
                     else:
                         PyImGui.close_current_popup()
 
-                ImGui.show_tooltip("Delete Profile '" +
+                ImGui_Legacy.show_tooltip("Delete Profile '" +
                                 self.settings.profile.name + "'")
                 PyImGui.same_line(0, 2)
 
@@ -955,7 +955,7 @@ class UI:
                 if active:
                     style.Text.push_color((0, 255, 0, 255))
                 
-                if ImGui.icon_button(IconsFontAwesome5.ICON_CHECK, 28, 24):
+                if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_CHECK, 28, 24):
                     
                     if active:
                         inventory_handling.InventoryHandler().Stop()
@@ -966,22 +966,22 @@ class UI:
                     style.Text.pop_color()
 
                 
-                ImGui.show_tooltip(
+                ImGui_Legacy.show_tooltip(
                     ("Disable" if self.settings.automatic_inventory_handling else "Enable") + " Inventory Handling")
 
-                if ImGui.begin_tab_bar("LootExTabBar"):
+                if ImGui_Legacy.begin_tab_bar("LootExTabBar"):
                     self.draw_general_settings()
-                    if ImGui.begin_tab_item("Rules"):
+                    if ImGui_Legacy.begin_tab_item("Rules"):
                         if self.first_draw:
                             self.filter_rules()
                             
-                        if ImGui.begin_tab_bar("RulesTabBar"):
+                        if ImGui_Legacy.begin_tab_bar("RulesTabBar"):
                             self.draw_by_item_type()
                             self.draw_by_item_skin()
                             self.draw_low_req()
-                            ImGui.end_tab_bar()
+                            ImGui_Legacy.end_tab_bar()
 
-                        ImGui.end_tab_item()
+                        ImGui_Legacy.end_tab_item()
                     
                     self.draw_item_conversions()
                     self.draw_crafting()
@@ -995,7 +995,7 @@ class UI:
                     
                     self.first_draw = False
 
-                ImGui.end_tab_bar()
+                ImGui_Legacy.end_tab_bar()
 
                 pos = PyImGui.get_window_pos()
                 size = PyImGui.get_window_size()
@@ -1040,7 +1040,7 @@ class UI:
         PyImGui.set_next_window_size(width, 0)
         PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg,
                                     Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 125)))
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)    
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0, 0)    
         if PyImGui.begin(
             "Loot Ex Vault Controls",
             PyImGui.WindowFlags.NoTitleBar
@@ -1064,7 +1064,7 @@ class UI:
                     inventory_handling.InventoryHandler().SortBags(Bag.Storage_1, Bag.Storage_14)
                     
 
-            ImGui.show_tooltip("Condense items to full stacks" +
+            ImGui_Legacy.show_tooltip("Condense items to full stacks" +
                             "\nHold Ctrl to send message to all accounts" +
                             "\nHold Shift to send message to all accounts excluding yourself")
 
@@ -1086,7 +1086,7 @@ class UI:
         PyImGui.set_next_window_size(width, 0)
         PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg,
                                 Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 125)))
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.WindowPadding, 0, 0)
 
         if PyImGui.begin(
             "Loot Ex Inventory Controls",
@@ -1125,7 +1125,7 @@ class UI:
                 else:
                     inventory_handling.InventoryHandler().Start()  
                      
-        ImGui.show_tooltip(
+        ImGui_Legacy.show_tooltip(
             ("Disable" if self.settings.automatic_inventory_handling else "Enable") +
             " Inventory Handling" +
             "\nHold Ctrl to send message to all accounts" +
@@ -1147,7 +1147,7 @@ class UI:
                 else:
                     loot_handling.LootHandler().Start()                    
 
-        ImGui.show_tooltip(
+        ImGui_Legacy.show_tooltip(
             ("Disable" if self.settings.enable_loot_filters else "Enable") +
             " Loot Filters" +
             "\nHold Ctrl to send message to all accounts" +
@@ -1158,7 +1158,7 @@ class UI:
         if UI.transparent_button(IconsFontAwesome5.ICON_SORT_ALPHA_DOWN, True, width, width):
             inventory_handling.InventoryHandler().CompactInventory()      
         
-        ImGui.show_tooltip(
+        ImGui_Legacy.show_tooltip(
             "Sort/Compact Inventory" +
             "\nAutomatically stacks items and sorts them in your inventory")                  
 
@@ -1187,7 +1187,7 @@ class UI:
         #             data_collector.instance.start_collection()
         #             self.settings.save()
 
-        ImGui.show_tooltip(
+        ImGui_Legacy.show_tooltip(
             ("Close" if self.settings.scraper_window_visible else "Open") +
             " Item Data Collection"
         )
@@ -1212,7 +1212,7 @@ class UI:
     
                 self.settings.save()
 
-        ImGui.show_tooltip(
+        ImGui_Legacy.show_tooltip(
             ("Hide" if self.settings.window_visible else "Show") + " Window" +
             "\nHold Ctrl to send message to all accounts" +
             "\nHold Shift to send message to all accounts excluding yourself")
@@ -1234,12 +1234,12 @@ class UI:
                 else:
                     Inventory.OpenXunlaiWindow()
 
-        ImGui.show_tooltip("Open Xunlai Storage" +
+        ImGui_Legacy.show_tooltip("Open Xunlai Storage" +
                         "\nHold Ctrl to send message to all accounts" +
                         "\nHold Shift to send message to all accounts excluding yourself")
 
     def draw_debug_item(self, i : int, cached_item: cache.Cached_Item, button_width: int = 200, button_height: int = 50):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         if PyImGui.is_rect_visible(button_width, button_height):       
             colored_item = 0
@@ -1267,14 +1267,14 @@ class UI:
             style.Border.push_color(utility.Util.GetRarityColorDict(cached_item.rarity)["text"])
             border_popped = False
             
-            if ImGui.begin_child(str(i), (button_width, button_height), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):    
+            if ImGui_Legacy.begin_child(str(i), (button_width, button_height), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):    
                 style.Border.pop_color()                                               
                 image_size = (32, 32)     
                           
                 if PyImGui.is_rect_visible(image_size[0], image_size[1]):                 
                     remaining_size = PyImGui.get_content_region_avail()
                     
-                    ImGui.begin_table("ItemTable", 2, PyImGui.TableFlags.NoBordersInBody, remaining_size[0], remaining_size[1] - 30)
+                    ImGui_Legacy.begin_table("ItemTable", 2, PyImGui.TableFlags.NoBordersInBody, remaining_size[0], remaining_size[1] - 30)
                     PyImGui.table_setup_column("Icon", PyImGui.TableColumnFlags.WidthFixed, image_size[0])
                     PyImGui.table_setup_column("Info", PyImGui.TableColumnFlags.WidthStretch)
                     PyImGui.table_next_row()
@@ -1287,13 +1287,13 @@ class UI:
                         else:
                             texture = cached_item.data.texture_file
                             
-                        ImGui.DrawTexture(
+                        ImGui_Legacy.DrawTexture(
                             texture,
                             image_size[0], image_size[1]
                         )
                     elif cached_item.id > 0:
                         texture = os.path.join(PySystem.Console.get_projects_path(), "Textures", "missing_texture.png") ##TODO: Replace with wiki texture
-                        ImGui.DrawTexture(
+                        ImGui_Legacy.DrawTexture(
                             texture,
                             image_size[0], image_size[1]
                         )
@@ -1303,29 +1303,29 @@ class UI:
                         
                     PyImGui.table_next_column()
                         
-                    ImGui.text_scaled(str(cached_item.id) if cached_item.id > 0 else "", (1,1,1,0.75), 0.7)
-                    ImGui.text_scaled(str(cached_item.model_id) if cached_item.model_id > 0 else "", (1,1,1,1), 0.8)
-                    ImGui.text_wrapped(cached_item.name if cached_item.name else "Unknown Item")
-                    # ImGui.text_scaled(f"x{cached_item.quantity}" if cached_item.quantity > 1 else "", (1,1,1,1), 0.8)
+                    ImGui_Legacy.text_scaled(str(cached_item.id) if cached_item.id > 0 else "", (1,1,1,0.75), 0.7)
+                    ImGui_Legacy.text_scaled(str(cached_item.model_id) if cached_item.model_id > 0 else "", (1,1,1,1), 0.8)
+                    ImGui_Legacy.text_wrapped(cached_item.name if cached_item.name else "Unknown Item")
+                    # ImGui_Legacy.text_scaled(f"x{cached_item.quantity}" if cached_item.quantity > 1 else "", (1,1,1,1), 0.8)
                     
-                    ImGui.end_table()
+                    ImGui_Legacy.end_table()
  
                 style.WindowPadding.push_style_var(15.0, 5.0)
                 style.ChildBg.push_color((50, 50, 50, 125))
                 
-                ImGui.begin_child("ItemInfoChild", (0, 0), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)
+                ImGui_Legacy.begin_child("ItemInfoChild", (0, 0), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)
                 action_texture = self.action_infos.get_texture(cached_item.action, None)                
                 if action_texture:
-                    ImGui.DrawTexture(action_texture, 14, 14)
+                    ImGui_Legacy.DrawTexture(action_texture, 14, 14)
                     PyImGui.same_line(0, 5)
-                    ImGui.text(utility.Util.reformat_string(cached_item.action.name))
+                    ImGui_Legacy.text(utility.Util.reformat_string(cached_item.action.name))
                     
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 style.ChildBg.pop_color()
                 style.WindowPadding.pop_style_var()
                                 
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             if not border_popped:
                 style.Border.pop_color()
             
@@ -1336,184 +1336,184 @@ class UI:
                 if PyImGui.is_item_hovered():
                     PyImGui.set_next_window_size(500, 0)
                     
-                    ImGui.begin_tooltip()
+                    ImGui_Legacy.begin_tooltip()
                     if cached_item.data:
                         self.draw_cached_item_header(item=cached_item)
                         
                     if PyImGui.is_rect_visible(0, 20):
-                        ImGui.begin_table("ItemInfoTable", 2, PyImGui.TableFlags.Borders)
+                        ImGui_Legacy.begin_table("ItemInfoTable", 2, PyImGui.TableFlags.Borders)
                         PyImGui.table_setup_column("Property")
                         PyImGui.table_setup_column("Value")
                         PyImGui.table_headers_row()
                         PyImGui.table_next_row()
                         
                         PyImGui.table_next_column()
-                        ImGui.text(f"Item Id")
+                        ImGui_Legacy.text(f"Item Id")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(str(cached_item.id) if cached_item.id > 0 else "N/A")
+                        ImGui_Legacy.text(str(cached_item.id) if cached_item.id > 0 else "N/A")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(f"Model File Id")
+                        ImGui_Legacy.text(f"Model File Id")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(str(cached_item.model_file_id) if cached_item.model_file_id > -1 else "N/A")
+                        ImGui_Legacy.text(str(cached_item.model_file_id) if cached_item.model_file_id > -1 else "N/A")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(f"Model Id")
+                        ImGui_Legacy.text(f"Model Id")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(str(cached_item.model_id) if cached_item.model_id > -1 else "N/A")
+                        ImGui_Legacy.text(str(cached_item.model_id) if cached_item.model_id > -1 else "N/A")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(f"Quantity")
+                        ImGui_Legacy.text(f"Quantity")
                         
                         PyImGui.table_next_column()
-                        ImGui.text(str(cached_item.quantity) if cached_item.quantity > 0 else "N/A")
+                        ImGui_Legacy.text(str(cached_item.quantity) if cached_item.quantity > 0 else "N/A")
                         
                         PyImGui.table_next_column()
-                        ImGui.text("Inscribable")
+                        ImGui_Legacy.text("Inscribable")
 
                         PyImGui.table_next_column()
                         inscribable = cached_item.is_inscribable
-                        ImGui.text_colored(str(inscribable), (0, 1, 0, 1) if inscribable else (1, 0, 0, 1))
+                        ImGui_Legacy.text_colored(str(inscribable), (0, 1, 0, 1) if inscribable else (1, 0, 0, 1))
                         
                         
                         if cached_item.weapon_mods_to_keep and len(cached_item.weapon_mods_to_keep) > 1:
                             PyImGui.table_next_column()
-                            ImGui.text("Mods to Keep")
+                            ImGui_Legacy.text("Mods to Keep")
                             
                             PyImGui.table_next_column()
                             for mod in cached_item.weapon_mods_to_keep:
-                                ImGui.text(mod.WeaponMod.name)
+                                ImGui_Legacy.text(mod.WeaponMod.name)
                                 
                         if cached_item.runes_to_keep and len(cached_item.runes_to_keep) > 1:
                             PyImGui.table_next_column()
-                            ImGui.text("Runes to Keep")
+                            ImGui_Legacy.text("Runes to Keep")
                             
                             PyImGui.table_next_column()
                             for mod in cached_item.runes_to_keep:
-                                ImGui.text(mod.Rune.name)
+                                ImGui_Legacy.text(mod.Rune.name)
                         
                         if cached_item.runes:
                             PyImGui.table_next_column()
-                            ImGui.text("Runes")
+                            ImGui_Legacy.text("Runes")
                             
                             PyImGui.table_next_column()
                             for mod in cached_item.runes:
-                                ImGui.text(utility.Util.reformat_string(mod.Rune.name))
+                                ImGui_Legacy.text(utility.Util.reformat_string(mod.Rune.name))
                         
                         if cached_item.weapon_mods:
                             PyImGui.table_next_column()
-                            ImGui.text("Mods")
+                            ImGui_Legacy.text("Mods")
                             
                             PyImGui.table_next_column()
                             for mod in cached_item.weapon_mods:
-                                ImGui.text(f"{utility.Util.reformat_string(mod.WeaponMod.name)}")
+                                ImGui_Legacy.text(f"{utility.Util.reformat_string(mod.WeaponMod.name)}")
                                 value = mod.Value
                                 desc = mod.Description
-                                ImGui.text(f"{utility.Util.reformat_string(desc)}", 12)
+                                ImGui_Legacy.text(f"{utility.Util.reformat_string(desc)}", 12)
                                 
                         if cached_item.max_weapon_mods:
                             PyImGui.table_next_column()
-                            ImGui.text("Max Mods")
+                            ImGui_Legacy.text("Max Mods")
                             
                             PyImGui.table_next_column()
                             for mod in cached_item.max_weapon_mods:
-                                ImGui.text(utility.Util.reformat_string(mod.WeaponMod.name))
+                                ImGui_Legacy.text(utility.Util.reformat_string(mod.WeaponMod.name))
                         
                         if cached_item.weapon_mods_to_keep:
                             PyImGui.table_next_column()
-                            ImGui.text("Desired Mods")
+                            ImGui_Legacy.text("Desired Mods")
                             
                             PyImGui.table_next_column()
                             for mod in cached_item.weapon_mods_to_keep:
-                                ImGui.text(utility.Util.reformat_string(mod.WeaponMod.name))
+                                ImGui_Legacy.text(utility.Util.reformat_string(mod.WeaponMod.name))
                         
                         if cached_item.is_rare_weapon:
                             PyImGui.table_next_column()
-                            ImGui.text("Rare Weapon")
+                            ImGui_Legacy.text("Rare Weapon")
 
                             PyImGui.table_next_column()
-                            ImGui.text_colored("Yes", (0, 1, 0, 1))
+                            ImGui_Legacy.text_colored("Yes", (0, 1, 0, 1))
                             
                         if cached_item.is_rare_weapon_to_keep:
                             PyImGui.table_next_column()
-                            ImGui.text("Keep Rare Weapon")
+                            ImGui_Legacy.text("Keep Rare Weapon")
 
                             PyImGui.table_next_column()
-                            ImGui.text_colored("Yes", (0, 1, 0, 1))
+                            ImGui_Legacy.text_colored("Yes", (0, 1, 0, 1))
                                                         
                         if cached_item.matches_weapon_rule:
                             PyImGui.table_next_column()
-                            ImGui.text("By Weapon Rule Matched")
+                            ImGui_Legacy.text("By Weapon Rule Matched")
 
                             PyImGui.table_next_column()
-                            ImGui.text_colored(cached_item.weapon_rule.item_type.name if cached_item.weapon_rule else "Unkown Weapon Rule", (0, 1, 0, 1))
+                            ImGui_Legacy.text_colored(cached_item.weapon_rule.item_type.name if cached_item.weapon_rule else "Unkown Weapon Rule", (0, 1, 0, 1))
                                                     
                         if cached_item.matches_skin_rule:
                             PyImGui.table_next_column()
-                            ImGui.text("Skin Rule Matched")
+                            ImGui_Legacy.text("Skin Rule Matched")
 
                             PyImGui.table_next_column()
-                            ImGui.text_colored(cached_item.skin_rule.skin if cached_item.skin_rule else "Unknown Rule Skin", (0, 1, 0, 1))
+                            ImGui_Legacy.text_colored(cached_item.skin_rule.skin if cached_item.skin_rule else "Unknown Rule Skin", (0, 1, 0, 1))
                         
                         if cached_item.is_customized:
                             PyImGui.table_next_column()
-                            ImGui.text("Customized")
+                            ImGui_Legacy.text("Customized")
 
                             PyImGui.table_next_column()
-                            ImGui.text_colored("Customized - Ignore!", (1, 0, 0, 1))
+                            ImGui_Legacy.text_colored("Customized - Ignore!", (1, 0, 0, 1))
                         
                                 
                         PyImGui.table_next_column()
-                        ImGui.text("Action")
+                        ImGui_Legacy.text("Action")
                         
                         PyImGui.table_next_column()
                         action_info = self.action_infos.get(cached_item.action, None)
                         action_texture = action_info.icon if action_info else None
                         
                         if action_texture:
-                            ImGui.DrawTexture(action_texture, 14, 16)
+                            ImGui_Legacy.DrawTexture(action_texture, 14, 16)
                             PyImGui.same_line(0, 5)
                         
-                        ImGui.text(utility.Util.reformat_string(cached_item.action.name))
+                        ImGui_Legacy.text(utility.Util.reformat_string(cached_item.action.name))
                                                 
-                        ImGui.end_table()
+                        ImGui_Legacy.end_table()
                     
                     if not collected:
-                        ImGui.text_colored("Minimum data missing (Inventory Icon or Name)", (255, 0, 0, 255))
+                        ImGui_Legacy.text_colored("Minimum data missing (Inventory Icon or Name)", (255, 0, 0, 255))
                         
                     if localization_missing:
-                        ImGui.text_colored(missing_languages, (255, 0, 0, 255))
+                        ImGui_Legacy.text_colored(missing_languages, (255, 0, 0, 255))
                         
                     if mods_missing:
-                        ImGui.text_colored(mod_missing, (255, 0, 0, 255))
+                        ImGui_Legacy.text_colored(mod_missing, (255, 0, 0, 255))
                     
                     if cached_item.data and not cached_item.data.wiki_scraped:
-                        ImGui.text_colored("Wiki data not scraped yet", (255, 0, 0, 255))
+                        ImGui_Legacy.text_colored("Wiki data not scraped yet", (255, 0, 0, 255))
                         
                         
                         
-                    ImGui.end_tooltip()
+                    ImGui_Legacy.end_tooltip()
                 pass
         else:
             PyImGui.dummy(int(button_width), int(button_height))
         
     def draw_data_collector_tab(self):
-        if ImGui.begin_tab_item("Debug & Data"):
+        if ImGui_Legacy.begin_tab_item("Debug & Data"):
             tab_size = PyImGui.get_content_region_avail()
             child_width = tab_size[0] - 10
             tab1_size = (max(400, child_width * 0.25), tab_size[1])
             tab2_size = (child_width - tab1_size[0], tab_size[1])
             
-            if ImGui.begin_child("DataCollectorChild", tab1_size, True, PyImGui.WindowFlags.NoFlag):
-                ImGui.text("Data Collector")
-                ImGui.separator()
+            if ImGui_Legacy.begin_child("DataCollectorChild", tab1_size, True, PyImGui.WindowFlags.NoFlag):
+                ImGui_Legacy.text("Data Collector")
+                ImGui_Legacy.separator()
 
                 child_size = PyImGui.get_content_region_avail()
                 if PyImGui.is_rect_visible(0, 20):
-                    if ImGui.begin_table("DataCollectorTable", 2, PyImGui.TableFlags.ScrollY, 200, child_size[1] - 5):
+                    if ImGui_Legacy.begin_table("DataCollectorTable", 2, PyImGui.TableFlags.ScrollY, 200, child_size[1] - 5):
                         PyImGui.table_setup_column("Data")
                         PyImGui.table_setup_column("Amount", PyImGui.TableColumnFlags.WidthFixed, 50)
 
@@ -1521,41 +1521,41 @@ class UI:
                         PyImGui.table_next_row()
 
                         PyImGui.table_next_column()
-                        ImGui.text(f"Weapon Mods")
+                        ImGui_Legacy.text(f"Weapon Mods")
                         PyImGui.table_next_column()
-                        ImGui.text(f"{len(self.data.Weapon_Mods)}")
+                        ImGui_Legacy.text(f"{len(self.data.Weapon_Mods)}")
 
                         PyImGui.table_next_column()
-                        ImGui.text(f"Runes")
+                        ImGui_Legacy.text(f"Runes")
                         PyImGui.table_next_column()
-                        ImGui.text(f"{len(self.data.Runes)}")
+                        ImGui_Legacy.text(f"{len(self.data.Runes)}")
 
                         PyImGui.table_next_column()
-                        ImGui.text(f"Items")
+                        ImGui_Legacy.text(f"Items")
                         PyImGui.table_next_column()
-                        ImGui.text(f"{len(self.data.Items.All)}")
+                        ImGui_Legacy.text(f"{len(self.data.Items.All)}")
                         
                         PyImGui.table_next_column()
-                        ImGui.separator()
+                        ImGui_Legacy.separator()
                         PyImGui.table_next_column()
-                        ImGui.separator()
+                        ImGui_Legacy.separator()
                         
                         
                         for item_type, items in self.data.Items.items():                            
                             item_count = len(items)
                             if item_count > 0:
                                 PyImGui.table_next_column()
-                                ImGui.text(f"{item_type.name}")
+                                ImGui_Legacy.text(f"{item_type.name}")
                                 PyImGui.table_next_column()
-                                ImGui.text(f"{item_count}")
+                                ImGui_Legacy.text(f"{item_count}")
                                 
-                    ImGui.end_table()
+                    ImGui_Legacy.end_table()
                 
                 PyImGui.same_line(0, 5)
-                if ImGui.begin_child("DataCollectorButtonsChild", (0, child_size[1] - 5), False, PyImGui.WindowFlags.NoFlag):
+                if ImGui_Legacy.begin_child("DataCollectorButtonsChild", (0, child_size[1] - 5), False, PyImGui.WindowFlags.NoFlag):
                     PyImGui.indent(3)
                     
-                    if ImGui.button("Merge Diffs into Data", 160, 30):
+                    if ImGui_Legacy.button("Merge Diffs into Data", 160, 30):
                         ConsoleLog(
                             "LootEx",
                             "Merging diffs into self.data...",
@@ -1564,9 +1564,9 @@ class UI:
 
                         messaging.SendMergingMessage()
 
-                    ImGui.show_tooltip("Merge all diff files into the data files.")
+                    ImGui_Legacy.show_tooltip("Merge all diff files into the data files.")
                                         
-                    if False and ImGui.button("Move Textures", 160, 30):
+                    if False and ImGui_Legacy.button("Move Textures", 160, 30):
                         items_folder = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Items")
                         item_model_files_folder = os.path.join(PySystem.Console.get_projects_path(), "Textures", "ItemModelFiles")
                         
@@ -1585,21 +1585,21 @@ class UI:
                         # items
                         return
 
-                    if self.settings.development_mode and ImGui.button("Test 123", 160, 30):
+                    if self.settings.development_mode and ImGui_Legacy.button("Test 123", 160, 30):
                         on_test_button_clicked()
                                                  
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
                 
             PyImGui.same_line(0, 5)
             
-            if ImGui.begin_child("DataCollectorIventory", tab2_size, True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+            if ImGui_Legacy.begin_child("DataCollectorIventory", tab2_size, True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
                 if True:
                     child_size = PyImGui.get_content_region_avail()
                                                                 
                     PyImGui.push_item_width(child_size[0] - 135)
-                    self.bag_index = ImGui.combo(
+                    self.bag_index = ImGui_Legacy.combo(
                         "##Bag",
                         self.bag_index,
                         self.bag_names
@@ -1609,7 +1609,7 @@ class UI:
                     PyImGui.same_line(0, 5)
                     
                     PyImGui.push_item_width(100)
-                    index = ImGui.input_int("##BagRange", self.bag_index)  
+                    index = ImGui_Legacy.input_int("##BagRange", self.bag_index)  
                     PyImGui.pop_item_width()
                             
                     if index > len(self.bag_names) - 1:
@@ -1624,8 +1624,8 @@ class UI:
                     bag_range = self.bag_ranges[self.bag_names[self.bag_index]]       
                     PyImGui.same_line(0, 5)
                     
-                    self.inventory_view = ImGui.checkbox("##Inventory View", self.inventory_view)
-                    ImGui.show_tooltip("Show items in a grid view instead of a list view.")
+                    self.inventory_view = ImGui_Legacy.checkbox("##Inventory View", self.inventory_view)
+                    ImGui_Legacy.show_tooltip("Show items in a grid view instead of a list view.")
                                     
                     if self.actions_timer.IsExpired() or self.action_summary is None:
                         if self.bag_names[self.bag_index] == "Merchant/Trader":
@@ -1635,9 +1635,9 @@ class UI:
                             
                         self.actions_timer.Reset()
                     
-                    ImGui.separator()
+                    ImGui_Legacy.separator()
                     child_size = PyImGui.get_content_region_avail()
-                    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.CellPadding, 2, 2)
+                    PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.CellPadding, 2, 2)
                     if self.inventory_view: 
                         if self.action_summary and self.action_summary.cached_inventory and self.inventory_coords: 
                             inventory_width = self.inventory_coords.right - self.inventory_coords.left
@@ -1645,7 +1645,7 @@ class UI:
                             rows = math.ceil(len(self.action_summary.cached_inventory) / columns)
                             
                             if PyImGui.is_rect_visible(0, 20):
-                                if ImGui.begin_table("Inventory Debug Table#InvView", columns, PyImGui.TableFlags.NoBordersInBody , child_size[0], child_size[1]):
+                                if ImGui_Legacy.begin_table("Inventory Debug Table#InvView", columns, PyImGui.TableFlags.NoBordersInBody , child_size[0], child_size[1]):
                                     remaining_size = PyImGui.get_content_region_avail()
                                     button_width = math.floor(remaining_size[0] / columns) - 3                           
                                     button_height = math.floor((child_size[1] - 45) / rows)
@@ -1657,14 +1657,14 @@ class UI:
                                         self.draw_debug_item(i, item, button_width, button_height)   
                                         
                                             
-                                ImGui.end_table()
+                                ImGui_Legacy.end_table()
                     else:
                         if self.action_summary and self.action_summary.cached_inventory: 
                             remaining_size = PyImGui.get_content_region_avail()
                             columns = math.floor(remaining_size[0] // 125)
                             
                             if PyImGui.is_rect_visible(0, 20):
-                                if ImGui.begin_table("Inventory Debug Table##NoInvView", columns, PyImGui.TableFlags.ScrollY, remaining_size[0], child_size[1]):
+                                if ImGui_Legacy.begin_table("Inventory Debug Table##NoInvView", columns, PyImGui.TableFlags.ScrollY, remaining_size[0], child_size[1]):
                                     remaining_size = PyImGui.get_content_region_avail()
                                     button_width = math.floor(remaining_size[0] / columns) - 8
                                     button_height = 90
@@ -1676,23 +1676,23 @@ class UI:
                                         self.draw_debug_item(i, item, button_width, button_height)   
                                         
                                             
-                                ImGui.end_table()
+                                ImGui_Legacy.end_table()
                     PyImGui.pop_style_var(1)
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
 
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
 
     def draw_prices_tab(self):
-        if ImGui.begin_tab_item("Prices"):
+        if ImGui_Legacy.begin_tab_item("Prices"):
             tab_size = PyImGui.get_content_region_avail()
             child_width = (tab_size[0] - 10) / 2
             
-            ImGui.begin_child("DataCollectorMaterialsChild", (child_width, tab_size[1]), True, PyImGui.WindowFlags.NoFlag)
+            ImGui_Legacy.begin_child("DataCollectorMaterialsChild", (child_width, tab_size[1]), True, PyImGui.WindowFlags.NoFlag)
             
             remaining_size = PyImGui.get_content_region_avail()
-            if ImGui.button("Get Material Prices", remaining_size[0], 0):
+            if ImGui_Legacy.button("Get Material Prices", remaining_size[0], 0):
                 ConsoleLog(
                     "LootEx",
                     "Fetching material prices from the wiki...",
@@ -1722,7 +1722,7 @@ class UI:
                 price_check_mgr.request_prices(item_ids, assign_material_price)
             
             if PyImGui.is_rect_visible(0, 20):
-                ImGui.begin_table("DataCollectorMaterialsTable", 3, PyImGui.TableFlags.ScrollY | PyImGui.TableFlags.NoBordersInBody, 0, 0)
+                ImGui_Legacy.begin_table("DataCollectorMaterialsTable", 3, PyImGui.TableFlags.ScrollY | PyImGui.TableFlags.NoBordersInBody, 0, 0)
                 PyImGui.table_setup_column("Icon", PyImGui.TableColumnFlags.WidthFixed, 30)
                 PyImGui.table_setup_column("Material")
                 PyImGui.table_setup_column("Price")
@@ -1731,37 +1731,37 @@ class UI:
                 PyImGui.table_next_row()
                 for material in self.data.Materials.values():
                     PyImGui.table_next_column()
-                    ImGui.image(material.texture_file, (24, 24))
+                    ImGui_Legacy.image(material.texture_file, (24, 24))
                     PyImGui.table_next_column()
                     if material.material_type is MaterialType.Common:
-                        ImGui.text_aligned(f"{material.name} (10)", height=24, alignment=Alignment.MidLeft)
+                        ImGui_Legacy.text_aligned(f"{material.name} (10)", height=24, alignment=Alignment.MidLeft)
                     else:
-                        ImGui.text_aligned(material.name, height=24, alignment=Alignment.MidLeft)
+                        ImGui_Legacy.text_aligned(material.name, height=24, alignment=Alignment.MidLeft)
                         
                     PyImGui.table_next_column()
                     price_str = utility.Util.format_currency(material.vendor_value) if material.vendor_value is not None else "N/A"
                         
-                    ImGui.text_aligned(price_str, height=24, alignment=Alignment.MidLeft)
+                    ImGui_Legacy.text_aligned(price_str, height=24, alignment=Alignment.MidLeft)
                     
                     if PyImGui.is_item_hovered():
-                        ImGui.show_tooltip("Last Checked: " + utility.Util.format_custom_time_ago(datetime.now() - material.vendor_updated) if material.vendor_updated else "Never Updated")
+                        ImGui_Legacy.show_tooltip("Last Checked: " + utility.Util.format_custom_time_ago(datetime.now() - material.vendor_updated) if material.vendor_updated else "Never Updated")
 
                 # for material in self.data.Rare_Materials.values():
                 #     PyImGui.table_next_row()
                 #     PyImGui.table_next_column()
-                #     ImGui.text(material.name)
+                #     ImGui_Legacy.text(material.name)
                 #     PyImGui.table_next_column()
                 #     if material.vendor_value is not None:
-                #         ImGui.text(utility.Util.format_currency(material.vendor_value))
+                #         ImGui_Legacy.text(utility.Util.format_currency(material.vendor_value))
                 #     else:
-                #         ImGui.text("N/A")
-                #     ImGui.show_tooltip("Last Checked: " + utility.Util.format_time_ago(datetime.now() - material.vendor_updated) if material.vendor_updated else "Never Updated")
+                #         ImGui_Legacy.text("N/A")
+                #     ImGui_Legacy.show_tooltip("Last Checked: " + utility.Util.format_time_ago(datetime.now() - material.vendor_updated) if material.vendor_updated else "Never Updated")
                         
-                ImGui.end_table()
+                ImGui_Legacy.end_table()
             
             
-            ImGui.end_child()
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_child()
+            ImGui_Legacy.end_tab_item()
         pass
     
     def draw_delete_profile_popup(self):
@@ -1772,12 +1772,12 @@ class UI:
         if self.show_delete_profile_popup:
             PyImGui.open_popup("Delete Profile")
 
-        if ImGui.begin_popup("Delete Profile"):
-            ImGui.text(
+        if ImGui_Legacy.begin_popup("Delete Profile"):
+            ImGui_Legacy.text(
                 f"Are you sure you want to delete the profile '{self.settings.profile.name}'?")
-            ImGui.separator()
+            ImGui_Legacy.separator()
 
-            if ImGui.button("Yes", 100, 0):
+            if ImGui_Legacy.button("Yes", 100, 0):
                 profile_names = [profile.name for profile in self.settings.profiles]
                 profile_index = profile_names.index(self.settings.profile.name) if self.settings.profile else None
                 
@@ -1795,11 +1795,11 @@ class UI:
 
             PyImGui.same_line(0, 5)
 
-            if ImGui.button("No", 100, 0):
+            if ImGui_Legacy.button("No", 100, 0):
                 self.show_delete_profile_popup = False
                 PyImGui.close_current_popup()
 
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
 
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.show_delete_profile_popup:
@@ -1810,9 +1810,9 @@ class UI:
         if self.show_add_profile_popup:
             PyImGui.open_popup("Add Profile")
 
-        if ImGui.begin_popup("Add Profile"):
-            ImGui.text("Please enter a name for the new profile:")
-            ImGui.separator()
+        if ImGui_Legacy.begin_popup("Add Profile"):
+            ImGui_Legacy.text("Please enter a name for the new profile:")
+            ImGui_Legacy.separator()
 
             profile_exists = self.new_profile_name == "" or any(
                 profile.name.lower() == self.new_profile_name.lower() for profile in self.settings.profiles
@@ -1824,7 +1824,7 @@ class UI:
                         Utils.RGBToColor(255, 0, 0, 255))
                 )
 
-            profile_name_input = ImGui.input_text(
+            profile_name_input = ImGui_Legacy.input_text(
                 "##NewProfileName", self.new_profile_name)
             if profile_name_input is not None and profile_name_input != self.new_profile_name:
                 self.new_profile_name = profile_name_input
@@ -1850,7 +1850,7 @@ class UI:
 
             PyImGui.same_line(0, 5)
 
-            if ImGui.button("Create", 100, 0) and not profile_exists:
+            if ImGui_Legacy.button("Create", 100, 0) and not profile_exists:
                 if self.new_profile_name != "" and not profile_exists:
                     if self.settings.profile:
                         self.settings.profile.save()
@@ -1876,10 +1876,10 @@ class UI:
                     PyImGui.ImGuiCol.Text, Utils.ColorToTuple(
                         Utils.RGBToColor(255, 0, 0, 255))
                 )
-                ImGui.text("Profile name already exists!")
+                ImGui_Legacy.text("Profile name already exists!")
                 PyImGui.pop_style_color(1)
 
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
 
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.show_add_profile_popup:
@@ -1887,85 +1887,85 @@ class UI:
                 self.show_add_profile_popup = False
 
     def draw_general_settings(self):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
-        if ImGui.begin_tab_item("General"):
+        if ImGui_Legacy.begin_tab_item("General"):
             tab_size = PyImGui.get_content_region_avail()
             dye_section_width = 250
 
-            if ImGui.begin_child("GeneralSettingsChild", (tab_size[0] - dye_section_width - 5, tab_size[1]), True, PyImGui.WindowFlags.NoFlag) and self.settings.profile:
+            if ImGui_Legacy.begin_child("GeneralSettingsChild", (tab_size[0] - dye_section_width - 5, tab_size[1]), True, PyImGui.WindowFlags.NoFlag) and self.settings.profile:
                 subtab_size = PyImGui.get_content_region_avail()
 
-                ImGui.text("General")
-                ImGui.separator()
-                if ImGui.begin_child("GeneralSettingsChildInner", (subtab_size[0], 110), True, PyImGui.WindowFlags.NoBackground):                    
-                    # deposit_full_stacks = ImGui.checkbox("Deposit Full Stacks", self.settings.profile.deposit_full_stacks)
+                ImGui_Legacy.text("General")
+                ImGui_Legacy.separator()
+                if ImGui_Legacy.begin_child("GeneralSettingsChildInner", (subtab_size[0], 110), True, PyImGui.WindowFlags.NoBackground):                    
+                    # deposit_full_stacks = ImGui_Legacy.checkbox("Deposit Full Stacks", self.settings.profile.deposit_full_stacks)
                     # if deposit_full_stacks != self.settings.profile.deposit_full_stacks:
                     #     self.settings.profile.deposit_full_stacks = deposit_full_stacks
                     #     self.settings.profile.save()
-                    # ImGui.show_tooltip("When a full stack of items is found in the inventory, it will be deposited automatically.")
+                    # ImGui_Legacy.show_tooltip("When a full stack of items is found in the inventory, it will be deposited automatically.")
                     
                     xunlai_tabs = [utility.Util.reformat_string(tab.name) for tab in XUNLAI_STORAGE]
                     
-                    max_xunlai_storage = ImGui.combo("Max Xunlai Tab", self.settings.max_xunlai_storage.value - Bag_enum.Storage_1.value, xunlai_tabs)
+                    max_xunlai_storage = ImGui_Legacy.combo("Max Xunlai Tab", self.settings.max_xunlai_storage.value - Bag_enum.Storage_1.value, xunlai_tabs)
                     if max_xunlai_storage != self.settings.max_xunlai_storage.value - Bag_enum.Storage_1.value:
                         self.settings.max_xunlai_storage = Bag_enum(Bag_enum.Storage_1.value + max_xunlai_storage)
                         self.settings.profile.save()
                         
-                    polling_interval = ImGui.slider_float("Polling Interval (sec)", self.settings.profile.polling_interval, 0.1, 5)
+                    polling_interval = ImGui_Legacy.slider_float("Polling Interval (sec)", self.settings.profile.polling_interval, 0.1, 5)
                     
                     if polling_interval != self.settings.profile.polling_interval:
                         self.settings.profile.polling_interval = polling_interval
                         inventory_handling.InventoryHandler().SetPollingInterval(polling_interval)
                         self.settings.profile.save()
-                    ImGui.show_tooltip(f"Polling Interval: {polling_interval:.2f} seconds")
+                    ImGui_Legacy.show_tooltip(f"Polling Interval: {polling_interval:.2f} seconds")
                     
-                    loot_range = ImGui.slider_int("Loot Range", self.settings.profile.loot_range, 125, 5000)
+                    loot_range = ImGui_Legacy.slider_int("Loot Range", self.settings.profile.loot_range, 125, 5000)
                     
                     if loot_range != self.settings.profile.loot_range:
                         self.settings.profile.loot_range = loot_range
                         loot_handling.LootHandler().SetLootRange(loot_range)
                         self.settings.profile.save()
 
-                    ImGui.show_tooltip(f"Loot Range: {loot_range} units")
+                    ImGui_Legacy.show_tooltip(f"Loot Range: {loot_range} units")
                 
                         
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 
                 
-                ImGui.text("Merchant Settings")
+                ImGui_Legacy.text("Merchant Settings")
                 def draw_hint():
-                    ImGui.text_wrapped("These settings control the items that are automatically bought from merchants when opening a merchant window.")
-                    ImGui.text_wrapped("Before buying items, LootEx will check your stash for these items and move them to your inventory if they are present.\n"+
+                    ImGui_Legacy.text_wrapped("These settings control the items that are automatically bought from merchants when opening a merchant window.")
+                    ImGui_Legacy.text_wrapped("Before buying items, LootEx will check your stash for these items and move them to your inventory if they are present.\n"+
                                  "If the item is not present in your stash, it will be bought from the merchant.\n")
                 
                 PyImGui.same_line(0, 5)
                 self.draw_info_icon(draw_action=draw_hint, width=500)
                                         
-                ImGui.separator()
-                if ImGui.begin_child("GeneralSettings_Merchant", (subtab_size[0], 150), True, PyImGui.WindowFlags.NoBackground) and self.settings.profile:
+                ImGui_Legacy.separator()
+                if ImGui_Legacy.begin_child("GeneralSettings_Merchant", (subtab_size[0], 150), True, PyImGui.WindowFlags.NoBackground) and self.settings.profile:
                     self._input_int_setting("Identification Kits", self.settings.profile.identification_kits, self.merchant_item_textures["Superior Identification Kit"])
                     self._input_int_setting("Salvage Kits", self.settings.profile.salvage_kits, self.merchant_item_textures["Salvage Kit"])
                     self._input_int_setting("Expert Salvage Kits", self.settings.profile.expert_salvage_kits, self.merchant_item_textures["Expert Salvage Kit"])
                     self._input_int_setting("Lockpicks", self.settings.profile.lockpicks, self.merchant_item_textures["Lockpick"])
 
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 
-                ImGui.text("Nick Settings")
-                ImGui.separator()
+                ImGui_Legacy.text("Nick Settings")
+                ImGui_Legacy.separator()
                 
-                if ImGui.begin_child("GeneralSettings_Nick", (subtab_size[0], 0), True, PyImGui.WindowFlags.NoBackground) and self.settings.profile:
+                if ImGui_Legacy.begin_child("GeneralSettings_Nick", (subtab_size[0], 0), True, PyImGui.WindowFlags.NoBackground) and self.settings.profile:
                     action_info = self.action_infos.get(self.settings.profile.nick_action, None)
                     action_texture = action_info.icon if action_info else None
                     height = 24
                     if action_texture:
-                        ImGui.DrawTexture(action_texture, height, height)
+                        ImGui_Legacy.DrawTexture(action_texture, height, height)
                     else:
                         PyImGui.dummy(height, height)
                     PyImGui.same_line(0, 5)   
                     
                     current_action_index = self.keep_actions.index(self.settings.profile.nick_action) if self.settings.profile.nick_action in self.keep_actions else 0
-                    action_index = ImGui.combo("Nick Action", current_action_index, self.keep_action_names)
+                    action_index = ImGui_Legacy.combo("Nick Action", current_action_index, self.keep_action_names)
                     
                     if action_index != current_action_index:
                         self.settings.profile.nick_action = self.keep_actions[action_index]
@@ -1981,7 +1981,7 @@ class UI:
                     nick_item_size = PyImGui.get_content_region_avail()
                     
                     if PyImGui.is_rect_visible(1, height + 4):
-                        ImGui.begin_table("NickItemsTable", 3, PyImGui.TableFlags.ScrollY | PyImGui.TableFlags.BordersOuterV | PyImGui.TableFlags.BordersOuterH, nick_item_size[0], nick_item_size[1])    
+                        ImGui_Legacy.begin_table("NickItemsTable", 3, PyImGui.TableFlags.ScrollY | PyImGui.TableFlags.BordersOuterV | PyImGui.TableFlags.BordersOuterH, nick_item_size[0], nick_item_size[1])    
                         # PyImGui.table_setup_column("Index", PyImGui.TableColumnFlags.WidthFixed, 25)
                         PyImGui.table_setup_column("Icon", PyImGui.TableColumnFlags.WidthFixed, 20)
                         PyImGui.table_setup_column("Name")
@@ -2005,12 +2005,12 @@ class UI:
                                 continue
                             
                             # PyImGui.table_next_column()
-                            # ImGui.text(f"{i}.")
+                            # ImGui_Legacy.text(f"{i}.")
                             # hovered = PyImGui.is_item_hovered()
                             
                             PyImGui.table_next_column()
                             if nick_item.inventory_icon:
-                                ImGui.DrawTexture(
+                                ImGui_Legacy.DrawTexture(
                                     nick_item.texture_file, height, height)
                             else:
                                 PyImGui.dummy(height, height)    
@@ -2029,7 +2029,7 @@ class UI:
                             PyImGui.table_next_column()
                                                    
                             GUI.vertical_centered_text("current week" if nick_item.weeks_until_next_nick == 0 else f"next week"  if nick_item.weeks_until_next_nick == 1 else f"{nick_item.weeks_until_next_nick} weeks", None, height, color=color)
-                            # ImGui.text_colored(
+                            # ImGui_Legacy.text_colored(
                             #     "current week" if nick_item.weeks_until_next_nick == 0 else f"next week"  if nick_item.weeks_until_next_nick == 1 else f"{nick_item.weeks_until_next_nick} weeks" , 
                             #     color
                             # )
@@ -2037,32 +2037,32 @@ class UI:
                             
                             if hovered:
                                 PyImGui.set_next_window_size(400, 0)
-                                ImGui.begin_tooltip()
+                                ImGui_Legacy.begin_tooltip()
                                 
                                 self.draw_item_header(item_info=nick_item, border=False, image_size=50)
 
-                                ImGui.separator()
-                                ImGui.text(f"Nicholas the Traveler collects these items in: {nick_item.weeks_until_next_nick} weeks")                
-                                ImGui.text(nick_item.acquisition)                
-                                ImGui.end_tooltip()
+                                ImGui_Legacy.separator()
+                                ImGui_Legacy.text(f"Nicholas the Traveler collects these items in: {nick_item.weeks_until_next_nick} weeks")                
+                                ImGui_Legacy.text(nick_item.acquisition)                
+                                ImGui_Legacy.end_tooltip()
                                 
-                        ImGui.end_table()           
+                        ImGui_Legacy.end_table()           
                         
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             PyImGui.same_line(0, 5)
 
-            if ImGui.begin_child("Dyes", (dye_section_width, tab_size[1]), True, PyImGui.WindowFlags.NoFlag) and self.settings.profile:
-                ImGui.text("Dyes")
-                ImGui.text_wrapped(
+            if ImGui_Legacy.begin_child("Dyes", (dye_section_width, tab_size[1]), True, PyImGui.WindowFlags.NoFlag) and self.settings.profile:
+                ImGui_Legacy.text("Dyes")
+                ImGui_Legacy.text_wrapped(
                     "Select the dyes you want to pick up and stash.")
-                ImGui.separator()
+                ImGui_Legacy.separator()
 
-                if ImGui.begin_child("DyesSelection", (dye_section_width - 20, 0), True, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoBackground):
-                    style = ImGui.get_style()
+                if ImGui_Legacy.begin_child("DyesSelection", (dye_section_width - 20, 0), True, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoBackground):
+                    style = ImGui_Legacy.get_style()
                     
                     for dye in DyeColor:
                         if dye != DyeColor.NoColor:
@@ -2088,7 +2088,7 @@ class UI:
                                 c = Utils.ColorToTuple(color)
                                 style.CheckMark.push_color((int(c[0] * 255), int(c[1] * 255), int(c[2] * 255), int(c[3] * 255)))
 
-                            selected = ImGui.checkbox(
+                            selected = ImGui_Legacy.checkbox(
                                 dye.name, self.settings.profile.dyes[dye])
 
                             if style.Theme == Style.StyleTheme.Guild_Wars:
@@ -2099,21 +2099,21 @@ class UI:
                                 self.settings.profile.save()
 
                             PyImGui.pop_style_color(2)
-                            ImGui.show_tooltip("Dye: " + dye.name)
+                            ImGui_Legacy.show_tooltip("Dye: " + dye.name)
 
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
 
     def _input_int_setting(self, label, current_value, item_textures_path=None):
         if self.settings.profile is None:
             return
 
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         PyImGui.push_item_width(150)
-        new_value = ImGui.input_int("##" + label, current_value)
+        new_value = ImGui_Legacy.input_int("##" + label, current_value)
         PyImGui.pop_item_width()
         if new_value != current_value:
             setattr(self.settings.profile,
@@ -2126,20 +2126,20 @@ class UI:
 
         PyImGui.same_line(0, (0 if style.Theme == Style.StyleTheme.Guild_Wars else 5))
         if item_textures_path and os.path.exists(item_textures_path):
-            ImGui.DrawTexture(
+            ImGui_Legacy.DrawTexture(
                 item_textures_path, height, height)
         else:
             PyImGui.dummy(int(height), int(height))
         
         PyImGui.same_line(0, 5)
-        ImGui.text(label)
+        ImGui_Legacy.text(label)
         
     def _slider_int_setting(self, label, current_value, item_textures_path=None, min_value=0, max_value=100):
         if self.settings.profile is None:
             return
 
         PyImGui.push_item_width(150)
-        new_value = ImGui.slider_int("##" + label, current_value, min_value, max_value)
+        new_value = ImGui_Legacy.slider_int("##" + label, current_value, min_value, max_value)
         PyImGui.pop_item_width()
         if new_value != current_value:
             setattr(self.settings.profile,
@@ -2148,49 +2148,49 @@ class UI:
             
         PyImGui.same_line(0, 5)
         if item_textures_path and os.path.exists(item_textures_path):
-            ImGui.DrawTexture(
+            ImGui_Legacy.DrawTexture(
                 item_textures_path, 16, 16)
         else:
             PyImGui.dummy(16, 16)
         
         PyImGui.same_line(0, 5)
-        ImGui.text(label)
+        ImGui_Legacy.text(label)
 
     def draw_by_item_type(self):
-        style = ImGui.get_style()
-        if ImGui.begin_tab_item("By Item Type") and self.settings.profile:
+        style = ImGui_Legacy.get_style()
+        if ImGui_Legacy.begin_tab_item("By Item Type") and self.settings.profile:
             # Get size of the tab
             tab_size = PyImGui.get_content_region_avail()
 
             # Left panel: Loot Filter Selection
-            if ImGui.begin_child("filter_selection_child", (tab_size[0] * 0.3, tab_size[1]), True, PyImGui.WindowFlags.NoFlag):
-                ImGui.text("Filter Selection")
+            if ImGui_Legacy.begin_child("filter_selection_child", (tab_size[0] * 0.3, tab_size[1]), True, PyImGui.WindowFlags.NoFlag):
+                ImGui_Legacy.text("Filter Selection")
                 
                 def draw_hint():
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "Add and configure filters to manage how item groups are handled in your inventory.\n")
                     
                     PyImGui.spacing()                    
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "- Filters are checked in the order they are listed, and the first matching filter will determine the action taken on an item. To adjust the order, use the up and down arrows next to each filter.\n" +
                         "- You can add, remove, and reorder filters to customize your inventory management.\n" +
                         "- To add a new filter, click the 'Add Filter' button below.")
                     
                     PyImGui.spacing()
-                    ImGui.separator()
-                    ImGui.text_wrapped("Salvage Filters")
+                    ImGui_Legacy.separator()
+                    ImGui_Legacy.text_wrapped("Salvage Filters")
                     PyImGui.spacing()
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "Salvage filters will only salvage items that contain the selected material to avoid getting too many unwanted materials.\n" +
                         "Adding another filter with the same criteria but with a different action will handle the items that do not match the first filter's criteria.")
                     
                 PyImGui.same_line((tab_size[0] * 0.3) - 35 , 5)
                 self.draw_info_icon(draw_action=draw_hint, width=500)
                 
-                ImGui.separator()
+                ImGui_Legacy.separator()
                 subtab_size = PyImGui.get_content_region_avail()
 
-                if ImGui.begin_child("filter_selection_child", (subtab_size[0], subtab_size[1] - 30), True, PyImGui.WindowFlags.NoBackground):
+                if ImGui_Legacy.begin_child("filter_selection_child", (subtab_size[0], subtab_size[1] - 30), True, PyImGui.WindowFlags.NoBackground):
                     selection_size = PyImGui.get_content_region_avail()
                     button_size = (16, 16)
                     if self.settings.profile and self.settings.profile.filters:
@@ -2203,7 +2203,7 @@ class UI:
                             if PyImGui.is_item_hovered():
                                 i = self.filter_actions.index(filter.action) if filter.action in self.filter_actions else 0
                                 name = self.filter_action_names[i]
-                                ImGui.show_tooltip(name)
+                                ImGui_Legacy.show_tooltip(name)
                             
                             PyImGui.same_line(0, 10)
                             
@@ -2213,7 +2213,7 @@ class UI:
                             is_clicked = PyImGui.is_mouse_clicked(0) and down_hovered
                             state = texture_map.TextureState.Active if is_clicked else texture_map.TextureState.Hovered if down_hovered else texture_map.TextureState.Normal
                             texture_map.CoreTextures.Down_Arrows.value.draw(size=button_size, state=state)
-                            # ImGui.DrawTexture(texture_path=texture.value, width=button_size[0], height=button_size[1])
+                            # ImGui_Legacy.DrawTexture(texture_path=texture.value, width=button_size[0], height=button_size[1])
                             
                             if is_clicked:
                                 if i < len(self.settings.profile.filters) - 1:
@@ -2234,26 +2234,26 @@ class UI:
                                     self.settings.profile.move_filter(filter, i - 1)
                                     self.settings.profile.save()
                             
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
 
-                if ImGui.button("Add Filter", subtab_size[0]):
+                if ImGui_Legacy.button("Add Filter", subtab_size[0]):
                     self.show_add_filter_popup = not self.show_add_filter_popup
                     if self.show_add_filter_popup:
                         PyImGui.open_popup("Add Filter")
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             PyImGui.same_line(tab_size[0] * 0.3 + 20, 0)
 
             # Right panel: Loot Filter Details
-            if ImGui.begin_child("filter_child", (tab_size[0] - (tab_size[0] * 0.3) - 10, 0), self.settings.selected_filter is None, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("filter_child", (tab_size[0] - (tab_size[0] * 0.3) - 10, 0), self.settings.selected_filter is None, PyImGui.WindowFlags.NoFlag):
                 if self.settings.selected_filter:
                     filter = self.settings.selected_filter
 
-                    if ImGui.begin_child("filter_name_child", (0, 45), True, PyImGui.WindowFlags.NoFlag): 
+                    if ImGui_Legacy.begin_child("filter_name_child", (0, 45), True, PyImGui.WindowFlags.NoFlag): 
                         PyImGui.push_item_width(tab_size[0] - (tab_size[0] * 0.3) - 63)
                         # Edit filter name
-                        name = ImGui.input_text(
+                        name = ImGui_Legacy.input_text(
                             "##name_edit", filter.name)
                         PyImGui.pop_item_width()
                         if name and name != filter.name:
@@ -2271,23 +2271,23 @@ class UI:
                                 0] if self.settings.profile.filters else None
                             self.show_add_filter_popup = False
                             PyImGui.close_current_popup()               
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                         
                     # Filter actions
                     remaining_size = PyImGui.get_content_region_avail()
                     height = min(self.action_heights.get(filter.action, 45), remaining_size[0])
-                    if ImGui.begin_child("filter_actions", (0, height), True, PyImGui.WindowFlags.NoFlag):                         
+                    if ImGui_Legacy.begin_child("filter_actions", (0, height), True, PyImGui.WindowFlags.NoFlag):                         
                         if filter.action:
                             action_info = self.action_infos.get(filter.action, None)
                             action_texture = action_info.icon if action_info else None
                             height = 24
                             if action_texture:
-                                ImGui.DrawTexture(action_texture, height, height)
+                                ImGui_Legacy.DrawTexture(action_texture, height, height)
                             else:
                                 PyImGui.dummy(height, height)
                             PyImGui.same_line(0, 5)            
                             PyImGui.push_item_width(PyImGui.get_content_region_avail()[0])
-                            action = ImGui.combo("##RuleAction", self.item_actions.index(
+                            action = ImGui_Legacy.combo("##RuleAction", self.item_actions.index(
                                 filter.action) if filter.action in self.item_actions else 0, self.item_action_names)
                             
                             PyImGui.pop_item_width()
@@ -2296,19 +2296,19 @@ class UI:
                                 filter.action = self.item_actions[action]
                                 self.settings.profile.save()
                             
-                            ImGui.show_tooltip((f"{self.action_infos.get_name(ItemAction.Loot)} and " if filter.action not in [ItemAction.NONE, ItemAction.Loot, ItemAction.Destroy] else "") + f"{self.action_infos.get_name(filter.action)}")
+                            ImGui_Legacy.show_tooltip((f"{self.action_infos.get_name(ItemAction.Loot)} and " if filter.action not in [ItemAction.NONE, ItemAction.Loot, ItemAction.Destroy] else "") + f"{self.action_infos.get_name(filter.action)}")
                                         
                         def draw_salvage_options():
                             if not self.settings.profile:
                                 return
                             
-                            ImGui.separator()                            
+                            ImGui_Legacy.separator()                            
                             PyImGui.push_item_width(100)
                             value = PyImGui.slider_int(
                                 "Max Item Value##salvage_threshold", filter.salvage_item_max_vendorvalue, 0, 1500)
                             
                             PyImGui.pop_item_width()
-                            ImGui.show_tooltip(
+                            ImGui_Legacy.show_tooltip(
                                 "Items with a vendor value below this threshold will be salvaged.\n" +
                                 "This is useful to avoid salvaging items that are worth more than the materials they yield.")
                             
@@ -2316,7 +2316,7 @@ class UI:
                                 filter.salvage_item_max_vendorvalue = value
                                 self.settings.profile.save()
                                                     
-                            ImGui.text_wrapped(f"Salvage only items which are worth less than {utility.Util.format_currency(filter.salvage_item_max_vendorvalue)} and which salvage for")
+                            ImGui_Legacy.text_wrapped(f"Salvage only items which are worth less than {utility.Util.format_currency(filter.salvage_item_max_vendorvalue)} and which salvage for")
                             
                             width, height = PyImGui.get_content_region_avail()
                             width = width - 50
@@ -2332,11 +2332,11 @@ class UI:
                             self.action_heights[ItemAction.Salvage_Common_Materials] = (rows * item_width) + 125 + 8
                             self.action_heights[ItemAction.Salvage] = (rows * item_width) + 123 + 8 + 20
                             
-                            ImGui.begin_child("salvage_materials", (0, 0), True, PyImGui.WindowFlags.NoFlag)      
+                            ImGui_Legacy.begin_child("salvage_materials", (0, 0), True, PyImGui.WindowFlags.NoFlag)      
                                                                                         
                             if PyImGui.is_rect_visible(0, self.action_heights[ItemAction.Salvage] - 20):
                                 style.CellPadding.push_style_var(0, 2)
-                                ImGui.begin_table("salvage_materials_table", columns, PyImGui.TableFlags.ScrollY, 0, 0)                                
+                                ImGui_Legacy.begin_table("salvage_materials_table", columns, PyImGui.TableFlags.ScrollY, 0, 0)                                
                                 if filter.action == ItemAction.Salvage or filter.action == ItemAction.Salvage_Common_Materials:
                                     for material in self.data.Common_Materials.values():
                                         PyImGui.table_next_column()
@@ -2367,7 +2367,7 @@ class UI:
                                     for _ in range(columns):
                                         PyImGui.table_next_column()
                                         PyImGui.set_cursor_pos_y(ypos)
-                                        ImGui.separator()
+                                        ImGui_Legacy.separator()
                                     
                                 if filter.action == ItemAction.Salvage_Rare_Materials or filter.action == ItemAction.Salvage:    
                                     for material in self.data.Rare_Materials.values():
@@ -2392,9 +2392,9 @@ class UI:
                                             
                                             self.settings.profile.save()
                                     
-                                ImGui.end_table()
+                                ImGui_Legacy.end_table()
                                 style.CellPadding.pop_style_var()
-                            ImGui.end_child()
+                            ImGui_Legacy.end_child()
                                 
                         match filter.action:
                             case ItemAction.Salvage:
@@ -2410,7 +2410,7 @@ class UI:
                             case ItemAction.Stash:                                        
                                 if filter.action == ItemAction.Stash:
                                     PyImGui.indent(25)
-                                    full_stack_only = ImGui.checkbox("Only stash full stacks", filter.full_stack_only)
+                                    full_stack_only = ImGui_Legacy.checkbox("Only stash full stacks", filter.full_stack_only)
                                     if full_stack_only != filter.full_stack_only:
                                         filter.full_stack_only = full_stack_only
                                         self.settings.profile.save()
@@ -2418,14 +2418,14 @@ class UI:
                             case _:
                                 pass
 
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
 
                     # Filter item types
                     sub_subtab_size = PyImGui.get_content_region_avail()
                     rarity_width = 60 if sub_subtab_size[1] > 268 else 80
-                    if ImGui.begin_child("loot_item_types_filter_table", (sub_subtab_size[0] - rarity_width - 5, 0), True, PyImGui.WindowFlags.NoFlag) and PyImGui.is_rect_visible(0, 20):  
-                        ImGui.text("Item Types")
-                        ImGui.separator()
+                    if ImGui_Legacy.begin_child("loot_item_types_filter_table", (sub_subtab_size[0] - rarity_width - 5, 0), True, PyImGui.WindowFlags.NoFlag) and PyImGui.is_rect_visible(0, 20):  
+                        ImGui_Legacy.text("Item Types")
+                        ImGui_Legacy.separator()
                         width, height = PyImGui.get_content_region_avail()
                         width = width
                         item_width = 48
@@ -2434,7 +2434,7 @@ class UI:
                         if PyImGui.is_rect_visible(1, 20):
                             style.CellPadding.push_style_var(0, 2)
 
-                            ImGui.begin_table(
+                            ImGui_Legacy.begin_table(
                                 "filter_table", columns, PyImGui.TableFlags.ScrollY)
                             for col in range(columns):
                                 PyImGui.table_setup_column(f"Column {col + 1}", PyImGui.TableColumnFlags.WidthFixed, item_width)
@@ -2460,24 +2460,24 @@ class UI:
                                                     
                                         self.settings.profile.save()
                                         
-                            ImGui.end_table()
+                            ImGui_Legacy.end_table()
                             style.CellPadding.pop_style_var()
 
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
 
                     PyImGui.same_line(0, 5)
 
                     # Filter rarities
-                    if ImGui.begin_child("loot_rarity_filter_table", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+                    if ImGui_Legacy.begin_child("loot_rarity_filter_table", (0, 0), True, PyImGui.WindowFlags.NoFlag):
                         count = 0
                         # ConsoleLog("LootEx", PyImGui.get_content_region_max()[1])
                         
                         PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 5)
-                        ImGui.text("Rarities")
+                        ImGui_Legacy.text("Rarities")
                         
                         texture = self.item_type_textures[ItemType.Sword]
                         
-                        # ImGui.separator()   
+                        # ImGui_Legacy.separator()   
                         for rarity, selected in filter.rarities.items():  
                             factor = 52 / 64
                             skin_size = 42
@@ -2490,7 +2490,7 @@ class UI:
                             frame_color =  GUI.get_rarity_rgba_color(rarity, texture_alpha) if selected else (100,100,100, texture_alpha)
                             texture_color =  (255 ,255,255 , texture_alpha) if selected else (100,100,100, 200 if is_hovered else 125 )
                             
-                            # ImGui.begin_child(f"rarity_{rarity}", (frame_size[0], frame_size[1]), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
+                            # ImGui_Legacy.begin_child(f"rarity_{rarity}", (frame_size[0], frame_size[1]), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                             
                             if is_hovered:
                                 rect = (screen_cursor[0], screen_cursor[1], screen_cursor[0] + frame_size[0], screen_cursor[1] + frame_size[1])           
@@ -2498,10 +2498,10 @@ class UI:
                                                             
                             cursor = PyImGui.get_cursor_pos()
                             # PyImGui.set_cursor_pos((cursor[0] + (frame_size * count), cursor[1])
-                            ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
+                            ImGui_Legacy.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
                             PyImGui.set_cursor_pos((cursor[0], cursor[1] + ((frame_size[1] - skin_size) / 2))
                                                                   
-                            ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
+                            ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
                             
                             if PyImGui.is_item_clicked(0) and is_hovered:                                
                                 if self.py_io.key_ctrl:
@@ -2513,16 +2513,16 @@ class UI:
                                 self.settings.profile.save()
                             
                             if is_hovered:
-                                ImGui.show_tooltip(f"Rarity: {rarity.name}")
+                                ImGui_Legacy.show_tooltip(f"Rarity: {rarity.name}")
                                 
                             count += 1  
                             # PyImGui.same_line(10 + ((frame_size[0] + 2) * count), 0)
                                         
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
 
             self.draw_add_filter_popup()
 
@@ -2533,9 +2533,9 @@ class UI:
         if self.show_add_filter_popup:
             PyImGui.open_popup("Add Filter")
 
-        if ImGui.begin_popup("Add Filter"):
-            ImGui.text("Please enter a name for the new filter:")
-            ImGui.separator()
+        if ImGui_Legacy.begin_popup("Add Filter"):
+            ImGui_Legacy.text("Please enter a name for the new filter:")
+            ImGui_Legacy.separator()
 
             filter_exists = self.filter_name == "" or any(
                 filter.name.lower() == self.filter_name.lower()
@@ -2548,7 +2548,7 @@ class UI:
                     Utils.ColorToTuple(Utils.RGBToColor(255, 0, 0, 255)),
                 )
 
-            filter_name_input = ImGui.input_text("##NewFilterName", self.filter_name)
+            filter_name_input = ImGui_Legacy.input_text("##NewFilterName", self.filter_name)
             if filter_name_input is not None and filter_name_input != self.filter_name:
                 self.filter_name = filter_name_input
 
@@ -2573,7 +2573,7 @@ class UI:
 
             PyImGui.same_line(0, 5)
 
-            if ImGui.button("Create", 100, 0) and not filter_exists:
+            if ImGui_Legacy.button("Create", 100, 0) and not filter_exists:
                 if self.filter_name != "" and not filter_exists:
                     self.settings.profile.add_filter(
                         Filter(self.filter_name)
@@ -2596,10 +2596,10 @@ class UI:
                     PyImGui.ImGuiCol.Text,
                     Utils.ColorToTuple(Utils.RGBToColor(255, 0, 0, 255)),
                 )
-                ImGui.text("Filter name already exists!")
+                ImGui_Legacy.text("Filter name already exists!")
                 PyImGui.pop_style_color(1)
 
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
 
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.show_add_filter_popup:
@@ -2610,7 +2610,7 @@ class UI:
         if self.filter_popup:
             PyImGui.open_popup("Filter Loot Items")
 
-        if ImGui.begin_popup("Filter Loot Items"):
+        if ImGui_Legacy.begin_popup("Filter Loot Items"):
             
             remaining_size = PyImGui.get_content_region_avail()
             
@@ -2623,7 +2623,7 @@ class UI:
                         self.filter_popup = False
                         PyImGui.close_current_popup()
         
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
         
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.filter_popup:
@@ -2635,7 +2635,7 @@ class UI:
         if self.rule_filter_popup:
             PyImGui.open_popup("Filter Rules")
 
-        if ImGui.begin_popup("Filter Rules"):
+        if ImGui_Legacy.begin_popup("Filter Rules"):
             
             remaining_size = PyImGui.get_content_region_avail()
             
@@ -2648,7 +2648,7 @@ class UI:
                         self.rule_filter_popup = False
                         PyImGui.close_current_popup()
         
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
         
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.rule_filter_popup:
@@ -2681,7 +2681,7 @@ class UI:
         delete_clicked = False
         
         if PyImGui.is_rect_visible(1, size):
-            if ImGui.begin_child(f"rule_{rule.skin}", (0, size), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar):
+            if ImGui_Legacy.begin_child(f"rule_{rule.skin}", (0, size), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar):
                 texture = os.path.join(self.item_textures_path, f"{rule.skin}")   
                 remaining_size = PyImGui.get_content_region_avail()
                 
@@ -2700,16 +2700,16 @@ class UI:
                 cursor = PyImGui.get_cursor_pos()
                 PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                 
-                ImGui.begin_child(f"skin_texture_child{rule.skin}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
+                ImGui_Legacy.begin_child(f"skin_texture_child{rule.skin}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                 if texture.endswith(((".jpg",".png"))) and os.path.exists(texture):
-                    ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
+                    ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
                 else:            
-                    ImGui.push_font("Bold", 28)
+                    ImGui_Legacy.push_font("Bold", 28)
                     text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
                     PyImGui.set_cursor_pos((((skin_size - text_size[0])) / 2), 4 + ((skin_size - text_size[1]) / 2))
-                    ImGui.text(IconsFontAwesome5.ICON_QUESTION)
-                    ImGui.pop_font()
-                ImGui.end_child()
+                    ImGui_Legacy.text(IconsFontAwesome5.ICON_QUESTION)
+                    ImGui_Legacy.pop_font()
+                ImGui_Legacy.end_child()
                             
                 PyImGui.same_line(0, 5)
                 without_file_ending = rule.skin.split(".")[0]
@@ -2722,7 +2722,7 @@ class UI:
                     delete_hovered = GUI.is_mouse_in_rect(delete_rect)
                     
                     PyImGui.set_cursor_screen_pos(delete_rect[0], delete_rect[1])
-                    ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Cancel_Hovered.value if delete_hovered else texture_map.CoreTextures.UI_Cancel.value, size=(24, 24), tint=(150,150,150,255) if not delete_hovered else (255,255,255,255))
+                    ImGui_Legacy.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Cancel_Hovered.value if delete_hovered else texture_map.CoreTextures.UI_Cancel.value, size=(24, 24), tint=(150,150,150,255) if not delete_hovered else (255,255,255,255))
                     
                     if PyImGui.is_item_clicked(0):                        
                         delete_clicked = True
@@ -2736,9 +2736,9 @@ class UI:
                         self.filter_rules()                        
                         pass
                     
-                    ImGui.show_tooltip("Delete Rule")
+                    ImGui_Legacy.show_tooltip("Delete Rule")
                                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
         else:
             PyImGui.dummy(0, skin_size)
@@ -2756,7 +2756,7 @@ class UI:
         skin_size = size - (padding * 2)
         
         if PyImGui.is_rect_visible(0, size):            
-            if ImGui.begin_child(f"skin_{skin}", (0, size), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar):
+            if ImGui_Legacy.begin_child(f"skin_{skin}", (0, size), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar):
                 texture = os.path.join(self.item_textures_path, f"{skin}")   
                 remaining_size = PyImGui.get_content_region_avail()
                 
@@ -2775,23 +2775,23 @@ class UI:
                 cursor = PyImGui.get_cursor_pos()
                 PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                 
-                ImGui.begin_child(f"skin_texture_child{skin}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
+                ImGui_Legacy.begin_child(f"skin_texture_child{skin}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                 if texture.endswith((".jpg",".png")) and os.path.exists(texture):
-                    ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
+                    ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
                 else:            
-                    ImGui.push_font("Bold", 28)
+                    ImGui_Legacy.push_font("Bold", 28)
                     text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
                     PyImGui.set_cursor_pos((((skin_size - text_size[0])) / 2), 4 + ((skin_size - text_size[1]) / 2))
-                    ImGui.text(IconsFontAwesome5.ICON_QUESTION)
-                    ImGui.pop_font()
-                ImGui.end_child()
+                    ImGui_Legacy.text(IconsFontAwesome5.ICON_QUESTION)
+                    ImGui_Legacy.pop_font()
+                ImGui_Legacy.end_child()
                             
                 PyImGui.same_line(0, 5)
                 without_file_ending = skin.split(".")[0]
                 
                 GUI.vertical_centered_text(text=without_file_ending or "No Skin Selected", desired_height=skin_size + 4)
                                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
         else:
             PyImGui.dummy(0, skin_size)
@@ -2823,14 +2823,14 @@ class UI:
         if self.skin_select_popup_open:     
             popup_size = PyImGui.get_content_region_avail()       
             PyImGui.push_item_width(popup_size[0] - 30)
-            changed, search = ImGui.search_field("##search_skin", self.skin_search, f"Search for skin name or model id ...")            
+            changed, search = ImGui_Legacy.search_field("##search_skin", self.skin_search, f"Search for skin name or model id ...")            
             PyImGui.pop_item_width()
             if changed:
                 self.skin_search = search.lower()
         
             PyImGui.same_line(0, 5)
             
-            if ImGui.button(IconsFontAwesome5.ICON_FILTER):
+            if ImGui_Legacy.button(IconsFontAwesome5.ICON_FILTER):
                 self.filter_popup = not self.filter_popup
                 if self.filter_popup:
                     PyImGui.open_popup("Filter Loot Items")
@@ -2841,7 +2841,7 @@ class UI:
                 rule.skin for rule in self.settings.profile.skin_rules if rule.skin and rule != self.selected_rule
             ]
             
-            if ImGui.begin_child("skin_selection_list", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("skin_selection_list", (0, 0), True, PyImGui.WindowFlags.NoFlag):
                 sorted_skins = sorted(self.data.ItemsBySkins.items(), key=lambda x: x[0].lower())
                 
                 for skin, items in sorted_skins:
@@ -2866,7 +2866,7 @@ class UI:
                                     
                                     self.skin_select_popup = False  
                                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
                 
             window_pos = PyImGui.get_window_pos()
             window_size = PyImGui.get_window_size()
@@ -2889,7 +2889,7 @@ class UI:
         skin_size = size - (padding * 2)
         
         if PyImGui.is_rect_visible(size, size):            
-            if ImGui.begin_child(f"item_{item.model_id}_{item.inventory_icon or ""}", (0, size), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.AlwaysAutoResize):
+            if ImGui_Legacy.begin_child(f"item_{item.model_id}_{item.inventory_icon or ""}", (0, size), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.AlwaysAutoResize):
                 texture = item.texture_file
                 remaining_size = PyImGui.get_content_region_avail()
                 
@@ -2908,23 +2908,23 @@ class UI:
                 cursor = PyImGui.get_cursor_pos()
                 PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
                 
-                ImGui.begin_child(f"skin_texture_child{item.model_id}_{item.inventory_icon or ""}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
+                ImGui_Legacy.begin_child(f"skin_texture_child{item.model_id}_{item.inventory_icon or ""}", (skin_size, skin_size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                 if texture.endswith((".jpg",".png")) and os.path.exists(texture):
-                    ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
+                    ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
                 else:            
-                    ImGui.push_font("Bold", 28)
+                    ImGui_Legacy.push_font("Bold", 28)
                     text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
                     PyImGui.set_cursor_pos((((skin_size - text_size[0])) / 2), 4 + ((skin_size - text_size[1]) / 2))
-                    ImGui.text(IconsFontAwesome5.ICON_QUESTION)
-                    ImGui.pop_font()
-                ImGui.end_child()
+                    ImGui_Legacy.text(IconsFontAwesome5.ICON_QUESTION)
+                    ImGui_Legacy.pop_font()
+                ImGui_Legacy.end_child()
                             
                 PyImGui.same_line(0, 5)
                 
                 color = (1, 1, 1, (255 / 255 if is_selected else 100 / 255))
                 GUI.vertical_centered_text(text=item.name + ("\n" + "\n".join([utility.Util.reformat_string(attribute.name) for attribute in item.attributes]) if len(item.attributes) == 1 else ""), desired_height=skin_size + 4, color=color)
                                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
         else:
             PyImGui.dummy(size, size)
@@ -2933,21 +2933,21 @@ class UI:
         
         if is_hovered:
             PyImGui.set_next_window_size(400, 0)
-            ImGui.begin_tooltip()
+            ImGui_Legacy.begin_tooltip()
             
             self.draw_item_header(item_info=item, border=False, image_size=50)
             PyImGui.dummy(50, 0)
             PyImGui.same_line(0, 10)
             height = len(item.attributes) * PyImGui.get_text_line_height() + (28 if item.attributes else 0)
-            ImGui.begin_child("advanced details", (0, height), False, PyImGui.WindowFlags.NoFlag)
+            ImGui_Legacy.begin_child("advanced details", (0, height), False, PyImGui.WindowFlags.NoFlag)
             if item.attributes:
-                ImGui.text("Attributes")
-                ImGui.separator()
-                ImGui.text("\n".join([utility.Util.reformat_string(attribute.name) for attribute in item.attributes]) if item.attributes else "")
+                ImGui_Legacy.text("Attributes")
+                ImGui_Legacy.separator()
+                ImGui_Legacy.text("\n".join([utility.Util.reformat_string(attribute.name) for attribute in item.attributes]) if item.attributes else "")
                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
-            ImGui.end_tooltip()
+            ImGui_Legacy.end_tooltip()
             
         
         clicked = False
@@ -2964,7 +2964,7 @@ class UI:
         is_hovered = False
         cog_hovered = False
         
-        if ImGui.begin_child(f"mod_{mod.identifier}_selectable", (0, 32), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+        if ImGui_Legacy.begin_child(f"mod_{mod.identifier}_selectable", (0, 32), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
             size = PyImGui.get_content_region_avail()
             screen_cursor = PyImGui.get_cursor_screen_pos()
             is_hovered = GUI.is_mouse_in_rect((screen_cursor[0], screen_cursor[1], size[0], size[1])) and PyImGui.is_window_hovered()
@@ -2988,7 +2988,7 @@ class UI:
                 cog_rect = (screen_cursor[0] + size[0] - 25, screen_cursor[1] + ((size[1] - 16) / 2), 16, 16)
                 cog_hovered = GUI.is_mouse_in_rect(cog_rect)
                 PyImGui.set_cursor_screen_pos(screen_cursor[0] + size[0] - 25, screen_cursor[1] + ((size[1] - 16) / 2))
-                ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.Cog.value, size=(16,16), tint=(150,150,150,255) if not cog_hovered else (255,255,255,255))
+                ImGui_Legacy.DrawTextureExtended(texture_path=texture_map.CoreTextures.Cog.value, size=(16,16), tint=(150,150,150,255) if not cog_hovered else (255,255,255,255))
                 
                 if cog_hovered and PyImGui.is_item_clicked(0):
                     # ConsoleLog("LootEx", "Cog clicked for mod range selection.")
@@ -2998,7 +2998,7 @@ class UI:
                     self.selected_rule_mod = mod
                     self.selected_mod_info = mod_info                                        
         
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
         
         if not cog_clicked and PyImGui.is_item_clicked(0):
             is_selected = not is_selected
@@ -3007,7 +3007,7 @@ class UI:
         if is_hovered and not cog_hovered:
             self.weapon_mod_tooltip(mod)
         elif cog_hovered:
-            ImGui.show_tooltip("Click to set modifier range for this mod.")
+            ImGui_Legacy.show_tooltip("Click to set modifier range for this mod.")
             
         return is_selected, clicked
     
@@ -3021,11 +3021,11 @@ class UI:
         if self.mod_range_popup:
             PyImGui.open_popup("Mod Range")
 
-        if ImGui.begin_popup("Mod Range"):
+        if ImGui_Legacy.begin_popup("Mod Range"):
             mod_range = mod.get_modifier_range()
             
-            ImGui.text(f"Set range for {mod.get_custom_description(arg1_min=mod_info.min, arg1_max=mod_info.max, arg2_min=mod_info.min, arg2_max=mod_info.max)}")
-            ImGui.separator()
+            ImGui_Legacy.text(f"Set range for {mod.get_custom_description(arg1_min=mod_info.min, arg1_max=mod_info.max, arg2_min=mod_info.min, arg2_max=mod_info.max)}")
+            ImGui_Legacy.separator()
             
             min_value = mod_info.min
             max_value = mod_info.max
@@ -3040,7 +3040,7 @@ class UI:
                 mod_info.max = max_value
                 self.settings.profile.save()            
                 
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
             
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.mod_range_popup:
@@ -3048,31 +3048,31 @@ class UI:
                 self.mod_range_popup = False
     
     def draw_by_item_skin(self):            
-        if ImGui.begin_tab_item("By Skin") and self.settings.profile:
+        if ImGui_Legacy.begin_tab_item("By Skin") and self.settings.profile:
                         # Get size of the tab
             tab_size = PyImGui.get_content_region_avail()
             tab_hovered = PyImGui.is_item_hovered()
 
             # Left panel: Loot Items Selection
-            if ImGui.begin_child("skin_selection_child", (tab_size[0] * 0.3, tab_size[1]), False, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("skin_selection_child", (tab_size[0] * 0.3, tab_size[1]), False, PyImGui.WindowFlags.NoFlag):
                 child_size = PyImGui.get_content_region_avail()
 
                 PyImGui.push_item_width(child_size[0] - 30)
-                changed, search = ImGui.search_field("##search_rule", self.rule_search, f"Search for rule name, skin name or model id ...")                
+                changed, search = ImGui_Legacy.search_field("##search_rule", self.rule_search, f"Search for rule name, skin name or model id ...")                
                 PyImGui.pop_item_width()
                 if changed:
                     self.rule_search = search
                     self.filter_rules()            
 
                 # PyImGui.same_line(0, 5)
-                # if ImGui.button(IconsFontAwesome5.ICON_FILTER):
+                # if ImGui_Legacy.button(IconsFontAwesome5.ICON_FILTER):
                 #     self.rule_filter_popup = not self.rule_filter_popup
                 #     if self.rule_filter_popup:
                 #         PyImGui.open_popup("Filter Rules")
                 #     pass
                 
                 def draw_hint():
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "Select item skins to manage the actions performed on them once in your inventory.")
                                            
                 PyImGui.same_line(0, 5)
@@ -3081,10 +3081,10 @@ class UI:
                     width=500
                 )            
                 
-                if ImGui.begin_child("skin selection region", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+                if ImGui_Legacy.begin_child("skin selection region", (0, 0), True, PyImGui.WindowFlags.NoFlag):
                     subtab_size = PyImGui.get_content_region_avail()
                     
-                    if ImGui.begin_child("selectable_skins", (subtab_size[0], subtab_size[1] - 30), False, PyImGui.WindowFlags.NoFlag):
+                    if ImGui_Legacy.begin_child("selectable_skins", (subtab_size[0], subtab_size[1] - 30), False, PyImGui.WindowFlags.NoFlag):
                         for selectable_rule in self.selectable_rules:
                             rule : skin_rule.SkinRule = selectable_rule.object
                             
@@ -3106,23 +3106,23 @@ class UI:
                                 
                                 self.selected_rule_changed = True
 
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                     
-                    if ImGui.button("Add Rule", subtab_size[0]):
+                    if ImGui_Legacy.button("Add Rule", subtab_size[0]):
                         self.settings.profile.add_rule(
                             skin_rule.SkinRule()
                         )
                         self.filter_rules()
                         self.settings.profile.save()
                                         
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             PyImGui.same_line(tab_size[0] * 0.3 + 20, 0)
 
             # Right panel: Loot Item Details
-            if ImGui.begin_child("skin_child", (tab_size[0] - (tab_size[0] * 0.3) - 10, tab_size[1]), self.selected_rule is None, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("skin_child", (tab_size[0] - (tab_size[0] * 0.3) - 10, tab_size[1]), self.selected_rule is None, PyImGui.WindowFlags.NoFlag):
                 if self.selected_rule:
                     rule : skin_rule.SkinRule = self.selected_rule
                     texture = os.path.join(self.item_textures_path, f"{rule.skin}")
@@ -3134,7 +3134,7 @@ class UI:
                     is_weapon = any(utility.Util.IsWeaponType(item.item_type) for item in self.selectable_items)
                     rarity_width = 200 if has_rarities else 0
                     
-                    if ImGui.begin_child("skin_selection", ((remaingng_size[0] - ((rarity_width + 5) if has_rarities else 0)), 73), True, PyImGui.WindowFlags.NoFlag):
+                    if ImGui_Legacy.begin_child("skin_selection", ((remaingng_size[0] - ((rarity_width + 5) if has_rarities else 0)), 73), True, PyImGui.WindowFlags.NoFlag):
                         size = 52
                         padding = 8
                         skin_size = size - (padding * 2)
@@ -3152,42 +3152,42 @@ class UI:
                             PyImGui.draw_list_add_rect_filled(rect[0], rect[1], rect[2], rect[3], self.style.Selected_Item.color_int, 1.0, 0)
                             PyImGui.draw_list_add_rect(rect[0], rect[1], rect[2], rect[3], self.style.Selected_Item.color_int, 1.0, 0, 2.0)
                             
-                        ImGui.begin_child(f"selected_rule {rule.skin}", (size, size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
+                        ImGui_Legacy.begin_child(f"selected_rule {rule.skin}", (size, size), False, PyImGui.WindowFlags.NoFlag| PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                         if texture_exists:
                             cursor = PyImGui.get_cursor_pos()
                             PyImGui.set_cursor_pos((cursor[0] + padding, cursor[1] + padding)
-                            ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
+                            ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size))                    
                         else:            
-                            ImGui.push_font("Bold", 28)
+                            ImGui_Legacy.push_font("Bold", 28)
                             text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
                             PyImGui.set_cursor_pos((((size - text_size[0])) / 2), 4 + ((size - text_size[1]) / 2))
-                            ImGui.text(IconsFontAwesome5.ICON_QUESTION)
-                            ImGui.pop_font()
+                            ImGui_Legacy.text(IconsFontAwesome5.ICON_QUESTION)
+                            ImGui_Legacy.pop_font()
                             
-                        ImGui.end_child()
+                        ImGui_Legacy.end_child()
                         
                         PyImGui.same_line(0, 20)
                         if PyImGui.is_item_clicked(0):
                             self.skin_select_popup = not self.skin_select_popup
                             self.selected_rule_changed = True
                             
-                        ImGui.push_font("Bold", 22)
+                        ImGui_Legacy.push_font("Bold", 22)
                         GUI.vertical_centered_text(text=rule.skin.split(".")[0] or "No Skin Selected", desired_height=size + padding)
-                        ImGui.pop_font()
+                        ImGui_Legacy.pop_font()
                                                 
-                    ImGui.end_child()                    
+                    ImGui_Legacy.end_child()                    
                                     
                     if has_rarities: 
                         PyImGui.same_line(0, 5)
                         
-                        if ImGui.begin_child("rule rarities", (rarity_width, 73), True, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar):   
+                        if ImGui_Legacy.begin_child("rule rarities", (rarity_width, 73), True, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar):   
                             count = 0
                             none_selected = False
                             
                             PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 5)
-                            ImGui.text("Rarities")
+                            ImGui_Legacy.text("Rarities")
                             
-                            # ImGui.separator()   
+                            # ImGui_Legacy.separator()   
                             for rarity, selected in rule.rarities.items():  
                                 factor = 52 / 64
                                 skin_size = 42
@@ -3199,7 +3199,7 @@ class UI:
                                 frame_color =  GUI.get_rarity_rgba_color(rarity, texture_alpha) if selected else (100,100,100, texture_alpha)
                                 texture_color =  (255 ,255,255 , texture_alpha) if selected else (100,100,100, 200 if is_hovered else 125 )
                                 
-                                # ImGui.begin_child(f"rarity_{rarity}", (frame_size[0], frame_size[1]), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
+                                # ImGui_Legacy.begin_child(f"rarity_{rarity}", (frame_size[0], frame_size[1]), False, PyImGui.WindowFlags.NoFlag | PyImGui.WindowFlags.NoScrollWithMouse | PyImGui.WindowFlags.NoScrollbar)
                                 
                                 if is_hovered:
                                     rect = (screen_cursor[0], screen_cursor[1], screen_cursor[0] + frame_size[0], screen_cursor[1] + frame_size[1])           
@@ -3207,14 +3207,14 @@ class UI:
                                                                 
                                 cursor = PyImGui.get_cursor_pos()
                                 # PyImGui.set_cursor_pos((cursor[0] + (frame_size * count), cursor[1])
-                                ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
+                                ImGui_Legacy.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
                                 PyImGui.set_cursor_pos((cursor[0], cursor[1] + ((frame_size[1] - skin_size) / 2))
                                 
                                 if texture_exists:                                        
-                                    ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
+                                    ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
                                 else:
                                     PyImGui.dummy(skin_size, skin_size)  
-                                # ImGui.end_child()
+                                # ImGui_Legacy.end_child()
                                 
                                 if PyImGui.is_item_clicked(0):
                                     
@@ -3226,23 +3226,23 @@ class UI:
                                         
                                     self.settings.profile.save()
                                 
-                                ImGui.show_tooltip(f"Rarity: {rarity.name}")
+                                ImGui_Legacy.show_tooltip(f"Rarity: {rarity.name}")
                                 count += 1  
                                 PyImGui.same_line(10 + ((frame_size[0] + 2) * count), 0)
                                 
-                        ImGui.end_child()                                
+                        ImGui_Legacy.end_child()                                
                                                                
-                    if ImGui.begin_child("rule action", (0, 75 if rule.action == ItemAction.Stash else 45), True, PyImGui.WindowFlags.NoFlag):    
+                    if ImGui_Legacy.begin_child("rule action", (0, 75 if rule.action == ItemAction.Stash else 45), True, PyImGui.WindowFlags.NoFlag):    
                         action_info = self.action_infos.get(rule.action, None)
                         action_texture = action_info.icon if action_info else None
                         height = 24
                         if action_texture:
-                            ImGui.DrawTexture(action_texture, height, height)
+                            ImGui_Legacy.DrawTexture(action_texture, height, height)
                         else:
                             PyImGui.dummy(height, height)
                         PyImGui.same_line(0, 5)            
                         PyImGui.push_item_width(PyImGui.get_content_region_avail()[0])
-                        action = ImGui.combo("##RuleAction", self.item_actions.index(
+                        action = ImGui_Legacy.combo("##RuleAction", self.item_actions.index(
                             rule.action) if rule.action in self.item_actions else 0, self.item_action_names)                        
                         PyImGui.pop_item_width()
                         
@@ -3250,29 +3250,29 @@ class UI:
                             rule.action = self.item_actions[action]
                             self.settings.profile.save()
                         
-                        ImGui.show_tooltip((f"{self.action_infos.get_name(ItemAction.Loot)} and " if rule.action not in [ItemAction.NONE, ItemAction.Loot, ItemAction.Destroy] else "") + f"{self.action_infos.get_name(rule.action)}")
+                        ImGui_Legacy.show_tooltip((f"{self.action_infos.get_name(ItemAction.Loot)} and " if rule.action not in [ItemAction.NONE, ItemAction.Loot, ItemAction.Destroy] else "") + f"{self.action_infos.get_name(rule.action)}")
                     
                         if rule.action == ItemAction.Stash:
-                            full_stack_only = ImGui.checkbox("Only stash full stacks", rule.full_stack_only)
+                            full_stack_only = ImGui_Legacy.checkbox("Only stash full stacks", rule.full_stack_only)
                             if full_stack_only != rule.full_stack_only:
                                 rule.full_stack_only = full_stack_only
                                 self.settings.profile.save()
                     
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                          
-                    if ImGui.begin_child("rule_settings", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+                    if ImGui_Legacy.begin_child("rule_settings", (0, 0), False, PyImGui.WindowFlags.NoFlag):
                         remaining_size = PyImGui.get_content_region_avail()
                         config_width = min(480, remaining_size[0] / 3 * 2)
                         items_width = remaining_size[0] - config_width if is_weapon else remaining_size[0]
                         
-                        if ImGui.begin_child("rule items", (items_width, 0), True, PyImGui.WindowFlags.NoFlag):
+                        if ImGui_Legacy.begin_child("rule items", (items_width, 0), True, PyImGui.WindowFlags.NoFlag):
                             if PyImGui.is_rect_visible(1, 20):
                                 ##TODO: FIX THIS AS ITS AN INVALID CALCULATION
                                 items = len(self.selectable_items)
                                 items_height = (items * 45) + 112
                                 columns = int(max(1, math.floor(items_width / 210) if items_height > remaingng_size[1] else 1))
                                 
-                                if ImGui.begin_table("rule_items_table", columns, PyImGui.TableFlags.NoBordersInBody | PyImGui.TableFlags.ScrollY): 
+                                if ImGui_Legacy.begin_table("rule_items_table", columns, PyImGui.TableFlags.NoBordersInBody | PyImGui.TableFlags.ScrollY): 
                                     PyImGui.table_next_column()
                                                                                             
                                     for item in self.selectable_items:
@@ -3308,29 +3308,29 @@ class UI:
                                                 
                                             PyImGui.table_next_column()
                                     
-                                    ImGui.end_table()
+                                    ImGui_Legacy.end_table()
                             
-                        ImGui.end_child()
+                        ImGui_Legacy.end_child()
                         
                         if is_weapon:
                             PyImGui.same_line(0, 5)
                             
-                            if ImGui.begin_child("rule configs", (config_width, 0), False, PyImGui.WindowFlags.NoFlag):    
+                            if ImGui_Legacy.begin_child("rule configs", (config_width, 0), False, PyImGui.WindowFlags.NoFlag):    
                                 remaingng_size = PyImGui.get_content_region_avail()
                                 requirements_size = (remaingng_size[0], 90)
-                                if ImGui.begin_child("rule requirements", (0, requirements_size[1]), True, PyImGui.WindowFlags.NoFlag):
+                                if ImGui_Legacy.begin_child("rule requirements", (0, requirements_size[1]), True, PyImGui.WindowFlags.NoFlag):
                                     PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 5)
-                                    ImGui.push_font("Bold", 15)
+                                    ImGui_Legacy.push_font("Bold", 15)
                                     range_text = f"{rule.requirements.min}...{rule.requirements.max}" if rule.requirements.min != rule.requirements.max else f"{rule.requirements.min}"
-                                    ImGui.text(f"Requires {range_text} of Items Attribute")
-                                    ImGui.pop_font()
+                                    ImGui_Legacy.text(f"Requires {range_text} of Items Attribute")
+                                    ImGui_Legacy.pop_font()
                                     
                                     slider_width = 100
                                     
                                     GUI.vertical_centered_text("Attribute Range:", 115, 24)
                                     
                                     PyImGui.push_item_width(slider_width)
-                                    min_value = ImGui.input_int("##MinReq", rule.requirements.min)
+                                    min_value = ImGui_Legacy.input_int("##MinReq", rule.requirements.min)
                                     PyImGui.pop_item_width()
                                     min_value = max(min_value, 0)
                                     if min_value != rule.requirements.min:
@@ -3343,7 +3343,7 @@ class UI:
                                     PyImGui.same_line(0, 5)
                                     
                                     PyImGui.push_item_width(slider_width)
-                                    max_value = ImGui.input_int("##MaxReq", rule.requirements.max) 
+                                    max_value = ImGui_Legacy.input_int("##MaxReq", rule.requirements.max) 
                                     PyImGui.pop_item_width()
                                     max_value = min(max_value, 13)
                                     if max_value != rule.requirements.max or min_value != rule.requirements.min:
@@ -3359,17 +3359,17 @@ class UI:
                                     is_weapon = any(utility.Util.IsWeaponType(item.item_type) and item.item_type not in [ItemType.Shield, ItemType.Offhand] for item in self.selectable_items)
                                     stat_types = [f"{"Damage" if is_weapon else ""}", f"{"Energy" if is_focus else ""}", f"{"Armor" if is_shield else ""}", ] 
                                     stat_types = [stat for stat in stat_types if stat]  # Remove empty strings
-                                    only_max = ImGui.checkbox(f"Only max {"/".join(stat_types)} for selected Attribute Range", rule.requirements.max_damage_only)            
+                                    only_max = ImGui_Legacy.checkbox(f"Only max {"/".join(stat_types)} for selected Attribute Range", rule.requirements.max_damage_only)            
                                     if only_max != rule.requirements.max_damage_only:
                                         rule.requirements.max_damage_only = only_max
                                         self.settings.profile.save()                   
                                     
-                                ImGui.end_child()
+                                ImGui_Legacy.end_child()
                                 
-                                if ImGui.begin_child("rule mods", (0, (remaingng_size[1] - 6) - requirements_size[1]), True, PyImGui.WindowFlags.NoFlag):
-                                    ImGui.push_font("Bold", 15)
-                                    ImGui.text("Mods")
-                                    ImGui.pop_font()
+                                if ImGui_Legacy.begin_child("rule mods", (0, (remaingng_size[1] - 6) - requirements_size[1]), True, PyImGui.WindowFlags.NoFlag):
+                                    ImGui_Legacy.push_font("Bold", 15)
+                                    ImGui_Legacy.text("Mods")
+                                    ImGui_Legacy.pop_font()
                                     
                                     combo_width = 150
                                     mods_size = PyImGui.get_content_region_avail()
@@ -3378,7 +3378,7 @@ class UI:
                                     PyImGui.push_item_width(combo_width)
                                     mod_type_selection = [utility.Util.reformat_string(mod.name) for mod in  ActionModsType]
                                     index = mod_type_selection.index(utility.Util.reformat_string(rule.mods_type.name))
-                                    mod_index = ImGui.combo("##ModType", index, mod_type_selection)
+                                    mod_index = ImGui_Legacy.combo("##ModType", index, mod_type_selection)
                                     PyImGui.pop_item_width()
                                     
                                     if index != mod_index:
@@ -3387,22 +3387,22 @@ class UI:
                                         
                                     PyImGui.spacing()
                                     if mod_index != 1:
-                                        ImGui.push_font("Bold", 15)
-                                        ImGui.text("Any inscribable version of the selected items.")
-                                        ImGui.pop_font()
+                                        ImGui_Legacy.push_font("Bold", 15)
+                                        ImGui_Legacy.text("Any inscribable version of the selected items.")
+                                        ImGui_Legacy.pop_font()
                                     
                                     if mod_index == 0:
-                                        ImGui.separator()
+                                        ImGui_Legacy.separator()
                                     
                                     if mod_index != 2:
-                                        ImGui.push_font("Bold", 15)
+                                        ImGui_Legacy.push_font("Bold", 15)
                                         target_text = "any max inherent mod" if not rule.mods else f"one of {len(rule.mods)} inherent mods"
-                                        ImGui.text(f"Any old school version with {target_text}")    
-                                        ImGui.pop_font()
+                                        ImGui_Legacy.text(f"Any old school version with {target_text}")    
+                                        ImGui_Legacy.pop_font()
                                                                           
                                         selectable_mods : list[models.WeaponMod] = []
                                         
-                                        if ImGui.begin_child("selectable_mods", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+                                        if ImGui_Legacy.begin_child("selectable_mods", (0, 0), False, PyImGui.WindowFlags.NoFlag):
                                             for mod in self.data.Weapon_Mods.values():
                                                 if mod.mod_type == ModType.Inherent:
                                                     for item in self.selectable_items:
@@ -3439,25 +3439,25 @@ class UI:
                                                     
                                                     self.settings.profile.save()
                                                 
-                                        ImGui.end_child()
+                                        ImGui_Legacy.end_child()
                                         
                                     ##Idea: draw info with range e.g. "Damage +13 ... 15% (while Health above 50%)"
-                                ImGui.end_child()
+                                ImGui_Legacy.end_child()
                                 
-                            ImGui.end_child()
+                            ImGui_Legacy.end_child()
                     
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                     
                     
                 pass
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
             # self.draw_rule_filter_popup()
             self.draw_skin_select_popup()
             self.draw_mod_range_popup(self.selected_rule_mod, self.selected_mod_info)
             
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
     
     #endregion
     
@@ -3465,7 +3465,7 @@ class UI:
     ##TODO: Select requirements and damage, select OS mods ranges, rarities
     
     def draw_low_req_selectable(self, item: SelectableWrapper) -> bool:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         # Apply background color for selected or hovered items
         
         if item.is_selected:
@@ -3476,9 +3476,9 @@ class UI:
             hovered_color = Utils.RGBToColor(63, 63, 63, 255)
             style.ChildBg.push_color((63, 63, 63, 255))
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemSpacing, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.ItemSpacing, 0, 0)
         texture_height = 30
-        ImGui.begin_child(
+        ImGui_Legacy.begin_child(
             f"LowReqSelectableItem{item.object}",
             (0, texture_height),
             False,
@@ -3487,7 +3487,7 @@ class UI:
         
         texture = self.item_type_textures.get(item.object, None)
         if texture:
-            ImGui.DrawTexture(texture, texture_height, texture_height)
+            ImGui_Legacy.DrawTexture(texture, texture_height, texture_height)
         else:
             PyImGui.dummy(texture_height, texture_height)
             
@@ -3497,7 +3497,7 @@ class UI:
             utility.Util.reformat_string(item.object.name), None, texture_height
         )
         
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
         PyImGui.pop_style_var(1)
         
         # Pop background color styles if applied
@@ -3561,12 +3561,12 @@ class UI:
         
         height = 40
         if PyImGui.is_rect_visible(1, height):
-            if ImGui.begin_child(f"LowReqSelectable{item_type}_{requirement}_{damage_range}",(0, height), False, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child(f"LowReqSelectable{item_type}_{requirement}_{damage_range}",(0, height), False, PyImGui.WindowFlags.NoFlag):
                 size = PyImGui.get_content_region_avail()
                 text_size = size[1] / 2 + 2
                 screen_cursor = PyImGui.get_cursor_screen_pos()
                 is_hovered = GUI.is_mouse_in_rect((screen_cursor[0], screen_cursor[1], size[0], size[1])) and PyImGui.is_window_hovered()
-                style = ImGui.get_style()
+                style = ImGui_Legacy.get_style()
                     
                 if selected:
                     PyImGui.draw_list_add_rect_filled(screen_cursor[0], screen_cursor[1], screen_cursor[0] + size[0], screen_cursor[1] + size[1], self.style.Selected_Colored_Item.color_int, style.FrameRounding.value1, 0)
@@ -3577,9 +3577,9 @@ class UI:
                 item_type_text = item_type_requirment_texts.get(item_type, "Unknown")
                 PyImGui.set_cursor_pos_x(PyImGui.get_cursor_pos_x() + 5)
                 
-                ImGui.push_font("Regular", 15)
+                ImGui_Legacy.push_font("Regular", 15)
                 GUI.vertical_centered_text(f"Requires {item_type_text.format(requirement)}", None, text_size + 6)
-                ImGui.pop_font()
+                ImGui_Legacy.pop_font()
                 
                 PyImGui.set_cursor_pos_x(PyImGui.get_cursor_pos_x() + 5)
                 PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 8)
@@ -3589,7 +3589,7 @@ class UI:
                     cog_rect = (screen_cursor[0] + size[0] - 25, screen_cursor[1] + ((size[1] - 16) / 2), 16, 16)
                     cog_hovered = GUI.is_mouse_in_rect(cog_rect)
                     PyImGui.set_cursor_screen_pos(screen_cursor[0] + size[0] - 25, screen_cursor[1] + ((size[1] - 16) / 2))
-                    ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.Cog.value, size=(16,16), tint=(150,150,150,255) if not cog_hovered else (255,255,255,255))
+                    ImGui_Legacy.DrawTextureExtended(texture_path=texture_map.CoreTextures.Cog.value, size=(16,16), tint=(150,150,150,255) if not cog_hovered else (255,255,255,255))
                     
                     if cog_hovered and PyImGui.is_item_clicked(0):
                         # ConsoleLog("LootEx", "Cog clicked for mod range selection.")
@@ -3603,7 +3603,7 @@ class UI:
                         self.selected_damage_range_min = requirements.get(0) if requirements else models.IntRange(0, 0)
             
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
             if PyImGui.is_item_clicked(0) and is_hovered and not cog_clicked:
                 selected = not selected
@@ -3623,9 +3623,9 @@ class UI:
         if self.dmg_range_popup:
             PyImGui.open_popup("Damage Range")
 
-        if ImGui.begin_popup("Damage Range"):            
-            ImGui.text(f"Set damage range")
-            ImGui.separator()
+        if ImGui_Legacy.begin_popup("Damage Range"):            
+            ImGui_Legacy.text(f"Set damage range")
+            ImGui_Legacy.separator()
             
             min_value = selected_rule_damage_range.min
             max_value = selected_rule_damage_range.max
@@ -3640,7 +3640,7 @@ class UI:
                 selected_rule_damage_range.max = max_value
                 self.settings.profile.save()            
                 
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
             
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.dmg_range_popup:
@@ -3652,14 +3652,14 @@ class UI:
             # self.filter_items()
             pass
         
-        if ImGui.begin_tab_item("By Weapon Type") and self.settings.profile:            
+        if ImGui_Legacy.begin_tab_item("By Weapon Type") and self.settings.profile:            
             selected_item_type : ItemType | None = None
             texture_height = 30
             
             tab_size = PyImGui.get_content_region_avail()
 
             # Left panel: Loot Items Selection
-            if ImGui.begin_child("Low Req Child Left", (tab_size[0] * 0.15, 0), True, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("Low Req Child Left", (tab_size[0] * 0.15, 0), True, PyImGui.WindowFlags.NoFlag):
                     
                 for selectable in self.os_low_req_itemtype_selectables:
                     if self.draw_low_req_selectable(selectable):
@@ -3672,16 +3672,16 @@ class UI:
                                 
                     PyImGui.spacing()
                     
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
             PyImGui.same_line(0, 5)
             
             rule = self.settings.profile.weapon_rules.get(selected_item_type, None) if selected_item_type else None
-            if ImGui.begin_child("Low Req Child Right", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("Low Req Child Right", (0, 0), True, PyImGui.WindowFlags.NoFlag):
                 if selected_item_type and rule:                                
                     texture = self.item_type_textures.get(selected_item_type, None)
                     if texture:
-                        ImGui.DrawTexture(texture, texture_height, texture_height)
+                        ImGui_Legacy.DrawTexture(texture, texture_height, texture_height)
                     else:
                         PyImGui.dummy(texture_height, texture_height)
                         
@@ -3690,11 +3690,11 @@ class UI:
                     GUI.vertical_centered_text(
                         utility.Util.reformat_string(selected_item_type.name), None, texture_height
                     )
-                    ImGui.separator()
+                    ImGui_Legacy.separator()
                                     
                     width_remaining = PyImGui.get_content_region_avail()[0] - 10
                     
-                    if ImGui.begin_child("Low Req Req & Damage", (width_remaining / 2, 0), True, PyImGui.WindowFlags.NoFlag):
+                    if ImGui_Legacy.begin_child("Low Req Req & Damage", (width_remaining / 2, 0), True, PyImGui.WindowFlags.NoFlag):
                         requirements = self.data.DamageRanges.get(selected_item_type, None)
                         
                         if requirements:
@@ -3723,14 +3723,14 @@ class UI:
                                                         
                         pass
                     
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                     
                     PyImGui.same_line(0, 5)  
                     
-                    if ImGui.begin_child("Low Req Child Mods", (width_remaining / 2, 0), True, PyImGui.WindowFlags.NoFlag):
-                        ImGui.push_font("Bold", 15)
-                        ImGui.text("Mods")
-                        ImGui.pop_font()
+                    if ImGui_Legacy.begin_child("Low Req Child Mods", (width_remaining / 2, 0), True, PyImGui.WindowFlags.NoFlag):
+                        ImGui_Legacy.push_font("Bold", 15)
+                        ImGui_Legacy.text("Mods")
+                        ImGui_Legacy.pop_font()
                         
                         combo_width = 150
                         mods_size = PyImGui.get_content_region_avail()
@@ -3739,7 +3739,7 @@ class UI:
                         PyImGui.push_item_width(combo_width)
                         mod_type_selection = [utility.Util.reformat_string(mod.name) for mod in  ActionModsType]
                         index = mod_type_selection.index(utility.Util.reformat_string(rule.mods_type.name))
-                        mod_index = ImGui.combo("##ModType", index, mod_type_selection)
+                        mod_index = ImGui_Legacy.combo("##ModType", index, mod_type_selection)
                         PyImGui.pop_item_width()
                         
                         if index != mod_index:
@@ -3748,22 +3748,22 @@ class UI:
                             
                         PyImGui.spacing()
                         if mod_index != 1:
-                            ImGui.push_font("Bold", 15)
-                            ImGui.text("Any inscribable version of the selected items.")
-                            ImGui.pop_font()
+                            ImGui_Legacy.push_font("Bold", 15)
+                            ImGui_Legacy.text("Any inscribable version of the selected items.")
+                            ImGui_Legacy.pop_font()
                         
                         if mod_index == 0:
-                            ImGui.separator()
+                            ImGui_Legacy.separator()
                         
                         if mod_index != 2:
-                            ImGui.push_font("Bold", 15)
+                            ImGui_Legacy.push_font("Bold", 15)
                             target_text = "any max inherent mod" if not rule.mods else f"one of {len(rule.mods)} inherent mods"
-                            ImGui.text(f"Any old school version with {target_text}")    
-                            ImGui.pop_font()
+                            ImGui_Legacy.text(f"Any old school version with {target_text}")    
+                            ImGui_Legacy.pop_font()
                                                                 
                             selectable_mods : list[models.WeaponMod] = []
                             
-                            if ImGui.begin_child("selectable_mods", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+                            if ImGui_Legacy.begin_child("selectable_mods", (0, 0), False, PyImGui.WindowFlags.NoFlag):
                                 for mod in self.data.Weapon_Mods.values():
                                     if mod.mod_type == ModType.Inherent:
                                         if not mod.has_item_type(selected_item_type):
@@ -3799,55 +3799,55 @@ class UI:
                                         
                                         self.settings.profile.save()
                                     
-                            ImGui.end_child()
+                            ImGui_Legacy.end_child()
                             
                     
-                    ImGui.end_child()                  
+                    ImGui_Legacy.end_child()                  
                     
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
             self.draw_mod_range_popup(self.selected_rule_mod, self.selected_mod_info)
             self.draw_damage_range_popup(self.selected_rule_damage_range, self.selected_damage_range, self.selected_damage_range_min)
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
     
     #endregion
    
     def draw_info_icon(self, draw_action : Callable | None = None, text : str = "", width : float = 200):
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         screen_cursor = PyImGui.get_cursor_screen_pos()
         rect = (screen_cursor[0], screen_cursor[1], 24, 24)
         hovered = GUI.is_mouse_in_rect(rect)
         
         texture = texture_map.CoreTextures.UI_Help_Icon_Hovered if hovered else texture_map.CoreTextures.UI_Help_Icon
-        ImGui.DrawTexture(texture.value, rect[2], rect[3])
-        # ImGui.text_colored(IconsFontAwesome5.ICON_QUESTION_CIRCLE, self.style.Info_Icon.color_tuple)
+        ImGui_Legacy.DrawTexture(texture.value, rect[2], rect[3])
+        # ImGui_Legacy.text_colored(IconsFontAwesome5.ICON_QUESTION_CIRCLE, self.style.Info_Icon.color_tuple)
         PyImGui.pop_style_var(1)
         
         if PyImGui.is_item_hovered():
             PyImGui.set_next_window_size(width, 0)
-            ImGui.begin_tooltip()
+            ImGui_Legacy.begin_tooltip()
             
             if draw_action:
                 draw_action()
             else:
-                ImGui.text_wrapped(text)
+                ImGui_Legacy.text_wrapped(text)
             
-            ImGui.end_tooltip()
+            ImGui_Legacy.end_tooltip()
     
     def draw_blacklist(self):
-        if ImGui.begin_tab_item("Black- & Whitelist") and self.settings.profile:
+        if ImGui_Legacy.begin_tab_item("Black- & Whitelist") and self.settings.profile:
             # Get size of the tab
             tab_size = PyImGui.get_content_region_avail()
             
             PyImGui.push_item_width(tab_size[0] - 73)
-            changed, search = ImGui.search_field("##search_loot_items", self.item_search, f"Search for Item Name or Model ID...")
+            changed, search = ImGui_Legacy.search_field("##search_loot_items", self.item_search, f"Search for Item Name or Model ID...")
             PyImGui.pop_item_width()
             if changed:
                 self.item_search = search
                 self.filter_items() 
             
             PyImGui.same_line(0, 5)
-            if ImGui.button(IconsFontAwesome5.ICON_FILTER):
+            if ImGui_Legacy.button(IconsFontAwesome5.ICON_FILTER):
                 self.filter_popup = not self.filter_popup
                 if self.filter_popup:
                     PyImGui.open_popup("Filter Loot Items")
@@ -3855,25 +3855,25 @@ class UI:
             PyImGui.same_line(0, 5)
             
             def draw_hint():   
-                ImGui.text_wrapped("Search for Items by Name or Model ID.\n"+
+                ImGui_Legacy.text_wrapped("Search for Items by Name or Model ID.\n"+
                              "You can also filter the items by clicking on the filter icon.\n"+
                              "This will open a popup where you can select the filters to apply.\n")
                              
                 PyImGui.spacing()
-                ImGui.separator()
-                ImGui.text_wrapped("Blacklist")
+                ImGui_Legacy.separator()
+                ImGui_Legacy.text_wrapped("Blacklist")
                 PyImGui.spacing()
-                ImGui.text_wrapped(
+                ImGui_Legacy.text_wrapped(
                              "Items in the blacklist will not be processed by the inventory handler.\n"+
                              "This is useful for items that you do not want process in any way.\n"+
                              "You can add items to the blacklist by double-clicking them in the item whitelist.\n"+
                              "You can also remove items from the blacklist by double-clicking them in the blacklist panel.")
                 
                 PyImGui.spacing()
-                ImGui.separator()
-                ImGui.text_wrapped("Whitelist")
+                ImGui_Legacy.separator()
+                ImGui_Legacy.text_wrapped("Whitelist")
                 PyImGui.spacing()
-                ImGui.text_wrapped(
+                ImGui_Legacy.text_wrapped(
                              "Items in the whitelist will be processed by the inventory handler, if they are configured in either item actions or match a filter based action.\n"+
                              "This is useful for items that you want to keep in your inventory or vault.\n"+
                              "You can add items to the whitelist by double-clicking them in the loot items panel.\n"+
@@ -3882,17 +3882,17 @@ class UI:
             self.draw_info_icon(draw_action=
                                 draw_hint, width=500)
             
-            ImGui.separator()
+            ImGui_Legacy.separator()
             PyImGui.dummy(0, 5)
             
             tab_size = (PyImGui.get_content_region_avail()[0] - 20)/ 2
             
-            ImGui.text("Whitelisted Items")
+            ImGui_Legacy.text("Whitelisted Items")
             PyImGui.same_line(tab_size, 20)
-            ImGui.text("Blacklisted Items")
+            ImGui_Legacy.text("Blacklisted Items")
             
             # Left panel: Loot Items Selection
-            if ImGui.begin_child("blacklisted_selection_items_child", (tab_size, 0), True, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("blacklisted_selection_items_child", (tab_size, 0), True, PyImGui.WindowFlags.NoFlag):
                 for item in self.filtered_blacklist_items:
                     if item and not self.settings.profile.is_blacklisted(item.item_info.item_type, item.item_info.model_id):
                         if PyImGui.is_rect_visible(1, 20):
@@ -3900,13 +3900,13 @@ class UI:
                         else:
                             PyImGui.dummy(0, 20)
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             PyImGui.same_line(0, 5)
             
 
             # Right panel: Loot Item Details
-            if ImGui.begin_child("blacklisted_items_child", (tab_size, 0), True, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("blacklisted_items_child", (tab_size, 0), True, PyImGui.WindowFlags.NoFlag):
                 for item in self.filtered_blacklist_items:                                                       
                     if item and self.settings.profile.is_blacklisted(item.item_info.item_type, item.item_info.model_id):
                         if PyImGui.is_rect_visible(1, 20):
@@ -3914,21 +3914,21 @@ class UI:
                         else:
                             PyImGui.dummy(0, 20)
                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             self.draw_filter_popup()
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
 
     def draw_item_header(self, item_info : models.Item | None, border : bool = False, height : float | None = None, image_size : float = 110):       
         image_size = min(image_size, 64)
         height = height if height else self.get_tooltip_height(item_info) + (24 if border else 0) if item_info else 130
         
-        if ImGui.begin_child("item_info", (0, max(height, image_size)), border, PyImGui.WindowFlags.NoFlag):            
-            if ImGui.begin_child("item_texture", (image_size, image_size), False, PyImGui.WindowFlags.NoFlag): 
+        if ImGui_Legacy.begin_child("item_info", (0, max(height, image_size)), border, PyImGui.WindowFlags.NoFlag):            
+            if ImGui_Legacy.begin_child("item_texture", (image_size, image_size), False, PyImGui.WindowFlags.NoFlag): 
                 if item_info:
                     posX, posY = PyImGui.get_cursor_screen_pos()
                     if GUI.is_mouse_in_rect((posX, posY, image_size, image_size)):                                
-                        if ImGui.button(IconsFontAwesome5.ICON_GLOBE, image_size, image_size) and item_info.wiki_url:
+                        if ImGui_Legacy.button(IconsFontAwesome5.ICON_GLOBE, image_size, image_size) and item_info.wiki_url:
                             Player.SendChatCommand(
                                                 "wiki " + item_info.name)
 
@@ -3936,7 +3936,7 @@ class UI:
                             webbrowser.open(
                                                 item_info.wiki_url)
 
-                        ImGui.show_tooltip(
+                        ImGui_Legacy.show_tooltip(
                                             "Open the wiki page for this item.\n" +
                                             "If the item is not found, it will search for the item name in the wiki." if item_info.wiki_url else "This item does not have a wiki page set yet."
                                         )
@@ -3949,42 +3949,42 @@ class UI:
                         PyImGui.push_style_color(
                                             PyImGui.ImGuiCol.ButtonActive, Utils.ColorToTuple(color))
                         if item_info.inventory_icon:
-                            ImGui.DrawTexture(item_info.texture_file, image_size, image_size)
+                            ImGui_Legacy.DrawTexture(item_info.texture_file, image_size, image_size)
                         else:
-                            ImGui.button(IconsFontAwesome5.ICON_SHIELD_ALT + "##" + str(
+                            ImGui_Legacy.button(IconsFontAwesome5.ICON_SHIELD_ALT + "##" + str(
                                                 item_info.model_id), image_size, image_size)
                         PyImGui.pop_style_color(3)                                    
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             PyImGui.same_line(0, 10)
             PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() + 3)
 
-            if ImGui.begin_child("item_details", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("item_details", (0, 0), False, PyImGui.WindowFlags.NoFlag):
                 if item_info:
-                    ImGui.text("Name: " + item_info.name)
+                    ImGui_Legacy.text("Name: " + item_info.name)
 
-                    ImGui.text("Model ID: " + str(item_info.model_id))
-                    ImGui.text("Type: " + utility.Util.GetItemType(item_info.item_type).name)
+                    ImGui_Legacy.text("Model ID: " + str(item_info.model_id))
+                    ImGui_Legacy.text("Type: " + utility.Util.GetItemType(item_info.item_type).name)
                                     
                     if item_info.nick_index:
-                        ImGui.text("Next Nick Week: " + str(item_info.next_nick_week) + " in " + str(item_info.weeks_until_next_nick) + " weeks")
+                        ImGui_Legacy.text("Next Nick Week: " + str(item_info.next_nick_week) + " in " + str(item_info.weeks_until_next_nick) + " weeks")
                                     
                     if item_info.common_salvage:
                         summaries = [salvage_info.summary for salvage_info in item_info.common_salvage.values()]                        
-                        ImGui.text("Salvage: " + ", ".join(summaries))
+                        ImGui_Legacy.text("Salvage: " + ", ".join(summaries))
                                     
                     if item_info.rare_salvage:
                         summaries = [salvage_info.summary for salvage_info in item_info.rare_salvage.values()]   
-                        ImGui.text("Rare Salvage: " + ", ".join(summaries))
+                        ImGui_Legacy.text("Rare Salvage: " + ", ".join(summaries))
                         
                     if item_info.category is not ItemCategory.None_:
-                        ImGui.text("Category: " + str(utility.Util.reformat_string(item_info.category.name)))
+                        ImGui_Legacy.text("Category: " + str(utility.Util.reformat_string(item_info.category.name)))
                         
                     if item_info.sub_category is not ItemSubCategory.None_:
-                        ImGui.text("Sub Category: " + str(utility.Util.reformat_string(item_info.sub_category.name)))
+                        ImGui_Legacy.text("Sub Category: " + str(utility.Util.reformat_string(item_info.sub_category.name)))
                 
-            ImGui.end_child()
-        ImGui.end_child()
+            ImGui_Legacy.end_child()
+        ImGui_Legacy.end_child()
     
     def draw_cached_item_header(self, item : cache.Cached_Item | None, border : bool = False, height : float | None = None, image_size : float = 110): 
         if not item:
@@ -3994,12 +3994,12 @@ class UI:
         item_info = item.data if item else None
         height = height if height else self.get_tooltip_height(item_info) + (24 if border else 0) if item and item_info else 130
         
-        if ImGui.begin_child("item_info", (0, max(height, image_size)), border, PyImGui.WindowFlags.NoFlag):            
-            if ImGui.begin_child("item_texture", (image_size, image_size), False, PyImGui.WindowFlags.NoFlag): 
+        if ImGui_Legacy.begin_child("item_info", (0, max(height, image_size)), border, PyImGui.WindowFlags.NoFlag):            
+            if ImGui_Legacy.begin_child("item_texture", (image_size, image_size), False, PyImGui.WindowFlags.NoFlag): 
                 if item_info:
                     posX, posY = PyImGui.get_cursor_screen_pos()
                     if GUI.is_mouse_in_rect((posX, posY, image_size, image_size)):                                
-                        if ImGui.button(IconsFontAwesome5.ICON_GLOBE, image_size, image_size) and item_info.wiki_url:
+                        if ImGui_Legacy.button(IconsFontAwesome5.ICON_GLOBE, image_size, image_size) and item_info.wiki_url:
                             Player.SendChatCommand(
                                                 "wiki " + item_info.name)
 
@@ -4007,7 +4007,7 @@ class UI:
                             webbrowser.open(
                                                 item_info.wiki_url)
 
-                        ImGui.show_tooltip(
+                        ImGui_Legacy.show_tooltip(
                                             "Open the wiki page for this item.\n" +
                                             "If the item is not found, it will search for the item name in the wiki." if item_info.wiki_url else "This item does not have a wiki page set yet."
                                         )
@@ -4023,44 +4023,44 @@ class UI:
                             if item.item_type == ItemType.Dye:
                                 dye = item.dye_info.dye1.ToInt()
                                 texture = self.dye_textures[dye]
-                                ImGui.DrawTexture(texture, image_size, image_size)
+                                ImGui_Legacy.DrawTexture(texture, image_size, image_size)
                             else:
-                                ImGui.DrawTexture(item_info.texture_file, image_size, image_size)
+                                ImGui_Legacy.DrawTexture(item_info.texture_file, image_size, image_size)
                         else:
-                            ImGui.button(IconsFontAwesome5.ICON_SHIELD_ALT + "##" + str(
+                            ImGui_Legacy.button(IconsFontAwesome5.ICON_SHIELD_ALT + "##" + str(
                                                 item_info.model_id), image_size, image_size)
                         PyImGui.pop_style_color(3)                                    
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             PyImGui.same_line(0, 10)
             PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() + 3)
 
-            if ImGui.begin_child("item_details", (0, 0), False, PyImGui.WindowFlags.NoFlag) and item:
+            if ImGui_Legacy.begin_child("item_details", (0, 0), False, PyImGui.WindowFlags.NoFlag) and item:
                 if item_info:
-                    ImGui.text("Name: " + item.name)
+                    ImGui_Legacy.text("Name: " + item.name)
 
-                    ImGui.text("Model ID: " + str(item_info.model_id))
-                    ImGui.text("Type: " + utility.Util.GetItemType(item_info.item_type).name)
+                    ImGui_Legacy.text("Model ID: " + str(item_info.model_id))
+                    ImGui_Legacy.text("Type: " + utility.Util.GetItemType(item_info.item_type).name)
                                     
                     if item_info.nick_index:
-                        ImGui.text("Next Nick Week: " + str(item_info.next_nick_week) + " in " + str(item_info.weeks_until_next_nick) + " weeks")
+                        ImGui_Legacy.text("Next Nick Week: " + str(item_info.next_nick_week) + " in " + str(item_info.weeks_until_next_nick) + " weeks")
                                     
                     if item_info.common_salvage:
                         summaries = [salvage_info.summary for salvage_info in item_info.common_salvage.values()]                        
-                        ImGui.text("Salvage: " + ", ".join(summaries))
+                        ImGui_Legacy.text("Salvage: " + ", ".join(summaries))
                                     
                     if item_info.rare_salvage:
                         summaries = [salvage_info.summary for salvage_info in item_info.rare_salvage.values()]   
-                        ImGui.text("Rare Salvage: " + ", ".join(summaries))
+                        ImGui_Legacy.text("Rare Salvage: " + ", ".join(summaries))
                         
                     if item_info.category is not ItemCategory.None_:
-                        ImGui.text("Category: " + str(utility.Util.reformat_string(item_info.category.name)))
+                        ImGui_Legacy.text("Category: " + str(utility.Util.reformat_string(item_info.category.name)))
                         
                     if item_info.sub_category is not ItemSubCategory.None_:
-                        ImGui.text("Sub Category: " + str(utility.Util.reformat_string(item_info.sub_category.name)))
+                        ImGui_Legacy.text("Sub Category: " + str(utility.Util.reformat_string(item_info.sub_category.name)))
                 
-            ImGui.end_child()
-        ImGui.end_child()
+            ImGui_Legacy.end_child()
+        ImGui_Legacy.end_child()
     
     def get_tooltip_height(self, item_info: models.Item) -> float:
         """Calculate the number of lines needed for the tooltip based on the item info."""
@@ -4124,10 +4124,10 @@ class UI:
     def draw_weapon_mods(self):
         if self.first_draw:
             self.filter_weapon_mods()
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         tab_name = "Weapon Mods"
-        if ImGui.begin_tab_item(tab_name) and self.settings.profile:
+        if ImGui_Legacy.begin_tab_item(tab_name) and self.settings.profile:
             # Get size of the tab
             tab_size = PyImGui.get_content_region_avail()
             height = 24
@@ -4135,7 +4135,7 @@ class UI:
             
             # Search bar for weapon mods
             PyImGui.push_item_width(tab_size[0] - 25 - 5 - height - 5 - combo_width - 5)
-            changed, search = ImGui.search_field(
+            changed, search = ImGui_Legacy.search_field(
                 "##SearchWeaponMods",
                 self.mod_search,
                 f"Search for Mod Name, Description or internal Id..."
@@ -4150,21 +4150,21 @@ class UI:
             action_info = self.action_infos.get(self.settings.profile.weapon_mod_action, None)
             action_texture = action_info.icon if action_info else None
             if action_texture:
-                ImGui.DrawTexture(action_texture, height, height)
+                ImGui_Legacy.DrawTexture(action_texture, height, height)
             else:
                 PyImGui.dummy(height, height)
             PyImGui.same_line(0, 2)           
             
             current_action_index = self.keep_actions.index(self.settings.profile.weapon_mod_action) if self.settings.profile.weapon_mod_action in self.keep_actions else 0
             PyImGui.push_item_width(combo_width)
-            action_index = ImGui.combo("##Weapon Mod Action", current_action_index, self.keep_action_names)
+            action_index = ImGui_Legacy.combo("##Weapon Mod Action", current_action_index, self.keep_action_names)
             PyImGui.pop_item_width()
             
             if action_index != current_action_index:
                 self.settings.profile.weapon_mod_action = self.keep_actions[action_index]
                 self.settings.profile.save()
                 
-            ImGui.show_tooltip(
+            ImGui_Legacy.show_tooltip(
                 "Select the action to perform on extracted weapon mods and items containing more than one.\n" +
                 "This will determine if the weapon mod / item is stashed or kept in your inventory."
             )                
@@ -4172,24 +4172,24 @@ class UI:
             PyImGui.same_line(0, 5)
             # PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y())
             def draw_hint():
-                ImGui.text_wrapped("Search for Weapon Mods by Name, Description or their internal Id.\n"+
+                ImGui_Legacy.text_wrapped("Search for Weapon Mods by Name, Description or their internal Id.\n"+
                              "Selected Weapon Mods will be highlighted in the list.\n"+
                              "You can select a Weapon Mod by clicking on any weapon type which the mod can be applied to.\n"+
                              "Selected Weapon types will be highlighted as well.\n")
                 
                 PyImGui.spacing()
-                ImGui.separator()
+                ImGui_Legacy.separator()
                 
-                ImGui.text_wrapped("Weapon Mods")
+                ImGui_Legacy.text_wrapped("Weapon Mods")
                 PyImGui.spacing()
-                ImGui.text_wrapped("Items containing the selected Weapon Mods will be picked up and processed by the inventory handler.\n"+
+                ImGui_Legacy.text_wrapped("Items containing the selected Weapon Mods will be picked up and processed by the inventory handler.\n"+
                                      "Items with more than one selected Weapon Mod will be stashed so you can choose which mod to keep.\n")
                 
             self.draw_info_icon(draw_action=draw_hint, width=500)
             
             selection_width = tab_size[0]  # max(255, tab_size[0] * 0.3)
             
-            ImGui.begin_child(
+            ImGui_Legacy.begin_child(
                 "ModSelectionsChild", (selection_width, 0), False, PyImGui.WindowFlags.NoFlag)
 
             selected_weapon_mod = None
@@ -4209,7 +4209,7 @@ class UI:
             
             
             if PyImGui.is_rect_visible(1, 20):
-                ImGui.begin_table(
+                ImGui_Legacy.begin_table(
                     "Weapon Mods Table",
                     columns,
                     PyImGui.TableFlags.NoBordersInBody |PyImGui.TableFlags.ScrollY,
@@ -4232,7 +4232,7 @@ class UI:
                         m.identifier) if self.settings.profile else None
 
                     def get_frame_color():
-                        style = ImGui.get_style()
+                        style = ImGui_Legacy.get_style()
                         base_color = style.Border if not is_in_profile else self.style.Selected_Colored_Item
                         return (base_color.r, base_color.g, base_color.b, (150 if is_in_profile else base_color.a))
 
@@ -4243,7 +4243,7 @@ class UI:
                     if selectable.is_hovered:
                         style.ChildBg.push_color((255, 255, 255, 15))
 
-                    ImGui.begin_child(
+                    ImGui_Legacy.begin_child(
                         id=f"ModSelectable{m.identifier}", size=(effective_column_width, self.mod_heights[m.identifier]), border=True, flags=PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)
                                   
                     style.Border.pop_color()
@@ -4251,16 +4251,16 @@ class UI:
                     if m.is_inscription:
                         texture = self.inscription_type_textures.get(m.target_types[0], None)
                         if texture and os.path.exists(texture):
-                            ImGui.DrawTextureExtended(texture_path=texture, size=(16, 16), tint=(255,255,255,255) if is_in_profile else (150,150,150, 255) if selectable.is_hovered else (100, 100, 100, 255))
+                            ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(16, 16), tint=(255,255,255,255) if is_in_profile else (150,150,150, 255) if selectable.is_hovered else (100, 100, 100, 255))
                             PyImGui.same_line(0, 5)
                         pass
                         
                     if is_in_profile:
                         style.Text.push_color((255, 204, 85, 255))
                         
-                    ImGui.push_font("Regular", 16)
-                    ImGui.text(m.applied_name)
-                    ImGui.pop_font()
+                    ImGui_Legacy.push_font("Regular", 16)
+                    ImGui_Legacy.text(m.applied_name)
+                    ImGui_Legacy.pop_font()
 
                     if is_in_profile:
                         style.Text.pop_color()
@@ -4268,13 +4268,13 @@ class UI:
                     if selectable.is_hovered:
                         style.ChildBg.pop_color()
 
-                    ImGui.separator()
+                    ImGui_Legacy.separator()
 
                     # PyImGui.dummy(0, 0)
                     # PyImGui.same_line(0, 28)
 
                     style.Text.push_color((255, 255, 255, int(255 * 0.75)))
-                    ImGui.text_wrapped(m.description)
+                    ImGui_Legacy.text_wrapped(m.description)
                     style.Text.pop_color()
 
                     is_tooltip_visible = False
@@ -4307,18 +4307,18 @@ class UI:
                                 rect = (cursor[0], cursor[1], texture_size, texture_size)
                                 hovered = GUI.is_mouse_in_rect(rect)
                                 
-                                style = ImGui.get_style()
+                                style = ImGui_Legacy.get_style()
                                 
                                 if texture:
-                                    # ImGui.DrawTexture(texture, 24, 24)
+                                    # ImGui_Legacy.DrawTexture(texture, 24, 24)
                                     # tint = (255,255,255,255) if is_selected else (150,150,150, 255) if hovered else (64, 64,64, 255)
-                                    # ImGui.DrawTextureExtended(texture_path=texture, size=(texture_size, texture_size))
+                                    # ImGui_Legacy.DrawTextureExtended(texture_path=texture, size=(texture_size, texture_size))
                                     # background = (255, 204, 85, 180) if is_selected else (51, 77, 102, 255) if hovered else (26, 38, 51, 255)
                                     background = self.style.Selected_Colored_Item if is_selected else style.ButtonHovered if hovered else style.Button
                                     # selected = UI.ImageToggle(id=f"{m.identifier}{weapon_type.name}", selected=is_selected, texture_path=texture, size=(texture_size, texture_size), tint=(255,255,255,255), background=background.rgb_tuple)
                                     
                                     selected, hovered = GUI.item_toggle_button(texture, texture_size, is_selected)
-                                    # ImGui.text(weapon_type.name)
+                                    # ImGui_Legacy.text(weapon_type.name)
                                 
                                     if selected != is_selected:
                                         if not self.settings.profile.weapon_mods.get(m.identifier, None):
@@ -4339,7 +4339,7 @@ class UI:
                                     
                                 is_tooltip_visible = is_tooltip_visible or PyImGui.is_item_hovered()
 
-                                ImGui.show_tooltip(
+                                ImGui_Legacy.show_tooltip(
                                     f"Toggle {utility.Util.reformat_string(weapon_type.name)} for this mod.\n" +
                                     "If selected, the mod will be picked up and stored when found." +
                                     "\nHold CTRL to toggle all weapon types at once."
@@ -4349,7 +4349,7 @@ class UI:
                                 
                     PyImGui.new_line()
                     PyImGui.dummy(10, 12)  
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                 
                     if m.is_inscription:
                         if PyImGui.is_item_clicked(0):
@@ -4374,33 +4374,33 @@ class UI:
                     
                     PyImGui.table_next_column()
                 
-                ImGui.end_table()
+                ImGui_Legacy.end_table()
                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             # PyImGui.same_line(0, 5)
 
-            # ImGui.begin_child(
+            # ImGui_Legacy.begin_child(
             #     "ModEditChild", (edit_width, tab_size[1]), True, PyImGui.WindowFlags.NoFlag)
 
-            # ImGui.text("Mod Details")
-            # ImGui.separator()
+            # ImGui_Legacy.text("Mod Details")
+            # ImGui_Legacy.separator()
 
-            # ImGui.text("Selected Mod: " + (selected_weapon_mod.name if selected_weapon_mod else "None"))
+            # ImGui_Legacy.text("Selected Mod: " + (selected_weapon_mod.name if selected_weapon_mod else "None"))
 
-            # ImGui.end_child()
+            # ImGui_Legacy.end_child()
 
             if False:
                 # Table headers
-                PyImGui.push_style_var(ImGui.ImGuiStyleVar.ChildBorderSize, 0)
-                PyImGui.push_style_var2(ImGui.ImGuiStyleVar.CellPadding, 2, 2)
-                if ImGui.begin_child(
+                PyImGui.push_style_var(ImGui_Legacy.ImGuiStyleVar.ChildBorderSize, 0)
+                PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.CellPadding, 2, 2)
+                if ImGui_Legacy.begin_child(
                     f"{tab_name}TableHeaders#1",
                     (tab_size[0] - 20 if self.scroll_bar_visible else 0, 20),
                     True,
                     PyImGui.WindowFlags.NoBackground,
                 ):
-                    ImGui.begin_table(
+                    ImGui_Legacy.begin_table(
                         "Weapon Mods Table",
                         len(weapon_types) + 4,
                         PyImGui.TableFlags.NoFlag,
@@ -4423,16 +4423,16 @@ class UI:
                         )
 
                     PyImGui.table_headers_row()
-                    ImGui.end_table()
+                    ImGui_Legacy.end_table()
 
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
 
                 # Table content
                 self.scroll_bar_visible = False
-                if ImGui.begin_child(
+                if ImGui_Legacy.begin_child(
                     f"{tab_name}#1", (0, 0), True, PyImGui.WindowFlags.NoBackground
                 ):
-                    ImGui.begin_table(
+                    ImGui_Legacy.begin_table(
                         "Weapon Mods Table",
                         len(weapon_types) + 4,
                         PyImGui.TableFlags.RowBg | PyImGui.TableFlags.BordersInnerH | PyImGui.TableFlags.ScrollY,
@@ -4486,8 +4486,8 @@ class UI:
                             Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 0)),
                         )
                         PyImGui.push_style_var2(
-                            ImGui.ImGuiStyleVar.FramePadding, 5, 8)
-                        ImGui.button(
+                            ImGui_Legacy.ImGuiStyleVar.FramePadding, 5, 8)
+                        ImGui_Legacy.button(
                             IconsFontAwesome5.ICON_SHIELD_ALT + f"##{mod.identifier}")
                         PyImGui.pop_style_color(3)
                         PyImGui.pop_style_var(1)
@@ -4500,18 +4500,18 @@ class UI:
                         #     PyImGui.ImGuiCol.Text,
                         #     Utils.ColorToTuple(color),
                         # )
-                        ImGui.text_wrapped(mod.applied_name)
+                        ImGui_Legacy.text_wrapped(mod.applied_name)
                         # PyImGui.pop_style_color(1)
                         weapon_mod_tooltip(mod)
-                        # ImGui.show_tooltip(
+                        # ImGui_Legacy.show_tooltip(
                         #     f"Mod: {mod.name}\nIdentifier: {mod.identifier}"
                         # )
 
                         # Mod name
                         PyImGui.table_next_column()
-                        ImGui.text_wrapped(mod.description)
+                        ImGui_Legacy.text_wrapped(mod.description)
                         weapon_mod_tooltip(mod)
-                        # ImGui.show_tooltip(
+                        # ImGui_Legacy.show_tooltip(
                         #     f"Mod: {mod.description}\nIdentifier: {mod.identifier}"
                         # )
                         if keep:
@@ -4523,7 +4523,7 @@ class UI:
                         if mod.is_inscription:
                             unique_id = f"##{mod.identifier}{inscription}"
                             PyImGui.push_style_var2(
-                                ImGui.ImGuiStyleVar.FramePadding, 0, 8)
+                                ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 8)
 
                             is_selected = (
                                 mod.identifier in self.settings.profile.weapon_mods
@@ -4531,10 +4531,10 @@ class UI:
                                 in self.settings.profile.weapon_mods[mod.identifier]
                                 and self.settings.profile.weapon_mods[mod.identifier][inscription]
                             )
-                            mod_selected = ImGui.checkbox(unique_id, is_selected)
+                            mod_selected = ImGui_Legacy.checkbox(unique_id, is_selected)
 
                             PyImGui.pop_style_var(1)
-                            ImGui.show_tooltip(
+                            ImGui_Legacy.show_tooltip(
                                 f"{'Keep' if is_selected else 'Ignore'} {mod.name}"
                             )
 
@@ -4566,7 +4566,7 @@ class UI:
                                 if hasWeaponType:
                                     unique_id = f"##{mod.identifier}{weapon_type}"
                                     PyImGui.push_style_var2(
-                                        ImGui.ImGuiStyleVar.FramePadding, 0, 8)
+                                        ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 8)
 
                                     is_selected = (
                                         mod.identifier in self.settings.profile.weapon_mods
@@ -4574,11 +4574,11 @@ class UI:
                                         in self.settings.profile.weapon_mods[mod.identifier]
                                         and self.settings.profile.weapon_mods[mod.identifier][weapon_type.name]
                                     )
-                                    mod_selected = ImGui.checkbox(
+                                    mod_selected = ImGui_Legacy.checkbox(
                                         unique_id, is_selected)
 
                                     PyImGui.pop_style_var(1)
-                                    ImGui.show_tooltip(
+                                    ImGui_Legacy.show_tooltip(
                                         f"{'Keep' if is_selected else 'Ignore'} {mod.name} for {weapon_type.name}"
                                     )
 
@@ -4603,21 +4603,21 @@ class UI:
                         self.scroll_bar_visible = self.scroll_bar_visible or PyImGui.get_scroll_max_y() > 0
 
                 PyImGui.pop_style_var(2)
-                ImGui.end_table()
-                ImGui.end_child()
+                ImGui_Legacy.end_table()
+                ImGui_Legacy.end_child()
 
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
 
     def draw_runes(self):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         tab_name = "Runes"
-        if ImGui.begin_tab_item(tab_name) and self.settings.profile:
-            if ImGui.begin_child(f"{tab_name}#1", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+        if ImGui_Legacy.begin_tab_item(tab_name) and self.settings.profile:
+            if ImGui_Legacy.begin_child(f"{tab_name}#1", (0, 0), False, PyImGui.WindowFlags.NoFlag):
                 y_pos = PyImGui.get_cursor_pos_y()
-                ImGui.push_font("Regular", 18)
+                ImGui_Legacy.push_font("Regular", 18)
                 PyImGui.set_cursor_pos_y(y_pos + 10)
-                ImGui.text("Rune Selection")
-                ImGui.pop_font()
+                ImGui_Legacy.text("Rune Selection")
+                ImGui_Legacy.pop_font()
 
                 height = 24
                 button_width = 270
@@ -4630,7 +4630,7 @@ class UI:
                 action_info = self.action_infos.get(self.settings.profile.rune_action, None)
                 action_texture = action_info.icon if action_info else None
                 if action_texture:
-                    ImGui.DrawTexture(action_texture, height, height)
+                    ImGui_Legacy.DrawTexture(action_texture, height, height)
                 else:
                     PyImGui.dummy(height, height)
                 PyImGui.same_line(0, 2)           
@@ -4638,21 +4638,21 @@ class UI:
                 
                 current_action_index = self.keep_actions.index(self.settings.profile.rune_action) if self.settings.profile.rune_action in self.keep_actions else 0
                 PyImGui.push_item_width(combo_width)
-                action_index = ImGui.combo("##Rune Action", current_action_index, self.keep_action_names)
+                action_index = ImGui_Legacy.combo("##Rune Action", current_action_index, self.keep_action_names)
                 PyImGui.pop_item_width()
                 
                 if action_index != current_action_index:
                     self.settings.profile.rune_action = self.keep_actions[action_index]
                     self.settings.profile.save()
                     
-                ImGui.show_tooltip(
+                ImGui_Legacy.show_tooltip(
                     "Select the action to perform when is not marked as sell.\n" +
                     "This will determine if the rune is stashed or kept in your inventory."
                 )
                     
                 PyImGui.same_line(0, 5)           
                 PyImGui.set_cursor_pos_y(y_pos)
-                if ImGui.button("Get Expensive Runes from Merchant", button_width, 0):
+                if ImGui_Legacy.button("Get Expensive Runes from Merchant", button_width, 0):
                     if self.settings.profile:
                         self.show_price_check_popup = not self.show_price_check_popup
                         if self.show_price_check_popup:
@@ -4662,24 +4662,24 @@ class UI:
                             PyImGui.close_current_popup()
                 
                 def draw_help():
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "- Selecting a rune/insignia will mark it as valuable and items containing this rune/insignia will be picked up.\n" +
                         "- If the item is a salvage item and contains only one rune/insignia, the rune/insignia will be extracted by salvaging the item automatically.\n" +
                         "- If the item has multiple Runes/Insignias, the item will be stashed/kept intact so you can decide which to extract."
                     )
                     
                     PyImGui.spacing()
-                    ImGui.separator()
-                    ImGui.text_wrapped("Get Expensive Runes from Merchant")
+                    ImGui_Legacy.separator()
+                    ImGui_Legacy.text_wrapped("Get Expensive Runes from Merchant")
                     PyImGui.spacing()
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "- Move to the Rune Trader in order to click this button.\n"+
                         "- This will check the current sell price for all runes and check those that are above the price threshold or currently unavailable.\n" +
                         "- You can set the price threshold in the popup that appears when you click the button.\n" +
                         "- The runes will be added to your profile and marked as valuable."
                     )
                     PyImGui.spacing()
-                    ImGui.text_wrapped(
+                    ImGui_Legacy.text_wrapped(
                         "If you click the button all selected runes/insignias will be first removed from your profile and then the expensive runes will be added.\n" + 
                         "This means that any runes/insignias you manually selected will be removed")
                 
@@ -4691,9 +4691,9 @@ class UI:
                 )
 
                 PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() - 5)
-                ImGui.separator()
+                ImGui_Legacy.separator()
 
-                if ImGui.begin_tab_bar("RunesTabBar"):
+                if ImGui_Legacy.begin_tab_bar("RunesTabBar"):
                     for profession, runes in self.data.Runes_by_Profession.items():
 
                         if not runes:
@@ -4701,10 +4701,10 @@ class UI:
 
                         profession_name = "Common" if profession == Profession._None else profession.name
 
-                        if not ImGui.begin_tab_item(profession_name):
+                        if not ImGui_Legacy.begin_tab_item(profession_name):
                             continue
 
-                        if ImGui.begin_child("RunesSelection#1", (0, 0), True, PyImGui.WindowFlags.NoBackground):                            
+                        if ImGui_Legacy.begin_child("RunesSelection#1", (0, 0), True, PyImGui.WindowFlags.NoBackground):                            
                             for rune in runes.values():
                                 if not rune or not rune.identifier:
                                     continue
@@ -4713,7 +4713,7 @@ class UI:
                                     PyImGui.dummy(0, 24)
                                     continue
 
-                                ImGui.begin_child(
+                                ImGui_Legacy.begin_child(
                                     f"RuneSelectable{rune.identifier}",
                                     (0, 24),
                                     False,
@@ -4727,7 +4727,7 @@ class UI:
 
                                 texture = rune.texture_file if rune.texture_file else None
                                 if texture:
-                                    ImGui.DrawTexture(texture, 24, 24)
+                                    ImGui_Legacy.DrawTexture(texture, 24, 24)
                                 else:
                                     PyImGui.dummy(24, 24)
                                     
@@ -4736,7 +4736,7 @@ class UI:
                                 label = f"{rune.full_name}"
                                 unique_id = f"##{rune.identifier}"                                
                                 is_valuable = rune.identifier in self.settings.profile.runes and self.settings.profile.runes[rune.identifier].valuable
-                                rune_valuable = ImGui.checkbox(
+                                rune_valuable = ImGui_Legacy.checkbox(
                                     "##valuable" + unique_id,
                                     is_valuable
                                 )
@@ -4744,14 +4744,14 @@ class UI:
                                 is_item_hovered = False
                                 hovered = PyImGui.is_item_hovered()
                                 if hovered:
-                                    ImGui.begin_tooltip()
-                                    ImGui.text_colored("Mark", (1,1,1,1))
+                                    ImGui_Legacy.begin_tooltip()
+                                    ImGui_Legacy.text_colored("Mark", (1,1,1,1))
                                     PyImGui.same_line(0, 5)
                                     
-                                    ImGui.text_colored(rune.name, Utils.ColorToTuple(Utils.RGBToColor(*color["text"])))
+                                    ImGui_Legacy.text_colored(rune.name, Utils.ColorToTuple(Utils.RGBToColor(*color["text"])))
                                     PyImGui.same_line(0, 5)
-                                    ImGui.text_colored("as valuable to pick them up and extract automatically.", (1,1,1,1))
-                                    ImGui.end_tooltip()
+                                    ImGui_Legacy.text_colored("as valuable to pick them up and extract automatically.", (1,1,1,1))
+                                    ImGui_Legacy.end_tooltip()
                                 
                                 is_item_hovered = hovered or is_item_hovered
 
@@ -4762,7 +4762,7 @@ class UI:
                                 PyImGui.same_line(0, 5)
                                 
                                 is_rune_sell = (rune.identifier in self.settings.profile.runes and self.settings.profile.runes[rune.identifier].should_sell)
-                                rune_sell = ImGui.checkbox(
+                                rune_sell = ImGui_Legacy.checkbox(
                                     "##sell" + unique_id,
                                     is_rune_sell
                                 )
@@ -4773,42 +4773,42 @@ class UI:
                                 
                                 hovered = PyImGui.is_item_hovered()
                                 if hovered:
-                                    ImGui.begin_tooltip()
-                                    ImGui.text_colored("Sell", (1,1,1,1))
+                                    ImGui_Legacy.begin_tooltip()
+                                    ImGui_Legacy.text_colored("Sell", (1,1,1,1))
                                     PyImGui.same_line(0, 5)
                                     
-                                    ImGui.text_colored(rune.name, Utils.ColorToTuple(Utils.RGBToColor(*color["text"])))
+                                    ImGui_Legacy.text_colored(rune.name, Utils.ColorToTuple(Utils.RGBToColor(*color["text"])))
                                     PyImGui.same_line(0, 5)
-                                    ImGui.text_colored("to the trader for Gold.", (1,1,1,1))
-                                    ImGui.end_tooltip()
+                                    ImGui_Legacy.text_colored("to the trader for Gold.", (1,1,1,1))
+                                    ImGui_Legacy.end_tooltip()
                                     
                                 is_item_hovered = hovered or is_item_hovered
 
                                 
                                 PyImGui.same_line(0, 5)
-                                ImGui.text(utility.Util.reformat_string(rune.full_name))
+                                ImGui_Legacy.text(utility.Util.reformat_string(rune.full_name))
                                 style.Text.pop_color()
                                 style.FrameBg.pop_color()
                                 style.FrameBgHovered.pop_color()
 
                                 PyImGui.same_line(0, 5)
-                                ImGui.text_colored(utility.Util.format_currency(rune.vendor_value), Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 125)))
-                                ImGui.end_child()
+                                ImGui_Legacy.text_colored(utility.Util.format_currency(rune.vendor_value), Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 125)))
+                                ImGui_Legacy.end_child()
                                 
                                 if not is_item_hovered:
                                     UI.rune_tooltip(rune)
                                 
                                 
-                            ImGui.end_child()
+                            ImGui_Legacy.end_child()
 
-                        ImGui.end_tab_item()
+                        ImGui_Legacy.end_tab_item()
 
-                    ImGui.end_tab_bar()
+                    ImGui_Legacy.end_tab_bar()
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
 
             self.draw_price_check_popup()
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
 
     def draw_price_check_popup(self):
         if self.settings.profile is None:
@@ -4817,18 +4817,18 @@ class UI:
         if self.show_price_check_popup:
             PyImGui.open_popup("Get Expensive Runes from Merchant")
 
-        if ImGui.begin_popup("Get Expensive Runes from Merchant"):
-            ImGui.text("Please enter a price threshold:")
-            ImGui.separator()
+        if ImGui_Legacy.begin_popup("Get Expensive Runes from Merchant"):
+            ImGui_Legacy.text("Please enter a price threshold:")
+            ImGui_Legacy.separator()
 
-            price_input = ImGui.input_int(
+            price_input = ImGui_Legacy.input_int(
                 "##PriceThreshold", self.entered_price_threshold)
             if price_input is not None and price_input != self.entered_price_threshold:
                 self.entered_price_threshold = price_input
 
             PyImGui.same_line(0, 5)
 
-            if ImGui.button("Check Prices", 100, 0):
+            if ImGui_Legacy.button("Check Prices", 100, 0):
                 if self.trader_type == "RUNES":
                     if self.entered_price_threshold is not None and self.entered_price_threshold > 0:
                         ConsoleLog(
@@ -4882,11 +4882,11 @@ class UI:
                 self.show_price_check_popup = False
                 PyImGui.close_current_popup()
 
-            mark_to_sell = ImGui.checkbox("Mark to sell", self.mark_to_sell_runes)
+            mark_to_sell = ImGui_Legacy.checkbox("Mark to sell", self.mark_to_sell_runes)
             if mark_to_sell != self.mark_to_sell_runes:
                  self.mark_to_sell_runes = mark_to_sell
                  
-            ImGui.end_popup()
+            ImGui_Legacy.end_popup()
 
         if PyImGui.is_mouse_clicked(0) and not PyImGui.is_item_hovered():
             if self.show_price_check_popup:
@@ -4916,7 +4916,7 @@ class UI:
         rect = (cursor[0], cursor[1], texture_size, texture_size)        
         hovered = GUI.is_mouse_in_rect(rect)        
         
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         background = self.style.Selected_Colored_Item.rgb_tuple if is_selected else style.ButtonHovered.rgb_tuple if hovered else style.Button.rgb_tuple
         is_now_selected = is_selected
         
@@ -4929,7 +4929,7 @@ class UI:
         #     PyImGui.dummy(texture_size, texture_size)
         
         if hovered:
-            ImGui.show_tooltip(f"{material.name}")
+            ImGui_Legacy.show_tooltip(f"{material.name}")
             
         return is_selected != is_now_selected, is_now_selected
 
@@ -4957,7 +4957,7 @@ class UI:
         is_now_selected, hovered = GUI.item_toggle_button(texture, texture_size, is_selected)
         
         if hovered:
-            ImGui.show_tooltip(f"Item Type: {utility.Util.reformat_string(item_type.name)}")
+            ImGui_Legacy.show_tooltip(f"Item Type: {utility.Util.reformat_string(item_type.name)}")
             
         return is_selected != is_now_selected, is_now_selected
 
@@ -4983,8 +4983,8 @@ class UI:
             PyImGui.push_style_color(
                 PyImGui.ImGuiCol.ChildBg, Utils.ColorToTuple(hovered_color))
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemSpacing, 0, 0)
-        ImGui.begin_child(
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.ItemSpacing, 0, 0)
+        ImGui_Legacy.begin_child(
             f"SelectableItem{item.item_info.model_id}",
             (0, 20),
             False,
@@ -4992,7 +4992,7 @@ class UI:
         )
 
         if item.item_info.texture_file:
-            ImGui.DrawTexture(item.item_info.texture_file, 20, 20)
+            ImGui_Legacy.DrawTexture(item.item_info.texture_file, 20, 20)
         else:
             PyImGui.dummy(20, 20)
         
@@ -5026,7 +5026,7 @@ class UI:
         PyImGui.set_cursor_pos_x(PyImGui.get_cursor_pos_x() + 5)
         GUI.vertical_centered_text(item_name, None, 20)
 
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
         PyImGui.pop_style_var(1)
         
         blacklisted = self.settings.profile.is_blacklisted(item.item_info.item_type, item.item_info.model_id)
@@ -5049,13 +5049,13 @@ class UI:
         # Show tooltip with item name
         if item.is_hovered:
             PyImGui.set_next_window_size(400, 0)
-            ImGui.begin_tooltip()
+            ImGui_Legacy.begin_tooltip()
             
             self.draw_item_header(item_info=item.item_info, border=False, image_size=50)
 
-            ImGui.separator()
-            ImGui.text(f"Double-click to {"blacklist" if not blacklisted else "whitelist"} the item.")                
-            ImGui.end_tooltip()
+            ImGui_Legacy.separator()
+            ImGui_Legacy.text(f"Double-click to {"blacklist" if not blacklisted else "whitelist"} the item.")                
+            ImGui_Legacy.end_tooltip()
             
             if (item.is_clicked and PyImGui.is_mouse_clicked(0)):
                 time_since_click = datetime.now() - item.time_stamp
@@ -5080,16 +5080,16 @@ class UI:
                 item.time_stamp = datetime.now()
 
     def draw_rare_weapons(self):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
-        if ImGui.begin_tab_item("Rare Weapons") and self.settings.profile:
-            ImGui.text("Select the rare weapons you want to keep")
-            ImGui.separator()
+        if ImGui_Legacy.begin_tab_item("Rare Weapons") and self.settings.profile:
+            ImGui_Legacy.text("Select the rare weapons you want to keep")
+            ImGui_Legacy.separator()
             
-            if ImGui.begin_child("Rare Weapons#1", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("Rare Weapons#1", (0, 0), True, PyImGui.WindowFlags.NoFlag):
                 style.WindowPadding.push_style_var(5, 5)
                 for (weapon_name, weapon_type), model_ids in self.data.Rare_Weapon_ModelIds.items():
-                    if ImGui.begin_child(f"RareWeaponSelectable{weapon_name}", (0, 34), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+                    if ImGui_Legacy.begin_child(f"RareWeaponSelectable{weapon_name}", (0, 34), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
                         items = self.data.Items.get(weapon_type, {})
                         
                         #get an item which has toe correct model id
@@ -5100,45 +5100,45 @@ class UI:
                             
                         weapon_texture = weapon_info.texture_file if weapon_info and weapon_info.texture_file else os.path.join(PySystem.Console.get_projects_path(), "Textures", "missing_texture.png")
                         if weapon_texture:
-                            ImGui.image(weapon_texture, (24, 24))
+                            ImGui_Legacy.image(weapon_texture, (24, 24))
                         else:
                             PyImGui.dummy(24, 24)
                             
                         PyImGui.same_line(0, 5)
                         name = weapon_name
                         included = self.settings.profile.rare_weapons.get(name, False)
-                        checked = ImGui.checkbox(name, included)
+                        checked = ImGui_Legacy.checkbox(name, included)
                         if checked != included:
                             self.settings.profile.rare_weapons[name] = checked
                             self.settings.profile.save()
                         
-                    ImGui.end_child()
+                    ImGui_Legacy.end_child()
                     
                 style.WindowPadding.pop_style_var()
-            ImGui.end_child()
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_child()
+            ImGui_Legacy.end_tab_item()
 
     def draw_item_conversions(self):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
-        if ImGui.begin_tab_item("Auto Crafting"):
-            if ImGui.begin_child("Auto Crafting#1", (0, 105), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
-                auto_crafting_enabled = ImGui.checkbox("Enable Auto Crafting", self.settings.auto_crafting_enabled)
+        if ImGui_Legacy.begin_tab_item("Auto Crafting"):
+            if ImGui_Legacy.begin_child("Auto Crafting#1", (0, 105), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+                auto_crafting_enabled = ImGui_Legacy.checkbox("Enable Auto Crafting", self.settings.auto_crafting_enabled)
                 if auto_crafting_enabled != self.settings.auto_crafting_enabled:
                     self.settings.auto_crafting_enabled = auto_crafting_enabled
                     self.settings.save()
                 
-                auto_withdraw_materials = ImGui.checkbox("Auto Withdraw Materials", self.settings.auto_withdraw_materials)
+                auto_withdraw_materials = ImGui_Legacy.checkbox("Auto Withdraw Materials", self.settings.auto_withdraw_materials)
                 if auto_withdraw_materials != self.settings.auto_withdraw_materials:
                     self.settings.auto_withdraw_materials = auto_withdraw_materials
                     self.settings.save()
                                     
-                auto_even_consets = ImGui.checkbox("Auto Even Consets", self.settings.auto_even_consets)
+                auto_even_consets = ImGui_Legacy.checkbox("Auto Even Consets", self.settings.auto_even_consets)
                 if auto_even_consets != self.settings.auto_even_consets:
                     self.settings.auto_even_consets = auto_even_consets
                     self.settings.save()
                     
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
             gold_coin = self.data.Items.get_item(ItemType.Gold_Coin, ModelID.Gold_Coins)
             gold_color = utility.Util.GetRarityColor(Rarity.Gold)
@@ -5158,7 +5158,7 @@ class UI:
                             
                             inventory_handling.InventoryHandler().auto_crafting_queue.clear()
             
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
         pass
 
     def draw_recipe_selectable(self, style : Style.Style, gold_coin : models.Item, gold_color : Color, disabled_color : Color, recipe : models.CraftingRecipe, item : models.Item, enabled : bool, amount : int = 1, expand : bool = False) -> bool:
@@ -5167,7 +5167,7 @@ class UI:
         style.TableRowBg.push_color(color.rgb_tuple[:3] + (50 if enabled else 50,))        
         style.CellPadding.push_style_var(0, 4)       
         
-        if ImGui.begin_table(f"Recipe{item.model_id}{item.item_type}", 5 if expand else 2, flags=PyImGui.TableFlags.BordersOuterH | PyImGui.TableFlags.BordersOuterV| PyImGui.TableFlags.RowBg):                        
+        if ImGui_Legacy.begin_table(f"Recipe{item.model_id}{item.item_type}", 5 if expand else 2, flags=PyImGui.TableFlags.BordersOuterH | PyImGui.TableFlags.BordersOuterV| PyImGui.TableFlags.RowBg):                        
             PyImGui.table_setup_column("ResultIcon", PyImGui.TableColumnFlags.WidthFixed, 32)
             PyImGui.table_setup_column("ResultName", PyImGui.TableColumnFlags.WidthStretch, 0.4 if expand else 1)
             PyImGui.table_setup_column("Ingredients", PyImGui.TableColumnFlags.WidthStretch, 0.6)
@@ -5178,13 +5178,13 @@ class UI:
             PyImGui.table_next_row()
             PyImGui.table_next_column()
             if item.texture_file:
-                ImGui.DrawTexture(item.texture_file, 32, 32)
+                ImGui_Legacy.DrawTexture(item.texture_file, 32, 32)
             else:
                 PyImGui.dummy(32, 32)
                         
                             
             PyImGui.table_next_column()
-            ImGui.text_aligned(f"{(f"{recipe.amount * amount} " if recipe.amount != 1 or amount > 1 else '')}{utility.Util.reformat_string(item.name)}", height=32, alignment=Alignment.MidLeft, color=utility.Util.GetRarityColor(recipe.rarity).color_tuple if recipe.rarity is not Rarity.White else None, font_size=16)
+            ImGui_Legacy.text_aligned(f"{(f"{recipe.amount * amount} " if recipe.amount != 1 or amount > 1 else '')}{utility.Util.reformat_string(item.name)}", height=32, alignment=Alignment.MidLeft, color=utility.Util.GetRarityColor(recipe.rarity).color_tuple if recipe.rarity is not Rarity.White else None, font_size=16)
             
             if expand:
                 PyImGui.table_next_column()                
@@ -5192,20 +5192,20 @@ class UI:
                                                            
                 PyImGui.table_next_column()                
                 if recipe.price > 0:
-                    ImGui.text_aligned(utility.Util.format_currency_short(recipe.price * amount), alignment=Alignment.MidRight, height=32, font_size=12)
+                    ImGui_Legacy.text_aligned(utility.Util.format_currency_short(recipe.price * amount), alignment=Alignment.MidRight, height=32, font_size=12)
                 else:
-                    ImGui.text_aligned("-", alignment=Alignment.MidRight, height=32)
+                    ImGui_Legacy.text_aligned("-", alignment=Alignment.MidRight, height=32)
                             
                 PyImGui.table_next_column()
                 PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() + (32 - 20) / 2)
 
                 if gold_coin and gold_coin.texture_file:
-                    ImGui.DrawTexture(gold_coin.texture_file, 20, 20)
+                    ImGui_Legacy.DrawTexture(gold_coin.texture_file, 20, 20)
                 else:
                     PyImGui.dummy(20, 20)
                                                     
                             
-            ImGui.end_table()
+            ImGui_Legacy.end_table()
                                             
         style.TableRowBg.pop_color()                    
         style.TableBorderStrong.pop_color()
@@ -5217,10 +5217,10 @@ class UI:
         if not ingredients:
             return
         
-        style = ImGui.get_style()                
+        style = ImGui_Legacy.get_style()                
         style.CellPadding.push_style_var(0, 4)
         #Ingredients                        
-        if ImGui.begin_table(f"Ingredient{identifier}", 2, flags=PyImGui.TableFlags.NoFlag):
+        if ImGui_Legacy.begin_table(f"Ingredient{identifier}", 2, flags=PyImGui.TableFlags.NoFlag):
             PyImGui.table_setup_column("IngredientIcon", PyImGui.TableColumnFlags.WidthFixed, 28)
             PyImGui.table_setup_column("IngredientName", PyImGui.TableColumnFlags.WidthStretch, 0)
             PyImGui.table_next_row()
@@ -5232,18 +5232,18 @@ class UI:
                                                             
                 PyImGui.table_next_column()
                 if ingredient_item.texture_file:
-                    ImGui.DrawTexture(ingredient_item.texture_file, 24, 24)
+                    ImGui_Legacy.DrawTexture(ingredient_item.texture_file, 24, 24)
                 else:
                     PyImGui.dummy(24, 24)
                                 
                 PyImGui.table_next_column()
-                ImGui.text_aligned(f"{(f"{ingredient.amount * amount} " if ingredient.amount != 1 else '')}{utility.Util.reformat_string(ingredient_item.name)}", color=utility.Util.GetRarityColor(ingredient.rarity).color_tuple if ingredient.rarity is not Rarity.White else None, alignment=Alignment.MidLeft, height=24)
+                ImGui_Legacy.text_aligned(f"{(f"{ingredient.amount * amount} " if ingredient.amount != 1 else '')}{utility.Util.reformat_string(ingredient_item.name)}", color=utility.Util.GetRarityColor(ingredient.rarity).color_tuple if ingredient.rarity is not Rarity.White else None, alignment=Alignment.MidLeft, height=24)
                         
-            ImGui.end_table()
+            ImGui_Legacy.end_table()
         style.CellPadding.pop_style_var()
 
     def draw_crafting(self):
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         inventory_handler = inventory_handling.InventoryHandler()
             
         gold_coin = self.data.Items.get_item(ItemType.Gold_Coin, ModelID.Gold_Coins)
@@ -5256,15 +5256,15 @@ class UI:
         if not self.settings.profile:
             return
           
-        if ImGui.begin_tab_item("Crafting"):
-            if ImGui.begin_table("Layout##Crafting", 2, PyImGui.TableFlags.NoSavedSettings):
+        if ImGui_Legacy.begin_tab_item("Crafting"):
+            if ImGui_Legacy.begin_table("Layout##Crafting", 2, PyImGui.TableFlags.NoSavedSettings):
                 PyImGui.table_setup_column("LeftColumn##Crafting", PyImGui.TableColumnFlags.WidthStretch, 0.25)
                 PyImGui.table_setup_column("RightColumn##Crafting", PyImGui.TableColumnFlags.WidthStretch, 0.75)
                 PyImGui.table_next_row()    
                 PyImGui.table_next_column()
                 
                 # Left Column
-                if ImGui.begin_child("Recipes", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+                if ImGui_Legacy.begin_child("Recipes", (0, 0), True, PyImGui.WindowFlags.NoFlag):
                    for recipe in self.data.Recipes:
                         item = self.data.Items.get_item(recipe.item_type, recipe.model_id) 
                         if item is None:
@@ -5278,14 +5278,14 @@ class UI:
                             else:
                                 inventory_handler.crafting_queue.append(CraftingAction(recipe=recipe, max_amount=1))
                             
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 
                 PyImGui.table_next_column()
                 
                 # Right Column                
-                if ImGui.begin_child("CraftingQueue", (0, 0), True, PyImGui.WindowFlags.NoFlag):
-                    ImGui.text("Crafting Queue")
-                    ImGui.separator()
+                if ImGui_Legacy.begin_child("CraftingQueue", (0, 0), True, PyImGui.WindowFlags.NoFlag):
+                    ImGui_Legacy.text("Crafting Queue")
+                    ImGui_Legacy.separator()
                     total_cost = sum(action.recipe.price * action.max_amount for action in inventory_handler.crafting_queue if action.recipe and action.recipe.price > 0)
                     ingredients : dict[int, models.Ingredient] = {}
                     for action in inventory_handler.crafting_queue:
@@ -5305,7 +5305,7 @@ class UI:
                     summary_height = max(140, (len(all_ingredients) + 1) * 34)
                     table_height = max(100, PyImGui.get_content_region_avail()[1] - summary_height - 50)
                                         
-                    if ImGui.begin_table("CraftingQueueTable", 2, PyImGui.TableFlags.NoSavedSettings | PyImGui.TableFlags.ScrollY, 0, table_height):
+                    if ImGui_Legacy.begin_table("CraftingQueueTable", 2, PyImGui.TableFlags.NoSavedSettings | PyImGui.TableFlags.ScrollY, 0, table_height):
                         PyImGui.table_setup_column("Recipe", PyImGui.TableColumnFlags.WidthStretch, 0.7)
                         PyImGui.table_setup_column("Amount", PyImGui.TableColumnFlags.WidthFixed, 120)
                         
@@ -5322,157 +5322,157 @@ class UI:
                             PyImGui.table_next_column()
                             
                             PyImGui.push_item_width(120)
-                            crafting_action.max_amount = ImGui.input_int(f"##Amount{crafting_action.recipe.item.model_id}{crafting_action.recipe.item.item_type}", crafting_action.max_amount)
+                            crafting_action.max_amount = ImGui_Legacy.input_int(f"##Amount{crafting_action.recipe.item.model_id}{crafting_action.recipe.item.item_type}", crafting_action.max_amount)
                             PyImGui.pop_item_width()
                             
                             crafting_action.include_storage = self.settings.profile.include_storage_materials
                             crafting_action.include_material_storage = self.settings.profile.include_storage_materials
                             
-                        ImGui.end_table()
+                        ImGui_Legacy.end_table()
                         
-                    ImGui.separator()
+                    ImGui_Legacy.separator()
                     
-                    if ImGui.begin_table("SummaryCraftingQueueTable", 2, PyImGui.TableFlags.NoSavedSettings, 0, summary_height):
+                    if ImGui_Legacy.begin_table("SummaryCraftingQueueTable", 2, PyImGui.TableFlags.NoSavedSettings, 0, summary_height):
                         PyImGui.table_setup_column("CraftingCost", PyImGui.TableColumnFlags.WidthStretch, 0.7)
                         PyImGui.table_setup_column("ActionsCraftingCost", PyImGui.TableColumnFlags.WidthFixed, 160)
                         
                         PyImGui.table_next_row()
                         PyImGui.table_next_column()
                         
-                        if ImGui.begin_child("CraftingCost", (0, 0), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
-                            ImGui.DrawTexture(gold_coin.texture_file, 20, 20)
+                        if ImGui_Legacy.begin_child("CraftingCost", (0, 0), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+                            ImGui_Legacy.DrawTexture(gold_coin.texture_file, 20, 20)
                             PyImGui.same_line(0, 5)
-                            ImGui.text_aligned(f"{utility.Util.format_currency(total_cost)}", alignment=Alignment.MidLeft, height=24)                        
+                            ImGui_Legacy.text_aligned(f"{utility.Util.format_currency(total_cost)}", alignment=Alignment.MidLeft, height=24)                        
                             self.draw_ingredients("summary", all_ingredients)
                         
-                        ImGui.end_child()
+                        ImGui_Legacy.end_child()
                         
                         PyImGui.table_next_column()
                         
-                        if ImGui.begin_child("ActionsCraftingCost", (0, 0), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
-                            if ImGui.button("Buy Materials", 150, 30):
+                        if ImGui_Legacy.begin_child("ActionsCraftingCost", (0, 0), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+                            if ImGui_Legacy.button("Buy Materials", 150, 30):
                                 add_ingredients_to_buy(all_ingredients) 
                                         
-                            if ImGui.button("Clear Queue", 150, 30):
+                            if ImGui_Legacy.button("Clear Queue", 150, 30):
                                 inventory_handler.crafting_queue.clear()
                                 
-                            if ImGui.button("Start" if not inventory_handler.process_crafting else "Stop", 150, 30, appearance=ControlAppearance.Primary if not inventory_handler.process_crafting else ControlAppearance.Danger):
+                            if ImGui_Legacy.button("Start" if not inventory_handler.process_crafting else "Stop", 150, 30, appearance=ControlAppearance.Primary if not inventory_handler.process_crafting else ControlAppearance.Danger):
                                 inventory_handler.process_crafting = not inventory_handler.process_crafting
                                 
-                            if ImGui.button("Buy Conset Evenly", 150, 30):        
+                            if ImGui_Legacy.button("Buy Conset Evenly", 150, 30):        
                                 from Sources.frenkeyLib.LootEx.crafting import get_missing_materials_to_evenout
                                 missing_materials = get_missing_materials_to_evenout()         
                                 add_ingredients_to_buy(missing_materials) 
                                 
                             
-                            grab_from_storage = ImGui.checkbox("Include Vault", self.settings.profile.include_storage_materials)
+                            grab_from_storage = ImGui_Legacy.checkbox("Include Vault", self.settings.profile.include_storage_materials)
                             if grab_from_storage != self.settings.profile.include_storage_materials:
                                 self.settings.profile.include_storage_materials = grab_from_storage
                                 self.settings.profile.save()
                             
-                            ImGui.show_tooltip("Include materials from your vault when crafting.")
+                            ImGui_Legacy.show_tooltip("Include materials from your vault when crafting.")
                             
-                        ImGui.end_child()
+                        ImGui_Legacy.end_child()
                         
-                        ImGui.end_table()
+                        ImGui_Legacy.end_table()
                 
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 
-                ImGui.end_table()
+                ImGui_Legacy.end_table()
                 
-            ImGui.end_tab_item()
+            ImGui_Legacy.end_tab_item()
         pass
 
     #region DataCollection View
     def draw_collected_item(self, key: str, item: ScrapedItem, is_selected: bool = False):             
-        if ImGui.begin_child(key, (0, 120), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+        if ImGui_Legacy.begin_child(key, (0, 120), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
             if not PyImGui.is_rect_visible(0, 120):
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 return
             
-            if ImGui.begin_child(key + "Icon", (64, 0), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+            if ImGui_Legacy.begin_child(key + "Icon", (64, 0), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
                 if item.IconExists:
-                    ImGui.image(item.IconPath, (64, 64))
+                    ImGui_Legacy.image(item.IconPath, (64, 64))
                 else:
-                    ImGui.dummy(64, 64)
+                    ImGui_Legacy.dummy(64, 64)
                 
-                ImGui.show_tooltip("Path: " + item.IconPath + "\n" +
+                ImGui_Legacy.show_tooltip("Path: " + item.IconPath + "\n" +
                                    "Exists: " + str(item.IconExists)  + "\n" +
                                       "Url: " + str(item.inventory_icon_url)
                                    )
                     
-                if ImGui.button("Assign") and self.data_collection_item is not None:
+                if ImGui_Legacy.button("Assign") and self.data_collection_item is not None:
                     self.assign_scraped_data(self.data_collection_item, item)
                     self.data_collection_item = None
                     self.filtered_scraped_items = {}
                     pass
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
             PyImGui.same_line(0, 10)
             
-            if ImGui.begin_child(key + "Details", (0, 0), False, PyImGui.WindowFlags.NoFlag):
-                ImGui.text_colored(item.name, Color(0, 255, 125, 255).color_tuple, 16, "Bold")
-                ImGui.text_wrapped(item.description if item.description else "No description available.")
+            if ImGui_Legacy.begin_child(key + "Details", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+                ImGui_Legacy.text_colored(item.name, Color(0, 255, 125, 255).color_tuple, 16, "Bold")
+                ImGui_Legacy.text_wrapped(item.description if item.description else "No description available.")
                 
-                ImGui.separator()
+                ImGui_Legacy.separator()
                 
-                ImGui.text("Salvage Info:", 16, "Bold")
-                ImGui.text_wrapped("\n".join(str(s) for s in item.common_salvage) if item.common_salvage else "No Common Salvage Info")
-                ImGui.text_wrapped("\n".join(str(s) for s in item.rare_salvage) if item.rare_salvage else "No Rare Salvage Info")
+                ImGui_Legacy.text("Salvage Info:", 16, "Bold")
+                ImGui_Legacy.text_wrapped("\n".join(str(s) for s in item.common_salvage) if item.common_salvage else "No Common Salvage Info")
+                ImGui_Legacy.text_wrapped("\n".join(str(s) for s in item.rare_salvage) if item.rare_salvage else "No Rare Salvage Info")
                 
-                ImGui.separator()
+                ImGui_Legacy.separator()
 
-                ImGui.text("Acquisition Info:", 16, "Bold")
-                ImGui.text_wrapped(item.Acquisition)
+                ImGui_Legacy.text("Acquisition Info:", 16, "Bold")
+                ImGui_Legacy.text_wrapped(item.Acquisition)
                 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
                 
     def draw_data_item(self, cached_item_id: int, data_item: models.Item, is_selected: bool = False) -> bool:
         clicked = False
         key = f"DataItem{id}{data_item.model_id}{data_item.item_type}"
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         if is_selected:
             style.ChildBg.push_color(self.style.Selected_Colored_Item.rgb_tuple)
             
-        if ImGui.begin_child(key, (0, 100), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
+        if ImGui_Legacy.begin_child(key, (0, 100), True, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
             if is_selected:
                 style.ChildBg.pop_color()
                 
             if not PyImGui.is_rect_visible(0, 100):
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
                 return False
             
             if data_item.texture_file:
                 x,y = PyImGui.get_cursor_pos()
-                ImGui.dummy(64, 64)
+                ImGui_Legacy.dummy(64, 64)
                 
                 PyImGui.set_cursor_pos((x, y)
-                ImGui.image(data_item.texture_file, (64, 64))
+                ImGui_Legacy.image(data_item.texture_file, (64, 64))
             else:
-                ImGui.dummy(64, 64)
+                ImGui_Legacy.dummy(64, 64)
                 
             PyImGui.same_line(0, 10)
             
-            if ImGui.begin_child(key + "Details", (0, 0), False, PyImGui.WindowFlags.NoFlag):
-                ImGui.text_colored(data_item.name, Color(255, 255, 255, 255).color_tuple, 16, "Bold")
+            if ImGui_Legacy.begin_child(key + "Details", (0, 0), False, PyImGui.WindowFlags.NoFlag):
+                ImGui_Legacy.text_colored(data_item.name, Color(255, 255, 255, 255).color_tuple, 16, "Bold")
                 
-                ImGui.text_wrapped(str(data_item.model_id))
+                ImGui_Legacy.text_wrapped(str(data_item.model_id))
                 
-                ImGui.text_wrapped(data_item.description if data_item.description else "No description available.")
+                ImGui_Legacy.text_wrapped(data_item.description if data_item.description else "No description available.")
                 
-                ImGui.text_wrapped(data_item.acquisition if data_item.acquisition else "No acquisition info available.")
+                ImGui_Legacy.text_wrapped(data_item.acquisition if data_item.acquisition else "No acquisition info available.")
             
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             clicked = clicked or PyImGui.is_item_clicked(0)
             
         else:
             if is_selected:
                 style.ChildBg.pop_color()
             
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
         clicked = clicked or PyImGui.is_item_clicked(0)
         return clicked
     
@@ -5566,36 +5566,36 @@ class UI:
             for k in empty_keys:
                 del self.collection_items[k]                
 
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         if self.collection_module_window.begin():
             avail = PyImGui.get_content_region_avail()
             
-            ImGui.text("Collected Items: " + str(len(self.data.Items.All)), 16, "Bold")
+            ImGui_Legacy.text("Collected Items: " + str(len(self.data.Items.All)), 16, "Bold")
             PyImGui.same_line(avail[0] - 120, 0)
-            if ImGui.button("Auto Assign Data", 120, 0):
+            if ImGui_Legacy.button("Auto Assign Data", 120, 0):
                 self.auto_assign_data_items()
                 
             PyImGui.same_line(avail[0] - 250, 0)
-            if ImGui.button("Clear Cache", 120, 0):
+            if ImGui_Legacy.button("Clear Cache", 120, 0):
                 self.data_collector.reset()
                 inventory_handling.InventoryHandler().scraped_items.clear()
                 
             PyImGui.same_line(avail[0] - 380, 0)
-            if ImGui.button("Merge Collected", 120, 0):
+            if ImGui_Legacy.button("Merge Collected", 120, 0):
                 messaging.SendMergingMessage()
                                 
                 
-            ImGui.separator()
+            ImGui_Legacy.separator()
             
             avail = PyImGui.get_content_region_avail()
-            if ImGui.begin_child("DataItemsChild", ((avail[0] - 10) / 2, avail[1]), False, PyImGui.WindowFlags.NoFlag):
+            if ImGui_Legacy.begin_child("DataItemsChild", ((avail[0] - 10) / 2, avail[1]), False, PyImGui.WindowFlags.NoFlag):
                 # for (data_item) in [item for item in self.data.Items.All if not item.wiki_scraped and utility.Util.IsArmorType(item.item_type) == False]:
                 for itemsource, items in self.collection_items.items():
                     if not items:
                         continue
                     
-                    ImGui.text_colored(f"{itemsource}", Color(255, 215, 0, 255).color_tuple, 16, "Bold")
-                    ImGui.separator()
+                    ImGui_Legacy.text_colored(f"{itemsource}", Color(255, 215, 0, 255).color_tuple, 16, "Bold")
+                    ImGui_Legacy.separator()
                         
                     for cached_item in items.values():
                         data_item = cached_item.data
@@ -5623,15 +5623,15 @@ class UI:
                                             if ((len(item_name_words) > 1 and len(search_name_words) > 1) or (len(item_name_words) == len(search_name_words))) and all(word.lower() in english_name.lower() for word in search_name_words):
                                                 self.filtered_scraped_items[key] = scraped_item
                         
-            ImGui.end_child()    
+            ImGui_Legacy.end_child()    
             
             PyImGui.same_line(0, 10)                    
             
-            if ImGui.begin_child("CollectedItemsChild", ((avail[0] - 10) / 2, avail[1]), False, PyImGui.WindowFlags.NoFlag):                
+            if ImGui_Legacy.begin_child("CollectedItemsChild", ((avail[0] - 10) / 2, avail[1]), False, PyImGui.WindowFlags.NoFlag):                
                 for (key, item) in self.filtered_scraped_items.items():
                     self.draw_collected_item(key, item, is_selected=item == self.scraped_item)        
                     
-            ImGui.end_child()                        
+            ImGui_Legacy.end_child()                        
             
             self.collection_module_window.process_window()
         
@@ -5667,31 +5667,31 @@ class UI:
         # cursor = PyImGui.get_cursor_pos()
         window_style = ex_style.ExStyle()
         
-        imgui_style = ImGui.get_style()
+        imgui_style = ImGui_Legacy.get_style()
         PyImGui.draw_list_add_rect_filled(cursor[0], cursor[1], cursor[0] + size[0],  cursor[1] + size[1], background_color, imgui_style.FrameRounding.value1, 0)
         
-        ImGui.begin_child(f"ImageToggle{id}{texture_path}", (width, height), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)
+        ImGui_Legacy.begin_child(f"ImageToggle{id}{texture_path}", (width, height), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse)
         
         # cursor = PyImGui.get_cursor_pos()
         PyImGui.set_cursor_pos((padding[0], padding[1])
         
         if texture_path:
-            ImGui.DrawTextureExtended(texture_path=texture_path, size=texture_size, tint=tint)
+            ImGui_Legacy.DrawTextureExtended(texture_path=texture_path, size=texture_size, tint=tint)
         else:
-            ImGui.push_font("Bold", 28)
+            ImGui_Legacy.push_font("Bold", 28)
             text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
             PyImGui.set_cursor_pos(((size[0] - text_size[0]) / 2, (size[1] - (28 - 6)) / 2)
-            ImGui.text_colored(IconsFontAwesome5.ICON_QUESTION, (tint[0] / 255, tint[1] / 255, tint[2] / 255, tint[3] / 255))
-            ImGui.pop_font()
+            ImGui_Legacy.text_colored(IconsFontAwesome5.ICON_QUESTION, (tint[0] / 255, tint[1] / 255, tint[2] / 255, tint[3] / 255))
+            ImGui_Legacy.pop_font()
             pass
                 
         if label:
             PyImGui.push_style_color(PyImGui.ImGuiCol.Text, Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 255 if selected else 200 if hovered else 125)))
             PyImGui.set_cursor_pos((size[0] + 5, (size[1] - label_size[1]) / 2 + 3)
-            ImGui.text(label)
+            ImGui_Legacy.text(label)
             PyImGui.pop_style_color(1)
         
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
         
         # PyImGui.pop_style_color(1)
                         
@@ -5717,7 +5717,7 @@ class UI:
         cursor_pos = PyImGui.get_cursor_screen_pos()
         rect = (cursor_pos[0], cursor_pos[1], width, height)
         transparent_color = Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 0))   
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         PyImGui.push_style_color(
             PyImGui.ImGuiCol.Text,
             Utils.ColorToTuple(
@@ -5736,9 +5736,9 @@ class UI:
                                 transparent_color)
         ## if file exists
         if os.path.exists(path):
-            clicked = ImGui.ImageButton(f"##{path}", path, width, height)
+            clicked = ImGui_Legacy.ImageButton(f"##{path}", path, width, height)
         else:
-            clicked = ImGui.button(f"##{path}", width, height)
+            clicked = ImGui_Legacy.button(f"##{path}", width, height)
 
         PyImGui.pop_style_var(1)
         PyImGui.pop_style_color(4)
@@ -5748,25 +5748,25 @@ class UI:
     @staticmethod
     def weapon_mod_tooltip(mod: models.WeaponMod):
         if PyImGui.is_item_hovered():
-            ImGui.begin_tooltip()
+            ImGui_Legacy.begin_tooltip()
 
             PyImGui.push_style_color(
                 PyImGui.ImGuiCol.Text,
                 Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 255)),
             )
-            ImGui.text(f"{mod.name}")
-            ImGui.text(f"{mod.description}")
+            ImGui_Legacy.text(f"{mod.name}")
+            ImGui_Legacy.text(f"{mod.description}")
 
-            ImGui.separator()
+            ImGui_Legacy.separator()
 
-            # ImGui.begin_child(
+            # ImGui_Legacy.begin_child(
             #     f"WeaponModTooltip{mod.identifier}",
             #     (400, 0),
             #     True,
             #     PyImGui.WindowFlags.NoBackground,
             # )
             if PyImGui.is_rect_visible(0, 20):
-                if ImGui.begin_table(mod.identifier, 2, PyImGui.TableFlags.Borders):
+                if ImGui_Legacy.begin_table(mod.identifier, 2, PyImGui.TableFlags.Borders):
                     PyImGui.table_setup_column(
                         "Property", PyImGui.TableColumnFlags.WidthFixed, 150)
                     PyImGui.table_setup_column(
@@ -5776,52 +5776,52 @@ class UI:
                     PyImGui.table_next_row()
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Id (internal)")
+                    ImGui_Legacy.text(f"Id (internal)")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"{mod.identifier}")
+                    ImGui_Legacy.text(f"{mod.identifier}")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Mod Type")
+                    ImGui_Legacy.text(f"Mod Type")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"{mod.mod_type.name}")
+                    ImGui_Legacy.text(f"{mod.mod_type.name}")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Applied to Item Types")
+                    ImGui_Legacy.text(f"Applied to Item Types")
 
                     PyImGui.table_next_column()
                     for item_type in mod.target_types:
-                        ImGui.text(f"{item_type.name}")
+                        ImGui_Legacy.text(f"{item_type.name}")
 
-                ImGui.end_table()
+                ImGui_Legacy.end_table()
 
             PyImGui.pop_style_color(1)
-            # ImGui.end_child()
-            ImGui.end_tooltip()
+            # ImGui_Legacy.end_child()
+            ImGui_Legacy.end_tooltip()
 
     @staticmethod
     def rune_tooltip(mod: models.Rune):
         if PyImGui.is_item_hovered():
-            ImGui.begin_tooltip()
+            ImGui_Legacy.begin_tooltip()
 
             PyImGui.push_style_color(
                 PyImGui.ImGuiCol.Text,
                 Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 255)),
             )
-            ImGui.text(f"{mod.name}")
-            ImGui.text(f"{mod.description}")
+            ImGui_Legacy.text(f"{mod.name}")
+            ImGui_Legacy.text(f"{mod.description}")
 
-            ImGui.separator()
+            ImGui_Legacy.separator()
 
-            # ImGui.begin_child(
+            # ImGui_Legacy.begin_child(
             #     f"WeaponModTooltip{mod.identifier}",
             #     (400, 0),
             #     True,
             #     PyImGui.WindowFlags.NoBackground,
             # )
             if PyImGui.is_rect_visible(0, 20):
-                if ImGui.begin_table(mod.identifier, 2, PyImGui.TableFlags.Borders):
+                if ImGui_Legacy.begin_table(mod.identifier, 2, PyImGui.TableFlags.Borders):
                     PyImGui.table_setup_column(
                         "Property", PyImGui.TableColumnFlags.WidthFixed, 150)
                     PyImGui.table_setup_column(
@@ -5831,40 +5831,40 @@ class UI:
                     PyImGui.table_next_row()
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Id (internal)")
+                    ImGui_Legacy.text(f"Id (internal)")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"{mod.identifier}")
+                    ImGui_Legacy.text(f"{mod.identifier}")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Mod Type")
+                    ImGui_Legacy.text(f"Mod Type")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"{mod.mod_type.name}")
+                    ImGui_Legacy.text(f"{mod.mod_type.name}")
 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Applied")
+                    ImGui_Legacy.text(f"Applied")
 
                     PyImGui.table_next_column()            
-                    ImGui.text(f"{mod.applied_name}")
+                    ImGui_Legacy.text(f"{mod.applied_name}")
                     
                     PyImGui.table_next_column()
-                    ImGui.text(f"Vendor Value")
+                    ImGui_Legacy.text(f"Vendor Value")
                     
                     PyImGui.table_next_column()
-                    ImGui.text(utility.Util.format_currency(mod.vendor_value))
+                    ImGui_Legacy.text(utility.Util.format_currency(mod.vendor_value))
                                 
                     PyImGui.table_next_column()
-                    ImGui.text(f"Last Checked")
+                    ImGui_Legacy.text(f"Last Checked")
                     PyImGui.table_next_column()
                     time_ago = f"{utility.Util.format_custom_time_ago(datetime.now() - mod.vendor_updated)}\n" if mod.vendor_updated else ""
-                    ImGui.text(f"{time_ago}")
+                    ImGui_Legacy.text(f"{time_ago}")
                     
-                ImGui.end_table()
+                ImGui_Legacy.end_table()
 
             PyImGui.pop_style_color(1)
-            # ImGui.end_child()
-            ImGui.end_tooltip()
+            # ImGui_Legacy.end_child()
+            ImGui_Legacy.end_tooltip()
 
     @staticmethod
     def transparent_button(text : str, enabled : bool, width: float, height : float, draw_background : bool = True) -> bool:
@@ -5883,7 +5883,7 @@ class UI:
         rect = (cursor_pos[0], cursor_pos[1],
                 width, height)
         transparent_color = Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 0))   
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var2(ImGui_Legacy.ImGuiStyleVar.FramePadding, 0, 0)
         PyImGui.push_style_color(
             PyImGui.ImGuiCol.Text,
             Utils.ColorToTuple(
@@ -5934,15 +5934,15 @@ class UI:
             PyImGui.push_style_color(
                 PyImGui.ImGuiCol.ButtonActive, active_color)
             if width != 0 and height != 0:
-                clicked = ImGui.button(label, width, height)
+                clicked = ImGui_Legacy.button(label, width, height)
             else:
-                clicked = ImGui.button(label)
+                clicked = ImGui_Legacy.button(label)
             PyImGui.pop_style_color(3)
         else:
             if width != 0 and height != 0:
-                clicked = ImGui.button(label, width, height)
+                clicked = ImGui_Legacy.button(label, width, height)
             else:
-                clicked = ImGui.button(label)
+                clicked = ImGui_Legacy.button(label)
 
         if clicked:
             v = not v
@@ -6083,7 +6083,7 @@ class RichTextRenderer:
                 continue
 
             if tok.type == "font_push":
-                ImGui.push_font(tok.font, tok.font_size)
+                ImGui_Legacy.push_font(tok.font, tok.font_size)
                 continue
             if tok.type == "font_pop":
                 PyImGui.pop_font()
@@ -6107,7 +6107,7 @@ class RichTextRenderer:
                     PyImGui.set_cursor_pos((x, y)
 
                 PyImGui.set_cursor_pos((x, y)
-                ImGui.image(tok.texture_path, (w, h), tok.uv0 or (0, 0), tok.uv1 or (1, 1))
+                ImGui_Legacy.image(tok.texture_path, (w, h), tok.uv0 or (0, 0), tok.uv1 or (1, 1))
                 x += w
                 continue
 

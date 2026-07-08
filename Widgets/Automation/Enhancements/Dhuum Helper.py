@@ -6,7 +6,7 @@ from Py4GWCoreLib import (
 	AgentArray,
 	Color,
 	GLOBAL_CACHE,
-	ImGui,
+	ImGui_Legacy,
 	Map,
 	Player,
 	Py4GW,
@@ -94,9 +94,9 @@ _warned_missing_skill = False
 _handled_current_buff = False
 _interaction_running = False
 
-_MAX_NPC_FIND_RETRIES = 10   # × 1 s  → up to 10 s waiting for NPC to appear
-_MAX_MOVE_RETRIES     = 8    # × 1.5 s → up to 12 s to reach the NPC
-_MAX_DIALOG_RETRIES   = 8    # × 2 s  → up to 16 s for dialog to open
+_MAX_NPC_FIND_RETRIES = 10   # Ã— 1 s  â†’ up to 10 s waiting for NPC to appear
+_MAX_MOVE_RETRIES     = 8    # Ã— 1.5 s â†’ up to 12 s to reach the NPC
+_MAX_DIALOG_RETRIES   = 8    # Ã— 2 s  â†’ up to 16 s for dialog to open
 _INTERACT_CLOSE_RANGE = 500.0
 
 
@@ -163,7 +163,7 @@ def _toggle_local_cb_movement(enabled: bool) -> None:
 	return
 	"""Removed legacy movement hook.
 	Kept as a no-op compatibility function for old call sites.
-	the player.  Does NOT touch shared memory — only this account is affected."""
+	the player.  Does NOT touch shared memory â€” only this account is affected."""
 	try:
 		RemovedBehaviorLoader = None
 		behavior = RemovedBehaviorLoader().custom_combat_behavior
@@ -280,9 +280,9 @@ def _refresh_active_combat_widget_after_skillbar_change() -> None:
 def tooltip():
 	PyImGui.begin_tooltip()
 	title_color = Color(255, 200, 100, 255)
-	ImGui.push_font("Regular", 20)
+	ImGui_Legacy.push_font("Regular", 20)
 	PyImGui.text_colored("Dhuum Helper", title_color.to_tuple_normalized())
-	ImGui.pop_font()
+	ImGui_Legacy.pop_font()
 	PyImGui.spacing()
 	PyImGui.separator()
 	PyImGui.text("Auto rez at Dhuum for Multiboxaccounts")
@@ -371,7 +371,7 @@ def _coro_interact_and_dialog(target_npc: int):
 	widgets_temporarily_disabled = False
 
 	try:
-		# ── Step 1: Find NPC ────────────────────────────────────────────
+		# â”€â”€ Step 1: Find NPC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		for attempt in range(_MAX_NPC_FIND_RETRIES):
 			target_npc = _resolve_valid_target_npc(target_npc)
 			if target_npc > 0:
@@ -398,7 +398,7 @@ def _coro_interact_and_dialog(target_npc: int):
 		widgets_temporarily_disabled = True
 		_toggle_local_cb_movement(False)
 
-		# ── Step 2: Move to NPC ─────────────────────────────────────────
+		# â”€â”€ Step 2: Move to NPC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		target_npc = _resolve_valid_target_npc(target_npc)
 		if target_npc <= 0:
 			PySystem.Console.Log(
@@ -450,7 +450,7 @@ def _coro_interact_and_dialog(target_npc: int):
 				target_npc = new_id
 				Player.ChangeTarget(target_npc)
 
-		# ── Step 3: Interact and send dialog ────────────────────────────
+		# â”€â”€ Step 3: Interact and send dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		dialog_sent = False
 		for attempt in range(_MAX_DIALOG_RETRIES):
 			target_npc = _resolve_valid_target_npc(target_npc)

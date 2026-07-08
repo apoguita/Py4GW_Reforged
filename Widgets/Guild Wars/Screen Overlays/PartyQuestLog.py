@@ -3,12 +3,12 @@ from time import time
 import Py4GW
 import PyImGui
 from HeroAI.utils import SameMapAsAccount, SameMapOrPartyAsAccount
-from Py4GWCoreLib import ImGui, Quest
+from Py4GWCoreLib import ImGui_Legacy, Quest
 from Py4GWCoreLib import Utils
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
 from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER, HotkeyManager
-from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Party import Party
 from Py4GWCoreLib.Player import Player
@@ -160,11 +160,11 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.image(MODULE_ICON, (32, 32))
+    ImGui_Legacy.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
-    ImGui.push_font("Regular", 20)
-    ImGui.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
-    ImGui.pop_font()
+    ImGui_Legacy.push_font("Regular", 20)
+    ImGui_Legacy.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title_color.color_tuple, height=32)
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.spacing()
     PyImGui.separator()

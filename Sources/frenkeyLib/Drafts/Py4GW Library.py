@@ -4,11 +4,11 @@ import os
 import traceback
 import Py4GW
 import PyImGui
-from Py4GWCoreLib import ImGui, IniManager, Player
+from Py4GWCoreLib import ImGui_Legacy, IniManager, Player
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
-from Py4GWCoreLib.ImGui_src.Style import Style
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.ImGui_Legacy_src.Style import Style
 from Py4GWCoreLib.enums_src.IO_enums import Key, ModifierKey
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette

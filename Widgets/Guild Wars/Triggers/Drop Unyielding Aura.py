@@ -1,6 +1,6 @@
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Timer
-from Py4GWCoreLib import Map, Player, Color, ImGui
+from Py4GWCoreLib import Map, Player, Color, ImGui_Legacy
 import PyImGui
 module_name = "Drop Unyielding Aura"
 
@@ -29,9 +29,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Drop Unyielding Aura", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     
     PyImGui.spacing()
     PyImGui.separator()

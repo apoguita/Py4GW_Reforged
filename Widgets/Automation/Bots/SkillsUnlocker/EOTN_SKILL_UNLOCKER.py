@@ -4,10 +4,10 @@ import types
 import Py4GW
 import PyImGui
 from Py4GWCoreLib import *
-from Py4GWCoreLib import ImGui,GLOBAL_CACHE
+from Py4GWCoreLib import ImGui_Legacy,GLOBAL_CACHE
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.Routines import Routines
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 
 BOT_NAME = "Skills Unlocker"
 MODULE_NAME = BOT_NAME
@@ -27,7 +27,7 @@ bot = Botting(
 class BotVars:
     def __init__(self, map_id=0):
         self.bot_started = False
-        self.window_module:ImGui.WindowModule
+        self.window_module:ImGui_Legacy.WindowModule
         self.variables = {}
 
         #HEROES SECTION
@@ -76,15 +76,15 @@ def add_heroes_with_builds() -> Generator:
     Party.LeaveParty()
     yield from Routines.Yield.wait(1000)
 
-    # Ajout héros (runtime)
+    # Ajout hÃ©ros (runtime)
     GLOBAL_CACHE.Party.Heroes.AddHero(bot_vars.gwen)
     GLOBAL_CACHE.Party.Heroes.AddHero(bot_vars.vekk)
     GLOBAL_CACHE.Party.Heroes.AddHero(bot_vars.ogden_stonehealer)
 
-    # Laisser le temps que les héros soient réellement "présents"
+    # Laisser le temps que les hÃ©ros soient rÃ©ellement "prÃ©sents"
     yield from Routines.Yield.wait(1200)
 
-    # Chargement builds : ✅ positions de party 1..3
+    # Chargement builds : âœ… positions de party 1..3
     GLOBAL_CACHE.SkillBar.LoadHeroSkillTemplate(1, "OQhkAsC8gFKCNkDT/QY6yQGcxA")  # Gwen
     yield from Routines.Yield.wait(600)
 
@@ -122,7 +122,7 @@ def draw_window_light(
     if not self._config.ini_key:
         return
 
-    if ImGui.Begin(
+    if ImGui_Legacy.Begin(
         ini_key=self._config.ini_key,
         name=self._config.bot_name,
         p_open=True,
@@ -136,7 +136,7 @@ def draw_window_light(
 
             
 
-    ImGui.End(self._config.ini_key)
+    ImGui_Legacy.End(self._config.ini_key)
 
     # Draw path like original
     if Routines.Checks.Map.MapValid():
@@ -191,7 +191,7 @@ def UseTome21788AndBuyLichAura(bot, inv_cache) -> "Generator":
     TOME_ITEM_ID = 21788
     SKILL_ID = 114
 
-    # Vérif presence (par item_id exact)
+    # VÃ©rif presence (par item_id exact)
     if inv_cache.GetItemCount(TOME_ITEM_ID) <= 0:
         ConsoleLog("Tome", f"Item ID {TOME_ITEM_ID} not found in inventory.")
         return
@@ -200,7 +200,7 @@ def UseTome21788AndBuyLichAura(bot, inv_cache) -> "Generator":
     ConsoleLog("Tome", f"Using tome item_id={TOME_ITEM_ID} ...")
     inv_cache.UseItem(TOME_ITEM_ID)
 
-    # Laisser la fenêtre s'ouvrir
+    # Laisser la fenÃªtre s'ouvrir
     yield from Routines.Yield.wait(900)
 
     ConsoleLog("Tome", f"Buying skill {SKILL_ID} ...")
@@ -360,7 +360,7 @@ def Unlock_ebon_battle_standard_of_honor(bot: Botting) -> None:
     bot.Wait.UntilOutOfCombat()
     bot.Wait.ForMapLoad(target_map_id=651)
 # =========================
-# PATH 2 (après map 651)
+# PATH 2 (aprÃ¨s map 651)
 # =========================
     path_2 = [
     (-17861.0, 16317.0),
@@ -1607,8 +1607,8 @@ try:
     import types
     import PyImGui
     from Py4GWCoreLib import Color
-    from Py4GWCoreLib.ImGui import ImGui
-    from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+    from Py4GWCoreLib._legacy_facade import ImGui_Legacy
+    from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
     from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, Console
     from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 
@@ -1664,7 +1664,7 @@ def _draw_skill_grid(faction: str):
         has_icon = os.path.exists(icon_path)
 
         if has_icon:
-            clicked = ImGui.ImageButton(f"##{key}", icon_path, icon_size, icon_size)
+            clicked = ImGui_Legacy.ImageButton(f"##{key}", icon_path, icon_size, icon_size)
         else:
             clicked = PyImGui.button(label, 260, 40)
 

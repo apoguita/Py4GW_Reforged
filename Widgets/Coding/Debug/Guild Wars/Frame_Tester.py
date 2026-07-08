@@ -79,7 +79,7 @@ class FrameNode:
             if PyImGui.tree_node(f"Frame:[{self.frame_id}] <{self.frame_hash}> ({self.label}) ##{self.frame_id}"):
                 PyImGui.pop_style_color(1)
                 PyImGui.same_line(0,-1)
-                self.show_frame_data = ImGui.toggle_button(f"Show Data##{self.frame_id}", self.show_frame_data, width=70,height=17)
+                self.show_frame_data = ImGui_Legacy.toggle_button(f"Show Data##{self.frame_id}", self.show_frame_data, width=70,height=17)
                 if self.frame_id != 0:
                     if config_options.show_frame_data:
                         if PyImGui.collapsing_header(f"Frame#{self.frame_id}Data##{self.frame_id}"):
@@ -89,7 +89,7 @@ class FrameNode:
                                 ("Is Visible:", self.frame_obj.is_visible),
                                 ("Is Created:", self.frame_obj.is_created),
                             ]
-                            ImGui.table("frametester info##{self.frame_id}", headers, data)
+                            ImGui_Legacy.table("frametester info##{self.frame_id}", headers, data)
                 PyImGui.separator()
                 
                 for child in self.children:
@@ -100,7 +100,7 @@ class FrameNode:
         else:
             PyImGui.text_colored(f"Frame:[{self.frame_id}] <{self.frame_hash}> ({self.label})",choose_frame_color())  # Leaf node
             PyImGui.same_line(0,-1)
-            self.show_frame_data = ImGui.toggle_button(f"Show Data##{self.frame_id}", self.show_frame_data, width=70,height=17)
+            self.show_frame_data = ImGui_Legacy.toggle_button(f"Show Data##{self.frame_id}", self.show_frame_data, width=70,height=17)
             if config_options.show_frame_data:
                 if PyImGui.collapsing_header(f"Frame#{self.frame_id}Data##{self.frame_id}"):
                     headers = ["Value", "Data"]
@@ -109,7 +109,7 @@ class FrameNode:
                         ("Is Visible:", self.frame_obj.is_visible),
                         ("Is Created:", self.frame_obj.is_created),
                     ]
-                    ImGui.table("frametester info##{self.frame_id}", headers, data)
+                    ImGui_Legacy.table("frametester info##{self.frame_id}", headers, data)
             PyImGui.separator()
                     
         if self.show_frame_data:
@@ -360,7 +360,7 @@ class InfoWindow:
                         ]
                         
                     
-                        ImGui.table(f"Frame Data##{self.frame.frame_id}", headers, data)
+                        ImGui_Legacy.table(f"Frame Data##{self.frame.frame_id}", headers, data)
 
                         PyImGui.end_tab_item()
                     PyImGui.end_tab_bar()
@@ -371,7 +371,7 @@ class InfoWindow:
 
 #region MainWindow
 module_name = "Frame Tester"
-window_module = ImGui.WindowModule(
+window_module = ImGui_Legacy.WindowModule(
     module_name, 
     window_name="UI Frame Debugger", 
     window_size=(300, 200),
@@ -404,7 +404,7 @@ def DrawMainWindow():
             if PyImGui.begin_tab_item("Frame Tree"):
                 if PyImGui.collapsing_header("options"):
                     config_options.keep_data_updated = PyImGui.checkbox("Keep all frame Data Updated", config_options.keep_data_updated)
-                    ImGui.show_tooltip("This will lower fps!")
+                    ImGui_Legacy.show_tooltip("This will lower fps!")
                     config_options.show_frame_data = PyImGui.checkbox("Show Frame Data", config_options.show_frame_data)
                     config_options.recolor_frame_tree = PyImGui.checkbox("Recolor Frame Tree", config_options.recolor_frame_tree)
 
@@ -444,9 +444,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("UI Frame Tester", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

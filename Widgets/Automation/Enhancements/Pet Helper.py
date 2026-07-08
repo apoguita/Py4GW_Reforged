@@ -5,7 +5,7 @@ from Py4GWCoreLib import Agent
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Color
-from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import PetBehavior
 from Py4GWCoreLib import Keystroke
 from Py4GWCoreLib import Key
@@ -103,7 +103,7 @@ def DrawWindow():
     global global_vars
     caption = "Helper ON" if global_vars.widget_active else "Helper OFF"
     caption_color = Color(0, 255, 0, 255) if global_vars.widget_active and global_vars.pet_bahavior != PetBehavior.Heel else Color(243, 230, 0, 255) if global_vars.widget_active and global_vars.pet_bahavior == PetBehavior.Heel else Color(255, 0, 0, 255)
-    if ImGui.floating_button(caption=caption, x=global_vars.title_frame_coords.left+75, y=global_vars.title_frame_coords.top+3, width=90, height=30, color=caption_color):
+    if ImGui_Legacy.floating_button(caption=caption, x=global_vars.title_frame_coords.left+75, y=global_vars.title_frame_coords.top+3, width=90, height=30, color=caption_color):
         global_vars.widget_active = not global_vars.widget_active
     
 
@@ -112,9 +112,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Pet Helper", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

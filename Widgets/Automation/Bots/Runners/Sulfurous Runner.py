@@ -1,6 +1,6 @@
 import sys
         
-from Py4GWCoreLib import UIManager, Color, ImGui
+from Py4GWCoreLib import UIManager, Color, ImGui_Legacy
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
@@ -31,9 +31,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Sulfurous Runner", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

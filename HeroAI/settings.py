@@ -3,7 +3,7 @@ import os
 from HeroAI.commands import HeroAICommands
 from HeroAI.types import Docked
 from Py4GWCoreLib.Player import Player
-from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Console import Console, ConsoleLog
 from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
 

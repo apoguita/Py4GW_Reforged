@@ -1,5 +1,5 @@
 """
-Native Button Test Harness — CtlBtnProc (Approach 1).
+Native Button Test Harness â€” CtlBtnProc (Approach 1).
 
 Creates an empty window, then a native GW button inside it using the
 CtlBtnProc engine-level FrameProc. Every step outputs self-describing
@@ -24,14 +24,14 @@ from Py4GWCoreLib.native_src.methods.ButtonMethods import (
 )
 from Py4GWCoreLib.native_src.internals.native_function import NativeFunction
 
-# ── Metadata ──────────────────────────────────────────────────────────
+# â”€â”€ Metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 MODULE_NAME = "Native Button Test Harness"
 SCRIPT_REVISION = "2026-06-17-cbtn-test-1"
 WINDOW_OPEN = True
 INITIALIZED = False
 READ_DELAY_SECONDS = 0.60
 
-# ── Tunable Constants ─────────────────────────────────────────────────
+# â”€â”€ Tunable Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_LABEL = "Py4GW_ButtonTest_Window"
 WINDOW_TITLE = "Py4GW Button Test"
 WINDOW_X = 200
@@ -44,7 +44,7 @@ BUTTON_CHILD_INDEX = 0x20
 BUTTON_FLAGS = 0x40000       # IME-style: flat background
 BUTTON_TEXT = "Click Me"
 
-# ── Runtime State ─────────────────────────────────────────────────────
+# â”€â”€ Runtime State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 PENDING_REPORTS: list[tuple[float, str]] = []
 LAST_WINDOW_ID = 0
 LAST_BUTTON_ID = 0
@@ -227,7 +227,7 @@ def _create_window() -> None:
     # Check if already exists
     existing = _current_window_id()
     if existing > 0:
-        _log(f"Window already exists: frame_id={existing} — skipping creation")
+        _log(f"Window already exists: frame_id={existing} â€” skipping creation")
         LAST_WINDOW_ID = existing
         _dump_state("pre-existing window")
         return
@@ -276,7 +276,7 @@ def _create_button() -> None:
     if not scanner["all_valid"]:
         _error(f"Scanner resolution FAILED: {scanner}")
         return
-    _log(f"  scanners: all valid ✓ (CtlBtnProc=0x{CtlBtnProc_Callback.func_ptr:08X}, "
+    _log(f"  scanners: all valid âœ“ (CtlBtnProc=0x{CtlBtnProc_Callback.func_ptr:08X}, "
          f"FrameCreate=0x{FrameCreate_Func.address:08X}, "
          f"CtlBtnSetTextLiteral=0x{CtlBtnSetTextLiteral_Func.address:08X})")
 
@@ -393,7 +393,7 @@ def _dump_full_state() -> None:
 
 
 # =========================================================================
-# ImGui Widget
+# ImGui_Legacy Widget
 # =========================================================================
 
 def configure():
@@ -402,7 +402,7 @@ def configure():
 
 
 def main():
-    """Main render loop — called every frame by Widget Manager."""
+    """Main render loop â€” called every frame by Widget Manager."""
     global WINDOW_OPEN, INITIALIZED, SCANNER_STATUS
 
     if not INITIALIZED:
@@ -416,7 +416,7 @@ def main():
         return
 
     if PyImGui.begin(MODULE_NAME, PyImGui.ImGuiWindowFlags_AlwaysAutoResize)[0]:
-        # ── Section: Scanner Status ──
+        # â”€â”€ Section: Scanner Status â”€â”€
         PyImGui.text_colored("=== Scanner Resolution ===", (0.4, 0.8, 1.0, 1.0))
         if not SCANNER_STATUS:
             SCANNER_STATUS = _verify_scanners()
@@ -438,7 +438,7 @@ def main():
 
         PyImGui.separator()
 
-        # ── Section: Window ──
+        # â”€â”€ Section: Window â”€â”€
         PyImGui.text_colored("=== Window ===", (0.4, 0.8, 1.0, 1.0))
         window_id = _current_window_id()
         PyImGui.text(f"Window frame_id: {window_id} (label='{WINDOW_LABEL}')")
@@ -453,7 +453,7 @@ def main():
 
         PyImGui.separator()
 
-        # ── Section: Button ──
+        # â”€â”€ Section: Button â”€â”€
         PyImGui.text_colored("=== Button ===", (0.4, 0.8, 1.0, 1.0))
         PyImGui.text(f"Last button frame_id: {LAST_BUTTON_ID}")
         if LAST_BUTTON_ID > 0:
@@ -470,7 +470,7 @@ def main():
 
         PyImGui.separator()
 
-        # ── Section: Status ──
+        # â”€â”€ Section: Status â”€â”€
         PyImGui.text_colored("=== Status ===", (0.4, 0.8, 1.0, 1.0))
         PyImGui.text(f"Last action: {LAST_ACTION}")
         error_color = (1.0, 0.3, 0.3, 1.0) if LAST_ERROR else (0.5, 0.5, 0.5, 1.0)
@@ -480,7 +480,7 @@ def main():
 
         PyImGui.separator()
 
-        # ── Section: Debug Actions ──
+        # â”€â”€ Section: Debug Actions â”€â”€
         PyImGui.text_colored("=== Debug ===", (0.7, 0.7, 0.3, 1.0))
         if PyImGui.button("Dump Full State"):
             _dump_full_state()

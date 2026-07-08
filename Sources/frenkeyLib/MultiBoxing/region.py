@@ -4,7 +4,7 @@ from typing import Optional
 
 import PyImGui
 
-from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
+from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 
 
@@ -165,7 +165,7 @@ class Region:
         )
 
         # --- Improved font scaling ---
-        # Base font size (e.g. 13–16 depending on current ImGui font)
+        # Base font size (e.g. 13â€“16 depending on current ImGui_Legacy font)
         start_font_size = PyImGui.get_text_line_height()
 
         # Measure text at base font size
@@ -195,7 +195,7 @@ class Region:
         font_size = max(10, min(32, font_size))
 
         # Apply and render text
-        ImGui.push_font("Regular", int(font_size))
+        ImGui_Legacy.push_font("Regular", int(font_size))
         text_size = PyImGui.calc_text_size(text_display)
 
         PyImGui.push_clip_rect(x1, y1, width, height, True)
@@ -205,7 +205,7 @@ class Region:
             self.color.opacity(1).color_int,
             text_display,
         )
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
 
         details_text = f"{self.w}x{self.h} @ {self.x},{self.y}"
         details_size = PyImGui.calc_text_size(details_text)

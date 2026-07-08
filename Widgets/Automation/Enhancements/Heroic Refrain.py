@@ -30,22 +30,22 @@ player_data_cache = {}
 # check for player data every 500ms
 player_data_timer = ThrottledTimer(500)
 
-# ─── Import the game's API ────────────────────────────────────────────────
+# â”€â”€â”€ Import the game's API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 from Py4GWCoreLib import Player, Party, PyImGui, IniHandler, Timer
 
-# ─── Make sure "heroic_refrain" is on the import path ──────────────────
+# â”€â”€â”€ Make sure "heroic_refrain" is on the import path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 script_directory = os.path.dirname(os.path.abspath(__file__))
 project_root     = PySystem.Console.get_projects_path()
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# ─── Window Persistence Setup ───────────────────────────────────────────
+# â”€â”€â”€ Window Persistence Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_SECTION = "Heroic Refrain"
 ini_window = IniHandler(os.path.join(project_root, "Widgets", "Config", "Heroic_Refrain_window.ini"))
 save_window_timer = Timer()
 save_window_timer.Start()
 
-# ─── INI File Setup ─────────────────────────────────────────────────────
+# â”€â”€â”€ INI File Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 BASE_DIR = os.path.join(project_root, "Widgets", "Config")
 INI_PATH = os.path.join(BASE_DIR, "Heroic_Refrain_Config.ini")
 os.makedirs(BASE_DIR, exist_ok=True)
@@ -67,13 +67,13 @@ def write_run_flag(val: bool):
     with open(INI_PATH, "w") as f:
         cp.write(f)
 
-# ─── UI Configuration ──────────────────────────────────────────────────
+# â”€â”€â”€ UI Configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 cfg            = _read_ini()
 LEADER_UI      = cfg.getboolean("Settings",   "LeaderUI",    fallback=True)
 PER_CLIENT_UI  = cfg.getboolean("Settings",   "PerClientUI", fallback=False)
 AUTO_RUN_ALL   = cfg.getboolean("HeroicRefrain","AutoRunAll",  fallback=True)
 
-# ─── Window Persistence Setup ───────────────────────────────────────────
+# â”€â”€â”€ Window Persistence Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_SECTION = "Heroic Refrain"
 ini_window = IniHandler(os.path.join(project_root, "Widgets", "Config", "Heroic_Refrain_window.ini"))
 save_window_timer = Timer()
@@ -86,7 +86,7 @@ win_collapsed = ini_window.read_bool(WINDOW_SECTION, "collapsed", False)
 first_run_window = True
 slot_number = 0
 
-# ─── Frame‐by‐frame UI logic ────────────────────────────────────────────
+# â”€â”€â”€ Frameâ€byâ€frame UI logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def on_imgui_render(me: int):
     global _running, _last_flag, _consumed
     global first_run_window, win_x, win_y, win_collapsed, slot_number
@@ -119,7 +119,7 @@ def on_imgui_render(me: int):
 
     PyImGui.end()
 
-    # ─── Persist window state once per second ────────────────────────────
+    # â”€â”€â”€ Persist window state once per second â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if save_window_timer.HasElapsed(1000):
         if (end_pos[0], end_pos[1]) != (win_x, win_y):
             win_x, win_y = int(end_pos[0]), int(end_pos[1])
@@ -130,7 +130,7 @@ def on_imgui_render(me: int):
             ini_window.write_key(WINDOW_SECTION, "collapsed", str(win_collapsed))
         save_window_timer.Reset()
 
-# ─── Widget Manager Hooks ───────────────────────────────────────────────
+# â”€â”€â”€ Widget Manager Hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def setup():
     pass
 
@@ -142,9 +142,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Heroic Refrain Manager", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 
@@ -175,7 +175,7 @@ def tooltip():
 
 _run_sequence_called = False
 
-# ─── External API ────────────────────────────────────────────────────────────
+# â”€â”€â”€ External API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def cast_heroic_refrain():
     global cached_data, buff_check_timer, player_data_cache, player_data_timer

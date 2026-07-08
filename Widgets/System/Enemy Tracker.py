@@ -14,7 +14,7 @@ from Py4GWCoreLib import Color
 from Py4GWCoreLib import GLOBAL_CACHE, Py4GW, Range, Map
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.AgentArray import AgentArray
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.UIManager import UIManager
@@ -30,9 +30,9 @@ ENEMY_TRACKER_SHARED_VARS_ATTR = "_py4gw_enemy_tracker_shared_vars"
 def tooltip():
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored(MODULE_NAME, title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.separator()
     PyImGui.text("System widget that keeps enemy scanning and enemy data persistence active.")
     PyImGui.text("Use Configure for import/export and data maintenance.")
@@ -169,7 +169,7 @@ class EnemyTracker:
     SCANNER_RADIUS = float(Range.SafeCompass.value)
 
     def __init__(self) -> None:
-        self.floating_button = ImGui.FloatingIcon(
+        self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=EnemyTrackerConfig.ICON_PATH,
             window_id="##floating_icon_enemy_tracker_button",
             window_name="Enemy Tracker Toggle",
@@ -844,7 +844,7 @@ class EnemyTracker:
                 self.export_bundle_to(path)
 
     def draw_window(self) -> None:
-        expanded, open_ = ImGui.BeginWithClose(
+        expanded, open_ = ImGui_Legacy.BeginWithClose(
             ini_key=EnemyTrackerConfig.MAIN_INI_KEY,
             name=EnemyTrackerConfig.MODULE_NAME,
             p_open=self.floating_button.visible,
@@ -858,7 +858,7 @@ class EnemyTracker:
             PyImGui.separator()
             self.draw_scanner_config()
 
-        ImGui.End(EnemyTrackerConfig.MAIN_INI_KEY)
+        ImGui_Legacy.End(EnemyTrackerConfig.MAIN_INI_KEY)
 
 FloatingButton: EnemyTracker | None = None
 

@@ -1,6 +1,6 @@
 # Necessary Imports
 import Py4GW        #Miscelanious functions and classes
-import PyImGui    #ImGui wrapper
+import PyImGui    #ImGui_Legacy wrapper
 import PyItem       #Item functions and classes
 
 # End Necessary Imports

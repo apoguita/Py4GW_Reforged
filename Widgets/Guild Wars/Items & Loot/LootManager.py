@@ -29,12 +29,12 @@ last_config_timestamp = 0
 last_rarity_timestamp = 0
 
 script_directory = PySystem.Console.get_projects_path() 
-# ——— Window Persistence Setup ———
+# â€”â€”â€” Window Persistence Setup â€”â€”â€”
 ini_window = IniHandler(os.path.join(script_directory, "Widgets", "Config", "loot_window.ini"))
 save_window_timer = Timer()
 save_window_timer.Start()
 
-# load last‐saved window state (fallback to 100,100 / un-collapsed)
+# load lastâ€saved window state (fallback to 100,100 / un-collapsed)
 win_x         = ini_window.read_int("Loot Manager", "x", 100)
 win_y         = ini_window.read_int("Loot Manager", "y", 100)
 win_collapsed = ini_window.read_bool("Loot Manager", "collapsed", False)
@@ -115,7 +115,7 @@ def save_rarity_filter_data():
                 "purple": loot_filter_singleton.loot_purples,
                 "gold": loot_filter_singleton.loot_golds,
                 "green": loot_filter_singleton.loot_greens,
-                "gold_coins": loot_filter_singleton.loot_gold_coins,   # ← NEW
+                "gold_coins": loot_filter_singleton.loot_gold_coins,   # â† NEW
             }, f, indent=4)
         #PySystem.Console.Log("LootManager", "Saved rarity_filter_data.json")
     except Exception as e:
@@ -190,14 +190,14 @@ def load_loot_config():
                         mid = getattr(ModelID, name)
                 loot_filter_singleton.AddToWhitelist(mid)
 
-    # 5) Always keep gold coins if that toggle’s on
+    # 5) Always keep gold coins if that toggleâ€™s on
     if loot_filter_singleton.loot_gold_coins:
         loot_filter_singleton.AddToWhitelist(ModelID.Gold_Coins.value)
 
     # Rebuild singleton whitelist
     loot_filter_singleton.ClearWhitelist()
     for item in loot_items:
-        if item.get("enabled", False) and item.get("group") != "Dyes":  # ← guard out dyes
+        if item.get("enabled", False) and item.get("group") != "Dyes":  # â† guard out dyes
             model_id = item.get("model_id")
             if isinstance(model_id, str) and model_id.startswith("ModelID."):
                 model_id_name = model_id.split("ModelID.")[1]
@@ -205,7 +205,7 @@ def load_loot_config():
                     model_id = getattr(ModelID, model_id_name)
             loot_filter_singleton.AddToWhitelist(_normalize_model_id(model_id))
 
-    # ——— KEEP GOLD COINS WHITELISTED ———
+    # â€”â€”â€” KEEP GOLD COINS WHITELISTED â€”â€”â€”
     if loot_filter_singleton.loot_gold_coins:
         # ensure you have ModelID.Gold_Coin in your enum
         loot_filter_singleton.AddToWhitelist(ModelID.Gold_Coins.value)
@@ -442,7 +442,7 @@ def DrawWindow():
     end_pos       = PyImGui.get_window_pos()
 
     if opened:
-        # —— Debug Settings ——
+        # â€”â€” Debug Settings â€”â€”
         if PyImGui.tree_node("Debug Settings"):
             include_model_id_in_tooltip = PyImGui.checkbox(
                 "Display ModelID In Hovered Text", include_model_id_in_tooltip
@@ -457,7 +457,7 @@ def DrawWindow():
             )
             PyImGui.tree_pop()
 
-        # ——— Save/Load Configs ———
+        # â€”â€”â€” Save/Load Configs â€”â€”â€”
         PyImGui.separator()
         PyImGui.text("Save/Load Configs")
         PyImGui.separator()
@@ -589,7 +589,7 @@ def DrawWindow():
                             loot_filter_singleton.AddToWhitelist(model_id)
                 save_loot_config()
 
-        # —— Single-item Whitelist/Blacklist ——
+        # â€”â€” Single-item Whitelist/Blacklist â€”â€”
         PyImGui.separator()
         PyImGui.text("Single items - By ModelID")
         PyImGui.separator()
@@ -807,7 +807,7 @@ def DrawFilteredLootList():
     # sort by distance, then render with our unified formatter
     display_list.sort(key=lambda x: x[1])
     for mid, dist in display_list:
-        PyImGui.text(f"{_format_model_id(mid)} — {dist:.1f} units")
+        PyImGui.text(f"{_format_model_id(mid)} â€” {dist:.1f} units")
 
     PyImGui.end()
 
@@ -875,9 +875,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Messaging", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
 

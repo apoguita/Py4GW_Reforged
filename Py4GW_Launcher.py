@@ -191,9 +191,9 @@ APP_VERSION = "1.0.0"  # Update this with each release as needed
 def check_and_handle_version_mismatch(ini_filename: str):
     """
     Check if the stored application version matches the current version.
-    If there's a mismatch, clear the Hello ImGui settings file and update the stored version.
+    If there's a mismatch, clear the Hello ImGui_Legacy settings file and update the stored version.
     Args:
-        ini_filename: The path to the Hello ImGui settings file (e.g., Py4GW_Launcher.ini).
+        ini_filename: The path to the Hello ImGui_Legacy settings file (e.g., Py4GW_Launcher.ini).
     """
     global ini_handler, log_history
 
@@ -204,15 +204,15 @@ def check_and_handle_version_mismatch(ini_filename: str):
     if stored_version != APP_VERSION:
         log_history.append(f"Version mismatch detected: Stored={stored_version}, Current={APP_VERSION}")
         
-        # Clear the Hello ImGui settings file to reset layout settings
+        # Clear the Hello ImGui_Legacy settings file to reset layout settings
         if os.path.exists(ini_filename):
             try:
                 os.remove(ini_filename)
-                log_history.append(f"Cleared Hello ImGui settings: {ini_filename}")
+                log_history.append(f"Cleared Hello ImGui_Legacy settings: {ini_filename}")
             except Exception as e:
-                log_history.append(f"Error clearing Hello ImGui settings: {str(e)}")
+                log_history.append(f"Error clearing Hello ImGui_Legacy settings: {str(e)}")
         else:
-            log_history.append(f"No Hello ImGui settings file found at {ini_filename}")
+            log_history.append(f"No Hello ImGui_Legacy settings file found at {ini_filename}")
 
         # Update the stored version in Py4GW.ini
         ini_handler.write_key("Py4GW_Launcher", "APP_VERSION", APP_VERSION)
@@ -1802,15 +1802,15 @@ def set_taskbar_icon(icon_path: str):
             icon = ctypes.windll.user32.LoadImageW(0, icon_path, 1, 0, 0, 0x00000010)
             ctypes.windll.user32.SendMessageW(hwnd, 0x80, 0, icon)  # Set small icon (title bar)
             ctypes.windll.user32.SendMessageW(hwnd, 0x80, 1, icon)  # Set large icon (taskbar)
-            print(f"✅ Window & Taskbar icon set successfully: {icon_path}")
+            print(f"âœ… Window & Taskbar icon set successfully: {icon_path}")
         else:
-            print("❌ ERROR: Could not find window handle.")
+            print("âŒ ERROR: Could not find window handle.")
 
     except Exception as e:
-        print(f"❌ Failed to set taskbar icon: {str(e)}")
+        print(f"âŒ Failed to set taskbar icon: {str(e)}")
         
 def main() -> None:
-    """Run the Py4GW Launcher application with ImGui."""
+    """Run the Py4GW Launcher application with ImGui_Legacy."""
     try:
         runner_params = hello_imgui.RunnerParams()
         runner_params.app_window_params.window_title = "Py4GW Launcher"
@@ -1818,11 +1818,11 @@ def main() -> None:
         runner_params.imgui_window_params.default_imgui_window_type = hello_imgui.DefaultImGuiWindowType.provide_full_screen_dock_space
         runner_params.docking_params.docking_splits = create_docking_splits()
 
-        # Explicitly set the ini_filename for Hello ImGui settings
+        # Explicitly set the ini_filename for Hello ImGui_Legacy settings
         runner_params.ini_filename = "Py4GW_Launcher.ini"
-        log_history.append(f"Using Hello ImGui ini_filename: {runner_params.ini_filename}")
+        log_history.append(f"Using Hello ImGui_Legacy ini_filename: {runner_params.ini_filename}")
 
-        # Check for version mismatch and handle it before initializing ImGui
+        # Check for version mismatch and handle it before initializing ImGui_Legacy
         check_and_handle_version_mismatch(runner_params.ini_filename)
 
         def update_gui():

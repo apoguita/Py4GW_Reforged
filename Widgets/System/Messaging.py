@@ -16,7 +16,7 @@ import PyImGui
 import PySystem
 from Py4GWCoreLib import Range, TitleID
 from Py4GWCoreLib import Routines
-from Py4GWCoreLib import Utils, ImGui, Color, ColorPalette
+from Py4GWCoreLib import Utils, ImGui_Legacy, Color, ColorPalette
 from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import AutoPathing
@@ -161,7 +161,7 @@ def _get_pycons_widget_module():
         return None
     return getattr(widget_info, "module", None)
 
-# region ImGui
+# region ImGui_Legacy
 def configure():
     DrawWindow()
     
@@ -170,9 +170,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Messaging", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     red = ColorPalette.GetColor("red")
     PyImGui.text_colored("This is a system Widget, deactivating it will cause issues.", red.to_tuple_normalized())
     PyImGui.separator()
@@ -1030,7 +1030,7 @@ def MerchantMaterials(index: int, message: SharedMessageStruct):
             ConsoleLog(MODULE_NAME, f"MerchantMaterials buy_ectoplasm metrics: {ecto_metrics}", Console.MessageType.Info, False)
 
         elif mode == "sell_merchant_leftovers":
-            # Check inventory first — skip NPC interaction if nothing to sell
+            # Check inventory first â€” skip NPC interaction if nothing to sell
             bag_list = GLOBAL_CACHE.ItemArray.CreateBagList(1, 2, 3, 4)
             item_array = GLOBAL_CACHE.ItemArray.GetItemArray(bag_list)
             leftover_ids = []
@@ -1102,7 +1102,7 @@ def MerchantMaterials(index: int, message: SharedMessageStruct):
                     except ValueError:
                         pass
             if scroll_model_ids:
-                # Check inventory first — skip NPC interaction if nothing to sell
+                # Check inventory first â€” skip NPC interaction if nothing to sell
                 bag_list = GLOBAL_CACHE.ItemArray.CreateBagList(1, 2, 3, 4)
                 item_array = GLOBAL_CACHE.ItemArray.GetItemArray(bag_list)
                 sell_ids = [int(item_id) for item_id in item_array
@@ -1122,7 +1122,7 @@ def MerchantMaterials(index: int, message: SharedMessageStruct):
                     ConsoleLog(MODULE_NAME, "MerchantMaterials sell_scrolls: no scrolls in inventory, skipping", Console.MessageType.Info, False)
 
         elif mode == "sell_nonsalvageable_golds":
-            # Check inventory first — skip NPC interaction if nothing to sell
+            # Check inventory first â€” skip NPC interaction if nothing to sell
             bag_list = GLOBAL_CACHE.ItemArray.CreateBagList(1, 2, 3, 4)
             item_array = GLOBAL_CACHE.ItemArray.GetItemArray(bag_list)
             sell_ids = []

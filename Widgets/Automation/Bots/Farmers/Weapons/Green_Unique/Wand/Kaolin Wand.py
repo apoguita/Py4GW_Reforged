@@ -22,7 +22,7 @@ def _on_party_wipe(bot: "Botting"):
         if not Routines.Checks.Map.MapValid():
             bot.config.FSM.resume()
             return
-    # Quand le joueur est ressuscité, reprendre au combat
+    # Quand le joueur est ressuscitÃ©, reprendre au combat
     bot.States.JumpToStepName("[H]Combat_3")
     bot.config.FSM.resume()
 
@@ -73,14 +73,14 @@ bot.SetMainRoutine(Routine)
 
 def tooltip():
     import PyImGui
-    from Py4GWCoreLib import ImGui, Color
+    from Py4GWCoreLib import ImGui_Legacy, Color
     PyImGui.begin_tooltip()
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Kaolin Wand Farmer bot", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     # Description

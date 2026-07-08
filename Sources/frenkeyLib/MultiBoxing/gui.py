@@ -2,11 +2,11 @@ import ctypes
 from typing import Optional
 import PySystem
 import PyImGui
-from Py4GWCoreLib import ImGui, Overlay
+from Py4GWCoreLib import ImGui_Legacy, Overlay
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
-from Py4GWCoreLib.ImGui_src.Style import Style
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.ImGui_Legacy_src.Style import Style
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.enums_src.GameData_enums import Profession, ProfessionShort
 from Py4GWCoreLib.enums_src.IO_enums import Key
 from Py4GWCoreLib.py4gwcorelib_src import Utils
@@ -24,14 +24,14 @@ MODULE_NAME = __file__.split("\\")[-2]
 
 class GUI:
     _instance = None
-    def __new__(cls, configure_window: ImGui.WindowModule, access_window: ImGui.WindowModule):
+    def __new__(cls, configure_window: ImGui_Legacy.WindowModule, access_window: ImGui_Legacy.WindowModule):
         if cls._instance is None:
             cls._instance = super(GUI, cls).__new__(cls)         
             cls._instance.__init__(configure_window, access_window)   
             
         return cls._instance
     
-    def __init__(self, configure_window: ImGui.WindowModule, access_window: ImGui.WindowModule):
+    def __init__(self, configure_window: ImGui_Legacy.WindowModule, access_window: ImGui_Legacy.WindowModule):
         self.settings = Settings()
         self.overlay : Overlay = Overlay()
         self.screen_width = self.overlay.GetDisplaySize().x
@@ -69,7 +69,7 @@ class GUI:
         even_color = even_color if even_color else Color(200, 200, 200, 200)
         odd_color = odd_color if odd_color else Color(100, 100, 100, 100)
         
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         for i in range(rows):
             # draw every uneven row        
@@ -94,7 +94,7 @@ class GUI:
         even_color = even_color if even_color else Color(200, 200, 200, 200)
         odd_color = odd_color if odd_color else Color(100, 100, 100, 100)
         
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         for i in range(columns):
             # draw every uneven row        
@@ -112,25 +112,25 @@ class GUI:
 
         if self.configure_window.begin(None):
             self.configure_window.window_flags = PyImGui.WindowFlags.NoFlag
-            style = ImGui.get_style()
+            style = ImGui_Legacy.get_style()
         
             style.CellPadding.push_style_var(5, 0)
             
             regions_width = 300
             header_height = 105
             
-            if ImGui.begin_tab_bar("multiboxing_config_tabs"):
-                if ImGui.begin_tab_item("Configuration"):
+            if ImGui_Legacy.begin_tab_bar("multiboxing_config_tabs"):
+                if ImGui_Legacy.begin_tab_item("Configuration"):
         
-                    ImGui.text("Client Renaming", 16, "Bold")
-                    ImGui.separator()
+                    ImGui_Legacy.text("Client Renaming", 16, "Bold")
+                    ImGui_Legacy.separator()
                     
-                    rename_to = ImGui.combo("Rename To", self.settings.rename_to.value, [e.name.replace("_", " ") for e in RenameClientType])
+                    rename_to = ImGui_Legacy.combo("Rename To", self.settings.rename_to.value, [e.name.replace("_", " ") for e in RenameClientType])
                     if rename_to != self.settings.rename_to.value:
                         self.settings.rename_to = RenameClientType(rename_to)
                         self.settings.save_settings()
 
-                    append_gw = ImGui.checkbox("Append GW", self.settings.append_gw)
+                    append_gw = ImGui_Legacy.checkbox("Append GW", self.settings.append_gw)
                     if append_gw != self.settings.append_gw:
                         self.settings.append_gw = append_gw
                         self.settings.save_settings()
@@ -138,31 +138,31 @@ class GUI:
                     PyImGui.spacing()
                     PyImGui.spacing()
                     
-                    ImGui.text("Account Order", 16, "Bold")
-                    ImGui.separator()
+                    ImGui_Legacy.text("Account Order", 16, "Bold")
+                    ImGui_Legacy.separator()
                     
                     for pos, acc in enumerate(self.settings.accounts_order):
-                        if ImGui.begin_child(f"account_order_{acc}", (0, 25), border=False, flags=PyImGui.WindowFlags.NoFlag):
-                            if ImGui.icon_button(IconsFontAwesome5.ICON_ARROW_UP, 20, 20):
+                        if ImGui_Legacy.begin_child(f"account_order_{acc}", (0, 25), border=False, flags=PyImGui.WindowFlags.NoFlag):
+                            if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_ARROW_UP, 20, 20):
                                 self.settings.move_account(pos, pos - 1)
-                            ImGui.show_tooltip("Move account up")
+                            ImGui_Legacy.show_tooltip("Move account up")
                             
                             PyImGui.same_line(0, 3)
-                            if ImGui.icon_button(IconsFontAwesome5.ICON_ARROW_DOWN, 20, 20):
+                            if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_ARROW_DOWN, 20, 20):
                                 self.settings.move_account(pos, pos + 1)
-                            ImGui.show_tooltip("Move account down")
+                            ImGui_Legacy.show_tooltip("Move account down")
                             
                             PyImGui.same_line(0, 10)
-                            ImGui.text(acc)
+                            ImGui_Legacy.text(acc)
                             
-                        ImGui.end_child()
+                        ImGui_Legacy.end_child()
                         
                         
                     
-                    ImGui.end_tab_item()
+                    ImGui_Legacy.end_tab_item()
                     
-                if ImGui.begin_tab_item("Layout"): 
-                    if ImGui.begin_table("layout_table", 2, PyImGui.TableFlags.NoFlag, 0, 0):
+                if ImGui_Legacy.begin_tab_item("Layout"): 
+                    if ImGui_Legacy.begin_table("layout_table", 2, PyImGui.TableFlags.NoFlag, 0, 0):
                         PyImGui.table_setup_column("left", PyImGui.TableColumnFlags.NoFlag, 0.5)
                         PyImGui.table_setup_column("right", PyImGui.TableColumnFlags.WidthFixed, regions_width)
                         
@@ -172,34 +172,34 @@ class GUI:
                         
                         def draw_configs():                    
                             style.ChildBg.push_color(card_background)
-                            if ImGui.begin_child("configs", (300, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar):      
+                            if ImGui_Legacy.begin_child("configs", (300, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar):      
 
-                                snap_to_edges = ImGui.checkbox("Snap to edges", self.settings.snap_to_edges)
+                                snap_to_edges = ImGui_Legacy.checkbox("Snap to edges", self.settings.snap_to_edges)
                                 if snap_to_edges != self.settings.snap_to_edges:
                                     self.settings.snap_to_edges = snap_to_edges
                                     self.settings.save_settings()
                                     
-                                hide_widgets_on_slave = ImGui.checkbox("Hide widgets on slave", self.settings.hide_widgets_on_slave)
+                                hide_widgets_on_slave = ImGui_Legacy.checkbox("Hide widgets on slave", self.settings.hide_widgets_on_slave)
                                 if hide_widgets_on_slave != self.settings.hide_widgets_on_slave:
                                     self.settings.hide_widgets_on_slave = hide_widgets_on_slave
                                     self.settings.save_settings()
                                     
-                                show_overview = ImGui.checkbox("Show Overlay", self.settings.show_overview)
+                                show_overview = ImGui_Legacy.checkbox("Show Overlay", self.settings.show_overview)
                                 if show_overview != self.settings.show_overview:
                                     self.settings.show_overview = show_overview
                                     self.settings.save_settings()
                                     
                             style.ChildBg.pop_color()
-                            ImGui.end_child() 
+                            ImGui_Legacy.end_child() 
 
                         def draw_screen_size(avail):
-                            ImGui.text_centered("Screen Size", avail[0])
-                            ImGui.separator()
+                            ImGui_Legacy.text_centered("Screen Size", avail[0])
+                            ImGui_Legacy.separator()
                                         
                             style.ItemSpacing.push_style_var(0, 0)
                             style.CellPadding.push_style_var(0, 0)
                                 
-                            if ImGui.begin_table("screen_size_table", 3, PyImGui.TableFlags.NoFlag, avail[0] - 5, 25):
+                            if ImGui_Legacy.begin_table("screen_size_table", 3, PyImGui.TableFlags.NoFlag, avail[0] - 5, 25):
                                 PyImGui.table_setup_column("Width", PyImGui.TableColumnFlags.NoFlag, 0.5)
                                 PyImGui.table_setup_column("x", PyImGui.TableColumnFlags.WidthFixed, 30)
                                 PyImGui.table_setup_column("Height", PyImGui.TableColumnFlags.NoFlag, 0.5)
@@ -208,7 +208,7 @@ class GUI:
                                 PyImGui.table_next_column()
                                     
                                 PyImGui.push_item_width(PyImGui.get_content_region_avail()[0] - 15)
-                                swidth = ImGui.input_int("##width", self.settings.screen_size[0], 800, 10, PyImGui.InputTextFlags.AutoSelectAll)
+                                swidth = ImGui_Legacy.input_int("##width", self.settings.screen_size[0], 800, 10, PyImGui.InputTextFlags.AutoSelectAll)
                                 if swidth != self.settings.screen_size[0]:
                                     self.settings.screen_size = (max(800, swidth), self.settings.screen_size[1])
                                     self.settings.screen_size_changed = True
@@ -218,11 +218,11 @@ class GUI:
                                 PyImGui.pop_item_width()
                                         
                                 PyImGui.table_next_column()
-                                ImGui.text("x")
+                                ImGui_Legacy.text("x")
                                 PyImGui.table_next_column()
                                     
                                 PyImGui.push_item_width(PyImGui.get_content_region_avail()[0])
-                                sheight = ImGui.input_int("##height", self.settings.screen_size[1], 600, 10, PyImGui.InputTextFlags.AutoSelectAll)
+                                sheight = ImGui_Legacy.input_int("##height", self.settings.screen_size[1], 600, 10, PyImGui.InputTextFlags.AutoSelectAll)
                                 if sheight != self.settings.screen_size[1]:
                                     self.settings.screen_size = (self.settings.screen_size[0], max(600, sheight))  
                                     self.settings.screen_size_changed = True        
@@ -234,7 +234,7 @@ class GUI:
                                     self.ensure_regions_within_bounds(self.settings.regions)      
                                         
                                 PyImGui.pop_item_width()
-                                ImGui.end_table()
+                                ImGui_Legacy.end_table()
                                     
                             style.CellPadding.pop_style_var()
                             style.ItemSpacing.pop_style_var() 
@@ -242,26 +242,26 @@ class GUI:
                         def draw_layout_presets():
                             style.ChildBg.push_color(card_background)
                             style.WindowPadding.push_style_var(0, 0)
-                            if ImGui.begin_child("layouts", (0, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar): 
+                            if ImGui_Legacy.begin_child("layouts", (0, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar): 
                                 style.ChildBg.pop_color()
                                 style.WindowPadding.pop_style_var()
                                 
-                                if ImGui.begin_child("layouts edit", (PyImGui.get_content_region_avail()[0] / 2, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar): 
+                                if ImGui_Legacy.begin_child("layouts edit", (PyImGui.get_content_region_avail()[0] / 2, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar): 
                                     PyImGui.push_item_width(PyImGui.get_content_region_avail()[0] - 35) 
                                         
                                     self.draw_column_icon(30, 20, 5)      
                                     PyImGui.same_line(0, 5)          
-                                    self.settings.layout_import_columns = ImGui.input_text("##Columns##layout_import_columns", self.settings.layout_import_columns, 0)  
-                                    ImGui.show_tooltip("Define the column structure using space, comma or semicolon separated integers.\nE.g. '1 2 1' for 3 columns where the middle one is twice as wide as the others.")
+                                    self.settings.layout_import_columns = ImGui_Legacy.input_text("##Columns##layout_import_columns", self.settings.layout_import_columns, 0)  
+                                    ImGui_Legacy.show_tooltip("Define the column structure using space, comma or semicolon separated integers.\nE.g. '1 2 1' for 3 columns where the middle one is twice as wide as the others.")
 
                                     self.draw_row_icon(30, 20)      
                                     PyImGui.same_line(0, 5)  
-                                    self.settings.layout_import_rows = ImGui.input_text("##Rows##layout_import", self.settings.layout_import_rows, 0)
-                                    ImGui.show_tooltip("Define the row structure using space, comma or semicolon separated integers.\nE.g. '1 2 1' for 3 rows where the middle one is twice as high as the others.")
+                                    self.settings.layout_import_rows = ImGui_Legacy.input_text("##Rows##layout_import", self.settings.layout_import_rows, 0)
+                                    ImGui_Legacy.show_tooltip("Define the row structure using space, comma or semicolon separated integers.\nE.g. '1 2 1' for 3 rows where the middle one is twice as high as the others.")
                                     
                                     PyImGui.pop_item_width()
                                     
-                                    if ImGui.button("Create Layout", PyImGui.get_content_region_avail()[0] - 5):
+                                    if ImGui_Legacy.button("Create Layout", PyImGui.get_content_region_avail()[0] - 5):
                                         try:
                                             ## import from strings like "1,2,1", "1 2 1" "1;1;1;1"
                                             cols = [int(x) for x in self.settings.layout_import_columns.replace(";", ",").replace(" ", ",").split(",") if x.strip().isdigit() and int(x.strip()) > 0] if self.settings.layout_import_columns.strip() else [1]
@@ -288,11 +288,11 @@ class GUI:
                                         except Exception as e:
                                             ConsoleLog(MODULE_NAME, f"Error importing layout: {e}", message_type=1)
                                             
-                                ImGui.end_child()
+                                ImGui_Legacy.end_child()
                                 
                                 PyImGui.same_line(0, 0)
                                 
-                                if ImGui.begin_child("layouts load and save", (0, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar):
+                                if ImGui_Legacy.begin_child("layouts load and save", (0, header_height), border=True, flags=PyImGui.WindowFlags.NoScrollbar):
                                     avail = PyImGui.get_content_region_avail()[0]
                                     
                                     PyImGui.push_item_width(avail - 100)
@@ -301,7 +301,7 @@ class GUI:
                                     if self.layout_index > 0 and self.layout_name != self.settings.layout:
                                         self.layout_name = self.settings.layout
                                         
-                                    layout_index = ImGui.combo("Selected Layout", min(self.layout_index, len(self.settings.layouts)), self.settings.layouts)
+                                    layout_index = ImGui_Legacy.combo("Selected Layout", min(self.layout_index, len(self.settings.layouts)), self.settings.layouts)
                                     PyImGui.pop_item_width()
                                     if layout_index != self.layout_index:
                                         self.layout_index = layout_index
@@ -322,23 +322,23 @@ class GUI:
 
 
                                     PyImGui.push_item_width(avail - 105)
-                                    self.layout_name = ImGui.input_text("Layout Name", self.layout_name, 0)
+                                    self.layout_name = ImGui_Legacy.input_text("Layout Name", self.layout_name, 0)
                                     PyImGui.pop_item_width()
 
-                                    if ImGui.button("Save Layout", avail - 5):
+                                    if ImGui_Legacy.button("Save Layout", avail - 5):
                                         self.settings.save_layout(self.layout_name)
                                 
-                                ImGui.end_child()
+                                ImGui_Legacy.end_child()
                             else:
                                 style.WindowPadding.pop_style_var()                    
                                 style.ChildBg.pop_color()
                                 
-                            ImGui.end_child()
+                            ImGui_Legacy.end_child()
                                         
                         def draw_regions_edit():
                             style.ChildBg.push_color(card_background)
-                            if ImGui.begin_child("regions", (0, 0), border=True, flags=PyImGui.WindowFlags.NoScrollbar):                                               
-                                if ImGui.button("Add Region", PyImGui.get_content_region_avail()[0], 20):
+                            if ImGui_Legacy.begin_child("regions", (0, 0), border=True, flags=PyImGui.WindowFlags.NoScrollbar):                                               
+                                if ImGui_Legacy.button("Add Region", PyImGui.get_content_region_avail()[0], 20):
                                     new_region = Region(0, 0, 1920, 1080, name = f"Region {len(self.settings.regions) + 1}")
                                     #center the new region
                                     new_region.x = (self.settings.screen_size[0] - new_region.w) // 2
@@ -347,7 +347,7 @@ class GUI:
                                     self.settings.add_region(new_region)
                                     
                                 PyImGui.spacing()
-                                ImGui.separator()
+                                ImGui_Legacy.separator()
                                 PyImGui.spacing()
                                 
                                 new_active = self.settings.active_region
@@ -356,40 +356,40 @@ class GUI:
                                     if region == self.settings.active_region:       
                                         style.ChildBg.push_color(region.color.opacity(0.15).to_tuple())
                                         style.Border.push_color(region.color.to_tuple())
-                                        if ImGui.begin_child("active_region_edit", (0, 285), border=True, flags=PyImGui.WindowFlags.NoScrollbar):
+                                        if ImGui_Legacy.begin_child("active_region_edit", (0, 285), border=True, flags=PyImGui.WindowFlags.NoScrollbar):
                                             style.Border.pop_color()
                                             style.ChildBg.pop_color()
-                                            ImGui.text_centered(region.name, PyImGui.get_content_region_avail()[0])
+                                            ImGui_Legacy.text_centered(region.name, PyImGui.get_content_region_avail()[0])
                                             PyImGui.set_cursor_pos(250 - 2, 4)
-                                            if ImGui.icon_button(IconsFontAwesome5.ICON_TRASH, 25, 25):
+                                            if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_TRASH, 25, 25):
                                                 self.settings.remove_region(region)
                                                 new_active = None
                                                 if self.settings.active_region == region:
                                                     self.settings.active_region = None
-                                                ImGui.end_child()
+                                                ImGui_Legacy.end_child()
                                                 break
                                             
-                                            ImGui.show_tooltip("Delete this region")
+                                            ImGui_Legacy.show_tooltip("Delete this region")
                                             
-                                            ImGui.separator()
+                                            ImGui_Legacy.separator()
                                             
-                                            region.name = ImGui.input_text("Name", region.name, 0)
+                                            region.name = ImGui_Legacy.input_text("Name", region.name, 0)
                                             account_names = [acc.AccountEmail for acc in self.settings.accounts]
                                             account_names.insert(0, "None")
                                             
                                             account_index = account_names.index(region.account) if region.account in account_names else 0
-                                            new_account = ImGui.combo("Account", account_index, account_names)
+                                            new_account = ImGui_Legacy.combo("Account", account_index, account_names)
                                             if new_account != account_index:
                                                 region.account = account_names[new_account]
                                                 
-                                            region.x = ImGui.input_int("X", region.x, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)
-                                            region.y = ImGui.input_int("Y", region.y, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)
-                                            region.w = ImGui.input_int("Width", region.w, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)
-                                            region.h = ImGui.input_int("Height", region.h, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)           
+                                            region.x = ImGui_Legacy.input_int("X", region.x, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)
+                                            region.y = ImGui_Legacy.input_int("Y", region.y, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)
+                                            region.w = ImGui_Legacy.input_int("Width", region.w, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)
+                                            region.h = ImGui_Legacy.input_int("Height", region.h, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)           
                                             color = PyImGui.color_edit4("Color", region.color.color_tuple)
                                             if color != region.color.color_tuple:
                                                 region.color = Color.from_tuple(color)                   
-                                            region.main = ImGui.checkbox("Main Region", region.main)
+                                            region.main = ImGui_Legacy.checkbox("Main Region", region.main)
                                             
                                             if region.main:
                                                 for r in self.settings.regions:
@@ -400,7 +400,7 @@ class GUI:
                                             style.Border.pop_color()
                                             style.ChildBg.pop_color()
                                             
-                                        ImGui.end_child()
+                                        ImGui_Legacy.end_child()
                                         pass
                                     else:
                                         style.Button.push_color(region.color.rgb_tuple)
@@ -410,7 +410,7 @@ class GUI:
                                         style.ButtonActive.push_color(region.color.saturate(0.4).rgb_tuple)
                                         style.ButtonTextureBackgroundActive.push_color(region.color.saturate(0.4).rgb_tuple)
                                         
-                                        if ImGui.button(f"{region.name} ({region.w}x{region.h} @ {region.x},{region.y})", PyImGui.get_content_region_avail()[0], 20):
+                                        if ImGui_Legacy.button(f"{region.name} ({region.w}x{region.h} @ {region.x},{region.y})", PyImGui.get_content_region_avail()[0], 20):
                                             new_active = region
                                                 
                                         style.Button.pop_color()
@@ -426,23 +426,23 @@ class GUI:
                                         r.selected = (r == self.settings.active_region)
                                         
                             style.ChildBg.pop_color()
-                            ImGui.end_child()
+                            ImGui_Legacy.end_child()
                                                 
                         draw_configs()
                         PyImGui.same_line(0, 5)
                         draw_layout_presets()
-                        if ImGui.begin_child("region_canvas_container", (0, 0), border=False, flags=PyImGui.WindowFlags.NoScrollbar):
+                        if ImGui_Legacy.begin_child("region_canvas_container", (0, 0), border=False, flags=PyImGui.WindowFlags.NoScrollbar):
                             self.draw_region_canvas(style, PyImGui.get_content_region_avail(), PyImGui.get_cursor_pos_y())
-                        ImGui.end_child()
+                        ImGui_Legacy.end_child()
                         
                         PyImGui.table_next_column()
                         draw_regions_edit()
                         
-                        ImGui.end_table()
+                        ImGui_Legacy.end_table()
                         
-                    ImGui.end_tab_item()
+                    ImGui_Legacy.end_tab_item()
                     
-                ImGui.end_tab_bar()  
+                ImGui_Legacy.end_tab_bar()  
             style.CellPadding.pop_style_var()   
             
             
@@ -497,7 +497,7 @@ class GUI:
         PyImGui.set_cursor_pos(drawing_area_pos[0], drawing_area_pos[1])
         drawing_area_screen_pos = PyImGui.get_cursor_screen_pos()
 
-        if ImGui.is_mouse_in_rect((drawing_area_screen_pos[0], drawing_area_screen_pos[1], drawing_area_size[0], drawing_area_size[1])):
+        if ImGui_Legacy.is_mouse_in_rect((drawing_area_screen_pos[0], drawing_area_screen_pos[1], drawing_area_size[0], drawing_area_size[1])):
             self.configure_window.window_flags = PyImGui.WindowFlags.NoMove
                         
         if drawing_area_size[0] > 0 and drawing_area_size[1] > 0 and PyImGui.is_rect_visible(drawing_area_size[0], drawing_area_size[1]):
@@ -688,7 +688,7 @@ class GUI:
                             r.dragging = False
                             r.resizing = False
 
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
                 
             style.WindowPadding.pop_style_var()
                 
@@ -718,7 +718,7 @@ class GUI:
         secondary_profession = Profession(account.AgentData.Profession[1]) if account.AgentData.Profession else Profession._None
         
         profession_color = profession_colors.get(profession, ColorPalette.GetColor("gw_disabled"))
-        is_hovered = ImGui.is_mouse_in_rect((cursor_pos[0], cursor_pos[1], size[0], size[1]))
+        is_hovered = ImGui_Legacy.is_mouse_in_rect((cursor_pos[0], cursor_pos[1], size[0], size[1]))
         background = profession_color.opacity(0.6).rgb_tuple if is_hovered else profession_color.opacity(0.6).desaturate(0.25).rgb_tuple
         if is_current_account:
             background = profession_color.opacity(0.6).desaturate(0.75).rgb_tuple
@@ -731,7 +731,7 @@ class GUI:
         style.Border.push_color(border)
 
         style.WindowPadding.push_style_var(4, 2)
-        if ImGui.begin_child(f"account_btn_{index}", size, border=True, flags=PyImGui.WindowFlags.NoFlag):
+        if ImGui_Legacy.begin_child(f"account_btn_{index}", size, border=True, flags=PyImGui.WindowFlags.NoFlag):
             
             profession_text = f"{ProfessionShort(profession).name}" if profession != Profession._None else ""     
             if secondary_profession != Profession._None and secondary_profession != profession:
@@ -742,22 +742,22 @@ class GUI:
             avail = PyImGui.get_content_region_avail()
             
             if profession_text:                
-                ImGui.text_centered(profession_text, -1, avail[1] + 6)
+                ImGui_Legacy.text_centered(profession_text, -1, avail[1] + 6)
                 
             level_text = f" {account.AgentData.Level}" if account.AgentData.Level else ""
             
             if level_text:
                 PyImGui.same_line(38, 0)
-                ImGui.text_centered(level_text, -1, avail[1] + 6)
+                ImGui_Legacy.text_centered(level_text, -1, avail[1] + 6)
                 
             name_text = f"{account.AgentData.CharacterName}" if account.AgentData.CharacterName else ""
             # name_text = f" frenkey {account.SlotNumber}"
             name_text = name_text if name_text else f"Pending ..."
             if name_text:
                 PyImGui.same_line(62, 0)
-                ImGui.text_centered(name_text, -1, avail[1] + 6)
+                ImGui_Legacy.text_centered(name_text, -1, avail[1] + 6)
 
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
         style.WindowPadding.pop_style_var()
         
         style.Border.pop_color()
@@ -770,7 +770,7 @@ class GUI:
             return
         
         window_width = 200               
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         
         style.WindowPadding.push_style_var(4, 2)        
         style.ItemSpacing.push_style_var(5, 2)
@@ -787,9 +787,9 @@ class GUI:
 
         if self.access_window.begin(None, PyImGui.WindowFlags(PyImGui.WindowFlags.NoTitleBar | PyImGui.WindowFlags.NoResize | PyImGui.WindowFlags.NoMove | PyImGui.WindowFlags.NoSavedSettings)):
             i = 0
-            self.screen_width = ImGui.overlay_instance.GetDisplaySize().x
+            self.screen_width = ImGui_Legacy.overlay_instance.GetDisplaySize().x
             
-            ImGui.text_centered("Accounts", window_width, header_size, font_size=18, font_style="Regular")
+            ImGui_Legacy.text_centered("Accounts", window_width, header_size, font_size=18, font_style="Regular")
 
             #sort accounts based on their order in settings.accounts_order
             sorted_accounts = []
@@ -818,10 +818,10 @@ class GUI:
                             # Console.set_borderless(False)
         
             PyImGui.set_cursor_pos((4, 4))
-            if ImGui.icon_button(IconsFontAwesome5.ICON_GRIP, 25, 18):
+            if ImGui_Legacy.icon_button(IconsFontAwesome5.ICON_GRIP, 25, 18):
                 position_clients(self.settings.get_account_mail(), self.settings.regions, self.settings.accounts)
             
-            ImGui.show_tooltip("Position all clients in their assigned regions")
+            ImGui_Legacy.show_tooltip("Position all clients in their assigned regions")
                 
         style.ItemSpacing.pop_style_var()
         style.WindowPadding.pop_style_var()

@@ -3,7 +3,7 @@ from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import Keystroke
 from Py4GWCoreLib import Key
 from Py4GWCoreLib import IniManager
-from Py4GWCoreLib import ConsoleLog, Color, ImGui
+from Py4GWCoreLib import ConsoleLog, Color, ImGui_Legacy
 from Py4GWCoreLib.Context import GWContext
 import PyImGui
 
@@ -76,9 +76,9 @@ def tooltip():
 
     # Title
     title_color = Color(255, 200, 100, 255)
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored("Enter character on load", title_color.to_tuple_normalized())
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     
     PyImGui.spacing()
     PyImGui.separator()

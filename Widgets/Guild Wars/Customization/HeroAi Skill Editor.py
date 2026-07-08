@@ -11,7 +11,7 @@ import sys
 import PyImGui
 import Py4GW
 
-from Py4GWCoreLib import GLOBAL_CACHE, ImGui, Color, Range, Player
+from Py4GWCoreLib import GLOBAL_CACHE, ImGui_Legacy, Color, Range, Player
 from HeroAI.custom_skill import CustomSkillClass
 from HeroAI.custom_skill_src.skill_types import CastConditions, SkillNature
 from HeroAI.types import Skilltarget, SkillType
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 MODULE_NAME = "HeroAI Skill Editor"
 MODULE_ICON = "Textures/Module_Icons/HeroAI Skill Editor.png"
 
-window_module = ImGui.WindowModule(
+window_module = ImGui_Legacy.WindowModule(
 	MODULE_NAME,
 	window_name="HeroAI Skillbar",
 	window_size=(1200, 700),
@@ -1718,7 +1718,7 @@ def _draw_skill_cell(row: SkillRow) -> None:
 		PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
 		PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
 		PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-		ImGui.ImageButton(f"##heroai_skill_{row.slot}", row.texture_path, ICON_SIZE, ICON_SIZE)
+		ImGui_Legacy.ImageButton(f"##heroai_skill_{row.slot}", row.texture_path, ICON_SIZE, ICON_SIZE)
 		PyImGui.pop_style_color(3)
 		PyImGui.same_line(0, 8)
 
@@ -2002,7 +2002,7 @@ def _draw_edit_window() -> None:
 		PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
 		PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
 		PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
-		ImGui.ImageButton("##heroai_edit_icon", _edit_snapshot.texture_path, ICON_SIZE, ICON_SIZE)
+		ImGui_Legacy.ImageButton("##heroai_edit_icon", _edit_snapshot.texture_path, ICON_SIZE, ICON_SIZE)
 		PyImGui.pop_style_color(3)
 		PyImGui.same_line(0, 8)
 	PyImGui.text(f"Slot {_edit_snapshot.slot}")
@@ -2150,9 +2150,9 @@ def tooltip():
 	PyImGui.begin_tooltip()
 
 	title_color = Color(255, 200, 100, 255)
-	ImGui.push_font("Regular", 20)
+	ImGui_Legacy.push_font("Regular", 20)
 	PyImGui.text_colored("HeroAI Skill Editor", title_color.to_tuple_normalized())
-	ImGui.pop_font()
+	ImGui_Legacy.pop_font()
 	PyImGui.spacing()
 	PyImGui.separator()
 	PyImGui.spacing()

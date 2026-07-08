@@ -252,7 +252,7 @@ def dump_aliases() -> Any:
 
 def draw_window() -> None:
     """
-    Optional Py4GW/ImGui manual UI.
+    Optional Py4GW/ImGui_Legacy manual UI.
 
     This only draws controls and calls actions when the user clicks buttons. It
     does not auto-enable, poll, sleep, or import PyNameObfuscator unless a

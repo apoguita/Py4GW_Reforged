@@ -31,7 +31,7 @@ try:
         Map,
         Player,
         Agent,
-        ImGui,
+        ImGui_Legacy,
         Routines,
         Range,
         Party,
@@ -110,7 +110,7 @@ try:
 
                 if not player_skills:
                     ConsoleLog(MODULE_NAME, f"[Cache] {player_name}: skillbar empty (not loaded yet?)", Console.MessageType.Warning, log=False)
-                    return  # skillbar not loaded yet — retry next tick
+                    return  # skillbar not loaded yet â€” retry next tick
 
                 skill_info = [(sid, Skill.GetNameFromWiki(sid)) for sid in player_skills]
                 ConsoleLog(MODULE_NAME, f"[Cache] {player_name} skills: {skill_info}", Console.MessageType.Info, log=False)
@@ -138,7 +138,7 @@ try:
                 acc_skill_ids = [int(s.Id) for s in acc.AgentData.Skillbar.Skills if int(s.Id) != 0]
                 if not acc_skill_ids:
                     ConsoleLog(MODULE_NAME, f"[Cache] {char_name}: shared memory skillbar empty (not synced yet?)", Console.MessageType.Warning, log=False)
-                    return  # shared memory skillbar not synced yet — retry next tick
+                    return  # shared memory skillbar not synced yet â€” retry next tick
 
                 acc_skill_info = [(sid, Skill.GetNameFromWiki(sid)) for sid in acc_skill_ids]
                 ConsoleLog(MODULE_NAME, f"[Cache] {char_name} skills: {acc_skill_info}", Console.MessageType.Info, log=False)
@@ -202,7 +202,7 @@ try:
         if _skip_if_res_available and not _cache_built and is_explorable:
             if Routines.Checks.Map.IsMapReady() and Routines.Checks.Party.IsPartyLoaded():
                 if not _last_was_explorable:
-                    # First tick in explorable — start the delay timer
+                    # First tick in explorable â€” start the delay timer
                     _explorable_entry_timer.Reset()
                     _last_was_explorable = True
                     _status_text = "Waiting for skillbars to load..."
@@ -237,22 +237,22 @@ try:
 
         # Skip scroll if an alive player/hero has a res skill
         if _skip_if_res_available and _alive_party_member_has_res_skill():
-            _status_text = "Dead party member — res skill available"
+            _status_text = "Dead party member â€” res skill available"
             return
 
-        # A party member is dead — check short item aftercast first.
+        # A party member is dead â€” check short item aftercast first.
         if not _aftercast_timer.HasElapsed(_AFTERCAST_MS):
-            _status_text = "Dead party member — waiting aftercast"
+            _status_text = "Dead party member â€” waiting aftercast"
             return
 
         # Then enforce the longer retry cooldown.
         if _on_cooldown and not _cooldown_timer.HasElapsed(_USE_COOLDOWN_MS):
-            _status_text = "Dead party member — waiting cooldown"
+            _status_text = "Dead party member â€” waiting cooldown"
             return
 
         item_id = GLOBAL_CACHE.Inventory.GetFirstModelID(_SCROLL_MODEL_ID)
         if item_id == 0:
-            _status_text = "Dead party member — no scroll in inventory"
+            _status_text = "Dead party member â€” no scroll in inventory"
             return
 
         Player.ChangeTarget(dead_ally_id)
@@ -266,7 +266,7 @@ try:
     # -----------------------------------------------------------------------
     # Config window
     # -----------------------------------------------------------------------
-    _config_module = ImGui.WindowModule(
+    _config_module = ImGui_Legacy.WindowModule(
         f"{MODULE_NAME} Config",
         window_name=f"{MODULE_NAME} Config##{MODULE_NAME}",
         window_size=(220, 80),
@@ -343,9 +343,9 @@ def tooltip():
         return
     PyImGui.begin_tooltip()
     title_color = Color(255, 200, 100, 255).to_tuple_normalized()
-    ImGui.push_font("Regular", 20)
+    ImGui_Legacy.push_font("Regular", 20)
     PyImGui.text_colored(MODULE_NAME, title_color)
-    ImGui.pop_font()
+    ImGui_Legacy.pop_font()
     PyImGui.spacing()
     PyImGui.separator()
     PyImGui.text("Automatically uses a Scroll of Resurrection")

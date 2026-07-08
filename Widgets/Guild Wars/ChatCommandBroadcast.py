@@ -1,14 +1,14 @@
 import Py4GW
 import PyImGui
 import PySystem
-from Py4GWCoreLib import ImGui, GLOBAL_CACHE, Player, Map
+from Py4GWCoreLib import ImGui_Legacy, GLOBAL_CACHE, Player, Map
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog
 from Py4GWCoreLib.enums import Key
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
 
 MODULE_NAME = "Chat Command Broadcast"
 
-window_module = ImGui.WindowModule(
+window_module = ImGui_Legacy.WindowModule(
     MODULE_NAME,
     window_name="Chat Command Broadcast",
     window_size=(300, 80),

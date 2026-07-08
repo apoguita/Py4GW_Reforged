@@ -8,7 +8,7 @@ import PyImGui
 import PySystem
 
 from Py4GWCoreLib import ColorPalette, IconsFontAwesome5, Py4GW
-from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.enums_src.IO_enums import ImGuiKey, Key
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
@@ -340,7 +340,7 @@ class WidgetCatalogTreePanel:
         row_width = self._clamp_dimension(row_width)
         self._push_outline_row_colors(depth, max_depth, selected)
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.0, 0.0, 0.0, 0.0))
-        clicked = ImGui.selectable(f"##{item_id}", selected=selected, size=(row_width, row_height_value))
+        clicked = ImGui_Legacy.selectable(f"##{item_id}", selected=selected, size=(row_width, row_height_value))
         PyImGui.pop_style_color(1)
         PyImGui.pop_style_color(3)
 
@@ -411,7 +411,7 @@ class WidgetCatalogTreePanel:
 
         item_min = PyImGui.get_item_rect_min()
         item_max = PyImGui.get_item_rect_max()
-        text_color = ImGui.get_style().Text.get_current()
+        text_color = ImGui_Legacy.get_style().Text.get_current()
         tree_labels = self.window.ui_catalog.tree.labels
         indent_width = float(node.depth * tree_labels.indent_value)
         icon_x = item_min[0] + tree_labels.row_padding_x + indent_width
@@ -461,7 +461,7 @@ class WidgetCatalogTreePanel:
         input_width = max(row_width - button_size - spacing, 1.0)
 
         PyImGui.push_item_width(input_width)
-        _, item.text_value = ImGui.search_field(f"##{item.item_id}_input", item.text_value, placeholder="Search...")
+        _, item.text_value = ImGui_Legacy.search_field(f"##{item.item_id}_input", item.text_value, placeholder="Search...")
         PyImGui.pop_item_width()
         view.search_text = item.text_value
         submitted = (
@@ -474,7 +474,7 @@ class WidgetCatalogTreePanel:
         if PyImGui.is_item_hovered():
             PyImGui.set_tooltip("Press <Enter> or click the search button to search")
         PyImGui.same_line(0, spacing)
-        clicked = ImGui.icon_button(f"{item.button_caption}##{item.item_id}_button", width=button_size, height=button_size)
+        clicked = ImGui_Legacy.icon_button(f"{item.button_caption}##{item.item_id}_button", width=button_size, height=button_size)
         if PyImGui.is_item_hovered():
             PyImGui.set_tooltip("Search")
         return submitted or clicked
@@ -507,20 +507,20 @@ class WidgetCatalogTreePanel:
             True,
         )
         search_icon_font_size = max(int(PyImGui.get_text_line_height() * 0.8), 10)
-        ImGui.push_font("Regular", search_icon_font_size)
+        ImGui_Legacy.push_font("Regular", search_icon_font_size)
         search_icon_width, search_icon_height = PyImGui.calc_text_size(IconsFontAwesome5.ICON_SEARCH)
         search_icon_y = item_min[1] + max((actual_row_height - search_icon_height) * 0.5, 0.0)
         PyImGui.draw_list_add_text(
             text_x,
             search_icon_y,
-            ImGui.get_style().Text.get_current().color_int,
+            ImGui_Legacy.get_style().Text.get_current().color_int,
             IconsFontAwesome5.ICON_SEARCH,
         )
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
         PyImGui.draw_list_add_text(
             text_x + search_icon_width + tree_labels.tooltip_icon_spacing,
             text_y,
-            ImGui.get_style().Text.get_current().color_int,
+            ImGui_Legacy.get_style().Text.get_current().color_int,
             item.label,
         )
         PyImGui.pop_clip_rect()
@@ -560,7 +560,7 @@ class WidgetCatalogTreePanel:
         )
 
         icon_font_size = max(int(PyImGui.get_text_line_height() * 0.8), 10)
-        ImGui.push_font("Regular", icon_font_size)
+        ImGui_Legacy.push_font("Regular", icon_font_size)
         icon_width, icon_height = PyImGui.calc_text_size(item.button_caption)
         icon_x = button_min[0] + max(((button_max[0] - button_min[0]) - icon_width) * 0.5, 0.0)
         icon_y = button_min[1] + max(((button_max[1] - button_min[1]) - icon_height) * 0.5, 0.0)
@@ -570,7 +570,7 @@ class WidgetCatalogTreePanel:
             Color(255, 230, 230, 255).to_color(),
             item.button_caption,
         )
-        ImGui.pop_font()
+        ImGui_Legacy.pop_font()
 
         if button_hovered:
             PyImGui.set_tooltip("Close search")
@@ -755,7 +755,7 @@ class WidgetCatalogDetailPanel:
         total_width = self._clamp_dimension(total_width)
         row_height = self._clamp_dimension(row_height)
         if row_height < self.MIN_ROW_RENDER_HEIGHT:
-            ImGui.dummy(total_width, max(row_height, 1.0))
+            ImGui_Legacy.dummy(total_width, max(row_height, 1.0))
             return
         x, y = PyImGui.get_cursor_screen_pos()
         name_width, favorite_width, config_width = self._column_widths(total_width)
@@ -766,7 +766,7 @@ class WidgetCatalogDetailPanel:
         PyImGui.draw_list_add_rect(x, y, x + total_width, y + row_height, border.to_color(), 0.0, 0, 1.0)
 
         text_y = y + max((row_height - PyImGui.get_text_line_height()) * 0.5, 0.0)
-        text_color = ImGui.get_style().Text.get_current().color_int
+        text_color = ImGui_Legacy.get_style().Text.get_current().color_int
         col_x = x
         for label, width in [
             ("Name", name_width),
@@ -777,7 +777,7 @@ class WidgetCatalogDetailPanel:
                 PyImGui.draw_list_add_text(col_x + 6.0, text_y, text_color, label)
             col_x += width
 
-        ImGui.dummy(total_width, row_height)
+        ImGui_Legacy.dummy(total_width, row_height)
 
     def _draw_entry_primary(
         self,
@@ -791,7 +791,7 @@ class WidgetCatalogDetailPanel:
         image_size: float,
     ) -> None:
         detail_rows = self.window.ui_catalog.detail.rows
-        text_color = ImGui.get_style().Text.get_current().color_int
+        text_color = ImGui_Legacy.get_style().Text.get_current().color_int
         content_width = self._clamp_dimension(content_width)
         content_left = item_min[0] + detail_rows.content_padding_x
         content_right = item_min[0] + max(content_width - detail_rows.content_padding_x, detail_rows.content_padding_x)
@@ -812,7 +812,7 @@ class WidgetCatalogDetailPanel:
                 max(content_right - content_left, 1.0),
             )
             icon_y = item_min[1] + max((item_max[1] - item_min[1] - safe_image_size) * 0.5, 0.0)
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 pos=(content_left, icon_y),
                 size=(safe_image_size, safe_image_size),
                 texture_path=texture_path,
@@ -853,7 +853,7 @@ class WidgetCatalogDetailPanel:
         total_width = self._clamp_dimension(total_width)
         row_height = self._clamp_dimension(row_height)
         if total_width < self.MIN_ROW_RENDER_WIDTH or row_height < self.MIN_ROW_RENDER_HEIGHT:
-            ImGui.dummy(max(total_width, 1.0), max(row_height, 1.0))
+            ImGui_Legacy.dummy(max(total_width, 1.0), max(row_height, 1.0))
             return False
         name_width, favorite_width, config_width = self._column_widths(total_width)
         x, y = PyImGui.get_cursor_screen_pos()
@@ -864,7 +864,7 @@ class WidgetCatalogDetailPanel:
         border = Color(55, 55, 60, 160)
         active_border = ColorPalette.GetColor("GW_GREEN").copy()
 
-        clicked_primary = ImGui.invisible_button(f"##{row_id}_primary", name_width, row_height)
+        clicked_primary = ImGui_Legacy.invisible_button(f"##{row_id}_primary", name_width, row_height)
         item_min = PyImGui.get_item_rect_min()
         item_max = PyImGui.get_item_rect_max()
         hovered = PyImGui.is_item_hovered()
@@ -905,7 +905,7 @@ class WidgetCatalogDetailPanel:
             if favorite_toggled:
                 on_favorite_click()
         else:
-            ImGui.dummy(max(favorite_width, 0.0), row_height)
+            ImGui_Legacy.dummy(max(favorite_width, 0.0), row_height)
         current_x += favorite_width
 
         PyImGui.set_cursor_screen_pos(current_x, y)
@@ -924,10 +924,10 @@ class WidgetCatalogDetailPanel:
             if toggled:
                 on_config_click()
         else:
-            ImGui.dummy(max(config_width, 0.0), row_height)
+            ImGui_Legacy.dummy(max(config_width, 0.0), row_height)
 
         PyImGui.set_cursor_screen_pos(x, y)
-        ImGui.dummy(total_width, row_height)
+        ImGui_Legacy.dummy(total_width, row_height)
         return hovered
 
     def _build_objects(
@@ -1009,7 +1009,7 @@ class WidgetCatalogDetailPanel:
             PyImGui.text_disabled("No contents in this location.")
             return
 
-        if not ImGui.begin_child(f"##detail_contents_list_{view.view_id}", (0, 0), False, PyImGui.WindowFlags.HorizontalScrollbar):
+        if not ImGui_Legacy.begin_child(f"##detail_contents_list_{view.view_id}", (0, 0), False, PyImGui.WindowFlags.HorizontalScrollbar):
             return
 
         content_avail_width, content_avail_height = PyImGui.get_content_region_avail()
@@ -1017,10 +1017,10 @@ class WidgetCatalogDetailPanel:
         content_avail_height = self._clamp_non_negative(content_avail_height)
         if content_avail_width < self.MIN_RENDER_WIDTH or content_avail_height < self.MIN_RENDER_HEIGHT:
             PyImGui.text_disabled("...")
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             return
         if content_avail_width < 8.0 or content_avail_height < max(row_height, self._clamp_dimension(detail_header.row_height)):
-            ImGui.end_child()
+            ImGui_Legacy.end_child()
             return
         configured_total_width = detail_header.name_width + detail_header.favorite_width + detail_header.config_width
         if content_avail_width < 80.0:
@@ -1074,7 +1074,7 @@ class WidgetCatalogDetailPanel:
                 if hovered:
                     self.window._draw_widget_hover_card(widget)
 
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
 
     def draw_panel(self, snapshot, browser_root: WidgetCatalogNode, view: browser_view_state | None = None) -> None:
         active_view = view or self.window._get_active_view()
@@ -1086,7 +1086,7 @@ class WidgetCatalogDetailPanel:
         favorite_ids = self.window._get_favorite_ids()
         can_go_up = bool(active_view.browser.current_path) and active_view.browser.current_path not in {self.window.FAVORITES_PATH, self.window.ACTIVE_PATH}
 
-        if ImGui.begin_child(f"##widget_detail_{active_view.view_id}", (0, 0), True):
+        if ImGui_Legacy.begin_child(f"##widget_detail_{active_view.view_id}", (0, 0), True):
             self.draw_contents_list(
                 snapshot,
                 current_node,
@@ -1095,7 +1095,7 @@ class WidgetCatalogDetailPanel:
                 view=active_view,
             )
 
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
 
 
 class WidgetCatalogWindow:
@@ -1132,7 +1132,7 @@ class WidgetCatalogWindow:
         self._virtual_query_cache_stamp: tuple | None = None
         self._virtual_scope_cache: dict[str, list[str]] = {}
         self._virtual_search_cache: dict[str, list[str]] = {}
-        self.floating_button = ImGui.FloatingIcon(
+        self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=os.path.join(PySystem.Console.get_projects_path(), "python_icon_round.png"),
             window_id="##widget_catalog_floating_button",
             window_name="Widget Catalog Toggle",
@@ -1580,33 +1580,33 @@ class WidgetCatalogWindow:
         current_y = PyImGui.get_cursor_pos_y()
         offset = max((row_height - image_size) * 0.5, 0.0)
         PyImGui.set_cursor_pos_y(current_y + offset)
-        ImGui.image(texture_path, (image_size, image_size))
+        ImGui_Legacy.image(texture_path, (image_size, image_size))
 
     def _draw_centered_button(self, label: str, row_height: float, width: float, height: float) -> bool:
         current_y = PyImGui.get_cursor_pos_y()
         offset = max((row_height - height) * 0.5, 0.0)
         PyImGui.set_cursor_pos_y(current_y + offset)
-        return ImGui.button(label, width=width, height=height)
+        return ImGui_Legacy.button(label, width=width, height=height)
 
     def _draw_centered_toggle_icon_button(self, label: str, value: bool, row_height: float, width: float, height: float) -> bool:
         current_y = PyImGui.get_cursor_pos_y()
         offset = max((row_height - height) * 0.5, 0.0)
         PyImGui.set_cursor_pos_y(current_y + offset)
-        return ImGui.toggle_icon_button(label, value, width, height)
+        return ImGui_Legacy.toggle_icon_button(label, value, width, height)
 
     def _draw_centered_texture_icon(self, texture_path: str, image_size: float, row_height: float, uv0: tuple[float, float] = (0.0, 0.0), uv1: tuple[float, float] = (1.0, 1.0)) -> None:
         current_y = PyImGui.get_cursor_pos_y()
         offset = max((row_height - image_size) * 0.5, 0.0)
         PyImGui.set_cursor_pos_y(current_y + offset)
-        ImGui.image(texture_path, (image_size, image_size), uv0=uv0, uv1=uv1)
+        ImGui_Legacy.image(texture_path, (image_size, image_size), uv0=uv0, uv1=uv1)
 
     def _draw_centered_texture_button(self, button_id: str, texture_path: str, row_height: float, width: float, height: float, uv0: tuple[float, float] = (0.0, 0.0), uv1: tuple[float, float] = (1.0, 1.0)) -> bool:
         current_y = PyImGui.get_cursor_pos_y()
         offset = max((row_height - height) * 0.5, 0.0)
         PyImGui.set_cursor_pos_y(current_y + offset)
-        clicked = ImGui.invisible_button(f"##{button_id}", width, height)
+        clicked = ImGui_Legacy.invisible_button(f"##{button_id}", width, height)
         item_min = PyImGui.get_item_rect_min()
-        ImGui.DrawTextureInDrawList(
+        ImGui_Legacy.DrawTextureInDrawList(
             pos=(item_min[0], item_min[1]),
             size=(width, height),
             texture_path=texture_path,
@@ -1622,9 +1622,9 @@ class WidgetCatalogWindow:
         current_y = PyImGui.get_cursor_pos_y()
         offset = max((row_height - height) * 0.5, 0.0)
         PyImGui.set_cursor_pos_y(current_y + offset)
-        clicked = ImGui.invisible_button(f"##{button_id}", width, height)
+        clicked = ImGui_Legacy.invisible_button(f"##{button_id}", width, height)
         item_min = PyImGui.get_item_rect_min()
-        ImGui.DrawTextureInDrawList(
+        ImGui_Legacy.DrawTextureInDrawList(
             pos=(item_min[0], item_min[1]),
             size=(width, height),
             texture_path=texture_path,
@@ -1635,12 +1635,12 @@ class WidgetCatalogWindow:
 
     def _draw_texture_cell_button(self, button_id: str, texture_path: str, row_height: float, draw_width: float, draw_height: float, uv0: tuple[float, float] = (0.0, 0.0), uv1: tuple[float, float] = (1.0, 1.0)) -> bool:
         cell_width = max(PyImGui.get_content_region_avail()[0], draw_width)
-        clicked = ImGui.invisible_button(f"##{button_id}", cell_width, row_height)
+        clicked = ImGui_Legacy.invisible_button(f"##{button_id}", cell_width, row_height)
         item_min = PyImGui.get_item_rect_min()
         item_max = PyImGui.get_item_rect_max()
         x = item_min[0] + max((item_max[0] - item_min[0] - draw_width) * 0.5, 0.0)
         y = item_min[1] + max((item_max[1] - item_min[1] - draw_height) * 0.5, 0.0)
-        ImGui.DrawTextureInDrawList(
+        ImGui_Legacy.DrawTextureInDrawList(
             pos=(x, y),
             size=(draw_width, draw_height),
             texture_path=texture_path,
@@ -1651,25 +1651,25 @@ class WidgetCatalogWindow:
 
     def _draw_text_cell_button(self, button_id: str, text: str, row_height: float) -> bool:
         cell_width = max(PyImGui.get_content_region_avail()[0], 1.0)
-        clicked = ImGui.invisible_button(f"##{button_id}", cell_width, row_height)
+        clicked = ImGui_Legacy.invisible_button(f"##{button_id}", cell_width, row_height)
         item_min = PyImGui.get_item_rect_min()
         item_max = PyImGui.get_item_rect_max()
         text_y = item_min[1] + max((item_max[1] - item_min[1] - PyImGui.get_text_line_height()) * 0.5, 0.0)
         PyImGui.draw_list_add_text(
             item_min[0] + 6.0,
             text_y,
-            ImGui.get_style().Text.get_current().color_int,
+            ImGui_Legacy.get_style().Text.get_current().color_int,
             text,
         )
         return clicked
 
     def _draw_icon_cell_button(self, button_id: str, texture_path: str, cell_width: float, row_height: float, draw_size: float, uv0: tuple[float, float] = (0.0, 0.0), uv1: tuple[float, float] = (1.0, 1.0)) -> bool:
-        clicked = ImGui.invisible_button(f"##{button_id}", cell_width, row_height)
+        clicked = ImGui_Legacy.invisible_button(f"##{button_id}", cell_width, row_height)
         item_min = PyImGui.get_item_rect_min()
         item_max = PyImGui.get_item_rect_max()
         x = item_min[0] + max((item_max[0] - item_min[0] - draw_size) * 0.5, 0.0)
         y = item_min[1] + max((item_max[1] - item_min[1] - draw_size) * 0.5, 0.0)
-        ImGui.DrawTextureInDrawList(
+        ImGui_Legacy.DrawTextureInDrawList(
             pos=(x, y),
             size=(draw_size, draw_size),
             texture_path=texture_path,
@@ -1711,7 +1711,7 @@ class WidgetCatalogWindow:
         description = self._get_widget_description(widget)
 
         if has_icon:
-            ImGui.image(widget.image, (image_size, image_size))
+            ImGui_Legacy.image(widget.image, (image_size, image_size))
             PyImGui.same_line(0, 8)
         else:
             PyImGui.text(IconsFontAwesome5.ICON_FILE_CODE)
@@ -1773,7 +1773,7 @@ class WidgetCatalogWindow:
         draw_list.draw_list_add_rect(x, y, x + total_width, y + row_height, border.to_color(), 0.0, 0, 1.0)
 
         text_y = y + max((row_height - PyImGui.get_text_line_height()) * 0.5, 0.0)
-        text_color = ImGui.get_style().Text.get_current().color_int
+        text_color = ImGui_Legacy.get_style().Text.get_current().color_int
         col_x = x
         for label, width in [
             ("Name", name_width),
@@ -1783,17 +1783,17 @@ class WidgetCatalogWindow:
             PyImGui.draw_list_add_text(col_x + 6.0, text_y, text_color, label)
             col_x += width
 
-        ImGui.dummy(total_width, row_height)
+        ImGui_Legacy.dummy(total_width, row_height)
 
     def _draw_detail_entry_primary(self, item_min: tuple[float, float], item_max: tuple[float, float], content_width: float, texture_path: str | None, uv0: tuple[float, float], uv1: tuple[float, float], label: str, image_size: float) -> None:
         detail_rows = self.ui_catalog.detail.rows
-        text_color = ImGui.get_style().Text.get_current().color_int
+        text_color = ImGui_Legacy.get_style().Text.get_current().color_int
         content_left = item_min[0] + detail_rows.content_padding_x
         content_right = item_min[0] + max(content_width - detail_rows.content_padding_x, detail_rows.content_padding_x)
 
         if texture_path:
             icon_y = item_min[1] + max((item_max[1] - item_min[1] - image_size) * 0.5, 0.0)
-            ImGui.DrawTextureInDrawList(
+            ImGui_Legacy.DrawTextureInDrawList(
                 pos=(content_left, icon_y),
                 size=(image_size, image_size),
                 texture_path=texture_path,
@@ -1840,7 +1840,7 @@ class WidgetCatalogWindow:
         border = Color(55, 55, 60, 160)
         active_border = ColorPalette.GetColor("GW_GREEN").copy()
 
-        clicked_primary = ImGui.invisible_button(f"##{row_id}_primary", primary_width, row_height)
+        clicked_primary = ImGui_Legacy.invisible_button(f"##{row_id}_primary", primary_width, row_height)
         item_min = PyImGui.get_item_rect_min()
         item_max = PyImGui.get_item_rect_max()
         hovered = PyImGui.is_item_hovered()
@@ -1880,7 +1880,7 @@ class WidgetCatalogWindow:
             if favorite_toggled:
                 on_favorite_click()
         else:
-            ImGui.dummy(favorite_width, row_height)
+            ImGui_Legacy.dummy(favorite_width, row_height)
         current_x += favorite_width
 
         PyImGui.set_cursor_screen_pos(current_x, y)
@@ -1898,10 +1898,10 @@ class WidgetCatalogWindow:
             if toggled:
                 on_config_click()
         else:
-            ImGui.dummy(config_width, row_height)
+            ImGui_Legacy.dummy(config_width, row_height)
 
         PyImGui.set_cursor_screen_pos(x, y)
-        ImGui.dummy(total_width, row_height)
+        ImGui_Legacy.dummy(total_width, row_height)
 
     def _make_virtual_scope_node(self, snapshot, label: str, scope: CatalogScope, path_prefix: str, favorite_ids: set[str]) -> WidgetCatalogNode:
         return WidgetCatalogNode(
@@ -2183,7 +2183,7 @@ class WidgetCatalogWindow:
             PyImGui.set_tooltip(label)
 
     def _draw_nav_buttons(self) -> None:
-        style = ImGui.get_style()
+        style = ImGui_Legacy.get_style()
         style.CellPadding.push_style_var(2, 0)
         if PyImGui.begin_table(
             "nav_buttons##WidgetCatNavTable",
@@ -2218,7 +2218,7 @@ class WidgetCatalogWindow:
             if PyImGui.is_item_clicked(0):
                 self._navigate_to(node.path, view=active_view)
         else:
-            if ImGui.selectable(f"{node.name}##tree_{node.path}", selected=selected):
+            if ImGui_Legacy.selectable(f"{node.name}##tree_{node.path}", selected=selected):
                 self._navigate_to(node.path, view=active_view)
 
         if opened:
@@ -2262,9 +2262,9 @@ class WidgetCatalogWindow:
         tree_labels = self.ui_catalog.tree.labels
         row_height_value = max(PyImGui.get_text_line_height() + tree_labels.row_height_padding_y, tree_labels.row_height_min)
         self._push_outline_row_colors(depth, max_depth, selected)
-        text_color = ImGui.get_style().Text.get_current()
+        text_color = ImGui_Legacy.get_style().Text.get_current()
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.0, 0.0, 0.0, 0.0))
-        clicked = ImGui.selectable(f"##{item_id}", selected=selected, size=(row_width, row_height_value))
+        clicked = ImGui_Legacy.selectable(f"##{item_id}", selected=selected, size=(row_width, row_height_value))
         PyImGui.pop_style_color(1)
         PyImGui.pop_style_color(3)
 
@@ -2335,7 +2335,7 @@ class WidgetCatalogWindow:
                 self._navigate_to(node.path, view=active_view)
 
         item_min = PyImGui.get_item_rect_min()
-        text_color = ImGui.get_style().Text.get_current()
+        text_color = ImGui_Legacy.get_style().Text.get_current()
         tree_labels = self.ui_catalog.tree.labels
         indent_width = float(node.depth * tree_labels.indent_value)
         icon_x = item_min[0] + tree_labels.row_padding_x + indent_width
@@ -2398,7 +2398,7 @@ class WidgetCatalogWindow:
             PyImGui.text_disabled("No contents in this location.")
             return
 
-        if not ImGui.begin_child(f"##detail_contents_list_{active_view.view_id}", (0, 0), False, PyImGui.WindowFlags.HorizontalScrollbar):
+        if not ImGui_Legacy.begin_child(f"##detail_contents_list_{active_view.view_id}", (0, 0), False, PyImGui.WindowFlags.HorizontalScrollbar):
             return
 
         configured_total_width = detail_header.name_width + detail_header.favorite_width + detail_header.config_width
@@ -2479,7 +2479,7 @@ class WidgetCatalogWindow:
             if PyImGui.is_item_hovered():
                 self._draw_widget_hover_card(widget)
 
-        ImGui.end_child()
+        ImGui_Legacy.end_child()
 
     def _draw_detail_panel(self, snapshot, browser_root: WidgetCatalogNode, view: browser_view_state | None = None) -> None:
         self.detail_panel.draw_panel(snapshot, browser_root, view=view)
@@ -2493,18 +2493,18 @@ class WidgetCatalogWindow:
         self.widget_manager.toggle_optional_widgets_paused()
 
     def _draw_menu_bar(self) -> None:
-        if ImGui.begin_menu_bar():
-            if ImGui.button(f"{IconsFontAwesome5.ICON_RETWEET} Reload"):
+        if ImGui_Legacy.begin_menu_bar():
+            if ImGui_Legacy.button(f"{IconsFontAwesome5.ICON_RETWEET} Reload"):
                 self._reload_widgets_from_menu()
-            ImGui.show_tooltip("Reload all widgets from disk.")
+            ImGui_Legacy.show_tooltip("Reload all widgets from disk.")
 
             PyImGui.same_line(0, 8)
 
             pause_label = "Pause" if not self.widget_manager.optional_widgets_paused else "Resume"
             pause_icon = IconsFontAwesome5.ICON_PAUSE if not self.widget_manager.optional_widgets_paused else IconsFontAwesome5.ICON_PLAY
-            if ImGui.button(f"{pause_icon} {pause_label}"):
+            if ImGui_Legacy.button(f"{pause_icon} {pause_label}"):
                 self._toggle_optional_widgets_from_menu()
-            ImGui.show_tooltip(
+            ImGui_Legacy.show_tooltip(
                 "Pause the execution of non-system widgets."
                 if not self.widget_manager.optional_widgets_paused
                 else "Resume the execution of non-system widgets."
@@ -2512,25 +2512,25 @@ class WidgetCatalogWindow:
 
             PyImGui.same_line(0, 8)
 
-            if ImGui.begin_menu("Settings"):
-                if ImGui.menu_item("Switch To Advanced UI"):
+            if ImGui_Legacy.begin_menu("Settings"):
+                if ImGui_Legacy.menu_item("Switch To Advanced UI"):
                     IniManager().set(key=self.ini_key, var_name="show_adavanced", value=True, section="Configuration")
                     IniManager().save_vars(self.ini_key)
                     self.runtime.show_adavanced = True
-                ImGui.show_tooltip("Switch from the catalog UI to the advanced widget manager.")
+                ImGui_Legacy.show_tooltip("Switch from the catalog UI to the advanced widget manager.")
                 PyImGui.separator()
-                if ImGui.menu_item("Layout Preferences"):
+                if ImGui_Legacy.menu_item("Layout Preferences"):
                     self.runtime.show_setup_window = True
-                ImGui.show_tooltip("Open the Widget Catalog configuration window.")
-                ImGui.end_menu()
-            ImGui.end_menu_bar()
+                ImGui_Legacy.show_tooltip("Open the Widget Catalog configuration window.")
+                ImGui_Legacy.end_menu()
+            ImGui_Legacy.end_menu_bar()
 
     def _draw_setup_window(self) -> None:
         if not self.runtime.show_setup_window:
             self.runtime.setup_snapshot_captured = False
             return
 
-        expanded, open_ = ImGui.BeginWithClose(
+        expanded, open_ = ImGui_Legacy.BeginWithClose(
             ini_key=self.setup_ini_key,
             name="Widget Catalog Setup",
             p_open=self.runtime.show_setup_window,
@@ -2551,222 +2551,222 @@ class WidgetCatalogWindow:
             max_x = max(float(pyimgui_io.display_size_x), float(self.floating_button.position[0]) + 1.0)
             max_y = max(float(pyimgui_io.display_size_y), float(self.floating_button.position[1]) + 1.0)
 
-            if ImGui.collapsing_header("Address Bar"):
+            if ImGui_Legacy.collapsing_header("Address Bar"):
                 address_bar = self.config.address_bar
-                button_size = ImGui.slider_int("Navigation Button Size", address_bar.button_size, address_bar.button_size_min, address_bar.button_size_max)
+                button_size = ImGui_Legacy.slider_int("Navigation Button Size", address_bar.button_size, address_bar.button_size_min, address_bar.button_size_max)
                 if button_size != address_bar.button_size:
                     address_bar.button_size = max(1, button_size)
                     self._save_config()
-                ImGui.show_tooltip("Controls the size of the Back, Forward, and Up buttons.")
+                ImGui_Legacy.show_tooltip("Controls the size of the Back, Forward, and Up buttons.")
 
-                gradient_start = ImGui.color_edit4("Gradient Start", address_bar.gradient_start.color_tuple)
+                gradient_start = ImGui_Legacy.color_edit4("Gradient Start", address_bar.gradient_start.color_tuple)
                 if gradient_start != address_bar.gradient_start.color_tuple:
                     address_bar.gradient_start = Color.from_tuple_normalized(gradient_start)
                     self._save_config()
 
-                gradient_end = ImGui.color_edit4("Gradient End", address_bar.gradient_end.color_tuple)
+                gradient_end = ImGui_Legacy.color_edit4("Gradient End", address_bar.gradient_end.color_tuple)
                 if gradient_end != address_bar.gradient_end.color_tuple:
                     address_bar.gradient_end = Color.from_tuple_normalized(gradient_end)
                     self._save_config()
 
-            if ImGui.collapsing_header("Floating Icon"):
+            if ImGui_Legacy.collapsing_header("Floating Icon"):
                 floating_icon = self.config.floating_icon
                 PyImGui.text_wrapped("The icon can be dragged directly in the UI. These controls update its position and appearance immediately.")
 
-                icon_x = ImGui.slider_float("Icon X", float(self.floating_button.position[0]), 0.0, max_x)
-                icon_y = ImGui.slider_float("Icon Y", float(self.floating_button.position[1]), 0.0, max_y)
+                icon_x = ImGui_Legacy.slider_float("Icon X", float(self.floating_button.position[0]), 0.0, max_x)
+                icon_y = ImGui_Legacy.slider_float("Icon Y", float(self.floating_button.position[1]), 0.0, max_y)
                 if icon_x != float(self.floating_button.position[0]) or icon_y != float(self.floating_button.position[1]):
                     self.floating_button.position = (icon_x, icon_y)
                     self._save_floating_position()
 
-                if ImGui.button("Reset Position", width=140):
+                if ImGui_Legacy.button("Reset Position", width=140):
                     self._reset_floating_position()
-                ImGui.show_tooltip("Move the floating icon back to its default position.")
+                ImGui_Legacy.show_tooltip("Move the floating icon back to its default position.")
 
                 PyImGui.text(f"Current position: ({self.floating_button.position[0]:.1f}, {self.floating_button.position[1]:.1f})")
                 PyImGui.separator()
 
-                icon_path = ImGui.input_text("Icon Texture", self._texture_display_path(self.floating_button.icon_path))
+                icon_path = ImGui_Legacy.input_text("Icon Texture", self._texture_display_path(self.floating_button.icon_path))
                 if icon_path != self._texture_display_path(self.floating_button.icon_path):
                     self.floating_button.icon_path = self._texture_from_ini_path(icon_path)
                     self._save_floating_config()
-                ImGui.show_tooltip("Path to the texture used by the floating icon.")
+                ImGui_Legacy.show_tooltip("Path to the texture used by the floating icon.")
 
-                if ImGui.button("Browse Texture...", width=140):
+                if ImGui_Legacy.button("Browse Texture...", width=140):
                     selected = self._pick_texture_path()
                     if selected:
                         self.floating_button.icon_path = self._texture_from_ini_path(selected)
                         self._save_floating_config()
-                ImGui.show_tooltip("Select an icon texture from disk.")
+                ImGui_Legacy.show_tooltip("Select an icon texture from disk.")
 
                 PyImGui.same_line(0, 8)
-                if ImGui.button("Use Default Icon", width=140):
+                if ImGui_Legacy.button("Use Default Icon", width=140):
                     self.floating_button.icon_path = self._default_floating_icon_path()
                     self._save_floating_config()
-                ImGui.show_tooltip("Restore the default Py4GW round python icon.")
+                ImGui_Legacy.show_tooltip("Restore the default Py4GW round python icon.")
 
-                icon_size = ImGui.slider_float("Icon Size", float(self.floating_button.button_size), floating_icon.button_size_min, floating_icon.button_size_max)
+                icon_size = ImGui_Legacy.slider_float("Icon Size", float(self.floating_button.button_size), floating_icon.button_size_min, floating_icon.button_size_max)
                 if icon_size != float(self.floating_button.button_size):
                     self.floating_button.button_size = max(1.0, icon_size)
                     self._save_floating_config()
-                ImGui.show_tooltip("Base size of the floating icon button.")
+                ImGui_Legacy.show_tooltip("Base size of the floating icon button.")
 
-                idle_scale = ImGui.slider_float("Idle Scale", float(self.floating_button.idle_icon_scale), floating_icon.idle_scale_min, floating_icon.idle_scale_max)
+                idle_scale = ImGui_Legacy.slider_float("Idle Scale", float(self.floating_button.idle_icon_scale), floating_icon.idle_scale_min, floating_icon.idle_scale_max)
                 if idle_scale != float(self.floating_button.idle_icon_scale):
                     self.floating_button.idle_icon_scale = max(0.1, idle_scale)
                     self._save_floating_config()
-                ImGui.show_tooltip("Scale of the icon when it is not being hovered.")
+                ImGui_Legacy.show_tooltip("Scale of the icon when it is not being hovered.")
 
-                hover_scale = ImGui.slider_float("Hover Scale", float(self.floating_button.hover_icon_scale), floating_icon.hover_scale_min, floating_icon.hover_scale_max)
+                hover_scale = ImGui_Legacy.slider_float("Hover Scale", float(self.floating_button.hover_icon_scale), floating_icon.hover_scale_min, floating_icon.hover_scale_max)
                 if hover_scale != float(self.floating_button.hover_icon_scale):
                     self.floating_button.hover_icon_scale = max(0.1, hover_scale)
                     self._save_floating_config()
-                ImGui.show_tooltip("Scale of the icon while hovered.")
+                ImGui_Legacy.show_tooltip("Scale of the icon while hovered.")
 
-                if ImGui.button("Reset Floating Style", width=160):
+                if ImGui_Legacy.button("Reset Floating Style", width=160):
                     self._reset_floating_style()
-                ImGui.show_tooltip("Restore the floating icon appearance defaults.")
+                ImGui_Legacy.show_tooltip("Restore the floating icon appearance defaults.")
 
                 PyImGui.text(f"Current texture: {self._texture_display_path(self.floating_button.icon_path)}")
 
-            if ImGui.collapsing_header("Tree"):
+            if ImGui_Legacy.collapsing_header("Tree"):
                 tree_config = self.ui_catalog.tree
                 tree_labels = self.ui_catalog.tree.labels
 
-                tree_width = ImGui.slider_float("Tree Width", float(tree_config.width), 120.0, 500.0)
+                tree_width = ImGui_Legacy.slider_float("Tree Width", float(tree_config.width), 120.0, 500.0)
                 if tree_width != float(tree_config.width):
                     tree_config.width = max(80.0, tree_width)
                     self.runtime.tree_width_pending_apply = True
                     self.runtime.tree_layout_revision += 1
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Controls the fixed width of the tree column in pixels.")
+                ImGui_Legacy.show_tooltip("Controls the fixed width of the tree column in pixels.")
 
-                indent_value = ImGui.slider_float("Indent Step", float(tree_labels.indent_value), 0.0, 40.0)
+                indent_value = ImGui_Legacy.slider_float("Indent Step", float(tree_labels.indent_value), 0.0, 40.0)
                 if indent_value != float(tree_labels.indent_value):
                     tree_labels.indent_value = indent_value
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Horizontal indent added per tree depth level.")
+                ImGui_Legacy.show_tooltip("Horizontal indent added per tree depth level.")
 
-                row_height_min = ImGui.slider_float("Row Height Min", float(tree_labels.row_height_min), 8.0, 40.0)
+                row_height_min = ImGui_Legacy.slider_float("Row Height Min", float(tree_labels.row_height_min), 8.0, 40.0)
                 if row_height_min != float(tree_labels.row_height_min):
                     tree_labels.row_height_min = max(1.0, row_height_min)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Minimum selectable row height in the tree.")
+                ImGui_Legacy.show_tooltip("Minimum selectable row height in the tree.")
 
-                row_height_padding_y = ImGui.slider_float("Row Height Padding", float(tree_labels.row_height_padding_y), 0.0, 12.0)
+                row_height_padding_y = ImGui_Legacy.slider_float("Row Height Padding", float(tree_labels.row_height_padding_y), 0.0, 12.0)
                 if row_height_padding_y != float(tree_labels.row_height_padding_y):
                     tree_labels.row_height_padding_y = max(0.0, row_height_padding_y)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Extra height added on top of text height for tree rows.")
+                ImGui_Legacy.show_tooltip("Extra height added on top of text height for tree rows.")
 
-                row_padding_x = ImGui.slider_float("Row Padding X", float(tree_labels.row_padding_x), 0.0, 24.0)
+                row_padding_x = ImGui_Legacy.slider_float("Row Padding X", float(tree_labels.row_padding_x), 0.0, 24.0)
                 if row_padding_x != float(tree_labels.row_padding_x):
                     tree_labels.row_padding_x = max(0.0, row_padding_x)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Left padding before the tree row content begins.")
+                ImGui_Legacy.show_tooltip("Left padding before the tree row content begins.")
 
-                row_width_padding_right = ImGui.slider_float("Row Width Padding", float(tree_labels.row_width_padding_right), 0.0, 32.0)
+                row_width_padding_right = ImGui_Legacy.slider_float("Row Width Padding", float(tree_labels.row_width_padding_right), 0.0, 32.0)
                 if row_width_padding_right != float(tree_labels.row_width_padding_right):
                     tree_labels.row_width_padding_right = max(0.0, row_width_padding_right)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Extra width reserved to the right of each tree row.")
+                ImGui_Legacy.show_tooltip("Extra width reserved to the right of each tree row.")
 
-                row_corner_radius = ImGui.slider_float("Corner Radius", float(tree_labels.row_corner_radius), 0.0, 12.0)
+                row_corner_radius = ImGui_Legacy.slider_float("Corner Radius", float(tree_labels.row_corner_radius), 0.0, 12.0)
                 if row_corner_radius != float(tree_labels.row_corner_radius):
                     tree_labels.row_corner_radius = max(0.0, row_corner_radius)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Rounded corner radius for the custom tree rows.")
+                ImGui_Legacy.show_tooltip("Rounded corner radius for the custom tree rows.")
 
-                tooltip_icon_spacing = ImGui.slider_float("Icon Spacing", float(tree_labels.tooltip_icon_spacing), 0.0, 16.0)
+                tooltip_icon_spacing = ImGui_Legacy.slider_float("Icon Spacing", float(tree_labels.tooltip_icon_spacing), 0.0, 16.0)
                 if tooltip_icon_spacing != float(tree_labels.tooltip_icon_spacing):
                     tree_labels.tooltip_icon_spacing = max(0.0, tooltip_icon_spacing)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Spacing between the tree caret icon and the label.")
+                ImGui_Legacy.show_tooltip("Spacing between the tree caret icon and the label.")
 
-            if ImGui.collapsing_header("Detail Panel"):
+            if ImGui_Legacy.collapsing_header("Detail Panel"):
                 detail_header = self.ui_catalog.detail.header
                 detail_rows = self.ui_catalog.detail.rows
 
-                header_row_height = ImGui.slider_float("Header Row Height", float(detail_header.row_height), 12.0, 48.0)
+                header_row_height = ImGui_Legacy.slider_float("Header Row Height", float(detail_header.row_height), 12.0, 48.0)
                 if header_row_height != float(detail_header.row_height):
                     detail_header.row_height = max(1.0, header_row_height)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Height of the detail list header row.")
+                ImGui_Legacy.show_tooltip("Height of the detail list header row.")
 
-                total_width_min = ImGui.slider_float("Minimum List Width", float(detail_header.total_width_min), 200.0, 900.0)
+                total_width_min = ImGui_Legacy.slider_float("Minimum List Width", float(detail_header.total_width_min), 200.0, 900.0)
                 if total_width_min != float(detail_header.total_width_min):
                     detail_header.total_width_min = max(1.0, total_width_min)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Minimum width used for the right-side detail list layout.")
+                ImGui_Legacy.show_tooltip("Minimum width used for the right-side detail list layout.")
 
-                favorite_width = ImGui.slider_float("Favorite Column Width", float(detail_header.favorite_width), 16.0, 140.0)
+                favorite_width = ImGui_Legacy.slider_float("Favorite Column Width", float(detail_header.favorite_width), 16.0, 140.0)
                 if favorite_width != float(detail_header.favorite_width):
                     detail_header.favorite_width = max(1.0, favorite_width)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Width of the detail list favorite column.")
+                ImGui_Legacy.show_tooltip("Width of the detail list favorite column.")
 
-                config_width = ImGui.slider_float("Config Column Width", float(detail_header.config_width), 16.0, 140.0)
+                config_width = ImGui_Legacy.slider_float("Config Column Width", float(detail_header.config_width), 16.0, 140.0)
                 if config_width != float(detail_header.config_width):
                     detail_header.config_width = max(1.0, config_width)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Width of the detail list config column.")
+                ImGui_Legacy.show_tooltip("Width of the detail list config column.")
 
-                name_width = ImGui.slider_float("Name Column Width", float(detail_header.name_width), 80.0, 400.0)
+                name_width = ImGui_Legacy.slider_float("Name Column Width", float(detail_header.name_width), 80.0, 400.0)
                 if name_width != float(detail_header.name_width):
                     detail_header.name_width = max(1.0, name_width)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Fixed width reserved for the widget/folder name column.")
+                ImGui_Legacy.show_tooltip("Fixed width reserved for the widget/folder name column.")
 
                 PyImGui.separator()
 
-                detail_row_height = ImGui.slider_float("Entry Row Height", float(detail_rows.row_height), 16.0, 64.0)
+                detail_row_height = ImGui_Legacy.slider_float("Entry Row Height", float(detail_rows.row_height), 16.0, 64.0)
                 if detail_row_height != float(detail_rows.row_height):
                     detail_rows.row_height = max(1.0, detail_row_height)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Height of each folder or widget row in the detail panel.")
+                ImGui_Legacy.show_tooltip("Height of each folder or widget row in the detail panel.")
 
-                icon_padding = ImGui.slider_float("Icon Padding", float(detail_rows.icon_padding), 0.0, 16.0)
+                icon_padding = ImGui_Legacy.slider_float("Icon Padding", float(detail_rows.icon_padding), 0.0, 16.0)
                 if icon_padding != float(detail_rows.icon_padding):
                     detail_rows.icon_padding = max(0.0, icon_padding)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Amount removed from row height before computing icon button size.")
+                ImGui_Legacy.show_tooltip("Amount removed from row height before computing icon button size.")
 
-                icon_size_max = ImGui.slider_float("Max Icon Size", float(detail_rows.icon_size_max), 8.0, 48.0)
+                icon_size_max = ImGui_Legacy.slider_float("Max Icon Size", float(detail_rows.icon_size_max), 8.0, 48.0)
                 if icon_size_max != float(detail_rows.icon_size_max):
                     detail_rows.icon_size_max = max(1.0, icon_size_max)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Maximum icon size used inside detail rows.")
+                ImGui_Legacy.show_tooltip("Maximum icon size used inside detail rows.")
 
-                content_padding_x = ImGui.slider_float("Content Padding X", float(detail_rows.content_padding_x), 0.0, 24.0)
+                content_padding_x = ImGui_Legacy.slider_float("Content Padding X", float(detail_rows.content_padding_x), 0.0, 24.0)
                 if content_padding_x != float(detail_rows.content_padding_x):
                     detail_rows.content_padding_x = max(0.0, content_padding_x)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Left padding before the main detail row content.")
+                ImGui_Legacy.show_tooltip("Left padding before the main detail row content.")
 
-                content_gap_after_icon = ImGui.slider_float("Gap After Icon", float(detail_rows.content_gap_after_icon), 0.0, 32.0)
+                content_gap_after_icon = ImGui_Legacy.slider_float("Gap After Icon", float(detail_rows.content_gap_after_icon), 0.0, 32.0)
                 if content_gap_after_icon != float(detail_rows.content_gap_after_icon):
                     detail_rows.content_gap_after_icon = max(0.0, content_gap_after_icon)
                     self._save_ui_catalog_config()
-                ImGui.show_tooltip("Horizontal gap between a detail row icon and its label.")
+                ImGui_Legacy.show_tooltip("Horizontal gap between a detail row icon and its label.")
 
             PyImGui.separator()
-            if ImGui.button("Restore", width=140):
+            if ImGui_Legacy.button("Restore", width=140):
                 self._restore_setup_snapshot()
-            ImGui.show_tooltip("Restore the values from when this setup window was opened and keep the window open.")
+            ImGui_Legacy.show_tooltip("Restore the values from when this setup window was opened and keep the window open.")
 
             PyImGui.same_line(0, 8)
-            if ImGui.button("Restore and Close", width=160):
+            if ImGui_Legacy.button("Restore and Close", width=160):
                 self._restore_setup_snapshot()
                 self.runtime.setup_snapshot_captured = False
                 self.runtime.show_setup_window = False
-            ImGui.show_tooltip("Restore the values from when this setup window was opened, then close the window.")
+            ImGui_Legacy.show_tooltip("Restore the values from when this setup window was opened, then close the window.")
 
             PyImGui.same_line(0, 8)
-            if ImGui.button("Close", width=120):
+            if ImGui_Legacy.button("Close", width=120):
                 self.runtime.setup_snapshot_captured = False
                 self.runtime.show_setup_window = False
 
-        ImGui.End(self.setup_ini_key)
+        ImGui_Legacy.End(self.setup_ini_key)
 
     def _draw_window(self) -> None:
         if self.runtime.expand_on_next_show:
@@ -2777,7 +2777,7 @@ class WidgetCatalogWindow:
         min_window_height = DEFAULT_WINDOW_HEIGHT
         flags = PyImGui.WindowFlags.MenuBar
 
-        expanded, open_ = ImGui.BeginWithClose(
+        expanded, open_ = ImGui_Legacy.BeginWithClose(
             ini_key=self.ini_key,
             name=f"{self.module_name}",
             p_open=self.floating_button.visible,
@@ -2825,22 +2825,22 @@ class WidgetCatalogWindow:
                     if abs(live_tree_width - float(self.ui_catalog.tree.width)) > 0.5:
                         self.ui_catalog.tree.width = live_tree_width
                         self._save_ui_catalog_config()
-                if ImGui.begin_child("##widget_tree_column", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar):
+                if ImGui_Legacy.begin_child("##widget_tree_column", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar):
                     self._draw_folder_outline(browser_root)
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
 
                 PyImGui.table_set_column_index(1)
-                if ImGui.begin_child("##widget_detail_column", (0, 0), False):
+                if ImGui_Legacy.begin_child("##widget_detail_column", (0, 0), False):
                     detail_avail_width, detail_avail_height = PyImGui.get_content_region_avail()
                     if float(detail_avail_width) >= WidgetCatalogDetailPanel.MIN_RENDER_WIDTH and float(detail_avail_height) >= WidgetCatalogDetailPanel.MIN_RENDER_HEIGHT:
                         self._draw_detail_panel(snapshot, browser_root)
                     else:
                         PyImGui.text_disabled("...")
-                ImGui.end_child()
+                ImGui_Legacy.end_child()
 
                 PyImGui.end_table()
 
-        ImGui.End(self.ini_key)
+        ImGui_Legacy.End(self.ini_key)
         self.floating_button.sync_begin_with_close(open_)
         self._draw_setup_window()
 

@@ -1,8 +1,8 @@
 import PyImGui
 
 from Py4GWCoreLib.IniManager import IniManager
-from Py4GWCoreLib import ImGui
-from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib import ImGui_Legacy
+from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -146,7 +146,7 @@ class EnemyBlacklist:
 
 
 # ------------------------------------------------------------------
-# UI — shared between HeroAI configure window and CB botting panel
+# UI â€” shared between HeroAI configure window and CB botting panel
 # ------------------------------------------------------------------
 
 _blacklist_input: str = ""
@@ -169,7 +169,7 @@ def draw_blacklist_ui():
     PyImGui.text("By Model ID")
     PyImGui.set_next_item_width(120)
     _blacklist_input = PyImGui.input_text("##bl_input", _blacklist_input, 16)
-    ImGui.show_tooltip("Enter a numeric model ID and press Add.")
+    ImGui_Legacy.show_tooltip("Enter a numeric model ID and press Add.")
     PyImGui.same_line(0.0, 5.0)
     if PyImGui.button("Add##bl_add"):
         val = _blacklist_input.strip()
@@ -183,7 +183,7 @@ def draw_blacklist_ui():
             model_id = Agent.GetModelID(target_id)
             if model_id > 0:
                 blacklist.add(model_id)
-    ImGui.show_tooltip("Add the Model ID of the currently selected target to the blacklist.")
+    ImGui_Legacy.show_tooltip("Add the Model ID of the currently selected target to the blacklist.")
 
     PyImGui.spacing()
     entries = blacklist.get_all()
@@ -224,7 +224,7 @@ def draw_blacklist_ui():
     PyImGui.text("By Name")
     PyImGui.set_next_item_width(200)
     _blacklist_name_input = PyImGui.input_text("##bl_name_input", _blacklist_name_input, 64)
-    ImGui.show_tooltip("Enter the display name of an enemy (case-insensitive) and press Add.")
+    ImGui_Legacy.show_tooltip("Enter the display name of an enemy (case-insensitive) and press Add.")
     PyImGui.same_line(0.0, 5.0)
     if PyImGui.button("Add##bl_name_add"):
         val = _blacklist_name_input.strip()
@@ -238,7 +238,7 @@ def draw_blacklist_ui():
             name = Agent.GetNameByID(target_id)
             if name:
                 blacklist.add_name(name)
-    ImGui.show_tooltip("Add the display name of the currently selected target to the blacklist.")
+    ImGui_Legacy.show_tooltip("Add the display name of the currently selected target to the blacklist.")
 
     PyImGui.spacing()
     name_entries = blacklist.get_all_names()
