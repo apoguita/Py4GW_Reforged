@@ -476,3 +476,9 @@ CRASH vectored_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-1651-2
 CRASH structured_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-1651-25092-6324\report sidecars
 CRASH vectored_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-1653-7352-4896\report sidecars
 CRASH structured_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-1653-7352-4896\report sidecars
+CRASH vectored_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-2046-336-22096\report sidecars
+CRASH structured_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-2046-336-22096\report sidecars
+CRASH vectored_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-2047-18804-24164\report sidecars
+CRASH structured_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-2047-18804-24164\report sidecars
+CRASH vectored_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-2213-13280-10696\report sidecars
+CRASH structured_exception_handler 0xC0000005 -> see crashes\py4gw-20260707-2213-13280-10696\report sidecars

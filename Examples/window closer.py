@@ -8,7 +8,7 @@ def main():
     global window_open, visible
     
     if window_open:
-        visible, window_open = PyImGui.begin_with_close(f"close window tester", window_open, PyImGui.WindowFlags.NoFlag)
+        visible, window_open = PyImGui.begin(f"close window tester", window_open, PyImGui.WindowFlags.NoFlag)
 
         if visible:
             PyImGui.text("This is a test window with a close button")

@@ -26,7 +26,7 @@ class UI:
                     
     def draw(self):
     
-        expanded, gui_open = PyImGui.begin_with_close("Polymock Assistant", self.gui_open, PyImGui.WindowFlags.AlwaysAutoResize)
+        expanded, gui_open = PyImGui.begin("Polymock Assistant", self.gui_open, PyImGui.WindowFlags.AlwaysAutoResize)
         self.expanded = expanded
         self.gui_open = gui_open
         

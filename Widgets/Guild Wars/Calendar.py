@@ -938,7 +938,7 @@ def DrawWindow() -> bool:
     global button_layout, calendar, calendar_window_open
     window_flags = PyImGui.WindowFlags.AlwaysAutoResize
 
-    is_window_opened, calendar_window_open = PyImGui.begin_with_close("Calendar", calendar_window_open, window_flags)
+    is_window_opened, calendar_window_open = PyImGui.begin("Calendar", calendar_window_open, window_flags)
 
     if calendar_window_open and is_window_opened:
         button_layout.draw()

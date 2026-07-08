@@ -88,7 +88,7 @@ def init_toggle_state():
 def draw_item_selector_window():
     global show_item_selector
     
-    expanded, show_item_selector = PyImGui.begin_with_close("TitleHelper Options", show_item_selector, PyImGui.WindowFlags.AlwaysAutoResize)
+    expanded, show_item_selector = PyImGui.begin("TitleHelper Options", show_item_selector, PyImGui.WindowFlags.AlwaysAutoResize)
 
     if not show_item_selector:
         PyImGui.end()

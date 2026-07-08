@@ -2428,7 +2428,7 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def draw_debug_window(heroai_bt=None):
-        visible, HeroAI_BaseUI.show_debug = PyImGui.begin_with_close("HeroAI Debug", HeroAI_BaseUI.show_debug, 0)
+        visible, HeroAI_BaseUI.show_debug = PyImGui.begin("HeroAI Debug", HeroAI_BaseUI.show_debug, 0)
         if visible and heroai_bt is not None:
             heroai_bt.draw()
         PyImGui.end()

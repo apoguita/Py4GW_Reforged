@@ -733,7 +733,7 @@ def ShowConfigWindow():
     GW_GOLD = ColorPalette.GetColor("GW_Gold")
     GW_GREEN = ColorPalette.GetColor("GW_Green")
     
-    expanded, show_config_window = PyImGui.begin_with_close("Inventory + Configuration", show_config_window, PyImGui.WindowFlags.AlwaysAutoResize)
+    expanded, show_config_window = PyImGui.begin("Inventory + Configuration", show_config_window, PyImGui.WindowFlags.AlwaysAutoResize)
     if expanded:
         if PyImGui.begin_tab_bar("InventoryPlusConfigTabs"):
             cfg = config_settings.identification_settings

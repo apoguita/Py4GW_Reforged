@@ -313,8 +313,9 @@ class ImGui:
     
     @staticmethod
     def begin (name: str, p_open: Optional[bool] = None, flags: int = PyImGui.WindowFlags.NoFlag) -> bool:
-        if not ImGui._is_textured_theme(): 
-            return PyImGui.begin(name, p_open, flags)
+        if not ImGui._is_textured_theme():
+            visible, _ = PyImGui.begin(name, p_open, flags)
+            return visible
         
         if name not in WindowModule._windows:
             WindowModule._windows[name] = WindowModule(name, window_flags=flags)
@@ -333,7 +334,7 @@ class ImGui:
     @staticmethod
     def begin_with_close(name: str, p_open: Optional[bool] = None, flags: int = PyImGui.WindowFlags.NoFlag) -> tuple[bool, bool]:
         if not ImGui._is_textured_theme():
-            return PyImGui.begin_with_close(name, p_open if p_open is not None else True, flags)
+            return PyImGui.begin(name, p_open if p_open is not None else True, flags)
         
         if name not in WindowModule._windows:
             WindowModule._windows[name] = WindowModule(name, window_flags=flags)

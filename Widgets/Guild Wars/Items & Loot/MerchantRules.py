@@ -5265,7 +5265,7 @@ class MerchantRulesWidget:
             PyImGui.set_next_window_collapsed(False, PyImGui.ImGuiCond.Always)
             self.expand_main_window_on_next_show = False
 
-        window_expanded, window_open = PyImGui.begin_with_close(
+        window_expanded, window_open = PyImGui.begin(
             MODULE_NAME,
             self.show_main_window,
             PyImGui.WindowFlags.NoFlag,

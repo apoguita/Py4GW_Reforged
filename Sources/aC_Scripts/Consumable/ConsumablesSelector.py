@@ -26,7 +26,7 @@ ICON_MODEL = {
 def draw_consumables_selector_window():
     global show_consumables_selector
 
-    expanded, show_consumables_selector = PyImGui.begin_with_close(
+    expanded, show_consumables_selector = PyImGui.begin(
         "Choose Consumables", show_consumables_selector, PyImGui.WindowFlags.AlwaysAutoResize
     )
     if not show_consumables_selector:

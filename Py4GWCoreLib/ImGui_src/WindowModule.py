@@ -134,7 +134,7 @@ class WindowModule:
                                                                 
                     
                 PyImGui.set_next_window_collapsed(self.collapse, PyImGui.ImGuiCond.Always)
-                _, open = PyImGui.begin_with_close(name = self.window_name, p_open=self.open, flags=internal_flags)
+                _, open = PyImGui.begin(name = self.window_name, p_open=self.open, flags=internal_flags)
                                         
                 self.open = open         
                                 
@@ -158,7 +158,7 @@ class WindowModule:
                                 
             case _:  
                 if self.can_close:
-                    expanded, self.open = PyImGui.begin_with_close(name = self.window_name, p_open=self.open, flags=self.window_flags)
+                    expanded, self.open = PyImGui.begin(name = self.window_name, p_open=self.open, flags=self.window_flags)
                     self.collapse = not expanded
                 else:
                     self.collapse = not PyImGui.begin(self.window_name, self.window_flags)
