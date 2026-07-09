@@ -1617,11 +1617,17 @@ def main() -> None:
     # (below) takes over after that, so this never affects an existing user, only the
     # first impression. Per hello_imgui's own docs this size is "handled as if
     # specified for a 96 PPI screen", i.e. it's already scaled for the actual display's
-    # DPI internally. 520x350 is Chris's own hands-on preference, confirmed better than
-    # the previous pass's 671x420 -- checked visually both at the sparse 2-card state
-    # and with several more profiles added, so it isn't just tuned for an empty grid.
-    # resizable defaults to True already, so this is a starting point, not a hard limit.
-    runner_params.app_window_params.window_geometry.size = (520, 350)
+    # DPI internally. 600x430 re-tuned from the previous pass's 520x350 after the card
+    # grid's padding bug and the ALL-view-vs-team-view toolbar height mismatch were both
+    # fixed -- 520 width sat right at the boundary of fitting 2 columns once the padding
+    # math was corrected (only 2 columns without a scrollbar present, dropping to 1 once
+    # one appeared), and 350 height was tuned against the shorter ALL-view-only toolbar.
+    # 600x430 gives a clean, stable 2-column x 3-row grid for a handful of profiles (with
+    # margin to spare even once a scrollbar appears) and reads consistently across both
+    # ALL and team views now that both share the same toolbar height -- checked visually
+    # in both. resizable defaults to True already, so this is a starting point, not a
+    # hard limit.
+    runner_params.app_window_params.window_geometry.size = (600, 430)
     # Persist the main window's size/position across restarts (written to
     # imgui_app_window.ini alongside this launcher's own .ini). Off by default in
     # hello_imgui; nothing was persisting the OS-level window's geometry before this.
