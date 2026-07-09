@@ -1112,9 +1112,17 @@ def show_main_window() -> None:
     imgui.spacing()
 
     em = hello_imgui.em_size()
-    card_w, card_h, card_gap = _card_dimensions()
+    min_card_w, card_h, card_gap = _card_dimensions()
+    # Cards stretch to fill the row instead of leaving a trailing gap on the
+    # right: min_card_w is a floor (today's size, used to decide how many
+    # columns fit), max_card_w a soft ceiling so cards don't get absurdly wide
+    # on a large window. Only the card's own width changes -- everything drawn
+    # inside a card (avatar, text, badges, checkbox) is still positioned/sized
+    # relative to em and to the card's own edges, so it doesn't scale with it.
+    max_card_w = min_card_w * 1.6
     avail_w = imgui.get_content_region_avail().x
-    cols = max(1, int(avail_w // (card_w + card_gap)))
+    cols = max(1, int(avail_w // (min_card_w + card_gap)))
+    card_w = max(min_card_w, min(max_card_w, (avail_w - (cols - 1) * card_gap) / cols))
     visible_profiles = _visible_profiles()
 
     imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
