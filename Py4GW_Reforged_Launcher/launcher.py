@@ -1061,11 +1061,14 @@ def show_team_actions() -> None:
 def show_settings_gear_button() -> None:
     """Small gear icon, right-aligned in the toolbar -- both reference
     launchers use this same icon for this same purpose, so it's a recognized
-    affordance rather than a new one to learn."""
+    affordance rather than a new one to learn. Uses set_cursor_pos_x rather
+    than same_line(offset) so the right-alignment still works even when this
+    is the very first thing drawn on the row (same_line needs a preceding
+    item on the line to have any effect; this doesn't)."""
     em = hello_imgui.em_size()
     icon_size = em * 1.8
     avail_w = imgui.get_content_region_avail().x
-    imgui.same_line(avail_w - icon_size)
+    imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + avail_w - icon_size)
     clicked = imgui.button("##app_settings_gear", size=(icon_size, icon_size))
     item_min, item_max = imgui.get_item_rect_min(), imgui.get_item_rect_max()
     center = ((item_min[0] + item_max[0]) / 2, (item_min[1] + item_max[1]) / 2)
@@ -1077,7 +1080,6 @@ def show_settings_gear_button() -> None:
 def show_main_window() -> None:
     STATE.update()
 
-    imgui.text(f"{len(STATE.profiles)} profile(s) loaded from profile_store.")
     show_settings_gear_button()
 
     imgui.spacing()
