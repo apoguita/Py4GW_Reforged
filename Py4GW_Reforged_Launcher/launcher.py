@@ -1158,10 +1158,22 @@ def _visible_profiles() -> list[GameProfile]:
 
 
 def show_team_actions() -> None:
-    """Launch Team -- only meaningful in a real team view (ALL has no
-    membership, so there's nothing to bulk-launch). Disabled/unarmed unless at
-    least one account is checked into the currently-viewed team, and while a
-    bulk launch is already running (never overlap two at once).
+    """Launch Team -- always drawn and always reserving its row's height, even
+    in ALL view where there's no team to launch: this row previously drew
+    nothing and consumed zero height when STATE.current_team_id was None,
+    which meant switching between a team view and ALL shifted the card grid's
+    origin by a full row's height on a window sized to show an exact number of
+    rows -- visibly clipping/unclipping cards on every view switch. Disabled
+    (not hidden) instead, matching the existing begin_disabled()/end_disabled()
+    pattern already used below for the no-members-checked case.
+
+    Disabled/unarmed when there's no active team (ALL), no account is checked
+    into the currently-viewed team, or a bulk launch is already running (never
+    overlap two at once). The (N) in the label mirrors the checked-member
+    count directly -- an account's checkbox *is* its team membership (see the
+    in_team_view checkbox toggle in show_main_window) -- so the armed/disabled
+    state reads at a glance instead of being just a greyed-out button with no
+    context.
 
     "Select all visible" / "Select none" were cut per design review -- they
     didn't earn their toolbar space -- rather than relabeled or relocated. The
@@ -1170,16 +1182,14 @@ def show_team_actions() -> None:
     the user is actually watching during a launch.
     """
     team_id = STATE.current_team_id
-    if team_id is None:
-        return
-
-    members = [p for p in STATE.profiles if team_id in p.team_ids]
+    members = [p for p in STATE.profiles if team_id in p.team_ids] if team_id is not None else []
     bulk_launching = STATE.is_bulk_launching()
-    can_launch = bool(members) and not bulk_launching
+    can_launch = team_id is not None and bool(members) and not bulk_launching
 
+    label = f"Launch Team ({len(members)})" if team_id is not None else "Launch Team"
     if not can_launch:
         imgui.begin_disabled()
-    launch_clicked = imgui.button("Launch Team")
+    launch_clicked = imgui.button(label)
     if not can_launch:
         imgui.end_disabled()
     if launch_clicked and can_launch:
