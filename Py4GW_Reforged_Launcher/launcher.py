@@ -138,10 +138,12 @@ try:
     import win32con
     import win32gui
 
+    from launcher_core import bulk_launch
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
     from launcher_core.profile_store import load_profiles, load_teams, save_profiles, save_teams
+    from launcher_core.settings_store import load_bulk_launch_pacing_seconds, save_bulk_launch_pacing_seconds
     from launcher_core.team import Team
     from launcher_core.window_control import (
         find_running_pid_for_exe_path,
@@ -318,6 +320,61 @@ class LaunchSession:
 
 
 # -----------------------------------------------------------------------------
+# BulkLaunchSession: launches a team's checked profiles one at a time on a
+# background thread, applying launcher_core.bulk_launch's anti-bot pacing
+# between each. Mirrors LaunchSession's thread-safe status/is_done pattern for
+# the UI to poll every frame -- same rule applies: never call ImGui from here.
+# -----------------------------------------------------------------------------
+
+class BulkLaunchSession:
+    def __init__(self, profiles: list[GameProfile], pacing_seconds: int):
+        self.profiles = profiles
+        self.pacing_seconds = pacing_seconds
+        self._lock = threading.Lock()
+        self._status_text = "Starting bulk launch..."
+        self._done = False
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def _set_status(self, text: str) -> None:
+        with self._lock:
+            self._status_text = text
+
+    def _run(self) -> None:
+        for i, profile in enumerate(self.profiles):
+            # Check STATE.is_running() right before each launch, not just once
+            # up front -- an earlier account in this same batch could still be
+            # settling into "running" while we reach a later one.
+            if STATE.is_running(profile.id):
+                self._set_status(f"Skipping {profile.name or '(unnamed profile)'} (already running)")
+            else:
+                self._set_status(f"Launching {profile.name or '(unnamed profile)'}...")
+                STATE.start_launch(profile)
+                session = STATE.sessions.get(profile.id)
+                if session is not None:
+                    bulk_launch.wait_for_readiness(lambda: session.is_done, on_status=self._set_status)
+
+            is_last = i == len(self.profiles) - 1
+            if not is_last:
+                bulk_launch.apply_pacing_delay(self.pacing_seconds, on_status=self._set_status)
+
+        with self._lock:
+            self._done = True
+
+    @property
+    def status_text(self) -> str:
+        with self._lock:
+            return self._status_text
+
+    @property
+    def is_done(self) -> bool:
+        with self._lock:
+            return self._done
+
+
+# -----------------------------------------------------------------------------
 # ProfileEditBuffer: a staging copy of the fields the Settings window edits, kept
 # separate from the real GameProfile until Save. `password_input` is write-only --
 # it starts empty even when editing a profile that already has a stored password
@@ -378,6 +435,8 @@ class AppState:
         self.selected_id: Optional[str] = None
         self.settings_window_open = False
         self.edit_buffer: Optional[ProfileEditBuffer] = None
+        self.bulk_launch_session: Optional[BulkLaunchSession] = None
+        self.bulk_launch_pacing_seconds: int = load_bulk_launch_pacing_seconds()
         self._last_liveness_check = 0.0
         self.reload_profiles()
         self.reload_teams()
@@ -545,6 +604,20 @@ class AppState:
         session = LaunchSession(profile)
         self.sessions[profile.id] = session
         session.start()
+
+    def is_bulk_launching(self) -> bool:
+        return self.bulk_launch_session is not None and not self.bulk_launch_session.is_done
+
+    def start_bulk_launch(self, profiles: list[GameProfile]) -> None:
+        if self.is_bulk_launching() or not profiles:
+            return
+        session = BulkLaunchSession(profiles, self.bulk_launch_pacing_seconds)
+        self.bulk_launch_session = session
+        session.start()
+
+    def set_bulk_launch_pacing_seconds(self, seconds: int) -> None:
+        self.bulk_launch_pacing_seconds = seconds
+        save_bulk_launch_pacing_seconds(seconds)
 
     def foreground_profile(self, profile_id: str) -> None:
         pid = self.running_pids.get(profile_id)
@@ -798,6 +871,44 @@ def show_team_switcher() -> None:
         imgui.end_popup()
 
 
+def show_team_actions() -> None:
+    """Launch Team + pacing control -- only meaningful in a real team view (ALL
+    has no membership, so there's nothing to bulk-launch). Disabled/unarmed
+    unless at least one account is checked into the currently-viewed team, and
+    while a bulk launch is already running (never overlap two at once).
+    """
+    team_id = STATE.current_team_id
+    if team_id is None:
+        return
+
+    members = [p for p in STATE.profiles if team_id in p.team_ids]
+    bulk_launching = STATE.is_bulk_launching()
+    can_launch = bool(members) and not bulk_launching
+
+    if not can_launch:
+        imgui.begin_disabled()
+    launch_clicked = imgui.button("Launch Team")
+    if not can_launch:
+        imgui.end_disabled()
+    if launch_clicked and can_launch:
+        STATE.start_bulk_launch(members)
+
+    imgui.same_line()
+    imgui.text("Pacing (s):")
+    imgui.same_line()
+    imgui.set_next_item_width(hello_imgui.em_size() * 6.0)
+    # No UI-side min/max here on purpose -- the UI may show/accept any value;
+    # the real safety floor/ceiling is enforced in bulk_launch.clamp_pacing_seconds,
+    # in the code that actually executes the wait, not here.
+    changed, new_value = imgui.input_int("##bulk_pacing_seconds", STATE.bulk_launch_pacing_seconds)
+    if changed:
+        STATE.set_bulk_launch_pacing_seconds(new_value)
+
+    if bulk_launching:
+        imgui.same_line()
+        imgui.text_colored((0.9, 0.75, 0.3, 1.0), STATE.bulk_launch_session.status_text)
+
+
 def show_main_window() -> None:
     STATE.update()
 
@@ -808,6 +919,7 @@ def show_main_window() -> None:
 
     imgui.spacing()
     show_team_switcher()
+    show_team_actions()
 
     imgui.separator()
     imgui.spacing()
