@@ -583,6 +583,13 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
     icon_center = (x + em * 1.733, y + em * 1.6)
     draw_list.add_circle_filled(icon_center, em * 0.8, _u32(45, 47, 52))
 
+    initial = (profile.name[:1] or "?").upper()
+    initial_size = imgui.calc_text_size(initial)
+    draw_list.add_text(
+        (icon_center[0] - initial_size.x / 2, icon_center[1] - initial_size.y / 2),
+        CARD_NAME_FORE, initial,
+    )
+
     if hovered:
         action_center = (x + card_w - em * 1.267, y + em * 1.267)
         if running:
