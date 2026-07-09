@@ -124,6 +124,7 @@ if sys.maxsize > 2**32:
 
 try:
     import dataclasses
+    import math
     import os
     import threading
     import time
@@ -434,6 +435,7 @@ class AppState:
         self.running_pids: dict[str, int] = {}
         self.selected_id: Optional[str] = None
         self.settings_window_open = False
+        self.app_settings_window_open = False
         self.edit_buffer: Optional[ProfileEditBuffer] = None
         self.bulk_launch_session: Optional[BulkLaunchSession] = None
         self.bulk_launch_pacing_seconds: int = load_bulk_launch_pacing_seconds()
@@ -737,6 +739,30 @@ def _draw_bring_to_front_icon(draw_list, center, size: float, color: int) -> Non
     draw_list.add_rect_filled(front_min, front_max, color, rounding=1.0)
 
 
+def _draw_gear_icon(draw_list, center, size: float, color: int) -> None:
+    """Hub + radiating teeth -- both reference launchers (GWxLauncher and the
+    newer Python launcher PR) use a gear icon for app settings, a recognized
+    affordance worth matching rather than inventing a new one."""
+    cx, cy = center
+    hub_r = size * 0.26
+    tooth_len = size * 0.16
+    tooth_w = size * 0.2
+    num_teeth = 6
+    draw_list.add_circle_filled(center, hub_r, color, num_segments=20)
+    for i in range(num_teeth):
+        angle = (2 * math.pi / num_teeth) * i
+        dx, dy = math.cos(angle), math.sin(angle)
+        px, py = -dy, dx
+        r_mid = hub_r + tooth_len / 2
+        mx, my = cx + dx * r_mid, cy + dy * r_mid
+        half_len, half_w = tooth_len / 2, tooth_w / 2
+        p1 = (mx + dx * half_len + px * half_w, my + dy * half_len + py * half_w)
+        p2 = (mx + dx * half_len - px * half_w, my + dy * half_len - py * half_w)
+        p3 = (mx - dx * half_len - px * half_w, my - dy * half_len - py * half_w)
+        p4 = (mx - dx * half_len + px * half_w, my - dy * half_len + py * half_w)
+        draw_list.add_quad_filled(p1, p2, p3, p4, color)
+
+
 def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, in_team_view: bool = False, is_member: bool = False, checkbox_hovered: bool = False) -> None:
     em = hello_imgui.em_size()
     x, y = origin
@@ -969,13 +995,16 @@ def _visible_profiles() -> list[GameProfile]:
 
 
 def show_team_actions() -> None:
-    """Launch Team + pacing control -- only meaningful in a real team view (ALL
-    has no membership, so there's nothing to bulk-launch). Disabled/unarmed
-    unless at least one account is checked into the currently-viewed team, and
-    while a bulk launch is already running (never overlap two at once).
+    """Launch Team -- only meaningful in a real team view (ALL has no
+    membership, so there's nothing to bulk-launch). Disabled/unarmed unless at
+    least one account is checked into the currently-viewed team, and while a
+    bulk launch is already running (never overlap two at once).
 
     "Select all visible" / "Select none" were cut per design review -- they
-    didn't earn their toolbar space -- rather than relabeled or relocated.
+    didn't earn their toolbar space -- rather than relabeled or relocated. The
+    pacing control moved to the app settings window (gear icon) -- this is
+    just the action and its live status, which stays here since that's what
+    the user is actually watching during a launch.
     """
     team_id = STATE.current_team_id
     if team_id is None:
@@ -993,26 +1022,32 @@ def show_team_actions() -> None:
     if launch_clicked and can_launch:
         STATE.start_bulk_launch(members)
 
-    imgui.same_line()
-    imgui.text("Pacing (s):")
-    imgui.same_line()
-    imgui.set_next_item_width(hello_imgui.em_size() * 6.0)
-    # No UI-side min/max here on purpose -- the UI may show/accept any value;
-    # the real safety floor/ceiling is enforced in bulk_launch.clamp_pacing_seconds,
-    # in the code that actually executes the wait, not here.
-    changed, new_value = imgui.input_int("##bulk_pacing_seconds", STATE.bulk_launch_pacing_seconds)
-    if changed:
-        STATE.set_bulk_launch_pacing_seconds(new_value)
-
     if bulk_launching:
         imgui.same_line()
         imgui.text_colored((0.9, 0.75, 0.3, 1.0), STATE.bulk_launch_session.status_text)
+
+
+def show_settings_gear_button() -> None:
+    """Small gear icon, right-aligned in the toolbar -- both reference
+    launchers use this same icon for this same purpose, so it's a recognized
+    affordance rather than a new one to learn."""
+    em = hello_imgui.em_size()
+    icon_size = em * 1.8
+    avail_w = imgui.get_content_region_avail().x
+    imgui.same_line(avail_w - icon_size)
+    clicked = imgui.button("##app_settings_gear", size=(icon_size, icon_size))
+    item_min, item_max = imgui.get_item_rect_min(), imgui.get_item_rect_max()
+    center = ((item_min[0] + item_max[0]) / 2, (item_min[1] + item_max[1]) / 2)
+    _draw_gear_icon(imgui.get_window_draw_list(), center, icon_size * 0.7, CARD_SUB_FORE)
+    if clicked:
+        STATE.app_settings_window_open = True
 
 
 def show_main_window() -> None:
     STATE.update()
 
     imgui.text(f"{len(STATE.profiles)} profile(s) loaded from profile_store.")
+    show_settings_gear_button()
 
     imgui.spacing()
     show_team_switcher()
@@ -1319,12 +1354,47 @@ def show_settings_window() -> None:
 
 
 # -----------------------------------------------------------------------------
+# App settings window (gear icon) -- lightweight, global settings that aren't
+# per-profile or per-team. Kept minimal on purpose: just the pieces relocated
+# in this pass, not placeholder sections for anything not designed yet.
+# -----------------------------------------------------------------------------
+
+def show_app_settings_window() -> None:
+    if not STATE.app_settings_window_open:
+        return
+
+    em = hello_imgui.em_size()
+    imgui.set_next_window_size((em * 30.0, em * 11.0), cond=imgui.Cond_.appearing.value)
+    expanded, STATE.app_settings_window_open = imgui.begin("App Settings##launcher", STATE.app_settings_window_open)
+    if expanded:
+        imgui.text("Delay between team launches (seconds):")
+        imgui.same_line()
+        imgui.set_next_item_width(em * 6.0)
+        # No UI-side min/max here on purpose -- the UI may show/accept any
+        # value; the real safety floor/ceiling is enforced in
+        # bulk_launch.clamp_pacing_seconds, in the code that actually executes
+        # the wait, not here.
+        changed, new_value = imgui.input_int("##bulk_pacing_seconds", STATE.bulk_launch_pacing_seconds)
+        if changed:
+            STATE.set_bulk_launch_pacing_seconds(new_value)
+        imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(actual delay is always kept between 5 and 90 seconds)")
+
+        imgui.separator()
+        imgui.spacing()
+        if imgui.button("Reload profiles and teams from disk"):
+            STATE.reload_profiles()
+            STATE.reload_teams()
+    imgui.end()
+
+
+# -----------------------------------------------------------------------------
 # Entry point
 # -----------------------------------------------------------------------------
 
 def gui() -> None:
     show_main_window()
     show_settings_window()
+    show_app_settings_window()
 
 
 def main() -> None:
