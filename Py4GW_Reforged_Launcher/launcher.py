@@ -279,6 +279,20 @@ def _card_dimensions() -> tuple[float, float, float]:
     return em * 16.0, em * 5.6, em * 0.8
 
 
+def _grid_columns_and_card_width(
+    avail_w: float, min_card_w: float, max_card_w: float, card_gap: float
+) -> tuple[int, float]:
+    """How many columns fit at the floor width, and the actual (stretched,
+    capped) card width for that column count. Pulled out of show_main_window
+    so it can be called twice in one frame: once against the full available
+    width, and again against a scrollbar-reduced width if one turns out to be
+    needed (see show_main_window's scrollbar pre-check).
+    """
+    cols = max(1, int(avail_w // (min_card_w + card_gap)))
+    card_w = max(min_card_w, min(max_card_w, (avail_w - (cols - 1) * card_gap) / cols))
+    return cols, card_w
+
+
 # -----------------------------------------------------------------------------
 # Live status classification: maps gw1_launch's raw log lines to short, honest
 # progress text. This is the actual point of the earlier stall-detection work --
@@ -1120,10 +1134,26 @@ def show_main_window() -> None:
     # inside a card (avatar, text, badges, checkbox) is still positioned/sized
     # relative to em and to the card's own edges, so it doesn't scale with it.
     max_card_w = min_card_w * 1.6
-    avail_w = imgui.get_content_region_avail().x
-    cols = max(1, int(avail_w // (min_card_w + card_gap)))
-    card_w = max(min_card_w, min(max_card_w, (avail_w - (cols - 1) * card_gap) / cols))
     visible_profiles = _visible_profiles()
+    item_count = len(visible_profiles) + 1  # +1 for the "Add profile" card
+
+    avail = imgui.get_content_region_avail()
+    avail_w = avail.x
+    cols, card_w = _grid_columns_and_card_width(avail_w, min_card_w, max_card_w, card_gap)
+
+    # Pre-check whether a vertical scrollbar will actually be needed, using the
+    # same ceiling-rows formula the end-of-grid dummy sizing already uses --
+    # if so, the scrollbar eats into the child's usable width, so redo the
+    # column/card-width math against that reduced width now, before drawing
+    # anything, rather than assuming full width and getting the rightmost
+    # column clipped by the scrollbar after the fact.
+    rows = (item_count + cols - 1) // cols
+    content_h = rows * card_h + max(0, rows - 1) * card_gap
+    if content_h > avail.y:
+        scrollbar_w = imgui.get_style().scrollbar_size
+        cols, card_w = _grid_columns_and_card_width(
+            max(min_card_w, avail_w - scrollbar_w), min_card_w, max_card_w, card_gap
+        )
 
     imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
     draw_list = imgui.get_window_draw_list()
