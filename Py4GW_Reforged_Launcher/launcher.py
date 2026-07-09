@@ -212,6 +212,7 @@ CARD_SELECTED_BACK = _u32(28, 40, 58)
 HOVER_BACK = _u32(48, 48, 56)
 CARD_BORDER = _u32(55, 55, 65)
 HOVER_BORDER = _u32(90, 90, 105)
+MUTED_FORE = _u32(110, 110, 122)
 ACCENT = _u32(0, 120, 215)
 CARD_NAME_FORE = _u32(255, 255, 255)
 CARD_SUB_FORE = _u32(170, 170, 185)
@@ -868,7 +869,11 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
 def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: bool) -> None:
     """The "+" card: same size/shape as a profile card, consistent visual language,
     but a dashed-feeling outline (achieved with the hover border color at rest) and
-    a plain "+" instead of icon/name/badges, so it doesn't read as a real profile."""
+    a plain "+" instead of icon/name/badges, so it doesn't read as a real profile.
+    Deliberately quiet at rest (muted color, smaller glyph) -- it's the
+    least-used action in the app and shouldn't compete with real accounts for
+    attention; hover still brightens to full ACCENT, unchanged.
+    """
     em = hello_imgui.em_size()
     x, y = origin
     p_min = (x, y)
@@ -879,11 +884,11 @@ def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: b
     draw_list.add_rect_filled(p_min, p_max, bg, rounding=6.0)
     draw_list.add_rect(p_min, p_max, border, rounding=6.0, thickness=1.0)
 
-    plus_col = ACCENT if hovered else CARD_SUB_FORE
+    plus_col = ACCENT if hovered else MUTED_FORE
     cx, cy = x + card_w / 2, y + card_h / 2
-    arm = em * 0.667
-    draw_list.add_line((cx - arm, cy), (cx + arm, cy), plus_col, thickness=2.0)
-    draw_list.add_line((cx, cy - arm), (cx, cy + arm), plus_col, thickness=2.0)
+    arm = em * 0.5
+    draw_list.add_line((cx - arm, cy), (cx + arm, cy), plus_col, thickness=1.5)
+    draw_list.add_line((cx, cy - arm), (cx, cy + arm), plus_col, thickness=1.5)
     text = "Add profile"
     text_w = imgui.calc_text_size(text).x
     draw_list.add_text((cx - text_w / 2, y + card_h - em * 1.467), plus_col, text)
