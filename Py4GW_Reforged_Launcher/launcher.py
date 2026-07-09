@@ -1217,7 +1217,12 @@ def show_team_tab_strip() -> None:
     if overflow_teams:
         chip_label = f"{len(overflow_teams)} more"
         chip_w = _tab_width(chip_label)
-        if _draw_tab(draw_list, (x, y), chip_w, tab_h, chip_label, key="overflow", active=False)[0]:
+        # Styled active (same accent treatment a selected tab gets) when the
+        # currently-viewed team is hidden inside this chip -- otherwise the
+        # active view would look like it belongs to no tab at all, and you'd
+        # have to open the dropdown just to confirm where you actually are.
+        active_team_is_overflowed = any(team.id == STATE.current_team_id for team, _, _ in overflow_teams)
+        if _draw_tab(draw_list, (x, y), chip_w, tab_h, chip_label, key="overflow", active=active_team_is_overflowed)[0]:
             imgui.open_popup(_TEAM_OVERFLOW_POPUP_ID)
         x += chip_w + spacing
 
