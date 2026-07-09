@@ -63,6 +63,13 @@ class GameProfile:
     window_lock_changes: bool = False
     window_block_inputs: bool = False
 
+    # -----------------------------
+    # Team membership (multibox team support)
+    # -----------------------------
+    # A profile can belong to more than one team. "ALL" is not a real team and never
+    # appears here -- it's a built-in view mode in the UI layer, not stored data.
+    team_ids: list[str] = dataclasses.field(default_factory=list)
+
     def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
 
