@@ -1270,7 +1270,7 @@ def show_settings_content() -> None:
         _, buffer.name = imgui.input_text("Profile name", buffer.name)
         _, buffer.executable_path = imgui.input_text("Executable path", buffer.executable_path)
         imgui.same_line()
-        if imgui.button("Browse##executable_path"):
+        if imgui.button("...##executable_path"):
             chosen = _browse_for_file(
                 title="Select Guild Wars executable",
                 filter_str="Guild Wars executable (Gw.exe)\0Gw.exe\0Executable files (*.exe)\0*.exe\0All files (*.*)\0*.*\0",
@@ -1289,7 +1289,7 @@ def show_settings_content() -> None:
         _, buffer.py4gw_enabled = imgui.checkbox("Inject Py4GW", buffer.py4gw_enabled)
         _, buffer.py4gw_dll_path = imgui.input_text("Py4GW DLL path", buffer.py4gw_dll_path)
         imgui.same_line()
-        if imgui.button("Browse##py4gw_dll_path"):
+        if imgui.button("...##py4gw_dll_path"):
             chosen = _browse_for_file(
                 title="Select Py4GW DLL",
                 filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
@@ -1300,7 +1300,7 @@ def show_settings_content() -> None:
         _, buffer.gmod_enabled = imgui.checkbox("Inject gMod", buffer.gmod_enabled)
         _, buffer.gmod_dll_path = imgui.input_text("gMod DLL path", buffer.gmod_dll_path)
         imgui.same_line()
-        if imgui.button("Browse##gmod_dll_path"):
+        if imgui.button("...##gmod_dll_path"):
             chosen = _browse_for_file(
                 title="Select gMod DLL",
                 filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
