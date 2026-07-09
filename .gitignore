@@ -228,3 +228,8 @@ cython_debug/
 # macOS system files
 .DS_Store
 /Sources/frenkeyLib/Scripts/output
+
+# Py4GW_Reforged_Launcher additions
+PY4GW_LAUNCHER_HANDOVER.md
+Py4GW_Reforged_Launcher.ini
+!Py4GW_Reforged_Launcher/*.spec
