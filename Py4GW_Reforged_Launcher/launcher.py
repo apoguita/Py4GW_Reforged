@@ -1237,6 +1237,19 @@ def show_main_window() -> None:
     visible_profiles = _visible_profiles()
     item_count = len(visible_profiles) + 1  # +1 for the "Add profile" card
 
+    imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
+    draw_list = imgui.get_window_draw_list()
+    origin = imgui.get_cursor_screen_pos()
+    grid_is_hoverable = imgui.is_window_hovered()
+
+    # Measured from *inside* the child (after begin_child), not the parent's
+    # avail beforehand -- the child applies its own window padding on both
+    # sides, and origin (above) already starts past the left padding, so
+    # sizing against the parent's wider, padding-unaware avail_w would let
+    # cards extend past the child's actual right-padding edge, reading as
+    # uneven left/right margins. Confirmed directly (not assumed): a one-off
+    # diagnostic print showed the parent's avail_w exceeding this child-side
+    # figure by exactly 2x window_padding.x.
     avail = imgui.get_content_region_avail()
     avail_w = avail.x
     cols, card_w = _grid_columns_and_card_width(avail_w, min_card_w, max_card_w, card_gap)
@@ -1254,11 +1267,6 @@ def show_main_window() -> None:
         cols, card_w = _grid_columns_and_card_width(
             max(min_card_w, avail_w - scrollbar_w), min_card_w, max_card_w, card_gap
         )
-
-    imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
-    draw_list = imgui.get_window_draw_list()
-    origin = imgui.get_cursor_screen_pos()
-    grid_is_hoverable = imgui.is_window_hovered()
 
     for i, profile in enumerate(visible_profiles):
         col = i % cols
