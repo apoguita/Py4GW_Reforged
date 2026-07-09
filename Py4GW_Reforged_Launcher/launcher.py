@@ -1743,8 +1743,11 @@ def main() -> None:
     # 600x430 gives a clean, stable 2-column x 3-row grid for a handful of profiles (with
     # margin to spare even once a scrollbar appears) and reads consistently across both
     # ALL and team views now that both share the same toolbar height -- checked visually
-    # in both. resizable defaults to True already, so this is a starting point, not a
-    # hard limit.
+    # in both. Re-verified again after the tab strip replaced the </label/> switcher (a
+    # taller header than the old one): still holds up with no clipping in ALL view, a
+    # real team view, the sparse 2-profile state, and with enough teams to trigger the
+    # tab strip's own overflow chip -- no change needed this time. resizable defaults to
+    # True already, so this is a starting point, not a hard limit.
     runner_params.app_window_params.window_geometry.size = (600, 430)
     # Persist the main window's size/position across restarts (written to
     # imgui_app_window.ini alongside this launcher's own .ini). Off by default in
