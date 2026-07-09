@@ -814,14 +814,34 @@ _TEAM_SWITCHER_POPUP_ID = "Jump to view##team_switcher_popup"
 _new_team_name_buffer = ""
 
 
+def _draw_dropdown_caret(draw_list, rect_min, rect_max, color: int) -> None:
+    """Small downward chevron near a button's right edge -- the only visible
+    signal that the label itself opens a dropdown, distinct from the plain </>
+    nudge arrows beside it. Sized relative to the button's own height so it
+    scales correctly at any font/DPI, same convention as the rest of this file.
+    """
+    height = rect_max[1] - rect_min[1]
+    cx = rect_max[0] - height * 0.45
+    cy = (rect_min[1] + rect_max[1]) / 2
+    r = height * 0.18
+    p1 = (cx - r, cy - r * 0.5)
+    p2 = (cx + r, cy - r * 0.5)
+    p3 = (cx, cy + r * 0.6)
+    draw_list.add_triangle_filled(p1, p2, p3, color)
+
+
 def show_team_switcher() -> None:
     """Center label + </> arrows to cycle views (ALL first, then each team in
     stored order). Clicking the label opens a popup listing every view for a
     direct jump -- cycling one at a time through a long team list would be
     tedious -- plus a text box to create a new team on the fly, no separate
-    "manage teams" screen. Does not filter the card grid itself: which cards
-    are visible never changes with the view (see draw_profile_card's membership
-    checkbox, which is what the view actually controls).
+    "manage teams" screen. A small caret next to the label is the only thing
+    that visibly distinguishes it as its own, separate clickable action from
+    the </> arrows -- without it, the label reads as inert text sitting between
+    two buttons rather than a second, distinct way to change the view. Does not
+    filter the card grid itself: which cards are visible never changes with the
+    view (see draw_profile_card's membership checkbox, which is what the view
+    actually controls).
     """
     global _new_team_name_buffer
 
@@ -840,7 +860,9 @@ def show_team_switcher() -> None:
     if imgui.button("<##team_prev", size=(arrow_w, 0)):
         STATE.cycle_view(-1)
     imgui.same_line()
-    if imgui.button(f"{label}##team_label", size=(label_w, 0)):
+    label_clicked = imgui.button(f"{label}##team_label", size=(label_w, 0))
+    _draw_dropdown_caret(imgui.get_window_draw_list(), imgui.get_item_rect_min(), imgui.get_item_rect_max(), CARD_SUB_FORE)
+    if label_clicked:
         imgui.open_popup(_TEAM_SWITCHER_POPUP_ID)
         _new_team_name_buffer = ""
     imgui.same_line()
