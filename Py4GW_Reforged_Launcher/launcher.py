@@ -418,6 +418,15 @@ class AppState:
         self.current_team_id = team.id
         return team
 
+    def toggle_team_membership(self, profile: GameProfile, team_id: str) -> None:
+        """Toggle `profile`'s membership in `team_id` and save immediately -- the
+        card checkbox has no separate "Save" step, unlike the Settings form."""
+        if team_id in profile.team_ids:
+            profile.team_ids.remove(team_id)
+        else:
+            profile.team_ids.append(team_id)
+        save_profiles(self.profiles)
+
     def _rehydrate_running_instances(self) -> None:
         """Scan for already-running game processes matching each profile's exe path,
         once at startup before the first render. Covers processes this launcher
@@ -579,6 +588,32 @@ STATE = AppState()
 # Card grid (main window content)
 # -----------------------------------------------------------------------------
 
+def membership_checkbox_rect(card_origin, card_h: float, em: float) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Bottom-left corner -- the only card corner not already used by the avatar
+    (top-left), hover action icon (top-right), or mod badges (bottom-right).
+    Shared by show_main_window's manual hit-test and draw_profile_card's visual so
+    the clickable area and the drawn box are always the exact same rectangle.
+    """
+    x, y = card_origin
+    size = em * 1.0
+    min_pt = (x + em * 0.667, y + card_h - em * 1.667)
+    max_pt = (min_pt[0] + size, min_pt[1] + size)
+    return min_pt, max_pt
+
+
+def _draw_membership_checkbox(draw_list, min_pt, max_pt, *, is_member: bool, hovered: bool) -> None:
+    """Its own small click target, separate from the rest of the card -- see
+    show_main_window, which excludes this rect from the card's own hover/click
+    handling so the two interactions can't collide."""
+    border = ACCENT if hovered else CARD_BORDER
+    draw_list.add_rect(min_pt, max_pt, border, rounding=3.0, thickness=1.5)
+    if is_member:
+        pad = (max_pt[0] - min_pt[0]) * 0.25
+        inner_min = (min_pt[0] + pad, min_pt[1] + pad)
+        inner_max = (max_pt[0] - pad, max_pt[1] - pad)
+        draw_list.add_rect_filled(inner_min, inner_max, ACCENT, rounding=2.0)
+
+
 def _draw_play_icon(draw_list, center, size: float, color: int) -> None:
     """Small filled play triangle -- hover cue on a stopped card. Purely visual,
     not a separate click target: the whole card already handles double-click."""
@@ -601,7 +636,7 @@ def _draw_bring_to_front_icon(draw_list, center, size: float, color: int) -> Non
     draw_list.add_rect_filled(front_min, front_max, color, rounding=1.0)
 
 
-def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool) -> None:
+def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, in_team_view: bool = False, is_member: bool = False, checkbox_hovered: bool = False) -> None:
     em = hello_imgui.em_size()
     x, y = origin
     p_min = (x, y)
@@ -619,6 +654,10 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
 
     if selected:
         draw_list.add_rect_filled((x, y), (x + em * 0.267, y + card_h), ACCENT, rounding=6.0)
+
+    if in_team_view:
+        checkbox_min, checkbox_max = membership_checkbox_rect((x, y), card_h, em)
+        _draw_membership_checkbox(draw_list, checkbox_min, checkbox_max, is_member=is_member, hovered=checkbox_hovered)
 
     icon_center = (x + em * 1.733, y + em * 1.6)
     draw_list.add_circle_filled(icon_center, em * 0.8, _u32(45, 47, 52))
@@ -773,6 +812,7 @@ def show_main_window() -> None:
     imgui.separator()
     imgui.spacing()
 
+    em = hello_imgui.em_size()
     card_w, card_h, card_gap = _card_dimensions()
     avail_w = imgui.get_content_region_avail().x
     cols = max(1, int(avail_w // (card_w + card_gap)))
@@ -792,7 +832,18 @@ def show_main_window() -> None:
         p_min = card_origin
         p_max = (card_origin[0] + card_w, card_origin[1] + card_h)
 
-        hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(p_min, p_max)
+        in_team_view = STATE.current_team_id is not None
+        checkbox_hovered = False
+        if in_team_view:
+            checkbox_min, checkbox_max = membership_checkbox_rect(card_origin, card_h, em)
+            checkbox_hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(checkbox_min, checkbox_max)
+            if checkbox_hovered and imgui.is_mouse_clicked(0):
+                STATE.toggle_team_membership(profile, STATE.current_team_id)
+
+        # Excludes the checkbox's own rect so the two click targets can't collide:
+        # clicking the checkbox toggles membership only, never also selects/
+        # forgrounds the card underneath it.
+        hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(p_min, p_max) and not checkbox_hovered
         running = STATE.is_running(profile.id)
         launching = STATE.is_launching(profile.id)
         session = STATE.sessions.get(profile.id)
@@ -818,6 +869,9 @@ def show_main_window() -> None:
             hovered=hovered, selected=(STATE.selected_id == profile.id),
             running=running, launching=launching or is_error,
             status_text=status_text, is_error=is_error,
+            in_team_view=in_team_view,
+            is_member=bool(in_team_view and STATE.current_team_id in profile.team_ids),
+            checkbox_hovered=checkbox_hovered,
         )
 
     add_index = len(STATE.profiles)
