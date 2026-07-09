@@ -1432,12 +1432,15 @@ def main() -> None:
     runner_params = hello_imgui.RunnerParams()
     runner_params.app_window_params.window_title = "Py4GW_Reforged_Launcher"
     # Initial size only matters for the true first-ever run -- restore_previous_geometry
-    # (below) takes over after that. Per hello_imgui's own docs this size is "handled
-    # as if specified for a 96 PPI screen", i.e. it's already scaled for the actual
-    # display's DPI internally; 900x600 is a reasonable default for a card grid that
-    # scrolls/wraps regardless of window size, not a hard content-fit requirement the
-    # way the Settings form is. resizable defaults to True already.
-    runner_params.app_window_params.window_geometry.size = (900, 600)
+    # (below) takes over after that, so this never affects an existing user, only the
+    # first impression. Per hello_imgui's own docs this size is "handled as if
+    # specified for a 96 PPI screen", i.e. it's already scaled for the actual display's
+    # DPI internally. 900x600 read too large/empty against a fresh install's sparse
+    # content (a couple of cards); sized down to comfortably fit a handful of cards
+    # without feeling cramped once someone has built out a realistic team (checked
+    # visually via screenshot at 2-4 cards -- see commit history). resizable defaults
+    # to True already, so this is just a starting point, not a hard limit.
+    runner_params.app_window_params.window_geometry.size = (780, 400)
     # Persist the main window's size/position across restarts (written to
     # imgui_app_window.ini alongside this launcher's own .ini). Off by default in
     # hello_imgui; nothing was persisting the OS-level window's geometry before this.
