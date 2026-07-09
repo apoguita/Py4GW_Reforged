@@ -181,17 +181,35 @@ WINDOW_TITLE_FORMAT = "Guild Wars Reforged — {profile_name}"
 ICON_PATH = Path(__file__).resolve().parent / "assets" / "python_icon.ico"
 
 
-def _apply_window_icon() -> None:
+_window_icon_applied = False
+
+
+def _apply_window_icon_if_needed() -> None:
     """hello_imgui.RunnerParams exposes no window-icon option (checked directly --
-    app_window_params has no icon field), so this is the fallback: find our own
-    window by PID once the native window actually exists (callbacks.post_init
-    fires "after everything is inited: ImGui, Platform and Renderer Backend") and
-    apply the .ico via WM_SETICON. Best-effort -- a missing icon file or failed
-    lookup isn't worth failing startup over.
+    app_window_params has no icon field), so this is the fallback: WM_SETICON via
+    ctypes once the native window actually exists and is visible.
+
+    Originally wired to callbacks.post_init (one-shot, called "after everything
+    is inited: ImGui, Platform and Renderer Backend" per hello_imgui's own docs)
+    -- that never actually worked, confirmed via temporary diagnostic logging
+    that showed find_visible_window_for_pid() returning None every single time
+    at post_init: the native window exists by then but hello_imgui hasn't shown
+    it yet (IsWindowVisible() is still False), so a one-shot attempt there can
+    never succeed. It failed completely silently, which is exactly why it went
+    unnoticed until checked on real hardware.
+
+    Wired to callbacks.pre_new_frame instead, which fires every frame: keeps
+    retrying (cheap -- an EnumWindows scan, stopped for good once it succeeds)
+    until whichever frame the window actually becomes visible on, with no
+    dependency on hello_imgui's exact internal show-window timing.
     """
+    global _window_icon_applied
+    if _window_icon_applied:
+        return
     hwnd = find_visible_window_for_pid(os.getpid())
     if hwnd is not None:
         set_window_icon(hwnd, str(ICON_PATH))
+        _window_icon_applied = True
 
 
 # -----------------------------------------------------------------------------
@@ -1454,7 +1472,7 @@ def main() -> None:
     runner_params.imgui_window_params.enable_viewports = True
 
     runner_params.callbacks.show_gui = gui
-    runner_params.callbacks.post_init = _apply_window_icon
+    runner_params.callbacks.pre_new_frame = _apply_window_icon_if_needed
 
     hello_imgui.run(runner_params)
 
