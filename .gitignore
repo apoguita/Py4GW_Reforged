@@ -233,3 +233,6 @@ cython_debug/
 PY4GW_LAUNCHER_HANDOVER.md
 Py4GW_Reforged_Launcher.ini
 !Py4GW_Reforged_Launcher/*.spec
+
+# PyInstaller build output committed by mistake in "Test build" - never commit built exes
+Py4GW_Reforged_Launcher/*.exe
