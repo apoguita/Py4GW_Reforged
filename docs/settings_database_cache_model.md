@@ -6,7 +6,7 @@ It is specifically about the live `Database.Settings` implementation, which is n
 
 Source:
 
-- [Py4GWCoreLib/database_src/Settings.py](C:/Users/Apo/Py4GW_python_files/Py4GWCoreLib/database_src/Settings.py)
+- [Py4GWCoreLib/database_src/Settings.py](../Py4GW_python_files/Py4GWCoreLib/database_src/Settings.py)
 
 ## Purpose
 

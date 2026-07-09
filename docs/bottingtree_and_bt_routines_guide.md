@@ -54,7 +54,7 @@ So the full authoring path in those scripts is usually:
 
 ## The Actual BehaviorTree Layer
 
-`BottingTree` and `RoutinesBT` are both built on top of the core `BehaviorTree` framework in [BehaviorTree.py](/c:/Users/Apo/Py4GW_python_files/Py4GWCoreLib/py4gwcorelib_src/BehaviorTree.py).
+`BottingTree` and `RoutinesBT` are both built on top of the core `BehaviorTree` framework in [BehaviorTree.py](../Py4GW_python_files/Py4GWCoreLib/py4gwcorelib_src/BehaviorTree.py).
 
 That framework provides:
 
@@ -1012,22 +1012,22 @@ Advantages:
 
 Good reference points in the repo:
 
-- [Presearing Dominator.py](/c:/Users/Apo/Py4GW_python_files/Presearing%20Dominator.py)
+- [Presearing Dominator.py](../Py4GW_python_files/Presearing%20Dominator.py)
   - long-form planner
   - named sequence restart
   - upkeepers
   - path overlay drawing
 
-- [Absolute Pre-Searing.py](/c:/Users/Apo/Py4GW_python_files/Absolute%20Pre-Searing.py)
+- [Absolute Pre-Searing.py](../Py4GW_python_files/Absolute%20Pre-Searing.py)
   - multi-tree registry pattern
   - button-triggered tree instancing
   - blackboard-backed UI log panel
   - runtime console-log toggle via `LogMessage(..., to_console=lambda: ...)`
 
-- [botting_tree_template.py](/c:/Users/Apo/Py4GW_python_files/botting_tree_template.py)
+- [botting_tree_template.py](../Py4GW_python_files/botting_tree_template.py)
   - minimal wrapper setup
 
-- [HeroAI_ParallelTree_Example.py](/c:/Users/Apo/Py4GW_python_files/HeroAI_ParallelTree_Example.py)
+- [HeroAI_ParallelTree_Example.py](../Py4GW_python_files/HeroAI_ParallelTree_Example.py)
   - parallel planner usage
   - movement test flow
 

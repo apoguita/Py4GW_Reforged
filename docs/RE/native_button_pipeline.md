@@ -1,6 +1,6 @@
 # Native UI Controls — Complete Pipeline & Reference
 
-> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `../Py4GW/vendor/gwca` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
 
 Last updated: 2026-07-01 | EXE Build: 06-14-2026 | Project: native-ui-controls
 
@@ -19,7 +19,7 @@ Last updated: 2026-07-01 | EXE Build: 06-14-2026 | Project: native-ui-controls
 
 ## 📇 MASTER REFERENCE — addresses, flags, status (2026-07-01)
 
-**Code locations:** C++ `C:\Users\Apo\Py4GW\include\py_ui.h` (+ `src/py_ui.cpp` bindings); Python API
+**Code locations:** C++ `../Py4GW/include/py_ui.h` (+ `src/py_ui.cpp` bindings); Python API
 `Py4GWCoreLib/GWUI.py`; test harness `UI_RE/gwui_controls_test.py`. Build: `cmake --build build --config
 RelWithDebInfo` then copy `bin/RelWithDebInfo/Py4GW.dll` → `Py4GW_python_files/Py4GW.dll`.
 

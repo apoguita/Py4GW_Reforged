@@ -113,7 +113,7 @@ the **Overrides** section drives the module live. See the folder README.
 
 ## Building the DLL
 
-The feature is native. To rebuild after changes (in `C:\Users\Apo\Py4GW`):
+The feature is native. To rebuild after changes (in `../Py4GW`):
 
 ```
 cmake -S . -B build                 # only needed after adding/removing files

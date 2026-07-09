@@ -2,7 +2,7 @@
 
 This folder is the maintained reverse-engineering library for Py4GW.
 
-> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, runtime addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. Throughout these docs, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature + how a subsystem worked pre-Reforged), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses describe the actual game and stay valid.
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, runtime addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. Throughout these docs, GWCA names and `../Py4GW/vendor/gwca` paths are **legacy cross-references** (canonical nomenclature + how a subsystem worked pre-Reforged), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses describe the actual game and stay valid.
 
 Use these files by subject area, not by history:
 

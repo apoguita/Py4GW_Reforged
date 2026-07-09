@@ -1,6 +1,6 @@
 # GW UI Elements — Corrected Creation Recipes (Ghidra-verified)
 
-> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `../Py4GW/vendor/gwca` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
 
 > Reverse-engineered from `Gw.wasm` (symbols) + `Gw.exe (06-14)` via a 40-agent Ghidra swarm
 > (2 independent angles per topic + per-topic consensus), 2026-06-30. Every claim below is
@@ -127,7 +127,7 @@ GENERAL RULE: engine-primitive procs (CtlBtnProc solid, CtlTextBtnProc text) own
 
 ### C++ fix plan
 
-Two changes, both in C:/Users/Apo/Py4GW/include/py_ui.h (mirror in ResolveNamedControlProc callers if styled_button is ever created via CreateControlChildByFrameId):
+Two changes, both in ../Py4GW/include/py_ui.h (mirror in ResolveNamedControlProc callers if styled_button is ever created via CreateControlChildByFrameId):
 
 (1) UIManager::AddControlItemByFrameId (~line 4538): when control=="styled_button", OR 0x40000 into item_flags BEFORE calling CtlFrameListCreateItemByFrameId, so the native list FrameCreates the item as 0x40300 instead of 0x300 (turns on sub-0's background 9-slice pass). Do NOT do this for flat_button/text_button — they self-paint and must not take the 9-slice pass.
 
@@ -314,7 +314,7 @@ The game never builds a slider as a frame-list text item; it builds a real typed
 
 ### C++ fix plan
 
-All changes in C:\Users\Apo\Py4GW.
+All changes in ../Py4GW.
 (A) include/py_ui.h AddControlItemByFrameId (~4538) and ResolveNamedControlProc (~4590): REMOVE the "slider" case from the generic item path (and likewise dropdown/edit/progress/tabs — every multi-layer typed control). Do not encode a caption into userData for them and do not resolve/register the bare base proc as a list item. Make the branch delegate to the dedicated creator below or hard-error.
 (B) Add ResolveUiCtlSliderProc() resolving the WRAPPER 0x0087f440 (byte pattern "\x55\x8B\xEC\x83\xEC\x18\x53\x8B\x5D\x08\x56\x57\x8B\x43\x04\x48\x83\xF8\x58").
 (C) Add a dedicated direct-child creator (mirror CreateControlChildByFrameId ~4617, but slider-specific): use the existing typed path — vendor/gwca/Source/UIMgr.cpp CreateSliderFrame (~2279, SliderFrame_Callback=CtlSliderProc) + py_ui.h CreateSliderFrameByFrameId (~3361) — calling GW::SliderFrame::Create(parent, 0x300, child, ...) with a `int32 range[2]={min,max}` pointer as userData (NOT encoded text). Immediately after: FrameNewSubclass_Func(frameId, ResolveUiCtlSliderProc()/*0x0087f440*/, 0) to layer the texture (SliderFrame_WrapperCallback + FrameNewSubclass_Func are already resolved in the code but the item path bypasses them). Then FrameSetSize(~150,18). Then SendFrameUIMessage 0x56 with &range (SetRange) FIRST, then 0x57 with (int)initial (SetValue). GetValue = 0x58 with &int out.
@@ -580,7 +580,7 @@ Poll 0x56 each frame to detect collapse. Do NOT create children yourself, do NOT
 
 ### C++ fix plan
 
-In C:\Users\Apo\Py4GW\include\py_ui.h:
+In ../Py4GW/include/py_ui.h:
 1. FIX RESOLVER: in AddControlItemByFrameId (~line 4562) and ResolveNamedControlProc (~line 4604), change the groupheader branch from { file="UiCtlGroupHeader.cpp"; msg="UiCtlGroupHeader.cpp"; } to { file="UiCtlGroupHeader.cpp"; msg="isOpen"; } (fallback msg="decodedName"). Add a cached ResolveGroupHeaderProc() mirroring ResolveCtlTextButtonProc; it must ToFunctionStart(FindAssertion("UiCtlGroupHeader.cpp","isOpen",0,0),0xFFF) -> 0x0087ddc0.
 2. ADD AddGroupHeaderItemToFrameListByFrameId(frame_list_id, header_text, insert_index=0, item_flags=0): encoded=BuildStandaloneLiteralEncodedTextPayload(header_text); item=CtlFrameListCreateItemByFrameId(frame_list_id, item_flags, insert_index, ResolveGroupHeaderProc(), encoded); return item. Do NOT send 0x5E and do NOT call FrameSetSize/FrameSetPosition — OnFrameCreate self-builds children and FramePlaceChildren positions them (manual sizing is what breaks composites / causes overlap).
 3. ADD msg wrappers with CORRECT ids: GroupHeaderGetIsOpen->0x56 (&u32 out), GroupHeaderGetText->0x57 (TArray<wchar_t> out), GroupHeaderSetIsOpen->0x58 (&u32 value), GroupHeaderSetText->0x59 (pass encoded/wchar payload).

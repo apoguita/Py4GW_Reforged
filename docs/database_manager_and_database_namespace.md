@@ -38,7 +38,7 @@ and only drop to `DBMgr` when generic database operations are actually needed.
 
 Source:
 
-- [Py4GWCoreLib/database_src/DBMgr.py](C:/Users/Apo/Py4GW_python_files/Py4GWCoreLib/database_src/DBMgr.py)
+- [Py4GWCoreLib/database_src/DBMgr.py](../Py4GW_python_files/Py4GWCoreLib/database_src/DBMgr.py)
 
 ### Purpose
 
@@ -96,7 +96,7 @@ The intent is:
 
 Source:
 
-- [Py4GWCoreLib/Database.py](C:/Users/Apo/Py4GW_python_files/Py4GWCoreLib/Database.py)
+- [Py4GWCoreLib/Database.py](../Py4GW_python_files/Py4GWCoreLib/Database.py)
 
 ### Purpose
 
@@ -134,7 +134,7 @@ The goal is organization:
 
 Source:
 
-- [Py4GWCoreLib/database_src/Account.py](C:/Users/Apo/Py4GW_python_files/Py4GWCoreLib/database_src/Account.py)
+- [Py4GWCoreLib/database_src/Account.py](../Py4GW_python_files/Py4GWCoreLib/database_src/Account.py)
 
 ### Purpose
 
@@ -189,8 +189,8 @@ This resolves the account primary key from an immutable email.
 
 Source:
 
-- [Py4GWCoreLib/database_src/Settings.py](C:/Users/Apo/Py4GW_python_files/Py4GWCoreLib/database_src/Settings.py)
-- [docs/settings_database_cache_model.md](C:/Users/Apo/Py4GW_python_files/docs/settings_database_cache_model.md)
+- [Py4GWCoreLib/database_src/Settings.py](../Py4GW_python_files/Py4GWCoreLib/database_src/Settings.py)
+- [docs/settings_database_cache_model.md](../Py4GW_python_files/docs/settings_database_cache_model.md)
 
 ### Purpose
 
@@ -319,7 +319,7 @@ The cache-backed model is frame-friendly rather than immediately durable.
 
 For the full runtime model, see:
 
-- [docs/settings_database_cache_model.md](C:/Users/Apo/Py4GW_python_files/docs/settings_database_cache_model.md)
+- [docs/settings_database_cache_model.md](../Py4GW_python_files/docs/settings_database_cache_model.md)
 
 ## Window Persistence
 

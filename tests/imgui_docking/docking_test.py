@@ -33,6 +33,7 @@ _layout_pending = True
 _show_tools = True
 _show_scene = True
 _show_log = True
+_dockable = True   # toggled from the Dock Host window; adds PyImGui.WindowFlags.Docking to the panes
 _dockspace_id = 0
 _last_host_size = (0.0, 0.0)
 
@@ -71,6 +72,7 @@ def _draw_host() -> None:
     global _show_tools
     global _show_scene
     global _show_log
+    global _dockable
 
     PyImGui.set_next_window_size((900.0, 650.0), PyImGui.ImGuiCond.FirstUseEver)
     if not PyImGui.begin(DOCK_HOST_TITLE, PyImGui.WindowFlags.NoCollapse | PyImGui.WindowFlags.MenuBar):
@@ -99,6 +101,9 @@ def _draw_host() -> None:
     PyImGui.same_line(0, -1)
     PyImGui.text(f'Docking enabled: {_bool_label(PyImGui.is_docking_enabled())}')
 
+    # Toggle: drives ImGui_Legacy.begin(dockable=...) for the panes below.
+    _dockable = PyImGui.checkbox('Panes dockable (adds WindowFlags.Docking)', _dockable)
+
     available_size = PyImGui.get_content_region_avail()
     _last_host_size = available_size
     _dockspace_id = PyImGui.get_id('DockingTestDockSpace')
@@ -117,7 +122,7 @@ def _draw_tools() -> None:
     if not _show_tools:
         return
 
-    if not PyImGui.begin(TOOLS_TITLE, dockable=True):
+    if not PyImGui.begin(TOOLS_TITLE, flags=(PyImGui.WindowFlags.Docking if _dockable else PyImGui.WindowFlags.NoFlag)):
         PyImGui.end()
         return
 
@@ -139,7 +144,7 @@ def _draw_scene() -> None:
         return
 
     PyImGui.set_next_window_size((360.0, 260.0), PyImGui.ImGuiCond.FirstUseEver)
-    if not PyImGui.begin(SCENE_TITLE, dockable=True):
+    if not PyImGui.begin(SCENE_TITLE, flags=(PyImGui.WindowFlags.Docking if _dockable else PyImGui.WindowFlags.NoFlag)):
         PyImGui.end()
         return
 
@@ -163,7 +168,7 @@ def _draw_log() -> None:
     if not _show_log:
         return
 
-    if not PyImGui.begin(LOG_TITLE, dockable=True):
+    if not PyImGui.begin(LOG_TITLE, flags=(PyImGui.WindowFlags.Docking if _dockable else PyImGui.WindowFlags.NoFlag)):
         PyImGui.end()
         return
 

@@ -1,6 +1,6 @@
 # Native UI Controls — HANDOVER
 
-> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `../Py4GW/vendor/gwca` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
 
 Last updated: 2026-07-01 | EXE build: **06-14-2026** (Ghidra program `/Gw.exe (06-14)`, base 0x00400000)
 
@@ -77,12 +77,12 @@ text-button, edit box, progress bar, tabs, slider, group header — created in-c
 GW textures, interactive via the engine's own state, and destroyable without crashing.
 
 Code lives across two repos:
-- **C++**: `C:\Users\Apo\Py4GW` — `include/py_ui.h` (creator functions), `src/py_ui.cpp` (pybind bindings).
-- **Python**: `C:\Users\Apo\Py4GW_python_files` — `Py4GWCoreLib/GWUI.py` (high-level API),
+- **C++**: `../Py4GW` — `include/py_ui.h` (creator functions), `src/py_ui.cpp` (pybind bindings).
+- **Python**: `../Py4GW_python_files` — `Py4GWCoreLib/GWUI.py` (high-level API),
   `stubs/PyUIManager.pyi` (type stubs), `UI_RE/gwui_controls_test.py` (in-client test harness).
 
-**Build**: `cd C:\Users\Apo\Py4GW && cmake --build build --config RelWithDebInfo` → copy
-`bin\RelWithDebInfo\Py4GW.dll` to `C:\Users\Apo\Py4GW_python_files\Py4GW.dll`. (Config is **RelWithDebInfo**,
+**Build**: `cd ../Py4GW && cmake --build build --config RelWithDebInfo` → copy
+`bin\RelWithDebInfo\Py4GW.dll` to `../Py4GW_python_files/Py4GW.dll`. (Config is **RelWithDebInfo**,
 not Release.) Then reload the widget in-client.
 
 **Test**: run `UI_RE/gwui_controls_test.py` in-client. It creates each control in its own window, polls

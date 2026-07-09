@@ -38,12 +38,12 @@ The important distinction is:
 
 Legacy behavior is spread across:
 
-- [Py4GWCoreLib/ImGui_Legacy.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy.py:1)
-- [Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py:1)
-- [Py4GWCoreLib/ImGui_Legacy_src/Style.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/Style.py:1)
-- [Py4GWCoreLib/ImGui_Legacy_src/Textures.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/Textures.py:1)
-- [Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py:1)
-- [Py4GWCoreLib/ImGui_Legacy_src/types.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/types.py:1)
+- [Py4GWCoreLib/ImGui_Legacy.py](Py4GWCoreLib/ImGui_Legacy.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py](Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/Style.py](Py4GWCoreLib/ImGui_Legacy_src/Style.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/Textures.py](Py4GWCoreLib/ImGui_Legacy_src/Textures.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py](Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/types.py](Py4GWCoreLib/ImGui_Legacy_src/types.py:1)
 
 
 ## Category A: Thin Wrappers Around PyImGui
@@ -226,7 +226,7 @@ This is real infrastructure, not just wrappers.
 
 ### Source
 
-- [Py4GWCoreLib/ImGui_Legacy_src/Style.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/Style.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/Style.py](Py4GWCoreLib/ImGui_Legacy_src/Style.py:1)
 
 ### Core pieces
 
@@ -275,7 +275,7 @@ This is another genuinely unique subsystem.
 
 ### Source
 
-- [Py4GWCoreLib/ImGui_Legacy_src/Textures.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/Textures.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/Textures.py](Py4GWCoreLib/ImGui_Legacy_src/Textures.py:1)
 
 ### Core pieces
 
@@ -318,8 +318,8 @@ This is one of the most important unique categories.
 
 ### Sources
 
-- [Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py:1)
-- [Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py:286)
+- [Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py](Py4GWCoreLib/ImGui_Legacy_src/WindowModule.py:1)
+- [Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py](Py4GWCoreLib/ImGui_Legacy_src/ImGuisrc.py:286)
 
 ### Core pieces
 

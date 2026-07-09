@@ -1,6 +1,6 @@
 # Map Travel — Reverse Engineering Research
 
-> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `C:\Users\Apo\Py4GW\vendor\gwca\` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `../Py4GW/vendor/gwca` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.
 
 EXE builds: 05-30-2026, 06-14-2026 | Scope: Travel-load handshake, owned vs unowned divergence, bypass surface
 

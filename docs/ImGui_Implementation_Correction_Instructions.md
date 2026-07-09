@@ -13,7 +13,7 @@ It exists because the current code is close to the approved design, but it still
 - no alternate public construction/import path
 
 This is not a fresh design proposal. The design has already been approved in
-[docs/ImGui_Facade_Migration_Plan.md](/C:/Users/Apo/Py4GW_Reforged/docs/ImGui_Facade_Migration_Plan.md:1).
+[docs/ImGui_Facade_Migration_Plan.md](docs/ImGui_Facade_Migration_Plan.md:1).
 
 This document explains exactly what still needs to be corrected in the implementation so it adheres to that approved plan.
 
@@ -24,9 +24,9 @@ This document explains exactly what still needs to be corrected in the implement
 
 The current implementation already matches the plan in these important ways:
 
-- [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1) is now a thin public facade
-- [Py4GWCoreLib/ImGui_src/_runtime.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_runtime.py:1) exists and owns the assembled runtime
-- [Py4GWCoreLib/ImGui_src/_scopes.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_scopes.py:1) uses explicit result objects with `.entered`
+- [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1) is now a thin public facade
+- [Py4GWCoreLib/ImGui_src/_runtime.py](Py4GWCoreLib/ImGui_src/_runtime.py:1) exists and owns the assembled runtime
+- [Py4GWCoreLib/ImGui_src/_scopes.py](Py4GWCoreLib/ImGui_src/_scopes.py:1) uses explicit result objects with `.entered`
 - `_StateStore` is runtime-persistent
 - `_StackTracker` underflow raises immediately
 - frame imbalance logs instead of raising by default
@@ -45,7 +45,7 @@ That is the defect this correction pass must eliminate.
 After the correction pass, the implementation must satisfy all of the following:
 
 1. There is only one shared runtime instance.
-2. That instance lives in [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1).
+2. That instance lives in [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1).
 3. It is exposed as:
 
 ```python
@@ -80,7 +80,7 @@ Examples of what goes wrong if two instances survive:
 
 ## Files That Must Be Corrected
 
-### 1. [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1)
+### 1. [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1)
 
 This file is already conceptually correct.
 
@@ -104,7 +104,7 @@ Do not turn it back into:
 - a dual-path facade with `default`, `create`, or `ui`
 
 
-### 2. [Py4GWCoreLib/ImGui_src/__init__.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/__init__.py:1)
+### 2. [Py4GWCoreLib/ImGui_src/__init__.py](Py4GWCoreLib/ImGui_src/__init__.py:1)
 
 This file is currently wrong.
 
@@ -156,7 +156,7 @@ Do not expose:
 This package must be internal-only after the correction.
 
 
-### 3. [Py4GWCoreLib/ImGui_src/_core.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_core.py:1)
+### 3. [Py4GWCoreLib/ImGui_src/_core.py](Py4GWCoreLib/ImGui_src/_core.py:1)
 
 This file may remain as a compatibility shim, but only as a type shim, not as a facade.
 
@@ -200,7 +200,7 @@ Do not expose:
 This file is allowed only as a temporary internal compatibility layer.
 
 
-### 4. [Py4GWCoreLib/ImGui_src/_runtime.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_runtime.py:1)
+### 4. [Py4GWCoreLib/ImGui_src/_runtime.py](Py4GWCoreLib/ImGui_src/_runtime.py:1)
 
 This file is mostly correct and should remain the actual implementation owner.
 
@@ -291,7 +291,7 @@ After the corrections, verify these points explicitly.
 
 Expected true:
 
-- [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1) contains `ImGui = ImGuiRuntime()`
+- [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1) contains `ImGui = ImGuiRuntime()`
 
 Expected false everywhere else:
 

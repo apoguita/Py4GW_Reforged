@@ -355,12 +355,7 @@ python -m py_compile Widgets/Automation/Multiboxing/HeroAI.py
 Architecture doc consistency checks (run from repo root with this doc on disk):
 
 ```bash
-# 1. No legacy/removed terms.
-grep -nE 'step.back|stepping_back|vector_fields|_pump_detour_tree|hero_globals\.py|Apo' \
-  C:/Users/mkwal/.claude/plans/focus-on-the-current-inherited-stonebraker.md
-# Expected: zero hits.
-
-# 2. Slider labels in the doc match exact strings in ui_base.py.
+# 1. Slider labels in the doc match exact strings in ui_base.py.
 for label in 'Waypoint Smoothing' 'Stuck Circle Radius' 'Enemy Detection Range' \
              'Stuck Sample Count' 'Min Distance Activate Unstuck' \
              'No-Progress Move Units' 'No-Progress Close Units' \
@@ -370,7 +365,7 @@ for label in 'Waypoint Smoothing' 'Stuck Circle Radius' 'Enemy Detection Range' 
 done
 # Expected: silent (no MISSING lines).
 
-# 3. Renamed symbols must not appear in code anywhere (the rename history note
+# 2. Renamed symbols must not appear in code anywhere (the rename history note
 #    in this doc deliberately mentions the old module filename; that's OK).
 grep -rnE 'StuckAvoidanceConfig|StuckAvoidanceState|STUCK_AVOIDANCE_CFG|update_stuck_avoidance|reset_stuck_avoidance|reload_stuck_config_from_ini|DrawStuckAvoidance3DOverlay|stuck_avoidance_debug_snapshot' \
   HeroAI/ Widgets/Automation/Multiboxing/HeroAI.py

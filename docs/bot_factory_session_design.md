@@ -312,7 +312,7 @@ After the metadata contract was locked, the work branch moved from metadata prep
 
 The first concrete implementation artifact is a metadata-gated discovery browser script at:
 
-- [Bot_Factory.py](/c:/Users/Apo/Py4GW_python_files/Bot_Factory.py)
+- [Bot_Factory.py](../Py4GW_python_files/Bot_Factory.py)
 
 This script is not yet the configurator itself.
 

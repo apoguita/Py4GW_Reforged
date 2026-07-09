@@ -237,6 +237,7 @@ class WindowFlags(IntEnum):
     NoDecoration = 43
     NoInputs = 66048
     NavFlattened = 524288
+    Docking = 1073741824  # fabricated opt-in docking flag (1<<30); windows are non-dockable unless this is set
     ChildWindow = 1048576
     Tooltip = 2097152
     Popup = 4194304

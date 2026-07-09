@@ -56,19 +56,19 @@ These are hard constraints for the migration.
 
 ### Files currently involved
 
-- [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1)
-- [Py4GWCoreLib/ImGui_src/_core.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_core.py:1)
-- [Py4GWCoreLib/ImGui_src/_scopes.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_scopes.py:1)
-- [Py4GWCoreLib/ImGui_src/_layout.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_layout.py:1)
-- [Py4GWCoreLib/ImGui_src/_text.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_text.py:1)
-- [Py4GWCoreLib/ImGui_src/_widgets.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_widgets.py:1)
-- [Py4GWCoreLib/ImGui_src/_input.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_input.py:1)
-- [Py4GWCoreLib/ImGui_src/_items.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_items.py:1)
-- [Py4GWCoreLib/ImGui_src/_window.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_window.py:1)
-- [Py4GWCoreLib/ImGui_src/_tree_tables.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_tree_tables.py:1)
-- [Py4GWCoreLib/ImGui_src/_popups.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_popups.py:1)
-- [Py4GWCoreLib/ImGui_src/_docking.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_docking.py:1)
-- [Py4GWCoreLib/ImGui_src/_system.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_system.py:1)
+- [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1)
+- [Py4GWCoreLib/ImGui_src/_core.py](Py4GWCoreLib/ImGui_src/_core.py:1)
+- [Py4GWCoreLib/ImGui_src/_scopes.py](Py4GWCoreLib/ImGui_src/_scopes.py:1)
+- [Py4GWCoreLib/ImGui_src/_layout.py](Py4GWCoreLib/ImGui_src/_layout.py:1)
+- [Py4GWCoreLib/ImGui_src/_text.py](Py4GWCoreLib/ImGui_src/_text.py:1)
+- [Py4GWCoreLib/ImGui_src/_widgets.py](Py4GWCoreLib/ImGui_src/_widgets.py:1)
+- [Py4GWCoreLib/ImGui_src/_input.py](Py4GWCoreLib/ImGui_src/_input.py:1)
+- [Py4GWCoreLib/ImGui_src/_items.py](Py4GWCoreLib/ImGui_src/_items.py:1)
+- [Py4GWCoreLib/ImGui_src/_window.py](Py4GWCoreLib/ImGui_src/_window.py:1)
+- [Py4GWCoreLib/ImGui_src/_tree_tables.py](Py4GWCoreLib/ImGui_src/_tree_tables.py:1)
+- [Py4GWCoreLib/ImGui_src/_popups.py](Py4GWCoreLib/ImGui_src/_popups.py:1)
+- [Py4GWCoreLib/ImGui_src/_docking.py](Py4GWCoreLib/ImGui_src/_docking.py:1)
+- [Py4GWCoreLib/ImGui_src/_system.py](Py4GWCoreLib/ImGui_src/_system.py:1)
 
 ### What is already pointing in the right direction
 
@@ -272,7 +272,7 @@ Those can be explored later, but they are explicitly out of scope for this migra
 
 The runtime class should live in:
 
-- [Py4GWCoreLib/ImGui_src/_runtime.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_runtime.py:1)
+- [Py4GWCoreLib/ImGui_src/_runtime.py](Py4GWCoreLib/ImGui_src/_runtime.py:1)
 
 Reason:
 
@@ -474,7 +474,7 @@ The shared runtime model is the approved public contract for this migration.
 
 The runtime object should become the main product.
 
-The module-level facade in [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1) should expose:
+The module-level facade in [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1) should expose:
 
 - `ImGui`
 
@@ -768,7 +768,7 @@ The following skeletons are not meant to be copied literally, but they define th
 
 File target:
 
-- [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1)
+- [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1)
 
 Recommended shape:
 
@@ -1599,7 +1599,7 @@ Tasks:
 
 This section is the concrete implementation map the next model should follow.
 
-### [Py4GWCoreLib/ImGui.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui.py:1)
+### [Py4GWCoreLib/ImGui.py](Py4GWCoreLib/ImGui.py:1)
 
 Target responsibility:
 
@@ -1615,7 +1615,7 @@ Must not contain:
 - UI behavior logic
 - alternative public import stories that bypass the facade
 
-### [Py4GWCoreLib/ImGui_src/_runtime.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_runtime.py:1)
+### [Py4GWCoreLib/ImGui_src/_runtime.py](Py4GWCoreLib/ImGui_src/_runtime.py:1)
 
 Target responsibility:
 
@@ -1632,7 +1632,7 @@ Must absorb from current `_core.py`:
 - current top-level scope factories
 - current runtime-owned properties and helpers
 
-### [Py4GWCoreLib/ImGui_src/_core.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_core.py:1)
+### [Py4GWCoreLib/ImGui_src/_core.py](Py4GWCoreLib/ImGui_src/_core.py:1)
 
 Target responsibility during migration:
 
@@ -1643,7 +1643,7 @@ End-state preference:
 - either removed
 - or reduced to a minimal forwarding import with a clear deprecation comment
 
-### [Py4GWCoreLib/ImGui_src/_scopes.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/_scopes.py:1)
+### [Py4GWCoreLib/ImGui_src/_scopes.py](Py4GWCoreLib/ImGui_src/_scopes.py:1)
 
 Target responsibility:
 
@@ -1687,7 +1687,7 @@ Rule:
 - feature modules should define behavior-facing methods
 - scope lifecycle correctness should not be duplicated separately inside each feature module
 
-### [Py4GWCoreLib/ImGui_src/__init__.py](/C:/Users/Apo/Py4GW_Reforged/Py4GWCoreLib/ImGui_src/__init__.py:1)
+### [Py4GWCoreLib/ImGui_src/__init__.py](Py4GWCoreLib/ImGui_src/__init__.py:1)
 
 Target responsibility:
 

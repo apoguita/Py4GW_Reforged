@@ -3,7 +3,7 @@
 Comprehensive library reference for the Python-C++-Ghidra interface in the Py4GW project.
 Read this first before any RE work. `AGENTS.md` points here for tool paths and mappings.
 
-> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`C:\Users\Apo\Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, with runtime addresses resolved from `offsets\<module>.json` pattern data (not hardcoded). This **replaces legacy GWCA**. GWCA names and the paths under `C:\Users\Apo\Py4GW\vendor\gwca\` are kept throughout these docs as **legacy cross-references** — the canonical function nomenclature and how a subsystem worked pre-Reforged — but they are **no longer the source of truth** for current code; find the live implementation in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses describe the actual game and remain valid regardless of wrapper.
+> **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, with runtime addresses resolved from `offsets\<module>.json` pattern data (not hardcoded). This **replaces legacy GWCA**. GWCA names and the paths under `../Py4GW/vendor/gwca` are kept throughout these docs as **legacy cross-references** — the canonical function nomenclature and how a subsystem worked pre-Reforged — but they are **no longer the source of truth** for current code; find the live implementation in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses describe the actual game and remain valid regardless of wrapper.
 
 ## How To Use This File
 
