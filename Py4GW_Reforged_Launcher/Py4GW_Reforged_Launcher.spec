@@ -19,6 +19,11 @@ hiddenimports = []
 tmp_ret = collect_all('imgui_bundle')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
+# assets/python_icon.ico is loaded at runtime too (launcher.py's _apply_window_icon,
+# for the actual window/taskbar icon via WM_SETICON) -- not just for the icon= build
+# option below, which only covers the .exe's own Explorer/file-icon. Both need it.
+datas += [('assets/python_icon.ico', 'assets')]
+
 
 a = Analysis(
     ['launcher.py'],
@@ -54,4 +59,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/python_icon.ico',
 )

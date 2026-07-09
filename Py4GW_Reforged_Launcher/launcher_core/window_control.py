@@ -24,6 +24,39 @@ kernel32 = ctypes.windll.kernel32
 
 SW_RESTORE = 9
 
+WM_SETICON = 0x0080
+ICON_SMALL = 0
+ICON_BIG = 1
+IMAGE_ICON = 1
+LR_LOADFROMFILE = 0x00000010
+SM_CXICON = 11
+SM_CYICON = 12
+SM_CXSMICON = 49
+SM_CYSMICON = 50
+
+
+def set_window_icon(hwnd: int, icon_path: str) -> bool:
+    """Load `icon_path` (.ico) and apply it as `hwnd`'s title-bar/taskbar icon via
+    WM_SETICON. hello_imgui/imgui_bundle's RunnerParams has no window-icon option
+    (checked directly, see launcher.py's post_init wiring), so this is the documented
+    fallback: raw ctypes rather than pywin32's LoadImage wrapper, since loading both
+    the small and large icon sizes from one .ico file in one call isn't something
+    the wrapper cleanly exposes. Returns False (rather than raising) if the file is
+    missing or fails to load -- a missing icon shouldn't be fatal to starting the app.
+    """
+    cx_small, cy_small = user32.GetSystemMetrics(SM_CXSMICON), user32.GetSystemMetrics(SM_CYSMICON)
+    cx_big, cy_big = user32.GetSystemMetrics(SM_CXICON), user32.GetSystemMetrics(SM_CYICON)
+
+    h_small = user32.LoadImageW(None, icon_path, IMAGE_ICON, cx_small, cy_small, LR_LOADFROMFILE)
+    h_big = user32.LoadImageW(None, icon_path, IMAGE_ICON, cx_big, cy_big, LR_LOADFROMFILE)
+
+    if h_small:
+        user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, h_small)
+    if h_big:
+        user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, h_big)
+
+    return bool(h_small or h_big)
+
 
 def find_running_pid_for_exe_path(exe_path: str, exclude_pids: Optional[set] = None) -> Optional[int]:
     """Find a running process whose real executable matches `exe_path` exactly

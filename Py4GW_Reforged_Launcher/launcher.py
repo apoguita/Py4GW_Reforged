@@ -82,7 +82,22 @@ def _make_process_dpi_aware() -> None:
         pass
 
 
+def _set_app_user_model_id() -> None:
+    """Give this app its own taskbar identity instead of inheriting python.exe's.
+    Without an explicit AppUserModelID, Windows groups/identifies a python.exe-
+    launched app under the interpreter's own taskbar icon and grouping (a real,
+    previously-identified bug here, not a hypothetical) -- setting this early,
+    before the window is created, makes Explorer treat this as its own distinct
+    app for taskbar icon/grouping purposes.
+    """
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Py4GW.ReforgedLauncher")
+    except (AttributeError, OSError):
+        pass
+
+
 _make_process_dpi_aware()
+_set_app_user_model_id()
 
 
 # 32-bit is a hard requirement, not a preference: imgui_bundle has no 64-bit wheel
@@ -123,6 +138,7 @@ try:
         find_running_pid_for_exe_path,
         find_visible_window_for_pid,
         foreground_window,
+        set_window_icon,
         set_window_title,
     )
 except ImportError as e:
@@ -147,6 +163,22 @@ except Exception as e:
 # tracking is PID-based (see window_control.find_visible_window_for_pid) and never
 # depends on this string.
 WINDOW_TITLE_FORMAT = "Guild Wars Reforged — {profile_name}"
+
+ICON_PATH = Path(__file__).resolve().parent / "assets" / "python_icon.ico"
+
+
+def _apply_window_icon() -> None:
+    """hello_imgui.RunnerParams exposes no window-icon option (checked directly --
+    app_window_params has no icon field), so this is the fallback: find our own
+    window by PID once the native window actually exists (callbacks.post_init
+    fires "after everything is inited: ImGui, Platform and Renderer Backend") and
+    apply the .ico via WM_SETICON. Best-effort -- a missing icon file or failed
+    lookup isn't worth failing startup over.
+    """
+    hwnd = find_visible_window_for_pid(os.getpid())
+    if hwnd is not None:
+        set_window_icon(hwnd, str(ICON_PATH))
+
 
 # -----------------------------------------------------------------------------
 # Palette -- dark theme, real tokens from PY4GW_LAUNCHER_HANDOVER.md's "Real color
@@ -842,6 +874,7 @@ def main() -> None:
     runner_params.imgui_window_params.enable_viewports = True
 
     runner_params.callbacks.show_gui = gui
+    runner_params.callbacks.post_init = _apply_window_icon
 
     hello_imgui.run(runner_params)
 
