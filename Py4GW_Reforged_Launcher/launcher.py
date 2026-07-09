@@ -141,7 +141,8 @@ try:
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
-    from launcher_core.profile_store import load_profiles, save_profiles
+    from launcher_core.profile_store import load_profiles, load_teams, save_profiles, save_teams
+    from launcher_core.team import Team
     from launcher_core.window_control import (
         find_running_pid_for_exe_path,
         find_visible_window_for_pid,
@@ -369,6 +370,9 @@ class ProfileEditBuffer:
 class AppState:
     def __init__(self):
         self.profiles: list[GameProfile] = []
+        self.teams: list[Team] = []
+        # None means the built-in "ALL" view -- never a real team, never stored.
+        self.current_team_id: Optional[str] = None
         self.sessions: dict[str, LaunchSession] = {}
         self.running_pids: dict[str, int] = {}
         self.selected_id: Optional[str] = None
@@ -376,10 +380,43 @@ class AppState:
         self.edit_buffer: Optional[ProfileEditBuffer] = None
         self._last_liveness_check = 0.0
         self.reload_profiles()
+        self.reload_teams()
         self._rehydrate_running_instances()
 
     def reload_profiles(self) -> None:
         self.profiles = load_profiles()
+
+    def reload_teams(self) -> None:
+        self.teams = load_teams()
+
+    def current_team(self) -> Optional[Team]:
+        if self.current_team_id is None:
+            return None
+        return next((t for t in self.teams if t.id == self.current_team_id), None)
+
+    def _view_order(self) -> list[Optional[str]]:
+        """[None, team0.id, team1.id, ...] -- None is the ALL view, first always."""
+        return [None] + [t.id for t in self.teams]
+
+    def cycle_view(self, direction: int) -> None:
+        order = self._view_order()
+        try:
+            idx = order.index(self.current_team_id)
+        except ValueError:
+            idx = 0  # current_team_id pointed at a team that no longer exists
+        self.current_team_id = order[(idx + direction) % len(order)]
+
+    def jump_to_view(self, team_id: Optional[str]) -> None:
+        self.current_team_id = team_id
+
+    def create_team(self, name: str) -> Team:
+        """Create a team on the fly (typed into the switcher's popup, no separate
+        "manage teams" screen) and switch straight to viewing it."""
+        team = Team(name=name)
+        self.teams.append(team)
+        save_teams(self.teams)
+        self.current_team_id = team.id
+        return team
 
     def _rehydrate_running_instances(self) -> None:
         """Scan for already-running game processes matching each profile's exe path,
@@ -660,6 +697,68 @@ def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: b
     draw_list.add_text((cx - text_w / 2, y + card_h - em * 1.467), plus_col, text)
 
 
+_TEAM_SWITCHER_POPUP_ID = "Jump to view##team_switcher_popup"
+_new_team_name_buffer = ""
+
+
+def show_team_switcher() -> None:
+    """Center label + </> arrows to cycle views (ALL first, then each team in
+    stored order). Clicking the label opens a popup listing every view for a
+    direct jump -- cycling one at a time through a long team list would be
+    tedious -- plus a text box to create a new team on the fly, no separate
+    "manage teams" screen. Does not filter the card grid itself: which cards
+    are visible never changes with the view (see draw_profile_card's membership
+    checkbox, which is what the view actually controls).
+    """
+    global _new_team_name_buffer
+
+    em = hello_imgui.em_size()
+    current_team = STATE.current_team()
+    label = current_team.name if current_team else "ALL"
+
+    arrow_w = em * 2.0
+    label_w = em * 12.0
+    total_w = arrow_w * 2 + label_w
+    avail_w = imgui.get_content_region_avail().x
+    indent = (avail_w - total_w) / 2
+    if indent > 0:
+        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + indent)
+
+    if imgui.button("<##team_prev", size=(arrow_w, 0)):
+        STATE.cycle_view(-1)
+    imgui.same_line()
+    if imgui.button(f"{label}##team_label", size=(label_w, 0)):
+        imgui.open_popup(_TEAM_SWITCHER_POPUP_ID)
+        _new_team_name_buffer = ""
+    imgui.same_line()
+    if imgui.button(">##team_next", size=(arrow_w, 0)):
+        STATE.cycle_view(1)
+
+    if imgui.begin_popup(_TEAM_SWITCHER_POPUP_ID):
+        if imgui.selectable("ALL", STATE.current_team_id is None)[0]:
+            STATE.jump_to_view(None)
+            imgui.close_current_popup()
+        for team in STATE.teams:
+            if imgui.selectable(team.name or "(unnamed team)", STATE.current_team_id == team.id)[0]:
+                STATE.jump_to_view(team.id)
+                imgui.close_current_popup()
+
+        imgui.separator()
+        imgui.set_next_item_width(em * 10.0)
+        enter_pressed, _new_team_name_buffer = imgui.input_text(
+            "##new_team_name", _new_team_name_buffer,
+            flags=int(imgui.InputTextFlags_.enter_returns_true.value),
+        )
+        imgui.same_line()
+        create_clicked = imgui.button("Create")
+        new_name = _new_team_name_buffer.strip()
+        if (enter_pressed or create_clicked) and new_name:
+            STATE.create_team(new_name)
+            _new_team_name_buffer = ""
+            imgui.close_current_popup()
+        imgui.end_popup()
+
+
 def show_main_window() -> None:
     STATE.update()
 
@@ -667,6 +766,9 @@ def show_main_window() -> None:
     imgui.same_line()
     if imgui.button("Reload profiles"):
         STATE.reload_profiles()
+
+    imgui.spacing()
+    show_team_switcher()
 
     imgui.separator()
     imgui.spacing()
