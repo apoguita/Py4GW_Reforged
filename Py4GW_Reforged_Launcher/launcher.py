@@ -123,11 +123,13 @@ if sys.maxsize > 2**32:
     )
 
 try:
+    import colorsys
     import dataclasses
     import math
     import os
     import threading
     import time
+    import zlib
     from pathlib import Path
     from typing import Callable, Optional
 
@@ -218,6 +220,30 @@ BADGE_BORDER = _u32(75, 75, 95)
 BADGE_FORE = _u32(210, 210, 220)
 STATUS_PROGRESS = _u32(230, 180, 80)
 STATUS_ERROR = _u32(220, 90, 90)
+
+# Avatar palette -- hues picked to avoid colliding with colors that already
+# mean something specific: ACCENT's blue (~210 deg) means selection,
+# STATUS_PROGRESS's amber (~35 deg) and STATUS_ERROR's red (~5 deg) mean
+# status. Evenly spaced across the remaining hue range at a fixed saturation/
+# lightness tuned to read well against the dark card background while still
+# keeping a plain white letter legible on top of any of them.
+_AVATAR_HUES_DEG = [60, 95, 130, 165, 245, 275, 300, 325]
+_AVATAR_SATURATION = 0.55
+_AVATAR_LIGHTNESS = 0.42
+
+
+def _avatar_color_for_id(profile_id: str) -> int:
+    """Deterministic color from the profile's id, not its name -- so renaming
+    a profile doesn't shuffle its color and break the "that color is this
+    account" muscle memory. Uses zlib.crc32 rather than the builtin hash():
+    Python randomizes str hashing per-process by default, which would give a
+    different color every time the app restarts.
+    """
+    index = zlib.crc32(profile_id.encode("utf-8")) % len(_AVATAR_HUES_DEG)
+    hue = _AVATAR_HUES_DEG[index] / 360.0
+    r, g, b = colorsys.hls_to_rgb(hue, _AVATAR_LIGHTNESS, _AVATAR_SATURATION)
+    return _u32(round(r * 255), round(g * 255), round(b * 255))
+
 
 def _card_dimensions() -> tuple[float, float, float]:
     """Card width/height/gap in real screen pixels, derived from the current font's
@@ -787,7 +813,7 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
         _draw_membership_checkbox(draw_list, checkbox_min, checkbox_max, is_member=is_member, hovered=checkbox_hovered)
 
     icon_center = (x + em * 1.733, y + em * 1.6)
-    draw_list.add_circle_filled(icon_center, em * 0.8, _u32(45, 47, 52))
+    draw_list.add_circle_filled(icon_center, em * 0.8, _avatar_color_for_id(profile.id))
 
     initial = (profile.name[:1] or "?").upper()
     initial_size = imgui.calc_text_size(initial)
