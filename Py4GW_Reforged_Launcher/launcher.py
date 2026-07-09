@@ -49,6 +49,42 @@ def _fatal_startup_error(message: str) -> None:
     sys.exit(1)
 
 
+def _make_process_dpi_aware() -> None:
+    """Declare Per-Monitor-v2 DPI awareness before imgui_bundle/SDL ever creates a
+    window. This process had no DPI awareness declared anywhere (confirmed via
+    ctypes.windll.shcore.GetProcessDpiAwareness() returning 0/Unaware by default) --
+    without it, Windows doesn't just misreport the display scale to real DPI
+    queries, it also bitmap-stretches the *entire already-rendered* window to match
+    the real scale afterward. That produces clipped *and* oversized content at the
+    same time regardless of any saved ini value, since the stretching happens after
+    our own layout math runs, not inside it -- which is exactly the symptom seen on
+    real hardware, and exactly what mocking hello_imgui.em_size() in earlier testing
+    could never exercise (that only ever touched the ImGui-side font/content scale,
+    never this OS-level awareness declaration). Must run before imgui_bundle is
+    imported below, so it's called at module scope here, first thing.
+    """
+    try:
+        # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4 (Windows 10 1703+)
+        if ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+            return
+    except (AttributeError, OSError):
+        pass
+    try:
+        # PROCESS_PER_MONITOR_DPI_AWARE = 2 (Windows 8.1+, no per-monitor-v2 support)
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        return
+    except (AttributeError, OSError):
+        pass
+    try:
+        # Windows Vista/7 fallback: system-DPI-aware only.
+        ctypes.windll.user32.SetProcessDPIAware()
+    except (AttributeError, OSError):
+        pass
+
+
+_make_process_dpi_aware()
+
+
 # 32-bit is a hard requirement, not a preference: imgui_bundle has no 64-bit wheel
 # available for this project's venv (source-build only, see gw1_launch.py's docs),
 # and the GW1 injection pipeline needs same-bitness with GW1's own 32-bit process
@@ -152,6 +188,65 @@ def _card_dimensions() -> tuple[float, float, float]:
     """
     em = hello_imgui.em_size()
     return em * 16.0, em * 5.6, em * 0.8
+
+
+# -----------------------------------------------------------------------------
+# TEMPORARY diagnostics for the real-hardware DPI/window-sizing bug -- remove
+# once a laptop test confirms the fix above and these numbers are no longer
+# needed. Surfaces the real OS-queried DPI state that _make_process_dpi_aware()
+# above changes, plus hello_imgui's resulting scale factors, so the next test
+# on the affected laptop produces actual measured numbers instead of another
+# guess. Written both to a log file (survives after the window closes) and as
+# an on-screen line (visible without pulling the file off remote hardware).
+# -----------------------------------------------------------------------------
+
+_DPI_DIAG_LOG_PATH = Path(__file__).resolve().parent / "dpi_diagnostics.log"
+_dpi_diag_line = ""
+_dpi_diag_logged = False
+
+
+def _dpi_diag_text() -> str:
+    """Collect current DPI/scale state as one line. Safe to call every frame --
+    the values it reads (process DPI awareness, em_size, dpi_window_size_factor)
+    are cheap queries, not allocations."""
+    try:
+        awareness_ctx = ctypes.windll.user32.GetThreadDpiAwarenessContext()
+        awareness = ctypes.windll.user32.GetAwarenessFromDpiAwarenessContext(awareness_ctx)
+    except (AttributeError, OSError):
+        awareness = "?"
+    try:
+        sys_dpi = ctypes.windll.user32.GetDpiForSystem()
+    except (AttributeError, OSError):
+        sys_dpi = "?"
+
+    dpi_window_factor = hello_imgui.dpi_window_size_factor()
+    em = hello_imgui.em_size()
+    dpi_params = hello_imgui.get_dpi_aware_params()
+    io = imgui.get_io()
+
+    return (
+        f"[DPI DIAG] process_dpi_awareness={awareness} system_dpi={sys_dpi} "
+        f"dpi_window_size_factor={dpi_window_factor:.3f} em_size={em:.2f} "
+        f"dpiAwareParams(window_factor={dpi_params.dpi_window_size_factor:.3f}, "
+        f"font_render_scale={dpi_params.font_rendering_scale:.3f}) "
+        f"io.display_size={tuple(io.display_size)} "
+        f"io.display_framebuffer_scale={tuple(io.display_framebuffer_scale)}"
+    )
+
+
+def _log_dpi_diagnostics_once() -> None:
+    """Write the diagnostic line to disk exactly once per run (first frame it can
+    be measured on), so repeated frames don't spam the log file."""
+    global _dpi_diag_line, _dpi_diag_logged
+    if _dpi_diag_logged:
+        return
+    _dpi_diag_logged = True
+    _dpi_diag_line = _dpi_diag_text()
+    try:
+        with open(_DPI_DIAG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + _dpi_diag_line + "\n")
+    except OSError:
+        pass
 
 
 # -----------------------------------------------------------------------------
@@ -521,6 +616,10 @@ def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: b
 def show_main_window() -> None:
     STATE.update()
 
+    _log_dpi_diagnostics_once()
+    imgui.text_colored((0.9, 0.75, 0.3, 1.0), _dpi_diag_text())
+    imgui.separator()
+
     imgui.text(f"{len(STATE.profiles)} profile(s) loaded from profile_store.")
     imgui.same_line()
     if imgui.button("Settings"):
@@ -616,6 +715,9 @@ def show_settings_content() -> None:
 
     buffer = STATE.edit_buffer
     em = hello_imgui.em_size()
+
+    imgui.text_colored((0.9, 0.75, 0.3, 1.0), _dpi_diag_text())
+    imgui.separator()
 
     imgui.begin_child("settings_sidebar", size=(em * 8.0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
     for tab in SETTINGS_TABS:

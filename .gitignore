@@ -236,3 +236,6 @@ Py4GW_Reforged_Launcher.ini
 
 # PyInstaller build output committed by mistake in "Test build" - never commit built exes
 Py4GW_Reforged_Launcher/*.exe
+
+# Temporary DPI diagnostic log (see launcher.py's _DPI_DIAG_LOG_PATH)
+Py4GW_Reforged_Launcher/dpi_diagnostics.log
