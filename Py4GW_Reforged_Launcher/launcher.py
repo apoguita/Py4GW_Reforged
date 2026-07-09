@@ -885,11 +885,13 @@ def _visible_profiles() -> list[GameProfile]:
 
 
 def show_team_actions() -> None:
-    """Launch Team + Select all visible/Select none + pacing control -- only
-    meaningful in a real team view (ALL has no membership, so there's nothing to
-    bulk-launch or select). Launch Team is disabled/unarmed unless at least one
-    account is checked into the currently-viewed team, and while a bulk launch
-    is already running (never overlap two at once).
+    """Launch Team + pacing control -- only meaningful in a real team view (ALL
+    has no membership, so there's nothing to bulk-launch). Disabled/unarmed
+    unless at least one account is checked into the currently-viewed team, and
+    while a bulk launch is already running (never overlap two at once).
+
+    "Select all visible" / "Select none" were cut per design review -- they
+    didn't earn their toolbar space -- rather than relabeled or relocated.
     """
     team_id = STATE.current_team_id
     if team_id is None:
@@ -906,26 +908,6 @@ def show_team_actions() -> None:
         imgui.end_disabled()
     if launch_clicked and can_launch:
         STATE.start_bulk_launch(members)
-
-    imgui.same_line()
-    if imgui.button("Select all visible"):
-        changed = False
-        for p in _visible_profiles():
-            if team_id not in p.team_ids:
-                p.team_ids.append(team_id)
-                changed = True
-        if changed:
-            save_profiles(STATE.profiles)
-
-    imgui.same_line()
-    if imgui.button("Select none"):
-        changed = False
-        for p in _visible_profiles():
-            if team_id in p.team_ids:
-                p.team_ids.remove(team_id)
-                changed = True
-        if changed:
-            save_profiles(STATE.profiles)
 
     imgui.same_line()
     imgui.text("Pacing (s):")
@@ -947,9 +929,6 @@ def show_main_window() -> None:
     STATE.update()
 
     imgui.text(f"{len(STATE.profiles)} profile(s) loaded from profile_store.")
-    imgui.same_line()
-    if imgui.button("Reload profiles"):
-        STATE.reload_profiles()
 
     imgui.spacing()
     show_team_switcher()
