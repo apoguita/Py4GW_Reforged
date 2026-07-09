@@ -192,10 +192,10 @@ class PROCESS_INFORMATION(ctypes.Structure):
 @dataclasses.dataclass
 class PreInjectionConfig:
     """Reserved extension point for delivering config to the child process before it
-    resumes -- most likely Apo's name-obfuscation hook, which (per the GW1 launcher
-    handover, 2026-07-09) needs its config in place before/at injection time, the same
-    shape of problem GWxLauncher already solved for GW2 by setting environment
-    variables before injecting its folder-redirect hook.
+    resumes -- most likely Apo's name-obfuscation hook, which needs its config in
+    place before/at injection time, the same shape of problem GWxLauncher already
+    solved for GW2 by setting environment variables before injecting its
+    folder-redirect hook.
 
     This is an explicit, documented no-op today, not real logic: `launch_py4gw_profile`
     accepts an instance of this but does nothing with it. The fields below are a guess

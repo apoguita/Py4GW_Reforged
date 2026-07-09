@@ -22,9 +22,9 @@ Deliberately deferred (not built here):
   the data model and is editable, but nothing wires it to an actual injection call yet.
 - Editing window-placement fields (window/x/y/width/height/etc.) -- shown read-only.
 - Any config editing, or the broader Py4GW install/distribution mechanism (still
-  unresolved with Apo -- see the handover doc). This file only checks whether *this
-  launcher's own* runtime environment is sane enough to start; it doesn't install
-  anything or manage the wider Py4GW dependency chain.
+  unresolved with Apo). This file only checks whether *this launcher's own*
+  runtime environment is sane enough to start; it doesn't install anything or
+  manage the wider Py4GW dependency chain.
 
 Run with the project's 32-bit venv, from this file's directory or with it importable:
     C:\\Users\\Chris\\Projects\\Py4GW\\myenv\\Scripts\\python.exe Py4GW_Reforged_Launcher\\launcher.py
@@ -195,10 +195,10 @@ def _apply_window_icon() -> None:
 
 
 # -----------------------------------------------------------------------------
-# Palette -- dark theme, real tokens from PY4GW_LAUNCHER_HANDOVER.md's "Real color
-# values" table (Dark column), with hover/selected contrast pushed further per the
-# handover's "UI/UX design authority" section (approved direction: hover = full
-# neutral elevation step, selected = accent-tinted bg + accent border + solid bar).
+# Palette -- dark theme, ported from the C# reference implementation's Light/Dark
+# palette classes, with hover/selected contrast pushed further per an approved
+# design direction (hover = full neutral elevation step, selected = accent-tinted
+# bg + accent border + solid bar).
 # STATUS_* colors (amber/red) aren't part of that 4-state card spec -- they're new,
 # needed to satisfy the "honest status text, not a spinner" requirement below.
 # -----------------------------------------------------------------------------

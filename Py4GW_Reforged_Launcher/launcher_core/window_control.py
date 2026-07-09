@@ -4,8 +4,7 @@ Port of GWxLauncher/Services/Gw2AutoLoginService.cs's ForceForeground -- same ca
 same order, same AttachThreadInput-around-SetForegroundWindow workaround for Windows'
 foreground-lock restriction (a plain SetForegroundWindow call is routinely ignored by
 Windows unless the calling thread is attached to the current foreground thread's
-input queue). Confirmed technical approach per the GW1 launcher handover
-(2026-07-08): "click-to-foreground is pure Win32 API work ... no ImGui limitation."
+input queue). Confirmed this is pure Win32 API work with no ImGui-side limitation.
 """
 
 from __future__ import annotations
