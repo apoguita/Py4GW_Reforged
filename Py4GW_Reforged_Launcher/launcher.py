@@ -1241,6 +1241,29 @@ def _browse_for_file(*, title: str, filter_str: str, initial_path: str = "") -> 
     return filename or None
 
 
+def _path_field_with_browse(*, label: str, value: str, id_suffix: str, dialog_title: str, filter_str: str) -> str:
+    """Label above an input + measured-width "..." browse button, rather than
+    picking a window size that happens not to clip the button (the previous
+    fix): calc_text_size gives the button's real required width, that width is
+    reserved exactly, and the input takes whatever's left -- the input is what
+    flexes on a narrow window, the button never does, so this can't clip at
+    any reasonable window size.
+    """
+    imgui.text(label)
+    style = imgui.get_style()
+    button_w = imgui.calc_text_size("...").x + style.frame_padding.x * 2
+    avail_w = imgui.get_content_region_avail().x
+    input_w = max(1.0, avail_w - button_w - style.item_spacing.x)
+    imgui.set_next_item_width(input_w)
+    _, value = imgui.input_text(f"##{id_suffix}", value)
+    imgui.same_line()
+    if imgui.button(f"...##{id_suffix}_browse", size=(button_w, 0)):
+        chosen = _browse_for_file(title=dialog_title, filter_str=filter_str, initial_path=value)
+        if chosen:
+            value = chosen
+    return value
+
+
 SETTINGS_TABS = ["General", "Mods", "Window"]
 _active_tab = SETTINGS_TABS[0]
 
@@ -1276,16 +1299,11 @@ def show_settings_content() -> None:
 
     if _active_tab == "General":
         _, buffer.name = imgui.input_text("Profile name", buffer.name)
-        _, buffer.executable_path = imgui.input_text("Executable path", buffer.executable_path)
-        imgui.same_line()
-        if imgui.button("...##executable_path"):
-            chosen = _browse_for_file(
-                title="Select Guild Wars executable",
-                filter_str="Guild Wars executable (Gw.exe)\0Gw.exe\0Executable files (*.exe)\0*.exe\0All files (*.*)\0*.*\0",
-                initial_path=buffer.executable_path,
-            )
-            if chosen:
-                buffer.executable_path = chosen
+        buffer.executable_path = _path_field_with_browse(
+            label="Executable path", value=buffer.executable_path, id_suffix="executable_path",
+            dialog_title="Select Guild Wars executable",
+            filter_str="Guild Wars executable (Gw.exe)\0Gw.exe\0Executable files (*.exe)\0*.exe\0All files (*.*)\0*.*\0",
+        )
         _, buffer.email = imgui.input_text("Account email", buffer.email)
         _, buffer.password_input = imgui.input_text(
             "Password", buffer.password_input, flags=int(imgui.InputTextFlags_.password.value)
@@ -1295,27 +1313,15 @@ def show_settings_content() -> None:
         _, buffer.auto_login_enabled = imgui.checkbox("Enable auto-login", buffer.auto_login_enabled)
     elif _active_tab == "Mods":
         _, buffer.py4gw_enabled = imgui.checkbox("Inject Py4GW", buffer.py4gw_enabled)
-        _, buffer.py4gw_dll_path = imgui.input_text("Py4GW DLL path", buffer.py4gw_dll_path)
-        imgui.same_line()
-        if imgui.button("...##py4gw_dll_path"):
-            chosen = _browse_for_file(
-                title="Select Py4GW DLL",
-                filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
-                initial_path=buffer.py4gw_dll_path,
-            )
-            if chosen:
-                buffer.py4gw_dll_path = chosen
+        buffer.py4gw_dll_path = _path_field_with_browse(
+            label="Py4GW DLL path", value=buffer.py4gw_dll_path, id_suffix="py4gw_dll_path",
+            dialog_title="Select Py4GW DLL", filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
+        )
         _, buffer.gmod_enabled = imgui.checkbox("Inject gMod", buffer.gmod_enabled)
-        _, buffer.gmod_dll_path = imgui.input_text("gMod DLL path", buffer.gmod_dll_path)
-        imgui.same_line()
-        if imgui.button("...##gmod_dll_path"):
-            chosen = _browse_for_file(
-                title="Select gMod DLL",
-                filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
-                initial_path=buffer.gmod_dll_path,
-            )
-            if chosen:
-                buffer.gmod_dll_path = chosen
+        buffer.gmod_dll_path = _path_field_with_browse(
+            label="gMod DLL path", value=buffer.gmod_dll_path, id_suffix="gmod_dll_path",
+            dialog_title="Select gMod DLL", filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
+        )
         imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(gMod injection timing not implemented yet)")
     elif _active_tab == "Window":
         existing = next((p for p in STATE.profiles if p.id == buffer.original_id), None) if not buffer.is_new else None
