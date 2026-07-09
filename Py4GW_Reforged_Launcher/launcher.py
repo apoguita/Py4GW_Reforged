@@ -6,11 +6,16 @@ the real GW1 launch pipeline (launcher_core.gw1_launch). Not a mockup: cards sho
 profiles loaded from profile_store, clicking them drives the actual injection
 pipeline, and status text reflects the pipeline's real, live progress.
 
-Add/edit profiles through the Settings window (opened via the "+" card for a new
-profile, or "Settings" with a card selected to edit it). Reuses the one settings
-window/tab shell rather than a second, separate form. Password field never displays
-the real stored value -- it's write-only: blank means "don't change," typing a new
-value replaces the DPAPI blob on save.
+Each card is the entire interaction surface -- no separate buttons per action:
+left-click selects a stopped profile or brings a running one to the foreground,
+double-click launches a stopped profile, and right-click opens Settings directly
+for that profile (replacing an earlier "Settings" button whose behavior depended on
+hidden selection state). The "+" card opens Settings for a new profile. Hovering
+reveals a small action icon (play triangle / bring-to-front arrow) as a visual cue
+only -- the whole card is already the click target, not just the icon. Settings
+reuses one window/tab shell for both add and edit rather than a second, separate
+form. Password field never displays the real stored value -- it's write-only: blank
+means "don't change," typing a new value replaces the DPAPI blob on save.
 
 Deliberately deferred (not built here):
 - gMod's early-injection timing/strategy. GameProfile.gmod_enabled already exists on
@@ -534,6 +539,28 @@ STATE = AppState()
 # Card grid (main window content)
 # -----------------------------------------------------------------------------
 
+def _draw_play_icon(draw_list, center, size: float, color: int) -> None:
+    """Small filled play triangle -- hover cue on a stopped card. Purely visual,
+    not a separate click target: the whole card already handles double-click."""
+    r = size / 2
+    p1 = (center[0] - r * 0.6, center[1] - r * 0.8)
+    p2 = (center[0] - r * 0.6, center[1] + r * 0.8)
+    p3 = (center[0] + r * 0.9, center[1])
+    draw_list.add_triangle_filled(p1, p2, p3, color)
+
+
+def _draw_bring_to_front_icon(draw_list, center, size: float, color: int) -> None:
+    """Two overlapping squares (back outline, front filled) -- the common
+    "bring to front" glyph, used as a hover cue on an already-running card."""
+    r = size / 2
+    back_min = (center[0] - r, center[1] - r)
+    back_max = (center[0] + r * 0.35, center[1] + r * 0.35)
+    front_min = (center[0] - r * 0.35, center[1] - r * 0.35)
+    front_max = (center[0] + r, center[1] + r)
+    draw_list.add_rect(back_min, back_max, color, thickness=1.5)
+    draw_list.add_rect_filled(front_min, front_max, color, rounding=1.0)
+
+
 def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool) -> None:
     em = hello_imgui.em_size()
     x, y = origin
@@ -555,6 +582,13 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
 
     icon_center = (x + em * 1.733, y + em * 1.6)
     draw_list.add_circle_filled(icon_center, em * 0.8, _u32(45, 47, 52))
+
+    if hovered:
+        action_center = (x + card_w - em * 1.267, y + em * 1.267)
+        if running:
+            _draw_bring_to_front_icon(draw_list, action_center, em * 1.0, ACCENT)
+        else:
+            _draw_play_icon(draw_list, action_center, em * 1.0, ACCENT)
 
     text_x = x + em * 3.067
     draw_list.add_text((text_x, y + em * 0.933), CARD_NAME_FORE, profile.name or "(unnamed profile)")
@@ -621,12 +655,6 @@ def show_main_window() -> None:
 
     imgui.text(f"{len(STATE.profiles)} profile(s) loaded from profile_store.")
     imgui.same_line()
-    if imgui.button("Settings"):
-        if STATE.selected_id is not None:
-            STATE.begin_edit_selected()
-        else:
-            STATE.settings_window_open = True
-    imgui.same_line()
     if imgui.button("Reload profiles"):
         STATE.reload_profiles()
 
@@ -668,6 +696,10 @@ def show_main_window() -> None:
         if hovered and imgui.is_mouse_double_clicked(0):
             if not running and not launching:
                 STATE.start_launch(profile)
+
+        if hovered and imgui.is_mouse_clicked(1):
+            STATE.selected_id = profile.id
+            STATE.begin_edit_selected()
 
         draw_profile_card(
             draw_list, card_origin, profile, card_w=card_w, card_h=card_h,
