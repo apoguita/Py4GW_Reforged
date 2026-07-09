@@ -1,6 +1,7 @@
 from Py4GWCoreLib import *
 from Py4GWCoreLib.botting_src.property import Property
 from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import Py4GW
 import PyImGui
 import os
@@ -229,7 +230,7 @@ def _as_bool(value) -> bool:
 
 def _ensure_bot_ini(bot: Botting) -> str:
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = IniManager().ensure_key(
+        bot.config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
             f"bot_{bot.config.bot_name}.ini",
         )
@@ -596,7 +597,8 @@ def _load_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    raw = IniManager().read_bool(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
+    cfg = Settings.find(ini_key)
+    raw = cfg.get_bool(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
     _party_mode = 1 if raw else 0
 
 
@@ -614,7 +616,8 @@ def _save_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
+    cfg = Settings.find(ini_key)
+    cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
 
 
 def _rebuild_routine_if_safe(bot: Botting) -> bool:

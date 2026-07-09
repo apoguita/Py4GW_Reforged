@@ -1,9 +1,10 @@
 # region Imports & Config
-from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, Agent, Player, ConsoleLog, IniManager, ModelID, HeroType
+from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, Agent, Player, ConsoleLog, ModelID, HeroType
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums_src.Title_enums import TitleID, TITLE_TIERS
 from Py4GWCoreLib.botting_src.property import Property
 from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import Py4GW
 import os
 import time
@@ -382,7 +383,7 @@ def _send_local_dialog(bot: Botting, dialog_id: int):
 
 def _ensure_bot_ini(bot: Botting) -> str:
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = IniManager().ensure_key(
+        bot.config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
             f"bot_{bot.config.bot_name}.ini",
         )
@@ -650,28 +651,25 @@ def _load_consumable_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    saved_use_conset = IniManager().read_bool(
-        ini_key,
+    cfg = Settings.find(ini_key)
+    saved_use_conset = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_CONSET_KEY,
         _as_bool(bot.Properties.Get("use_conset", "active")),
     )
-    saved_use_pcons = IniManager().read_bool(
-        ini_key,
+    saved_use_pcons = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_PCONS_KEY,
         _as_bool(bot.Properties.Get("use_pcons", "active")),
     )
     bot.Properties.ApplyNow("use_conset", "active", _as_bool(saved_use_conset))
     bot.Properties.ApplyNow("use_pcons", "active", _as_bool(saved_use_pcons))
-    _conset_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key,
+    _conset_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(cfg.get_int(
         _SETTINGS_SECTION,
         _CONSET_RESTOCK_TARGET_KEY,
         _conset_restock_target,
     ))))
-    _pcon_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key,
+    _pcon_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(cfg.get_int(
         _SETTINGS_SECTION,
         _PCON_RESTOCK_TARGET_KEY,
         _pcon_restock_target,
@@ -682,26 +680,23 @@ def _save_consumable_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    IniManager().write_key(
-        ini_key,
+    cfg = Settings.find(ini_key)
+    cfg.set(
         _SETTINGS_SECTION,
         _USE_CONSET_KEY,
         _as_bool(bot.Properties.Get("use_conset", "active")),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _USE_PCONS_KEY,
         _as_bool(bot.Properties.Get("use_pcons", "active")),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _CONSET_RESTOCK_TARGET_KEY,
         int(_conset_restock_target),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _PCON_RESTOCK_TARGET_KEY,
         int(_pcon_restock_target),
@@ -746,7 +741,8 @@ def _load_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    raw = IniManager().read_bool(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
+    cfg = Settings.find(ini_key)
+    raw = cfg.get_bool(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
     _party_mode = 1 if raw else 0
 
 
@@ -754,7 +750,8 @@ def _save_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
+    cfg = Settings.find(ini_key)
+    cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
 
 
 def _draw_settings(bot: Botting):

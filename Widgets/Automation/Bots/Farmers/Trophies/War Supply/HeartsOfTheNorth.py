@@ -6,7 +6,7 @@ import time
 from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib.Builds.Any.KeiranThackerayEOTN import KeiranThackerayEOTN
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
-                          Map, ImGui_Legacy, IniManager, ActionQueueManager, Agent, Player, AgentArray,
+                          Map, ImGui_Legacy, ActionQueueManager, Agent, Player, AgentArray,
                           Pathing, TitleID, TITLE_TIERS)
 from Py4GWCoreLib import *
 
@@ -1296,7 +1296,8 @@ def _draw_hotn_window(icon_path: str) -> None:
         Overall Progress  [â–ˆâ–ˆâ–ˆâ–ˆâ–‘â–‘â–‘â–‘]
         Step Progress     [â–ˆâ–ˆâ–‘â–‘â–‘â–‘â–‘â–‘]
     """
-    from Py4GWCoreLib import ImGui_Legacy, IniManager, Color, Routines
+    from Py4GWCoreLib import ImGui_Legacy, Color, Routines
+    from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
     from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
     from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, Console
     from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
@@ -1307,12 +1308,10 @@ def _draw_hotn_window(icon_path: str) -> None:
 
     # â”€â”€ Window state INI (position/size) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = IniManager().ensure_key(
+        bot.config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
             f"bot_{bot.config.bot_name}.ini",
         )
-        if bot.config.ini_key:
-            IniManager().load_once(bot.config.ini_key)
         bot.config.ini_key_initialized = True
 
     if not bot.config.ini_key:

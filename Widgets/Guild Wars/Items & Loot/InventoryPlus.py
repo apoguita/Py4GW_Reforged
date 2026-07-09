@@ -4,7 +4,7 @@ import PyInventory
 import importlib.util
 import os
 import sys
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette
@@ -97,22 +97,8 @@ class IdentificationSettings:
     identify_all_greens: bool = field(default_factory=bool)
     identify_all_purples: bool = field(default_factory=bool)
     identify_all_golds: bool = field(default_factory=bool)
-    
-    def add_config_vars(self, ini_key: str):
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_whites", name="identify_whites", default=self.identify_whites)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_blues", name="identify_blues", default=self.identify_blues)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_greens", name="identify_greens", default=self.identify_greens)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_purples", name="identify_purples", default=self.identify_purples)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_golds", name="identify_golds", default=self.identify_golds)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="show_identify_all", name="show_identify_all", default=self.show_identify_all)
 
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_all_whites", name="identify_all_whites", default=self.identify_all_whites)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_all_blues", name="identify_all_blues", default=self.identify_all_blues)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_all_greens", name="identify_all_greens", default=self.identify_all_greens)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_all_purples", name="identify_all_purples", default=self.identify_all_purples)
-        IniManager().add_bool(key=ini_key, section="Identification", var_name="identify_all_golds", name="identify_all_golds", default=self.identify_all_golds)
-        
-        
+
 @dataclass
 class SalvageSettings:
     salvage_whites: bool = field(default_factory=bool)
@@ -126,40 +112,18 @@ class SalvageSettings:
     salvage_all_greens: bool = field(default_factory=bool)
     salvage_all_purples: bool = field(default_factory=bool)
     salvage_all_golds: bool = field(default_factory=bool)
-    
-    def add_config_vars(self, ini_key: str):
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_whites", name="salvage_whites", default=self.salvage_whites)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_blues", name="salvage_blues", default=self.salvage_blues)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_greens", name="salvage_greens", default=self.salvage_greens)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_purples", name="salvage_purples", default=self.salvage_purples)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_golds", name="salvage_golds", default=self.salvage_golds)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="show_salvage_all", name="show_salvage_all", default=self.show_salvage_all)
-        # Legacy compatibility for older config files.
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_all", name="salvage_all", default=self.show_salvage_all)
 
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_all_whites", name="salvage_all_whites", default=self.salvage_all_whites)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_all_blues", name="salvage_all_blues", default=self.salvage_all_blues)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_all_greens", name="salvage_all_greens", default=self.salvage_all_greens)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_all_purples", name="salvage_all_purples", default=self.salvage_all_purples)
-        IniManager().add_bool(key=ini_key, section="Salvage", var_name="salvage_all_golds", name="salvage_all_golds", default=self.salvage_all_golds)
-        
- 
+
 @dataclass
 class DepositSettings:
     use_ctrl_click: bool = field(default_factory=bool)
-    
-    def add_config_vars(self, ini_key: str):
-        IniManager().add_bool(key=ini_key, section="Deposit", var_name="use_ctrl_click", name="use_ctrl_click", default=self.use_ctrl_click)
 
 
 @dataclass
 class InventoryWindowSettings:
     enable_i_window: bool = True
 
-    def add_config_vars(self, ini_key: str):
-        IniManager().add_bool(key=ini_key, section="InventoryWindow", var_name="enable_i_window", name="enable_i_window", default=self.enable_i_window)
 
-        
 @dataclass
 class ColorizeSettings:
     enable_colorize: bool = False
@@ -173,26 +137,7 @@ class ColorizeSettings:
     green_color: Color = field(default_factory=lambda: ColorPalette.GetColor("GW_Green"))
     purple_color: Color = field(default_factory=lambda: ColorPalette.GetColor("GW_Purple"))
     gold_color: Color = field(default_factory=lambda: ColorPalette.GetColor("GW_Gold"))
-    
-    def add_config_vars(self, ini_key: str):
-        IniManager().add_bool(key=ini_key, section="Colorize", var_name="enable_colorize", name="enable_colorize", default=self.enable_colorize)
-        IniManager().add_bool(key=ini_key, section="Colorize", var_name="color_whites", name="color_whites", default=self.color_whites)
-        IniManager().add_bool(key=ini_key, section="Colorize", var_name="color_blues", name="color_blues", default=self.color_blues)
-        IniManager().add_bool(key=ini_key, section="Colorize", var_name="color_greens", name="color_greens", default=self.color_greens)
-        IniManager().add_bool(key=ini_key, section="Colorize", var_name="color_purples", name="color_purples", default=self.color_purples)
-        IniManager().add_bool(key=ini_key, section="Colorize", var_name="color_golds", name="color_golds", default=self.color_golds)
-        
-        str_color = f"{self.white_color.r},{self.white_color.g},{self.white_color.b},{self.white_color.a}"
-        IniManager().add_str(key=ini_key, section="Colorize", var_name="white_color", name="white_color", default=str_color)
-        str_color = f"{self.blue_color.r},{self.blue_color.g},{self.blue_color.b},{self.blue_color.a}"
-        IniManager().add_str(key=ini_key, section="Colorize", var_name="blue_color", name="blue_color", default=str_color)
-        str_color = f"{self.green_color.r},{self.green_color.g},{self.green_color.b},{self.green_color.a}"
-        IniManager().add_str(key=ini_key, section="Colorize", var_name="green_color", name="green_color", default=str_color)
-        str_color = f"{self.purple_color.r},{self.purple_color.g},{self.purple_color.b},{self.purple_color.a}"
-        IniManager().add_str(key=ini_key, section="Colorize", var_name="purple_color", name="purple_color", default=str_color)
-        str_color = f"{self.gold_color.r},{self.gold_color.g},{self.gold_color.b},{self.gold_color.a}"
-        IniManager().add_str(key=ini_key, section="Colorize", var_name="gold_color", name="gold_color", default=str_color)
-        
+
 #region PopUpClasses
 class ModelPopUp:
     def __init__(self, title: str, model_dictionary: dict[int, str], current_blacklist: list[int],
@@ -340,8 +285,9 @@ class ModelPopUp:
 
         if self._ini_section and self._ini_var_name and self._ini_relative_path:
             from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
+            from Py4GWCoreLib.Player import Player
             base_path = PySystem.Console.get_projects_path() + "/Settings/"
-            current_email = IniManager().get_account_email()
+            current_email = Player.GetAccountEmail()
             excluded = {"Defaults", "Global", "Exports"}
             other_accounts = [
                 e for e in os.listdir(base_path)
@@ -1323,72 +1269,39 @@ class InventoryPlusWidget:
 
     def _ensure_ini_key(self) -> bool:
         if not self.ini_key:
-            self.ini_key = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+            self.ini_key = Settings.ensure_key(INI_PATH, INI_FILENAME)
             if not self.ini_key:
                 return False
-        self.initialized = True   
+        self.initialized = True
         return True
-    
-    def _add_config_vars(self):
-        self.identification_settings.add_config_vars(self.ini_key)
-        self.salvage_settings.add_config_vars(self.ini_key)
-        self.colorize_settings.add_config_vars(self.ini_key)
-        self.deposit_settings.add_config_vars(self.ini_key)
-        self.inventory_window_settings.add_config_vars(self.ini_key)
-        
-    def _add_auto_handler_config_vars(self):
-        _section = "AutoManager"
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="module_active", name="module_active", default=False)
-        IniManager().add_int(key=self.ini_key, section=_section, var_name="lookup_time", name="lookup_time", default=15000)
-           
-        _section = "AutoIdentify"
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="id_whites", name="id_whites", default=False)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="id_blues", name="id_blues", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="id_purples", name="id_purples", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="id_golds", name="id_golds", default=False)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="id_greens", name="id_greens", default=False)
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="id_model_blacklist", name="id_model_blacklist", default="")
-        
-        _section = "AutoSalvage"
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_whites", name="salvage_whites", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_rare_materials", name="salvage_rare_materials", default=False)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_blues", name="salvage_blues", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_purples", name="salvage_purples", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_golds", name="salvage_golds", default=False)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_dialog_auto_handle", name="salvage_dialog_auto_handle", default=False)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_dialog_auto_confirm_materials", name="salvage_dialog_auto_confirm_materials", default=False)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="salvage_dialog_debug", name="salvage_dialog_debug", default=False)
-        IniManager().add_int(key=self.ini_key, section=_section, var_name="salvage_dialog_strategy", name="salvage_dialog_strategy", default=0)
-        IniManager().add_int(key=self.ini_key, section=_section, var_name="salvage_dialog_fallback_index", name="salvage_dialog_fallback_index", default=1)
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="item_type_blacklist", name="item_type_blacklist", default="")
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="salvage_blacklist", name="salvage_blacklist", default="")
-        
-        _section = "AutoDeposit"
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_trophies", name="deposit_trophies", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_materials", name="deposit_materials", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_event_items", name="deposit_event_items", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_dyes", name="deposit_dyes", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_blues", name="deposit_blues", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_purples", name="deposit_purples", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_golds", name="deposit_golds", default=True)
-        IniManager().add_bool(key=self.ini_key, section=_section, var_name="deposit_greens", name="deposit_greens", default=True)
-        IniManager().add_int(key=self.ini_key, section=_section, var_name="keep_gold", name="keep_gold", default=5000)
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="deposit_trophies_blacklist", name="deposit_trophies_blacklist", default="")
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="deposit_materials_blacklist", name="deposit_materials_blacklist", default="")
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="deposit_event_items_blacklist", name="deposit_event_items_blacklist", default="")
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="deposit_dyes_blacklist", name="deposit_dyes_blacklist", default="")
-        IniManager().add_str(key=self.ini_key, section=_section, var_name="deposit_model_blacklist", name="deposit_model_blacklist", default="")
+
+    def _ini_get_bool(self, section: str, var_name: str, default: bool) -> bool:
+        cfg = Settings.find(self.ini_key)
+        return cfg.get_bool(section, var_name, default) if cfg is not None else default
+
+    def _ini_get_int(self, section: str, var_name: str, default: int) -> int:
+        cfg = Settings.find(self.ini_key)
+        return cfg.get_int(section, var_name, default) if cfg is not None else default
+
+    def _ini_get_str(self, section: str, var_name: str, default: str) -> str:
+        cfg = Settings.find(self.ini_key)
+        return cfg.get_str(section, var_name, default) if cfg is not None else default
+
+    def _ini_set(self, section: str, var_name: str, value) -> None:
+        cfg = Settings.find(self.ini_key)
+        if cfg is not None:
+            cfg.set(section, var_name, value)
 
     def _set_colorize_enabled(self, enabled: bool) -> None:
         self.colorize_settings.enable_colorize = enabled
-        IniManager().set(key=self.ini_key, section="Colorize", var_name="enable_colorize", value=enabled)
+        self._ini_set(section="Colorize", var_name="enable_colorize", value=enabled)
 
     def _toggle_colorize_enabled(self) -> None:
         self._set_colorize_enabled(not self.colorize_settings.enable_colorize)
 
     def _set_auto_inventory_enabled(self, enabled: bool) -> None:
         self.auto_inventory_handler.module_active = enabled
-        IniManager().set(key=self.ini_key, section="AutoManager", var_name="module_active", value=enabled)
+        self._ini_set(section="AutoManager", var_name="module_active", value=enabled)
 
     def _toggle_auto_inventory_enabled(self) -> None:
         self._set_auto_inventory_enabled(not self.auto_inventory_handler.module_active)
@@ -1408,7 +1321,7 @@ class InventoryPlusWidget:
                 self._i_window_was_forced_closed = True
             else:
                 self._i_window_was_forced_closed = False
-        IniManager().set(key=self.ini_key, section="InventoryWindow", var_name="enable_i_window", value=enabled)
+        self._ini_set(section="InventoryWindow", var_name="enable_i_window", value=enabled)
 
     def _toggle_i_window_enabled(self) -> None:
         self._set_i_window_enabled(not self.inventory_window_settings.enable_i_window)
@@ -1440,127 +1353,122 @@ class InventoryPlusWidget:
                 return default_color
 
         def _get_bool_with_legacy(section: str, primary_var_name: str, legacy_var_name: str, default: bool) -> bool:
-            legacy_value = IniManager().getBool(key=self.ini_key, section=section, var_name=legacy_var_name, default=default)
-            return IniManager().getBool(key=self.ini_key, section=section, var_name=primary_var_name, default=legacy_value)
+            legacy_value = self._ini_get_bool(section=section, var_name=legacy_var_name, default=default)
+            return self._ini_get_bool(section=section, var_name=primary_var_name, default=legacy_value)
         
         cfg = self.identification_settings
-        cfg.identify_whites = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_whites", default=cfg.identify_whites)
-        cfg.identify_blues = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_blues", default=cfg.identify_blues)
-        cfg.identify_greens = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_greens", default=cfg.identify_greens)
-        cfg.identify_purples = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_purples", default=cfg.identify_purples)
-        cfg.identify_golds = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_golds", default=cfg.identify_golds)
-        cfg.show_identify_all = IniManager().getBool(key=self.ini_key, section="Identification", var_name="show_identify_all", default=cfg.show_identify_all)
-        cfg.identify_all_whites = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_all_whites", default=cfg.identify_all_whites)
-        cfg.identify_all_blues = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_all_blues", default=cfg.identify_all_blues)
-        cfg.identify_all_greens = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_all_greens", default=cfg.identify_all_greens)
-        cfg.identify_all_purples = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_all_purples", default=cfg.identify_all_purples)
-        cfg.identify_all_golds = IniManager().getBool(key=self.ini_key, section="Identification", var_name="identify_all_golds", default=cfg.identify_all_golds)
+        cfg.identify_whites = self._ini_get_bool(section="Identification", var_name="identify_whites", default=cfg.identify_whites)
+        cfg.identify_blues = self._ini_get_bool(section="Identification", var_name="identify_blues", default=cfg.identify_blues)
+        cfg.identify_greens = self._ini_get_bool(section="Identification", var_name="identify_greens", default=cfg.identify_greens)
+        cfg.identify_purples = self._ini_get_bool(section="Identification", var_name="identify_purples", default=cfg.identify_purples)
+        cfg.identify_golds = self._ini_get_bool(section="Identification", var_name="identify_golds", default=cfg.identify_golds)
+        cfg.show_identify_all = self._ini_get_bool(section="Identification", var_name="show_identify_all", default=cfg.show_identify_all)
+        cfg.identify_all_whites = self._ini_get_bool(section="Identification", var_name="identify_all_whites", default=cfg.identify_all_whites)
+        cfg.identify_all_blues = self._ini_get_bool(section="Identification", var_name="identify_all_blues", default=cfg.identify_all_blues)
+        cfg.identify_all_greens = self._ini_get_bool(section="Identification", var_name="identify_all_greens", default=cfg.identify_all_greens)
+        cfg.identify_all_purples = self._ini_get_bool(section="Identification", var_name="identify_all_purples", default=cfg.identify_all_purples)
+        cfg.identify_all_golds = self._ini_get_bool(section="Identification", var_name="identify_all_golds", default=cfg.identify_all_golds)
         
         cfg = self.salvage_settings
-        cfg.salvage_whites = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_whites", default=cfg.salvage_whites)
-        cfg.salvage_blues = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_blues", default=cfg.salvage_blues)
-        cfg.salvage_greens = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_greens", default=cfg.salvage_greens)
-        cfg.salvage_purples = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_purples", default=cfg.salvage_purples)
-        cfg.salvage_golds = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_golds", default=cfg.salvage_golds)
+        cfg.salvage_whites = self._ini_get_bool(section="Salvage", var_name="salvage_whites", default=cfg.salvage_whites)
+        cfg.salvage_blues = self._ini_get_bool(section="Salvage", var_name="salvage_blues", default=cfg.salvage_blues)
+        cfg.salvage_greens = self._ini_get_bool(section="Salvage", var_name="salvage_greens", default=cfg.salvage_greens)
+        cfg.salvage_purples = self._ini_get_bool(section="Salvage", var_name="salvage_purples", default=cfg.salvage_purples)
+        cfg.salvage_golds = self._ini_get_bool(section="Salvage", var_name="salvage_golds", default=cfg.salvage_golds)
         cfg.show_salvage_all = _get_bool_with_legacy("Salvage", "show_salvage_all", "salvage_all", cfg.show_salvage_all)
-        cfg.salvage_all_whites = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_all_whites", default=cfg.salvage_all_whites)
-        cfg.salvage_all_blues = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_all_blues", default=cfg.salvage_all_blues)
-        cfg.salvage_all_greens = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_all_greens", default=cfg.salvage_all_greens)
-        cfg.salvage_all_purples = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_all_purples", default=cfg.salvage_all_purples)
-        cfg.salvage_all_golds = IniManager().getBool(key=self.ini_key, section="Salvage", var_name="salvage_all_golds", default=cfg.salvage_all_golds)
+        cfg.salvage_all_whites = self._ini_get_bool(section="Salvage", var_name="salvage_all_whites", default=cfg.salvage_all_whites)
+        cfg.salvage_all_blues = self._ini_get_bool(section="Salvage", var_name="salvage_all_blues", default=cfg.salvage_all_blues)
+        cfg.salvage_all_greens = self._ini_get_bool(section="Salvage", var_name="salvage_all_greens", default=cfg.salvage_all_greens)
+        cfg.salvage_all_purples = self._ini_get_bool(section="Salvage", var_name="salvage_all_purples", default=cfg.salvage_all_purples)
+        cfg.salvage_all_golds = self._ini_get_bool(section="Salvage", var_name="salvage_all_golds", default=cfg.salvage_all_golds)
         
         cfg = self.colorize_settings
-        cfg.enable_colorize = IniManager().getBool(key=self.ini_key, section="Colorize", var_name="enable_colorize", default=cfg.enable_colorize)
-        cfg.color_whites = IniManager().getBool(key=self.ini_key, section="Colorize", var_name="color_whites", default=cfg.color_whites)
-        cfg.color_blues = IniManager().getBool(key=self.ini_key, section="Colorize", var_name="color_blues", default=cfg.color_blues)
-        cfg.color_greens = IniManager().getBool(key=self.ini_key, section="Colorize", var_name="color_greens", default=cfg.color_greens)
-        cfg.color_purples = IniManager().getBool(key=self.ini_key, section="Colorize", var_name="color_purples", default=cfg.color_purples)
-        cfg.color_golds = IniManager().getBool(key=self.ini_key, section="Colorize", var_name="color_golds", default=cfg.color_golds)
+        cfg.enable_colorize = self._ini_get_bool(section="Colorize", var_name="enable_colorize", default=cfg.enable_colorize)
+        cfg.color_whites = self._ini_get_bool(section="Colorize", var_name="color_whites", default=cfg.color_whites)
+        cfg.color_blues = self._ini_get_bool(section="Colorize", var_name="color_blues", default=cfg.color_blues)
+        cfg.color_greens = self._ini_get_bool(section="Colorize", var_name="color_greens", default=cfg.color_greens)
+        cfg.color_purples = self._ini_get_bool(section="Colorize", var_name="color_purples", default=cfg.color_purples)
+        cfg.color_golds = self._ini_get_bool(section="Colorize", var_name="color_golds", default=cfg.color_golds)
         
-        white_str = IniManager().getStr(
-            key=self.ini_key, section="Colorize", var_name="white_color",
+        white_str = self._ini_get_str(section="Colorize", var_name="white_color",
             default=str(cfg.white_color.to_tuple())
         )
         cfg.white_color = _parse_color(white_str, cfg.white_color)
 
-        blue_str = IniManager().getStr(
-            key=self.ini_key, section="Colorize", var_name="blue_color",
+        blue_str = self._ini_get_str(section="Colorize", var_name="blue_color",
             default=str(cfg.blue_color.to_tuple())
         )
         cfg.blue_color = _parse_color(blue_str, cfg.blue_color)
 
-        green_str = IniManager().getStr(
-            key=self.ini_key, section="Colorize", var_name="green_color",
+        green_str = self._ini_get_str(section="Colorize", var_name="green_color",
             default=str(cfg.green_color.to_tuple())
         )
         cfg.green_color = _parse_color(green_str, cfg.green_color)
 
-        purple_str = IniManager().getStr(
-            key=self.ini_key, section="Colorize", var_name="purple_color",
+        purple_str = self._ini_get_str(section="Colorize", var_name="purple_color",
             default=str(cfg.purple_color.to_tuple())
         )
         cfg.purple_color = _parse_color(purple_str, cfg.purple_color)
 
-        gold_str = IniManager().getStr(
-            key=self.ini_key, section="Colorize", var_name="gold_color",
+        gold_str = self._ini_get_str(section="Colorize", var_name="gold_color",
             default=str(cfg.gold_color.to_tuple())
         )
         cfg.gold_color = _parse_color(gold_str, cfg.gold_color)
         
         cfg = self.deposit_settings
-        cfg.use_ctrl_click = IniManager().getBool(key=self.ini_key, section="Deposit", var_name="use_ctrl_click", default=cfg.use_ctrl_click)
+        cfg.use_ctrl_click = self._ini_get_bool(section="Deposit", var_name="use_ctrl_click", default=cfg.use_ctrl_click)
 
         cfg = self.inventory_window_settings
-        cfg.enable_i_window = IniManager().getBool(key=self.ini_key, section="InventoryWindow", var_name="enable_i_window", default=cfg.enable_i_window)
+        cfg.enable_i_window = self._ini_get_bool(section="InventoryWindow", var_name="enable_i_window", default=cfg.enable_i_window)
     
     def load_auto_handler_settings(self):
-        self.auto_inventory_handler.module_active = IniManager().getBool(key=self.ini_key, section="AutoManager", var_name="module_active", default=False)
-        self.auto_inventory_handler._LOOKUP_TIME = IniManager().getInt(key=self.ini_key, section="AutoManager", var_name="lookup_time", default=15000)
+        self.auto_inventory_handler.module_active = self._ini_get_bool(section="AutoManager", var_name="module_active", default=False)
+        self.auto_inventory_handler._LOOKUP_TIME = self._ini_get_int(section="AutoManager", var_name="lookup_time", default=15000)
         
-        self.auto_inventory_handler.id_whites = IniManager().getBool(key=self.ini_key, section="AutoIdentify", var_name="id_whites", default=False)
-        self.auto_inventory_handler.id_blues = IniManager().getBool(key=self.ini_key, section="AutoIdentify", var_name="id_blues", default=True)
-        self.auto_inventory_handler.id_greens = IniManager().getBool(key=self.ini_key, section="AutoIdentify", var_name="id_greens", default=False)
-        self.auto_inventory_handler.id_purples = IniManager().getBool(key=self.ini_key, section="AutoIdentify", var_name="id_purples", default=True)
-        self.auto_inventory_handler.id_golds = IniManager().getBool(key=self.ini_key, section="AutoIdentify", var_name="id_golds", default=False)
+        self.auto_inventory_handler.id_whites = self._ini_get_bool(section="AutoIdentify", var_name="id_whites", default=False)
+        self.auto_inventory_handler.id_blues = self._ini_get_bool(section="AutoIdentify", var_name="id_blues", default=True)
+        self.auto_inventory_handler.id_greens = self._ini_get_bool(section="AutoIdentify", var_name="id_greens", default=False)
+        self.auto_inventory_handler.id_purples = self._ini_get_bool(section="AutoIdentify", var_name="id_purples", default=True)
+        self.auto_inventory_handler.id_golds = self._ini_get_bool(section="AutoIdentify", var_name="id_golds", default=False)
         
-        self.auto_inventory_handler.salvage_whites = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_whites", default=True)
-        self.auto_inventory_handler.salvage_blues = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_blues", default=True)
-        self.auto_inventory_handler.salvage_purples = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_purples", default=True)
-        self.auto_inventory_handler.salvage_golds = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_golds", default=False)
-        self.auto_inventory_handler.salvage_dialog_auto_handle = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_auto_handle", default=False)
-        self.auto_inventory_handler.salvage_dialog_auto_confirm_materials = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_auto_confirm_materials", default=False)
-        self.auto_inventory_handler.salvage_dialog_debug = IniManager().getBool(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_debug", default=False)
-        salvage_dialog_strategy = IniManager().getInt(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_strategy", default=0)
+        self.auto_inventory_handler.salvage_whites = self._ini_get_bool(section="AutoSalvage", var_name="salvage_whites", default=True)
+        self.auto_inventory_handler.salvage_blues = self._ini_get_bool(section="AutoSalvage", var_name="salvage_blues", default=True)
+        self.auto_inventory_handler.salvage_purples = self._ini_get_bool(section="AutoSalvage", var_name="salvage_purples", default=True)
+        self.auto_inventory_handler.salvage_golds = self._ini_get_bool(section="AutoSalvage", var_name="salvage_golds", default=False)
+        self.auto_inventory_handler.salvage_dialog_auto_handle = self._ini_get_bool(section="AutoSalvage", var_name="salvage_dialog_auto_handle", default=False)
+        self.auto_inventory_handler.salvage_dialog_auto_confirm_materials = self._ini_get_bool(section="AutoSalvage", var_name="salvage_dialog_auto_confirm_materials", default=False)
+        self.auto_inventory_handler.salvage_dialog_debug = self._ini_get_bool(section="AutoSalvage", var_name="salvage_dialog_debug", default=False)
+        salvage_dialog_strategy = self._ini_get_int(section="AutoSalvage", var_name="salvage_dialog_strategy", default=0)
         self.auto_inventory_handler.salvage_dialog_strategy = _normalize_salvage_dialog_strategy(salvage_dialog_strategy)
-        self.auto_inventory_handler.salvage_dialog_fallback_index = max(1, IniManager().getInt(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_fallback_index", default=1))
+        self.auto_inventory_handler.salvage_dialog_fallback_index = max(1, self._ini_get_int(section="AutoSalvage", var_name="salvage_dialog_fallback_index", default=1))
         
-        self.auto_inventory_handler.deposit_trophies = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_trophies", default=True)
-        self.auto_inventory_handler.deposit_materials = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_materials", default=True)
-        self.auto_inventory_handler.deposit_event_items = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_event_items", default=True)
-        self.auto_inventory_handler.deposit_dyes = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_dyes", default=True)
-        self.auto_inventory_handler.deposit_blues = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_blues", default=True)
-        self.auto_inventory_handler.deposit_purples = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_purples", default=True)
-        self.auto_inventory_handler.deposit_golds = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_golds", default=True)
-        self.auto_inventory_handler.deposit_greens = IniManager().getBool(key=self.ini_key, section="AutoDeposit", var_name="deposit_greens", default=True)
-        self.auto_inventory_handler.keep_gold = IniManager().getInt(key=self.ini_key, section="AutoDeposit", var_name="keep_gold", default=5000)
+        self.auto_inventory_handler.deposit_trophies = self._ini_get_bool(section="AutoDeposit", var_name="deposit_trophies", default=True)
+        self.auto_inventory_handler.deposit_materials = self._ini_get_bool(section="AutoDeposit", var_name="deposit_materials", default=True)
+        self.auto_inventory_handler.deposit_event_items = self._ini_get_bool(section="AutoDeposit", var_name="deposit_event_items", default=True)
+        self.auto_inventory_handler.deposit_dyes = self._ini_get_bool(section="AutoDeposit", var_name="deposit_dyes", default=True)
+        self.auto_inventory_handler.deposit_blues = self._ini_get_bool(section="AutoDeposit", var_name="deposit_blues", default=True)
+        self.auto_inventory_handler.deposit_purples = self._ini_get_bool(section="AutoDeposit", var_name="deposit_purples", default=True)
+        self.auto_inventory_handler.deposit_golds = self._ini_get_bool(section="AutoDeposit", var_name="deposit_golds", default=True)
+        self.auto_inventory_handler.deposit_greens = self._ini_get_bool(section="AutoDeposit", var_name="deposit_greens", default=True)
+        self.auto_inventory_handler.keep_gold = self._ini_get_int(section="AutoDeposit", var_name="keep_gold", default=5000)
        
        
     def load_blacklists_from_ini(self):
-        id_model_blacklist = IniManager().getStr(key=self.ini_key, section="AutoIdentify", var_name="id_model_blacklist", default="")
+        id_model_blacklist = self._ini_get_str(section="AutoIdentify", var_name="id_model_blacklist", default="")
         self.auto_inventory_handler.id_model_blacklist = [int(x) for x in id_model_blacklist.split(",") if x.strip().isdigit()]
-        item_type_blacklist = IniManager().getStr(key=self.ini_key, section="AutoSalvage", var_name="item_type_blacklist", default="")
+        item_type_blacklist = self._ini_get_str(section="AutoSalvage", var_name="item_type_blacklist", default="")
         self.auto_inventory_handler.item_type_blacklist = [int(x) for x in item_type_blacklist.split(",") if x.strip().isdigit()]
-        salvage_blacklist = IniManager().getStr(key=self.ini_key, section="AutoSalvage", var_name="salvage_blacklist", default="")
+        salvage_blacklist = self._ini_get_str(section="AutoSalvage", var_name="salvage_blacklist", default="")
         self.auto_inventory_handler.salvage_blacklist = [int(x) for x in salvage_blacklist.split(",") if x.strip().isdigit()]
-        deposit_trophies_blacklist = IniManager().getStr(key=self.ini_key, section="AutoDeposit", var_name="deposit_trophies_blacklist", default="")
+        deposit_trophies_blacklist = self._ini_get_str(section="AutoDeposit", var_name="deposit_trophies_blacklist", default="")
         self.auto_inventory_handler.deposit_trophies_blacklist = [int(x) for x in deposit_trophies_blacklist.split(",") if x.strip().isdigit()]
-        deposit_materials_blacklist = IniManager().getStr(key=self.ini_key, section="AutoDeposit", var_name="deposit_materials_blacklist", default="")
+        deposit_materials_blacklist = self._ini_get_str(section="AutoDeposit", var_name="deposit_materials_blacklist", default="")
         self.auto_inventory_handler.deposit_materials_blacklist = [int(x) for x in deposit_materials_blacklist.split(",") if x.strip().isdigit()]
-        deposit_event_items_blacklist = IniManager().getStr(key=self.ini_key, section="AutoDeposit", var_name="deposit_event_items_blacklist", default="")
+        deposit_event_items_blacklist = self._ini_get_str(section="AutoDeposit", var_name="deposit_event_items_blacklist", default="")
         self.auto_inventory_handler.deposit_event_items_blacklist = [int(x) for x in deposit_event_items_blacklist.split(",") if x.strip().isdigit()]
-        deposit_dyes_blacklist = IniManager().getStr(key=self.ini_key, section="AutoDeposit", var_name="deposit_dyes_blacklist", default="")
+        deposit_dyes_blacklist = self._ini_get_str(section="AutoDeposit", var_name="deposit_dyes_blacklist", default="")
         self.auto_inventory_handler.deposit_dyes_blacklist = [int(x) for x in deposit_dyes_blacklist.split(",") if x.strip().isdigit()]
-        deposit_model_blacklist = IniManager().getStr(key=self.ini_key, section="AutoDeposit", var_name="deposit_model_blacklist", default="")
+        deposit_model_blacklist = self._ini_get_str(section="AutoDeposit", var_name="deposit_model_blacklist", default="")
         self.auto_inventory_handler.deposit_model_blacklist = [int(x) for x in deposit_model_blacklist.split(",") if x.strip().isdigit()]
         
         self._sync_popups_with_handler()
@@ -2348,49 +2256,49 @@ class InventoryPlusWidget:
                         if new_blacklist != self.auto_inventory_handler.id_model_blacklist:
                             self.auto_inventory_handler.id_model_blacklist = new_blacklist
                             id_model_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoIdentify", var_name="id_model_blacklist", value=id_model_blacklist_str)
+                            self._ini_set(section="AutoIdentify", var_name="id_model_blacklist", value=id_model_blacklist_str)
                     elif popup.Title == "Salvage Item Type Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.item_type_blacklist:
                             self.auto_inventory_handler.item_type_blacklist = new_blacklist
                             item_type_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoSalvage", var_name="item_type_blacklist", value=item_type_blacklist_str)
+                            self._ini_set(section="AutoSalvage", var_name="item_type_blacklist", value=item_type_blacklist_str)
                     elif popup.Title == "Salvage ModelID Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.salvage_blacklist:
                             self.auto_inventory_handler.salvage_blacklist = popup.result_blacklist
                             salvage_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoSalvage", var_name="salvage_blacklist", value=salvage_blacklist_str)
+                            self._ini_set(section="AutoSalvage", var_name="salvage_blacklist", value=salvage_blacklist_str)
                     elif popup.Title == "Deposit Trophy ModelID Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.deposit_trophies_blacklist:
                             self.auto_inventory_handler.deposit_trophies_blacklist = new_blacklist
                             deposit_trophies_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoDeposit", var_name="deposit_trophies_blacklist", value=deposit_trophies_blacklist_str)
+                            self._ini_set(section="AutoDeposit", var_name="deposit_trophies_blacklist", value=deposit_trophies_blacklist_str)
                     elif popup.Title == "Deposit Material ModelID Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.deposit_materials_blacklist:
                             self.auto_inventory_handler.deposit_materials_blacklist = new_blacklist
                             deposit_materials_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoDeposit", var_name="deposit_materials_blacklist", value=deposit_materials_blacklist_str)
+                            self._ini_set(section="AutoDeposit", var_name="deposit_materials_blacklist", value=deposit_materials_blacklist_str)
                     elif popup.Title == "Deposit Event Item ModelID Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.deposit_event_items_blacklist:
                             self.auto_inventory_handler.deposit_event_items_blacklist = new_blacklist
                             deposit_event_items_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoDeposit", var_name="deposit_event_items_blacklist", value=deposit_event_items_blacklist_str)
+                            self._ini_set(section="AutoDeposit", var_name="deposit_event_items_blacklist", value=deposit_event_items_blacklist_str)
                     elif popup.Title == "Deposit Dye ModelID Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.deposit_dyes_blacklist:
                             self.auto_inventory_handler.deposit_dyes_blacklist = new_blacklist
                             deposit_dyes_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoDeposit", var_name="deposit_dyes_blacklist", value=deposit_dyes_blacklist_str)
+                            self._ini_set(section="AutoDeposit", var_name="deposit_dyes_blacklist", value=deposit_dyes_blacklist_str)
                     elif popup.Title == "Deposit ModelID Lookup":
                         new_blacklist = popup.result_blacklist
                         if new_blacklist != self.auto_inventory_handler.deposit_model_blacklist:
                             self.auto_inventory_handler.deposit_model_blacklist = new_blacklist
                             deposit_model_blacklist_str = ",".join(str(mid) for mid in new_blacklist)
-                            IniManager().set(key=self.ini_key, section="AutoDeposit", var_name="deposit_model_blacklist", value=deposit_model_blacklist_str)
+                            self._ini_set(section="AutoDeposit", var_name="deposit_model_blacklist", value=deposit_model_blacklist_str)
                 
  
  
@@ -2790,7 +2698,7 @@ class InventoryPlusWidget:
             
             if new_val != val:
                 setattr(cfg_obj, cfg_attr, new_val)
-                IniManager().set(key=self.ini_key,section=section,var_name=var_name,value=new_val)
+                self._ini_set(section=section,var_name=var_name,value=new_val)
                 
             return new_val
 
@@ -2951,11 +2859,11 @@ class InventoryPlusWidget:
                             current_dialog_strategy = _normalize_salvage_dialog_strategy(int(self.auto_inventory_handler.salvage_dialog_strategy))
                             if current_dialog_strategy != int(self.auto_inventory_handler.salvage_dialog_strategy):
                                 self.auto_inventory_handler.salvage_dialog_strategy = current_dialog_strategy
-                                IniManager().set(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_strategy", value=current_dialog_strategy)
+                                self._ini_set(section="AutoSalvage", var_name="salvage_dialog_strategy", value=current_dialog_strategy)
                             new_dialog_strategy = PyImGui.combo("Salvage Choice Strategy", current_dialog_strategy, salvage_dialog_strategy_labels)
                             if new_dialog_strategy != current_dialog_strategy:
                                 self.auto_inventory_handler.salvage_dialog_strategy = new_dialog_strategy
-                                IniManager().set(key=self.ini_key, section="AutoSalvage", var_name="salvage_dialog_strategy", value=new_dialog_strategy)
+                                self._ini_set(section="AutoSalvage", var_name="salvage_dialog_strategy", value=new_dialog_strategy)
                                 current_dialog_strategy = new_dialog_strategy
 
                             if current_dialog_strategy == 0:
@@ -2968,11 +2876,11 @@ class InventoryPlusWidget:
                     cfg = self.deposit_settings
                     cfg.use_ctrl_click = ini_colored_checkbox(label="Use Ctrl + Left Click To Deposit Items",section="Deposit",var_name="use_ctrl_click",cfg_obj=cfg,color=GW_WHITE,default=cfg.use_ctrl_click)
                     
-                    val = IniManager().getInt(key=self.ini_key,section="AutoDeposit",var_name="keep_gold",default=5000)
+                    val = self._ini_get_int(section="AutoDeposit",var_name="keep_gold",default=5000)
                     new_val = PyImGui.input_int("Keep Minimum Gold In Inventory", val)
                     if new_val != val:
                         self.auto_inventory_handler.keep_gold = new_val
-                        IniManager().set(key=self.ini_key,section="AutoDeposit",var_name="keep_gold",value=new_val)
+                        self._ini_set(section="AutoDeposit",var_name="keep_gold",value=new_val)
                     
                     PyImGui.separator()
                     if PyImGui.collapsing_header("Automatic Handling Options:"):
@@ -3062,45 +2970,45 @@ class InventoryPlusWidget:
                         except Exception:
                             return default
 
-                    white_color_str = IniManager().getStr(key=self.ini_key,section="Colorize",var_name="white_color",default="(255, 255, 255, 255)")
+                    white_color_str = self._ini_get_str(section="Colorize",var_name="white_color",default="(255, 255, 255, 255)")
                     white_color = _parse_color(white_color_str, (255,255,255,255))
                     tmp_color = Color(*white_color)
                     color = PyImGui.color_edit4("White Item Color", tmp_color.to_tuple_normalized())
                     if color != cfg.white_color.to_tuple_normalized():
                         cfg.white_color = Color(int(255*color[0]), int(255*color[1]), int(255*color[2]), int(255*color[3]))
-                        IniManager().set(key=self.ini_key,section="Colorize",var_name="white_color",value=cfg.white_color.to_tuple())
+                        self._ini_set(section="Colorize",var_name="white_color",value=cfg.white_color.to_tuple())
                     
-                    blue_color_str = IniManager().getStr(key=self.ini_key,section="Colorize",var_name="blue_color",default="(0, 0, 255, 255)")
+                    blue_color_str = self._ini_get_str(section="Colorize",var_name="blue_color",default="(0, 0, 255, 255)")
                     blue_color = _parse_color(blue_color_str, (0,0,255,255))
                     tmp_color = Color(*blue_color)
                     color = PyImGui.color_edit4("Blue Item Color", tmp_color.to_tuple_normalized())
                     if color != cfg.blue_color.to_tuple_normalized():
                         cfg.blue_color = Color(int(255*color[0]), int(255*color[1]), int(255*color[2]), int(255*color[3]))
-                        IniManager().set(key=self.ini_key,section="Colorize",var_name="blue_color",value=cfg.blue_color.to_tuple())
+                        self._ini_set(section="Colorize",var_name="blue_color",value=cfg.blue_color.to_tuple())
                     
-                    green_color_str = IniManager().getStr(key=self.ini_key,section="Colorize",var_name="green_color",default="(0, 255, 0, 255)")
+                    green_color_str = self._ini_get_str(section="Colorize",var_name="green_color",default="(0, 255, 0, 255)")
                     green_color = _parse_color(green_color_str, (0,255,0,255))
                     tmp_color = Color(*green_color)
                     color = PyImGui.color_edit4("Green Item Color", tmp_color.to_tuple_normalized())
                     if color != cfg.green_color.to_tuple_normalized():
                         cfg.green_color = Color(int(255*color[0]), int(255*color[1]), int(255*color[2]), int(255*color[3]))
-                        IniManager().set(key=self.ini_key,section="Colorize",var_name="green_color",value=cfg.green_color.to_tuple())
+                        self._ini_set(section="Colorize",var_name="green_color",value=cfg.green_color.to_tuple())
                        
-                    purple_color_str = IniManager().getStr(key=self.ini_key,section="Colorize",var_name="purple_color",default="(128, 0, 128, 255)")
+                    purple_color_str = self._ini_get_str(section="Colorize",var_name="purple_color",default="(128, 0, 128, 255)")
                     purple_color = _parse_color(purple_color_str, (128,0,128,255))
                     tmp_color = Color(*purple_color)
                     color = PyImGui.color_edit4("Purple Item Color", tmp_color.to_tuple_normalized())
                     if color != cfg.purple_color.to_tuple_normalized():
                         cfg.purple_color = Color(int(255*color[0]), int(255*color[1]), int(255*color[2]), int(255*color[3]))
-                        IniManager().set(key=self.ini_key,section="Colorize",var_name="purple_color",value=cfg.purple_color.to_tuple())
+                        self._ini_set(section="Colorize",var_name="purple_color",value=cfg.purple_color.to_tuple())
                         
-                    gold_color_str = IniManager().getStr(key=self.ini_key,section="Colorize",var_name="gold_color",default="(255, 215, 0, 255)")
+                    gold_color_str = self._ini_get_str(section="Colorize",var_name="gold_color",default="(255, 215, 0, 255)")
                     gold_color = _parse_color(gold_color_str, (255,215,0,255))
                     tmp_color = Color(*gold_color)
                     color = PyImGui.color_edit4("Gold Item Color", tmp_color.to_tuple_normalized())
                     if color != cfg.gold_color.to_tuple_normalized():
                         cfg.gold_color = Color(int(255*color[0]), int(255*color[1]), int(255*color[2]), int(255*color[3]))
-                        IniManager().set(key=self.ini_key,section="Colorize",var_name="gold_color",value=cfg.gold_color.to_tuple())
+                        self._ini_set(section="Colorize",var_name="gold_color",value=cfg.gold_color.to_tuple())
                         
                     PyImGui.end_tab_item()
                 if PyImGui.begin_tab_item("Auto Handler"):
@@ -3113,12 +3021,12 @@ class InventoryPlusWidget:
                     if new_val != old_val:
                         self._set_auto_inventory_enabled(new_val)
               
-                    old_val = IniManager().getInt(key=self.ini_key, section="AutoManager", var_name="lookup_time", default=self.auto_inventory_handler._LOOKUP_TIME)
+                    old_val = self._ini_get_int(section="AutoManager", var_name="lookup_time", default=self.auto_inventory_handler._LOOKUP_TIME)
                     new_val = PyImGui.input_int("Inventory Check Interval (ms)", old_val)
                     if new_val != old_val:
                         self.auto_inventory_handler._LOOKUP_TIME = new_val
                         self.auto_inventory_handler.lookup_throttle.SetThrottleTime(new_val)
-                        IniManager().set(key=self.ini_key,section="AutoManager",var_name="lookup_time",value=new_val)
+                        self._ini_set(section="AutoManager",var_name="lookup_time",value=new_val)
                     
                     color = ColorPalette.GetColor("dark_red")
                     if Routines.Checks.Map.IsOutpost():
@@ -3163,9 +3071,6 @@ def main():
         if not InventoryPlusWidgetInstance._ensure_ini_key():
             return
 
-        InventoryPlusWidgetInstance._add_config_vars()
-        InventoryPlusWidgetInstance._add_auto_handler_config_vars()
-        IniManager().load_once(InventoryPlusWidgetInstance.ini_key)
         InventoryPlusWidgetInstance.load_settings()
         InventoryPlusWidgetInstance.load_auto_handler_settings()
         InventoryPlusWidgetInstance.load_blacklists_from_ini()

@@ -14,8 +14,8 @@ import PyImGui
 
 from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import IconsFontAwesome5
-from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 
 
@@ -36,13 +36,6 @@ def _normalize_input_text(result, current: str) -> str:
     if result is None:
         return str(current)
     return str(result)
-
-
-def _add_config_vars() -> None:
-    """Register Bot Factory ini-backed configuration values."""
-    global INI_KEY
-    IniManager().add_bool(INI_KEY, "init", "Window config", "init", default=True)
-    IniManager().add_str(INI_KEY, "active_tab", "Tabs", "active_tab", default="Untitled")
 
 
 def _run_tk_dialog(dialog_callback: Callable[[], str]) -> str:
@@ -732,14 +725,20 @@ class BotFactoryDetailTabs:
         return self.tabs[self.active_tab_index]
 
     def load_from_ini(self, ini_key: str) -> None:
-        active_label = IniManager().getStr(ini_key, "active_tab", self._get_active_tab().tab_label, section="Tabs")
+        cfg = Settings.find(ini_key)
+        if cfg is None:
+            return
+        active_label = cfg.get_str("Tabs", "active_tab", self._get_active_tab().tab_label)
         for index, tab in enumerate(self.tabs):
             if tab.tab_label == active_label:
                 self.active_tab_index = index
                 break
 
     def save_to_ini(self, ini_key: str) -> None:
-        IniManager().set(ini_key, "active_tab", self._get_active_tab().tab_label, section="Tabs")
+        cfg = Settings.find(ini_key)
+        if cfg is None:
+            return
+        cfg.set("Tabs", "active_tab", self._get_active_tab().tab_label)
 
     def copy_document_to_clipboard(self) -> None:
         self._get_active_tab().detail_display.copy_document_to_clipboard()
@@ -1037,13 +1036,13 @@ def _initialize() -> bool:
         return True
 
     if not INI_KEY:
-        INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not INI_KEY:
             return False
-        _add_config_vars()
-        IniManager().load_once(INI_KEY)
-        IniManager().set(INI_KEY, "init", True, section="Window config")
-        IniManager().save_vars(INI_KEY)
+        cfg = Settings.find(INI_KEY)
+        if cfg is None:
+            return False
+        cfg.set("Window config", "init", True)
 
     app.load_from_ini(INI_KEY)
     initialized = True

@@ -4,7 +4,7 @@ import Py4GW
 import PyImGui
 
 from Py4GWCoreLib import Color, ImGui_Legacy
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 MODULE_NAME = "Script Runner"
@@ -55,30 +55,29 @@ def _default_log_path() -> str:
     return os.path.join(base, "native_labeled_frame_test.log")
 
 
-def _add_config_vars() -> None:
-    IniManager().add_str(INI_KEY, "script_path", "ScriptRunner", "script_path", _default_script_path())
-    IniManager().add_str(INI_KEY, "log_path", "ScriptRunner", "log_path", _default_log_path())
-    IniManager().add_int(INI_KEY, "delay_ms", "ScriptRunner", "delay_ms", DELAY_MS_INPUT)
-    IniManager().add_int(INI_KEY, "log_tail_count", "ScriptRunner", "log_tail_count", LOG_TAIL_LINE_COUNT)
-
-
 def _load_config() -> None:
     global SCRIPT_PATH_INPUT
     global LOG_PATH_INPUT
     global DELAY_MS_INPUT
     global LOG_TAIL_LINE_COUNT
 
-    SCRIPT_PATH_INPUT = str(IniManager().get(INI_KEY, "script_path", _default_script_path()) or _default_script_path())
-    LOG_PATH_INPUT = str(IniManager().get(INI_KEY, "log_path", _default_log_path()) or _default_log_path())
-    DELAY_MS_INPUT = int(IniManager().get(INI_KEY, "delay_ms", DELAY_MS_INPUT) or DELAY_MS_INPUT)
-    LOG_TAIL_LINE_COUNT = int(IniManager().get(INI_KEY, "log_tail_count", LOG_TAIL_LINE_COUNT) or LOG_TAIL_LINE_COUNT)
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
+    SCRIPT_PATH_INPUT = str(cfg.get_str("ScriptRunner", "script_path", _default_script_path()) or _default_script_path())
+    LOG_PATH_INPUT = str(cfg.get_str("ScriptRunner", "log_path", _default_log_path()) or _default_log_path())
+    DELAY_MS_INPUT = int(cfg.get_int("ScriptRunner", "delay_ms", DELAY_MS_INPUT) or DELAY_MS_INPUT)
+    LOG_TAIL_LINE_COUNT = int(cfg.get_int("ScriptRunner", "log_tail_count", LOG_TAIL_LINE_COUNT) or LOG_TAIL_LINE_COUNT)
 
 
 def _save_config() -> None:
-    IniManager().set(INI_KEY, "script_path", SCRIPT_PATH_INPUT)
-    IniManager().set(INI_KEY, "log_path", LOG_PATH_INPUT)
-    IniManager().set(INI_KEY, "delay_ms", DELAY_MS_INPUT)
-    IniManager().set(INI_KEY, "log_tail_count", LOG_TAIL_LINE_COUNT)
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
+    cfg.set("ScriptRunner", "script_path", SCRIPT_PATH_INPUT)
+    cfg.set("ScriptRunner", "log_path", LOG_PATH_INPUT)
+    cfg.set("ScriptRunner", "delay_ms", DELAY_MS_INPUT)
+    cfg.set("ScriptRunner", "log_tail_count", LOG_TAIL_LINE_COUNT)
 
 
 def _set_status(message: str) -> None:
@@ -274,11 +273,9 @@ def main() -> None:
             PROJECTS_PATH = os.getcwd()
 
     if not INI_KEY:
-        INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not INI_KEY:
             return
-        _add_config_vars()
-        IniManager().load_once(INI_KEY)
         _load_config()
 
     initialized = True

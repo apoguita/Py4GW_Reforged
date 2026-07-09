@@ -33,7 +33,7 @@ from Py4GWCoreLib import (
     Effects,
     Color,
 )
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
 
 MODULE_NAME = "Bridge Client"
@@ -217,24 +217,30 @@ class BridgeClientState:
 STATE = BridgeClientState()
 
 
-def _add_config_vars():
-    IniManager().add_str(INI_KEY, "daemon_host", "Connection", "host", default="127.0.0.1")
-    IniManager().add_int(INI_KEY, "daemon_port", "Connection", "port", default=port)
-    IniManager().add_str(INI_KEY, "auth_token", "Connection", "token", default="")
+# Maps in-code var names to the on-disk key names under [Connection].
+_SETTING_KEYS = {
+    "daemon_host": "host",
+    "daemon_port": "port",
+    "auth_token": "token",
+}
 
 
 def _load_settings():
-    STATE.daemon_host = str(IniManager().get(INI_KEY, "daemon_host", "127.0.0.1", section="Connection"))
-    STATE.daemon_port = int(IniManager().get(INI_KEY, "daemon_port", port, section="Connection"))
-    STATE.auth_token = str(IniManager().get(INI_KEY, "auth_token", "", section="Connection"))
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
+    STATE.daemon_host = str(cfg.get_str("Connection", "host", "127.0.0.1"))
+    STATE.daemon_port = int(cfg.get_int("Connection", "port", port))
+    STATE.auth_token = str(cfg.get_str("Connection", "token", ""))
     STATE.ui_host = STATE.daemon_host
     STATE.ui_port = STATE.daemon_port
     STATE.ui_token = STATE.auth_token
 
 
 def _save_setting(name: str, value: Any):
-    IniManager().set(INI_KEY, name, value, section="Connection")
-    IniManager().save_vars(INI_KEY)
+    cfg = Settings.find(INI_KEY)
+    if cfg:
+        cfg.set("Connection", _SETTING_KEYS.get(name, name), value)
 
 
 def _apply_connection_settings():
@@ -1084,11 +1090,9 @@ def main():
     global INI_KEY
     try:
         if not INI_KEY:
-            INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+            INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
             if not INI_KEY:
                 return
-            _add_config_vars()
-            IniManager().load_once(INI_KEY)
             _load_settings()
             STATE.start()
         _process_inbox()

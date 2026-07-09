@@ -8,7 +8,7 @@ from HeroAI import resurrection_scroll
 from Py4GWCoreLib import GLOBAL_CACHE, Agent, IconsFontAwesome5, ImGui_Legacy, Map, Overlay, Range, Utils, WindowFrames, Color, ColorPalette, ConsoleLog, SharedCommandType
 from Py4GWCoreLib import Key, Keystroke, ThrottledTimer, UIManager
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct, HeroAIOptionStruct
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Player import Player
 
 from HeroAI.cache_data import CacheData
@@ -1509,13 +1509,12 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def _ensure_follow_module_ini_keys():
-        im = IniManager()
         if not HeroAI_BaseUI.follow_formations_ini_key:
-            HeroAI_BaseUI.follow_formations_ini_key = im.ensure_global_key("HeroAI", "FollowModule_Formations.ini")
+            HeroAI_BaseUI.follow_formations_ini_key = Settings.ensure_global_key("HeroAI", "FollowModule_Formations.ini")
         if not HeroAI_BaseUI.follow_formations_settings_key:
-            HeroAI_BaseUI.follow_formations_settings_key = im.ensure_global_key("HeroAI", "FollowModule_Settings.ini")
+            HeroAI_BaseUI.follow_formations_settings_key = Settings.ensure_global_key("HeroAI", "FollowModule_Settings.ini")
         if not HeroAI_BaseUI.follow_runtime_ini_key:
-            HeroAI_BaseUI.follow_runtime_ini_key = im.ensure_global_key("HeroAI", "FollowRuntime.ini")
+            HeroAI_BaseUI.follow_runtime_ini_key = Settings.ensure_global_key("HeroAI", "FollowRuntime.ini")
         return bool(
             HeroAI_BaseUI.follow_formations_ini_key
             and HeroAI_BaseUI.follow_formations_settings_key
@@ -1524,161 +1523,96 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def _ensure_follow_window_ini_vars(ini_key: str):
-        if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
-            return
-        ini_key = HeroAI_BaseUI.follow_runtime_ini_key
-        im = IniManager()
-        if (
-            not HeroAI_BaseUI.follow_window_ini_vars_registered
-            or HeroAI_BaseUI.follow_window_ini_vars_registered_key != ini_key
-        ):
-            im.add_bool(ini_key, "show_broadcast_follow_positions", "FollowRuntime", "show_broadcast_follow_positions", True)
-            im.add_bool(ini_key, "show_broadcast_follow_threshold_rings", "FollowRuntime", "show_broadcast_follow_threshold_rings", True)
-            im.add_bool(ini_key, "show_flagging_window", "FollowRuntime", "show_flagging_window", False)
-            im.add_float(ini_key, "follow_move_threshold_default", "FollowRuntime", "follow_move_threshold_default", float(Range.Area.value))
-            im.add_float(ini_key, "follow_move_threshold_combat", "FollowRuntime", "follow_move_threshold_combat", float(Range.Adjacent.value))
-            im.add_float(ini_key, "follow_move_threshold_flagged", "FollowRuntime", "follow_move_threshold_flagged", 0.0)
-            im.add_str(ini_key, "follow_move_threshold_default_mode", "FollowRuntime", "follow_move_threshold_default_mode", "Area")
-            im.add_str(ini_key, "follow_move_threshold_combat_mode", "FollowRuntime", "follow_move_threshold_combat_mode", "Adjacent")
-            im.add_str(ini_key, "follow_move_threshold_flagged_mode", "FollowRuntime", "follow_move_threshold_flagged_mode", "Zero")
-            im.add_bool(ini_key, "show_followers_unstuck_overlay", "FollowRuntime", "show_followers_unstuck_overlay", False)
-            im.add_bool(ini_key, "show_stuck_avoidance_debug", "FollowRuntime", "show_stuck_avoidance_debug", False)
-            im.add_float(ini_key, "waypoint_smoothing", "FollowRuntime", "waypoint_smoothing", 77.0)
-            im.add_float(ini_key, "stuck_touch_radius", "FollowRuntime", "stuck_touch_radius", 120.0)
-            im.add_float(ini_key, "stuck_enemy_detection_range", "FollowRuntime", "stuck_enemy_detection_range", 250.0)
-            im.add_int(ini_key, "stuck_sample_count", "FollowRuntime", "stuck_sample_count", 1)
-            im.add_float(ini_key, "min_distance_activate_unstuck", "FollowRuntime", "min_distance_activate_unstuck", 500.0)
-            im.add_float(ini_key, "no_progress_move_units", "FollowRuntime", "no_progress_move_units", 15.0)
-            im.add_float(ini_key, "no_progress_close_units", "FollowRuntime", "no_progress_close_units", 10.0)
-            im.add_float(ini_key, "obstacle_cleared_delta", "FollowRuntime", "obstacle_cleared_delta", 500.0)
-            HeroAI_BaseUI.follow_window_ini_vars_registered = True
-            HeroAI_BaseUI.follow_window_ini_vars_registered_key = ini_key
-        im.load_once(ini_key)
+        HeroAI_BaseUI._ensure_follow_module_ini_keys()
 
     @staticmethod
     def _load_follow_runtime_config(ini_key: str):
         if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
             return
         ini_key = HeroAI_BaseUI.follow_runtime_ini_key
-        HeroAI_BaseUI._ensure_follow_window_ini_vars(ini_key)
-        im = IniManager()
-        hero_globals.show_broadcast_follow_positions = bool(im.getBool(ini_key, "show_broadcast_follow_positions", True, section="FollowRuntime"))
-        hero_globals.show_broadcast_follow_threshold_rings = bool(im.getBool(ini_key, "show_broadcast_follow_threshold_rings", True, section="FollowRuntime"))
-        hero_globals.show_followers_unstuck_overlay = bool(im.getBool(ini_key, "show_followers_unstuck_overlay", False, section="FollowRuntime"))
-        hero_globals.show_stuck_avoidance_debug = bool(im.getBool(ini_key, "show_stuck_avoidance_debug", False, section="FollowRuntime"))
-        hero_globals.show_flagging_window = bool(im.getBool(ini_key, "show_flagging_window", False, section="FollowRuntime"))
-        HeroAI_BaseUI.follow_move_threshold_default = max(0.0, float(im.getFloat(ini_key, "follow_move_threshold_default", float(Range.Area.value), section="FollowRuntime")))
-        HeroAI_BaseUI.follow_move_threshold_combat = max(0.0, float(im.getFloat(ini_key, "follow_move_threshold_combat", float(Range.Adjacent.value), section="FollowRuntime")))
-        HeroAI_BaseUI.follow_move_threshold_flagged = max(0.0, float(im.getFloat(ini_key, "follow_move_threshold_flagged", 0.0, section="FollowRuntime")))
-        HeroAI_BaseUI.follow_move_threshold_default_mode = str(im.getStr(ini_key, "follow_move_threshold_default_mode", "Area", section="FollowRuntime"))
-        HeroAI_BaseUI.follow_move_threshold_combat_mode = str(im.getStr(ini_key, "follow_move_threshold_combat_mode", "Adjacent", section="FollowRuntime"))
-        HeroAI_BaseUI.follow_move_threshold_flagged_mode = str(im.getStr(ini_key, "follow_move_threshold_flagged_mode", "Zero", section="FollowRuntime"))
+        cfg = Settings.find(ini_key)
+        if cfg is None:
+            return
+        hero_globals.show_broadcast_follow_positions = bool(cfg.get_bool("FollowRuntime", "show_broadcast_follow_positions", True))
+        hero_globals.show_broadcast_follow_threshold_rings = bool(cfg.get_bool("FollowRuntime", "show_broadcast_follow_threshold_rings", True))
+        hero_globals.show_followers_unstuck_overlay = bool(cfg.get_bool("FollowRuntime", "show_followers_unstuck_overlay", False))
+        hero_globals.show_stuck_avoidance_debug = bool(cfg.get_bool("FollowRuntime", "show_stuck_avoidance_debug", False))
+        hero_globals.show_flagging_window = bool(cfg.get_bool("FollowRuntime", "show_flagging_window", False))
+        HeroAI_BaseUI.follow_move_threshold_default = max(0.0, float(cfg.get_float("FollowRuntime", "follow_move_threshold_default", float(Range.Area.value))))
+        HeroAI_BaseUI.follow_move_threshold_combat = max(0.0, float(cfg.get_float("FollowRuntime", "follow_move_threshold_combat", float(Range.Adjacent.value))))
+        HeroAI_BaseUI.follow_move_threshold_flagged = max(0.0, float(cfg.get_float("FollowRuntime", "follow_move_threshold_flagged", 0.0)))
+        HeroAI_BaseUI.follow_move_threshold_default_mode = str(cfg.get_str("FollowRuntime", "follow_move_threshold_default_mode", "Area"))
+        HeroAI_BaseUI.follow_move_threshold_combat_mode = str(cfg.get_str("FollowRuntime", "follow_move_threshold_combat_mode", "Adjacent"))
+        HeroAI_BaseUI.follow_move_threshold_flagged_mode = str(cfg.get_str("FollowRuntime", "follow_move_threshold_flagged_mode", "Zero"))
         # Stuck-avoidance live-tunable knobs: BT.Move tolerance, circle radius,
         # and the body-block enemy-scan radius. All three sync cross-client via
         # the same INI throttle in HeroAI/follow/stuck_avoidance.py.
         from HeroAI.follow.smart_unstuck import SMART_UNSTUCK_CFG
-        SMART_UNSTUCK_CFG.waypoint_smoothing = max(1.0, float(im.getFloat(
-            ini_key, "waypoint_smoothing", float(SMART_UNSTUCK_CFG.waypoint_smoothing), section="FollowRuntime"
+        SMART_UNSTUCK_CFG.waypoint_smoothing = max(1.0, float(cfg.get_float(
+            "FollowRuntime", "waypoint_smoothing", float(SMART_UNSTUCK_CFG.waypoint_smoothing)
         )))
-        SMART_UNSTUCK_CFG.touch_radius = max(50.0, min(400.0, float(im.getFloat(
-            ini_key, "stuck_touch_radius", float(SMART_UNSTUCK_CFG.touch_radius), section="FollowRuntime"
+        SMART_UNSTUCK_CFG.touch_radius = max(50.0, min(400.0, float(cfg.get_float(
+            "FollowRuntime", "stuck_touch_radius", float(SMART_UNSTUCK_CFG.touch_radius)
         ))))
-        SMART_UNSTUCK_CFG.enemy_detection_range = max(50.0, min(400.0, float(im.getFloat(
-            ini_key,
+        SMART_UNSTUCK_CFG.enemy_detection_range = max(50.0, min(400.0, float(cfg.get_float(
+            "FollowRuntime",
             "stuck_enemy_detection_range",
             float(SMART_UNSTUCK_CFG.enemy_detection_range),
-            section="FollowRuntime",
         ))))
-        SMART_UNSTUCK_CFG.stuck_sample_count = max(1, min(10, int(im.getInt(
-            ini_key,
+        SMART_UNSTUCK_CFG.stuck_sample_count = max(1, min(10, int(cfg.get_int(
+            "FollowRuntime",
             "stuck_sample_count",
             int(SMART_UNSTUCK_CFG.stuck_sample_count),
-            section="FollowRuntime",
         ))))
-        SMART_UNSTUCK_CFG.min_distance_activate_unstuck = max(50.0, min(600.0, float(im.getFloat(
-            ini_key,
+        SMART_UNSTUCK_CFG.min_distance_activate_unstuck = max(50.0, min(600.0, float(cfg.get_float(
+            "FollowRuntime",
             "min_distance_activate_unstuck",
             float(SMART_UNSTUCK_CFG.min_distance_activate_unstuck),
-            section="FollowRuntime",
         ))))
-        SMART_UNSTUCK_CFG.no_progress_move_units = max(1.0, min(100.0, float(im.getFloat(
-            ini_key,
+        SMART_UNSTUCK_CFG.no_progress_move_units = max(1.0, min(100.0, float(cfg.get_float(
+            "FollowRuntime",
             "no_progress_move_units",
             float(SMART_UNSTUCK_CFG.no_progress_move_units),
-            section="FollowRuntime",
         ))))
-        SMART_UNSTUCK_CFG.no_progress_close_units = max(1.0, min(100.0, float(im.getFloat(
-            ini_key,
+        SMART_UNSTUCK_CFG.no_progress_close_units = max(1.0, min(100.0, float(cfg.get_float(
+            "FollowRuntime",
             "no_progress_close_units",
             float(SMART_UNSTUCK_CFG.no_progress_close_units),
-            section="FollowRuntime",
         ))))
-        SMART_UNSTUCK_CFG.obstacle_cleared_delta = max(50.0, min(800.0, float(im.getFloat(
-            ini_key,
+        SMART_UNSTUCK_CFG.obstacle_cleared_delta = max(50.0, min(800.0, float(cfg.get_float(
+            "FollowRuntime",
             "obstacle_cleared_delta",
             float(SMART_UNSTUCK_CFG.obstacle_cleared_delta),
-            section="FollowRuntime",
         ))))
-
-    @staticmethod
-    def _write_follow_runtime_value(im: IniManager, ini_key: str, name: str, value) -> None:
-        section = "FollowRuntime"
-        im.write_key(ini_key, section, name, value)
-        node = im._get_node(ini_key)
-        if node:
-            text_value = str(value)
-            node.ini_handler.write_key(section, name, text_value)
-            node.cached_values[(section, name)] = text_value
-            node.pending_writes.pop((section, name), None)
-            node.needs_flush = bool(node.pending_writes)
 
     @staticmethod
     def _save_follow_runtime_config(ini_key: str):
         if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
             return
         ini_key = HeroAI_BaseUI.follow_runtime_ini_key
-        im = IniManager()
-        HeroAI_BaseUI._ensure_follow_window_ini_vars(ini_key)
-        im.set(ini_key, "show_broadcast_follow_positions", bool(hero_globals.show_broadcast_follow_positions), section="FollowRuntime")
-        im.set(ini_key, "show_broadcast_follow_threshold_rings", bool(hero_globals.show_broadcast_follow_threshold_rings), section="FollowRuntime")
-        im.set(ini_key, "show_followers_unstuck_overlay", bool(hero_globals.show_followers_unstuck_overlay), section="FollowRuntime")
-        im.set(ini_key, "show_stuck_avoidance_debug", bool(hero_globals.show_stuck_avoidance_debug), section="FollowRuntime")
-        im.set(ini_key, "show_flagging_window", bool(hero_globals.show_flagging_window), section="FollowRuntime")
-        im.set(ini_key, "follow_move_threshold_default", float(HeroAI_BaseUI.follow_move_threshold_default), section="FollowRuntime")
-        im.set(ini_key, "follow_move_threshold_combat", float(HeroAI_BaseUI.follow_move_threshold_combat), section="FollowRuntime")
-        im.set(ini_key, "follow_move_threshold_flagged", float(HeroAI_BaseUI.follow_move_threshold_flagged), section="FollowRuntime")
-        im.set(ini_key, "follow_move_threshold_default_mode", str(HeroAI_BaseUI.follow_move_threshold_default_mode), section="FollowRuntime")
-        im.set(ini_key, "follow_move_threshold_combat_mode", str(HeroAI_BaseUI.follow_move_threshold_combat_mode), section="FollowRuntime")
-        im.set(ini_key, "follow_move_threshold_flagged_mode", str(HeroAI_BaseUI.follow_move_threshold_flagged_mode), section="FollowRuntime")
-        im.save_vars(ini_key)
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "show_broadcast_follow_positions", bool(hero_globals.show_broadcast_follow_positions))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "show_broadcast_follow_threshold_rings", bool(hero_globals.show_broadcast_follow_threshold_rings))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "show_followers_unstuck_overlay", bool(hero_globals.show_followers_unstuck_overlay))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "show_stuck_avoidance_debug", bool(hero_globals.show_stuck_avoidance_debug))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "show_flagging_window", bool(hero_globals.show_flagging_window))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "follow_move_threshold_default", float(HeroAI_BaseUI.follow_move_threshold_default))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "follow_move_threshold_combat", float(HeroAI_BaseUI.follow_move_threshold_combat))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "follow_move_threshold_flagged", float(HeroAI_BaseUI.follow_move_threshold_flagged))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "follow_move_threshold_default_mode", str(HeroAI_BaseUI.follow_move_threshold_default_mode))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "follow_move_threshold_combat_mode", str(HeroAI_BaseUI.follow_move_threshold_combat_mode))
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "follow_move_threshold_flagged_mode", str(HeroAI_BaseUI.follow_move_threshold_flagged_mode))
+        cfg = Settings.find(ini_key)
+        if cfg is None:
+            return
+        cfg.set("FollowRuntime", "show_broadcast_follow_positions", bool(hero_globals.show_broadcast_follow_positions))
+        cfg.set("FollowRuntime", "show_broadcast_follow_threshold_rings", bool(hero_globals.show_broadcast_follow_threshold_rings))
+        cfg.set("FollowRuntime", "show_followers_unstuck_overlay", bool(hero_globals.show_followers_unstuck_overlay))
+        cfg.set("FollowRuntime", "show_stuck_avoidance_debug", bool(hero_globals.show_stuck_avoidance_debug))
+        cfg.set("FollowRuntime", "show_flagging_window", bool(hero_globals.show_flagging_window))
+        cfg.set("FollowRuntime", "follow_move_threshold_default", float(HeroAI_BaseUI.follow_move_threshold_default))
+        cfg.set("FollowRuntime", "follow_move_threshold_combat", float(HeroAI_BaseUI.follow_move_threshold_combat))
+        cfg.set("FollowRuntime", "follow_move_threshold_flagged", float(HeroAI_BaseUI.follow_move_threshold_flagged))
+        cfg.set("FollowRuntime", "follow_move_threshold_default_mode", str(HeroAI_BaseUI.follow_move_threshold_default_mode))
+        cfg.set("FollowRuntime", "follow_move_threshold_combat_mode", str(HeroAI_BaseUI.follow_move_threshold_combat_mode))
+        cfg.set("FollowRuntime", "follow_move_threshold_flagged_mode", str(HeroAI_BaseUI.follow_move_threshold_flagged_mode))
         from HeroAI.follow.smart_unstuck import SMART_UNSTUCK_CFG
-        im.set(ini_key, "waypoint_smoothing", float(SMART_UNSTUCK_CFG.waypoint_smoothing), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "waypoint_smoothing", float(SMART_UNSTUCK_CFG.waypoint_smoothing))
-        im.set(ini_key, "stuck_touch_radius", float(SMART_UNSTUCK_CFG.touch_radius), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "stuck_touch_radius", float(SMART_UNSTUCK_CFG.touch_radius))
-        im.set(ini_key, "stuck_enemy_detection_range", float(SMART_UNSTUCK_CFG.enemy_detection_range), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "stuck_enemy_detection_range", float(SMART_UNSTUCK_CFG.enemy_detection_range))
-        im.set(ini_key, "stuck_sample_count", int(SMART_UNSTUCK_CFG.stuck_sample_count), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "stuck_sample_count", int(SMART_UNSTUCK_CFG.stuck_sample_count))
-        im.set(ini_key, "min_distance_activate_unstuck", float(SMART_UNSTUCK_CFG.min_distance_activate_unstuck), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "min_distance_activate_unstuck", float(SMART_UNSTUCK_CFG.min_distance_activate_unstuck))
-        im.set(ini_key, "no_progress_move_units", float(SMART_UNSTUCK_CFG.no_progress_move_units), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "no_progress_move_units", float(SMART_UNSTUCK_CFG.no_progress_move_units))
-        im.set(ini_key, "no_progress_close_units", float(SMART_UNSTUCK_CFG.no_progress_close_units), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "no_progress_close_units", float(SMART_UNSTUCK_CFG.no_progress_close_units))
-        im.set(ini_key, "obstacle_cleared_delta", float(SMART_UNSTUCK_CFG.obstacle_cleared_delta), section="FollowRuntime")
-        HeroAI_BaseUI._write_follow_runtime_value(im, ini_key, "obstacle_cleared_delta", float(SMART_UNSTUCK_CFG.obstacle_cleared_delta))
+        cfg.set("FollowRuntime", "waypoint_smoothing", float(SMART_UNSTUCK_CFG.waypoint_smoothing))
+        cfg.set("FollowRuntime", "stuck_touch_radius", float(SMART_UNSTUCK_CFG.touch_radius))
+        cfg.set("FollowRuntime", "stuck_enemy_detection_range", float(SMART_UNSTUCK_CFG.enemy_detection_range))
+        cfg.set("FollowRuntime", "stuck_sample_count", int(SMART_UNSTUCK_CFG.stuck_sample_count))
+        cfg.set("FollowRuntime", "min_distance_activate_unstuck", float(SMART_UNSTUCK_CFG.min_distance_activate_unstuck))
+        cfg.set("FollowRuntime", "no_progress_move_units", float(SMART_UNSTUCK_CFG.no_progress_move_units))
+        cfg.set("FollowRuntime", "no_progress_close_units", float(SMART_UNSTUCK_CFG.no_progress_close_units))
+        cfg.set("FollowRuntime", "obstacle_cleared_delta", float(SMART_UNSTUCK_CFG.obstacle_cleared_delta))
 
     @staticmethod
     def _load_follow_formations_quick_data():
@@ -1687,25 +1621,31 @@ class HeroAI_BaseUI:
             HeroAI_BaseUI.follow_formations_ids = []
             HeroAI_BaseUI.follow_formations_selected_index = 0
             return
-        im = IniManager()
+        cfg_form = Settings.find(HeroAI_BaseUI.follow_formations_ini_key)
+        cfg_set = Settings.find(HeroAI_BaseUI.follow_formations_settings_key)
+        if cfg_form is None or cfg_set is None:
+            HeroAI_BaseUI.follow_formations_names = []
+            HeroAI_BaseUI.follow_formations_ids = []
+            HeroAI_BaseUI.follow_formations_selected_index = 0
+            return
         try:
-            im.reload(HeroAI_BaseUI.follow_formations_ini_key)
-            im.reload(HeroAI_BaseUI.follow_formations_settings_key)
+            cfg_form.reload()
+            cfg_set.reload()
         except Exception:
             pass
 
-        count = max(0, im.read_int(HeroAI_BaseUI.follow_formations_ini_key, "Formations", "count", 0))
+        count = max(0, cfg_form.get_int("Formations", "count", 0))
         names: list[str] = []
         ids: list[str] = []
         for i in range(count):
-            fid = str(im.read_key(HeroAI_BaseUI.follow_formations_ini_key, "Formations", f"id_{i}", "") or "").strip()
-            name = str(im.read_key(HeroAI_BaseUI.follow_formations_ini_key, "Formations", f"name_{i}", "") or "").strip()
+            fid = str(cfg_form.get_str("Formations", f"id_{i}", "") or "").strip()
+            name = str(cfg_form.get_str("Formations", f"name_{i}", "") or "").strip()
             if not fid or not name:
                 continue
             ids.append(fid)
             names.append(name)
 
-        selected_id = str(im.read_key(HeroAI_BaseUI.follow_formations_settings_key, "Formations", "selected_id", "") or "").strip()
+        selected_id = str(cfg_set.get_str("Formations", "selected_id", "") or "").strip()
         selected_index = 0
         if selected_id and ids:
             try:
@@ -1727,24 +1667,11 @@ class HeroAI_BaseUI:
         selected_id = HeroAI_BaseUI.follow_formations_ids[index]
         selected_name = HeroAI_BaseUI.follow_formations_names[index]
 
-        im = IniManager()
         key = HeroAI_BaseUI.follow_formations_settings_key
-        try:
-            node = im._get_node(key)
-            if node:
-                node.ini_handler.write_key("Formations", "selected_id", selected_id)
-                node.ini_handler.write_key("Formations", "selected", selected_name)
-                if hasattr(node, "cached_values") and node.cached_values is not None:
-                    node.cached_values[("Formations", "selected_id")] = str(selected_id)
-                    node.cached_values[("Formations", "selected")] = str(selected_name)
-                if hasattr(node, "pending_writes") and node.pending_writes is not None:
-                    node.pending_writes.pop(("Formations", "selected_id"), None)
-                    node.pending_writes.pop(("Formations", "selected"), None)
-                return
-        except Exception:
-            pass
-        im.write_key(key, "Formations", "selected_id", selected_id)
-        im.write_key(key, "Formations", "selected", selected_name)
+        cfg = Settings.find(key)
+        if cfg:
+            cfg.set("Formations", "selected_id", selected_id)
+            cfg.set("Formations", "selected", selected_name)
 
     @staticmethod
     def _set_party_follow_option(cached_data: CacheData, option_name: str, value: bool) -> None:

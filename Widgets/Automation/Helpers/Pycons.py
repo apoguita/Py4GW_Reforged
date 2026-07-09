@@ -92,7 +92,7 @@ try:
         SUMMONING_SICKNESS_EFFECT_ID as CORE_SUMMONING_SICKNESS_EFFECT_ID,
         has_active_party_summon as core_has_active_party_summon,
     )
-    from Py4GWCoreLib.IniManager import IniManager  # NEW: persisted windows
+    from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings  # NEW: persisted windows
     import threading
 
     BOT_NAME = "Pycons"
@@ -260,19 +260,15 @@ try:
         if not Routines.Checks.Map.MapValid():
             return False
 
-        ini = IniManager()
-
-        INI_KEY_MAIN = ini.ensure_key(_INI_PATH, _INI_MAIN_FILE)
+        INI_KEY_MAIN = Settings.ensure_key(_INI_PATH, _INI_MAIN_FILE)
         if not INI_KEY_MAIN:
             return False
-        ini.load_once(INI_KEY_MAIN)
 
-        INI_KEY_SETTINGS = ini.ensure_key(_INI_PATH, _INI_SETTINGS_FILE)
+        INI_KEY_SETTINGS = Settings.ensure_key(_INI_PATH, _INI_SETTINGS_FILE)
         if not INI_KEY_SETTINGS:
             return False
-        ini.load_once(INI_KEY_SETTINGS)
 
-        INI_KEY_FLOATING_UI = ini.ensure_key(_INI_PATH, _INI_FLOATING_FILE)
+        INI_KEY_FLOATING_UI = Settings.ensure_key(_INI_PATH, _INI_FLOATING_FILE)
         if not INI_KEY_FLOATING_UI:
             return False
 
@@ -11122,8 +11118,9 @@ try:
         name: str,
         flags: int = PyImGui.WindowFlags.NoFlag,
     ) -> tuple[bool, bool]:
-        ini = IniManager()
-        ini.begin_window_config(ini_key)
+        cfg = Settings.find(ini_key)
+        if cfg is not None:
+            cfg.begin_window_config()
 
         begin_result = ImGui_Legacy.begin_with_close(name, True, flags)
         if isinstance(begin_result, tuple) and len(begin_result) == 2:
@@ -11138,10 +11135,10 @@ try:
                 window_open = bool(window.open)
                 expanded = bool(window.open and not window.collapse)
 
-        if window_open:
-            ini.track_window_collapsed(ini_key, expanded)
+        if window_open and cfg is not None:
+            cfg.track_window_collapsed(expanded)
             if expanded:
-                ini.mark_begin_success(ini_key)
+                cfg.mark_begin_success()
 
         return expanded, window_open
 

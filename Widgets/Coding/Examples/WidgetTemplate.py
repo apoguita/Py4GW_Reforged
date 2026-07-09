@@ -1,6 +1,6 @@
 import PyImGui
 from Py4GWCoreLib import Routines, ImGui_Legacy, Color
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Widget Template" # Change this to your widget name
 MODULE_ICON = "Textures/Module_Icons/Template.png" # Change this to your widget icon (optional)
@@ -8,7 +8,7 @@ WIDGET_KEY = 'Widgets/Coding/Examples/WidgetTemplate'
 
 # ---------------------------------------
 # Settings Handling
-# Values persist through IniManager under the widget's ini key.
+# Values persist through Settings under the widget's ini key.
 # ---------------------------------------
 
 INI_KEY = ""
@@ -17,14 +17,16 @@ INI_FILENAME = "WidgetTemplate.ini" #ini file name
 def draw_widget():
     """Draws the widget interface."""
     global INI_KEY
+    cfg = Settings.find(INI_KEY)
     if ImGui_Legacy.Begin(INI_KEY,MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
-        
+
         PyImGui.text("Add your stuff here")
-        
-        val = IniManager().read_bool(INI_KEY, "TestBoolVar", "value", False)
-        new_val = PyImGui.checkbox("Test Bool Variable", val)
-        if new_val != val:
-            IniManager().write_key(INI_KEY, "TestBoolVar", "value", new_val)
+
+        if cfg:
+            val = cfg.get_bool("TestBoolVar", "value", False)
+            new_val = PyImGui.checkbox("Test Bool Variable", val)
+            if new_val != val:
+                cfg.set("TestBoolVar", "value", new_val)
 
     ImGui_Legacy.End(INI_KEY)
     
@@ -94,11 +96,10 @@ def main():
     if not Routines.Checks.Map.MapValid():
         return
     if not INI_KEY:
-        INI_KEY = IniManager().ensure_key("Widgets/WidgetTemplate", "WidgetTemplate.ini")
+        INI_KEY = Settings.ensure_key("Widgets/WidgetTemplate", "WidgetTemplate.ini")
         if not INI_KEY:
             return
 
-        IniManager().load_once(INI_KEY)
         initialized = True
         
 

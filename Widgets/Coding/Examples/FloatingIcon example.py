@@ -4,7 +4,7 @@ import PyImGui
 
 from Py4GWCoreLib import Py4GW
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from dataclasses import dataclass
 
 @dataclass
@@ -56,13 +56,10 @@ def _ensure_ini() -> bool:
     if FloatingIconVars.INI_INIT:
         return True
 
-    FloatingIconVars.MAIN_INI_KEY = IniManager().ensure_key(FloatingIconVars.INI_PATH, FloatingIconVars.MAIN_INI_FILENAME)
-    FloatingIconVars.FLOATING_INI_KEY = IniManager().ensure_key(FloatingIconVars.INI_PATH, FloatingIconVars.FLOATING_INI_FILENAME)
+    FloatingIconVars.MAIN_INI_KEY = Settings.ensure_key(FloatingIconVars.INI_PATH, FloatingIconVars.MAIN_INI_FILENAME)
+    FloatingIconVars.FLOATING_INI_KEY = Settings.ensure_key(FloatingIconVars.INI_PATH, FloatingIconVars.FLOATING_INI_FILENAME)
     if not FloatingIconVars.MAIN_INI_KEY or not FloatingIconVars.FLOATING_INI_KEY:
         return False
-
-    IniManager().load_once(FloatingIconVars.MAIN_INI_KEY)
-    IniManager().load_once(FloatingIconVars.FLOATING_INI_KEY)
 
     FloatingIconVars.INI_INIT = True
     return True

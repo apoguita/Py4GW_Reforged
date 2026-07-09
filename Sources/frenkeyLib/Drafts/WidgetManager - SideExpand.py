@@ -4,10 +4,11 @@ import os
 import traceback
 import Py4GW
 import PyImGui
-from Py4GWCoreLib import ImGui_Legacy, IniManager, Player
+from Py4GWCoreLib import ImGui_Legacy, Player
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 
 
@@ -138,13 +139,14 @@ def draw_node(INI_KEY: str, parent_node: WidgetTreeNode, depth: int = 0):
                     v_enabled = widget_manager._widget_var(widget_id, "enabled")
                     section_name = f"Widget:{widget_id}"
 
-                    val = bool(IniManager().get(INI_KEY, v_enabled, False, section=section_name))
+                    cfg = Settings.find(INI_KEY)
+                    val = bool(cfg.get_bool(section_name, v_enabled, False)) if cfg else False
                     new_val = ImGui_Legacy.checkbox(label, val)
 
                     if new_val != val:
                         widget.enable() if new_val else widget.disable()
-                        IniManager().set(INI_KEY, v_enabled, widget.enabled, section=section_name)
-                        IniManager().save_vars(INI_KEY)
+                        if cfg is not None:
+                            cfg.set(section_name, v_enabled, widget.enabled)
 
                     PyImGui.table_set_column_index(1)
                     if widget.has_configure_property:
@@ -197,7 +199,8 @@ def draw():
             ImGui_Legacy.show_tooltip("Reload all widgets")
             PyImGui.same_line(0, 5)
             
-            e_all = bool(IniManager().get(key=INI_KEY, var_name="enable_all", default=True, section="Configuration"))
+            cfg = Settings.find(INI_KEY)
+            e_all = bool(cfg.get_bool("Configuration", "enable_all", True)) if cfg else True
             new_enable_all = ImGui_Legacy.toggle_icon_button(
                 (IconsFontAwesome5.ICON_TOGGLE_ON if e_all else IconsFontAwesome5.ICON_TOGGLE_OFF) + "##widget_disable",
                 e_all,
@@ -205,8 +208,8 @@ def draw():
             )
 
             if new_enable_all != e_all:
-                IniManager().set(key= INI_KEY, var_name="enable_all", value=new_enable_all, section="Configuration")
-                IniManager().save_vars(INI_KEY)
+                if cfg is not None:
+                    cfg.set("Configuration", "enable_all", new_enable_all)
 
             widget_manager.enable_all = new_enable_all
 
@@ -256,21 +259,24 @@ def main():
         if not os.path.exists(INI_PATH):
             os.makedirs(INI_PATH, exist_ok=True)
 
-        INI_KEY = IniManager().ensure_global_key(
+        INI_KEY = Settings.ensure_global_key(
             INI_PATH,
             INI_FILENAME
         )
-        
+
         if not INI_KEY: return
-        
+
+        cfg = Settings.find(INI_KEY)
+        if cfg is None:
+            return
+
         # widget_manager.MANAGER_INI_KEY = INI_KEY
-        
+
         # widget_manager.discover()
         # _add_config_vars()
-        IniManager().load_once(INI_KEY)
 
         # FIX 1: Explicitly load the global manager state into the handler
-        widget_manager.enable_all = bool(IniManager().get(key=INI_KEY, var_name="enable_all", default=False, section="Configuration"))
+        widget_manager.enable_all = bool(cfg.get_bool("Configuration", "enable_all", False))
         widget_manager._apply_ini_configuration()
         
         create_tree()

@@ -1,6 +1,6 @@
 import PyImGui
 
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.Player import Player
@@ -44,18 +44,17 @@ class EnemyBlacklist:
 
     def _ensure_ini_key(self):
         if not self.__class__._ini_key:
-            self.__class__._ini_key = IniManager().ensure_global_key("HeroAI", "EnemyBlacklist.ini")
+            self.__class__._ini_key = Settings.ensure_global_key("HeroAI", "EnemyBlacklist.ini")
 
     def _handler(self):
         self._ensure_ini_key()
-        node = IniManager()._get_node(self.__class__._ini_key)
-        return node.ini_handler if node else None
+        return Settings.find(self.__class__._ini_key)
 
     def _read(self) -> set[int]:
         handler = self._handler()
         if not handler:
             return set()
-        raw = handler.read_key(_INI_SECTION, _INI_KEY, "")
+        raw = handler.get_str(_INI_SECTION, _INI_KEY, "")
         ids: set[int] = set()
         if raw.strip():
             for part in raw.split(","):
@@ -69,14 +68,14 @@ class EnemyBlacklist:
         if not handler:
             return
         value = ",".join(str(m) for m in sorted(ids))
-        handler.write_key(_INI_SECTION, _INI_KEY, value)
-        handler.save(handler.config)
+        handler.set(_INI_SECTION, _INI_KEY, value)
+        handler.save()
 
     def _read_names(self) -> set[str]:
         handler = self._handler()
         if not handler:
             return set()
-        raw = handler.read_key(_INI_SECTION, _INI_KEY_NAMES, "")
+        raw = handler.get_str(_INI_SECTION, _INI_KEY_NAMES, "")
         names: set[str] = set()
         if raw.strip():
             for part in raw.split("|"):
@@ -90,8 +89,8 @@ class EnemyBlacklist:
         if not handler:
             return
         value = "|".join(sorted(names))
-        handler.write_key(_INI_SECTION, _INI_KEY_NAMES, value)
-        handler.save(handler.config)
+        handler.set(_INI_SECTION, _INI_KEY_NAMES, value)
+        handler.save()
 
     # ------------------------------------------------------------------
     # Public API

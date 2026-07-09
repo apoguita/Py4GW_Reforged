@@ -3,7 +3,6 @@ from Py4GWCoreLib import GLOBAL_CACHE, Map,IconsFontAwesome5, ImGui_Legacy, Util
 from Py4GWCoreLib import UIManager, ModelID, GLOBAL_CACHE, WindowFrames
 from Py4GWCoreLib import Agent, Player
 from Py4GWCoreLib import (Routines, ActionQueueManager,Key, Keystroke, ThrottledTimer)
-from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.ImGui_Legacy_src.WindowModule import WindowModule
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct, HeroAIOptionStruct, SharedMessageStruct
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler

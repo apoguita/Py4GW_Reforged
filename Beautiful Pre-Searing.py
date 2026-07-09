@@ -4,7 +4,7 @@ from typing import Callable, TypeAlias
 
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 from Sources.ApoSource.beautiful_pre_searing_src.acquire_belt_pouch import AcquireBeltPouch
 from Sources.ApoSource.beautiful_pre_searing_src.acquire_weapon import AcquireWeapon
@@ -969,26 +969,14 @@ def draw() -> None:
     ImGui_Legacy.End(ini_key=INI_KEY)
 
 #region main
-def _add_config_vars() -> None:
-    global INI_KEY
-    IniManager().add_bool(INI_KEY, "draw_move_path", "Display", "DrawMovePath", default=True)
-    IniManager().add_bool(INI_KEY, "draw_move_path_labels", "Display", "DrawMovePathLabels", default=False)
-    IniManager().add_float(INI_KEY, "draw_move_path_thickness", "Display", "DrawMovePathThickness", default=2.0)
-    IniManager().add_float(INI_KEY, "draw_move_waypoint_radius", "Display", "DrawMoveWaypointRadius", default=45.0)
-    IniManager().add_float(INI_KEY, "draw_move_current_waypoint_radius", "Display", "DrawMoveCurrentWaypointRadius", default=65.0)
-
-
-
 def main() -> None:
     global INI_KEY, initialized
 
     if not initialized:
         if not INI_KEY:
-            INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+            INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
             if not INI_KEY:
                 return
-            _add_config_vars()
-            IniManager().load_once(INI_KEY)
 
         ensure_botting_tree().SetCurrentNamedPlannerSteps(
             GettingStartedTree(),

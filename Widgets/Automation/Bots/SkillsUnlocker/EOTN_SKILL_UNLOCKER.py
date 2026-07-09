@@ -5,7 +5,7 @@ import Py4GW
 import PyImGui
 from Py4GWCoreLib import *
 from Py4GWCoreLib import ImGui_Legacy,GLOBAL_CACHE
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 
@@ -112,11 +112,10 @@ def draw_window_light(
 
 
     if not self._config.ini_key_initialized:
-        self._config.ini_key = IniManager().ensure_key(
+        self._config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{self._config.bot_name}",
             f"bot_{self._config.bot_name}.ini",
         )
-        IniManager().load_once(self._config.ini_key)
         self._config.ini_key_initialized = True
 
     if not self._config.ini_key:

@@ -633,15 +633,14 @@ class _UI:
         additional_ui: Optional[Callable[[], None]] = None,
         extra_tabs: Optional[list[tuple[str, Callable[[], None]]]] = None
     ) -> bool:
-        from ...IniManager import IniManager
+        from ...py4gwcorelib_src.Settings import Settings
         from ...Routines import Routines
         from ...ImGui_Legacy import ImGui_Legacy
-        
+
         if not self._config.ini_key_initialized:
-            ini_key = IniManager().ensure_key(f"BottingClass/bot_{self._config.bot_name}", f"bot_{self._config.bot_name}.ini")
+            ini_key = Settings.ensure_key(f"BottingClass/bot_{self._config.bot_name}", f"bot_{self._config.bot_name}.ini")
             if ini_key:
                 self._config.ini_key = ini_key
-                IniManager().load_once(self._config.ini_key)
                 self._config.ini_key_initialized = True
         
         if not self._config.ini_key:

@@ -1,4 +1,5 @@
-from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, ModelID, Map, Agent, AgentArray, ConsoleLog, Player, Timer, IniManager, SharedCommandType, HeroType
+from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, ModelID, Map, Agent, AgentArray, ConsoleLog, Player, Timer, SharedCommandType, HeroType
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.Title_enums import TitleID, TITLE_TIERS
 from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
 import Py4GW
@@ -1220,7 +1221,7 @@ def _should_suspend_for_loading() -> bool:
 
 def _ensure_bot_ini(bot: Botting) -> str:
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = IniManager().ensure_key(
+        bot.config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
             f"bot_{bot.config.bot_name}.ini",
         )
@@ -1241,59 +1242,62 @@ def _load_settings(bot: Botting) -> None:
     if not ini_key:
         return
 
-    _party_mode = 1 if IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1
+    cfg = Settings.find(ini_key)
+    if cfg is None:
+        return
+
+    _party_mode = 1 if cfg.get_bool(
+        _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1
     ) else 0
-    _randomize_district = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, _randomize_district
+    _randomize_district = cfg.get_bool(
+        _SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, _randomize_district
     )
-    _restock_use_conset = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _USE_CONSET_KEY, _restock_use_conset
+    _restock_use_conset = cfg.get_bool(
+        _SETTINGS_SECTION, _USE_CONSET_KEY, _restock_use_conset
     )
-    _restock_use_pcons = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _USE_PCONS_KEY, _restock_use_pcons
+    _restock_use_pcons = cfg.get_bool(
+        _SETTINGS_SECTION, _USE_PCONS_KEY, _restock_use_pcons
     )
-    _restock_use_summoning_stones = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _USE_SUMMONING_STONES_KEY, _restock_use_summoning_stones
+    _restock_use_summoning_stones = cfg.get_bool(
+        _SETTINGS_SECTION, _USE_SUMMONING_STONES_KEY, _restock_use_summoning_stones
     )
-    _restock_kits_enabled = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, _restock_kits_enabled
+    _restock_kits_enabled = cfg.get_bool(
+        _SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, _restock_kits_enabled
     )
-    _id_kits_target = max(0, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _ID_KITS_TARGET_KEY, _id_kits_target
+    _id_kits_target = max(0, int(cfg.get_int(
+        _SETTINGS_SECTION, _ID_KITS_TARGET_KEY, _id_kits_target
     )))
-    _salvage_kits_target = max(0, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, _salvage_kits_target
+    _salvage_kits_target = max(0, int(cfg.get_int(
+        _SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, _salvage_kits_target
     )))
-    _merchant_sell_materials = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _MERCHANT_SELL_MATERIALS_KEY, _merchant_sell_materials
+    _merchant_sell_materials = cfg.get_bool(
+        _SETTINGS_SECTION, _MERCHANT_SELL_MATERIALS_KEY, _merchant_sell_materials
     )
-    _merchant_sell_jadeite_shards = IniManager().read_bool(
-        ini_key,
+    _merchant_sell_jadeite_shards = cfg.get_bool(
         _SETTINGS_SECTION,
         _MERCHANT_SELL_JADEITE_SHARDS_KEY,
         _merchant_sell_jadeite_shards,
     )
-    _merchant_buy_ectos = IniManager().read_bool(
-        ini_key, _SETTINGS_SECTION, _MERCHANT_BUY_ECTOS_KEY, _merchant_buy_ectos
+    _merchant_buy_ectos = cfg.get_bool(
+        _SETTINGS_SECTION, _MERCHANT_BUY_ECTOS_KEY, _merchant_buy_ectos
     )
-    _merchant_ecto_threshold = max(0, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _MERCHANT_ECTO_THRESHOLD_KEY, _merchant_ecto_threshold
+    _merchant_ecto_threshold = max(0, int(cfg.get_int(
+        _SETTINGS_SECTION, _MERCHANT_ECTO_THRESHOLD_KEY, _merchant_ecto_threshold
     )))
-    _merchant_alt_wait_ms = max(0, min(_MAX_ALT_SETTLE_WAIT_MS, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _MERCHANT_ALT_WAIT_MS_KEY, _merchant_alt_wait_ms
+    _merchant_alt_wait_ms = max(0, min(_MAX_ALT_SETTLE_WAIT_MS, int(cfg.get_int(
+        _SETTINGS_SECTION, _MERCHANT_ALT_WAIT_MS_KEY, _merchant_alt_wait_ms
     ))))
-    _donation_min_luxon_points = max(_MIN_DONATION_THRESHOLD, min(_MAX_DONATION_THRESHOLD, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _DONATION_MIN_LUXON_POINTS_KEY, _donation_min_luxon_points
+    _donation_min_luxon_points = max(_MIN_DONATION_THRESHOLD, min(_MAX_DONATION_THRESHOLD, int(cfg.get_int(
+        _SETTINGS_SECTION, _DONATION_MIN_LUXON_POINTS_KEY, _donation_min_luxon_points
     ))))
-    CONSET_RESTOCK_TARGET = max(0, min(_MAX_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _CONSET_RESTOCK_TARGET_KEY, CONSET_RESTOCK_TARGET
+    CONSET_RESTOCK_TARGET = max(0, min(_MAX_RESTOCK_TARGET, int(cfg.get_int(
+        _SETTINGS_SECTION, _CONSET_RESTOCK_TARGET_KEY, CONSET_RESTOCK_TARGET
     ))))
-    PCON_RESTOCK_TARGET = max(0, min(_MAX_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _PCON_RESTOCK_TARGET_KEY, PCON_RESTOCK_TARGET
+    PCON_RESTOCK_TARGET = max(0, min(_MAX_RESTOCK_TARGET, int(cfg.get_int(
+        _SETTINGS_SECTION, _PCON_RESTOCK_TARGET_KEY, PCON_RESTOCK_TARGET
     ))))
-    SUMMONING_STONES_RESTOCK_TARGET = max(0, min(_MAX_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key, _SETTINGS_SECTION, _SUMMONING_STONES_RESTOCK_TARGET_KEY, SUMMONING_STONES_RESTOCK_TARGET
+    SUMMONING_STONES_RESTOCK_TARGET = max(0, min(_MAX_RESTOCK_TARGET, int(cfg.get_int(
+        _SETTINGS_SECTION, _SUMMONING_STONES_RESTOCK_TARGET_KEY, SUMMONING_STONES_RESTOCK_TARGET
     ))))
 
 
@@ -1310,29 +1314,31 @@ def _save_settings(bot: Botting) -> None:
     if not ini_key:
         return
 
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, bool(_randomize_district))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _USE_CONSET_KEY, bool(_restock_use_conset))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _USE_PCONS_KEY, bool(_restock_use_pcons))
-    IniManager().write_key(
-        ini_key,
+    cfg = Settings.find(ini_key)
+    if cfg is None:
+        return
+
+    cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
+    cfg.set(_SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, bool(_randomize_district))
+    cfg.set(_SETTINGS_SECTION, _USE_CONSET_KEY, bool(_restock_use_conset))
+    cfg.set(_SETTINGS_SECTION, _USE_PCONS_KEY, bool(_restock_use_pcons))
+    cfg.set(
         _SETTINGS_SECTION,
         _USE_SUMMONING_STONES_KEY,
         bool(_restock_use_summoning_stones),
     )
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, bool(_restock_kits_enabled))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _ID_KITS_TARGET_KEY, int(_id_kits_target))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, int(_salvage_kits_target))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_SELL_MATERIALS_KEY, bool(_merchant_sell_materials))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_SELL_JADEITE_SHARDS_KEY, bool(_merchant_sell_jadeite_shards))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_BUY_ECTOS_KEY, bool(_merchant_buy_ectos))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_ECTO_THRESHOLD_KEY, int(_merchant_ecto_threshold))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_ALT_WAIT_MS_KEY, int(_merchant_alt_wait_ms))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _DONATION_MIN_LUXON_POINTS_KEY, int(_donation_min_luxon_points))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _CONSET_RESTOCK_TARGET_KEY, int(CONSET_RESTOCK_TARGET))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _PCON_RESTOCK_TARGET_KEY, int(PCON_RESTOCK_TARGET))
-    IniManager().write_key(
-        ini_key,
+    cfg.set(_SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, bool(_restock_kits_enabled))
+    cfg.set(_SETTINGS_SECTION, _ID_KITS_TARGET_KEY, int(_id_kits_target))
+    cfg.set(_SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, int(_salvage_kits_target))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_SELL_MATERIALS_KEY, bool(_merchant_sell_materials))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_SELL_JADEITE_SHARDS_KEY, bool(_merchant_sell_jadeite_shards))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_BUY_ECTOS_KEY, bool(_merchant_buy_ectos))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_ECTO_THRESHOLD_KEY, int(_merchant_ecto_threshold))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_ALT_WAIT_MS_KEY, int(_merchant_alt_wait_ms))
+    cfg.set(_SETTINGS_SECTION, _DONATION_MIN_LUXON_POINTS_KEY, int(_donation_min_luxon_points))
+    cfg.set(_SETTINGS_SECTION, _CONSET_RESTOCK_TARGET_KEY, int(CONSET_RESTOCK_TARGET))
+    cfg.set(_SETTINGS_SECTION, _PCON_RESTOCK_TARGET_KEY, int(PCON_RESTOCK_TARGET))
+    cfg.set(
         _SETTINGS_SECTION,
         _SUMMONING_STONES_RESTOCK_TARGET_KEY,
         int(SUMMONING_STONES_RESTOCK_TARGET),

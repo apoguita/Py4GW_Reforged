@@ -12,7 +12,7 @@ import PyImGui
 from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER, HotKey
 from Py4GWCoreLib.ImGui_Legacy_src.Style import Style
 from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment, StyleTheme
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.enums_src.IO_enums import Key, ModifierKey
@@ -399,54 +399,58 @@ class Py4GWLibrary:
         self.folder_tree = self.build_widget_tree(self.widget_manager.widgets)
     
     def load_config(self):
-        
+        cfg = Settings.find(self.ini_key)
+        if cfg is None:
+            self.focus_search = False
+            return
+
         try:
-            self.max_suggestions = IniManager().read_int(key=self.ini_key, section="Configuration", name="max_suggestions", default=10)
-            self.single_button_size = IniManager().read_int(key=self.ini_key, section="Configuration", name="single_button_size", default=48)
-            
-            self.jump_to_minimalistic = IniManager().read_bool(key=self.ini_key, section="Configuration", name="jump_to_minimalistic", default=False)
-            self.single_filter = IniManager().read_bool(key=self.ini_key, section="Configuration", name="single_filter", default=True)
-            self.startup_layout = LayoutMode[IniManager().read_key(key=self.ini_key, section="Configuration", name="startup_layout", default=LayoutMode.LastView.name)]
-            
-            x = IniManager().read_float(key=self.ini_key, section="Configuration", name="library_width", default=900)
-            y = IniManager().read_float(key=self.ini_key, section="Configuration", name="library_height", default=600)
+            self.max_suggestions = cfg.get_int("Configuration", "max_suggestions", 10)
+            self.single_button_size = cfg.get_int("Configuration", "single_button_size", 48)
+
+            self.jump_to_minimalistic = cfg.get_bool("Configuration", "jump_to_minimalistic", False)
+            self.single_filter = cfg.get_bool("Configuration", "single_filter", True)
+            self.startup_layout = LayoutMode[cfg.get_str("Configuration", "startup_layout", LayoutMode.LastView.name)]
+
+            x = cfg.get_float("Configuration", "library_width", 900)
+            y = cfg.get_float("Configuration", "library_height", 600)
             self.previous_size = (x, y)
-            
-            layout = LayoutMode[IniManager().read_key(key=self.ini_key, section="Configuration", name="layout", default=LayoutMode.Library.name)] if self.startup_layout is LayoutMode.LastView else self.startup_layout
+
+            layout = LayoutMode[cfg.get_str("Configuration", "layout", LayoutMode.Library.name)] if self.startup_layout is LayoutMode.LastView else self.startup_layout
             self.set_layout_mode(layout)
-            
-            self.show_configure_button = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="show_configure_button", default=True)
-            self.show_images = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="show_images", default=True)
-            self.show_separator = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="show_separator", default=True)
-            self.show_category = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="show_category", default=True)
-            self.show_tags = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="show_tags", default=True)
-            self.fixed_card_width = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="fixed_card_width", default=False)
-            self.card_width = IniManager().read_float(key=self.ini_key, section="Card Configuration", name="card_width", default=300)    
-            
-            self.show_images_compact = IniManager().read_bool(key=self.ini_key, section="Card Configuration", name="show_images_compact", default=False)        
-            
-            self.card_enabled_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="card_enabled_color", default="90, 255, 90, 30"))
-            self.card_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="card_color", default="200, 200, 200, 20"))
-            self.favorites_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="favorites_color", default="255, 215, 0, 255"))
-            self.tag_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="tag_color", default="38, 51, 59, 255"))
-            self.category_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="category_color", default="150, 150, 150, 255"))
-            self.name_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="name_color", default="255, 255, 255, 255"))
-            self.name_enabled_color = Color.from_rgba_string(IniManager().read_key(key=self.ini_key, section="Card Configuration", name="name_enabled_color", default="150, 255, 150, 255"))
-            self.card_rounding = IniManager().read_float(key=self.ini_key, section="Card Configuration", name="card_rounding", default=4.0)
-            
-            self.favorites.clear()            
-            favs = IniManager().read_key(key=self.ini_key, section="Favorites", name="favorites", default="").split(",")
+
+            self.show_configure_button = cfg.get_bool("Card Configuration", "show_configure_button", True)
+            self.show_images = cfg.get_bool("Card Configuration", "show_images", True)
+            self.show_separator = cfg.get_bool("Card Configuration", "show_separator", True)
+            self.show_category = cfg.get_bool("Card Configuration", "show_category", True)
+            self.show_tags = cfg.get_bool("Card Configuration", "show_tags", True)
+            self.fixed_card_width = cfg.get_bool("Card Configuration", "fixed_card_width", False)
+            self.card_width = cfg.get_float("Card Configuration", "card_width", 300)
+
+            self.show_images_compact = cfg.get_bool("Card Configuration", "show_images_compact", False)
+
+            self.card_enabled_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "card_enabled_color", "90, 255, 90, 30"))
+            self.card_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "card_color", "200, 200, 200, 20"))
+            self.favorites_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "favorites_color", "255, 215, 0, 255"))
+            self.tag_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "tag_color", "38, 51, 59, 255"))
+            self.category_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "category_color", "150, 150, 150, 255"))
+            self.name_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "name_color", "255, 255, 255, 255"))
+            self.name_enabled_color = Color.from_rgba_string(cfg.get_str("Card Configuration", "name_enabled_color", "150, 255, 150, 255"))
+            self.card_rounding = cfg.get_float("Card Configuration", "card_rounding", 4.0)
+
+            self.favorites.clear()
+            favs = cfg.get_str("Favorites", "favorites", "").split(",")
             for fav in favs:
                 widget = self.widget_manager.widgets.get(fav)
-                
+
                 if widget:
                     self.favorites.append(widget)
-                    
-            focus_search_key = IniManager().read_key(self.ini_key, section="Configuration", name="hotkey", default="Unmapped")
-            focus_search_modifiers = IniManager().read_key(self.ini_key, section="Configuration", name="hotkey_modifiers", default="NoneKey")
-            
-            reload_widget_key = IniManager().read_key(self.ini_key, section="Configuration", name="reload_hotkey", default="Unmapped")
-            reload_widget_modifiers = IniManager().read_key(self.ini_key, section="Configuration", name="reload_hotkey_modifiers", default="NoneKey")
+
+            focus_search_key = cfg.get_str("Configuration", "hotkey", "Unmapped")
+            focus_search_modifiers = cfg.get_str("Configuration", "hotkey_modifiers", "NoneKey")
+
+            reload_widget_key = cfg.get_str("Configuration", "reload_hotkey", "Unmapped")
+            reload_widget_modifiers = cfg.get_str("Configuration", "reload_hotkey_modifiers", "NoneKey")
             
             try:
                 self.focus_keybind.key = Key[focus_search_key]
@@ -485,14 +489,16 @@ class Py4GWLibrary:
     def add_to_favorites(self, widget : "Widget"):
         if widget not in self.favorites:
             self.favorites.append(widget)
-            IniManager().set(key=self.ini_key, var_name="favorites", value=",".join(w.folder_script_name for w in self.favorites), section="Favorites")
-            IniManager().save_vars(self.ini_key)
-            
+            cfg = Settings.find(self.ini_key)
+            if cfg:
+                cfg.set("Favorites", "favorites", ",".join(w.folder_script_name for w in self.favorites))
+
     def remove_from_favorites(self, widget : "Widget"):
         if widget in self.favorites:
             self.favorites.remove(widget)
-            IniManager().set(key=self.ini_key, var_name="favorites", value=",".join(w.folder_script_name for w in self.favorites), section="Favorites")
-            IniManager().save_vars(self.ini_key)
+            cfg = Settings.find(self.ini_key)
+            if cfg:
+                cfg.set("Favorites", "favorites", ",".join(w.folder_script_name for w in self.favorites))
     
     def set_layout_mode(self, mode : LayoutMode):
         if self.layout_mode is LayoutMode.SingleButton and self._current_window_pos is not None:
@@ -516,7 +522,9 @@ class Py4GWLibrary:
                 self.previous_mode = self.layout_mode
                 
         self.layout_mode = mode
-        IniManager().set(key=self.ini_key, section="Configuration", var_name="layout", value=mode.name)
+        cfg = Settings.find(self.ini_key)
+        if cfg:
+            cfg.set("Configuration", "layout", mode.name)
         self.queue_filter_widgets = True
         pass
 
@@ -1129,9 +1137,10 @@ class Py4GWLibrary:
     
             if self.previous_size != self.win_size and self.layout_mode is LayoutMode.Library and not collapsed:
                 self.previous_size = self.win_size
-                IniManager().set(key=self.ini_key, section="Configuration", var_name="library_width", value=self.win_size[0])
-                IniManager().set(key=self.ini_key, section="Configuration", var_name="library_height", value=self.win_size[1])
-                IniManager().save_vars(self.ini_key)
+                cfg = Settings.find(self.ini_key)
+                if cfg:
+                    cfg.set("Configuration", "library_width", self.win_size[0])
+                    cfg.set("Configuration", "library_height", self.win_size[1])
                 
             ImGui_Legacy.set_window_within_displayport(*self.win_size, PyImGui.ImGuiCond.Once)            
             style = ImGui_Legacy.get_style()
@@ -1206,13 +1215,13 @@ class Py4GWLibrary:
                     ImGui_Legacy.end_menu()                   
                 
                 if ImGui_Legacy.begin_menu("Preferences"):
+                    cfg = Settings.find(self.ini_key)
                     if ImGui_Legacy.menu_item("Switch to Base UI"):
-                        base_ui_key = IniManager().ensure_global_key("Widgets/WidgetCatalog", "WidgetCatalog.ini")
+                        base_ui_key = Settings.ensure_global_key("Widgets/WidgetCatalog", "WidgetCatalog.ini")
                         if base_ui_key:
-                            IniManager().add_bool(key=base_ui_key, var_name="show_adavanced", section="Configuration", name="show_adavanced", default=False)
-                            IniManager().load_once(base_ui_key)
-                            IniManager().set(key=base_ui_key, var_name="show_adavanced", value=False, section="Configuration")
-                            IniManager().save_vars(base_ui_key)
+                            base_cfg = Settings.find(base_ui_key)
+                            if base_cfg:
+                                base_cfg.set("Configuration", "show_adavanced", False)
                     ImGui_Legacy.show_tooltip("Switch to the base Py4GW UI.")
 
                     if ImGui_Legacy.begin_menu("Layout"):                        
@@ -1220,32 +1229,28 @@ class Py4GWLibrary:
                             layout_mode = ImGui_Legacy.radio_button("Last View", self.startup_layout, LayoutMode.LastView)
                             if self.startup_layout != layout_mode:
                                 self.startup_layout = LayoutMode.LastView                                
-                                IniManager().set(key=self.ini_key, var_name="startup_layout", value=self.startup_layout.name, section="Configuration")
-                                IniManager().save_vars(self.ini_key)                                
+                                if cfg: cfg.set("Configuration", "startup_layout", self.startup_layout.name)
                             ImGui_Legacy.show_tooltip("Open the widget browser in the same view mode as when it was last closed.")
                                                         
                             layout_mode = ImGui_Legacy.radio_button("Library View", self.startup_layout, LayoutMode.Library)
                             if self.startup_layout != layout_mode:
                                 self.startup_layout = LayoutMode.Library
                                 self.set_layout_mode(self.startup_layout)
-                                IniManager().set(key=self.ini_key, var_name="startup_layout", value=self.startup_layout.name, section="Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Configuration", "startup_layout", self.startup_layout.name)
                             ImGui_Legacy.show_tooltip("Open the widget browser in library view by default,\nshowing all details and options for each widget.")
                                 
                             layout_mode = ImGui_Legacy.radio_button("Compact View", self.startup_layout, LayoutMode.Compact)
                             if self.startup_layout != layout_mode:
                                 self.startup_layout = LayoutMode.Compact
                                 self.set_layout_mode(self.startup_layout)
-                                IniManager().set(key=self.ini_key, var_name="startup_layout", value=self.startup_layout.name, section="Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Configuration", "startup_layout", self.startup_layout.name)
                             ImGui_Legacy.show_tooltip("Open the widget browser in compact view by default,\nshowing a simplified card for each widget.")
                                 
                             layout_mode = ImGui_Legacy.radio_button("Minimalistic View", self.startup_layout, LayoutMode.Minimalistic)
                             if self.startup_layout != layout_mode:
                                 self.startup_layout = LayoutMode.Minimalistic
                                 self.set_layout_mode(self.startup_layout)
-                                IniManager().set(key=self.ini_key, var_name="startup_layout", value=self.startup_layout.name, section="Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Configuration", "startup_layout", self.startup_layout.name)
                             ImGui_Legacy.show_tooltip("Open the widget browser in minimalistic view by default,\nshowing only a search icon which switches to compact view when clicked.\nIf the widget filter is cleared while in compact view, it will switch back to minimalistic view.")
                             
                             ImGui_Legacy.end_menu()
@@ -1253,16 +1258,14 @@ class Py4GWLibrary:
                         jump_to_minimalistic = ImGui_Legacy.checkbox("Jump to Minimalistic View", self.jump_to_minimalistic)
                         if jump_to_minimalistic != self.jump_to_minimalistic:
                             self.jump_to_minimalistic = jump_to_minimalistic
-                            IniManager().set(key=self.ini_key, var_name="jump_to_minimalistic", value=self.jump_to_minimalistic, section="Configuration")
-                            IniManager().save_vars(self.ini_key)
+                            if cfg: cfg.set("Configuration", "jump_to_minimalistic", self.jump_to_minimalistic)
                         ImGui_Legacy.show_tooltip("Automatically switch to Minimalistic View after clearing the search field while in Compact View.\nIf the widget filter is cleared while in compact view, it will switch back to minimalistic view.")
                         
                         PyImGui.push_item_width(100)
                         max_suggestions = ImGui_Legacy.slider_int("Max Suggestions", self.max_suggestions, 1, 50)
                         if max_suggestions != self.max_suggestions:
                             self.max_suggestions = max_suggestions
-                            IniManager().set(key=self.ini_key, var_name="max_suggestions", value=self.max_suggestions, section="Configuration")
-                            IniManager().save_vars(self.ini_key)
+                            if cfg: cfg.set("Configuration", "max_suggestions", self.max_suggestions)
                         PyImGui.pop_item_width()
                         ImGui_Legacy.show_tooltip("Set the maximum number of search suggestions to display in the search dropdown in compact view.")
                         
@@ -1270,8 +1273,7 @@ class Py4GWLibrary:
                         single_button_size = ImGui_Legacy.slider_int("Single Button Size", self.single_button_size, 20, 128)
                         if single_button_size != self.single_button_size:
                             self.single_button_size = single_button_size
-                            IniManager().set(key=self.ini_key, var_name="single_button_size", value=self.single_button_size, section="Configuration")
-                            IniManager().save_vars(self.ini_key)
+                            if cfg: cfg.set("Configuration", "single_button_size", self.single_button_size)
                         PyImGui.pop_item_width()
                         ImGui_Legacy.show_tooltip("Set the maximum number of search suggestions to display in the search dropdown in compact view.")
                         ImGui_Legacy.end_menu()
@@ -1282,51 +1284,44 @@ class Py4GWLibrary:
                                 show_configure = ImGui_Legacy.checkbox("Show Configure Button", self.show_configure_button)
                                 if show_configure != self.show_configure_button:
                                     self.show_configure_button = show_configure
-                                    IniManager().set(key=self.ini_key, var_name="show_configure_button", value=self.show_configure_button, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "show_configure_button", self.show_configure_button)
                                 ImGui_Legacy.show_tooltip("Show or hide the configure button on each widget card.")
                                 
                                 show_images = ImGui_Legacy.checkbox("Show Widget Images", self.show_images)
                                 if show_images != self.show_images:
                                     self.show_images = show_images
-                                    IniManager().set(key=self.ini_key, var_name="show_images", value=self.show_images, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "show_images", self.show_images)
                                 ImGui_Legacy.show_tooltip("Show or hide the images on each widget card.")
                                 
                                 show_separator = ImGui_Legacy.checkbox("Show Separator", self.show_separator)
                                 if show_separator != self.show_separator:
                                     self.show_separator = show_separator
-                                    IniManager().set(key=self.ini_key, var_name="show_separator", value=self.show_separator, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "show_separator", self.show_separator)
                                 ImGui_Legacy.show_tooltip("Show or hide the separator between widget cards.")
                                 
                                 show_category = ImGui_Legacy.checkbox("Show Widget Category", self.show_category)
                                 if show_category != self.show_category:
                                     self.show_category = show_category
-                                    IniManager().set(key=self.ini_key, var_name="show_category", value=self.show_category, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "show_category", self.show_category)
                                 ImGui_Legacy.show_tooltip("Show or hide the category text on each widget card.")
                                 
                                 show_tags = ImGui_Legacy.checkbox("Show Widget Tags", self.show_tags)
                                 if show_tags != self.show_tags:
                                     self.show_tags = show_tags
-                                    IniManager().set(key=self.ini_key, var_name="show_tags", value=self.show_tags, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "show_tags", self.show_tags)
                                 ImGui_Legacy.show_tooltip("Show or hide the tags on each widget card.")
                                 
                                 fixed_width = ImGui_Legacy.checkbox("Fixed Card Width", self.fixed_card_width)
                                 if fixed_width != self.fixed_card_width:
                                     self.fixed_card_width = fixed_width
-                                    IniManager().set(key=self.ini_key, var_name="fixed_card_width", value=self.fixed_card_width, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "fixed_card_width", self.fixed_card_width)
                                 ImGui_Legacy.show_tooltip("Enable or disable fixed card width.\nIf enabled, all widget cards will have the same width defined by 'Card Width'.\nIf disabled, card width will be determined automatically based on the available space and number of columns.")
                                 
                                 if self.fixed_card_width:
                                     card_width = ImGui_Legacy.slider_float("Card Width", self.card_width, 100, 600)
                                     if card_width != self.card_width:
                                         self.card_width = card_width
-                                        IniManager().set(key=self.ini_key, var_name="card_width", value=self.card_width, section="Card Configuration")
-                                        IniManager().save_vars(self.ini_key)
+                                        if cfg: cfg.set("Card Configuration", "card_width", self.card_width)
                                     ImGui_Legacy.show_tooltip(f"Set the width of each widget card when fixed card width is enabled.\nCard width {self.card_width}px.")
                                 
                                 ImGui_Legacy.end_menu()
@@ -1335,8 +1330,7 @@ class Py4GWLibrary:
                                 show_images = ImGui_Legacy.checkbox("Show Widget Images", self.show_images_compact)
                                 if show_images != self.show_images_compact:
                                     self.show_images_compact = show_images
-                                    IniManager().set(key=self.ini_key, var_name="show_images_compact", value=self.show_images_compact, section="Card Configuration")
-                                    IniManager().save_vars(self.ini_key)
+                                    if cfg: cfg.set("Card Configuration", "show_images_compact", self.show_images_compact)
                                 ImGui_Legacy.show_tooltip("Show or hide the images on each widget card in compact view.")
                                 
                                 ImGui_Legacy.end_menu()
@@ -1346,57 +1340,49 @@ class Py4GWLibrary:
                             card_rounding = ImGui_Legacy.slider_float("Card Rounding", self.card_rounding, 0, 20)
                             if card_rounding != self.card_rounding:
                                 self.card_rounding = card_rounding
-                                IniManager().set(key=self.ini_key, var_name="card_rounding", value=self.card_rounding, section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "card_rounding", self.card_rounding)
                             ImGui_Legacy.show_tooltip("Set the rounding of the widget cards.\nThis controls how rounded the corners of the widget cards are, with 0 being sharp corners and higher values being more rounded.")
                             
                             card_color = ImGui_Legacy.color_edit4("Card", self.card_color.color_tuple)
                             if not self.is_same_color(card_color, self.card_color.color_tuple):
                                 self.card_color = Color.from_tuple(card_color)
-                                IniManager().set(key=self.ini_key, var_name="card_color", value=self.card_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "card_color", self.card_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the background color of the widget cards.\nThis color is used for inactive widgets or when 'Show Enabled State' is disabled.")
                             
                             card_enabled_color = ImGui_Legacy.color_edit4("Card (Enabled)", self.card_enabled_color.color_tuple)
                             if not self.is_same_color(card_enabled_color, self.card_enabled_color.color_tuple):
                                 self.card_enabled_color = Color.from_tuple(card_enabled_color)
-                                IniManager().set(key=self.ini_key, var_name="card_enabled_color", value=self.card_enabled_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "card_enabled_color", self.card_enabled_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the background color of enabled widget cards.\nThis color is used for active widgets when 'Show Enabled State' is enabled.")
                             
                             name_color = ImGui_Legacy.color_edit4("Name", self.name_color.color_tuple)
                             if not self.is_same_color(name_color, self.name_color.color_tuple):
                                 self.name_color = Color.from_tuple(name_color)
-                                IniManager().set(key=self.ini_key, var_name="name_color", value=self.name_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "name_color", self.name_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the color used for widget names.\nThis color is used for the text of the widget names displayed on each widget card.")
                             
                             name_enabled_color = PyImGui.color_edit4("Name (Enabled)", self.name_enabled_color.color_tuple)
                             if not self.is_same_color(name_enabled_color, self.name_enabled_color.color_tuple):
                                 self.name_enabled_color = Color.from_tuple(name_enabled_color)
-                                IniManager().set(key=self.ini_key, var_name="name_enabled_color", value=self.name_enabled_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "name_enabled_color", self.name_enabled_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the color used for enabled widget names.\nThis color is used for the text of the widget names displayed on each widget card when the widget is enabled.")
                             
                             favorites_color = ImGui_Legacy.color_edit4("Favorites", self.favorites_color.color_tuple)
                             if not self.is_same_color(favorites_color, self.favorites_color.color_tuple):
                                 self.favorites_color = Color.from_tuple(favorites_color)
-                                IniManager().set(key=self.ini_key, var_name="favorites_color", value=self.favorites_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)    
+                                if cfg: cfg.set("Card Configuration", "favorites_color", self.favorites_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the color used to indicate favorite widgets.\nThis color is used for the star icon on each widget card.")
                             
                             tag_color = ImGui_Legacy.color_edit4("Tags", self.tag_color.color_tuple)
                             if not self.is_same_color(tag_color, self.tag_color.color_tuple):
                                 self.tag_color = Color.from_tuple(tag_color)
-                                IniManager().set(key=self.ini_key, var_name="tag_color", value=self.tag_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "tag_color", self.tag_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the color used for widget tags.\nThis color is used for the text of the tags displayed on each widget card.")
                             
                             category_color = ImGui_Legacy.color_edit4("Category", self.category_color.color_tuple)
                             if not self.is_same_color(category_color, self.category_color.color_tuple):
                                 self.category_color = Color.from_tuple(category_color)
-                                IniManager().set(key=self.ini_key, var_name="category_color", value=self.category_color.to_rgba_string(), section="Card Configuration")
-                                IniManager().save_vars(self.ini_key)
+                                if cfg: cfg.set("Card Configuration", "category_color", self.category_color.to_rgba_string())
                             ImGui_Legacy.show_tooltip("Set the color used for widget categories.\nThis color is used for the text of the category displayed on each widget card.")
                             ImGui_Legacy.end_menu()                        
                         
@@ -1409,9 +1395,8 @@ class Py4GWLibrary:
                             self.focus_keybind.key = key
                             self.focus_keybind.modifiers = modifiers
                             
-                            IniManager().set(self.ini_key, var_name="hotkey", section="Configuration", value=self.focus_keybind.key.name)
-                            IniManager().set(self.ini_key, var_name="hotkey_modifiers", section="Configuration", value=self.focus_keybind.modifiers.name)
-                            IniManager().save_vars(self.ini_key)
+                            if cfg: cfg.set("Configuration", "hotkey", self.focus_keybind.key.name)
+                            if cfg: cfg.set("Configuration", "hotkey_modifiers", self.focus_keybind.modifiers.name)
                         
                         ImGui_Legacy.show_tooltip("Set the hotkey used to focus the search field in the widget browser.\nPressing this hotkey will move the keyboard focus to the search field, allowing you to start typing immediately to filter widgets.\nWorks only ingame due to limitations with our Hotkey system.")
                         
@@ -1420,9 +1405,8 @@ class Py4GWLibrary:
                             self.reload_keybind.key = key
                             self.reload_keybind.modifiers = modifiers
                             
-                            IniManager().set(self.ini_key, var_name="reload_hotkey", section="Configuration", value=self.reload_keybind.key.name)
-                            IniManager().set(self.ini_key, var_name="reload_hotkey_modifiers", section="Configuration", value=self.reload_keybind.modifiers.name)
-                            IniManager().save_vars(self.ini_key)
+                            if cfg: cfg.set("Configuration", "reload_hotkey", self.reload_keybind.key.name)
+                            if cfg: cfg.set("Configuration", "reload_hotkey_modifiers", self.reload_keybind.modifiers.name)
                         
                         ImGui_Legacy.show_tooltip("Set the hotkey used to focus the search field in the widget browser.\nPressing this hotkey will move the keyboard focus to the search field, allowing you to start typing immediately to filter widgets.\nWorks only ingame due to limitations with our Hotkey system.")
                         
@@ -1434,8 +1418,7 @@ class Py4GWLibrary:
                         single_filter = ImGui_Legacy.checkbox("Single Filter Mode", self.single_filter)
                         if single_filter != self.single_filter:
                             self.single_filter = single_filter
-                            IniManager().set(key=self.ini_key, var_name="single_filter", value=self.single_filter, section="Configuration")
-                            IniManager().save_vars(self.ini_key)
+                            if cfg: cfg.set("Configuration", "single_filter", self.single_filter)
                         ImGui_Legacy.show_tooltip("Enable or disable single filter mode.\nWhen enabled, selecting a category, tag, path or editing the search field will clear any existing filters in the other fields.\nThis ensures that only one filter is applied at a time.")                        
                         ImGui_Legacy.end_menu()
                         
@@ -2322,7 +2305,7 @@ class WidgetHandler:
         return None
     
     def _widget_var(self, widget_id: str, suffix: str) -> str:
-        """Returns the unique variable name for IniManager lookup"""
+        """Returns the unique variable name for Settings lookup"""
         return f"{widget_id}__{suffix}"
     
     def _get_widget_by_plain_name(self, plain_name: str) -> Optional[Widget]:
@@ -2348,9 +2331,9 @@ class WidgetHandler:
         cv = self._get_config_var(widget_id, v_enabled)
 
         if cv:
-            # Correct order: key, section, var_name, value
-            IniManager().set(key=INI_KEY, section=cv.section, var_name=cv.var_name, value=state)
-            IniManager().save_vars(INI_KEY)
+            cfg = Settings.find(INI_KEY)
+            if cfg:
+                cfg.set(cv.section, "enabled", state)
 
     def _request_disable_widget(self, widget: Widget, broadcast: bool = False):
         if widget.category == "System":
@@ -2504,8 +2487,9 @@ class WidgetHandler:
             ))                    
 
             cv = self._get_config_var(widget.folder_script_name, self._widget_var(widget.folder_script_name, "enabled"))
-            
-            enabled = bool(IniManager().get(key=self.MANAGER_INI_KEY, section=cv.section, var_name=cv.var_name, default=False)) if cv else False
+
+            _mgr_cfg = Settings.find(self.MANAGER_INI_KEY)
+            enabled = bool(_mgr_cfg.get_bool(cv.section, "enabled", False)) if (cv and _mgr_cfg) else False
             if enabled:
                 widget.enable()
                 
@@ -2519,23 +2503,24 @@ class WidgetHandler:
     def _apply_ini_configuration(self):
         """Apply saved enabled states and enforce System widget activation"""
         try:
+            _mgr_cfg = Settings.find(self.MANAGER_INI_KEY)
             for wid, w in self.widgets.items():
-                vname = self._widget_var(wid, "enabled")
                 section = f"Widget:{wid}"
-                
-                # 1. Read the current state from IniManager (which just loaded from disk)
-                enabled = bool(IniManager().get(key=self.MANAGER_INI_KEY, section=section, var_name=vname, default=False))
-                
+
+                # 1. Read the current state from Settings (which just loaded from disk)
+                enabled = bool(_mgr_cfg.get_bool(section, "enabled", False)) if _mgr_cfg else False
+
                 # 2. THE FORCE: Check if this is a System widget section
                 is_system = "Widget:System" in section
-                
+
                 if is_system:
                     # If it's system but the disk/ini said False, we override it right now
                     if not enabled:
                         # PySystem.Console.Log("WidgetManager", f"Forcing System Widget: {wid}", PySystem.Console.MessageType.Info)
                         enabled = True
-                        # Update IniManager memory so it stays synced
-                        IniManager().set(key=self.MANAGER_INI_KEY, section=section, var_name=vname, value=True)
+                        # Update Settings memory so it stays synced
+                        if _mgr_cfg:
+                            _mgr_cfg.set(section, "enabled", True)
                         # Note: No need to save_vars here unless you want to fix the file immediately; 
                         # the next global save will persist this.
                         self._log_success(f"Enforcing System Widget Enabled: {wid}")
@@ -2554,7 +2539,8 @@ class WidgetHandler:
     #region UI       
     def draw_node(self, INI_KEY: str, node: dict, depth: int = 0):
         style = ImGui_Legacy.get_style()
-        widget_manager = self 
+        widget_manager = self
+        _node_cfg = Settings.find(INI_KEY)
 
         for key, value in sorted(node.items()):
             # Leaf: render widgets table
@@ -2590,7 +2576,7 @@ class WidgetHandler:
                         section_name = f"Widget:{widget_id}"
 
                         # FIXED: Added the section parameter to the get call
-                        val = bool(IniManager().get(INI_KEY, v_enabled, False, section=section_name))
+                        val = bool(_node_cfg.get_bool(section_name, "enabled", False)) if _node_cfg else False
                         new_enabled = ImGui_Legacy.checkbox(label, val)
                         if PyImGui.is_item_hovered():
                             if widget.has_tooltip_property:
@@ -2610,8 +2596,8 @@ class WidgetHandler:
                             else:
                                 self._request_disable_widget(widget)
                                 
-                            IniManager().set(key=INI_KEY, var_name=v_enabled, value=widget.enabled, section=section_name)
-                            IniManager().save_vars(INI_KEY)
+                            if _node_cfg:
+                                _node_cfg.set(section_name, "enabled", widget.enabled)
 
                         PyImGui.table_set_column_index(1)
                         
