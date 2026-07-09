@@ -615,18 +615,6 @@ class AppState:
             return None
         return next((t for t in self.teams if t.id == self.current_team_id), None)
 
-    def _view_order(self) -> list[Optional[str]]:
-        """[None, team0.id, team1.id, ...] -- None is the ALL view, first always."""
-        return [None] + [t.id for t in self.teams]
-
-    def cycle_view(self, direction: int) -> None:
-        order = self._view_order()
-        try:
-            idx = order.index(self.current_team_id)
-        except ValueError:
-            idx = 0  # current_team_id pointed at a team that no longer exists
-        self.current_team_id = order[(idx + direction) % len(order)]
-
     def jump_to_view(self, team_id: Optional[str]) -> None:
         self.current_team_id = team_id
 
@@ -1026,7 +1014,8 @@ def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: b
     draw_list.add_text((cx - text_w / 2, y + card_h - em * 1.467), plus_col, text)
 
 
-_TEAM_SWITCHER_POPUP_ID = "Jump to view##team_switcher_popup"
+_TEAM_OVERFLOW_POPUP_ID = "Jump to view##team_switcher_popup"
+_NEW_TEAM_POPUP_ID = "New team##tab_strip_new_team_popup"
 _new_team_name_buffer = ""
 # Which team's context menu (opened by right-click, same pattern as profile
 # cards) is mid-rename -- None means no context menu is in rename mode.
@@ -1034,115 +1023,233 @@ _renaming_team_id: Optional[str] = None
 _rename_buffer = ""
 
 
-def _draw_dropdown_caret(draw_list, rect_min, rect_max, color: int) -> None:
-    """Small downward chevron near a button's right edge -- the only visible
-    signal that the label itself opens a dropdown, distinct from the plain </>
-    nudge arrows beside it. Sized relative to the button's own height so it
-    scales correctly at any font/DPI, same convention as the rest of this file.
-    """
-    height = rect_max[1] - rect_min[1]
-    cx = rect_max[0] - height * 0.45
-    cy = (rect_min[1] + rect_max[1]) / 2
-    r = height * 0.18
-    p1 = (cx - r, cy - r * 0.5)
-    p2 = (cx + r, cy - r * 0.5)
-    p3 = (cx, cy + r * 0.6)
-    draw_list.add_triangle_filled(p1, p2, p3, color)
+def _team_member_count(team_id: str) -> int:
+    return sum(1 for p in STATE.profiles if team_id in p.team_ids)
 
 
-def show_team_switcher() -> None:
-    """Center label + </> arrows to cycle views (ALL first, then each team in
-    stored order). Clicking the label opens a popup listing every view for a
-    direct jump -- cycling one at a time through a long team list would be
-    tedious -- plus a text box to create a new team on the fly, no separate
-    "manage teams" screen. A small caret next to the label is the only thing
-    that visibly distinguishes it as its own, separate clickable action from
-    the </> arrows -- without it, the label reads as inert text sitting between
-    two buttons rather than a second, distinct way to change the view. Does not
-    filter the card grid itself: which cards are visible never changes with the
-    view (see draw_profile_card's membership checkbox, which is what the view
-    actually controls).
+def _tab_width(label: str) -> float:
+    """A tab's required width, measured the same way the Browse buttons are
+    (calc_text_size + frame_padding on both sides) rather than guessed --
+    every tab's width, including the overflow chip's, depends on its actual
+    label text (which includes a live member count), so this can't be a
+    fixed constant.
     """
-    global _new_team_name_buffer, _renaming_team_id, _rename_buffer
+    return imgui.calc_text_size(label).x + imgui.get_style().frame_padding.x * 2.0
+
+
+def _draw_tab(draw_list, pos, w: float, h: float, label: str, *, key: str, active: bool) -> tuple[bool, bool]:
+    """One tab: an invisible_button for real hit-testing/cursor behavior
+    (right-click-popup support included), fully custom-drawn on top via
+    draw_list -- same approach show_settings_gear_button already uses for its
+    own custom-drawn icon button. Active-tab styling (accent-tinted
+    background, accent border, accent bar) intentionally reuses the exact
+    colors/treatment draw_profile_card uses for a selected card, just with
+    the bar along the bottom edge instead of the left (cards are vertical,
+    tabs are horizontal) -- so the header and grid read as one visual
+    language rather than two different affordances.
+
+    Returns (left_clicked, right_clicked); right-click is only meaningful
+    for real team tabs -- callers ignore it for ALL/+/the overflow chip.
+    """
+    em = hello_imgui.em_size()
+    imgui.set_cursor_screen_pos(pos)
+    # invisible_button only tracks the left mouse button unless told
+    # otherwise -- without this flag, is_item_clicked(1) below never fires,
+    # confirmed directly (a real-app right-click test produced no popup at
+    # all until this was added).
+    both_buttons = int(imgui.ButtonFlags_.mouse_button_left.value | imgui.ButtonFlags_.mouse_button_right.value)
+    imgui.invisible_button(f"##tab_{key}", size=(w, h), flags=both_buttons)
+    hovered = imgui.is_item_hovered()
+    clicked = imgui.is_item_clicked(0)
+    right_clicked = imgui.is_item_clicked(1)
+    p_min, p_max = imgui.get_item_rect_min(), imgui.get_item_rect_max()
+
+    if active:
+        bg, border = CARD_SELECTED_BACK, ACCENT
+    elif hovered:
+        bg, border = HOVER_BACK, HOVER_BORDER
+    else:
+        bg, border = CARD_BACK, CARD_BORDER
+    draw_list.add_rect_filled(p_min, p_max, bg, rounding=6.0)
+    draw_list.add_rect(p_min, p_max, border, rounding=6.0, thickness=1.0)
+    if active:
+        bar_h = em * 0.267
+        draw_list.add_rect_filled((p_min[0], p_max[1] - bar_h), (p_max[0], p_max[1]), ACCENT, rounding=3.0)
+
+    text_size = imgui.calc_text_size(label)
+    text_pos = (p_min[0] + (w - text_size.x) / 2.0, p_min[1] + (h - text_size.y) / 2.0)
+    draw_list.add_text(text_pos, CARD_NAME_FORE if active else CARD_SUB_FORE, label)
+    return clicked, right_clicked
+
+
+def _draw_inline_team_create_row() -> None:
+    """The name-input + Create button for on-the-fly team creation -- shared
+    between the "+" tab's own small popup and the overflow dropdown's tail
+    (which had this same control before this pass; kept identical rather
+    than duplicated).
+    """
+    global _new_team_name_buffer
+    em = hello_imgui.em_size()
+    imgui.set_next_item_width(em * 10.0)
+    enter_pressed, _new_team_name_buffer = imgui.input_text(
+        "##new_team_name", _new_team_name_buffer,
+        flags=int(imgui.InputTextFlags_.enter_returns_true.value),
+    )
+    imgui.same_line()
+    create_clicked = imgui.button("Create")
+    new_name = _new_team_name_buffer.strip()
+    if (enter_pressed or create_clicked) and new_name:
+        STATE.create_team(new_name)
+        _new_team_name_buffer = ""
+        imgui.close_current_popup()
+
+
+def _draw_team_context_menu(team: Team) -> None:
+    """Rename/Delete popup body for `team`. Doesn't decide *how* it gets
+    opened -- a team tab detects its own right-click directly (is_item_clicked
+    (1)) and calls open_popup itself, while the overflow dropdown's list rows
+    use open_popup_on_item_click instead -- so this only handles begin_popup
+    plus content, shared so Rename/Delete behaves identically regardless of
+    which surface triggered it.
+    """
+    global _renaming_team_id, _rename_buffer
+    context_popup_id = f"team_context##{team.id}"
+    if imgui.begin_popup(context_popup_id):
+        em = hello_imgui.em_size()
+        if _renaming_team_id == team.id:
+            imgui.set_next_item_width(em * 10.0)
+            enter_pressed, _rename_buffer = imgui.input_text(
+                f"##rename_team_{team.id}", _rename_buffer,
+                flags=int(imgui.InputTextFlags_.enter_returns_true.value),
+            )
+            imgui.same_line()
+            save_clicked = imgui.button("Save")
+            renamed = _rename_buffer.strip()
+            if (enter_pressed or save_clicked) and renamed:
+                STATE.rename_team(team.id, renamed)
+                _renaming_team_id = None
+                imgui.close_current_popup()
+            imgui.same_line()
+            if imgui.button("Cancel"):
+                _renaming_team_id = None
+                imgui.close_current_popup()
+        else:
+            if imgui.selectable("Rename", False)[0]:
+                _renaming_team_id = team.id
+                _rename_buffer = team.name
+            if imgui.selectable("Delete", False)[0]:
+                STATE.delete_team(team.id)
+                imgui.close_current_popup()
+        imgui.end_popup()
+
+
+def show_team_tab_strip() -> None:
+    """Tab strip: "ALL" is a permanent first tab, then one tab per team
+    (name plus a live member count, e.g. "Farm Squad · 2"), then a trailing
+    "+" tab for inline team creation. Replaces the old </> arrows + center
+    dropdown-label switcher entirely -- the arrows are gone outright (tabs
+    make direct jumps to any view a single click, so cycling one at a time
+    no longer earns its own buttons), but the dropdown-list popup itself
+    wasn't thrown away: it's now the overflow path (see below).
+
+    Doesn't filter the card grid itself: which cards are visible never
+    changes with the view (see draw_profile_card's membership checkbox,
+    which is what the view actually controls).
+
+    If every team's tab doesn't fit in the available width, the ones that
+    don't collapse into a trailing "N more" chip that opens the pre-existing
+    dropdown-list popup for whatever didn't fit as a tab. Which teams fit is
+    resolved by trying every possible split (all fit, all but one, ... none)
+    rather than guessed, since the chip's own width depends on how many
+    teams ended up in it.
+    """
+    global _new_team_name_buffer
 
     em = hello_imgui.em_size()
-    current_team = STATE.current_team()
-    label = current_team.name if current_team else "ALL"
+    style = imgui.get_style()
+    spacing = style.item_spacing.x
+    tab_h = imgui.get_frame_height() + em * 0.5
 
-    arrow_w = em * 2.0
-    label_w = em * 12.0
-    total_w = arrow_w * 2 + label_w
+    draw_list = imgui.get_window_draw_list()
+    row_origin = imgui.get_cursor_screen_pos()
     avail_w = imgui.get_content_region_avail().x
-    indent = (avail_w - total_w) / 2
-    if indent > 0:
-        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + indent)
 
-    if imgui.button("<##team_prev", size=(arrow_w, 0)):
-        STATE.cycle_view(-1)
-    imgui.same_line()
-    label_clicked = imgui.button(f"{label}##team_label", size=(label_w, 0))
-    _draw_dropdown_caret(imgui.get_window_draw_list(), imgui.get_item_rect_min(), imgui.get_item_rect_max(), CARD_SUB_FORE)
-    if label_clicked:
-        imgui.open_popup(_TEAM_SWITCHER_POPUP_ID)
+    all_w = _tab_width("ALL")
+    plus_w = _tab_width("+")
+
+    team_specs = []  # (team, label, width)
+    for team in STATE.teams:
+        label = f"{team.name or '(unnamed team)'} · {_team_member_count(team.id)}"
+        team_specs.append((team, label, _tab_width(label)))
+
+    visible_teams: list[tuple[Team, str, float]] = team_specs
+    overflow_teams: list[tuple[Team, str, float]] = []
+    for visible_count in range(len(team_specs), -1, -1):
+        candidate_visible = team_specs[:visible_count]
+        candidate_overflow = team_specs[visible_count:]
+        items_w = sum(w for _, _, w in candidate_visible)
+        num_gaps = len(candidate_visible) + 1  # +1 for the gap before the "+" tab
+        if candidate_overflow:
+            items_w += _tab_width(f"{len(candidate_overflow)} more")
+            num_gaps += 1
+        total = all_w + items_w + plus_w + spacing * num_gaps
+        if total <= avail_w or visible_count == 0:
+            visible_teams, overflow_teams = candidate_visible, candidate_overflow
+            break
+
+    x, y = row_origin.x, row_origin.y
+
+    if _draw_tab(draw_list, (x, y), all_w, tab_h, "ALL", key="all", active=STATE.current_team_id is None)[0]:
+        STATE.jump_to_view(None)
+    x += all_w + spacing
+
+    for team, label, w in visible_teams:
+        clicked, right_clicked = _draw_tab(
+            draw_list, (x, y), w, tab_h, label, key=team.id, active=STATE.current_team_id == team.id
+        )
+        if clicked:
+            STATE.jump_to_view(team.id)
+        if right_clicked:
+            imgui.open_popup(f"team_context##{team.id}")
+        _draw_team_context_menu(team)
+        x += w + spacing
+
+    if overflow_teams:
+        chip_label = f"{len(overflow_teams)} more"
+        chip_w = _tab_width(chip_label)
+        if _draw_tab(draw_list, (x, y), chip_w, tab_h, chip_label, key="overflow", active=False)[0]:
+            imgui.open_popup(_TEAM_OVERFLOW_POPUP_ID)
+        x += chip_w + spacing
+
+    if _draw_tab(draw_list, (x, y), plus_w, tab_h, "+", key="new_team", active=False)[0]:
+        imgui.open_popup(_NEW_TEAM_POPUP_ID)
         _new_team_name_buffer = ""
-    imgui.same_line()
-    if imgui.button(">##team_next", size=(arrow_w, 0)):
-        STATE.cycle_view(1)
 
-    if imgui.begin_popup(_TEAM_SWITCHER_POPUP_ID):
+    if imgui.begin_popup(_NEW_TEAM_POPUP_ID):
+        _draw_inline_team_create_row()
+        imgui.end_popup()
+
+    if imgui.begin_popup(_TEAM_OVERFLOW_POPUP_ID):
         if imgui.selectable("ALL", STATE.current_team_id is None)[0]:
             STATE.jump_to_view(None)
             imgui.close_current_popup()
         for team in STATE.teams:
-            if imgui.selectable(team.name or "(unnamed team)", STATE.current_team_id == team.id)[0]:
+            label = f"{team.name or '(unnamed team)'} · {_team_member_count(team.id)}"
+            if imgui.selectable(label, STATE.current_team_id == team.id)[0]:
                 STATE.jump_to_view(team.id)
                 imgui.close_current_popup()
 
             # Right-click a team for Rename/Delete -- same pattern as the
             # existing right-click-to-edit on profile cards.
-            context_popup_id = f"team_context##{team.id}"
-            imgui.open_popup_on_item_click(context_popup_id)
-            if imgui.begin_popup(context_popup_id):
-                if _renaming_team_id == team.id:
-                    imgui.set_next_item_width(em * 10.0)
-                    enter_pressed, _rename_buffer = imgui.input_text(
-                        f"##rename_team_{team.id}", _rename_buffer,
-                        flags=int(imgui.InputTextFlags_.enter_returns_true.value),
-                    )
-                    imgui.same_line()
-                    save_clicked = imgui.button("Save")
-                    renamed = _rename_buffer.strip()
-                    if (enter_pressed or save_clicked) and renamed:
-                        STATE.rename_team(team.id, renamed)
-                        _renaming_team_id = None
-                        imgui.close_current_popup()
-                    imgui.same_line()
-                    if imgui.button("Cancel"):
-                        _renaming_team_id = None
-                        imgui.close_current_popup()
-                else:
-                    if imgui.selectable("Rename", False)[0]:
-                        _renaming_team_id = team.id
-                        _rename_buffer = team.name
-                    if imgui.selectable("Delete", False)[0]:
-                        STATE.delete_team(team.id)
-                        imgui.close_current_popup()
-                imgui.end_popup()
+            imgui.open_popup_on_item_click(f"team_context##{team.id}")
+            _draw_team_context_menu(team)
 
         imgui.separator()
-        imgui.set_next_item_width(em * 10.0)
-        enter_pressed, _new_team_name_buffer = imgui.input_text(
-            "##new_team_name", _new_team_name_buffer,
-            flags=int(imgui.InputTextFlags_.enter_returns_true.value),
-        )
-        imgui.same_line()
-        create_clicked = imgui.button("Create")
-        new_name = _new_team_name_buffer.strip()
-        if (enter_pressed or create_clicked) and new_name:
-            STATE.create_team(new_name)
-            _new_team_name_buffer = ""
-            imgui.close_current_popup()
+        _draw_inline_team_create_row()
         imgui.end_popup()
+
+    imgui.set_cursor_screen_pos(row_origin)
+    imgui.dummy((avail_w, tab_h))
 
 
 def _visible_profiles() -> list[GameProfile]:
@@ -1225,7 +1332,7 @@ def show_main_window() -> None:
     show_settings_gear_button()
 
     imgui.spacing()
-    show_team_switcher()
+    show_team_tab_strip()
     show_team_actions()
 
     imgui.spacing()
