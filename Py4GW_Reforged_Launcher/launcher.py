@@ -381,16 +381,39 @@ def _card_dimensions() -> tuple[float, float, float]:
     return em * 16.0, em * 5.6, em * 0.8
 
 
-def _grid_columns_and_card_width(
-    avail_w: float, min_card_w: float, max_card_w: float, card_gap: float
-) -> tuple[int, float]:
+def _max_card_w_for_columns(cols: int, min_card_w: float, avail_w: float) -> float:
+    """The soft ceiling on how wide a card can stretch, scaled by how many
+    columns are actually in play rather than a flat multiplier regardless of
+    layout. A single column has no neighbor to look oversized next to --
+    there's no real cost to it filling essentially the whole row -- so it
+    gets no ceiling at all. More columns means an overly-wide card reads
+    worse sitting next to others, so the ceiling tightens as column count
+    grows: 1.6x at 2 columns (the original, already-approved multiplier),
+    1.3x at 3 or more.
+
+    Confirmed the problem directly before writing this rather than guessing
+    a bigger multiplier: at a real 532x430 window (single column, 2 real
+    profiles), the flat 1.6x ceiling capped card_w well short of the
+    available width, leaving a visibly large, pointless gap between the
+    lone card and the scrollbar.
+    """
+    if cols <= 1:
+        return avail_w
+    if cols == 2:
+        return min_card_w * 1.6
+    return min_card_w * 1.3
+
+
+def _grid_columns_and_card_width(avail_w: float, min_card_w: float, card_gap: float) -> tuple[int, float]:
     """How many columns fit at the floor width, and the actual (stretched,
-    capped) card width for that column count. Pulled out of show_main_window
-    so it can be called twice in one frame: once against the full available
-    width, and again against a scrollbar-reduced width if one turns out to be
-    needed (see show_main_window's scrollbar pre-check).
+    capped -- see _max_card_w_for_columns) card width for that column count.
+    Pulled out of show_main_window so it can be called twice in one frame:
+    once against the full available width, and again against a
+    scrollbar-reduced width if one turns out to be needed (see
+    show_main_window's scrollbar pre-check).
     """
     cols = max(1, int(avail_w // (min_card_w + card_gap)))
+    max_card_w = _max_card_w_for_columns(cols, min_card_w, avail_w)
     card_w = max(min_card_w, min(max_card_w, (avail_w - (cols - 1) * card_gap) / cols))
     return cols, card_w
 
@@ -1418,11 +1441,12 @@ def show_main_window() -> None:
     min_card_w, card_h, card_gap = _card_dimensions()
     # Cards stretch to fill the row instead of leaving a trailing gap on the
     # right: min_card_w is a floor (today's size, used to decide how many
-    # columns fit), max_card_w a soft ceiling so cards don't get absurdly wide
-    # on a large window. Only the card's own width changes -- everything drawn
-    # inside a card (avatar, text, badges, checkbox) is still positioned/sized
-    # relative to em and to the card's own edges, so it doesn't scale with it.
-    max_card_w = min_card_w * 1.6
+    # columns fit), and a soft ceiling (see _max_card_w_for_columns, scaled by
+    # column count) keeps cards from getting absurdly wide on a large window
+    # without needlessly capping a single column short of the available
+    # width. Only the card's own width changes -- everything drawn inside a
+    # card (avatar, text, badges, checkbox) is still positioned/sized relative
+    # to em and to the card's own edges, so it doesn't scale with it.
     visible_profiles = _visible_profiles()
     item_count = len(visible_profiles) + 1  # +1 for the "Add profile" card
 
@@ -1441,7 +1465,7 @@ def show_main_window() -> None:
     # figure by exactly 2x window_padding.x.
     avail = imgui.get_content_region_avail()
     avail_w = avail.x
-    cols, card_w = _grid_columns_and_card_width(avail_w, min_card_w, max_card_w, card_gap)
+    cols, card_w = _grid_columns_and_card_width(avail_w, min_card_w, card_gap)
 
     # Pre-check whether a vertical scrollbar will actually be needed, using the
     # same ceiling-rows formula the end-of-grid dummy sizing already uses. Only
@@ -1465,7 +1489,7 @@ def show_main_window() -> None:
     if content_h > avail.y and imgui.get_scroll_max_y() == 0.0:
         scrollbar_w = imgui.get_style().scrollbar_size
         cols, card_w = _grid_columns_and_card_width(
-            max(min_card_w, avail_w - scrollbar_w), min_card_w, max_card_w, card_gap
+            max(min_card_w, avail_w - scrollbar_w), min_card_w, card_gap
         )
 
     for i, profile in enumerate(visible_profiles):
