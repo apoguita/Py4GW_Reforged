@@ -478,6 +478,33 @@ class AppState:
         self.current_team_id = team.id
         return team
 
+    def rename_team(self, team_id: str, new_name: str) -> None:
+        team = next((t for t in self.teams if t.id == team_id), None)
+        if team is None:
+            return
+        team.name = new_name
+        save_teams(self.teams)
+
+    def delete_team(self, team_id: str) -> None:
+        """Removes the team and its membership from every profile -- never
+        deletes the profiles themselves, just their membership in this team.
+        Falls back to the ALL view if the deleted team was the one currently
+        being viewed, rather than leaving current_team_id pointing at nothing.
+        """
+        self.teams = [t for t in self.teams if t.id != team_id]
+        save_teams(self.teams)
+
+        changed = False
+        for profile in self.profiles:
+            if team_id in profile.team_ids:
+                profile.team_ids.remove(team_id)
+                changed = True
+        if changed:
+            save_profiles(self.profiles)
+
+        if self.current_team_id == team_id:
+            self.current_team_id = None
+
     def toggle_team_membership(self, profile: GameProfile, team_id: str) -> None:
         """Toggle `profile`'s membership in `team_id` and save immediately -- the
         card checkbox has no separate "Save" step, unlike the Settings form."""
@@ -812,6 +839,10 @@ def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: b
 
 _TEAM_SWITCHER_POPUP_ID = "Jump to view##team_switcher_popup"
 _new_team_name_buffer = ""
+# Which team's context menu (opened by right-click, same pattern as profile
+# cards) is mid-rename -- None means no context menu is in rename mode.
+_renaming_team_id: Optional[str] = None
+_rename_buffer = ""
 
 
 def _draw_dropdown_caret(draw_list, rect_min, rect_max, color: int) -> None:
@@ -843,7 +874,7 @@ def show_team_switcher() -> None:
     view (see draw_profile_card's membership checkbox, which is what the view
     actually controls).
     """
-    global _new_team_name_buffer
+    global _new_team_name_buffer, _renaming_team_id, _rename_buffer
 
     em = hello_imgui.em_size()
     current_team = STATE.current_team()
@@ -878,6 +909,37 @@ def show_team_switcher() -> None:
                 STATE.jump_to_view(team.id)
                 imgui.close_current_popup()
 
+            # Right-click a team for Rename/Delete -- same pattern as the
+            # existing right-click-to-edit on profile cards.
+            context_popup_id = f"team_context##{team.id}"
+            imgui.open_popup_on_item_click(context_popup_id)
+            if imgui.begin_popup(context_popup_id):
+                if _renaming_team_id == team.id:
+                    imgui.set_next_item_width(em * 10.0)
+                    enter_pressed, _rename_buffer = imgui.input_text(
+                        f"##rename_team_{team.id}", _rename_buffer,
+                        flags=int(imgui.InputTextFlags_.enter_returns_true.value),
+                    )
+                    imgui.same_line()
+                    save_clicked = imgui.button("Save")
+                    renamed = _rename_buffer.strip()
+                    if (enter_pressed or save_clicked) and renamed:
+                        STATE.rename_team(team.id, renamed)
+                        _renaming_team_id = None
+                        imgui.close_current_popup()
+                    imgui.same_line()
+                    if imgui.button("Cancel"):
+                        _renaming_team_id = None
+                        imgui.close_current_popup()
+                else:
+                    if imgui.selectable("Rename", False)[0]:
+                        _renaming_team_id = team.id
+                        _rename_buffer = team.name
+                    if imgui.selectable("Delete", False)[0]:
+                        STATE.delete_team(team.id)
+                        imgui.close_current_popup()
+                imgui.end_popup()
+
         imgui.separator()
         imgui.set_next_item_width(em * 10.0)
         enter_pressed, _new_team_name_buffer = imgui.input_text(
@@ -896,9 +958,9 @@ def show_team_switcher() -> None:
 
 def _visible_profiles() -> list[GameProfile]:
     """Profiles matching the current name filter (case-insensitive substring) --
-    shared by the card grid and the Select all visible/Select none actions so
-    "visible" means the same thing in both places. Composes with the team view:
-    the filter narrows within whichever view is active, not just ALL.
+    the single source of truth for "visible" used by the card grid. Composes
+    with the team view: the filter narrows within whichever view is active,
+    not just ALL.
     """
     query = STATE.name_filter.strip().lower()
     if not query:
