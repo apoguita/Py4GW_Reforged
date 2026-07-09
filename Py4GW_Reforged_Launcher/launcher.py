@@ -1265,14 +1265,25 @@ def show_main_window() -> None:
     cols, card_w = _grid_columns_and_card_width(avail_w, min_card_w, max_card_w, card_gap)
 
     # Pre-check whether a vertical scrollbar will actually be needed, using the
-    # same ceiling-rows formula the end-of-grid dummy sizing already uses --
-    # if so, the scrollbar eats into the child's usable width, so redo the
-    # column/card-width math against that reduced width now, before drawing
-    # anything, rather than assuming full width and getting the rightmost
-    # column clipped by the scrollbar after the fact.
+    # same ceiling-rows formula the end-of-grid dummy sizing already uses. Only
+    # matters for the one transition frame where the scrollbar isn't showing
+    # yet (get_scroll_max_y() from the end of the previous frame is still 0)
+    # but this frame's content is about to overflow -- avail_w measured above
+    # doesn't know about that yet, so redo the column/card-width math against
+    # a scrollbar-reduced width now, rather than assuming full width and
+    # getting the rightmost column clipped by the scrollbar next frame.
+    #
+    # Once the scrollbar is actually showing (get_scroll_max_y() > 0), avail_w
+    # already reflects it -- it was measured via get_content_region_avail()
+    # *inside* the child, which ImGui itself already shrinks by scrollbar_size
+    # once a scrollbar is active. Subtracting scrollbar_w again here on top of
+    # that double-counted it, narrowing every card by a full scrollbar-width's
+    # worth of pixels for as long as the scrollbar stayed visible -- confirmed
+    # directly via a one-off diagnostic (avail_w=570.0 with get_scroll_max_y()
+    # already >0, i.e. steady-state, yet still getting shrunk by another 14px).
     rows = (item_count + cols - 1) // cols
     content_h = rows * card_h + max(0, rows - 1) * card_gap
-    if content_h > avail.y:
+    if content_h > avail.y and imgui.get_scroll_max_y() == 0.0:
         scrollbar_w = imgui.get_style().scrollbar_size
         cols, card_w = _grid_columns_and_card_width(
             max(min_card_w, avail_w - scrollbar_w), min_card_w, max_card_w, card_gap
