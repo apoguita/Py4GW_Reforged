@@ -141,6 +141,7 @@ try:
     from imgui_bundle import hello_imgui, imgui
     import psutil
     import pywintypes
+    import win32api
     import win32con
     import win32gui
 
@@ -1735,17 +1736,59 @@ def _show_unsaved_changes_popup() -> None:
         imgui.end_popup()
 
 
-def _main_window_screen_pos() -> Optional[tuple[float, float]]:
-    """The main app window's current top-left corner in screen coordinates,
-    or None if it can't be found (e.g. not shown yet). Used as a fallback
-    anchor for the Settings window's first-ever position -- see
-    show_settings_window.
+def _main_window_rect_and_work_area() -> Optional[tuple[tuple[int, int, int, int], tuple[int, int, int, int]]]:
+    """The main app window's current (left, top, right, bottom) screen rect,
+    plus the work area (screen bounds minus taskbar) of whichever monitor it
+    currently sits on -- or None if the main window can't be found (e.g. not
+    shown yet). Used to position the Settings window relative to wherever
+    the main window actually is right now -- see _settings_window_default_pos.
     """
     hwnd = find_visible_window_for_pid(os.getpid())
     if hwnd is None:
         return None
-    left, top, _right, _bottom = win32gui.GetWindowRect(hwnd)
-    return float(left), float(top)
+    main_rect = win32gui.GetWindowRect(hwnd)
+    monitor = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
+    work_area = win32api.GetMonitorInfo(monitor)["Work"]
+    return main_rect, work_area
+
+
+def _settings_window_default_pos(settings_w: float, settings_h: float) -> tuple[float, float]:
+    """Where to place the Settings window relative to the main window's
+    current position and size, rather than a fixed or remembered spot that
+    goes stale the moment the main window moves (including to a different
+    monitor): picks whichever side -- left, right, above, or below the main
+    window -- has the most free space on its current monitor's work area,
+    offsets a small margin into that space off the main window's edge, and
+    centers/clamps along the other axis so it can't run off-screen there
+    either. Falls back to a fixed small offset if the main window can't be
+    found at all (not expected in practice, but cheaper than crashing).
+    """
+    em = hello_imgui.em_size()
+    result = _main_window_rect_and_work_area()
+    if result is None:
+        return em * 4.0, em * 4.0
+
+    (m_left, m_top, m_right, m_bottom), (w_left, w_top, w_right, w_bottom) = result
+    space_left = m_left - w_left
+    space_right = w_right - m_right
+    space_above = m_top - w_top
+    space_below = w_bottom - m_bottom
+    margin = em * 1.0
+
+    best = max(space_left, space_right, space_above, space_below)
+    if best == space_right:
+        x = float(m_right) + margin
+        y = float(max(w_top, min(m_top, w_bottom - settings_h)))
+    elif best == space_left:
+        x = float(m_left) - margin - settings_w
+        y = float(max(w_top, min(m_top, w_bottom - settings_h)))
+    elif best == space_below:
+        x = float(max(w_left, min(m_left, w_right - settings_w)))
+        y = float(m_bottom) + margin
+    else:
+        x = float(max(w_left, min(m_left, w_right - settings_w)))
+        y = float(m_top) - margin - settings_h
+    return x, y
 
 
 def show_settings_window() -> None:
@@ -1755,28 +1798,23 @@ def show_settings_window() -> None:
     global _settings_autosize_frames_remaining
 
     em = hello_imgui.em_size()
-    # first_use_ever (not appearing): Dear ImGui's own ini-based per-window
-    # persistence already remembers this window's position across opens --
-    # exactly like the main window's restore_previous_geometry -- *if*
-    # nothing overrides it every time the window reappears. cond=appearing
-    # was doing exactly that: forcing the position back every single open,
-    # which is why it always landed at this fixed spot (screen-absolute in
-    # multi-viewport mode) regardless of which monitor the main window was
-    # actually on, rather than wherever it was last left. first_use_ever only
-    # applies the given value when there's no ini-persisted entry yet for
-    # this window at all (the true first-ever open) -- confirmed via
-    # imgui.Cond_ directly rather than assumed. That first-ever default is
-    # anchored near the main window's own current position (falling back to
-    # the old fixed offset if that can't be found) instead of a bare screen
-    # coordinate, so it never lands on the wrong monitor even the first time.
-    main_pos = _main_window_screen_pos()
-    default_pos = (main_pos[0] + em * 3.0, main_pos[1] + em * 3.0) if main_pos is not None else (em * 4.0, em * 4.0)
-    imgui.set_next_window_pos(default_pos, cond=imgui.Cond_.first_use_ever.value)
     # Rough baseline for the single frame before real measurement below takes
     # over -- not the final word, just avoids a jarring flash at some ImGui
-    # internal default size before AlwaysAutoResize kicks in.
-    imgui.set_next_window_size((em * 32.0, em * 21.3), cond=imgui.Cond_.appearing.value)
+    # internal default size before AlwaysAutoResize kicks in. Also used as
+    # the size estimate for _settings_window_default_pos below, since the
+    # real auto-fitted size isn't known until after this window's first
+    # render.
+    baseline_w, baseline_h = em * 32.0, em * 21.3
+    imgui.set_next_window_size((baseline_w, baseline_h), cond=imgui.Cond_.appearing.value)
     imgui.set_next_window_size_constraints((em * 20.0, em * 12.0), (1.0e9, 1.0e9))
+    # cond=appearing (not first_use_ever): recomputed fresh from the main
+    # window's *current* position/monitor every single time this window
+    # opens, rather than remembering a fixed spot from whenever it was last
+    # opened -- a remembered position goes stale the moment the main window
+    # moves (dragged to a different spot, or a different monitor entirely).
+    # This fully replaces the previous pass's persisted-position approach,
+    # not supplements it -- see _settings_window_default_pos.
+    imgui.set_next_window_pos(_settings_window_default_pos(baseline_w, baseline_h), cond=imgui.Cond_.appearing.value)
 
     autosizing = _settings_autosize_frames_remaining > 0
     flags = imgui.WindowFlags_.always_auto_resize.value if autosizing else 0
