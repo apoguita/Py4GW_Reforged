@@ -134,6 +134,9 @@ try:
 
     from imgui_bundle import hello_imgui, imgui
     import psutil
+    import pywintypes
+    import win32con
+    import win32gui
 
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
@@ -739,6 +742,41 @@ def show_main_window() -> None:
 # window/tab shell for both add and edit (not a second, separate form).
 # -----------------------------------------------------------------------------
 
+def _browse_for_file(*, title: str, filter_str: str, initial_path: str = "") -> Optional[str]:
+    """Blocking native Win32 file-open dialog via the pywin32 dependency this
+    project already uses elsewhere (crypto.py, gw1_launch.py, window_control.py) --
+    no new dependency, per this project's deliberately careful 32-bit dependency
+    footprint. tkinter.filedialog was tried first, but this venv's Python install
+    is missing its Tcl library files -- `import tkinter` succeeds and even
+    `tkinter.TkVersion` reads fine, but `tkinter.Tk()` itself raises TclError
+    ("Can't find a usable init.tcl"), so it's not actually usable here.
+
+    `filter_str` follows Win32's raw OPENFILENAME filter format: NUL-separated
+    "description\\0pattern" pairs, e.g. "DLL files\\0*.dll\\0All files\\0*.*\\0".
+
+    Confirmed against the actual injection/launch code (gw1_launch.py) before
+    adding this: executable_path is wrapped straight into a launch command line,
+    and py4gw_dll_path is written byte-for-byte into the target process for
+    LoadLibraryA-style injection -- both need a specific file, not a folder, so
+    this is always a file-open dialog, never a folder picker.
+    """
+    initial_dir = os.path.dirname(initial_path) if initial_path else ""
+    if not os.path.isdir(initial_dir):
+        initial_dir = ""
+
+    try:
+        filename, _customfilter, _flags = win32gui.GetOpenFileNameW(
+            InitialDir=initial_dir,
+            Filter=filter_str,
+            Title=title,
+            Flags=win32con.OFN_FILEMUSTEXIST | win32con.OFN_PATHMUSTEXIST,
+        )
+    except pywintypes.error:
+        return None  # user cancelled
+
+    return filename or None
+
+
 SETTINGS_TABS = ["General", "Mods", "Window"]
 _active_tab = SETTINGS_TABS[0]
 
@@ -775,6 +813,15 @@ def show_settings_content() -> None:
     if _active_tab == "General":
         _, buffer.name = imgui.input_text("Profile name", buffer.name)
         _, buffer.executable_path = imgui.input_text("Executable path", buffer.executable_path)
+        imgui.same_line()
+        if imgui.button("Browse##executable_path"):
+            chosen = _browse_for_file(
+                title="Select Guild Wars executable",
+                filter_str="Guild Wars executable (Gw.exe)\0Gw.exe\0Executable files (*.exe)\0*.exe\0All files (*.*)\0*.*\0",
+                initial_path=buffer.executable_path,
+            )
+            if chosen:
+                buffer.executable_path = chosen
         _, buffer.email = imgui.input_text("Account email", buffer.email)
         _, buffer.password_input = imgui.input_text(
             "Password", buffer.password_input, flags=int(imgui.InputTextFlags_.password.value)
@@ -785,8 +832,26 @@ def show_settings_content() -> None:
     elif _active_tab == "Mods":
         _, buffer.py4gw_enabled = imgui.checkbox("Inject Py4GW", buffer.py4gw_enabled)
         _, buffer.py4gw_dll_path = imgui.input_text("Py4GW DLL path", buffer.py4gw_dll_path)
+        imgui.same_line()
+        if imgui.button("Browse##py4gw_dll_path"):
+            chosen = _browse_for_file(
+                title="Select Py4GW DLL",
+                filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
+                initial_path=buffer.py4gw_dll_path,
+            )
+            if chosen:
+                buffer.py4gw_dll_path = chosen
         _, buffer.gmod_enabled = imgui.checkbox("Inject gMod", buffer.gmod_enabled)
         _, buffer.gmod_dll_path = imgui.input_text("gMod DLL path", buffer.gmod_dll_path)
+        imgui.same_line()
+        if imgui.button("Browse##gmod_dll_path"):
+            chosen = _browse_for_file(
+                title="Select gMod DLL",
+                filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
+                initial_path=buffer.gmod_dll_path,
+            )
+            if chosen:
+                buffer.gmod_dll_path = chosen
         imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(gMod injection timing not implemented yet)")
     elif _active_tab == "Window":
         existing = next((p for p in STATE.profiles if p.id == buffer.original_id), None) if not buffer.is_new else None
