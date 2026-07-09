@@ -1463,18 +1463,11 @@ def main() -> None:
     # (below) takes over after that, so this never affects an existing user, only the
     # first impression. Per hello_imgui's own docs this size is "handled as if
     # specified for a 96 PPI screen", i.e. it's already scaled for the actual display's
-    # DPI internally. Width of 671 is a real, hand-tested reference point (671 and 619
-    # both comfortably fit 2 cards + Add Profile in one row; 489 was too narrow and
-    # wrapped to two rows) -- re-verified after the card grid became width-responsive
-    # (cards stretch to fill the row instead of a fixed size), which changes exactly
-    # how tight/loose that fit reads. Height retuned independently of the width
-    # reference points (600 there was incidental to a width-focused test, not itself
-    # validated) -- 420 comfortably fits 2 cards + Add without the large empty void
-    # 600 left, and still holds up reasonably (small scroll, not cramped) once a
-    # realistic ~8-account team is seeded in, checked visually via screenshot both
-    # ways. resizable defaults to True already, so this is a starting point, not a
-    # hard limit.
-    runner_params.app_window_params.window_geometry.size = (671, 420)
+    # DPI internally. 520x350 is Chris's own hands-on preference, confirmed better than
+    # the previous pass's 671x420 -- checked visually both at the sparse 2-card state
+    # and with several more profiles added, so it isn't just tuned for an empty grid.
+    # resizable defaults to True already, so this is a starting point, not a hard limit.
+    runner_params.app_window_params.window_geometry.size = (520, 350)
     # Persist the main window's size/position across restarts (written to
     # imgui_app_window.ini alongside this launcher's own .ini). Off by default in
     # hello_imgui; nothing was persisting the OS-level window's geometry before this.
