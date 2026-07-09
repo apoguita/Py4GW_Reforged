@@ -145,7 +145,7 @@ try:
     import win32con
     import win32gui
 
-    from launcher_core import bulk_launch
+    from launcher_core import bulk_launch, config_seeding, prereqs
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
@@ -561,6 +561,97 @@ class BulkLaunchSession:
 
 
 # -----------------------------------------------------------------------------
+# PrereqState: runs launcher_core.prereqs' Python/VC++ checks (and any install
+# a user requests) on a background thread, same thread-safe status pattern as
+# LaunchSession/BulkLaunchSession above -- never call ImGui from the
+# background thread, only plain state mutation the UI thread polls. Checks
+# are re-run fresh every time (on app start, after any install finishes, and
+# whenever the user clicks "Check now") rather than cached -- see
+# launcher_core.prereqs' module docstring for why that's fine (a cheap
+# subprocess/registry read, not worth staleness-tracking complexity).
+#
+# A DirectX SDK check was considered and deliberately left out -- see
+# launcher_core.prereqs' module docstring for why (verified directly against
+# Py4GW_Reforged_Native's own CMakeLists.txt: no D3DX linkage anywhere, only
+# standard Windows-SDK d3d9/d3dcompiler, so the legacy DXSDK isn't needed).
+# -----------------------------------------------------------------------------
+
+class PrereqState:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.python_result: Optional[prereqs.PythonPrereqResult] = None
+        self.vcredist_result: Optional[prereqs.VcRedistResult] = None
+        self._checking = False
+        self._install_in_progress: Optional[str] = None
+        self._install_status_text = ""
+        self._install_done_message: Optional[str] = None
+
+    def run_check_async(self) -> None:
+        if self._checking:
+            return
+        self._checking = True
+        threading.Thread(target=self._check_all, daemon=True).start()
+
+    def _check_all(self) -> None:
+        python_result = prereqs.check_python_prereq()
+        vcredist_result = prereqs.check_vcredist_prereq()
+        with self._lock:
+            self.python_result = python_result
+            self.vcredist_result = vcredist_result
+            self._checking = False
+
+    def start_install(self, component: str) -> None:
+        """component is "python", "vcredist_x86", or "vcredist_x64"."""
+        if self._install_in_progress is not None:
+            return
+        self._install_in_progress = component
+        self._install_done_message = None
+        threading.Thread(target=self._run_install, args=(component,), daemon=True).start()
+
+    def _set_install_status(self, text: str) -> None:
+        with self._lock:
+            self._install_status_text = text
+
+    def _run_install(self, component: str) -> None:
+        if component == "python":
+            success, message = prereqs.download_and_install_python(self._set_install_status)
+        elif component == "vcredist_x86":
+            success, message = prereqs.download_and_install_vcredist("x86", self._set_install_status)
+        elif component == "vcredist_x64":
+            success, message = prereqs.download_and_install_vcredist("x64", self._set_install_status)
+        else:
+            success, message = False, "Unknown component"
+
+        with self._lock:
+            self._install_done_message = message
+            self._install_in_progress = None
+        # No restart (of the OS or this app) needed to see the result -- see
+        # prereqs.refresh_env_from_registry's docstring for why -- so just
+        # re-run every check now that something may have changed.
+        self.run_check_async()
+
+    @property
+    def checking(self) -> bool:
+        with self._lock:
+            return self._checking
+
+    @property
+    def install_in_progress(self) -> Optional[str]:
+        with self._lock:
+            return self._install_in_progress
+
+    @property
+    def install_status_text(self) -> str:
+        with self._lock:
+            return self._install_status_text
+
+    @property
+    def install_done_message(self) -> Optional[str]:
+        with self._lock:
+            return self._install_done_message
+
+
+# -----------------------------------------------------------------------------
 # ProfileEditBuffer: a staging copy of the fields the Settings window edits, kept
 # separate from the real GameProfile until Save. `password_input` is write-only --
 # it starts empty even when editing a profile that already has a stored password
@@ -858,6 +949,17 @@ class AppState:
 
 
 STATE = AppState()
+PREREQS = PrereqState()
+PREREQS.run_check_async()
+
+try:
+    # Independent of the prereqs above (config files, not software installs)
+    # -- see config_seeding's own module docstring for exactly what this
+    # does and doesn't handle. Best-effort: a seeding hiccup shouldn't be
+    # fatal to starting the app.
+    CONFIG_SEED_RESULTS = config_seeding.seed_default_configs()
+except OSError:
+    CONFIG_SEED_RESULTS = []
 
 
 # -----------------------------------------------------------------------------
@@ -1858,14 +1960,129 @@ def show_settings_window() -> None:
 # in this pass, not placeholder sections for anything not designed yet.
 # -----------------------------------------------------------------------------
 
+_PREREQ_OK_COLOR = (0.45, 0.75, 0.45, 1.0)
+_PREREQ_MISSING_COLOR = (0.86, 0.35, 0.35, 1.0)
+_PREREQ_MUTED_COLOR = (0.6, 0.6, 0.65, 1.0)
+_PREREQ_BUSY_COLOR = (0.9, 0.75, 0.3, 1.0)
+
+_PREREQ_INSTALL_CONFIRM_POPUP_ID = "Install prerequisite?##prereq_confirm"
+# (component key for PrereqState.start_install, download URL shown to the
+# user, display name) -- set when "Install now" is clicked, read by the
+# confirm popup, cleared once resolved either way.
+_prereq_install_pending: Optional[tuple[str, str, str]] = None
+
+
+class _VcRedistArchView:
+    """Adapts one arch's slice of a combined VcRedistResult (which reports
+    both x86 and x64 together) to the same is_ok/diagnostic_text shape
+    _draw_prereq_row expects from every other prereq result type, so it
+    doesn't need special-casing for VC++'s two-architectures-in-one-result
+    shape.
+    """
+
+    def __init__(self, result: prereqs.VcRedistResult, arch: str):
+        self._arch = arch
+        self._status = result.x86_status if arch == "x86" else result.x64_status
+        self._version = result.x86_version if arch == "x86" else result.x64_version
+
+    @property
+    def is_ok(self) -> bool:
+        return self._status == prereqs.VcRedistStatus.OK
+
+    @property
+    def diagnostic_text(self) -> str:
+        if self.is_ok:
+            return f"version {self._version}"
+        return "not found"
+
+
+def _draw_prereq_row(label: str, result, component_key: str, download_url: str) -> None:
+    """One prereq status row: a clear OK/NOT FOUND status (never buried --
+    this is drawn first thing in the window, not tucked under other
+    settings) plus a single low-friction "Install now" action when missing.
+    Downloading and running a real installer from the internet isn't a
+    zero-consequence click, so it's gated behind one confirm/Cancel popup
+    rather than starting immediately.
+    """
+    global _prereq_install_pending
+
+    if result is None:
+        imgui.text_colored(_PREREQ_MUTED_COLOR, f"{label}: checking...")
+        return
+
+    if result.is_ok:
+        imgui.text_colored(_PREREQ_OK_COLOR, f"{label}: OK -- {result.diagnostic_text}")
+        return
+
+    imgui.text_colored(_PREREQ_MISSING_COLOR, f"{label}: NOT FOUND")
+    if PREREQS.install_in_progress == component_key:
+        imgui.same_line()
+        imgui.text_colored(_PREREQ_BUSY_COLOR, PREREQS.install_status_text)
+    else:
+        imgui.same_line()
+        if imgui.button(f"Install now##{component_key}"):
+            _prereq_install_pending = (component_key, download_url, label)
+            imgui.open_popup(_PREREQ_INSTALL_CONFIRM_POPUP_ID)
+
+
+def _show_prereq_install_confirm_popup() -> None:
+    global _prereq_install_pending
+    if imgui.begin_popup_modal(_PREREQ_INSTALL_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value))[0]:
+        if _prereq_install_pending is not None:
+            component_key, download_url, label = _prereq_install_pending
+            imgui.text(f"This will download and run the installer for:\n{label}")
+            imgui.text_colored(_PREREQ_MUTED_COLOR, download_url)
+            imgui.spacing()
+            if imgui.button("Install"):
+                PREREQS.start_install(component_key)
+                _prereq_install_pending = None
+                imgui.close_current_popup()
+            imgui.same_line()
+            if imgui.button("Cancel"):
+                _prereq_install_pending = None
+                imgui.close_current_popup()
+        imgui.end_popup()
+
+
 def show_app_settings_window() -> None:
     if not STATE.app_settings_window_open:
         return
 
     em = hello_imgui.em_size()
-    imgui.set_next_window_size((em * 30.0, em * 11.0), cond=imgui.Cond_.appearing.value)
+    imgui.set_next_window_size((em * 34.0, em * 18.0), cond=imgui.Cond_.appearing.value)
     expanded, STATE.app_settings_window_open = imgui.begin("App Settings##launcher", STATE.app_settings_window_open)
     if expanded:
+        # Prerequisites are shown first, not buried under other settings --
+        # GW1/Py4GW injection genuinely doesn't work without them. Checked
+        # fresh (no caching) on every app start and again after any install
+        # finishes; "Check now" lets the user force a re-check any other time.
+        imgui.text("Prerequisites for Py4GW injection:")
+        if PREREQS.checking and PREREQS.python_result is None:
+            imgui.text_colored(_PREREQ_MUTED_COLOR, "Checking...")
+        else:
+            _draw_prereq_row(
+                "Python 3.13.0 (32-bit)", PREREQS.python_result, "python", prereqs.PYTHON_DOWNLOAD_URL
+            )
+            vc = PREREQS.vcredist_result
+            _draw_prereq_row(
+                "VC++ Redistributable (x86)",
+                None if vc is None else _VcRedistArchView(vc, "x86"),
+                "vcredist_x86", prereqs.VCREDIST_2013_X86_URL,
+            )
+            _draw_prereq_row(
+                "VC++ Redistributable (x64)",
+                None if vc is None else _VcRedistArchView(vc, "x64"),
+                "vcredist_x64", prereqs.VCREDIST_2013_X64_URL,
+            )
+        if PREREQS.install_done_message and PREREQS.install_in_progress is None:
+            imgui.text_colored(_PREREQ_MUTED_COLOR, PREREQS.install_done_message)
+        if imgui.button("Check now"):
+            PREREQS.run_check_async()
+        _show_prereq_install_confirm_popup()
+
+        imgui.separator()
+        imgui.spacing()
+
         imgui.text("Delay between team launches (seconds):")
         imgui.same_line()
         imgui.set_next_item_width(em * 6.0)
