@@ -8,9 +8,11 @@ pipeline, and status text reflects the pipeline's real, live progress.
 
 Each card is the entire interaction surface -- no separate buttons per action:
 left-click selects a stopped profile or brings a running one to the foreground,
-double-click launches a stopped profile, and right-click opens Settings directly
-for that profile (replacing an earlier "Settings" button whose behavior depended on
-hidden selection state). The "+" card opens Settings for a new profile. Hovering
+double-click launches a stopped profile, and right-click opens a small context menu
+("Edit" for now, room left for more card-level actions later) rather than Settings
+directly -- an accidental right-click dismisses a harmless small menu instead of a
+whole window that has to be found and dismissed. The "+" card opens Settings for a
+new profile. Hovering
 reveals a small action icon (play triangle / bring-to-front arrow) as a visual cue
 only -- the whole card is already the click target, not just the icon. Settings
 reuses one window/tab shell for both add and edit rather than a second, separate
@@ -1506,7 +1508,16 @@ def show_main_window() -> None:
 
         if hovered and imgui.is_mouse_clicked(1):
             STATE.selected_id = profile.id
-            STATE.begin_edit_selected()
+            imgui.open_popup(f"card_context##{profile.id}")
+
+        if imgui.begin_popup(f"card_context##{profile.id}"):
+            # Just "Edit" for now -- room left for future card-level actions
+            # (duplicate, remove, etc.) without redesigning this menu, but not
+            # built ahead of an actual need for them.
+            if imgui.selectable("Edit", False)[0]:
+                STATE.begin_edit_selected()
+                imgui.close_current_popup()
+            imgui.end_popup()
 
         draw_profile_card(
             draw_list, card_origin, profile, card_w=card_w, card_h=card_h,
@@ -1704,6 +1715,19 @@ def _show_unsaved_changes_popup() -> None:
         imgui.end_popup()
 
 
+def _main_window_screen_pos() -> Optional[tuple[float, float]]:
+    """The main app window's current top-left corner in screen coordinates,
+    or None if it can't be found (e.g. not shown yet). Used as a fallback
+    anchor for the Settings window's first-ever position -- see
+    show_settings_window.
+    """
+    hwnd = find_visible_window_for_pid(os.getpid())
+    if hwnd is None:
+        return None
+    left, top, _right, _bottom = win32gui.GetWindowRect(hwnd)
+    return float(left), float(top)
+
+
 def show_settings_window() -> None:
     if not STATE.settings_window_open:
         return
@@ -1711,7 +1735,23 @@ def show_settings_window() -> None:
     global _settings_autosize_frames_remaining
 
     em = hello_imgui.em_size()
-    imgui.set_next_window_pos((em * 4.0, em * 4.0), cond=imgui.Cond_.appearing.value)
+    # first_use_ever (not appearing): Dear ImGui's own ini-based per-window
+    # persistence already remembers this window's position across opens --
+    # exactly like the main window's restore_previous_geometry -- *if*
+    # nothing overrides it every time the window reappears. cond=appearing
+    # was doing exactly that: forcing the position back every single open,
+    # which is why it always landed at this fixed spot (screen-absolute in
+    # multi-viewport mode) regardless of which monitor the main window was
+    # actually on, rather than wherever it was last left. first_use_ever only
+    # applies the given value when there's no ini-persisted entry yet for
+    # this window at all (the true first-ever open) -- confirmed via
+    # imgui.Cond_ directly rather than assumed. That first-ever default is
+    # anchored near the main window's own current position (falling back to
+    # the old fixed offset if that can't be found) instead of a bare screen
+    # coordinate, so it never lands on the wrong monitor even the first time.
+    main_pos = _main_window_screen_pos()
+    default_pos = (main_pos[0] + em * 3.0, main_pos[1] + em * 3.0) if main_pos is not None else (em * 4.0, em * 4.0)
+    imgui.set_next_window_pos(default_pos, cond=imgui.Cond_.first_use_ever.value)
     # Rough baseline for the single frame before real measurement below takes
     # over -- not the final word, just avoids a jarring flash at some ImGui
     # internal default size before AlwaysAutoResize kicks in.
