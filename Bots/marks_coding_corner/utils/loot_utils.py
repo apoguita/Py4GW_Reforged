@@ -9,7 +9,7 @@ from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import Player
 from Py4GWCoreLib import Range
 from Py4GWCoreLib import Routines
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 INI_PATH = "Inventory/InventoryPlus"  # path to save ini key
@@ -145,37 +145,39 @@ def set_autoloot_options_for_custom_bots(salvage_golds=False, module_active=Fals
 
     ini_key = ''
     if not ini_key:
-        ini_key = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        ini_key = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not ini_key:
             return
 
+    cfg = Settings.find(ini_key)
+    if cfg is None:
+        return
+
     # === Module State ===
-    IniManager().set(key=ini_key, section="AutoManager", var_name="module_active", value=module_active)
+    cfg.set("AutoManager", "module_active", module_active)
 
     # === Salvage Settings ===
-    IniManager().set(key=ini_key, section="AutoSalvage", var_name="salvage_whites", value=True)
-    IniManager().set(key=ini_key, section="AutoSalvage", var_name="salvage_rare_materials", value=False)
-    IniManager().set(key=ini_key, section="AutoSalvage", var_name="salvage_blues", value=True)
-    IniManager().set(key=ini_key, section="AutoSalvage", var_name="salvage_purples", value=True)
-    IniManager().set(key=ini_key, section="AutoSalvage", var_name="salvage_golds", value=salvage_golds)
+    cfg.set("AutoSalvage", "salvage_whites", True)
+    cfg.set("AutoSalvage", "salvage_rare_materials", False)
+    cfg.set("AutoSalvage", "salvage_blues", True)
+    cfg.set("AutoSalvage", "salvage_purples", True)
+    cfg.set("AutoSalvage", "salvage_golds", salvage_golds)
 
     # === Identification Settings ===
-    IniManager().set(key=ini_key, section="AutoIdentify", var_name="id_whites", value=True)
-    IniManager().set(key=ini_key, section="AutoIdentify", var_name="id_blues", value=True)
-    IniManager().set(key=ini_key, section="AutoIdentify", var_name="id_purples", value=True)
-    IniManager().set(key=ini_key, section="AutoIdentify", var_name="id_golds", value=True)
-    IniManager().set(key=ini_key, section="AutoIdentify", var_name="id_greens", value=False)
+    cfg.set("AutoIdentify", "id_whites", True)
+    cfg.set("AutoIdentify", "id_blues", True)
+    cfg.set("AutoIdentify", "id_purples", True)
+    cfg.set("AutoIdentify", "id_golds", True)
+    cfg.set("AutoIdentify", "id_greens", False)
 
     # === Deposit Settings ===
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="deposit_trophies", value=False)
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="deposit_materials", value=False)
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="deposit_event_items", value=False)
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="deposit_dyes", value=False)
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="deposit_golds", value=not salvage_golds)
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="deposit_greens", value=True)
-    IniManager().set(key=ini_key, section="AutoDeposit", var_name="keep_gold", value=10000)
+    cfg.set("AutoDeposit", "deposit_trophies", False)
+    cfg.set("AutoDeposit", "deposit_materials", False)
+    cfg.set("AutoDeposit", "deposit_event_items", False)
+    cfg.set("AutoDeposit", "deposit_dyes", False)
+    cfg.set("AutoDeposit", "deposit_golds", not salvage_golds)
+    cfg.set("AutoDeposit", "deposit_greens", True)
+    cfg.set("AutoDeposit", "keep_gold", 10000)
 
     # === Blacklists ===
-    IniManager().set(
-        key=ini_key, section="AutoSalvage", var_name="salvage_blacklist", value="31202,31203,31204"
-    )  # remove glacial stones
+    cfg.set("AutoSalvage", "salvage_blacklist", "31202,31203,31204")  # remove glacial stones

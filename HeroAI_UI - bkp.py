@@ -16,8 +16,8 @@ from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.ImGui_Legacy_src.Textures import TextureState, ThemeTexture, ThemeTextures
 from Py4GWCoreLib.ImGui_Legacy_src.types import ImGuiStyleVar, StyleTheme
-from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.enums import ImguiFonts
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.GameData_enums import Allegiance, Profession, ProfessionShort
 from Py4GWCoreLib.py4gwcorelib_src.Timer import Timer
 from dataclasses import dataclass
@@ -923,36 +923,45 @@ class HeroAI_AppearanceWindow:
         window_factory.set_open("appearance", value)
 
     def get_panel_scale(self) -> float:
-        scale = IniManager().getFloat(window_factory.key("appearance"), "panel_table_scale", 1.0, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        scale = cfg.get_float("Appearance", "panel_table_scale", 1.0) if cfg else 1.0
         return max(PANEL_MIN_SCALE, min(PANEL_MAX_SCALE, scale))
 
     def set_panel_scale(self, scale: float) -> None:
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is None:
+            return
         clamped_scale = max(PANEL_MIN_SCALE, min(PANEL_MAX_SCALE, scale))
-        IniManager().set(window_factory.key("appearance"), "panel_table_scale", float(clamped_scale), section="Appearance")
-        IniManager().set(window_factory.key("appearance"), "panel_table_width", int(round(PANEL_BASE_WIDTH * clamped_scale)), section="Appearance")
-        IniManager().set(window_factory.key("appearance"), "panel_table_height", int(round(PANEL_BASE_HEIGHT * clamped_scale)), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg.set("Appearance", "panel_table_scale", float(clamped_scale))
+        cfg.set("Appearance", "panel_table_width", int(round(PANEL_BASE_WIDTH * clamped_scale)))
+        cfg.set("Appearance", "panel_table_height", int(round(PANEL_BASE_HEIGHT * clamped_scale)))
 
     def get_show_main_skill_toggles(self) -> bool:
-        return IniManager().getBool(window_factory.key("appearance"), "show_main_skill_toggles", True, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        return cfg.get_bool("Appearance", "show_main_skill_toggles", True) if cfg else True
 
     def set_show_main_skill_toggles(self, value: bool) -> None:
-        IniManager().set(window_factory.key("appearance"), "show_main_skill_toggles", bool(value), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is not None:
+            cfg.set("Appearance", "show_main_skill_toggles", bool(value))
 
     def get_show_player_skill_toggles(self) -> bool:
-        return IniManager().getBool(window_factory.key("appearance"), "show_player_skill_toggles", True, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        return cfg.get_bool("Appearance", "show_player_skill_toggles", True) if cfg else True
 
     def set_show_player_skill_toggles(self, value: bool) -> None:
-        IniManager().set(window_factory.key("appearance"), "show_player_skill_toggles", bool(value), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is not None:
+            cfg.set("Appearance", "show_player_skill_toggles", bool(value))
 
     def get_show_players(self) -> bool:
-        return IniManager().getBool(window_factory.key("appearance"), "show_players", True, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        return cfg.get_bool("Appearance", "show_players", True) if cfg else True
 
     def set_show_players(self, value: bool) -> None:
-        IniManager().set(window_factory.key("appearance"), "show_players", bool(value), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is not None:
+            cfg.set("Appearance", "show_players", bool(value))
 
     def get_show_players_in_separate_window(self) -> bool:
         return window_factory.is_open("players")
@@ -961,25 +970,31 @@ class HeroAI_AppearanceWindow:
         window_factory.set_open("players", value)
 
     def get_show_players_in_individual_windows(self) -> bool:
-        return IniManager().getBool(window_factory.key("appearance"), "show_players_in_individual_windows", False, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        return cfg.get_bool("Appearance", "show_players_in_individual_windows", False) if cfg else False
 
     def set_show_players_in_individual_windows(self, value: bool) -> None:
-        IniManager().set(window_factory.key("appearance"), "show_players_in_individual_windows", bool(value), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is not None:
+            cfg.set("Appearance", "show_players_in_individual_windows", bool(value))
 
     def get_use_rich_player_panels(self) -> bool:
-        return IniManager().getBool(window_factory.key("appearance"), "use_rich_player_panels", False, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        return cfg.get_bool("Appearance", "use_rich_player_panels", False) if cfg else False
 
     def set_use_rich_player_panels(self, value: bool) -> None:
-        IniManager().set(window_factory.key("appearance"), "use_rich_player_panels", bool(value), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is not None:
+            cfg.set("Appearance", "use_rich_player_panels", bool(value))
 
     def get_obfuscate_player_names(self) -> bool:
-        return IniManager().getBool(window_factory.key("appearance"), "obfuscate_player_names", False, section="Appearance")
+        cfg = Settings.find(window_factory.key("appearance"))
+        return cfg.get_bool("Appearance", "obfuscate_player_names", False) if cfg else False
 
     def set_obfuscate_player_names(self, value: bool) -> None:
-        IniManager().set(window_factory.key("appearance"), "obfuscate_player_names", bool(value), section="Appearance")
-        IniManager().save_vars(window_factory.key("appearance"))
+        cfg = Settings.find(window_factory.key("appearance"))
+        if cfg is not None:
+            cfg.set("Appearance", "obfuscate_player_names", bool(value))
 
     def draw_window(self) -> None:
         if not self.is_open():

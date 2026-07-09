@@ -2,7 +2,7 @@ import PyImGui
 
 import PyCallback
 from Py4GWCoreLib import ImGui_Legacy, Color
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 show_disabled = False
 MODULE_NAME = "Callback Monitor"
@@ -175,10 +175,9 @@ def main():
     global INI_KEY
      #one time initialization
     if not INI_KEY:
-        INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not INI_KEY:
             return
-        IniManager().load_once(INI_KEY)
 
     draw_window()
 

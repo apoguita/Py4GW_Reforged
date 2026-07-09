@@ -4,7 +4,7 @@ from Py4GWCoreLib import GLOBAL_CACHE
 import PyImGui
 from Py4GWCoreLib import ImGui_Legacy, Color
 from Py4GWCoreLib import DXOverlay
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import ThrottledTimer
 from Py4GWCoreLib import Timer
 from Py4GWCoreLib import Utils
@@ -926,71 +926,31 @@ def _config_items_by_name() -> dict[str, ConfigItem]:
     return {item.Name: item for item in GLOBAL_CONFIGS.ConfigItems}
 
 
-def _add_config_vars() -> None:
-    global INI_KEY
-    ini = IniManager()
-    ini.add_bool(INI_KEY, "snap_enabled", "Map", "snap_enabled", default=False)
-    ini.add_bool(INI_KEY, "snap_pause_on_danger", "Map", "snap_pause_on_danger", default=_SNAP_PAUSE_ON_DANGER)
-    ini.add_float(INI_KEY, "snap_danger_radius", "Map", "snap_danger_radius", default=float(_SNAP_DANGER_RADIUS))
-    ini.add_bool(INI_KEY, "terrain_enabled", "Terrain", "enabled", default=True)
-    ini.add_bool(INI_KEY, "terrain_inverted", "Terrain", "inverted", default=False)
-    ini.add_int(INI_KEY, "terrain_color", "Terrain", "color", default=Color(200, 200, 200, 80).to_color())
-    ini.add_int(
-        INI_KEY,
-        "terrain_zoom_fill_color",
-        "Terrain",
-        "zoom_fill_color",
-        default=Color(75, 75, 75, 200).to_color(),
-    )
-    for item in GLOBAL_CONFIGS.ConfigItems:
-        slug = _ini_marker_slug(item.Name)
-        section = _ini_marker_section(item.Name)
-        ini.add_bool(INI_KEY, f"{slug}_visible", section, "visible", default=item.visible)
-        ini.add_str(INI_KEY, f"{slug}_marker", section, "marker", default=item.Marker)
-        ini.add_int(INI_KEY, f"{slug}_color", section, "color", default=item.Color.to_color())
-        ini.add_int(INI_KEY, f"{slug}_alternate_color", section, "alternate_color", default=item.AlternateColor.to_color())
-        ini.add_float(INI_KEY, f"{slug}_size", section, "size", default=item.size)
-
-
 def _apply_config() -> None:
     global mission_map
-    ini = IniManager()
-    mission_map.snap_enabled = ini.getBool(INI_KEY, "snap_enabled", mission_map.snap_enabled, "Map")
-    mission_map.snap_pause_on_danger = ini.getBool(
-        INI_KEY,
-        "snap_pause_on_danger",
-        mission_map.snap_pause_on_danger,
-        "Map",
-    )
-    mission_map.snap_danger_radius = ini.getFloat(
-        INI_KEY,
-        "snap_danger_radius",
-        mission_map.snap_danger_radius,
-        "Map",
-    )
-    mission_map.terrain_enabled = ini.getBool(INI_KEY, "terrain_enabled", mission_map.terrain_enabled, "Terrain")
-    mission_map.terrain_inverted = ini.getBool(INI_KEY, "terrain_inverted", mission_map.terrain_inverted, "Terrain")
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
+    mission_map.snap_enabled = cfg.get_bool("Map", "snap_enabled", mission_map.snap_enabled)
+    mission_map.snap_pause_on_danger = cfg.get_bool("Map", "snap_pause_on_danger", mission_map.snap_pause_on_danger)
+    mission_map.snap_danger_radius = cfg.get_float("Map", "snap_danger_radius", mission_map.snap_danger_radius)
+    mission_map.terrain_enabled = cfg.get_bool("Terrain", "enabled", mission_map.terrain_enabled)
+    mission_map.terrain_inverted = cfg.get_bool("Terrain", "inverted", mission_map.terrain_inverted)
     mission_map.terrain_color = _color_from_ini(
-        ini.getInt(INI_KEY, "terrain_color", mission_map.terrain_color.to_color(), "Terrain")
+        cfg.get_int("Terrain", "color", mission_map.terrain_color.to_color())
     )
     mission_map.terrain_zoom_fill_color = _color_from_ini(
-        ini.getInt(
-            INI_KEY,
-            "terrain_zoom_fill_color",
-            mission_map.terrain_zoom_fill_color.to_color(),
-            "Terrain",
-        )
+        cfg.get_int("Terrain", "zoom_fill_color", mission_map.terrain_zoom_fill_color.to_color())
     )
     for item in GLOBAL_CONFIGS.ConfigItems:
-        slug = _ini_marker_slug(item.Name)
         section = _ini_marker_section(item.Name)
-        item.visible = ini.getBool(INI_KEY, f"{slug}_visible", item.visible, section)
-        item.Marker = ini.getStr(INI_KEY, f"{slug}_marker", item.Marker, section)
-        item.Color = _color_from_ini(ini.getInt(INI_KEY, f"{slug}_color", item.Color.to_color(), section))
+        item.visible = cfg.get_bool(section, "visible", item.visible)
+        item.Marker = cfg.get_str(section, "marker", item.Marker)
+        item.Color = _color_from_ini(cfg.get_int(section, "color", item.Color.to_color()))
         item.AlternateColor = _color_from_ini(
-            ini.getInt(INI_KEY, f"{slug}_alternate_color", item.AlternateColor.to_color(), section)
+            cfg.get_int(section, "alternate_color", item.AlternateColor.to_color())
         )
-        item.size = ini.getFloat(INI_KEY, f"{slug}_size", item.size, section)
+        item.size = cfg.get_float(section, "size", item.size)
     mission_map.apply_terrain_settings()
 
 
@@ -999,11 +959,9 @@ def _ensure_ini() -> bool:
     if _INI_READY:
         return True
     if not INI_KEY:
-        INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not INI_KEY:
             return False
-        _add_config_vars()
-        IniManager().load_once(INI_KEY)
         _apply_config()
         _INI_READY = True
     return _INI_READY
@@ -1986,7 +1944,9 @@ def configure():
     if not _ensure_ini():
         return
 
-    ini = IniManager()
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
     marker_names = list(shapes.keys())
     grouped_items = _config_items_by_name()
 
@@ -1998,60 +1958,60 @@ def configure():
         visible = PyImGui.checkbox(f"Visible##{slug}", item.visible)
         if visible != item.visible:
             item.visible = visible
-            ini.set(INI_KEY, f"{slug}_visible", visible, section)
+            cfg.set(section, "visible", visible)
 
         current_marker_index = marker_names.index(item.Marker) if item.Marker in marker_names else 0
         marker_index = PyImGui.combo(f"Marker##{slug}", current_marker_index, marker_names)
         if marker_index != current_marker_index:
             item.Marker = marker_names[marker_index]
-            ini.set(INI_KEY, f"{slug}_marker", item.Marker, section)
+            cfg.set(section, "marker", item.Marker)
 
         size = PyImGui.slider_float(f"Size##{slug}", float(item.size), 1.0, 20.0)
         if size != item.size:
             item.size = float(size)
-            ini.set(INI_KEY, f"{slug}_size", item.size, section)
+            cfg.set(section, "size", item.size)
 
         color_tuple = PyImGui.color_edit4(f"Color##{slug}", item.Color.to_tuple_normalized())
         color = Color.from_tuple_normalized(color_tuple)
         if color != item.Color:
             item.Color = color
-            ini.set(INI_KEY, f"{slug}_color", item.Color.to_color(), section)
+            cfg.set(section, "color", item.Color.to_color())
 
         accent_tuple = PyImGui.color_edit4(f"Accent##{slug}", item.AlternateColor.to_tuple_normalized())
         accent_color = Color.from_tuple_normalized(accent_tuple)
         if accent_color != item.AlternateColor:
             item.AlternateColor = accent_color
-            ini.set(INI_KEY, f"{slug}_alternate_color", item.AlternateColor.to_color(), section)
+            cfg.set(section, "alternate_color", item.AlternateColor.to_color())
 
         PyImGui.separator()
 
-    ini.begin_window_config(INI_KEY)
+    cfg.begin_window_config()
     PyImGui.set_next_window_size((520.0, 680.0), PyImGui.ImGuiCond.FirstUseEver)
 
     expanded = PyImGui.begin(f"{MODULE_NAME} Config")
-    ini.track_window_collapsed(INI_KEY, expanded)
+    cfg.track_window_collapsed(expanded)
 
     if expanded:
-        ini.mark_begin_success(INI_KEY)
+        cfg.mark_begin_success()
 
         if PyImGui.collapsing_header("Terrain"):
             terrain_enabled = PyImGui.checkbox("Show terrain", mission_map.terrain_enabled)
             if terrain_enabled != mission_map.terrain_enabled:
                 mission_map.terrain_enabled = terrain_enabled
-                ini.set(INI_KEY, "terrain_enabled", terrain_enabled, "Terrain")
+                cfg.set("Terrain", "enabled", terrain_enabled)
 
             terrain_inverted = PyImGui.checkbox("Invert terrain", mission_map.terrain_inverted)
             if terrain_inverted != mission_map.terrain_inverted:
                 mission_map.terrain_inverted = terrain_inverted
                 mission_map.apply_terrain_settings()
-                ini.set(INI_KEY, "terrain_inverted", terrain_inverted, "Terrain")
+                cfg.set("Terrain", "inverted", terrain_inverted)
 
             terrain_color_tuple = PyImGui.color_edit4("Terrain color", mission_map.terrain_color.to_tuple_normalized())
             terrain_color = Color.from_tuple_normalized(terrain_color_tuple)
             if terrain_color != mission_map.terrain_color:
                 mission_map.terrain_color = terrain_color
                 mission_map.pathing_geometry_built_by_map_id.clear()
-                ini.set(INI_KEY, "terrain_color", terrain_color.to_color(), "Terrain")
+                cfg.set("Terrain", "color", terrain_color.to_color())
 
             terrain_zoom_fill_tuple = PyImGui.color_edit4(
                 "Mega zoom fill",
@@ -2060,7 +2020,7 @@ def configure():
             terrain_zoom_fill_color = Color.from_tuple_normalized(terrain_zoom_fill_tuple)
             if terrain_zoom_fill_color != mission_map.terrain_zoom_fill_color:
                 mission_map.terrain_zoom_fill_color = terrain_zoom_fill_color
-                ini.set(INI_KEY, "terrain_zoom_fill_color", terrain_zoom_fill_color.to_color(), "Terrain")
+                cfg.set("Terrain", "zoom_fill_color", terrain_zoom_fill_color.to_color())
 
             PyImGui.separator()
 
@@ -2068,12 +2028,12 @@ def configure():
             snap_enabled = PyImGui.checkbox("Enable snap movement", mission_map.snap_enabled)
             if snap_enabled != mission_map.snap_enabled:
                 mission_map.snap_enabled = snap_enabled
-                ini.set(INI_KEY, "snap_enabled", snap_enabled, "Map")
+                cfg.set("Map", "snap_enabled", snap_enabled)
 
             snap_pause_on_danger = PyImGui.checkbox("Pause snap on danger", mission_map.snap_pause_on_danger)
             if snap_pause_on_danger != mission_map.snap_pause_on_danger:
                 mission_map.snap_pause_on_danger = snap_pause_on_danger
-                ini.set(INI_KEY, "snap_pause_on_danger", snap_pause_on_danger, "Map")
+                cfg.set("Map", "snap_pause_on_danger", snap_pause_on_danger)
 
             snap_danger_radius = PyImGui.slider_float(
                 "Danger radius",
@@ -2083,7 +2043,7 @@ def configure():
             )
             if snap_danger_radius != mission_map.snap_danger_radius:
                 mission_map.snap_danger_radius = float(snap_danger_radius)
-                ini.set(INI_KEY, "snap_danger_radius", mission_map.snap_danger_radius, "Map")
+                cfg.set("Map", "snap_danger_radius", mission_map.snap_danger_radius)
 
             PyImGui.separator()
 
@@ -2096,8 +2056,7 @@ def configure():
                     _draw_marker_editor(item)
 
     PyImGui.end()
-    ini.end_window_config(INI_KEY)
-    ini.save_vars(INI_KEY)
+    cfg.end_window_config()
 
 
 def main():
@@ -2157,11 +2116,7 @@ def draw():
     except Exception as e:
         import Py4GW
         PySystem.Console.Log("Mission Map +", str(e), PySystem.Console.MessageType.Error)
-    finally:
-        if INI_KEY:
-            IniManager().save_vars(INI_KEY)
 
-        
-    
+
 if __name__ == "__main__":
     draw()

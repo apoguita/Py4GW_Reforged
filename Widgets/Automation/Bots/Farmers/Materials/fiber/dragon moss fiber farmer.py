@@ -11,7 +11,6 @@ from Py4GWCoreLib import (
     BuildMgr,
     ConsoleLog,
     GLOBAL_CACHE,
-    IniManager,
     Inventory,
     Item,
     Map,
@@ -25,6 +24,7 @@ from Py4GWCoreLib import (
 from Py4GWCoreLib.enums import ModelID, Range
 from Py4GWCoreLib.enums_src.IO_enums import Key
 from Py4GWCoreLib.py4gwcorelib_src.Keystroke import Keystroke
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui
 
 BOT_NAME = "Dragon Moss Fiber Farmer"
@@ -512,64 +512,46 @@ def ensure_rotation_settings_loaded() -> None:
     if rotation_settings.loaded:
         return
 
-    ini_key = IniManager().ensure_key(SETTINGS_PATH, SETTINGS_FILE)
+    ini_key = Settings.ensure_key(SETTINGS_PATH, SETTINGS_FILE)
     if not ini_key:
         return
 
     rotation_settings.ini_key = ini_key
-    IniManager().add_bool(ini_key, "enable_crafting_rotation", SETTINGS_SECTION_CRAFTING, "Enable", False)
-    IniManager().add_str(ini_key, "crafter_character", SETTINGS_SECTION_CRAFTING, "CrafterCharacter", "")
-    IniManager().add_int(ini_key, "fiber_threshold", SETTINGS_SECTION_CRAFTING, "FiberThreshold", 250)
-    IniManager().add_int(ini_key, "bones_threshold", SETTINGS_SECTION_CRAFTING, "BonesThreshold", 250)
-    IniManager().add_bool(ini_key, "switch_back_to_farmer", SETTINGS_SECTION_CRAFTING, "SwitchBackToFarmer", True)
-    IniManager().add_bool(
-        ini_key,
-        "auto_salvage_dragon_root_on_town_return",
-        SETTINGS_SECTION_INVENTORY,
-        "AutoSalvageDragonRootOnTownReturn",
-        False,
-    )
-    IniManager().load_once(ini_key)
+    cfg = Settings.find(ini_key)
 
-    rotation_settings.enable_crafting_rotation = IniManager().getBool(
-        ini_key,
-        "enable_crafting_rotation",
+    rotation_settings.enable_crafting_rotation = cfg.get_bool(
+        SETTINGS_SECTION_CRAFTING,
+        "Enable",
         False,
-        SETTINGS_SECTION_CRAFTING,
     )
-    rotation_settings.crafter_character = IniManager().getStr(
-        ini_key,
-        "crafter_character",
-        "",
+    rotation_settings.crafter_character = cfg.get_str(
         SETTINGS_SECTION_CRAFTING,
+        "CrafterCharacter",
+        "",
     )
     rotation_settings.fiber_threshold = sanitize_threshold(
-        IniManager().getInt(
-            ini_key,
-            "fiber_threshold",
-            250,
+        cfg.get_int(
             SETTINGS_SECTION_CRAFTING,
+            "FiberThreshold",
+            250,
         )
     )
     rotation_settings.bones_threshold = sanitize_threshold(
-        IniManager().getInt(
-            ini_key,
-            "bones_threshold",
-            250,
+        cfg.get_int(
             SETTINGS_SECTION_CRAFTING,
+            "BonesThreshold",
+            250,
         )
     )
-    rotation_settings.switch_back_to_farmer = IniManager().getBool(
-        ini_key,
-        "switch_back_to_farmer",
-        True,
+    rotation_settings.switch_back_to_farmer = cfg.get_bool(
         SETTINGS_SECTION_CRAFTING,
+        "SwitchBackToFarmer",
+        True,
     )
-    rotation_settings.auto_salvage_dragon_root_on_town_return = IniManager().getBool(
-        ini_key,
-        "auto_salvage_dragon_root_on_town_return",
-        False,
+    rotation_settings.auto_salvage_dragon_root_on_town_return = cfg.get_bool(
         SETTINGS_SECTION_INVENTORY,
+        "AutoSalvageDragonRootOnTownReturn",
+        False,
     )
     rotation_settings.loaded = True
 
@@ -580,11 +562,22 @@ def sanitize_threshold(value: int) -> int:
     return CRAFTING_THRESHOLD_OPTIONS[0]
 
 
+_ROTATION_SETTING_NAME_MAP = {
+    "enable_crafting_rotation": "Enable",
+    "crafter_character": "CrafterCharacter",
+    "fiber_threshold": "FiberThreshold",
+    "bones_threshold": "BonesThreshold",
+    "switch_back_to_farmer": "SwitchBackToFarmer",
+    "auto_salvage_dragon_root_on_town_return": "AutoSalvageDragonRootOnTownReturn",
+}
+
+
 def save_rotation_setting(var_name: str, value, section: str) -> None:
     ensure_rotation_settings_loaded()
     if not rotation_settings.ini_key:
         return
-    IniManager().set(rotation_settings.ini_key, var_name, value, section)
+    cfg = Settings.find(rotation_settings.ini_key)
+    cfg.set(section, _ROTATION_SETTING_NAME_MAP.get(var_name, var_name), value)
 
 
 def requires_town_checkpoint() -> bool:

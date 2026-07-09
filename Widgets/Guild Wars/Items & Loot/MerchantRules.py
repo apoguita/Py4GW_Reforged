@@ -4942,10 +4942,10 @@ class MerchantRulesWidget:
         if self.floating_ui_ini_key:
             return self.floating_ui_ini_key
         try:
-            from Py4GWCoreLib.IniManager import IniManager
+            from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
         except Exception:
             return ""
-        self.floating_ui_ini_key = IniManager().ensure_key(
+        self.floating_ui_ini_key = Settings.ensure_key(
             FLOATING_UI_INI_PATH,
             FLOATING_UI_INI_FILENAME,
         )
@@ -4973,9 +4973,6 @@ class MerchantRulesWidget:
 
         floating_ui_ini_key = self._ensure_floating_ui_key()
         if floating_ui_ini_key and not self.floating_ui_ini_loaded:
-            from Py4GWCoreLib.IniManager import IniManager
-
-            IniManager().load_once(floating_ui_ini_key)
             self.floating_ui_ini_loaded = True
 
         return self.floating_button

@@ -4,7 +4,8 @@ import os
 import traceback
 import Py4GW
 import PyImGui
-from Py4GWCoreLib import ImGui_Legacy, IniManager, Player
+from Py4GWCoreLib import ImGui_Legacy, Player
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
@@ -31,42 +32,11 @@ INI_FILENAME = f"{MODULE_NAME}.ini"
 module_browser : ModuleBrowser | None = None
 
 def _add_config_vars():
-    global INI_KEY
-    IniManager().add_bool(key=INI_KEY, var_name="enable_all", section="Configuration", name="enable_all", default=False)
-    IniManager().add_str(key=INI_KEY, var_name="favorites", section="Favorites", name="favorites", default="")
-    IniManager().add_str(key=INI_KEY, var_name="default_layout", section="Configuration", name="default_layout", default=LayoutMode.Minimalistic.name)  
-    IniManager().add_str(key=INI_KEY, var_name="hotkey", section="Configuration", name="hotkey", default=Key.Unmapped.name)  
-    IniManager().add_str(key=INI_KEY, var_name="hotkey_modifiers", section="Configuration", name="hotkey_modifiers", default="NoneKey")
-                            
-    IniManager().add_bool(key=INI_KEY, var_name="show_configure_button", section="Card Configuration", name="show_configure_button", default=True)
-    IniManager().add_bool(key=INI_KEY, var_name="show_images", section="Card Configuration", name="show_images", default=True)
-    IniManager().add_bool(key=INI_KEY, var_name="show_separator", section="Card Configuration", name="show_separator", default=True)
-    IniManager().add_bool(key=INI_KEY, var_name="show_category", section="Card Configuration", name="show_category", default=True)
-    IniManager().add_bool(key=INI_KEY, var_name="show_tags", section="Card Configuration", name="show_tags", default=True)
-    IniManager().add_bool(key=INI_KEY, var_name="fixed_card_width", section="Card Configuration", name="fixed_card_width", default=False)
-    IniManager().add_float(key=INI_KEY, var_name="card_width", section="Card Configuration", name="card_width", default=300)
-    
-    IniManager().add_str(key=INI_KEY, var_name="card_color", section="Card Configuration", name="card_color", default="200, 200, 200, 20")
-    IniManager().add_str(key=INI_KEY, var_name="card_enabled_color", section="Card Configuration", name="card_enabled_color", default="90, 255, 90, 30")
-    IniManager().add_str(key=INI_KEY, var_name="favorites_color", section="Card Configuration", name="favorites_color", default="255, 215, 0, 255")
-    IniManager().add_str(key=INI_KEY, var_name="tag_color", section="Card Configuration", name="tag_color", default="38, 51, 59, 255")
-    IniManager().add_str(key=INI_KEY, var_name="category_color", section="Card Configuration", name="category_color", default="150, 150, 150, 255")
-    IniManager().add_str(key=INI_KEY, var_name="name_color", section="Card Configuration", name="name_color", default="255, 255, 255, 255")
-    IniManager().add_str(key=INI_KEY, var_name="name_enabled_color", section="Card Configuration", name="name_enabled_color", default="255, 255, 255, 255")
-    IniManager().add_float(key=INI_KEY, var_name="card_rounding", section="Card Configuration", name="card_rounding", default=4.0)
-    
-    for cv in widget_manager.config_vars:
-        # Match the suffix to determine the 'name' inside the INI file
-        ini_key_name = "enabled" if cv.var_name.endswith("__enabled") else "optional"
+    # Config-variable declarations are no longer needed; Settings addresses
+    # (section, key) directly. Kept as a no-op for call-site compatibility.
+    pass
 
-        IniManager().add_bool(
-            key=INI_KEY,
-            section=cv.section,
-            var_name=cv.var_name,
-            name=ini_key_name,
-            default=False
-        )
-        
+
 def on_enable():
     PySystem.Console.Log(MODULE_NAME, f"{MODULE_NAME} loaded successfully.")
 
@@ -100,21 +70,24 @@ def main():
         if not os.path.exists(INI_PATH):
             os.makedirs(INI_PATH, exist_ok=True)
 
-        INI_KEY = IniManager().ensure_global_key(
+        INI_KEY = Settings.ensure_global_key(
             INI_PATH,
             INI_FILENAME
         )
-        
+
         if not INI_KEY: return
-        
+
+        cfg = Settings.find(INI_KEY)
+        if cfg is None:
+            return
+
         # widget_manager.MANAGER_INI_KEY = INI_KEY
-        
+
         # widget_manager.discover()
         _add_config_vars()
-        IniManager().load_once(INI_KEY)
 
         # FIX 1: Explicitly load the global manager state into the handler
-        widget_manager.enable_all = bool(IniManager().get(key=INI_KEY, var_name="enable_all", default=False, section="Configuration"))
+        widget_manager.enable_all = bool(cfg.get_bool("Configuration", "enable_all", False))
         widget_manager._apply_ini_configuration()
         
     

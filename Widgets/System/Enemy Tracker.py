@@ -15,9 +15,9 @@ from Py4GWCoreLib import GLOBAL_CACHE, Py4GW, Range, Map
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.AgentArray import AgentArray
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
-from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.UIManager import UIManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 
 
@@ -877,13 +877,10 @@ def _ensure_ini() -> bool:
     if EnemyTrackerConfig.INI_INIT:
         return True
 
-    EnemyTrackerConfig.MAIN_INI_KEY = IniManager().ensure_key(EnemyTrackerConfig.INI_PATH, EnemyTrackerConfig.MAIN_INI_FILENAME)
-    EnemyTrackerConfig.FLOATING_INI_KEY = IniManager().ensure_key(EnemyTrackerConfig.INI_PATH, EnemyTrackerConfig.FLOATING_INI_FILENAME)
+    EnemyTrackerConfig.MAIN_INI_KEY = Settings.ensure_key(EnemyTrackerConfig.INI_PATH, EnemyTrackerConfig.MAIN_INI_FILENAME)
+    EnemyTrackerConfig.FLOATING_INI_KEY = Settings.ensure_key(EnemyTrackerConfig.INI_PATH, EnemyTrackerConfig.FLOATING_INI_FILENAME)
     if not EnemyTrackerConfig.MAIN_INI_KEY or not EnemyTrackerConfig.FLOATING_INI_KEY:
         return False
-
-    IniManager().load_once(EnemyTrackerConfig.MAIN_INI_KEY)
-    IniManager().load_once(EnemyTrackerConfig.FLOATING_INI_KEY)
 
     EnemyTrackerConfig.INI_INIT = True
     return True

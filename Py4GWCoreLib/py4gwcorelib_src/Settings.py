@@ -15,7 +15,7 @@ All settings logic lives here, on top of the native (cached + autosaved)
 - **No readiness gate.** Native binds account documents synchronously in
   ``Open()`` once the anchor is resolved, so a read right after open sees disk.
 - **Legacy var-map.** A plain per-document dict (``var_name -> (section, name,
-  type, default)``) used only by IniManager's old ``get``/``set`` path; the
+  type, default)``) used only by the legacy ``get``/``set`` compat path; the
   direct API ignores it.
 
 Autosave and flush cadence are owned entirely by the native side.
@@ -108,6 +108,45 @@ class Settings:
         p = str(self._doc.path())
         return p if p else self._name
 
+    @classmethod
+    def ensure_key(cls, path: str, filename: str, scope: str = 'account') -> str:
+        """Create/cache the document and return its name (the old ``ini_key``).
+
+        Mirrors the legacy ``ensure_key`` exactly, including the account-readiness
+        guard: for account scope, returns ``""`` until ``Player.GetAccountEmail()``
+        resolves. The returned string is the ``Settings`` document name and can be
+        passed to ``ImGui_Legacy.Begin/End`` and ``Settings.find``.
+        """
+        path = str(path).strip('/')
+        filename = str(filename).strip('/')
+        name = f"{path}/{filename}" if path else filename
+        if not name:
+            return ""
+        if scope == 'account':
+            from ..Player import Player
+            if not Player.GetAccountEmail():
+                return ""
+        cls(name, scope)
+        return name
+
+    @classmethod
+    def ensure_global_key(cls, path: str, filename: str) -> str:
+        return cls.ensure_key(path, filename, scope='global')
+
+    @classmethod
+    def find(cls, name: str) -> Optional['Settings']:
+        """Return the already-open Settings for this document name (any scope).
+
+        Used by window wrappers that are handed only the document name (the old
+        ``ini_key``) and need the document the caller already created. Returns
+        None if nothing has opened that name yet.
+        """
+        name = str(name)
+        for (n, _scope), inst in cls._instances.items():
+            if n == name:
+                return inst
+        return None
+
     @property
     def name(self) -> str:
         return self._name
@@ -117,7 +156,7 @@ class Settings:
         return self._scope
 
     # ------------------------------------------------------------------
-    # Templates (.cfg seeding, parity with IniManager)
+    # Templates (.cfg seeding, parity with the legacy handler)
     # ------------------------------------------------------------------
 
     def _ensure_seeded(self) -> None:
@@ -243,7 +282,7 @@ class Settings:
             self._doc.set(dst, key, value)
 
     # ------------------------------------------------------------------
-    # Legacy var-map (compat for IniManager's add_*/get/set path only)
+    # Legacy var-map (compat for the legacy add_*/get/set path only)
     # ------------------------------------------------------------------
 
     def register_var(self, var_name: str, section: str, name: str, var_type: str, default: Any) -> None:

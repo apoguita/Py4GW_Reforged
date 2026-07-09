@@ -284,30 +284,36 @@ class ImGui_Legacy:
     
     @staticmethod
     def Begin(ini_key: str, name: str, p_open=None, flags:int=PyImGui.WindowFlags.NoFlag) -> bool:
-        from Py4GWCoreLib.IniManager import IniManager
-        IniManager().begin_window_config(ini_key)
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+        cfg = Settings.find(ini_key)
+        if cfg:
+            cfg.begin_window_config()
 
         # begin_with_close returns (expanded, open). Persistence must key off
         # the expanded state so collapsed windows do not save header-only sizes.
         result, _ = ImGui_Legacy.begin_with_close(name, p_open, flags)
 
         # mark only if window is active
-        IniManager().track_window_collapsed(ini_key, result)
-        if result:
-            IniManager().mark_begin_success(ini_key)
+        if cfg:
+            cfg.track_window_collapsed(result)
+            if result:
+                cfg.mark_begin_success()
 
         return result
 
     @staticmethod
     def BeginWithClose(ini_key: str, name: str, p_open=None, flags:int=PyImGui.WindowFlags.NoFlag) -> tuple[bool, bool]:
-        from Py4GWCoreLib.IniManager import IniManager
-        IniManager().begin_window_config(ini_key)
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+        cfg = Settings.find(ini_key)
+        if cfg:
+            cfg.begin_window_config()
 
         expanded, open_ = ImGui_Legacy.begin_with_close(name, p_open, flags)
 
-        IniManager().track_window_collapsed(ini_key, expanded)
-        if expanded:
-            IniManager().mark_begin_success(ini_key)
+        if cfg:
+            cfg.track_window_collapsed(expanded)
+            if expanded:
+                cfg.mark_begin_success()
 
         return expanded, open_
     
@@ -355,11 +361,12 @@ class ImGui_Legacy:
     
     @staticmethod
     def End(ini_key: str):
-        from Py4GWCoreLib.IniManager import IniManager
-        # End must be callable always, but IniManager.end_window_config will no-op if Begin was not active
-        IniManager().end_window_config(ini_key)
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+        # End must be callable always; end_window_config no-ops if Begin was not active.
+        cfg = Settings.find(ini_key)
+        if cfg:
+            cfg.end_window_config()
         PyImGui.end()
-        IniManager().save_vars(ini_key)
 
     @staticmethod
     def new_line(): return PyImGui.new_line()
@@ -3877,80 +3884,54 @@ class ImGui_Legacy:
             self._visibility_loaded = False
 
         def _ensure_visibility_var(self) -> None:
-            if not self.toggle_ini_key or not self.toggle_var_name:
-                return
-
-            from Py4GWCoreLib.IniManager import IniManager
-            IniManager().add_bool(
-                key=self.toggle_ini_key,
-                var_name=self.toggle_var_name,
-                section=self.toggle_section,
-                name=self.toggle_var_name,
-                default=self.toggle_default,
-            )
+            return
 
         def _ensure_config_vars(self, ini_key: str) -> None:
-            if not ini_key:
-                return
-
-            from Py4GWCoreLib.IniManager import IniManager
-            IniManager().add_str(ini_key, "icon_path", "Floating Icon", "icon_path", self.icon_path)
-            IniManager().add_float(ini_key, "button_size", "Floating Icon", "button_size", float(self.button_size))
-            IniManager().add_float(ini_key, "idle_icon_scale", "Floating Icon", "idle_icon_scale", float(self.idle_icon_scale))
-            IniManager().add_float(ini_key, "hover_icon_scale", "Floating Icon", "hover_icon_scale", float(self.hover_icon_scale))
+            return
 
         def load_config(self, ini_key: str) -> None:
             if not ini_key:
                 return
-
-            from Py4GWCoreLib.IniManager import IniManager
-            self._ensure_config_vars(ini_key)
-            self.icon_path = IniManager().read_key(ini_key, "Floating Icon", "icon_path", self.icon_path)
-            self.button_size = IniManager().read_float(ini_key, "Floating Icon", "button_size", float(self.button_size))
-            self.idle_icon_scale = IniManager().read_float(ini_key, "Floating Icon", "idle_icon_scale", float(self.idle_icon_scale))
-            self.hover_icon_scale = IniManager().read_float(ini_key, "Floating Icon", "hover_icon_scale", float(self.hover_icon_scale))
+            from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+            cfg = Settings.find(ini_key)
+            if not cfg:
+                return
+            self.icon_path = cfg.get_str("Floating Icon", "icon_path", self.icon_path)
+            self.button_size = cfg.get_float("Floating Icon", "button_size", float(self.button_size))
+            self.idle_icon_scale = cfg.get_float("Floating Icon", "idle_icon_scale", float(self.idle_icon_scale))
+            self.hover_icon_scale = cfg.get_float("Floating Icon", "hover_icon_scale", float(self.hover_icon_scale))
 
         def save_config(self, ini_key: str) -> None:
             if not ini_key:
                 return
-
-            from Py4GWCoreLib.IniManager import IniManager
-            self._ensure_config_vars(ini_key)
-            IniManager().set(ini_key, "icon_path", self.icon_path, section="Floating Icon")
-            IniManager().set(ini_key, "button_size", float(self.button_size), section="Floating Icon")
-            IniManager().set(ini_key, "idle_icon_scale", float(self.idle_icon_scale), section="Floating Icon")
-            IniManager().set(ini_key, "hover_icon_scale", float(self.hover_icon_scale), section="Floating Icon")
-            IniManager().save_vars(ini_key)
+            from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+            cfg = Settings.find(ini_key)
+            if not cfg:
+                return
+            cfg.set("Floating Icon", "icon_path", self.icon_path)
+            cfg.set("Floating Icon", "button_size", float(self.button_size))
+            cfg.set("Floating Icon", "idle_icon_scale", float(self.idle_icon_scale))
+            cfg.set("Floating Icon", "hover_icon_scale", float(self.hover_icon_scale))
 
         def load_visibility(self) -> bool:
             if not self.toggle_ini_key or not self.toggle_var_name:
                 return self.visible
-
-            from Py4GWCoreLib.IniManager import IniManager
-            self._ensure_visibility_var()
-            IniManager().load_once(self.toggle_ini_key)
-            self.visible = bool(IniManager().get(
-                key=self.toggle_ini_key,
-                section=self.toggle_section,
-                var_name=self.toggle_var_name,
-                default=self.toggle_default,
-            ))
+            from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+            cfg = Settings.find(self.toggle_ini_key)
+            if not cfg:
+                return self.visible
+            self.visible = cfg.get_bool(self.toggle_section, self.toggle_var_name, self.toggle_default)
             self._visibility_loaded = True
             return self.visible
 
         def save_visibility(self) -> None:
             if not self.toggle_ini_key or not self.toggle_var_name:
                 return
-
-            from Py4GWCoreLib.IniManager import IniManager
-            self._ensure_visibility_var()
-            IniManager().set(
-                key=self.toggle_ini_key,
-                section=self.toggle_section,
-                var_name=self.toggle_var_name,
-                value=self.visible,
-            )
-            IniManager().save_vars(self.toggle_ini_key)
+            from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+            cfg = Settings.find(self.toggle_ini_key)
+            if not cfg:
+                return
+            cfg.set(self.toggle_section, self.toggle_var_name, self.visible)
 
         def set_visible(self, value: bool, persist: bool = False, invoke_callback: bool = False) -> bool:
             if self.visible == value:

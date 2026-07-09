@@ -3,9 +3,9 @@ import PyImGui
 import Py4GW
 from Py4GWCoreLib import ImGui_Legacy, Utils
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.IniManager import IniManager
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT
 
 MODULE_NAME = "HeroAI Parallel Tree Example"
@@ -19,12 +19,6 @@ botting_tree = None
 initialized = False
 move_test_x = -4479.24
 move_test_y = 3038.50
-
-
-def _add_config_vars():
-    global INI_KEY
-    IniManager().add_bool(INI_KEY, "show_tree", "Display", "ShowTree", default=True)
-    IniManager().add_bool(INI_KEY, "enable_headless_heroai", "Behavior", "EnableHeadlessHeroAI", default=True)
 
 
 def _tick_planner_service(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
@@ -123,6 +117,10 @@ def _get_sequence_builders():
 def draw_widget():
     global INI_KEY, botting_tree, move_test_x, move_test_y
 
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
+
     if ImGui_Legacy.Begin(INI_KEY, MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
         bb = botting_tree.blackboard if botting_tree is not None else {}
 
@@ -171,10 +169,10 @@ def draw_widget():
             if not botting_tree.IsStarted():
                 botting_tree.Start()
 
-        show_tree = bool(IniManager().get(INI_KEY, "show_tree", True))
+        show_tree = cfg.get_bool("Display", "ShowTree", True)
         new_show_tree = PyImGui.checkbox("Show Tree Debug", show_tree)
         if new_show_tree != show_tree:
-            IniManager().set(INI_KEY, "show_tree", new_show_tree)
+            cfg.set("Display", "ShowTree", new_show_tree)
             show_tree = new_show_tree
 
         if show_tree and botting_tree is not None:
@@ -198,11 +196,9 @@ def main():
 
     if not initialized:
         if not INI_KEY:
-            INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+            INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
             if not INI_KEY:
                 return
-            _add_config_vars()
-            IniManager().load_once(INI_KEY)
 
         botting_tree = BottingTree(INI_KEY)
         botting_tree.SetNamedPlannerSteps(

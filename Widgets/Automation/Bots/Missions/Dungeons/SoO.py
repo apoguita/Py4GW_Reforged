@@ -3322,17 +3322,17 @@ bot.UI.override_draw_config(_draw_bds_settings)
 
 def _draw_bds_window_with_stats_tab() -> None:
     import PyImGui
-    from Py4GWCoreLib import ImGui_Legacy, IniManager, Routines
+    from Py4GWCoreLib import ImGui_Legacy, Routines
+    from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
     main_child_dimensions = (500, 350)
     iconwidth = 96
 
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = IniManager().ensure_key(
+        bot.config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
             f"bot_{bot.config.bot_name}.ini",
         )
-        IniManager().load_once(bot.config.ini_key)
         bot.config.ini_key_initialized = True
         _ensure_ini_initialized()
 

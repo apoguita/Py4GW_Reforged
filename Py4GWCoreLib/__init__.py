@@ -180,7 +180,6 @@ from .BuildMgr import BuildMgr
 from .Botting import BottingClass as Botting
 from .Context import GWContext
 #from .CombatEvents import CombatEventQueue, CombatEvents, COMBAT_EVENTS
-from .IniManager import IniManager
 from .Database import Database
 from .GWUI import GWUI
 
@@ -231,7 +230,6 @@ PyAgentEvents = PyAgentEvents
 GLOBAL_CACHE = GLOBAL_CACHE
 AutoPathing = AutoPathing
 IconsFontAwesome5 = IconsFontAwesome5
-IniManager = IniManager
 Database = Database
 #CombatEvents = CombatEvents
 #COMBAT_EVENTS = COMBAT_EVENTS

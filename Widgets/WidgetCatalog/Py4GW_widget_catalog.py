@@ -9,7 +9,7 @@ import PySystem
 
 from Py4GWCoreLib import ColorPalette, IconsFontAwesome5, Py4GW
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.IO_enums import ImGuiKey, Key
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import CatalogScope, Widget, WidgetCatalog, WidgetCatalogNode, WidgetCatalogQuery, WidgetHandler, get_widget_handler
@@ -1204,46 +1204,16 @@ class WidgetCatalogWindow:
         return default.copy()
 
     def _ensure_config_vars(self) -> None:
-        IniManager().add_bool(self.ini_key, "show_adavanced", "Configuration", "show_adavanced", False)
-        IniManager().add_int(self.ini_key, "button_size", "Navigation", "button_size", self.config.address_bar.button_size)
-        IniManager().add_str(self.ini_key, "gradient_start", "Navigation", "gradient_start", self.config.address_bar.gradient_start.to_rgba_string())
-        IniManager().add_str(self.ini_key, "gradient_end", "Navigation", "gradient_end", self.config.address_bar.gradient_end.to_rgba_string())
+        pass
 
     def _ensure_floating_config_vars(self) -> None:
-        IniManager().add_str(self.ini_key, "floating_icon_path", "Floating Icon", "icon_path", self._texture_to_ini_path(self.floating_button.icon_path))
-        IniManager().add_float(self.ini_key, "floating_button_size", "Floating Icon", "button_size", float(self.config.floating_icon.button_size))
-        IniManager().add_float(self.ini_key, "floating_idle_icon_scale", "Floating Icon", "idle_icon_scale", float(self.config.floating_icon.idle_scale))
-        IniManager().add_float(self.ini_key, "floating_hover_icon_scale", "Floating Icon", "hover_icon_scale", float(self.config.floating_icon.hover_scale))
+        pass
 
     def _ensure_ui_catalog_vars(self) -> None:
-        tree_config = self.ui_catalog.tree
-        tree_labels = self.ui_catalog.tree.labels
-        detail_header = self.ui_catalog.detail.header
-        detail_rows = self.ui_catalog.detail.rows
-
-        IniManager().add_float(self.ini_key, "tree_width", "Tree", "width", float(tree_config.width))
-        IniManager().add_float(self.ini_key, "tree_indent_value", "Tree", "indent_value", float(tree_labels.indent_value))
-        IniManager().add_float(self.ini_key, "tree_row_height_min", "Tree", "row_height_min", float(tree_labels.row_height_min))
-        IniManager().add_float(self.ini_key, "tree_row_height_padding_y", "Tree", "row_height_padding_y", float(tree_labels.row_height_padding_y))
-        IniManager().add_float(self.ini_key, "tree_row_padding_x", "Tree", "row_padding_x", float(tree_labels.row_padding_x))
-        IniManager().add_float(self.ini_key, "tree_row_width_padding_right", "Tree", "row_width_padding_right", float(tree_labels.row_width_padding_right))
-        IniManager().add_float(self.ini_key, "tree_row_corner_radius", "Tree", "row_corner_radius", float(tree_labels.row_corner_radius))
-        IniManager().add_float(self.ini_key, "tree_tooltip_icon_spacing", "Tree", "tooltip_icon_spacing", float(tree_labels.tooltip_icon_spacing))
-
-        IniManager().add_float(self.ini_key, "detail_header_row_height", "Detail Panel", "header_row_height", float(detail_header.row_height))
-        IniManager().add_float(self.ini_key, "detail_total_width_min", "Detail Panel", "total_width_min", float(detail_header.total_width_min))
-        IniManager().add_float(self.ini_key, "detail_favorite_width", "Detail Panel", "favorite_width", float(detail_header.favorite_width))
-        IniManager().add_float(self.ini_key, "detail_config_width", "Detail Panel", "config_width", float(detail_header.config_width))
-        IniManager().add_float(self.ini_key, "detail_name_width", "Detail Panel", "name_width", float(detail_header.name_width))
-
-        IniManager().add_float(self.ini_key, "detail_row_height", "Detail Panel", "row_height", float(detail_rows.row_height))
-        IniManager().add_float(self.ini_key, "detail_icon_padding", "Detail Panel", "icon_padding", float(detail_rows.icon_padding))
-        IniManager().add_float(self.ini_key, "detail_icon_size_max", "Detail Panel", "icon_size_max", float(detail_rows.icon_size_max))
-        IniManager().add_float(self.ini_key, "detail_content_padding_x", "Detail Panel", "content_padding_x", float(detail_rows.content_padding_x))
-        IniManager().add_float(self.ini_key, "detail_content_gap_after_icon", "Detail Panel", "content_gap_after_icon", float(detail_rows.content_gap_after_icon))
+        pass
 
     def _ensure_search_vars(self) -> None:
-        IniManager().add_str(self.ini_key, "saved_entries", "Search", "saved_entries", "")
+        pass
 
     def _save_config(self) -> None:
         self._write_ini_value_immediately(self.ini_key, "button_size", self.config.address_bar.button_size, section="Navigation", name="button_size")
@@ -1285,7 +1255,8 @@ class WidgetCatalogWindow:
 
     def _load_saved_search_entries(self, view: browser_view_state | None = None) -> None:
         active_view = view or self._get_active_view()
-        saved_entries_value = IniManager().read_key(key=self.ini_key, section="Search", name="saved_entries", default="")
+        cfg = Settings.find(self.ini_key)
+        saved_entries_value = cfg.get_str("Search", "saved_entries", "") if cfg else ""
 
         if isinstance(saved_entries_value, str):
             entries = saved_entries_value.split("|")
@@ -1376,15 +1347,11 @@ class WidgetCatalogWindow:
 
     @staticmethod
     def _write_ini_value_immediately(ini_key: str, var_name: str, value, *, section: str, name: str) -> None:
-        manager = IniManager()
-        manager.set(ini_key, var_name, value, section=section)
-
-        node = manager._get_node(ini_key)
-        if node is None:
+        cfg = Settings.find(ini_key)
+        if cfg is None:
             return
 
-        node.ini_handler.write_key(section, name, value)
-        node.cached_values[(section, name)] = str(value)
+        cfg.set(section, name, value)
 
     def _reset_floating_style(self) -> None:
         floating_defaults = floating_icon_vars()
@@ -1422,51 +1389,38 @@ class WidgetCatalogWindow:
         if self.runtime.settings_loaded:
             return
 
-        self._ensure_config_vars()
-        self._ensure_floating_config_vars()
-        self._ensure_ui_catalog_vars()
-        self._ensure_search_vars()
-        IniManager().load_once(self.ini_key)
-        node = IniManager()._get_node(self.ini_key)
+        cfg = Settings.find(self.ini_key)
 
         self.floating_button.load_visibility()
-        self.runtime.show_adavanced = bool(IniManager().get(self.ini_key, "show_adavanced", default=False, section="Configuration"))
-        self.config.address_bar.button_size = IniManager().getInt(self.ini_key, "button_size", default=self.config.address_bar.button_size, section="Navigation")
-        self.config.address_bar.gradient_start = self._parse_color(IniManager().get(self.ini_key, "gradient_start", default=self.config.address_bar.gradient_start.to_rgba_string(), section="Navigation"), self.config.address_bar.gradient_start)
-        self.config.address_bar.gradient_end = self._parse_color(IniManager().get(self.ini_key, "gradient_end", default=self.config.address_bar.gradient_end.to_rgba_string(), section="Navigation"), self.config.address_bar.gradient_end)
-        self.floating_button.icon_path = self._texture_from_ini_path(
-            IniManager().getStr(
-                self.ini_key,
-                "floating_icon_path",
-                default=self._default_floating_icon_relpath(),
-                section="Floating Icon",
+        if cfg is not None:
+            self.runtime.show_adavanced = cfg.get_bool("Configuration", "show_adavanced", False)
+            self.config.address_bar.button_size = cfg.get_int("Navigation", "button_size", self.config.address_bar.button_size)
+            self.config.address_bar.gradient_start = self._parse_color(cfg.get_str("Navigation", "gradient_start", self.config.address_bar.gradient_start.to_rgba_string()), self.config.address_bar.gradient_start)
+            self.config.address_bar.gradient_end = self._parse_color(cfg.get_str("Navigation", "gradient_end", self.config.address_bar.gradient_end.to_rgba_string()), self.config.address_bar.gradient_end)
+            self.floating_button.icon_path = self._texture_from_ini_path(
+                cfg.get_str("Floating Icon", "icon_path", self._default_floating_icon_relpath())
             )
-        )
-        self.floating_button.button_size = IniManager().getFloat(self.ini_key, "floating_button_size", default=float(self.config.floating_icon.button_size), section="Floating Icon")
-        self.floating_button.idle_icon_scale = IniManager().getFloat(self.ini_key, "floating_idle_icon_scale", default=float(self.config.floating_icon.idle_scale), section="Floating Icon")
-        self.floating_button.hover_icon_scale = IniManager().getFloat(self.ini_key, "floating_hover_icon_scale", default=float(self.config.floating_icon.hover_scale), section="Floating Icon")
-        if node is not None:
-            self.ui_catalog.tree.width = float(node.ini_handler.read_float("Tree", "width", float(self.ui_catalog.tree.width)))
-            node.vars_values[("Tree", "tree_width")] = self.ui_catalog.tree.width
-        else:
-            self.ui_catalog.tree.width = IniManager().getFloat(self.ini_key, "tree_width", default=float(self.ui_catalog.tree.width), section="Tree")
-        self.ui_catalog.tree.labels.indent_value = IniManager().getFloat(self.ini_key, "tree_indent_value", default=float(self.ui_catalog.tree.labels.indent_value), section="Tree")
-        self.ui_catalog.tree.labels.row_height_min = IniManager().getFloat(self.ini_key, "tree_row_height_min", default=float(self.ui_catalog.tree.labels.row_height_min), section="Tree")
-        self.ui_catalog.tree.labels.row_height_padding_y = IniManager().getFloat(self.ini_key, "tree_row_height_padding_y", default=float(self.ui_catalog.tree.labels.row_height_padding_y), section="Tree")
-        self.ui_catalog.tree.labels.row_padding_x = IniManager().getFloat(self.ini_key, "tree_row_padding_x", default=float(self.ui_catalog.tree.labels.row_padding_x), section="Tree")
-        self.ui_catalog.tree.labels.row_width_padding_right = IniManager().getFloat(self.ini_key, "tree_row_width_padding_right", default=float(self.ui_catalog.tree.labels.row_width_padding_right), section="Tree")
-        self.ui_catalog.tree.labels.row_corner_radius = IniManager().getFloat(self.ini_key, "tree_row_corner_radius", default=float(self.ui_catalog.tree.labels.row_corner_radius), section="Tree")
-        self.ui_catalog.tree.labels.tooltip_icon_spacing = IniManager().getFloat(self.ini_key, "tree_tooltip_icon_spacing", default=float(self.ui_catalog.tree.labels.tooltip_icon_spacing), section="Tree")
-        self.ui_catalog.detail.header.row_height = IniManager().getFloat(self.ini_key, "detail_header_row_height", default=float(self.ui_catalog.detail.header.row_height), section="Detail Panel")
-        self.ui_catalog.detail.header.total_width_min = IniManager().getFloat(self.ini_key, "detail_total_width_min", default=float(self.ui_catalog.detail.header.total_width_min), section="Detail Panel")
-        self.ui_catalog.detail.header.favorite_width = IniManager().getFloat(self.ini_key, "detail_favorite_width", default=float(self.ui_catalog.detail.header.favorite_width), section="Detail Panel")
-        self.ui_catalog.detail.header.config_width = IniManager().getFloat(self.ini_key, "detail_config_width", default=float(self.ui_catalog.detail.header.config_width), section="Detail Panel")
-        self.ui_catalog.detail.header.name_width = IniManager().getFloat(self.ini_key, "detail_name_width", default=float(self.ui_catalog.detail.header.name_width), section="Detail Panel")
-        self.ui_catalog.detail.rows.row_height = IniManager().getFloat(self.ini_key, "detail_row_height", default=float(self.ui_catalog.detail.rows.row_height), section="Detail Panel")
-        self.ui_catalog.detail.rows.icon_padding = IniManager().getFloat(self.ini_key, "detail_icon_padding", default=float(self.ui_catalog.detail.rows.icon_padding), section="Detail Panel")
-        self.ui_catalog.detail.rows.icon_size_max = IniManager().getFloat(self.ini_key, "detail_icon_size_max", default=float(self.ui_catalog.detail.rows.icon_size_max), section="Detail Panel")
-        self.ui_catalog.detail.rows.content_padding_x = IniManager().getFloat(self.ini_key, "detail_content_padding_x", default=float(self.ui_catalog.detail.rows.content_padding_x), section="Detail Panel")
-        self.ui_catalog.detail.rows.content_gap_after_icon = IniManager().getFloat(self.ini_key, "detail_content_gap_after_icon", default=float(self.ui_catalog.detail.rows.content_gap_after_icon), section="Detail Panel")
+            self.floating_button.button_size = cfg.get_float("Floating Icon", "button_size", float(self.config.floating_icon.button_size))
+            self.floating_button.idle_icon_scale = cfg.get_float("Floating Icon", "idle_icon_scale", float(self.config.floating_icon.idle_scale))
+            self.floating_button.hover_icon_scale = cfg.get_float("Floating Icon", "hover_icon_scale", float(self.config.floating_icon.hover_scale))
+            self.ui_catalog.tree.width = cfg.get_float("Tree", "width", float(self.ui_catalog.tree.width))
+            self.ui_catalog.tree.labels.indent_value = cfg.get_float("Tree", "indent_value", float(self.ui_catalog.tree.labels.indent_value))
+            self.ui_catalog.tree.labels.row_height_min = cfg.get_float("Tree", "row_height_min", float(self.ui_catalog.tree.labels.row_height_min))
+            self.ui_catalog.tree.labels.row_height_padding_y = cfg.get_float("Tree", "row_height_padding_y", float(self.ui_catalog.tree.labels.row_height_padding_y))
+            self.ui_catalog.tree.labels.row_padding_x = cfg.get_float("Tree", "row_padding_x", float(self.ui_catalog.tree.labels.row_padding_x))
+            self.ui_catalog.tree.labels.row_width_padding_right = cfg.get_float("Tree", "row_width_padding_right", float(self.ui_catalog.tree.labels.row_width_padding_right))
+            self.ui_catalog.tree.labels.row_corner_radius = cfg.get_float("Tree", "row_corner_radius", float(self.ui_catalog.tree.labels.row_corner_radius))
+            self.ui_catalog.tree.labels.tooltip_icon_spacing = cfg.get_float("Tree", "tooltip_icon_spacing", float(self.ui_catalog.tree.labels.tooltip_icon_spacing))
+            self.ui_catalog.detail.header.row_height = cfg.get_float("Detail Panel", "header_row_height", float(self.ui_catalog.detail.header.row_height))
+            self.ui_catalog.detail.header.total_width_min = cfg.get_float("Detail Panel", "total_width_min", float(self.ui_catalog.detail.header.total_width_min))
+            self.ui_catalog.detail.header.favorite_width = cfg.get_float("Detail Panel", "favorite_width", float(self.ui_catalog.detail.header.favorite_width))
+            self.ui_catalog.detail.header.config_width = cfg.get_float("Detail Panel", "config_width", float(self.ui_catalog.detail.header.config_width))
+            self.ui_catalog.detail.header.name_width = cfg.get_float("Detail Panel", "name_width", float(self.ui_catalog.detail.header.name_width))
+            self.ui_catalog.detail.rows.row_height = cfg.get_float("Detail Panel", "row_height", float(self.ui_catalog.detail.rows.row_height))
+            self.ui_catalog.detail.rows.icon_padding = cfg.get_float("Detail Panel", "icon_padding", float(self.ui_catalog.detail.rows.icon_padding))
+            self.ui_catalog.detail.rows.icon_size_max = cfg.get_float("Detail Panel", "icon_size_max", float(self.ui_catalog.detail.rows.icon_size_max))
+            self.ui_catalog.detail.rows.content_padding_x = cfg.get_float("Detail Panel", "content_padding_x", float(self.ui_catalog.detail.rows.content_padding_x))
+            self.ui_catalog.detail.rows.content_gap_after_icon = cfg.get_float("Detail Panel", "content_gap_after_icon", float(self.ui_catalog.detail.rows.content_gap_after_icon))
         self._load_saved_search_entries()
         self.runtime.tree_width_pending_apply = True
         self.runtime.tree_layout_revision += 1
@@ -1481,7 +1435,8 @@ class WidgetCatalogWindow:
 
     def _get_favorite_ids(self) -> set[str]:
         ini_key = self._manager_ini_key()
-        favorites_value = IniManager().read_key(key=ini_key, section="Favorites", name="favorites", default="")
+        cfg = Settings.find(ini_key)
+        favorites_value = cfg.get_str("Favorites", "favorites", "") if cfg else ""
 
         if isinstance(favorites_value, str):
             entries = favorites_value.split(",")
@@ -1548,8 +1503,9 @@ class WidgetCatalogWindow:
 
     def _save_favorite_ids(self, favorite_ids: set[str]) -> None:
         ini_key = self._manager_ini_key()
-        IniManager().set(key=ini_key, var_name="favorites", value=",".join(sorted(favorite_ids)), section="Favorites")
-        IniManager().save_vars(ini_key)
+        cfg = Settings.find(ini_key)
+        if cfg:
+            cfg.set("Favorites", "favorites", ",".join(sorted(favorite_ids)))
 
     def _set_widget_favorite(self, widget, favorite: bool) -> None:
         favorite_ids = self._get_favorite_ids()
@@ -2514,8 +2470,9 @@ class WidgetCatalogWindow:
 
             if ImGui_Legacy.begin_menu("Settings"):
                 if ImGui_Legacy.menu_item("Switch To Advanced UI"):
-                    IniManager().set(key=self.ini_key, var_name="show_adavanced", value=True, section="Configuration")
-                    IniManager().save_vars(self.ini_key)
+                    cfg = Settings.find(self.ini_key)
+                    if cfg:
+                        cfg.set("Configuration", "show_adavanced", True)
                     self.runtime.show_adavanced = True
                 ImGui_Legacy.show_tooltip("Switch from the catalog UI to the advanced widget manager.")
                 PyImGui.separator()
@@ -2863,54 +2820,23 @@ def _ensure_ini() -> bool:
     if not os.path.exists(INI_PATH):
         os.makedirs(INI_PATH, exist_ok=True)
 
-    INI_KEY = IniManager().ensure_global_key(INI_PATH, INI_FILENAME)
-    FLOATING_INI_KEY = IniManager().ensure_global_key(INI_PATH, FLOATING_INI_FILENAME)
-    SETUP_INI_KEY = IniManager().ensure_global_key(INI_PATH, SETUP_INI_FILENAME)
+    INI_KEY = Settings.ensure_global_key(INI_PATH, INI_FILENAME)
+    FLOATING_INI_KEY = Settings.ensure_global_key(INI_PATH, FLOATING_INI_FILENAME)
+    SETUP_INI_KEY = Settings.ensure_global_key(INI_PATH, SETUP_INI_FILENAME)
     if not INI_KEY or not FLOATING_INI_KEY or not SETUP_INI_KEY:
         return False
 
-    IniManager().add_bool(INI_KEY, "init", "Window config", "init", default=True)
-    IniManager().add_bool(INI_KEY, "show_adavanced", "Configuration", "show_adavanced", default=False)
-    IniManager().add_int(INI_KEY, "button_size", "Navigation", "button_size", default=config_defaults.address_bar.button_size)
-    IniManager().add_str(INI_KEY, "gradient_start", "Navigation", "gradient_start", default=config_defaults.address_bar.gradient_start.to_rgba_string())
-    IniManager().add_str(INI_KEY, "gradient_end", "Navigation", "gradient_end", default=config_defaults.address_bar.gradient_end.to_rgba_string())
-    IniManager().add_str(INI_KEY, "floating_icon_path", "Floating Icon", "icon_path", default="python_icon_round.png")
-    IniManager().add_float(INI_KEY, "floating_button_size", "Floating Icon", "button_size", default=config_defaults.floating_icon.button_size)
-    IniManager().add_float(INI_KEY, "floating_idle_icon_scale", "Floating Icon", "idle_icon_scale", default=config_defaults.floating_icon.idle_scale)
-    IniManager().add_float(INI_KEY, "floating_hover_icon_scale", "Floating Icon", "hover_icon_scale", default=config_defaults.floating_icon.hover_scale)
-    IniManager().add_float(INI_KEY, "tree_indent_value", "Tree", "indent_value", default=ui_catalog_defaults.tree.labels.indent_value)
-    IniManager().add_float(INI_KEY, "tree_width", "Tree", "width", default=ui_catalog_defaults.tree.width)
-    IniManager().add_float(INI_KEY, "tree_row_height_min", "Tree", "row_height_min", default=ui_catalog_defaults.tree.labels.row_height_min)
-    IniManager().add_float(INI_KEY, "tree_row_height_padding_y", "Tree", "row_height_padding_y", default=ui_catalog_defaults.tree.labels.row_height_padding_y)
-    IniManager().add_float(INI_KEY, "tree_row_padding_x", "Tree", "row_padding_x", default=ui_catalog_defaults.tree.labels.row_padding_x)
-    IniManager().add_float(INI_KEY, "tree_row_width_padding_right", "Tree", "row_width_padding_right", default=ui_catalog_defaults.tree.labels.row_width_padding_right)
-    IniManager().add_float(INI_KEY, "tree_row_corner_radius", "Tree", "row_corner_radius", default=ui_catalog_defaults.tree.labels.row_corner_radius)
-    IniManager().add_float(INI_KEY, "tree_tooltip_icon_spacing", "Tree", "tooltip_icon_spacing", default=ui_catalog_defaults.tree.labels.tooltip_icon_spacing)
-    IniManager().add_float(INI_KEY, "detail_header_row_height", "Detail Panel", "header_row_height", default=ui_catalog_defaults.detail.header.row_height)
-    IniManager().add_float(INI_KEY, "detail_total_width_min", "Detail Panel", "total_width_min", default=ui_catalog_defaults.detail.header.total_width_min)
-    IniManager().add_float(INI_KEY, "detail_favorite_width", "Detail Panel", "favorite_width", default=ui_catalog_defaults.detail.header.favorite_width)
-    IniManager().add_float(INI_KEY, "detail_config_width", "Detail Panel", "config_width", default=ui_catalog_defaults.detail.header.config_width)
-    IniManager().add_float(INI_KEY, "detail_name_width", "Detail Panel", "name_width", default=ui_catalog_defaults.detail.header.name_width)
-    IniManager().add_float(INI_KEY, "detail_row_height", "Detail Panel", "row_height", default=ui_catalog_defaults.detail.rows.row_height)
-    IniManager().add_float(INI_KEY, "detail_icon_padding", "Detail Panel", "icon_padding", default=ui_catalog_defaults.detail.rows.icon_padding)
-    IniManager().add_float(INI_KEY, "detail_icon_size_max", "Detail Panel", "icon_size_max", default=ui_catalog_defaults.detail.rows.icon_size_max)
-    IniManager().add_float(INI_KEY, "detail_content_padding_x", "Detail Panel", "content_padding_x", default=ui_catalog_defaults.detail.rows.content_padding_x)
-    IniManager().add_float(INI_KEY, "detail_content_gap_after_icon", "Detail Panel", "content_gap_after_icon", default=ui_catalog_defaults.detail.rows.content_gap_after_icon)
-    IniManager().add_str(INI_KEY, "saved_entries", "Search", "saved_entries", default="")
-    IniManager().load_once(INI_KEY)
-    IniManager().set(INI_KEY, "init", True)
-    IniManager().save_vars(INI_KEY)
+    _cfg = Settings.find(INI_KEY)
+    if _cfg:
+        _cfg.set("Window config", "init", True)
 
-    IniManager().add_bool(FLOATING_INI_KEY, "init", "Window config", "init", default=True)
-    IniManager().add_bool(FLOATING_INI_KEY, "show_main_window", "Configuration", "show_main_window", default=True)
-    IniManager().load_once(FLOATING_INI_KEY)
-    IniManager().set(FLOATING_INI_KEY, "init", True)
-    IniManager().save_vars(FLOATING_INI_KEY)
+    _floating_cfg = Settings.find(FLOATING_INI_KEY)
+    if _floating_cfg:
+        _floating_cfg.set("Window config", "init", True)
 
-    IniManager().add_bool(SETUP_INI_KEY, "init", "Window config", "init", default=True)
-    IniManager().load_once(SETUP_INI_KEY)
-    IniManager().set(SETUP_INI_KEY, "init", True)
-    IniManager().save_vars(SETUP_INI_KEY)
+    _setup_cfg = Settings.find(SETUP_INI_KEY)
+    if _setup_cfg:
+        _setup_cfg.set("Window config", "init", True)
 
     INI_INIT = True
     return True
@@ -2928,9 +2854,8 @@ def show_adavanced_enabled() -> bool:
     if not INITIALIZED or _default_window is None:
         return False
     _default_window._load_config_if_needed()
-    _default_window.runtime.show_adavanced = bool(
-        IniManager().get(_default_window.ini_key, "show_adavanced", default=False, section="Configuration")
-    )
+    _cfg = Settings.find(_default_window.ini_key)
+    _default_window.runtime.show_adavanced = _cfg.get_bool("Configuration", "show_adavanced", False) if _cfg else False
     return _default_window.runtime.show_adavanced
 
 

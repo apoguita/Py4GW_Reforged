@@ -26,7 +26,7 @@ import Py4GW
 
 import HeroAI.globals as hero_globals
 from Py4GWCoreLib import Agent, AgentArray, ThrottledTimer, Utils
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Pathing import AutoPathing
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
@@ -152,83 +152,14 @@ def _clamp_early_exit(value: float) -> float:
 
 
 def _ensure_stuck_config_ini_vars() -> str:
-    global _CONFIG_INI_KEY, _CONFIG_VARS_REGISTERED
+    global _CONFIG_INI_KEY
     if not _CONFIG_INI_KEY:
         try:
-            _CONFIG_INI_KEY = IniManager().ensure_global_key(_INI_PATH, _INI_FILENAME)
+            _CONFIG_INI_KEY = Settings.ensure_global_key(_INI_PATH, _INI_FILENAME)
         except Exception:
             return ""
     if not _CONFIG_INI_KEY:
         return ""
-    if not _CONFIG_VARS_REGISTERED:
-        try:
-            im = IniManager()
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_TOLERANCE,
-                _INI_SECTION,
-                _INI_KEY_TOLERANCE,
-                SMART_UNSTUCK_CFG.waypoint_smoothing,
-            )
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_TOUCH_RADIUS,
-                _INI_SECTION,
-                _INI_KEY_TOUCH_RADIUS,
-                SMART_UNSTUCK_CFG.touch_radius,
-            )
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_ENEMY_RANGE,
-                _INI_SECTION,
-                _INI_KEY_ENEMY_RANGE,
-                SMART_UNSTUCK_CFG.enemy_detection_range,
-            )
-            im.add_int(
-                _CONFIG_INI_KEY,
-                _INI_KEY_SAMPLE_COUNT,
-                _INI_SECTION,
-                _INI_KEY_SAMPLE_COUNT,
-                SMART_UNSTUCK_CFG.stuck_sample_count,
-            )
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_MIN_DISTANCE,
-                _INI_SECTION,
-                _INI_KEY_MIN_DISTANCE,
-                SMART_UNSTUCK_CFG.min_distance_activate_unstuck,
-            )
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_MOVE_UNITS,
-                _INI_SECTION,
-                _INI_KEY_MOVE_UNITS,
-                SMART_UNSTUCK_CFG.no_progress_move_units,
-            )
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_CLOSE_UNITS,
-                _INI_SECTION,
-                _INI_KEY_CLOSE_UNITS,
-                SMART_UNSTUCK_CFG.no_progress_close_units,
-            )
-            im.add_bool(
-                _CONFIG_INI_KEY,
-                _INI_KEY_OVERLAY,
-                _INI_SECTION,
-                _INI_KEY_OVERLAY,
-                hero_globals.show_followers_unstuck_overlay,
-            )
-            im.add_float(
-                _CONFIG_INI_KEY,
-                _INI_KEY_EARLY_EXIT,
-                _INI_SECTION,
-                _INI_KEY_EARLY_EXIT,
-                SMART_UNSTUCK_CFG.obstacle_cleared_delta,
-            )
-            _CONFIG_VARS_REGISTERED = True
-        except Exception:
-            return ""
     return _CONFIG_INI_KEY
 
 
@@ -243,63 +174,65 @@ def reload_smart_unstuck_config_from_ini(force_reload: bool = False) -> None:
     if not force_reload and not _CONFIG_RELOAD_TIMER.IsExpired():
         return
     _CONFIG_RELOAD_TIMER.Reset()
-    im = IniManager()
+    cfg = Settings.find(key)
+    if cfg is None:
+        return
     try:
-        im.reload(key)
+        cfg.reload()
     except Exception:
         pass
 
     try:
         new_waypoint_smoothing = max(1.0, float(
-            im.read_float(key, _INI_SECTION, _INI_KEY_TOLERANCE, SMART_UNSTUCK_CFG.waypoint_smoothing)
+            cfg.get_float(_INI_SECTION, _INI_KEY_TOLERANCE, SMART_UNSTUCK_CFG.waypoint_smoothing)
         ))
     except Exception:
         new_waypoint_smoothing = SMART_UNSTUCK_CFG.waypoint_smoothing
     try:
         new_radius = _clamp_radius(
-            im.read_float(key, _INI_SECTION, _INI_KEY_TOUCH_RADIUS, SMART_UNSTUCK_CFG.touch_radius)
+            cfg.get_float(_INI_SECTION, _INI_KEY_TOUCH_RADIUS, SMART_UNSTUCK_CFG.touch_radius)
         )
     except Exception:
         new_radius = SMART_UNSTUCK_CFG.touch_radius
     try:
         new_enemy_range = _clamp_radius(
-            im.read_float(key, _INI_SECTION, _INI_KEY_ENEMY_RANGE, SMART_UNSTUCK_CFG.enemy_detection_range)
+            cfg.get_float(_INI_SECTION, _INI_KEY_ENEMY_RANGE, SMART_UNSTUCK_CFG.enemy_detection_range)
         )
     except Exception:
         new_enemy_range = SMART_UNSTUCK_CFG.enemy_detection_range
     try:
         new_sample_count = _clamp_sample_count(
-            im.read_int(key, _INI_SECTION, _INI_KEY_SAMPLE_COUNT, SMART_UNSTUCK_CFG.stuck_sample_count)
+            cfg.get_int(_INI_SECTION, _INI_KEY_SAMPLE_COUNT, SMART_UNSTUCK_CFG.stuck_sample_count)
         )
     except Exception:
         new_sample_count = SMART_UNSTUCK_CFG.stuck_sample_count
     try:
         new_min_distance = _clamp_min_distance(
-            im.read_float(key, _INI_SECTION, _INI_KEY_MIN_DISTANCE, SMART_UNSTUCK_CFG.min_distance_activate_unstuck)
+            cfg.get_float(_INI_SECTION, _INI_KEY_MIN_DISTANCE, SMART_UNSTUCK_CFG.min_distance_activate_unstuck)
         )
     except Exception:
         new_min_distance = SMART_UNSTUCK_CFG.min_distance_activate_unstuck
     try:
         new_move_units = _clamp_progress_units(
-            im.read_float(key, _INI_SECTION, _INI_KEY_MOVE_UNITS, SMART_UNSTUCK_CFG.no_progress_move_units)
+            cfg.get_float(_INI_SECTION, _INI_KEY_MOVE_UNITS, SMART_UNSTUCK_CFG.no_progress_move_units)
         )
     except Exception:
         new_move_units = SMART_UNSTUCK_CFG.no_progress_move_units
     try:
         new_close_units = _clamp_progress_units(
-            im.read_float(key, _INI_SECTION, _INI_KEY_CLOSE_UNITS, SMART_UNSTUCK_CFG.no_progress_close_units)
+            cfg.get_float(_INI_SECTION, _INI_KEY_CLOSE_UNITS, SMART_UNSTUCK_CFG.no_progress_close_units)
         )
     except Exception:
         new_close_units = SMART_UNSTUCK_CFG.no_progress_close_units
     try:
         new_overlay = bool(
-            im.read_bool(key, _INI_SECTION, _INI_KEY_OVERLAY, hero_globals.show_followers_unstuck_overlay)
+            cfg.get_bool(_INI_SECTION, _INI_KEY_OVERLAY, hero_globals.show_followers_unstuck_overlay)
         )
     except Exception:
         new_overlay = hero_globals.show_followers_unstuck_overlay
     try:
         new_early_exit = _clamp_early_exit(
-            im.read_float(key, _INI_SECTION, _INI_KEY_EARLY_EXIT, SMART_UNSTUCK_CFG.obstacle_cleared_delta)
+            cfg.get_float(_INI_SECTION, _INI_KEY_EARLY_EXIT, SMART_UNSTUCK_CFG.obstacle_cleared_delta)
         )
     except Exception:
         new_early_exit = SMART_UNSTUCK_CFG.obstacle_cleared_delta

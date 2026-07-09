@@ -4,7 +4,7 @@ from typing import Any
 import PyImGui
 
 from .._legacy_facade import ImGui_Legacy
-from ..IniManager import IniManager
+from ..py4gwcorelib_src.Settings import Settings
 
 
 @dataclass
@@ -38,36 +38,14 @@ class WindowFactory:
 
     def ensure_ini(self) -> bool:
         for spec in self._windows.values():
-            spec.ini_key = IniManager().ensure_key(self.ini_path, spec.filename)
+            spec.ini_key = Settings.ensure_key(self.ini_path, spec.filename)
             if not spec.ini_key:
                 return False
 
         for spec in self._windows.values():
-            IniManager().add_bool(spec.ini_key, "init", "Window config", "init", default=True)
-
-            if spec.open_var_name is not None:
-                IniManager().add_bool(
-                    spec.ini_key,
-                    spec.open_var_name,
-                    "Configuration",
-                    spec.open_var_name,
-                    default=spec.open_default,
-                )
-
-            for var in spec.vars:
-                match var.kind:
-                    case "bool":
-                        IniManager().add_bool(spec.ini_key, var.key, var.section, var.name, default=bool(var.default))
-                    case "float":
-                        IniManager().add_float(spec.ini_key, var.key, var.section, var.name, float(var.default))
-                    case "int":
-                        IniManager().add_int(spec.ini_key, var.key, var.section, var.name, int(var.default))
-                    case "str":
-                        IniManager().add_str(spec.ini_key, var.key, var.section, var.name, str(var.default))
-
-            IniManager().load_once(spec.ini_key)
-            IniManager().set(spec.ini_key, "init", True)
-            IniManager().save_vars(spec.ini_key)
+            cfg = Settings.find(spec.ini_key)
+            if cfg:
+                cfg.set("Window config", "init", True)
 
         return True
 
@@ -87,11 +65,13 @@ class WindowFactory:
         spec = self._windows[identifier]
         if spec.open_var_name is None:
             return False
-        return IniManager().getBool(spec.ini_key, spec.open_var_name, spec.open_default, section="Configuration")
+        cfg = Settings.find(spec.ini_key)
+        return cfg.get_bool("Configuration", spec.open_var_name, spec.open_default) if cfg else spec.open_default
 
     def set_open(self, identifier: str, value: bool) -> None:
         spec = self._windows[identifier]
         if spec.open_var_name is None:
             return
-        IniManager().set(spec.ini_key, spec.open_var_name, bool(value), section="Configuration")
-        IniManager().save_vars(spec.ini_key)
+        cfg = Settings.find(spec.ini_key)
+        if cfg:
+            cfg.set("Configuration", spec.open_var_name, bool(value))

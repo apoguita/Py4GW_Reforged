@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import *
@@ -96,10 +96,9 @@ def main() -> None:
 
     if not initialized:
         if not ini_key:
-            ini_key = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+            ini_key = Settings.ensure_key(INI_PATH, INI_FILENAME)
             if not ini_key:
                 return
-            IniManager().load_once(ini_key)
 
         ensure_botting_tree()
         initialized = True

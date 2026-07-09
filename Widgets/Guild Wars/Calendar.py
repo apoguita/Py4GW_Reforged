@@ -11,7 +11,6 @@ from Py4GWCoreLib import Color
 from Py4GWCoreLib import ColorPalette
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import ImGui_Legacy
-from Py4GWCoreLib import IniManager
 from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import Py4GW
 from Py4GWCoreLib import get_texture_for_model
@@ -26,6 +25,7 @@ from Py4GWCoreLib.enums import ZAISHEN_BOUNTY
 from Py4GWCoreLib.enums import ZAISHEN_COMBAT
 from Py4GWCoreLib.enums import ZAISHEN_VANQUISH
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 REFERENCE_WEEK = date(2013, 5, 13)  # First Monday after update
@@ -661,13 +661,10 @@ def _save_widget_enabled_state(widget: WidgetLike) -> bool:
         )
         return False
 
-    IniManager().set(
-        key=manager_ini_key,
-        section=f"Widget:{widget.name}",
-        var_name=_get_widget_enabled_var_name(widget),
-        value=widget.enabled,
-    )
-    IniManager().save_vars(manager_ini_key)
+    cfg = Settings.find(manager_ini_key)
+    if cfg is None:
+        return False
+    cfg.set(f"Widget:{widget.name}", _get_widget_enabled_var_name(widget), widget.enabled)
     return True
 
 

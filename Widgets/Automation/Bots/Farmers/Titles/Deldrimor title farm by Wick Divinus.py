@@ -1,9 +1,10 @@
 # region Imports & Config
-from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, ModelID, Agent, Player, ConsoleLog, IniManager, HeroType, AgentArray, SharedCommandType
+from Py4GWCoreLib import Botting, Routines, GLOBAL_CACHE, ModelID, Agent, Player, ConsoleLog, HeroType, AgentArray, SharedCommandType
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums_src.Title_enums import TitleID, TITLE_TIERS
 from Py4GWCoreLib.botting_src.property import Property
 from Py4GWCoreLib.ImGui_Legacy_src.ImGuisrc import ImGui_Legacy
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import Py4GW
 import os
 import random
@@ -724,7 +725,7 @@ def _as_bool(value) -> bool:
 
 def _ensure_bot_ini(bot: Botting) -> str:
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = IniManager().ensure_key(
+        bot.config.ini_key = Settings.ensure_key(
             f"BottingClass/bot_{bot.config.bot_name}",
             f"bot_{bot.config.bot_name}.ini",
         )
@@ -737,20 +738,18 @@ def _load_consumable_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    saved_use_conset = IniManager().read_bool(
-        ini_key,
+    cfg = Settings.find(ini_key)
+    saved_use_conset = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_CONSET_KEY,
         _as_bool(bot.Properties.Get("use_conset", "active")),
     )
-    saved_use_pcons = IniManager().read_bool(
-        ini_key,
+    saved_use_pcons = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_PCONS_KEY,
         _as_bool(bot.Properties.Get("use_pcons", "active")),
     )
-    saved_use_summoning_stones = IniManager().read_bool(
-        ini_key,
+    saved_use_summoning_stones = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_SUMMONING_STONES_KEY,
         _as_bool(bot.Properties.Get("use_summoning_stones", "active")),
@@ -758,20 +757,17 @@ def _load_consumable_settings(bot: Botting) -> None:
     bot.Properties.ApplyNow("use_conset", "active", _as_bool(saved_use_conset))
     bot.Properties.ApplyNow("use_pcons", "active", _as_bool(saved_use_pcons))
     bot.Properties.ApplyNow("use_summoning_stones", "active", _as_bool(saved_use_summoning_stones))
-    _conset_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key,
+    _conset_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(cfg.get_int(
         _SETTINGS_SECTION,
         _CONSET_RESTOCK_TARGET_KEY,
         _conset_restock_target,
     ))))
-    _pcon_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key,
+    _pcon_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(cfg.get_int(
         _SETTINGS_SECTION,
         _PCON_RESTOCK_TARGET_KEY,
         _pcon_restock_target,
     ))))
-    _summoning_stones_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(IniManager().read_int(
-        ini_key,
+    _summoning_stones_restock_target = max(0, min(_MAX_CONSUMABLE_RESTOCK_TARGET, int(cfg.get_int(
         _SETTINGS_SECTION,
         _SUMMONING_STONES_RESTOCK_TARGET_KEY,
         _summoning_stones_restock_target,
@@ -783,32 +779,28 @@ def _load_kit_restock_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    _restock_kits_enabled = IniManager().read_bool(
-        ini_key,
+    cfg = Settings.find(ini_key)
+    _restock_kits_enabled = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_RESTOCK_KITS_KEY,
         _restock_kits_enabled,
     )
-    _id_kits_target = max(0, int(IniManager().read_int(
-        ini_key,
+    _id_kits_target = max(0, int(cfg.get_int(
         _SETTINGS_SECTION,
         _ID_KITS_TARGET_KEY,
         _id_kits_target,
     )))
-    _salvage_kits_target = max(0, int(IniManager().read_int(
-        ini_key,
+    _salvage_kits_target = max(0, int(cfg.get_int(
         _SETTINGS_SECTION,
         _SALVAGE_KITS_TARGET_KEY,
         _salvage_kits_target,
     )))
-    _merchant_sell_materials = IniManager().read_bool(
-        ini_key,
+    _merchant_sell_materials = cfg.get_bool(
         _SETTINGS_SECTION,
         _MERCHANT_SELL_MATERIALS_KEY,
         _merchant_sell_materials,
     )
-    _merchant_alt_wait_ms = max(0, min(_MAX_ALT_SETTLE_WAIT_MS, int(IniManager().read_int(
-        ini_key,
+    _merchant_alt_wait_ms = max(0, min(_MAX_ALT_SETTLE_WAIT_MS, int(cfg.get_int(
         _SETTINGS_SECTION,
         _MERCHANT_ALT_WAIT_MS_KEY,
         _merchant_alt_wait_ms,
@@ -819,38 +811,33 @@ def _save_consumable_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    IniManager().write_key(
-        ini_key,
+    cfg = Settings.find(ini_key)
+    cfg.set(
         _SETTINGS_SECTION,
         _USE_CONSET_KEY,
         _as_bool(bot.Properties.Get("use_conset", "active")),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _USE_PCONS_KEY,
         _as_bool(bot.Properties.Get("use_pcons", "active")),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _USE_SUMMONING_STONES_KEY,
         _as_bool(bot.Properties.Get("use_summoning_stones", "active")),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _CONSET_RESTOCK_TARGET_KEY,
         int(_conset_restock_target),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _PCON_RESTOCK_TARGET_KEY,
         int(_pcon_restock_target),
     )
-    IniManager().write_key(
-        ini_key,
+    cfg.set(
         _SETTINGS_SECTION,
         _SUMMONING_STONES_RESTOCK_TARGET_KEY,
         int(_summoning_stones_restock_target),
@@ -861,11 +848,12 @@ def _save_kit_restock_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, bool(_restock_kits_enabled))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _ID_KITS_TARGET_KEY, int(_id_kits_target))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, int(_salvage_kits_target))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_SELL_MATERIALS_KEY, bool(_merchant_sell_materials))
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MERCHANT_ALT_WAIT_MS_KEY, int(_merchant_alt_wait_ms))
+    cfg = Settings.find(ini_key)
+    cfg.set(_SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, bool(_restock_kits_enabled))
+    cfg.set(_SETTINGS_SECTION, _ID_KITS_TARGET_KEY, int(_id_kits_target))
+    cfg.set(_SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, int(_salvage_kits_target))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_SELL_MATERIALS_KEY, bool(_merchant_sell_materials))
+    cfg.set(_SETTINGS_SECTION, _MERCHANT_ALT_WAIT_MS_KEY, int(_merchant_alt_wait_ms))
 
 
 def _ensure_consumable_settings_ui_loaded(bot: Botting) -> None:
@@ -1164,9 +1152,10 @@ def _load_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    raw = IniManager().read_bool(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
+    cfg = Settings.find(ini_key)
+    raw = cfg.get_bool(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
     _party_mode = 1 if raw else 0
-    _randomize_district = IniManager().read_bool(ini_key, _SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, _randomize_district)
+    _randomize_district = cfg.get_bool(_SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, _randomize_district)
 
 
 def _ensure_mode_loaded(bot: Botting) -> None:
@@ -1181,8 +1170,9 @@ def _save_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
-    IniManager().write_key(ini_key, _SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, bool(_randomize_district))
+    cfg = Settings.find(ini_key)
+    cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
+    cfg.set(_SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, bool(_randomize_district))
 
 
 def _do_dialog_at(bot: Botting, x: float, y: float, dialog_id: int, broadcast_to_alts: bool = True):

@@ -12,7 +12,7 @@ from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette
 from Py4GWCoreLib.Overlay import Overlay
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 INI_PATH = "HeroAI"
@@ -179,73 +179,33 @@ def _ini_reload_now(key: str):
     if not key:
         return
     try:
-        IniManager().reload(key)
+        cfg = Settings.find(key)
+        if cfg:
+            cfg.reload()
     except Exception:
         pass
 
 
 def _ini_write_now(key: str, section: str, name: str, value):
     # Synchronous write for explicit Save actions (avoids deferred flush races).
-    im = IniManager()
-    node = im._get_node(key)  # project-local API; used to guarantee immediate persistence
-    if not node:
-        return
-    try:
-        node.ini_handler.write_key(section, name, value)
-        k = (section, name)
-        if hasattr(node, "cached_values") and node.cached_values is not None:
-            node.cached_values[k] = str(value)
-        if hasattr(node, "pending_writes") and node.pending_writes is not None and k in node.pending_writes:
-            del node.pending_writes[k]
-    except Exception:
-        # Fallback to staged write if direct path fails
-        im.write_key(key, section, name, value)
+    cfg = Settings.find(key)
+    if cfg:
+        cfg.set(section, name, value)
 
 
 def _ini_delete_section_now(key: str, section: str):
-    im = IniManager()
-    node = im._get_node(key)
-    if node:
-        try:
-            node.ini_handler.delete_section(section)
-            if hasattr(node, "cached_values") and node.cached_values is not None:
-                for k in [k for k in node.cached_values.keys() if k[0] == section]:
-                    del node.cached_values[k]
-            if hasattr(node, "pending_writes") and node.pending_writes is not None:
-                for k in [k for k in node.pending_writes.keys() if k[0] == section]:
-                    del node.pending_writes[k]
-            return
-        except Exception:
-            pass
-    im.delete_section(key, section)
+    cfg = Settings.find(key)
+    if cfg:
+        cfg.delete_section(section)
 
 
 def _ensure_global_ini_key_strict(path: str, filename: str) -> str:
-    im = IniManager()
-    key = im.ensure_global_key(path, filename)
-    if not key:
-        return ""
-    try:
-        node = im._get_node(key)
-        if node and getattr(node, "is_global", False):
-            return key
-        # Rebind if a non-global handler was already cached under the same key.
-        if hasattr(im, "_handlers") and key in im._handlers:
-            del im._handlers[key]
-        key = im.ensure_global_key(path, filename)
-    except Exception:
-        pass
-    return key
+    return Settings.ensure_global_key(path, filename)
 
 
 def _get_ini_filename(key: str) -> str:
-    try:
-        node = IniManager()._get_node(key)
-        if node and getattr(node, "ini_handler", None):
-            return str(node.ini_handler.filename)
-    except Exception:
-        pass
-    return ""
+    cfg = Settings.find(key)
+    return cfg.resolved_path() if cfg else ""
 
 
 def _sec_formation(name: str) -> str:
@@ -581,14 +541,26 @@ def _reset_generator_defaults():
 
 
 def _load_from_ini():
-    im = IniManager()
     _ini_reload_now(FORMATIONS_INI_KEY)
     _ini_reload_now(SETTINGS_INI_KEY)
+    cfg_form = Settings.find(FORMATIONS_INI_KEY)
+    cfg_set = Settings.find(SETTINGS_INI_KEY)
+    if cfg_form is None or cfg_set is None:
+        if not ui.formations:
+            f = Formation(DEFAULT_FORMATION_NAME)
+            f.generator.slot_count = 4
+            f.points = _generate_points(f.generator)
+            ui.formations = [f]
+        _set_selected_formation(0)
+        ui.formations_dirty = False
+        ui.shared_mem_dirty = True
+        ui.data_loaded = True
+        return
     entries: list[tuple[str, str]] = []  # (id, name)
-    count = max(0, im.read_int(FORMATIONS_INI_KEY, SEC_FORMATIONS, "count", 0))
+    count = max(0, cfg_form.get_int(SEC_FORMATIONS, "count", 0))
     for i in range(count):
-        fid = _safe_formation_id(im.read_key(FORMATIONS_INI_KEY, SEC_FORMATIONS, f"id_{i}", ""))
-        n = _safe_name(im.read_key(FORMATIONS_INI_KEY, SEC_FORMATIONS, f"name_{i}", ""))
+        fid = _safe_formation_id(cfg_form.get_str(SEC_FORMATIONS, f"id_{i}", ""))
+        n = _safe_name(cfg_form.get_str(SEC_FORMATIONS, f"name_{i}", ""))
         if not n:
             continue
         if any(existing_id == fid for existing_id, _ in entries):
@@ -599,43 +571,43 @@ def _load_from_ini():
     for fid, listed_name in entries:
         sec = _sec_formation_id(fid)
         legacy_sec = _sec_formation(listed_name)
-        has_id_section = bool(im.read_key(FORMATIONS_INI_KEY, sec, "name", ""))
+        has_id_section = bool(cfg_form.get_str(sec, "name", ""))
         src_sec = sec if has_id_section else legacy_sec
 
-        stored_name = _safe_name(im.read_key(FORMATIONS_INI_KEY, src_sec, "name", listed_name))
-        stored_id = _safe_formation_id(im.read_key(FORMATIONS_INI_KEY, src_sec, "id", fid))
+        stored_name = _safe_name(cfg_form.get_str(src_sec, "name", listed_name))
+        stored_id = _safe_formation_id(cfg_form.get_str(src_sec, "id", fid))
         f = Formation(stored_name, stored_id)
-        f.mode_index = max(0, min(2, im.read_int(FORMATIONS_INI_KEY, src_sec, "mode_index", f.mode_index)))
-        f.notes = im.read_key(FORMATIONS_INI_KEY, src_sec, "notes", "")
+        f.mode_index = max(0, min(2, cfg_form.get_int(src_sec, "mode_index", f.mode_index)))
+        f.notes = cfg_form.get_str(src_sec, "notes", "")
 
         g = f.generator
-        g.preset_index = max(0, min(len(GeneratorConfig.PRESETS) - 1, im.read_int(FORMATIONS_INI_KEY, src_sec, "g_preset_index", g.preset_index)))
-        g.slot_count = max(0, min(MAX_FOLLOW_SLOTS, im.read_int(FORMATIONS_INI_KEY, src_sec, "g_slot_count", g.slot_count)))
-        g.base_radius = im.read_float(FORMATIONS_INI_KEY, src_sec, "g_base_radius", g.base_radius)
-        g.radius_step = im.read_float(FORMATIONS_INI_KEY, src_sec, "g_radius_step", g.radius_step)
-        g.base_angle_deg = im.read_float(FORMATIONS_INI_KEY, src_sec, "g_base_angle_deg", g.base_angle_deg)
-        g.angle_step_deg = im.read_float(FORMATIONS_INI_KEY, src_sec, "g_angle_step_deg", g.angle_step_deg)
-        g.symmetry_index = max(0, min(len(GeneratorConfig.SYMMETRIES) - 1, im.read_int(FORMATIONS_INI_KEY, src_sec, "g_symmetry_index", g.symmetry_index)))
-        g.snap_to_grid = im.read_bool(FORMATIONS_INI_KEY, src_sec, "g_snap_to_grid", g.snap_to_grid)
-        g.rank1_count = im.read_int(FORMATIONS_INI_KEY, src_sec, "g_rank1_count", g.rank1_count)
-        g.rank2_count = im.read_int(FORMATIONS_INI_KEY, src_sec, "g_rank2_count", g.rank2_count)
-        g.rank3_count = im.read_int(FORMATIONS_INI_KEY, src_sec, "g_rank3_count", g.rank3_count)
+        g.preset_index = max(0, min(len(GeneratorConfig.PRESETS) - 1, cfg_form.get_int(src_sec, "g_preset_index", g.preset_index)))
+        g.slot_count = max(0, min(MAX_FOLLOW_SLOTS, cfg_form.get_int(src_sec, "g_slot_count", g.slot_count)))
+        g.base_radius = cfg_form.get_float(src_sec, "g_base_radius", g.base_radius)
+        g.radius_step = cfg_form.get_float(src_sec, "g_radius_step", g.radius_step)
+        g.base_angle_deg = cfg_form.get_float(src_sec, "g_base_angle_deg", g.base_angle_deg)
+        g.angle_step_deg = cfg_form.get_float(src_sec, "g_angle_step_deg", g.angle_step_deg)
+        g.symmetry_index = max(0, min(len(GeneratorConfig.SYMMETRIES) - 1, cfg_form.get_int(src_sec, "g_symmetry_index", g.symmetry_index)))
+        g.snap_to_grid = cfg_form.get_bool(src_sec, "g_snap_to_grid", g.snap_to_grid)
+        g.rank1_count = cfg_form.get_int(src_sec, "g_rank1_count", g.rank1_count)
+        g.rank2_count = cfg_form.get_int(src_sec, "g_rank2_count", g.rank2_count)
+        g.rank3_count = cfg_form.get_int(src_sec, "g_rank3_count", g.rank3_count)
 
-        point_count = max(0, min(MAX_FOLLOW_SLOTS, im.read_int(FORMATIONS_INI_KEY, src_sec, "point_count", 0)))
+        point_count = max(0, min(MAX_FOLLOW_SLOTS, cfg_form.get_int(src_sec, "point_count", 0)))
         for j in range(point_count):
-            x = im.read_float(FORMATIONS_INI_KEY, src_sec, f"p{j}_x", 0.0)
-            y = im.read_float(FORMATIONS_INI_KEY, src_sec, f"p{j}_y", 0.0)
-            c = _color_from_str(im.read_key(FORMATIONS_INI_KEY, src_sec, f"p{j}_c", ""), _slot_color(j))
+            x = cfg_form.get_float(src_sec, f"p{j}_x", 0.0)
+            y = cfg_form.get_float(src_sec, f"p{j}_y", 0.0)
+            c = _color_from_str(cfg_form.get_str(src_sec, f"p{j}_c", ""), _slot_color(j))
             f.points.append(FollowerPoint(x, y, c))
 
-        override_count = max(0, min(MAX_FOLLOW_SLOTS, im.read_int(FORMATIONS_INI_KEY, src_sec, "override_count", 0)))
+        override_count = max(0, min(MAX_FOLLOW_SLOTS, cfg_form.get_int(src_sec, "override_count", 0)))
         for j in range(override_count):
-            slot = im.read_int(FORMATIONS_INI_KEY, src_sec, f"o{j}_slot", -1)
+            slot = cfg_form.get_int(src_sec, f"o{j}_slot", -1)
             if slot < 0 or slot >= MAX_FOLLOW_SLOTS:
                 continue
-            x = im.read_float(FORMATIONS_INI_KEY, src_sec, f"o{j}_x", 0.0)
-            y = im.read_float(FORMATIONS_INI_KEY, src_sec, f"o{j}_y", 0.0)
-            c = _color_from_str(im.read_key(FORMATIONS_INI_KEY, src_sec, f"o{j}_c", ""), _slot_color(slot))
+            x = cfg_form.get_float(src_sec, f"o{j}_x", 0.0)
+            y = cfg_form.get_float(src_sec, f"o{j}_y", 0.0)
+            c = _color_from_str(cfg_form.get_str(src_sec, f"o{j}_c", ""), _slot_color(slot))
             f.slot_overrides[slot] = FollowerPoint(x, y, c)
 
         ui.formations.append(f)
@@ -646,8 +618,8 @@ def _load_from_ini():
         f.points = _generate_points(f.generator)
         ui.formations = [f]
 
-    selected_id = _safe_formation_id(im.read_key(SETTINGS_INI_KEY, SEC_FORMATIONS, "selected_id", ""))
-    selected_name = _safe_name(im.read_key(SETTINGS_INI_KEY, SEC_FORMATIONS, "selected", ui.formations[0].name))
+    selected_id = _safe_formation_id(cfg_set.get_str(SEC_FORMATIONS, "selected_id", ""))
+    selected_name = _safe_name(cfg_set.get_str(SEC_FORMATIONS, "selected", ui.formations[0].name))
     found = next((i for i, f in enumerate(ui.formations) if f.id == selected_id), -1)
     if found < 0:
         found = 0
@@ -657,20 +629,20 @@ def _load_from_ini():
                 break
     _set_selected_formation(found)
 
-    ui.show_control_window = im.read_bool(SETTINGS_INI_KEY, SEC_WINDOWS, "show_control_window", ui.show_control_window)
-    ui.show_editor_window = im.read_bool(SETTINGS_INI_KEY, SEC_WINDOWS, "show_editor_window", ui.show_editor_window)
-    ui.show_canvas_window = im.read_bool(SETTINGS_INI_KEY, SEC_WINDOWS, "show_canvas_window", ui.show_canvas_window)
-    ui.show_canvas = im.read_bool(SETTINGS_INI_KEY, SEC_EDITOR, "show_canvas", ui.show_canvas)
-    ui.canvas_scale = im.read_float(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_scale", ui.canvas_scale)
+    ui.show_control_window = cfg_set.get_bool(SEC_WINDOWS, "show_control_window", ui.show_control_window)
+    ui.show_editor_window = cfg_set.get_bool(SEC_WINDOWS, "show_editor_window", ui.show_editor_window)
+    ui.show_canvas_window = cfg_set.get_bool(SEC_WINDOWS, "show_canvas_window", ui.show_canvas_window)
+    ui.show_canvas = cfg_set.get_bool(SEC_EDITOR, "show_canvas", ui.show_canvas)
+    ui.canvas_scale = cfg_set.get_float(SEC_EDITOR, "canvas_scale", ui.canvas_scale)
     ui.canvas_size = (
-        max(200, im.read_int(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_w", ui.canvas_size[0])),
-        max(200, im.read_int(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_h", ui.canvas_size[1])),
+        max(200, cfg_set.get_int(SEC_EDITOR, "canvas_w", ui.canvas_size[0])),
+        max(200, cfg_set.get_int(SEC_EDITOR, "canvas_h", ui.canvas_size[1])),
     )
-    ui.canvas_drag_edit = im.read_bool(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_drag_edit", ui.canvas_drag_edit)
-    ui.canvas_snap_to_grid = im.read_bool(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_snap_to_grid", ui.canvas_snap_to_grid)
-    ui.draw_area_rings = im.read_bool(SETTINGS_INI_KEY, SEC_EDITOR, "draw_area_rings", ui.draw_area_rings)
-    ui.draw_3d_area_rings = im.read_bool(SETTINGS_INI_KEY, SEC_EDITOR, "draw_3d_area_rings", ui.draw_3d_area_rings)
-    ui.show_party_preview = im.read_bool(SETTINGS_INI_KEY, SEC_EDITOR, "show_party_preview", ui.show_party_preview)
+    ui.canvas_drag_edit = cfg_set.get_bool(SEC_EDITOR, "canvas_drag_edit", ui.canvas_drag_edit)
+    ui.canvas_snap_to_grid = cfg_set.get_bool(SEC_EDITOR, "canvas_snap_to_grid", ui.canvas_snap_to_grid)
+    ui.draw_area_rings = cfg_set.get_bool(SEC_EDITOR, "draw_area_rings", ui.draw_area_rings)
+    ui.draw_3d_area_rings = cfg_set.get_bool(SEC_EDITOR, "draw_3d_area_rings", ui.draw_3d_area_rings)
+    ui.show_party_preview = cfg_set.get_bool(SEC_EDITOR, "show_party_preview", ui.show_party_preview)
 
     ui.formations_dirty = False
     ui.shared_mem_dirty = True
@@ -678,13 +650,13 @@ def _load_from_ini():
 
 
 def _save_to_ini():
-    im = IniManager()
     _ini_reload_now(FORMATIONS_INI_KEY)
     _ini_reload_now(SETTINGS_INI_KEY)
-    prev_count = max(0, im.read_int(FORMATIONS_INI_KEY, SEC_FORMATIONS, "count", 0))
+    cfg_form = Settings.find(FORMATIONS_INI_KEY)
+    prev_count = max(0, cfg_form.get_int(SEC_FORMATIONS, "count", 0)) if cfg_form else 0
     prev_ids: list[str] = []
     for i in range(prev_count):
-        old_id = _safe_formation_id(im.read_key(FORMATIONS_INI_KEY, SEC_FORMATIONS, f"id_{i}", ""))
+        old_id = _safe_formation_id(cfg_form.get_str(SEC_FORMATIONS, f"id_{i}", "")) if cfg_form else ""
         if old_id:
             prev_ids.append(old_id)
 
@@ -746,21 +718,23 @@ def _save_to_ini():
 
 
 def _save_ui_state_only():
-    im = IniManager()
-    im.write_key(SETTINGS_INI_KEY, SEC_FORMATIONS, "selected_id", _current_formation().id)
-    im.write_key(SETTINGS_INI_KEY, SEC_FORMATIONS, "selected", _current_formation().name)
-    im.write_key(SETTINGS_INI_KEY, SEC_WINDOWS, "show_control_window", int(ui.show_control_window))
-    im.write_key(SETTINGS_INI_KEY, SEC_WINDOWS, "show_editor_window", int(ui.show_editor_window))
-    im.write_key(SETTINGS_INI_KEY, SEC_WINDOWS, "show_canvas_window", int(ui.show_canvas_window))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "show_canvas", int(ui.show_canvas))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_scale", float(ui.canvas_scale))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_w", int(ui.canvas_size[0]))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_h", int(ui.canvas_size[1]))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_drag_edit", int(ui.canvas_drag_edit))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "canvas_snap_to_grid", int(ui.canvas_snap_to_grid))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "draw_area_rings", int(ui.draw_area_rings))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "draw_3d_area_rings", int(ui.draw_3d_area_rings))
-    im.write_key(SETTINGS_INI_KEY, SEC_EDITOR, "show_party_preview", int(ui.show_party_preview))
+    cfg_set = Settings.find(SETTINGS_INI_KEY)
+    if cfg_set is None:
+        return
+    cfg_set.set(SEC_FORMATIONS, "selected_id", _current_formation().id)
+    cfg_set.set(SEC_FORMATIONS, "selected", _current_formation().name)
+    cfg_set.set(SEC_WINDOWS, "show_control_window", int(ui.show_control_window))
+    cfg_set.set(SEC_WINDOWS, "show_editor_window", int(ui.show_editor_window))
+    cfg_set.set(SEC_WINDOWS, "show_canvas_window", int(ui.show_canvas_window))
+    cfg_set.set(SEC_EDITOR, "show_canvas", int(ui.show_canvas))
+    cfg_set.set(SEC_EDITOR, "canvas_scale", float(ui.canvas_scale))
+    cfg_set.set(SEC_EDITOR, "canvas_w", int(ui.canvas_size[0]))
+    cfg_set.set(SEC_EDITOR, "canvas_h", int(ui.canvas_size[1]))
+    cfg_set.set(SEC_EDITOR, "canvas_drag_edit", int(ui.canvas_drag_edit))
+    cfg_set.set(SEC_EDITOR, "canvas_snap_to_grid", int(ui.canvas_snap_to_grid))
+    cfg_set.set(SEC_EDITOR, "draw_area_rings", int(ui.draw_area_rings))
+    cfg_set.set(SEC_EDITOR, "draw_3d_area_rings", int(ui.draw_3d_area_rings))
+    cfg_set.set(SEC_EDITOR, "show_party_preview", int(ui.show_party_preview))
 
 
 def _formation_to_export_dict(f: Formation) -> dict:

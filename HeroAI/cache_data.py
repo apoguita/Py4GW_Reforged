@@ -9,7 +9,7 @@ from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Timer, ThrottledTimer
 from Py4GWCoreLib import Range, Agent, ConsoleLog, Player
 from Py4GWCoreLib import AgentArray, Weapon, Routines
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings as IniSettings
 from Py4GWCoreLib.EnemyBlacklist import EnemyBlacklist
 
 INI_DIR = "HeroAI"
@@ -226,16 +226,16 @@ class CacheData:
     def Update(self):
         try:
             if not self.ini_key:
-                self.ini_key = IniManager().ensure_key(f"{INI_DIR}/", MAIN_WINDOW_INI)
-                
+                self.ini_key = IniSettings.ensure_key(f"{INI_DIR}/", MAIN_WINDOW_INI)
+
             if not self.consumables_ini_key:
-                self.consumables_ini_key = IniManager().ensure_key(f"{INI_DIR}/", CONSUMABLES_WINDOW_INI)
-                
+                self.consumables_ini_key = IniSettings.ensure_key(f"{INI_DIR}/", CONSUMABLES_WINDOW_INI)
+
             if not self.formation_window_ini_key:
-                self.formation_window_ini_key = IniManager().ensure_key(f"{INI_DIR}/", FORMATION_WINDOW_INI)
-                
+                self.formation_window_ini_key = IniSettings.ensure_key(f"{INI_DIR}/", FORMATION_WINDOW_INI)
+
             if not self.flagging_window_ini_key:
-                self.flagging_window_ini_key = IniManager().ensure_key(f"{INI_DIR}/", FLAGGING_WINDOW_INI)
+                self.flagging_window_ini_key = IniSettings.ensure_key(f"{INI_DIR}/", FLAGGING_WINDOW_INI)
             
             if not self.ini_key or not self.consumables_ini_key or not self.formation_window_ini_key or not self.flagging_window_ini_key:
                 return

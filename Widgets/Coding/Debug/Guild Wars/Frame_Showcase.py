@@ -4,7 +4,7 @@
 import Py4GW
 from Py4GWCoreLib import (UIManager, Color, Utils, ManagedWindowSpec, WindowFactory, WindowVarSpec)
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui, PyUIManager, PyCallback, PyOverlay
 import json, ctypes, os, time
 from collections import deque, defaultdict
@@ -1173,10 +1173,8 @@ class InspectorManager:
         self._open_fids.add(frame_id)
         # Ensure INI for this inspector
         if frame_id not in self._ini_keys:
-            ini_key = IniManager().ensure_global_key("Coding/Debug/Guild Wars", f"inspector_{frame_id}.ini")
+            ini_key = Settings.ensure_global_key("Coding/Debug/Guild Wars", f"inspector_{frame_id}.ini")
             if ini_key:
-                IniManager().add_bool(ini_key, "open", "Window", "open", default=True)
-                IniManager().load_once(ini_key)
                 self._ini_keys[frame_id] = ini_key
 
     def close_inspector(self, frame_id: int):
@@ -1201,7 +1199,8 @@ class InspectorManager:
                 title += f' "{alias}"'
             title += f"###finsp_win_{fid}"
 
-            initial_open = IniManager().getBool(ini_key, "open", True, section="Window")
+            cfg = Settings.find(ini_key)
+            initial_open = cfg.get_bool("Window", "open", True) if cfg else True
             expanded, open_ = ImGui_Legacy.BeginWithClose(ini_key, title, p_open=initial_open)
 
             if expanded and open_:
@@ -1211,8 +1210,8 @@ class InspectorManager:
             ImGui_Legacy.End(ini_key)
 
             if not open_:
-                IniManager().set(ini_key, "open", False, section="Window")
-                IniManager().save_vars(ini_key)
+                if cfg:
+                    cfg.set("Window", "open", False)
                 closed.append(fid)
 
         for fid in closed:

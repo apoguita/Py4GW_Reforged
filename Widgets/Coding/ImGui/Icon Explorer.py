@@ -1,5 +1,5 @@
 from Py4GWCoreLib import *
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Icon Explorer"
 MODULE_ICON = "Textures/Module_Icons/Explorer Search.png"
@@ -33,27 +33,24 @@ def _build_icon_index():
     ICON_NAME_SET = {name for name, _ in entries}
 
 
-def _add_config_vars():
-    IniManager().add_str(INI_KEY, "favorites", "Favorites", "favorites", default="")
-    IniManager().add_bool(INI_KEY, "favorites_only", "View", "favorites_only", default=False)
-    IniManager().add_int(INI_KEY, "grid_columns", "View", "grid_columns", default=4)
-    IniManager().add_int(INI_KEY, "sort_mode", "View", "sort_mode", default=1)
-
-
 def _load_settings():
     global favorites_only, grid_columns, sort_mode, favorites
-    favorites_only = IniManager().getBool(INI_KEY, "favorites_only", False, section="View")
-    grid_columns = max(2, min(8, IniManager().getInt(INI_KEY, "grid_columns", 4, section="View")))
-    sort_mode = IniManager().getInt(INI_KEY, "sort_mode", 1, section="View")
+    cfg = Settings.find(INI_KEY)
+    if cfg is None:
+        return
+    favorites_only = cfg.get_bool("View", "favorites_only", False)
+    grid_columns = max(2, min(8, cfg.get_int("View", "grid_columns", 4)))
+    sort_mode = cfg.get_int("View", "sort_mode", 1)
 
-    raw = IniManager().getStr(INI_KEY, "favorites", "", section="Favorites")
+    raw = cfg.get_str("Favorites", "favorites", "")
     parsed = {x.strip() for x in raw.split(",") if x.strip()}
     favorites = {name for name in parsed if name in ICON_NAME_SET}
 
 
 def _save_setting(name: str, value, section: str):
-    IniManager().set(INI_KEY, name, value, section=section)
-    IniManager().save_vars(INI_KEY)
+    cfg = Settings.find(INI_KEY)
+    if cfg:
+        cfg.set(section, name, value)
 
 
 def _save_favorites():
@@ -194,12 +191,10 @@ def main():
 
         _build_icon_index()
 
-        INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not INI_KEY:
             return
 
-        _add_config_vars()
-        IniManager().load_once(INI_KEY)
         _load_settings()
         initialized = True
 

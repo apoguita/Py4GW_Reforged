@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5 as Icons
 from Py4GWCoreLib.enums import Key
 import PyImGui
@@ -1337,11 +1338,10 @@ def main():
         return
 
     if not INI_KEY:
-        INI_KEY = IniManager().ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
         if not INI_KEY:
             return
 
-    IniManager().load_once(INI_KEY)
     widget = RouteBuilderWidget()
     initialized = True
 

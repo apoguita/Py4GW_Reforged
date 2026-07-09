@@ -6,7 +6,7 @@ from typing import SupportsIndex
 from typing import SupportsInt
 
 from Py4GWCoreLib import Agent, Party, Player, Range, ThrottledTimer
-from Py4GWCoreLib.IniManager import IniManager
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Pathing import AutoPathing
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
@@ -166,20 +166,7 @@ class FollowFormationPublisher:
         return default
 
     def _ensure_global_ini_key_strict(self, path: str, filename: str) -> str:
-        im = IniManager()
-        key = im.ensure_global_key(path, filename)
-        if not key:
-            return ""
-        try:
-            node = im._get_node(key)
-            if node and getattr(node, "is_global", False):
-                return key
-            if hasattr(im, "_handlers") and key in im._handlers:
-                del im._handlers[key]
-            key = im.ensure_global_key(path, filename)
-        except Exception:
-            pass
-        return key
+        return Settings.ensure_global_key(path, filename)
 
     def _ensure_follow_ini_keys(self) -> None:
         if not self.state.formations_ini_key:
@@ -188,38 +175,6 @@ class FollowFormationPublisher:
             self.state.settings_ini_key = self._ensure_global_ini_key_strict(self.ini.global_ini_path, self.ini.settings_ini_name)
         if not self.state.runtime_ini_key:
             self.state.runtime_ini_key = self._ensure_global_ini_key_strict(self.ini.global_ini_path, self.ini.runtime_ini_name)
-        if self.state.ini_vars_registered:
-            return
-
-        im = IniManager()
-        if self.state.settings_ini_key:
-            im.add_str(self.state.settings_ini_key, self.ini.selected_id_key, self.ini.formations_section, self.ini.selected_id_key, "")
-            im.add_str(self.state.settings_ini_key, self.ini.selected_name_key, self.ini.formations_section, self.ini.selected_name_key, "")
-        if self.state.formations_ini_key:
-            im.add_int(self.state.formations_ini_key, self.ini.formation_count_var_name, self.ini.formations_section, self.ini.count_key, 0)
-        if self.state.runtime_ini_key:
-            im.add_float(
-                self.state.runtime_ini_key,
-                "follow_move_threshold_default",
-                self.ini.runtime_section,
-                "follow_move_threshold_default",
-                self.thresholds.default_follow_threshold,
-            )
-            im.add_float(
-                self.state.runtime_ini_key,
-                "follow_move_threshold_combat",
-                self.ini.runtime_section,
-                "follow_move_threshold_combat",
-                self.thresholds.combat_follow_threshold,
-            )
-            im.add_float(
-                self.state.runtime_ini_key,
-                "follow_move_threshold_flagged",
-                self.ini.runtime_section,
-                "follow_move_threshold_flagged",
-                self.thresholds.flagged_follow_threshold,
-            )
-        self.state.ini_vars_registered = True
 
     def _load_ini_vars_once(
         self,
@@ -229,79 +184,71 @@ class FollowFormationPublisher:
     ) -> None:
         if not key:
             return
-        im = IniManager()
+        cfg = Settings.find(key)
+        if cfg is None:
+            return
         try:
-            node = im._get_node(key)
             if reload_from_disk:
-                im.reload(key)
-            if node and force_var_refresh:
-                node.vars_loaded = False
-            im.load_once(key)
+                cfg.reload()
         except Exception:
             pass
 
-    def _ensure_follow_section_var_defs(self, section: str) -> None:
-        if not self.state.formations_ini_key or not section:
-            return
-        if section in self.state.registered_follow_sections:
-            return
-        im = IniManager()
-        sec_tag = section.replace(":", "_")
-        im.add_int(self.state.formations_ini_key, f"{sec_tag}_{self.ini.point_count_key}", section, self.ini.point_count_key, 0)
-        for index in range(self.ini.max_follow_slots):
-            x_key = self.ini.point_x_key_template.format(index=index)
-            y_key = self.ini.point_y_key_template.format(index=index)
-            im.add_float(self.state.formations_ini_key, f"{sec_tag}_{x_key}", section, x_key, 0.0)
-            im.add_float(self.state.formations_ini_key, f"{sec_tag}_{y_key}", section, y_key, 0.0)
-        self.state.registered_follow_sections.add(section)
-        self._load_ini_vars_once(self.state.formations_ini_key, force_var_refresh=True)
-
-    def _reload_thresholds(self, im: IniManager) -> None:
+    def _reload_thresholds(self) -> None:
         if not self.state.runtime_ini_key:
+            return
+        cfg = Settings.find(self.state.runtime_ini_key)
+        if cfg is None:
             return
         self.thresholds.default_follow_threshold = max(
             0.0,
-            float(im.getFloat(self.state.runtime_ini_key, "follow_move_threshold_default", float(Range.Area.value), section=self.ini.runtime_section))
+            float(cfg.get_float(self.ini.runtime_section, "follow_move_threshold_default", float(Range.Area.value)))
         )
         self.thresholds.combat_follow_threshold = max(
             0.0,
-            float(im.getFloat(self.state.runtime_ini_key, "follow_move_threshold_combat", float(Range.Adjacent.value), section=self.ini.runtime_section))
+            float(cfg.get_float(self.ini.runtime_section, "follow_move_threshold_combat", float(Range.Adjacent.value)))
         )
         self.thresholds.flagged_follow_threshold = max(
             0.0,
-            float(im.getFloat(self.state.runtime_ini_key, "follow_move_threshold_flagged", 0.0, section=self.ini.runtime_section))
+            float(cfg.get_float(self.ini.runtime_section, "follow_move_threshold_flagged", 0.0))
         )
 
-    def _resolve_selected_formation_id(self, im: IniManager) -> str:
-        selected_id = str(im.getStr(self.state.settings_ini_key, self.ini.selected_id_key, "", section=self.ini.formations_section) or "").strip()
+    def _resolve_selected_formation_id(self) -> str:
+        settings_cfg = Settings.find(self.state.settings_ini_key)
+        formations_cfg = Settings.find(self.state.formations_ini_key)
+        if settings_cfg is None or formations_cfg is None:
+            return ""
+        selected_id = str(settings_cfg.get_str(self.ini.formations_section, self.ini.selected_id_key, "") or "").strip()
         if selected_id:
             return selected_id
 
-        selected_name = str(im.getStr(self.state.settings_ini_key, self.ini.selected_name_key, "", section=self.ini.formations_section) or "").strip()
+        selected_name = str(settings_cfg.get_str(self.ini.formations_section, self.ini.selected_name_key, "") or "").strip()
         formation_count = max(
             0,
-            im.getInt(self.state.formations_ini_key, self.ini.formation_count_var_name, 0, section=self.ini.formations_section),
+            formations_cfg.get_int(self.ini.formations_section, self.ini.count_key, 0),
         )
         for index in range(formation_count):
-            name = str(im.read_key(self.state.formations_ini_key, self.ini.formations_section, f"name_{index}", "") or "").strip()
+            name = str(formations_cfg.get_str(self.ini.formations_section, f"name_{index}", "") or "").strip()
             if name == selected_name:
-                return str(im.read_key(self.state.formations_ini_key, self.ini.formations_section, f"id_{index}", "") or "").strip()
+                return str(formations_cfg.get_str(self.ini.formations_section, f"id_{index}", "") or "").strip()
         for index in range(formation_count):
-            formation_id = str(im.read_key(self.state.formations_ini_key, self.ini.formations_section, f"id_{index}", "") or "").strip()
+            formation_id = str(formations_cfg.get_str(self.ini.formations_section, f"id_{index}", "") or "").strip()
             if formation_id:
                 return formation_id
         return ""
 
-    def _resolve_selected_formation_section(self, im: IniManager, selected_id: str) -> str:
+    def _resolve_selected_formation_section(self, selected_id: str) -> str:
         section = f"{self.ini.formation_id_prefix}{selected_id}"
-        if im.read_key(self.state.formations_ini_key, section, "name", ""):
+        formations_cfg = Settings.find(self.state.formations_ini_key)
+        if formations_cfg is None:
+            return section
+        if formations_cfg.get_str(section, "name", ""):
             return section
 
-        formation_count = max(0, im.read_int(self.state.formations_ini_key, self.ini.formations_section, self.ini.count_key, 0))
+        formation_count = max(0, formations_cfg.get_int(self.ini.formations_section, self.ini.count_key, 0))
         for index in range(formation_count):
-            formation_id = str(im.read_key(self.state.formations_ini_key, self.ini.formations_section, f"id_{index}", "") or "").strip()
+            formation_id = str(formations_cfg.get_str(self.ini.formations_section, f"id_{index}", "") or "").strip()
             if formation_id == selected_id:
-                name = str(im.read_key(self.state.formations_ini_key, self.ini.formations_section, f"name_{index}", "") or "").strip()
+                name = str(formations_cfg.get_str(self.ini.formations_section, f"name_{index}", "") or "").strip()
                 if name:
                     return f"{self.ini.formation_name_prefix}{name}"
                 break
@@ -315,7 +262,6 @@ class FollowFormationPublisher:
                 self.state.points_cache = self._get_default_follow_points()
                 return
 
-            im = IniManager()
             self._load_ini_vars_once(
                 self.state.settings_ini_key,
                 force_var_refresh=True,
@@ -331,30 +277,33 @@ class FollowFormationPublisher:
                 force_var_refresh=True,
                 reload_from_disk=True,
             )
-            self._reload_thresholds(im)
+            self._reload_thresholds()
 
-            selected_id = self._resolve_selected_formation_id(im)
+            selected_id = self._resolve_selected_formation_id()
             if not selected_id:
                 self.state.selected_id_cache = "builtin_default"
                 self.state.points_cache = self._get_default_follow_points()
                 return
 
-            section = self._resolve_selected_formation_section(im, selected_id)
-            self._ensure_follow_section_var_defs(section)
-            sec_tag = section.replace(":", "_")
+            section = self._resolve_selected_formation_section(selected_id)
+            formations_cfg = Settings.find(self.state.formations_ini_key)
+            if formations_cfg is None:
+                self.state.selected_id_cache = "builtin_default"
+                self.state.points_cache = self._get_default_follow_points()
+                return
             point_count = max(
                 0,
                 min(
                     self.ini.max_follow_slots,
-                    im.getInt(self.state.formations_ini_key, f"{sec_tag}_{self.ini.point_count_key}", 0, section=section),
+                    formations_cfg.get_int(section, self.ini.point_count_key, 0),
                 ),
             )
             points: list[tuple[float, float]] = []
             for index in range(point_count):
                 x_key = self.ini.point_x_key_template.format(index=index)
                 y_key = self.ini.point_y_key_template.format(index=index)
-                x = float(im.getFloat(self.state.formations_ini_key, f"{sec_tag}_{x_key}", 0.0, section=section))
-                y = float(im.getFloat(self.state.formations_ini_key, f"{sec_tag}_{y_key}", 0.0, section=section))
+                x = float(formations_cfg.get_float(section, x_key, 0.0))
+                y = float(formations_cfg.get_float(section, y_key, 0.0))
                 points.append((x, y))
 
             self.state.selected_id_cache = selected_id
