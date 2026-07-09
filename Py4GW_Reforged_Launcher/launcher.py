@@ -1183,9 +1183,9 @@ def show_team_tab_strip(avail_w: float) -> None:
     fit, since it's competing with tabs for the same row now.
 
     Takes avail_w explicitly rather than querying get_content_region_avail()
-    itself -- see show_settings_gear_button's docstring for why (the whole
-    header block is now wrapped in its own padded, narrower-than-window
-    region).
+    itself -- show_main_window wraps the whole header block in its own
+    padded region narrower than the full window, and this right-aligns
+    against that padded width, not the raw window width.
 
     Doesn't filter the card grid itself: which cards are visible never
     changes with the view (see draw_profile_card's membership checkbox,
@@ -1377,22 +1377,16 @@ def show_team_actions(pos: tuple[float, float]) -> None:
         imgui.text_colored((0.9, 0.75, 0.3, 1.0), STATE.bulk_launch_session.status_text)
 
 
-def show_settings_gear_button(avail_w: float) -> None:
-    """Small gear icon, right-aligned in the toolbar -- both reference
-    launchers use this same icon for this same purpose, so it's a recognized
-    affordance rather than a new one to learn. Uses set_cursor_pos_x rather
-    than same_line(offset) so the right-alignment still works even when this
-    is the very first thing drawn on the row (same_line needs a preceding
-    item on the line to have any effect; this doesn't).
-
-    Takes avail_w explicitly rather than querying get_content_region_avail()
-    itself -- show_main_window now wraps the whole header block in its own
-    padded region narrower than the full window, and every element in that
-    block right-aligns against that padded width, not the raw window width.
+def show_settings_gear_button() -> None:
+    """Small gear icon -- both reference launchers use this same icon for
+    this same purpose, so it's a recognized affordance rather than a new one
+    to learn. Drawn at the current cursor position (same_line right after
+    the filter box, which show_main_window sizes to leave exactly enough
+    room for this) rather than right-aligning itself -- it shares the filter
+    box's row now instead of sitting alone on its own near-empty row above.
     """
     em = hello_imgui.em_size()
     icon_size = em * 1.8
-    imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + avail_w - icon_size)
     clicked = imgui.button("##app_settings_gear", size=(icon_size, icon_size))
     item_min, item_max = imgui.get_item_rect_min(), imgui.get_item_rect_max()
     center = ((item_min[0] + item_max[0]) / 2, (item_min[1] + item_max[1]) / 2)
@@ -1404,16 +1398,16 @@ def show_settings_gear_button(avail_w: float) -> None:
 def show_main_window() -> None:
     STATE.update()
 
-    # The whole header block (gear icon, tab strip + Launch Team, filter box)
-    # gets real outer margin instead of sitting flush against the window
-    # edges: a one-time top inset (dummy) plus a persistent left inset
-    # (indent, held until unindent below) for the block's full height, and an
-    # explicit reduced width passed to whichever elements right-align (gear
-    # button, tab strip) so they stop header_pad short of the true right
-    # edge too -- indent alone only handles the left side. Two visually
-    # related rows now (tabs+launch, then filter) instead of three
-    # disconnected ones (tabs, launch, filter) sitting right against the
-    # window frame.
+    # The whole header block (tab strip + Launch Team, then filter box +
+    # gear icon) gets real outer margin instead of sitting flush against the
+    # window edges: a one-time top inset (dummy) plus a persistent left
+    # inset (indent, held until unindent below) for the block's full height,
+    # and an explicit reduced width passed to whichever elements right-align
+    # or stretch (tab strip, filter box) so they stop header_pad short of
+    # the true right edge too -- indent alone only handles the left side.
+    # Two visually related rows (tabs+launch, then filter+gear) instead of
+    # three disconnected ones (gear alone on its own near-empty row, tabs,
+    # filter) sitting right against the window frame.
     em = hello_imgui.em_size()
     header_pad = em * 0.6
     avail_w_full = imgui.get_content_region_avail().x
@@ -1422,14 +1416,16 @@ def show_main_window() -> None:
     imgui.dummy((0.0, header_pad))
     imgui.indent(header_pad)
 
-    show_settings_gear_button(header_w)
-
-    imgui.spacing()
     show_team_tab_strip(header_w)
 
     imgui.spacing()
-    imgui.set_next_item_width(em * 16.0)
+    style = imgui.get_style()
+    gear_icon_size = em * 1.8
+    filter_w = header_w - gear_icon_size - style.item_spacing.x
+    imgui.set_next_item_width(filter_w)
     _, STATE.name_filter = imgui.input_text_with_hint("##name_filter", "Filter by name...", STATE.name_filter)
+    imgui.same_line()
+    show_settings_gear_button()
 
     imgui.unindent(header_pad)
     imgui.dummy((0.0, header_pad))
