@@ -231,11 +231,9 @@ cython_debug/
 
 # Py4GW_Reforged_Launcher additions
 PY4GW_LAUNCHER_HANDOVER.md
+PY4GW_Reforged_Launcher_briefing.MD
 Py4GW_Reforged_Launcher.ini
 !Py4GW_Reforged_Launcher/*.spec
 
 # PyInstaller build output committed by mistake in "Test build" - never commit built exes
 Py4GW_Reforged_Launcher/*.exe
-
-# Temporary DPI diagnostic log (see launcher.py's _DPI_DIAG_LOG_PATH)
-Py4GW_Reforged_Launcher/dpi_diagnostics.log

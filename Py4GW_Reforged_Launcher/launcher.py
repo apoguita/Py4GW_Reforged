@@ -191,65 +191,6 @@ def _card_dimensions() -> tuple[float, float, float]:
 
 
 # -----------------------------------------------------------------------------
-# TEMPORARY diagnostics for the real-hardware DPI/window-sizing bug -- remove
-# once a laptop test confirms the fix above and these numbers are no longer
-# needed. Surfaces the real OS-queried DPI state that _make_process_dpi_aware()
-# above changes, plus hello_imgui's resulting scale factors, so the next test
-# on the affected laptop produces actual measured numbers instead of another
-# guess. Written both to a log file (survives after the window closes) and as
-# an on-screen line (visible without pulling the file off remote hardware).
-# -----------------------------------------------------------------------------
-
-_DPI_DIAG_LOG_PATH = Path(__file__).resolve().parent / "dpi_diagnostics.log"
-_dpi_diag_line = ""
-_dpi_diag_logged = False
-
-
-def _dpi_diag_text() -> str:
-    """Collect current DPI/scale state as one line. Safe to call every frame --
-    the values it reads (process DPI awareness, em_size, dpi_window_size_factor)
-    are cheap queries, not allocations."""
-    try:
-        awareness_ctx = ctypes.windll.user32.GetThreadDpiAwarenessContext()
-        awareness = ctypes.windll.user32.GetAwarenessFromDpiAwarenessContext(awareness_ctx)
-    except (AttributeError, OSError):
-        awareness = "?"
-    try:
-        sys_dpi = ctypes.windll.user32.GetDpiForSystem()
-    except (AttributeError, OSError):
-        sys_dpi = "?"
-
-    dpi_window_factor = hello_imgui.dpi_window_size_factor()
-    em = hello_imgui.em_size()
-    dpi_params = hello_imgui.get_dpi_aware_params()
-    io = imgui.get_io()
-
-    return (
-        f"[DPI DIAG] process_dpi_awareness={awareness} system_dpi={sys_dpi} "
-        f"dpi_window_size_factor={dpi_window_factor:.3f} em_size={em:.2f} "
-        f"dpiAwareParams(window_factor={dpi_params.dpi_window_size_factor:.3f}, "
-        f"font_render_scale={dpi_params.font_rendering_scale:.3f}) "
-        f"io.display_size={tuple(io.display_size)} "
-        f"io.display_framebuffer_scale={tuple(io.display_framebuffer_scale)}"
-    )
-
-
-def _log_dpi_diagnostics_once() -> None:
-    """Write the diagnostic line to disk exactly once per run (first frame it can
-    be measured on), so repeated frames don't spam the log file."""
-    global _dpi_diag_line, _dpi_diag_logged
-    if _dpi_diag_logged:
-        return
-    _dpi_diag_logged = True
-    _dpi_diag_line = _dpi_diag_text()
-    try:
-        with open(_DPI_DIAG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + _dpi_diag_line + "\n")
-    except OSError:
-        pass
-
-
-# -----------------------------------------------------------------------------
 # Live status classification: maps gw1_launch's raw log lines to short, honest
 # progress text. This is the actual point of the earlier stall-detection work --
 # specifically surfacing the "window found but hung" signal as "waiting for game
@@ -440,6 +381,36 @@ class AppState:
     def cancel_edit(self) -> None:
         self.edit_buffer = None
 
+    def edit_buffer_is_dirty(self) -> bool:
+        """True if edit_buffer holds changes not yet written via save_edit_buffer().
+        Guards the Settings window's titlebar close (X) button so a checked-but-
+        unsaved toggle can't be silently discarded -- real testing hit exactly this:
+        "Inject Py4GW" looked checked in Settings, but the window had been closed
+        (or focus moved away) without clicking Save, so the launch read the real
+        profile's still-False value and failed.
+        """
+        buffer = self.edit_buffer
+        if buffer is None:
+            return False
+
+        baseline = ProfileEditBuffer.blank()
+        if not buffer.is_new:
+            profile = next((p for p in self.profiles if p.id == buffer.original_id), None)
+            if profile is not None:
+                baseline = ProfileEditBuffer.from_profile(profile)
+
+        return (
+            buffer.name != baseline.name
+            or buffer.executable_path != baseline.executable_path
+            or buffer.email != baseline.email
+            or buffer.password_input != baseline.password_input
+            or buffer.auto_login_enabled != baseline.auto_login_enabled
+            or buffer.py4gw_enabled != baseline.py4gw_enabled
+            or buffer.py4gw_dll_path != baseline.py4gw_dll_path
+            or buffer.gmod_enabled != baseline.gmod_enabled
+            or buffer.gmod_dll_path != baseline.gmod_dll_path
+        )
+
     def save_edit_buffer(self) -> None:
         buffer = self.edit_buffer
         if buffer is None:
@@ -616,10 +587,6 @@ def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: b
 def show_main_window() -> None:
     STATE.update()
 
-    _log_dpi_diagnostics_once()
-    imgui.text_colored((0.9, 0.75, 0.3, 1.0), _dpi_diag_text())
-    imgui.separator()
-
     imgui.text(f"{len(STATE.profiles)} profile(s) loaded from profile_store.")
     imgui.same_line()
     if imgui.button("Settings"):
@@ -716,9 +683,6 @@ def show_settings_content() -> None:
     buffer = STATE.edit_buffer
     em = hello_imgui.em_size()
 
-    imgui.text_colored((0.9, 0.75, 0.3, 1.0), _dpi_diag_text())
-    imgui.separator()
-
     imgui.begin_child("settings_sidebar", size=(em * 8.0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
     for tab in SETTINGS_TABS:
         clicked, _ = imgui.selectable(tab, tab == _active_tab)
@@ -773,6 +737,31 @@ def show_settings_content() -> None:
     imgui.end_child()
 
 
+_UNSAVED_CHANGES_POPUP_ID = "Unsaved changes?##settings_close_confirm"
+
+
+def _show_unsaved_changes_popup() -> None:
+    """Rendered unconditionally every frame the Settings window is open -- only
+    actually appears once open_popup(_UNSAVED_CHANGES_POPUP_ID) has been called
+    (see show_settings_window's close-request handling below), per ImGui's own
+    open/begin popup pattern."""
+    if imgui.begin_popup_modal(_UNSAVED_CHANGES_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value))[0]:
+        imgui.text("This profile has unsaved changes.")
+        imgui.spacing()
+        if imgui.button("Save"):
+            STATE.save_edit_buffer()
+            imgui.close_current_popup()
+        imgui.same_line()
+        if imgui.button("Discard"):
+            STATE.cancel_edit()
+            STATE.settings_window_open = False
+            imgui.close_current_popup()
+        imgui.same_line()
+        if imgui.button("Keep editing"):
+            imgui.close_current_popup()
+        imgui.end_popup()
+
+
 def show_settings_window() -> None:
     if not STATE.settings_window_open:
         return
@@ -790,7 +779,11 @@ def show_settings_window() -> None:
     autosizing = _settings_autosize_frames_remaining > 0
     flags = imgui.WindowFlags_.always_auto_resize.value if autosizing else 0
 
-    expanded, STATE.settings_window_open = imgui.begin("Settings##launcher", STATE.settings_window_open, flags)
+    # Always pass True as the window's own p_open: we handle a close request
+    # (requested_open == False below) ourselves rather than letting ImGui close
+    # the window immediately, so an unsaved edit isn't silently dropped just
+    # because the titlebar X was clicked instead of Save.
+    expanded, requested_open = imgui.begin("Settings##launcher", True, flags)
 
     if imgui.is_window_appearing():
         # Real, measured sizing, not a guessed formula: force AlwaysAutoResize for
@@ -804,8 +797,18 @@ def show_settings_window() -> None:
     elif _settings_autosize_frames_remaining > 0:
         _settings_autosize_frames_remaining -= 1
 
+    if not requested_open:
+        if STATE.edit_buffer_is_dirty():
+            imgui.open_popup(_UNSAVED_CHANGES_POPUP_ID)
+        else:
+            STATE.settings_window_open = False
+            STATE.edit_buffer = None
+
     if expanded:
         show_settings_content()
+
+    _show_unsaved_changes_popup()
+
     imgui.end()
 
 
