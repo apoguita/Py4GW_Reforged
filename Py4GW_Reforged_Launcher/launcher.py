@@ -437,6 +437,7 @@ class AppState:
         self.edit_buffer: Optional[ProfileEditBuffer] = None
         self.bulk_launch_session: Optional[BulkLaunchSession] = None
         self.bulk_launch_pacing_seconds: int = load_bulk_launch_pacing_seconds()
+        self.name_filter: str = ""
         self._last_liveness_check = 0.0
         self.reload_profiles()
         self.reload_teams()
@@ -871,11 +872,24 @@ def show_team_switcher() -> None:
         imgui.end_popup()
 
 
+def _visible_profiles() -> list[GameProfile]:
+    """Profiles matching the current name filter (case-insensitive substring) --
+    shared by the card grid and the Select all visible/Select none actions so
+    "visible" means the same thing in both places. Composes with the team view:
+    the filter narrows within whichever view is active, not just ALL.
+    """
+    query = STATE.name_filter.strip().lower()
+    if not query:
+        return list(STATE.profiles)
+    return [p for p in STATE.profiles if query in p.name.lower()]
+
+
 def show_team_actions() -> None:
-    """Launch Team + pacing control -- only meaningful in a real team view (ALL
-    has no membership, so there's nothing to bulk-launch). Disabled/unarmed
-    unless at least one account is checked into the currently-viewed team, and
-    while a bulk launch is already running (never overlap two at once).
+    """Launch Team + Select all visible/Select none + pacing control -- only
+    meaningful in a real team view (ALL has no membership, so there's nothing to
+    bulk-launch or select). Launch Team is disabled/unarmed unless at least one
+    account is checked into the currently-viewed team, and while a bulk launch
+    is already running (never overlap two at once).
     """
     team_id = STATE.current_team_id
     if team_id is None:
@@ -892,6 +906,26 @@ def show_team_actions() -> None:
         imgui.end_disabled()
     if launch_clicked and can_launch:
         STATE.start_bulk_launch(members)
+
+    imgui.same_line()
+    if imgui.button("Select all visible"):
+        changed = False
+        for p in _visible_profiles():
+            if team_id not in p.team_ids:
+                p.team_ids.append(team_id)
+                changed = True
+        if changed:
+            save_profiles(STATE.profiles)
+
+    imgui.same_line()
+    if imgui.button("Select none"):
+        changed = False
+        for p in _visible_profiles():
+            if team_id in p.team_ids:
+                p.team_ids.remove(team_id)
+                changed = True
+        if changed:
+            save_profiles(STATE.profiles)
 
     imgui.same_line()
     imgui.text("Pacing (s):")
@@ -921,6 +955,10 @@ def show_main_window() -> None:
     show_team_switcher()
     show_team_actions()
 
+    imgui.spacing()
+    imgui.set_next_item_width(hello_imgui.em_size() * 16.0)
+    _, STATE.name_filter = imgui.input_text_with_hint("##name_filter", "Filter by name...", STATE.name_filter)
+
     imgui.separator()
     imgui.spacing()
 
@@ -928,13 +966,14 @@ def show_main_window() -> None:
     card_w, card_h, card_gap = _card_dimensions()
     avail_w = imgui.get_content_region_avail().x
     cols = max(1, int(avail_w // (card_w + card_gap)))
+    visible_profiles = _visible_profiles()
 
     imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
     draw_list = imgui.get_window_draw_list()
     origin = imgui.get_cursor_screen_pos()
     grid_is_hoverable = imgui.is_window_hovered()
 
-    for i, profile in enumerate(STATE.profiles):
+    for i, profile in enumerate(visible_profiles):
         col = i % cols
         row = i // cols
         card_origin = (
@@ -986,7 +1025,7 @@ def show_main_window() -> None:
             checkbox_hovered=checkbox_hovered,
         )
 
-    add_index = len(STATE.profiles)
+    add_index = len(visible_profiles)
     add_col = add_index % cols
     add_row = add_index // cols
     add_origin = (
