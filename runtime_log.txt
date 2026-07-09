@@ -1,153 +1,217 @@
-[2026-07-07 23:38:06] [Py4GW] Initializing scanner.
-[2026-07-07 23:38:06] [Py4GW] Initializing patterns.
-[2026-07-07 23:38:06] [Py4GW] Initializing Python runtime.
-[2026-07-07 23:38:06] [Py4GW] [python] Initialize: begin.
-[2026-07-07 23:38:06] [Py4GW] [python] Py_IsInitialized (pre): 0
-[2026-07-07 23:38:06] [Py4GW] [python] Step 1: creating interpreter (Py_InitializeFromConfig).
-[2026-07-07 23:38:06] [Py4GW] [python] Step 1 OK: interpreter created.
-[2026-07-07 23:38:06] [Py4GW] [python] Step 2: importing sys.
-[2026-07-07 23:38:06] [Py4GW] [python] Step 2 OK. sys.prefix: F:\GW\GW1
-[2026-07-07 23:38:06] [Py4GW] [python] Step 3: configuring sys.path.
-[2026-07-07 23:38:06] [Py4GW] [python] module directory: C:\Users\Apo\Py4GW_Reforged
-[2026-07-07 23:38:06] [Py4GW] [python] working directory set to module dir: C:\Users\Apo\Py4GW_Reforged
-[2026-07-07 23:38:06] [Py4GW] [python] Step 3 OK: sys.path configured.
-[2026-07-07 23:38:06] [Py4GW] [python] Step 4: importing embedded modules.
-[2026-07-07 23:38:06] [Py4GW] [python] importing Py4GW
-[2026-07-07 23:38:06] [Py4GW] [python] importing PySystem
-[2026-07-07 23:38:06] [Py4GW] [python] importing PySettings
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyProfiler
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyCallback
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyListeners
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyAgent
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyAgentRecolor
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyCamera
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyChat
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyAgentEvents
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyEffects
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyFriendList
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyGameThread
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyGuild
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyItem
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyInventory
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyMap
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyMerchant
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyNameObfuscator
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyPacketSniffer
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyParty
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyPathing
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyPing
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyPlayer
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyQuest
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyRender
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyScanner
-[2026-07-07 23:38:06] [Py4GW] [python] importing PySkill
-[2026-07-07 23:38:06] [Py4GW] [python] importing PySkillbar
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyTrade
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyUIManager
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyTexture
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyDialog
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyOverlay
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyDXOverlay
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyKeystroke
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyMouse
-[2026-07-07 23:38:06] [Py4GW] [python] importing PyImGui
-[2026-07-07 23:38:06] [Py4GW] [python] Step 4 OK: all embedded modules imported.
-[2026-07-07 23:38:06] [Py4GW] [python] Step 5: importing __main__.
-[2026-07-07 23:38:06] [Py4GW] [python] Step 5 OK.
-[2026-07-07 23:38:06] [Py4GW] [python] Step 6: releasing GIL (PyEval_SaveThread).
-[2026-07-07 23:38:06] [Py4GW] [python] Step 6 OK: Python runtime initialized.
-[2026-07-07 23:38:06] [Py4GW] Initializing Guild Wars modules.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing game_thread.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing stoc.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing render.
-[2026-07-07 23:38:06] [Py4GW] STOC_HEADER_COUNT [487]
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing ui.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing camera.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing memory_manager.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing context.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing effects.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing events.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing friend_list.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing player.
-[2026-07-07 23:38:06] [Py4GW] [gw] Initializing agent.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing quest.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing map.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing guild.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing chat.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing item.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing trade.
-[2026-07-07 23:38:07] [Py4GW] [trade] Trade module initialized.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing merchant.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing skillbar.
-[2026-07-07 23:38:07] [Py4GW] [SCAN] SkillArray = 006C7D18
-[2026-07-07 23:38:07] [Py4GW] [SCAN] AttributeArray = 00774530
-[2026-07-07 23:38:07] [Py4GW] [SCAN] ChangeSecondary_Func = 0065FAE0
-[2026-07-07 23:38:07] [Py4GW] [SCAN] LoadAttributes_Func = 0054CDA0
-[2026-07-07 23:38:07] [Py4GW] [SCAN] LoadSkills_Func = 00555F80
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing party.
-[2026-07-07 23:38:07] [Py4GW] [SCAN] TickButtonUICallback = 002AC010
-[2026-07-07 23:38:07] [Py4GW] [SCAN] SetDifficulty_Func = 005958F0
-[2026-07-07 23:38:07] [Py4GW] [SCAN] PartySearchSeek_Func = 00596780
-[2026-07-07 23:38:07] [Py4GW] [SCAN] SetReadyStatus_Func = 00596970
-[2026-07-07 23:38:07] [Py4GW] [SCAN] FlagHeroAgent_Func = 0054D410
-[2026-07-07 23:38:07] [Py4GW] [SCAN] FlagAll_Func = 0054D430
-[2026-07-07 23:38:07] [Py4GW] [SCAN] SetHeroBehavior_Func = 0054D390
-[2026-07-07 23:38:07] [Py4GW] [SCAN] LockPetTarget_Func = 0065EFE0
-[2026-07-07 23:38:07] [Py4GW] [SCAN] CommandHotKeyDisableAi_Func = 0065F060
-[2026-07-07 23:38:07] [Py4GW] [SCAN] PartyWindowButtonCallback_Func = 002AE510
-[2026-07-07 23:38:07] [Py4GW] [SCAN] PartySearchButtonCallback_Func = 002A2AD0
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing name_obfuscator.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing agent_recolor.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing textures.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing dialog.
-[2026-07-07 23:38:07] [Py4GW] [gw] Initializing native_ui.
-[2026-07-07 23:38:07] [Py4GW] [gw] Enabling memory patcher hooks.
-[2026-07-07 23:38:07] [Py4GW] [gw] Guild Wars initialization complete.
-[2026-07-07 23:38:07] [Py4GW] Shared memory publisher ready: Py4GW_Runtime_7056_00D30CEA
-[2026-07-07 23:38:07] [Py4GW] Initializing crash handler.
-[2026-07-07 23:38:07] [Py4GW] [CrashHandler] Path C attached.
-[2026-07-07 23:38:07] [Py4GW] [CrashHandler] installed.
-[2026-07-07 23:38:07] [Py4GW] Py4GW initialized.
-[2026-07-07 23:38:07] [Py4GW] ImGui_Legacy initialized on Guild Wars render device.
-[2026-07-07 23:38:08] [Py4GW] Account anchor ready: apoguita@gmail.com
-[2026-07-07 23:38:08] [WidgetManager] Widget manager compiled successfully.
-[2026-07-07 23:38:09] [Py4GW - Shared Memory] Shared memory area created.
-[2026-07-07 23:38:09] [Py4GW - Shared Memory] Attached to existing shared memory.
-[2026-07-07 23:38:09] [WidgetManager] draw() function found.
-[2026-07-07 23:38:09] [WidgetManager] update() function found.
-[2026-07-07 23:38:09] [WidgetManager] main() function found.
-[2026-07-07 23:38:09] [WidgetManager] Widget manager started.
-[2026-07-07 23:38:11] [print:] [ButtonMethods] CtlBtnProc resolved via short-prologue fallback @ 0x002A8E60
-[2026-07-07 23:38:11] [print:] [ButtonMethods] FrameSetSize resolved @ 0x00374290
-[2026-07-07 23:38:11] [print:] [ButtonMethods] FrameSetPosition resolved @ 0x003740E0
-[2026-07-07 23:38:11] [print:] [ButtonMethods] FrameMouseEnable resolved via byte-pattern fallback @ 0x003736D0
-[2026-07-07 23:38:11] [print:] [ButtonMethods] FrameNewSubclass resolved via byte-pattern fallback @ 0x00373A40
-[2026-07-07 23:38:13] [Style Manager] Enabled Style Manager with theme: ImGui_Legacy
-[2026-07-07 23:38:13] [LootManager] Detected rarity_filter_data.json change, reloading...
-[2026-07-07 23:38:14] [print:] [DatHooks] ERROR: Failed to resolve CloseRecObj
-[2026-07-07 23:38:14] [Py4GW - Shared Memory] Submitted account data for apoguita@gmail.com at slot 0.
-[2026-07-07 23:38:14] [HeroAI] Loading HeroAI settings...
-[2026-07-07 23:38:14] [HeroAI] HeroAI initialized successfully.
-[2026-07-07 23:38:14] [AutoInventoryHandler] Auto Handler Options initialized
-[2026-07-07 23:38:14] [ItemDataContainer] Loaded item data for 3793 items across 35 item types.
-[2026-07-07 23:39:05] [Py4GW] Selected script: C:\Users\Apo\Py4GW_Reforged\HeroAI_UI.py
-[2026-07-07 23:39:06] [Py4GW] Script compiled successfully.
-[2026-07-07 23:39:06] [Py4GW] main() function found.
-[2026-07-07 23:39:06] [Py4GW] Script started.
-[2026-07-07 23:39:06] [HeroAI] Error: draw_list_add_text(): incompatible function arguments. The following argument types are supported:
-    1. (x: typing.SupportsFloat | typing.SupportsIndex, y: typing.SupportsFloat | typing.SupportsIndex, col: typing.SupportsInt | typing.SupportsIndex, text: str) -> None
-
-Invoked with: (205.5, 256.5), 4291611852, '455'
-[2026-07-07 23:39:06] [Py4GW] Python error (main()): TypeError: draw_list_add_text(): incompatible function arguments. The following argument types are supported:
-    1. (x: typing.SupportsFloat | typing.SupportsIndex, y: typing.SupportsFloat | typing.SupportsIndex, col: typing.SupportsInt | typing.SupportsIndex, text: str) -> None
-
-Invoked with: (205.5, 256.5), 4291611852, '455'
-
-At:
-  <string>(467): _draw_health_bar_local
-  <string>(936): draw_panel
-  <string>(326): draw_rich_panel
-  <string>(1376): draw_window
-  <string>(1467): main
-
-[2026-07-07 23:39:08] [Py4GW] Toggled Full Cosole.
+[2026-07-09 10:01:24] [Py4GW] Initializing scanner.
+[2026-07-09 10:01:24] [Py4GW] Initializing patterns.
+[2026-07-09 10:01:24] [Py4GW] Initializing Python runtime.
+[2026-07-09 10:01:24] [Py4GW] [python] Initialize: begin.
+[2026-07-09 10:01:24] [Py4GW] [python] Py_IsInitialized (pre): 0
+[2026-07-09 10:01:24] [Py4GW] [python] Step 1: creating interpreter (Py_InitializeFromConfig).
+[2026-07-09 10:01:24] [Py4GW] [python] Step 1 OK: interpreter created.
+[2026-07-09 10:01:24] [Py4GW] [python] Step 2: importing sys.
+[2026-07-09 10:01:24] [Py4GW] [python] Step 2 OK. sys.prefix: F:\GW\GW1
+[2026-07-09 10:01:24] [Py4GW] [python] Step 3: configuring sys.path.
+[2026-07-09 10:01:24] [Py4GW] [python] module directory: C:\Users\Apo\Py4GW_Reforged
+[2026-07-09 10:01:24] [Py4GW] [python] working directory set to module dir: C:\Users\Apo\Py4GW_Reforged
+[2026-07-09 10:01:24] [Py4GW] [python] Step 3 OK: sys.path configured.
+[2026-07-09 10:01:24] [Py4GW] [python] Step 4: importing embedded modules.
+[2026-07-09 10:01:24] [Py4GW] [python] importing Py4GW
+[2026-07-09 10:01:24] [Py4GW] [python] importing PySystem
+[2026-07-09 10:01:24] [Py4GW] [python] importing PySettings
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyProfiler
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyCallback
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyListeners
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyAgent
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyAgentRecolor
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyCamera
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyChat
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyAgentEvents
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyEffects
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyFriendList
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyGameThread
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyGuild
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyItem
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyInventory
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyMap
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyMerchant
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyNameObfuscator
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyPacketSniffer
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyParty
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyPathing
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyPing
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyPlayer
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyQuest
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyRender
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyScanner
+[2026-07-09 10:01:24] [Py4GW] [python] importing PySkill
+[2026-07-09 10:01:24] [Py4GW] [python] importing PySkillbar
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyTrade
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyUIManager
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyTexture
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyDialog
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyOverlay
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyDXOverlay
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyKeystroke
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyMouse
+[2026-07-09 10:01:24] [Py4GW] [python] importing PyImGui
+[2026-07-09 10:01:24] [Py4GW] [python] Step 4 OK: all embedded modules imported.
+[2026-07-09 10:01:24] [Py4GW] [python] Step 5: importing __main__.
+[2026-07-09 10:01:24] [Py4GW] [python] Step 5 OK.
+[2026-07-09 10:01:24] [Py4GW] [python] Step 6: releasing GIL (PyEval_SaveThread).
+[2026-07-09 10:01:24] [Py4GW] [python] Step 6 OK: Python runtime initialized.
+[2026-07-09 10:01:24] [Py4GW] Initializing Guild Wars modules.
+[2026-07-09 10:01:24] [Py4GW] [gw] Initializing game_thread.
+[2026-07-09 10:01:24] [Py4GW] [gw] Initializing stoc.
+[2026-07-09 10:01:24] [Py4GW] [gw] Initializing render.
+[2026-07-09 10:01:24] [Py4GW] STOC_HEADER_COUNT [487]
+[2026-07-09 10:01:24] [Py4GW] [gw] Initializing ui.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing camera.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing memory_manager.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing context.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing effects.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing events.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing friend_list.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing player.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing agent.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing quest.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing map.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing guild.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing chat.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing item.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing trade.
+[2026-07-09 10:01:25] [Py4GW] [trade] Trade module initialized.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing merchant.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing skillbar.
+[2026-07-09 10:01:25] [Py4GW] [SCAN] SkillArray = 00DD7D20
+[2026-07-09 10:01:25] [Py4GW] [SCAN] AttributeArray = 00E844D8
+[2026-07-09 10:01:25] [Py4GW] [SCAN] ChangeSecondary_Func = 00D6FB60
+[2026-07-09 10:01:25] [Py4GW] [SCAN] LoadAttributes_Func = 00C5CE20
+[2026-07-09 10:01:25] [Py4GW] [SCAN] LoadSkills_Func = 00C66000
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing party.
+[2026-07-09 10:01:25] [Py4GW] [SCAN] TickButtonUICallback = 009BC080
+[2026-07-09 10:01:25] [Py4GW] [SCAN] SetDifficulty_Func = 00CA5980
+[2026-07-09 10:01:25] [Py4GW] [SCAN] PartySearchSeek_Func = 00CA6810
+[2026-07-09 10:01:25] [Py4GW] [SCAN] SetReadyStatus_Func = 00CA6A00
+[2026-07-09 10:01:25] [Py4GW] [SCAN] FlagHeroAgent_Func = 00C5D490
+[2026-07-09 10:01:25] [Py4GW] [SCAN] FlagAll_Func = 00C5D4B0
+[2026-07-09 10:01:25] [Py4GW] [SCAN] SetHeroBehavior_Func = 00C5D410
+[2026-07-09 10:01:25] [Py4GW] [SCAN] LockPetTarget_Func = 00D6F060
+[2026-07-09 10:01:25] [Py4GW] [SCAN] CommandHotKeyDisableAi_Func = 00D6F0E0
+[2026-07-09 10:01:25] [Py4GW] [SCAN] PartyWindowButtonCallback_Func = 009BE580
+[2026-07-09 10:01:25] [Py4GW] [SCAN] PartySearchButtonCallback_Func = 009B2B40
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing name_obfuscator.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing agent_recolor.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing textures.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing dialog.
+[2026-07-09 10:01:25] [Py4GW] [gw] Initializing native_ui.
+[2026-07-09 10:01:25] [Py4GW] [gw] Enabling memory patcher hooks.
+[2026-07-09 10:01:25] [Py4GW] [gw] Guild Wars initialization complete.
+[2026-07-09 10:01:25] [Py4GW] Shared memory publisher ready: Py4GW_Runtime_10064_004D0ECC
+[2026-07-09 10:01:25] [Py4GW] Initializing crash handler.
+[2026-07-09 10:01:25] [Py4GW] [CrashHandler] Path C attached.
+[2026-07-09 10:01:25] [Py4GW] [CrashHandler] installed.
+[2026-07-09 10:01:25] [Py4GW] Py4GW initialized.
+[2026-07-09 10:01:25] [Py4GW] ImGui initialized on Guild Wars render device.
+[2026-07-09 10:01:26] [Py4GW] Account anchor ready: apoguita@gmail.com
+[2026-07-09 10:01:26] [WidgetManager] Widget manager compiled successfully.
+[2026-07-09 10:01:27] [Py4GW - Shared Memory] Shared memory area created.
+[2026-07-09 10:01:27] [Py4GW - Shared Memory] Attached to existing shared memory.
+[2026-07-09 10:01:27] [WidgetManager] draw() function found.
+[2026-07-09 10:01:27] [WidgetManager] update() function found.
+[2026-07-09 10:01:27] [WidgetManager] main() function found.
+[2026-07-09 10:01:27] [WidgetManager] Widget manager started.
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/WidgetManager' filename='WidgetManager.ini' is_global=True
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetManager/WidgetManager.ini'
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetManager/WidgetManager.ini' (existed_on_disk=True)
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] on-disk content (117 keys): {'Window config': {'x': '271', 'y': '0', 'width': '800', 'height': '777', 'collapsed': 'False'}, 'Configuration': {'enable_all': 'True', 'default_layout': 'Compact', 'hotkey_modifiers': '', 'hotkey': '', 'library_width': '800.0', 'library_height': '777.0', 'layout': 'Library', 'show_main_window': 'False'}, 'Widget:System/Messaging.py': {'enabled': 'True'}, 'Widget:System/Frame Limiter.py': {'enabled': 'True'}, 'Widget:System/Environment Upkeeper.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Triggers/Enter character on load.py': {'enabled': 'True'}, 'Widget:Guild Wars/Switch Character.py': {'enabled': 'True'}, 'Widget:Guild Wars/Travel.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Triggers/Titles.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Triggers/Return to outpost on defeat.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Triggers/Skip Cinematics.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Screen Overlays/Instance Timer.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Screen Overlays/Mission Map +.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Screen Overlays/Skillbar +.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Screen Overlays/Vanquish Tracker.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Items & Loot/LootManager.py': {'enabled': 'True'}, 'Widget:Automation\\Multiboxing/HeroAI.py': {'enabled': 'True'}, 'Widget:Automation\\Enhancements/Pet Helper.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Items & Loot/InventoryPlus.py': {'enabled': 'True'}, 'Widget:Coding\\Debug\\Py4GW/Action Queue Monitor.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/SharedMem Monitor.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/UI_Listener.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/RawFrame_Tester.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/Frame_Tester.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/Frame Callback Monitor.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/Frame Callback Monitor.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Customization/Layout Manager.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/Agent Info.py': {'enabled': 'False'}, 'Widget:Coding/Py4GW_DEMO.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Customization/Style Manager.py': {'enabled': 'True'}, 'Widget:Guild Wars\\Triggers/Pycons.py': {'enabled': 'False'}, 'Card Configuration': {'show_configure_button': 'True', 'show_images': 'True', 'fixed_card_width': 'False', 'card_width': '184.88400268554688'}, 'Favorites': {'favorites': 'Automation\\Enhancements/Pet Helper.py,Automation\\Multiboxing/HeroAI.py,Guild Wars/Switch Character.py,Guild Wars/Travel.py,Guild Wars\\Customization/Style Manager.py,Guild Wars\\Items & Loot/InventoryPlus.py,Guild Wars\\Items & Loot/LootManager.py,Guild Wars\\Screen Overlays/Mission Map +.py,Guild Wars\\Screen Overlays/Skillbar +.py,Guild Wars\\Screen Overlays/Vanquish Tracker.py,Guild Wars\\Triggers/Return to outpost on defeat.py,Guild Wars\\Triggers/Skip Cinematics.py,Guild Wars\\Triggers/Titles.py,System/Frame Limiter.py'}, 'Widget:Automation\\Bots\\Vanquish\\Factions\\The Jade Sea/Mount Qinkai.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/AccountData.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/GameConfigViewer.py': {'enabled': 'False'}, 'Widget:Coding\\ImGui/ImGui Official DEMO.py': {'enabled': 'False'}, 'Widget:Coding\\ImGui/Color Pallete.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Items & Loot/item_eater.py': {'enabled': 'False'}, 'Widget:Coding/Py4GW DEMO 2.0.py': {'enabled': 'False'}, 'Widget:Automation\\Multiboxing/CustomBehaviors.py': {'enabled': 'False'}, 'Widget:Automation\\Helpers/EZ Cast.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Levelers\\Factions/Factions Character Leveler.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/Callback Monitor.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/Widget Profiler.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Customization/HeroAi Skill Editor.py': {'enabled': 'False'}, 'Widget:Coding\\Tools/Route Builder.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/System Monitor.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Screen Overlays/Compass +.py': {'enabled': 'False'}, 'Widget:System/Bridge Client.py': {'enabled': 'False'}, 'Widget:Coding\\Tools/Bridge Client.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Items & Loot/InventoryPlusOLD.py': {'enabled': 'False'}, 'Widget:Coding\\ImGui/Icon Explorer.py': {'enabled': 'False'}, 'Widget:System/SharedMem Isolation Manager.py': {'enabled': 'True'}, 'Widget:Automation\\Bots\\Farmers\\Trophies\\War Supply/Auspicious_Beginnins_2.0.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/Quest Data.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Items & Loot/Xunlaimanager.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/System Monitor UI.py': {'enabled': 'True'}, 'Widget:Coding\\Tools/Script Runner.py': {'enabled': 'False'}, 'Widget:Coding\\Examples/ItemHandlingTests.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Trophies\\War Supply/AuspiciousBeginnings_3.0.py': {'enabled': 'False'}, 'Widget:Automation\\Multiboxing/HeroAI 2.0.py': {'enabled': 'False'}, 'Widget:Automation\\Multiboxing/CombatGridOverlay.py': {'enabled': 'False'}, 'Widget:Guild Wars/Calendar.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Events/YAVB 2.0.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Events\\Winter/snowball_dominance.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Materials\\Bones/cof_bone_farmer.py': {'enabled': 'False'}, 'Widget:Coding\\Examples\\Skills/SkillInfo.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Weapons\\Green_Unique\\Scythe/Asterius Scythe.py': {'enabled': 'False'}, 'Floating Button': {'button_size': '48.0', 'idle_icon_scale': '1.1169999837875366', 'hover_icon_scale': '1.25'}, 'Widget:Coding\\ImGui/Color Picker.py': {'enabled': 'False'}, 'Widget:Coding\\Examples/WidgetTemplate.py': {'enabled': 'True'}, 'Widget:Automation\\Helpers/Pycons.py': {'enabled': 'False'}, 'Widget:Coding\\Examples/FloatingIcon example.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Missions\\Core/FoW.py': {'enabled': 'False'}, 'Widget:Coding\\Tools/Active Dialog Viewer.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Levelers\\Prophecies/Py4GW - LDoA.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Trophies\\War Supply/HeartsOfTheNorth.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Py4GW/SharedMem Isolation Manager.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Screen Overlays/PartyQuestLog.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Levelers\\KillroyStoneskin/Kilroy Stonekins Punch-Out Extravaganza.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Trophies/Proof of Legend bot 2.0 by Wick Divinus.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Trophies/Proof of Legend bot 3.0 by Wick Divinus.py': {'enabled': 'True'}, 'Widget:Automation\\Bots\\Levelers\\Nightfall/Nightfall_leveler.py': {'enabled': 'False'}, 'Widget:Guild Wars\\Items & Loot/MerchantRules.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Trophies/Proof of Legend bot Faction edition.py': {'enabled': 'False'}, 'Widget:Automation\\Bots\\Farmers\\Trophies/Proof of Legend bot 3.0 Nightfall edition by Wick Divinus.py': {'enabled': 'False'}, 'Widget:System/Data Collector.py': {'enabled': 'False'}, 'Widget:System/Enemy Tracker.py': {'enabled': 'True'}, 'Widget:Automation\\Bots\\Missions\\Core/Underworld.py': {'enabled': 'False'}, 'Widget:Automation\\Enhancements/Dhuum Helper.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/Frame_Showcase.py': {'enabled': 'False'}, 'Widget:Automation\\Helpers/ResurrectionScroll.py': {'enabled': 'True'}, 'Widget:Automation\\Bots\\Missions\\NightFall/Tihark Orchard.py': {'enabled': 'False'}, 'Widget:Coding\\Debug\\Guild Wars/PacketSniffer.py': {'enabled': 'True'}, 'Widget:Coding\\Debug\\Guild Wars/PacketSnifferTester.py': {'enabled': 'False'}, 'Widget:Coding\\Tools/Native Button Test Harness.py': {'enabled': 'False'}, 'Widget:System': {'enemy tracker.py/system/enemy tracker.py__enabled': 'True', 'environment upkeeper.py/system/environment upkeeper.py__enabled': 'True', 'frame limiter.py/system/frame limiter.py__enabled': 'True', 'messaging.py/system/messaging.py__enabled': 'True'}}
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='EnemyBlacklist.ini' is_global=True
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/HeroAI/EnemyBlacklist.ini'
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/HeroAI/EnemyBlacklist.ini' (existed_on_disk=True)
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] on-disk content (6 keys): {'Window config': {'x': '400', 'y': '400', 'width': '600', 'height': '500', 'collapsed': 'False'}, 'EnemyBlacklist': {'names': 'chained soul|obsidian guardian|vengeful aatxe|wailing lord'}}
+[2026-07-09 10:01:27] [print:] [ButtonMethods] CtlBtnProc resolved via short-prologue fallback @ 0x009B8ED0
+[2026-07-09 10:01:27] [print:] [ButtonMethods] FrameSetSize resolved @ 0x00A84330
+[2026-07-09 10:01:27] [print:] [ButtonMethods] FrameSetPosition resolved @ 0x00A84180
+[2026-07-09 10:01:27] [print:] [ButtonMethods] FrameMouseEnable resolved via byte-pattern fallback @ 0x00A83770
+[2026-07-09 10:01:27] [print:] [ButtonMethods] FrameNewSubclass resolved via byte-pattern fallback @ 0x00A83AE0
+[2026-07-09 10:01:27] [Style Manager] Enabled Style Manager with theme: ImGui_Legacy
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/WidgetCatalog' filename='WidgetCatalog.ini' is_global=True
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalog.ini'
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalog.ini' (existed_on_disk=True)
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] on-disk content (27 keys): {'Window config': {'x': '791', 'y': '555', 'width': '838', 'height': '777', 'collapsed': 'False', 'init': 'True'}, 'Configuration': {'show_adavanced': 'False'}, 'Search': {'saved_entries': 'heroai|agent|demo|dialog|sys|lay|yavb|compass|frame|mess|icon|call|list|snif|style|butt|shared|obfu|temp'}, 'Tree': {'width': '210.0', 'indent_value': '10.0', 'row_height_min': '16.0', 'row_height_padding_y': '2.0', 'row_padding_x': '8.0', 'row_width_padding_right': '12.0', 'row_corner_radius': '3.0', 'tooltip_icon_spacing': '6.0'}, 'Detail Panel': {'header_row_height': '24.0', 'total_width_min': '443.0', 'favorite_width': '40.0', 'config_width': '40.0', 'name_width': '355.0', 'row_height': '35.0', 'icon_padding': '6.0', 'icon_size_max': '28.0', 'content_padding_x': '8.0', 'content_gap_after_icon': '16.0'}, 'settings': {'init': 'True'}}
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/WidgetCatalog' filename='WidgetCatalogFloatingButton.ini' is_global=True
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalogFloatingButton.ini'
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalogFloatingButton.ini' (existed_on_disk=True)
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] on-disk content (8 keys): {'Window config': {'x': '271', 'y': '-2', 'width': '49', 'height': '49', 'collapsed': 'False', 'init': 'True'}, 'Configuration': {'show_main_window': 'False'}, 'settings': {'init': 'True'}}
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/WidgetCatalog' filename='WidgetCatalogSetup.ini' is_global=True
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalogSetup.ini'
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalogSetup.ini' (existed_on_disk=True)
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] on-disk content (2 keys): {'Window config': {'init': 'True'}, 'settings': {'init': 'True'}}
+[2026-07-09 10:01:27] [print:] [IniDiag] [STAGE] save_vars key='Widgets/WidgetCatalog/WidgetCatalog.ini': staged 1 dirty var(s) for next flush: [('', 'init')]
+[2026-07-09 10:01:27] [print:] [IniDiag] [STAGE] save_vars key='Widgets/WidgetCatalog/WidgetCatalogFloatingButton.ini': staged 1 dirty var(s) for next flush: [('', 'init')]
+[2026-07-09 10:01:27] [print:] [IniDiag] [STAGE] save_vars key='Widgets/WidgetCatalog/WidgetCatalogSetup.ini': staged 1 dirty var(s) for next flush: [('', 'init')]
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/Guild Wars/Screen Overlays' filename='Mission Map +.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='main_window.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='consumables_window.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='formation_window.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='flagging_window.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Inventory/InventoryPlus' filename='InventoryPlus.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [LootManager] Detected rarity_filter_data.json change, reloading...
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/Guild Wars/Screen Overlays' filename='Mission Map +.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/EnterCharacterOnLoad' filename='EnterCharacterOnLoad.ini' is_global=True
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/EnterCharacterOnLoad/EnterCharacterOnLoad.ini'
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/EnterCharacterOnLoad/EnterCharacterOnLoad.ini' (existed_on_disk=True)
+[2026-07-09 10:01:27] [print:] [IniDiag]   [DISK] on-disk content (7 keys): {'Window config': {'x': '100', 'y': '100', 'width': '600', 'height': '500', 'collapsed': 'False', 'widget_active': 'False', 'init': 'True'}}
+[2026-07-09 10:01:27] [print:] [IniDiag] [STAGE] save_vars key='Widgets/EnterCharacterOnLoad/EnterCharacterOnLoad.ini': staged 1 dirty var(s) for next flush: [('', 'init')]
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/Automation/Helpers/EnemyTracker' filename='EnemyTracker.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:27] [print:] [IniDiag] AddIniHandler path='Widgets/Automation/Helpers/EnemyTracker' filename='EnemyTrackerFloating.ini' is_global=False
+[2026-07-09 10:01:27] [print:] [IniDiag]   [SKIP] account email empty -> ensure_key returned "" (widget retries next frame)
+[2026-07-09 10:01:28] [print:] [IniDiag] [DISK] wrote 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalog.ini' keys={('Window config', 'init'): 'True'}
+[2026-07-09 10:01:28] [print:] [IniDiag] [DISK] wrote 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalogFloatingButton.ini' keys={('Window config', 'init'): 'True'}
+[2026-07-09 10:01:28] [print:] [IniDiag] [DISK] wrote 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/WidgetCatalog/WidgetCatalogSetup.ini' keys={('Window config', 'init'): 'True'}
+[2026-07-09 10:01:28] [print:] [IniDiag] [DISK] wrote 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/Global/Widgets/EnterCharacterOnLoad/EnterCharacterOnLoad.ini' keys={('Window config', 'init'): 'True'}
+[2026-07-09 10:01:28] [Py4GW - Shared Memory] Submitted account data for apoguita@gmail.com at slot 0.
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='Widgets/Guild Wars/Screen Overlays' filename='Mission Map +.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/Guild Wars/Screen Overlays/Mission Map +.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/Guild Wars/Screen Overlays/Mission Map +.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (9 keys): {'Window config': {'x': '60', 'y': '60', 'width': '400', 'height': '400', 'collapsed': 'False'}, 'Terrain': {'color': '1355335880', 'inverted': 'False', 'zoom_fill_color': '3360377675'}, 'Marker.pet': {'color': '4280149482'}}
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='main_window.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/main_window.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/main_window.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (5 keys): {'Window config': {'x': '378', 'y': '24', 'width': '220', 'height': '221', 'collapsed': 'True'}}
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='consumables_window.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/consumables_window.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/consumables_window.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (5 keys): {'Window config': {'x': '1081', 'y': '31', 'width': '232', 'height': '178', 'collapsed': 'False'}}
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='formation_window.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/formation_window.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/formation_window.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (12 keys): {'Window config': {'x': '919', 'y': '252', 'width': '434', 'height': '806', 'collapsed': 'False'}, 'FollowRuntime': {'show_broadcast_follow_threshold_rings': 'False', 'show_broadcast_follow_positions': 'False', 'show_flagging_window': 'True', 'show_broadcast_avoidance_cells': 'True', 'show_broadcast_avoidance_centers': 'True', 'follow_move_threshold_combat_mode': 'Zero', 'follow_move_threshold_combat': '0.0'}}
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='HeroAI' filename='flagging_window.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/flagging_window.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/HeroAI/flagging_window.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (5 keys): {'Window config': {'x': '596', 'y': '37', 'width': '168', 'height': '194', 'collapsed': 'False'}}
+[2026-07-09 10:01:28] [HeroAI] Loading HeroAI settings...
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='Widgets/WidgetTemplate' filename='WidgetTemplate.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/WidgetTemplate/WidgetTemplate.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/WidgetTemplate/WidgetTemplate.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (7 keys): {'Window config': {'x': '881', 'y': '22', 'width': '14', 'height': '27', 'collapsed': 'False', 'widget_active': 'False'}, 'TestBoolVar': {'value': 'False'}}
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='Inventory/InventoryPlus' filename='InventoryPlus.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Inventory/InventoryPlus/InventoryPlus.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Inventory/InventoryPlus/InventoryPlus.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (69 keys): {'Window config': {'x': '488', 'y': '378', 'width': '587', 'height': '358', 'collapsed': 'False'}, 'AutoManager': {'module_active': 'True', 'lookup_time': '15000'}, 'Deposit': {'use_ctrl_click': 'True'}, 'AutoDeposit': {'keep_gold': '10000', 'deposit_materials': 'True', 'deposit_trophies': 'True', 'deposit_event_items': 'False', 'deposit_dyes': 'True', 'deposit_blues': 'False', 'deposit_purples': 'False', 'deposit_golds': 'True', 'deposit_greens': 'True', 'deposit_model_blacklist': '37841,38031', 'deposit_dyes_blacklist': '', 'deposit_event_items_blacklist': '', 'deposit_trophies_blacklist': '', 'deposit_materials_blacklist': ''}, 'Colorize': {'enable_colorize': 'False', 'color_whites': 'False', 'color_blues': 'True', 'color_purples': 'True', 'color_golds': 'True', 'color_greens': 'True', 'white_color': '(255, 255, 255, 255)', 'blue_color': '(0, 170, 255, 255)', 'purple_color': '(110, 65, 200, 255)', 'gold_color': '(225, 150, 0, 125)', 'green_color': '(25, 200, 0, 125)'}, 'Identification': {'identify_whites': 'False', 'identify_blues': 'True', 'identify_purples': 'True', 'identify_golds': 'True', 'identify_greens': 'False', 'show_identify_all': 'True', 'identify_all_whites': 'False', 'identify_all_blues': 'True', 'identify_all_purples': 'True', 'identify_all_golds': 'True', 'identify_all_greens': 'False'}, 'AutoIdentify': {'id_whites': 'False', 'id_blues': 'True', 'id_purples': 'True', 'id_golds': 'True', 'id_greens': 'False', 'id_model_blacklist': ''}, 'Salvage': {'salvage_whites': 'False', 'salvage_blues': 'False', 'salvage_purples': 'False', 'salvage_golds': 'False', 'salvage_greens': 'False', 'show_salvage_all': 'True', 'salvage_all_whites': 'True', 'salvage_all_blues': 'True', 'salvage_all_purples': 'True', 'salvage_all_golds': 'True', 'salvage_all_greens': 'False'}, 'AutoSalvage': {'salvage_whites': 'True', 'salvage_blues': 'True', 'salvage_purples': 'True', 'salvage_golds': 'True', 'salvage_rare_materials': 'False', 'item_type_blacklist': '', 'salvage_blacklist': '31202,31204,31203,27047,27033,27052'}, 'InventoryWindow': {'enable_i_window': 'False'}}
+[2026-07-09 10:01:28] [AutoInventoryHandler] Auto Handler Options initialized
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='Widgets/Automation/Helpers/EnemyTracker' filename='EnemyTracker.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/Automation/Helpers/EnemyTracker/EnemyTracker.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/Automation/Helpers/EnemyTracker/EnemyTracker.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (5 keys): {'Window config': {'x': '1231', 'y': '530', 'width': '242', 'height': '144', 'collapsed': 'False'}}
+[2026-07-09 10:01:28] [print:] [IniDiag] AddIniHandler path='Widgets/Automation/Helpers/EnemyTracker' filename='EnemyTrackerFloating.ini' is_global=False
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] file = 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/Automation/Helpers/EnemyTracker/EnemyTrackerFloating.ini'
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] opened 'C:\\Users\\Apo\\Py4GW_Reforged/Settings/apoguita@gmail.com/Widgets/Automation/Helpers/EnemyTracker/EnemyTrackerFloating.ini' (existed_on_disk=True)
+[2026-07-09 10:01:28] [print:] [IniDiag]   [DISK] on-disk content (6 keys): {'Window config': {'x': '40', 'y': '40', 'width': '49', 'height': '49', 'collapsed': 'False'}, 'Configuration': {'show_main_window': 'False'}}
+[2026-07-09 10:01:28] [ItemDataContainer] Loaded item data for 3793 items across 35 item types.
+[2026-07-09 10:01:29] [HeroAI] HeroAI initialized successfully.

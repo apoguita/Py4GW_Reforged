@@ -554,24 +554,6 @@ def dump_email_chain():
     else:
         result["steps"]["char_ctx"] = f"IMPORT_FAIL: {mod_cc}"
 
-    # Step 5: Settings._cached_account_id state
-    ok, mod_set = _safe(__import__,
-                        "Py4GWCoreLib.database_src.Settings",
-                        fromlist=["SETTINGS"])
-    if ok:
-        sdb = getattr(mod_set, "SETTINGS", None)
-        if sdb:
-            try:
-                sdb._ensure_cache_populated()
-                result["steps"]["Settings._cached_account_id"] = (
-                    getattr(sdb, "_cached_account_id", "MISSING_ATTR"))
-                result["steps"]["Settings._cached_email"] = (
-                    str(getattr(sdb, "_cached_email", "MISSING_ATTR"))[:80])
-            except Exception as exc:
-                result["steps"]["Settings.populate"] = f"ERROR: {exc}"
-    else:
-        result["steps"]["Settings"] = f"IMPORT_FAIL: {mod_set}"
-
     return result
 
 

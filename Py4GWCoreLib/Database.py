@@ -1,4 +1,4 @@
-from .database_src import Account, DBMgr, Settings
+from .database_src import Account, DBMgr
 
 
 class Database:
@@ -6,4 +6,3 @@ class Database:
 
     DBMgr = DBMgr
     Account = Account
-    Settings = Settings

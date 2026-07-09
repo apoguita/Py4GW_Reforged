@@ -1,17 +1,14 @@
 import PyImGui
 from Py4GWCoreLib import Routines, ImGui_Legacy, Color
 from Py4GWCoreLib.IniManager import IniManager
-from Py4GWCoreLib import Database
 
 MODULE_NAME = "Widget Template" # Change this to your widget name
 MODULE_ICON = "Textures/Module_Icons/Template.png" # Change this to your widget icon (optional)
 WIDGET_KEY = 'Widgets/Coding/Examples/WidgetTemplate'
-WIDGET_DESCRIPTION = 'Template widget using Database.Settings persistence.'
-SETTINGS = Database.Settings().ForWidget(WIDGET_KEY, MODULE_NAME, WIDGET_DESCRIPTION)
 
 # ---------------------------------------
 # Settings Handling
-# Database.Settings persists values for the current account or globally.
+# Values persist through IniManager under the widget's ini key.
 # ---------------------------------------
 
 INI_KEY = ""
@@ -24,10 +21,10 @@ def draw_widget():
         
         PyImGui.text("Add your stuff here")
         
-        val = SETTINGS.GetBool('TestBoolVar', 'value', default=False)
+        val = IniManager().read_bool(INI_KEY, "TestBoolVar", "value", False)
         new_val = PyImGui.checkbox("Test Bool Variable", val)
         if new_val != val:
-            SETTINGS.SetBool('TestBoolVar', 'value', new_val)
+            IniManager().write_key(INI_KEY, "TestBoolVar", "value", new_val)
 
     ImGui_Legacy.End(INI_KEY)
     
