@@ -124,6 +124,7 @@ if sys.maxsize > 2**32:
 
 try:
     import colorsys
+    import ctypes.wintypes
     import dataclasses
     import math
     import os
@@ -210,6 +211,105 @@ def _apply_window_icon_if_needed() -> None:
     if hwnd is not None:
         set_window_icon(hwnd, str(ICON_PATH))
         _window_icon_applied = True
+
+
+# GWL_WNDPROC (same value as the 64-bit-only GWLP_WNDPROC alias, but this project's
+# hard 32-bit requirement -- see the sys.maxsize check above -- means the *_PTR
+# Win32 entry points below aren't actually exported: SetWindowLongPtrW/
+# GetWindowLongPtrW are #define'd to the plain 32-bit calls in a 32-bit build,
+# confirmed directly (hasattr against ctypes.windll.user32 was False for both
+# *_PTR names, True for the plain W names), so this uses the 32-bit-native
+# SetWindowLongW/GetWindowLongW rather than assuming the wider API exists.
+_GWL_WNDPROC = -4
+_WM_GETMINMAXINFO = 0x0024
+
+
+class _POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+class _MINMAXINFO(ctypes.Structure):
+    _fields_ = [
+        ("pt_reserved", _POINT),
+        ("pt_max_size", _POINT),
+        ("pt_max_position", _POINT),
+        ("pt_min_track_size", _POINT),
+        ("pt_max_track_size", _POINT),
+    ]
+
+
+_WNDPROC_TYPE = ctypes.WINFUNCTYPE(
+    ctypes.c_long, ctypes.wintypes.HWND, ctypes.c_uint, ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM
+)
+
+_min_window_width_applied = False
+_min_window_width_original_wndproc = None
+_min_window_width_wndproc_instance: Optional[Callable] = None  # kept alive -- ctypes holds no reference itself
+_min_window_width_value = 0.0
+
+
+def _min_window_width_wndproc(hwnd, msg, wparam, lparam):
+    """Replacement window procedure: run the real (GLFW-installed) one first so
+    Windows' own default min/max-track-size values get computed as normal, then
+    raise ptMinTrackSize.x to our floor if the default was smaller. Only ever
+    raises it (never lowers), and only touches .x -- height is deliberately left
+    alone, per the "only width needs a floor" requirement.
+    """
+    result = ctypes.windll.user32.CallWindowProcW(_min_window_width_original_wndproc, hwnd, msg, wparam, lparam)
+    if msg == _WM_GETMINMAXINFO:
+        info = ctypes.cast(lparam, ctypes.POINTER(_MINMAXINFO)).contents
+        if info.pt_min_track_size.x < int(_min_window_width_value):
+            info.pt_min_track_size.x = int(_min_window_width_value)
+    return result
+
+
+def _enforce_minimum_window_width_if_needed() -> None:
+    """hello_imgui.RunnerParams has no minimum-window-size option either (checked
+    directly, same as the window-icon case above: app_window_params and
+    window_geometry's full attribute lists have no such field, and a module-wide
+    search of hello_imgui for min/constraint/limit-named symbols found nothing),
+    so this falls back to native Win32: subclass the window to intercept
+    WM_GETMINMAXINFO and enforce a floor on ptMinTrackSize.x.
+
+    The floor is derived from _card_dimensions()'s min_card_w -- the same minimum
+    already established for the responsive card grid -- rather than a separate
+    hardcoded number, so a future change to the grid's own minimum can't silently
+    drift out of sync with this. The margin (card_gap on each side, plus 2em for
+    the grid's outer padding) is what a single column actually needs around it to
+    render without clipping; see show_main_window()'s own layout math for the same
+    padding assumptions.
+
+    Wired to callbacks.pre_new_frame (see _apply_window_icon_if_needed's docstring
+    for why post_init doesn't work here): keeps retrying every frame, cheap once
+    installed (an EnumWindows scan plus an early-out flag), until the real native
+    window exists.
+    """
+    global _min_window_width_applied, _min_window_width_original_wndproc
+    global _min_window_width_wndproc_instance, _min_window_width_value
+    if _min_window_width_applied:
+        return
+    hwnd = find_visible_window_for_pid(os.getpid())
+    if hwnd is None:
+        return
+
+    min_card_w, _card_h, card_gap = _card_dimensions()
+    em = hello_imgui.em_size()
+    _min_window_width_value = min_card_w + card_gap * 2.0 + em * 2.0
+
+    _min_window_width_wndproc_instance = _WNDPROC_TYPE(_min_window_width_wndproc)
+    _min_window_width_original_wndproc = ctypes.windll.user32.SetWindowLongW(
+        hwnd, _GWL_WNDPROC, ctypes.cast(_min_window_width_wndproc_instance, ctypes.c_void_p).value
+    )
+    _min_window_width_applied = True
+
+
+def _pre_new_frame_hooks() -> None:
+    """Combines the one-shot, per-frame-retried setup hooks that need the real
+    native window to already exist -- pre_new_frame only accepts a single
+    callback, so both live here rather than one silently replacing the other.
+    """
+    _apply_window_icon_if_needed()
+    _enforce_minimum_window_width_if_needed()
 
 
 # -----------------------------------------------------------------------------
@@ -1515,7 +1615,7 @@ def main() -> None:
     runner_params.imgui_window_params.enable_viewports = True
 
     runner_params.callbacks.show_gui = gui
-    runner_params.callbacks.pre_new_frame = _apply_window_icon_if_needed
+    runner_params.callbacks.pre_new_frame = _pre_new_frame_hooks
 
     hello_imgui.run(runner_params)
 
