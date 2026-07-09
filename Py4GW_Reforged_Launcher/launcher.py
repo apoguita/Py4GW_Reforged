@@ -1143,7 +1143,7 @@ def _draw_team_context_menu(team: Team) -> None:
         imgui.end_popup()
 
 
-def show_team_tab_strip() -> None:
+def show_team_tab_strip(avail_w: float) -> None:
     """Tab strip: "ALL" is a permanent first tab, then one tab per team
     (name plus a live member count, e.g. "Farm Squad · 2"), then a trailing
     "+" tab for inline team creation. Replaces the old </> arrows + center
@@ -1151,6 +1151,16 @@ def show_team_tab_strip() -> None:
     make direct jumps to any view a single click, so cycling one at a time
     no longer earns its own buttons), but the dropdown-list popup itself
     wasn't thrown away: it's now the overflow path (see below).
+
+    The Launch Team control (show_team_actions) is drawn right-aligned at
+    the end of this same row instead of a separate row below -- its width is
+    reserved (see _team_actions_width) before deciding how many team tabs
+    fit, since it's competing with tabs for the same row now.
+
+    Takes avail_w explicitly rather than querying get_content_region_avail()
+    itself -- see show_settings_gear_button's docstring for why (the whole
+    header block is now wrapped in its own padded, narrower-than-window
+    region).
 
     Doesn't filter the card grid itself: which cards are visible never
     changes with the view (see draw_profile_card's membership checkbox,
@@ -1172,15 +1182,20 @@ def show_team_tab_strip() -> None:
 
     draw_list = imgui.get_window_draw_list()
     row_origin = imgui.get_cursor_screen_pos()
-    avail_w = imgui.get_content_region_avail().x
 
     all_w = _tab_width("ALL")
     plus_w = _tab_width("+")
+    actions_w = _team_actions_width()
 
     team_specs = []  # (team, label, width)
     for team in STATE.teams:
         label = f"{team.name or '(unnamed team)'} · {_team_member_count(team.id)}"
         team_specs.append((team, label, _tab_width(label)))
+
+    # The Launch Team control shares this row (right-aligned, drawn after
+    # the tabs below) rather than sitting on a row of its own -- reserve its
+    # width here so tabs don't get laid out underneath it.
+    tabs_avail_w = max(0.0, avail_w - actions_w - spacing)
 
     visible_teams: list[tuple[Team, str, float]] = team_specs
     overflow_teams: list[tuple[Team, str, float]] = []
@@ -1193,7 +1208,7 @@ def show_team_tab_strip() -> None:
             items_w += _tab_width(f"{len(candidate_overflow)} more")
             num_gaps += 1
         total = all_w + items_w + plus_w + spacing * num_gaps
-        if total <= avail_w or visible_count == 0:
+        if total <= tabs_avail_w or visible_count == 0:
             visible_teams, overflow_teams = candidate_visible, candidate_overflow
             break
 
@@ -1229,6 +1244,8 @@ def show_team_tab_strip() -> None:
     if _draw_tab(draw_list, (x, y), plus_w, tab_h, "+", key="new_team", active=False)[0]:
         imgui.open_popup(_NEW_TEAM_POPUP_ID)
         _new_team_name_buffer = ""
+
+    show_team_actions((row_origin.x + avail_w - actions_w, y))
 
     if imgui.begin_popup(_NEW_TEAM_POPUP_ID):
         _draw_inline_team_create_row()
@@ -1269,15 +1286,34 @@ def _visible_profiles() -> list[GameProfile]:
     return [p for p in STATE.profiles if query in p.name.lower()]
 
 
-def show_team_actions() -> None:
-    """Launch Team -- always drawn and always reserving its row's height, even
-    in ALL view where there's no team to launch: this row previously drew
-    nothing and consumed zero height when STATE.current_team_id was None,
-    which meant switching between a team view and ALL shifted the card grid's
-    origin by a full row's height on a window sized to show an exact number of
-    rows -- visibly clipping/unclipping cards on every view switch. Disabled
-    (not hidden) instead, matching the existing begin_disabled()/end_disabled()
-    pattern already used below for the no-members-checked case.
+def _team_actions_width() -> float:
+    """Measured width of the Launch Team control (button plus any live
+    bulk-launch status text trailing it) -- the tab strip needs this before
+    it lays out tabs, to reserve room for this control sharing the same row
+    rather than tabs running underneath it. Mirrors show_team_actions'
+    own label/status-text logic exactly so the two can't drift apart.
+    """
+    team_id = STATE.current_team_id
+    label = f"Launch Team ({_team_member_count(team_id)})" if team_id is not None else "Launch Team"
+    style = imgui.get_style()
+    width = imgui.calc_text_size(label).x + style.frame_padding.x * 2.0
+    if STATE.is_bulk_launching():
+        width += style.item_spacing.x + imgui.calc_text_size(STATE.bulk_launch_session.status_text).x
+    return width
+
+
+def show_team_actions(pos: tuple[float, float]) -> None:
+    """Launch Team -- drawn at an explicit screen position (right-aligned
+    after the tab strip's last tab, same row) rather than its own separate
+    row below it, and always drawn regardless of view: this row previously
+    drew nothing and consumed zero height when STATE.current_team_id was
+    None, which meant switching between a team view and ALL shifted the
+    card grid's origin -- visibly clipping/unclipping cards on every view
+    switch. Disabled (not hidden) instead, matching the existing
+    begin_disabled()/end_disabled() pattern already used below for the
+    no-members-checked case. See _team_actions_width for the matching width
+    measurement the tab strip uses to reserve room for this on that row
+    before laying out tabs.
 
     Disabled/unarmed when there's no active team (ALL), no account is checked
     into the currently-viewed team, or a bulk launch is already running (never
@@ -1299,9 +1335,13 @@ def show_team_actions() -> None:
     can_launch = team_id is not None and bool(members) and not bulk_launching
 
     label = f"Launch Team ({len(members)})" if team_id is not None else "Launch Team"
+    em = hello_imgui.em_size()
+    tab_h = imgui.get_frame_height() + em * 0.5
+    imgui.set_cursor_screen_pos(pos)
+
     if not can_launch:
         imgui.begin_disabled()
-    launch_clicked = imgui.button(label)
+    launch_clicked = imgui.button(label, size=(0, tab_h))
     if not can_launch:
         imgui.end_disabled()
     if launch_clicked and can_launch:
@@ -1312,16 +1352,21 @@ def show_team_actions() -> None:
         imgui.text_colored((0.9, 0.75, 0.3, 1.0), STATE.bulk_launch_session.status_text)
 
 
-def show_settings_gear_button() -> None:
+def show_settings_gear_button(avail_w: float) -> None:
     """Small gear icon, right-aligned in the toolbar -- both reference
     launchers use this same icon for this same purpose, so it's a recognized
     affordance rather than a new one to learn. Uses set_cursor_pos_x rather
     than same_line(offset) so the right-alignment still works even when this
     is the very first thing drawn on the row (same_line needs a preceding
-    item on the line to have any effect; this doesn't)."""
+    item on the line to have any effect; this doesn't).
+
+    Takes avail_w explicitly rather than querying get_content_region_avail()
+    itself -- show_main_window now wraps the whole header block in its own
+    padded region narrower than the full window, and every element in that
+    block right-aligns against that padded width, not the raw window width.
+    """
     em = hello_imgui.em_size()
     icon_size = em * 1.8
-    avail_w = imgui.get_content_region_avail().x
     imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + avail_w - icon_size)
     clicked = imgui.button("##app_settings_gear", size=(icon_size, icon_size))
     item_min, item_max = imgui.get_item_rect_min(), imgui.get_item_rect_max()
@@ -1334,15 +1379,35 @@ def show_settings_gear_button() -> None:
 def show_main_window() -> None:
     STATE.update()
 
-    show_settings_gear_button()
+    # The whole header block (gear icon, tab strip + Launch Team, filter box)
+    # gets real outer margin instead of sitting flush against the window
+    # edges: a one-time top inset (dummy) plus a persistent left inset
+    # (indent, held until unindent below) for the block's full height, and an
+    # explicit reduced width passed to whichever elements right-align (gear
+    # button, tab strip) so they stop header_pad short of the true right
+    # edge too -- indent alone only handles the left side. Two visually
+    # related rows now (tabs+launch, then filter) instead of three
+    # disconnected ones (tabs, launch, filter) sitting right against the
+    # window frame.
+    em = hello_imgui.em_size()
+    header_pad = em * 0.6
+    avail_w_full = imgui.get_content_region_avail().x
+    header_w = avail_w_full - header_pad * 2.0
+
+    imgui.dummy((0.0, header_pad))
+    imgui.indent(header_pad)
+
+    show_settings_gear_button(header_w)
 
     imgui.spacing()
-    show_team_tab_strip()
-    show_team_actions()
+    show_team_tab_strip(header_w)
 
     imgui.spacing()
-    imgui.set_next_item_width(hello_imgui.em_size() * 16.0)
+    imgui.set_next_item_width(em * 16.0)
     _, STATE.name_filter = imgui.input_text_with_hint("##name_filter", "Filter by name...", STATE.name_filter)
+
+    imgui.unindent(header_pad)
+    imgui.dummy((0.0, header_pad))
 
     imgui.separator()
     imgui.spacing()
