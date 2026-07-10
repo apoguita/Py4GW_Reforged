@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import os
 module_name = "Loot Pickit2 Manager"
 

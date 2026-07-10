@@ -14,7 +14,7 @@ from Py4GWCoreLib import Bags
 from Py4GWCoreLib import Effects
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import ImGui_Legacy
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import Item
 from Py4GWCoreLib import ItemArray
 from Py4GWCoreLib import ModelID
@@ -50,7 +50,7 @@ os.makedirs(BASE_DIR, exist_ok=True)
 
 cached_data = CacheData()
 
-ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
+ini_window = Settings("Bots/marks_coding_corner/AlcoholProc.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
@@ -61,9 +61,9 @@ Y_POS = "y"
 VK = 'VK'
 CALLBACK = 'callback'
 
-window_x = ini_window.read_int(MODULE_NAME, X_POS, 100)
-window_y = ini_window.read_int(MODULE_NAME, Y_POS, 100)
-window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, False)
+window_x = ini_window.get_int(MODULE_NAME, X_POS, 100)
+window_y = ini_window.get_int(MODULE_NAME, Y_POS, 100)
+window_collapsed = ini_window.get_bool(MODULE_NAME, COLLAPSED, False)
 
 # Windows constants
 WH_KEYBOARD_LL = 13

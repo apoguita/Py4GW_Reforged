@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from tkinter import filedialog
 
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Loot Manager"
 MODULE_ICON = "Textures/Module_Icons/LootManager.png"
@@ -30,14 +31,14 @@ last_rarity_timestamp = 0
 
 script_directory = PySystem.Console.get_projects_path() 
 # â€”â€”â€” Window Persistence Setup â€”â€”â€”
-ini_window = IniHandler(os.path.join(script_directory, "Widgets", "Config", "loot_window.ini"))
+ini_window = Settings("Widgets/Config/loot_window.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
 # load lastâ€saved window state (fallback to 100,100 / un-collapsed)
-win_x         = ini_window.read_int("Loot Manager", "x", 100)
-win_y         = ini_window.read_int("Loot Manager", "y", 100)
-win_collapsed = ini_window.read_bool("Loot Manager", "collapsed", False)
+win_x         = ini_window.get_int("Loot Manager", "x", 100)
+win_y         = ini_window.get_int("Loot Manager", "y", 100)
+win_collapsed = ini_window.get_bool("Loot Manager", "collapsed", False)
 first_run     = True
 
 # --- File paths setup ---

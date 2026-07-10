@@ -31,7 +31,6 @@ from Py4GWCoreLib import (
     ConsoleLog,
     Console,
     Routines,
-    IniHandler,
     Timer,
     GLOBAL_CACHE,
     ModelID,
@@ -40,6 +39,7 @@ from Py4GWCoreLib import (
 from Py4GWCoreLib.Pathing import AutoPathing
 from Py4GWCoreLib.enums import SharedCommandType
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Quest Auto-Runner (Simple)"
 MODULE_ICON = "Textures/Module_Icons/Quest Auto Runner.png"
@@ -126,7 +126,7 @@ except NameError:
 
 root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(root_directory, "Widgets/Config/Quest Auto-Runner.ini")
-ini_handler = IniHandler(ini_file_location)
+ini_handler = Settings("Widgets/Config/Quest Auto-Runner.ini", "global")
 
 sync_timer = Timer()
 sync_timer.Start()
@@ -134,9 +134,9 @@ sync_timer.Start()
 
 class Config:
     def __init__(self):
-        self.debug_logging = ini_handler.read_bool(BOT_NAME, "debug_logging", False)
-        self.hero_ai_enabled = ini_handler.read_bool(BOT_NAME, "hero_ai_enabled", False)
-        self.show_consumables_list = ini_handler.read_bool(BOT_NAME, "show_consumables_list", False)
+        self.debug_logging = ini_handler.get_bool(BOT_NAME, "debug_logging", False)
+        self.hero_ai_enabled = ini_handler.get_bool(BOT_NAME, "hero_ai_enabled", False)
+        self.show_consumables_list = ini_handler.get_bool(BOT_NAME, "show_consumables_list", False)
         self.consumables_enabled = {}
 
     def save_throttled(self):
@@ -144,12 +144,12 @@ class Config:
             return
         sync_timer.Start()
 
-        ini_handler.write_key(BOT_NAME, "debug_logging", str(bool(self.debug_logging)))
-        ini_handler.write_key(BOT_NAME, "hero_ai_enabled", str(bool(self.hero_ai_enabled)))
-        ini_handler.write_key(BOT_NAME, "show_consumables_list", str(bool(self.show_consumables_list)))
+        ini_handler.set(BOT_NAME, "debug_logging", str(bool(self.debug_logging)))
+        ini_handler.set(BOT_NAME, "hero_ai_enabled", str(bool(self.hero_ai_enabled)))
+        ini_handler.set(BOT_NAME, "show_consumables_list", str(bool(self.show_consumables_list)))
 
         for k, v in self.consumables_enabled.items():
-            ini_handler.write_key(BOT_NAME, f"consumable_{k}", str(bool(v)))
+            ini_handler.set(BOT_NAME, f"consumable_{k}", str(bool(v)))
 
 
 bot_config = Config()
@@ -228,7 +228,7 @@ ALL_BY_KEY = {c["key"]: c for c in ALL_CONSUMABLES}
 
 for c in ALL_CONSUMABLES:
     k = c["key"]
-    bot_config.consumables_enabled[k] = ini_handler.read_bool(BOT_NAME, f"consumable_{k}", False)
+    bot_config.consumables_enabled[k] = ini_handler.get_bool(BOT_NAME, f"consumable_{k}", False)
 
 
 def _enabled_keys():

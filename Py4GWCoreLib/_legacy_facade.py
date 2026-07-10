@@ -1,5 +1,4 @@
 
-from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
 from .ImGui_Legacy_src.types import ImGuiStyleVar, StyleTheme, StyleColorType
 from .ImGui_Legacy_src import Style
 from .ImGui_Legacy_src.ImGuisrc import ImGui_Legacy

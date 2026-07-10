@@ -12,7 +12,7 @@ from Py4GWCoreLib import IconsFontAwesome5, ImGui_Legacy, Color
 from Py4GWCoreLib.ImGui_Legacy_src.WindowModule import WindowModule
 from Py4GWCoreLib.ImGui_Legacy_src.Style import Style 
 from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment, ControlAppearance, StyleColorType, StyleTheme
-from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import Timer
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
 
@@ -34,7 +34,7 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(
     root_directory, "Widgets/Config/Style Manager.ini")
-ini_handler = IniHandler(ini_file_location)
+ini_handler = Settings("Widgets/Config/Style Manager.ini", "global")
 
 
 save_throttle_time = 1000
@@ -45,14 +45,14 @@ game_throttle_time = 50
 game_throttle_timer = Timer()
 game_throttle_timer.Start()
 
-window_x = ini_handler.read_int(MODULE_NAME + str(" Config"), "x", 100)
-window_y = ini_handler.read_int(MODULE_NAME + str(" Config"), "y", 100)
+window_x = ini_handler.get_int(MODULE_NAME + str(" Config"), "x", 100)
+window_y = ini_handler.get_int(MODULE_NAME + str(" Config"), "y", 100)
 
-window_width = ini_handler.read_int(MODULE_NAME + str(" Config"), "width", 600)
-window_height = ini_handler.read_int(
+window_width = ini_handler.get_int(MODULE_NAME + str(" Config"), "width", 600)
+window_height = ini_handler.get_int(
     MODULE_NAME + str(" Config"), "height", 500)
 
-window_collapsed = ini_handler.read_bool(
+window_collapsed = ini_handler.get_bool(
     MODULE_NAME + str(" Config"), "collapsed", False)
 
 #imgui_ini_reader = ImGuiIniReader()
@@ -84,11 +84,11 @@ theme_compare_window = WindowModule(
     can_close=True,
 )
 
-py4_gw_ini_handler = IniHandler("Py4GW.ini")
-selected_theme = StyleTheme[py4_gw_ini_handler.read_key(
+py4_gw_ini_handler = Settings("Py4GW.ini", "root")
+selected_theme = StyleTheme[py4_gw_ini_handler.get_str(
     "settings", "style_theme", StyleTheme.ImGui_Legacy.name)]
 
-force_theme_override = py4_gw_ini_handler.read_bool(
+force_theme_override = py4_gw_ini_handler.get_bool(
     "settings", "force_theme_override", False)
 
 if force_theme_override:
@@ -99,7 +99,7 @@ if force_theme_override:
             new_file_path = file_path[:-5] + "-" + time_stamp + ".backup.json"
             os.rename(file_path, new_file_path)
     
-    py4_gw_ini_handler.write_key("settings", "force_theme_override", "False")
+    py4_gw_ini_handler.set("settings", "force_theme_override", "False")
 
 themes = [theme.name.replace("_", " ") + ( f" (Textured)" if theme in ImGui_Legacy.Textured_Themes else "") for theme in StyleTheme]
 
@@ -547,7 +547,7 @@ def _reload_default_theme(theme: StyleTheme) -> None:
 
 def on_enable():
     global selected_theme
-    selected_theme = StyleTheme[py4_gw_ini_handler.read_key(
+    selected_theme = StyleTheme[py4_gw_ini_handler.get_str(
         "settings", "style_theme", StyleTheme.ImGui_Legacy.name)]
     PySystem.Console.Log(MODULE_NAME, f"Enabled Style Manager with theme: {selected_theme.name}", PySystem.Console.MessageType.Info)
     set_theme(selected_theme)
@@ -594,7 +594,7 @@ def DrawWindow():
                 if value != ImGui_Legacy.Selected_Style.Theme.value:
                     theme = StyleTheme(value)
                     set_theme(theme)
-                    py4_gw_ini_handler.write_key(
+                    py4_gw_ini_handler.set(
                         "settings", "style_theme", ImGui_Legacy.Selected_Style.Theme.name)
 
                 PyImGui.same_line(0, 5)

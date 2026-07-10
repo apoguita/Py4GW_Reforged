@@ -5,7 +5,7 @@ from HeroAI.types import Docked
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Console import Console, ConsoleLog
-from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings as NativeSettings
 
 class Settings:
     COMBAT_RANGE_MODE_PARTY_AGGRO = "party_aggro"
@@ -112,8 +112,8 @@ class Settings:
             ConsoleLog("HeroAI", "HeroAI settings file not found. Creating default settings...")
             self.save_requested = True  
         
-        self.account_ini_handler : IniHandler | None = None
-        self.ini_handler = IniHandler(self.ini_path)
+        self.account_ini_handler : NativeSettings | None = None
+        self.ini_handler = NativeSettings("Widgets/Config/HeroAI.ini", "global")
         
         self.PrintDebug = False
         self.ShowDebugWindow = False
@@ -225,7 +225,7 @@ class Settings:
             config_dir = os.path.join(base_path, "Widgets", "Config", "Accounts", account_email)
             os.makedirs(config_dir, exist_ok=True)
             self.account_ini_path = os.path.join(config_dir, "HeroAI.ini")
-            self.account_ini_handler = IniHandler(self.account_ini_path)            
+            self.account_ini_handler = NativeSettings("HeroAI.ini", "account")            
             self.account_email = account_email
                     
         self._initialized = True if account_email and account_email == self.account_email else False
@@ -245,7 +245,7 @@ class Settings:
             del self.CommandHotBars[hotbar_id]
             
             if self.ini_handler is not None:
-                self.ini_handler.delete_key("CommandHotBars", hotbar_id)
+                self.ini_handler.delete("CommandHotBars", hotbar_id)
     
     def write_settings(self):               
         if not self.save_requested:
@@ -253,89 +253,89 @@ class Settings:
         
         # ConsoleLog("HeroAI", "Saving HeroAI settings...")
         
-        self.ini_handler.write_key("General", "ShowCommandPanel", str(self.ShowCommandPanel))
-        self.ini_handler.write_key("General", "PrintDebug", str(self.PrintDebug))
-        self.ini_handler.write_key("General", "ShowDebug", str(self.ShowDebugWindow))
-        self.ini_handler.write_key("General", "ShowCommandPanelOnlyOnLeaderAccount", str(self.ShowCommandPanelOnlyOnLeaderAccount))
-        self.ini_handler.write_key("General", "Anonymous_PanelNames", str(self.Anonymous_PanelNames))
+        self.ini_handler.set("General", "ShowCommandPanel", str(self.ShowCommandPanel))
+        self.ini_handler.set("General", "PrintDebug", str(self.PrintDebug))
+        self.ini_handler.set("General", "ShowDebug", str(self.ShowDebugWindow))
+        self.ini_handler.set("General", "ShowCommandPanelOnlyOnLeaderAccount", str(self.ShowCommandPanelOnlyOnLeaderAccount))
+        self.ini_handler.set("General", "Anonymous_PanelNames", str(self.Anonymous_PanelNames))
         
-        self.ini_handler.write_key("General", "ShowPartyOverlay", str(self.ShowPartyOverlay))
-        self.ini_handler.write_key("General", "ShowPartySearchOverlay", str(self.ShowPartySearchOverlay))
+        self.ini_handler.set("General", "ShowPartyOverlay", str(self.ShowPartyOverlay))
+        self.ini_handler.set("General", "ShowPartySearchOverlay", str(self.ShowPartySearchOverlay))
         
-        self.ini_handler.write_key("General", "ShowPanelOnlyOnLeaderAccount", str(self.ShowPanelOnlyOnLeaderAccount))
-        self.ini_handler.write_key("General", "ShowDialogOverlay", str(self.ShowDialogOverlay))
+        self.ini_handler.set("General", "ShowPanelOnlyOnLeaderAccount", str(self.ShowPanelOnlyOnLeaderAccount))
+        self.ini_handler.set("General", "ShowDialogOverlay", str(self.ShowDialogOverlay))
         
-        self.ini_handler.write_key("General", "CombinePanels", str(self.CombinePanels))
-        self.ini_handler.write_key("General", "ShowHeroPanels", str(self.ShowHeroPanels))
-        self.ini_handler.write_key("General", "ShowLeaderPanel", str(self.ShowLeaderPanel))        
+        self.ini_handler.set("General", "CombinePanels", str(self.CombinePanels))
+        self.ini_handler.set("General", "ShowHeroPanels", str(self.ShowHeroPanels))
+        self.ini_handler.set("General", "ShowLeaderPanel", str(self.ShowLeaderPanel))        
         
-        self.ini_handler.write_key("General", "ShowHeroEffects", str(self.ShowHeroEffects))
-        self.ini_handler.write_key("General", "ShowEffectDurations", str(self.ShowEffectDurations))
-        self.ini_handler.write_key("General", "ShowShortEffectDurations", str(self.ShowShortEffectDurations))
-        self.ini_handler.write_key("General", "ShowHeroUpkeeps", str(self.ShowHeroUpkeeps))
-        self.ini_handler.write_key("General", "MaxEffectRows", str(self.MaxEffectRows))
+        self.ini_handler.set("General", "ShowHeroEffects", str(self.ShowHeroEffects))
+        self.ini_handler.set("General", "ShowEffectDurations", str(self.ShowEffectDurations))
+        self.ini_handler.set("General", "ShowShortEffectDurations", str(self.ShowShortEffectDurations))
+        self.ini_handler.set("General", "ShowHeroUpkeeps", str(self.ShowHeroUpkeeps))
+        self.ini_handler.set("General", "MaxEffectRows", str(self.MaxEffectRows))
         
-        self.ini_handler.write_key("General", "ShowHeroButtons", str(self.ShowHeroButtons))
-        self.ini_handler.write_key("General", "ShowHeroBars", str(self.ShowHeroBars))
-        self.ini_handler.write_key("General", "ShowFloatingTargets", str(self.ShowFloatingTargets))
-        self.ini_handler.write_key("General", "AutoCallTargets", str(self.AutoCallTargets))
-        self.ini_handler.write_key("General", "CombatRangeMode", self.normalize_combat_range_mode(self.CombatRangeMode))
-        self.ini_handler.write_key("General", "ShowHeroSkills", str(self.ShowHeroSkills))
+        self.ini_handler.set("General", "ShowHeroButtons", str(self.ShowHeroButtons))
+        self.ini_handler.set("General", "ShowHeroBars", str(self.ShowHeroBars))
+        self.ini_handler.set("General", "ShowFloatingTargets", str(self.ShowFloatingTargets))
+        self.ini_handler.set("General", "AutoCallTargets", str(self.AutoCallTargets))
+        self.ini_handler.set("General", "CombatRangeMode", self.normalize_combat_range_mode(self.CombatRangeMode))
+        self.ini_handler.set("General", "ShowHeroSkills", str(self.ShowHeroSkills))
         
-        self.ini_handler.write_key("General", "ShowPartyPanelUI", str(self.ShowPartyPanelUI))
-        self.ini_handler.write_key("General", "ShowControlPanelWindow", str(self.ShowControlPanelWindow))
+        self.ini_handler.set("General", "ShowPartyPanelUI", str(self.ShowPartyPanelUI))
+        self.ini_handler.set("General", "ShowControlPanelWindow", str(self.ShowControlPanelWindow))
 
-        self.ini_handler.write_key("General", "ConfirmFollowPoint", str(self.ConfirmFollowPoint))
+        self.ini_handler.set("General", "ConfirmFollowPoint", str(self.ConfirmFollowPoint))
 
         for hotbar_id, hotbar in self.CommandHotBars.items():
-            self.ini_handler.write_key("CommandHotBars", hotbar_id, hotbar.to_ini_string())
+            self.ini_handler.set("CommandHotBars", hotbar_id, hotbar.to_ini_string())
             
         if self.account_ini_handler is not None:
             for hero_email, info in self.HeroPanelPositions.items():
-                self.account_ini_handler.write_key("HeroPanelPositions", hero_email, f"{info.x},{info.y},{info.collapsed},{info.open}")
+                self.account_ini_handler.set("HeroPanelPositions", hero_email, f"{info.x},{info.y},{info.collapsed},{info.open}")
                             
             for hotbar_id, hotbar in self.CommandHotBars.items():
-                self.account_ini_handler.write_key("CommandHotBars", hotbar_id, hotbar.to_pos_string())
+                self.account_ini_handler.set("CommandHotBars", hotbar_id, hotbar.to_pos_string())
             
         self.save_requested = False
         
     def load_settings(self):          
         ConsoleLog("HeroAI", "Loading HeroAI settings...")      
-        self.ShowCommandPanel = self.ini_handler.read_bool("General", "ShowCommandPanel", True)
-        self.PrintDebug = self.ini_handler.read_bool("General", "PrintDebug", False)
-        self.ShowDebugWindow = self.ini_handler.read_bool("General", "ShowDebug", False)
-        self.ShowCommandPanelOnlyOnLeaderAccount = self.ini_handler.read_bool("General", "ShowCommandPanelOnlyOnLeaderAccount", True)
-        self.Anonymous_PanelNames = self.ini_handler.read_bool("General", "Anonymous_PanelNames", False)
+        self.ShowCommandPanel = self.ini_handler.get_bool("General", "ShowCommandPanel", True)
+        self.PrintDebug = self.ini_handler.get_bool("General", "PrintDebug", False)
+        self.ShowDebugWindow = self.ini_handler.get_bool("General", "ShowDebug", False)
+        self.ShowCommandPanelOnlyOnLeaderAccount = self.ini_handler.get_bool("General", "ShowCommandPanelOnlyOnLeaderAccount", True)
+        self.Anonymous_PanelNames = self.ini_handler.get_bool("General", "Anonymous_PanelNames", False)
         
-        self.ShowPartyOverlay = self.ini_handler.read_bool("General", "ShowPartyOverlay", True)
-        self.ShowPartySearchOverlay = self.ini_handler.read_bool("General", "ShowPartySearchOverlay", True)
+        self.ShowPartyOverlay = self.ini_handler.get_bool("General", "ShowPartyOverlay", True)
+        self.ShowPartySearchOverlay = self.ini_handler.get_bool("General", "ShowPartySearchOverlay", True)
         
-        self.ShowPanelOnlyOnLeaderAccount = self.ini_handler.read_bool("General", "ShowPanelOnlyOnLeaderAccount", True)
-        self.ShowDialogOverlay = self.ini_handler.read_bool("General", "ShowDialogOverlay", True)
+        self.ShowPanelOnlyOnLeaderAccount = self.ini_handler.get_bool("General", "ShowPanelOnlyOnLeaderAccount", True)
+        self.ShowDialogOverlay = self.ini_handler.get_bool("General", "ShowDialogOverlay", True)
         
-        self.CombinePanels = self.ini_handler.read_bool("General", "CombinePanels", False)
-        self.ShowHeroPanels = self.ini_handler.read_bool("General", "ShowHeroPanels", True)
-        self.ShowLeaderPanel = self.ini_handler.read_bool("General", "ShowLeaderPanel", False)
+        self.CombinePanels = self.ini_handler.get_bool("General", "CombinePanels", False)
+        self.ShowHeroPanels = self.ini_handler.get_bool("General", "ShowHeroPanels", True)
+        self.ShowLeaderPanel = self.ini_handler.get_bool("General", "ShowLeaderPanel", False)
         
-        self.ShowHeroEffects = self.ini_handler.read_bool("General", "ShowHeroEffects", True)
-        self.ShowEffectDurations = self.ini_handler.read_bool("General", "ShowEffectDurations", True)
-        self.ShowShortEffectDurations = self.ini_handler.read_bool("General", "ShowShortEffectDurations", True)
-        self.ShowHeroUpkeeps = self.ini_handler.read_bool("General", "ShowHeroUpkeeps", True)
-        self.MaxEffectRows = self.ini_handler.read_int("General", "MaxEffectRows", 2)
+        self.ShowHeroEffects = self.ini_handler.get_bool("General", "ShowHeroEffects", True)
+        self.ShowEffectDurations = self.ini_handler.get_bool("General", "ShowEffectDurations", True)
+        self.ShowShortEffectDurations = self.ini_handler.get_bool("General", "ShowShortEffectDurations", True)
+        self.ShowHeroUpkeeps = self.ini_handler.get_bool("General", "ShowHeroUpkeeps", True)
+        self.MaxEffectRows = self.ini_handler.get_int("General", "MaxEffectRows", 2)
         
-        self.ShowHeroButtons = self.ini_handler.read_bool("General", "ShowHeroButtons", True)
-        self.ShowHeroBars = self.ini_handler.read_bool("General", "ShowHeroBars", True)
-        self.ShowFloatingTargets = self.ini_handler.read_bool("General", "ShowFloatingTargets", True)
-        self.AutoCallTargets = self.ini_handler.read_bool("General", "AutoCallTargets", False)
+        self.ShowHeroButtons = self.ini_handler.get_bool("General", "ShowHeroButtons", True)
+        self.ShowHeroBars = self.ini_handler.get_bool("General", "ShowHeroBars", True)
+        self.ShowFloatingTargets = self.ini_handler.get_bool("General", "ShowFloatingTargets", True)
+        self.AutoCallTargets = self.ini_handler.get_bool("General", "AutoCallTargets", False)
         self.CombatRangeMode = self.normalize_combat_range_mode(
-            self.ini_handler.read_key("General", "CombatRangeMode", self.COMBAT_RANGE_MODE_PARTY_AGGRO)
+            self.ini_handler.get_str("General", "CombatRangeMode", self.COMBAT_RANGE_MODE_PARTY_AGGRO)
         )
-        self.ShowHeroSkills = self.ini_handler.read_bool("General", "ShowHeroSkills", True)
+        self.ShowHeroSkills = self.ini_handler.get_bool("General", "ShowHeroSkills", True)
         
-        self.ShowPartyPanelUI = self.ini_handler.read_bool("General", "ShowPartyPanelUI", True)
-        self.ShowControlPanelWindow = self.ini_handler.read_bool("General", "ShowControlPanelWindow", True)
+        self.ShowPartyPanelUI = self.ini_handler.get_bool("General", "ShowPartyPanelUI", True)
+        self.ShowControlPanelWindow = self.ini_handler.get_bool("General", "ShowControlPanelWindow", True)
         
-        self.ConfirmFollowPoint = self.ini_handler.read_bool("General", "ConfirmFollowPoint", False)
+        self.ConfirmFollowPoint = self.ini_handler.get_bool("General", "ConfirmFollowPoint", False)
 
         self.CommandHotBars.clear()
         self.import_command_hotbars()
@@ -343,11 +343,11 @@ class Settings:
         self.HeroPanelPositions.clear()        
         self.import_hero_panel_positions(self.account_ini_handler)        
                     
-    def import_hero_panel_positions(self, ini_handler: IniHandler | None):
+    def import_hero_panel_positions(self, ini_handler: NativeSettings | None):
         if ini_handler is None:
             return
         
-        items = ini_handler.list_keys("HeroPanelPositions")
+        items = ini_handler.items("HeroPanelPositions")
         request_save = False
 
         for key, value in items.items():
@@ -374,8 +374,8 @@ class Settings:
             self.save_requested = True
     
     def import_command_hotbars(self):        
-        items = self.ini_handler.list_keys("CommandHotBars")        
-        positions = self.account_ini_handler.list_keys("CommandHotBars") if self.account_ini_handler is not None else {}
+        items = self.ini_handler.items("CommandHotBars")        
+        positions = self.account_ini_handler.items("CommandHotBars") if self.account_ini_handler is not None else {}
         
         request_save = False
 
@@ -405,7 +405,7 @@ class Settings:
         
         return info
 
-    def _get_account_settings_handler(self, account_email: str | None = None) -> IniHandler | None:
+    def _get_account_settings_handler(self, account_email: str | None = None) -> NativeSettings | None:
         resolved_email = str(account_email or Player.GetAccountEmail() or "").strip()
         if not resolved_email:
             return None
@@ -420,28 +420,28 @@ class Settings:
         base_path = PySystem.Console.get_projects_path()
         config_dir = os.path.join(base_path, "Widgets", "Config", "Accounts", resolved_email)
         os.makedirs(config_dir, exist_ok=True)
-        return IniHandler(os.path.join(config_dir, "HeroAI.ini"))
+        return NativeSettings("HeroAI.ini", "account")
 
     def get_account_resurrection_scroll_enabled(self, account_email: str | None = None) -> bool:
         ini_handler = self._get_account_settings_handler(account_email)
         if ini_handler is None:
             return False
-        return ini_handler.read_bool("ResurrectionScroll", "Enabled", False)
+        return ini_handler.get_bool("ResurrectionScroll", "Enabled", False)
 
     def set_account_resurrection_scroll_enabled(self, enabled: bool, account_email: str | None = None) -> None:
         ini_handler = self._get_account_settings_handler(account_email)
         if ini_handler is None:
             return
-        ini_handler.write_key("ResurrectionScroll", "Enabled", str(bool(enabled)))
+        ini_handler.set("ResurrectionScroll", "Enabled", str(bool(enabled)))
 
     def get_account_resurrection_scroll_skip_if_res_available(self, account_email: str | None = None) -> bool:
         ini_handler = self._get_account_settings_handler(account_email)
         if ini_handler is None:
             return False
-        return ini_handler.read_bool("ResurrectionScroll", "SkipIfResAvailable", False)
+        return ini_handler.get_bool("ResurrectionScroll", "SkipIfResAvailable", False)
 
     def set_account_resurrection_scroll_skip_if_res_available(self, enabled: bool, account_email: str | None = None) -> None:
         ini_handler = self._get_account_settings_handler(account_email)
         if ini_handler is None:
             return
-        ini_handler.write_key("ResurrectionScroll", "SkipIfResAvailable", str(bool(enabled)))
+        ini_handler.set("ResurrectionScroll", "SkipIfResAvailable", str(bool(enabled)))

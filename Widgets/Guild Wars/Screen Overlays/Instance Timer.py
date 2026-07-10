@@ -1,5 +1,5 @@
 
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui
 from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import Overlay
@@ -19,7 +19,7 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(root_directory, "Widgets/Config/InstanceTimer.ini")
 
-ini_handler = IniHandler(ini_file_location)
+ini_handler = Settings("Widgets/Config/InstanceTimer.ini", "global")
 sync_interval = 1000
 
 class Config:
@@ -27,30 +27,30 @@ class Config:
 
     def __init__(self):
         # Read configuration values from INI file
-        self.x = ini_handler.read_int(module_name, "x", 100)
-        self.y = ini_handler.read_int(module_name, "y", 100)
-        self.font_size = ini_handler.read_int(module_name, "font_size", 20)
+        self.x = ini_handler.get_int(module_name, "x", 100)
+        self.y = ini_handler.get_int(module_name, "y", 100)
+        self.font_size = ini_handler.get_int(module_name, "font_size", 20)
         self.color = Color(
-                    ini_handler.read_int(module_name, "color_r", 255),
-                    ini_handler.read_int(module_name, "color_g", 255),
-                    ini_handler.read_int(module_name, "color_b", 255),
-                    ini_handler.read_int(module_name, "color_a", 255))
+                    ini_handler.get_int(module_name, "color_r", 255),
+                    ini_handler.get_int(module_name, "color_g", 255),
+                    ini_handler.get_int(module_name, "color_b", 255),
+                    ini_handler.get_int(module_name, "color_a", 255))
         self.string = "00:00:00:000"
-        self.true_instance_timer = ini_handler.read_bool(module_name, "true_instance_timer", False)
+        self.true_instance_timer = ini_handler.get_bool(module_name, "true_instance_timer", False)
         self.instance_entry_time = 0
         self.initialized = False
         self.sync_interval = sync_interval
 
     def save(self):
         """Save the current configuration to the INI file."""
-        ini_handler.write_key(module_name, "x", str(self.x))
-        ini_handler.write_key(module_name, "y", str(self.y))
-        ini_handler.write_key(module_name, "font_size", str(self.font_size))
-        ini_handler.write_key(module_name, "color_r", str(self.color.get_r()))
-        ini_handler.write_key(module_name, "color_g", str(self.color.get_g()))
-        ini_handler.write_key(module_name, "color_b", str(self.color.get_b()))
-        ini_handler.write_key(module_name, "color_a", str(self.color.get_a()))
-        ini_handler.write_key(module_name, "true_instance_timer", str(self.true_instance_timer))
+        ini_handler.set(module_name, "x", str(self.x))
+        ini_handler.set(module_name, "y", str(self.y))
+        ini_handler.set(module_name, "font_size", str(self.font_size))
+        ini_handler.set(module_name, "color_r", str(self.color.get_r()))
+        ini_handler.set(module_name, "color_g", str(self.color.get_g()))
+        ini_handler.set(module_name, "color_b", str(self.color.get_b()))
+        ini_handler.set(module_name, "color_a", str(self.color.get_a()))
+        ini_handler.set(module_name, "true_instance_timer", str(self.true_instance_timer))
 
 
 widget_config = Config()

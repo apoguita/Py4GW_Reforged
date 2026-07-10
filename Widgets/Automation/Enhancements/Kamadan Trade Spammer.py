@@ -6,7 +6,7 @@ import Py4GW
 import PyImGui
 
 from Py4GWCoreLib import ActionQueueManager, ConsoleLog, Map, Party, Player, Routines, ThrottledTimer, Timer
-from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 BOT_NAME = "Kamadan Trade Spammer"
@@ -60,7 +60,7 @@ class SpammerRuntime:
 
 settings = SpammerSettings()
 runtime = SpammerRuntime()
-ini_handler = IniHandler(str(SETTINGS_PATH))
+ini_handler = Settings("Widgets/Automation/Enhancements/Kamadan Trade Spammer.ini", "global")
 
 
 def clamp(value: int, minimum: int, maximum: int) -> int:
@@ -69,19 +69,19 @@ def clamp(value: int, minimum: int, maximum: int) -> int:
 
 def load_settings() -> None:
     settings.mode_index = clamp(
-        ini_handler.read_int(SETTINGS_SECTION, "mode_index", 0),
+        ini_handler.get_int(SETTINGS_SECTION, "mode_index", 0),
         0,
         len(TRADE_MODES) - 1,
     )
     settings.cooldown_index = clamp(
-        ini_handler.read_int(SETTINGS_SECTION, "cooldown_index", 0),
+        ini_handler.get_int(SETTINGS_SECTION, "cooldown_index", 0),
         0,
         len(COOLDOWN_OPTIONS_MINUTES) - 1,
     )
-    settings.auto_leave_party = ini_handler.read_bool(SETTINGS_SECTION, "auto_leave_party", True)
-    settings.auto_reposition = ini_handler.read_bool(SETTINGS_SECTION, "auto_reposition", True)
+    settings.auto_leave_party = ini_handler.get_bool(SETTINGS_SECTION, "auto_leave_party", True)
+    settings.auto_reposition = ini_handler.get_bool(SETTINGS_SECTION, "auto_reposition", True)
     for index in range(3):
-        settings.messages[index] = ini_handler.read_key(
+        settings.messages[index] = ini_handler.get_str(
             SETTINGS_SECTION,
             f"message_{index + 1}",
             settings.messages[index],
@@ -89,12 +89,12 @@ def load_settings() -> None:
 
 
 def save_settings() -> None:
-    ini_handler.write_key(SETTINGS_SECTION, "mode_index", settings.mode_index)
-    ini_handler.write_key(SETTINGS_SECTION, "cooldown_index", settings.cooldown_index)
-    ini_handler.write_key(SETTINGS_SECTION, "auto_leave_party", settings.auto_leave_party)
-    ini_handler.write_key(SETTINGS_SECTION, "auto_reposition", settings.auto_reposition)
+    ini_handler.set(SETTINGS_SECTION, "mode_index", settings.mode_index)
+    ini_handler.set(SETTINGS_SECTION, "cooldown_index", settings.cooldown_index)
+    ini_handler.set(SETTINGS_SECTION, "auto_leave_party", settings.auto_leave_party)
+    ini_handler.set(SETTINGS_SECTION, "auto_reposition", settings.auto_reposition)
     for index, message in enumerate(settings.messages, start=1):
-        ini_handler.write_key(SETTINGS_SECTION, f"message_{index}", message)
+        ini_handler.set(SETTINGS_SECTION, f"message_{index}", message)
 
 
 def mark_settings_dirty() -> None:

@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Compass+"
 MODULE_ICON = "Textures\\Module_Icons\\Compass+.png"
@@ -41,7 +42,7 @@ class Ring:
 class Compass():
     window_module = ImGui_Legacy.WindowModule('Compass+',window_name='Compass+', window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
     window_pos = (1200,400)
-    ini = IniHandler(os.path.join(PySystem.Console.get_projects_path(), "Widgets/Config/Compass +.ini"))
+    ini = Settings("Widgets/Config/Compass +.ini", "global")
     config_loaded = False
 
     imgui = PyImGui
@@ -229,89 +230,89 @@ class Compass():
             self.markers.pop(name)
 
     def LoadConfig(self):
-        self.window_pos = (self.ini.read_int('position',  'config_x', self.window_pos[0]),
-                           self.ini.read_int('position',  'config_y', self.window_pos[1]))
+        self.window_pos = (self.ini.get_int('position',  'config_x', self.window_pos[0]),
+                           self.ini.get_int('position',  'config_y', self.window_pos[1]))
 
-        self.position.snap_to_game       = self.ini.read_bool('position', 'snap_to_game',       self.position.snap_to_game)
-        self.position.always_point_north = self.ini.read_bool('position', 'always_point_north', self.position.always_point_north)
-        self.position.culling            = self.ini.read_int('position',  'culling',            self.position.culling)
+        self.position.snap_to_game       = self.ini.get_bool('position', 'snap_to_game',       self.position.snap_to_game)
+        self.position.always_point_north = self.ini.get_bool('position', 'always_point_north', self.position.always_point_north)
+        self.position.culling            = self.ini.get_int('position',  'culling',            self.position.culling)
         self.position.detached_pos = PyOverlay.Vec2f(
-                                           self.ini.read_int('position',  'detached_x',         self.position.detached_pos.x),
-                                           self.ini.read_int('position',  'detached_y',         self.position.detached_pos.y))
-        self.position.detached_size      = self.ini.read_int('position',  'detached_size',      self.position.detached_size)
+                                           self.ini.get_int('position',  'detached_x',         self.position.detached_pos.x),
+                                           self.ini.get_int('position',  'detached_y',         self.position.detached_pos.y))
+        self.position.detached_size      = self.ini.get_int('position',  'detached_size',      self.position.detached_size)
 
-        self.pathing.visible = self.ini.read_bool('pathing', 'visible', self.pathing.visible)
-        self.pathing.invert = self.ini.read_bool('pathing', 'invert', self.pathing.invert)
-        self.pathing.color = self.ini.read_int('pathing', 'color', self.pathing.color)
+        self.pathing.visible = self.ini.get_bool('pathing', 'visible', self.pathing.visible)
+        self.pathing.invert = self.ini.get_bool('pathing', 'invert', self.pathing.invert)
+        self.pathing.color = self.ini.get_int('pathing', 'color', self.pathing.color)
 
-        self.config.spirit_alpha = self.ini.read_int('misc', 'spirit_alpha', self.config.spirit_alpha)
-        self.config.show_spirit_range = self.ini.read_bool('misc', 'show_spirit_ranges', self.config.show_spirit_range)
+        self.config.spirit_alpha = self.ini.get_int('misc', 'spirit_alpha', self.config.spirit_alpha)
+        self.config.show_spirit_range = self.ini.get_bool('misc', 'show_spirit_ranges', self.config.show_spirit_range)
 
         for ring in self.config.range_rings:
-            ring.visible           = self.ini.read_bool( f'ring_{ring.name}', 'visible',           ring.visible)
-            ring.range             = self.ini.read_int(  f'ring_{ring.name}', 'range',             ring.range)
-            ring.fill_color        = self.ini.read_int(  f'ring_{ring.name}', 'fill_color',        ring.fill_color)
-            ring.outline_color     = self.ini.read_int(  f'ring_{ring.name}', 'outline_color',     ring.outline_color)
-            ring.outline_thickness = self.ini.read_float(f'ring_{ring.name}', 'outline_thickness', ring.outline_thickness)
+            ring.visible           = self.ini.get_bool( f'ring_{ring.name}', 'visible',           ring.visible)
+            ring.range             = self.ini.get_int(  f'ring_{ring.name}', 'range',             ring.range)
+            ring.fill_color        = self.ini.get_int(  f'ring_{ring.name}', 'fill_color',        ring.fill_color)
+            ring.outline_color     = self.ini.get_int(  f'ring_{ring.name}', 'outline_color',     ring.outline_color)
+            ring.outline_thickness = self.ini.get_float(f'ring_{ring.name}', 'outline_thickness', ring.outline_thickness)
 
         for marker in self.config.markers.values():
-            marker.visible    = self.ini.read_bool(f'marker_{marker.name}', 'visible',    marker.visible)
-            marker.size       = self.ini.read_int( f'marker_{marker.name}', 'size',       marker.size)
-            marker.shape      = self.ini.read_key( f'marker_{marker.name}', 'shape',      marker.shape)
-            marker.color      = self.ini.read_int( f'marker_{marker.name}', 'color',      marker.color)
-            marker.fill_range = self.ini.read_int( f'marker_{marker.name}', 'fill_range', marker.fill_range)
-            marker.fill_color = self.ini.read_int( f'marker_{marker.name}', 'fill_color', marker.fill_color)
+            marker.visible    = self.ini.get_bool(f'marker_{marker.name}', 'visible',    marker.visible)
+            marker.size       = self.ini.get_int( f'marker_{marker.name}', 'size',       marker.size)
+            marker.shape      = self.ini.get_str( f'marker_{marker.name}', 'shape',      marker.shape)
+            marker.color      = self.ini.get_int( f'marker_{marker.name}', 'color',      marker.color)
+            marker.fill_range = self.ini.get_int( f'marker_{marker.name}', 'fill_range', marker.fill_range)
+            marker.fill_color = self.ini.get_int( f'marker_{marker.name}', 'fill_color', marker.fill_color)
 
-        for section in self.ini.list_sections():
+        for section in self.ini.sections():
             if str(section).startswith('custom_marker_'):
                 name       = str(section).removeprefix('custom_marker_')
-                model_id   = self.ini.read_int( section, 'model_id',   0)
-                visible    = self.ini.read_bool(section, 'visible',    True)
-                size       = self.ini.read_int( section, 'size',       6)
-                shape      = self.ini.read_key( section, 'shape',      'Tear')
-                color      = self.ini.read_int( section, 'color',      Utils.RGBToColor(125, 125, 125, 255))
-                fill_range = self.ini.read_int( section, 'fill_range', 0)
-                fill_color = self.ini.read_int( section, 'fill_color', Utils.RGBToColor(125, 125, 125, self.config.spirit_alpha))
+                model_id   = self.ini.get_int( section, 'model_id',   0)
+                visible    = self.ini.get_bool(section, 'visible',    True)
+                size       = self.ini.get_int( section, 'size',       6)
+                shape      = self.ini.get_str( section, 'shape',      'Tear')
+                color      = self.ini.get_int( section, 'color',      Utils.RGBToColor(125, 125, 125, 255))
+                fill_range = self.ini.get_int( section, 'fill_range', 0)
+                fill_color = self.ini.get_int( section, 'fill_color', Utils.RGBToColor(125, 125, 125, self.config.spirit_alpha))
                 self.config.custom_markers[name] = Marker(name, visible, size, shape, color, fill_range, fill_color, model_id)
 
     def SaveConfig(self):
-        self.ini.write_key('position', 'snap_to_game',        str(self.position.snap_to_game))
-        self.ini.write_key('position', 'always_point_north',  str(self.position.always_point_north))
-        self.ini.write_key('position', 'culling',             str(self.position.culling))
-        self.ini.write_key('position', 'detached_x',          str(self.position.detached_pos.x))
-        self.ini.write_key('position', 'detached_y',          str(self.position.detached_pos.y))
-        self.ini.write_key('position', 'detached_size',       str(self.position.detached_size))
+        self.ini.set('position', 'snap_to_game',        str(self.position.snap_to_game))
+        self.ini.set('position', 'always_point_north',  str(self.position.always_point_north))
+        self.ini.set('position', 'culling',             str(self.position.culling))
+        self.ini.set('position', 'detached_x',          str(self.position.detached_pos.x))
+        self.ini.set('position', 'detached_y',          str(self.position.detached_pos.y))
+        self.ini.set('position', 'detached_size',       str(self.position.detached_size))
 
-        self.ini.write_key('pathing', 'visible', str(self.pathing.visible))
-        self.ini.write_key('pathing', 'invert', str(self.pathing.invert))
-        self.ini.write_key('pathing', 'color',   str(self.pathing.color))
+        self.ini.set('pathing', 'visible', str(self.pathing.visible))
+        self.ini.set('pathing', 'invert', str(self.pathing.invert))
+        self.ini.set('pathing', 'color',   str(self.pathing.color))
 
-        self.ini.write_key('misc', 'spirit_alpha', str(self.config.spirit_alpha))
-        self.ini.write_key('misc', 'show_spirit_ranges', str(self.config.show_spirit_range))
+        self.ini.set('misc', 'spirit_alpha', str(self.config.spirit_alpha))
+        self.ini.set('misc', 'show_spirit_ranges', str(self.config.show_spirit_range))
 
         for ring in self.config.range_rings:
-            self.ini.write_key(f'ring_{ring.name}', 'visible',           str(ring.visible))
-            self.ini.write_key(f'ring_{ring.name}', 'range',             str(ring.range))
-            self.ini.write_key(f'ring_{ring.name}', 'fill_color',        str(ring.fill_color))
-            self.ini.write_key(f'ring_{ring.name}', 'outline_color',     str(ring.outline_color))
-            self.ini.write_key(f'ring_{ring.name}', 'outline_thickness', str(ring.outline_thickness))
+            self.ini.set(f'ring_{ring.name}', 'visible',           str(ring.visible))
+            self.ini.set(f'ring_{ring.name}', 'range',             str(ring.range))
+            self.ini.set(f'ring_{ring.name}', 'fill_color',        str(ring.fill_color))
+            self.ini.set(f'ring_{ring.name}', 'outline_color',     str(ring.outline_color))
+            self.ini.set(f'ring_{ring.name}', 'outline_thickness', str(ring.outline_thickness))
 
         for marker in self.config.markers.values():
-            self.ini.write_key(f'marker_{marker.name}', 'visible',    str(marker.visible))
-            self.ini.write_key(f'marker_{marker.name}', 'size',       str(marker.size))
-            self.ini.write_key(f'marker_{marker.name}', 'shape',      str(marker.shape))
-            self.ini.write_key(f'marker_{marker.name}', 'color',      str(marker.color))
-            self.ini.write_key(f'marker_{marker.name}', 'fill_range', str(marker.fill_range))
-            self.ini.write_key(f'marker_{marker.name}', 'fill_color', str(marker.fill_color))
+            self.ini.set(f'marker_{marker.name}', 'visible',    str(marker.visible))
+            self.ini.set(f'marker_{marker.name}', 'size',       str(marker.size))
+            self.ini.set(f'marker_{marker.name}', 'shape',      str(marker.shape))
+            self.ini.set(f'marker_{marker.name}', 'color',      str(marker.color))
+            self.ini.set(f'marker_{marker.name}', 'fill_range', str(marker.fill_range))
+            self.ini.set(f'marker_{marker.name}', 'fill_color', str(marker.fill_color))
 
         for marker in self.config.custom_markers.values():
-            self.ini.write_key(f'custom_marker_{marker.name}', 'model_id',   str(marker.model_id))
-            self.ini.write_key(f'custom_marker_{marker.name}', 'visible',    str(marker.visible))
-            self.ini.write_key(f'custom_marker_{marker.name}', 'size',       str(marker.size))
-            self.ini.write_key(f'custom_marker_{marker.name}', 'shape',      str(marker.shape))
-            self.ini.write_key(f'custom_marker_{marker.name}', 'color',      str(marker.color))
-            self.ini.write_key(f'custom_marker_{marker.name}', 'fill_range', str(marker.fill_range))
-            self.ini.write_key(f'custom_marker_{marker.name}', 'fill_color', str(marker.fill_color))
+            self.ini.set(f'custom_marker_{marker.name}', 'model_id',   str(marker.model_id))
+            self.ini.set(f'custom_marker_{marker.name}', 'visible',    str(marker.visible))
+            self.ini.set(f'custom_marker_{marker.name}', 'size',       str(marker.size))
+            self.ini.set(f'custom_marker_{marker.name}', 'shape',      str(marker.shape))
+            self.ini.set(f'custom_marker_{marker.name}', 'color',      str(marker.color))
+            self.ini.set(f'custom_marker_{marker.name}', 'fill_range', str(marker.fill_range))
+            self.ini.set(f'custom_marker_{marker.name}', 'fill_color', str(marker.fill_color))
 
     def UpdateOrientation(self):
         self.position.player_pos = Player.GetXY()

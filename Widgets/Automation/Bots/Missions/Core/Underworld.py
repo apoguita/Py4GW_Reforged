@@ -27,7 +27,8 @@ from typing import Any, Generator
 
 import PyImGui
 import Py4GW
-from Py4GWCoreLib import Botting, Routines, Agent, AgentArray, Player, Utils, AutoPathing, GLOBAL_CACHE, ConsoleLog, Map, Pathing, FlagPreference, Party, IniHandler, Overlay, Item, ItemArray
+from Py4GWCoreLib import Botting, Routines, Agent, AgentArray, Player, Utils, AutoPathing, GLOBAL_CACHE, ConsoleLog, Map, Pathing, FlagPreference, Party, Overlay, Item, ItemArray
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.enums_src.Map_enums import name_to_map_id
 from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
@@ -64,7 +65,7 @@ BOT_NAME    = "Underworld"
 
 # ── Persistent configuration (INI file) ──────────────────────────────────────
 _ini_file = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot.ini")
-_ini = IniHandler(_ini_file)
+_ini = Settings("Widgets/Config/UnderworldBot.ini", "global")
 
 # ── Consumable definitions ──────────────────────────────────────────────────
 # Each entry: (property_name, display_name, category, default_restock_quantity)
@@ -101,11 +102,11 @@ class ConsSettings:
 
     # Dicts are populated at class-definition time from the INI file.
     _active:  dict[str, bool] = {
-        p: bool(_ini.read_bool(BOT_NAME, f"cons_{p}_active", True))
+        p: bool(_ini.get_bool(BOT_NAME, f"cons_{p}_active", True))
         for p, _, _, _ in _CONS_DEFS
     }
     _restock: dict[str, int] = {
-        p: int(_ini.read_int(BOT_NAME, f"cons_{p}_restock", dr))
+        p: int(_ini.get_int(BOT_NAME, f"cons_{p}_restock", dr))
         for p, _, _, dr in _CONS_DEFS
     }
 
@@ -130,8 +131,8 @@ class ConsSettings:
     @classmethod
     def _save(cls) -> None:
         for prop, _, _, _ in _CONS_DEFS:
-            _ini.write_key(BOT_NAME, f"cons_{prop}_active",  str(cls._active.get(prop, True)))
-            _ini.write_key(BOT_NAME, f"cons_{prop}_restock", str(cls._restock.get(prop, 0)))
+            _ini.set(BOT_NAME, f"cons_{prop}_active",  str(cls._active.get(prop, True)))
+            _ini.set(BOT_NAME, f"cons_{prop}_restock", str(cls._restock.get(prop, 0)))
 
 
 # ── Bot instance ─────────────────────────────────────────────────────────────
@@ -307,30 +308,30 @@ def _record_quest_done(name: str) -> None:
 
 class InventorySettings:
     """Settings for between-run inventory management."""
-    RefillEnabled: bool = bool(_ini.read_bool(BOT_NAME, "inv_refill_enabled", True))
-    RestockCons:   bool = bool(_ini.read_bool(BOT_NAME, "inv_restock_cons",   True))
+    RefillEnabled: bool = bool(_ini.get_bool(BOT_NAME, "inv_refill_enabled", True))
+    RestockCons:   bool = bool(_ini.get_bool(BOT_NAME, "inv_restock_cons",   True))
 
     @classmethod
     def save(cls) -> None:
-        _ini.write_key(BOT_NAME, "inv_refill_enabled", str(cls.RefillEnabled))
-        _ini.write_key(BOT_NAME, "inv_restock_cons",   str(cls.RestockCons))
+        _ini.set(BOT_NAME, "inv_refill_enabled", str(cls.RefillEnabled))
+        _ini.set(BOT_NAME, "inv_restock_cons",   str(cls.RestockCons))
 
 
 class DhuumSettings:
     """Which multibox accounts are designated as sacrifice targets in the Dhuum fight."""
-    _raw: str = _ini.read_key(BOT_NAME, "dhuum_sacrifice_emails", "")
+    _raw: str = _ini.get_str(BOT_NAME, "dhuum_sacrifice_emails", "")
     SacrificeEmails: set[str] = set(e.strip() for e in _raw.split(";") if e.strip())
 
-    _raw_armor: str = _ini.read_key(BOT_NAME, "dhuum_armor_switch_emails", "")
+    _raw_armor: str = _ini.get_str(BOT_NAME, "dhuum_armor_switch_emails", "")
     ArmorSwitchEmails: set[str] = set(e.strip() for e in _raw_armor.split(";") if e.strip())
 
-    MinSpiritformAccounts: int = int(_ini.read_int(BOT_NAME, "dhuum_min_spiritform", 2))
+    MinSpiritformAccounts: int = int(_ini.get_int(BOT_NAME, "dhuum_min_spiritform", 2))
 
     @classmethod
     def save(cls) -> None:
-        _ini.write_key(BOT_NAME, "dhuum_sacrifice_emails", ";".join(sorted(cls.SacrificeEmails)))
-        _ini.write_key(BOT_NAME, "dhuum_armor_switch_emails", ";".join(sorted(cls.ArmorSwitchEmails)))
-        _ini.write_key(BOT_NAME, "dhuum_min_spiritform", str(cls.MinSpiritformAccounts))
+        _ini.set(BOT_NAME, "dhuum_sacrifice_emails", ";".join(sorted(cls.SacrificeEmails)))
+        _ini.set(BOT_NAME, "dhuum_armor_switch_emails", ";".join(sorted(cls.ArmorSwitchEmails)))
+        _ini.set(BOT_NAME, "dhuum_min_spiritform", str(cls.MinSpiritformAccounts))
 
     @classmethod
     def is_sacrifice(cls, email: str) -> bool:
@@ -359,15 +360,15 @@ class DhuumSettings:
 
 class ImprisonedSpiritsSettings:
     """Team assignments for the Imprisoned Spirits quest (left vs. right side)."""
-    _raw_left:  str = _ini.read_key(BOT_NAME, "imprisoned_left_emails",  "") or ""
-    _raw_right: str = _ini.read_key(BOT_NAME, "imprisoned_right_emails", "") or ""
+    _raw_left:  str = _ini.get_str(BOT_NAME, "imprisoned_left_emails",  "") or ""
+    _raw_right: str = _ini.get_str(BOT_NAME, "imprisoned_right_emails", "") or ""
     LeftTeamEmails:  list[str] = [e.strip() for e in _raw_left.split(";")  if e.strip()]
     RightTeamEmails: list[str] = [e.strip() for e in _raw_right.split(";") if e.strip()]
 
     @classmethod
     def save(cls) -> None:
-        _ini.write_key(BOT_NAME, "imprisoned_left_emails",  ";".join(cls.LeftTeamEmails))
-        _ini.write_key(BOT_NAME, "imprisoned_right_emails", ";".join(cls.RightTeamEmails))
+        _ini.set(BOT_NAME, "imprisoned_left_emails",  ";".join(cls.LeftTeamEmails))
+        _ini.set(BOT_NAME, "imprisoned_right_emails", ";".join(cls.RightTeamEmails))
 
     @classmethod
     def get_team(cls, email: str) -> str:
@@ -399,26 +400,26 @@ class ImprisonedSpiritsSettings:
 
 class BotSettings:
     """General run settings (repeat, cons, hard mode, combat system choice)."""
-    Repeat:    bool = bool(_ini.read_bool(BOT_NAME, "quest_repeat",    False))
-    UseCons:   bool = bool(_ini.read_bool(BOT_NAME, "quest_use_cons",  True))
-    HardMode:  bool = bool(_ini.read_bool(BOT_NAME, "quest_hardmode",  False))
+    Repeat:    bool = bool(_ini.get_bool(BOT_NAME, "quest_repeat",    False))
+    UseCons:   bool = bool(_ini.get_bool(BOT_NAME, "quest_use_cons",  True))
+    HardMode:  bool = bool(_ini.get_bool(BOT_NAME, "quest_hardmode",  False))
     BotMode:   str  = "heroai"
 
     @classmethod
     def save(cls) -> None:
-        _ini.write_key(BOT_NAME, "quest_repeat",    str(cls.Repeat))
-        _ini.write_key(BOT_NAME, "quest_use_cons",  str(cls.UseCons))
-        _ini.write_key(BOT_NAME, "quest_hardmode",  str(cls.HardMode))
-        _ini.write_key(BOT_NAME, "quest_bot_mode",  str(cls.BotMode))
+        _ini.set(BOT_NAME, "quest_repeat",    str(cls.Repeat))
+        _ini.set(BOT_NAME, "quest_use_cons",  str(cls.UseCons))
+        _ini.set(BOT_NAME, "quest_hardmode",  str(cls.HardMode))
+        _ini.set(BOT_NAME, "quest_bot_mode",  str(cls.BotMode))
 
 
 class EnterSettings:
     """Settings for how the bot travels to and enters the Underworld."""
-    EntryPoint: str = str(_ini.read_key(BOT_NAME, "enter_entrypoint", DEFAULT_UW_ENTRYPOINT_KEY) or DEFAULT_UW_ENTRYPOINT_KEY)
+    EntryPoint: str = str(_ini.get_str(BOT_NAME, "enter_entrypoint", DEFAULT_UW_ENTRYPOINT_KEY) or DEFAULT_UW_ENTRYPOINT_KEY)
 
     @classmethod
     def save(cls) -> None:
-        _ini.write_key(BOT_NAME, "enter_entrypoint", str(cls.EntryPoint))
+        _ini.set(BOT_NAME, "enter_entrypoint", str(cls.EntryPoint))
 
 
 

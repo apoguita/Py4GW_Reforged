@@ -8,6 +8,7 @@ import shutil
 import copy
 
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 MODULE_NAME = "Xunlai Manager"        # Display name shown in the overlay window
@@ -204,18 +205,18 @@ def _ensure_account_settings_loaded(force: bool = False):
 		return
 
 	_ensure_ini_path_exists(ini_path)
-	ini_handler = IniHandler(ini_path)
+	ini_handler = Settings("Inventory/XunlaiManager/xunlai_manager.ini", "account")
 	_active_account_email = target_account_email
 	_selected_settings_account = _sanitize_path_component(target_account_email)
 	_active_ini_path = ini_path
-	ANNIVERSARY_SLOT_UNLOCKED = ini_handler.read_bool(INI_KEY, "anniversary_slot_unlocked", False)
+	ANNIVERSARY_SLOT_UNLOCKED = ini_handler.get_bool(INI_KEY, "anniversary_slot_unlocked", False)
 	_last_saved_anniversary_slot_unlocked = ANNIVERSARY_SLOT_UNLOCKED
-	SHOW_SETTINGS = ini_handler.read_bool(INI_KEY, "show_settings", False)
-	SHOW_DEBUG = ini_handler.read_bool(INI_KEY, "show_debug", False)
-	SLOW_MODE = ini_handler.read_bool(INI_KEY, "slow_mode", False)
-	CONSOLIDATE_TO_BACK = ini_handler.read_bool(INI_KEY, "consolidate_to_back", False)
-	AUTO_DEPOSIT_MATERIALS = ini_handler.read_bool(INI_KEY, "auto_deposit_materials", False)
-	WINDOW_OPEN = ini_handler.read_bool(INI_KEY, "window_open", False)
+	SHOW_SETTINGS = ini_handler.get_bool(INI_KEY, "show_settings", False)
+	SHOW_DEBUG = ini_handler.get_bool(INI_KEY, "show_debug", False)
+	SLOW_MODE = ini_handler.get_bool(INI_KEY, "slow_mode", False)
+	CONSOLIDATE_TO_BACK = ini_handler.get_bool(INI_KEY, "consolidate_to_back", False)
+	AUTO_DEPOSIT_MATERIALS = ini_handler.get_bool(INI_KEY, "auto_deposit_materials", False)
+	WINDOW_OPEN = ini_handler.get_bool(INI_KEY, "window_open", False)
 	_sort_task_state = None
 	_clear_storage_settings_cache()
 
@@ -810,7 +811,7 @@ def _load_allowed_types_for_storage(bag_enum):
 	if bag_key in _allowed_types_by_storage:
 		return _allowed_types_by_storage[bag_key]
 
-	raw = ini_handler.read_key(INI_KEY, f"allowed_item_types_storage_{bag_enum.value}", "")
+	raw = ini_handler.get_str(INI_KEY, f"allowed_item_types_storage_{bag_enum.value}", "")
 	parsed = []
 	for token in raw.split(","):
 		name = token.strip()
@@ -834,7 +835,7 @@ def _load_allowed_model_ids_for_storage(bag_enum):
 	if bag_key in _allowed_model_ids_by_storage:
 		return _allowed_model_ids_by_storage[bag_key]
 
-	raw = ini_handler.read_key(INI_KEY, f"allowed_model_ids_storage_{bag_enum.value}", "")
+	raw = ini_handler.get_str(INI_KEY, f"allowed_model_ids_storage_{bag_enum.value}", "")
 	parsed = []
 	for token in raw.split(","):
 		text = token.strip()
@@ -861,14 +862,14 @@ def _save_allowed_types_for_storage(bag_enum):
 	"""Persist the allowed item-type list for a storage pane to the INI file."""
 	bag_key = bag_enum.value
 	allowed = _allowed_types_by_storage.get(bag_key, [])
-	ini_handler.write_key(INI_KEY, f"allowed_item_types_storage_{bag_enum.value}", ",".join(allowed))
+	ini_handler.set(INI_KEY, f"allowed_item_types_storage_{bag_enum.value}", ",".join(allowed))
 
 
 def _save_allowed_model_ids_for_storage(bag_enum):
 	"""Persist the allowed model-ID list for a storage pane to the INI file."""
 	bag_key = bag_enum.value
 	allowed = _allowed_model_ids_by_storage.get(bag_key, [])
-	ini_handler.write_key(INI_KEY, f"allowed_model_ids_storage_{bag_enum.value}", ",".join(str(model_id) for model_id in allowed))
+	ini_handler.set(INI_KEY, f"allowed_model_ids_storage_{bag_enum.value}", ",".join(str(model_id) for model_id in allowed))
 
 
 def _has_any_model_id_filters(available_storage_bags) -> bool:
@@ -3081,7 +3082,7 @@ def _draw_toggle_icon_window():
 
 		if clicked_toggle:
 			WINDOW_OPEN = not WINDOW_OPEN
-			ini_handler.write_key(INI_KEY, "window_open", WINDOW_OPEN)
+			ini_handler.set(INI_KEY, "window_open", WINDOW_OPEN)
 		if PyImGui.is_item_hovered():
 			if PyImGui.begin_tooltip():
 				PyImGui.text("Open Xunlai Manager" if not WINDOW_OPEN else "Hide Xunlai Manager")
@@ -3148,13 +3149,13 @@ def _draw_window():
 	previous_show_settings = SHOW_SETTINGS
 	SHOW_SETTINGS = PyImGui.checkbox("Show Settings", SHOW_SETTINGS)
 	if SHOW_SETTINGS != previous_show_settings:
-		ini_handler.write_key(INI_KEY, "show_settings", SHOW_SETTINGS)
+		ini_handler.set(INI_KEY, "show_settings", SHOW_SETTINGS)
 
 	if SHOW_SETTINGS:
 		previous_show_debug = SHOW_DEBUG
 		SHOW_DEBUG = PyImGui.checkbox("Show Debug", SHOW_DEBUG)
 		if SHOW_DEBUG != previous_show_debug:
-			ini_handler.write_key(INI_KEY, "show_debug", SHOW_DEBUG)
+			ini_handler.set(INI_KEY, "show_debug", SHOW_DEBUG)
 
 		ANNIVERSARY_SLOT_UNLOCKED = PyImGui.checkbox("Anniversary slot unlocked", ANNIVERSARY_SLOT_UNLOCKED)
 		PyImGui.same_line(0, 6)
@@ -3162,24 +3163,24 @@ def _draw_window():
 		if ANNIVERSARY_SLOT_UNLOCKED != _last_saved_anniversary_slot_unlocked:
 			_cache_needs_refresh = True  # available bags depend on anniversary unlock
 			if save_timer.IsExpired():
-				ini_handler.write_key(INI_KEY, "anniversary_slot_unlocked", ANNIVERSARY_SLOT_UNLOCKED)
+				ini_handler.set(INI_KEY, "anniversary_slot_unlocked", ANNIVERSARY_SLOT_UNLOCKED)
 				_last_saved_anniversary_slot_unlocked = ANNIVERSARY_SLOT_UNLOCKED
 				save_timer.Reset()
 
 		previous_slow_mode = SLOW_MODE
 		SLOW_MODE = PyImGui.checkbox("Slow Mode", SLOW_MODE)
 		if SLOW_MODE != previous_slow_mode:
-			ini_handler.write_key(INI_KEY, "slow_mode", SLOW_MODE)
+			ini_handler.set(INI_KEY, "slow_mode", SLOW_MODE)
 
 		previous_consolidate_to_back = CONSOLIDATE_TO_BACK
 		CONSOLIDATE_TO_BACK = PyImGui.checkbox("Autosort unfiltered items", CONSOLIDATE_TO_BACK)
 		if CONSOLIDATE_TO_BACK != previous_consolidate_to_back:
-			ini_handler.write_key(INI_KEY, "consolidate_to_back", CONSOLIDATE_TO_BACK)
+			ini_handler.set(INI_KEY, "consolidate_to_back", CONSOLIDATE_TO_BACK)
 
 		previous_auto_deposit_materials = AUTO_DEPOSIT_MATERIALS
 		AUTO_DEPOSIT_MATERIALS = PyImGui.checkbox("Auto-Deposit Materials", AUTO_DEPOSIT_MATERIALS)
 		if AUTO_DEPOSIT_MATERIALS != previous_auto_deposit_materials:
-			ini_handler.write_key(INI_KEY, "auto_deposit_materials", AUTO_DEPOSIT_MATERIALS)
+			ini_handler.set(INI_KEY, "auto_deposit_materials", AUTO_DEPOSIT_MATERIALS)
 
 	# Refresh expensive storage stats at most once every 2 s (or immediately when flagged).
 	if _cache_needs_refresh or _idle_refresh_timer.IsExpired():
@@ -3376,7 +3377,7 @@ def _draw_window():
 		PyImGui.separator()
 		if PyImGui.button("Close Settings"):
 			SHOW_SETTINGS = False
-			ini_handler.write_key(INI_KEY, "show_settings", SHOW_SETTINGS)
+			ini_handler.set(INI_KEY, "show_settings", SHOW_SETTINGS)
 
 	window_size = PyImGui.get_window_size()
 	if isinstance(window_size, (tuple, list)) and len(window_size) >= 2:

@@ -21,9 +21,9 @@ from Py4GWCoreLib import (
     SharedCommandType,
     Timer,
     ThrottledTimer,
-    IniHandler,
 Player
 )
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 from Sources.aC_Scripts.aC_api import (
     is_npc_dialog_visible,
@@ -39,7 +39,7 @@ os.makedirs(FLAG_DIR, exist_ok=True)
 SECTION = "NPC_SYNC"
 
 WINDOW_INI_PATH   = os.path.join(FLAG_DIR, "npc_sync_window.ini")
-ini_window        = IniHandler(WINDOW_INI_PATH)
+ini_window        = Settings("GuildWarsNPCSync/npc_sync_window.ini", "global")
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Throttles & Timers
@@ -51,9 +51,9 @@ save_window_timer.Start()
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Window State (persisted)
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-win_x            = ini_window.read_int(SECTION, "window_x", 100)
-win_y            = ini_window.read_int(SECTION, "window_y", 100)
-win_collapsed    = ini_window.read_bool(SECTION, "window_collapsed", False)
+win_x            = ini_window.get_int(SECTION, "window_x", 100)
+win_y            = ini_window.get_int(SECTION, "window_y", 100)
+win_collapsed    = ini_window.get_bool(SECTION, "window_collapsed", False)
 first_run_window = True
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

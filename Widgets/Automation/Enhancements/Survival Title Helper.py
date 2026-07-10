@@ -1,7 +1,8 @@
 import traceback
 import Py4GW
 
-from Py4GWCoreLib import IniHandler, Timer, ThrottledTimer
+from Py4GWCoreLib import Timer, ThrottledTimer
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import GLOBAL_CACHE, Agent
 from Py4GWCoreLib import PyImGui, Color
 from Py4GWCoreLib import ImGui_Legacy
@@ -22,7 +23,7 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 root_directory = PySystem.Console.get_projects_path()
 ini_file_location = os.path.join(root_directory, "Widgets/Config/Survival Title Helper.ini")
 
-ini_handler = IniHandler(ini_file_location)
+ini_handler = Settings("Widgets/Config/Survival Title Helper.ini", "global")
 sync_timer = Timer()
 sync_timer.Start()
 sync_interval = 1000
@@ -185,18 +186,18 @@ class Config:
     global ini_handler, module_name, sync_timer, sync_interval, global_vars
     def __init__(self):
         """Read configuration values from INI file"""
-        self.lvl1_10 = ini_handler.read_int(module_name, "lvl1_10", global_vars.lvl1_10_threshold)
+        self.lvl1_10 = ini_handler.get_int(module_name, "lvl1_10", global_vars.lvl1_10_threshold)
         if global_vars.lvl1_10_threshold != self.lvl1_10:
             global_vars.lvl1_10_threshold = self.lvl1_10
-        self.lvl11_20 = ini_handler.read_int(module_name, "lvl11_20", global_vars.lvl11_20_threshold)
+        self.lvl11_20 = ini_handler.get_int(module_name, "lvl11_20", global_vars.lvl11_20_threshold)
         if global_vars.lvl11_20_threshold != self.lvl11_20:
             global_vars.lvl11_20_threshold = self.lvl11_20
 
     def save(self):
         """Save the current configuration to the INI file."""
         if sync_timer.HasElapsed(sync_interval):
-            ini_handler.write_key(module_name, "lvl1_10", str(self.lvl1_10))
-            ini_handler.write_key(module_name, "lvl11_20", str(self.lvl11_20))
+            ini_handler.set(module_name, "lvl1_10", str(self.lvl1_10))
+            ini_handler.set(module_name, "lvl11_20", str(self.lvl11_20))
             sync_timer.Start()
 
 widget_config = Config()

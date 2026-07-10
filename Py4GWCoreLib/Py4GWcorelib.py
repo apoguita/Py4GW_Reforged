@@ -1,5 +1,4 @@
 
-from .py4gwcorelib_src.IniHandler import IniHandler
 from .py4gwcorelib_src.Console import ConsoleLog, Console
 from .py4gwcorelib_src.Color import Color, ColorPalette
 from .py4gwcorelib_src.Utils import Utils
@@ -14,7 +13,7 @@ from .py4gwcorelib_src.Lootconfig_src import LootConfig
 from .py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
 from .native_src.internals.types import Vec2f, Vec3f, GamePos
 
-__all__ = ["IniHandler", #IniHandler
+__all__ = [
            "ConsoleLog", "Console", #Console
                "Color", "ColorPalette", #Color
                "Utils", #Utils

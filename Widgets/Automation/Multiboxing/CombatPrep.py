@@ -11,7 +11,7 @@ from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import CombatPrepSkillsType
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import ImGui_Legacy
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import PyImGui, Color
 from Py4GWCoreLib import Range
 from Py4GWCoreLib import Map, Agent, Player
@@ -82,17 +82,17 @@ widget_handler = get_widget_handler()
 
 
 # â€”â€”â€” Window Persistence Setup â€”â€”â€”
-ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
+ini_window = Settings("Widgets/Config/combat_prep_window.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
 # load lastâ€saved window state (fallback to 100,100 / un-collapsed)
-window_x = ini_window.read_int(MODULE_NAME, X_POS, 100)
-window_y = ini_window.read_int(MODULE_NAME, Y_POS, 100)
-module_layout = ini_window.read_key(MODULE_NAME, MODULE_LAYOUT, DEFAULT)
-module_icon_size = ini_window.read_int(MODULE_NAME, MODULE_ICON_SIZE, 80)
-window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, False)
-should_use_hotkeys = ini_window.read_bool(MODULE_NAME, USE_HOTKEYS, False)
+window_x = ini_window.get_int(MODULE_NAME, X_POS, 100)
+window_y = ini_window.get_int(MODULE_NAME, Y_POS, 100)
+module_layout = ini_window.get_str(MODULE_NAME, MODULE_LAYOUT, DEFAULT)
+module_icon_size = ini_window.get_int(MODULE_NAME, MODULE_ICON_SIZE, 80)
+window_collapsed = ini_window.get_bool(MODULE_NAME, COLLAPSED, False)
+should_use_hotkeys = ini_window.get_bool(MODULE_NAME, USE_HOTKEYS, False)
 
 # Global Trackers
 last_location_spirits_casted = {X_POS: 0.0, Y_POS: 0.0}
@@ -794,7 +794,7 @@ def configure():
         new_icon_size = int(icon_sizes[new_icon_index])
         if new_icon_size != module_icon_size:
             module_icon_size = new_icon_size
-            ini_window.write_key(MODULE_NAME, MODULE_ICON_SIZE, str(module_icon_size))
+            ini_window.set(MODULE_NAME, MODULE_ICON_SIZE, str(module_icon_size))
 
         # --- Layout ---
         layouts = [DEFAULT, ROW]
@@ -803,13 +803,13 @@ def configure():
         new_layout = layouts[new_layout_index]
         if new_layout != module_layout:
             module_layout = new_layout
-            ini_window.write_key(MODULE_NAME, MODULE_LAYOUT, module_layout)
+            ini_window.set(MODULE_NAME, MODULE_LAYOUT, module_layout)
 
         # --- Hotkey Usage ---
         previous_should_use_hotkey_value = should_use_hotkeys
         should_use_hotkeys = ImGui_Legacy.toggle_button('Allow to use pre-set Hotkeys##ShouldUseHotkeys', should_use_hotkeys)
         if should_use_hotkeys != previous_should_use_hotkey_value:
-            ini_window.write_key(MODULE_NAME, USE_HOTKEYS, should_use_hotkeys)
+            ini_window.set(MODULE_NAME, USE_HOTKEYS, should_use_hotkeys)
     PyImGui.end()
 
 

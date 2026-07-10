@@ -5,7 +5,7 @@ import traceback
 import Py4GW  # type: ignore
 import Py4GWCoreLib
 from HeroAI.cache_data import CacheData
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import PyImGui
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import Timer
@@ -34,7 +34,7 @@ os.makedirs(BASE_DIR, exist_ok=True)
 cached_data = CacheData()
 
 # â€”â€”â€” Window Persistence Setup â€”â€”â€”
-ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
+ini_window = Settings("Widgets/Config/ezcast_settings.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
@@ -46,9 +46,9 @@ X_POS = "x"
 Y_POS = "y"
 
 # load lastâ€saved window state (fallback to 100,100 / un-collapsed)
-window_x = ini_window.read_int(MODULE_NAME, X_POS, 100)
-window_y = ini_window.read_int(MODULE_NAME, Y_POS, 100)
-window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, False)
+window_x = ini_window.get_int(MODULE_NAME, X_POS, 100)
+window_y = ini_window.get_int(MODULE_NAME, Y_POS, 100)
+window_collapsed = ini_window.get_bool(MODULE_NAME, COLLAPSED, False)
 
 
 # "Triggers", "Flow", "Logic/Math", "Data", "Output"

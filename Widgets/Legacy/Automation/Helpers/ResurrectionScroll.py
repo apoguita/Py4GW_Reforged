@@ -23,7 +23,6 @@ try:
     from Py4GWCoreLib import (
         ConsoleLog,
         Console,
-        IniHandler,
         Timer,
         ThrottledTimer,
         GLOBAL_CACHE,
@@ -39,6 +38,7 @@ try:
         Skill,
     )
     from Py4GWCoreLib import PyImGui, Color
+    from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
     from Py4GWCoreLib.GlobalCache.WhiteboardLocks import claim_resurrection_target
 
     # -----------------------------------------------------------------------
@@ -48,10 +48,10 @@ try:
     _ini_path = os.path.join(_root, "Widgets", "Config", "ResurrectionScroll.ini")
     os.makedirs(os.path.dirname(_ini_path), exist_ok=True)
 
-    _ini = IniHandler(_ini_path)
+    _ini = Settings("Widgets/Config/ResurrectionScroll.ini", "global")
 
-    _enabled: bool = _ini.read_bool(MODULE_NAME, "enabled", True)
-    _skip_if_res_available: bool = _ini.read_bool(MODULE_NAME, "skip_if_res_available", False)
+    _enabled: bool = _ini.get_bool(MODULE_NAME, "enabled", True)
+    _skip_if_res_available: bool = _ini.get_bool(MODULE_NAME, "skip_if_res_available", False)
 
     # -----------------------------------------------------------------------
     # Constants
@@ -298,12 +298,12 @@ def configure():
             new_enabled = PyImGui.checkbox("Enable auto-use", _enabled)
             if new_enabled != _enabled:
                 _enabled = new_enabled
-                _ini.write_key(MODULE_NAME, "enabled", str(_enabled))
+                _ini.set(MODULE_NAME, "enabled", str(_enabled))
 
             new_skip = PyImGui.checkbox("Skip if res skill available", _skip_if_res_available)
             if new_skip != _skip_if_res_available:
                 _skip_if_res_available = new_skip
-                _ini.write_key(MODULE_NAME, "skip_if_res_available", str(_skip_if_res_available))
+                _ini.set(MODULE_NAME, "skip_if_res_available", str(_skip_if_res_available))
 
             PyImGui.spacing()
             PyImGui.text(f"Status: {_status_text}")

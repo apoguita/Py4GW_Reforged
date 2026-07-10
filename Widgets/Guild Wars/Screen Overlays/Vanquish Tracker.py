@@ -1,5 +1,5 @@
 import PyImGui
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import ImGui_Legacy
 from Py4GWCoreLib import Timer
 from Py4GWCoreLib import Overlay
@@ -20,32 +20,32 @@ module_name = "Vanquish Monitor"
 root_path =  PySystem.Console.get_projects_path()
 script_path = os.path.join(root_path, "Widgets/Config/Vanquish.ini")
 
-ini_handler = IniHandler(script_path)
+ini_handler = Settings("Widgets/Config/Vanquish.ini", "global")
 sync_interval = 1000
 
 class Config:
     global ini_handler, module_name, sync_interval
     def __init__(self):
-        self.x = ini_handler.read_int(module_name, "x", 100)
-        self.y = ini_handler.read_int(module_name, "y", 200)
-        self.font_size = ini_handler.read_int(module_name, "font_size", 20)
+        self.x = ini_handler.get_int(module_name, "x", 100)
+        self.y = ini_handler.get_int(module_name, "y", 200)
+        self.font_size = ini_handler.get_int(module_name, "font_size", 20)
         self.color = Color(
-                    ini_handler.read_int(module_name, "color_r", 255),
-                    ini_handler.read_int(module_name, "color_g", 255),
-                    ini_handler.read_int(module_name, "color_b", 255),
-                    ini_handler.read_int(module_name, "color_a", 255))
+                    ini_handler.get_int(module_name, "color_r", 255),
+                    ini_handler.get_int(module_name, "color_g", 255),
+                    ini_handler.get_int(module_name, "color_b", 255),
+                    ini_handler.get_int(module_name, "color_a", 255))
         self.string = "000/000"
         self.sync_interval = sync_interval
         
     def save(self):
         """Save the current configuration to the INI file."""
-        ini_handler.write_key(module_name, "x", str(self.x))
-        ini_handler.write_key(module_name, "y", str(self.y))
-        ini_handler.write_key(module_name, "font_size", str(self.font_size))
-        ini_handler.write_key(module_name, "color_r", str(self.color.get_r()))
-        ini_handler.write_key(module_name, "color_g", str(self.color.get_g()))
-        ini_handler.write_key(module_name, "color_b", str(self.color.get_b()))
-        ini_handler.write_key(module_name, "color_a", str(self.color.get_a()))
+        ini_handler.set(module_name, "x", str(self.x))
+        ini_handler.set(module_name, "y", str(self.y))
+        ini_handler.set(module_name, "font_size", str(self.font_size))
+        ini_handler.set(module_name, "color_r", str(self.color.get_r()))
+        ini_handler.set(module_name, "color_g", str(self.color.get_g()))
+        ini_handler.set(module_name, "color_b", str(self.color.get_b()))
+        ini_handler.set(module_name, "color_a", str(self.color.get_a()))
         
 widget_config = Config()
 window_module = ImGui_Legacy.WindowModule(

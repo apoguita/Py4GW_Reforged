@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import ctypes
 import PyImGui
 
@@ -9,7 +10,7 @@ user32 = ctypes.WinDLL("user32", use_last_error=True)
 window_module = ImGui_Legacy.WindowModule('Skillbar+', window_name = 'Skillbar+', window_flags = PyImGui.WindowFlags.AlwaysAutoResize)
 
 class SkillBarPlus:
-    ini = IniHandler(os.path.join(PySystem.Console.get_projects_path(), "Widgets/Config/Skillbar +.ini"))
+    ini = Settings("Widgets/Config/Skillbar +.ini", "global")
     
     class SkillsPlus:
         overlay         = PyOverlay.Overlay()
@@ -294,38 +295,38 @@ class SkillBarPlus:
     auto = AutoCast()
 
     def LoadConfig(self):
-        self.skills.font_size       = self.ini.read_int('skills', 'font', 40)
-        self.skills.draw_bg         = self.ini.read_bool('skills', 'draw_bg', True)
-        self.skills.bg_default      = self.ini.read_int('skills', 'color_default', Utils.RGBToColor(0, 255, 0, 50))
-        self.skills.bg_near         = self.ini.read_int('skills', 'color_near', Utils.RGBToColor(255, 0, 0, 150))
-        self.skills.near_threshold  = self.ini.read_int('skills', 'threshold',3)
-        self.skills.draw_duration   = self.ini.read_bool('skills', 'draw_duration', False)
-        self.skills.duration_font   = self.ini.read_int('skills', 'duration_font', 16)
-        self.skills.duration_bg     = self.ini.read_int('skills', 'duration_bg', Utils.RGBToColor(0, 0, 0, 255))
-        self.skills.duration_bar    = self.ini.read_int('skills', 'duration_bar', Utils.RGBToColor(100, 100, 100, 255))
-        self.skills.duration_offset = self.ini.read_int('skills', 'duration_offset', 0)
+        self.skills.font_size       = self.ini.get_int('skills', 'font', 40)
+        self.skills.draw_bg         = self.ini.get_bool('skills', 'draw_bg', True)
+        self.skills.bg_default      = self.ini.get_int('skills', 'color_default', Utils.RGBToColor(0, 255, 0, 50))
+        self.skills.bg_near         = self.ini.get_int('skills', 'color_near', Utils.RGBToColor(255, 0, 0, 150))
+        self.skills.near_threshold  = self.ini.get_int('skills', 'threshold',3)
+        self.skills.draw_duration   = self.ini.get_bool('skills', 'draw_duration', False)
+        self.skills.duration_font   = self.ini.get_int('skills', 'duration_font', 16)
+        self.skills.duration_bg     = self.ini.get_int('skills', 'duration_bg', Utils.RGBToColor(0, 0, 0, 255))
+        self.skills.duration_bar    = self.ini.get_int('skills', 'duration_bar', Utils.RGBToColor(100, 100, 100, 255))
+        self.skills.duration_offset = self.ini.get_int('skills', 'duration_offset', 0)
 
-        self.effects.font_size      = self.ini.read_int('effects', 'font', 20)
-        self.effects.bg_color       = self.ini.read_int('effects', 'color', Utils.RGBToColor(0, 0, 0, 150))
+        self.effects.font_size      = self.ini.get_int('effects', 'font', 20)
+        self.effects.bg_color       = self.ini.get_int('effects', 'color', Utils.RGBToColor(0, 0, 0, 150))
 
-        self.auto.enable_click      = self.ini.read_bool('auto', 'enable_click', False)
+        self.auto.enable_click      = self.ini.get_bool('auto', 'enable_click', False)
 
     def SaveConfig(self):
-        self.ini.write_key('skills', 'font', str(self.skills.font_size))
-        self.ini.write_key('skills', 'draw_bg', str(self.skills.draw_bg))
-        self.ini.write_key('skills', 'color_default', str(self.skills.bg_default))
-        self.ini.write_key('skills', 'color_near', str(self.skills.bg_near))
-        self.ini.write_key('skills', 'threshold', str(self.skills.near_threshold))
-        self.ini.write_key('skills', 'draw_duration', str(self.skills.draw_duration))
-        self.ini.write_key('skills', 'duration_font', str(self.skills.duration_font))
-        self.ini.write_key('skills', 'duration_bg', str(self.skills.duration_bg))
-        self.ini.write_key('skills', 'duration_bar', str(self.skills.duration_bar))
-        self.ini.write_key('skills', 'duration_offset', str(self.skills.duration_offset))
+        self.ini.set('skills', 'font', str(self.skills.font_size))
+        self.ini.set('skills', 'draw_bg', str(self.skills.draw_bg))
+        self.ini.set('skills', 'color_default', str(self.skills.bg_default))
+        self.ini.set('skills', 'color_near', str(self.skills.bg_near))
+        self.ini.set('skills', 'threshold', str(self.skills.near_threshold))
+        self.ini.set('skills', 'draw_duration', str(self.skills.draw_duration))
+        self.ini.set('skills', 'duration_font', str(self.skills.duration_font))
+        self.ini.set('skills', 'duration_bg', str(self.skills.duration_bg))
+        self.ini.set('skills', 'duration_bar', str(self.skills.duration_bar))
+        self.ini.set('skills', 'duration_offset', str(self.skills.duration_offset))
 
-        self.ini.write_key('effects', 'font', str(self.effects.font_size))
-        self.ini.write_key('effects', 'color', str(self.effects.bg_color))
+        self.ini.set('effects', 'font', str(self.effects.font_size))
+        self.ini.set('effects', 'color', str(self.effects.bg_color))
 
-        self.ini.write_key('auto', 'enable_click', str(self.auto.enable_click))
+        self.ini.set('auto', 'enable_click', str(self.auto.enable_click))
 
     def DrawConfig(self):
         self.skills.Config()

@@ -1,7 +1,8 @@
 from Py4GWCoreLib import (Color, WindowID, UIManager, Bags, ItemArray, Item, Map,
                           MouseButton, ColorPalette, ModelID,IconsFontAwesome5,
                           Routines, GLOBAL_CACHE,AutoInventoryHandler, ItemType,
-                        FrameInfo, WindowFrames, IniHandler, Console, ConsoleLog)
+                        FrameInfo, WindowFrames, Console, ConsoleLog)
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui
 import Py4GW
 from dataclasses import dataclass, field
@@ -47,37 +48,37 @@ class IdentificationSettings:
     identify_all_purples: bool = field(default_factory=bool)
     identify_all_golds: bool = field(default_factory=bool)
     
-    def load_ini(self, ini: IniHandler):
+    def load_ini(self, ini: Settings):
         s = "IdentificationSettings"
 
-        self.identify_whites = ini.read_bool(s, "identify_whites", False)
-        self.identify_blues = ini.read_bool(s, "identify_blues", False)
-        self.identify_greens = ini.read_bool(s, "identify_greens", False)
-        self.identify_purples = ini.read_bool(s, "identify_purples", False)
-        self.identify_golds = ini.read_bool(s, "identify_golds", False)
-        self.identify_all = ini.read_bool(s, "identify_all", False)
+        self.identify_whites = ini.get_bool(s, "identify_whites", False)
+        self.identify_blues = ini.get_bool(s, "identify_blues", False)
+        self.identify_greens = ini.get_bool(s, "identify_greens", False)
+        self.identify_purples = ini.get_bool(s, "identify_purples", False)
+        self.identify_golds = ini.get_bool(s, "identify_golds", False)
+        self.identify_all = ini.get_bool(s, "identify_all", False)
 
-        self.identify_all_whites  = ini.read_bool(s, "identify_all_whites", False)
-        self.identify_all_blues   = ini.read_bool(s, "identify_all_blues", False)
-        self.identify_all_greens  = ini.read_bool(s, "identify_all_greens", False)
-        self.identify_all_purples = ini.read_bool(s, "identify_all_purples", False)
-        self.identify_all_golds   = ini.read_bool(s, "identify_all_golds", False)
+        self.identify_all_whites  = ini.get_bool(s, "identify_all_whites", False)
+        self.identify_all_blues   = ini.get_bool(s, "identify_all_blues", False)
+        self.identify_all_greens  = ini.get_bool(s, "identify_all_greens", False)
+        self.identify_all_purples = ini.get_bool(s, "identify_all_purples", False)
+        self.identify_all_golds   = ini.get_bool(s, "identify_all_golds", False)
 
-    def save_ini(self, ini: IniHandler):
+    def save_ini(self, ini: Settings):
         s = "IdentificationSettings"
 
-        ini.write_key(s, "identify_whites", self.identify_whites)
-        ini.write_key(s, "identify_blues", self.identify_blues)
-        ini.write_key(s, "identify_greens", self.identify_greens)
-        ini.write_key(s, "identify_purples", self.identify_purples)
-        ini.write_key(s, "identify_golds", self.identify_golds)
-        ini.write_key(s, "identify_all", self.identify_all)
+        ini.set(s, "identify_whites", self.identify_whites)
+        ini.set(s, "identify_blues", self.identify_blues)
+        ini.set(s, "identify_greens", self.identify_greens)
+        ini.set(s, "identify_purples", self.identify_purples)
+        ini.set(s, "identify_golds", self.identify_golds)
+        ini.set(s, "identify_all", self.identify_all)
 
-        ini.write_key(s, "identify_all_whites", self.identify_all_whites)
-        ini.write_key(s, "identify_all_blues", self.identify_all_blues)
-        ini.write_key(s, "identify_all_greens", self.identify_all_greens)
-        ini.write_key(s, "identify_all_purples", self.identify_all_purples)
-        ini.write_key(s, "identify_all_golds", self.identify_all_golds)
+        ini.set(s, "identify_all_whites", self.identify_all_whites)
+        ini.set(s, "identify_all_blues", self.identify_all_blues)
+        ini.set(s, "identify_all_greens", self.identify_all_greens)
+        ini.set(s, "identify_all_purples", self.identify_all_purples)
+        ini.set(s, "identify_all_golds", self.identify_all_golds)
     
     
 @dataclass
@@ -94,50 +95,50 @@ class SalvageSettings:
     salvage_all_purples: bool = field(default_factory=bool)
     salvage_all_golds: bool = field(default_factory=bool)
     
-    def load_ini(self, ini: IniHandler):
+    def load_ini(self, ini: Settings):
         s = "SalvageSettings"
 
-        self.salvage_whites = ini.read_bool(s, "salvage_whites", False)
-        self.salvage_blues = ini.read_bool(s, "salvage_blues", False)
-        self.salvage_greens = ini.read_bool(s, "salvage_greens", False)
-        self.salvage_purples = ini.read_bool(s, "salvage_purples", False)
-        self.salvage_golds = ini.read_bool(s, "salvage_golds", False)
-        self.salvage_all = ini.read_bool(s, "salvage_all", False)
+        self.salvage_whites = ini.get_bool(s, "salvage_whites", False)
+        self.salvage_blues = ini.get_bool(s, "salvage_blues", False)
+        self.salvage_greens = ini.get_bool(s, "salvage_greens", False)
+        self.salvage_purples = ini.get_bool(s, "salvage_purples", False)
+        self.salvage_golds = ini.get_bool(s, "salvage_golds", False)
+        self.salvage_all = ini.get_bool(s, "salvage_all", False)
 
 
-        self.salvage_all_whites  = ini.read_bool(s, "salvage_all_whites", False)
-        self.salvage_all_blues   = ini.read_bool(s, "salvage_all_blues", False)
-        self.salvage_all_greens  = ini.read_bool(s, "salvage_all_greens", False)
-        self.salvage_all_purples = ini.read_bool(s, "salvage_all_purples", False)
-        self.salvage_all_golds   = ini.read_bool(s, "salvage_all_golds", False)
+        self.salvage_all_whites  = ini.get_bool(s, "salvage_all_whites", False)
+        self.salvage_all_blues   = ini.get_bool(s, "salvage_all_blues", False)
+        self.salvage_all_greens  = ini.get_bool(s, "salvage_all_greens", False)
+        self.salvage_all_purples = ini.get_bool(s, "salvage_all_purples", False)
+        self.salvage_all_golds   = ini.get_bool(s, "salvage_all_golds", False)
 
-    def save_ini(self, ini: IniHandler):
+    def save_ini(self, ini: Settings):
         s = "SalvageSettings"
 
-        ini.write_key(s, "salvage_whites", self.salvage_whites)
-        ini.write_key(s, "salvage_blues", self.salvage_blues)
-        ini.write_key(s, "salvage_greens", self.salvage_greens)
-        ini.write_key(s, "salvage_purples", self.salvage_purples)
-        ini.write_key(s, "salvage_golds", self.salvage_golds)
-        ini.write_key(s, "salvage_all", self.salvage_all)
+        ini.set(s, "salvage_whites", self.salvage_whites)
+        ini.set(s, "salvage_blues", self.salvage_blues)
+        ini.set(s, "salvage_greens", self.salvage_greens)
+        ini.set(s, "salvage_purples", self.salvage_purples)
+        ini.set(s, "salvage_golds", self.salvage_golds)
+        ini.set(s, "salvage_all", self.salvage_all)
 
-        ini.write_key(s, "salvage_all_whites", self.salvage_all_whites)
-        ini.write_key(s, "salvage_all_blues", self.salvage_all_blues)
-        ini.write_key(s, "salvage_all_greens", self.salvage_all_greens)
-        ini.write_key(s, "salvage_all_purples", self.salvage_all_purples)
-        ini.write_key(s, "salvage_all_golds", self.salvage_all_golds)
+        ini.set(s, "salvage_all_whites", self.salvage_all_whites)
+        ini.set(s, "salvage_all_blues", self.salvage_all_blues)
+        ini.set(s, "salvage_all_greens", self.salvage_all_greens)
+        ini.set(s, "salvage_all_purples", self.salvage_all_purples)
+        ini.set(s, "salvage_all_golds", self.salvage_all_golds)
     
 @dataclass
 class DepositSettings:
     use_ctrl_click: bool = field(default_factory=bool)
     
-    def load_ini(self, ini: IniHandler):
+    def load_ini(self, ini: Settings):
         s = "DepositSettings"
-        self.use_ctrl_click = ini.read_bool(s, "use_ctrl_click", False)
+        self.use_ctrl_click = ini.get_bool(s, "use_ctrl_click", False)
         
-    def save_ini(self, ini: IniHandler):
+    def save_ini(self, ini: Settings):
         s = "DepositSettings"
-        ini.write_key(s, "use_ctrl_click", self.use_ctrl_click)
+        ini.set(s, "use_ctrl_click", self.use_ctrl_click)
     
     
 @dataclass
@@ -154,37 +155,37 @@ class ColorizeSettings:
     purple_color: Color = field(default_factory=lambda: ColorPalette.GetColor("GW_Purple"))
     gold_color: Color = field(default_factory=lambda: ColorPalette.GetColor("GW_Gold"))
     
-    def load_ini(self, ini: IniHandler):
+    def load_ini(self, ini: Settings):
         s = "ColorizeSettings"
 
-        self.enable_colorize = ini.read_bool(s, "enable_colorize", False)
-        self.color_whites = ini.read_bool(s, "color_whites", False)
-        self.color_blues = ini.read_bool(s, "color_blues", True)
-        self.color_greens = ini.read_bool(s, "color_greens", True)
-        self.color_purples = ini.read_bool(s, "color_purples", True)
-        self.color_golds = ini.read_bool(s, "color_golds", True)
+        self.enable_colorize = ini.get_bool(s, "enable_colorize", False)
+        self.color_whites = ini.get_bool(s, "color_whites", False)
+        self.color_blues = ini.get_bool(s, "color_blues", True)
+        self.color_greens = ini.get_bool(s, "color_greens", True)
+        self.color_purples = ini.get_bool(s, "color_purples", True)
+        self.color_golds = ini.get_bool(s, "color_golds", True)
 
-        self.white_color = Color(*map(int, ini.read_key(s, "white_color", "255,255,255,255").split(",")))
-        self.blue_color = Color(*map(int, ini.read_key(s, "blue_color", "255,255,255,255").split(",")))
-        self.green_color = Color(*map(int, ini.read_key(s, "green_color", "255,255,255,255").split(",")))
-        self.purple_color = Color(*map(int, ini.read_key(s, "purple_color", "255,255,255,255").split(",")))
-        self.gold_color = Color(*map(int, ini.read_key(s, "gold_color", "255,255,255,255").split(",")))
+        self.white_color = Color(*map(int, ini.get_str(s, "white_color", "255,255,255,255").split(",")))
+        self.blue_color = Color(*map(int, ini.get_str(s, "blue_color", "255,255,255,255").split(",")))
+        self.green_color = Color(*map(int, ini.get_str(s, "green_color", "255,255,255,255").split(",")))
+        self.purple_color = Color(*map(int, ini.get_str(s, "purple_color", "255,255,255,255").split(",")))
+        self.gold_color = Color(*map(int, ini.get_str(s, "gold_color", "255,255,255,255").split(",")))
 
-    def save_ini(self, ini: IniHandler):
+    def save_ini(self, ini: Settings):
         s = "ColorizeSettings"
 
-        ini.write_key(s, "enable_colorize", self.enable_colorize)
-        ini.write_key(s, "color_whites", self.color_whites)
-        ini.write_key(s, "color_blues", self.color_blues)
-        ini.write_key(s, "color_greens", self.color_greens)
-        ini.write_key(s, "color_purples", self.color_purples)
-        ini.write_key(s, "color_golds", self.color_golds)
+        ini.set(s, "enable_colorize", self.enable_colorize)
+        ini.set(s, "color_whites", self.color_whites)
+        ini.set(s, "color_blues", self.color_blues)
+        ini.set(s, "color_greens", self.color_greens)
+        ini.set(s, "color_purples", self.color_purples)
+        ini.set(s, "color_golds", self.color_golds)
 
-        ini.write_key(s, "white_color", ",".join(map(str, self.white_color.to_tuple())))
-        ini.write_key(s, "blue_color", ",".join(map(str, self.blue_color.to_tuple())))
-        ini.write_key(s, "green_color", ",".join(map(str, self.green_color.to_tuple())))
-        ini.write_key(s, "purple_color", ",".join(map(str, self.purple_color.to_tuple())))
-        ini.write_key(s, "gold_color", ",".join(map(str, self.gold_color.to_tuple())))
+        ini.set(s, "white_color", ",".join(map(str, self.white_color.to_tuple())))
+        ini.set(s, "blue_color", ",".join(map(str, self.blue_color.to_tuple())))
+        ini.set(s, "green_color", ",".join(map(str, self.green_color.to_tuple())))
+        ini.set(s, "purple_color", ",".join(map(str, self.purple_color.to_tuple())))
+        ini.set(s, "gold_color", ",".join(map(str, self.gold_color.to_tuple())))
 
 
     
@@ -195,13 +196,13 @@ class InventoryPlusConfig:
     deposit_settings: DepositSettings = field(default_factory=DepositSettings)
     colorize_settings: ColorizeSettings = field(default_factory=ColorizeSettings)
     
-    def load_ini(self, ini: IniHandler):
+    def load_ini(self, ini: Settings):
         self.identification_settings.load_ini(ini)
         self.salvage_settings.load_ini(ini)
         self.deposit_settings.load_ini(ini)
         self.colorize_settings.load_ini(ini)
 
-    def save_ini(self, ini: IniHandler):
+    def save_ini(self, ini: Settings):
         self.identification_settings.save_ini(ini)
         self.salvage_settings.save_ini(ini)
         self.deposit_settings.save_ini(ini)
@@ -209,16 +210,16 @@ class InventoryPlusConfig:
     
 
 config_settings = InventoryPlusConfig()
-ini_handler = IniHandler(full_path)
+ini_handler = Settings("Widgets/Config/InventoryPlus.ini", "global")
 
-def ReadFromIni(ini: IniHandler):
+def ReadFromIni(ini: Settings):
     global config_settings
     config_settings.load_ini(ini)
     
     auto_handler.load_from_ini()
 
 
-def WriteToIni(ini: IniHandler):
+def WriteToIni(ini: Settings):
     global config_settings
     config_settings.save_ini(ini)
     auto_handler.save_to_ini()

@@ -6,10 +6,11 @@ import importlib.util
 import os
 import types
 import sys
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 module_name = "Widget Manager"
 ini_file_location = "Py4GW.ini"
-ini_handler = IniHandler(ini_file_location)
+ini_handler = Settings("Py4GW.ini", "global")
 
 class Widget:
     def __init__(self, name : str, module: ModuleType, widget_data: dict):
@@ -60,7 +61,7 @@ class Widget:
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{key}'")
     
     def save_widget_state(self):
-        ini_handler.write_key(self.name, "enabled", str(self.enabled))
+        ini_handler.set(self.name, "enabled", str(self.enabled))
 
 class WidgetHandler:
     _instance = None
@@ -102,14 +103,14 @@ class WidgetHandler:
         return self.__show_widget_ui
 
     def _load_widget_cache(self):
-        for section in ini_handler.list_sections():
+        for section in ini_handler.sections():
             if section in self.widget_data_cache:
                 continue
             
             self.widget_data_cache[section] = {
-                "category": ini_handler.read_key(section, "category", "Miscellaneous"),
-                "subcategory": ini_handler.read_key(section, "subcategory", "Others"),
-                "enabled": ini_handler.read_bool(section, "enabled", True),
+                "category": ini_handler.get_str(section, "category", "Miscellaneous"),
+                "subcategory": ini_handler.get_str(section, "subcategory", "Others"),
+                "enabled": ini_handler.get_bool(section, "enabled", True),
             }
 
     def _load_all_from_dir(self):
@@ -286,16 +287,16 @@ if "_Py4GW_GLOBAL_WIDGET_HANDLER" not in sys.modules:
     sys.modules["_Py4GW_GLOBAL_WIDGET_HANDLER"] = mod
 handler : WidgetHandler = sys.modules["_Py4GW_GLOBAL_WIDGET_HANDLER"].handler
 handler : WidgetHandler = sys.modules["_Py4GW_GLOBAL_WIDGET_HANDLER"].handler
-enable_all = ini_handler.read_bool(module_name, "enable_all", True)
+enable_all = ini_handler.get_bool(module_name, "enable_all", True)
 old_enable_all = enable_all
 
 window_module = ImGui_Legacy.WindowModule(module_name, window_name="Widgets", window_size=(130, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
 
-window_x = ini_handler.read_int(module_name, "x", 100)
-window_y = ini_handler.read_int(module_name, "y", 100)
+window_x = ini_handler.get_int(module_name, "x", 100)
+window_y = ini_handler.get_int(module_name, "y", 100)
 window_module.window_pos = (window_x, window_y)
 
-window_module.collapse = ini_handler.read_bool(module_name, "collapsed", True)
+window_module.collapse = ini_handler.get_bool(module_name, "collapsed", True)
 current_window_collapsed = window_module.collapse
 current_window_pos = window_module.window_pos
 
@@ -311,16 +312,16 @@ def write_ini():
     if window_module.window_pos != current_window_pos:
         x, y = map(int, current_window_pos)
         current_window_pos = window_module.window_pos = (x, y)
-        ini_handler.write_key(module_name, "x", str(x))
-        ini_handler.write_key(module_name, "y", str(y))
+        ini_handler.set(module_name, "x", str(x))
+        ini_handler.set(module_name, "y", str(y))
             
     if window_module.collapse != current_window_collapsed:
         current_window_collapsed = window_module.collapse
-        ini_handler.write_key(module_name, "collapsed", str(current_window_collapsed))
+        ini_handler.set(module_name, "collapsed", str(current_window_collapsed))
             
     if old_enable_all != enable_all:
         enable_all = old_enable_all
-        ini_handler.write_key(module_name, "enable_all", str(enable_all))
+        ini_handler.set(module_name, "enable_all", str(enable_all))
             
     write_timer.Reset()
 
@@ -339,7 +340,7 @@ def draw_widget_ui():
     new_enable_all = ImGui_Legacy.toggle_icon_button((IconsFontAwesome5.ICON_TOGGLE_ON if enable_all else IconsFontAwesome5.ICON_TOGGLE_OFF) + "##widget_disable", enable_all, 40)
     if new_enable_all != enable_all:
         enable_all = new_enable_all
-        ini_handler.write_key(module_name, "enable_all", str(enable_all))        
+        ini_handler.set(module_name, "enable_all", str(enable_all))        
     ImGui_Legacy.show_tooltip(f"{("Run" if not enable_all else "Pause")} all widgets")
     
     PyImGui.same_line(0, 5)

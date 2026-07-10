@@ -28,7 +28,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (TabIcon,
                                             XUNLAI_VAULT_FRAME_HASH
                             )         
 from Sources.ApoSource.InvPlus.Coroutines import IdentifyCheckedItems
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 class XunlaiModule:   
     def __init__(self, inventory_frame: Frame):
@@ -37,8 +37,8 @@ class XunlaiModule:
         self.show_transfer_buttons = True
         projects_path = PySystem.Console.get_projects_path()
         full_path = projects_path + "\\Widgets\\Config\\InventoryPlus.ini"
-        self.ini = IniHandler(full_path)
-        self.show_transfer_buttons = self.ini.read_bool("XunlaiOptions", "show_transfer_buttons", self.show_transfer_buttons)   
+        self.ini = Settings("Widgets/Config/InventoryPlus.ini", "account")
+        self.show_transfer_buttons = self.ini.get_bool("XunlaiOptions", "show_transfer_buttons", self.show_transfer_buttons)
 
     #region DrawXunlaiBottomStrip
     def draw_xunlai_bottom_strip(self):
@@ -67,7 +67,7 @@ class XunlaiModule:
             PyImGui.same_line(0,-1)
             PyImGui.text("|")
             PyImGui.same_line(0,-1)  
-            self.ini.write_key("XunlaiOptions", "show_transfer_buttons", self.show_transfer_buttons)
+            self.ini.set("XunlaiOptions", "show_transfer_buttons", self.show_transfer_buttons)
         PyImGui.end()
         PyImGui.pop_style_var(2)
         

@@ -2,7 +2,8 @@ import os
 import traceback
 
 import Py4GW
-from Py4GWCoreLib import PyImGui, IniHandler, Routines, Timer, Color, ImGui_Legacy
+from Py4GWCoreLib import PyImGui, Routines, Timer, Color, ImGui_Legacy
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from HeroAI.cache_data import CacheData
 
 from Sources.aC_Scripts.Titlehelper.titlehelper_main import TitleHelper, draw_title_helper_window
@@ -22,13 +23,13 @@ X_POS = "x"
 Y_POS = "y"
 
 # === Persistent Window State ===
-ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
+ini_window = Settings("Widgets/Config/titlehelper.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 first_run = True
-window_x = ini_window.read_int(MODULE_NAME, X_POS, 100)
-window_y = ini_window.read_int(MODULE_NAME, Y_POS, 100)
-window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, False)
+window_x = ini_window.get_int(MODULE_NAME, X_POS, 100)
+window_y = ini_window.get_int(MODULE_NAME, Y_POS, 100)
+window_collapsed = ini_window.get_bool(MODULE_NAME, COLLAPSED, False)
 
 # === TitleHelper State ===
 title_helper = TitleHelper()

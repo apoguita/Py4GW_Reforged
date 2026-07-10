@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyPing
 
 from collections import namedtuple
@@ -13,7 +14,7 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 root_directory = PySystem.Console.get_projects_path()
 INI_FILE_LOCATION = os.path.join(root_directory, "Widgets/Config/HeroHelper.ini")
 
-ini_handler = IniHandler(INI_FILE_LOCATION)
+ini_handler = Settings("Widgets/Config/HeroHelper.ini", "global")
 
 action_queue = ActionQueue()
 
@@ -93,28 +94,28 @@ class Config:
             "user_skill_input"
         ]
 
-        self.smart_follow_toggled = ini_handler.read_bool(MODULE_NAME, "smart_follow_toggled", False)
-        self.attack_toggled = ini_handler.read_bool(MODULE_NAME, "attack_toggled", False)
-        self.follow_delay = ini_handler.read_int(MODULE_NAME, "follow_delay", 800)
-        self.smart_bip_enabled = ini_handler.read_bool(MODULE_NAME, "smart_bip_enabled", False)
-        self.smart_sos_enabled = ini_handler.read_bool(MODULE_NAME, "smart_sos_enabled", False)
-        self.smart_st_enabled = ini_handler.read_bool(MODULE_NAME, "smart_st_enabled", False)
-        self.smart_honor_enabled = ini_handler.read_bool(MODULE_NAME, "smart_honor_enabled", False)
-        self.smart_life_bond_enabled = ini_handler.read_bool(MODULE_NAME, "smart_life_bond_enabled", False)
-        self.smart_splinter_enabled = ini_handler.read_bool(MODULE_NAME, "smart_splinter_enabled", False)
-        self.smart_xinrae_enabled = ini_handler.read_bool(MODULE_NAME, "smart_xinrae_enabled", False)
-        self.smart_vigorous_enabled = ini_handler.read_bool(MODULE_NAME, "smart_vigorous_enabled", False)
-        self.smart_dark_aura_enabled = ini_handler.read_bool(MODULE_NAME, "smart_dark_aura_enabled", False)
-        self.hero_behaviour = ini_handler.read_int(MODULE_NAME, "hero_behaviour", 0)
-        self.last_known_hero_behaviour = ini_handler.read_int(MODULE_NAME, "last_known_hero_behaviour", self.hero_behaviour)
-        self.smart_con_cleanse_toggled = ini_handler.read_bool(MODULE_NAME, "smart_con_cleanse_toggled", False)
-        self.smart_hex_cleanse_toggled = ini_handler.read_bool(MODULE_NAME, "smart_hex_cleanse_toggled", False)
-        self.smart_interrupt_toggled = ini_handler.read_bool(MODULE_NAME, "smart_interrupt_toggled", False)
-        self.smart_panic_enabled = ini_handler.read_bool(MODULE_NAME, "smart_panic_enabled", False)
-        self.smart_incoming_fallback_enabled = ini_handler.read_bool(MODULE_NAME, "smart_incoming_fallback_enabled", False)
+        self.smart_follow_toggled = ini_handler.get_bool(MODULE_NAME, "smart_follow_toggled", False)
+        self.attack_toggled = ini_handler.get_bool(MODULE_NAME, "attack_toggled", False)
+        self.follow_delay = ini_handler.get_int(MODULE_NAME, "follow_delay", 800)
+        self.smart_bip_enabled = ini_handler.get_bool(MODULE_NAME, "smart_bip_enabled", False)
+        self.smart_sos_enabled = ini_handler.get_bool(MODULE_NAME, "smart_sos_enabled", False)
+        self.smart_st_enabled = ini_handler.get_bool(MODULE_NAME, "smart_st_enabled", False)
+        self.smart_honor_enabled = ini_handler.get_bool(MODULE_NAME, "smart_honor_enabled", False)
+        self.smart_life_bond_enabled = ini_handler.get_bool(MODULE_NAME, "smart_life_bond_enabled", False)
+        self.smart_splinter_enabled = ini_handler.get_bool(MODULE_NAME, "smart_splinter_enabled", False)
+        self.smart_xinrae_enabled = ini_handler.get_bool(MODULE_NAME, "smart_xinrae_enabled", False)
+        self.smart_vigorous_enabled = ini_handler.get_bool(MODULE_NAME, "smart_vigorous_enabled", False)
+        self.smart_dark_aura_enabled = ini_handler.get_bool(MODULE_NAME, "smart_dark_aura_enabled", False)
+        self.hero_behaviour = ini_handler.get_int(MODULE_NAME, "hero_behaviour", 0)
+        self.last_known_hero_behaviour = ini_handler.get_int(MODULE_NAME, "last_known_hero_behaviour", self.hero_behaviour)
+        self.smart_con_cleanse_toggled = ini_handler.get_bool(MODULE_NAME, "smart_con_cleanse_toggled", False)
+        self.smart_hex_cleanse_toggled = ini_handler.get_bool(MODULE_NAME, "smart_hex_cleanse_toggled", False)
+        self.smart_interrupt_toggled = ini_handler.get_bool(MODULE_NAME, "smart_interrupt_toggled", False)
+        self.smart_panic_enabled = ini_handler.get_bool(MODULE_NAME, "smart_panic_enabled", False)
+        self.smart_incoming_fallback_enabled = ini_handler.get_bool(MODULE_NAME, "smart_incoming_fallback_enabled", False)
         
-        self.user_hex_input = ini_handler.read_key(MODULE_NAME, "user_hex_input", "")
-        self.user_skill_input = ini_handler.read_key(MODULE_NAME, "user_skill_input", "")
+        self.user_hex_input = ini_handler.get_str(MODULE_NAME, "user_hex_input", "")
+        self.user_skill_input = ini_handler.get_str(MODULE_NAME, "user_skill_input", "")
 
         self.hexes_melee = []
         self.hexes_caster = []
@@ -135,7 +136,7 @@ class Config:
             "Dazed", "Deep_Wound", "Disease", "Poison", "Weakness"
         ]:
             key = f"smart_cleanse_cond_{condition.lower()}"
-            value = ini_handler.read_key(MODULE_NAME, key, "false,false,false")
+            value = ini_handler.get_str(MODULE_NAME, key, "false,false,false")
             values = value.split(",")
 
             if len(values) != 3:
@@ -154,14 +155,14 @@ class Config:
         for condition, data in self.conditions.items():
             key = f"smart_cleanse_cond_{condition.lower()}"
             value = f"{data['melee']},{data['caster']},{data['both']}"
-            ini_handler.write_key(MODULE_NAME, key, value)
+            ini_handler.set(MODULE_NAME, key, value)
 
     def load_hexes(self):
-        self.hexes_melee = ini_handler.read_key(MODULE_NAME, "hexes_melee", "").replace(" ", "_").split(",") if ini_handler.read_key(MODULE_NAME, "hexes_melee", "") else []
-        self.hexes_caster = ini_handler.read_key(MODULE_NAME, "hexes_caster", "").replace(" ", "_").split(",") if ini_handler.read_key(MODULE_NAME, "hexes_caster", "") else []
-        self.hexes_all = ini_handler.read_key(MODULE_NAME, "hexes_all", "").replace(" ", "_").split(",") if ini_handler.read_key(MODULE_NAME, "hexes_all", "") else []
-        self.hexes_paragon = ini_handler.read_key(MODULE_NAME, "hexes_paragon", "").replace(" ", "_").split(",") if ini_handler.read_key(MODULE_NAME, "hexes_paragon", "") else []
-        self.hexes_user = ini_handler.read_key(MODULE_NAME, "hexes_user", "").replace(" ", "_").split(",") if ini_handler.read_key(MODULE_NAME, "hexes_user", "") else []
+        self.hexes_melee = ini_handler.get_str(MODULE_NAME, "hexes_melee", "").replace(" ", "_").split(",") if ini_handler.get_str(MODULE_NAME, "hexes_melee", "") else []
+        self.hexes_caster = ini_handler.get_str(MODULE_NAME, "hexes_caster", "").replace(" ", "_").split(",") if ini_handler.get_str(MODULE_NAME, "hexes_caster", "") else []
+        self.hexes_all = ini_handler.get_str(MODULE_NAME, "hexes_all", "").replace(" ", "_").split(",") if ini_handler.get_str(MODULE_NAME, "hexes_all", "") else []
+        self.hexes_paragon = ini_handler.get_str(MODULE_NAME, "hexes_paragon", "").replace(" ", "_").split(",") if ini_handler.get_str(MODULE_NAME, "hexes_paragon", "") else []
+        self.hexes_user = ini_handler.get_str(MODULE_NAME, "hexes_user", "").replace(" ", "_").split(",") if ini_handler.get_str(MODULE_NAME, "hexes_user", "") else []
 
         self.hexes_melee = [h for h in self.hexes_melee if h]
         self.hexes_caster = [h for h in self.hexes_caster if h]
@@ -172,14 +173,14 @@ class Config:
         return {}
 
     def save_hexes(self):
-        ini_handler.write_key(MODULE_NAME, "hexes_melee", ",".join(self.hexes_melee))
-        ini_handler.write_key(MODULE_NAME, "hexes_caster", ",".join(self.hexes_caster))
-        ini_handler.write_key(MODULE_NAME, "hexes_all", ",".join(self.hexes_all))
-        ini_handler.write_key(MODULE_NAME, "hexes_paragon", ",".join(self.hexes_paragon))
-        ini_handler.write_key(MODULE_NAME, "hexes_user", ",".join(self.hexes_user))
+        ini_handler.set(MODULE_NAME, "hexes_melee", ",".join(self.hexes_melee))
+        ini_handler.set(MODULE_NAME, "hexes_caster", ",".join(self.hexes_caster))
+        ini_handler.set(MODULE_NAME, "hexes_all", ",".join(self.hexes_all))
+        ini_handler.set(MODULE_NAME, "hexes_paragon", ",".join(self.hexes_paragon))
+        ini_handler.set(MODULE_NAME, "hexes_user", ",".join(self.hexes_user))
 
     def load_skills_to_rupt(self):
-        saved_skills = ini_handler.read_key(MODULE_NAME, "skills_to_rupt", "")
+        saved_skills = ini_handler.get_str(MODULE_NAME, "skills_to_rupt", "")
         return saved_skills.split(",") if saved_skills else [
             "Panic",
             "Energy_Surge",
@@ -191,14 +192,14 @@ class Config:
         ]
 
     def save_skills_to_rupt(self):
-            ini_handler.write_key(MODULE_NAME, "skills_to_rupt", ",".join(self.skills_to_rupt))
+            ini_handler.set(MODULE_NAME, "skills_to_rupt", ",".join(self.skills_to_rupt))
 
     def save(self):
             for key in self.tracked_keys:
                 value = getattr(self, key)
 
                 if isinstance(value, bool):
-                    ini_handler.write_key(MODULE_NAME, key, "true" if value else "false")
+                    ini_handler.set(MODULE_NAME, key, "true" if value else "false")
                 elif key == "conditions":
                     self.save_conditions()
                 elif key == "hexes":
@@ -206,7 +207,7 @@ class Config:
                 elif key == "skills_to_rupt":
                     self.save_skills_to_rupt()
                 else:
-                    ini_handler.write_key(MODULE_NAME, key, str(value))
+                    ini_handler.set(MODULE_NAME, key, str(value))
 
                 self._cache[key] = value
 

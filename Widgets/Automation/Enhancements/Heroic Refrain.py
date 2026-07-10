@@ -1,4 +1,5 @@
-from Py4GWCoreLib import PyImGui, GLOBAL_CACHE, IniHandler, Timer, ThrottledTimer
+from Py4GWCoreLib import PyImGui, GLOBAL_CACHE, Timer, ThrottledTimer
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from HeroAI.cache_data import CacheData
 from HeroAI.constants import MAX_NUM_PLAYERS
 
@@ -31,7 +32,7 @@ player_data_cache = {}
 player_data_timer = ThrottledTimer(500)
 
 # â”€â”€â”€ Import the game's API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-from Py4GWCoreLib import Player, Party, PyImGui, IniHandler, Timer
+from Py4GWCoreLib import Player, Party, PyImGui, Timer
 
 # â”€â”€â”€ Make sure "heroic_refrain" is on the import path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -41,7 +42,7 @@ if project_root not in sys.path:
 
 # â”€â”€â”€ Window Persistence Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_SECTION = "Heroic Refrain"
-ini_window = IniHandler(os.path.join(project_root, "Widgets", "Config", "Heroic_Refrain_window.ini"))
+ini_window = Settings("Widgets/Config/Heroic_Refrain_window.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
@@ -75,14 +76,14 @@ AUTO_RUN_ALL   = cfg.getboolean("HeroicRefrain","AutoRunAll",  fallback=True)
 
 # â”€â”€â”€ Window Persistence Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 WINDOW_SECTION = "Heroic Refrain"
-ini_window = IniHandler(os.path.join(project_root, "Widgets", "Config", "Heroic_Refrain_window.ini"))
+ini_window = Settings("Widgets/Config/Heroic_Refrain_window.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
 # load last-saved window state (fallbacks)
-win_x = ini_window.read_int(WINDOW_SECTION, "x", 100)
-win_y = ini_window.read_int(WINDOW_SECTION, "y", 100)
-win_collapsed = ini_window.read_bool(WINDOW_SECTION, "collapsed", False)
+win_x = ini_window.get_int(WINDOW_SECTION, "x", 100)
+win_y = ini_window.get_int(WINDOW_SECTION, "y", 100)
+win_collapsed = ini_window.get_bool(WINDOW_SECTION, "collapsed", False)
 first_run_window = True
 slot_number = 0
 

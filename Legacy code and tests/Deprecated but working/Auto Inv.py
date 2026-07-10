@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Auto Inv"
 
@@ -9,7 +10,7 @@ class WidgetOptions():
         self.name = MODULE_NAME
         self._LOOKUP_TIME:int = 15000
         self.lookup_throttle = ThrottledTimer(self._LOOKUP_TIME)
-        self.ini = IniHandler("Auto Inv.ini")
+        self.ini = Settings("Auto Inv.ini", "global")
         self.initialized = False
         self.status = "Idle"
         self.outpost_handled = False
@@ -42,58 +43,58 @@ class WidgetOptions():
         
         
     def save_to_ini(self, section: str = "WidgetOptions"):
-        self.ini.write_key(section, "lookup_time", str(self._LOOKUP_TIME))
-        self.ini.write_key(section, "id_whites", str(self.id_whites))
-        self.ini.write_key(section, "id_blues", str(self.id_blues))
-        self.ini.write_key(section, "id_purples", str(self.id_purples))
-        self.ini.write_key(section, "id_golds", str(self.id_golds))
-        self.ini.write_key(section, "id_greens", str(self.id_greens))
+        self.ini.set(section, "lookup_time", str(self._LOOKUP_TIME))
+        self.ini.set(section, "id_whites", str(self.id_whites))
+        self.ini.set(section, "id_blues", str(self.id_blues))
+        self.ini.set(section, "id_purples", str(self.id_purples))
+        self.ini.set(section, "id_golds", str(self.id_golds))
+        self.ini.set(section, "id_greens", str(self.id_greens))
 
-        self.ini.write_key(section, "salvage_whites", str(self.salvage_whites))
-        self.ini.write_key(section, "salvage_rare_materials", str(self.salvage_rare_materials))
-        self.ini.write_key(section, "salvage_blues", str(self.salvage_blues))
-        self.ini.write_key(section, "salvage_purples", str(self.salvage_purples))
-        self.ini.write_key(section, "salvage_golds", str(self.salvage_golds))
+        self.ini.set(section, "salvage_whites", str(self.salvage_whites))
+        self.ini.set(section, "salvage_rare_materials", str(self.salvage_rare_materials))
+        self.ini.set(section, "salvage_blues", str(self.salvage_blues))
+        self.ini.set(section, "salvage_purples", str(self.salvage_purples))
+        self.ini.set(section, "salvage_golds", str(self.salvage_golds))
 
-        self.ini.write_key(section, "salvage_blacklist", ",".join(str(i) for i in sorted(set(self.salvage_blacklist))))
+        self.ini.set(section, "salvage_blacklist", ",".join(str(i) for i in sorted(set(self.salvage_blacklist))))
 
-        self.ini.write_key(section, "deposit_trophies", str(self.deposit_trophies))
-        self.ini.write_key(section, "deposit_materials", str(self.deposit_materials))
-        self.ini.write_key(section, "deposit_blues", str(self.deposit_blues))
-        self.ini.write_key(section, "deposit_purples", str(self.deposit_purples))
-        self.ini.write_key(section, "deposit_golds", str(self.deposit_golds))
-        self.ini.write_key(section, "deposit_greens", str(self.deposit_greens))
-        self.ini.write_key(section, "keep_gold", str(self.keep_gold))
+        self.ini.set(section, "deposit_trophies", str(self.deposit_trophies))
+        self.ini.set(section, "deposit_materials", str(self.deposit_materials))
+        self.ini.set(section, "deposit_blues", str(self.deposit_blues))
+        self.ini.set(section, "deposit_purples", str(self.deposit_purples))
+        self.ini.set(section, "deposit_golds", str(self.deposit_golds))
+        self.ini.set(section, "deposit_greens", str(self.deposit_greens))
+        self.ini.set(section, "keep_gold", str(self.keep_gold))
 
 
-    def load_from_ini(self, ini: IniHandler, section: str = "WidgetOptions"):
-        self._LOOKUP_TIME = ini.read_int(section, "lookup_time", self._LOOKUP_TIME)
+    def load_from_ini(self, ini: Settings, section: str = "WidgetOptions"):
+        self._LOOKUP_TIME = ini.get_int(section, "lookup_time", self._LOOKUP_TIME)
         self.lookup_throttle = ThrottledTimer(self._LOOKUP_TIME)
 
-        self.id_whites = ini.read_bool(section, "id_whites", self.id_whites)
-        self.id_blues = ini.read_bool(section, "id_blues", self.id_blues)
-        self.id_purples = ini.read_bool(section, "id_purples", self.id_purples)
-        self.id_golds = ini.read_bool(section, "id_golds", self.id_golds)
-        self.id_greens = ini.read_bool(section, "id_greens", self.id_greens)
+        self.id_whites = ini.get_bool(section, "id_whites", self.id_whites)
+        self.id_blues = ini.get_bool(section, "id_blues", self.id_blues)
+        self.id_purples = ini.get_bool(section, "id_purples", self.id_purples)
+        self.id_golds = ini.get_bool(section, "id_golds", self.id_golds)
+        self.id_greens = ini.get_bool(section, "id_greens", self.id_greens)
 
-        self.salvage_whites = ini.read_bool(section, "salvage_whites", self.salvage_whites)
-        self.salvage_rare_materials = ini.read_bool(section, "salvage_rare_materials", self.salvage_rare_materials)
-        self.salvage_blues = ini.read_bool(section, "salvage_blues", self.salvage_blues)
-        self.salvage_purples = ini.read_bool(section, "salvage_purples", self.salvage_purples)
-        self.salvage_golds = ini.read_bool(section, "salvage_golds", self.salvage_golds)
+        self.salvage_whites = ini.get_bool(section, "salvage_whites", self.salvage_whites)
+        self.salvage_rare_materials = ini.get_bool(section, "salvage_rare_materials", self.salvage_rare_materials)
+        self.salvage_blues = ini.get_bool(section, "salvage_blues", self.salvage_blues)
+        self.salvage_purples = ini.get_bool(section, "salvage_purples", self.salvage_purples)
+        self.salvage_golds = ini.get_bool(section, "salvage_golds", self.salvage_golds)
 
-        blacklist_str = ini.read_key(section, "salvage_blacklist", "")
+        blacklist_str = ini.get_str(section, "salvage_blacklist", "")
         self.salvage_blacklist = [int(x) for x in blacklist_str.split(",") if x.strip().isdigit()]
 
 
-        self.deposit_trophies = ini.read_bool(section, "deposit_trophies", self.deposit_trophies)
-        self.deposit_materials = ini.read_bool(section, "deposit_materials", self.deposit_materials)
-        self.deposit_blues = ini.read_bool(section, "deposit_blues", self.deposit_blues)
-        self.deposit_purples = ini.read_bool(section, "deposit_purples", self.deposit_purples)
-        self.deposit_golds = ini.read_bool(section, "deposit_golds", self.deposit_golds)
-        self.deposit_greens = ini.read_bool(section, "deposit_greens", self.deposit_greens)
+        self.deposit_trophies = ini.get_bool(section, "deposit_trophies", self.deposit_trophies)
+        self.deposit_materials = ini.get_bool(section, "deposit_materials", self.deposit_materials)
+        self.deposit_blues = ini.get_bool(section, "deposit_blues", self.deposit_blues)
+        self.deposit_purples = ini.get_bool(section, "deposit_purples", self.deposit_purples)
+        self.deposit_golds = ini.get_bool(section, "deposit_golds", self.deposit_golds)
+        self.deposit_greens = ini.get_bool(section, "deposit_greens", self.deposit_greens)
 
-        self.keep_gold = ini.read_int(section, "keep_gold", self.keep_gold)
+        self.keep_gold = ini.get_int(section, "keep_gold", self.keep_gold)
 
 
 

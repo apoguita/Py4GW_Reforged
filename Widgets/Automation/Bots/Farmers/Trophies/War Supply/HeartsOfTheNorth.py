@@ -9,6 +9,7 @@ from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, Mode
                           Map, ImGui_Legacy, ActionQueueManager, Agent, Player, AgentArray,
                           Pathing, TitleID, TITLE_TIERS)
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Hearts of the North - Keiran Missons (War Supplies)"
 MODULE_ICON = "Textures\\Module_Icons\\Keiran Farm.png"
@@ -106,7 +107,7 @@ class BotSettings:
 
 # Module-level UI state (not persisted)
 _reset_confirm:               bool            = False
-_settings_ini:                IniHandler|None = None
+_settings_ini:                Settings|None = None
 _settings_ini_account_email:  str             = ""
 _save_requested:              bool            = False
 
@@ -675,7 +676,7 @@ def _handle_war_supplies(bot: Botting, value: bool):
 
 
 def _ensure_ini_initialized() -> bool:
-    """Lazy-initialize the per-account IniHandler using the account email as the directory.
+    """Lazy-initialize the per-account Settings using the account email as the directory.
     Returns True once the handler is ready."""
     global _settings_ini, _settings_ini_account_email
     import os as _os
@@ -693,37 +694,37 @@ def _ensure_ini_initialized() -> bool:
     config_dir = _os.path.join(base_path, "Widgets", "Config", "Accounts", account_email)
     _os.makedirs(config_dir, exist_ok=True)
     ini_path = _os.path.join(config_dir, f"{bot.config.bot_name}.ini")
-    _settings_ini = IniHandler(ini_path)
+    _settings_ini = Settings(f"Widgets/Config/Accounts/{account_email}/{bot.config.bot_name}.ini", "global")
     _settings_ini_account_email = account_email
 
     # â”€â”€ Load persisted settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _S = "Settings"
-    BotSettings.GOLD_THRESHOLD_DEPOSIT = _settings_ini.read_int( _S, "gold_threshold", BotSettings.GOLD_THRESHOLD_DEPOSIT)
-    BotSettings.CUSTOM_BOW_ID          = _settings_ini.read_int( _S, "custom_bow_id",  BotSettings.CUSTOM_BOW_ID)
-    BotSettings.WAR_SUPPLIES_ENABLED   = _settings_ini.read_bool(_S, "war_supplies",   BotSettings.WAR_SUPPLIES_ENABLED)
-    BotSettings.DEBUG                  = _settings_ini.read_bool(_S, "debug",          BotSettings.DEBUG)
-    BotSettings.SHOW_HELP              = _settings_ini.read_bool(_S, "show_help",      BotSettings.SHOW_HELP)
+    BotSettings.GOLD_THRESHOLD_DEPOSIT = _settings_ini.get_int( _S, "gold_threshold", BotSettings.GOLD_THRESHOLD_DEPOSIT)
+    BotSettings.CUSTOM_BOW_ID          = _settings_ini.get_int( _S, "custom_bow_id",  BotSettings.CUSTOM_BOW_ID)
+    BotSettings.WAR_SUPPLIES_ENABLED   = _settings_ini.get_bool(_S, "war_supplies",   BotSettings.WAR_SUPPLIES_ENABLED)
+    BotSettings.DEBUG                  = _settings_ini.get_bool(_S, "debug",          BotSettings.DEBUG)
+    BotSettings.SHOW_HELP              = _settings_ini.get_bool(_S, "show_help",      BotSettings.SHOW_HELP)
 
     # â”€â”€ Load persisted statistics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _SS = "Statistics"
-    BotSettings.TOTAL_RUNS      = _settings_ini.read_int(  _SS, "total_runs",      0)
-    BotSettings.SUCCESSFUL_RUNS = _settings_ini.read_int(  _SS, "successful_runs", 0)
-    BotSettings.FAILED_RUNS     = _settings_ini.read_int(  _SS, "failed_runs",     0)
-    BotSettings.ECTOS_BOUGHT    = _settings_ini.read_int(  _SS, "ectos_bought",    0)
-    BotSettings.TOTAL_RUN_TIME  = _settings_ini.read_float(_SS, "total_run_time",  0.0)
-    _fastest = _settings_ini.read_float(_SS, "fastest_run", 0.0)
+    BotSettings.TOTAL_RUNS      = _settings_ini.get_int(  _SS, "total_runs",      0)
+    BotSettings.SUCCESSFUL_RUNS = _settings_ini.get_int(  _SS, "successful_runs", 0)
+    BotSettings.FAILED_RUNS     = _settings_ini.get_int(  _SS, "failed_runs",     0)
+    BotSettings.ECTOS_BOUGHT    = _settings_ini.get_int(  _SS, "ectos_bought",    0)
+    BotSettings.TOTAL_RUN_TIME  = _settings_ini.get_float(_SS, "total_run_time",  0.0)
+    _fastest = _settings_ini.get_float(_SS, "fastest_run", 0.0)
     BotSettings.FASTEST_RUN     = float('inf') if _fastest == 0.0 else _fastest
-    BotSettings.SLOWEST_RUN     = _settings_ini.read_float(_SS, "slowest_run",     0.0)
+    BotSettings.SLOWEST_RUN     = _settings_ini.get_float(_SS, "slowest_run",     0.0)
     for _name, _ms in BotSettings.MISSION_STATS.items():
         _p = _MISSION_INI_PREFIX.get(_name, "")
         if not _p:
             continue
-        _ms.successful_runs = _settings_ini.read_int(  _SS, f"{_p}_successful_runs", 0)
-        _ms.failed_runs     = _settings_ini.read_int(  _SS, f"{_p}_failed_runs",     0)
-        _ms.total_run_time  = _settings_ini.read_float(_SS, f"{_p}_total_run_time",  0.0)
-        _f2 = _settings_ini.read_float(_SS, f"{_p}_fastest_run", 0.0)
+        _ms.successful_runs = _settings_ini.get_int(  _SS, f"{_p}_successful_runs", 0)
+        _ms.failed_runs     = _settings_ini.get_int(  _SS, f"{_p}_failed_runs",     0)
+        _ms.total_run_time  = _settings_ini.get_float(_SS, f"{_p}_total_run_time",  0.0)
+        _f2 = _settings_ini.get_float(_SS, f"{_p}_fastest_run", 0.0)
         _ms.fastest_run     = float('inf') if _f2 == 0.0 else _f2
-        _ms.slowest_run     = _settings_ini.read_float(_SS, f"{_p}_slowest_run",     0.0)
+        _ms.slowest_run     = _settings_ini.get_float(_SS, f"{_p}_slowest_run",     0.0)
 
     _update_vanguard_cache()
     return True
@@ -736,31 +737,31 @@ def _write_settings() -> None:
         return
 
     _S  = "Settings"
-    _settings_ini.write_key(_S, "gold_threshold", str(BotSettings.GOLD_THRESHOLD_DEPOSIT))
-    _settings_ini.write_key(_S, "custom_bow_id",  str(BotSettings.CUSTOM_BOW_ID))
-    _settings_ini.write_key(_S, "war_supplies",   str(BotSettings.WAR_SUPPLIES_ENABLED))
-    _settings_ini.write_key(_S, "debug",          str(BotSettings.DEBUG))
-    _settings_ini.write_key(_S, "show_help",      str(BotSettings.SHOW_HELP))
+    _settings_ini.set(_S, "gold_threshold", str(BotSettings.GOLD_THRESHOLD_DEPOSIT))
+    _settings_ini.set(_S, "custom_bow_id",  str(BotSettings.CUSTOM_BOW_ID))
+    _settings_ini.set(_S, "war_supplies",   str(BotSettings.WAR_SUPPLIES_ENABLED))
+    _settings_ini.set(_S, "debug",          str(BotSettings.DEBUG))
+    _settings_ini.set(_S, "show_help",      str(BotSettings.SHOW_HELP))
 
     _SS = "Statistics"
-    _settings_ini.write_key(_SS, "total_runs",      str(BotSettings.TOTAL_RUNS))
-    _settings_ini.write_key(_SS, "successful_runs", str(BotSettings.SUCCESSFUL_RUNS))
-    _settings_ini.write_key(_SS, "failed_runs",     str(BotSettings.FAILED_RUNS))
-    _settings_ini.write_key(_SS, "ectos_bought",    str(BotSettings.ECTOS_BOUGHT))
-    _settings_ini.write_key(_SS, "total_run_time",  str(BotSettings.TOTAL_RUN_TIME))
+    _settings_ini.set(_SS, "total_runs",      str(BotSettings.TOTAL_RUNS))
+    _settings_ini.set(_SS, "successful_runs", str(BotSettings.SUCCESSFUL_RUNS))
+    _settings_ini.set(_SS, "failed_runs",     str(BotSettings.FAILED_RUNS))
+    _settings_ini.set(_SS, "ectos_bought",    str(BotSettings.ECTOS_BOUGHT))
+    _settings_ini.set(_SS, "total_run_time",  str(BotSettings.TOTAL_RUN_TIME))
     _fastest = 0.0 if BotSettings.FASTEST_RUN == float('inf') else BotSettings.FASTEST_RUN
-    _settings_ini.write_key(_SS, "fastest_run",     str(_fastest))
-    _settings_ini.write_key(_SS, "slowest_run",     str(BotSettings.SLOWEST_RUN))
+    _settings_ini.set(_SS, "fastest_run",     str(_fastest))
+    _settings_ini.set(_SS, "slowest_run",     str(BotSettings.SLOWEST_RUN))
     for name, ms in BotSettings.MISSION_STATS.items():
         p = _MISSION_INI_PREFIX.get(name, "")
         if not p:
             continue
-        _settings_ini.write_key(_SS, f"{p}_successful_runs", str(ms.successful_runs))
-        _settings_ini.write_key(_SS, f"{p}_failed_runs",     str(ms.failed_runs))
-        _settings_ini.write_key(_SS, f"{p}_total_run_time",  str(ms.total_run_time))
+        _settings_ini.set(_SS, f"{p}_successful_runs", str(ms.successful_runs))
+        _settings_ini.set(_SS, f"{p}_failed_runs",     str(ms.failed_runs))
+        _settings_ini.set(_SS, f"{p}_total_run_time",  str(ms.total_run_time))
         _f = 0.0 if ms.fastest_run == float('inf') else ms.fastest_run
-        _settings_ini.write_key(_SS, f"{p}_fastest_run",     str(_f))
-        _settings_ini.write_key(_SS, f"{p}_slowest_run",     str(ms.slowest_run))
+        _settings_ini.set(_SS, f"{p}_fastest_run",     str(_f))
+        _settings_ini.set(_SS, f"{p}_slowest_run",     str(ms.slowest_run))
 
     _save_requested = False
 

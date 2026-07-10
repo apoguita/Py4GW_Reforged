@@ -12,7 +12,7 @@ from Py4GWCoreLib import Color
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import DyeColor
 from Py4GWCoreLib import ImGui_Legacy
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import ThrottledTimer
@@ -40,7 +40,7 @@ MOD_DB = ModDatabase.load(os.path.join(project_root, "Sources/marks_sources/mods
 os.makedirs(BASE_DIR, exist_ok=True)
 
 # â€”â€”â€” Window Persistence Setup â€”â€”â€”
-ini_window = IniHandler(INI_WIDGET_WINDOW_PATH)
+ini_window = Settings("Widgets/Config/team_inventory_viewer.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 inventory_write_timer = ThrottledTimer(3000)
@@ -55,9 +55,9 @@ X_POS = "x"
 Y_POS = "y"
 
 # load lastâ€saved window state (fallback to 100,100 / un-collapsed)
-window_x = ini_window.read_int(MODULE_NAME, X_POS, 1512)
-window_y = ini_window.read_int(MODULE_NAME, Y_POS, 0)
-window_collapsed = ini_window.read_bool(MODULE_NAME, COLLAPSED, True)
+window_x = ini_window.get_int(MODULE_NAME, X_POS, 1512)
+window_y = ini_window.get_int(MODULE_NAME, Y_POS, 0)
+window_collapsed = ini_window.get_bool(MODULE_NAME, COLLAPSED, True)
 
 # View data
 first_run = True

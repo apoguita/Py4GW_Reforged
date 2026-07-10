@@ -20,7 +20,7 @@ from Py4GWCoreLib import Utils, ImGui_Legacy, Color, ColorPalette
 from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import AutoPathing
-from Py4GWCoreLib import IniHandler
+from Widgets.Automation.Helpers.Pycons import IniHandler
 from Py4GWCoreLib.GlobalCache.WhiteboardLocks import post_loot_lock, clear_loot_lock
 from Py4GWCoreLib.Py4GWcorelib import Keystroke
 from Py4GWCoreLib.Quest import Quest

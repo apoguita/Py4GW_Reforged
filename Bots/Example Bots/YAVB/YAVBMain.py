@@ -8,7 +8,7 @@ from Py4GWCoreLib import ThrottledTimer
 from Py4GWCoreLib import PyImGui, ImGui_Legacy, Color
 from Py4GWCoreLib import FSM
 from Py4GWCoreLib import AutoInventoryHandler
-from Py4GWCoreLib import IniHandler
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import Agent, Player
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib.Builds.CombatAutomatorExcluded.ShadowFormAssassinVaettir import ShadowFormAssassinVaettir
@@ -119,7 +119,7 @@ class YAVB:
         self.in_killing_routine = False
         self.finished_routine = False
         self.in_waiting_routine = False
-        self.ini_handler = IniHandler(self.ini_file)
+        self.ini_handler = Settings("Bots/Example Bots/YAVB/Config/YAVB.ini", "global")
         
         #statistics
         self.run_to_jaga_stats = RunStatistics()
@@ -195,39 +195,39 @@ class YAVB:
         ih = self.ini_handler
 
         # Main Window
-        ih.write_key("MainWindow", "pos_x", self.main_window_pos[0])
-        ih.write_key("MainWindow", "pos_y", self.main_window_pos[1])
-        ih.write_key("MainWindow", "size_x", self.main_window_size[0])
-        ih.write_key("MainWindow", "size_y", self.main_window_size[1])
+        ih.set("MainWindow", "pos_x", self.main_window_pos[0])
+        ih.set("MainWindow", "pos_y", self.main_window_pos[1])
+        ih.set("MainWindow", "size_x", self.main_window_size[0])
+        ih.set("MainWindow", "size_y", self.main_window_size[1])
 
         # Option Window
-        ih.write_key("OptionWindow", "pos_x", self.option_window_pos[0])
-        ih.write_key("OptionWindow", "pos_y", self.option_window_pos[1])
-        ih.write_key("OptionWindow", "size_x", self.option_window_size[0])
-        ih.write_key("OptionWindow", "size_y", self.option_window_size[1])
-        ih.write_key("OptionWindow", "visible", self.option_window_visible)
-        ih.write_key("OptionWindow", "snapped", self.option_window_snapped)
-        ih.write_key("OptionWindow", "snapped_border", self.option_window_snapped_border)
+        ih.set("OptionWindow", "pos_x", self.option_window_pos[0])
+        ih.set("OptionWindow", "pos_y", self.option_window_pos[1])
+        ih.set("OptionWindow", "size_x", self.option_window_size[0])
+        ih.set("OptionWindow", "size_y", self.option_window_size[1])
+        ih.set("OptionWindow", "visible", self.option_window_visible)
+        ih.set("OptionWindow", "snapped", self.option_window_snapped)
+        ih.set("OptionWindow", "snapped_border", self.option_window_snapped_border)
 
         # Console
-        ih.write_key("Console", "pos_x", self.console_pos[0])
-        ih.write_key("Console", "pos_y", self.console_pos[1])
-        ih.write_key("Console", "size_x", self.console_size[0])
-        ih.write_key("Console", "size_y", self.console_size[1])
-        ih.write_key("Console", "visible", self.console_visible)
-        ih.write_key("Console", "snapped", self.console_snapped)
-        ih.write_key("Console", "snapped_border", self.console_snapped_border)
-        ih.write_key("Console", "log_to_file", self.console_log_to_file)
-        ih.write_key("Console", "detailed_logging", self.detailed_logging)
+        ih.set("Console", "pos_x", self.console_pos[0])
+        ih.set("Console", "pos_y", self.console_pos[1])
+        ih.set("Console", "size_x", self.console_size[0])
+        ih.set("Console", "size_y", self.console_size[1])
+        ih.set("Console", "visible", self.console_visible)
+        ih.set("Console", "snapped", self.console_snapped)
+        ih.set("Console", "snapped_border", self.console_snapped_border)
+        ih.set("Console", "log_to_file", self.console_log_to_file)
+        ih.set("Console", "detailed_logging", self.detailed_logging)
 
         #Merchant
-        ih.write_key("Merchant", "identification_kits_restock", self.identification_kits_restock)
-        ih.write_key("Merchant", "salvage_kits_restock", self.salvage_kits_restock)
-        ih.write_key("Merchant", "keep_empty_inventory_slots", self.keep_empty_inventory_slots)
+        ih.set("Merchant", "identification_kits_restock", self.identification_kits_restock)
+        ih.set("Merchant", "salvage_kits_restock", self.salvage_kits_restock)
+        ih.set("Merchant", "keep_empty_inventory_slots", self.keep_empty_inventory_slots)
         
-        ih.write_key("BotConfigs", "use_cupcakes", self.use_cupcakes)
-        ih.write_key("BotConfigs", "use_pumpkin_cookies", self.use_pumpkin_cookies)
-        ih.write_key("BotConfigs", "pumpkin_cookies_restock", self.pumpkin_cookies_restock)
+        ih.set("BotConfigs", "use_cupcakes", self.use_cupcakes)
+        ih.set("BotConfigs", "use_pumpkin_cookies", self.use_pumpkin_cookies)
+        ih.set("BotConfigs", "pumpkin_cookies_restock", self.pumpkin_cookies_restock)
 
 
 
@@ -238,59 +238,59 @@ class YAVB:
 
         # Main Window
         self.main_window_pos = (
-            ih.read_float("MainWindow", "pos_x", self.main_window_pos[0]),
-            ih.read_float("MainWindow", "pos_y", self.main_window_pos[1]),
+            ih.get_float("MainWindow", "pos_x", self.main_window_pos[0]),
+            ih.get_float("MainWindow", "pos_y", self.main_window_pos[1]),
         )
         self.main_window_size = (
-            ih.read_float("MainWindow", "size_x", self.main_window_size[0]),
-            ih.read_float("MainWindow", "size_y", self.main_window_size[1]),
+            ih.get_float("MainWindow", "size_x", self.main_window_size[0]),
+            ih.get_float("MainWindow", "size_y", self.main_window_size[1]),
         )
 
         # Option Window
         self.option_window_pos = (
-            ih.read_float("OptionWindow", "pos_x", self.option_window_pos[0]),
-            ih.read_float("OptionWindow", "pos_y", self.option_window_pos[1]),
+            ih.get_float("OptionWindow", "pos_x", self.option_window_pos[0]),
+            ih.get_float("OptionWindow", "pos_y", self.option_window_pos[1]),
         )
         self.option_window_size = (
-            ih.read_float("OptionWindow", "size_x", self.option_window_size[0]),
-            ih.read_float("OptionWindow", "size_y", self.option_window_size[1]),
+            ih.get_float("OptionWindow", "size_x", self.option_window_size[0]),
+            ih.get_float("OptionWindow", "size_y", self.option_window_size[1]),
         )
-        self.option_window_visible = ih.read_bool("OptionWindow", "visible", self.option_window_visible)
-        self.option_window_snapped = ih.read_bool("OptionWindow", "snapped", self.option_window_snapped)
-        self.option_window_snapped_border = ih.read_key("OptionWindow", "snapped_border", self.option_window_snapped_border)
+        self.option_window_visible = ih.get_bool("OptionWindow", "visible", self.option_window_visible)
+        self.option_window_snapped = ih.get_bool("OptionWindow", "snapped", self.option_window_snapped)
+        self.option_window_snapped_border = ih.get_str("OptionWindow", "snapped_border", self.option_window_snapped_border)
 
         # Console
         self.console_pos = (
-            ih.read_float("Console", "pos_x", self.console_pos[0]),
-            ih.read_float("Console", "pos_y", self.console_pos[1]),
+            ih.get_float("Console", "pos_x", self.console_pos[0]),
+            ih.get_float("Console", "pos_y", self.console_pos[1]),
         )
         self.console_size = (
-            ih.read_float("Console", "size_x", self.console_size[0]),
-            ih.read_float("Console", "size_y", self.console_size[1]),
+            ih.get_float("Console", "size_x", self.console_size[0]),
+            ih.get_float("Console", "size_y", self.console_size[1]),
         )
-        self.console_visible = ih.read_bool("Console", "visible", self.console_visible)
-        self.console_snapped = ih.read_bool("Console", "snapped", self.console_snapped)
-        self.console_snapped_border = ih.read_key("Console", "snapped_border", self.console_snapped_border)
-        self.console_log_to_file = ih.read_bool("Console", "log_to_file", self.console_log_to_file)
-        self.detailed_logging = ih.read_bool("Console", "detailed_logging", self.detailed_logging)
+        self.console_visible = ih.get_bool("Console", "visible", self.console_visible)
+        self.console_snapped = ih.get_bool("Console", "snapped", self.console_snapped)
+        self.console_snapped_border = ih.get_str("Console", "snapped_border", self.console_snapped_border)
+        self.console_log_to_file = ih.get_bool("Console", "log_to_file", self.console_log_to_file)
+        self.detailed_logging = ih.get_bool("Console", "detailed_logging", self.detailed_logging)
         
         if self.detailed_logging:
             self.LogMessage("Detailed logging", "ENABLED", LogConsole.LogSeverity.INFO)
         
         #Merchant
-        self.identification_kits_restock = ih.read_int("Merchant", "identification_kits_restock", self.identification_kits_restock)
-        self.salvage_kits_restock = ih.read_int("Merchant", "salvage_kits_restock", self.salvage_kits_restock)
-        self.keep_empty_inventory_slots = ih.read_int("Merchant", "keep_empty_inventory_slots", self.keep_empty_inventory_slots)
+        self.identification_kits_restock = ih.get_int("Merchant", "identification_kits_restock", self.identification_kits_restock)
+        self.salvage_kits_restock = ih.get_int("Merchant", "salvage_kits_restock", self.salvage_kits_restock)
+        self.keep_empty_inventory_slots = ih.get_int("Merchant", "keep_empty_inventory_slots", self.keep_empty_inventory_slots)
         
         self.supported_professions = {
-                k: v for k, v in ih.list_keys("SupportedProfessions").items()
+                k: v for k, v in ih.items("SupportedProfessions").items()
                 if k.isdigit()
             }
         
         #Bot configs
-        self.use_cupcakes = ih.read_bool("BotConfigs", "use_cupcakes", self.use_cupcakes)
-        self.use_pumpkin_cookies = ih.read_bool("BotConfigs", "use_pumpkin_cookies", self.use_pumpkin_cookies)
-        self.pumpkin_cookies_restock = ih.read_int("BotConfigs", "pumpkin_cookies_restock", self.pumpkin_cookies_restock)
+        self.use_cupcakes = ih.get_bool("BotConfigs", "use_cupcakes", self.use_cupcakes)
+        self.use_pumpkin_cookies = ih.get_bool("BotConfigs", "use_pumpkin_cookies", self.use_pumpkin_cookies)
+        self.pumpkin_cookies_restock = ih.get_int("BotConfigs", "pumpkin_cookies_restock", self.pumpkin_cookies_restock)
         
     def SetCurrentStep(self, step_name: str, step_weight: float = 1.0):
         """

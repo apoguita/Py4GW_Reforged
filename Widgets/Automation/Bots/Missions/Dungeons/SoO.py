@@ -17,8 +17,8 @@ from Py4GWCoreLib import (
     Routines,
     SharedCommandType,
     AgentArray,
-    IniHandler,
 )
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib.routines_src.Yield import Utils
 from Py4GWCoreLib.routines_src.Yield import Yield
@@ -54,7 +54,7 @@ _CHAR_NAMES_SECTION   = "Character Names"
 
 _settings_ini_path     = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", f"{BOT_NAME}.ini")
 os.makedirs(os.path.dirname(_settings_ini_path), exist_ok=True)
-_settings_ini  = IniHandler(_settings_ini_path)
+_settings_ini  = Settings("Widgets/Config/Shards of Orr.ini", "global")
 _settings_loaded: bool = False
 _save_requested: bool  = False
 
@@ -732,7 +732,7 @@ def _write_local_salvage_kit_count() -> None:
 
     email = Player.GetAccountEmail()
     salvage_count = int(GLOBAL_CACHE.Inventory.GetModelCount(_ModelID.Salvage_Kit.value))
-    _settings_ini.write_key(_ALT_SALVAGE_SECTION, _account_key(email), str(salvage_count))
+    _settings_ini.set(_ALT_SALVAGE_SECTION, _account_key(email), str(salvage_count))
 
 
 def _request_alt_salvage_kit_counts() -> Generator:
@@ -743,7 +743,7 @@ def _request_alt_salvage_kit_counts() -> Generator:
     alt_accounts = [acc for acc in GLOBAL_CACHE.ShMem.GetAllAccountData() if acc.AccountEmail != my_email]
     for acc in alt_accounts:
         reset_inventory_count(acc.AccountEmail, salvage_kit_id, salvage_kit_id)
-        _settings_ini.write_key(_ALT_SALVAGE_SECTION, _account_key(acc.AccountEmail), str(-1))
+        _settings_ini.set(_ALT_SALVAGE_SECTION, _account_key(acc.AccountEmail), str(-1))
 
     pending_accounts = alt_accounts
     max_attempts = max(1, _ALT_SALVAGE_POLL_MAX_TOTAL_MS // max(1, _ALT_SALVAGE_POLL_TIMEOUT_MS))
@@ -766,7 +766,7 @@ def _request_alt_salvage_kit_counts() -> Generator:
         for acc in pending_accounts:
             count = get_inventory_count(acc.AccountEmail, salvage_kit_id, salvage_kit_id)
             if count >= 0:
-                _settings_ini.write_key(_ALT_SALVAGE_SECTION, _account_key(acc.AccountEmail), str(count))
+                _settings_ini.set(_ALT_SALVAGE_SECTION, _account_key(acc.AccountEmail), str(count))
             else:
                 still_pending.append(acc)
         pending_accounts = still_pending
@@ -782,13 +782,13 @@ def _request_alt_salvage_kit_counts() -> Generator:
 
 def _alts_need_salvage_restock() -> tuple[bool, list[str], list[str]]:
     my_email = Player.GetAccountEmail()
-    ini_reader = IniHandler(_settings_ini_path)
+    ini_reader = Settings("Widgets/Config/Shards of Orr.ini", "global")
     low_accounts: list[str] = []
     unknown_accounts: list[str] = []
     for acc in GLOBAL_CACHE.ShMem.GetAllAccountData():
         if acc.AccountEmail == my_email:
             continue
-        count = ini_reader.read_int(_ALT_SALVAGE_SECTION, _account_key(acc.AccountEmail), -1)
+        count = ini_reader.get_int(_ALT_SALVAGE_SECTION, _account_key(acc.AccountEmail), -1)
         char_name = acc.AgentData.CharacterName or acc.AccountEmail
         if count < 0:
             unknown_accounts.append(char_name)
@@ -1762,64 +1762,64 @@ def _ensure_ini_initialized() -> bool:
         return True
 
     _S = _SETTINGS_SECTION
-    _use_hard_mode      = _settings_ini.read_bool(_S, "use_hard_mode",      True)
-    _randomize_district = _settings_ini.read_bool(_S, "randomize_district", True)
+    _use_hard_mode      = _settings_ini.get_bool(_S, "use_hard_mode",      True)
+    _randomize_district = _settings_ini.get_bool(_S, "randomize_district", True)
 
     _M = _MERCHANT_SECTION
-    _merchant_enabled                    = _settings_ini.read_bool(_M, "enabled",                    False)
-    _merchant_id_kits_target             = _settings_ini.read_int( _M, "id_kits_target",             _FIXED_ID_KITS_TARGET)
-    _merchant_salvage_kits_target        = _settings_ini.read_int( _M, "salvage_kits_target",        _FIXED_SALVAGE_KITS_TARGET)
-    _inventory_slots_threshold           = max(0, _settings_ini.read_int(_M, "inventory_threshold",  1))
-    _merchant_store_consumable_materials = _settings_ini.read_bool(_M, "store_consumable_materials", False)
-    _merchant_sell_materials             = _settings_ini.read_bool(_M, "sell_materials",             False)
-    _merchant_sell_rare_mats             = _settings_ini.read_bool(_M, "sell_rare_mats",             False)
-    _merchant_buy_ectos                  = _settings_ini.read_bool(_M, "buy_ectos",                  False)
-    _merchant_ecto_threshold             = _settings_ini.read_int( _M, "ecto_threshold",             800_000)
-    _merchant_alt_wait_ms                = max(0, min(_MAX_ALT_SETTLE_WAIT_MS, _settings_ini.read_int(_M, "alt_wait_ms", _DEFAULT_ALT_SETTLE_WAIT_MS)))
+    _merchant_enabled                    = _settings_ini.get_bool(_M, "enabled",                    False)
+    _merchant_id_kits_target             = _settings_ini.get_int( _M, "id_kits_target",             _FIXED_ID_KITS_TARGET)
+    _merchant_salvage_kits_target        = _settings_ini.get_int( _M, "salvage_kits_target",        _FIXED_SALVAGE_KITS_TARGET)
+    _inventory_slots_threshold           = max(0, _settings_ini.get_int(_M, "inventory_threshold",  1))
+    _merchant_store_consumable_materials = _settings_ini.get_bool(_M, "store_consumable_materials", False)
+    _merchant_sell_materials             = _settings_ini.get_bool(_M, "sell_materials",             False)
+    _merchant_sell_rare_mats             = _settings_ini.get_bool(_M, "sell_rare_mats",             False)
+    _merchant_buy_ectos                  = _settings_ini.get_bool(_M, "buy_ectos",                  False)
+    _merchant_ecto_threshold             = _settings_ini.get_int( _M, "ecto_threshold",             800_000)
+    _merchant_alt_wait_ms                = max(0, min(_MAX_ALT_SETTLE_WAIT_MS, _settings_ini.get_int(_M, "alt_wait_ms", _DEFAULT_ALT_SETTLE_WAIT_MS)))
 
     _SS = _STATS_SECTION
-    _total_runs      = _settings_ini.read_int(  _SS, "total_runs",     0)
-    _total_run_time  = _settings_ini.read_float(_SS, "total_run_time", 0.0)
-    _f  = _settings_ini.read_float(_SS, "fastest_run", 0.0)
+    _total_runs      = _settings_ini.get_int(  _SS, "total_runs",     0)
+    _total_run_time  = _settings_ini.get_float(_SS, "total_run_time", 0.0)
+    _f  = _settings_ini.get_float(_SS, "fastest_run", 0.0)
     _fastest_run     = float('inf') if _f  == 0.0 else _f
-    _slowest_run     = _settings_ini.read_float(_SS, "slowest_run",    0.0)
-    _l1_total_time   = _settings_ini.read_float(_SS, "l1_total_time",  0.0)
-    _f1 = _settings_ini.read_float(_SS, "l1_fastest", 0.0)
+    _slowest_run     = _settings_ini.get_float(_SS, "slowest_run",    0.0)
+    _l1_total_time   = _settings_ini.get_float(_SS, "l1_total_time",  0.0)
+    _f1 = _settings_ini.get_float(_SS, "l1_fastest", 0.0)
     _l1_fastest      = float('inf') if _f1 == 0.0 else _f1
-    _l1_slowest      = _settings_ini.read_float(_SS, "l1_slowest",     0.0)
-    _l2_total_time   = _settings_ini.read_float(_SS, "l2_total_time",  0.0)
-    _f2 = _settings_ini.read_float(_SS, "l2_fastest", 0.0)
+    _l1_slowest      = _settings_ini.get_float(_SS, "l1_slowest",     0.0)
+    _l2_total_time   = _settings_ini.get_float(_SS, "l2_total_time",  0.0)
+    _f2 = _settings_ini.get_float(_SS, "l2_fastest", 0.0)
     _l2_fastest      = float('inf') if _f2 == 0.0 else _f2
-    _l2_slowest      = _settings_ini.read_float(_SS, "l2_slowest",     0.0)
-    _l3_total_time   = _settings_ini.read_float(_SS, "l3_total_time",  0.0)
-    _f3 = _settings_ini.read_float(_SS, "l3_fastest", 0.0)
+    _l2_slowest      = _settings_ini.get_float(_SS, "l2_slowest",     0.0)
+    _l3_total_time   = _settings_ini.get_float(_SS, "l3_total_time",  0.0)
+    _f3 = _settings_ini.get_float(_SS, "l3_fastest", 0.0)
     _l3_fastest      = float('inf') if _f3 == 0.0 else _f3
-    _l3_slowest      = _settings_ini.read_float(_SS, "l3_slowest",     0.0)
+    _l3_slowest      = _settings_ini.get_float(_SS, "l3_slowest",     0.0)
 
     # Load all-time BDS drop totals so the UI shows correct values from the start
     # and _accumulate_bds adds on top of the correct base rather than starting from 0.
     _D = _BDS_DROPS_SECTION
-    for _drop_key in _settings_ini.list_keys(_D):
-        _bds_drops[_drop_key] = _settings_ini.read_int(_D, _drop_key, 0)
+    for _drop_key in _settings_ini.items(_D):
+        _bds_drops[_drop_key] = _settings_ini.get_int(_D, _drop_key, 0)
 
     # Seed any accounts seen in other sections that don't have a [BDS Drops] entry yet.
     # This ensures the UI shows all known accounts with 0 even before their first drop.
     for _seed_section in (_ALT_SALVAGE_SECTION, _BDS_SNAPSHOT_SECTION, _BDS_RUN_SECTION):
-        for _seed_key in _settings_ini.list_keys(_seed_section):
+        for _seed_key in _settings_ini.items(_seed_section):
             if _seed_key not in _bds_drops:
                 _bds_drops[_seed_key] = 0
 
     _GD = _GB_DROPS_SECTION
-    for _drop_key in _settings_ini.list_keys(_GD):
-        _gb_drops[_drop_key] = _settings_ini.read_int(_GD, _drop_key, 0)
+    for _drop_key in _settings_ini.items(_GD):
+        _gb_drops[_drop_key] = _settings_ini.get_int(_GD, _drop_key, 0)
     for _seed_section in (_ALT_SALVAGE_SECTION, _GB_SNAPSHOT_SECTION, _GB_RUN_SECTION):
-        for _seed_key in _settings_ini.list_keys(_seed_section):
+        for _seed_key in _settings_ini.items(_seed_section):
             if _seed_key not in _gb_drops:
                 _gb_drops[_seed_key] = 0
 
     _CN = _CHAR_NAMES_SECTION
-    for _cn_key in _settings_ini.list_keys(_CN):
-        _name = str(_settings_ini.read_key(_CN, _cn_key, "") or "").strip()
+    for _cn_key in _settings_ini.items(_CN):
+        _name = str(_settings_ini.get_str(_CN, _cn_key, "") or "").strip()
         if _name:
             _char_names[_cn_key] = _name
 
@@ -1834,51 +1834,51 @@ def _write_settings() -> None:
         return
 
     _S = _SETTINGS_SECTION
-    _settings_ini.write_key(_S, "use_hard_mode",      str(_use_hard_mode))
-    _settings_ini.write_key(_S, "randomize_district", str(_randomize_district))
+    _settings_ini.set(_S, "use_hard_mode",      str(_use_hard_mode))
+    _settings_ini.set(_S, "randomize_district", str(_randomize_district))
 
     _M = _MERCHANT_SECTION
-    _settings_ini.write_key(_M, "enabled",                    str(_merchant_enabled))
-    _settings_ini.write_key(_M, "id_kits_target",             str(_merchant_id_kits_target))
-    _settings_ini.write_key(_M, "salvage_kits_target",        str(_merchant_salvage_kits_target))
-    _settings_ini.write_key(_M, "inventory_threshold",        str(_inventory_slots_threshold))
-    _settings_ini.write_key(_M, "store_consumable_materials", str(_merchant_store_consumable_materials))
-    _settings_ini.write_key(_M, "sell_materials",             str(_merchant_sell_materials))
-    _settings_ini.write_key(_M, "sell_rare_mats",             str(_merchant_sell_rare_mats))
-    _settings_ini.write_key(_M, "buy_ectos",                  str(_merchant_buy_ectos))
-    _settings_ini.write_key(_M, "ecto_threshold",             str(_merchant_ecto_threshold))
-    _settings_ini.write_key(_M, "alt_wait_ms",                str(_merchant_alt_wait_ms))
+    _settings_ini.set(_M, "enabled",                    str(_merchant_enabled))
+    _settings_ini.set(_M, "id_kits_target",             str(_merchant_id_kits_target))
+    _settings_ini.set(_M, "salvage_kits_target",        str(_merchant_salvage_kits_target))
+    _settings_ini.set(_M, "inventory_threshold",        str(_inventory_slots_threshold))
+    _settings_ini.set(_M, "store_consumable_materials", str(_merchant_store_consumable_materials))
+    _settings_ini.set(_M, "sell_materials",             str(_merchant_sell_materials))
+    _settings_ini.set(_M, "sell_rare_mats",             str(_merchant_sell_rare_mats))
+    _settings_ini.set(_M, "buy_ectos",                  str(_merchant_buy_ectos))
+    _settings_ini.set(_M, "ecto_threshold",             str(_merchant_ecto_threshold))
+    _settings_ini.set(_M, "alt_wait_ms",                str(_merchant_alt_wait_ms))
 
     _SS = _STATS_SECTION
-    _settings_ini.write_key(_SS, "total_runs",     str(_total_runs))
-    _settings_ini.write_key(_SS, "total_run_time", str(_total_run_time))
+    _settings_ini.set(_SS, "total_runs",     str(_total_runs))
+    _settings_ini.set(_SS, "total_run_time", str(_total_run_time))
     _f  = 0.0 if _fastest_run == float('inf') else _fastest_run
-    _settings_ini.write_key(_SS, "fastest_run",    str(_f))
-    _settings_ini.write_key(_SS, "slowest_run",    str(_slowest_run))
+    _settings_ini.set(_SS, "fastest_run",    str(_f))
+    _settings_ini.set(_SS, "slowest_run",    str(_slowest_run))
     _f1 = 0.0 if _l1_fastest == float('inf') else _l1_fastest
-    _settings_ini.write_key(_SS, "l1_total_time",  str(_l1_total_time))
-    _settings_ini.write_key(_SS, "l1_fastest",     str(_f1))
-    _settings_ini.write_key(_SS, "l1_slowest",     str(_l1_slowest))
+    _settings_ini.set(_SS, "l1_total_time",  str(_l1_total_time))
+    _settings_ini.set(_SS, "l1_fastest",     str(_f1))
+    _settings_ini.set(_SS, "l1_slowest",     str(_l1_slowest))
     _f2 = 0.0 if _l2_fastest == float('inf') else _l2_fastest
-    _settings_ini.write_key(_SS, "l2_total_time",  str(_l2_total_time))
-    _settings_ini.write_key(_SS, "l2_fastest",     str(_f2))
-    _settings_ini.write_key(_SS, "l2_slowest",     str(_l2_slowest))
+    _settings_ini.set(_SS, "l2_total_time",  str(_l2_total_time))
+    _settings_ini.set(_SS, "l2_fastest",     str(_f2))
+    _settings_ini.set(_SS, "l2_slowest",     str(_l2_slowest))
     _f3 = 0.0 if _l3_fastest == float('inf') else _l3_fastest
-    _settings_ini.write_key(_SS, "l3_total_time",  str(_l3_total_time))
-    _settings_ini.write_key(_SS, "l3_fastest",     str(_f3))
-    _settings_ini.write_key(_SS, "l3_slowest",     str(_l3_slowest))
+    _settings_ini.set(_SS, "l3_total_time",  str(_l3_total_time))
+    _settings_ini.set(_SS, "l3_fastest",     str(_f3))
+    _settings_ini.set(_SS, "l3_slowest",     str(_l3_slowest))
 
     _D = _BDS_DROPS_SECTION
     for key, total in _bds_drops.items():
-        _settings_ini.write_key(_D, key, str(total))
+        _settings_ini.set(_D, key, str(total))
 
     _GD = _GB_DROPS_SECTION
     for key, total in _gb_drops.items():
-        _settings_ini.write_key(_GD, key, str(total))
+        _settings_ini.set(_GD, key, str(total))
 
     _CN = _CHAR_NAMES_SECTION
     for key, name in _char_names.items():
-        _settings_ini.write_key(_CN, key, name)
+        _settings_ini.set(_CN, key, name)
 
     _save_requested = False
 
@@ -1981,11 +1981,11 @@ def _take_dungeon_entry_snapshot() -> Generator:
         if count > 0:
             _bds_pre_snapshot[model_id] = count
     leader_snap_total = sum(_bds_pre_snapshot.values())
-    _settings_ini.write_key(_BDS_SNAPSHOT_SECTION, _account_key(my_email), str(leader_snap_total))
+    _settings_ini.set(_BDS_SNAPSHOT_SECTION, _account_key(my_email), str(leader_snap_total))
     ConsoleLog(BOT_NAME, f"[BDS Stats] Leader dungeon-entry snapshot: {leader_snap_total} BDS")
 
     _gb_pre_snapshot = int(GLOBAL_CACHE.Inventory.GetModelCount(GB_MODEL_ID))
-    _settings_ini.write_key(_GB_SNAPSHOT_SECTION, _account_key(my_email), str(_gb_pre_snapshot))
+    _settings_ini.set(_GB_SNAPSHOT_SECTION, _account_key(my_email), str(_gb_pre_snapshot))
     ConsoleLog(BOT_NAME, f"[BDS Stats] Leader dungeon-entry GB snapshot: {_gb_pre_snapshot}")
 
     if not alt_accounts:
@@ -1999,7 +1999,7 @@ def _take_dungeon_entry_snapshot() -> Generator:
         acc_key = _account_key(acc.AccountEmail)
 
         reset_inventory_count(acc.AccountEmail, BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX)
-        _settings_ini.write_key(_BDS_SNAPSHOT_SECTION, acc_key, str(-1))
+        _settings_ini.set(_BDS_SNAPSHOT_SECTION, acc_key, str(-1))
         GLOBAL_CACHE.ShMem.SendMessage(
             my_email, acc.AccountEmail,
             SharedCommandType.InventoryQuery,
@@ -2011,7 +2011,7 @@ def _take_dungeon_entry_snapshot() -> Generator:
             yield from Routines.Yield.wait(_BDS_IPC_POLL_TIMEOUT_MS)
             count = get_inventory_count(acc.AccountEmail, BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX)
             if count >= 0:
-                _settings_ini.write_key(_BDS_SNAPSHOT_SECTION, acc_key, str(count))
+                _settings_ini.set(_BDS_SNAPSHOT_SECTION, acc_key, str(count))
                 responded = True
                 break
         if not responded:
@@ -2019,7 +2019,7 @@ def _take_dungeon_entry_snapshot() -> Generator:
             ConsoleLog(BOT_NAME, f"[BDS Stats] BDS snapshot timeout for: {name}", PySystem.Console.MessageType.Warning)
 
         reset_inventory_count(acc.AccountEmail, GB_MODEL_ID, GB_MODEL_ID)
-        _settings_ini.write_key(_GB_SNAPSHOT_SECTION, acc_key, str(-1))
+        _settings_ini.set(_GB_SNAPSHOT_SECTION, acc_key, str(-1))
         GLOBAL_CACHE.ShMem.SendMessage(
             my_email, acc.AccountEmail,
             SharedCommandType.InventoryQuery,
@@ -2031,7 +2031,7 @@ def _take_dungeon_entry_snapshot() -> Generator:
             yield from Routines.Yield.wait(_BDS_IPC_POLL_TIMEOUT_MS)
             count = get_inventory_count(acc.AccountEmail, GB_MODEL_ID, GB_MODEL_ID)
             if count >= 0:
-                _settings_ini.write_key(_GB_SNAPSHOT_SECTION, acc_key, str(count))
+                _settings_ini.set(_GB_SNAPSHOT_SECTION, acc_key, str(count))
                 responded = True
                 break
         if not responded:
@@ -2049,11 +2049,11 @@ def _record_drops_after_loot() -> Generator:
 
     # Leader: compute own post-chest total and write it to [BDS Run] / [GB Run].
     leader_post_total = sum(int(GLOBAL_CACHE.Inventory.GetModelCount(m)) for m in BDS_MODEL_IDS)
-    _settings_ini.write_key(_BDS_RUN_SECTION, my_key, str(leader_post_total))
+    _settings_ini.set(_BDS_RUN_SECTION, my_key, str(leader_post_total))
     ConsoleLog(BOT_NAME, f"[BDS Stats] Leader post-chest total: {leader_post_total} BDS", log=True)
 
     leader_gb_post = int(GLOBAL_CACHE.Inventory.GetModelCount(GB_MODEL_ID))
-    _settings_ini.write_key(_GB_RUN_SECTION, my_key, str(leader_gb_post))
+    _settings_ini.set(_GB_RUN_SECTION, my_key, str(leader_gb_post))
     ConsoleLog(BOT_NAME, f"[BDS Stats] Leader post-chest GB total: {leader_gb_post}", log=True)
 
     if alt_accounts:
@@ -2064,7 +2064,7 @@ def _record_drops_after_loot() -> Generator:
             acc_key = _account_key(acc.AccountEmail)
 
             reset_inventory_count(acc.AccountEmail, BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX)
-            _settings_ini.write_key(_BDS_RUN_SECTION, acc_key, str(-1))
+            _settings_ini.set(_BDS_RUN_SECTION, acc_key, str(-1))
             GLOBAL_CACHE.ShMem.SendMessage(
                 my_email, acc.AccountEmail,
                 SharedCommandType.InventoryQuery,
@@ -2076,7 +2076,7 @@ def _record_drops_after_loot() -> Generator:
                 yield from Routines.Yield.wait(_BDS_IPC_POLL_TIMEOUT_MS)
                 count = get_inventory_count(acc.AccountEmail, BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX)
                 if count >= 0:
-                    _settings_ini.write_key(_BDS_RUN_SECTION, acc_key, str(count))
+                    _settings_ini.set(_BDS_RUN_SECTION, acc_key, str(count))
                     responded = True
                     break
             if not responded:
@@ -2084,7 +2084,7 @@ def _record_drops_after_loot() -> Generator:
                 ConsoleLog(BOT_NAME, f"[BDS Stats] BDS count timeout for: {name}", PySystem.Console.MessageType.Warning)
 
             reset_inventory_count(acc.AccountEmail, GB_MODEL_ID, GB_MODEL_ID)
-            _settings_ini.write_key(_GB_RUN_SECTION, acc_key, str(-1))
+            _settings_ini.set(_GB_RUN_SECTION, acc_key, str(-1))
             GLOBAL_CACHE.ShMem.SendMessage(
                 my_email, acc.AccountEmail,
                 SharedCommandType.InventoryQuery,
@@ -2096,7 +2096,7 @@ def _record_drops_after_loot() -> Generator:
                 yield from Routines.Yield.wait(_BDS_IPC_POLL_TIMEOUT_MS)
                 count = get_inventory_count(acc.AccountEmail, GB_MODEL_ID, GB_MODEL_ID)
                 if count >= 0:
-                    _settings_ini.write_key(_GB_RUN_SECTION, acc_key, str(count))
+                    _settings_ini.set(_GB_RUN_SECTION, acc_key, str(count))
                     responded = True
                     break
             if not responded:
@@ -2108,15 +2108,15 @@ def _record_drops_after_loot() -> Generator:
     total_bds_this_run = 0
     total_gb_this_run  = 0
     for acc_key in all_accounts_keys:
-        post_count = max(0, _settings_ini.read_int(_BDS_RUN_SECTION,      acc_key, 0))
-        snap_count = max(0, _settings_ini.read_int(_BDS_SNAPSHOT_SECTION, acc_key, 0))
+        post_count = max(0, _settings_ini.get_int(_BDS_RUN_SECTION,      acc_key, 0))
+        snap_count = max(0, _settings_ini.get_int(_BDS_SNAPSHOT_SECTION, acc_key, 0))
         delta      = max(0, post_count - snap_count)
         ConsoleLog(BOT_NAME, f"[BDS Stats] {acc_key}: snap={snap_count} post={post_count} delta={delta}", log=True)
         _accumulate_bds(acc_key, delta)
         total_bds_this_run += delta
 
-        gb_post = max(0, _settings_ini.read_int(_GB_RUN_SECTION,      acc_key, 0))
-        gb_snap = max(0, _settings_ini.read_int(_GB_SNAPSHOT_SECTION, acc_key, 0))
+        gb_post = max(0, _settings_ini.get_int(_GB_RUN_SECTION,      acc_key, 0))
+        gb_snap = max(0, _settings_ini.get_int(_GB_SNAPSHOT_SECTION, acc_key, 0))
         gb_delta = max(0, gb_post - gb_snap)
         ConsoleLog(BOT_NAME, f"[BDS Stats] {acc_key} GB: snap={gb_snap} post={gb_post} delta={gb_delta}", log=True)
         _accumulate_gb(acc_key, gb_delta)
@@ -2134,7 +2134,7 @@ def _accumulate_bds(account_key: str, run_count: int) -> None:
         return
     current_total = _bds_drops.get(account_key)
     if current_total is None:
-        current_total = _settings_ini.read_int(_BDS_DROPS_SECTION, account_key, 0)
+        current_total = _settings_ini.get_int(_BDS_DROPS_SECTION, account_key, 0)
     _bds_drops[account_key]   = current_total + run_count
     _session_bds[account_key] = _session_bds.get(account_key, 0) + run_count
 
@@ -2146,7 +2146,7 @@ def _accumulate_gb(account_key: str, run_count: int) -> None:
         return
     current_total = _gb_drops.get(account_key)
     if current_total is None:
-        current_total = _settings_ini.read_int(_GB_DROPS_SECTION, account_key, 0)
+        current_total = _settings_ini.get_int(_GB_DROPS_SECTION, account_key, 0)
     _gb_drops[account_key]   = current_total + run_count
     _session_gb[account_key] = _session_gb.get(account_key, 0) + run_count
 

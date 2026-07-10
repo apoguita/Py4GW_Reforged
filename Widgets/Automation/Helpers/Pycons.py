@@ -66,6 +66,123 @@ def resolve_pycons_account_ini_path(account_email: str) -> str:
         return legacy
     return canonical
 
+# --- Pycons-owned INI handler (decoupled from the removed shared Py4GWCoreLib.IniHandler) ---
+import os
+import configparser
+from datetime import datetime
+
+
+class IniHandler:
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.last_modified = 0
+        self.config = configparser.ConfigParser()
+        self.reload()
+
+    def reload(self) -> configparser.ConfigParser:
+        if not os.path.exists(self.filename):
+            with open(self.filename, 'w') as f:
+                f.write("")
+            self.last_modified = os.path.getmtime(self.filename)
+            return self.config
+        current_mtime = os.path.getmtime(self.filename)
+        if current_mtime != self.last_modified:
+            self.last_modified = current_mtime
+            try:
+                self.config.read(self.filename, encoding="utf-8")
+            except (configparser.Error, UnicodeDecodeError, OSError) as exc:
+                try:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    os.replace(self.filename, f"{self.filename}.corrupt_{timestamp}")
+                except OSError:
+                    pass
+                with open(self.filename, "w", encoding="utf-8") as f:
+                    f.write("")
+                self.config = configparser.ConfigParser()
+                self.last_modified = os.path.getmtime(self.filename)
+                print(f"[IniHandler] Recovered corrupted INI file: {self.filename} ({exc})")
+        return self.config
+
+    def save(self, config: configparser.ConfigParser) -> None:
+        with open(self.filename, 'w', encoding="utf-8") as configfile:
+            config.write(configfile)
+        self.config = config
+        try:
+            self.last_modified = os.path.getmtime(self.filename)
+        except OSError:
+            pass
+
+    def read_key(self, section, key, default_value=""):
+        config = self.reload()
+        try:
+            return config.get(section, key)
+        except (configparser.NoOptionError, configparser.NoSectionError):
+            return default_value
+
+    def read_int(self, section, key, default_value=0):
+        config = self.reload()
+        try:
+            return config.getint(section, key)
+        except (ValueError, configparser.NoOptionError, configparser.NoSectionError):
+            return default_value
+
+    def read_float(self, section, key, default_value=0.0):
+        config = self.reload()
+        try:
+            return config.getfloat(section, key)
+        except (ValueError, configparser.NoOptionError, configparser.NoSectionError):
+            return default_value
+
+    def read_bool(self, section, key, default_value=False):
+        config = self.reload()
+        try:
+            return config.getboolean(section, key)
+        except (ValueError, configparser.NoOptionError, configparser.NoSectionError):
+            return default_value
+
+    def write_key(self, section, key, value):
+        config = self.reload()
+        if not config.has_section(section):
+            config.add_section(section)
+        config.set(section, key, str(value))
+        self.save(config)
+
+    def delete_key(self, section, key):
+        config = self.reload()
+        if config.has_section(section) and config.has_option(section, key):
+            config.remove_option(section, key)
+            self.save(config)
+
+    def delete_section(self, section):
+        config = self.reload()
+        if config.has_section(section):
+            config.remove_section(section)
+            self.save(config)
+
+    def list_sections(self):
+        config = self.reload()
+        return config.sections()
+
+    def list_keys(self, section):
+        config = self.reload()
+        if config.has_section(section):
+            return dict(config.items(section))
+        return {}
+
+    def has_key(self, section, key):
+        config = self.reload()
+        return config.has_section(section) and config.has_option(section, key)
+
+    def clone_section(self, source_section, target_section):
+        config = self.reload()
+        if config.has_section(source_section):
+            if not config.has_section(target_section):
+                config.add_section(target_section)
+            for key, value in config.items(source_section):
+                config.set(target_section, key, value)
+            self.save(config)
+
+
 try:
     from typing import Any, cast
     import shutil
@@ -78,7 +195,6 @@ try:
         ConsoleLog,
         Console,
         Routines,
-        IniHandler,
         Timer,
         GLOBAL_CACHE,
         ModelID,

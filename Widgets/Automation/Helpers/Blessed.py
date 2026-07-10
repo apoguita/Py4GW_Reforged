@@ -4,6 +4,7 @@ import configparser
 from typing import Set
 
 from Py4GWCoreLib import *
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Sources.aC_Scripts.aC_api import has_any_blessing, BlessingRunner, FLAG_DIR
 
 # â”€â”€â”€ Paths & Configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -46,11 +47,11 @@ PER_CLIENT_UI  = cfg.getboolean("Settings",   "PerClientUI", fallback=False)
 AUTO_RUN_ALL   = cfg.getboolean("BlessingRun","AutoRunAll",  fallback=True)
 
 # â”€â”€â”€ Window Persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-ini_handler = IniHandler(win_ini_path)
+ini_handler = Settings("Widgets/Config/GetBlessed_window.ini", "global")
 save_timer  = Timer(); save_timer.Start()
-win_x       = ini_handler.read_int(WINDOW_SECTION, "x", 100)
-win_y       = ini_handler.read_int(WINDOW_SECTION, "y", 100)
-win_coll    = ini_handler.read_bool(WINDOW_SECTION, "collapsed", False)
+win_x       = ini_handler.get_int(WINDOW_SECTION, "x", 100)
+win_y       = ini_handler.get_int(WINDOW_SECTION, "y", 100)
+win_coll    = ini_handler.get_bool(WINDOW_SECTION, "collapsed", False)
 first_run   = True
 
 # â”€â”€â”€ Runner & State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

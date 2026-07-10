@@ -284,7 +284,6 @@ class ModelPopUp:
             PyImGui.text(self._feedback_msg)
 
         if self._ini_section and self._ini_var_name and self._ini_relative_path:
-            from Py4GWCoreLib.py4gwcorelib_src.IniHandler import IniHandler
             from Py4GWCoreLib.Player import Player
             base_path = PySystem.Console.get_projects_path() + "/Settings/"
             current_email = Player.GetAccountEmail()
@@ -301,7 +300,7 @@ class ModelPopUp:
                     for account in other_accounts:
                         target_ini = os.path.join(base_path, account, self._ini_relative_path)
                         if os.path.exists(target_ini):
-                            IniHandler(target_ini).write_key(self._ini_section, self._ini_var_name, blacklist_str)
+                            Settings(self._ini_relative_path, "account").set(self._ini_section, self._ini_var_name, blacklist_str)
                             copied += 1
                     self._feedback_msg = f"Copied to {copied}/{len(other_accounts)} account(s)."
                     self._feedback_frames = 180
