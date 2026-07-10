@@ -128,6 +128,8 @@ try:
     import colorsys
     import ctypes.wintypes
     import dataclasses
+    import logging
+    import logging.handlers
     import math
     import os
     import threading
@@ -578,6 +580,37 @@ def classify_progress_message(raw_message: str) -> str:
     return "Working..."
 
 
+# -----------------------------------------------------------------------------
+# launcher_errors.log -- shared by _log_launch_attempt below and
+# _log_prereq_ui_error further down. Previously each was its own hand-rolled
+# open(path, "a").write(...) call site, with no rotation or size cap -- genuine
+# unbounded growth over time. One logger, configured once here via a
+# RotatingFileHandler, used by both. maxBytes=5MB/backupCount=3 (so
+# launcher_errors.log plus .1/.2/.3, ~20MB ceiling total) is a reasonable
+# starting point, not a tuned figure from real observed log volume -- worth
+# revisiting if that turns out to be too small or too generous in practice.
+# A bare "%(message)s" formatter (no logging-added timestamp/level prefix)
+# keeps the on-disk text byte-for-byte the same as before -- this only
+# changes how it's written, not what gets written; both call sites still
+# build their own timestamped, multi-line message text exactly as before and
+# hand the whole thing to logger.info() as a single record.
+# -----------------------------------------------------------------------------
+
+_error_logger = logging.getLogger("py4gw_launcher_errors")
+_error_logger.setLevel(logging.INFO)
+_error_logger.propagate = False
+try:
+    _error_log_path = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR / "launcher_errors.log"
+    _error_log_path.parent.mkdir(parents=True, exist_ok=True)
+    _error_log_handler = logging.handlers.RotatingFileHandler(
+        _error_log_path, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
+    _error_log_handler.setFormatter(logging.Formatter("%(message)s"))
+    _error_logger.addHandler(_error_log_handler)
+except OSError:
+    pass
+
+
 def _log_launch_attempt(profile: GameProfile, result: LaunchResult) -> None:
     """Persists the full per-launch log (every step -- process creation, the
     multiclient patch's success/address or specific failure reason,
@@ -589,17 +622,14 @@ def _log_launch_attempt(profile: GameProfile, result: LaunchResult) -> None:
     launch and a failing one from the same session can be diffed side by
     side rather than only ever having a log for the failure.
     """
+    lines = [
+        f"{time.strftime('%Y-%m-%d %H:%M:%S')} [launch] "
+        f"profile={profile.name or '(unnamed profile)'!r} "
+        f"success={result.success} error={result.error!r}"
+    ]
+    lines.extend(f"    {line}" for line in result.log)
     try:
-        log_path = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR / "launcher_errors.log"
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with log_path.open("a", encoding="utf-8") as f:
-            f.write(
-                f"{time.strftime('%Y-%m-%d %H:%M:%S')} [launch] "
-                f"profile={profile.name or '(unnamed profile)'!r} "
-                f"success={result.success} error={result.error!r}\n"
-            )
-            for line in result.log:
-                f.write(f"    {line}\n")
+        _error_logger.info("\n".join(lines))
     except OSError:
         pass
 
@@ -2461,10 +2491,7 @@ def _log_prereq_ui_error(context: str) -> None:
     _prereq_ui_last_logged_error = text
     print(f"[prereq-ui] {context} failed:\n{text}", file=sys.stderr)
     try:
-        log_path = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR / "launcher_errors.log"
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with log_path.open("a", encoding="utf-8") as f:
-            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [{context}]\n{text}\n")
+        _error_logger.info(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [{context}]\n{text}")
     except OSError:
         pass
 
