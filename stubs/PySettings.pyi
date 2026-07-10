@@ -75,6 +75,26 @@ class settings:
     def items(self, section: str) -> list[tuple[str, str]]: ...
 
 
+def copy_document_to_account(name: str, target_email: str) -> bool:
+    """Copy an entire document (all sections) into another account's file on disk."""
+    ...
+
+
+def copy_section_to_account(name: str, section: str, target_email: str) -> bool:
+    """Copy one whole section into another account's file on disk."""
+    ...
+
+
+def copy_keys_to_account(name: str, section: str, keys: list[str], target_email: str) -> bool:
+    """Copy a named subset of a section's keys into another account's file on disk."""
+    ...
+
+
+def apply_section_to_account(name: str, section: str, values: list[tuple[str, str]], target_email: str) -> bool:
+    """Overlay a caller-supplied key/value mapping into another account's section on disk."""
+    ...
+
+
 def is_anchored() -> bool:
     """Whether account-scoped documents are bound to disk yet."""
     ...

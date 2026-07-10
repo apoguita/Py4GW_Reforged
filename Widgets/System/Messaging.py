@@ -20,13 +20,12 @@ from Py4GWCoreLib import Utils, ImGui_Legacy, Color, ColorPalette
 from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import AutoPathing
-from Widgets.Automation.Helpers.Pycons import IniHandler
 from Py4GWCoreLib.GlobalCache.WhiteboardLocks import post_loot_lock, clear_loot_lock
 from Py4GWCoreLib.Py4GWcorelib import Keystroke
 from Py4GWCoreLib.Quest import Quest
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Widgets.Automation.Helpers import Pycons as PyconsHelper
-from Widgets.Automation.Helpers.Pycons import resolve_pycons_account_ini_path
+from Widgets.Automation.Helpers.Pycons import pycons_should_consume_broadcast_item
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 from Py4GWCoreLib.GlobalCache.shared_memory_src.SharedMessageStruct import SharedMessageStruct
 from Py4GWCoreLib.GlobalCache.shared_memory_src.Globals import SHMEM_MAX_NUMBER_OF_SKILLS
@@ -857,16 +856,12 @@ def MerchantItems(index: int, message: SharedMessageStruct):
     mode = extra0.strip().lower()
 
     if mode == "report_salvage_kits":
+        # No file I/O in the router. Report the count to console; if a caller needs
+        # this value it must be relayed back via a message payload and persisted by
+        # the calling platform (see docs/Configparser_To_Settings_Migration_Plan.md).
         try:
             salvage_kits_in_inv = int(GLOBAL_CACHE.Inventory.GetModelCount(ModelID.Salvage_Kit.value))
-            ini_path = str(extra1 or "").strip()
-            ini_section = str(extra2 or "").strip()
-            ini_key = str(extra3 or "").strip()
-            if ini_path and ini_section and ini_key:
-                import os as _os
-                if not _os.path.isabs(ini_path):
-                    ini_path = _os.path.join(PySystem.Console.get_projects_path(), ini_path)
-                IniHandler(ini_path).write_key(ini_section, ini_key, str(salvage_kits_in_inv))
+            ConsoleLog(MODULE_NAME, f"MerchantItems: salvage kits in inventory = {salvage_kits_in_inv}.", Console.MessageType.Info, False)
         finally:
             _merchant_busy = False
             GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
@@ -2075,30 +2070,8 @@ def UseItem(index: int, message: SharedMessageStruct):
     ConsoleLog(MODULE_NAME, "UseItem: received broadcast.", Console.MessageType.Info, False)
     GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
 
-    # Check if the user has opted in to team broadcasts (Pycons setting)
-    # Use Player.GetAccountEmail() to match the hash used by Pycons.py
-    try:
-        account_email = Player.GetAccountEmail()
-        ini_path = resolve_pycons_account_ini_path(account_email)
-        ini_handler = IniHandler(ini_path)
-        opt_in = ini_handler.read_bool("Pycons", "team_consume_opt_in", False)
-        receiver_require_enabled = ini_handler.read_bool("Pycons", "mbdp_receiver_require_enabled", True)
-        if not opt_in:
-            ConsoleLog(MODULE_NAME, "UseItem: blocked (opt-in disabled).", Console.MessageType.Info, False)
-            GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-            return
-    except Exception as e:
-        ConsoleLog(MODULE_NAME, f"UseItem: blocked (failed to read opt-in: {e}).", Console.MessageType.Warning)
-        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-        return
-
     if str(message.SenderEmail or "") == str(message.ReceiverEmail or ""):
         ConsoleLog(MODULE_NAME, "UseItem: blocked (self-message loop guard).", Console.MessageType.Info, False)
-        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-        return
-
-    if _should_block_item_use():
-        ConsoleLog(MODULE_NAME, "UseItem: blocked (safety checks).", Console.MessageType.Info, False)
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
 
@@ -2114,40 +2087,17 @@ def UseItem(index: int, message: SharedMessageStruct):
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
 
-    # Optional local safety: for MB/DP items, require local selected+enabled in Pycons settings.
-    if bool(receiver_require_enabled):
-        try:
-            def _model_id_value(name: str, default: int = 0) -> int:
-                obj = getattr(ModelID, name, None)
-                if obj is None:
-                    return int(default)
-                return int(getattr(obj, "value", obj))
+    # Consume policy (team opt-in + per-item selected/enabled) is owned by Pycons;
+    # the router does no config/file I/O.
+    if not pycons_should_consume_broadcast_item(model_id):
+        ConsoleLog(MODULE_NAME, "UseItem: blocked by Pycons consume policy.", Console.MessageType.Info, False)
+        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
+        return
 
-            mbdp_models = {
-                _model_id_value("Pumpkin_Cookie"): "pumpkin_cookie",
-                _model_id_value("Seal_Of_The_Dragon_Empire"): "seal_of_the_dragon_empire",
-                _model_id_value("Honeycomb", _model_id_value("Honeycomb", 0)): "honeycomb",
-                _model_id_value("Rainbow_Candy_Cane"): "rainbow_candy_cane",
-                _model_id_value("Elixir_Of_Valor"): "elixir_of_valor",
-                _model_id_value("Powerstone_Of_Courage"): "powerstone_of_courage",
-                _model_id_value("Refined_Jelly"): "refined_jelly",
-                _model_id_value("Shining_Blade_Rations"): "shining_blade_rations",
-                _model_id_value("Wintergreen_Candy_Cane"): "wintergreen_candy_cane",
-                _model_id_value("Peppermint_Candy_Cane"): "peppermint_candy_cane",
-                _model_id_value("Four_Leaf_Clover"): "four_leaf_clover",
-                _model_id_value("Oath_Of_Purity"): "oath_of_purity",
-            }
-            mbdp_models = {mid: key for mid, key in mbdp_models.items() if int(mid) > 0}
-            local_key = mbdp_models.get(int(model_id))
-            if local_key:
-                if not ini_handler.read_bool("Pycons", f"selected_{local_key}", False) or not ini_handler.read_bool("Pycons", f"enabled_{local_key}", False):
-                    ConsoleLog(MODULE_NAME, f"UseItem: local MB/DP item '{local_key}' is not selected+enabled, ignoring.", Console.MessageType.Info)
-                    GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-                    return
-        except Exception as e:
-            ConsoleLog(MODULE_NAME, f"UseItem: local enabled-check failed: {e}", Console.MessageType.Warning)
-            GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-            return
+    if _should_block_item_use():
+        ConsoleLog(MODULE_NAME, "UseItem: blocked (safety checks).", Console.MessageType.Info, False)
+        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
+        return
 
     repeat = 1
     if len(message.Params) > 1:

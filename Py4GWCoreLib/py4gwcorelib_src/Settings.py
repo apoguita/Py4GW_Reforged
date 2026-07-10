@@ -199,3 +199,35 @@ class Settings:
         src, dst = self._s(source), self._s(target)
         for (key, value) in self._doc.items(src):
             self._doc.set(dst, key, value)
+
+    # ------------------------------------------------------------------
+    # Cross-account copy (this document -> another account's file on disk).
+    #
+    # Copies from THIS account's document into settings/<target_email>/<name>.
+    # Overlay semantics: keys present in the source overwrite the target; other
+    # target keys are left untouched. This is a disk write on the target's file;
+    # the target's running client picks it up on its next reload (a
+    # message-triggered or throttled reload — not instantaneous). Returns True on
+    # success (copying zero matching keys is success); False on a rejected email
+    # or save failure.
+    # ------------------------------------------------------------------
+
+    def copy_document_to_account(self, target_email: str) -> bool:
+        return bool(PySettings.copy_document_to_account(self._name, str(target_email)))
+
+    def copy_section_to_account(self, section: str, target_email: str) -> bool:
+        return bool(PySettings.copy_section_to_account(self._name, self._s(section), str(target_email)))
+
+    def copy_keys_to_account(self, section: str, keys, target_email: str) -> bool:
+        norm_keys = [self._k(k) for k in keys]
+        return bool(PySettings.copy_keys_to_account(self._name, self._s(section), norm_keys, str(target_email)))
+
+    def apply_section_to_account(self, section: str, mapping, target_email: str) -> bool:
+        """Overlay a caller-supplied {key: value} mapping into another account's section.
+
+        Unlike copy_*, the values come from the caller (e.g. a saved profile or
+        transformed settings), not from this document. Keys are lowercased and values
+        stringified to match on-disk format.
+        """
+        items = [(self._k(k), str(v)) for k, v in dict(mapping).items()]
+        return bool(PySettings.apply_section_to_account(self._name, self._s(section), items, str(target_email)))

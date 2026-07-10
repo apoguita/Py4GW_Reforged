@@ -5,7 +5,6 @@ from HeroAI.constants import MAX_NUM_PLAYERS
 
 import os
 import sys
-import configparser
 from Py4GWCoreLib import *
 from typing import Set
 
@@ -46,40 +45,6 @@ ini_window = Settings("Widgets/Config/Heroic_Refrain_window.ini", "global")
 save_window_timer = Timer()
 save_window_timer.Start()
 
-# â”€â”€â”€ INI File Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-BASE_DIR = os.path.join(project_root, "Widgets", "Config")
-INI_PATH = os.path.join(BASE_DIR, "Heroic_Refrain_Config.ini")
-os.makedirs(BASE_DIR, exist_ok=True)
-
-def _read_ini() -> configparser.ConfigParser:
-    cp = configparser.ConfigParser()
-    cp.read(INI_PATH)
-    return cp
-
-def read_run_flag() -> bool:
-    return _read_ini().getboolean("HeroicRefrain", "Enabled", fallback=False)
-
-def write_run_flag(val: bool):
-    cp = _read_ini()
-    if not cp.has_section("HeroicRefrain"):
-        cp.add_section("HeroicRefrain")
-    cp.set("HeroicRefrain", "Enabled", str(val))
-    os.makedirs(BASE_DIR, exist_ok=True)
-    with open(INI_PATH, "w") as f:
-        cp.write(f)
-
-# â”€â”€â”€ UI Configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-cfg            = _read_ini()
-LEADER_UI      = cfg.getboolean("Settings",   "LeaderUI",    fallback=True)
-PER_CLIENT_UI  = cfg.getboolean("Settings",   "PerClientUI", fallback=False)
-AUTO_RUN_ALL   = cfg.getboolean("HeroicRefrain","AutoRunAll",  fallback=True)
-
-# â”€â”€â”€ Window Persistence Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-WINDOW_SECTION = "Heroic Refrain"
-ini_window = Settings("Widgets/Config/Heroic_Refrain_window.ini", "global")
-save_window_timer = Timer()
-save_window_timer.Start()
-
 # load last-saved window state (fallbacks)
 win_x = ini_window.get_int(WINDOW_SECTION, "x", 100)
 win_y = ini_window.get_int(WINDOW_SECTION, "y", 100)
@@ -89,7 +54,6 @@ slot_number = 0
 
 # â”€â”€â”€ Frameâ€byâ€frame UI logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def on_imgui_render(me: int):
-    global _running, _last_flag, _consumed
     global first_run_window, win_x, win_y, win_collapsed, slot_number
 
     # Show the widget only if HR is equipped

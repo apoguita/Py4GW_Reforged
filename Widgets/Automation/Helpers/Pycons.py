@@ -19,6 +19,10 @@ MODULE_ICON = "Textures\\Module_Icons\\Pycons.png"
 PYCONS_SYNC_OPCODE_RELOAD_CONFIG = 1
 PYCONS_SYNC_OPCODE_RELOAD_RESULT = 2
 PYCONS_SYNC_OPCODE_SET_SELF_MBDP_TARGET = 3
+# Cross-account team-call coordination over messaging (no shared memory, no cross-account
+# file access): each account announces its own flags; the leader-toggle is a message.
+PYCONS_SYNC_OPCODE_ANNOUNCE_TEAM_FLAGS = 4
+PYCONS_SYNC_OPCODE_SET_TEAM_OPT_IN = 5
 PYCONS_SYNC_SELECTION_ENABLED_STATE_ONCE_KEY = "sync_selection_enabled_state_once"
 
 _PYCONS_CONFIG_DIR = os.path.normpath(os.path.join("Widgets", "Config", "Pycons"))
@@ -66,121 +70,186 @@ def resolve_pycons_account_ini_path(account_email: str) -> str:
         return legacy
     return canonical
 
-# --- Pycons-owned INI handler (decoupled from the removed shared Py4GWCoreLib.IniHandler) ---
+
+def _pycons_mbdp_model_key_map() -> dict:
+    """MB/DP (multibox drop-party) broadcastable consumables: model_id -> config key.
+
+    Pycons domain knowledge (kept here, not in the message router). Mirrors the
+    ``use_where == "mbdp"`` entries of the CONSUMABLES catalog.
+    """
+    from Py4GWCoreLib import ModelID
+
+    def _mv(name: str, default: int = 0) -> int:
+        obj = getattr(ModelID, name, None)
+        return int(getattr(obj, "value", obj)) if obj is not None else int(default)
+
+    raw = {
+        _mv("Pumpkin_Cookie"): "pumpkin_cookie",
+        _mv("Seal_Of_The_Dragon_Empire"): "seal_of_the_dragon_empire",
+        _mv("Honeycomb"): "honeycomb",
+        _mv("Rainbow_Candy_Cane"): "rainbow_candy_cane",
+        _mv("Elixir_Of_Valor"): "elixir_of_valor",
+        _mv("Powerstone_Of_Courage"): "powerstone_of_courage",
+        _mv("Refined_Jelly"): "refined_jelly",
+        _mv("Shining_Blade_Rations"): "shining_blade_rations",
+        _mv("Wintergreen_Candy_Cane"): "wintergreen_candy_cane",
+        _mv("Peppermint_Candy_Cane"): "peppermint_candy_cane",
+        _mv("Four_Leaf_Clover"): "four_leaf_clover",
+        _mv("Oath_Of_Purity"): "oath_of_purity",
+    }
+    return {mid: key for mid, key in raw.items() if int(mid) > 0}
+
+
+def pycons_should_consume_broadcast_item(model_id: int) -> bool:
+    """Receiver-side gate for team-broadcast consumables (SharedCommandType.UseItem).
+
+    Reads THIS account's own Pycons config (team opt-in, and per-item selected+enabled
+    for MB/DP items) and returns whether the broadcast item may be consumed locally.
+    Owned by Pycons so the message router (Messaging.py) performs no file/config I/O.
+    Blocks (returns False) on any read failure.
+    """
+    try:
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+
+        # This account's own config now lives in native Settings (account scope binds
+        # to the running account), so read it there - not the legacy configparser path.
+        settings = Settings(_PYCONS_ACCOUNT_CONFIG_NAME, "account")
+        if not settings.get_bool("Pycons", "team_consume_opt_in", False):
+            return False
+        if settings.get_bool("Pycons", "mbdp_receiver_require_enabled", True):
+            local_key = _pycons_mbdp_model_key_map().get(int(model_id))
+            if local_key:
+                selected = settings.get_bool("Pycons", f"selected_{local_key}", False)
+                enabled = settings.get_bool("Pycons", f"enabled_{local_key}", False)
+                if not (selected and enabled):
+                    return False
+        return True
+    except Exception:
+        return False
+
+
 import os
-import configparser
-from datetime import datetime
+
+# Native-Settings document name for the Pycons account MAIN config. Account scope
+# resolves to settings/<email>/Widgets/Pycons/Pycons.Config.ini and is also the
+# target the cross-account copy API writes into.
+_PYCONS_ACCOUNT_CONFIG_NAME = "Widgets/Pycons/Pycons.Config.ini"
 
 
-class IniHandler:
-    def __init__(self, filename: str):
-        self.filename = filename
-        self.last_modified = 0
-        self.config = configparser.ConfigParser()
-        self.reload()
+class _SettingsBackedIni:
+    """IniHandler-compatible facade over the native ``Settings`` document.
 
-    def reload(self) -> configparser.ConfigParser:
-        if not os.path.exists(self.filename):
-            with open(self.filename, 'w') as f:
-                f.write("")
-            self.last_modified = os.path.getmtime(self.filename)
-            return self.config
-        current_mtime = os.path.getmtime(self.filename)
-        if current_mtime != self.last_modified:
-            self.last_modified = current_mtime
-            try:
-                self.config.read(self.filename, encoding="utf-8")
-            except (configparser.Error, UnicodeDecodeError, OSError) as exc:
-                try:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    os.replace(self.filename, f"{self.filename}.corrupt_{timestamp}")
-                except OSError:
-                    pass
-                with open(self.filename, "w", encoding="utf-8") as f:
-                    f.write("")
-                self.config = configparser.ConfigParser()
-                self.last_modified = os.path.getmtime(self.filename)
-                print(f"[IniHandler] Recovered corrupted INI file: {self.filename} ({exc})")
-        return self.config
+    Lets Pycons' existing ``_get_ini_handler().read_*/write_key`` sites (and the
+    ``config = reload(); config.set(...); save(config)`` pattern) run on native
+    ``Settings``, which owns throttling, dirty tracking and autosave. Used for BOTH the
+    account MAIN config (account scope) and profile files (root scope, same on-disk
+    location) - configparser is gone entirely.
+    """
 
-    def save(self, config: configparser.ConfigParser) -> None:
-        with open(self.filename, 'w', encoding="utf-8") as configfile:
-            config.write(configfile)
-        self.config = config
-        try:
-            self.last_modified = os.path.getmtime(self.filename)
-        except OSError:
-            pass
+    def __init__(self, name, scope="account"):
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+        self._settings = Settings(name, scope)
 
+    # --- IniHandler read/write surface ---
     def read_key(self, section, key, default_value=""):
-        config = self.reload()
-        try:
-            return config.get(section, key)
-        except (configparser.NoOptionError, configparser.NoSectionError):
-            return default_value
+        return self._settings.get_str(section, key, str(default_value))
 
     def read_int(self, section, key, default_value=0):
-        config = self.reload()
-        try:
-            return config.getint(section, key)
-        except (ValueError, configparser.NoOptionError, configparser.NoSectionError):
-            return default_value
+        return self._settings.get_int(section, key, int(default_value))
 
     def read_float(self, section, key, default_value=0.0):
-        config = self.reload()
-        try:
-            return config.getfloat(section, key)
-        except (ValueError, configparser.NoOptionError, configparser.NoSectionError):
-            return default_value
+        return self._settings.get_float(section, key, float(default_value))
 
     def read_bool(self, section, key, default_value=False):
-        config = self.reload()
-        try:
-            return config.getboolean(section, key)
-        except (ValueError, configparser.NoOptionError, configparser.NoSectionError):
-            return default_value
+        return self._settings.get_bool(section, key, bool(default_value))
 
     def write_key(self, section, key, value):
-        config = self.reload()
-        if not config.has_section(section):
-            config.add_section(section)
-        config.set(section, key, str(value))
-        self.save(config)
+        self._settings.set(section, key, value)
 
     def delete_key(self, section, key):
-        config = self.reload()
-        if config.has_section(section) and config.has_option(section, key):
-            config.remove_option(section, key)
-            self.save(config)
+        return self._settings.delete(section, key)
 
     def delete_section(self, section):
-        config = self.reload()
-        if config.has_section(section):
-            config.remove_section(section)
-            self.save(config)
+        return self._settings.delete_section(section)
 
     def list_sections(self):
-        config = self.reload()
-        return config.sections()
+        return self._settings.sections()
 
     def list_keys(self, section):
-        config = self.reload()
-        if config.has_section(section):
-            return dict(config.items(section))
-        return {}
+        return dict(self._settings.items(section))
 
     def has_key(self, section, key):
-        config = self.reload()
-        return config.has_section(section) and config.has_option(section, key)
+        return self._settings.has(section, key)
 
-    def clone_section(self, source_section, target_section):
-        config = self.reload()
-        if config.has_section(source_section):
-            if not config.has_section(target_section):
-                config.add_section(target_section)
-            for key, value in config.items(source_section):
-                config.set(target_section, key, value)
-            self.save(config)
+    # --- configparser-shaped shims (native owns persistence, so no file dance) ---
+    def reload(self):
+        self._settings.reload()
+        return self
+
+    def save(self, config=None):
+        self._settings.save()
+
+    def has_section(self, section):
+        return bool(self._settings.keys(section))
+
+    def add_section(self, section):
+        pass  # native creates a section on first set
+
+    def set(self, section, key, value):
+        self._settings.set(section, key, str(value))
+
+    def get(self, section, key, fallback=""):
+        return self._settings.get_str(section, key, fallback)
+
+    def getboolean(self, section, key, fallback=False):
+        return self._settings.get_bool(section, key, bool(fallback))
+
+    def getint(self, section, key, fallback=0):
+        return self._settings.get_int(section, key, int(fallback))
+
+    def getfloat(self, section, key, fallback=0.0):
+        return self._settings.get_float(section, key, float(fallback))
+
+    def items(self, section):
+        return list(self._settings.items(section).items())
+
+    def has_option(self, section, key):
+        return self._settings.has(section, key)
+
+    def remove_option(self, section, key):
+        return self._settings.delete(section, key)
+
+    def remove_section(self, section):
+        return self._settings.delete_section(section)
+
+    def sections(self):
+        return self._settings.sections()
+
+
+def _pycons_profile_settings_name(profile_path):
+    """Root-scope Settings document name for a profile file path. Root scope binds to
+    ``<module>/<name>``, so this keeps profiles at the same on-disk location
+    (Widgets/Config/Pycons/Profiles/<file>) while going through native Settings."""
+    base = os.path.basename(str(profile_path or ""))
+    return f"Widgets/Config/Pycons/Profiles/{base}" if base else ""
+
+
+class _DictSection:
+    """Minimal configparser-shaped sink. ``_apply_profile_payload_to_live_config`` calls
+    only ``has_section``/``add_section``/``set`` on its config argument, so this harvests
+    the produced key/values into a plain ``values`` dict - no configparser needed."""
+
+    def __init__(self):
+        self.values = {}
+
+    def has_section(self, section):
+        return True
+
+    def add_section(self, section):
+        pass
+
+    def set(self, section, key, value):
+        self.values[str(key)] = str(value)
 
 
 try:
@@ -2378,7 +2447,7 @@ try:
         if not _ensure_pycons_profiles_dir():
             raise OSError("Could not create the shared Pycons profiles folder.")
 
-        handler = IniHandler(profile_path)
+        handler = _SettingsBackedIni(_pycons_profile_settings_name(profile_path), "root")
         config = handler.reload()
         for section_name in list(config.sections()):
             config.remove_section(section_name)
@@ -2456,7 +2525,7 @@ try:
         if not profile_id:
             return None
 
-        handler = IniHandler(safe_profile_path)
+        handler = _SettingsBackedIni(_pycons_profile_settings_name(safe_profile_path), "root")
         config = handler.reload()
         if not config.has_section(PYCONS_SHARED_PROFILE_SECTION):
             return None
@@ -3149,22 +3218,55 @@ try:
         return accounts, int(my_party_id), int(party_rows_count)
 
     def _set_team_opt_in_for_accounts(accounts, self_email: str, opt_in: bool):
+        # Message each follower to flip its OWN opt-in — never write another account's
+        # config file. The follower applies it locally and re-announces.
         updated = 0
         seen = set()
         toggled_names = []
-        value = "True" if bool(opt_in) else "False"
+        opt_val = 1.0 if bool(opt_in) else 0.0
         for acc in accounts:
             email = _acc_email(acc)
             if not email or email == self_email or email in seen:
                 continue
             seen.add(email)
-            ini = IniHandler(_resolve_account_ini_path(email, migrate_legacy=True, log_migration=False))
-            ini.write_key(INI_SECTION, "team_consume_opt_in", value)
+            GLOBAL_CACHE.ShMem.SendMessage(
+                self_email,
+                email,
+                SharedCommandType.Pycons,
+                (float(PYCONS_SYNC_OPCODE_SET_TEAM_OPT_IN), opt_val, 0.0, 0.0),
+                ("", "", "", ""),
+            )
             updated += 1
             nm = _acc_name(acc)
             if nm:
                 toggled_names.append(nm)
         return int(updated), toggled_names
+
+    def _pycons_announce_team_flags():
+        # Announce our own team flags to same-party accounts so they can read them from
+        # messages (cached locally) instead of our config file.
+        try:
+            self_email = str(Player.GetAccountEmail() or "")
+            if not self_email:
+                return
+            accounts, _pid, _rows = _resolve_same_party_accounts_for_opt_toggle(self_email)
+            b_val = 1.0 if bool(cfg.team_broadcast) else 0.0
+            o_val = 1.0 if bool(cfg.team_consume_opt_in) else 0.0
+            seen = set()
+            for acc in accounts:
+                email = _acc_email(acc)
+                if not email or email == self_email or email in seen:
+                    continue
+                seen.add(email)
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    self_email,
+                    email,
+                    SharedCommandType.Pycons,
+                    (float(PYCONS_SYNC_OPCODE_ANNOUNCE_TEAM_FLAGS), b_val, o_val, 0.0),
+                    ("", "", "", ""),
+                )
+        except Exception:
+            pass
 
     def _set_other_party_accounts_opt_in():
         try:
@@ -3239,6 +3341,13 @@ try:
                 _mark_mbdp_preset_custom()
         except Exception:
             pass
+        finally:
+            # Periodically announce our own flags to same-party accounts (~1s cadence)
+            # so others read them from messaging, never from our file.
+            try:
+                _pycons_announce_team_flags()
+            except Exception:
+                pass
 
     # -------------------------
     # Logging
@@ -4076,46 +4185,41 @@ try:
         return canonical
     
     def _get_ini_handler():
-        global _ini_handler_cache, _ini_path_cache, _ini_generic_fallback_logged, _ini_generic_cached_with_email_logged
+        global _ini_handler_cache, _ini_path_cache
         if _ini_handler_cache is not None:
-            if _is_generic_ini_path(_ini_path_cache):
-                try:
-                    account_email_live = str(Player.GetAccountEmail() or "")
-                except Exception:
-                    account_email_live = ""
-                if account_email_live and not _ini_generic_cached_with_email_logged:
-                    ConsoleLog(
-                        BOT_NAME,
-                        "Config handler is still bound to generic INI "
-                        f"({_ini_path_cache}) even though account email is now available "
-                        f"({account_email_live}). Automatic rebind to the account INI is pending.",
-                        Console.MessageType.Warning,
-                    )
-                    _ini_generic_cached_with_email_logged = True
             return _ini_handler_cache
-        if _ini_handler_cache is None:
-            account_email = Player.GetAccountEmail()
-            if not account_email:
-                # Fallback to generic file if not logged in yet
-                _ini_path_cache = _resolve_generic_ini_path(migrate_legacy=True, log_migration=True)
-                if not _ini_generic_fallback_logged:
-                    ConsoleLog(
-                        BOT_NAME,
-                        "Account email unavailable at config init; using generic INI "
-                        f"({_ini_path_cache}) for this session.",
-                        Console.MessageType.Warning,
-                    )
-                    _ini_generic_fallback_logged = True
-            else:
-                _ini_path_cache = _resolve_account_ini_path(account_email, migrate_legacy=True, log_migration=True)
-            try:
-                parent_dir = os.path.dirname(str(_ini_path_cache or ""))
-                if parent_dir:
-                    os.makedirs(parent_dir, exist_ok=True)
-            except Exception:
-                pass
-            _ini_handler_cache = IniHandler(_ini_path_cache)
-            ConsoleLog(BOT_NAME, f"Using config file: {_ini_path_cache} (account: {account_email})", Console.MessageType.Info)
+
+        # The MAIN config now lives in native Settings (account scope: staged in
+        # memory before the account anchor resolves, then bound automatically -
+        # native owns throttling/dirty/autosave). We still resolve the legacy
+        # configparser path because profile code reads it AND it is the one-time
+        # import source below.
+        try:
+            account_email = str(Player.GetAccountEmail() or "")
+        except Exception:
+            account_email = ""
+        if account_email:
+            _ini_path_cache = _resolve_account_ini_path(account_email, migrate_legacy=True, log_migration=False)
+        else:
+            _ini_path_cache = _resolve_generic_ini_path(migrate_legacy=True, log_migration=False)
+
+        handler = _SettingsBackedIni(_PYCONS_ACCOUNT_CONFIG_NAME, "account")
+        # One-time migration: import the legacy per-account ini so existing users keep
+        # their settings. The old file lives at a module-root-relative path, so read it
+        # through native Settings at root scope (no configparser); native seeds nothing.
+        try:
+            if not handler.has_section(INI_SECTION) and _ini_path_cache and os.path.exists(_ini_path_cache):
+                legacy_name = str(_ini_path_cache).replace("\\", "/").lstrip("/")
+                legacy_items = _SettingsBackedIni(legacy_name, "root").list_keys(INI_SECTION)
+                if legacy_items:
+                    for key, value in legacy_items.items():
+                        handler.write_key(INI_SECTION, key, value)
+                    handler.save()
+                    ConsoleLog(BOT_NAME, f"Imported legacy Pycons config ({_ini_path_cache}) into native Settings.", Console.MessageType.Info)
+        except Exception as exc:
+            ConsoleLog(BOT_NAME, f"Legacy Pycons config import skipped: {exc}", Console.MessageType.Warning)
+
+        _ini_handler_cache = handler
         return _ini_handler_cache
     
     def _get_ini_path():
@@ -4168,7 +4272,7 @@ try:
                 os.makedirs(parent_dir, exist_ok=True)
         except Exception:
             pass
-        _ini_handler_cache = IniHandler(_ini_path_cache)
+        _ini_handler_cache = _SettingsBackedIni(_PYCONS_ACCOUNT_CONFIG_NAME, "account")
         _ini_generic_cached_with_email_logged = False
 
         cfg = Config()
@@ -4475,11 +4579,11 @@ try:
             self._dirty = True
 
         def save_if_dirty_throttled(self, every_ms: int = 750):
+            # Native Settings owns disk throttling + autosave, so there is no Python
+            # save timer here anymore. The _dirty flag stays only as a cheap gate to
+            # avoid re-pushing every field to Settings on frames with no change.
             if not self._dirty:
                 return
-            if not (self._save_timer.IsStopped() or self._save_timer.HasElapsed(int(every_ms))):
-                return
-            self._save_timer.Start()
 
             ini_handler = _get_ini_handler()
             config = ini_handler.reload()
@@ -5254,7 +5358,7 @@ try:
             pass
 
         _ini_path_cache = new_path
-        _ini_handler_cache = IniHandler(_ini_path_cache)
+        _ini_handler_cache = _SettingsBackedIni(_PYCONS_ACCOUNT_CONFIG_NAME, "account")
         _ini_generic_cached_with_email_logged = False
         return True
 
@@ -5262,6 +5366,12 @@ try:
         global cfg
         try:
             _force_bind_ini_handler_to_account()
+            # Native Settings is in-memory; force a re-read so a cross-account apply
+            # (another client wrote our file) is actually picked up.
+            try:
+                _get_ini_handler().reload()
+            except Exception:
+                pass
             cfg = Config()
             _runtime_sync_from_cfg_full()
             cleared_one_shot_enabled_defaults = _clear_one_shot_synced_enabled_defaults_if_needed()
@@ -7758,14 +7868,12 @@ try:
         return f"pycons_sync_{int(_now_ms())}_{int(_rt.sync_request_counter)}"
 
     def _pycons_sync_write_categories_to_account(account_email: str, categories: list[str]) -> str:
-        target_path = _resolve_account_ini_path(account_email, migrate_legacy=True, log_migration=False)
-        ini_handler = IniHandler(target_path)
-        config = ini_handler.reload()
-        if not config.has_section(INI_SECTION):
-            config.add_section(INI_SECTION)
+        # Build the section values, then apply them to the target account's native
+        # Settings doc via the cross-account API. No raw cross-account file write.
+        values: dict[str, str] = {}
 
         def set_key(key: str, value):
-            config.set(INI_SECTION, str(key), str(value))
+            values[str(key)] = str(value)
 
         category_set = {str(category) for category in categories}
 
@@ -7830,16 +7938,18 @@ try:
                 elif not selected_value:
                     set_key(f"alcohol_enabled_{item_key}", False)
 
-        ini_handler.save(config)
-        return target_path
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+        Settings(_PYCONS_ACCOUNT_CONFIG_NAME, "account").apply_section_to_account(INI_SECTION, values, account_email)
+        return account_email
 
     def _pycons_write_profile_to_account(account_email: str, profile_payload: dict[str, Any], profile_name: str) -> str:
-        target_path = _resolve_account_ini_path(account_email, migrate_legacy=True, log_migration=False)
-        ini_handler = IniHandler(target_path)
-        config = ini_handler.reload()
-        _apply_profile_payload_to_live_config(config, profile_payload, profile_name=profile_name)
-        ini_handler.save(config)
-        return target_path
+        # Build the profile's section values in-memory (no configparser), then apply
+        # to the target account's native Settings doc. No raw cross-account file write.
+        sink = _DictSection()
+        _apply_profile_payload_to_live_config(sink, profile_payload, profile_name=profile_name)
+        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+        Settings(_PYCONS_ACCOUNT_CONFIG_NAME, "account").apply_section_to_account(INI_SECTION, sink.values, account_email)
+        return account_email
 
     def _pycons_sync_send_reload_request(account_email: str, request_id: str) -> bool:
         sender_email = str(Player.GetAccountEmail() or "").strip()
@@ -8153,6 +8263,30 @@ try:
             if opcode == PYCONS_SYNC_OPCODE_SET_SELF_MBDP_TARGET:
                 return _pycons_handle_self_target_request(message, sender_email, receiver_email, request_id)
 
+            if opcode == PYCONS_SYNC_OPCODE_ANNOUNCE_TEAM_FLAGS:
+                # Another account announced its team flags — cache them (no file read).
+                if sender_email:
+                    params = getattr(message, "Params", [0, 0, 0, 0]) or [0, 0, 0, 0]
+                    _team_flags_cache[sender_email] = (
+                        _now_ms(),
+                        bool(int(float(params[1]))),
+                        bool(int(float(params[2]))),
+                    )
+                return True
+
+            if opcode == PYCONS_SYNC_OPCODE_SET_TEAM_OPT_IN:
+                # Leader asked us to flip our OWN opt-in. Apply locally + re-announce.
+                params = getattr(message, "Params", [0, 0, 0, 0]) or [0, 0, 0, 0]
+                new_optin = bool(int(float(params[1])))
+                try:
+                    if bool(cfg.team_consume_opt_in) != new_optin:
+                        cfg.team_consume_opt_in = new_optin
+                        cfg.mark_dirty()
+                    _pycons_announce_team_flags()
+                except Exception as exc:
+                    ConsoleLog(BOT_NAME, f"Pycons set-team-opt-in failed: {exc}", Console.MessageType.Warning)
+                return True
+
             if opcode != PYCONS_SYNC_OPCODE_RELOAD_CONFIG:
                 ConsoleLog(
                     BOT_NAME,
@@ -8348,19 +8482,18 @@ try:
     def _load_team_flags_for_email(account_email: str) -> tuple[bool, bool]:
         if not account_email:
             return False, False
-        now = _now_ms()
-        cached = _team_flags_cache.get(account_email)
-        if cached and (now - int(cached[0])) < int(TEAM_SETTINGS_CACHE_MS):
-            return bool(cached[1]), bool(cached[2])
+        # Local account → our own live flags.
         try:
-            ini = IniHandler(_resolve_account_ini_path(account_email, migrate_legacy=True, log_migration=False))
-            is_broadcaster = bool(ini.read_bool(INI_SECTION, "team_broadcast", False))
-            is_optin = bool(ini.read_bool(INI_SECTION, "team_consume_opt_in", False))
+            if account_email == str(Player.GetAccountEmail() or ""):
+                return bool(cfg.team_broadcast), bool(cfg.team_consume_opt_in)
         except Exception:
-            is_broadcaster = False
-            is_optin = False
-        _team_flags_cache[account_email] = (now, is_broadcaster, is_optin)
-        return is_broadcaster, is_optin
+            pass
+        # Other accounts → whatever they last announced over messaging (cached locally).
+        # No cross-account file reads.
+        cached = _team_flags_cache.get(account_email)
+        if cached:
+            return bool(cached[1]), bool(cached[2])
+        return False, False
 
     def _morale_state(raw_value: int) -> dict:
         raw = int(raw_value or 0)
