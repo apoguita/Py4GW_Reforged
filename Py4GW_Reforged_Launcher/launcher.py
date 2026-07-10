@@ -561,19 +561,22 @@ class BulkLaunchSession:
 
 
 # -----------------------------------------------------------------------------
-# PrereqState: runs launcher_core.prereqs' Python/VC++ checks (and any install
-# a user requests) on a background thread, same thread-safe status pattern as
-# LaunchSession/BulkLaunchSession above -- never call ImGui from the
-# background thread, only plain state mutation the UI thread polls. Checks
-# are re-run fresh every time (on app start, after any install finishes, and
-# whenever the user clicks "Check now") rather than cached -- see
-# launcher_core.prereqs' module docstring for why that's fine (a cheap
-# subprocess/registry read, not worth staleness-tracking complexity).
+# PrereqState: runs launcher_core.prereqs' Python/VC++/DirectX-runtime checks
+# (and any install a user requests) on a background thread, same thread-safe
+# status pattern as LaunchSession/BulkLaunchSession above -- never call ImGui
+# from the background thread, only plain state mutation the UI thread polls.
+# Checks are re-run fresh every time (on app start, after any install
+# finishes, and whenever the user clicks "Check now") rather than cached --
+# see launcher_core.prereqs' module docstring for why that's fine (a cheap
+# subprocess/registry/filesystem check, not worth staleness-tracking
+# complexity).
 #
-# A DirectX SDK check was considered and deliberately left out -- see
+# A DirectX *SDK* check was considered and deliberately left out -- see
 # launcher_core.prereqs' module docstring for why (verified directly against
 # Py4GW_Reforged_Native's own CMakeLists.txt: no D3DX linkage anywhere, only
 # standard Windows-SDK d3d9/d3dcompiler, so the legacy DXSDK isn't needed).
+# The DirectX End-User *Runtime* below is a different, real requirement --
+# confirmed necessary by Apo directly.
 # -----------------------------------------------------------------------------
 
 class PrereqState:
@@ -581,6 +584,7 @@ class PrereqState:
         self._lock = threading.Lock()
         self.python_result: Optional[prereqs.PythonPrereqResult] = None
         self.vcredist_result: Optional[prereqs.VcRedistResult] = None
+        self.directx_runtime_result: Optional[prereqs.DirectXRuntimeResult] = None
         self._checking = False
         self._install_in_progress: Optional[str] = None
         self._install_status_text = ""
@@ -595,13 +599,16 @@ class PrereqState:
     def _check_all(self) -> None:
         python_result = prereqs.check_python_prereq()
         vcredist_result = prereqs.check_vcredist_prereq()
+        directx_runtime_result = prereqs.check_directx_runtime_prereq()
         with self._lock:
             self.python_result = python_result
             self.vcredist_result = vcredist_result
+            self.directx_runtime_result = directx_runtime_result
             self._checking = False
 
     def start_install(self, component: str) -> None:
-        """component is "python", "vcredist_x86", or "vcredist_x64"."""
+        """component is "python", "vcredist_x86", "vcredist_x64", or
+        "directx_runtime"."""
         if self._install_in_progress is not None:
             return
         self._install_in_progress = component
@@ -619,6 +626,8 @@ class PrereqState:
             success, message = prereqs.download_and_install_vcredist("x86", self._set_install_status)
         elif component == "vcredist_x64":
             success, message = prereqs.download_and_install_vcredist("x64", self._set_install_status)
+        elif component == "directx_runtime":
+            success, message = prereqs.download_and_install_directx_runtime(self._set_install_status)
         else:
             success, message = False, "Unknown component"
 
@@ -2032,6 +2041,13 @@ def _show_prereq_install_confirm_popup() -> None:
             component_key, download_url, label = _prereq_install_pending
             imgui.text(f"This will download and run the installer for:\n{label}")
             imgui.text_colored(_PREREQ_MUTED_COLOR, download_url)
+            if component_key == "directx_runtime":
+                # Quoted directly from Microsoft's own download page -- the
+                # user should know this *before* agreeing, not after, same
+                # transparency-first pattern as the pacing-clamp wording
+                # elsewhere in this window.
+                imgui.spacing()
+                imgui.text_colored(_PREREQ_MISSING_COLOR, prereqs.DIRECTX_RUNTIME_CANNOT_UNINSTALL_NOTICE)
             imgui.spacing()
             if imgui.button("Install"):
                 PREREQS.start_install(component_key)
@@ -2073,6 +2089,10 @@ def show_app_settings_window() -> None:
                 "VC++ Redistributable (x64)",
                 None if vc is None else _VcRedistArchView(vc, "x64"),
                 "vcredist_x64", prereqs.VCREDIST_2013_X64_URL,
+            )
+            _draw_prereq_row(
+                "DirectX End-User Runtime", PREREQS.directx_runtime_result,
+                "directx_runtime", prereqs.DIRECTX_RUNTIME_DOWNLOAD_URL,
             )
         if PREREQS.install_done_message and PREREQS.install_in_progress is None:
             imgui.text_colored(_PREREQ_MUTED_COLOR, PREREQS.install_done_message)

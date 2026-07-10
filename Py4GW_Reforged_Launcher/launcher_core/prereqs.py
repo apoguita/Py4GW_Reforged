@@ -1,34 +1,42 @@
 """Prerequisite checks for the GW1/Py4GW injection pipeline on the *target*
 machine: a separate Python installation (whatever ``py -3.13-32`` resolves
-to) and the Visual C++ Redistributable. Distinct from launcher.py's own
-``sys.maxsize`` self-check, which only verifies *this launcher's own*
-interpreter is 32-bit -- these check entirely different, separately-installed
-software that GW1 injection needs on the machine, independent of whatever
-interpreter is running this launcher's own code.
+to), the Visual C++ Redistributable, and the DirectX End-User Runtime.
+Distinct from launcher.py's own ``sys.maxsize`` self-check, which only
+verifies *this launcher's own* interpreter is 32-bit -- these check entirely
+different, separately-installed software that GW1 injection needs on the
+machine, independent of whatever interpreter is running this launcher's own
+code.
 
 The Python check is a direct port of GWxLauncher's
 Services/PythonPrereqService.cs -- same probe command, same failure
-classification. The VC++ Redistributable check is new (not present in that
-reference), included defensively since it hasn't yet been confirmed safe to
-omit for Reforged specifically.
+classification. The VC++ Redistributable and DirectX End-User Runtime checks
+are new (not present in that reference), included defensively since it
+hasn't yet been confirmed safe to omit for Reforged specifically -- the
+DirectX one specifically confirmed necessary by Apo directly (Discord,
+2026-04-05), linking Microsoft's own download page and stating it's
+"necessary for install".
 
-A DirectX SDK (DXSDK_DIR) check was considered and deliberately left out:
-verified directly against Py4GW_Reforged_Native's actual CMakeLists.txt,
+A DirectX *SDK* (DXSDK_DIR) check -- a different thing entirely from the
+End-User Runtime above -- was considered separately and deliberately left
+out: verified directly against Py4GW_Reforged_Native's actual CMakeLists.txt,
 which links d3d9.lib/d3dcompiler.lib (standard Windows SDK components that
 ship with the OS/Windows Update) with no D3DX linkage anywhere -- D3DX is
-the only reason the legacy DirectX SDK would ever be needed, and this
-codebase doesn't use it. Confirmed independently on a real machine with no
-DirectX SDK installed that already builds/runs this project fine.
+the only reason the legacy DirectX *SDK* would ever be needed, and this
+codebase doesn't use it. The End-User *Runtime* is a separate, real
+requirement regardless: it's what actually installs the D3DX9/10/11,
+XAudio, XInput, and XACT DLLs a running game/DLL loads at runtime, which is
+an entirely different concern from whether a *developer* SDK is present.
 
 Every detection function here is a synchronous, cheap call (a subprocess
-probe or a registry read) meant to be re-run on every launch -- no caching,
-no staleness/expiration handling, since a subprocess call this cheap has no
-real cost to re-running and a cache only buys complexity for a problem
-("this check is slow") that doesn't exist.
+probe, a registry read, or a filesystem check) meant to be re-run on every
+launch -- no caching, no staleness/expiration handling, since a check this
+cheap has no real cost to re-running and a cache only buys complexity for a
+problem ("this check is slow") that doesn't exist.
 """
 
 from __future__ import annotations
 
+import ctypes
 import dataclasses
 import hashlib
 import os
@@ -501,3 +509,147 @@ def download_and_install_vcredist(arch: str, on_status: Callable[[str], None]) -
     return _download_and_run_signed_installer(
         url, f"vcredist_2013_{arch}.exe", VCREDIST_EXPECTED_SIGNER, args=[], on_status=on_status
     )
+
+
+# -----------------------------------------------------------------------------
+# Phase 2 (continued) -- DirectX End-User Runtime (June 2010). Confirmed
+# necessary by Apo directly (Discord, 2026-04-05), linking Microsoft's own
+# download page and stating it's "necessary for install" -- a real, separate
+# requirement from the DirectX *SDK* check considered and deliberately left
+# out above (see this module's own docstring for the distinction).
+# -----------------------------------------------------------------------------
+
+DIRECTX_RUNTIME_DOWNLOAD_URL = (
+    "https://download.microsoft.com/download/8/4/a/84a35bf1-dafe-4ae8-82af-ad2ae20b6b14/directx_Jun2010_redist.exe"
+)
+DIRECTX_RUNTIME_INFO_PAGE_URL = "https://www.microsoft.com/en-us/download/details.aspx?id=8109"
+DIRECTX_RUNTIME_EXPECTED_SIGNER = "Microsoft Corporation"
+# Quoted directly from Microsoft's own download page (id=8109) -- shown in
+# the confirm-before-install UI so the user knows this *before* agreeing to
+# install, not after.
+DIRECTX_RUNTIME_CANNOT_UNINSTALL_NOTICE = "The DirectX runtime cannot be uninstalled."
+
+# GW.exe is a 2005-era DirectX 9 title, so D3DX9 is the most likely actual
+# dependency -- the June 2010 package also covers D3DX10/11, XAudio 2.7,
+# XInput 1.3, XACT, and Managed DirectX, but those read as less relevant to
+# this specific game. d3dx9_43.dll is the *last* D3DX9 sub-version this
+# package installs (confirmed directly: extracting the real installer and
+# inspecting its cabinet files shows every D3DX9 sub-version from _24
+# through _43 present cumulatively) -- checking for the highest one means
+# checking for "the package has fully run", not just some older partial
+# install from something else.
+DIRECTX_RUNTIME_MARKER_DLL = "d3dx9_43.dll"
+
+
+class DirectXRuntimeStatus(Enum):
+    OK = "ok"
+    NOT_FOUND = "not_found"
+
+
+@dataclasses.dataclass
+class DirectXRuntimeResult:
+    status: DirectXRuntimeStatus
+    marker_path: Optional[str] = None
+
+    @property
+    def is_ok(self) -> bool:
+        return self.status == DirectXRuntimeStatus.OK
+
+    @property
+    def diagnostic_text(self) -> str:
+        if self.is_ok:
+            return f"{DIRECTX_RUNTIME_MARKER_DLL} found at {self.marker_path}"
+        return f"{DIRECTX_RUNTIME_MARKER_DLL} not found"
+
+
+def _syswow64_dir() -> Optional[str]:
+    """The real SysWOW64 directory, via the WinAPI function built exactly
+    for this (GetSystemWow64DirectoryW) rather than hardcoding
+    "C:\\Windows\\SysWOW64" -- handles a non-standard Windows install drive
+    correctly, and cleanly returns None on a true 32-bit OS (vanishingly
+    rare today) where no such directory exists at all, rather than guessing
+    a path that wouldn't exist there anyway. Confirmed directly on a real
+    machine: returns "C:\\windows\\SysWOW64", and the marker DLL was found
+    there (that machine already had some DirectX runtime installed).
+    """
+    buf = ctypes.create_unicode_buffer(260)
+    n = ctypes.windll.kernel32.GetSystemWow64DirectoryW(buf, 260)
+    return buf.value if n > 0 else None
+
+
+def check_directx_runtime_prereq() -> DirectXRuntimeResult:
+    """Checks for DIRECTX_RUNTIME_MARKER_DLL directly in SysWOW64 (this
+    launcher targets 32-bit, so the 32-bit copy of the DLL is what matters,
+    regardless of whether a 64-bit copy also exists in System32) rather than
+    an Add/Remove Programs registry entry, unlike the VC++ check -- this
+    installer is documented (and widely reported in game-dev/Steamworks
+    circles) not to reliably register one at all, so a registry-based check
+    isn't a fallback-worthy option here, it's just not reliable, period.
+    """
+    wow64_dir = _syswow64_dir()
+    if wow64_dir is None:
+        return DirectXRuntimeResult(DirectXRuntimeStatus.NOT_FOUND)
+    marker_path = os.path.join(wow64_dir, DIRECTX_RUNTIME_MARKER_DLL)
+    if os.path.isfile(marker_path):
+        return DirectXRuntimeResult(DirectXRuntimeStatus.OK, marker_path=marker_path)
+    return DirectXRuntimeResult(DirectXRuntimeStatus.NOT_FOUND)
+
+
+def download_and_install_directx_runtime(on_status: Callable[[str], None]) -> tuple[bool, str]:
+    """The DirectX End-User Runtime installer is a self-extracting archive,
+    not a direct installer. Confirmed directly against the real download
+    (not assumed): its own /? help dialog documents `/Q` (quiet), `/T:<path>`
+    (temp working folder), and `/C` ("extract files only to the folder when
+    used also with /T") -- /C is required *alongside* /T to get extract-only
+    behavior; a first attempt with just `/Q /T:<path>` produced a real
+    "Command line option syntax error" dialog. `/Q /T:<path> /C` together
+    were then confirmed to correctly extract DXSETUP.exe plus its .cab files
+    with no UI at all.
+
+    DXSETUP.exe itself is then run with `/silent` -- confirmed both by the
+    literal string "/silent" embedded in the real DXSETUP.exe binary and by
+    actually running it for real: completed in ~14s, genuinely no UI, exit
+    code 0, no stray processes left behind afterward.
+
+    Microsoft's own download page states directly: "The DirectX runtime
+    cannot be uninstalled" -- surfaced in the confirm-before-install UI (see
+    DIRECTX_RUNTIME_CANNOT_UNINSTALL_NOTICE) so the user knows that before
+    agreeing, not after.
+    """
+    try:
+        with tempfile.TemporaryDirectory(prefix="py4gw_prereq_") as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            installer_path = tmp_path / "directx_Jun2010_redist.exe"
+            _download_file(DIRECTX_RUNTIME_DOWNLOAD_URL, installer_path, on_status=on_status)
+
+            on_status("Verifying download...")
+            sig_ok, sig_message = _verify_authenticode_signer(installer_path, DIRECTX_RUNTIME_EXPECTED_SIGNER)
+            if not sig_ok:
+                return False, f"Signature check failed -- not installing. {sig_message}"
+
+            extract_dir = tmp_path / "extracted"
+            extract_dir.mkdir()
+            on_status("Extracting...")
+            extract_proc = subprocess.run(
+                [str(installer_path), "/Q", f"/T:{extract_dir}", "/C"], timeout=300.0
+            )
+            if extract_proc.returncode != 0:
+                return False, f"Extraction exited with code {extract_proc.returncode}."
+
+            dxsetup_path = extract_dir / "DXSETUP.exe"
+            if not dxsetup_path.exists():
+                return False, "Extraction finished but DXSETUP.exe wasn't where it was expected."
+
+            on_status("Installing DirectX End-User Runtime...")
+            install_proc = subprocess.run([str(dxsetup_path), "/silent"], timeout=300.0)
+            if install_proc.returncode != 0:
+                return False, f"Installer exited with code {install_proc.returncode}."
+
+            on_status("Done.")
+            return True, "DirectX End-User Runtime installed."
+    except urllib.error.URLError as e:
+        return False, f"Download failed: {e}"
+    except subprocess.TimeoutExpired:
+        return False, "Installer timed out -- may still be running in the background."
+    except OSError as e:
+        return False, f"Unexpected error: {e}"
