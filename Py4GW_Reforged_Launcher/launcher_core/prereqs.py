@@ -118,12 +118,24 @@ def _verify_authenticode_signer(file_path: Path, expected_signer_substring: str)
     Returns (ok, message).
     """
     try:
+        # Embed the path directly into the script as a single-quoted PowerShell
+        # string literal instead of passing it as a trailing positional arg and
+        # reading it back via $args[0]. A trailing arg after -Command "<script>"
+        # is not reliably bound into $args for an inline script across PowerShell
+        # builds -- when it doesn't bind, $args[0] is $null, Get-AuthenticodeSignature
+        # receives an empty -LiteralPath, and it returns fast with a blank/"unknown"
+        # Status (exactly the failure seen on this machine, where the download and
+        # MD5 check both succeed and only this check fails). A single-quoted PS
+        # literal is the safe embedding: single-quoting suppresses all $/backtick
+        # interpolation, so the only character that needs escaping is the single
+        # quote itself, doubled ('' ) per PowerShell's own literal-string rules.
+        literal_path = str(file_path).replace("'", "''")
         ps_script = (
-            "$sig = Get-AuthenticodeSignature -LiteralPath $args[0]; "
+            f"$sig = Get-AuthenticodeSignature -LiteralPath '{literal_path}'; "
             "Write-Output \"$($sig.Status)|$($sig.SignerCertificate.Subject)\""
         )
         result = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_script, str(file_path)],
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_script],
             capture_output=True, text=True, timeout=30.0,
         )
         output = result.stdout.strip()
