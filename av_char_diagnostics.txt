@@ -1,0 +1,175 @@
+[21:49:21] [Py4GW] Script compiled successfully.
+[21:49:21] [Py4GW] main() function found.
+[21:49:21] [Py4GW] Script started.
+[21:49:21] [AvChar Diagnostic] ========================================================================
+[21:49:21] [print:] ========================================================================
+[21:49:21] [AvChar Diagnostic] AVAILABLE CHARACTER DIAGNOSTIC   project=Py4GW_python_files
+[21:49:21] [print:] AVAILABLE CHARACTER DIAGNOSTIC   project=Py4GW_python_files
+[21:49:21] [AvChar Diagnostic] ========================================================================
+[21:49:21] [print:] ========================================================================
+[21:49:21] [AvChar Diagnostic] [Pointers_SHMemStruct] slot values (order == native struct order):
+[21:49:21] [print:] [Pointers_SHMemStruct] slot values (order == native struct order):
+[21:49:21] [AvChar Diagnostic]     MissionMapContext      = 0x5457B3D0
+[21:49:21] [print:] MissionMapContext      = 0x5457B3D0
+[21:49:21] [AvChar Diagnostic]     WorldMapContext        = 0x00000000
+[21:49:21] [print:] WorldMapContext        = 0x00000000
+[21:49:21] [AvChar Diagnostic]     GameplayContext        = 0x07A31150
+[21:49:21] [print:] GameplayContext        = 0x07A31150
+[21:49:21] [AvChar Diagnostic]     InstanceInfo           = 0x00C3488A
+[21:49:21] [print:] InstanceInfo           = 0x00C3488A
+[21:49:21] [AvChar Diagnostic]     MapContext             = 0x31C33698
+[21:49:21] [print:] MapContext             = 0x31C33698
+[21:49:21] [AvChar Diagnostic]     GameContext            = 0x01E88798
+[21:49:21] [print:] GameContext            = 0x01E88798
+[21:49:21] [AvChar Diagnostic]     PreGameContext         = 0x00000000
+[21:49:21] [print:] PreGameContext         = 0x00000000
+[21:49:21] [AvChar Diagnostic]     WorldContext           = 0x01EBDE70
+[21:49:21] [print:] WorldContext           = 0x01EBDE70
+[21:49:21] [AvChar Diagnostic]     CharContext            = 0x01EC9F18
+[21:49:21] [print:] CharContext            = 0x01EC9F18
+[21:49:21] [AvChar Diagnostic]     AgentContext           = 0x01EC9558
+[21:49:21] [print:] AgentContext           = 0x01EC9558
+[21:49:21] [AvChar Diagnostic]     CinematicContext       = 0x01EBC748
+[21:49:21] [print:] CinematicContext       = 0x01EBC748
+[21:49:21] [AvChar Diagnostic]     GuildContext           = 0x01EBE6D0
+[21:49:21] [print:] GuildContext           = 0x01EBE6D0
+[21:49:21] [AvChar Diagnostic]     AvailableCharacters    = 0x0103B28C
+[21:49:21] [print:] AvailableCharacters    = 0x0103B28C
+[21:49:21] [AvChar Diagnostic]     PartyContext           = 0x01DF5D48
+[21:49:21] [print:] PartyContext           = 0x01DF5D48
+[21:49:21] [AvChar Diagnostic]     ServerRegionContext    = 0x01052328
+[21:49:21] [print:] ServerRegionContext    = 0x01052328
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [direct pattern] 8b 35 ?? ?? ?? ?? 57 69 F8 84 00 00 00  off=0x2 sect=TEXT
+[21:49:21] [print:] [direct pattern] 8b 35 ?? ?? ?? ?? 57 69 F8 84 00 00 00  off=0x2 sect=TEXT
+[21:49:21] [AvChar Diagnostic]     operand addr      = 0x008DCA72
+[21:49:21] [print:] operand addr      = 0x008DCA72
+[21:49:21] [AvChar Diagnostic]     global (read_ptr) = 0x0103B28C
+[21:49:21] [print:] global (read_ptr) = 0x0103B28C
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [compare] SSM.AvailableCharacters=0x0103B28C   direct-global=0x0103B28C   match=True
+[21:49:21] [print:] [compare] SSM.AvailableCharacters=0x0103B28C   direct-global=0x0103B28C   match=True
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [container] SSM.AvailableCharacters @ 0x0103B28C
+[21:49:21] [print:] [container] SSM.AvailableCharacters @ 0x0103B28C
+[21:49:21] [AvChar Diagnostic]     m_buffer=0x25490E38  capacity=14  size=14  param=0x00000001
+[21:49:21] [print:] m_buffer=0x25490E38  capacity=14  size=14  param=0x00000001
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [container] direct-pattern global @ 0x0103B28C
+[21:49:21] [print:] [container] direct-pattern global @ 0x0103B28C
+[21:49:21] [AvChar Diagnostic]     m_buffer=0x25490E38  capacity=14  size=14  param=0x00000001
+[21:49:21] [print:] m_buffer=0x25490E38  capacity=14  size=14  param=0x00000001
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [elements] from SSM.AvailableCharacters: buffer=0x25490E38 capacity=14 size=14
+[21:49:21] [print:] [elements] from SSM.AvailableCharacters: buffer=0x25490E38 capacity=14 size=14
+[21:49:21] [AvChar Diagnostic]     [0] name='Fezzik The Untamed' lvl=20 prim=1 sec=2 camp=1 map=642 pvp=False
+[21:49:21] [print:] [0] name='Fezzik The Untamed' lvl=20 prim=1 sec=2 camp=1 map=642 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 ec 15 94 2e 09 20 8a 48 ab 3f 14 19 c7 ce 2c b8
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 ec 15 94 2e 09 20 8a 48 ab 3f 14 19 c7 ce 2c b8
+[21:49:21] [AvChar Diagnostic]          name_raw =46 00 65 00 7a 00 7a 00 69 00 6b 00 20 00 54 00 68 00 65 00 20 00 55 00 6e 00 74 00 61 00 6d 00 65 00 64 00 00 00 00 00
+[21:49:21] [print:] name_raw =46 00 65 00 7a 00 7a 00 69 00 6b 00 20 00 54 00 68 00 65 00 20 00 55 00 6e 00 74 00 61 00 6d 00 65 00 64 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [1] name='Appok' lvl=6 prim=1 sec=0 camp=2 map=249 pvp=False
+[21:49:21] [print:] [1] name='Appok' lvl=6 prim=1 sec=0 camp=2 map=249 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 ea 82 b5 4c ec c3 22 42 a9 e8 ab 0f 6a d3 cf de
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 ea 82 b5 4c ec c3 22 42 a9 e8 ab 0f 6a d3 cf de
+[21:49:21] [AvChar Diagnostic]          name_raw =41 00 70 00 70 00 6f 00 6b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =41 00 70 00 70 00 6f 00 6b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [2] name='Imp Osible' lvl=20 prim=2 sec=3 camp=1 map=81 pvp=False
+[21:49:21] [print:] [2] name='Imp Osible' lvl=20 prim=2 sec=3 camp=1 map=81 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 d4 54 3c fc e2 6b 6d 47 ba 8c 92 71 a3 b6 bf fa
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 d4 54 3c fc e2 6b 6d 47 ba 8c 92 71 a3 b6 bf fa
+[21:49:21] [AvChar Diagnostic]          name_raw =49 00 6d 00 70 00 20 00 4f 00 73 00 69 00 62 00 6c 00 65 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =49 00 6d 00 70 00 20 00 4f 00 73 00 69 00 62 00 6c 00 65 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [3] name='Pre Lucifer' lvl=13 prim=2 sec=0 camp=1 map=148 pvp=False
+[21:49:21] [print:] [3] name='Pre Lucifer' lvl=13 prim=2 sec=0 camp=1 map=148 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 81 b8 ee ff 73 7f 0b 47 a3 39 ec 48 26 d5 83 02
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 81 b8 ee ff 73 7f 0b 47 a3 39 ec 48 26 d5 83 02
+[21:49:21] [AvChar Diagnostic]          name_raw =50 00 72 00 65 00 20 00 4c 00 75 00 63 00 69 00 66 00 65 00 72 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =50 00 72 00 65 00 20 00 4c 00 75 00 63 00 69 00 66 00 65 00 72 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [4] name='Lucifer Strike' lvl=20 prim=1 sec=8 camp=1 map=857 pvp=False
+[21:49:21] [print:] [4] name='Lucifer Strike' lvl=20 prim=1 sec=8 camp=1 map=857 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 3a 65 37 a4 65 1b 14 47 84 82 d0 8d 8f b4 33 b7
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 3a 65 37 a4 65 1b 14 47 84 82 d0 8d 8f b4 33 b7
+[21:49:21] [AvChar Diagnostic]          name_raw =4c 00 75 00 63 00 69 00 66 00 65 00 72 00 20 00 53 00 74 00 72 00 69 00 6b 00 65 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =4c 00 75 00 63 00 69 00 66 00 65 00 72 00 20 00 53 00 74 00 72 00 69 00 6b 00 65 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [5] name='Lucifer Seed' lvl=20 prim=3 sec=8 camp=1 map=857 pvp=False
+[21:49:21] [print:] [5] name='Lucifer Seed' lvl=20 prim=3 sec=8 camp=1 map=857 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 58 4a e0 92 fc a0 99 4a ab d2 d8 da e0 cc 57 57
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 58 4a e0 92 fc a0 99 4a ab d2 d8 da e0 cc 57 57
+[21:49:21] [AvChar Diagnostic]          name_raw =4c 00 75 00 63 00 69 00 66 00 65 00 72 00 20 00 53 00 65 00 65 00 64 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =4c 00 75 00 63 00 69 00 66 00 65 00 72 00 20 00 53 00 65 00 65 00 64 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [6] name='Infected Daggers' lvl=20 prim=7 sec=2 camp=2 map=428 pvp=False
+[21:49:21] [print:] [6] name='Infected Daggers' lvl=20 prim=7 sec=2 camp=2 map=428 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 68 6d 96 e4 c9 33 94 44 84 ae 7f 92 03 cf 2d 6b
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 68 6d 96 e4 c9 33 94 44 84 ae 7f 92 03 cf 2d 6b
+[21:49:21] [AvChar Diagnostic]          name_raw =49 00 6e 00 66 00 65 00 63 00 74 00 65 00 64 00 20 00 44 00 61 00 67 00 67 00 65 00 72 00 73 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =49 00 6e 00 66 00 65 00 63 00 74 00 65 00 64 00 20 00 44 00 61 00 67 00 67 00 65 00 72 00 73 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [7] name='Fractal Pain' lvl=20 prim=4 sec=3 camp=1 map=857 pvp=False
+[21:49:21] [print:] [7] name='Fractal Pain' lvl=20 prim=4 sec=3 camp=1 map=857 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 33 84 f4 bf 40 fa 0e 4f a4 d4 3a e5 85 a8 54 cd
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 33 84 f4 bf 40 fa 0e 4f a4 d4 3a e5 85 a8 54 cd
+[21:49:21] [AvChar Diagnostic]          name_raw =46 00 72 00 61 00 63 00 74 00 61 00 6c 00 20 00 50 00 61 00 69 00 6e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =46 00 72 00 61 00 63 00 74 00 61 00 6c 00 20 00 50 00 61 00 69 00 6e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [8] name='Fractal Mes' lvl=20 prim=5 sec=7 camp=2 map=650 pvp=False
+[21:49:21] [print:] [8] name='Fractal Mes' lvl=20 prim=5 sec=7 camp=2 map=650 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 1c d6 02 18 04 a8 d2 44 99 97 c5 f3 57 e1 ea e3
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 1c d6 02 18 04 a8 d2 44 99 97 c5 f3 57 e1 ea e3
+[21:49:21] [AvChar Diagnostic]          name_raw =46 00 72 00 61 00 63 00 74 00 61 00 6c 00 20 00 4d 00 65 00 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =46 00 72 00 61 00 63 00 74 00 61 00 6c 00 20 00 4d 00 65 00 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [9] name='Appok D Main' lvl=20 prim=10 sec=1 camp=3 map=857 pvp=False
+[21:49:21] [print:] [9] name='Appok D Main' lvl=20 prim=10 sec=1 camp=3 map=857 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 fc 32 c0 ac 77 f2 b2 41 95 5c 69 35 08 68 f8 5b
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 fc 32 c0 ac 77 f2 b2 41 95 5c 69 35 08 68 f8 5b
+[21:49:21] [AvChar Diagnostic]          name_raw =41 00 70 00 70 00 6f 00 6b 00 20 00 44 00 20 00 4d 00 61 00 69 00 6e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =41 00 70 00 70 00 6f 00 6b 00 20 00 44 00 20 00 4d 00 61 00 69 00 6e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [10] name='Lucifer Dos' lvl=20 prim=8 sec=5 camp=2 map=250 pvp=False
+[21:49:21] [print:] [10] name='Lucifer Dos' lvl=20 prim=8 sec=5 camp=2 map=250 pvp=False
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 64 f2 dc de 4f 66 e2 4f b6 af e1 51 1f 7d e2 3c
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 64 f2 dc de 4f 66 e2 4f b6 af e1 51 1f 7d e2 3c
+[21:49:21] [AvChar Diagnostic]          name_raw =4c 00 75 00 63 00 69 00 66 00 65 00 72 00 20 00 44 00 6f 00 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =4c 00 75 00 63 00 69 00 66 00 65 00 72 00 20 00 44 00 6f 00 73 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic]     [11] name='Palo Portuano' lvl=52 prim=9 sec=5 camp=3 map=248 pvp=True
+[21:49:21] [print:] [11] name='Palo Portuano' lvl=52 prim=9 sec=5 camp=3 map=248 pvp=True
+[21:49:21] [AvChar Diagnostic]          first0x18=00 00 00 00 3e 00 00 00 56 08 dd 65 4b 40 23 42 98 5d e2 3a d4 4a f2 c7
+[21:49:21] [print:] first0x18=00 00 00 00 3e 00 00 00 56 08 dd 65 4b 40 23 42 98 5d e2 3a d4 4a f2 c7
+[21:49:21] [AvChar Diagnostic]          name_raw =50 00 61 00 6c 00 6f 00 20 00 50 00 6f 00 72 00 74 00 75 00 61 00 6e 00 6f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [print:] name_raw =50 00 61 00 6c 00 6f 00 20 00 50 00 6f 00 72 00 74 00 75 00 61 00 6e 00 6f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [pregame] PreGameContext ptr = 0x00000000
+[21:49:21] [print:] [pregame] PreGameContext ptr = 0x00000000
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] [API] Map.Pregame.GetAvailableCharacterList()
+[21:49:21] [print:] [API] Map.Pregame.GetAvailableCharacterList()
+[21:49:21] [AvChar Diagnostic]     returned 14 entries
+[21:49:21] [print:] returned 14 entries
+[21:49:21] [AvChar Diagnostic]     [0] player_name='Fezzik The Untamed' level=20 pvp=False prim=1
+[21:49:21] [print:] [0] player_name='Fezzik The Untamed' level=20 pvp=False prim=1
+[21:49:21] [AvChar Diagnostic]     [1] player_name='Appok' level=6 pvp=False prim=1
+[21:49:21] [print:] [1] player_name='Appok' level=6 pvp=False prim=1
+[21:49:21] [AvChar Diagnostic]     [2] player_name='Imp Osible' level=20 pvp=False prim=2
+[21:49:21] [print:] [2] player_name='Imp Osible' level=20 pvp=False prim=2
+[21:49:21] [AvChar Diagnostic]     [3] player_name='Pre Lucifer' level=13 pvp=False prim=2
+[21:49:21] [print:] [3] player_name='Pre Lucifer' level=13 pvp=False prim=2
+[21:49:21] [AvChar Diagnostic]     [4] player_name='Lucifer Strike' level=20 pvp=False prim=1
+[21:49:21] [print:] [4] player_name='Lucifer Strike' level=20 pvp=False prim=1
+[21:49:21] [AvChar Diagnostic]     [5] player_name='Lucifer Seed' level=20 pvp=False prim=3
+[21:49:21] [print:] [5] player_name='Lucifer Seed' level=20 pvp=False prim=3
+[21:49:21] [AvChar Diagnostic]     [6] player_name='Infected Daggers' level=20 pvp=False prim=7
+[21:49:21] [print:] [6] player_name='Infected Daggers' level=20 pvp=False prim=7
+[21:49:21] [AvChar Diagnostic]     [7] player_name='Fractal Pain' level=20 pvp=False prim=4
+[21:49:21] [print:] [7] player_name='Fractal Pain' level=20 pvp=False prim=4
+[21:49:21] [AvChar Diagnostic]     [8] player_name='Fractal Mes' level=20 pvp=False prim=5
+[21:49:21] [print:] [8] player_name='Fractal Mes' level=20 pvp=False prim=5
+[21:49:21] [AvChar Diagnostic]     [9] player_name='Appok D Main' level=20 pvp=False prim=10
+[21:49:21] [print:] [9] player_name='Appok D Main' level=20 pvp=False prim=10
+[21:49:21] [AvChar Diagnostic]     [10] player_name='Lucifer Dos' level=20 pvp=False prim=8
+[21:49:21] [print:] [10] player_name='Lucifer Dos' level=20 pvp=False prim=8
+[21:49:21] [AvChar Diagnostic]     [11] player_name='Palo Portuano' level=52 pvp=True prim=9
+[21:49:21] [print:] [11] player_name='Palo Portuano' level=52 pvp=True prim=9
+[21:49:21] [AvChar Diagnostic] 
+[21:49:21] [AvChar Diagnostic] ========================================================================
+[21:49:21] [print:] ========================================================================
+[21:49:21] [AvChar Diagnostic] WROTE: C:\Users\Apo\avchar_diag_Py4GW_python_files.txt
+[21:49:21] [print:] WROTE: C:\Users\Apo\avchar_diag_Py4GW_python_files.txt
+[21:49:21] [AvChar Diagnostic] ========================================================================
+[21:49:21] [print:] ========================================================================

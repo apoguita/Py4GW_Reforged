@@ -272,9 +272,7 @@ try:
         window_size=(220, 80),
         window_flags=PyImGui.WindowFlags.AlwaysAutoResize,
     )
-    _cx = _ini.read_int(MODULE_NAME + " Config", "x", 100)
-    _cy = _ini.read_int(MODULE_NAME + " Config", "y", 100)
-    _config_module.window_pos = (_cx, _cy)
+    # Window geometry delegated to ImGui native persistence
 
     _INIT_OK = True
 
@@ -293,7 +291,7 @@ def configure():
     try:
         if _config_module.first_run:
             PyImGui.set_next_window_size(*_config_module.window_size)
-            PyImGui.set_next_window_pos(*_config_module.window_pos)
+            # Window position delegated to ImGui native persistence
             _config_module.first_run = False
 
         if PyImGui.begin(_config_module.window_name, _config_module.window_flags):
@@ -326,11 +324,7 @@ def configure():
             if PyImGui.button("Rebuild cache"):
                 _cache_built = False
 
-            pos = PyImGui.get_window_pos()
-            if pos != _config_module.window_pos:
-                _config_module.window_pos = (int(pos[0]), int(pos[1]))
-                _ini.write_key(MODULE_NAME + " Config", "x", str(int(pos[0])))
-                _ini.write_key(MODULE_NAME + " Config", "y", str(int(pos[1])))
+            # Window geometry delegated to ImGui native persistence
 
         PyImGui.end()
 

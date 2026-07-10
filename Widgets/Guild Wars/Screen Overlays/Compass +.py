@@ -794,14 +794,10 @@ def configure():
 
     compass.position.Update()
 
-    if compass.window_module.first_run:
-        PyImGui.set_next_window_pos(compass.window_pos[0], compass.window_pos[1])
-        compass.window_module.first_run = False
+    # Window geometry delegated to ImGui native persistence
 
-    end_pos = compass.window_pos
     try:
         if PyImGui.begin(compass.window_module.window_name, compass.window_module.window_flags):
-            end_pos = PyImGui.get_window_pos()
 
             header_opened = False
 
@@ -931,8 +927,7 @@ def configure():
 
         PyImGui.end()
 
-        compass.ini.write_key('position', 'config_x', str(int(end_pos[0])))
-        compass.ini.write_key('position', 'config_y', str(int(end_pos[1])))
+        # Window geometry delegated to ImGui native persistence
 
     except Exception as e:
         current_function = inspect.currentframe().f_code.co_name # type: ignore

@@ -347,13 +347,8 @@ def configure():
 
     if not Map.IsMapReady() or not Party.IsPartyLoaded() or Map.IsInCinematic(): return
     
-    if window_module.first_run:
-        x = sbp.ini.read_int('pos', 'x', 500)
-        y = sbp.ini.read_int('pos', 'y', 300)
-        PyImGui.set_next_window_pos(x, y)
-        window_module.first_run = False
+    # Window geometry delegated to ImGui native persistence
 
-    pos = (-1, -1)
     try:
         if PyImGui.begin(window_module.window_name, window_module.window_flags):
             PyImGui.push_style_color(PyImGui.ImGuiCol.Header,           (.2,.2,.2,1))
@@ -372,12 +367,10 @@ def configure():
 
             PyImGui.pop_style_color(11)
 
-            pos = PyImGui.get_window_pos()
+            # Window geometry delegated to ImGui native persistence
         PyImGui.end()
 
-        if pos != (-1, -1):
-            sbp.ini.write_key('pos', 'x', str(int(pos[0])))
-            sbp.ini.write_key('pos', 'y', str(int(pos[1])))
+        # Window geometry delegated to ImGui native persistence
         sbp.SaveConfig()
 
     except Exception as e:

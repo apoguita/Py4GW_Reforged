@@ -164,18 +164,12 @@ def on_imgui_render(me: int):
     # Begin window
     PyImGui.begin("Get Blessed", PyImGui.WindowFlags.AlwaysAutoResize)
 
-    if first_run:
-        PyImGui.set_next_window_pos(win_x, win_y)
-        PyImGui.set_next_window_collapsed(win_coll, 0)
-        first_run = False
+    # Window geometry delegated to ImGui native persistence
 
     # If collapsed, bail out early
     if PyImGui.is_window_collapsed():
         PyImGui.end()
         return
-
-    win_coll = PyImGui.is_window_collapsed()
-    pos      = PyImGui.get_window_pos()
 
     PyImGui.text("Party Blessing Status:")
     PyImGui.separator()
@@ -207,16 +201,7 @@ def on_imgui_render(me: int):
 
     PyImGui.end()
 
-    # Persist window state once per second
-    if save_timer.HasElapsed(1000):
-        save_timer.Reset()
-        new_x, new_y = pos
-        if (new_x, new_y) != (win_x, win_y):
-            win_x, win_y = int(new_x), int(new_y)
-            ini_handler.write_key(WINDOW_SECTION, "x", str(win_x))
-            ini_handler.write_key(WINDOW_SECTION, "y", str(win_y))
-        if win_coll != ini_handler.read_bool(WINDOW_SECTION, "collapsed", False):
-            ini_handler.write_key(WINDOW_SECTION, "collapsed", str(win_coll))
+    # Window geometry delegated to ImGui native persistence
 
 # â”€â”€â”€ Entrypoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def setup():

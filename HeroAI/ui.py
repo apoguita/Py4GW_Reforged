@@ -2078,12 +2078,9 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
         style.CellPadding.pop_style_var()
 
 
-        pos = PyImGui.get_window_pos()
-        
-        if window.changed:
-            if is_window_active and hotbar.identifier in settings.CommandHotBars and hotbar.docked is Docked.Freely:
-                settings.CommandHotBars[hotbar.identifier].position = (int(pos[0]), int(pos[1]))
-                settings.save_settings()
+        # Free-floating hotbar position is delegated to ImGui's native persistence (imgui.ini);
+        # it is no longer captured from get_window_pos() and written back to settings.
+        # Anchored hotbars (Party/Skillbar/etc.) are still positioned live above.
             
     window.end()
     style.WindowPadding.pop_style_var()

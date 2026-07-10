@@ -10202,49 +10202,12 @@ class MerchantRulesWidget:
             self.status_message = message
 
     def _apply_window_geometry(self):
-        if self.window_geometry_needs_apply:
-            if self.window_x is not None and self.window_y is not None:
-                PyImGui.set_next_window_pos(float(self.window_x), float(self.window_y))
-            if self.window_width > 0 and self.window_height > 0:
-                PyImGui.set_next_window_size(float(self.window_width), float(self.window_height))
-            else:
-                PyImGui.set_next_window_size(float(DEFAULT_WINDOW_WIDTH), float(DEFAULT_WINDOW_HEIGHT))
-            PyImGui.set_next_window_collapsed(bool(self.window_collapsed), 0)
-            self.window_geometry_needs_apply = False
+        # Window geometry delegated to ImGui native persistence
+        pass
 
     def _track_window_geometry(self, window_expanded: bool):
-        end_pos = PyImGui.get_window_pos()
-        end_size = PyImGui.get_window_size()
-        new_collapsed = bool(PyImGui.is_window_collapsed())
-
-        next_x = int(end_pos[0]) if isinstance(end_pos, (tuple, list)) and len(end_pos) >= 2 else self.window_x
-        next_y = int(end_pos[1]) if isinstance(end_pos, (tuple, list)) and len(end_pos) >= 2 else self.window_y
-        next_width = self.window_width
-        next_height = self.window_height
-        if window_expanded and isinstance(end_size, (tuple, list)) and len(end_size) >= 2:
-            next_width = max(0, int(end_size[0]))
-            next_height = max(0, int(end_size[1]))
-
-        changed = False
-        if next_x != self.window_x or next_y != self.window_y:
-            self.window_x = next_x
-            self.window_y = next_y
-            changed = True
-        if next_width != self.window_width or next_height != self.window_height:
-            self.window_width = next_width
-            self.window_height = next_height
-            changed = True
-        if new_collapsed != self.window_collapsed:
-            self.window_collapsed = new_collapsed
-            changed = True
-
-        if changed:
-            self.window_geometry_dirty = True
-
-        if self.window_geometry_dirty and self.window_geometry_save_timer.IsExpired():
-            self._save_profile()
-            self.window_geometry_dirty = False
-            self.window_geometry_save_timer.Reset()
+        # Window geometry delegated to ImGui native persistence
+        pass
 
     def _get_supported_context(self, *, passive: bool = False) -> tuple[bool, str, dict[str, tuple[float, float] | None]]:
         current_map_id = int(Map.GetMapID() or 0)

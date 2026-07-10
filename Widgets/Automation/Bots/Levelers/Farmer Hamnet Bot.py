@@ -370,15 +370,40 @@ def PerformTask():
         stop_bot()
         return "Error"
 
+_window_factory = None
+_window_factory_ready = False
+
+
+def _ensure_window_factory():
+    global _window_factory, _window_factory_ready
+    if _window_factory_ready and _window_factory is not None:
+        return True
+    factory = WindowFactory("Widgets/Automation/Bots/Levelers")
+    factory.register_window(
+        ManagedWindowSpec(
+            identifier="main",
+            filename="Farmer Hamnet Bot.ini",
+            title="Simple Farming Bot",
+            flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
+        )
+    )
+    if not factory.ensure_ini():
+        return False
+    _window_factory = factory
+    _window_factory_ready = True
+    return True
+
+
 def main():
     """Main function - entry point for the script"""
     try:
-        # Create ImGui_Legacy window for bot control
-        if ImGui_Legacy.gw_window.begin(name="Simple Farming Bot",
-                                pos=(100, 100),
-                                size=(300, 250),
-                                collapsed=False):
-            
+        # Bot control window (migrated to WindowFactory)
+        _window_ready = _ensure_window_factory() and _window_factory is not None
+        expanded = False
+        if _window_ready:
+            expanded, _ = _window_factory.begin("main")
+        if expanded:
+
             # Bot Title
             PyImGui.text("Simple Farming Bot")
             PyImGui.separator()
@@ -420,7 +445,8 @@ def main():
             
             PyImGui.separator()
             
-        ImGui_Legacy.gw_window.end("Simple Farming Bot")
+        if _window_ready:
+            ImGui_Legacy.End(_window_factory.key("main"))
         
         # Run bot logic
         if bot_state.is_running:

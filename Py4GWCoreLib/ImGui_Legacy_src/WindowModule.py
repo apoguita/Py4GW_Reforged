@@ -82,10 +82,13 @@ class WindowModule:
             return
         
         if self.first_run:
-            PyImGui.set_next_window_size(self.window_size[0], self.window_size[1])     
-            PyImGui.set_next_window_pos(self.window_pos[0], self.window_pos[1])
+            # Window position/size are delegated to ImGui's native persistence (imgui.ini).
+            # WindowModule no longer forces stored geometry here; decorations/dragging still
+            # work because they read the window's actual position back via get_window_pos().
+            # Collapse stays forced: a NoTitleBar window cannot be collapsed by ImGui itself,
+            # so this is the collapse interaction mechanism, not positional persistence.
             PyImGui.set_next_window_collapsed(self.collapse, PyImGui.ImGuiCond.Always)
-            self.first_run = False                
+            self.first_run = False
 
     def begin(self, p_open: Optional[bool] = None, flags: int = PyImGui.WindowFlags.NoFlag) -> bool:   
         self.__current_theme = self.get_theme()

@@ -214,10 +214,7 @@ class Config:
 widget_config = Config()
 config_module = ImGui_Legacy.WindowModule(f"Config {MODULE_NAME}", window_name="Hero Helper Configuration", window_size=(300, 175), window_flags=PyImGui.WindowFlags.NoFlag)
 
-config_module.window_pos = (
-    ini_handler.read_int(MODULE_NAME + " Config", "config_x", 100),
-    ini_handler.read_int(MODULE_NAME + " Config", "config_y", 100)
-)
+# Window geometry delegated to ImGui native persistence
 config_module.window_size = (620, 460)
 
 
@@ -1789,7 +1786,7 @@ def configure():
        
     if config_module.first_run:
         PyImGui.set_next_window_size(config_module.window_size[0], config_module.window_size[1])
-        PyImGui.set_next_window_pos(config_module.window_pos[0], config_module.window_pos[1])
+        # Window position delegated to ImGui native persistence
         config_module.first_run = False
         
     if PyImGui.begin(config_module.window_name, config_module.window_flags):
@@ -1813,11 +1810,7 @@ def configure():
 
             PyImGui.end_tab_bar()
 
-        end_pos = PyImGui.get_window_pos()
-        if end_pos[0] != config_module.window_pos[0] or end_pos[1] != config_module.window_pos[1]:
-            config_module.window_pos = (int(end_pos[0]), int(end_pos[1]))
-            ini_handler.write_key(MODULE_NAME + " Config", "config_x", str(int(end_pos[0])))
-            ini_handler.write_key(MODULE_NAME + " Config", "config_y", str(int(end_pos[1])))   
+        # Window geometry delegated to ImGui native persistence
 
     PyImGui.end()
     

@@ -1168,8 +1168,8 @@ class HeroAI_MainWindow:
         self.player_renderer = HeroAI_PlayerPanelRenderer(appearance_window)
         self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=HeroAIFloatingIcon.ICON_PATH,
-            window_id="##floating_icon_example_button",
-            window_name="Floating Icon Example Toggle",
+            window_id="##heroai_floating_icon_button",
+            window_name="HeroAI Toggle",
             tooltip_visible="Hide window",
             tooltip_hidden="Show window",
             toggle_ini_key=window_factory.key("floating"),

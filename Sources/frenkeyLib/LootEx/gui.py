@@ -8,7 +8,7 @@ from Py4GWCoreLib.GlobalCache.ItemCache import Bag_enum
 from Py4GWCoreLib.ImGui_Legacy_src.types import Alignment, ControlAppearance, TextDecorator
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 from Sources.frenkeyLib.Core.iterable import chunked
-from Sources.frenkeyLib.Core.utility import ImGuiIniReader, string_similarity
+from Sources.frenkeyLib.Core.utility import string_similarity
 from Sources.frenkeyLib.Core.gui import GUI
 from Sources.frenkeyLib.Core import ex_style, texture_map
 from Sources.frenkeyLib.LootEx import skin_rule, loot_handling, settings, price_check, utility, cache, ui_manager_extensions, inventory_handling, models, messaging
@@ -192,28 +192,24 @@ class UI:
         from Sources.frenkeyLib.LootEx.data import Data
         self.data = Data()
         
-        self.widget_handler = get_widget_handler()        
-        self.imgui_ini_reader = ImGuiIniReader()
-        window_pos, window_size, collapse = self.get_window_info()
-        
-        
-        # self.cached_item = cache.Cached_Item(1401) 
+        self.widget_handler = get_widget_handler()
+
+        # Window geometry is delegated to ImGui's native persistence; these are first-run
+        # defaults only (position handled by ImGui / WindowModule, not restored from disk).
+        # self.cached_item = cache.Cached_Item(1401)
         self.collection_module_window : ImGui_Legacy.WindowModule = ImGui_Legacy.WindowModule(
             "LootEx Data Collection",
             "LootEx Data Collection",
             window_size=(800, 500),
             window_flags=PyImGui.WindowFlags.NoFlag,
             can_close=True,
-            collapse=collapse
         )
         self.module_window : ImGui_Legacy.WindowModule = ImGui_Legacy.WindowModule(
             "LootEx",
             "LootEx",
-            window_size=window_size,
-            window_pos=window_pos,
+            window_size=(800, 600),
             window_flags=PyImGui.WindowFlags.NoFlag,
             can_close=True,
-            collapse=collapse
         )
         self.style = ex_style.ExStyle()
         file_directory = os.path.dirname(os.path.abspath(__file__))
@@ -784,14 +780,6 @@ class UI:
         self.filter_items()    
         self.filter_rules()
             
-    def get_window_info(self):
-        window = self.imgui_ini_reader.get("LootEx")
-        window_pos = window.pos if window else (100.0, 100.0)
-        window_size = window.size if window else (800.0, 600.0)
-        collapse = window.collapsed if window else False
-        
-        return window_pos, window_size, collapse
-    
     def show_main_window(self, ensure_on_screen: bool = False):             
         widget_info = self.widget_handler.get_widget_info("LootEx")
         if not widget_info or widget_info.configuring:

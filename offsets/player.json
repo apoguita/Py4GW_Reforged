@@ -33,6 +33,12 @@
       "line_number": "0",
       "offset": "0x15",
       "section": "text"
+    },
+    "available_characters_ref": {
+      "pattern": "\\x8b\\x35\\x00\\x00\\x00\\x00\\x57\\x69\\xF8\\x84\\x00\\x00\\x00",
+      "mask": "xx????xxxxxxx",
+      "offset": "0x2",
+      "section": "text"
     }
   },
   "resolvers": {
@@ -62,6 +68,12 @@
         { "name": "scan_ref", "op": "scan", "pattern": "title_data_ref", "out": "scan" },
         { "name": "deref_ptr", "op": "dereference", "in": "scan", "out": "candidate" },
         { "name": "validate_ptr", "op": "validate_section", "in": "candidate", "section": "rdata", "out": "final" }
+      ]
+    },
+    "available_characters_addr": {
+      "steps": [
+        { "name": "scan_ref", "op": "scan", "pattern": "available_characters_ref", "out": "scan" },
+        { "name": "read_operand", "op": "dereference", "in": "scan", "out": "final" }
       ]
     }
   }

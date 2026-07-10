@@ -10,6 +10,8 @@ from Py4GWCoreLib import ProfessionShort, Profession, Campaign
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import PyImGui
 from Py4GWCoreLib import ImGui_Legacy
+from Py4GWCoreLib import WindowFactory
+from Py4GWCoreLib import ManagedWindowSpec
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Map
@@ -215,8 +217,29 @@ class RerollCharacter:
             
 
 reroll_widget = RerollCharacter()
-window_module = ImGui_Legacy.WindowModule(module_name="RerollCharacter", window_name=MODULE_NAME, window_size=(337, 326), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+_window_factory: WindowFactory | None = None
+_window_factory_ready = False
 is_visible = False
+
+
+def _ensure_window_factory() -> bool:
+    global _window_factory, _window_factory_ready
+    if _window_factory_ready and _window_factory is not None:
+        return True
+    factory = WindowFactory("Widgets/Guild Wars")
+    factory.register_window(
+        ManagedWindowSpec(
+            identifier="main",
+            filename="Switch Character.ini",
+            title=MODULE_NAME,
+            flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
+        )
+    )
+    if not factory.ensure_ini():
+        return False
+    _window_factory = factory
+    _window_factory_ready = True
+    return True
 
 tmp_is_selected = False
 def DrawWindow():
@@ -271,24 +294,12 @@ def DrawWindow():
             ConsoleLog("Reroll", f"UI Selected target: {character.player_name}", Console.MessageType.Debug)
             reroll_widget.start_reroll()  
             
-    global window_module, tmp_is_selected
-    if window_module.first_run:
-        PyImGui.set_next_window_size(window_module.window_size[0], window_module.window_size[1])     
-        PyImGui.set_next_window_collapsed(window_module.collapse, 0)
-        window_module.first_run = False
-    
-    new_collapsed = True
-    end_pos = window_module.window_pos
-    
-    if ImGui_Legacy.gw_window.begin( name = window_module.window_name,
-                                  pos  = (window_module.window_pos[0], window_module.window_pos[1]),
-                                  size = (window_module.window_size[0], window_module.window_size[1]),
-                                  collapsed = window_module.collapse,
-                                  pos_cond = PyImGui.ImGuiCond.FirstUseEver,
-                                  size_cond = PyImGui.ImGuiCond.Always):
-        
-    #if PyImGui.begin(window_module.window_name, window_module.window_flags):
-        new_collapsed = PyImGui.is_window_collapsed()      
+    global tmp_is_selected
+    if not _ensure_window_factory() or _window_factory is None:
+        return
+
+    expanded, _ = _window_factory.begin("main")
+    if expanded:
         characters = sorted(Map.Pregame.GetAvailableCharacterList(), key=lambda c: c.player_name.lower())
         
         
@@ -364,9 +375,7 @@ def DrawWindow():
                 PyImGui.end_table()
         PyImGui.end_child()
 
-        end_pos = PyImGui.get_window_pos()
-    #PyImGui.end()
-    ImGui_Legacy.gw_window.end(window_module.window_name)
+    ImGui_Legacy.End(_window_factory.key("main"))
 
 def tooltip():
     PyImGui.begin_tooltip()
@@ -427,7 +436,7 @@ def is_in_character_select():
     return in_char_select
 
 def main():
-    global reroll_widget, window_module, character_select, is_visible
+    global reroll_widget, character_select, is_visible
     try:
         character_select = is_in_character_select()
 

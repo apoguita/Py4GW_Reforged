@@ -202,10 +202,7 @@ class Config:
 widget_config = Config()
 
 config_module = ImGui_Legacy.WindowModule(f"{module_name} Config", window_name=f"{module_name} Config##{module_name}", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
-window_x = ini_handler.read_int(module_name + " Config", "config_x", 100)
-window_y = ini_handler.read_int(module_name + " Config", "config_y", 100)
-
-config_module.window_pos = (window_x, window_y)
+# Window geometry delegated to ImGui native persistence
 
 def configure():
     global widget_config, config_module, ini_handler, global_vars
@@ -216,10 +213,9 @@ def configure():
         
         if config_module.first_run:
             PyImGui.set_next_window_size(config_module.window_size[0], config_module.window_size[1])
-            PyImGui.set_next_window_pos(config_module.window_pos[0], config_module.window_pos[1])
+            # Window position delegated to ImGui native persistence
             config_module.first_run = False
 
-        end_pos = config_module.window_pos
         if PyImGui.begin(config_module.window_name, config_module.window_flags):
             # new_collapsed = PyImGui.is_window_collapsed()
 
@@ -266,14 +262,10 @@ def configure():
                 global_vars.lvl11_20_threshold = widget_config.lvl11_20
 
             widget_config.save()
-            end_pos = PyImGui.get_window_pos()
 
         PyImGui.end()
 
-        if end_pos[0] != config_module.window_pos[0] or end_pos[1] != config_module.window_pos[1]:
-            config_module.window_pos = (int(end_pos[0]), int(end_pos[1]))
-            ini_handler.write_key(module_name + " Config", "config_x", str(int(end_pos[0])))
-            ini_handler.write_key(module_name + " Config", "config_y", str(int(end_pos[1])))
+        # Window geometry delegated to ImGui native persistence
 
     except ImportError as e:
         PySystem.Console.Log(module_name, f"ImportError encountered: {str(e)}", PySystem.Console.MessageType.Error)

@@ -1,6 +1,6 @@
 # Launch Surface Framework Design
 
-Status: Phase 1 model implementation in progress. The root-level model and validation harness exist; the ImGui host and provider integrations remain pending.
+Status: Phases 1–5 framework implementation in progress. The root-level model, launcher-compatible host, provider registry, catalog widget toggles, HeroAI/core providers, shortcut editor, cached components, page/preset management, projections, clusters, profiles, navigation, and frame-anchor interfaces exist. In-client visual verification and additional feature-specific providers remain the final validation work.
 
 ## 1. Purpose
 
@@ -21,7 +21,46 @@ Existing widgets are independent ImGui scripts that generally create and own the
 
 The framework is a project package. It is not another Widget Manager, does not discover `.widget` folders, and does not replace `WidgetHandler` or `WidgetCatalog`.
 
-The current Phase 1 entry point is the root-level [LaunchSurface.py](../LaunchSurface.py). It is intentionally outside `Widgets/` discovery. The package may later be split into project submodules without changing the public model API.
+The current project entry point is the root-level [LaunchSurface.py](../LaunchSurface.py). It is intentionally outside `Widgets/` discovery. The package may later be split into project submodules without changing the public model API.
+
+The root module exposes a launcher-compatible `main()` that initializes the
+current widget manager, creates the launch surface, and draws the host. The
+launcher invokes this function once per frame. It is safe to run the model
+layer outside the injected runtime, but the host itself must be run by Py4GW
+because it imports `PyImGui`, `Settings`, and the live widget handler lazily.
+
+The complete current UI gap analysis is documented in
+[LaunchSurface_UI_Feature_Audit.md](LaunchSurface_UI_Feature_Audit.md). The
+audit is the authority for what is actually exposed by the live host; model
+capabilities are not treated as delivered UI features until they have an
+editor workflow and live-runtime validation.
+
+The first-run workflow is:
+
+1. Select `LaunchSurface.py` in the Py4GW launcher.
+2. Press `Launch` if the surface is hidden.
+3. Press `Edit` and set page width and height in logical slots.
+4. Add widgets from the catalog or registered HeroAI actions.
+5. Press `Edit` to open the visual layout workspace. Select occupied tiles or
+   empty cells in the grid, then use the inspector for exact coordinates and
+   spans.
+6. Assign optional shortcuts in the selected-tile editor. `Clear` removes the
+   binding, and conflicting bindings are reported below the key control.
+7. Select `Floating` or `Docked`, choose the dock edge, and press `Lock` after
+   positioning the surface.
+
+The root script must expose `main()`; it must not be placed under a `.widget`
+folder, because this launch surface is an explicitly started project entry
+point. Validation is performed through the live Py4GW host rather than a
+standalone synthetic test script.
+
+Page width, height, cell size, and gap are staged editor values. `Apply page
+layout` validates them against every occupied tile and commits them as one
+operation; `Discard` removes the pending draft. Other valid mutations are
+auto-saved, while `Save now` explicitly flushes the composed settings document.
+The editor must show validation and persistence failures rather than silently
+discarding them. Guide mode draws only non-interactive occupied-tile outlines
+and slot guides; it must never turn empty cells into input targets.
 
 ## 2. Design principles
 
@@ -140,13 +179,17 @@ The directory must not contain a `.widget` marker. It must not be placed under a
 
 The package must remain importable without an injected ImGui runtime when the model, registry, catalog, layout, and persistence layers are used for validation.
 
-The current validation harness is [tests/launch_surface_model_test.py](../tests/launch_surface_model_test.py). It uses fake catalog, runtime, and settings adapters so Phase 1 can be checked without the injected game process.
+The root entry point is idempotent because the Py4GW launcher may call its
+`main()` repeatedly as a frame callback. The project intentionally does not
+ship a standalone fake-runtime test harness for this feature; those checks
+cannot validate native ImGui input, Settings persistence, WidgetHandler state,
+or live provider behavior.
 
 Because the Py4GW launcher executes selected scripts through a synthetic
 `<string>` module, dataclass-bearing entry points must not depend on postponed
 annotation resolution that requires the executing module to exist in
-`sys.modules`. The Phase 1 root module and test harness therefore use ordinary
-runtime-resolvable annotations.
+`sys.modules`. The root module therefore uses ordinary runtime-resolvable
+annotations.
 
 ## 5. Core object model
 
@@ -450,6 +493,11 @@ Tile coordinates use zero-based logical slots. A tile at `(x=2, y=1)` with a spa
 
 The runtime draws a tile at its calculated rectangle. It does not draw the underlying grid. This produces a surface containing only the user’s floating buttons and floating embedded widgets.
 
+The ImGui host uses a transparent `NoMouseInputs` canvas and separate
+interactive windows for the toolbar and each occupied tile. Empty cells and
+gaps therefore cannot capture pointer input intended for the game or another
+overlay.
+
 The layout engine is responsible for:
 
 - occupancy calculation;
@@ -654,27 +702,34 @@ dock_offset
 floating_x
 floating_y
 locked
+profile_id
 
 [Pages]
 pages_json
 active_page
+clusters_json
 
 [Layout Presets]
 presets_json
 
-[Tiles]
-tiles_json
-
-[Shortcuts]
 shortcuts_json
-
-[Component State]
-state_json
+component_state_json
 ```
 
 JSON is preferred for ordered pages, tile spans, custom display metadata, and component state. Invalid data must fall back safely without deleting the user’s raw configuration until a deliberate migration or reset occurs.
 
-The implementation should provide a `LaunchSurfaceSettings` composition class that owns serialization, schema versioning, migration, and dirty tracking.
+The implementation provides a `LaunchSurfaceSettings` composition class that
+owns serialization, schema versioning, and safe malformed-data fallback. The
+surface host saves after user mutations rather than extending `Settings` with
+launch-specific dirty state. When the composed document exposes a native
+`save()` operation, the adapter calls it and reports its result. This makes
+auto-save and explicit `Save now` observable instead of assuming that setting
+mutators alone flush to disk.
+
+The editor treats page geometry as a transaction: invalid dimensions do not
+change the model, and a failed settings flush restores the previous page
+record while retaining the draft for correction or discard. Page, preset, and
+cluster operations expose their validation errors in the editor status area.
 
 Each serialized page must include its explicit `columns` and `rows` values. Each serialized tile must include its explicit `x`, `y`, `column_span`, and `row_span` values. These values are the source of truth for visual placement.
 
@@ -690,9 +745,9 @@ HeroAI should expose a provider such as:
 
 ```python
 def register_heroai_launch_items(registry):
-    registry.add_action(...)
-    registry.add_action(...)
-    registry.add_component(...)
+    registry.register_action(...)
+    registry.register_action(...)
+    registry.register_component(...)
 ```
 
 The provider may wrap existing HeroAI command functions. It must not make the launch framework import or depend on HeroAI internals.
@@ -703,8 +758,8 @@ The launch surface can generate generic widget-toggle entries from the catalog. 
 
 ```python
 def register_launch_items(registry):
-    registry.add_window_launcher(...)
-    registry.add_component(...)
+    registry.register_window_launcher(...)
+    registry.register_component(...)
 ```
 
 This is opt-in and does not change the widget’s normal lifecycle.
@@ -746,53 +801,55 @@ docs/LaunchSurface_Component_Guide.md
 
 ### Phase 1: Model and registry
 
-- package structure;
-- definitions and registry;
-- capability-based item model;
-- catalog adapter;
-- widget runtime adapter protocol;
-- layout model and validation;
-- settings composition and JSON migration;
-- pure validation scripts.
+- [x] package structure;
+- [x] definitions and registry;
+- [x] capability-based item model;
+- [x] catalog adapter;
+- [x] widget runtime adapter protocol;
+- [x] layout model and validation;
+- [x] settings composition and JSON migration;
+- [x] documented live-host validation workflow.
 
 ### Phase 2: Basic launch surface host
 
-- launcher-only mode;
-- user-sized floating canvas;
-- widget-toggle tiles;
-- action tiles;
-- explicit tile coordinates and spans;
-- invisible empty slots;
-- edit mode;
-- persistence.
+- [x] launcher-only mode;
+- [x] user-sized floating canvas;
+- [x] widget-toggle tiles;
+- [x] action tiles;
+- [x] explicit tile coordinates and spans;
+- [x] invisible empty slots;
+- [x] edit mode, grid-cell dragging, and shortcut editing;
+- [x] persistence through the live Settings document.
 
 ### Phase 3: Provider integrations
 
-- HeroAI action provider;
-- additional project action providers;
-- shortcut integration;
-- status and availability indicators.
+- [x] HeroAI action provider;
+- [x] project-owned core component provider;
+- [x] shortcut integration;
+- [x] status and availability indicators;
+- [x] provider ownership, reload, query, and isolated error reporting.
 
 ### Phase 4: Embedded components
 
-- component context;
-- mount/unmount lifecycle;
-- tile rendering;
-- first project-owned embedded components;
-- component state persistence.
+- [x] component context;
+- [x] mount/update/unmount lifecycle and cached instances;
+- [x] tile rendering boundary and compact/expanded representation selection;
+- [x] first project-owned embedded runtime-status component;
+- [x] component state persistence.
 
 ### Phase 5: Advanced presentation
 
-- edge docking;
-- multiple pages;
-- multiple simultaneous surface instances;
-- per-instance settings and layout export/import;
-- layout presets;
-- contextual projections;
-- surface portals and navigation stack;
-- tile clusters;
-- account/character profiles;
-- attached game-frame adapters.
+- [x] edge docking;
+- [x] multiple pages;
+- [x] multiple simultaneous surface instances;
+- [x] per-instance settings and layout export/import;
+- [x] layout presets;
+- [x] contextual projections;
+- [x] surface portals and navigation stack;
+- [x] tile clusters;
+- [x] account/character profile projection interfaces;
+- [x] attached game-frame anchor interface;
+- attached game-frame adapters for specific native frames.
 
 ## 18. Acceptance criteria
 

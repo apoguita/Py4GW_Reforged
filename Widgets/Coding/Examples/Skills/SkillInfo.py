@@ -1,6 +1,7 @@
 from __future__ import annotations
 import PyImGui
 from Py4GWCoreLib import *
+from Py4GWCoreLib.enums_src.GameData_enums import Attribute
 import webbrowser
 from fractions import Fraction
 
@@ -146,7 +147,12 @@ class SkillData:
         self.texture_path = GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(skill_id)
         self.profession_name = GLOBAL_CACHE.Skill.GetProfession(skill_id)[1]
         self.attribute = GLOBAL_CACHE.Skill.Attribute.GetAttribute(skill_id)
-        self.attribute_name = self.attribute.GetName() if self.attribute.GetName() != "Unknown" else "No Attribute"
+        # Skill.Attribute.GetAttribute() now returns an int (attribute id), not an object.
+        try:
+            _attr_name = Attribute(self.attribute).name
+            self.attribute_name = "No Attribute" if _attr_name.startswith("None") else _attr_name.replace("_", " ")
+        except ValueError:
+            self.attribute_name = "No Attribute"
 
         self.campaign = GLOBAL_CACHE.Skill.GetCampaign(skill_id)[1]
         
@@ -278,7 +284,7 @@ class SkillData:
                 table_end[0]+2, table_end[1]+2,
                 color.to_color(),  # Golden yellow outline
                 0.0,  # Corner rounding
-                PyImGui.DrawFlags._NoFlag,
+                PyImGui.DrawFlags.NoFlag,
                 2.0   # Line thickness
             )
         #Background
@@ -287,7 +293,7 @@ class SkillData:
                 table_end[0], table_end[1],
                 faded_color.to_color(),
                 0.0,
-                PyImGui.DrawFlags._NoFlag
+                PyImGui.DrawFlags.NoFlag
             )
         
     def draw_skill_icon(self):
@@ -557,7 +563,28 @@ class SkillData:
         table_end = PyImGui.get_item_rect_max()
     
  
-window_module = ImGui_Legacy.WindowModule(module_name="Skill Atlas", window_name=MODULE_NAME, window_size=(500, 600), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
+_window_factory = None
+_window_factory_ready = False
+
+
+def _ensure_window_factory():
+    global _window_factory, _window_factory_ready
+    if _window_factory_ready and _window_factory is not None:
+        return True
+    factory = WindowFactory("Widgets/Coding/Examples/Skills")
+    factory.register_window(
+        ManagedWindowSpec(
+            identifier="main",
+            filename="SkillInfo.ini",
+            title=MODULE_NAME,
+            flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
+        )
+    )
+    if not factory.ensure_ini():
+        return False
+    _window_factory = factory
+    _window_factory_ready = True
+    return True
  
 class FilterButton:
     def __init__(self, profession: str, texture_path: str, width: int = 32, height: int = 32):
@@ -591,12 +618,10 @@ ProfessionButtons = [
 ]
     
 def DrawMainWindow():
-    if ImGui_Legacy.gw_window.begin( name = window_module.window_name,
-                                  pos  = (window_module.window_pos[0], window_module.window_pos[1]),
-                                  size = (window_module.window_size[0], window_module.window_size[1]),
-                                  collapsed = window_module.collapse,
-                                  pos_cond = PyImGui.ImGuiCond.FirstUseEver,
-                                  size_cond = PyImGui.ImGuiCond.Always):
+    if not _ensure_window_factory() or _window_factory is None:
+        return
+    expanded, _ = _window_factory.begin("main")
+    if expanded:
         
         window_size = PyImGui.get_window_size()
         PyImGui.text(f"window_width: {window_size[0]}")
@@ -609,7 +634,7 @@ def DrawMainWindow():
                 PyImGui.same_line(0, 5)
 
 
-    ImGui_Legacy.gw_window.end(window_module.window_name)
+    ImGui_Legacy.End(_window_factory.key("main"))
 
 
 

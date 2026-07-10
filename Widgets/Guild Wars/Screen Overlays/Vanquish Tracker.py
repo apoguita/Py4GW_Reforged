@@ -61,10 +61,7 @@ window_module = ImGui_Legacy.WindowModule(
 )
 
 config_module = ImGui_Legacy.WindowModule(f"Config {module_name}", window_name="Vanquish Monitor##Vanquish Monitor config", window_size=(100, 100), window_flags=PyImGui.WindowFlags.AlwaysAutoResize)
-window_x = ini_handler.read_int(module_name +str(" Config"), "config_x", 100)
-window_y = ini_handler.read_int(module_name +str(" Config"), "config_y", 100)
-
-config_module.window_pos = (window_x, window_y)
+# Window geometry delegated to ImGui native persistence
 
 is_map_ready = False
 is_party_loaded = False
@@ -118,12 +115,11 @@ def configure():
     global widget_config, config_module, ini_handler
 
     if config_module.first_run:
-        PyImGui.set_next_window_size(config_module.window_size[0], config_module.window_size[1])     
-        PyImGui.set_next_window_pos(config_module.window_pos[0], config_module.window_pos[1])
+        PyImGui.set_next_window_size(config_module.window_size[0], config_module.window_size[1])
         config_module.first_run = False
 
     new_collapsed = True
-    end_pos = config_module.window_pos
+    # Window geometry delegated to ImGui native persistence
     if PyImGui.begin(config_module.window_name, config_module.window_flags):
         new_collapsed = PyImGui.is_window_collapsed()
         overlay = Overlay()
@@ -141,14 +137,11 @@ def configure():
         )
 
         widget_config.save()
-        end_pos = PyImGui.get_window_pos()
+        # Window geometry delegated to ImGui native persistence
 
     PyImGui.end()
 
-    if end_pos[0] != config_module.window_pos[0] or end_pos[1] != config_module.window_pos[1]:
-        config_module.window_pos = (int(end_pos[0]), int(end_pos[1]))
-        ini_handler.write_key(module_name + " Config", "config_x", str(int(end_pos[0])))
-        ini_handler.write_key(module_name + " Config", "config_y", str(int(end_pos[1])))
+    # Window geometry delegated to ImGui native persistence
 
 
 def DrawWindow():

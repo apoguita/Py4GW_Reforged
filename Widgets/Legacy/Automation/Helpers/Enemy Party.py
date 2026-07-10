@@ -284,8 +284,8 @@ class EnemyTracker:
     def __init__(self) -> None:
         self.floating_button = ImGui_Legacy.FloatingIcon(
             icon_path=EnemyTrackerConfig.ICON_PATH,
-            window_id="##floating_icon_enemy_tracker_button",
-            window_name="Enemy Tracker Toggle",
+            window_id="##floating_icon_enemy_party_button",
+            window_name="Enemy Party Toggle",
             tooltip_visible="Hide window",
             tooltip_hidden="Show window",
             toggle_ini_key=EnemyTrackerConfig.FLOATING_INI_KEY,

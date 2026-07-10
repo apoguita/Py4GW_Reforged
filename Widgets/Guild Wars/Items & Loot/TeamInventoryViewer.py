@@ -974,8 +974,7 @@ def draw_widget():
 
     if on_first_load:
         PyImGui.set_next_window_size(1000, 1250)
-        PyImGui.set_next_window_pos(window_x, window_y)
-        PyImGui.set_next_window_collapsed(window_collapsed, 0)
+        # Window geometry delegated to ImGui native persistence
         on_first_load = False
 
         TEAM_INVENTORY_CACHE = multi_store.load_all()
@@ -1328,20 +1327,8 @@ def draw_widget():
                     TEAM_INVENTORY_CACHE = multi_store.load_all()
                 PyImGui.pop_style_color(3)
                 PyImGui.end_table()
-    new_collapsed = PyImGui.is_window_collapsed()
-    end_pos = PyImGui.get_window_pos()
 
-    if save_window_timer.HasElapsed(1000):
-        # Position changed?
-        if (end_pos[0], end_pos[1]) != (window_x, window_y):
-            window_x, window_y = int(end_pos[0]), int(end_pos[1])
-            ini_window.write_key(MODULE_NAME, X_POS, str(window_x))
-            ini_window.write_key(MODULE_NAME, Y_POS, str(window_y))
-        # Collapsed state changed?
-        if new_collapsed != window_collapsed:
-            window_collapsed = new_collapsed
-            ini_window.write_key(MODULE_NAME, COLLAPSED, str(window_collapsed))
-        save_window_timer.Reset()
+    # Window geometry delegated to ImGui native persistence
 
 
 def tooltip():

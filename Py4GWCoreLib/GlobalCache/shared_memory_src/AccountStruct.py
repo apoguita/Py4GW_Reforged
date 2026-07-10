@@ -62,14 +62,14 @@ def _get_slot_timer(timer_map: dict[int, ThrottledTimer], slot_index: int, throt
         timer.SetThrottleTime(throttle_ms)
     return timer
 
+
 class AccountStruct(Structure):
     _pack_ = 1
-    _fields_ = [      
-        #--------------------
+    _fields_ = [
+        # --------------------
         ("Key", KeyStruct),  # KeyStruct for each player slot
-        ("AccountEmail", c_wchar*SHMEM_MAX_EMAIL_LEN),
-        ("AccountName", c_wchar*SHMEM_MAX_CHAR_LEN),
-        
+        ("AccountEmail", c_wchar * SHMEM_MAX_EMAIL_LEN),
+        ("AccountName", c_wchar * SHMEM_MAX_CHAR_LEN),
         ("AgentData", AgentDataStruct),
         ("InventoryBags", InventoryBagsStruct),
         ("AgentPartyData", AgentPartyStruct),
@@ -80,8 +80,7 @@ class AccountStruct(Structure):
         ("ExperienceData", ExperienceStruct),
         ("MissionData", MissionDataStruct),
         ("UnlockedSkills", UnlockedSkillsStruct),
-        ("AvailableCharacters", AvailableCharacterStruct),    
-        
+        ("AvailableCharacters", AvailableCharacterStruct),
         ("SlotNumber", c_uint),  # Slot number for the player
         ("IsSlotActive", c_bool),
         ("IsAccount", c_bool),
@@ -92,20 +91,19 @@ class AccountStruct(Structure):
         ("IsolationGroupID", c_uint),
         ("InAggro", c_bool),
         ("InAggroTick64", c_uint64),
-
         ("LastUpdated", c_uint),
     ]
-    
+
     # Type hints for IntelliSense
-    #--------------------
+    # --------------------
     Key: KeyStruct
     AccountEmail: str
     AccountName: str
-    
+
     AgentData: AgentDataStruct
     InventoryBags: InventoryBagsStruct
     AgentPartyData: AgentPartyStruct
-    
+
     RankData: RankStruct
     FactionData: FactionStruct
     TitlesData: TitlesStruct
@@ -114,7 +112,7 @@ class AccountStruct(Structure):
     MissionData: MissionDataStruct
     UnlockedSkills: UnlockedSkillsStruct
     AvailableCharacters: AvailableCharacterStruct
-    
+
     SlotNumber: int
     IsSlotActive: bool
     IsAccount: bool
@@ -127,18 +125,18 @@ class AccountStruct(Structure):
     InAggroTick64: int
 
     LastUpdated: int
-    
+
     def reset(self) -> None:
         """Reset all fields to zero or default values."""
-        #--------------------
+        # --------------------
         self.Key.reset()
         self.AccountEmail = ""
         self.AccountName = ""
-        
+
         self.AgentData.reset()
         self.InventoryBags.reset()
         self.AgentPartyData.reset()
-        
+
         self.RankData.reset()
         self.FactionData.reset()
         self.TitlesData.reset()
@@ -147,7 +145,7 @@ class AccountStruct(Structure):
         self.MissionData.reset()
         self.UnlockedSkills.reset()
         self.AvailableCharacters.reset()
-        
+
         self.SlotNumber = 0
         self.IsSlotActive = False
         self.IsAccount = False
@@ -160,19 +158,26 @@ class AccountStruct(Structure):
         self.InAggroTick64 = 0
 
         self.LastUpdated = 0
-        
-    def from_context(self, account_email:str , slot_index: int) -> None:
-        from ... import Range, Routines
+
+    def from_context(self, account_email: str, slot_index: int) -> None:
+        """Load account/player data for one shared-memory slot."""
+
+        # Keep shared-memory initialization independent from the broad
+        # Py4GWCoreLib facade. The facade imports GlobalCache itself, so
+        # resolving Range/Routines through it during package startup creates a
+        # circular-import window where those names do not exist yet.
+        from ...enums_src.GameData_enums import Range
+        from ...routines_src.Checks import Checks
         from ...GlobalCache import GLOBAL_CACHE
         from ...Map import Map
         from ...Player import Player
         from ...Party import Party
         from ...enums_src.Item_enums import Bags
-        """Load data from the specified slot index in shared memory."""
+
         if slot_index < 0 or slot_index >= SHMEM_MAX_PLAYERS:
             raise ValueError(f"Invalid slot index: {slot_index}")
-        
-        force_full = (self.LastUpdated == 0)
+
+        force_full = self.LastUpdated == 0
 
         previous_in_aggro = bool(self.InAggro)
         previous_in_aggro_tick64 = int(self.InAggroTick64)
@@ -189,13 +194,18 @@ class AccountStruct(Structure):
         self.AgentData.OwnerAgentID = 0
         self.AgentData.HeroID = 0
         self.InventoryBags.reset()
-        
-        if Map.IsMapLoading(): return
-        if not Player.IsPlayerLoaded(): return
-        if not Map.IsMapReady(): return
-        if not Party.IsPartyLoaded(): return
-        if Map.IsInCinematic(): return
-        
+
+        if Map.IsMapLoading():
+            return
+        if not Player.IsPlayerLoaded():
+            return
+        if not Map.IsMapReady():
+            return
+        if not Party.IsPartyLoaded():
+            return
+        if Map.IsInCinematic():
+            return
+
         if self.AccountName == "":
             self.AccountName = Player.GetAccountName() if Player.IsPlayerLoaded() else ""
 
@@ -228,7 +238,7 @@ class AccountStruct(Structure):
                         slot_struct.Quantity = int(getattr(item, "quantity", 0) or 0)
                 except Exception:
                     bag_struct.Size = 0
-        
+
         def _same_map_or_party_as_account(account: "AccountStruct") -> bool:
             own_map_id = Map.GetMapID()
             own_region = Map.GetRegion()[0]
@@ -241,25 +251,23 @@ class AccountStruct(Structure):
             )
             if not same_map:
                 return False
-            
+
             try:
                 party_members = [
                     Party.Players.GetAgentIDByLoginNumber(party_member.login_number)
                     for party_member in Party.GetPlayers()
                 ]
-                if (
-                    account.AgentData.AgentID in party_members
-                    and account.AgentPartyData.PartyID == Party.GetPartyID()
-                ):
+                if account.AgentData.AgentID in party_members and account.AgentPartyData.PartyID == Party.GetPartyID():
                     return True
             except Exception:
                 pass
-            
+
             return own_region == account.AgentData.Map.Region
-        
+
         def _update_in_aggro_from_context() -> None:
             try:
                 from ...GlobalCache import GLOBAL_CACHE
+
                 party_in_aggro = False
                 for account in GLOBAL_CACHE.ShMem.GetAllActiveSlotsData():
                     if not account.IsSlotActive or not _same_map_or_party_as_account(account):
@@ -271,6 +279,7 @@ class AccountStruct(Structure):
                 stay_alert = self.InAggroTick64 > 0 and now - self.InAggroTick64 < IN_AGGRO_STAY_ALERT_TIME
                 try:
                     from HeroAI.settings import Settings
+
                     legacy_range = (
                         int(getattr(self.AgentPartyData, "PartyPosition", -1)) == 0
                         or Settings().get_combat_range_mode() == Settings.COMBAT_RANGE_MODE_LEGACY
@@ -284,8 +293,8 @@ class AccountStruct(Structure):
                     HighRange = Range.Longbow.value if not party_in_aggro else Range.Spellcast.value
                     LowRange = Range.Longbow.value if not party_in_aggro else Range.Earshot.value
                     scan_range = HighRange if stay_alert else LowRange
-                detected_in_aggro = bool(Routines.Checks.Agents.InAggro(scan_range))
-                
+                detected_in_aggro = bool(Checks.Agents.InAggro(scan_range))
+
                 if detected_in_aggro:
                     self.InAggro = True
                     self.InAggroTick64 = now
@@ -295,7 +304,7 @@ class AccountStruct(Structure):
                     self.InAggro = False
                     self.InAggroTick64 = 0
             except Exception:
-                self.InAggro = bool(Routines.Checks.Agents.InAggro(Range.Earshot.value))
+                self.InAggro = bool(Checks.Agents.InAggro(Range.Earshot.value))
                 self.InAggroTick64 = PySystem.get_tick_count64() if self.InAggro else 0
 
         meta_timer = _get_slot_timer(_player_meta_timers, slot_index, SHMEM_PLAYER_META_UPDATE_THROTTLE_MS)
@@ -306,9 +315,9 @@ class AccountStruct(Structure):
                 self.FactionData.from_context()
                 self.ExperienceData.from_context()
                 _player_meta_stage[slot_index] = 0
-                
+
                 _update_in_aggro_from_context()
-        
+
             else:
                 meta_stage = _player_meta_stage.get(slot_index, 0)
                 if meta_stage == 0:
@@ -337,7 +346,7 @@ class AccountStruct(Structure):
                 else:
                     self.QuestLog.from_context()
                 _player_progress_stage[slot_index] = (progress_stage + 1) % 2
-            
+
             progress_timer.Reset()
 
         static_timer = _get_slot_timer(_player_static_timers, slot_index, SHMEM_PLAYER_STATIC_UPDATE_THROTTLE_MS)
@@ -358,23 +367,27 @@ class AccountStruct(Structure):
                 _player_static_stage[slot_index] = (static_stage + 1) % 3
             static_timer.Reset()
 
-        inventory_timer = _get_slot_timer(_player_inventory_timers, slot_index, SHMEM_PLAYER_INVENTORY_UPDATE_THROTTLE_MS)
+        inventory_timer = _get_slot_timer(
+            _player_inventory_timers, slot_index, SHMEM_PLAYER_INVENTORY_UPDATE_THROTTLE_MS
+        )
         if force_full or inventory_timer.IsExpired():
             _update_inventory_bags()
             inventory_timer.Reset()
 
         self.LastUpdated = PySystem.get_tick_count64()
-        
+
     def from_hero_context(self, hero_data: HeroPartyMember, slot_index: int) -> None:
+        """Load hero data for one shared-memory slot."""
+
         from ...Map import Map
         from ...Player import Player
         from ...Party import Party
-        """Load data from the specified slot index in shared memory."""
+
         if slot_index < 0 or slot_index >= SHMEM_MAX_PLAYERS:
             raise ValueError(f"Invalid slot index: {slot_index}")
-        
+
         force_full = (self.LastUpdated == 0) or (not self.IsHero)
-        
+
         self.SlotNumber = slot_index
         self.IsSlotActive = True
         self.IsAccount = False
@@ -394,11 +407,16 @@ class AccountStruct(Structure):
         self.AgentData.HeroID = hero_data.hero_id
         self.LastUpdated = PySystem.get_tick_count64()
 
-        if Map.IsMapLoading(): return
-        if not Player.IsPlayerLoaded(): return
-        if not Map.IsMapReady(): return
-        if not Party.IsPartyLoaded(): return
-        if Map.IsInCinematic(): return
+        if Map.IsMapLoading():
+            return
+        if not Player.IsPlayerLoaded():
+            return
+        if not Map.IsMapReady():
+            return
+        if not Party.IsPartyLoaded():
+            return
+        if Map.IsInCinematic():
+            return
 
         if self.AccountName == "":
             self.AccountName = Player.GetAccountName() if Player.IsPlayerLoaded() else ""
@@ -426,7 +444,6 @@ class AccountStruct(Structure):
         if self.AgentData.OwnerAgentID == 0:
             self.AgentData.OwnerAgentID = Party.Players.GetAgentIDByLoginNumber(hero_data.owner_player_id)
         self.AgentData.HeroID = hero_data.hero_id
-        
 
         meta_timer = _get_slot_timer(_hero_meta_timers, slot_index, SHMEM_HERO_EXTRA_UPDATE_THROTTLE_MS)
         if force_full or meta_timer.IsExpired():
@@ -486,29 +503,36 @@ class AccountStruct(Structure):
                 _hero_static_stage[slot_index] = (static_stage + 1) % 3
             static_timer.Reset()
         self.LastUpdated = PySystem.get_tick_count64()
-        
+
     def from_pet_context(self, pet_data: PetInfo, slot_index: int) -> None:
+        """Load pet data for one shared-memory slot."""
+
         from ...Map import Map
         from ...Player import Player
         from ...Party import Party
-        """Load data from the specified slot index in shared memory."""
+
         if slot_index < 0 or slot_index >= SHMEM_MAX_PLAYERS:
             raise ValueError(f"Invalid slot index: {slot_index}")
-        
+
         force_full = (self.LastUpdated == 0) or (not self.IsPet)
-        
+
         self.SlotNumber = slot_index
         self.IsSlotActive = True
         self.IsAccount = False
         if self.AccountEmail == "":
             self.AccountEmail = Player.GetAccountEmail()
-        
-        if Map.IsMapLoading(): return
-        if not Player.IsPlayerLoaded(): return
-        if not Map.IsMapReady(): return
-        if not Party.IsPartyLoaded(): return
-        if Map.IsInCinematic(): return
-        
+
+        if Map.IsMapLoading():
+            return
+        if not Player.IsPlayerLoaded():
+            return
+        if not Map.IsMapReady():
+            return
+        if not Party.IsPartyLoaded():
+            return
+        if Map.IsInCinematic():
+            return
+
         if self.AccountName == "":
             self.AccountName = Player.GetAccountName() if Player.IsPlayerLoaded() else ""
         self.IsHero = False
@@ -517,7 +541,7 @@ class AccountStruct(Structure):
         self.InAggro = False
         self.InAggroTick64 = 0
         self.InventoryBags.reset()
-        
+
         agent_id = pet_data.agent_id
         self.AgentData.from_context(agent_id, throttle_key=slot_index)
         self.AgentData.AgentID = agent_id
@@ -600,4 +624,3 @@ class AccountStruct(Structure):
                 _pet_static_stage[slot_index] = (static_stage + 1) % 3
             static_timer.Reset()
         self.LastUpdated = PySystem.get_tick_count64()
-        

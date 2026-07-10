@@ -428,18 +428,10 @@ def DrawWindow():
     if not Routines.Checks.Map.MapValid():
         return
 
-    # 1) On first draw, restore last position & collapsed state
-    if first_run:
-        PyImGui.set_next_window_pos(win_x, win_y)
-        PyImGui.set_next_window_collapsed(win_collapsed, 0)
-        first_run = False
+    # Window geometry delegated to ImGui native persistence
 
     # 2) Begin the window (returns False if collapsed)
     opened = PyImGui.begin("Loot Manager", PyImGui.WindowFlags.AlwaysAutoResize)
-
-    # 3) Immediately grab the live collapse & position, even if collapsed
-    new_collapsed = PyImGui.is_window_collapsed()
-    end_pos       = PyImGui.get_window_pos()
 
     if opened:
         # â€”â€” Debug Settings â€”â€”
@@ -699,18 +691,7 @@ def DrawWindow():
     # 5) End the window (must be called even if collapsed)
     PyImGui.end()
 
-    # 6) Once per second, persist any position or collapse changes
-    if save_window_timer.HasElapsed(1000):
-        # Position changed?
-        if (end_pos[0], end_pos[1]) != (win_x, win_y):
-            win_x, win_y = int(end_pos[0]), int(end_pos[1])
-            ini_window.write_key("Loot Manager", "x", str(win_x))
-            ini_window.write_key("Loot Manager", "y", str(win_y))
-        # Collapsed state changed?
-        if new_collapsed != win_collapsed:
-            win_collapsed = new_collapsed
-            ini_window.write_key("Loot Manager", "collapsed", str(win_collapsed))
-        save_window_timer.Reset()
+    # Window geometry delegated to ImGui native persistence
 
 def DrawWhitelistViewer():
     if show_white_list:

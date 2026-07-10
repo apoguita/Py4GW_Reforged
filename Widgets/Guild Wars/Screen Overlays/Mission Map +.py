@@ -1985,15 +1985,12 @@ def configure():
 
         PyImGui.separator()
 
-    cfg.begin_window_config()
+    # Window persistence handled natively by ImGui.
     PyImGui.set_next_window_size((520.0, 680.0), PyImGui.ImGuiCond.FirstUseEver)
 
     expanded = PyImGui.begin(f"{MODULE_NAME} Config")
-    cfg.track_window_collapsed(expanded)
 
     if expanded:
-        cfg.mark_begin_success()
-
         if PyImGui.collapsing_header("Terrain"):
             terrain_enabled = PyImGui.checkbox("Show terrain", mission_map.terrain_enabled)
             if terrain_enabled != mission_map.terrain_enabled:
@@ -2056,7 +2053,6 @@ def configure():
                     _draw_marker_editor(item)
 
     PyImGui.end()
-    cfg.end_window_config()
 
 
 def main():

@@ -11118,10 +11118,7 @@ try:
         name: str,
         flags: int = PyImGui.WindowFlags.NoFlag,
     ) -> tuple[bool, bool]:
-        cfg = Settings.find(ini_key)
-        if cfg is not None:
-            cfg.begin_window_config()
-
+        # Window persistence handled natively by ImGui; ini_key retained for compatibility.
         begin_result = ImGui_Legacy.begin_with_close(name, True, flags)
         if isinstance(begin_result, tuple) and len(begin_result) == 2:
             expanded, window_open = bool(begin_result[0]), bool(begin_result[1])
@@ -11134,11 +11131,6 @@ try:
             if window is not None:
                 window_open = bool(window.open)
                 expanded = bool(window.open and not window.collapse)
-
-        if window_open and cfg is not None:
-            cfg.track_window_collapsed(expanded)
-            if expanded:
-                cfg.mark_begin_success()
 
         return expanded, window_open
 

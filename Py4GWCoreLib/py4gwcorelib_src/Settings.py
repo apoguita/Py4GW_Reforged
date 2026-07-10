@@ -18,29 +18,14 @@ All settings logic lives here, on top of the native (cached + autosaved)
 Autosave and flush cadence are owned entirely by the native side.
 """
 
-from dataclasses import dataclass
 from typing import Any
 from typing import Optional
 
 import PySettings
 
 
-@dataclass
-class _WindowState:
-    initialized: bool = False
-    x: int = 0
-    y: int = 0
-    w: int = 0
-    h: int = 0
-    collapsed: bool = False
-    begin_called: bool = False
-    begin_returned_true: bool = False
-
-
 class Settings:
     """Typed settings document backed by native ``PySettings``."""
-
-    WINDOW_SECTION = 'Window config'
 
     _instances: dict[tuple[str, str], 'Settings'] = {}
 
@@ -59,7 +44,6 @@ class Settings:
         self._name = str(name)
         self._scope = str(scope)
         self._doc = PySettings.settings(self._name, self._scope)
-        self._win = _WindowState()
         self._initialized = True
 
     # ------------------------------------------------------------------
@@ -215,72 +199,3 @@ class Settings:
         src, dst = self._s(source), self._s(target)
         for (key, value) in self._doc.items(src):
             self._doc.set(dst, key, value)
-
-    # ------------------------------------------------------------------
-    # Window config — ordinary [Window config] keys via get/set
-    # ------------------------------------------------------------------
-
-    def begin_window_config(self) -> None:
-        import PyImGui
-
-        state = self._win
-        state.begin_called = True
-        state.begin_returned_true = False
-        if state.initialized:
-            return
-
-        state.x = self.get_int(self.WINDOW_SECTION, 'x', 0)
-        state.y = self.get_int(self.WINDOW_SECTION, 'y', 0)
-        state.w = self.get_int(self.WINDOW_SECTION, 'width', 0)
-        state.h = self.get_int(self.WINDOW_SECTION, 'height', 0)
-        state.collapsed = self.get_bool(self.WINDOW_SECTION, 'collapsed', False)
-
-        PyImGui.set_next_window_pos(state.x, state.y)
-        if state.w > 0 and state.h > 0:
-            PyImGui.set_next_window_size(state.w, state.h)
-        PyImGui.set_next_window_collapsed(state.collapsed, 0)
-        state.initialized = True
-
-    def mark_begin_success(self) -> None:
-        self._win.begin_returned_true = True
-
-    def track_window_collapsed(self, begin_result: bool) -> None:
-        state = self._win
-        new_collapsed = not begin_result
-        if new_collapsed == state.collapsed:
-            return
-        state.collapsed = new_collapsed
-        self.set_bool(self.WINDOW_SECTION, 'collapsed', state.collapsed)
-
-    def is_window_collapsed(self) -> bool:
-        return self._win.collapsed
-
-    def end_window_config(self) -> None:
-        import PyImGui
-
-        state = self._win
-        if not state.begin_called or not state.begin_returned_true:
-            state.begin_called = False
-            state.begin_returned_true = False
-            return
-
-        end_pos = PyImGui.get_window_pos()
-        end_size = PyImGui.get_window_size()
-        new_x, new_y = int(end_pos[0]), int(end_pos[1])
-        new_w, new_h = int(end_size[0]), int(end_size[1])
-
-        if new_x != state.x:
-            state.x = new_x
-            self.set_int(self.WINDOW_SECTION, 'x', new_x)
-        if new_y != state.y:
-            state.y = new_y
-            self.set_int(self.WINDOW_SECTION, 'y', new_y)
-        if new_w != state.w:
-            state.w = new_w
-            self.set_int(self.WINDOW_SECTION, 'width', new_w)
-        if new_h != state.h:
-            state.h = new_h
-            self.set_int(self.WINDOW_SECTION, 'height', new_h)
-
-        state.begin_called = False
-        state.begin_returned_true = False

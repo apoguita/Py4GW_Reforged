@@ -39,30 +39,16 @@ cached_data = CacheData()
 def draw_widget(cached_data):
     global first_run, window_x, window_y, window_collapsed
 
-    if first_run:
-        PyImGui.set_next_window_pos(window_x, window_y)
-        PyImGui.set_next_window_collapsed(window_collapsed, 0)
-        first_run = False
+    # Window geometry delegated to ImGui native persistence
 
     is_window_opened = PyImGui.begin(MODULE_NAME, PyImGui.WindowFlags.AlwaysAutoResize)
-    new_collapsed = PyImGui.is_window_collapsed()
-    end_pos = PyImGui.get_window_pos()
 
     if is_window_opened:
         draw_title_helper_window(title_helper)
 
     PyImGui.end()
 
-    if save_window_timer.HasElapsed(1000):
-        if (end_pos[0], end_pos[1]) != (window_x, window_y):
-            window_x, window_y = int(end_pos[0]), int(end_pos[1])
-            ini_window.write_key(MODULE_NAME, X_POS, str(window_x))
-            ini_window.write_key(MODULE_NAME, Y_POS, str(window_y))
-
-        if new_collapsed != window_collapsed:
-            window_collapsed = new_collapsed
-            ini_window.write_key(MODULE_NAME, COLLAPSED, str(window_collapsed))
-        save_window_timer.Reset()
+    # Window geometry delegated to ImGui native persistence
 
 
 def tooltip():

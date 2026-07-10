@@ -1319,7 +1319,7 @@ class WidgetCatalogWindow:
         self.config.address_bar.gradient_end = self.setup_snapshot.address_bar.gradient_end.copy()
         self._save_config()
 
-        self.floating_button.position = (float(self.setup_snapshot.floating_icon.icon_x), float(self.setup_snapshot.floating_icon.icon_y))
+        self.floating_button.reposition_to((float(self.setup_snapshot.floating_icon.icon_x), float(self.setup_snapshot.floating_icon.icon_y)))
         self._save_floating_position()
         self.floating_button.icon_path = self.setup_snapshot.floating_icon.icon_path
         self.floating_button.button_size = max(1.0, float(self.setup_snapshot.floating_icon.icon_size))
@@ -1363,7 +1363,7 @@ class WidgetCatalogWindow:
 
     def _reset_floating_position(self) -> None:
         floating_defaults = floating_icon_vars()
-        self.floating_button.position = (floating_defaults.position_x, floating_defaults.position_y)
+        self.floating_button.reposition_to((floating_defaults.position_x, floating_defaults.position_y))
         self._save_floating_position()
 
     @classmethod
@@ -2533,7 +2533,7 @@ class WidgetCatalogWindow:
                 icon_x = ImGui_Legacy.slider_float("Icon X", float(self.floating_button.position[0]), 0.0, max_x)
                 icon_y = ImGui_Legacy.slider_float("Icon Y", float(self.floating_button.position[1]), 0.0, max_y)
                 if icon_x != float(self.floating_button.position[0]) or icon_y != float(self.floating_button.position[1]):
-                    self.floating_button.position = (icon_x, icon_y)
+                    self.floating_button.reposition_to((icon_x, icon_y))
                     self._save_floating_position()
 
                 if ImGui_Legacy.button("Reset Position", width=140):

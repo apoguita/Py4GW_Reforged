@@ -100,17 +100,10 @@ def on_imgui_render(me: int):
     if not slot_number:
         return
 
-    # Restore window position & collapsed state on first run
-    if first_run_window:
-        PyImGui.set_next_window_pos(win_x, win_y)
-        PyImGui.set_next_window_collapsed(win_collapsed, 0)
-        first_run_window = False
+    # Window geometry delegated to ImGui native persistence
 
     # (E) draw
     PyImGui.begin("Heroic Refrain", PyImGui.WindowFlags.AlwaysAutoResize)
-    # capture current state
-    new_collapsed = PyImGui.is_window_collapsed()
-    end_pos = PyImGui.get_window_pos()
 
     PyImGui.text("Click to cast HR")
     PyImGui.separator()
@@ -119,16 +112,7 @@ def on_imgui_render(me: int):
 
     PyImGui.end()
 
-    # â”€â”€â”€ Persist window state once per second â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if save_window_timer.HasElapsed(1000):
-        if (end_pos[0], end_pos[1]) != (win_x, win_y):
-            win_x, win_y = int(end_pos[0]), int(end_pos[1])
-            ini_window.write_key(WINDOW_SECTION, "x", str(win_x))
-            ini_window.write_key(WINDOW_SECTION, "y", str(win_y))
-        if new_collapsed != win_collapsed:
-            win_collapsed = new_collapsed
-            ini_window.write_key(WINDOW_SECTION, "collapsed", str(win_collapsed))
-        save_window_timer.Reset()
+    # Window geometry delegated to ImGui native persistence
 
 # â”€â”€â”€ Widget Manager Hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def setup():
