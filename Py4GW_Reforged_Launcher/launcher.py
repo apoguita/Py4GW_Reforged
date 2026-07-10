@@ -2098,6 +2098,28 @@ def show_settings_content() -> None:
             dialog_title="Select Guild Wars executable",
             filter_str="Guild Wars executable (Gw.exe)\0Gw.exe\0Executable files (*.exe)\0*.exe\0All files (*.*)\0*.*\0",
         )
+        if buffer.executable_path:
+            # Same case-insensitive comparison gw1_launch.py's own
+            # _find_replacement_process already uses for matching executable
+            # paths -- informational only (doesn't block Save): running two
+            # profiles pointed at the same real Gw.exe install is a
+            # legitimate but easy-to-miss mistake, worth flagging before it
+            # causes confusing launch behavior rather than blocking it
+            # outright (there may be real reasons to do this intentionally).
+            normalized = os.path.normcase(os.path.abspath(buffer.executable_path))
+            duplicate = next(
+                (
+                    p for p in STATE.profiles
+                    if p.id != buffer.original_id and p.executable_path
+                    and os.path.normcase(os.path.abspath(p.executable_path)) == normalized
+                ),
+                None,
+            )
+            if duplicate is not None:
+                imgui.text_colored(
+                    (0.9, 0.75, 0.3, 1.0),
+                    f"Another profile ('{duplicate.name or '(unnamed profile)'}') already uses this executable path.",
+                )
         _, buffer.email = imgui.input_text("Account email", buffer.email)
         _, buffer.password_input = imgui.input_text(
             "Password", buffer.password_input, flags=int(imgui.InputTextFlags_.password.value)
