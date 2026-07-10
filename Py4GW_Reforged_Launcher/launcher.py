@@ -1982,7 +1982,18 @@ def _browse_for_folder(*, title: str, initial_path: str = "") -> Optional[str]:
     pidl = result[0] if result else None
     if pidl is None:
         return None  # user cancelled
-    return win32_shell.SHGetPathFromIDList(pidl) or None
+    path = win32_shell.SHGetPathFromIDList(pidl)
+    if path is None:
+        return None
+    # Confirmed via a real crash report (not assumed): SHGetPathFromIDList
+    # returned bytes instead of str on one real machine -- unlike
+    # _browse_for_file's GetOpenFileNameW (an explicit wide/Unicode API,
+    # always str), this shell API gives no such guarantee across
+    # environments. Coerce defensively rather than passing a possibly-bytes
+    # value straight into Path(), which rejects bytes outright.
+    if isinstance(path, bytes):
+        path = os.fsdecode(path)
+    return path or None
 
 
 def _path_field_with_browse(*, label: str, value: str, id_suffix: str, dialog_title: str, filter_str: str) -> str:
