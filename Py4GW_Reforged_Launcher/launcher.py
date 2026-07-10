@@ -2350,7 +2350,7 @@ def show_app_settings_window() -> None:
         imgui.separator()
         imgui.spacing()
 
-        imgui.text("Delay between team launches (seconds):")
+        imgui.text("Delay between launches (seconds):")
         imgui.same_line()
         imgui.set_next_item_width(em * 6.0)
         # No UI-side min/max here on purpose -- the UI may show/accept any
@@ -2360,7 +2360,6 @@ def show_app_settings_window() -> None:
         changed, new_value = imgui.input_int("##bulk_pacing_seconds", STATE.bulk_launch_pacing_seconds)
         if changed:
             STATE.set_bulk_launch_pacing_seconds(new_value)
-        imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(actual delay is always kept between 5 and 90 seconds)")
 
         imgui.separator()
         imgui.spacing()
