@@ -3154,7 +3154,7 @@ def _ensure_runtime_host() -> LaunchSurfaceImGuiHost | None:
     from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import WidgetCatalog, get_widget_handler
 
     handler = get_widget_handler()
-    manager_key = handler.MANAGER_INI_KEY or Settings('Widgets/WidgetManager/WidgetManager.ini', 'global').name
+    manager_key = handler.MANAGER_INI_KEY or Settings('Widgets/WidgetManager/WidgetManager.ini', 'account').name
     manager_cfg = Settings.find(manager_key)
     if manager_cfg is None:
         if not _HOST_WAIT_REPORTED:

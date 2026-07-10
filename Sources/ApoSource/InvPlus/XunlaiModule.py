@@ -37,7 +37,7 @@ class XunlaiModule:
         self.show_transfer_buttons = True
         projects_path = PySystem.Console.get_projects_path()
         full_path = projects_path + "\\Widgets\\Config\\InventoryPlus.ini"
-        self.ini = Settings("Widgets/Config/InventoryPlus.ini", "account")
+        self.ini = Settings("Widgets/Config/InventoryPlus.ini", "global")
         self.show_transfer_buttons = self.ini.get_bool("XunlaiOptions", "show_transfer_buttons", self.show_transfer_buttons)
 
     #region DrawXunlaiBottomStrip

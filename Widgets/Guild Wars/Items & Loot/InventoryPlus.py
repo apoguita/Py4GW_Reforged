@@ -300,7 +300,7 @@ class ModelPopUp:
                     for account in other_accounts:
                         target_ini = os.path.join(base_path, account, self._ini_relative_path)
                         if os.path.exists(target_ini):
-                            Settings(self._ini_relative_path, "account").set(self._ini_section, self._ini_var_name, blacklist_str)
+                            Settings(self._ini_relative_path, "global").set(self._ini_section, self._ini_var_name, blacklist_str)
                             copied += 1
                     self._feedback_msg = f"Copied to {copied}/{len(other_accounts)} account(s)."
                     self._feedback_frames = 180
@@ -1268,7 +1268,7 @@ class InventoryPlusWidget:
 
     def _ensure_ini_key(self) -> bool:
         if not self.ini_key:
-            self.ini_key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
+            self.ini_key = Settings(f"{INI_PATH}/{INI_FILENAME}", "global").name
             if not self.ini_key:
                 return False
         self.initialized = True
