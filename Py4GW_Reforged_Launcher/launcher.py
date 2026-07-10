@@ -306,6 +306,23 @@ def _enforce_minimum_window_width_if_needed() -> None:
     _min_window_width_applied = True
 
 
+# ImGui's default MouseDoubleClickMaxDist is a fixed 6px, calibrated for a
+# 96-DPI mouse. The two clicks of a genuine double-click routinely land more
+# than 6px apart on a higher-DPI display or a high-precision trackpad, so ImGui
+# rejects the pair and the card's double-click-to-launch never fires -- while
+# single-click select (which has no distance gate) keeps working, which is the
+# tell that clicks register fine and only the double-click *distance* threshold
+# is the problem. Widen it, and scale it by em_size() -- the same DPI-aware unit
+# every other size in this UI is expressed in -- so it tracks the display's DPI
+# instead of being a fixed pixel count that's only right at one scale. 0.8 em is
+# ~2x the default 6px at 96 DPI and grows proportionally from there.
+_DOUBLE_CLICK_MAX_DIST_EM = 0.8
+
+
+def _apply_double_click_distance() -> None:
+    imgui.get_io().mouse_double_click_max_dist = hello_imgui.em_size() * _DOUBLE_CLICK_MAX_DIST_EM
+
+
 def _pre_new_frame_hooks() -> None:
     """Combines the one-shot, per-frame-retried setup hooks that need the real
     native window to already exist -- pre_new_frame only accepts a single
@@ -313,6 +330,10 @@ def _pre_new_frame_hooks() -> None:
     """
     _apply_window_icon_if_needed()
     _enforce_minimum_window_width_if_needed()
+    # Re-applied every frame on purpose: em_size() changes when the window moves
+    # between monitors of different DPI (this process is Per-Monitor-v2 aware),
+    # so the threshold must be recomputed rather than set once at startup.
+    _apply_double_click_distance()
 
 
 # -----------------------------------------------------------------------------
