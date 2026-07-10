@@ -145,13 +145,19 @@ try:
     import win32api
     import win32con
     import win32gui
+    from win32com.shell import shell as win32_shell
 
-    from launcher_core import bulk_launch, config_seeding, prereqs
+    from launcher_core import bulk_launch, config_seeding, mod_repo, prereqs
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
     from launcher_core.profile_store import load_profiles, load_teams, save_profiles, save_teams
-    from launcher_core.settings_store import load_bulk_launch_pacing_seconds, save_bulk_launch_pacing_seconds
+    from launcher_core.settings_store import (
+        load_bulk_launch_pacing_seconds,
+        load_mod_repo_path,
+        save_bulk_launch_pacing_seconds,
+        save_mod_repo_path,
+    )
     from launcher_core.team import Team
     from launcher_core.window_control import (
         find_running_pid_for_exe_path,
@@ -713,6 +719,139 @@ class PrereqState:
 
 
 # -----------------------------------------------------------------------------
+# ModRepoState: detection/clone/update-check for the actual Py4GW_Reforged mod
+# checkout (launcher_core.mod_repo) -- a different concern from PrereqState above
+# ("is the right software installed") and from config_seeding ("do the right
+# config files exist"): this is "does the mod's actual code exist, and is it
+# current." Same thread-safe status pattern as PrereqState/LaunchSession: real
+# work (clone, fetch) runs on a background thread via dulwich, the UI thread only
+# ever polls plain attributes/properties, never calls into dulwich directly.
+# -----------------------------------------------------------------------------
+
+class ModRepoState:
+    def __init__(self):
+        self._lock = threading.Lock()
+        saved_path = load_mod_repo_path()
+        # No saved override yet -- default to config_seeding's own mod-root
+        # assumption (this launcher's own parent directory) rather than
+        # duplicating that path logic here, per the task that added this.
+        self.configured_path: Path = Path(saved_path) if saved_path else config_seeding._mod_root()
+        self.detection: Optional[mod_repo.CheckoutDetectionResult] = None
+        self.update_check: Optional[mod_repo.UpdateCheckResult] = None
+        self._detecting = False
+        self._checking_updates = False
+        self._clone_in_progress = False
+        self._update_in_progress = False
+        self._operation_status_text = ""
+        self._operation_done_message: Optional[str] = None
+
+    def set_configured_path(self, path: str) -> None:
+        """Persists the new location and re-detects against it -- any
+        earlier update-check result was about the *old* location, so it's
+        cleared rather than left showing a stale answer for a path that's no
+        longer the one in effect.
+        """
+        self.configured_path = Path(path)
+        save_mod_repo_path(path)
+        self.update_check = None
+        self.run_detect_async()
+
+    def run_detect_async(self) -> None:
+        """Cheap, filesystem-only -- safe to fire on every relevant state
+        change (startup, path change, after a clone/update finishes), same
+        as PrereqState's own local checks."""
+        if self._detecting:
+            return
+        self._detecting = True
+        threading.Thread(target=self._detect, daemon=True).start()
+
+    def _detect(self) -> None:
+        result = mod_repo.detect_checkout(self.configured_path)
+        with self._lock:
+            self.detection = result
+            self._detecting = False
+
+    def run_check_updates_async(self) -> None:
+        """Unlike detection, this hits the network (a real git fetch) --
+        never run automatically, only from an explicit "Check for updates"
+        click, same reasoning PrereqState does NOT apply to its own local
+        checks (those are cheap enough to always re-run; this isn't)."""
+        if self._checking_updates:
+            return
+        self._checking_updates = True
+        threading.Thread(target=self._check_updates, daemon=True).start()
+
+    def _check_updates(self) -> None:
+        result = mod_repo.check_for_updates(self.configured_path)
+        with self._lock:
+            self.update_check = result
+            self._checking_updates = False
+
+    def start_clone(self) -> None:
+        if self._clone_in_progress:
+            return
+        self._clone_in_progress = True
+        self._operation_done_message = None
+        threading.Thread(target=self._run_clone, daemon=True).start()
+
+    def _run_clone(self) -> None:
+        _success, message = mod_repo.clone_mod_repo(self.configured_path, self._set_operation_status)
+        with self._lock:
+            self._operation_done_message = message
+            self._clone_in_progress = False
+        self.run_detect_async()
+
+    def start_update(self) -> None:
+        if self._update_in_progress:
+            return
+        self._update_in_progress = True
+        self._operation_done_message = None
+        threading.Thread(target=self._run_update, daemon=True).start()
+
+    def _run_update(self) -> None:
+        _success, message = mod_repo.update_mod_repo(self.configured_path, self._set_operation_status)
+        with self._lock:
+            self._operation_done_message = message
+            self._update_in_progress = False
+        self.run_detect_async()
+        self.run_check_updates_async()
+
+    def _set_operation_status(self, text: str) -> None:
+        with self._lock:
+            self._operation_status_text = text
+
+    @property
+    def detecting(self) -> bool:
+        with self._lock:
+            return self._detecting
+
+    @property
+    def checking_updates(self) -> bool:
+        with self._lock:
+            return self._checking_updates
+
+    @property
+    def clone_in_progress(self) -> bool:
+        with self._lock:
+            return self._clone_in_progress
+
+    @property
+    def update_in_progress(self) -> bool:
+        with self._lock:
+            return self._update_in_progress
+
+    @property
+    def operation_status_text(self) -> str:
+        with self._lock:
+            return self._operation_status_text
+
+    @property
+    def operation_done_message(self) -> Optional[str]:
+        with self._lock:
+            return self._operation_done_message
+
+
+# -----------------------------------------------------------------------------
 # ProfileEditBuffer: a staging copy of the fields the Settings window edits, kept
 # separate from the real GameProfile until Save. `password_input` is write-only --
 # it starts empty even when editing a profile that already has a stored password
@@ -1012,6 +1151,8 @@ class AppState:
 STATE = AppState()
 PREREQS = PrereqState()
 PREREQS.run_check_async()
+MOD_REPO_STATE = ModRepoState()
+MOD_REPO_STATE.run_detect_async()
 
 try:
     # Independent of the prereqs above (config files, not software installs)
@@ -1817,6 +1958,33 @@ def _browse_for_file(*, title: str, filter_str: str, initial_path: str = "") -> 
     return filename or None
 
 
+# BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE -- this pywin32 build's shellcon module
+# doesn't expose either name (confirmed directly: AttributeError on both), so these
+# are the documented Win32 SHBrowseForFolder flag values themselves rather than
+# symbolic constants: only return real filesystem directories, and use the modern
+# resizable/tree-view dialog instead of the old fixed-size one.
+_BIF_RETURNONLYFSDIRS = 0x0001
+_BIF_NEWDIALOGSTYLE = 0x0040
+
+
+def _browse_for_folder(*, title: str, initial_path: str = "") -> Optional[str]:
+    """Native Win32 folder-picker (SHBrowseForFolder, via the win32com.shell
+    extension already bundled with this project's existing pywin32 dependency
+    -- no new dependency) for the mod-repo location field, which needs a
+    directory rather than a specific file the way _browse_for_file's fields
+    do. Confirmed directly (screenshot + programmatic cancel) that this shows
+    the real modern folder-browser dialog and correctly reports a cancel as
+    (None, None, None) from SHBrowseForFolder rather than raising.
+    """
+    result = win32_shell.SHBrowseForFolder(
+        0, None, title, _BIF_RETURNONLYFSDIRS | _BIF_NEWDIALOGSTYLE, None, None
+    )
+    pidl = result[0] if result else None
+    if pidl is None:
+        return None  # user cancelled
+    return win32_shell.SHGetPathFromIDList(pidl) or None
+
+
 def _path_field_with_browse(*, label: str, value: str, id_suffix: str, dialog_title: str, filter_str: str) -> str:
     """Label above an input + measured-width "..." browse button, rather than
     picking a window size that happens not to clip the button (the previous
@@ -2307,6 +2475,165 @@ def _show_prereq_install_confirm_popup() -> None:
         imgui.end_popup()
 
 
+# -----------------------------------------------------------------------------
+# Mod Repository section (App Settings window) -- a separate section from
+# Prerequisites above: that's "is the right software installed," this is "does
+# the actual Py4GW_Reforged mod code exist at the configured location, and is
+# it current." Same confirm-before-acting pattern as the prereq installs above
+# (clone/update are real, non-instant actions -- a confirm popup first, not an
+# immediate action on click), but neither popup here can be triggered from
+# outside this window (unlike the launch-confirm gate elsewhere in this file),
+# so there's no cross-window ID-scope concern to design around here.
+# -----------------------------------------------------------------------------
+
+_MOD_REPO_CLONE_CONFIRM_POPUP_ID = "Clone Py4GW_Reforged?##mod_repo_clone_confirm"
+_mod_repo_clone_pending = False
+
+_MOD_REPO_UPDATE_CONFIRM_POPUP_ID = "Update Py4GW_Reforged?##mod_repo_update_confirm"
+_mod_repo_update_pending = False
+
+
+def _show_mod_repo_clone_confirm_popup() -> None:
+    global _mod_repo_clone_pending
+    if imgui.begin_popup_modal(
+        _MOD_REPO_CLONE_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]:
+        try:
+            if _mod_repo_clone_pending:
+                imgui.text("This will clone the full Py4GW_Reforged repository from:")
+                imgui.text_colored(_PREREQ_MUTED_COLOR, mod_repo.MOD_REPO_URL)
+                imgui.text("into:")
+                imgui.text_colored(_PREREQ_MUTED_COLOR, str(MOD_REPO_STATE.configured_path))
+                imgui.spacing()
+                # Real, tested number (see mod_repo.clone_mod_repo's own docstring),
+                # not a guess -- the user should know this isn't instant before
+                # clicking, not discover it by watching a UI that looks frozen.
+                imgui.text_colored(
+                    _PREREQ_MUTED_COLOR,
+                    "This is the full mod repository (roughly 600MB) and can take a "
+                    "minute or two depending on your connection.",
+                )
+                imgui.spacing()
+                if imgui.button("Clone"):
+                    MOD_REPO_STATE.start_clone()
+                    _mod_repo_clone_pending = False
+                    imgui.close_current_popup()
+                imgui.same_line()
+                if imgui.button("Cancel"):
+                    _mod_repo_clone_pending = False
+                    imgui.close_current_popup()
+        finally:
+            imgui.end_popup()
+
+
+def _show_mod_repo_update_confirm_popup() -> None:
+    global _mod_repo_update_pending
+    if imgui.begin_popup_modal(
+        _MOD_REPO_UPDATE_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]:
+        try:
+            if _mod_repo_update_pending:
+                check = MOD_REPO_STATE.update_check
+                behind_text = f" ({check.message})" if check is not None else ""
+                imgui.text("This will fast-forward the checkout at:")
+                imgui.text_colored(_PREREQ_MUTED_COLOR, str(MOD_REPO_STATE.configured_path))
+                imgui.text(f"to the latest Py4GW_Reforged{behind_text}.")
+                imgui.spacing()
+                imgui.text_colored(
+                    _PREREQ_MUTED_COLOR,
+                    "Only ever fast-forwards -- refused automatically if the checkout "
+                    "has any uncommitted changes, so nothing local is discarded.",
+                )
+                imgui.spacing()
+                if imgui.button("Update"):
+                    MOD_REPO_STATE.start_update()
+                    _mod_repo_update_pending = False
+                    imgui.close_current_popup()
+                imgui.same_line()
+                if imgui.button("Cancel"):
+                    _mod_repo_update_pending = False
+                    imgui.close_current_popup()
+        finally:
+            imgui.end_popup()
+
+
+def _show_mod_repo_section() -> None:
+    global _mod_repo_clone_pending, _mod_repo_update_pending
+
+    imgui.text("Mod Repository (Py4GW_Reforged):")
+
+    em = hello_imgui.em_size()
+    imgui.text("Location:")
+    imgui.same_line()
+    style = imgui.get_style()
+    button_w = imgui.calc_text_size("Browse...").x + style.frame_padding.x * 2
+    avail_w = imgui.get_content_region_avail().x
+    path_w = max(1.0, avail_w - button_w - style.item_spacing.x)
+    imgui.set_next_item_width(path_w)
+    imgui.input_text("##mod_repo_path", str(MOD_REPO_STATE.configured_path), flags=int(imgui.InputTextFlags_.read_only.value))
+    imgui.same_line()
+    if imgui.button("Browse...##mod_repo_path_browse", size=(button_w, 0)):
+        chosen = _browse_for_folder(
+            title="Select the Py4GW_Reforged location",
+            initial_path=str(MOD_REPO_STATE.configured_path),
+        )
+        if chosen:
+            MOD_REPO_STATE.set_configured_path(chosen)
+
+    detection = MOD_REPO_STATE.detection
+    if detection is None:
+        imgui.text_colored(_PREREQ_MUTED_COLOR, "Checking...")
+        return
+
+    if detection.status == mod_repo.CheckoutStatus.NOT_FOUND:
+        imgui.text_colored(_PREREQ_MISSING_COLOR, "No Py4GW_Reforged checkout found at this location.")
+        if MOD_REPO_STATE.clone_in_progress:
+            imgui.same_line()
+            imgui.text_colored(_PREREQ_BUSY_COLOR, MOD_REPO_STATE.operation_status_text)
+        else:
+            imgui.same_line()
+            if imgui.button("Clone Py4GW_Reforged"):
+                _mod_repo_clone_pending = True
+                imgui.open_popup(_MOD_REPO_CLONE_CONFIRM_POPUP_ID)
+    elif detection.status == mod_repo.CheckoutStatus.NOT_A_GIT_REPO:
+        imgui.text_colored(
+            _PREREQ_MISSING_COLOR,
+            "Found a folder here, but it isn't a git checkout -- can't check for updates.",
+        )
+    else:
+        imgui.text_colored(_PREREQ_OK_COLOR, "Checkout found.")
+        imgui.same_line()
+        if MOD_REPO_STATE.checking_updates:
+            imgui.text_colored(_PREREQ_BUSY_COLOR, "Checking for updates...")
+        elif imgui.button("Check for updates"):
+            MOD_REPO_STATE.run_check_updates_async()
+
+        check = MOD_REPO_STATE.update_check
+        if check is not None:
+            if check.status == mod_repo.UpdateStatus.UP_TO_DATE:
+                imgui.text_colored(_PREREQ_OK_COLOR, check.message)
+            elif check.status == mod_repo.UpdateStatus.BEHIND:
+                imgui.text_colored(_PREREQ_MISSING_COLOR, check.message)
+                if MOD_REPO_STATE.update_in_progress:
+                    imgui.same_line()
+                    imgui.text_colored(_PREREQ_BUSY_COLOR, MOD_REPO_STATE.operation_status_text)
+                else:
+                    imgui.same_line()
+                    if imgui.button("Update now"):
+                        _mod_repo_update_pending = True
+                        imgui.open_popup(_MOD_REPO_UPDATE_CONFIRM_POPUP_ID)
+            else:
+                # AHEAD or ERROR -- informational only, no fast-forward is
+                # possible/needed either way, so no "Update now" button.
+                imgui.text_colored(_PREREQ_MUTED_COLOR, check.message)
+
+    if MOD_REPO_STATE.operation_done_message and not MOD_REPO_STATE.clone_in_progress and not MOD_REPO_STATE.update_in_progress:
+        imgui.text_colored(_PREREQ_MUTED_COLOR, MOD_REPO_STATE.operation_done_message)
+
+    _show_mod_repo_clone_confirm_popup()
+    _show_mod_repo_update_confirm_popup()
+
+
 def show_app_settings_window() -> None:
     if not STATE.app_settings_window_open:
         return
@@ -2346,6 +2673,11 @@ def show_app_settings_window() -> None:
         if imgui.button("Check now"):
             PREREQS.run_check_async()
         _show_prereq_install_confirm_popup()
+
+        imgui.separator()
+        imgui.spacing()
+
+        _show_mod_repo_section()
 
         imgui.separator()
         imgui.spacing()
