@@ -8,11 +8,17 @@ rewrite: this only reshapes that logic around a ``GameProfile`` input and a sing
 ``LaunchResult`` return value instead of the launcher's global ``log_history`` list and
 UI/account model.
 
-Scope for this slice (deliberately narrow): Py4GW injection only. No gMod injection yet
-(near-identical follow-up once this is proven), no auto-login/credential typing (no
-``-email``/``-password``/``-character`` args are passed), no UI wiring. This is a
-headless, scriptable entry point: call ``launch_py4gw_profile(profile)`` and read the
-``LaunchResult``.
+Scope for this slice (deliberately narrow): Py4GW injection only -- no gMod injection
+yet (near-identical follow-up once this is proven). GW1 auto-login (``-email``/
+``-password``/``-character``) is wired up, ported from GWxLauncher's
+``Gw1InjectionService`` auto-login arg builder -- see ``_build_auto_login_args``. This
+is a headless, scriptable entry point: call ``launch_py4gw_profile(profile)`` and read
+the ``LaunchResult``.
+
+``profile.py4gw_enabled`` is no longer a hard requirement to launch at all -- a
+profile with it off still launches normally (process creation, the multiclient patch,
+resume, window-wait all still happen), it just skips the DLL-injection step. Only the
+py4gw_dll_path validation and the actual injection call are conditional on it.
 
 Updater/relaunch handoff (rare, only during a large content update)
 ---------------------------------------------------------------------
@@ -77,7 +83,9 @@ import ctypes
 import ctypes.wintypes
 import dataclasses
 import os
+import re
 import time
+import winreg
 from typing import Callable, Optional
 
 import psutil
@@ -85,6 +93,7 @@ import pywintypes
 import win32gui
 import win32process
 
+from launcher_core.crypto import unprotect_password
 from launcher_core.profile import GameProfile
 
 kernel32 = ctypes.windll.kernel32
@@ -518,6 +527,94 @@ def _find_replacement_process(exe_path: str, exclude_pid: int, launched_after: f
     return None
 
 
+def _apply_gw1_registry_fix(profile: GameProfile, log: list) -> None:
+    """Writes profile.executable_path into both Path and Src under
+    HKEY_CURRENT_USER\\Software\\ArenaNet\\Guild Wars before every launch --
+    ported from GWxLauncher's ApplyGw1RegistryFix (UI/Controllers/
+    ProfileLaunchController.cs). GW1 reads this key at startup; a stale or
+    missing entry (e.g. left over from a different install, or another
+    profile's path) is a real, confirmed candidate for the extra splash
+    screen seen testing two profiles side by side -- one install's registry
+    entry pointing at the wrong (or no) executable.
+
+    Best-effort only, same as the C# original: HKCU normally doesn't need
+    elevation, but this must never block a launch over a registry write
+    failing (a locked-down machine, a weird permissions setup, etc.).
+    """
+    if not profile.executable_path:
+        return
+    try:
+        with winreg.CreateKeyEx(
+            winreg.HKEY_CURRENT_USER, r"Software\ArenaNet\Guild Wars", 0, winreg.KEY_READ | winreg.KEY_WRITE
+        ) as key:
+            def _current(name: str) -> Optional[str]:
+                try:
+                    value, _ = winreg.QueryValueEx(key, name)
+                    return value
+                except FileNotFoundError:
+                    return None
+
+            if _current("Path") != profile.executable_path or _current("Src") != profile.executable_path:
+                winreg.SetValueEx(key, "Path", 0, winreg.REG_SZ, profile.executable_path)
+                winreg.SetValueEx(key, "Src", 0, winreg.REG_SZ, profile.executable_path)
+                _log(log, "GW1 registry fix applied (Path/Src updated)")
+    except OSError as e:
+        _log(log, f"GW1 registry fix failed (best-effort, continuing): {e}")
+
+
+def _build_auto_login_args(profile: GameProfile, log: list) -> str:
+    """Builds the -email/-password/-character command-line suffix for GW1
+    auto-login, ported from GWxLauncher's Gw1InjectionService auto-login arg
+    builder. Returns "" (no auto-login args at all) unless auto_login_enabled
+    and both email and password_protected are actually configured -- matching
+    the C# original, which never emits -character on its own, only alongside
+    a real email+password.
+
+    -character is always included once auto-login is actually being used
+    (the real name if auto-select is on and a name is stored, otherwise a
+    literal space placeholder) -- per GWxLauncher's own comment, GW.exe is
+    more reliable with -character always present, even as a placeholder,
+    than omitted entirely.
+
+    Decryption failures are caught and logged, falling back to a normal
+    manual-login launch (returns "") rather than failing the whole launch
+    over a password that can't be decrypted (e.g. a DPAPI blob from a
+    different Windows user or machine).
+    """
+    if not (profile.auto_login_enabled and profile.email and profile.password_protected):
+        return ""
+
+    try:
+        password = unprotect_password(profile.password_protected)
+    except Exception as e:
+        _log(log, f"Auto-login: stored password could not be decrypted, falling back to manual login: {e}")
+        return ""
+
+    if not password:
+        _log(log, "Auto-login: decrypted password was empty, falling back to manual login")
+        return ""
+
+    args = f' -email "{profile.email}" -password "{password}"'
+    if profile.auto_select_character_enabled and profile.character_name:
+        args += f' -character "{profile.character_name}"'
+    else:
+        args += ' -character " "'
+    _log(log, "Auto-login: -email/-password/-character arguments added")
+    return args
+
+
+def _redact_command_line_for_log(command_line: str) -> str:
+    """Masks the -password value before it ever reaches a log line.
+    LaunchResult.log entries get printed to stdout, forwarded to on_log, and
+    (see launcher.py's own persistence of the full per-launch log) written
+    to an on-disk log file -- none of those are somewhere a real plaintext
+    password should end up, even though the real, unredacted command_line
+    still gets used for CreateProcessW itself. This is the only place the
+    real command_line is ever put in front of _log().
+    """
+    return re.sub(r'(-password\s+)"[^"]*"', r'\1"***"', command_line)
+
+
 def launch_py4gw_profile(
     profile: GameProfile,
     *,
@@ -529,15 +626,21 @@ def launch_py4gw_profile(
     replacement_scan_timeout: float = 300.0,
     on_log: Optional[Callable[[str], None]] = None,
 ) -> LaunchResult:
-    """Launch `profile`'s executable and inject Py4GW into it.
+    """Launch `profile`'s executable, optionally auto-logging in, and inject Py4GW
+    into it if `profile.py4gw_enabled`.
 
-    Py4GW only -- gMod injection is a deliberate follow-up, not handled here. No
-    auto-login: the child is launched with no ``-email``/``-password``/``-character``
-    arguments, only `profile.launch_arguments` if set.
+    Py4GW only -- gMod injection is a deliberate follow-up, not handled here.
+    `profile.py4gw_enabled` gates only the py4gw_dll_path validation and the actual
+    DLL injection: a profile with it off still gets a completely normal launch
+    (process creation, the multiclient patch, resume, window-wait), just with
+    nothing injected. Auto-login (`-email`/`-password`/`-character`) is applied
+    whenever `profile.auto_login_enabled` and credentials are configured, regardless
+    of `py4gw_enabled` -- see `_build_auto_login_args`.
 
-    `LaunchResult.pid` is whichever process ends up injected into -- if the
-    updater/relaunch handoff (see module docstring) happens, that's the second,
-    replacement process, not the one this function originally created.
+    `LaunchResult.pid` is whichever process ends up injected into (or, if
+    `py4gw_enabled` is off, whichever process the launch ultimately resolves to) --
+    if the updater/relaunch handoff (see module docstring) happens, that's the
+    second, replacement process, not the one this function originally created.
 
     `pre_injection_config` is accepted but intentionally unused -- see
     `PreInjectionConfig`'s docstring for why.
@@ -555,13 +658,13 @@ def launch_py4gw_profile(
     if not profile.executable_path or not os.path.exists(profile.executable_path):
         return LaunchResult(False, None, f"executable_path not found: {profile.executable_path!r}", log)
 
-    if not profile.py4gw_enabled:
-        return LaunchResult(False, None, "profile.py4gw_enabled is False -- nothing to inject", log)
+    _apply_gw1_registry_fix(profile, log)
 
-    if not profile.py4gw_dll_path or not os.path.exists(profile.py4gw_dll_path):
+    if profile.py4gw_enabled and (not profile.py4gw_dll_path or not os.path.exists(profile.py4gw_dll_path)):
         return LaunchResult(False, None, f"py4gw_dll_path not found: {profile.py4gw_dll_path!r}", log)
 
     command_line = f'"{profile.executable_path}"'
+    command_line += _build_auto_login_args(profile, log)
     if profile.launch_arguments:
         command_line += f" {profile.launch_arguments}"
 
@@ -570,7 +673,7 @@ def launch_py4gw_profile(
     process_info = PROCESS_INFORMATION()
 
     launch_timestamp = time.time()
-    _log(log, f"Launching (suspended): {command_line}")
+    _log(log, f"Launching (suspended): {_redact_command_line_for_log(command_line)}")
     success = kernel32.CreateProcessW(
         None,
         command_line,
@@ -630,11 +733,15 @@ def launch_py4gw_profile(
 
     # outcome == "window": pid's window is already confirmed, fall straight through.
 
-    _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")
-    time.sleep(post_window_settle_delay)
+    if profile.py4gw_enabled:
+        _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")
+        time.sleep(post_window_settle_delay)
 
-    if not _inject_dll(pid, profile.py4gw_dll_path, log):
-        return LaunchResult(False, pid, "Py4GW DLL injection failed", log)
+        if not _inject_dll(pid, profile.py4gw_dll_path, log):
+            return LaunchResult(False, pid, "Py4GW DLL injection failed", log)
 
-    _log(log, "Py4GW DLL injection reported success")
+        _log(log, "Py4GW DLL injection reported success")
+    else:
+        _log(log, "Py4GW injection disabled for this profile -- launching without it")
+
     return LaunchResult(True, pid, None, log)

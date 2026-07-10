@@ -488,6 +488,32 @@ def classify_progress_message(raw_message: str) -> str:
     return "Working..."
 
 
+def _log_launch_attempt(profile: GameProfile, result: LaunchResult) -> None:
+    """Persists the full per-launch log (every step -- process creation, the
+    multiclient patch's success/address or specific failure reason,
+    injection, window-wait -- not just the single top-line status string
+    LaunchSession otherwise shows) to the same launcher_errors.log file used
+    elsewhere. LaunchResult.log was previously discarded the moment _run()
+    finished, leaving nothing to diagnose a failed launch after the fact.
+    Written for every launch attempt, success or failure, so e.g. a working
+    launch and a failing one from the same session can be diffed side by
+    side rather than only ever having a log for the failure.
+    """
+    try:
+        log_path = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR / "launcher_errors.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(
+                f"{time.strftime('%Y-%m-%d %H:%M:%S')} [launch] "
+                f"profile={profile.name or '(unnamed profile)'!r} "
+                f"success={result.success} error={result.error!r}\n"
+            )
+            for line in result.log:
+                f.write(f"    {line}\n")
+    except OSError:
+        pass
+
+
 # -----------------------------------------------------------------------------
 # LaunchSession: runs launch_py4gw_profile on a background thread (it blocks for
 # the whole launch, seconds to tens of minutes during a large update) and exposes
@@ -512,6 +538,7 @@ class LaunchSession:
 
     def _run(self) -> None:
         result = launch_py4gw_profile(self.profile, on_log=self._on_log)
+        _log_launch_attempt(self.profile, result)
         with self._lock:
             self._result = result
 
