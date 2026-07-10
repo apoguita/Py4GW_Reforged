@@ -342,6 +342,7 @@ def _pre_new_frame_hooks() -> None:
     """
     _apply_window_icon_if_needed()
     _enforce_minimum_window_width_if_needed()
+    _apply_imgui_style_theme_if_needed()
     # Re-applied every frame on purpose: em_size() changes when the window moves
     # between monitors of different DPI (this process is Per-Monitor-v2 aware),
     # so the threshold must be recomputed rather than set once at startup.
@@ -426,12 +427,92 @@ STATUS_PROGRESS = _u32(230, 180, 80)
 STATUS_ERROR = _u32(220, 90, 90)
 
 
+# hello_imgui ships a set of built-in, purpose-designed ImGuiCol_* theme
+# presets (hello_imgui.ImGuiTheme_) -- confirmed directly (dir() on the
+# module, then hello_imgui.imgui_theme_name() against every member) rather
+# than hand-authoring a full style table from scratch. "DarculaDarker" is
+# the exact preset already in effect today (confirmed against this
+# project's own persisted Py4GW_Reforged_Launcher.ini, [Theme] Name=
+# DarculaDarker) even though no code here ever explicitly requested it --
+# it's hello_imgui's own default -- so using it explicitly for the dark
+# case reproduces today's actual look exactly, not just "a" dark theme.
+# "LightRounded" is hello_imgui's own purpose-built light preset (as
+# opposed to the bare "ImGuiColorsLight", a straight port of Dear ImGui's
+# own stock light colors with no extra polish).
+_DARK_IMGUI_THEME = "DarculaDarker"
+_LIGHT_IMGUI_THEME = "LightRounded"
+
+# apply_theme() needs a live ImGui context -- confirmed directly (raises
+# IM_ASSERT "No current context" when called before one exists) -- but
+# set_theme() is first called at plain module-import time, well before
+# hello_imgui.run() ever creates one. Same problem _apply_window_icon_if_needed
+# solves for a different resource (the native window handle) that also isn't
+# ready yet at that point: retry once per frame via _pre_new_frame_hooks until
+# it succeeds, then stop. _current_theme_is_dark records what set_theme() was
+# last actually asked for, so the retry (which doesn't get a `dark` argument
+# of its own) knows which preset to (re)try applying.
+_current_theme_is_dark = True
+_theme_imgui_style_applied = False
+
+
+def _apply_imgui_style_theme() -> None:
+    """Actually applies whichever theme set_theme() was last asked for --
+    this is the part that needs a live ImGui context and a running
+    hello_imgui app (see module comment above); the CARD_*-style custom
+    palette reassignment in set_theme() itself has no such requirement and
+    always runs immediately.
+
+    hello_imgui.imgui_theme_from_name() expects its own display-name spelling
+    ("DarculaDarker", "LightRounded" -- see _DARK_IMGUI_THEME/_LIGHT_IMGUI_THEME
+    above), not the ImGuiTheme_ enum member's Python spelling
+    ("darcula_darker"); passing the wrong spelling doesn't raise, it silently
+    resolves to ImGuiColorsClassic, which was the actual cause of an earlier
+    version of this function visually doing nothing. Also update
+    RunnerParams.imgui_window_params.tweaked_theme (replacing the whole
+    ImGuiTweakedTheme, not mutating its .theme field in place -- confirmed
+    in-place mutation alone doesn't stick) so hello_imgui's own internal
+    per-frame processing, which re-applies this stored theme choice every
+    frame, doesn't overwrite the apply_theme() call below on the very next
+    frame.
+    """
+    global _theme_imgui_style_applied
+    theme_name = _DARK_IMGUI_THEME if _current_theme_is_dark else _LIGHT_IMGUI_THEME
+    try:
+        theme = hello_imgui.imgui_theme_from_name(theme_name)
+        runner_params = hello_imgui.get_runner_params()
+        imgui_window_params = runner_params.imgui_window_params
+        imgui_window_params.tweaked_theme = hello_imgui.ImGuiTweakedTheme(theme=theme)
+        runner_params.imgui_window_params = imgui_window_params
+        hello_imgui.apply_theme(theme)
+        _theme_imgui_style_applied = True
+    except RuntimeError:
+        _theme_imgui_style_applied = False
+
+
+def _apply_imgui_style_theme_if_needed() -> None:
+    """Wired into _pre_new_frame_hooks -- retries _apply_imgui_style_theme
+    every frame until it succeeds (the first real frame, once hello_imgui's
+    ImGui context actually exists), then becomes a no-op for the rest of
+    the run. Any later set_theme() call (the user toggling App Settings'
+    checkbox, well after startup) applies immediately on its own and sets
+    _theme_imgui_style_applied True itself, so this never re-fires then.
+    """
+    if _theme_imgui_style_applied:
+        return
+    _apply_imgui_style_theme()
+
+
 def set_theme(dark: bool) -> None:
     """Reassigns every palette constant above from DARK_PALETTE or
-    LIGHT_PALETTE -- called once at startup with the persisted preference,
-    and again immediately whenever the user toggles the App Settings theme
-    switch, so every existing drawing call site (which reference e.g.
-    CARD_BACK directly, not through a lookup) picks up the new colors with
+    LIGHT_PALETTE, and applies the corresponding built-in hello_imgui
+    ImGuiCol_* theme preset (see _DARK_IMGUI_THEME/_LIGHT_IMGUI_THEME above)
+    -- called once at startup with the persisted preference, and again
+    immediately whenever the user toggles the App Settings theme switch, so
+    every existing drawing call site (which reference e.g. CARD_BACK
+    directly, not through a lookup) *and* every real ImGui widget/window
+    (buttons, checkboxes, text inputs, window/titlebar backgrounds --
+    previously untouched by this toggle, since this codebase never once set
+    imgui.get_style().colors anywhere) pick up the new colors together, with
     no call site needing to change.
 
     STATUS_PROGRESS/STATUS_ERROR and the avatar hue palette
@@ -444,6 +525,7 @@ def set_theme(dark: bool) -> None:
     """
     global CARD_BACK, CARD_SELECTED_BACK, HOVER_BACK, CARD_BORDER, HOVER_BORDER
     global MUTED_FORE, ACCENT, CARD_NAME_FORE, CARD_SUB_FORE, BADGE_BACK, BADGE_BORDER, BADGE_FORE
+    global _current_theme_is_dark
 
     palette = DARK_PALETTE if dark else LIGHT_PALETTE
     CARD_BACK = _u32(*palette["CARD_BACK"])
@@ -458,6 +540,9 @@ def set_theme(dark: bool) -> None:
     BADGE_BACK = _u32(*palette["BADGE_BACK"])
     BADGE_BORDER = _u32(*palette["BADGE_BORDER"])
     BADGE_FORE = _u32(*palette["BADGE_FORE"])
+
+    _current_theme_is_dark = dark
+    _apply_imgui_style_theme()
 
 
 _dark_theme_enabled = load_dark_theme_enabled()
