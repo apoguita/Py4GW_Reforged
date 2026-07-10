@@ -60,6 +60,12 @@ HASH_STORE_FILENAME = "seeded_config_hashes.json"
 # needs a matching bundled default at config_defaults/{filename}.
 SEEDED_CONFIG_FILENAMES = ["Py4GW.ini"]
 
+# How many directories up from the exe (inclusive of the exe's own directory,
+# depth 0) _mod_root() will check for a real checkout marker before giving up
+# and falling back to the fixed-depth guess -- see _mod_root()'s own
+# docstring for why a fixed depth alone isn't enough.
+_FROZEN_MOD_ROOT_SEARCH_DEPTH = 4
+
 
 def _mod_root() -> Path:
     """Today's mod root: this launcher's own parent directory -- see this
@@ -73,14 +79,37 @@ def _mod_root() -> Path:
     Confirmed directly against the real built exe (not assumed): running it
     and inspecting _mod_root()'s result showed a path under
     %TEMP%\\_MEIxxxxxx, not the exe's real folder. sys.executable is the
-    correct, standard answer once frozen -- it always points at the real
-    .exe, regardless of where pure-Python modules got unpacked to run it.
-    Shared by every caller (this module's own Py4GW.ini seeding, and
-    launcher_core.mod_repo's checkout detection/clone/update) -- fixed once
-    here rather than each caller re-deriving its own frozen/unfrozen branch.
+    correct place to start once frozen -- it always points at the real .exe,
+    regardless of where pure-Python modules got unpacked to run it.
+
+    A first fix here just assumed "two parents up from sys.executable" (this
+    launcher's own dir, then its parent) -- confirmed wrong on real hardware:
+    that only holds if the exe is deployed nested inside a
+    Py4GW_Reforged_Launcher subfolder of the mod root, but a real laptop had
+    the exe sitting directly inside the mod root itself, one level
+    shallower, which made the fixed guess resolve one level too high and
+    report "no checkout found" despite a real, valid checkout being right
+    there. Instead, walk up from the exe's own directory checking each level
+    for the same Py4GWCoreLib/ marker mod_repo.py's own detection already
+    uses, and use the first level that actually has it -- covers both real,
+    confirmed layouts (exe directly in the mod root, and exe nested one
+    level down in its own subfolder) without guessing a single fixed depth.
+    Only falls back to the old fixed-depth guess if nothing matches within
+    that range -- still a reasonable best-effort default for a genuinely
+    fresh machine with no checkout yet to find. Doesn't change the existing
+    manual override at all (App Settings' Browse button already lets a user
+    correct a wrong guess) -- this only improves the unassisted default.
     """
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent.parent
+        from launcher_core.mod_repo import MOD_REPO_MARKER_DIR
+
+        exe_dir = Path(sys.executable).resolve().parent
+        candidate = exe_dir
+        for _ in range(_FROZEN_MOD_ROOT_SEARCH_DEPTH):
+            if (candidate / MOD_REPO_MARKER_DIR).is_dir():
+                return candidate
+            candidate = candidate.parent
+        return exe_dir.parent
     return _LAUNCHER_DIR.parent
 
 
