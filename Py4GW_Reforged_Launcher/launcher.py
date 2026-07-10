@@ -582,32 +582,44 @@ def classify_progress_message(raw_message: str) -> str:
 
 
 # -----------------------------------------------------------------------------
-# launcher_errors.log -- shared by _log_launch_attempt below and
-# _log_prereq_ui_error further down. Previously each was its own hand-rolled
-# open(path, "a").write(...) call site, with no rotation or size cap -- genuine
-# unbounded growth over time. One logger, configured once here via a
-# RotatingFileHandler, used by both. maxBytes=5MB/backupCount=3 (so
-# launcher_errors.log plus .1/.2/.3, ~20MB ceiling total) is a reasonable
-# starting point, not a tuned figure from real observed log volume -- worth
-# revisiting if that turns out to be too small or too generous in practice.
-# A bare "%(message)s" formatter (no logging-added timestamp/level prefix)
-# keeps the on-disk text byte-for-byte the same as before -- this only
-# changes how it's written, not what gets written; both call sites still
-# build their own timestamped, multi-line message text exactly as before and
-# hand the whole thing to logger.info() as a single record.
+# launcher.log / launcher_errors.log -- shared by _log_launch_attempt below and
+# _log_prereq_ui_error further down. Previously both wrote everything (launch
+# attempts *and* UI errors, success or failure alike) to one file named
+# "launcher_errors.log" -- a misleading name (it captured every launch, not
+# just errors) with no easy way to see just what went wrong. Now one logger
+# feeds two RotatingFileHandlers: launcher.log gets everything (INFO+, the
+# full picture -- what this file used to be called, before the rename), and
+# launcher_errors.log is filtered to WARNING+ only, so it's genuinely
+# errors-only. Each call site's logging *level* is what actually routes a
+# given message to the errors file or not -- see _log_launch_attempt and
+# _log_prereq_ui_error for which level each uses and why. maxBytes=5MB/
+# backupCount=3 per file (so up to ~20MB each) is a reasonable starting
+# point, not a tuned figure from real observed log volume. A bare
+# "%(message)s" formatter (no logging-added timestamp/level prefix) keeps the
+# on-disk text the same shape as before -- both call sites still build their
+# own timestamped, multi-line message text and hand the whole thing to the
+# logger as a single record.
 # -----------------------------------------------------------------------------
 
 _error_logger = logging.getLogger("py4gw_launcher_errors")
 _error_logger.setLevel(logging.INFO)
 _error_logger.propagate = False
 try:
-    _error_log_path = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR / "launcher_errors.log"
-    _error_log_path.parent.mkdir(parents=True, exist_ok=True)
-    _error_log_handler = logging.handlers.RotatingFileHandler(
-        _error_log_path, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    _log_dir = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR
+    _log_dir.mkdir(parents=True, exist_ok=True)
+
+    _main_log_handler = logging.handlers.RotatingFileHandler(
+        _log_dir / "launcher.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
     )
-    _error_log_handler.setFormatter(logging.Formatter("%(message)s"))
-    _error_logger.addHandler(_error_log_handler)
+    _main_log_handler.setFormatter(logging.Formatter("%(message)s"))
+    _error_logger.addHandler(_main_log_handler)
+
+    _errors_only_log_handler = logging.handlers.RotatingFileHandler(
+        _log_dir / "launcher_errors.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
+    _errors_only_log_handler.setLevel(logging.WARNING)
+    _errors_only_log_handler.setFormatter(logging.Formatter("%(message)s"))
+    _error_logger.addHandler(_errors_only_log_handler)
 except OSError:
     pass
 
@@ -616,12 +628,17 @@ def _log_launch_attempt(profile: GameProfile, result: LaunchResult) -> None:
     """Persists the full per-launch log (every step -- process creation, the
     multiclient patch's success/address or specific failure reason,
     injection, window-wait -- not just the single top-line status string
-    LaunchSession otherwise shows) to the same launcher_errors.log file used
-    elsewhere. LaunchResult.log was previously discarded the moment _run()
-    finished, leaving nothing to diagnose a failed launch after the fact.
-    Written for every launch attempt, success or failure, so e.g. a working
-    launch and a failing one from the same session can be diffed side by
-    side rather than only ever having a log for the failure.
+    LaunchSession otherwise shows) to launcher.log. LaunchResult.log was
+    previously discarded the moment _run() finished, leaving nothing to
+    diagnose a failed launch after the fact. Written for every launch
+    attempt, success or failure, so e.g. a working launch and a failing one
+    from the same session can be diffed side by side rather than only ever
+    having a log for the failure.
+
+    Logged at WARNING when the launch failed (so it also lands in the
+    WARNING+-filtered launcher_errors.log) and INFO when it succeeded (so a
+    normal, working launch only ever shows up in the full launcher.log, not
+    the errors-only one).
     """
     lines = [
         f"{time.strftime('%Y-%m-%d %H:%M:%S')} [launch] "
@@ -629,8 +646,9 @@ def _log_launch_attempt(profile: GameProfile, result: LaunchResult) -> None:
         f"success={result.success} error={result.error!r}"
     ]
     lines.extend(f"    {line}" for line in result.log)
+    level = logging.INFO if result.success else logging.WARNING
     try:
-        _error_logger.info("\n".join(lines))
+        _error_logger.log(level, "\n".join(lines))
     except OSError:
         pass
 
@@ -2484,6 +2502,10 @@ def _log_prereq_ui_error(context: str) -> None:
     the frame) and this logs once per distinct message rather than every
     frame, to both stderr (visible under console python.exe) and a file
     under %APPDATA% (visible even under the packaged, console-less exe).
+
+    Always logged at ERROR -- this function only ever runs because
+    something genuinely broke, so it always belongs in the WARNING+-filtered
+    launcher_errors.log, not just the full launcher.log.
     """
     global _prereq_ui_last_logged_error
     text = traceback.format_exc()
@@ -2492,7 +2514,7 @@ def _log_prereq_ui_error(context: str) -> None:
     _prereq_ui_last_logged_error = text
     print(f"[prereq-ui] {context} failed:\n{text}", file=sys.stderr)
     try:
-        _error_logger.info(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [{context}]\n{text}")
+        _error_logger.error(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [{context}]\n{text}")
     except OSError:
         pass
 
