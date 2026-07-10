@@ -38,9 +38,18 @@ import dataclasses
 import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
+# _LAUNCHER_DIR is deliberately still __file__-based, even though _mod_root()
+# below can't be: this is used for _DEFAULTS_DIR, finding this launcher's own
+# *bundled* config_defaults/ data, which under a packaged exe is a PyInstaller
+# `datas` entry PyInstaller genuinely does extract to disk next to this
+# module inside its temp extraction directory -- __file__-relative resolution
+# is exactly correct for that. _mod_root() is a different question entirely
+# (where's the real, user-facing mod checkout on disk), which is why it needs
+# its own, different resolution below rather than reusing this constant.
 _LAUNCHER_DIR = Path(__file__).resolve().parent.parent
 _DEFAULTS_DIR = _LAUNCHER_DIR / "config_defaults"
 
@@ -56,7 +65,22 @@ def _mod_root() -> Path:
     """Today's mod root: this launcher's own parent directory -- see this
     module's docstring for why that's the deliberately simple answer for
     now, not a general install-location discovery mechanism.
+
+    Under a packaged (PyInstaller) exe, __file__-based resolution -- correct
+    when running from source -- breaks: this module is bundled pure Python,
+    so __file__ resolves relative to PyInstaller's temp extraction directory
+    (_MEIxxxxxx), not to wherever the real .exe actually sits on disk.
+    Confirmed directly against the real built exe (not assumed): running it
+    and inspecting _mod_root()'s result showed a path under
+    %TEMP%\\_MEIxxxxxx, not the exe's real folder. sys.executable is the
+    correct, standard answer once frozen -- it always points at the real
+    .exe, regardless of where pure-Python modules got unpacked to run it.
+    Shared by every caller (this module's own Py4GW.ini seeding, and
+    launcher_core.mod_repo's checkout detection/clone/update) -- fixed once
+    here rather than each caller re-deriving its own frozen/unfrozen branch.
     """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent.parent
     return _LAUNCHER_DIR.parent
 
 

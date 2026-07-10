@@ -24,6 +24,15 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 # option below, which only covers the .exe's own Explorer/file-icon. Both need it.
 datas += [('assets/python_icon.ico', 'assets')]
 
+# config_defaults/ (the bundled Py4GW.ini template launcher_core.config_seeding
+# seeds a fresh checkout with) was missing here entirely -- confirmed directly
+# against a real packaged exe that this silently broke Py4GW.ini seeding in
+# every built .exe to date: config_seeding.py references this directory via a
+# plain Path join, not an import, so PyInstaller's static analysis has no way
+# to discover it needs bundling on its own, the same reason python_icon.ico
+# above needs its own explicit entry rather than being picked up automatically.
+datas += [('config_defaults', 'config_defaults')]
+
 
 a = Analysis(
     ['launcher.py'],
