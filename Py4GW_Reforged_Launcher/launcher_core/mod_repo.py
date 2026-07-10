@@ -314,22 +314,60 @@ def update_mod_repo(path: Path, on_status: Callable[[str], None]) -> tuple[bool,
     update_working_tree raises WorkingTreeModifiedError naming the exact
     path ("Your local changes to '<path>' would be overwritten by
     checkout..."), which is caught below and surfaced as the failure reason.
-    Nothing gets overwritten either way; this only changes how narrowly a
-    real conflict is detected.
+
+    That refusal is a bit less clean than it looks, though: confirmed
+    directly (reading pull()'s source) that it writes the local branch ref
+    -- and HEAD, a symref to it -- to point at the new commit *before*
+    attempting the working-tree checkout that can raise this. So a refused
+    pull previously left the repo in a mixed state: HEAD claiming to be at
+    the new commit while most files on disk still held their old content
+    (confirmed live: after a refused pull, a file elsewhere in the same
+    update still had its pre-update content despite HEAD already having
+    moved). A later check_for_updates() would then wrongly report
+    up-to-date on a checkout that's actually stale for most files. The
+    pre-pull ref position is captured up front and restored on any failure
+    (not just this one -- see below) to keep the ref and the working tree
+    from disagreeing about what HEAD actually reflects.
     """
     try:
         repo = Repo(str(path))
     except NotGitRepository as e:
         return False, f"Not a git repository: {e}"
 
+    # Safe no-op defaults in case even resolving these below somehow fails --
+    # _restore_pre_pull_ref() must never itself be a source of a new,
+    # unhandled exception inside an except clause.
+    pre_pull_sha: Optional[bytes] = None
+    concrete_ref: Optional[bytes] = None
+
+    def _restore_pre_pull_ref() -> None:
+        if pre_pull_sha is not None and concrete_ref is not None:
+            repo.refs[concrete_ref] = pre_pull_sha
+
     try:
+        # Captured before pull() runs, to be restored if pull moves the ref
+        # forward and then fails partway through the checkout (see this
+        # function's own docstring). refnames[-1] is the concrete ref HEAD
+        # resolves through (typically refs/heads/<branch>; falls back to
+        # HEAD itself if detached) -- that's what actually needs resetting,
+        # not HEAD's own symref indirection.
+        refnames, pre_pull_sha = repo.refs.follow(b"HEAD")
+        concrete_ref = refnames[-1]
+
         on_status("Fetching updates...")
         porcelain.pull(repo, MOD_REPO_URL, errstream=_ProgressStream(on_status), ff_only=True)
     except WorkingTreeModifiedError as e:
+        _restore_pre_pull_ref()
         return False, f"Update refused: {e}"
     except DivergedBranches as e:
+        # check_diverged() raises before pull() ever writes the ref, so this
+        # path was already safe -- _restore_pre_pull_ref() still runs (a
+        # no-op resetting the ref to the value it already has) rather than
+        # special-casing which exceptions actually moved it.
+        _restore_pre_pull_ref()
         return False, f"Local checkout has diverged from the remote and can't be fast-forwarded: {e}"
     except Exception as e:
+        _restore_pre_pull_ref()
         return False, f"Update failed: {e}"
     finally:
         repo.close()
