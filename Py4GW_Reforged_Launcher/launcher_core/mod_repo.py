@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from dulwich import porcelain
-from dulwich.errors import NotGitRepository
+from dulwich.errors import NotGitRepository, WorkingTreeModifiedError
 from dulwich.porcelain import DivergedBranches
 from dulwich.repo import Repo
 from dulwich.walk import Walker
@@ -241,10 +241,14 @@ def get_uncommitted_changes(path: Path) -> list[str]:
     at face value: confirmed directly (not assumed) that a *pure file-mode*
     difference -- e.g. the executable bit, which NTFS has no real equivalent
     of -- can appear in status()'s staged-modify list with byte-identical file
-    content, reproduced via dulwich's own porcelain.reset(). Left unfiltered,
-    that would make update_mod_repo refuse to ever update an actually-clean
-    checkout on Windows. A real content difference still counts as dirty --
-    only a pure mode-only difference is excluded.
+    content, reproduced via dulwich's own porcelain.reset(). A real content
+    difference still counts as dirty -- only a pure mode-only difference is
+    excluded.
+
+    Not used to gate update_mod_repo (see its own docstring for why a blanket
+    "any uncommitted change anywhere" check over-blocks) -- this is available
+    for informational display only, e.g. "N files have local changes," if a
+    caller wants to show that without it deciding whether an update can run.
     """
     repo = Repo(str(path))
     try:
@@ -287,23 +291,32 @@ def _content_actually_differs_from_head(repo: Repo, path: bytes) -> bool:
 
 
 def update_mod_repo(path: Path, on_status: Callable[[str], None]) -> tuple[bool, str]:
-    """Fast-forward-only update via dulwich's porcelain.pull. Refuses up front
-    if the checkout has any real uncommitted changes (get_uncommitted_changes)
-    rather than risking discarding them -- mirrors config_seeding.py's own
-    "never overwrite what the user touched" rule, applied here to the whole
-    mod checkout instead of a single config file. ff_only=True means a genuine
-    divergence (local commits the remote doesn't have) raises rather than
-    merging or rewriting anything -- this never does more than fast-forward.
-    """
-    dirty = get_uncommitted_changes(path)
-    if dirty:
-        shown = dirty[:10]
-        more = f"\n...and {len(dirty) - 10} more" if len(dirty) > 10 else ""
-        return False, (
-            "Update refused: the checkout has uncommitted changes, and updating "
-            "could discard them:\n" + "\n".join(shown) + more
-        )
+    """Fast-forward-only update via dulwich's porcelain.pull. ff_only=True
+    means a genuine divergence (local commits the remote doesn't have) raises
+    rather than merging or rewriting anything -- this never does more than
+    fast-forward.
 
+    Deliberately does NOT pre-check get_uncommitted_changes() and refuse up
+    front over "any uncommitted change anywhere in the checkout" -- confirmed
+    directly (reading dulwich's own porcelain.pull source, not assumed) that
+    pull only ever touches paths that are actually part of the incoming
+    tree-to-tree diff. Py4GW users routinely drop custom scripts into Bots/,
+    Widgets/, etc. -- untracked files like those are never part of either
+    tree, so pull never looks at, modifies, or deletes them regardless of how
+    many exist. A blanket pre-check would have permanently blocked "Update
+    now" for exactly the users most likely to add their own scripts and then
+    want an update, which defeats the feature. The same reasoning applies to
+    a tracked file edited by hand that the incoming update doesn't touch --
+    it's not part of the diff either, so pull leaves it alone.
+
+    Real conflicts -- a tracked file edited by hand where the incoming update
+    *does* touch that same file -- are caught precisely by dulwich itself:
+    update_working_tree raises WorkingTreeModifiedError naming the exact
+    path ("Your local changes to '<path>' would be overwritten by
+    checkout..."), which is caught below and surfaced as the failure reason.
+    Nothing gets overwritten either way; this only changes how narrowly a
+    real conflict is detected.
+    """
     try:
         repo = Repo(str(path))
     except NotGitRepository as e:
@@ -312,6 +325,8 @@ def update_mod_repo(path: Path, on_status: Callable[[str], None]) -> tuple[bool,
     try:
         on_status("Fetching updates...")
         porcelain.pull(repo, MOD_REPO_URL, errstream=_ProgressStream(on_status), ff_only=True)
+    except WorkingTreeModifiedError as e:
+        return False, f"Update refused: {e}"
     except DivergedBranches as e:
         return False, f"Local checkout has diverged from the remote and can't be fast-forwarded: {e}"
     except Exception as e:
