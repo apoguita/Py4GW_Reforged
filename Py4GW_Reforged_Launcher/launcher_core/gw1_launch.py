@@ -664,6 +664,8 @@ def launch_py4gw_profile(
         return LaunchResult(False, None, f"py4gw_dll_path not found: {profile.py4gw_dll_path!r}", log)
 
     command_line = f'"{profile.executable_path}"'
+    if profile.windowed_mode_enabled:
+        command_line += " -windowed"
     command_line += _build_auto_login_args(profile, log)
     if profile.launch_arguments:
         command_line += f" {profile.launch_arguments}"

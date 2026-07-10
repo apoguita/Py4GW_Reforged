@@ -900,6 +900,7 @@ class ProfileEditBuffer:
     py4gw_dll_path: str = ""
     gmod_enabled: bool = False
     gmod_dll_path: str = ""
+    windowed_mode_enabled: bool = True
     error_message: str = ""
 
     @staticmethod
@@ -921,6 +922,7 @@ class ProfileEditBuffer:
             py4gw_dll_path=profile.py4gw_dll_path,
             gmod_enabled=profile.gmod_enabled,
             gmod_dll_path=profile.gmod_dll_path,
+            windowed_mode_enabled=profile.windowed_mode_enabled,
         )
 
 
@@ -1075,6 +1077,7 @@ class AppState:
             or buffer.py4gw_dll_path != baseline.py4gw_dll_path
             or buffer.gmod_enabled != baseline.gmod_enabled
             or buffer.gmod_dll_path != baseline.gmod_dll_path
+            or buffer.windowed_mode_enabled != baseline.windowed_mode_enabled
         )
 
     def save_edit_buffer(self) -> None:
@@ -1103,6 +1106,7 @@ class AppState:
         profile.py4gw_dll_path = buffer.py4gw_dll_path
         profile.gmod_enabled = buffer.gmod_enabled
         profile.gmod_dll_path = buffer.gmod_dll_path
+        profile.windowed_mode_enabled = buffer.windowed_mode_enabled
         if buffer.password_input:
             profile.password_protected = protect_password(buffer.password_input)
 
@@ -2106,13 +2110,11 @@ def show_settings_content() -> None:
         )
         imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(gMod injection timing not implemented yet)")
     elif _active_tab == "Window":
-        existing = next((p for p in STATE.profiles if p.id == buffer.original_id), None) if not buffer.is_new else None
-        if existing is None:
-            imgui.text("Window placement is recorded after the profile has been launched once.")
-        else:
-            imgui.text(f"Windowed mode enabled: {existing.windowed_mode_enabled}")
-            imgui.text(f"Size: {existing.window_width}x{existing.window_height} @ ({existing.window_x}, {existing.window_y})")
-        imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(editing window placement not implemented yet)")
+        _, buffer.windowed_mode_enabled = imgui.checkbox("Windowed mode", buffer.windowed_mode_enabled)
+        imgui.text_colored(
+            (0.6, 0.6, 0.65, 1.0),
+            "Recommended: fullscreen can cause problems when running multiple accounts.",
+        )
 
     imgui.separator()
     if buffer.error_message:

@@ -52,7 +52,7 @@ class GameProfile:
     # -----------------------------
     # Window placement
     # -----------------------------
-    windowed_mode_enabled: bool = False
+    windowed_mode_enabled: bool = True
     window_x: int = 0
     window_y: int = 0
     window_width: int = 800
