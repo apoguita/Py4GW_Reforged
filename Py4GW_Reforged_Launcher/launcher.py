@@ -896,6 +896,8 @@ class ProfileEditBuffer:
     password_input: str = ""
     has_stored_password: bool = False
     auto_login_enabled: bool = False
+    auto_select_character_enabled: bool = False
+    character_name: str = ""
     py4gw_enabled: bool = False
     py4gw_dll_path: str = ""
     gmod_enabled: bool = False
@@ -918,6 +920,8 @@ class ProfileEditBuffer:
             password_input="",
             has_stored_password=bool(profile.password_protected),
             auto_login_enabled=profile.auto_login_enabled,
+            auto_select_character_enabled=profile.auto_select_character_enabled,
+            character_name=profile.character_name,
             py4gw_enabled=profile.py4gw_enabled,
             py4gw_dll_path=profile.py4gw_dll_path,
             gmod_enabled=profile.gmod_enabled,
@@ -1073,6 +1077,8 @@ class AppState:
             or buffer.email != baseline.email
             or buffer.password_input != baseline.password_input
             or buffer.auto_login_enabled != baseline.auto_login_enabled
+            or buffer.auto_select_character_enabled != baseline.auto_select_character_enabled
+            or buffer.character_name != baseline.character_name
             or buffer.py4gw_enabled != baseline.py4gw_enabled
             or buffer.py4gw_dll_path != baseline.py4gw_dll_path
             or buffer.gmod_enabled != baseline.gmod_enabled
@@ -1102,6 +1108,8 @@ class AppState:
         profile.executable_path = buffer.executable_path
         profile.email = buffer.email
         profile.auto_login_enabled = buffer.auto_login_enabled
+        profile.auto_select_character_enabled = buffer.auto_select_character_enabled
+        profile.character_name = buffer.character_name
         profile.py4gw_enabled = buffer.py4gw_enabled
         profile.py4gw_dll_path = buffer.py4gw_dll_path
         profile.gmod_enabled = buffer.gmod_enabled
@@ -2097,6 +2105,10 @@ def show_settings_content() -> None:
         if buffer.has_stored_password and not buffer.password_input:
             imgui.text_colored((0.6, 0.6, 0.65, 1.0), "A password is already saved -- leave blank to keep it.")
         _, buffer.auto_login_enabled = imgui.checkbox("Enable auto-login", buffer.auto_login_enabled)
+        _, buffer.auto_select_character_enabled = imgui.checkbox(
+            "Auto-select character", buffer.auto_select_character_enabled
+        )
+        _, buffer.character_name = imgui.input_text("Character name", buffer.character_name)
     elif _active_tab == "Mods":
         _, buffer.py4gw_enabled = imgui.checkbox("Inject Py4GW", buffer.py4gw_enabled)
         buffer.py4gw_dll_path = _path_field_with_browse(
