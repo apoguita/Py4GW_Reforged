@@ -512,7 +512,7 @@ def ensure_rotation_settings_loaded() -> None:
     if rotation_settings.loaded:
         return
 
-    ini_key = Settings.ensure_key(SETTINGS_PATH, SETTINGS_FILE)
+    ini_key = Settings(f"{SETTINGS_PATH}/{SETTINGS_FILE}", "account").name
     if not ini_key:
         return
 

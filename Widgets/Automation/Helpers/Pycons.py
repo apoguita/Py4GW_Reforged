@@ -260,15 +260,15 @@ try:
         if not Routines.Checks.Map.MapValid():
             return False
 
-        INI_KEY_MAIN = Settings.ensure_key(_INI_PATH, _INI_MAIN_FILE)
+        INI_KEY_MAIN = Settings(f"{_INI_PATH}/{_INI_MAIN_FILE}", "account").name
         if not INI_KEY_MAIN:
             return False
 
-        INI_KEY_SETTINGS = Settings.ensure_key(_INI_PATH, _INI_SETTINGS_FILE)
+        INI_KEY_SETTINGS = Settings(f"{_INI_PATH}/{_INI_SETTINGS_FILE}", "account").name
         if not INI_KEY_SETTINGS:
             return False
 
-        INI_KEY_FLOATING_UI = Settings.ensure_key(_INI_PATH, _INI_FLOATING_FILE)
+        INI_KEY_FLOATING_UI = Settings(f"{_INI_PATH}/{_INI_FLOATING_FILE}", "account").name
         if not INI_KEY_FLOATING_UI:
             return False
 

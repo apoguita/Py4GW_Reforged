@@ -38,7 +38,7 @@ class WindowFactory:
 
     def ensure_ini(self) -> bool:
         for spec in self._windows.values():
-            spec.ini_key = Settings.ensure_key(self.ini_path, spec.filename)
+            spec.ini_key = Settings(f"{self.ini_path}/{spec.filename}", "account").name
             if not spec.ini_key:
                 return False
 

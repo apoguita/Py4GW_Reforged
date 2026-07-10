@@ -877,8 +877,8 @@ def _ensure_ini() -> bool:
     if EnemyTrackerConfig.INI_INIT:
         return True
 
-    EnemyTrackerConfig.MAIN_INI_KEY = Settings.ensure_key(EnemyTrackerConfig.INI_PATH, EnemyTrackerConfig.MAIN_INI_FILENAME)
-    EnemyTrackerConfig.FLOATING_INI_KEY = Settings.ensure_key(EnemyTrackerConfig.INI_PATH, EnemyTrackerConfig.FLOATING_INI_FILENAME)
+    EnemyTrackerConfig.MAIN_INI_KEY = Settings(f"{EnemyTrackerConfig.INI_PATH}/{EnemyTrackerConfig.MAIN_INI_FILENAME}", "account").name
+    EnemyTrackerConfig.FLOATING_INI_KEY = Settings(f"{EnemyTrackerConfig.INI_PATH}/{EnemyTrackerConfig.FLOATING_INI_FILENAME}", "account").name
     if not EnemyTrackerConfig.MAIN_INI_KEY or not EnemyTrackerConfig.FLOATING_INI_KEY:
         return False
 

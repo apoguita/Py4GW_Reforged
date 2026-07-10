@@ -1,6 +1,6 @@
 # Launch Surface Framework Design
 
-Status: Design specification only. No framework implementation is defined by this document.
+Status: Phase 1 model implementation in progress. The root-level model and validation harness exist; the ImGui host and provider integrations remain pending.
 
 ## 1. Purpose
 
@@ -12,11 +12,16 @@ Py4GW needs a project-owned surface for launching widgets and project features f
 - provide configurable keyboard shortcuts;
 - host explicitly designed embedded UI components;
 - support tiles larger than one button, such as `1x2`, `2x3`, or `4x4`;
+- let the user define the canvas width and height in logical slots;
+- let the user position every tile explicitly on that canvas;
+- render only occupied tiles, leaving unused slots completely invisible;
 - persist layout, selection, display metadata, and component state.
 
 Existing widgets are independent ImGui scripts that generally create and own their own windows. They cannot safely be treated as embedded controls automatically. This design therefore introduces a separate **Launch Surface Framework**.
 
 The framework is a project package. It is not another Widget Manager, does not discover `.widget` folders, and does not replace `WidgetHandler` or `WidgetCatalog`.
+
+The current Phase 1 entry point is the root-level [LaunchSurface.py](../LaunchSurface.py). It is intentionally outside `Widgets/` discovery. The package may later be split into project submodules without changing the public model API.
 
 ## 2. Design principles
 
@@ -47,6 +52,14 @@ The framework is a project package. It is not another Widget Manager, does not d
 7. **Failure isolation**
 
    A broken provider or embedded component must be reported and disabled without taking down the launch surface or unrelated widgets.
+
+8. **User-authored geometry**
+
+   The saved layout is an explicit canvas authored by the user. The runtime must not auto-pack, reorder, or render empty cells unless the user requests an editor operation that changes the layout.
+
+9. **Independent instances**
+
+   `LaunchSurface` is an instance-oriented class. Multiple surfaces may exist at the same time, each with independent pages, tile placement, visibility, presentation mode, shortcuts, and settings. Shared definitions come from the registry; user configuration belongs to the individual surface.
 
 ## 3. Existing systems and boundaries
 
@@ -100,7 +113,13 @@ class LaunchSurfaceSettings:
 
 ## 4. Package location
 
-The implementation should be a new project package, separate from `Widgets/` discovery roots:
+The implementation is a project-owned module/package, separate from `Widgets/` discovery roots. The current first-stage location is:
+
+```text
+LaunchSurface.py
+```
+
+If the model grows beyond one module, it may be extracted into a package while retaining the root-level import as a compatibility facade:
 
 ```text
 Py4GWCoreLib/
@@ -120,6 +139,14 @@ Py4GWCoreLib/
 The directory must not contain a `.widget` marker. It must not be placed under a folder whose `.widget` marker would cause the WidgetHandler to load its files as widgets.
 
 The package must remain importable without an injected ImGui runtime when the model, registry, catalog, layout, and persistence layers are used for validation.
+
+The current validation harness is [tests/launch_surface_model_test.py](../tests/launch_surface_model_test.py). It uses fake catalog, runtime, and settings adapters so Phase 1 can be checked without the injected game process.
+
+Because the Py4GW launcher executes selected scripts through a synthetic
+`<string>` module, dataclass-bearing entry points must not depend on postponed
+annotation resolution that requires the executing module to exist in
+`sys.modules`. The Phase 1 root module and test harness therefore use ordinary
+runtime-resolvable annotations.
 
 ## 5. Core object model
 
@@ -151,11 +178,46 @@ surface = LaunchSurface(
 )
 ```
 
+The same process may construct multiple surfaces:
+
+```python
+combat_surface = LaunchSurface(surface_id='combat', ...)
+heroai_surface = LaunchSurface(surface_id='heroai', ...)
+inventory_surface = LaunchSurface(surface_id='inventory', ...)
+```
+
+Each instance may have a different:
+
+- selected item set;
+- page collection;
+- canvas width and height;
+- tile coordinates and spans;
+- floating position or dock edge;
+- button/component visibility;
+- shortcut assignments;
+- settings scope or settings document;
+- catalog filter or provider category filter.
+
+Instances must not store layout state in module-level globals. A class-level registry may be shared, but the surface model and runtime state must be instance-owned.
+
+### 5.1.1 `LaunchSurfaceManager` (optional coordinator)
+
+If a central coordinator is needed, `LaunchSurfaceManager` should only manage instance lifecycle:
+
+- create a surface by stable `surface_id`;
+- retrieve an existing surface;
+- destroy or unload a surface;
+- enumerate active surfaces;
+- coordinate shared registry/provider updates;
+- detect shortcut conflicts between surfaces.
+
+It must not merge layouts or make all surfaces share one settings document by default.
+
 ### 5.2 `LaunchSurfaceRegistry`
 
 The registry is the extension platform for functionality scattered across the project.
 
-It registers stable definitions for:
+It registers stable definitions and capabilities for:
 
 - actions;
 - widget-toggle items;
@@ -185,11 +247,10 @@ The registry must not import every project module automatically.
 
 ### 5.3 `LaunchItemDefinition`
 
-All launchable items share common metadata:
+All launchable items share common metadata and optional capabilities:
 
 ```text
 item_id       stable identity
-kind          widget_toggle | window | action | component | group
 label         default display label
 description   tooltip/help text
 icon          icon reference
@@ -199,9 +260,35 @@ aliases       additional search terms
 enabled       availability predicate or static state
 visible       visibility predicate or static state
 shortcut      optional shortcut definition
+
+capabilities:
+    invoke     can execute an action
+    toggle     can read/change a runtime state
+    render     can draw an embedded component
+    status     can provide a state badge or live summary
+    configure  can open/configure the source feature
+    portal     can open another page or surface
 ```
 
 Display labels and icons from `WidgetCatalog` are defaults. The user may override them in the launch layout without changing widget metadata.
+
+An item may expose multiple capabilities. For example, HeroAI may be a toggleable widget, expose command actions, provide a status renderer, and open a larger embedded panel. The tile representation determines which capabilities are visible at a given size.
+
+The model may retain a non-semantic `kind` value for filtering and persistence compatibility, but behavior must be capability-driven rather than controlled by a rigid item-type switch.
+
+### 5.3.1 Tile representations
+
+The same launch item may render differently depending on its tile span or the user’s selected representation:
+
+```text
+compact  -> icon or small button
+expanded -> embedded panel
+status   -> icon plus state indicator
+portal   -> page/surface navigation tile
+auto     -> provider-selected representation based on available span
+```
+
+This allows one registered item to occupy `1x1` as a button and `2x3` as an embedded panel without duplicating its registration or persistence identity.
 
 ### 5.4 `WidgetToggleDefinition`
 
@@ -333,14 +420,14 @@ The component may request a different span, but the layout engine decides whethe
 
 ## 9. Layout model
 
-The launch surface uses a grid-based layout.
+The launch surface uses a user-configurable logical grid. The grid is a layout coordinate system, not a visible table. Empty cells have no visual representation and do not create buttons, borders, background panels, or spacing artifacts.
 
 ```text
 LaunchPage
     page_id
     label
-    columns
-    rows or auto-growth
+    columns              # user-defined canvas width in slots
+    rows                 # user-defined canvas height in slots
     cell_size
     gap
     tiles[]
@@ -359,6 +446,10 @@ LaunchTile
     custom_icon
 ```
 
+Tile coordinates use zero-based logical slots. A tile at `(x=2, y=1)` with a span of `(column_span=2, row_span=3)` occupies columns `2..3` and rows `1..3`.
+
+The runtime draws a tile at its calculated rectangle. It does not draw the underlying grid. This produces a surface containing only the user’s floating buttons and floating embedded widgets.
+
 The layout engine is responsible for:
 
 - occupancy calculation;
@@ -366,11 +457,74 @@ The layout engine is responsible for:
 - placement validation;
 - resizing;
 - snapping;
-- auto-packing;
+- optional editor-only auto-packing;
 - viewport clamping;
 - orientation for top/bottom/left/right docking.
 
-The model should support arbitrary positive spans, while the first UI may limit users to `1x1` through `4x4`.
+The model must support arbitrary positive spans that fit inside the page. The first editor may constrain users to `1x1` through `4x4`, but the serialized model must not hard-code that limitation.
+
+### 9.1 User layout operations
+
+The editor must allow the user to:
+
+- set page width in slots;
+- set page height in slots;
+- move each tile independently;
+- set each tile’s width in slots;
+- set each tile’s height in slots;
+- drag a tile to a new position;
+- resize a tile;
+- choose whether overlapping placement is rejected or resolved;
+- hide a tile without deleting its layout;
+- reset one tile or the complete page;
+- optionally invoke auto-pack as an explicit command.
+
+When the page dimensions are reduced, the editor must report or resolve tiles that no longer fit. It must not silently move user tiles during normal loading.
+
+### 9.2 Rendering rules
+
+The renderer must:
+
+- calculate rectangles only for occupied, visible tiles;
+- skip empty slots entirely;
+- avoid placeholder buttons or invisible click targets for empty slots;
+- avoid drawing a background grid unless the user enters layout-edit mode;
+- allow adjacent tiles to visually touch or use configured gap spacing;
+- clip embedded content to its tile rectangle;
+- give every tile and embedded component a stable namespaced ImGui ID.
+
+In normal mode, the result should look like floating buttons and floating embedded panels placed on a transparent canvas. In edit mode, optional grid guides and occupied-cell outlines may be shown.
+
+### 9.3 Responsive tile behavior
+
+Tile geometry is user-authored and must remain stable during normal loading. Providers may declare:
+
+- minimum span;
+- preferred span;
+- maximum span;
+- supported representations;
+- a compact fallback.
+
+When the user resizes a tile, the editor may select a compatible representation. The runtime must not silently move or resize other tiles to make a component fit.
+
+If the current span cannot support a component, the renderer should use one of these explicit policies:
+
+1. render the provider’s compact fallback;
+2. show an unavailable state with an explanatory tooltip;
+3. preserve the tile but allow the user to resize it.
+
+The default policy is to preserve the tile and use the compact fallback when available.
+
+### 9.4 Clusters and portals
+
+A group of related tiles may be represented as a `LaunchCluster`:
+
+- clusters can move as a unit in edit mode;
+- clusters may collapse to one representative tile;
+- clusters may contain their own local layout;
+- clusters may open a child page or a second surface instance.
+
+A `portal` capability navigates to another page or surface without duplicating the underlying item definitions. This allows a compact main surface to open dedicated HeroAI, Combat, or Inventory surfaces.
 
 ## 10. Launch surface presentation
 
@@ -382,11 +536,11 @@ The framework should support these modes:
 
 2. **Expanded floating surface**
 
-   A movable grid window.
+   A movable transparent canvas containing only occupied floating tiles.
 
 3. **Expanded edge-docked surface**
 
-   A grid anchored to the top, bottom, left, or right display edge.
+   A canvas anchored to the top, bottom, left, or right display edge. The canvas still uses the user-defined logical width and height; empty slots remain invisible.
 
 4. **Future attached surface**
 
@@ -394,7 +548,67 @@ The framework should support these modes:
 
 The presentation layer should be implemented separately from the model so the model can be tested without `PyImGui`.
 
-## 11. Shortcuts
+### 10.1 Surface context and projections
+
+A surface may define visibility rules based on runtime context without changing its saved layout:
+
+```text
+map state
+party loaded
+HeroAI available
+combat state
+bot state
+inventory state
+active account
+```
+
+These rules form a **projection** of the saved layout. A projection can hide or disable items, but it must not reorder or reposition them automatically.
+
+Examples:
+
+- show travel actions in outposts;
+- show combat actions during combat;
+- show HeroAI actions only when HeroAI is available;
+- show bot controls while a bot is running.
+
+The same layout can therefore serve multiple contexts without requiring a separate hard-coded UI for every situation.
+
+### 10.2 Surface stack
+
+Surfaces may open other surfaces or pages through the `portal` capability. A lightweight coordinator can maintain a navigation stack:
+
+```text
+Main Surface
+    -> HeroAI Surface
+    -> Combat Surface
+    -> Inventory Surface
+```
+
+Navigation must remain instance-based. Opening a child surface must not copy or mutate the parent surface’s layout.
+
+### 10.3 Optional semantic zones
+
+The editor may offer optional zones such as `global actions`, `main content`, and `status`, but zones are advisory. They provide layout suggestions and editor affordances; they must not override explicit user coordinates.
+
+## 11. Input routing
+
+The surface host must own input routing for the transparent canvas. Empty canvas areas must be visually and interactively transparent.
+
+The runtime should track:
+
+- hovered tile;
+- focused tile;
+- active drag or resize operation;
+- edit mode;
+- shortcut capture mode;
+- component input capture;
+- whether input should pass through to the game or other overlays.
+
+Only occupied tile rectangles may consume pointer input. Embedded components receive input through their `LaunchComponentContext`; they must not install global mouse hooks or assume ownership of the entire frame.
+
+Shortcuts must be suppressed while text input or key-binding capture is active. A component may request temporary keyboard focus, but the host decides whether that request is granted.
+
+## 12. Shortcuts
 
 Shortcuts belong to launch items, not only widgets.
 
@@ -414,9 +628,19 @@ The framework may compose the existing `HOTKEY_MANAGER`, but it must:
 - avoid duplicate registration on reload;
 - suppress activation while key-binding capture or text input is active.
 
-## 12. Persistence design
+## 13. Persistence design
 
 The launch surface receives a composed `Settings` document. It does not modify the `Settings` implementation.
+
+Every persisted surface configuration must be namespaced by `surface_id`. The recommended default is one settings document per surface, for example:
+
+```text
+Projects/LaunchSurface/combat.ini
+Projects/LaunchSurface/heroai.ini
+Projects/LaunchSurface/inventory.ini
+```
+
+An implementation may store several surfaces in one document, but then every section and serialized record must include an unambiguous surface namespace. One document per surface is preferred because it prevents accidental layout coupling and makes reset/export operations straightforward.
 
 Recommended sections:
 
@@ -433,6 +657,10 @@ locked
 
 [Pages]
 pages_json
+active_page
+
+[Layout Presets]
+presets_json
 
 [Tiles]
 tiles_json
@@ -448,7 +676,13 @@ JSON is preferred for ordered pages, tile spans, custom display metadata, and co
 
 The implementation should provide a `LaunchSurfaceSettings` composition class that owns serialization, schema versioning, migration, and dirty tracking.
 
-## 13. Provider examples
+Each serialized page must include its explicit `columns` and `rows` values. Each serialized tile must include its explicit `x`, `y`, `column_span`, and `row_span` values. These values are the source of truth for visual placement.
+
+Settings objects must be created and passed into each surface instance. The framework must not use a singleton settings object for all surfaces.
+
+Layout presets contain page dimensions and tile placements, but not provider implementation code. Presets may be duplicated between surface instances through an explicit import/export operation.
+
+## 14. Provider examples
 
 ### HeroAI provider
 
@@ -475,7 +709,7 @@ def register_launch_items(registry):
 
 This is opt-in and does not change the widget’s normal lifecycle.
 
-## 14. Error and lifecycle behavior
+## 15. Error and lifecycle behavior
 
 - Duplicate provider IDs are rejected and logged.
 - Duplicate item IDs are rejected unless the provider explicitly replaces its own item.
@@ -487,7 +721,7 @@ This is opt-in and does not change the widget’s normal lifecycle.
 - Reloading widgets invalidates catalog metadata but does not destroy user layout.
 - Removing a provider hides its entries while preserving their layout data.
 
-## 15. Documentation requirements
+## 16. Documentation requirements
 
 The framework implementation must include:
 
@@ -508,12 +742,13 @@ docs/LaunchSurface_Provider_Guide.md
 docs/LaunchSurface_Component_Guide.md
 ```
 
-## 16. Implementation phases
+## 17. Implementation phases
 
 ### Phase 1: Model and registry
 
 - package structure;
 - definitions and registry;
+- capability-based item model;
 - catalog adapter;
 - widget runtime adapter protocol;
 - layout model and validation;
@@ -523,9 +758,11 @@ docs/LaunchSurface_Component_Guide.md
 ### Phase 2: Basic launch surface host
 
 - launcher-only mode;
-- floating grid;
+- user-sized floating canvas;
 - widget-toggle tiles;
 - action tiles;
+- explicit tile coordinates and spans;
+- invisible empty slots;
 - edit mode;
 - persistence.
 
@@ -548,11 +785,16 @@ docs/LaunchSurface_Component_Guide.md
 
 - edge docking;
 - multiple pages;
+- multiple simultaneous surface instances;
+- per-instance settings and layout export/import;
 - layout presets;
+- contextual projections;
+- surface portals and navigation stack;
+- tile clusters;
 - account/character profiles;
 - attached game-frame adapters.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 The design is ready for implementation when:
 
@@ -562,12 +804,20 @@ The design is ready for implementation when:
 - full widget IDs are used for persistence;
 - actions can be registered by unrelated project packages;
 - embedded components have a separate explicit contract;
+- launch items expose optional capabilities instead of requiring one rigid item type;
 - layout can represent arbitrary tile spans;
+- users can set page width and height in slots;
+- users can position and resize each tile independently;
+- empty slots produce no visible UI or interaction targets;
+- multiple surfaces can coexist without sharing mutable layout state;
+- changing one surface’s settings does not move, hide, or reorder another surface;
+- empty canvas areas do not consume pointer input;
+- contextual visibility does not mutate saved tile coordinates;
 - the model and persistence layers can be tested without injected ImGui;
 - existing widget windows continue to operate unchanged;
 - documentation can explain how a user adds a widget, how a provider registers an action, and how a component is embedded.
 
-## 18. Explicit non-goals
+## 19. Explicit non-goals
 
 The first implementation must not:
 

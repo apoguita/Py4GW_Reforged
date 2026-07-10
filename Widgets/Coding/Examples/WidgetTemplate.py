@@ -96,7 +96,7 @@ def main():
     if not Routines.Checks.Map.MapValid():
         return
     if not INI_KEY:
-        INI_KEY = Settings.ensure_key("Widgets/WidgetTemplate", "WidgetTemplate.ini")
+        INI_KEY = Settings(f"{"Widgets/WidgetTemplate"}/{"WidgetTemplate.ini"}", "account").name
         if not INI_KEY:
             return
 

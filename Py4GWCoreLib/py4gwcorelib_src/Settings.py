@@ -14,14 +14,10 @@ All settings logic lives here, on top of the native (cached + autosaved)
   unchanged existing files are not rewritten.
 - **No readiness gate.** Native binds account documents synchronously in
   ``Open()`` once the anchor is resolved, so a read right after open sees disk.
-- **Legacy var-map.** A plain per-document dict (``var_name -> (section, name,
-  type, default)``) used only by the legacy ``get``/``set`` compat path; the
-  direct API ignores it.
 
 Autosave and flush cadence are owned entirely by the native side.
 """
 
-import os
 from dataclasses import dataclass
 from typing import Any
 from typing import Optional
@@ -39,14 +35,6 @@ class _WindowState:
     collapsed: bool = False
     begin_called: bool = False
     begin_returned_true: bool = False
-
-
-@dataclass
-class _LegacyVar:
-    section: str
-    name: str
-    var_type: str  # 'bool' | 'int' | 'float' | 'str'
-    default: Any
 
 
 class Settings:
@@ -72,8 +60,6 @@ class Settings:
         self._scope = str(scope)
         self._doc = PySettings.settings(self._name, self._scope)
         self._win = _WindowState()
-        self._legacy_vars: dict[str, _LegacyVar] = {}
-        self._seeded = False
         self._initialized = True
 
     # ------------------------------------------------------------------
@@ -110,22 +96,18 @@ class Settings:
 
     @classmethod
     def ensure_key(cls, path: str, filename: str, scope: str = 'account') -> str:
-        """Create/cache the document and return its name (the old ``ini_key``).
+        """Open/cache the document and return its name (the old ``ini_key``).
 
-        Mirrors the legacy ``ensure_key`` exactly, including the account-readiness
-        guard: for account scope, returns ``""`` until ``Player.GetAccountEmail()``
-        resolves. The returned string is the ``Settings`` document name and can be
-        passed to ``ImGui_Legacy.Begin/End`` and ``Settings.find``.
+        No account-readiness gate: the native side won't initialize until the
+        account email is acquired, so the email is always present by the time any
+        script runs. The returned string is the ``Settings`` document name and can
+        be passed to ``ImGui_Legacy.Begin/End`` and ``Settings.find``.
         """
         path = str(path).strip('/')
         filename = str(filename).strip('/')
         name = f"{path}/{filename}" if path else filename
         if not name:
             return ""
-        if scope == 'account':
-            from ..Player import Player
-            if not Player.GetAccountEmail():
-                return ""
         cls(name, scope)
         return name
 
@@ -156,67 +138,22 @@ class Settings:
         return self._scope
 
     # ------------------------------------------------------------------
-    # Templates (.cfg seeding, parity with the legacy handler)
-    # ------------------------------------------------------------------
-
-    def _ensure_seeded(self) -> None:
-        if self._seeded:
-            return
-        if not self._doc.is_bound():
-            return  # path unknown until bound (account docs bind on anchor)
-        self._seeded = True
-        if self._doc.sections():
-            return  # existing file — never overwrite
-        template = self._find_template()
-        if template:
-            self._apply_template(template)
-
-    def _find_template(self) -> Optional[str]:
-        try:
-            import PySystem
-            base = PySystem.Console.get_projects_path()
-        except Exception:
-            return None
-        defaults = os.path.join(base, 'settings', 'Defaults')
-        relative = self._name.replace('.ini', '.cfg')
-        specialized = os.path.join(defaults, *relative.split('/'))
-        if os.path.exists(specialized):
-            return specialized
-        fallback = os.path.join(defaults, 'default_template.cfg')
-        if os.path.exists(fallback):
-            return fallback
-        return None
-
-    def _apply_template(self, path: str) -> None:
-        import configparser
-        parser = configparser.ConfigParser()
-        try:
-            parser.read(path, encoding='utf-8')
-        except Exception:
-            return
-        for section in parser.sections():
-            for key, value in parser.items(section):
-                # configparser already lowercased the key; write straight through.
-                self._doc.set(section, key, str(value))
-
-    # ------------------------------------------------------------------
     # Typed get / set (explicit section + key)
+    #
+    # Template seeding (settings/Defaults/*.cfg for a brand-new file) is owned by
+    # the native SettingsManager at bind time; nothing to do here.
     # ------------------------------------------------------------------
 
     def get_str(self, section: str, key: str, default: str = '') -> str:
-        self._ensure_seeded()
         return str(self._doc.get(self._s(section), self._k(key), str(default)))
 
     def get_int(self, section: str, key: str, default: int = 0) -> int:
-        self._ensure_seeded()
         return int(self._doc.get(self._s(section), self._k(key), int(default)))
 
     def get_float(self, section: str, key: str, default: float = 0.0) -> float:
-        self._ensure_seeded()
         return float(self._doc.get(self._s(section), self._k(key), float(default)))
 
     def get_bool(self, section: str, key: str, default: bool = False) -> bool:
-        self._ensure_seeded()
         return bool(self._doc.get(self._s(section), self._k(key), bool(default)))
 
     def get(self, section: str, key: str, default: Any = None) -> Any:
@@ -228,14 +165,12 @@ class Settings:
             return self.get_float(section, key, default)
         if isinstance(default, str):
             return self.get_str(section, key, default)
-        self._ensure_seeded()
         s, k = self._s(section), self._k(key)
         if self._doc.has(s, k):
             return str(self._doc.get(s, k, ''))
         return default
 
     def set(self, section: str, key: str, value: Any) -> None:
-        self._ensure_seeded()
         s, k = self._s(section), self._k(key)
         serialized = str(value)
         if self._doc.has(s, k) and str(self._doc.get(s, k, '')) == serialized:
@@ -280,34 +215,6 @@ class Settings:
         src, dst = self._s(source), self._s(target)
         for (key, value) in self._doc.items(src):
             self._doc.set(dst, key, value)
-
-    # ------------------------------------------------------------------
-    # Legacy var-map (compat for the legacy add_*/get/set path only)
-    # ------------------------------------------------------------------
-
-    def register_var(self, var_name: str, section: str, name: str, var_type: str, default: Any) -> None:
-        self._legacy_vars[str(var_name)] = _LegacyVar(self._s(section), str(name), str(var_type), default)
-
-    def get_var(self, var_name: str, default: Any = None, section: str = '') -> Any:
-        vd = self._legacy_vars.get(var_name)
-        if vd is None:
-            # Undeclared: address by the passed section + var_name directly.
-            return self.get(section, var_name, default)
-        # Declared: the fallback is the DECLARED default, addressed at (vd.section, vd.name).
-        if vd.var_type == 'bool':
-            return self.get_bool(vd.section, vd.name, bool(vd.default))
-        if vd.var_type == 'int':
-            return self.get_int(vd.section, vd.name, int(vd.default))
-        if vd.var_type == 'float':
-            return self.get_float(vd.section, vd.name, float(vd.default))
-        return self.get_str(vd.section, vd.name, str(vd.default))
-
-    def set_var(self, var_name: str, value: Any, section: str = '') -> None:
-        vd = self._legacy_vars.get(var_name)
-        if vd is None:
-            self.set(section, var_name, value)
-            return
-        self.set(vd.section, vd.name, value)
 
     # ------------------------------------------------------------------
     # Window config — ordinary [Window config] keys via get/set

@@ -112,10 +112,7 @@ def draw_window_light(
 
 
     if not self._config.ini_key_initialized:
-        self._config.ini_key = Settings.ensure_key(
-            f"BottingClass/bot_{self._config.bot_name}",
-            f"bot_{self._config.bot_name}.ini",
-        )
+        self._config.ini_key = Settings(f"{f"BottingClass/bot_{self._config.bot_name}"}/{f"bot_{self._config.bot_name}.ini"}", "account").name
         self._config.ini_key_initialized = True
 
     if not self._config.ini_key:

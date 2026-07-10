@@ -166,7 +166,7 @@ class FollowFormationPublisher:
         return default
 
     def _ensure_global_ini_key_strict(self, path: str, filename: str) -> str:
-        return Settings.ensure_global_key(path, filename)
+        return Settings(f"{path}/{filename}", "global").name
 
     def _ensure_follow_ini_keys(self) -> None:
         if not self.state.formations_ini_key:

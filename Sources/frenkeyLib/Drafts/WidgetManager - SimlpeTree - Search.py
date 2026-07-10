@@ -297,10 +297,7 @@ def main():
         if not os.path.exists(INI_PATH):
             os.makedirs(INI_PATH, exist_ok=True)
 
-        INI_KEY = Settings.ensure_global_key(
-            INI_PATH,
-            INI_FILENAME
-        )
+        INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "global").name
 
         if not INI_KEY: return
 

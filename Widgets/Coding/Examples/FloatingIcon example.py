@@ -56,8 +56,8 @@ def _ensure_ini() -> bool:
     if FloatingIconVars.INI_INIT:
         return True
 
-    FloatingIconVars.MAIN_INI_KEY = Settings.ensure_key(FloatingIconVars.INI_PATH, FloatingIconVars.MAIN_INI_FILENAME)
-    FloatingIconVars.FLOATING_INI_KEY = Settings.ensure_key(FloatingIconVars.INI_PATH, FloatingIconVars.FLOATING_INI_FILENAME)
+    FloatingIconVars.MAIN_INI_KEY = Settings(f"{FloatingIconVars.INI_PATH}/{FloatingIconVars.MAIN_INI_FILENAME}", "account").name
+    FloatingIconVars.FLOATING_INI_KEY = Settings(f"{FloatingIconVars.INI_PATH}/{FloatingIconVars.FLOATING_INI_FILENAME}", "account").name
     if not FloatingIconVars.MAIN_INI_KEY or not FloatingIconVars.FLOATING_INI_KEY:
         return False
 

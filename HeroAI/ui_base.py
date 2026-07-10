@@ -1510,11 +1510,11 @@ class HeroAI_BaseUI:
     @staticmethod
     def _ensure_follow_module_ini_keys():
         if not HeroAI_BaseUI.follow_formations_ini_key:
-            HeroAI_BaseUI.follow_formations_ini_key = Settings.ensure_global_key("HeroAI", "FollowModule_Formations.ini")
+            HeroAI_BaseUI.follow_formations_ini_key = Settings(f"{"HeroAI"}/{"FollowModule_Formations.ini"}", "global").name
         if not HeroAI_BaseUI.follow_formations_settings_key:
-            HeroAI_BaseUI.follow_formations_settings_key = Settings.ensure_global_key("HeroAI", "FollowModule_Settings.ini")
+            HeroAI_BaseUI.follow_formations_settings_key = Settings(f"{"HeroAI"}/{"FollowModule_Settings.ini"}", "global").name
         if not HeroAI_BaseUI.follow_runtime_ini_key:
-            HeroAI_BaseUI.follow_runtime_ini_key = Settings.ensure_global_key("HeroAI", "FollowRuntime.ini")
+            HeroAI_BaseUI.follow_runtime_ini_key = Settings(f"{"HeroAI"}/{"FollowRuntime.ini"}", "global").name
         return bool(
             HeroAI_BaseUI.follow_formations_ini_key
             and HeroAI_BaseUI.follow_formations_settings_key

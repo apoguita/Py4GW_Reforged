@@ -145,7 +145,7 @@ def set_autoloot_options_for_custom_bots(salvage_golds=False, module_active=Fals
 
     ini_key = ''
     if not ini_key:
-        ini_key = Settings.ensure_key(INI_PATH, INI_FILENAME)
+        ini_key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
         if not ini_key:
             return
 

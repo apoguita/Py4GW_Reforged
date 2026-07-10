@@ -115,7 +115,7 @@ def main() -> None:
 
     if not initialized:
         if not ini_key:
-            ini_key = Settings.ensure_key(INI_PATH, INI_FILENAME)
+            ini_key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
             if not ini_key:
                 return
 

@@ -44,7 +44,7 @@ class EnemyBlacklist:
 
     def _ensure_ini_key(self):
         if not self.__class__._ini_key:
-            self.__class__._ini_key = Settings.ensure_global_key("HeroAI", "EnemyBlacklist.ini")
+            self.__class__._ini_key = Settings(f"{"HeroAI"}/{"EnemyBlacklist.ini"}", "global").name
 
     def _handler(self):
         self._ensure_ini_key()

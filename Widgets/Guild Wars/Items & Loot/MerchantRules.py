@@ -4945,10 +4945,7 @@ class MerchantRulesWidget:
             from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
         except Exception:
             return ""
-        self.floating_ui_ini_key = Settings.ensure_key(
-            FLOATING_UI_INI_PATH,
-            FLOATING_UI_INI_FILENAME,
-        )
+        self.floating_ui_ini_key = Settings(f"{FLOATING_UI_INI_PATH}/{FLOATING_UI_INI_FILENAME}", "account").name
         return self.floating_ui_ini_key
 
     def _ensure_floating_ui(self):

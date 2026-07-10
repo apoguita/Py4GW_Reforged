@@ -155,7 +155,7 @@ def _ensure_stuck_config_ini_vars() -> str:
     global _CONFIG_INI_KEY
     if not _CONFIG_INI_KEY:
         try:
-            _CONFIG_INI_KEY = Settings.ensure_global_key(_INI_PATH, _INI_FILENAME)
+            _CONFIG_INI_KEY = Settings(f"{_INI_PATH}/{_INI_FILENAME}", "global").name
         except Exception:
             return ""
     if not _CONFIG_INI_KEY:

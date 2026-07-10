@@ -216,10 +216,7 @@ def _as_bool(value) -> bool:
 
 def _ensure_bot_ini(bot: Botting) -> str:
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = Settings.ensure_key(
-            f"BottingClass/bot_{bot.config.bot_name}",
-            f"bot_{bot.config.bot_name}.ini",
-        )
+        bot.config.ini_key = Settings(f"{f"BottingClass/bot_{bot.config.bot_name}"}/{f"bot_{bot.config.bot_name}.ini"}", "account").name
         bot.config.ini_key_initialized = True
     return bot.config.ini_key
 

@@ -21,17 +21,6 @@ INI_KEY = ""
 INI_PATH = "Widgets/WidgetManager"
 INI_FILENAME = "WidgetManager.ini"
 
-def _register_widget_config_vars(cfg: Settings):
-    # WidgetManager still reaches these per-widget flags through the legacy
-    # var-map (it writes/reads them by the unique ``folder/file.py__enabled``
-    # var_name, which must resolve to the ``enabled``/``optional`` key inside the
-    # per-widget section). Preserve that mapping so widget enable state persists.
-    for cv in widget_manager.config_vars:
-        # Match the suffix to determine the 'name' inside the INI file
-        ini_key_name = "enabled" if cv.var_name.endswith("__enabled") else "optional"
-        cfg.register_var(cv.var_name, cv.section, ini_key_name, "bool", False)
-
-
 def update():
     return 
     # #deprecated in place of callbacks
@@ -53,10 +42,7 @@ def main():
         if not os.path.exists(INI_PATH):
             os.makedirs(INI_PATH, exist_ok=True)
 
-        INI_KEY = Settings.ensure_global_key(
-            INI_PATH,
-            INI_FILENAME
-        )
+        INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "global").name
 
         if not INI_KEY: return
 
@@ -66,7 +52,6 @@ def main():
         widget_manager.MANAGER_INI_KEY = INI_KEY
 
         widget_manager.discover()
-        _register_widget_config_vars(cfg)
 
         # FIX 1: Explicitly load the global manager state into the handler
         widget_manager.enable_all = bool(cfg.get_bool("Configuration", "enable_all", True))

@@ -200,7 +200,7 @@ def _ini_delete_section_now(key: str, section: str):
 
 
 def _ensure_global_ini_key_strict(path: str, filename: str) -> str:
-    return Settings.ensure_global_key(path, filename)
+    return Settings(f"{path}/{filename}", "global").name
 
 
 def _get_ini_filename(key: str) -> str:

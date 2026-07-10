@@ -1217,7 +1217,7 @@ class Py4GWLibrary:
                 if ImGui_Legacy.begin_menu("Preferences"):
                     cfg = Settings.find(self.ini_key)
                     if ImGui_Legacy.menu_item("Switch to Base UI"):
-                        base_ui_key = Settings.ensure_global_key("Widgets/WidgetCatalog", "WidgetCatalog.ini")
+                        base_ui_key = Settings(f"{"Widgets/WidgetCatalog"}/{"WidgetCatalog.ini"}", "global").name
                         if base_ui_key:
                             base_cfg = Settings.find(base_ui_key)
                             if base_cfg:

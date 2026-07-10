@@ -1269,7 +1269,7 @@ class InventoryPlusWidget:
 
     def _ensure_ini_key(self) -> bool:
         if not self.ini_key:
-            self.ini_key = Settings.ensure_key(INI_PATH, INI_FILENAME)
+            self.ini_key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
             if not self.ini_key:
                 return False
         self.initialized = True

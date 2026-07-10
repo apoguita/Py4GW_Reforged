@@ -638,7 +638,7 @@ class _UI:
         from ...ImGui_Legacy import ImGui_Legacy
 
         if not self._config.ini_key_initialized:
-            ini_key = Settings.ensure_key(f"BottingClass/bot_{self._config.bot_name}", f"bot_{self._config.bot_name}.ini")
+            ini_key = Settings(f"{f"BottingClass/bot_{self._config.bot_name}"}/{f"bot_{self._config.bot_name}.ini"}", "account").name
             if ini_key:
                 self._config.ini_key = ini_key
                 self._config.ini_key_initialized = True

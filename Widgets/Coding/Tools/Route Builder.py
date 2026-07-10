@@ -1338,7 +1338,7 @@ def main():
         return
 
     if not INI_KEY:
-        INI_KEY = Settings.ensure_key(INI_PATH, INI_FILENAME)
+        INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
         if not INI_KEY:
             return
 

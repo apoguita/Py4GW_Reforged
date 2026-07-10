@@ -26,10 +26,7 @@ def _ensure_ini() -> bool:
     if INI_INIT:
         return True
 
-    INI_KEY = Settings.ensure_global_key(
-        "Widgets/EnterCharacterOnLoad",
-        "EnterCharacterOnLoad.ini"
-    )
+    INI_KEY = Settings(f"{"Widgets/EnterCharacterOnLoad"}/{"EnterCharacterOnLoad.ini"}", "global").name
 
     if not INI_KEY:
         ConsoleLog(module_name, "INI global key creation FAILED (INI_KEY empty).")

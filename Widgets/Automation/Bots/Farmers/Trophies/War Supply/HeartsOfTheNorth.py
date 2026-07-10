@@ -1308,10 +1308,7 @@ def _draw_hotn_window(icon_path: str) -> None:
 
     # â”€â”€ Window state INI (position/size) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = Settings.ensure_key(
-            f"BottingClass/bot_{bot.config.bot_name}",
-            f"bot_{bot.config.bot_name}.ini",
-        )
+        bot.config.ini_key = Settings(f"{f"BottingClass/bot_{bot.config.bot_name}"}/{f"bot_{bot.config.bot_name}.ini"}", "account").name
         bot.config.ini_key_initialized = True
 
     if not bot.config.ini_key:

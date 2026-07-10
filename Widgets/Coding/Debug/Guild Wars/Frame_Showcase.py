@@ -1173,7 +1173,7 @@ class InspectorManager:
         self._open_fids.add(frame_id)
         # Ensure INI for this inspector
         if frame_id not in self._ini_keys:
-            ini_key = Settings.ensure_global_key("Coding/Debug/Guild Wars", f"inspector_{frame_id}.ini")
+            ini_key = Settings(f"{"Coding/Debug/Guild Wars"}/{f"inspector_{frame_id}.ini"}", "global").name
             if ini_key:
                 self._ini_keys[frame_id] = ini_key
 

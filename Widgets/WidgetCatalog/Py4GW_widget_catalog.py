@@ -2820,9 +2820,9 @@ def _ensure_ini() -> bool:
     if not os.path.exists(INI_PATH):
         os.makedirs(INI_PATH, exist_ok=True)
 
-    INI_KEY = Settings.ensure_global_key(INI_PATH, INI_FILENAME)
-    FLOATING_INI_KEY = Settings.ensure_global_key(INI_PATH, FLOATING_INI_FILENAME)
-    SETUP_INI_KEY = Settings.ensure_global_key(INI_PATH, SETUP_INI_FILENAME)
+    INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "global").name
+    FLOATING_INI_KEY = Settings(f"{INI_PATH}/{FLOATING_INI_FILENAME}", "global").name
+    SETUP_INI_KEY = Settings(f"{INI_PATH}/{SETUP_INI_FILENAME}", "global").name
     if not INI_KEY or not FLOATING_INI_KEY or not SETUP_INI_KEY:
         return False
 

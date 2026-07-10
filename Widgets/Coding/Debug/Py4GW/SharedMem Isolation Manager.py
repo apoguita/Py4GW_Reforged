@@ -60,7 +60,7 @@ def _ensure_ini():
     global _ini_key
     if _ini_key:
         return
-    _ini_key = Settings.ensure_global_key("Py4GW", "IsolationGroups.ini")
+    _ini_key = Settings(f"{"Py4GW"}/{"IsolationGroups.ini"}", "global").name
 
 
 def _load_groups(force: bool = False):

@@ -3329,10 +3329,7 @@ def _draw_bds_window_with_stats_tab() -> None:
     iconwidth = 96
 
     if not bot.config.ini_key_initialized:
-        bot.config.ini_key = Settings.ensure_key(
-            f"BottingClass/bot_{bot.config.bot_name}",
-            f"bot_{bot.config.bot_name}.ini",
-        )
+        bot.config.ini_key = Settings(f"{f"BottingClass/bot_{bot.config.bot_name}"}/{f"bot_{bot.config.bot_name}.ini"}", "account").name
         bot.config.ini_key_initialized = True
         _ensure_ini_initialized()
 
