@@ -492,6 +492,60 @@ def _wait_for_window_or_exit(
     return "timeout"
 
 
+def _set_gw_window_title(pid: int, title: str, log: list) -> None:
+    """Renames `pid`'s GW window titlebar/taskbar entry to `title` via
+    win32gui.SetWindowText, following the pattern GWxLauncher's own
+    WindowTitleService.cs already validates (SetWindowText via user32 -- no
+    character-limit issue in practice).
+
+    GW1 is known to transition from an initial splash window to the real
+    main window shortly after launch -- mirrors WindowTitleService.cs's own
+    750ms splash-recheck: re-scans ~1s after the first SetWindowText call and
+    retitles the real window too if a different hwnd now owns `pid`.
+
+    Purely cosmetic (a titlebar/taskbar label) and best-effort like
+    `_apply_gw1_registry_fix`: wrapped in a blanket try/except so a failure
+    here can never raise, block, or fail the launch.
+    """
+    def _find_first_visible_hwnd() -> Optional[int]:
+        found = []
+
+        def enum_windows_callback(hwnd, _):
+            try:
+                if win32gui.IsWindowVisible(hwnd):
+                    _, window_pid = win32process.GetWindowThreadProcessId(hwnd)
+                    if window_pid == pid:
+                        found.append(hwnd)
+            except pywintypes.error:
+                # A window can be destroyed mid-enumeration; skip it rather than
+                # letting one bad handle crash the whole enumeration (see
+                # _wait_for_gw_window/_wait_for_window_or_exit above).
+                pass
+            return True
+
+        win32gui.EnumWindows(enum_windows_callback, None)
+        return found[0] if found else None
+
+    try:
+        _log(log, f"Window title - attempting to set to {title!r} for PID {pid}")
+
+        hwnd = _find_first_visible_hwnd()
+        if hwnd is None:
+            _log(log, f"Window title - no visible window found for PID {pid}; skipping (cosmetic, not a launch failure)")
+            return
+
+        win32gui.SetWindowText(hwnd, title)
+        _log(log, f"Window title - set to {title!r}")
+
+        time.sleep(1.0)
+        second_hwnd = _find_first_visible_hwnd()
+        if second_hwnd is not None and second_hwnd != hwnd:
+            win32gui.SetWindowText(second_hwnd, title)
+            _log(log, "Window title - splash window transitioned to the real main window; re-applied there too")
+    except Exception as e:
+        _log(log, f"Window title - failed to set (cosmetic, continuing): {e}")
+
+
 def _find_replacement_process(exe_path: str, exclude_pid: int, launched_after: float, log: list, timeout: float = 15.0) -> Optional[int]:
     """Poll for a new process running `exe_path` that started after `launched_after`.
 
@@ -734,6 +788,12 @@ def launch_py4gw_profile(
         return LaunchResult(False, pid, f"Hit the absolute ceiling ({absolute_ceiling}s) with no window, exit, or hang signal", log)
 
     # outcome == "window": pid's window is already confirmed, fall straight through.
+
+    if profile.auto_select_character_enabled and profile.character_name:
+        window_title = profile.character_name
+    else:
+        window_title = profile.name
+    _set_gw_window_title(pid, window_title, log)
 
     if profile.py4gw_enabled:
         _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")

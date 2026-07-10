@@ -1554,7 +1554,13 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
         sub_text = "Running"
     else:
         sub_col = CARD_SUB_FORE
-        sub_text = "Guild Wars 1"
+        # Same condition gw1_launch._build_auto_login_args uses to decide
+        # whether -character is actually passed -- don't show a name here
+        # that won't actually be auto-selected.
+        if profile.auto_select_character_enabled and profile.character_name:
+            sub_text = profile.character_name
+        else:
+            sub_text = "Ready to launch"
     draw_list.add_text((text_x, y + em * 2.133), sub_col, sub_text)
 
     badges = []
