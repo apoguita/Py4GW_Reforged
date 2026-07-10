@@ -132,6 +132,7 @@ try:
     import os
     import threading
     import time
+    import traceback
     import zlib
     from pathlib import Path
     from typing import Callable, Optional
@@ -1570,17 +1571,23 @@ def show_settings_gear_button() -> None:
     draw_list = imgui.get_window_draw_list()
     _draw_gear_icon(draw_list, center, icon_size * 0.7, CARD_SUB_FORE)
 
-    if PREREQS.all_ok() is False:
-        badge_radius = icon_size * 0.15
-        badge_center = (item_max[0] - badge_radius, item_min[1] + badge_radius)
-        # draw_list calls want a packed u32 color, not the float4 tuple
-        # _PREREQ_MISSING_COLOR is (that's for imgui.text_colored) -- same
-        # conversion _u32() does internally.
-        badge_color = imgui.color_convert_float4_to_u32(_PREREQ_MISSING_COLOR)
-        draw_list.add_circle_filled(badge_center, badge_radius, badge_color)
-        draw_list.add_circle(badge_center, badge_radius, CARD_BACK, thickness=1.5)
-        if hovered:
-            imgui.set_tooltip("Setup incomplete -- click for details")
+    try:
+        if PREREQS.all_ok() is False:
+            badge_radius = icon_size * 0.15
+            badge_center = (item_max[0] - badge_radius, item_min[1] + badge_radius)
+            # draw_list calls want a packed u32 color, not the float4 tuple
+            # _PREREQ_MISSING_COLOR is (that's for imgui.text_colored) -- same
+            # conversion _u32() does internally.
+            badge_color = imgui.color_convert_float4_to_u32(_PREREQ_MISSING_COLOR)
+            draw_list.add_circle_filled(badge_center, badge_radius, badge_color)
+            draw_list.add_circle(badge_center, badge_radius, CARD_BACK, thickness=1.5)
+            if hovered:
+                imgui.set_tooltip("Setup incomplete -- click for details")
+    except Exception:
+        # No Begin/End pairing at stake here (just draw_list calls plus a
+        # tooltip), so a plain catch-and-log is enough -- unlike the launch-
+        # gate popup, there's no window stack to leave unbalanced.
+        _log_prereq_ui_error("gear icon prereq badge")
 
     if clicked:
         STATE.app_settings_window_open = True
@@ -2075,10 +2082,59 @@ _PREREQ_LAUNCH_CONFIRM_POPUP_ID = "Prerequisites missing##prereq_launch_confirm"
 # "Launch anyway") -- set by _try_launch_with_prereq_gate when it intercepts
 # a launch, read/cleared by the confirm popup once resolved either way.
 _prereq_launch_pending: Optional[tuple[list[str], Callable[[], None]]] = None
+# Set by _try_launch_with_prereq_gate, consumed by _show_prereq_launch_confirm_popup:
+# the actual imgui.open_popup() call is deferred to that function rather than
+# fired from the gate itself, because the gate can be called from inside the
+# card grid's own child window (a real ID-stack scope in ImGui) while the popup
+# is rendered from the top level, after that child has already ended. OpenPopup
+# and BeginPopupModal must run at the *same* ID-stack depth to refer to the same
+# popup -- calling OpenPopup from inside the child computed a different ID than
+# BeginPopupModal checked for at the top level, so the popup silently never
+# matched and never opened. Confirmed directly: a real double-click on a card
+# (not a distance/timing issue -- this reproduced with the mouse landing dead on
+# target) triggered the gate but never showed anything, with no exception either
+# -- exactly what a silent ID mismatch looks like, as opposed to Launch Team's
+# button (already top-level, same scope as the popup call) which always worked.
+_prereq_launch_popup_should_open = False
 # Once the user clicks "Launch anyway" once, this stops interrupting for the
 # rest of this run -- guidance, not a recurring nag on every single launch
 # once the user has already made an informed choice to proceed anyway.
 _prereq_launch_acknowledged_this_session = False
+
+# Last logged prereq-UI exception text (badge draw or launch-gate popup) -- de-dupes
+# so a failure that recurs every single frame doesn't spam the log at 60fps; a new,
+# distinct failure still gets its own line.
+_prereq_ui_last_logged_error: Optional[str] = None
+
+
+def _log_prereq_ui_error(context: str) -> None:
+    """Both the gear-icon badge draw and the launch-gate popup run on every
+    single frame whenever a prereq is missing -- the one state the pre-ship
+    sanity check only forced briefly, never exercised via a real, repeated
+    run. An uncaught exception raised from ImGui-calling code can abort just
+    that frame's drawing without crashing the process -- immediate-mode GUIs
+    have no separate "model" to fall back on, so a mid-frame exception can
+    leave that frame (or, if a Begin/End pair was left unbalanced, every
+    frame after it) rendering nothing: an intermittent or permanently blank
+    window with no crash and no visible error. Callers must catch here
+    (never let this feature's own failure block an actual launch or corrupt
+    the frame) and this logs once per distinct message rather than every
+    frame, to both stderr (visible under console python.exe) and a file
+    under %APPDATA% (visible even under the packaged, console-less exe).
+    """
+    global _prereq_ui_last_logged_error
+    text = traceback.format_exc()
+    if text == _prereq_ui_last_logged_error:
+        return
+    _prereq_ui_last_logged_error = text
+    print(f"[prereq-ui] {context} failed:\n{text}", file=sys.stderr)
+    try:
+        log_path = Path(os.environ.get("APPDATA", ".")) / config_seeding.APPDATA_SUBDIR / "launcher_errors.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [{context}]\n{text}\n")
+    except OSError:
+        pass
 
 
 def _try_launch_with_prereq_gate(launch_action: Callable[[], None], *, needs_py4gw: bool) -> None:
@@ -2097,12 +2153,24 @@ def _try_launch_with_prereq_gate(launch_action: Callable[[], None], *, needs_py4
     popup this opens instead of launching directly, since the check itself
     could have an edge case (unusual Python install layout, etc.) that
     shouldn't be able to actually prevent a launch, only prompt about it.
+    Same guarantee holds if this gate's own logic breaks: any exception here
+    is logged and treated as "nothing to gate on," falling through to the
+    real launch rather than silently eating the user's double-click/button
+    press with no launch and no popup either.
     """
-    global _prereq_launch_pending
-    if needs_py4gw and not _prereq_launch_acknowledged_this_session and PREREQS.all_ok() is False:
-        _prereq_launch_pending = (PREREQS.missing_names(), launch_action)
-        imgui.open_popup(_PREREQ_LAUNCH_CONFIRM_POPUP_ID)
-        return
+    global _prereq_launch_pending, _prereq_launch_popup_should_open
+    try:
+        should_gate = (
+            needs_py4gw
+            and not _prereq_launch_acknowledged_this_session
+            and PREREQS.all_ok() is False
+        )
+        if should_gate:
+            _prereq_launch_pending = (PREREQS.missing_names(), launch_action)
+            _prereq_launch_popup_should_open = True
+            return
+    except Exception:
+        _log_prereq_ui_error("prereq launch gate")
     launch_action()
 
 
@@ -2110,11 +2178,30 @@ def _show_prereq_launch_confirm_popup() -> None:
     """Rendered unconditionally every frame from show_main_window (not
     nested inside any particular window's own open/closed state, unlike the
     install-confirm popup which only matters while App Settings is open --
-    a launch attempt can happen with App Settings closed) -- only actually
-    appears once _try_launch_with_prereq_gate calls open_popup.
+    a launch attempt can happen with App Settings closed), always at this
+    same top-level scope -- open_popup is called from right here too (see
+    _prereq_launch_popup_should_open) rather than from the gate itself, so
+    both calls always agree on the popup's ID regardless of which nested
+    window/child the gate happened to be triggered from.
+
+    begin_popup_modal's block is wrapped in try/finally: Begin*/End* calls
+    must stay balanced no matter what happens in between, or ImGui's window
+    stack is left corrupted for every frame afterward -- a real candidate
+    for a permanently blank window that never recovers on its own. An
+    exception in here is logged and the popup is dismissed rather than left
+    dangling.
     """
-    global _prereq_launch_pending, _prereq_launch_acknowledged_this_session
-    if imgui.begin_popup_modal(_PREREQ_LAUNCH_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value))[0]:
+    global _prereq_launch_pending, _prereq_launch_acknowledged_this_session, _prereq_launch_popup_should_open
+    if _prereq_launch_popup_should_open:
+        imgui.open_popup(_PREREQ_LAUNCH_CONFIRM_POPUP_ID)
+        _prereq_launch_popup_should_open = False
+
+    opened = imgui.begin_popup_modal(
+        _PREREQ_LAUNCH_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]
+    if not opened:
+        return
+    try:
         if _prereq_launch_pending is not None:
             missing_names, launch_action = _prereq_launch_pending
             count = len(missing_names)
@@ -2134,6 +2221,10 @@ def _show_prereq_launch_confirm_popup() -> None:
                 _prereq_launch_pending = None
                 imgui.close_current_popup()
                 pending_launch_action()
+    except Exception:
+        _log_prereq_ui_error("prereq launch confirm popup")
+        _prereq_launch_pending = None
+    finally:
         imgui.end_popup()
 
 
