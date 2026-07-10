@@ -33,13 +33,13 @@ from dulwich.porcelain import DivergedBranches
 from dulwich.repo import Repo
 from dulwich.walk import Walker
 
-MOD_REPO_URL = "https://github.com/apoguita/Py4GW_Reforged.git"
+from launcher_core.settings_store import load_mod_repo_url
 
 # Py4GWCoreLib/ existing is the marker checked for a valid checkout -- not just
 # "the folder exists," which would false-positive on an empty directory or an
 # unrelated one that happens to be configured by mistake. Chosen because it's a
 # real, top-level directory in the actual mod repo (confirmed directly: present
-# in a real clone of MOD_REPO_URL) that isn't something a user would plausibly
+# in a real clone of the mod repo) that isn't something a user would plausibly
 # create by hand.
 MOD_REPO_MARKER_DIR = "Py4GWCoreLib"
 
@@ -98,11 +98,11 @@ class _ProgressStream:
 
 
 def clone_mod_repo(target: Path, on_status: Callable[[str], None]) -> tuple[bool, str]:
-    """Clones MOD_REPO_URL into target via dulwich, reporting real progress
-    through on_status as it happens (confirmed directly: cloning the real,
-    current MOD_REPO_URL -- about 615MB, ~43000 objects -- took roughly 30
-    seconds on a normal connection; on_status is what lets the UI show that
-    instead of appearing frozen for half a minute).
+    """Clones settings_store.load_mod_repo_url() into target via dulwich,
+    reporting real progress through on_status as it happens (confirmed
+    directly: cloning the real, current mod repo URL -- about 615MB, ~43000
+    objects -- took roughly 30 seconds on a normal connection; on_status is
+    what lets the UI show that instead of appearing frozen for half a minute).
 
     target does not need to be empty or nonexistent -- confirmed directly, on
     the real repo, that this is safe: cloning into an already-populated
@@ -112,7 +112,7 @@ def clone_mod_repo(target: Path, on_status: Callable[[str], None]) -> tuple[bool
     on disk at a path the source tree doesn't have. This matters because the
     real default target (config_seeding._mod_root()) is this launcher's own
     parent directory, which already contains the running launcher's own
-    Py4GW_Reforged_Launcher/ subfolder -- today MOD_REPO_URL's tree has no
+    Py4GW_Reforged_Launcher/ subfolder -- today the mod repo's tree has no
     entry at that path at all (this launcher isn't upstreamed yet), so there's
     no overlap in practice, but the behavior above is what makes that safe
     regardless of whether that ever changes.
@@ -133,7 +133,7 @@ def clone_mod_repo(target: Path, on_status: Callable[[str], None]) -> tuple[bool
 
     try:
         on_status("Cloning Py4GW_Reforged...")
-        repo = porcelain.clone(MOD_REPO_URL, str(tmp_target), errstream=_ProgressStream(on_status))
+        repo = porcelain.clone(load_mod_repo_url(), str(tmp_target), errstream=_ProgressStream(on_status))
         repo.close()
     except Exception as e:
         shutil.rmtree(tmp_target, ignore_errors=True)
@@ -167,14 +167,15 @@ class UpdateCheckResult:
 
 
 def check_for_updates(path: Path) -> UpdateCheckResult:
-    """Fetches MOD_REPO_URL and compares local HEAD against the remote's
-    default branch (whichever ref its own HEAD symref points at -- not a
-    hardcoded "main"/"master" guess). A fetch downloads objects and updates
-    this repo's remote-tracking refs, exactly like real git's own "git fetch"
-    -- it never touches the working tree, the local branch pointer, or any
-    uncommitted changes, so this is safe to run speculatively (e.g. on a
-    schedule or an explicit "Check for updates" click) without risking
-    anything the update step itself would need to worry about.
+    """Fetches settings_store.load_mod_repo_url() and compares local HEAD
+    against the remote's default branch (whichever ref its own HEAD symref
+    points at -- not a hardcoded "main"/"master" guess). A fetch downloads
+    objects and updates this repo's remote-tracking refs, exactly like real
+    git's own "git fetch" -- it never touches the working tree, the local
+    branch pointer, or any uncommitted changes, so this is safe to run
+    speculatively (e.g. on a schedule or an explicit "Check for updates"
+    click) without risking anything the update step itself would need to
+    worry about.
 
     Ahead/behind counts come from dulwich's Walker with include/exclude, the
     same technique `git rev-list --left-right --count` uses: "behind" is how
@@ -197,7 +198,7 @@ def check_for_updates(path: Path) -> UpdateCheckResult:
             return UpdateCheckResult(UpdateStatus.ERROR, message=f"Could not resolve local HEAD: {e}")
 
         try:
-            fetch_result = porcelain.fetch(repo, MOD_REPO_URL)
+            fetch_result = porcelain.fetch(repo, load_mod_repo_url())
         except Exception as e:
             return UpdateCheckResult(UpdateStatus.ERROR, message=f"Fetch failed: {e}")
 
@@ -355,7 +356,7 @@ def update_mod_repo(path: Path, on_status: Callable[[str], None]) -> tuple[bool,
         concrete_ref = refnames[-1]
 
         on_status("Fetching updates...")
-        porcelain.pull(repo, MOD_REPO_URL, errstream=_ProgressStream(on_status), ff_only=True)
+        porcelain.pull(repo, load_mod_repo_url(), errstream=_ProgressStream(on_status), ff_only=True)
     except WorkingTreeModifiedError as e:
         _restore_pre_pull_ref()
         return False, f"Update refused: {e}"

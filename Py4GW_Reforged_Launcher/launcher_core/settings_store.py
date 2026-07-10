@@ -77,6 +77,24 @@ def save_mod_repo_path(mod_repo_path: str, path: Path | str | None = None) -> No
     _save_one("mod_repo_path", mod_repo_path, resolved)
 
 
+# Today's actual mod-repo URL -- externalized from launcher_core.mod_repo's
+# own module constant so it's a quiet one-file-edit escape hatch (edit the
+# JSON key by hand) rather than a hardcoded value baked into shipped code,
+# without adding a user-facing setting for it.
+DEFAULT_MOD_REPO_URL = "https://github.com/apoguita/Py4GW_Reforged.git"
+
+
+def load_mod_repo_url(path: Path | str | None = None) -> str:
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return str(data.get("mod_repo_url", DEFAULT_MOD_REPO_URL))
+
+
+def save_mod_repo_url(mod_repo_url: str, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("mod_repo_url", mod_repo_url, resolved)
+
+
 def load_dark_theme_enabled(path: Path | str | None = None) -> bool:
     """Default True (dark) -- matches this launcher's existing behavior
     before the light theme existed, so an upgrade with no stored preference

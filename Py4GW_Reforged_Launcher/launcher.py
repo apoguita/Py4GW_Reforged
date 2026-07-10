@@ -158,6 +158,7 @@ try:
         load_bulk_launch_pacing_seconds,
         load_dark_theme_enabled,
         load_mod_repo_path,
+        load_mod_repo_url,
         save_bulk_launch_pacing_seconds,
         save_dark_theme_enabled,
         save_mod_repo_path,
@@ -2692,7 +2693,7 @@ def _show_mod_repo_clone_confirm_popup() -> None:
         try:
             if _mod_repo_clone_pending:
                 imgui.text("This will clone the full Py4GW_Reforged repository from:")
-                imgui.text_colored(_PREREQ_MUTED_COLOR, mod_repo.MOD_REPO_URL)
+                imgui.text_colored(_PREREQ_MUTED_COLOR, load_mod_repo_url())
                 imgui.text("into:")
                 imgui.text_colored(_PREREQ_MUTED_COLOR, str(MOD_REPO_STATE.configured_path))
                 imgui.spacing()
