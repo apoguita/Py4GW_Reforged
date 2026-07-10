@@ -659,6 +659,36 @@ class PrereqState:
         with self._lock:
             return self._install_done_message
 
+    def all_ok(self) -> Optional[bool]:
+        """None while any result is still unavailable (still checking on
+        this frame -- don't show anything yet, badge or popup). True only if
+        every prerequisite reports OK; False otherwise. Read by the gear-icon
+        badge (show_settings_gear_button) and the launch-confirm gate
+        (_try_launch_with_prereq_gate) -- both need the exact same tri-state
+        logic, so it lives here once rather than being reimplemented twice.
+        """
+        if self.python_result is None or self.vcredist_result is None or self.directx_runtime_result is None:
+            return None
+        return self.python_result.is_ok and self.vcredist_result.is_ok and self.directx_runtime_result.is_ok
+
+    def missing_names(self) -> list[str]:
+        """Human-readable names of whichever prerequisites currently aren't
+        OK -- same labels shown in the App Settings rows -- for the
+        launch-confirm gate's message. Empty if still checking or everything
+        checks out.
+        """
+        names: list[str] = []
+        if self.python_result is not None and not self.python_result.is_ok:
+            names.append("Python 3.13.0 (32-bit)")
+        if self.vcredist_result is not None:
+            if self.vcredist_result.x86_status != prereqs.VcRedistStatus.OK:
+                names.append("VC++ Redistributable (x86)")
+            if self.vcredist_result.x64_status != prereqs.VcRedistStatus.OK:
+                names.append("VC++ Redistributable (x64)")
+        if self.directx_runtime_result is not None and not self.directx_runtime_result.is_ok:
+            names.append("DirectX End-User Runtime")
+        return names
+
 
 # -----------------------------------------------------------------------------
 # ProfileEditBuffer: a staging copy of the fields the Settings window edits, kept
@@ -1482,7 +1512,10 @@ def show_team_actions(pos: tuple[float, float]) -> None:
     if not can_launch:
         imgui.end_disabled()
     if launch_clicked and can_launch:
-        STATE.start_bulk_launch(members)
+        _try_launch_with_prereq_gate(
+            lambda: STATE.start_bulk_launch(members),
+            needs_py4gw=any(member.py4gw_enabled for member in members),
+        )
 
     if bulk_launching:
         imgui.same_line()
@@ -1496,13 +1529,38 @@ def show_settings_gear_button() -> None:
     the filter box, which show_main_window sizes to leave exactly enough
     room for this) rather than right-aligning itself -- it shares the filter
     box's row now instead of sitting alone on its own near-empty row above.
+
+    Gets a small warning-colored badge at its corner when
+    PREREQS.all_ok() is False -- a first-run user with a missing
+    prerequisite shouldn't have to stumble into a silent injection failure
+    to discover it. Deliberately a badge on this existing affordance rather
+    than a new status row: this app has already trimmed near-empty status
+    rows before (the old "N profiles loaded" line, an unconditional reload
+    button), so a new row for this would cut against that precedent, while a
+    badge on the icon that already opens the place to fix it doesn't. No
+    badge while all_ok() is None (still checking) or True.
     """
     em = hello_imgui.em_size()
     icon_size = em * 1.8
     clicked = imgui.button("##app_settings_gear", size=(icon_size, icon_size))
+    hovered = imgui.is_item_hovered()
     item_min, item_max = imgui.get_item_rect_min(), imgui.get_item_rect_max()
     center = ((item_min[0] + item_max[0]) / 2, (item_min[1] + item_max[1]) / 2)
-    _draw_gear_icon(imgui.get_window_draw_list(), center, icon_size * 0.7, CARD_SUB_FORE)
+    draw_list = imgui.get_window_draw_list()
+    _draw_gear_icon(draw_list, center, icon_size * 0.7, CARD_SUB_FORE)
+
+    if PREREQS.all_ok() is False:
+        badge_radius = icon_size * 0.15
+        badge_center = (item_max[0] - badge_radius, item_min[1] + badge_radius)
+        # draw_list calls want a packed u32 color, not the float4 tuple
+        # _PREREQ_MISSING_COLOR is (that's for imgui.text_colored) -- same
+        # conversion _u32() does internally.
+        badge_color = imgui.color_convert_float4_to_u32(_PREREQ_MISSING_COLOR)
+        draw_list.add_circle_filled(badge_center, badge_radius, badge_color)
+        draw_list.add_circle(badge_center, badge_radius, CARD_BACK, thickness=1.5)
+        if hovered:
+            imgui.set_tooltip("Setup incomplete -- click for details")
+
     if clicked:
         STATE.app_settings_window_open = True
 
@@ -1636,7 +1694,16 @@ def show_main_window() -> None:
 
         if hovered and imgui.is_mouse_double_clicked(0):
             if not running and not launching:
-                STATE.start_launch(profile)
+                # Default-arg trick (p=profile) to bind *this* iteration's
+                # profile into the lambda now -- without it, a deferred
+                # launch_action (if the prereq gate below interposes with
+                # its confirm popup) would close over the loop variable
+                # itself and, by the time "Launch anyway" is actually
+                # clicked frames later, launch whatever profile this loop
+                # last iterated to instead of the one actually double-clicked.
+                _try_launch_with_prereq_gate(
+                    lambda p=profile: STATE.start_launch(p), needs_py4gw=profile.py4gw_enabled
+                )
 
         if hovered and imgui.is_mouse_clicked(1):
             STATE.selected_id = profile.id
@@ -1678,6 +1745,8 @@ def show_main_window() -> None:
     rows = (add_index + cols) // cols
     imgui.dummy((avail_w, rows * (card_h + card_gap)))
     imgui.end_child()
+
+    _show_prereq_launch_confirm_popup()
 
 
 # -----------------------------------------------------------------------------
@@ -1979,6 +2048,72 @@ _PREREQ_INSTALL_CONFIRM_POPUP_ID = "Install prerequisite?##prereq_confirm"
 # user, display name) -- set when "Install now" is clicked, read by the
 # confirm popup, cleared once resolved either way.
 _prereq_install_pending: Optional[tuple[str, str, str]] = None
+
+_PREREQ_LAUNCH_CONFIRM_POPUP_ID = "Prerequisites missing##prereq_launch_confirm"
+# (missing prereq names, the actual launch call to run if the user clicks
+# "Launch anyway") -- set by _try_launch_with_prereq_gate when it intercepts
+# a launch, read/cleared by the confirm popup once resolved either way.
+_prereq_launch_pending: Optional[tuple[list[str], Callable[[], None]]] = None
+# Once the user clicks "Launch anyway" once, this stops interrupting for the
+# rest of this run -- guidance, not a recurring nag on every single launch
+# once the user has already made an informed choice to proceed anyway.
+_prereq_launch_acknowledged_this_session = False
+
+
+def _try_launch_with_prereq_gate(launch_action: Callable[[], None], *, needs_py4gw: bool) -> None:
+    """Runs `launch_action` (a zero-arg callable that actually starts the
+    launch -- e.g. a lambda wrapping STATE.start_launch(profile) or
+    STATE.start_bulk_launch(members)) immediately, with zero added friction,
+    unless all three of these hold: this launch actually uses Py4GW
+    injection (needs_py4gw -- a plain GW1-only profile/team has nothing to
+    check here), PREREQS has definitively finished checking and found
+    something missing (PREREQS.all_ok() is False -- None means still
+    checking, which also launches immediately rather than blocking on a
+    check that hasn't finished yet), and the user hasn't already clicked
+    "Launch anyway" earlier this session.
+
+    Never a hard block -- "Launch anyway" is always one click away in the
+    popup this opens instead of launching directly, since the check itself
+    could have an edge case (unusual Python install layout, etc.) that
+    shouldn't be able to actually prevent a launch, only prompt about it.
+    """
+    global _prereq_launch_pending
+    if needs_py4gw and not _prereq_launch_acknowledged_this_session and PREREQS.all_ok() is False:
+        _prereq_launch_pending = (PREREQS.missing_names(), launch_action)
+        imgui.open_popup(_PREREQ_LAUNCH_CONFIRM_POPUP_ID)
+        return
+    launch_action()
+
+
+def _show_prereq_launch_confirm_popup() -> None:
+    """Rendered unconditionally every frame from show_main_window (not
+    nested inside any particular window's own open/closed state, unlike the
+    install-confirm popup which only matters while App Settings is open --
+    a launch attempt can happen with App Settings closed) -- only actually
+    appears once _try_launch_with_prereq_gate calls open_popup.
+    """
+    global _prereq_launch_pending, _prereq_launch_acknowledged_this_session
+    if imgui.begin_popup_modal(_PREREQ_LAUNCH_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value))[0]:
+        if _prereq_launch_pending is not None:
+            missing_names, launch_action = _prereq_launch_pending
+            count = len(missing_names)
+            imgui.text(
+                f"Py4GW injection needs {count} prerequisite{'s' if count != 1 else ''} "
+                f"that aren't installed yet:\n{', '.join(missing_names)}"
+            )
+            imgui.spacing()
+            if imgui.button("Open App Settings"):
+                STATE.app_settings_window_open = True
+                _prereq_launch_pending = None
+                imgui.close_current_popup()
+            imgui.same_line()
+            if imgui.button("Launch anyway"):
+                _prereq_launch_acknowledged_this_session = True
+                pending_launch_action = launch_action
+                _prereq_launch_pending = None
+                imgui.close_current_popup()
+                pending_launch_action()
+        imgui.end_popup()
 
 
 class _VcRedistArchView:
