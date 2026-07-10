@@ -154,8 +154,10 @@ try:
     from launcher_core.profile_store import load_profiles, load_teams, save_profiles, save_teams
     from launcher_core.settings_store import (
         load_bulk_launch_pacing_seconds,
+        load_dark_theme_enabled,
         load_mod_repo_path,
         save_bulk_launch_pacing_seconds,
+        save_dark_theme_enabled,
         save_mod_repo_path,
     )
     from launcher_core.team import Team
@@ -344,32 +346,120 @@ def _pre_new_frame_hooks() -> None:
 
 
 # -----------------------------------------------------------------------------
-# Palette -- dark theme, ported from the C# reference implementation's Light/Dark
-# palette classes, with hover/selected contrast pushed further per an approved
-# design direction (hover = full neutral elevation step, selected = accent-tinted
-# bg + accent border + solid bar).
+# Palette -- ported from the C# reference implementation's Light/Dark palette
+# classes, with hover/selected contrast pushed further per an approved design
+# direction (hover = full neutral elevation step, selected = accent-tinted bg +
+# accent border + solid bar).
 # STATUS_* colors (amber/red) aren't part of that 4-state card spec -- they're new,
 # needed to satisfy the "honest status text, not a spinner" requirement below.
+# Kept identical across both themes (see set_theme()'s docstring for why), so
+# they're plain constants, not part of either palette dict below.
+#
+# CARD_BACK/CARD_SELECTED_BACK/etc. below are reassigned at runtime by
+# set_theme() (module-level `global` writes) rather than computed once here --
+# every drawing call site references these names directly, so swapping the
+# theme is just a matter of pointing them at different values, with no call
+# site needing to change. DARK_PALETTE's values are this project's original,
+# already-approved dark theme, unchanged from before the light theme existed.
+# LIGHT_PALETTE's are ported from the C# reference's own LightPalette.cs
+# (GWxLauncher/UI/LightPalette.cs), mapped onto this project's existing
+# constant names (e.g. CardBack -> CARD_BACK, HoverBack -> HOVER_BACK).
 # -----------------------------------------------------------------------------
 
 def _u32(r: int, g: int, b: int, a: int = 255) -> int:
     return imgui.color_convert_float4_to_u32((r / 255.0, g / 255.0, b / 255.0, a / 255.0))
 
 
-CARD_BACK = _u32(32, 32, 38)
-CARD_SELECTED_BACK = _u32(28, 40, 58)
-HOVER_BACK = _u32(48, 48, 56)
-CARD_BORDER = _u32(55, 55, 65)
-HOVER_BORDER = _u32(90, 90, 105)
-MUTED_FORE = _u32(110, 110, 122)
-ACCENT = _u32(0, 120, 215)
-CARD_NAME_FORE = _u32(255, 255, 255)
-CARD_SUB_FORE = _u32(170, 170, 185)
-BADGE_BACK = _u32(50, 50, 65)
-BADGE_BORDER = _u32(75, 75, 95)
-BADGE_FORE = _u32(210, 210, 220)
+DARK_PALETTE = {
+    "CARD_BACK": (32, 32, 38),
+    "CARD_SELECTED_BACK": (28, 40, 58),
+    "HOVER_BACK": (48, 48, 56),
+    "CARD_BORDER": (55, 55, 65),
+    "HOVER_BORDER": (90, 90, 105),
+    "MUTED_FORE": (110, 110, 122),
+    "ACCENT": (0, 120, 215),
+    "CARD_NAME_FORE": (255, 255, 255),
+    "CARD_SUB_FORE": (170, 170, 185),
+    "BADGE_BACK": (50, 50, 65),
+    "BADGE_BORDER": (75, 75, 95),
+    "BADGE_FORE": (210, 210, 220),
+}
+
+# Ported from GWxLauncher/UI/LightPalette.cs. Not every DARK_PALETTE key has an
+# obvious LightPalette equivalent -- none needed one here, every key below maps
+# directly onto a real LightPalette.cs property.
+LIGHT_PALETTE = {
+    "CARD_BACK": (255, 255, 255),  # LightPalette.CardBack (White)
+    "CARD_SELECTED_BACK": (235, 242, 255),  # CardSelectedBack
+    "HOVER_BACK": (248, 250, 255),  # HoverBack
+    "CARD_BORDER": (185, 185, 205),  # CardBorder
+    "HOVER_BORDER": (160, 175, 210),  # HoverBorder
+    "MUTED_FORE": (90, 95, 115),  # SubtleFore -- closest conceptual match to MUTED_FORE
+    "ACCENT": (0, 105, 210),  # Accent
+    "CARD_NAME_FORE": (0, 0, 0),  # CardNameFore (Black)
+    "CARD_SUB_FORE": (85, 85, 105),  # CardSubFore
+    "BADGE_BACK": (230, 235, 245),  # BadgeBack
+    "BADGE_BORDER": (200, 205, 220),  # BadgeBorder
+    "BADGE_FORE": (60, 65, 85),  # BadgeFore
+}
+
+# Declared here so the names exist at module scope before set_theme() (called
+# once below, and again later whenever the user toggles the theme) assigns
+# their real values via `global`.
+CARD_BACK = 0
+CARD_SELECTED_BACK = 0
+HOVER_BACK = 0
+CARD_BORDER = 0
+HOVER_BORDER = 0
+MUTED_FORE = 0
+ACCENT = 0
+CARD_NAME_FORE = 0
+CARD_SUB_FORE = 0
+BADGE_BACK = 0
+BADGE_BORDER = 0
+BADGE_FORE = 0
+
 STATUS_PROGRESS = _u32(230, 180, 80)
 STATUS_ERROR = _u32(220, 90, 90)
+
+
+def set_theme(dark: bool) -> None:
+    """Reassigns every palette constant above from DARK_PALETTE or
+    LIGHT_PALETTE -- called once at startup with the persisted preference,
+    and again immediately whenever the user toggles the App Settings theme
+    switch, so every existing drawing call site (which reference e.g.
+    CARD_BACK directly, not through a lookup) picks up the new colors with
+    no call site needing to change.
+
+    STATUS_PROGRESS/STATUS_ERROR and the avatar hue palette
+    (_AVATAR_HUES_DEG etc.) are deliberately NOT reassigned here -- neither
+    has an obvious LightPalette.cs equivalent, and both still read fine
+    against a light background (amber/red status text and a fixed set of
+    saturated avatar hues don't get confusing or illegible just because the
+    surrounding chrome flipped light), so forcing a mapping that doesn't
+    exist isn't worth it.
+    """
+    global CARD_BACK, CARD_SELECTED_BACK, HOVER_BACK, CARD_BORDER, HOVER_BORDER
+    global MUTED_FORE, ACCENT, CARD_NAME_FORE, CARD_SUB_FORE, BADGE_BACK, BADGE_BORDER, BADGE_FORE
+
+    palette = DARK_PALETTE if dark else LIGHT_PALETTE
+    CARD_BACK = _u32(*palette["CARD_BACK"])
+    CARD_SELECTED_BACK = _u32(*palette["CARD_SELECTED_BACK"])
+    HOVER_BACK = _u32(*palette["HOVER_BACK"])
+    CARD_BORDER = _u32(*palette["CARD_BORDER"])
+    HOVER_BORDER = _u32(*palette["HOVER_BORDER"])
+    MUTED_FORE = _u32(*palette["MUTED_FORE"])
+    ACCENT = _u32(*palette["ACCENT"])
+    CARD_NAME_FORE = _u32(*palette["CARD_NAME_FORE"])
+    CARD_SUB_FORE = _u32(*palette["CARD_SUB_FORE"])
+    BADGE_BACK = _u32(*palette["BADGE_BACK"])
+    BADGE_BORDER = _u32(*palette["BADGE_BORDER"])
+    BADGE_FORE = _u32(*palette["BADGE_FORE"])
+
+
+_dark_theme_enabled = load_dark_theme_enabled()
+set_theme(dark=_dark_theme_enabled)
+
 
 # Avatar palette -- hues picked to avoid colliding with colors that already
 # mean something specific: ACCENT's blue (~210 deg) means selection,
@@ -2709,6 +2799,8 @@ def _show_mod_repo_section() -> None:
 
 
 def show_app_settings_window() -> None:
+    global _dark_theme_enabled
+
     if not STATE.app_settings_window_open:
         return
 
@@ -2766,6 +2858,18 @@ def show_app_settings_window() -> None:
         changed, new_value = imgui.input_int("##bulk_pacing_seconds", STATE.bulk_launch_pacing_seconds)
         if changed:
             STATE.set_bulk_launch_pacing_seconds(new_value)
+
+        imgui.separator()
+        imgui.spacing()
+
+        # Global setting (not per-profile), applied immediately on change --
+        # not just on restart -- via set_theme(), same function used to
+        # apply the persisted choice once at startup.
+        changed_theme, new_dark_enabled = imgui.checkbox("Dark theme", _dark_theme_enabled)
+        if changed_theme:
+            _dark_theme_enabled = new_dark_enabled
+            set_theme(dark=_dark_theme_enabled)
+            save_dark_theme_enabled(_dark_theme_enabled)
 
         imgui.separator()
         imgui.spacing()

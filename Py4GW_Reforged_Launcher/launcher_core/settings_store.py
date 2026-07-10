@@ -75,3 +75,17 @@ def load_mod_repo_path(path: Path | str | None = None) -> Optional[str]:
 def save_mod_repo_path(mod_repo_path: str, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("mod_repo_path", mod_repo_path, resolved)
+
+
+def load_dark_theme_enabled(path: Path | str | None = None) -> bool:
+    """Default True (dark) -- matches this launcher's existing behavior
+    before the light theme existed, so an upgrade with no stored preference
+    yet doesn't change anyone's UI out from under them."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("dark_theme_enabled", True))
+
+
+def save_dark_theme_enabled(dark_theme_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("dark_theme_enabled", dark_theme_enabled, resolved)
