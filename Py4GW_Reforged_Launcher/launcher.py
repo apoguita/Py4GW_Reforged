@@ -2954,10 +2954,13 @@ def show_settings_content() -> None:
         for i, mod_path in enumerate(buffer.gmod_plugin_paths):
             # Same measure-then-reserve shape _path_field_with_browse uses for
             # its browse button, so a long path can't push the remove button
-            # off the window's right edge. small_button has no frame padding
-            # of its own (unlike a regular button), so "x"'s own text width
-            # *is* the button's rendered width.
-            remove_w = imgui.calc_text_size("x").x
+            # off the window's right edge. SmallButton only zeroes *vertical*
+            # frame padding (ImGui::SmallButton sets FramePadding.y to 0, not
+            # FramePadding.x) -- confirmed directly, an earlier version of this
+            # omitted frame_padding.x here and the button clipped off the
+            # window edge on a long enough path -- so the horizontal padding
+            # still has to be reserved same as a regular button.
+            remove_w = imgui.calc_text_size("x").x + style.frame_padding.x * 2
             avail_w = imgui.get_content_region_avail().x
             path_max_w = max(1.0, avail_w - remove_w - style.item_spacing.x)
 
