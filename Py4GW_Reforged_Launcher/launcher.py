@@ -136,6 +136,7 @@ try:
     import threading
     import time
     import traceback
+    import webbrowser
     import zlib
     from pathlib import Path
     from typing import Callable, Optional
@@ -150,7 +151,15 @@ try:
     import win32gui
     from win32com.shell import shell as win32_shell
 
-    from launcher_core import bulk_launch, config_seeding, legacy_import, mod_repo, prereqs, roster_transfer
+    from launcher_core import (
+        bulk_launch,
+        config_seeding,
+        legacy_import,
+        mod_repo,
+        prereqs,
+        roster_transfer,
+        update_check,
+    )
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
@@ -175,6 +184,7 @@ try:
         save_py4gw_injection_enabled,
     )
     from launcher_core.team import Team
+    from launcher_core.version import __version__ as LAUNCHER_VERSION
     from launcher_core.window_control import (
         IMAGE_ICON,
         LR_LOADFROMFILE,
@@ -1134,6 +1144,44 @@ class PrereqState:
 
 
 # -----------------------------------------------------------------------------
+# UpdateCheckState: launcher_core.update_check's GitHub-releases-API call, same
+# thread-safe status pattern as PrereqState above. Auto-checked once on startup
+# (silently -- a failed check here must never surface as an error or delay
+# startup, see run_check_async's docstring) and again on an explicit
+# "Check for updates" click.
+# -----------------------------------------------------------------------------
+
+class UpdateCheckState:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.result: Optional[update_check.UpdateCheckResult] = None
+        self._checking = False
+
+    def run_check_async(self) -> None:
+        """Safe to call unconditionally at startup: a real network call, but
+        on a background thread and with its own short timeout
+        (update_check.fetch_latest_release_tag), and any failure just leaves
+        self.result.ok False -- App Settings shows nothing at all in that
+        case (see show_app_settings_window), not an error message.
+        """
+        if self._checking:
+            return
+        self._checking = True
+        threading.Thread(target=self._check, daemon=True).start()
+
+    def _check(self) -> None:
+        result = update_check.fetch_latest_release_tag()
+        with self._lock:
+            self.result = result
+            self._checking = False
+
+    @property
+    def checking(self) -> bool:
+        with self._lock:
+            return self._checking
+
+
+# -----------------------------------------------------------------------------
 # ModRepoState: detection/clone/update-check for the actual Py4GW_Reforged mod
 # checkout (launcher_core.mod_repo) -- a different concern from PrereqState above
 # ("is the right software installed") and from config_seeding ("do the right
@@ -1883,6 +1931,8 @@ class AppState:
 STATE = AppState()
 PREREQS = PrereqState()
 PREREQS.run_check_async()
+UPDATE_CHECK_STATE = UpdateCheckState()
+UPDATE_CHECK_STATE.run_check_async()
 MOD_REPO_STATE = ModRepoState()
 MOD_REPO_STATE.run_detect_async()
 
@@ -4246,6 +4296,36 @@ def show_app_settings_window() -> None:
     elif _app_settings_autosize_frames_remaining > 0:
         _app_settings_autosize_frames_remaining -= 1
     if expanded:
+        # "Here's what you're running" before "here's whether it's configured
+        # right" -- shown above Prerequisites for that reason. Auto-checked
+        # once on startup (silently -- see UpdateCheckState.run_check_async),
+        # "Check for updates" here forces a fresh one same as the mod-repo
+        # section's own button of the same name below.
+        imgui.text(f"Py4GW_Reforged_Launcher {LAUNCHER_VERSION}")
+        if UPDATE_CHECK_STATE.checking:
+            imgui.same_line()
+            imgui.text_colored(_PREREQ_BUSY_COLOR, "Checking for updates...")
+        elif imgui.button("Check for updates##launcher_version"):
+            UPDATE_CHECK_STATE.run_check_async()
+
+        update_result = UPDATE_CHECK_STATE.result
+        if update_result is not None and update_result.ok:
+            if update_result.latest_tag == LAUNCHER_VERSION:
+                imgui.text_colored(_PREREQ_OK_COLOR, "You're up to date.")
+            else:
+                imgui.text_colored(
+                    _PREREQ_MISSING_COLOR, f"A newer version is available: {update_result.latest_tag}"
+                )
+                imgui.same_line()
+                if imgui.button("View releases##launcher_update_link"):
+                    webbrowser.open(update_check.RELEASES_PAGE_URL)
+        # update_result is None (never checked yet) or not ok (the startup
+        # check, or a manual one, failed -- no internet, GitHub down, rate
+        # limited) shows nothing at all here, on purpose.
+
+        imgui.separator()
+        imgui.spacing()
+
         # Prerequisites are shown first, not buried under other settings --
         # GW1/Py4GW injection genuinely doesn't work without them. Checked
         # fresh (no caching) on every app start and again after any install
