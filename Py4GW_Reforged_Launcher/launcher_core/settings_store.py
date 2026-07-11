@@ -125,9 +125,9 @@ def save_multiclient_enabled(multiclient_enabled: bool, path: Path | str | None 
 def load_py4gw_injection_enabled(path: Path | str | None = None) -> bool:
     """Default True -- no behavior change for existing installs until a user
     actually flips this off in App Settings. Master switch across all
-    profiles, independent of each profile's own py4gw_enabled toggle; modeled
-    to make room for a sibling gMod-injection master switch later, even
-    though gMod isn't implemented yet."""
+    profiles, independent of each profile's own py4gw_enabled toggle --
+    see load_gmod_injection_enabled below for the sibling gMod switch this
+    was modeled to make room for."""
     resolved = Path(path) if path is not None else default_settings_path()
     data = _load_all(resolved)
     return bool(data.get("py4gw_injection_enabled", True))
@@ -136,3 +136,18 @@ def load_py4gw_injection_enabled(path: Path | str | None = None) -> bool:
 def save_py4gw_injection_enabled(py4gw_injection_enabled: bool, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("py4gw_injection_enabled", py4gw_injection_enabled, resolved)
+
+
+def load_gmod_injection_enabled(path: Path | str | None = None) -> bool:
+    """Default True -- no behavior change for existing installs until a user
+    actually flips this off in App Settings. Master switch across all
+    profiles, independent of each profile's own gmod_enabled toggle -- same
+    shape as load_py4gw_injection_enabled above."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("gmod_injection_enabled", True))
+
+
+def save_gmod_injection_enabled(gmod_injection_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("gmod_injection_enabled", gmod_injection_enabled, resolved)

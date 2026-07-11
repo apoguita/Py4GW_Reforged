@@ -84,8 +84,10 @@ import ctypes.wintypes
 import dataclasses
 import os
 import re
+import shutil
 import time
 import winreg
+from pathlib import Path
 from typing import Callable, Optional
 
 import psutil
@@ -95,6 +97,7 @@ import win32process
 
 from launcher_core.crypto import unprotect_password
 from launcher_core.profile import GameProfile
+from launcher_core.profile_store import APPDATA_SUBDIR
 
 kernel32 = ctypes.windll.kernel32
 ntdll = ctypes.windll.ntdll
@@ -616,6 +619,54 @@ def _apply_gw1_registry_fix(profile: GameProfile, log: list) -> None:
         _log(log, f"GW1 registry fix failed (best-effort, continuing): {e}")
 
 
+def _prepare_per_profile_gmod_folder(profile: GameProfile) -> str:
+    """Builds/refreshes `profile`'s per-profile gMod folder and returns the path
+    to the gMod.dll that should actually be injected -- never
+    `profile.gmod_dll_path` directly.
+
+    gMod resolves modlist.txt relative to wherever its *injected* DLL module
+    actually lives, not wherever the canonical DLL sits on disk -- confirmed
+    from gMod's own source and GWxLauncher's tested PreparePerProfileGModFolder.
+    So each profile gets its own folder (%AppData%\\<APPDATA_SUBDIR>\\accounts\\
+    <profile.id>\\ -- reusing profile_store.APPDATA_SUBDIR for consistency with
+    where profiles.json/teams.json already live) containing:
+
+    - gMod.dll: a hardlink to profile.gmod_dll_path (os.link), always deleted
+      and recreated on every launch rather than diffed, to guarantee it's
+      never stale. Falls back to a real copy (shutil.copy2) if os.link raises
+      (e.g. gmod_dll_path is on a different volume than %AppData%).
+    - modlist.txt: one absolute path per line, from profile.gmod_plugin_paths.
+      Entries that don't currently exist on disk are pruned from this file but
+      never from profile.gmod_plugin_paths itself -- a temporarily missing
+      path (an unplugged USB drive, say) shouldn't permanently drop a
+      configured mod, just skip it for this one launch.
+
+    Raises on any failure (folder creation, or both the hardlink and the copy
+    fallback failing) rather than swallowing it -- the caller aborts the
+    launch on this, same as any other injection-prep failure in this pipeline.
+    """
+    appdata = os.environ.get("APPDATA")
+    if not appdata:
+        raise RuntimeError("%APPDATA% is not set -- expected on Windows")
+
+    folder = Path(appdata) / APPDATA_SUBDIR / "accounts" / profile.id
+    folder.mkdir(parents=True, exist_ok=True)
+
+    dll_dest = folder / "gMod.dll"
+    if dll_dest.exists():
+        dll_dest.unlink()
+    try:
+        os.link(profile.gmod_dll_path, dll_dest)
+    except OSError:
+        shutil.copy2(profile.gmod_dll_path, dll_dest)
+
+    modlist_path = folder / "modlist.txt"
+    existing_paths = [p for p in profile.gmod_plugin_paths if os.path.exists(p)]
+    modlist_path.write_text("\n".join(existing_paths), encoding="utf-8")
+
+    return str(dll_dest)
+
+
 def _build_auto_login_args(profile: GameProfile, log: list) -> str:
     """Builds the -email/-password/-character command-line suffix for GW1
     auto-login, ported from GWxLauncher's Gw1InjectionService auto-login arg
@@ -680,30 +731,41 @@ def launch_py4gw_profile(
     replacement_scan_timeout: float = 300.0,
     multiclient_enabled: bool = True,
     py4gw_injection_enabled: bool = True,
+    gmod_injection_enabled: bool = True,
     on_log: Optional[Callable[[str], None]] = None,
 ) -> LaunchResult:
     """Launch `profile`'s executable, optionally auto-logging in, and inject Py4GW
-    into it if `profile.py4gw_enabled`.
+    and/or gMod into it per the profile's own toggles.
 
-    Py4GW only -- gMod injection is a deliberate follow-up, not handled here.
-    `profile.py4gw_enabled` gates only the py4gw_dll_path validation and the actual
-    DLL injection: a profile with it off still gets a completely normal launch
-    (process creation, the multiclient patch, resume, window-wait), just with
-    nothing injected. Auto-login (`-email`/`-password`/`-character`) is applied
-    whenever `profile.auto_login_enabled` and credentials are configured, regardless
-    of `py4gw_enabled` -- see `_build_auto_login_args`.
+    `profile.py4gw_enabled`/`profile.gmod_enabled` each gate only their own
+    DLL-path validation and injection call: a profile with both off still gets
+    a completely normal launch (process creation, the multiclient patch,
+    resume, window-wait), just with nothing injected. Auto-login
+    (`-email`/`-password`/`-character`) is applied whenever
+    `profile.auto_login_enabled` and credentials are configured, regardless of
+    either injection toggle -- see `_build_auto_login_args`.
 
-    `multiclient_enabled` and `py4gw_injection_enabled` are the global App
-    Settings master switches (see AppState.multiclient_enabled/
-    py4gw_injection_enabled in launcher.py) -- both default True so a caller
-    that doesn't pass them gets today's existing behavior. `multiclient_enabled`
-    gates both `_apply_multiclient_patch` call sites; off, the patch is skipped
-    entirely rather than attempted-and-ignored. `py4gw_injection_enabled` gates
-    the DLL-path validation and the injection step the same way `profile.
-    py4gw_enabled` already does -- both must be true for injection to actually
-    happen, so a globally-off switch can't be defeated by a single profile's
-    own toggle, and a profile with injection off isn't blocked by an unrelated
-    missing DLL path when injection is already globally disabled.
+    Py4GW and gMod inject at opposite points in the pipeline, because gMod
+    must be loaded and hooked before the game creates its D3D9 device (very
+    early), while Py4GW injects after the window appears and settles: gMod
+    goes in between `_apply_multiclient_patch` and `kernel32.ResumeThread`,
+    while the process is still suspended; Py4GW goes in near the end, after
+    `_wait_for_window_or_exit` confirms a window and `post_window_settle_delay`
+    passes. See `_prepare_per_profile_gmod_folder` for why gMod's DLL is never
+    injected from `profile.gmod_dll_path` directly.
+
+    `multiclient_enabled`, `py4gw_injection_enabled`, and `gmod_injection_enabled`
+    are the global App Settings master switches (see AppState.multiclient_enabled/
+    py4gw_injection_enabled/gmod_injection_enabled in launcher.py) -- all default
+    True so a caller that doesn't pass them gets today's existing behavior.
+    `multiclient_enabled` gates both `_apply_multiclient_patch` call sites; off,
+    the patch is skipped entirely rather than attempted-and-ignored.
+    `py4gw_injection_enabled`/`gmod_injection_enabled` each gate their DLL-path
+    validation and injection step the same way `profile.py4gw_enabled`/
+    `profile.gmod_enabled` already do -- both must be true for injection to
+    actually happen, so a globally-off switch can't be defeated by a single
+    profile's own toggle, and a profile with injection off isn't blocked by an
+    unrelated missing DLL path when injection is already globally disabled.
 
     `LaunchResult.pid` is whichever process ends up injected into (or, if
     `py4gw_enabled` is off, whichever process the launch ultimately resolves to) --
@@ -733,6 +795,12 @@ def launch_py4gw_profile(
         and (not profile.py4gw_dll_path or not os.path.exists(profile.py4gw_dll_path))
     ):
         return LaunchResult(False, None, f"py4gw_dll_path not found: {profile.py4gw_dll_path!r}", log)
+
+    if (
+        profile.gmod_enabled and gmod_injection_enabled
+        and (not profile.gmod_dll_path or not os.path.exists(profile.gmod_dll_path))
+    ):
+        return LaunchResult(False, None, f"gmod_dll_path not found: {profile.gmod_dll_path!r}", log)
 
     command_line = f'"{profile.executable_path}"'
     if profile.windowed_mode_enabled:
@@ -776,6 +844,27 @@ def launch_py4gw_profile(
             return _abort("Failed to apply multiclient patch; aborting launch")
     else:
         _log(log, "Multiclient patch disabled (App Settings) -- skipping")
+
+    # gMod injects here, while the process is still suspended -- it must be
+    # loaded and hooked before the game creates its D3D9 device, which happens
+    # very early (the opposite timing from Py4GW's post-window injection
+    # below). _inject_dll uses CreateRemoteThread, which is independent of the
+    # primary thread's own suspended state, so this is safe against it.
+    if profile.gmod_enabled and gmod_injection_enabled:
+        try:
+            per_profile_gmod_dll = _prepare_per_profile_gmod_folder(profile)
+        except Exception as e:
+            return _abort(f"gMod per-profile folder setup failed: {e}")
+        _log(log, f"gMod per-profile folder ready; injecting {per_profile_gmod_dll}")
+
+        if not _inject_dll(pid, per_profile_gmod_dll, log):
+            return _abort("gMod DLL injection failed")
+
+        _log(log, "gMod DLL injection reported success")
+    elif profile.gmod_enabled and not gmod_injection_enabled:
+        _log(log, "gMod injection globally disabled (App Settings) -- launching without it")
+    else:
+        _log(log, "gMod injection disabled for this profile -- launching without it")
 
     if kernel32.ResumeThread(process_info.hThread) == -1:
         return _abort(f"Failed to resume thread: {ctypes.GetLastError()}")

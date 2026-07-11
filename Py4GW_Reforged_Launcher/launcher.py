@@ -158,12 +158,14 @@ try:
     from launcher_core.settings_store import (
         load_bulk_launch_pacing_seconds,
         load_dark_theme_enabled,
+        load_gmod_injection_enabled,
         load_mod_repo_path,
         load_mod_repo_url,
         load_multiclient_enabled,
         load_py4gw_injection_enabled,
         save_bulk_launch_pacing_seconds,
         save_dark_theme_enabled,
+        save_gmod_injection_enabled,
         save_mod_repo_path,
         save_multiclient_enabled,
         save_py4gw_injection_enabled,
@@ -778,6 +780,7 @@ class LaunchSession:
             self.profile,
             multiclient_enabled=STATE.multiclient_enabled,
             py4gw_injection_enabled=STATE.py4gw_injection_enabled,
+            gmod_injection_enabled=STATE.gmod_injection_enabled,
             on_log=self._on_log,
         )
         _log_launch_attempt(self.profile, result)
@@ -1144,6 +1147,7 @@ class ProfileEditBuffer:
     py4gw_dll_path: str = ""
     gmod_enabled: bool = False
     gmod_dll_path: str = ""
+    gmod_plugin_paths: list[str] = dataclasses.field(default_factory=list)
     windowed_mode_enabled: bool = True
     error_message: str = ""
 
@@ -1168,6 +1172,7 @@ class ProfileEditBuffer:
             py4gw_dll_path=profile.py4gw_dll_path,
             gmod_enabled=profile.gmod_enabled,
             gmod_dll_path=profile.gmod_dll_path,
+            gmod_plugin_paths=list(profile.gmod_plugin_paths),
             windowed_mode_enabled=profile.windowed_mode_enabled,
         )
 
@@ -1192,6 +1197,7 @@ class AppState:
         self.bulk_launch_pacing_seconds: int = load_bulk_launch_pacing_seconds()
         self.multiclient_enabled: bool = load_multiclient_enabled()
         self.py4gw_injection_enabled: bool = load_py4gw_injection_enabled()
+        self.gmod_injection_enabled: bool = load_gmod_injection_enabled()
         self.name_filter: str = ""
         # Ephemeral (never persisted): which ALL-view cards are batch-checked for
         # "Add N to Team". Cleared on leaving ALL -- see jump_to_view.
@@ -1550,6 +1556,7 @@ class AppState:
             or buffer.py4gw_dll_path != baseline.py4gw_dll_path
             or buffer.gmod_enabled != baseline.gmod_enabled
             or buffer.gmod_dll_path != baseline.gmod_dll_path
+            or buffer.gmod_plugin_paths != baseline.gmod_plugin_paths
             or buffer.windowed_mode_enabled != baseline.windowed_mode_enabled
         )
 
@@ -1581,6 +1588,7 @@ class AppState:
         profile.py4gw_dll_path = buffer.py4gw_dll_path
         profile.gmod_enabled = buffer.gmod_enabled
         profile.gmod_dll_path = buffer.gmod_dll_path
+        profile.gmod_plugin_paths = list(buffer.gmod_plugin_paths)
         profile.windowed_mode_enabled = buffer.windowed_mode_enabled
         if buffer.password_input:
             profile.password_protected = protect_password(buffer.password_input)
@@ -1626,6 +1634,10 @@ class AppState:
     def set_py4gw_injection_enabled(self, enabled: bool) -> None:
         self.py4gw_injection_enabled = enabled
         save_py4gw_injection_enabled(enabled)
+
+    def set_gmod_injection_enabled(self, enabled: bool) -> None:
+        self.gmod_injection_enabled = enabled
+        save_gmod_injection_enabled(enabled)
 
     def foreground_profile(self, profile_id: str) -> None:
         pid = self.running_pids.get(profile_id)
@@ -2929,7 +2941,27 @@ def show_settings_content() -> None:
             label="gMod DLL path", value=buffer.gmod_dll_path, id_suffix="gmod_dll_path",
             dialog_title="Select gMod DLL", filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
         )
-        imgui.text_colored((0.6, 0.6, 0.65, 1.0), "(gMod injection timing not implemented yet)")
+        imgui.spacing()
+        imgui.text("Mod list (.tpf files):")
+        # No per-item enable/disable toggle -- the list itself is the enabled
+        # set, removing an entry disables it (see dev_notes/gmod_injection_
+        # research.md). Static text, not an editable field: mods are picked
+        # via the browse dialog below, never typed by hand.
+        remove_index = None
+        for i, mod_path in enumerate(buffer.gmod_plugin_paths):
+            imgui.text(mod_path)
+            imgui.same_line()
+            if imgui.small_button(f"x##gmod_mod_{i}"):
+                remove_index = i
+        if remove_index is not None:
+            del buffer.gmod_plugin_paths[remove_index]
+        if imgui.button("Add mod..."):
+            chosen = _browse_for_file(
+                title="Select gMod .tpf file",
+                filter_str="TPF files (*.tpf)\0*.tpf\0All files (*.*)\0*.*\0",
+            )
+            if chosen and chosen not in buffer.gmod_plugin_paths:
+                buffer.gmod_plugin_paths.append(chosen)
     elif _active_tab == "Window":
         _, buffer.windowed_mode_enabled = imgui.checkbox("Windowed mode", buffer.windowed_mode_enabled)
         imgui.text_colored(
@@ -3846,6 +3878,16 @@ def show_app_settings_window() -> None:
         )
         if changed_py4gw_injection:
             STATE.set_py4gw_injection_enabled(new_py4gw_injection_enabled)
+        imgui.text_colored(
+            _PREREQ_MUTED_COLOR,
+            "Master switch across all profiles, independent of each profile's own toggle.",
+        )
+
+        changed_gmod_injection, new_gmod_injection_enabled = imgui.checkbox(
+            "gMod injection", STATE.gmod_injection_enabled
+        )
+        if changed_gmod_injection:
+            STATE.set_gmod_injection_enabled(new_gmod_injection_enabled)
         imgui.text_colored(
             _PREREQ_MUTED_COLOR,
             "Master switch across all profiles, independent of each profile's own toggle.",
