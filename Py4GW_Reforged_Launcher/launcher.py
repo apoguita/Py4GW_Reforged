@@ -3452,18 +3452,27 @@ def _show_import_result_popup() -> None:
 
 def _show_export_import_section() -> None:
     global _export_browse_pending, _roster_status_message, _last_import_result, _export_include_passwords
-    imgui.text("Export / Import Accounts:")
+    imgui.text("Backup / Restore Accounts:")
+    imgui.text_colored(_PREREQ_MUTED_COLOR, "Move your accounts to another computer, or just keep a backup.")
     _, _export_include_passwords = imgui.checkbox("Include passwords", _export_include_passwords)
-    if imgui.button("Export accounts..."):
+    if imgui.button("Backup accounts..."):
         imgui.open_popup(_EXPORT_CONFIRM_POPUP_ID)
     imgui.same_line()
-    if imgui.button("Import accounts..."):
+    if imgui.button("Restore accounts..."):
         chosen = _browse_for_file(title="Import accounts", filter_str=_ROSTER_JSON_FILTER)
         if chosen:
             _last_import_result = STATE.import_roster(chosen)
             _roster_status_message = ""
             imgui.open_popup(_IMPORT_RESULT_POPUP_ID)
-    if imgui.button("Import from old launcher..."):
+
+    imgui.separator()
+    imgui.spacing()
+
+    imgui.text("Old Launcher Import:")
+    imgui.text_colored(
+        _PREREQ_MUTED_COLOR, "Have an accounts.json from the previous Python launcher? Import it below."
+    )
+    if imgui.button("Import"):
         chosen = _browse_for_file(
             title="Import from old launcher (accounts.json)", filter_str=_ROSTER_JSON_FILTER
         )
