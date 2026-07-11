@@ -2936,6 +2936,8 @@ def show_settings_content() -> None:
             label="Py4GW DLL path", value=buffer.py4gw_dll_path, id_suffix="py4gw_dll_path",
             dialog_title="Select Py4GW DLL", filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
         )
+        imgui.separator()
+        imgui.spacing()
         _, buffer.gmod_enabled = imgui.checkbox("Inject gMod", buffer.gmod_enabled)
         buffer.gmod_dll_path = _path_field_with_browse(
             label="gMod DLL path", value=buffer.gmod_dll_path, id_suffix="gmod_dll_path",
@@ -2947,9 +2949,32 @@ def show_settings_content() -> None:
         # set, removing an entry disables it (see dev_notes/gmod_injection_
         # research.md). Static text, not an editable field: mods are picked
         # via the browse dialog below, never typed by hand.
+        style = imgui.get_style()
         remove_index = None
         for i, mod_path in enumerate(buffer.gmod_plugin_paths):
-            imgui.text(mod_path)
+            # Same measure-then-reserve shape _path_field_with_browse uses for
+            # its browse button, so a long path can't push the remove button
+            # off the window's right edge. small_button has no frame padding
+            # of its own (unlike a regular button), so "x"'s own text width
+            # *is* the button's rendered width.
+            remove_w = imgui.calc_text_size("x").x
+            avail_w = imgui.get_content_region_avail().x
+            path_max_w = max(1.0, avail_w - remove_w - style.item_spacing.x)
+
+            display_path = mod_path
+            if imgui.calc_text_size(mod_path).x > path_max_w:
+                # Ellipsis at the start, not the end -- the filename at the
+                # tail of a path is usually the more identifying part.
+                display_path = "..."
+                for start in range(len(mod_path)):
+                    candidate = "..." + mod_path[start:]
+                    if imgui.calc_text_size(candidate).x <= path_max_w:
+                        display_path = candidate
+                        break
+
+            imgui.text(display_path)
+            if imgui.is_item_hovered():
+                imgui.set_tooltip(mod_path)
             imgui.same_line()
             if imgui.small_button(f"x##gmod_mod_{i}"):
                 remove_index = i
