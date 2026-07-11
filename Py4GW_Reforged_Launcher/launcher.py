@@ -2737,6 +2737,30 @@ def show_main_window() -> None:
     # card (avatar, text, badges) is still positioned/sized relative
     # to em and to the card's own edges, so it doesn't scale with it.
     visible_profiles = _visible_profiles()
+
+    if not visible_profiles:
+        # Purely additive: rendered *before* begin_child below, so it consumes
+        # some of the outer layout's vertical space via a plain dummy() and the
+        # child (and everything positioned relative to its own origin inside
+        # it -- the "+" card included) just starts a little lower on screen.
+        # Nothing about the grid child's own origin/add-card math changes.
+        query = STATE.name_filter.strip()
+        if query:
+            empty_message = f'No profiles match "{query}"'
+        elif STATE.current_team_id is None:
+            empty_message = "No profiles yet -- add your first one below."
+        else:
+            empty_message = (
+                "This team has no members yet -- right-click a profile in ALL "
+                "and use Teams to add it here."
+            )
+        empty_avail_w = imgui.get_content_region_avail().x
+        empty_text_size = imgui.calc_text_size(empty_message)
+        empty_pos = imgui.get_cursor_screen_pos()
+        empty_x = empty_pos.x + max(0.0, (empty_avail_w - empty_text_size.x) / 2.0)
+        imgui.get_window_draw_list().add_text((empty_x, empty_pos.y), MUTED_FORE, empty_message)
+        imgui.dummy((0.0, empty_text_size.y + em * 0.6))
+
     # Team tabs are pure roster views -- no "Add profile" card there, only in ALL.
     show_add_card = STATE.current_team_id is None
     item_count = len(visible_profiles) + (1 if show_add_card else 0)
