@@ -2347,6 +2347,45 @@ def show_console_panel() -> None:
     # alone only insets the left -- get_content_region_avail().x still runs to the
     # true right edge -- so the stretching elements below subtract right_pad too.
     right_pad = hello_imgui.em_size() * 0.6
+
+    # Body drawn *before* the header, not after: the card grid reserves this whole
+    # panel's height up front (_console_reserved_height), so its bottom edge -- and
+    # everything drawn after it, including this panel -- shifts up by the body's
+    # height whenever it's expanded. Drawing the header last means it's always the
+    # very last thing placed in the reserved strip, so its position never depends
+    # on whether the body above it is present -- it stays pixel-locked instead of
+    # "growing up" and chasing the mouse on every expand/collapse.
+    if STATE.console_expanded:
+        just_expanded = not _console_was_expanded
+        _console_was_expanded = True
+
+        text = STATE.console_text()
+        grew = len(text) != _console_prev_text_len
+        _console_prev_text_len = len(text)
+
+        # Scrolling up over the console releases the stick (so active logging won't
+        # yank the view back down while you're reading); scrolling down re-engages it.
+        # Decided from last frame's hover, before this frame's auto-scroll fires.
+        wheel = imgui.get_io().mouse_wheel
+        if _console_hovered_last_frame and wheel != 0.0:
+            _console_stick_to_bottom = wheel < 0.0
+        if (grew or just_expanded) and _console_stick_to_bottom:
+            _console_scroll_frames = 3  # keep pinning to bottom until layout catches up
+        if not _console_stick_to_bottom:
+            _console_scroll_frames = 0  # user scrolled up -> cancel any pending pin
+        if _console_scroll_frames > 0:
+            imgui.set_next_window_scroll((-1.0, 1.0e7))  # y huge -> clamps to bottom
+            _console_scroll_frames -= 1
+
+        imgui.input_text_multiline(
+            "##console_output", text,
+            size=(imgui.get_content_region_avail().x - right_pad, hello_imgui.em_size() * _CONSOLE_BODY_EM),
+            flags=int(imgui.InputTextFlags_.read_only.value),
+        )
+        _console_hovered_last_frame = imgui.is_item_hovered()
+    else:
+        _console_was_expanded = False
+
     arrow_dir = imgui.Dir.down if STATE.console_expanded else imgui.Dir.right
     if imgui.arrow_button("##console_toggle", arrow_dir):
         STATE.console_expanded = not STATE.console_expanded
@@ -2361,38 +2400,6 @@ def show_console_panel() -> None:
     imgui.same_line()
     if imgui.button("Clear"):
         STATE.clear_console()
-
-    if not STATE.console_expanded:
-        _console_was_expanded = False
-        return
-
-    just_expanded = not _console_was_expanded
-    _console_was_expanded = True
-
-    text = STATE.console_text()
-    grew = len(text) != _console_prev_text_len
-    _console_prev_text_len = len(text)
-
-    # Scrolling up over the console releases the stick (so active logging won't
-    # yank the view back down while you're reading); scrolling down re-engages it.
-    # Decided from last frame's hover, before this frame's auto-scroll fires.
-    wheel = imgui.get_io().mouse_wheel
-    if _console_hovered_last_frame and wheel != 0.0:
-        _console_stick_to_bottom = wheel < 0.0
-    if (grew or just_expanded) and _console_stick_to_bottom:
-        _console_scroll_frames = 3  # keep pinning to bottom until layout catches up
-    if not _console_stick_to_bottom:
-        _console_scroll_frames = 0  # user scrolled up -> cancel any pending pin
-    if _console_scroll_frames > 0:
-        imgui.set_next_window_scroll((-1.0, 1.0e7))  # y huge -> clamps to bottom
-        _console_scroll_frames -= 1
-
-    imgui.input_text_multiline(
-        "##console_output", text,
-        size=(imgui.get_content_region_avail().x - right_pad, hello_imgui.em_size() * _CONSOLE_BODY_EM),
-        flags=int(imgui.InputTextFlags_.read_only.value),
-    )
-    _console_hovered_last_frame = imgui.is_item_hovered()
 
 
 def show_main_window() -> None:
