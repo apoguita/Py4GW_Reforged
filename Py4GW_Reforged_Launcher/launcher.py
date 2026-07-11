@@ -3029,7 +3029,22 @@ def show_settings_content() -> None:
 
     imgui.same_line()
 
-    imgui.begin_child("settings_content", size=(0, 0))
+    # auto_resize_x/y (not size=(0, 0) alone): without these flags, size=(0, 0)
+    # means "fill whatever space the parent window currently has" -- a circular
+    # definition that can never report a *larger* natural content size back up
+    # to the parent, since the child always just matches whatever the parent
+    # already was. That silently broke the parent Settings window's own
+    # AlwaysAutoResize (confirmed live: it sat frozen at its pre-measurement
+    # baseline size for the entire autosize window, while App Settings' own
+    # AlwaysAutoResize -- which has no child window in its content at all --
+    # visibly grew to fit on the very next frame). With these flags, size 0 on
+    # each axis instead means "measure this child's own real content and use
+    # that", which is what actually lets the outer window's auto-fit see the
+    # true content size and grow to match.
+    imgui.begin_child(
+        "settings_content", size=(0, 0),
+        child_flags=int(imgui.ChildFlags_.auto_resize_y.value) | int(imgui.ChildFlags_.auto_resize_x.value),
+    )
     if buffer is None:
         imgui.text("No profile selected -- click a card, or click \"Add profile\" to create one.")
         imgui.end_child()
@@ -3277,8 +3292,14 @@ def show_settings_window() -> None:
     # internal default size before AlwaysAutoResize kicks in. Also used as
     # the size estimate for _settings_window_default_pos below, since the
     # real auto-fitted size isn't known until after this window's first
-    # render.
-    baseline_w, baseline_h = em * 32.0, em * 21.3
+    # render. Real, measured sizing: matches the General tab's actual fitted
+    # size (628x392 px at em=15, the widest/tallest of the three tabs, name +
+    # executable path + duplicate-path warning + launch arguments + full
+    # auto-login block) -- confirmed live, not guessed, same rigor as App
+    # Settings' own baseline (see show_app_settings_window). General is also
+    # this window's default _active_tab, so this baseline eliminates the
+    # pre-measurement flash for the common case too.
+    baseline_w, baseline_h = em * 42.0, em * 26.2
     imgui.set_next_window_size((baseline_w, baseline_h), cond=imgui.Cond_.appearing.value)
     imgui.set_next_window_size_constraints((em * 20.0, em * 12.0), (1.0e9, 1.0e9))
     # cond=appearing (not first_use_ever): recomputed fresh from the main
