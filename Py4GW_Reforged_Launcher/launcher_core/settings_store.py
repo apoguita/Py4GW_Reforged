@@ -167,3 +167,16 @@ def load_custom_card_order_enabled(path: Path | str | None = None) -> bool:
 def save_custom_card_order_enabled(custom_card_order_enabled: bool, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("custom_card_order_enabled", custom_card_order_enabled, resolved)
+
+
+def load_minimize_to_tray_enabled(path: Path | str | None = None) -> bool:
+    """Default False -- opt-in, matches current behavior (plain taskbar minimize)
+    for existing installs and anyone who hasn't turned this on in App Settings."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("minimize_to_tray_enabled", False))
+
+
+def save_minimize_to_tray_enabled(minimize_to_tray_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("minimize_to_tray_enabled", minimize_to_tray_enabled, resolved)

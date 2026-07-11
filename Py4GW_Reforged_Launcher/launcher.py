@@ -160,6 +160,7 @@ try:
         load_custom_card_order_enabled,
         load_dark_theme_enabled,
         load_gmod_injection_enabled,
+        load_minimize_to_tray_enabled,
         load_mod_repo_path,
         load_mod_repo_url,
         load_multiclient_enabled,
@@ -168,12 +169,17 @@ try:
         save_custom_card_order_enabled,
         save_dark_theme_enabled,
         save_gmod_injection_enabled,
+        save_minimize_to_tray_enabled,
         save_mod_repo_path,
         save_multiclient_enabled,
         save_py4gw_injection_enabled,
     )
     from launcher_core.team import Team
     from launcher_core.window_control import (
+        IMAGE_ICON,
+        LR_LOADFROMFILE,
+        SM_CXSMICON,
+        SM_CYSMICON,
         find_running_pid_for_exe_path,
         find_visible_window_for_pid,
         foreground_window,
@@ -202,6 +208,10 @@ except Exception as e:
 # tracking is PID-based (see window_control.find_visible_window_for_pid) and never
 # depends on this string.
 WINDOW_TITLE_FORMAT = "Guild Wars Reforged — {profile_name}"
+
+# This app's own main window title -- set on runner_params.app_window_params.window_title
+# in main(), referenced from there so the two can't drift apart.
+MAIN_WINDOW_TITLE = "Py4GW_Reforged_Launcher"
 
 ICON_PATH = Path(__file__).resolve().parent / "assets" / "python_icon.ico"
 
@@ -271,6 +281,92 @@ _min_window_width_original_wndproc = None
 _min_window_width_wndproc_instance: Optional[Callable] = None  # kept alive -- ctypes holds no reference itself
 _min_window_width_value = 0.0
 
+# "Minimize to tray" -- see _min_window_width_wndproc below for both halves of
+# this (detecting the minimize itself via WM_SYSCOMMAND/SC_MINIMIZE, and the
+# tray icon's own click/menu handling). _TRAY_CALLBACK_MSG is the WM_APP+n
+# value registered as the tray icon's uCallbackMessage; the two menu-command
+# IDs are arbitrary but need to be distinct from each other and from any real
+# system command ID (well clear of both at 1001/1002 -- this app has no
+# native HMENU-based controls of its own that could collide with them).
+_TRAY_ICON_ID = 1
+_TRAY_CALLBACK_MSG = win32con.WM_APP + 1
+_TRAY_MENU_SHOW_ID = 1001
+_TRAY_MENU_EXIT_ID = 1002
+_tray_icon_shown = False
+
+
+def _add_tray_icon(hwnd: int) -> None:
+    cx_small, cy_small = win32api.GetSystemMetrics(SM_CXSMICON), win32api.GetSystemMetrics(SM_CYSMICON)
+    hicon = ctypes.windll.user32.LoadImageW(None, str(ICON_PATH), IMAGE_ICON, cx_small, cy_small, LR_LOADFROMFILE)
+    flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
+    nid = (hwnd, _TRAY_ICON_ID, flags, _TRAY_CALLBACK_MSG, hicon, MAIN_WINDOW_TITLE)
+    win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+
+
+def _remove_tray_icon(hwnd: int) -> None:
+    win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, (hwnd, _TRAY_ICON_ID))
+
+
+def _restore_from_tray(hwnd: int) -> None:
+    """Idempotent on purpose: a real double-click on the tray icon delivers its
+    legacy NOTIFYICONDATA callback message twice in a row -- once for the
+    initial WM_LBUTTONDOWN, once more for the WM_LBUTTONDBLCLK that follows it
+    (both handled the same way, see _min_window_width_wndproc) -- so this can
+    genuinely run twice for one physical double-click. Confirmed live: without
+    this guard, the second call's NIM_DELETE fails (Shell_NotifyIcon raising
+    "Unspecified error") trying to remove an icon the first call already
+    removed -- harmless in practice (ctypes callback exceptions are printed
+    and swallowed, not fatal), but a real bug worth guarding properly rather
+    than leaving a spurious traceback on every double-click restore.
+    """
+    global _tray_icon_shown
+    if not _tray_icon_shown:
+        return
+    _remove_tray_icon(hwnd)
+    ctypes.windll.user32.ShowWindow(hwnd, win32con.SW_RESTORE)
+    ctypes.windll.user32.SetForegroundWindow(hwnd)
+    _tray_icon_shown = False
+
+
+def _show_tray_context_menu(hwnd: int) -> None:
+    menu = win32gui.CreatePopupMenu()
+    try:
+        win32gui.AppendMenu(menu, win32con.MF_STRING, _TRAY_MENU_SHOW_ID, "Show")
+        win32gui.AppendMenu(menu, win32con.MF_STRING, _TRAY_MENU_EXIT_ID, "Exit")
+        x, y = win32gui.GetCursorPos()
+        # SetForegroundWindow before TrackPopupMenu, plus the follow-up
+        # PostMessage(WM_NULL) after it returns, is the documented Win32
+        # workaround (Microsoft KB Q135788) for a tray icon's popup menu not
+        # reliably dismissing on an outside click otherwise.
+        win32gui.SetForegroundWindow(hwnd)
+        win32gui.TrackPopupMenu(menu, win32con.TPM_LEFTALIGN, x, y, 0, hwnd, None)
+        win32gui.PostMessage(hwnd, win32con.WM_NULL, 0, 0)
+    finally:
+        win32gui.DestroyMenu(menu)
+
+
+def _handle_tray_menu_command(hwnd: int, wparam: int) -> None:
+    command_id = wparam & 0xFFFF
+    if command_id == _TRAY_MENU_SHOW_ID:
+        _restore_from_tray(hwnd)
+    elif command_id == _TRAY_MENU_EXIT_ID:
+        hello_imgui.get_runner_params().app_shall_exit = True
+
+
+def _hide_to_tray(hwnd: int) -> None:
+    global _tray_icon_shown
+    ctypes.windll.user32.ShowWindow(hwnd, win32con.SW_HIDE)
+    _add_tray_icon(hwnd)
+    _tray_icon_shown = True
+
+
+_WM_SYSCOMMAND = 0x0112
+_SC_MINIMIZE = 0xF020
+# The low 4 bits of wParam in a WM_SYSCOMMAND can carry extra (mouse-vs-
+# keyboard-invoked) info -- mask them off before comparing against SC_MINIMIZE,
+# per the standard Win32 WM_SYSCOMMAND handling idiom.
+_SC_COMMAND_MASK = 0xFFF0
+
 
 def _min_window_width_wndproc(hwnd, msg, wparam, lparam):
     """Replacement window procedure: run the real (GLFW-installed) one first so
@@ -278,12 +374,45 @@ def _min_window_width_wndproc(hwnd, msg, wparam, lparam):
     raise ptMinTrackSize.x to our floor if the default was smaller. Only ever
     raises it (never lowers), and only touches .x -- height is deliberately left
     alone, per the "only width needs a floor" requirement.
+
+    Also handles the "Minimize to tray" feature entirely -- both detecting the
+    minimize itself (WM_SYSCOMMAND/SC_MINIMIZE, below) and the tray icon's own
+    click/menu interaction -- extending this same subclass rather than
+    installing a second one, so only one replacement window procedure is ever
+    active at a time.
+
+    WM_SYSCOMMAND/SC_MINIMIZE is intercepted *before* forwarding to the real
+    wndproc, not detected afterwards by polling IsIconic() once the window is
+    already minimized: confirmed live that the latter doesn't work reliably --
+    once the window actually reaches the iconic state, hello_imgui's own
+    per-frame multi-viewport platform-window sync (which has no idea a plain
+    Win32 call just hid its viewport out from under it) keeps re-asserting
+    the window visible, sometimes for seconds, since it's a real fight
+    happening on every single frame, not a one-off transient race a few
+    retries would win. Swallowing SC_MINIMIZE here instead (never letting the
+    default proc -- or GLFW's own wndproc underneath it -- see it at all)
+    hides straight to the tray without the window ever actually becoming
+    iconic in the first place, so there's nothing left for that per-frame
+    sync to fight over.
     """
+    if msg == _WM_SYSCOMMAND and (wparam & _SC_COMMAND_MASK) == _SC_MINIMIZE and STATE.minimize_to_tray_enabled:
+        _hide_to_tray(hwnd)
+        return 0
+
     result = ctypes.windll.user32.CallWindowProcW(_min_window_width_original_wndproc, hwnd, msg, wparam, lparam)
     if msg == _WM_GETMINMAXINFO:
         info = ctypes.cast(lparam, ctypes.POINTER(_MINMAXINFO)).contents
         if info.pt_min_track_size.x < int(_min_window_width_value):
             info.pt_min_track_size.x = int(_min_window_width_value)
+    elif msg == _TRAY_CALLBACK_MSG:
+        # Legacy (version-0, no NIM_SETVERSION) NOTIFYICONDATA callback shape:
+        # lParam carries the actual mouse message that hit the tray icon.
+        if lparam in (win32con.WM_LBUTTONDOWN, win32con.WM_LBUTTONDBLCLK):
+            _restore_from_tray(hwnd)
+        elif lparam == win32con.WM_RBUTTONUP:
+            _show_tray_context_menu(hwnd)
+    elif msg == win32con.WM_COMMAND:
+        _handle_tray_menu_command(hwnd, wparam)
     return result
 
 
@@ -1215,6 +1344,7 @@ class AppState:
         self.py4gw_injection_enabled: bool = load_py4gw_injection_enabled()
         self.gmod_injection_enabled: bool = load_gmod_injection_enabled()
         self.custom_card_order_enabled: bool = load_custom_card_order_enabled()
+        self.minimize_to_tray_enabled: bool = load_minimize_to_tray_enabled()
         self.name_filter: str = ""
         # Ephemeral (never persisted): which ALL-view cards are batch-checked for
         # "Add N to Team". Cleared on leaving ALL -- see jump_to_view.
@@ -1710,6 +1840,10 @@ class AppState:
     def set_custom_card_order_enabled(self, enabled: bool) -> None:
         self.custom_card_order_enabled = enabled
         save_custom_card_order_enabled(enabled)
+
+    def set_minimize_to_tray_enabled(self, enabled: bool) -> None:
+        self.minimize_to_tray_enabled = enabled
+        save_minimize_to_tray_enabled(enabled)
 
     def foreground_profile(self, profile_id: str) -> None:
         pid = self.running_pids.get(profile_id)
@@ -4182,6 +4316,15 @@ def show_app_settings_window() -> None:
             set_theme(dark=_dark_theme_enabled)
             save_dark_theme_enabled(_dark_theme_enabled)
 
+        changed_tray, new_tray_enabled = imgui.checkbox("Minimize to tray", STATE.minimize_to_tray_enabled)
+        if changed_tray:
+            STATE.set_minimize_to_tray_enabled(new_tray_enabled)
+        imgui.text_colored(
+            _PREREQ_MUTED_COLOR,
+            "Minimizing the window hides it from the taskbar and shows a tray icon\n"
+            "instead -- click it (or right-click for Show/Exit) to bring it back.",
+        )
+
         imgui.separator()
         imgui.spacing()
         if imgui.button("Reload profiles and teams from disk"):
@@ -4210,7 +4353,7 @@ def gui() -> None:
 
 def main() -> None:
     runner_params = hello_imgui.RunnerParams()
-    runner_params.app_window_params.window_title = "Py4GW_Reforged_Launcher"
+    runner_params.app_window_params.window_title = MAIN_WINDOW_TITLE
     # Initial size only matters for the true first-ever run -- restore_previous_geometry
     # (below) takes over after that, so this never affects an existing user, only the
     # first impression. Per hello_imgui's own docs this size is "handled as if
