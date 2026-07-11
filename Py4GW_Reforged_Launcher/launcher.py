@@ -1272,6 +1272,16 @@ class AppState:
         if self.current_team_id == team_id:
             self.current_team_id = None
 
+    def delete_profile(self, profile_id: str) -> None:
+        """Remove a profile and save once. No team cleanup needed -- team_ids lives
+        on the profile itself, so deleting the profile removes its memberships with
+        it (unlike delete_team, which has to scrub the other side of that relation
+        off every profile)."""
+        self.profiles = [p for p in self.profiles if p.id != profile_id]
+        if self.selected_id == profile_id:
+            self.selected_id = None
+        save_profiles(self.profiles)
+
     def add_profiles_to_team(self, profile_ids: set[str], team_id: str) -> None:
         """Append team_id to each listed profile's team_ids (skipping any already
         in it), saving once at the end if anything changed -- the same single-save
@@ -2357,6 +2367,16 @@ def show_main_window() -> None:
                             STATE.toggle_team_membership(profile, team.id)
                 imgui.end_menu()
 
+            # Disabled (not hidden) while a session is live -- don't let a
+            # running or launching profile be deleted out from under itself.
+            delete_disabled = STATE.is_running(profile.id) or STATE.is_launching(profile.id)
+            if delete_disabled:
+                imgui.begin_disabled()
+            if imgui.selectable("Delete", False)[0]:
+                _request_delete_profile(profile)
+            if delete_disabled:
+                imgui.end_disabled()
+
             imgui.end_popup()
 
         draw_profile_card(
@@ -2389,6 +2409,7 @@ def show_main_window() -> None:
     imgui.end_child()
 
     _show_prereq_launch_confirm_popup()
+    _show_delete_profile_confirm_popup()
 
 
 # -----------------------------------------------------------------------------
@@ -2921,6 +2942,57 @@ def _show_prereq_launch_confirm_popup() -> None:
     except Exception:
         _log_prereq_ui_error("prereq launch confirm popup")
         _prereq_launch_pending = None
+    finally:
+        imgui.end_popup()
+
+
+_DELETE_PROFILE_CONFIRM_POPUP_ID = "Delete profile?##delete_profile_confirm"
+# The profile awaiting delete-confirmation, and a deferred-open flag. The actual
+# open_popup is fired from _show_delete_profile_confirm_popup (top-level scope),
+# not from the card context menu that requests it: that menu renders inside the
+# card grid's own child window, and OpenPopup must share BeginPopupModal's
+# ID-stack depth or the modal silently never opens -- the same scope trap the
+# prereq launch gate above documents.
+_profile_pending_delete: "Optional[GameProfile]" = None
+_delete_profile_popup_should_open = False
+
+
+def _request_delete_profile(profile: GameProfile) -> None:
+    """Arm the delete-confirm modal for `profile` (called from the card's
+    right-click menu). Deferred-open, see _profile_pending_delete's note."""
+    global _profile_pending_delete, _delete_profile_popup_should_open
+    _profile_pending_delete = profile
+    _delete_profile_popup_should_open = True
+
+
+def _show_delete_profile_confirm_popup() -> None:
+    global _profile_pending_delete, _delete_profile_popup_should_open
+    if _delete_profile_popup_should_open:
+        imgui.open_popup(_DELETE_PROFILE_CONFIRM_POPUP_ID)
+        _delete_profile_popup_should_open = False
+
+    if not imgui.begin_popup_modal(
+        _DELETE_PROFILE_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]:
+        return
+    try:
+        profile = _profile_pending_delete
+        if profile is not None:
+            imgui.text(f"Delete {profile.name or '(unnamed profile)'}?")
+            imgui.text_colored(
+                _PREREQ_MUTED_COLOR,
+                "This removes its saved login, mod configuration, and team membership.\n"
+                "This can't be undone.",
+            )
+            imgui.spacing()
+            if imgui.button("Delete"):
+                STATE.delete_profile(profile.id)
+                _profile_pending_delete = None
+                imgui.close_current_popup()
+            imgui.same_line()
+            if imgui.button("Cancel"):
+                _profile_pending_delete = None
+                imgui.close_current_popup()
     finally:
         imgui.end_popup()
 
