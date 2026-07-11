@@ -2738,29 +2738,6 @@ def show_main_window() -> None:
     # to em and to the card's own edges, so it doesn't scale with it.
     visible_profiles = _visible_profiles()
 
-    if not visible_profiles:
-        # Purely additive: rendered *before* begin_child below, so it consumes
-        # some of the outer layout's vertical space via a plain dummy() and the
-        # child (and everything positioned relative to its own origin inside
-        # it -- the "+" card included) just starts a little lower on screen.
-        # Nothing about the grid child's own origin/add-card math changes.
-        query = STATE.name_filter.strip()
-        if query:
-            empty_message = f'No profiles match "{query}"'
-        elif STATE.current_team_id is None:
-            empty_message = "No profiles yet -- add your first one below."
-        else:
-            empty_message = (
-                "This team has no members yet -- right-click a profile in ALL "
-                "and use Teams to add it here."
-            )
-        empty_avail_w = imgui.get_content_region_avail().x
-        empty_text_size = imgui.calc_text_size(empty_message)
-        empty_pos = imgui.get_cursor_screen_pos()
-        empty_x = empty_pos.x + max(0.0, (empty_avail_w - empty_text_size.x) / 2.0)
-        imgui.get_window_draw_list().add_text((empty_x, empty_pos.y), MUTED_FORE, empty_message)
-        imgui.dummy((0.0, empty_text_size.y + em * 0.6))
-
     # Team tabs are pure roster views -- no "Add profile" card there, only in ALL.
     show_add_card = STATE.current_team_id is None
     item_count = len(visible_profiles) + (1 if show_add_card else 0)
@@ -2786,6 +2763,38 @@ def show_main_window() -> None:
     # figure by exactly 2x window_padding.x.
     avail = imgui.get_content_region_avail()
     avail_w = avail.x
+
+    if not visible_profiles:
+        query = STATE.name_filter.strip()
+        if query:
+            empty_message = f'No profiles match "{query}"'
+        elif STATE.current_team_id is None:
+            empty_message = "No profiles yet -- add your first one below."
+        else:
+            empty_message = (
+                "This team has no members yet -- right-click a profile in ALL "
+                "and use Teams to add it here."
+            )
+        empty_text_size = imgui.calc_text_size(empty_message)
+        empty_x = origin.x + max(0.0, (avail_w - empty_text_size.x) / 2.0)
+        if show_add_card:
+            # Positioned just above where the "+" card renders (row 0, col 0 --
+            # its add_index is always 0 whenever visible_profiles is empty), so
+            # the two read as one paired unit rather than floating apart.
+            # Shifts origin itself down by the space this consumes, the same
+            # way a real first card would have, so the "+" card's own position
+            # math below doesn't need any special-casing to know about this.
+            draw_list.add_text((empty_x, origin.y), MUTED_FORE, empty_message)
+            # ImVec2, not a plain tuple: origin.x/.y attribute access below
+            # (per-card loop and the "+" card's own position math) needs it.
+            origin = imgui.ImVec2(origin.x, origin.y + empty_text_size.y + em * 0.6)
+        else:
+            # Nothing else renders in this box (no add card, no members) --
+            # center fully in the child's whole available space, not just
+            # horizontally.
+            empty_y = origin.y + max(0.0, (avail.y - empty_text_size.y) / 2.0)
+            draw_list.add_text((empty_x, empty_y), MUTED_FORE, empty_message)
+
     cols, card_w = _grid_columns_and_card_width(avail_w, min_card_w, card_gap)
 
     # Pre-check whether a vertical scrollbar will actually be needed, using the
