@@ -5,4 +5,4 @@ Referenced by App Settings' version display and update-check
 release's tag exactly.
 """
 
-__version__ = "0.1.0-alpha"
+__version__ = "0.2.0-alpha"

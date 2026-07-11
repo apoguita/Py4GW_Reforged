@@ -38,18 +38,27 @@ an injected GW1 session.
 - **Multibox team launch** — group accounts into named teams, launch a
   whole team with a paced, staggered login sequence (anti-bot-safe timing,
   not a naive loop).
+- **gMod injection** — per-profile mod lists (add/remove `.tpf` files in
+  the Mods tab), independent per account even when several accounts share
+  one GW install. Opt-in alongside Py4GW injection, not a replacement.
+- **Custom card order** — drag and drop account cards to reorder them, or
+  leave them alphabetical (the default, one click to restore in App
+  Settings).
+- **Minimize to tray** — opt-in; minimizing hides the taskbar entry and
+  parks an icon in the system tray instead.
 - **Legacy `accounts.json` import** — bring accounts in directly from the
   old Python launcher's data, including team structure.
 - **Roster backup/restore** — export and reimport your full profile/team
   setup, for moving between machines.
 - **Live console panel** — a docked, collapsible view of launch/injection
   log output as it happens.
+- **Update check** — App Settings shows the running version and can check
+  whether a newer release is out, linking straight to it.
 - **Dark/light theme**, DPI-aware sizing, and a card-grid UI (not a dense
   always-expanded account form).
 
 ## Not yet built
 
-- gMod injection and mod-selection UI
 - GW1 client auto-update/patching
 - Name-obfuscation config delivery to the injected DLL (the hook point
   exists; the feature behind it doesn't yet)
