@@ -149,7 +149,7 @@ try:
     import win32gui
     from win32com.shell import shell as win32_shell
 
-    from launcher_core import bulk_launch, config_seeding, mod_repo, prereqs
+    from launcher_core import bulk_launch, config_seeding, mod_repo, prereqs, roster_transfer
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
@@ -1294,6 +1294,54 @@ class AppState:
             profile.team_ids.append(team_id)
         save_profiles(self.profiles)
 
+    def export_roster(self, path) -> None:
+        roster_transfer.export_roster(self.profiles, self.teams, path)
+
+    def import_roster(self, path) -> "roster_transfer.RosterImportResult":
+        """Load a roster bundle, appending only profiles/teams whose id isn't
+        already present locally (de-dupe by id, not a data merge -- re-importing the
+        same file, or importing onto a machine that already has some of these,
+        mustn't create id collisions or duplicates). Saves once each if anything was
+        added, and reports which newly-added profiles reference paths missing here.
+        """
+        imported_profiles, imported_teams = roster_transfer.import_roster(path)
+
+        existing_profile_ids = {p.id for p in self.profiles}
+        existing_team_ids = {t.id for t in self.teams}
+
+        added_profiles = []
+        skipped_profiles = 0
+        for profile in imported_profiles:
+            if profile.id in existing_profile_ids:
+                skipped_profiles += 1
+            else:
+                existing_profile_ids.add(profile.id)  # also guards dup ids within the bundle
+                self.profiles.append(profile)
+                added_profiles.append(profile)
+
+        added_teams = 0
+        skipped_teams = 0
+        for team in imported_teams:
+            if team.id in existing_team_ids:
+                skipped_teams += 1
+            else:
+                existing_team_ids.add(team.id)
+                self.teams.append(team)
+                added_teams += 1
+
+        if added_profiles:
+            save_profiles(self.profiles)
+        if added_teams:
+            save_teams(self.teams)
+
+        return roster_transfer.RosterImportResult(
+            added_profiles=len(added_profiles),
+            added_teams=added_teams,
+            skipped_profiles=skipped_profiles,
+            skipped_teams=skipped_teams,
+            path_warnings=roster_transfer.find_missing_paths(added_profiles),
+        )
+
     def _rehydrate_running_instances(self) -> None:
         """Scan for already-running game processes matching each profile's exe path,
         once at startup before the first render. Covers processes this launcher
@@ -2383,6 +2431,26 @@ def _browse_for_file(*, title: str, filter_str: str, initial_path: str = "") -> 
     return filename or None
 
 
+def _browse_for_save_file(*, title: str, filter_str: str, default_filename: str = "") -> Optional[str]:
+    """Blocking native Win32 Save-As dialog, the save-side mirror of
+    _browse_for_file: same pywin32-already-a-dependency reasoning, same
+    NUL-separated filter format, but GetSaveFileNameW with OFN_OVERWRITEPROMPT
+    (confirm before clobbering an existing file) instead of GetOpenFileNameW's
+    must-exist flags. `default_filename` pre-fills the name field.
+    """
+    try:
+        filename, _customfilter, _flags = win32gui.GetSaveFileNameW(
+            File=default_filename,
+            Filter=filter_str,
+            Title=title,
+            Flags=win32con.OFN_OVERWRITEPROMPT,
+        )
+    except pywintypes.error:
+        return None  # user cancelled
+
+    return filename or None
+
+
 # BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE -- this pywin32 build's shellcon module
 # doesn't expose either name (confirmed directly: AttributeError on both), so these
 # are the documented Win32 SHBrowseForFolder flag values themselves rather than
@@ -3095,6 +3163,102 @@ def _show_mod_repo_section() -> None:
     _show_mod_repo_update_confirm_popup()
 
 
+# -----------------------------------------------------------------------------
+# Export / Import Accounts section (App Settings window) -- app-native roster
+# interchange (profiles + teams), passwords in plaintext so they survive the move
+# to another machine/Windows user where the DPAPI blob couldn't be decrypted. The
+# plaintext is gated behind an explicit warning-before-export confirm.
+# -----------------------------------------------------------------------------
+
+_EXPORT_CONFIRM_POPUP_ID = "Export accounts?##roster_export_confirm"
+_IMPORT_RESULT_POPUP_ID = "Import complete##roster_import_result"
+_ROSTER_DEFAULT_FILENAME = "py4gw_reforged_roster.json"
+_ROSTER_JSON_FILTER = "JSON files (*.json)\0*.json\0All files (*.*)\0*.*\0"
+_ROSTER_WARNING_COLOR = (0.86, 0.35, 0.35, 1.0)
+
+# Deferred so the blocking Save-As dialog runs *after* the confirm popup's
+# begin/end block has fully closed, never mid-popup.
+_export_browse_pending = False
+_roster_status_message = ""
+_last_import_result: "Optional[roster_transfer.RosterImportResult]" = None
+
+
+def _show_export_confirm_popup() -> None:
+    global _export_browse_pending
+    if imgui.begin_popup_modal(
+        _EXPORT_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]:
+        try:
+            imgui.text("This file will contain your saved account passwords in plain text.")
+            imgui.text_colored(
+                _PREREQ_MUTED_COLOR,
+                "Store it securely and delete it once you're done importing it elsewhere.",
+            )
+            imgui.spacing()
+            if imgui.button("Choose file and export..."):
+                _export_browse_pending = True
+                imgui.close_current_popup()
+            imgui.same_line()
+            if imgui.button("Cancel"):
+                imgui.close_current_popup()
+        finally:
+            imgui.end_popup()
+
+
+def _show_import_result_popup() -> None:
+    if imgui.begin_popup_modal(
+        _IMPORT_RESULT_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]:
+        try:
+            result = _last_import_result
+            if result is not None:
+                imgui.text(f"Profiles: {result.added_profiles} added, {result.skipped_profiles} already present.")
+                imgui.text(f"Teams: {result.added_teams} added, {result.skipped_teams} already present.")
+                if result.path_warnings:
+                    imgui.spacing()
+                    imgui.text_colored(_ROSTER_WARNING_COLOR, "Some imported paths don't exist on this machine:")
+                    for warning in result.path_warnings:
+                        imgui.text_colored(_PREREQ_MUTED_COLOR, warning)
+                    imgui.spacing()
+                    imgui.text_colored(_PREREQ_MUTED_COLOR, "Fix these in each profile's Settings on this machine.")
+            imgui.spacing()
+            if imgui.button("Close"):
+                imgui.close_current_popup()
+        finally:
+            imgui.end_popup()
+
+
+def _show_export_import_section() -> None:
+    global _export_browse_pending, _roster_status_message, _last_import_result
+    imgui.text("Export / Import Accounts:")
+    if imgui.button("Export accounts..."):
+        imgui.open_popup(_EXPORT_CONFIRM_POPUP_ID)
+    imgui.same_line()
+    if imgui.button("Import accounts..."):
+        chosen = _browse_for_file(title="Import accounts", filter_str=_ROSTER_JSON_FILTER)
+        if chosen:
+            _last_import_result = STATE.import_roster(chosen)
+            _roster_status_message = ""
+            imgui.open_popup(_IMPORT_RESULT_POPUP_ID)
+
+    if _roster_status_message:
+        imgui.text_colored(_PREREQ_MUTED_COLOR, _roster_status_message)
+
+    _show_export_confirm_popup()
+    # Run the blocking Save-As dialog outside the confirm popup's begin/end block.
+    if _export_browse_pending:
+        _export_browse_pending = False
+        chosen = _browse_for_save_file(
+            title="Export accounts", filter_str=_ROSTER_JSON_FILTER,
+            default_filename=_ROSTER_DEFAULT_FILENAME,
+        )
+        if chosen:
+            STATE.export_roster(chosen)
+            _roster_status_message = f"Exported to {chosen}"
+
+    _show_import_result_popup()
+
+
 def show_app_settings_window() -> None:
     global _dark_theme_enabled
 
@@ -3141,6 +3305,11 @@ def show_app_settings_window() -> None:
         imgui.spacing()
 
         _show_mod_repo_section()
+
+        imgui.separator()
+        imgui.spacing()
+
+        _show_export_import_section()
 
         imgui.separator()
         imgui.spacing()
