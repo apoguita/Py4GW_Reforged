@@ -1,0 +1,23 @@
+# Install with:  pip install --only-binary=:all: -r requirements.txt
+# Plain `pip install` falls back to source builds for some of these on this
+# Python/platform combo (32-bit CPython 3.13 on Windows) and fails without a
+# C/C++ compiler; --only-binary=:all: forces wheel-only installs.
+# imgui-bundle 1.6.2 has no win32 wheel on PyPI (its newest release drops
+# 32-bit Windows), so install its prebuilt wheel from the test-builds branch
+# (Py4GW_Reforged_Launcher/wheels/) rather than from PyPI, e.g.:
+#   pip install --only-binary=:all: imgui_bundle-1.6.2-cp313-cp313-win32.whl
+annotated-types==0.7.0
+dulwich==1.2.10
+glfw==2.10.0
+imgui-bundle==1.6.2
+munch==4.0.0
+numpy==2.5.1
+pillow==12.3.0
+psutil==7.1.1
+pydantic==2.13.4
+pydantic_core==2.46.4
+PyOpenGL==3.1.10
+pywin32==312
+typing-inspection==0.4.2
+typing_extensions==4.16.0
+urllib3==2.7.0
