@@ -2625,6 +2625,33 @@ _settings_autosize_frames_remaining = 0
 _app_settings_autosize_frames_remaining = 0
 
 
+def _is_protected_install_path(exe_path: str) -> bool:
+    """True if exe_path lives under a protected Windows install root (Program Files
+    or Program Files (x86)) -- ported from GWxLauncher's own check. Detect-and-warn
+    only: this app never requests elevation, matching its existing philosophy. Uses
+    the %ProgramFiles% / %ProgramFiles(x86)% env vars (case-insensitive path
+    compare), falling back to the literal defaults only if those are somehow unset.
+    """
+    if not exe_path:
+        return False
+    normalized = os.path.normcase(os.path.abspath(exe_path))
+    roots = (
+        os.environ.get("ProgramFiles") or r"C:\Program Files",
+        os.environ.get("ProgramFiles(x86)") or r"C:\Program Files (x86)",
+        # This launcher is a 32-bit process, so under WOW64 %ProgramFiles% resolves
+        # to the (x86) folder, not the real 64-bit "C:\Program Files". %ProgramW6432%
+        # is how a 32-bit process sees that 64-bit folder -- without it a Gw.exe
+        # installed there wouldn't be flagged. Falls back to the literal if unset
+        # (e.g. a genuine 32-bit OS, where there's no separate 64-bit folder anyway).
+        os.environ.get("ProgramW6432") or r"C:\Program Files",
+    )
+    for root in roots:
+        root_norm = os.path.normcase(os.path.abspath(root))
+        if normalized == root_norm or normalized.startswith(root_norm + os.sep):
+            return True
+    return False
+
+
 def show_settings_content() -> None:
     global _active_tab
 
@@ -2680,6 +2707,15 @@ def show_settings_content() -> None:
                     (0.9, 0.75, 0.3, 1.0),
                     f"Another profile ('{duplicate.name or '(unnamed profile)'}') already uses this executable path.",
                 )
+        # Independent of the duplicate-path check above -- a path can trigger
+        # neither, either, or both.
+        if _is_protected_install_path(buffer.executable_path):
+            imgui.text_colored(
+                (0.9, 0.75, 0.3, 1.0),
+                "This looks like a protected Windows folder. Py4GW injection may fail\n"
+                "or behave unpredictably here -- consider moving your Guild Wars install\n"
+                "to a regular folder instead (e.g. C:\\Games\\Guild Wars\\).",
+            )
         imgui.separator()
         imgui.spacing()
         imgui.text("Auto-Login")
