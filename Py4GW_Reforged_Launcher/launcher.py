@@ -2667,6 +2667,18 @@ def show_main_window() -> None:
     if _dragging_profile_id is None and _drag_candidate_id is not None and imgui.is_mouse_dragging(0):
         _dragging_profile_id = _drag_candidate_id
 
+    # Captured during the loop below when it reaches the dragged profile (if
+    # it's in this filtered view at all -- it may not be, e.g. dragging in a
+    # team tab that doesn't contain it isn't possible since you can only grab
+    # a card that's actually visible, but a mid-drag team switch is), so the
+    # cursor-following ghost drawn after the loop can reuse its real
+    # running/launching/status state instead of re-deriving it.
+    dragged_profile: Optional[GameProfile] = None
+    dragged_running = False
+    dragged_launching = False
+    dragged_status_text = ""
+    dragged_is_error = False
+
     for i, profile in enumerate(visible_profiles):
         col = i % cols
         row = i // cols
@@ -2697,6 +2709,13 @@ def show_main_window() -> None:
         session = STATE.sessions.get(profile.id)
         status_text = session.status_text if session else ""
         is_error = bool(session and session.is_done and session.result and not session.result.success)
+
+        if profile.id == _dragging_profile_id:
+            dragged_profile = profile
+            dragged_running = running
+            dragged_launching = launching
+            dragged_status_text = status_text
+            dragged_is_error = is_error
 
         if hovered and imgui.is_mouse_clicked(0):
             if running:
@@ -2834,6 +2853,30 @@ def show_main_window() -> None:
         if add_hovered and imgui.is_mouse_clicked(0):
             STATE.begin_new_profile()
         draw_add_card(draw_list, add_origin, card_w=card_w, card_h=card_h, hovered=add_hovered)
+
+    # Cursor-following ghost, drawn last (on top of every real card and the
+    # "+" card above) -- the existing dimmed placeholder in the original grid
+    # slot and the accent drop-boundary bar both stay exactly as they were;
+    # this is a third, complementary piece of feedback, not a replacement for
+    # either (the placeholder shows where it came from, the bar shows where
+    # it'll land, this shows what's actually being moved). Guarded on
+    # _dragging_profile_id (not just dragged_profile) so it stops the instant
+    # a release finalizes or cancels the drag above, rather than rendering one
+    # extra frame over the just-settled result.
+    if _dragging_profile_id is not None and dragged_profile is not None:
+        mouse_pos = imgui.get_mouse_pos()
+        # Centered under the cursor, not pinned to a corner -- roughly where a
+        # real drag grabs a card, per standard drag-and-drop conventions
+        # (Explorer, Trello, browser tabs).
+        ghost_origin = (mouse_pos.x - card_w / 2.0, mouse_pos.y - card_h / 2.0)
+        draw_profile_card(
+            draw_list, ghost_origin, dragged_profile, card_w=card_w, card_h=card_h,
+            hovered=False, selected=(STATE.selected_id == dragged_profile.id),
+            running=dragged_running, launching=dragged_launching or dragged_is_error,
+            status_text=dragged_status_text, is_error=dragged_is_error,
+            show_batch_checkbox=False, batch_checked=False, checkbox_hovered=False,
+            opacity=0.85,
+        )
 
     rows = (item_count + cols - 1) // cols
     imgui.dummy((avail_w, rows * (card_h + card_gap)))
