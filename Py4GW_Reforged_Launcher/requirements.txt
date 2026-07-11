@@ -1,11 +1,18 @@
-# Install with:  pip install --only-binary=:all: -r requirements.txt
-# Plain `pip install` falls back to source builds for some of these on this
-# Python/platform combo (32-bit CPython 3.13 on Windows) and fails without a
-# C/C++ compiler; --only-binary=:all: forces wheel-only installs.
-# imgui-bundle 1.6.2 has no win32 wheel on PyPI (its newest release drops
-# 32-bit Windows), so install its prebuilt wheel from the test-builds branch
-# (Py4GW_Reforged_Launcher/wheels/) rather than from PyPI, e.g.:
-#   pip install --only-binary=:all: imgui_bundle-1.6.2-cp313-cp313-win32.whl
+# Dependency setup for the launcher's dev venv.
+#
+# Create the venv at .venv INSIDE this folder (Py4GW_Reforged_Launcher\.venv) --
+# that exact location is the convention Launch.bat depends on:
+#     py -3.13-32 -m venv .venv
+#
+# Then install wheels-only (plain `pip install` falls back to source builds for
+# some of these on 32-bit CPython 3.13 / Windows and fails without a C compiler):
+#   1. imgui-bundle 1.6.2 has no win32 wheel on PyPI, so install its prebuilt
+#      wheel from the test-builds branch (Py4GW_Reforged_Launcher/wheels/) FIRST.
+#      That satisfies the imgui-bundle pin below, so step 2 won't try -- and fail
+#      -- to fetch it from PyPI:
+#        .venv\Scripts\pip install --only-binary=:all: imgui_bundle-1.6.2-cp313-cp313-win32.whl
+#   2. Then the rest:
+#        .venv\Scripts\pip install --only-binary=:all: -r requirements.txt
 annotated-types==0.7.0
 dulwich==1.2.10
 glfw==2.10.0
