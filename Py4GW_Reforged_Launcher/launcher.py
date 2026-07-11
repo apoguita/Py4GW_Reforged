@@ -2319,6 +2319,12 @@ def _console_reserved_height() -> float:
     reserved = imgui.get_frame_height() + style.item_spacing.y
     if STATE.console_expanded:
         reserved += hello_imgui.em_size() * _CONSOLE_BODY_EM + style.item_spacing.y
+    # Bottom-margin dummy drawn after the panel (em*0.6 == header_pad in
+    # show_main_window) plus the item spacing before it, so the grid gives up
+    # exactly what the panel and its new bottom margin occupy -- otherwise the
+    # collapsed header would clip against the padded window edge. The left/right
+    # indent doesn't change height, so only the bottom dummy is added here.
+    reserved += hello_imgui.em_size() * 0.6 + style.item_spacing.y
     return reserved
 
 
@@ -2335,6 +2341,12 @@ def show_console_panel() -> None:
     global _console_scroll_frames, _console_was_expanded
 
     style = imgui.get_style()
+    # The caller indents us by header_pad (em*0.6) on the left; reserve the same on
+    # the right so the panel keeps symmetric margins like the header block above,
+    # which pads left via indent and right via an explicit reduced width. indent()
+    # alone only insets the left -- get_content_region_avail().x still runs to the
+    # true right edge -- so the stretching elements below subtract right_pad too.
+    right_pad = hello_imgui.em_size() * 0.6
     arrow_dir = imgui.Dir.down if STATE.console_expanded else imgui.Dir.right
     if imgui.arrow_button("##console_toggle", arrow_dir):
         STATE.console_expanded = not STATE.console_expanded
@@ -2342,7 +2354,7 @@ def show_console_panel() -> None:
     clear_w = imgui.calc_text_size("Clear").x + style.frame_padding.x * 2.0
     label_w = max(
         hello_imgui.em_size() * 4.0,
-        imgui.get_content_region_avail().x - clear_w - style.item_spacing.x,
+        imgui.get_content_region_avail().x - clear_w - style.item_spacing.x - right_pad,
     )
     if imgui.selectable("Console", False, size=(label_w, 0.0))[0]:
         STATE.console_expanded = not STATE.console_expanded
@@ -2377,7 +2389,7 @@ def show_console_panel() -> None:
 
     imgui.input_text_multiline(
         "##console_output", text,
-        size=(imgui.get_content_region_avail().x, hello_imgui.em_size() * _CONSOLE_BODY_EM),
+        size=(imgui.get_content_region_avail().x - right_pad, hello_imgui.em_size() * _CONSOLE_BODY_EM),
         flags=int(imgui.InputTextFlags_.read_only.value),
     )
     _console_hovered_last_frame = imgui.is_item_hovered()
@@ -2605,7 +2617,14 @@ def show_main_window() -> None:
     imgui.end_child()
 
     imgui.spacing()
+    # Same left/right outer margin as the header block above (indent for the left;
+    # the panel reserves header_pad on its right internally), plus a bottom-margin
+    # dummy so the collapsed header doesn't sit flush against the window's bottom
+    # edge. _console_reserved_height() accounts for that dummy.
+    imgui.indent(header_pad)
     show_console_panel()
+    imgui.unindent(header_pad)
+    imgui.dummy((0.0, header_pad))
 
     _show_prereq_launch_confirm_popup()
     _show_delete_profile_confirm_popup()
