@@ -9,6 +9,7 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 Py4GW.ini
+Py4GW_injection_log.txt
 .opencode
 .backups
 AGENTS.md

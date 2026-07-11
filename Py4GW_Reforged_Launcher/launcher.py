@@ -1482,24 +1482,23 @@ class AppState:
         self.settings_window_open = True
 
     def duplicate_profile(self, profile_id: str) -> Optional[GameProfile]:
-        """Copy a profile: same settings as the source, minus the account-specific
-        fields that must never be shared between two profiles (email, password,
-        auto-login/auto-select toggles, character name). Mirrors duplicate_team's
-        "<name> copy" naming.
+        """Copy a profile: an exact copy of the source's settings, including
+        credentials, auto-login, and auto-select-character -- only `name` is
+        overridden (mirrors duplicate_team's "<name> copy" naming). Two
+        profiles for the same account (e.g. running under two different
+        executables/window layouts) is a real, intended use case, so the
+        credentials/toggles carrying over as-is is the point, not something
+        to guard against.
 
         Built via to_dict()/from_dict() rather than dataclasses.replace() --
         to_dict() uses dataclasses.asdict(), which deep-copies mutable fields
         like team_ids and gmod_plugin_paths. A shallow copy would leave the new
         profile's team_ids as the *same list object* as the source's, so toggling
-        team membership on one would silently corrupt the other. Everything not
-        explicitly blanked below (executable_path, launch_arguments, py4gw/gmod
-        settings including gmod_plugin_paths, windowed_mode_enabled, window
-        placement, team_ids) carries over as-is -- copying the whole configured
-        profile is the point of this feature, not just what Settings exposes.
+        team membership on one would silently corrupt the other.
 
         Opens Settings on the new copy immediately, same guided-review flow as
-        the "+" Add Profile card, since the blanked email/password/character
-        name still need to be filled in.
+        the "+" Add Profile card, so the name (and anything else) can be
+        adjusted right away.
         """
         source = next((p for p in self.profiles if p.id == profile_id), None)
         if source is None:
@@ -1507,14 +1506,7 @@ class AppState:
 
         data = source.to_dict()
         data.pop("id", None)  # let GameProfile's default_factory mint a fresh one
-        data.update(
-            name=f"{source.name} copy",
-            email="",
-            password_protected="",
-            character_name="",
-            auto_login_enabled=False,
-            auto_select_character_enabled=False,
-        )
+        data.update(name=f"{source.name} copy")
         new_profile = GameProfile.from_dict(data)
 
         self.profiles.append(new_profile)
