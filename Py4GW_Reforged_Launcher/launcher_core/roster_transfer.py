@@ -33,6 +33,9 @@ class RosterImportResult:
     skipped_profiles: int = 0
     skipped_teams: int = 0
     path_warnings: list[str] = dataclasses.field(default_factory=list)
+    # Non-path import notes (e.g. old-launcher settings that couldn't be carried
+    # over). Empty for the native roster import; populated by the legacy import.
+    warnings: list[str] = dataclasses.field(default_factory=list)
 
 
 def export_roster(

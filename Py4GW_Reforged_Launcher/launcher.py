@@ -149,7 +149,7 @@ try:
     import win32gui
     from win32com.shell import shell as win32_shell
 
-    from launcher_core import bulk_launch, config_seeding, mod_repo, prereqs, roster_transfer
+    from launcher_core import bulk_launch, config_seeding, legacy_import, mod_repo, prereqs, roster_transfer
     from launcher_core.crypto import protect_password
     from launcher_core.gw1_launch import LaunchResult, launch_py4gw_profile
     from launcher_core.profile import GameProfile
@@ -1356,6 +1356,69 @@ class AppState:
             path_warnings=roster_transfer.find_missing_paths(added_profiles),
         )
 
+    def import_legacy_accounts(self, path) -> "roster_transfer.RosterImportResult":
+        """Import the old Py4GW_Launcher.py accounts.json format (see legacy_import).
+
+        De-dupes differently from the native roster import (which matches by id --
+        legacy files carry no ids): teams match by name (reusing the existing team's
+        id for imported profiles rather than creating a duplicate), and profiles match
+        by email when non-empty, else by (executable_path, character_name). Matches are
+        skipped, not merged. Saves once each if anything was added, and reuses
+        roster_transfer.find_missing_paths for the same post-import path warnings the
+        native import surfaces.
+        """
+        imported_profiles, imported_teams, warnings = legacy_import.parse_legacy_accounts(path)
+
+        # Teams: match by name; reuse the existing id, remap imported profiles onto it.
+        existing_team_by_name = {t.name: t for t in self.teams}
+        team_id_remap: dict[str, str] = {}
+        added_teams = 0
+        skipped_teams = 0
+        for team in imported_teams:
+            existing = existing_team_by_name.get(team.name)
+            if existing is not None:
+                team_id_remap[team.id] = existing.id
+                skipped_teams += 1
+            else:
+                self.teams.append(team)
+                existing_team_by_name[team.name] = team
+                team_id_remap[team.id] = team.id
+                added_teams += 1
+        for profile in imported_profiles:
+            profile.team_ids = [team_id_remap.get(tid, tid) for tid in profile.team_ids]
+
+        # Profiles: dedup by email when present, else by (executable_path, character_name).
+        def _profile_key(p: GameProfile):
+            if p.email:
+                return ("email", p.email)
+            return ("exe_char", p.executable_path, p.character_name)
+
+        existing_keys = {_profile_key(p) for p in self.profiles}
+        added_profiles = []
+        skipped_profiles = 0
+        for profile in imported_profiles:
+            key = _profile_key(profile)
+            if key in existing_keys:
+                skipped_profiles += 1
+            else:
+                existing_keys.add(key)  # also guards duplicates within the same file
+                self.profiles.append(profile)
+                added_profiles.append(profile)
+
+        if added_profiles:
+            save_profiles(self.profiles)
+        if added_teams:
+            save_teams(self.teams)
+
+        return roster_transfer.RosterImportResult(
+            added_profiles=len(added_profiles),
+            added_teams=added_teams,
+            skipped_profiles=skipped_profiles,
+            skipped_teams=skipped_teams,
+            path_warnings=roster_transfer.find_missing_paths(added_profiles),
+            warnings=warnings,
+        )
+
     def _rehydrate_running_instances(self) -> None:
         """Scan for already-running game processes matching each profile's exe path,
         once at startup before the first render. Covers processes this launcher
@@ -2426,6 +2489,7 @@ def show_main_window() -> None:
 
     _show_prereq_launch_confirm_popup()
     _show_delete_profile_confirm_popup()
+    _show_legacy_autodetect_popup()
 
 
 # -----------------------------------------------------------------------------
@@ -3315,22 +3379,34 @@ def _show_export_confirm_popup() -> None:
             imgui.end_popup()
 
 
+def _render_import_result_body(result: "roster_transfer.RosterImportResult") -> None:
+    """Shared body for any import's result popup (native roster import, legacy
+    old-launcher import, first-run auto-detect) -- counts, then any non-path import
+    notes, then any missing-path warnings. Just the content; the caller owns the
+    surrounding popup and its Close button."""
+    imgui.text(f"Profiles: {result.added_profiles} added, {result.skipped_profiles} already present.")
+    imgui.text(f"Teams: {result.added_teams} added, {result.skipped_teams} already present.")
+    if result.warnings:
+        imgui.spacing()
+        imgui.text_colored(_ROSTER_WARNING_COLOR, "Some old-launcher settings weren't carried over:")
+        for warning in result.warnings:
+            imgui.text_colored(_PREREQ_MUTED_COLOR, warning)
+    if result.path_warnings:
+        imgui.spacing()
+        imgui.text_colored(_ROSTER_WARNING_COLOR, "Some imported paths don't exist on this machine:")
+        for warning in result.path_warnings:
+            imgui.text_colored(_PREREQ_MUTED_COLOR, warning)
+        imgui.spacing()
+        imgui.text_colored(_PREREQ_MUTED_COLOR, "Fix these in each profile's Settings on this machine.")
+
+
 def _show_import_result_popup() -> None:
     if imgui.begin_popup_modal(
         _IMPORT_RESULT_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
     )[0]:
         try:
-            result = _last_import_result
-            if result is not None:
-                imgui.text(f"Profiles: {result.added_profiles} added, {result.skipped_profiles} already present.")
-                imgui.text(f"Teams: {result.added_teams} added, {result.skipped_teams} already present.")
-                if result.path_warnings:
-                    imgui.spacing()
-                    imgui.text_colored(_ROSTER_WARNING_COLOR, "Some imported paths don't exist on this machine:")
-                    for warning in result.path_warnings:
-                        imgui.text_colored(_PREREQ_MUTED_COLOR, warning)
-                    imgui.spacing()
-                    imgui.text_colored(_PREREQ_MUTED_COLOR, "Fix these in each profile's Settings on this machine.")
+            if _last_import_result is not None:
+                _render_import_result_body(_last_import_result)
             imgui.spacing()
             if imgui.button("Close"):
                 imgui.close_current_popup()
@@ -3351,6 +3427,14 @@ def _show_export_import_section() -> None:
             _last_import_result = STATE.import_roster(chosen)
             _roster_status_message = ""
             imgui.open_popup(_IMPORT_RESULT_POPUP_ID)
+    if imgui.button("Import from old launcher..."):
+        chosen = _browse_for_file(
+            title="Import from old launcher (accounts.json)", filter_str=_ROSTER_JSON_FILTER
+        )
+        if chosen:
+            _last_import_result = STATE.import_legacy_accounts(chosen)
+            _roster_status_message = ""
+            imgui.open_popup(_IMPORT_RESULT_POPUP_ID)
 
     if _roster_status_message:
         imgui.text_colored(_PREREQ_MUTED_COLOR, _roster_status_message)
@@ -3368,6 +3452,61 @@ def _show_export_import_section() -> None:
             _roster_status_message = f"Exported to {chosen}"
 
     _show_import_result_popup()
+
+
+_LEGACY_AUTODETECT_POPUP_ID = "Import old launcher accounts?##legacy_autodetect"
+_legacy_autodetect_evaluated = False
+_legacy_autodetect_pending: "Optional[tuple]" = None   # (Path, count) while confirming
+_legacy_autodetect_result: "Optional[roster_transfer.RosterImportResult]" = None
+
+
+def _show_legacy_autodetect_popup() -> None:
+    """First-run offer: if there are zero local profiles and an old-launcher
+    accounts.json sits next to the configured mod repo, offer to import it once.
+    The zero-profiles gate is the whole guard -- it self-resolves the moment any
+    profile exists (imported here or added any other way), so no persisted
+    "don't ask again" flag is needed; the condition is only evaluated once per run.
+    """
+    global _legacy_autodetect_evaluated, _legacy_autodetect_pending, _legacy_autodetect_result
+
+    if not _legacy_autodetect_evaluated:
+        _legacy_autodetect_evaluated = True
+        try:
+            accounts_path = MOD_REPO_STATE.configured_path / "accounts.json"
+            if not STATE.profiles and accounts_path.is_file():
+                count = legacy_import.count_accounts(accounts_path)
+                _legacy_autodetect_pending = (accounts_path, count)
+                imgui.open_popup(_LEGACY_AUTODETECT_POPUP_ID)
+        except (OSError, ValueError):
+            _legacy_autodetect_pending = None
+
+    if not imgui.begin_popup_modal(
+        _LEGACY_AUTODETECT_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
+    )[0]:
+        return
+    try:
+        if _legacy_autodetect_result is not None:
+            _render_import_result_body(_legacy_autodetect_result)
+            imgui.spacing()
+            if imgui.button("Close"):
+                _legacy_autodetect_result = None
+                imgui.close_current_popup()
+        elif _legacy_autodetect_pending is not None:
+            accounts_path, count = _legacy_autodetect_pending
+            imgui.text("Found accounts.json from the old launcher at:")
+            imgui.text_colored(_PREREQ_MUTED_COLOR, str(accounts_path))
+            imgui.text(f"Import {count} account{'s' if count != 1 else ''} now?")
+            imgui.spacing()
+            if imgui.button("Import"):
+                _legacy_autodetect_result = STATE.import_legacy_accounts(accounts_path)
+                _legacy_autodetect_pending = None
+                # Stay open, switching to the result state to show counts + warnings.
+            imgui.same_line()
+            if imgui.button("Skip"):
+                _legacy_autodetect_pending = None
+                imgui.close_current_popup()
+    finally:
+        imgui.end_popup()
 
 
 def show_app_settings_window() -> None:
