@@ -35,17 +35,24 @@ class RosterImportResult:
     path_warnings: list[str] = dataclasses.field(default_factory=list)
 
 
-def export_roster(profiles: list[GameProfile], teams: list[Team], path: Path | str) -> None:
-    """Write ``{"profiles": [...], "teams": [...]}`` as pretty JSON, with each
-    profile's stored DPAPI ``password_protected`` replaced by a decrypted
-    ``password_plaintext`` field."""
+def export_roster(
+    profiles: list[GameProfile], teams: list[Team], path: Path | str, *, include_passwords: bool = True
+) -> None:
+    """Write ``{"profiles": [...], "teams": [...]}`` as pretty JSON. The stored DPAPI
+    ``password_protected`` blob is always dropped (it wouldn't decrypt after the
+    move). When ``include_passwords`` is True each profile instead carries a decrypted
+    ``password_plaintext``; when False that field is omitted entirely -- not written as
+    "" -- so the bundle has no password data at all. ``include_passwords`` is a
+    parameter, not UI state, so the function stays testable on its own.
+    """
     profile_dicts = []
     for profile in profiles:
         data = profile.to_dict()
         protected = data.pop("password_protected", "")
-        # Mirror crypto.unprotect_password's own empty-string short-circuit -- don't
-        # hand DPAPI an empty blob, just carry an empty plaintext through.
-        data["password_plaintext"] = crypto.unprotect_password(protected) if protected.strip() else ""
+        if include_passwords:
+            # Mirror crypto.unprotect_password's own empty-string short-circuit --
+            # don't hand DPAPI an empty blob, just carry an empty plaintext through.
+            data["password_plaintext"] = crypto.unprotect_password(protected) if protected.strip() else ""
         profile_dicts.append(data)
 
     bundle = {"profiles": profile_dicts, "teams": [team.to_dict() for team in teams]}

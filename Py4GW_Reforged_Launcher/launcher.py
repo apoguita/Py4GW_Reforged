@@ -1304,8 +1304,8 @@ class AppState:
             profile.team_ids.append(team_id)
         save_profiles(self.profiles)
 
-    def export_roster(self, path) -> None:
-        roster_transfer.export_roster(self.profiles, self.teams, path)
+    def export_roster(self, path, *, include_passwords: bool = True) -> None:
+        roster_transfer.export_roster(self.profiles, self.teams, path, include_passwords=include_passwords)
 
     def import_roster(self, path) -> "roster_transfer.RosterImportResult":
         """Load a roster bundle, appending only profiles/teams whose id isn't
@@ -1613,18 +1613,29 @@ def batch_checkbox_rect(card_origin, card_h: float, em: float) -> tuple[tuple[fl
     return min_pt, max_pt
 
 
+_CHECKMARK_COLOR = _u32(255, 255, 255)
+
+
 def _draw_batch_checkbox(draw_list, min_pt, max_pt, *, checked: bool, hovered: bool) -> None:
     """The card's batch-select box (ALL view only) -- its own small click target,
     kept separate from the rest of the card; show_main_window excludes this rect
     from the card's own hover/click handling so the two interactions can't collide.
+    Checked reads as a solid ACCENT box with a white checkmark, clearly visible at
+    a glance; unchecked stays a thin outline.
     """
-    border = ACCENT if hovered else CARD_BORDER
-    draw_list.add_rect(min_pt, max_pt, border, rounding=3.0, thickness=1.5)
     if checked:
-        pad = (max_pt[0] - min_pt[0]) * 0.25
-        inner_min = (min_pt[0] + pad, min_pt[1] + pad)
-        inner_max = (max_pt[0] - pad, max_pt[1] - pad)
-        draw_list.add_rect_filled(inner_min, inner_max, ACCENT, rounding=2.0)
+        draw_list.add_rect_filled(min_pt, max_pt, ACCENT, rounding=3.0)
+        w = max_pt[0] - min_pt[0]
+        h = max_pt[1] - min_pt[1]
+        thickness = max(1.5, w * 0.12)
+        p1 = (min_pt[0] + w * 0.22, min_pt[1] + h * 0.52)
+        p2 = (min_pt[0] + w * 0.42, min_pt[1] + h * 0.72)
+        p3 = (min_pt[0] + w * 0.78, min_pt[1] + h * 0.30)
+        draw_list.add_line(p1, p2, _CHECKMARK_COLOR, thickness=thickness)
+        draw_list.add_line(p2, p3, _CHECKMARK_COLOR, thickness=thickness)
+    else:
+        border = ACCENT if hovered else CARD_BORDER
+        draw_list.add_rect(min_pt, max_pt, border, rounding=3.0, thickness=1.5)
 
 
 def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, show_batch_checkbox: bool = False, batch_checked: bool = False, checkbox_hovered: bool = False) -> None:
@@ -2020,14 +2031,17 @@ def _visible_profiles() -> list[GameProfile]:
 
 
 def _team_actions_width() -> float:
-    """Measured width of the Launch Team control (button plus any live
-    bulk-launch status text trailing it) -- the tab strip needs this before
-    it lays out tabs, to reserve room for this control sharing the same row
-    rather than tabs running underneath it. Mirrors show_team_actions'
-    own label/status-text logic exactly so the two can't drift apart.
+    """Measured width of whatever occupies the top-right action slot -- the tab
+    strip needs this before it lays out tabs, to reserve room for that control
+    sharing the same row rather than tabs running underneath it. On ALL that slot
+    is the "Add N to Team" batch control; on a team it's the Launch Team button
+    (plus any live bulk-launch status text trailing it). Mirrors show_team_actions'
+    own logic exactly so the two can't drift apart.
     """
     team_id = STATE.current_team_id
-    label = f"Launch Team ({_team_member_count(team_id)})" if team_id is not None else "Launch Team"
+    if team_id is None:
+        return _batch_add_to_team_width()
+    label = f"Launch Team ({_team_member_count(team_id)})"
     style = imgui.get_style()
     width = imgui.calc_text_size(label).x + style.frame_padding.x * 2.0
     if STATE.is_bulk_launching():
@@ -2060,17 +2074,26 @@ def show_team_actions(pos: tuple[float, float]) -> None:
     pacing control moved to the app settings window (gear icon) -- this is
     just the action and its live status, which stays here since that's what
     the user is actually watching during a launch.
-    """
-    team_id = STATE.current_team_id
-    members = [p for p in STATE.profiles if team_id in p.team_ids] if team_id is not None else []
-    bulk_launching = STATE.is_bulk_launching()
-    can_launch = team_id is not None and bool(members) and not bulk_launching and STATE.multiclient_enabled
 
-    label = f"Launch Team ({len(members)})" if team_id is not None else "Launch Team"
+    On the ALL view this same reserved slot holds the "Add N to Team" batch
+    control instead of a permanently-disabled Launch Team button -- one live
+    control per view rather than one visibly dead here and the other cramped onto
+    the filter row.
+    """
     em = hello_imgui.em_size()
     tab_h = imgui.get_frame_height() + em * 0.5
     imgui.set_cursor_screen_pos(pos)
 
+    if STATE.current_team_id is None:
+        _draw_batch_add_to_team_control(tab_h)
+        return
+
+    team_id = STATE.current_team_id
+    members = [p for p in STATE.profiles if team_id in p.team_ids]
+    bulk_launching = STATE.is_bulk_launching()
+    can_launch = bool(members) and not bulk_launching and STATE.multiclient_enabled
+
+    label = f"Launch Team ({len(members)})"
     if not can_launch:
         imgui.begin_disabled()
     launch_clicked = imgui.button(label, size=(0, tab_h))
@@ -2095,25 +2118,25 @@ def _batch_add_to_team_label() -> str:
 
 
 def _batch_add_to_team_width() -> float:
-    """Measured width of the batch-add button, so the filter row can reserve room
-    for it before the filter box stretches into the rest of the row -- mirrors
-    _team_actions_width's role for the Launch Team button."""
+    """Measured width of the batch-add button, so the tab strip can reserve room
+    for it in the top-right action slot -- mirrors the Launch Team measurement in
+    _team_actions_width for the other view."""
     style = imgui.get_style()
     return imgui.calc_text_size(_batch_add_to_team_label()).x + style.frame_padding.x * 2.0
 
 
-def show_batch_add_to_team_control() -> None:
-    """ALL-view control that adds the batch-checked cards to a chosen team.
-    Disabled (not hidden) when nothing is checked -- same principle as
-    show_team_actions' Launch Team button -- so the filter row doesn't reshuffle
-    as the selection count crosses zero, only the label's count changes. Opens a
-    small team picker with the same "No teams yet" disabled-row fallback the card's
-    Teams submenu uses; picking a team adds the current selection and clears it.
+def _draw_batch_add_to_team_control(button_height: float) -> None:
+    """The ALL-view control that adds the batch-checked cards to a chosen team,
+    drawn in show_team_actions' reserved top-right slot. Disabled (not hidden) when
+    nothing is checked, so the slot doesn't reshuffle as the count crosses zero,
+    only the label's count changes. Opens a small team picker with the same
+    "No teams yet" disabled-row fallback the card's Teams submenu uses; picking a
+    team adds the current selection and clears it.
     """
     has_selection = bool(STATE.batch_selected_ids)
     if not has_selection:
         imgui.begin_disabled()
-    clicked = imgui.button(_batch_add_to_team_label())
+    clicked = imgui.button(_batch_add_to_team_label(), size=(0, button_height))
     if not has_selection:
         imgui.end_disabled()
     if clicked and has_selection:
@@ -2208,22 +2231,11 @@ def show_main_window() -> None:
     imgui.spacing()
     style = imgui.get_style()
     gear_icon_size = em * 1.8
-    # "Add N to Team" shares this row on ALL view (ALL-view only, since batch
-    # selection only exists there). Reserve its width up front so the filter box
-    # lands consistently, and so the button -- disabled-not-hidden, like Launch
-    # Team -- doesn't shift the row as the selection count crosses zero.
-    in_all_view = STATE.current_team_id is None
-    reserved = gear_icon_size + style.item_spacing.x
-    if in_all_view:
-        reserved += _batch_add_to_team_width() + style.item_spacing.x
-    filter_w = header_w - reserved
+    filter_w = header_w - gear_icon_size - style.item_spacing.x
     imgui.set_next_item_width(filter_w)
     _, STATE.name_filter = imgui.input_text_with_hint("##name_filter", "Filter by name...", STATE.name_filter)
     imgui.same_line()
     show_settings_gear_button()
-    if in_all_view:
-        imgui.same_line()
-        show_batch_add_to_team_control()
 
     imgui.unindent(header_pad)
     imgui.dummy((0.0, header_pad))
@@ -2567,6 +2579,8 @@ def show_settings_content() -> None:
     imgui.separator()
 
     if _active_tab == "General":
+        imgui.spacing()
+        imgui.text("Launch")
         _, buffer.name = imgui.input_text("Profile name", buffer.name)
         buffer.executable_path = _path_field_with_browse(
             label="Executable path", value=buffer.executable_path, id_suffix="executable_path",
@@ -2595,6 +2609,9 @@ def show_settings_content() -> None:
                     (0.9, 0.75, 0.3, 1.0),
                     f"Another profile ('{duplicate.name or '(unnamed profile)'}') already uses this executable path.",
                 )
+        imgui.separator()
+        imgui.spacing()
+        imgui.text("Auto-Login")
         _, buffer.email = imgui.input_text("Account email", buffer.email)
         _, buffer.password_input = imgui.input_text(
             "Password", buffer.password_input, flags=int(imgui.InputTextFlags_.password.value)
@@ -3251,6 +3268,7 @@ _ROSTER_WARNING_COLOR = (0.86, 0.35, 0.35, 1.0)
 # Deferred so the blocking Save-As dialog runs *after* the confirm popup's
 # begin/end block has fully closed, never mid-popup.
 _export_browse_pending = False
+_export_include_passwords = True
 _roster_status_message = ""
 _last_import_result: "Optional[roster_transfer.RosterImportResult]" = None
 
@@ -3261,11 +3279,18 @@ def _show_export_confirm_popup() -> None:
         _EXPORT_CONFIRM_POPUP_ID, flags=int(imgui.WindowFlags_.always_auto_resize.value)
     )[0]:
         try:
-            imgui.text("This file will contain your saved account passwords in plain text.")
-            imgui.text_colored(
-                _PREREQ_MUTED_COLOR,
-                "Store it securely and delete it once you're done importing it elsewhere.",
-            )
+            if _export_include_passwords:
+                imgui.text("This file will contain your saved account passwords in plain text.")
+                imgui.text_colored(
+                    _PREREQ_MUTED_COLOR,
+                    "Store it securely and delete it once you're done importing it elsewhere.",
+                )
+            else:
+                imgui.text("Export your profiles and teams to a file.")
+                imgui.text_colored(
+                    _PREREQ_MUTED_COLOR,
+                    "Passwords are not included -- imported profiles will need their passwords re-entered.",
+                )
             imgui.spacing()
             if imgui.button("Choose file and export..."):
                 _export_browse_pending = True
@@ -3301,8 +3326,9 @@ def _show_import_result_popup() -> None:
 
 
 def _show_export_import_section() -> None:
-    global _export_browse_pending, _roster_status_message, _last_import_result
+    global _export_browse_pending, _roster_status_message, _last_import_result, _export_include_passwords
     imgui.text("Export / Import Accounts:")
+    _, _export_include_passwords = imgui.checkbox("Include passwords", _export_include_passwords)
     if imgui.button("Export accounts..."):
         imgui.open_popup(_EXPORT_CONFIRM_POPUP_ID)
     imgui.same_line()
@@ -3325,7 +3351,7 @@ def _show_export_import_section() -> None:
             default_filename=_ROSTER_DEFAULT_FILENAME,
         )
         if chosen:
-            STATE.export_roster(chosen)
+            STATE.export_roster(chosen, include_passwords=_export_include_passwords)
             _roster_status_message = f"Exported to {chosen}"
 
     _show_import_result_popup()
@@ -3338,7 +3364,14 @@ def show_app_settings_window() -> None:
         return
 
     em = hello_imgui.em_size()
-    imgui.set_next_window_size((em * 34.0, em * 18.0), cond=imgui.Cond_.appearing.value)
+    app_settings_w, app_settings_h = em * 34.0, em * 18.0
+    imgui.set_next_window_size((app_settings_w, app_settings_h), cond=imgui.Cond_.appearing.value)
+    # Positioned next to the main window's current spot each time it opens, same as
+    # show_settings_window -- _settings_window_default_pos is generic (takes w/h),
+    # so it's reused directly rather than forked.
+    imgui.set_next_window_pos(
+        _settings_window_default_pos(app_settings_w, app_settings_h), cond=imgui.Cond_.appearing.value
+    )
     expanded, STATE.app_settings_window_open = imgui.begin("App Settings##launcher", STATE.app_settings_window_open)
     if expanded:
         # Prerequisites are shown first, not buried under other settings --
