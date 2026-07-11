@@ -2552,6 +2552,9 @@ _active_tab = SETTINGS_TABS[0]
 # (re)appears -- see show_settings_window() for why this needs to be more than 1.
 _SETTINGS_AUTOSIZE_FRAMES = 4
 _settings_autosize_frames_remaining = 0
+# Separate counter from the profile Settings window's -- both can be open at once,
+# so they can't share one autosize-frames state.
+_app_settings_autosize_frames_remaining = 0
 
 
 def show_settings_content() -> None:
@@ -2717,19 +2720,25 @@ def _settings_window_default_pos(settings_w: float, settings_h: float) -> tuple[
     space_below = w_bottom - m_bottom
     margin = em * 1.0
 
+    # The placement axis (x for left/right, y for above/below) is clamped to the
+    # work area too, not just offset off the main window's edge: when the window
+    # is wider/taller than the chosen side's free space it would otherwise spill
+    # off that edge of the screen (the partial-off-screen bug). Clamping keeps it
+    # fully on-screen -- overlapping the main window if it has to, which beats
+    # hanging off the edge. The cross axis was already clamped this way.
     best = max(space_left, space_right, space_above, space_below)
     if best == space_right:
-        x = float(m_right) + margin
+        x = float(min(w_right - settings_w, m_right + margin))
         y = float(max(w_top, min(m_top, w_bottom - settings_h)))
     elif best == space_left:
-        x = float(m_left) - margin - settings_w
+        x = float(max(w_left, m_left - margin - settings_w))
         y = float(max(w_top, min(m_top, w_bottom - settings_h)))
     elif best == space_below:
         x = float(max(w_left, min(m_left, w_right - settings_w)))
-        y = float(m_bottom) + margin
+        y = float(min(w_bottom - settings_h, m_bottom + margin))
     else:
         x = float(max(w_left, min(m_left, w_right - settings_w)))
-        y = float(m_top) - margin - settings_h
+        y = float(max(w_top, m_top - margin - settings_h))
     return x, y
 
 
@@ -3358,21 +3367,46 @@ def _show_export_import_section() -> None:
 
 
 def show_app_settings_window() -> None:
-    global _dark_theme_enabled
+    global _dark_theme_enabled, _app_settings_autosize_frames_remaining
 
     if not STATE.app_settings_window_open:
         return
 
     em = hello_imgui.em_size()
-    app_settings_w, app_settings_h = em * 34.0, em * 18.0
-    imgui.set_next_window_size((app_settings_w, app_settings_h), cond=imgui.Cond_.appearing.value)
-    # Positioned next to the main window's current spot each time it opens, same as
-    # show_settings_window -- _settings_window_default_pos is generic (takes w/h),
-    # so it's reused directly rather than forked.
+    autosizing = _app_settings_autosize_frames_remaining > 0
+    # Same real-measured auto-sizing the profile Settings window uses (see
+    # show_settings_window): baseline is only the single pre-measurement frame's
+    # size and the estimate fed to _settings_window_default_pos; AlwaysAutoResize
+    # for the next few frames then fits the window to its real rendered content,
+    # after which the flag drops and it becomes normally resizable. baseline_h is a
+    # close estimate of the real fitted height so positioning doesn't clip at the
+    # screen bottom before measurement takes over.
+    baseline_w, baseline_h = em * 34.0, em * 36.0
+    imgui.set_next_window_size((baseline_w, baseline_h), cond=imgui.Cond_.appearing.value)
+    # Cap the width *only while auto-resizing* (Settings leaves its max unbounded):
+    # App Settings has unbounded-width content -- the prereq diagnostic lines are
+    # single unwrapped file paths (e.g. the full python.exe path) -- so an uncapped
+    # AlwaysAutoResize balloons the window across the screen to fit the longest
+    # path. Capping only during the autosize frames lets it fit the *height* (every
+    # section visible without scrolling, the actual goal) with those paths clipping
+    # at the edge as they already did, then lifts the cap so the window stays freely
+    # resizable afterward.
+    max_w = baseline_w if autosizing else 1.0e9
+    imgui.set_next_window_size_constraints((em * 20.0, em * 12.0), (max_w, 1.0e9))
     imgui.set_next_window_pos(
-        _settings_window_default_pos(app_settings_w, app_settings_h), cond=imgui.Cond_.appearing.value
+        _settings_window_default_pos(baseline_w, baseline_h), cond=imgui.Cond_.appearing.value
     )
-    expanded, STATE.app_settings_window_open = imgui.begin("App Settings##launcher", STATE.app_settings_window_open)
+
+    flags = imgui.WindowFlags_.always_auto_resize.value if autosizing else 0
+
+    expanded, STATE.app_settings_window_open = imgui.begin(
+        "App Settings##launcher", STATE.app_settings_window_open, flags
+    )
+
+    if imgui.is_window_appearing():
+        _app_settings_autosize_frames_remaining = _SETTINGS_AUTOSIZE_FRAMES
+    elif _app_settings_autosize_frames_remaining > 0:
+        _app_settings_autosize_frames_remaining -= 1
     if expanded:
         # Prerequisites are shown first, not buried under other settings --
         # GW1/Py4GW injection genuinely doesn't work without them. Checked
