@@ -1241,7 +1241,8 @@ class AppState:
 
     def toggle_team_membership(self, profile: GameProfile, team_id: str) -> None:
         """Toggle `profile`'s membership in `team_id` and save immediately -- the
-        card checkbox has no separate "Save" step, unlike the Settings form."""
+        card's right-click "Teams" submenu has no separate "Save" step, unlike
+        the Settings form."""
         if team_id in profile.team_ids:
             profile.team_ids.remove(team_id)
         else:
@@ -1450,32 +1451,6 @@ except OSError:
 # Card grid (main window content)
 # -----------------------------------------------------------------------------
 
-def membership_checkbox_rect(card_origin, card_h: float, em: float) -> tuple[tuple[float, float], tuple[float, float]]:
-    """Bottom-left corner -- the only card corner not already used by the avatar
-    (top-left), hover action icon (top-right), or mod badges (bottom-right).
-    Shared by show_main_window's manual hit-test and draw_profile_card's visual so
-    the clickable area and the drawn box are always the exact same rectangle.
-    """
-    x, y = card_origin
-    size = em * 1.0
-    min_pt = (x + em * 0.667, y + card_h - em * 1.667)
-    max_pt = (min_pt[0] + size, min_pt[1] + size)
-    return min_pt, max_pt
-
-
-def _draw_membership_checkbox(draw_list, min_pt, max_pt, *, is_member: bool, hovered: bool) -> None:
-    """Its own small click target, separate from the rest of the card -- see
-    show_main_window, which excludes this rect from the card's own hover/click
-    handling so the two interactions can't collide."""
-    border = ACCENT if hovered else CARD_BORDER
-    draw_list.add_rect(min_pt, max_pt, border, rounding=3.0, thickness=1.5)
-    if is_member:
-        pad = (max_pt[0] - min_pt[0]) * 0.25
-        inner_min = (min_pt[0] + pad, min_pt[1] + pad)
-        inner_max = (max_pt[0] - pad, max_pt[1] - pad)
-        draw_list.add_rect_filled(inner_min, inner_max, ACCENT, rounding=2.0)
-
-
 def _draw_play_icon(draw_list, center, size: float, color: int) -> None:
     """Small filled play triangle -- hover cue on a stopped card. Purely visual,
     not a separate click target: the whole card already handles double-click."""
@@ -1522,7 +1497,7 @@ def _draw_gear_icon(draw_list, center, size: float, color: int) -> None:
         draw_list.add_quad_filled(p1, p2, p3, p4, color)
 
 
-def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, in_team_view: bool = False, is_member: bool = False, checkbox_hovered: bool = False) -> None:
+def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool) -> None:
     em = hello_imgui.em_size()
     x, y = origin
     p_min = (x, y)
@@ -1540,10 +1515,6 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
 
     if selected:
         draw_list.add_rect_filled((x, y), (x + em * 0.267, y + card_h), ACCENT, rounding=6.0)
-
-    if in_team_view:
-        checkbox_min, checkbox_max = membership_checkbox_rect((x, y), card_h, em)
-        _draw_membership_checkbox(draw_list, checkbox_min, checkbox_max, is_member=is_member, hovered=checkbox_hovered)
 
     icon_center = (x + em * 1.733, y + em * 1.6)
     draw_list.add_circle_filled(icon_center, em * 0.8, _avatar_color_for_id(profile.id))
@@ -1780,9 +1751,11 @@ def show_team_tab_strip(avail_w: float) -> None:
     padded region narrower than the full window, and this right-aligns
     against that padded width, not the raw window width.
 
-    Doesn't filter the card grid itself: which cards are visible never
-    changes with the view (see draw_profile_card's membership checkbox,
-    which is what the view actually controls).
+    Doesn't filter the card grid itself -- switching tabs here just changes
+    STATE.current_team_id, which _visible_profiles reads to decide which
+    cards actually show (a team tab narrows to that team's members only;
+    membership itself is set via each card's right-click "Teams" submenu,
+    not anything drawn here).
 
     If every team's tab doesn't fit in the available width, the ones that
     don't collapse into a trailing "N more" chip that opens the pre-existing
@@ -1893,15 +1866,20 @@ def show_team_tab_strip(avail_w: float) -> None:
 
 
 def _visible_profiles() -> list[GameProfile]:
-    """Profiles matching the current name filter (case-insensitive substring) --
-    the single source of truth for "visible" used by the card grid. Composes
-    with the team view: the filter narrows within whichever view is active,
-    not just ALL.
+    """Profiles matching the current team view (if any) and the current name
+    filter (case-insensitive substring) -- the single source of truth for
+    "visible" used by the card grid. Team narrowing happens first, then the
+    name filter narrows within that -- so both compose correctly regardless
+    of which view is active. ALL (current_team_id is None) skips the team
+    narrowing entirely and behaves exactly as before.
     """
+    team_id = STATE.current_team_id
+    pool = STATE.profiles if team_id is None else [p for p in STATE.profiles if team_id in p.team_ids]
+
     query = STATE.name_filter.strip().lower()
     if not query:
-        return list(STATE.profiles)
-    return [p for p in STATE.profiles if query in p.name.lower()]
+        return list(pool)
+    return [p for p in pool if query in p.name.lower()]
 
 
 def _team_actions_width() -> float:
@@ -1933,13 +1911,12 @@ def show_team_actions(pos: tuple[float, float]) -> None:
     measurement the tab strip uses to reserve room for this on that row
     before laying out tabs.
 
-    Disabled/unarmed when there's no active team (ALL), no account is checked
-    into the currently-viewed team, or a bulk launch is already running (never
-    overlap two at once). The (N) in the label mirrors the checked-member
-    count directly -- an account's checkbox *is* its team membership (see the
-    in_team_view checkbox toggle in show_main_window) -- so the armed/disabled
-    state reads at a glance instead of being just a greyed-out button with no
-    context.
+    Disabled/unarmed when there's no active team (ALL), no account is a member
+    of the currently-viewed team, or a bulk launch is already running (never
+    overlap two at once). The (N) in the label mirrors the member count
+    directly -- team membership is set via each card's right-click "Teams"
+    submenu, not anything drawn here -- so the armed/disabled state reads at
+    a glance instead of being just a greyed-out button with no context.
 
     "Select all visible" / "Select none" were cut per design review -- they
     didn't earn their toolbar space -- rather than relabeled or relocated. The
@@ -2068,10 +2045,12 @@ def show_main_window() -> None:
     # column count) keeps cards from getting absurdly wide on a large window
     # without needlessly capping a single column short of the available
     # width. Only the card's own width changes -- everything drawn inside a
-    # card (avatar, text, badges, checkbox) is still positioned/sized relative
+    # card (avatar, text, badges) is still positioned/sized relative
     # to em and to the card's own edges, so it doesn't scale with it.
     visible_profiles = _visible_profiles()
-    item_count = len(visible_profiles) + 1  # +1 for the "Add profile" card
+    # Team tabs are pure roster views -- no "Add profile" card there, only in ALL.
+    show_add_card = STATE.current_team_id is None
+    item_count = len(visible_profiles) + (1 if show_add_card else 0)
 
     imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
     draw_list = imgui.get_window_draw_list()
@@ -2125,18 +2104,7 @@ def show_main_window() -> None:
         p_min = card_origin
         p_max = (card_origin[0] + card_w, card_origin[1] + card_h)
 
-        in_team_view = STATE.current_team_id is not None
-        checkbox_hovered = False
-        if in_team_view:
-            checkbox_min, checkbox_max = membership_checkbox_rect(card_origin, card_h, em)
-            checkbox_hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(checkbox_min, checkbox_max)
-            if checkbox_hovered and imgui.is_mouse_clicked(0):
-                STATE.toggle_team_membership(profile, STATE.current_team_id)
-
-        # Excludes the checkbox's own rect so the two click targets can't collide:
-        # clicking the checkbox toggles membership only, never also selects/
-        # forgrounds the card underneath it.
-        hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(p_min, p_max) and not checkbox_hovered
+        hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(p_min, p_max)
         running = STATE.is_running(profile.id)
         launching = STATE.is_launching(profile.id)
         session = STATE.sessions.get(profile.id)
@@ -2167,12 +2135,30 @@ def show_main_window() -> None:
             imgui.open_popup(f"card_context##{profile.id}")
 
         if imgui.begin_popup(f"card_context##{profile.id}"):
-            # Just "Edit" for now -- room left for future card-level actions
-            # (duplicate, remove, etc.) without redesigning this menu, but not
-            # built ahead of an actual need for them.
             if imgui.selectable("Edit", False)[0]:
                 STATE.begin_edit_selected()
                 imgui.close_current_popup()
+
+            # Checkable rows via imgui.checkbox (not menu_item) specifically
+            # because checkboxes never auto-close the popup -- lets a user set
+            # membership across several teams in one right-click session
+            # instead of having to reopen the menu after every toggle.
+            # toggle_team_membership already saves immediately, same as the
+            # card checkbox this submenu replaced.
+            if imgui.begin_menu("Teams"):
+                if not STATE.teams:
+                    imgui.begin_disabled()
+                    imgui.selectable("No teams yet", False)
+                    imgui.end_disabled()
+                else:
+                    for team in STATE.teams:
+                        changed, _ = imgui.checkbox(
+                            team.name or "(unnamed team)", team.id in profile.team_ids
+                        )
+                        if changed:
+                            STATE.toggle_team_membership(profile, team.id)
+                imgui.end_menu()
+
             imgui.end_popup()
 
         draw_profile_card(
@@ -2180,26 +2166,24 @@ def show_main_window() -> None:
             hovered=hovered, selected=(STATE.selected_id == profile.id),
             running=running, launching=launching or is_error,
             status_text=status_text, is_error=is_error,
-            in_team_view=in_team_view,
-            is_member=bool(in_team_view and STATE.current_team_id in profile.team_ids),
-            checkbox_hovered=checkbox_hovered,
         )
 
-    add_index = len(visible_profiles)
-    add_col = add_index % cols
-    add_row = add_index // cols
-    add_origin = (
-        origin.x + add_col * (card_w + card_gap),
-        origin.y + add_row * (card_h + card_gap),
-    )
-    add_p_min = add_origin
-    add_p_max = (add_origin[0] + card_w, add_origin[1] + card_h)
-    add_hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(add_p_min, add_p_max)
-    if add_hovered and imgui.is_mouse_clicked(0):
-        STATE.begin_new_profile()
-    draw_add_card(draw_list, add_origin, card_w=card_w, card_h=card_h, hovered=add_hovered)
+    if show_add_card:
+        add_index = len(visible_profiles)
+        add_col = add_index % cols
+        add_row = add_index // cols
+        add_origin = (
+            origin.x + add_col * (card_w + card_gap),
+            origin.y + add_row * (card_h + card_gap),
+        )
+        add_p_min = add_origin
+        add_p_max = (add_origin[0] + card_w, add_origin[1] + card_h)
+        add_hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(add_p_min, add_p_max)
+        if add_hovered and imgui.is_mouse_clicked(0):
+            STATE.begin_new_profile()
+        draw_add_card(draw_list, add_origin, card_w=card_w, card_h=card_h, hovered=add_hovered)
 
-    rows = (add_index + cols) // cols
+    rows = (item_count + cols - 1) // cols
     imgui.dummy((avail_w, rows * (card_h + card_gap)))
     imgui.end_child()
 
