@@ -3371,6 +3371,12 @@
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
         },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "200": {
           "base_id": 200,
           "id": 200,
@@ -14106,6 +14112,12 @@
         4096
       ],
       "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "200": {
           "base_id": 200,
           "id": 200,
@@ -16516,6 +16528,25 @@
       },
       "observed_skills": {}
     },
+    "enc:\\\\x4092\\\\xA5BD\\\\x9081\\\\x5CAB": {
+      "encoded_names": [
+        "\\\\x4092\\\\xA5BD\\\\x9081\\\\x5CAB"
+      ],
+      "inferred_primary": "",
+      "inferred_secondary": "",
+      "model_ids": [
+        4022
+      ],
+      "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        }
+      },
+      "observed_skills": {}
+    },
     "enc:\\\\x4094\\\\xCEC0\\\\xF419\\\\x7244": {
       "encoded_names": [
         "\\\\x4094\\\\xCEC0\\\\xF419\\\\x7244"
@@ -16570,6 +16601,12 @@
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
         },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "203": {
           "base_id": 203,
           "id": 203,
@@ -16619,6 +16656,12 @@
           "id": 144,
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
+        },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
         },
         "203": {
           "base_id": 203,
@@ -16675,6 +16718,12 @@
           "id": 144,
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
+        },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
         },
         "203": {
           "base_id": 203,
@@ -17002,6 +17051,12 @@
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
         },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "200": {
           "base_id": 200,
           "id": 200,
@@ -17116,6 +17171,25 @@
         }
       }
     },
+    "enc:\\\\x40AF\\\\x81D3\\\\x8D4C\\\\x51AD": {
+      "encoded_names": [
+        "\\\\x40AF\\\\x81D3\\\\x8D4C\\\\x51AD"
+      ],
+      "inferred_primary": "",
+      "inferred_secondary": "",
+      "model_ids": [
+        4033
+      ],
+      "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        }
+      },
+      "observed_skills": {}
+    },
     "enc:\\\\x40B0\\\\xCD35\\\\xC22E\\\\x415F": {
       "encoded_names": [
         "\\\\x40B0\\\\xCD35\\\\xC22E\\\\x415F"
@@ -17126,6 +17200,12 @@
         4083
       ],
       "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "203": {
           "base_id": 203,
           "id": 203,
@@ -17145,6 +17225,12 @@
         4085
       ],
       "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "203": {
           "base_id": 203,
           "id": 203,
@@ -17870,6 +17956,25 @@
         }
       }
     },
+    "enc:\\\\x40CE\\\\x90BF\\\\x9771\\\\x29B9": {
+      "encoded_names": [
+        "\\\\x40CE\\\\x90BF\\\\x9771\\\\x29B9"
+      ],
+      "inferred_primary": "",
+      "inferred_secondary": "",
+      "model_ids": [
+        4058
+      ],
+      "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        }
+      },
+      "observed_skills": {}
+    },
     "enc:\\\\x40D2\\\\xA678\\\\xC841\\\\x5E62": {
       "encoded_names": [
         "\\\\x40D2\\\\xA678\\\\xC841\\\\x5E62"
@@ -17920,6 +18025,56 @@
         }
       }
     },
+    "enc:\\\\x40D4\\\\xCEC7\\\\xAF8C\\\\x39AD": {
+      "encoded_names": [
+        "\\\\x40D4\\\\xCEC7\\\\xAF8C\\\\x39AD"
+      ],
+      "inferred_primary": "Ritualist",
+      "inferred_secondary": "",
+      "model_ids": [
+        4064
+      ],
+      "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        }
+      },
+      "observed_skills": {
+        "1224": {
+          "id": 1224,
+          "name": "Draw Spirit",
+          "profession": "Ritualist",
+          "profession_id": 8
+        },
+        "1246": {
+          "id": 1246,
+          "name": "Ancestors' Rage",
+          "profession": "Ritualist",
+          "profession_id": 8
+        },
+        "789": {
+          "id": 789,
+          "name": "Grasping Was Kuurong",
+          "profession": "Ritualist",
+          "profession_id": 8
+        },
+        "795": {
+          "id": 795,
+          "name": "Nightmare Weapon",
+          "profession": "Ritualist",
+          "profession_id": 8
+        },
+        "920": {
+          "id": 920,
+          "name": "Destruction",
+          "profession": "Ritualist",
+          "profession_id": 8
+        }
+      }
+    },
     "enc:\\\\x40D5\\\\xF293\\\\xA099\\\\x6268": {
       "encoded_names": [
         "\\\\x40D5\\\\xF293\\\\xA099\\\\x6268"
@@ -17935,6 +18090,12 @@
           "id": 144,
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
+        },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
         },
         "200": {
           "base_id": 200,
@@ -17998,6 +18159,12 @@
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
         },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "200": {
           "base_id": 200,
           "id": 200,
@@ -18053,6 +18220,12 @@
           "id": 144,
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
+        },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
         },
         "200": {
           "base_id": 200,
@@ -18165,6 +18338,50 @@
           "name": "Resurrect_monster_skill",
           "profession": "None",
           "profession_id": 0
+        }
+      }
+    },
+    "enc:\\\\x40D9\\\\x8578\\\\x9D88\\\\x02AE": {
+      "encoded_names": [
+        "\\\\x40D9\\\\x8578\\\\x9D88\\\\x02AE"
+      ],
+      "inferred_primary": "Elementalist",
+      "inferred_secondary": "",
+      "model_ids": [
+        4091
+      ],
+      "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        }
+      },
+      "observed_skills": {
+        "207": {
+          "id": 207,
+          "name": "Conjure Frost",
+          "profession": "Elementalist",
+          "profession_id": 6
+        },
+        "214": {
+          "id": 214,
+          "name": "Ice Spear",
+          "profession": "Elementalist",
+          "profession_id": 6
+        },
+        "235": {
+          "id": 235,
+          "name": "Blurred Vision",
+          "profession": "Elementalist",
+          "profession_id": 6
+        },
+        "809": {
+          "id": 809,
+          "name": "Shatterstone",
+          "profession": "Elementalist",
+          "profession_id": 6
         }
       }
     },
@@ -18896,6 +19113,12 @@
           "instance_type": "Explorable",
           "name": "Shenzun Tunnels"
         },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "200": {
           "base_id": 200,
           "id": 200,
@@ -19006,6 +19229,12 @@
           "instance_type": "Explorable",
           "name": "Drazach Thicket"
         },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        },
         "200": {
           "base_id": 200,
           "id": 200,
@@ -19054,6 +19283,12 @@
           "id": 144,
           "instance_type": "Explorable",
           "name": "Gyala Hatchery (explorable area)"
+        },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
         },
         "203": {
           "base_id": 203,
@@ -19418,6 +19653,12 @@
           "id": 195,
           "instance_type": "Explorable",
           "name": "Drazach Thicket"
+        },
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
         },
         "203": {
           "base_id": 203,
@@ -21706,6 +21947,50 @@
           "name": "Overload",
           "profession": "Mesmer",
           "profession_id": 5
+        }
+      }
+    },
+    "enc:\\\\x7F55\\\\xB050\\\\xF54F\\\\x5FE9": {
+      "encoded_names": [
+        "\\\\x7F55\\\\xB050\\\\xF54F\\\\x5FE9"
+      ],
+      "inferred_primary": "Ranger",
+      "inferred_secondary": "",
+      "model_ids": [
+        4021
+      ],
+      "observed_maps": {
+        "198": {
+          "base_id": 198,
+          "id": 198,
+          "instance_type": "Explorable",
+          "name": "Archipelagos"
+        }
+      },
+      "observed_skills": {
+        "1197": {
+          "id": 1197,
+          "name": "Needling Shot",
+          "profession": "Ranger",
+          "profession_id": 2
+        },
+        "402": {
+          "id": 402,
+          "name": "Determined Shot",
+          "profession": "Ranger",
+          "profession_id": 2
+        },
+        "434": {
+          "id": 434,
+          "name": "Choking Gas",
+          "profession": "Ranger",
+          "profession_id": 2
+        },
+        "853": {
+          "id": 853,
+          "name": "Melandru's Shot",
+          "profession": "Ranger",
+          "profession_id": 2
         }
       }
     },

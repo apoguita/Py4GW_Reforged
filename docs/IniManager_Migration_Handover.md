@@ -27,6 +27,7 @@ on the native `PySettings` embedded module, exposed through a Python class.
    removed. Per the requirement, window layout is now persisted by imgui's
    per-account ini (`imgui.ini`), so `IniManager` should no longer manage it.
 
+
 ## Relevant files (pointers, not conclusions)
 
 - `Py4GWCoreLib/IniManager.py` — the class to be replaced. Contains window-config
