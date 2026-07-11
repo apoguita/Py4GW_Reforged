@@ -246,3 +246,8 @@ Py4GW_Reforged_Launcher.ini
 
 # PyInstaller build output committed by mistake in "Test build" - never commit built exes
 Py4GW_Reforged_Launcher/*.exe
+
+# Working research/context notes exported from Claude's cross-session memory
+# so CLI sessions can read them directly (they have no access to that memory
+# store) -- not meant for the eventual PR to Apo, just internal working notes
+Py4GW_Reforged_Launcher/dev_notes/
