@@ -86,6 +86,22 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
                 warnings.append(
                     f"{label}: 'Run as Admin' was enabled in the old launcher; not supported, not imported."
                 )
+            # The old accounts.json format never had a per-account DLL path field
+            # for either injection type -- inject_py4gw/inject_gmod can come in
+            # True with py4gw_dll_path/gmod_dll_path both staying empty (set
+            # above from fields that don't exist in this format), which would
+            # otherwise fail to inject with no explanation until someone
+            # noticed in Settings.
+            if profile.py4gw_enabled and not profile.py4gw_dll_path:
+                warnings.append(
+                    f"{label}: Py4GW injection was enabled in the old launcher; "
+                    "the Py4GW DLL path must be set manually in Settings."
+                )
+            if profile.gmod_enabled and not profile.gmod_dll_path:
+                warnings.append(
+                    f"{label}: gMod injection was enabled in the old launcher; "
+                    "the gMod DLL path must be set manually in Settings."
+                )
             if account.get("script_path"):
                 warnings.append(
                     f"{label}: an auto-run script ({account['script_path']}) was set in the old launcher; "

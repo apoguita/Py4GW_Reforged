@@ -1137,6 +1137,7 @@ class ProfileEditBuffer:
     original_id: Optional[str]
     name: str = ""
     executable_path: str = ""
+    launch_arguments: str = ""
     email: str = ""
     password_input: str = ""
     has_stored_password: bool = False
@@ -1162,6 +1163,7 @@ class ProfileEditBuffer:
             original_id=profile.id,
             name=profile.name,
             executable_path=profile.executable_path,
+            launch_arguments=profile.launch_arguments,
             email=profile.email,
             password_input="",
             has_stored_password=bool(profile.password_protected),
@@ -1547,6 +1549,7 @@ class AppState:
         return (
             buffer.name != baseline.name
             or buffer.executable_path != baseline.executable_path
+            or buffer.launch_arguments != baseline.launch_arguments
             or buffer.email != baseline.email
             or buffer.password_input != baseline.password_input
             or buffer.auto_login_enabled != baseline.auto_login_enabled
@@ -1580,6 +1583,7 @@ class AppState:
 
         profile.name = buffer.name
         profile.executable_path = buffer.executable_path
+        profile.launch_arguments = buffer.launch_arguments
         profile.email = buffer.email
         profile.auto_login_enabled = buffer.auto_login_enabled
         profile.auto_select_character_enabled = buffer.auto_select_character_enabled
@@ -2916,6 +2920,11 @@ def show_settings_content() -> None:
                 "or behave unpredictably here -- consider moving your Guild Wars install\n"
                 "to a regular folder instead (e.g. C:\\Games\\Guild Wars\\).",
             )
+        # Freeform text (e.g. "-steam"), not a path -- plain input_text, no
+        # browse button. Already reaches the real command line in
+        # gw1_launch.py's launch_py4gw_profile; this was purely a missing UI
+        # field, the data model/launch pipeline already handled it.
+        _, buffer.launch_arguments = imgui.input_text("Launch arguments", buffer.launch_arguments)
         imgui.separator()
         imgui.spacing()
         imgui.text("Auto-Login")
