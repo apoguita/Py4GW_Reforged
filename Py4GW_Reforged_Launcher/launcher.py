@@ -125,6 +125,7 @@ if sys.maxsize > 2**32:
     )
 
 try:
+    import collections
     import colorsys
     import ctypes.wintypes
     import dataclasses
@@ -767,6 +768,10 @@ class LaunchSession:
     def _on_log(self, message: str) -> None:
         with self._lock:
             self._status_text = classify_progress_message(message)
+        # Single hook point for both single and bulk launches (BulkLaunchSession
+        # drives per-profile LaunchSessions, which all funnel through here).
+        # Outside self._lock -- append_console_line takes its own lock.
+        STATE.append_console_line(self.profile.name, message)
 
     def _run(self) -> None:
         result = launch_py4gw_profile(
@@ -1191,6 +1196,12 @@ class AppState:
         # Ephemeral (never persisted): which ALL-view cards are batch-checked for
         # "Add N to Team". Cleared on leaving ALL -- see jump_to_view.
         self.batch_selected_ids: set[str] = set()
+        # Live console: recent launch/injection log lines. Appended from launch
+        # threads -- several at once during a bulk launch -- so it gets its own
+        # lock, separate from any per-session lock. Collapsed by default.
+        self.console_lines: "collections.deque[str]" = collections.deque(maxlen=500)
+        self._console_lock = threading.Lock()
+        self.console_expanded: bool = False
         self._last_liveness_check = 0.0
         self.reload_profiles()
         self.reload_teams()
@@ -1201,6 +1212,20 @@ class AppState:
 
     def reload_teams(self) -> None:
         self.teams = load_teams()
+
+    def append_console_line(self, profile_name: str, message: str) -> None:
+        """Thread-safe append of one console line -- called from launch threads."""
+        with self._console_lock:
+            self.console_lines.append(f"[{profile_name}] {message}")
+
+    def console_text(self) -> str:
+        """Thread-safe newline-joined snapshot of the console, for rendering."""
+        with self._console_lock:
+            return "\n".join(self.console_lines)
+
+    def clear_console(self) -> None:
+        with self._console_lock:
+            self.console_lines.clear()
 
     def current_team(self) -> Optional[Team]:
         if self.current_team_id is None:
@@ -2272,6 +2297,92 @@ def show_settings_gear_button() -> None:
         STATE.app_settings_window_open = True
 
 
+# Live console panel state. _console_stick_to_bottom follows the user's wheel:
+# input_text_multiline's own scroll isn't exposed, so a wheel-direction heuristic
+# stands in for a true "at bottom" check.
+_CONSOLE_BODY_EM = 10.0
+_console_prev_text_len = -1
+_console_stick_to_bottom = True
+_console_hovered_last_frame = False
+# Scroll-to-bottom needs to persist a few frames after content grows (or the panel
+# is first expanded): SetNextWindowScroll on the very frame content changes can't
+# reach the bottom yet because scroll-max isn't measured until that frame lays out.
+_console_scroll_frames = 0
+_console_was_expanded = False
+
+
+def _console_reserved_height() -> float:
+    """Height show_console_panel() will consume this frame -- the header row, plus
+    the body when expanded -- so the card grid can reserve it before filling the
+    rest of the window."""
+    style = imgui.get_style()
+    reserved = imgui.get_frame_height() + style.item_spacing.y
+    if STATE.console_expanded:
+        reserved += hello_imgui.em_size() * _CONSOLE_BODY_EM + style.item_spacing.y
+    return reserved
+
+
+def show_console_panel() -> None:
+    """Collapsible live console docked at the bottom of the main window: a clickable
+    header (a down/right arrow + "Console") with a Clear button, and when expanded a
+    fixed-height, read-only multiline showing recent launch/injection log lines.
+    Read-only input_text_multiline (not raw text) so selection/copy works for pasting
+    into a bug report. (The arrow is imgui.arrow_button rather than a ▼/▶ text glyph
+    -- the app's font doesn't include those Geometric-Shapes codepoints; arrow_button
+    draws the same triangle via draw_list, matching how the cards draw their icons.)
+    """
+    global _console_prev_text_len, _console_stick_to_bottom, _console_hovered_last_frame
+    global _console_scroll_frames, _console_was_expanded
+
+    style = imgui.get_style()
+    arrow_dir = imgui.Dir.down if STATE.console_expanded else imgui.Dir.right
+    if imgui.arrow_button("##console_toggle", arrow_dir):
+        STATE.console_expanded = not STATE.console_expanded
+    imgui.same_line()
+    clear_w = imgui.calc_text_size("Clear").x + style.frame_padding.x * 2.0
+    label_w = max(
+        hello_imgui.em_size() * 4.0,
+        imgui.get_content_region_avail().x - clear_w - style.item_spacing.x,
+    )
+    if imgui.selectable("Console", False, size=(label_w, 0.0))[0]:
+        STATE.console_expanded = not STATE.console_expanded
+    imgui.same_line()
+    if imgui.button("Clear"):
+        STATE.clear_console()
+
+    if not STATE.console_expanded:
+        _console_was_expanded = False
+        return
+
+    just_expanded = not _console_was_expanded
+    _console_was_expanded = True
+
+    text = STATE.console_text()
+    grew = len(text) != _console_prev_text_len
+    _console_prev_text_len = len(text)
+
+    # Scrolling up over the console releases the stick (so active logging won't
+    # yank the view back down while you're reading); scrolling down re-engages it.
+    # Decided from last frame's hover, before this frame's auto-scroll fires.
+    wheel = imgui.get_io().mouse_wheel
+    if _console_hovered_last_frame and wheel != 0.0:
+        _console_stick_to_bottom = wheel < 0.0
+    if (grew or just_expanded) and _console_stick_to_bottom:
+        _console_scroll_frames = 3  # keep pinning to bottom until layout catches up
+    if not _console_stick_to_bottom:
+        _console_scroll_frames = 0  # user scrolled up -> cancel any pending pin
+    if _console_scroll_frames > 0:
+        imgui.set_next_window_scroll((-1.0, 1.0e7))  # y huge -> clamps to bottom
+        _console_scroll_frames -= 1
+
+    imgui.input_text_multiline(
+        "##console_output", text,
+        size=(imgui.get_content_region_avail().x, hello_imgui.em_size() * _CONSOLE_BODY_EM),
+        flags=int(imgui.InputTextFlags_.read_only.value),
+    )
+    _console_hovered_last_frame = imgui.is_item_hovered()
+
+
 def show_main_window() -> None:
     STATE.update()
 
@@ -2325,7 +2436,13 @@ def show_main_window() -> None:
     show_add_card = STATE.current_team_id is None
     item_count = len(visible_profiles) + (1 if show_add_card else 0)
 
-    imgui.begin_child("card_grid", size=(0, 0), child_flags=int(imgui.ChildFlags_.borders.value))
+    # Reserve room for the console panel drawn after the grid, so the grid doesn't
+    # fill all remaining height and leave nothing for it -- give it an explicit
+    # reduced height instead of (0, 0). The scrollbar-precheck below measures
+    # avail.y from *inside* this child, so it keeps working against the smaller
+    # height with no change of its own.
+    grid_h = max(em * 5.0, imgui.get_content_region_avail().y - _console_reserved_height())
+    imgui.begin_child("card_grid", size=(0.0, grid_h), child_flags=int(imgui.ChildFlags_.borders.value))
     draw_list = imgui.get_window_draw_list()
     origin = imgui.get_cursor_screen_pos()
     grid_is_hoverable = imgui.is_window_hovered()
@@ -2486,6 +2603,9 @@ def show_main_window() -> None:
     rows = (item_count + cols - 1) // cols
     imgui.dummy((avail_w, rows * (card_h + card_gap)))
     imgui.end_child()
+
+    imgui.spacing()
+    show_console_panel()
 
     _show_prereq_launch_confirm_popup()
     _show_delete_profile_confirm_popup()
