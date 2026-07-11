@@ -3372,7 +3372,7 @@ def _show_mod_repo_section() -> None:
 # plaintext is gated behind an explicit warning-before-export confirm.
 # -----------------------------------------------------------------------------
 
-_EXPORT_CONFIRM_POPUP_ID = "Export accounts?##roster_export_confirm"
+_EXPORT_CONFIRM_POPUP_ID = "Back up accounts?##roster_export_confirm"
 _IMPORT_RESULT_POPUP_ID = "Import complete##roster_import_result"
 _ROSTER_DEFAULT_FILENAME = "py4gw_reforged_roster.json"
 _ROSTER_JSON_FILTER = "JSON files (*.json)\0*.json\0All files (*.*)\0*.*\0"
@@ -3396,16 +3396,16 @@ def _show_export_confirm_popup() -> None:
                 imgui.text("This file will contain your saved account passwords in plain text.")
                 imgui.text_colored(
                     _PREREQ_MUTED_COLOR,
-                    "Store it securely and delete it once you're done importing it elsewhere.",
+                    "Store it securely and delete it once you're done restoring it elsewhere.",
                 )
             else:
-                imgui.text("Export your profiles and teams to a file.")
+                imgui.text("Back up your profiles and teams to a file.")
                 imgui.text_colored(
                     _PREREQ_MUTED_COLOR,
-                    "Passwords are not included -- imported profiles will need their passwords re-entered.",
+                    "Passwords are not included -- restored profiles will need their passwords re-entered.",
                 )
             imgui.spacing()
-            if imgui.button("Choose file and export..."):
+            if imgui.button("Choose file and back up..."):
                 _export_browse_pending = True
                 imgui.close_current_popup()
             imgui.same_line()
@@ -3489,12 +3489,12 @@ def _show_export_import_section() -> None:
     if _export_browse_pending:
         _export_browse_pending = False
         chosen = _browse_for_save_file(
-            title="Export accounts", filter_str=_ROSTER_JSON_FILTER,
+            title="Back up accounts", filter_str=_ROSTER_JSON_FILTER,
             default_filename=_ROSTER_DEFAULT_FILENAME,
         )
         if chosen:
             STATE.export_roster(chosen, include_passwords=_export_include_passwords)
-            _roster_status_message = f"Exported to {chosen}"
+            _roster_status_message = f"Backed up to {chosen}"
 
     _show_import_result_popup()
 
