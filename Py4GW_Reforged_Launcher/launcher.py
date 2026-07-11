@@ -1481,6 +1481,50 @@ class AppState:
         self.edit_buffer = ProfileEditBuffer.from_profile(profile) if profile else None
         self.settings_window_open = True
 
+    def duplicate_profile(self, profile_id: str) -> Optional[GameProfile]:
+        """Copy a profile: same settings as the source, minus the account-specific
+        fields that must never be shared between two profiles (email, password,
+        auto-login/auto-select toggles, character name). Mirrors duplicate_team's
+        "<name> copy" naming.
+
+        Built via to_dict()/from_dict() rather than dataclasses.replace() --
+        to_dict() uses dataclasses.asdict(), which deep-copies mutable fields
+        like team_ids and gmod_plugin_paths. A shallow copy would leave the new
+        profile's team_ids as the *same list object* as the source's, so toggling
+        team membership on one would silently corrupt the other. Everything not
+        explicitly blanked below (executable_path, launch_arguments, py4gw/gmod
+        settings including gmod_plugin_paths, windowed_mode_enabled, window
+        placement, team_ids) carries over as-is -- copying the whole configured
+        profile is the point of this feature, not just what Settings exposes.
+
+        Opens Settings on the new copy immediately, same guided-review flow as
+        the "+" Add Profile card, since the blanked email/password/character
+        name still need to be filled in.
+        """
+        source = next((p for p in self.profiles if p.id == profile_id), None)
+        if source is None:
+            return None
+
+        data = source.to_dict()
+        data.pop("id", None)  # let GameProfile's default_factory mint a fresh one
+        data.update(
+            name=f"{source.name} copy",
+            email="",
+            password_protected="",
+            character_name="",
+            auto_login_enabled=False,
+            auto_select_character_enabled=False,
+        )
+        new_profile = GameProfile.from_dict(data)
+
+        self.profiles.append(new_profile)
+        save_profiles(self.profiles)
+
+        self.selected_id = new_profile.id
+        self.edit_buffer = ProfileEditBuffer.from_profile(new_profile)
+        self.settings_window_open = True
+        return new_profile
+
     def cancel_edit(self) -> None:
         self.edit_buffer = None
 
@@ -2560,6 +2604,12 @@ def show_main_window() -> None:
         if imgui.begin_popup(f"card_context##{profile.id}"):
             if imgui.selectable("Edit", False)[0]:
                 STATE.begin_edit_selected()
+                imgui.close_current_popup()
+            # No running/launching guard here, unlike Delete -- duplicating only
+            # reads the source profile, it never touches the live session, so
+            # it's safe regardless of the source's current state.
+            if imgui.selectable("Duplicate", False)[0]:
+                STATE.duplicate_profile(profile.id)
                 imgui.close_current_popup()
 
             # Checkable rows via imgui.checkbox (not menu_item) specifically
