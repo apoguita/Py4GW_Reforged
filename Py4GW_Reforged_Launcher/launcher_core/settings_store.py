@@ -151,3 +151,19 @@ def load_gmod_injection_enabled(path: Path | str | None = None) -> bool:
 def save_gmod_injection_enabled(gmod_injection_enabled: bool, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("gmod_injection_enabled", gmod_injection_enabled, resolved)
+
+
+def load_custom_card_order_enabled(path: Path | str | None = None) -> bool:
+    """Default False -- fresh installs and anyone who's never dragged a card
+    get plain alphabetical order. Flips to True the moment a drag-and-drop
+    reorder actually happens (see show_main_window's card grid loop); no
+    separate UI toggle exists for this, only "Reset to alphabetical" in App
+    Settings turns it back off."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("custom_card_order_enabled", False))
+
+
+def save_custom_card_order_enabled(custom_card_order_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("custom_card_order_enabled", custom_card_order_enabled, resolved)

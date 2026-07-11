@@ -157,6 +157,7 @@ try:
     from launcher_core.profile_store import load_profiles, load_teams, save_profiles, save_teams
     from launcher_core.settings_store import (
         load_bulk_launch_pacing_seconds,
+        load_custom_card_order_enabled,
         load_dark_theme_enabled,
         load_gmod_injection_enabled,
         load_mod_repo_path,
@@ -164,6 +165,7 @@ try:
         load_multiclient_enabled,
         load_py4gw_injection_enabled,
         save_bulk_launch_pacing_seconds,
+        save_custom_card_order_enabled,
         save_dark_theme_enabled,
         save_gmod_injection_enabled,
         save_mod_repo_path,
@@ -379,6 +381,18 @@ def _pre_new_frame_hooks() -> None:
 
 def _u32(r: int, g: int, b: int, a: int = 255) -> int:
     return imgui.color_convert_float4_to_u32((r / 255.0, g / 255.0, b / 255.0, a / 255.0))
+
+
+def _dim(color_u32: int, opacity: float) -> int:
+    """Scales a packed draw_list color's alpha by `opacity` -- used to fade a
+    card being dragged. draw_list colors are plain packed ints with alpha
+    already baked in, not affected by imgui's style-alpha stack (that only
+    applies to real widgets), so this is the only way to dim raw draw_list
+    calls."""
+    if opacity >= 1.0:
+        return color_u32
+    r, g, b, a = imgui.color_convert_u32_to_float4(color_u32)
+    return imgui.color_convert_float4_to_u32((r, g, b, a * opacity))
 
 
 DARK_PALETTE = {
@@ -1200,6 +1214,7 @@ class AppState:
         self.multiclient_enabled: bool = load_multiclient_enabled()
         self.py4gw_injection_enabled: bool = load_py4gw_injection_enabled()
         self.gmod_injection_enabled: bool = load_gmod_injection_enabled()
+        self.custom_card_order_enabled: bool = load_custom_card_order_enabled()
         self.name_filter: str = ""
         # Ephemeral (never persisted): which ALL-view cards are batch-checked for
         # "Add N to Team". Cleared on leaving ALL -- see jump_to_view.
@@ -1525,6 +1540,55 @@ class AppState:
         self.settings_window_open = True
         return new_profile
 
+    def reorder_profile(self, dragged_id: str, target_id: str, insert_after: bool) -> None:
+        """Splices `dragged_id` to sit just before or after `target_id` in the
+        real global self.profiles list -- never the visible/filtered subset's
+        local index, so this resolves correctly regardless of which view (ALL,
+        a team, or a name filter) the drag happened in.
+
+        Order matters here: remove the dragged profile *first*, then look up
+        target's index in what's left -- looking target up before removing
+        would be off-by-one if the dragged profile happened to sit earlier in
+        the list than the target (removing it shifts everything after it back
+        by one).
+
+        No-ops (doesn't even save) if either id isn't found, or if the drag
+        target somehow ended up being the dragged profile itself.
+        """
+        if dragged_id == target_id:
+            return
+
+        dragged = next((p for p in self.profiles if p.id == dragged_id), None)
+        if dragged is None:
+            return
+        self.profiles.remove(dragged)
+
+        target_index = next((i for i, p in enumerate(self.profiles) if p.id == target_id), None)
+        if target_index is None:
+            # Target vanished (deleted elsewhere mid-drag) -- put the dragged
+            # profile back rather than silently dropping it from the list.
+            self.profiles.append(dragged)
+            return
+
+        insert_index = target_index + 1 if insert_after else target_index
+        self.profiles.insert(insert_index, dragged)
+        save_profiles(self.profiles)
+
+        if not self.custom_card_order_enabled:
+            self.set_custom_card_order_enabled(True)
+
+    def reset_card_order_to_alphabetical(self) -> None:
+        """App Settings' "Reset to alphabetical" action. Physically re-sorts
+        self.profiles right now and saves it -- not just flipping
+        custom_card_order_enabled back off -- so if custom order gets
+        re-enabled later by another drag, it starts from a clean alphabetical
+        baseline instead of picking up wherever a stale, possibly very old
+        custom order left off.
+        """
+        self.profiles.sort(key=lambda p: p.name.lower())
+        save_profiles(self.profiles)
+        self.set_custom_card_order_enabled(False)
+
     def cancel_edit(self) -> None:
         self.edit_buffer = None
 
@@ -1642,6 +1706,10 @@ class AppState:
     def set_gmod_injection_enabled(self, enabled: bool) -> None:
         self.gmod_injection_enabled = enabled
         save_gmod_injection_enabled(enabled)
+
+    def set_custom_card_order_enabled(self, enabled: bool) -> None:
+        self.custom_card_order_enabled = enabled
+        save_custom_card_order_enabled(enabled)
 
     def foreground_profile(self, profile_id: str) -> None:
         pid = self.running_pids.get(profile_id)
@@ -1782,7 +1850,7 @@ def _draw_batch_checkbox(draw_list, min_pt, max_pt, *, checked: bool, hovered: b
         draw_list.add_rect(min_pt, max_pt, border, rounding=3.0, thickness=1.5)
 
 
-def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, show_batch_checkbox: bool = False, batch_checked: bool = False, checkbox_hovered: bool = False) -> None:
+def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, show_batch_checkbox: bool = False, batch_checked: bool = False, checkbox_hovered: bool = False, opacity: float = 1.0) -> None:
     em = hello_imgui.em_size()
     x, y = origin
     p_min = (x, y)
@@ -1794,21 +1862,22 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
         bg, border = HOVER_BACK, HOVER_BORDER
     else:
         bg, border = CARD_BACK, CARD_BORDER
+    bg, border = _dim(bg, opacity), _dim(border, opacity)
 
     draw_list.add_rect_filled(p_min, p_max, bg, rounding=6.0)
     draw_list.add_rect(p_min, p_max, border, rounding=6.0, thickness=1.0)
 
     if selected:
-        draw_list.add_rect_filled((x, y), (x + em * 0.267, y + card_h), ACCENT, rounding=6.0)
+        draw_list.add_rect_filled((x, y), (x + em * 0.267, y + card_h), _dim(ACCENT, opacity), rounding=6.0)
 
     icon_center = (x + em * 1.733, y + em * 1.6)
-    draw_list.add_circle_filled(icon_center, em * 0.8, _avatar_color_for_id(profile.id))
+    draw_list.add_circle_filled(icon_center, em * 0.8, _dim(_avatar_color_for_id(profile.id), opacity))
 
     initial = (profile.name[:1] or "?").upper()
     initial_size = imgui.calc_text_size(initial)
     draw_list.add_text(
         (icon_center[0] - initial_size.x / 2, icon_center[1] - initial_size.y / 2),
-        CARD_NAME_FORE, initial,
+        _dim(CARD_NAME_FORE, opacity), initial,
     )
 
     if hovered:
@@ -1819,7 +1888,7 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
             _draw_play_icon(draw_list, action_center, em * 1.0, ACCENT)
 
     text_x = x + em * 3.067
-    draw_list.add_text((text_x, y + em * 0.933), CARD_NAME_FORE, profile.name or "(unnamed profile)")
+    draw_list.add_text((text_x, y + em * 0.933), _dim(CARD_NAME_FORE, opacity), profile.name or "(unnamed profile)")
 
     if launching:
         sub_col = STATUS_ERROR if is_error else STATUS_PROGRESS
@@ -1836,7 +1905,7 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
             sub_text = profile.character_name
         else:
             sub_text = "Ready to launch"
-    draw_list.add_text((text_x, y + em * 2.133), sub_col, sub_text)
+    draw_list.add_text((text_x, y + em * 2.133), _dim(sub_col, opacity), sub_text)
 
     badges = []
     if profile.py4gw_enabled:
@@ -1856,8 +1925,8 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
         badge_x -= w + em * 0.267
         b_min = (badge_x, badge_y)
         b_max = (badge_x + w, badge_y + badge_h)
-        draw_list.add_rect_filled(b_min, b_max, BADGE_BACK, rounding=8.0)
-        draw_list.add_text((badge_x + badge_pad, badge_y + em * 0.067), BADGE_FORE, badge)
+        draw_list.add_rect_filled(b_min, b_max, _dim(BADGE_BACK, opacity), rounding=8.0)
+        draw_list.add_text((badge_x + badge_pad, badge_y + em * 0.067), _dim(BADGE_FORE, opacity), badge)
 
     if show_batch_checkbox:
         checkbox_min, checkbox_max = batch_checkbox_rect((x, y), card_h, em)
@@ -2164,14 +2233,24 @@ def _visible_profiles() -> list[GameProfile]:
     name filter narrows within that -- so both compose correctly regardless
     of which view is active. ALL (current_team_id is None) skips the team
     narrowing entirely and behaves exactly as before.
+
+    Alphabetical by name (case-insensitive) is the default order.
+    custom_card_order_enabled flips this off the moment a drag-and-drop
+    reorder happens (see show_main_window's card grid loop) -- once that's
+    True, STATE.profiles' own list order *is* the custom order (no separate
+    order field: profiles.json is already a plain list), so this just stops
+    re-sorting and returns the filtered pool in whatever order the
+    underlying list is already in.
     """
     team_id = STATE.current_team_id
     pool = STATE.profiles if team_id is None else [p for p in STATE.profiles if team_id in p.team_ids]
 
     query = STATE.name_filter.strip().lower()
-    if not query:
-        return list(pool)
-    return [p for p in pool if query in p.name.lower()]
+    visible = list(pool) if not query else [p for p in pool if query in p.name.lower()]
+
+    if not STATE.custom_card_order_enabled:
+        visible.sort(key=lambda p: p.name.lower())
+    return visible
 
 
 def _team_actions_width() -> float:
@@ -2454,6 +2533,27 @@ def show_console_panel() -> None:
         STATE.clear_console()
 
 
+# Card drag-and-drop reorder state. Cards aren't real ImGui items (custom
+# draw_list rendering + manual is_mouse_hovering_rect hit-testing, same as
+# the rest of the card grid's click handling), so this is a manual state
+# machine rather than begin_drag_drop_source/target:
+#   - _drag_candidate_id: set the frame a card is clicked, alongside the
+#     existing select-on-click logic. Not yet a real drag -- a plain click
+#     also sets this, harmlessly, since it's only promoted to an actual
+#     drag once ImGui's own drag threshold confirms real mouse movement.
+#   - _dragging_profile_id: the candidate is promoted to this once
+#     imgui.is_mouse_dragging(0) goes true. This is the actual dragged card.
+#   - _drop_target_id/_drop_before: whichever *other* card the mouse is
+#     over while dragging, and which half of it -- recomputed every frame,
+#     reset to None/False at the top of each frame so a release over empty
+#     space (no card currently hovered) correctly finds no valid target
+#     rather than reusing a stale value from an earlier frame.
+_drag_candidate_id: Optional[str] = None
+_dragging_profile_id: Optional[str] = None
+_drop_target_id: Optional[str] = None
+_drop_before: bool = False
+
+
 def show_main_window() -> None:
     STATE.update()
 
@@ -2555,6 +2655,18 @@ def show_main_window() -> None:
             max(min_card_w, avail_w - scrollbar_w), min_card_w, card_gap
         )
 
+    global _drag_candidate_id, _dragging_profile_id, _drop_target_id, _drop_before
+    # Reset every frame before re-evaluating hover below -- a release over
+    # empty grid space (or the "+" card) this frame must find no valid
+    # target rather than reusing whatever the mouse was last over.
+    _drop_target_id = None
+    _drop_before = False
+    # Promote a click candidate to an actual drag only once ImGui's own drag
+    # threshold confirms real mouse movement -- a plain click never reaches
+    # this (is_mouse_dragging stays false), so no extra distance math needed.
+    if _dragging_profile_id is None and _drag_candidate_id is not None and imgui.is_mouse_dragging(0):
+        _dragging_profile_id = _drag_candidate_id
+
     for i, profile in enumerate(visible_profiles):
         col = i % cols
         row = i // cols
@@ -2591,6 +2703,23 @@ def show_main_window() -> None:
                 STATE.foreground_profile(profile.id)
             else:
                 STATE.selected_id = profile.id
+            # Recorded alongside the existing select-on-click above, not
+            # instead of it -- a card getting selected as a drag begins is
+            # harmless. Only promoted to an actual drag (see the frame-start
+            # check above the loop) once ImGui's own drag threshold confirms
+            # real mouse movement, so a plain click never triggers a reorder.
+            _drag_candidate_id = profile.id
+
+        # While a card is actively being dragged, track whichever *other*
+        # card the mouse is currently over as the live drop target, and
+        # which half of it -- left half = insert before, right half = after.
+        # Recomputed every frame while dragging so the drop indicator (drawn
+        # below) always reflects the current mouse position.
+        if _dragging_profile_id is not None and profile.id != _dragging_profile_id and hovered:
+            mouse_x = imgui.get_io().mouse_pos.x
+            midpoint_x = (p_min[0] + p_max[0]) / 2.0
+            _drop_target_id = profile.id
+            _drop_before = mouse_x < midpoint_x
 
         if hovered and imgui.is_mouse_double_clicked(0):
             if not running and not launching:
@@ -2660,7 +2789,36 @@ def show_main_window() -> None:
             show_batch_checkbox=in_all_view,
             batch_checked=(profile.id in STATE.batch_selected_ids),
             checkbox_hovered=checkbox_hovered,
+            opacity=0.4 if profile.id == _dragging_profile_id else 1.0,
         )
+
+        # Drop indicator: a thin bar at whichever edge of the current drop
+        # target the dragged card would land on -- same accent color the
+        # selected card's own left bar already uses, so it reads as part of
+        # this app's existing visual language rather than a new one.
+        if _dragging_profile_id is not None and profile.id == _drop_target_id:
+            bar_x = p_min[0] if _drop_before else p_max[0]
+            draw_list.add_rect_filled(
+                (bar_x - em * 0.067, p_min[1]), (bar_x + em * 0.067, p_max[1]), ACCENT, rounding=2.0
+            )
+
+    # Finalize (valid target hovered at release) or cancel silently (released
+    # over empty grid space, the "+" card, or nothing) -- either way, clear
+    # all drag state so the next click starts clean. Checked once here after
+    # the loop, not per-card, since it's a single physical event -- by this
+    # point _drop_target_id/_drop_before already reflect this exact frame's
+    # final hover state from the loop above.
+    if _dragging_profile_id is not None and imgui.is_mouse_released(0):
+        if _drop_target_id is not None:
+            STATE.reorder_profile(_dragging_profile_id, _drop_target_id, insert_after=not _drop_before)
+        _drag_candidate_id = None
+        _dragging_profile_id = None
+        _drop_target_id = None
+        _drop_before = False
+    elif imgui.is_mouse_released(0):
+        # Released without ever becoming a real drag (a plain click) --
+        # still clear the candidate so it can't linger into a later frame.
+        _drag_candidate_id = None
 
     if show_add_card:
         add_index = len(visible_profiles)
@@ -3965,6 +4123,14 @@ def show_app_settings_window() -> None:
         if imgui.button("Reload profiles and teams from disk"):
             STATE.reload_profiles()
             STATE.reload_teams()
+        if imgui.button("Reset to alphabetical"):
+            STATE.reset_card_order_to_alphabetical()
+        imgui.text_colored(
+            _PREREQ_MUTED_COLOR,
+            "Card order defaults to alphabetical -- dragging a card to reorder it\n"
+            "switches to that custom order automatically. This reverts back to\n"
+            "alphabetical immediately.",
+        )
     imgui.end()
 
 
