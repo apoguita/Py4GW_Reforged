@@ -2978,7 +2978,11 @@ def show_settings_content() -> None:
             imgui.text(display_path)
             if imgui.is_item_hovered():
                 imgui.set_tooltip(mod_path)
-            imgui.same_line()
+            # Fixed X offset (not a bare same_line()) so every row's remove
+            # button lines up in one column regardless of how much of the
+            # truncated path actually rendered, rather than trailing each
+            # row's own text width.
+            imgui.same_line(offset_from_start_x=avail_w - remove_w)
             if imgui.small_button(f"x##gmod_mod_{i}"):
                 remove_index = i
         if remove_index is not None:
