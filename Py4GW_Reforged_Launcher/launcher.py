@@ -440,11 +440,15 @@ STATUS_ERROR = _u32(220, 90, 90)
 # DarculaDarker) even though no code here ever explicitly requested it --
 # it's hello_imgui's own default -- so using it explicitly for the dark
 # case reproduces today's actual look exactly, not just "a" dark theme.
-# "LightRounded" is hello_imgui's own purpose-built light preset (as
-# opposed to the bare "ImGuiColorsLight", a straight port of Dear ImGui's
-# own stock light colors with no extra polish).
+# "GrayVariations" is a neutral-grey light preset. "LightRounded" and the near-
+# identical "ImGuiColorsLight" (Dear ImGui's stock light palette) were tried first
+# but make every interactive widget -- buttons, checkbox fills, checkmarks -- a
+# saturated blue at rest, so the whole of Settings/App Settings read as permanently
+# "selected". GrayVariations keeps those neutral grey, matching how the dark preset
+# (DarculaDarker) reads, and its grey chrome still gives buttons/checkmarks enough
+# contrast against the light window background (verified visually).
 _DARK_IMGUI_THEME = "DarculaDarker"
-_LIGHT_IMGUI_THEME = "LightRounded"
+_LIGHT_IMGUI_THEME = "GrayVariations"
 
 # apply_theme() needs a live ImGui context -- confirmed directly (raises
 # IM_ASSERT "No current context" when called before one exists) -- but
