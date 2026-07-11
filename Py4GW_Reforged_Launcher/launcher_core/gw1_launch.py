@@ -678,6 +678,8 @@ def launch_py4gw_profile(
     absolute_ceiling: float = ABSOLUTE_CEILING_DEFAULT,
     hang_fail_threshold: float = HANG_FAIL_THRESHOLD_DEFAULT,
     replacement_scan_timeout: float = 300.0,
+    multiclient_enabled: bool = True,
+    py4gw_injection_enabled: bool = True,
     on_log: Optional[Callable[[str], None]] = None,
 ) -> LaunchResult:
     """Launch `profile`'s executable, optionally auto-logging in, and inject Py4GW
@@ -690,6 +692,18 @@ def launch_py4gw_profile(
     nothing injected. Auto-login (`-email`/`-password`/`-character`) is applied
     whenever `profile.auto_login_enabled` and credentials are configured, regardless
     of `py4gw_enabled` -- see `_build_auto_login_args`.
+
+    `multiclient_enabled` and `py4gw_injection_enabled` are the global App
+    Settings master switches (see AppState.multiclient_enabled/
+    py4gw_injection_enabled in launcher.py) -- both default True so a caller
+    that doesn't pass them gets today's existing behavior. `multiclient_enabled`
+    gates both `_apply_multiclient_patch` call sites; off, the patch is skipped
+    entirely rather than attempted-and-ignored. `py4gw_injection_enabled` gates
+    the DLL-path validation and the injection step the same way `profile.
+    py4gw_enabled` already does -- both must be true for injection to actually
+    happen, so a globally-off switch can't be defeated by a single profile's
+    own toggle, and a profile with injection off isn't blocked by an unrelated
+    missing DLL path when injection is already globally disabled.
 
     `LaunchResult.pid` is whichever process ends up injected into (or, if
     `py4gw_enabled` is off, whichever process the launch ultimately resolves to) --
@@ -714,7 +728,10 @@ def launch_py4gw_profile(
 
     _apply_gw1_registry_fix(profile, log)
 
-    if profile.py4gw_enabled and (not profile.py4gw_dll_path or not os.path.exists(profile.py4gw_dll_path)):
+    if (
+        profile.py4gw_enabled and py4gw_injection_enabled
+        and (not profile.py4gw_dll_path or not os.path.exists(profile.py4gw_dll_path))
+    ):
         return LaunchResult(False, None, f"py4gw_dll_path not found: {profile.py4gw_dll_path!r}", log)
 
     command_line = f'"{profile.executable_path}"'
@@ -754,8 +771,11 @@ def launch_py4gw_profile(
         _log(log, reason)
         return LaunchResult(False, pid, reason, log)
 
-    if not _apply_multiclient_patch(pid, log):
-        return _abort("Failed to apply multiclient patch; aborting launch")
+    if multiclient_enabled:
+        if not _apply_multiclient_patch(pid, log):
+            return _abort("Failed to apply multiclient patch; aborting launch")
+    else:
+        _log(log, "Multiclient patch disabled (App Settings) -- skipping")
 
     if kernel32.ResumeThread(process_info.hThread) == -1:
         return _abort(f"Failed to resume thread: {ctypes.GetLastError()}")
@@ -775,8 +795,11 @@ def launch_py4gw_profile(
             return LaunchResult(False, pid, "Updater process exited but no follow-up Gw.exe process was found", log)
 
         pid = replacement_pid
-        if not _apply_multiclient_patch(pid, log):
-            _log(log, "Multiclient patch on the follow-up process failed (best-effort, continuing)")
+        if multiclient_enabled:
+            if not _apply_multiclient_patch(pid, log):
+                _log(log, "Multiclient patch on the follow-up process failed (best-effort, continuing)")
+        else:
+            _log(log, "Multiclient patch disabled (App Settings) -- skipping")
 
         if not _wait_for_gw_window(pid, log, timeout=window_wait_timeout):
             return LaunchResult(False, pid, "GW window never appeared", log)
@@ -795,7 +818,7 @@ def launch_py4gw_profile(
         window_title = profile.name
     _set_gw_window_title(pid, window_title, log)
 
-    if profile.py4gw_enabled:
+    if profile.py4gw_enabled and py4gw_injection_enabled:
         _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")
         time.sleep(post_window_settle_delay)
 
@@ -803,6 +826,8 @@ def launch_py4gw_profile(
             return LaunchResult(False, pid, "Py4GW DLL injection failed", log)
 
         _log(log, "Py4GW DLL injection reported success")
+    elif profile.py4gw_enabled and not py4gw_injection_enabled:
+        _log(log, "Py4GW injection globally disabled (App Settings) -- launching without it")
     else:
         _log(log, "Py4GW injection disabled for this profile -- launching without it")
 

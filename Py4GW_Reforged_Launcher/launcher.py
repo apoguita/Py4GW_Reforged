@@ -159,9 +159,13 @@ try:
         load_dark_theme_enabled,
         load_mod_repo_path,
         load_mod_repo_url,
+        load_multiclient_enabled,
+        load_py4gw_injection_enabled,
         save_bulk_launch_pacing_seconds,
         save_dark_theme_enabled,
         save_mod_repo_path,
+        save_multiclient_enabled,
+        save_py4gw_injection_enabled,
     )
     from launcher_core.team import Team
     from launcher_core.window_control import (
@@ -761,7 +765,12 @@ class LaunchSession:
             self._status_text = classify_progress_message(message)
 
     def _run(self) -> None:
-        result = launch_py4gw_profile(self.profile, on_log=self._on_log)
+        result = launch_py4gw_profile(
+            self.profile,
+            multiclient_enabled=STATE.multiclient_enabled,
+            py4gw_injection_enabled=STATE.py4gw_injection_enabled,
+            on_log=self._on_log,
+        )
         _log_launch_attempt(self.profile, result)
         with self._lock:
             self._result = result
@@ -1172,6 +1181,8 @@ class AppState:
         self.edit_buffer: Optional[ProfileEditBuffer] = None
         self.bulk_launch_session: Optional[BulkLaunchSession] = None
         self.bulk_launch_pacing_seconds: int = load_bulk_launch_pacing_seconds()
+        self.multiclient_enabled: bool = load_multiclient_enabled()
+        self.py4gw_injection_enabled: bool = load_py4gw_injection_enabled()
         self.name_filter: str = ""
         self._last_liveness_check = 0.0
         self.reload_profiles()
@@ -1375,6 +1386,14 @@ class AppState:
     def set_bulk_launch_pacing_seconds(self, seconds: int) -> None:
         self.bulk_launch_pacing_seconds = seconds
         save_bulk_launch_pacing_seconds(seconds)
+
+    def set_multiclient_enabled(self, enabled: bool) -> None:
+        self.multiclient_enabled = enabled
+        save_multiclient_enabled(enabled)
+
+    def set_py4gw_injection_enabled(self, enabled: bool) -> None:
+        self.py4gw_injection_enabled = enabled
+        save_py4gw_injection_enabled(enabled)
 
     def foreground_profile(self, profile_id: str) -> None:
         pid = self.running_pids.get(profile_id)
@@ -1931,7 +1950,7 @@ def show_team_actions(pos: tuple[float, float]) -> None:
     team_id = STATE.current_team_id
     members = [p for p in STATE.profiles if team_id in p.team_ids] if team_id is not None else []
     bulk_launching = STATE.is_bulk_launching()
-    can_launch = team_id is not None and bool(members) and not bulk_launching
+    can_launch = team_id is not None and bool(members) and not bulk_launching and STATE.multiclient_enabled
 
     label = f"Launch Team ({len(members)})" if team_id is not None else "Launch Team"
     em = hello_imgui.em_size()
@@ -2985,6 +3004,31 @@ def show_app_settings_window() -> None:
         imgui.spacing()
 
         _show_mod_repo_section()
+
+        imgui.separator()
+        imgui.spacing()
+
+        imgui.text("Injection:")
+        changed_multiclient, new_multiclient_enabled = imgui.checkbox(
+            "Multiclient patch", STATE.multiclient_enabled
+        )
+        if changed_multiclient:
+            STATE.set_multiclient_enabled(new_multiclient_enabled)
+        imgui.text_colored(
+            _PREREQ_MUTED_COLOR,
+            "Required to run more than one Guild Wars 1 instance at once. Off disables\n"
+            "Bulk Launch; single-profile launches aren't affected.",
+        )
+
+        changed_py4gw_injection, new_py4gw_injection_enabled = imgui.checkbox(
+            "Py4GW injection", STATE.py4gw_injection_enabled
+        )
+        if changed_py4gw_injection:
+            STATE.set_py4gw_injection_enabled(new_py4gw_injection_enabled)
+        imgui.text_colored(
+            _PREREQ_MUTED_COLOR,
+            "Master switch across all profiles, independent of each profile's own toggle.",
+        )
 
         imgui.separator()
         imgui.spacing()

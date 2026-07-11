@@ -107,3 +107,32 @@ def load_dark_theme_enabled(path: Path | str | None = None) -> bool:
 def save_dark_theme_enabled(dark_theme_enabled: bool, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("dark_theme_enabled", dark_theme_enabled, resolved)
+
+
+def load_multiclient_enabled(path: Path | str | None = None) -> bool:
+    """Default True -- no behavior change for existing installs until a user
+    actually flips this off in App Settings."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("multiclient_enabled", True))
+
+
+def save_multiclient_enabled(multiclient_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("multiclient_enabled", multiclient_enabled, resolved)
+
+
+def load_py4gw_injection_enabled(path: Path | str | None = None) -> bool:
+    """Default True -- no behavior change for existing installs until a user
+    actually flips this off in App Settings. Master switch across all
+    profiles, independent of each profile's own py4gw_enabled toggle; modeled
+    to make room for a sibling gMod-injection master switch later, even
+    though gMod isn't implemented yet."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("py4gw_injection_enabled", True))
+
+
+def save_py4gw_injection_enabled(py4gw_injection_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("py4gw_injection_enabled", py4gw_injection_enabled, resolved)
