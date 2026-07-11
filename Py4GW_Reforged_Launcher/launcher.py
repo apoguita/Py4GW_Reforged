@@ -4318,7 +4318,7 @@ def show_app_settings_window() -> None:
                 )
                 imgui.same_line()
                 if imgui.button("View releases##launcher_update_link"):
-                    webbrowser.open(update_check.RELEASES_PAGE_URL)
+                    webbrowser.open(update_check.releases_page_url())
         # update_result is None (never checked yet) or not ok (the startup
         # check, or a manual one, failed -- no internet, GitHub down, rate
         # limited) shows nothing at all here, on purpose.

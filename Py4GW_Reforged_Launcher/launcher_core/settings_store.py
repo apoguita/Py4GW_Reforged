@@ -95,6 +95,29 @@ def save_mod_repo_url(mod_repo_url: str, path: Path | str | None = None) -> None
     _save_one("mod_repo_url", mod_repo_url, resolved)
 
 
+# Where the launcher's own releases are checked/published (launcher_core.
+# update_check) -- "owner/repo" form, not a full URL, since that's what
+# GitHub's REST API path needs directly. Deliberately set to the eventual
+# final (upstream) home, not today's actual fork this is being developed
+# and released from -- same externalization shape as DEFAULT_MOD_REPO_URL
+# above (a quiet one-file JSON edit, no in-app UI control), so testing
+# against the real fork right now is just a launcher_release_repo override
+# in launcher_settings.json, with no code change needed once/if this
+# actually lands upstream.
+DEFAULT_LAUNCHER_RELEASE_REPO = "apoguita/Py4GW_Reforged"
+
+
+def load_launcher_release_repo(path: Path | str | None = None) -> str:
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return str(data.get("launcher_release_repo", DEFAULT_LAUNCHER_RELEASE_REPO))
+
+
+def save_launcher_release_repo(launcher_release_repo: str, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("launcher_release_repo", launcher_release_repo, resolved)
+
+
 def load_dark_theme_enabled(path: Path | str | None = None) -> bool:
     """Default True (dark) -- matches this launcher's existing behavior
     before the light theme existed, so an upgrade with no stored preference

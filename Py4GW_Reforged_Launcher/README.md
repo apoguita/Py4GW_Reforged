@@ -93,5 +93,22 @@ core flows:
 5. If you have an `accounts.json` from the old launcher handy, try the
    import.
 
+## Advanced
+
+A couple of settings live only in `launcher_settings.json` (under
+`%APPDATA%\Py4GW_Reforged_Launcher\`) with no in-app UI control — most
+people will never need to touch these, but they're there as a manual
+escape hatch:
+
+- `mod_repo_url` — where the Py4GW_Reforged mod code itself is cloned and
+  updated from. Defaults to the upstream repo.
+- `launcher_release_repo` (`owner/repo` form, e.g. `apoguita/Py4GW_Reforged`)
+  — which GitHub repo the "Check for updates" feature in App Settings
+  checks releases against. Also defaults to upstream; a fork can override
+  this to point update-checks at its own releases instead.
+
+Both are read fresh on the next check/use, no restart needed — just add or
+edit the key by hand and save the file.
+
 Feedback welcome on any of it — this is genuinely meant to become the
 launcher for the project, not a side experiment.

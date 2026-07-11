@@ -25,8 +25,20 @@ import urllib.error
 import urllib.request
 from typing import Optional
 
-LATEST_RELEASE_API_URL = "https://api.github.com/repos/Royel-Payne/Py4GW_Reforged/releases/latest"
-RELEASES_PAGE_URL = "https://github.com/Royel-Payne/Py4GW_Reforged/releases"
+from launcher_core.settings_store import load_launcher_release_repo
+
+
+def _releases_api_url() -> str:
+    return f"https://api.github.com/repos/{load_launcher_release_repo()}/releases/latest"
+
+
+def releases_page_url() -> str:
+    """Read fresh each call (not a module-level constant) so a manual
+    launcher_release_repo edit in launcher_settings.json takes effect on the
+    very next check/click, same as _releases_api_url below -- no restart
+    needed, matching every other settings_store-backed value in this app.
+    """
+    return f"https://github.com/{load_launcher_release_repo()}/releases"
 
 
 @dataclasses.dataclass
@@ -52,7 +64,7 @@ def fetch_latest_release_tag(timeout: float = 5.0) -> UpdateCheckResult:
         # GitHub's API rejects requests with no User-Agent header (403), so
         # this can't be a bare urlopen(url) call.
         request = urllib.request.Request(
-            LATEST_RELEASE_API_URL,
+            _releases_api_url(),
             headers={
                 "Accept": "application/vnd.github+json",
                 "User-Agent": "Py4GW_Reforged_Launcher",
