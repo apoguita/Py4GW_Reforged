@@ -1184,6 +1184,9 @@ class AppState:
         self.multiclient_enabled: bool = load_multiclient_enabled()
         self.py4gw_injection_enabled: bool = load_py4gw_injection_enabled()
         self.name_filter: str = ""
+        # Ephemeral (never persisted): which ALL-view cards are batch-checked for
+        # "Add N to Team". Cleared on leaving ALL -- see jump_to_view.
+        self.batch_selected_ids: set[str] = set()
         self._last_liveness_check = 0.0
         self.reload_profiles()
         self.reload_teams()
@@ -1201,6 +1204,10 @@ class AppState:
         return next((t for t in self.teams if t.id == self.current_team_id), None)
 
     def jump_to_view(self, team_id: Optional[str]) -> None:
+        # Batch checkboxes only exist on ALL, so a selection made there shouldn't
+        # linger invisibly once the view actually leaves ALL for a team.
+        if self.current_team_id is None and team_id is not None:
+            self.batch_selected_ids.clear()
         self.current_team_id = team_id
 
     def create_team(self, name: str) -> Team:
@@ -1211,6 +1218,32 @@ class AppState:
         save_teams(self.teams)
         self.current_team_id = team.id
         return team
+
+    def duplicate_team(self, team_id: str) -> Optional[Team]:
+        """Copy a team: a new "<name> copy" team whose membership matches the
+        source's, then switch to viewing it (same as create_team) so the copy is
+        immediately visible and renameable. Independent of the source -- profiles
+        gain the new team's id alongside the original's, so renaming or deleting
+        either team later never touches the other. Mirrors delete_team's
+        loop-and-single-save shape.
+        """
+        source = next((t for t in self.teams if t.id == team_id), None)
+        if source is None:
+            return None
+        new_team = Team(name=f"{source.name} copy")
+        self.teams.append(new_team)
+        save_teams(self.teams)
+
+        changed = False
+        for profile in self.profiles:
+            if team_id in profile.team_ids:
+                profile.team_ids.append(new_team.id)
+                changed = True
+        if changed:
+            save_profiles(self.profiles)
+
+        self.current_team_id = new_team.id
+        return new_team
 
     def rename_team(self, team_id: str, new_name: str) -> None:
         team = next((t for t in self.teams if t.id == team_id), None)
@@ -1238,6 +1271,18 @@ class AppState:
 
         if self.current_team_id == team_id:
             self.current_team_id = None
+
+    def add_profiles_to_team(self, profile_ids: set[str], team_id: str) -> None:
+        """Append team_id to each listed profile's team_ids (skipping any already
+        in it), saving once at the end if anything changed -- the same single-save
+        shape delete_team uses, not a save per profile."""
+        changed = False
+        for profile in self.profiles:
+            if profile.id in profile_ids and team_id not in profile.team_ids:
+                profile.team_ids.append(team_id)
+                changed = True
+        if changed:
+            save_profiles(self.profiles)
 
     def toggle_team_membership(self, profile: GameProfile, team_id: str) -> None:
         """Toggle `profile`'s membership in `team_id` and save immediately -- the
@@ -1497,7 +1542,34 @@ def _draw_gear_icon(draw_list, center, size: float, color: int) -> None:
         draw_list.add_quad_filled(p1, p2, p3, p4, color)
 
 
-def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool) -> None:
+def batch_checkbox_rect(card_origin, card_h: float, em: float) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Bottom-left corner -- the only card corner not already used by the avatar
+    (top-left), hover action icon (top-right), or mod badges (bottom-right).
+    Shared by show_main_window's manual hit-test and draw_profile_card's visual so
+    the clickable area and the drawn box are always the exact same rectangle.
+    """
+    x, y = card_origin
+    size = em * 1.0
+    min_pt = (x + em * 0.667, y + card_h - em * 1.667)
+    max_pt = (min_pt[0] + size, min_pt[1] + size)
+    return min_pt, max_pt
+
+
+def _draw_batch_checkbox(draw_list, min_pt, max_pt, *, checked: bool, hovered: bool) -> None:
+    """The card's batch-select box (ALL view only) -- its own small click target,
+    kept separate from the rest of the card; show_main_window excludes this rect
+    from the card's own hover/click handling so the two interactions can't collide.
+    """
+    border = ACCENT if hovered else CARD_BORDER
+    draw_list.add_rect(min_pt, max_pt, border, rounding=3.0, thickness=1.5)
+    if checked:
+        pad = (max_pt[0] - min_pt[0]) * 0.25
+        inner_min = (min_pt[0] + pad, min_pt[1] + pad)
+        inner_max = (max_pt[0] - pad, max_pt[1] - pad)
+        draw_list.add_rect_filled(inner_min, inner_max, ACCENT, rounding=2.0)
+
+
+def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float, card_h: float, hovered: bool, selected: bool, running: bool, launching: bool, status_text: str, is_error: bool, show_batch_checkbox: bool = False, batch_checked: bool = False, checkbox_hovered: bool = False) -> None:
     em = hello_imgui.em_size()
     x, y = origin
     p_min = (x, y)
@@ -1573,6 +1645,10 @@ def draw_profile_card(draw_list, origin, profile: GameProfile, *, card_w: float,
         b_max = (badge_x + w, badge_y + badge_h)
         draw_list.add_rect_filled(b_min, b_max, BADGE_BACK, rounding=8.0)
         draw_list.add_text((badge_x + badge_pad, badge_y + em * 0.067), BADGE_FORE, badge)
+
+    if show_batch_checkbox:
+        checkbox_min, checkbox_max = batch_checkbox_rect((x, y), card_h, em)
+        _draw_batch_checkbox(draw_list, checkbox_min, checkbox_max, checked=batch_checked, hovered=checkbox_hovered)
 
 
 def draw_add_card(draw_list, origin, *, card_w: float, card_h: float, hovered: bool) -> None:
@@ -1726,6 +1802,9 @@ def _draw_team_context_menu(team: Team) -> None:
             if imgui.selectable("Rename", False)[0]:
                 _renaming_team_id = team.id
                 _rename_buffer = team.name
+            if imgui.selectable("Duplicate", False)[0]:
+                STATE.duplicate_team(team.id)
+                imgui.close_current_popup()
             if imgui.selectable("Delete", False)[0]:
                 STATE.delete_team(team.id)
                 imgui.close_current_popup()
@@ -1950,6 +2029,52 @@ def show_team_actions(pos: tuple[float, float]) -> None:
         imgui.text_colored((0.9, 0.75, 0.3, 1.0), STATE.bulk_launch_session.status_text)
 
 
+_BATCH_ADD_POPUP_ID = "Add to team##batch_add_popup"
+
+
+def _batch_add_to_team_label() -> str:
+    return f"Add {len(STATE.batch_selected_ids)} to Team"
+
+
+def _batch_add_to_team_width() -> float:
+    """Measured width of the batch-add button, so the filter row can reserve room
+    for it before the filter box stretches into the rest of the row -- mirrors
+    _team_actions_width's role for the Launch Team button."""
+    style = imgui.get_style()
+    return imgui.calc_text_size(_batch_add_to_team_label()).x + style.frame_padding.x * 2.0
+
+
+def show_batch_add_to_team_control() -> None:
+    """ALL-view control that adds the batch-checked cards to a chosen team.
+    Disabled (not hidden) when nothing is checked -- same principle as
+    show_team_actions' Launch Team button -- so the filter row doesn't reshuffle
+    as the selection count crosses zero, only the label's count changes. Opens a
+    small team picker with the same "No teams yet" disabled-row fallback the card's
+    Teams submenu uses; picking a team adds the current selection and clears it.
+    """
+    has_selection = bool(STATE.batch_selected_ids)
+    if not has_selection:
+        imgui.begin_disabled()
+    clicked = imgui.button(_batch_add_to_team_label())
+    if not has_selection:
+        imgui.end_disabled()
+    if clicked and has_selection:
+        imgui.open_popup(_BATCH_ADD_POPUP_ID)
+
+    if imgui.begin_popup(_BATCH_ADD_POPUP_ID):
+        if not STATE.teams:
+            imgui.begin_disabled()
+            imgui.selectable("No teams yet", False)
+            imgui.end_disabled()
+        else:
+            for team in STATE.teams:
+                if imgui.selectable(team.name or "(unnamed team)", False)[0]:
+                    STATE.add_profiles_to_team(STATE.batch_selected_ids, team.id)
+                    STATE.batch_selected_ids.clear()
+                    imgui.close_current_popup()
+        imgui.end_popup()
+
+
 def show_settings_gear_button() -> None:
     """Small gear icon -- both reference launchers use this same icon for
     this same purpose, so it's a recognized affordance rather than a new one
@@ -2025,11 +2150,22 @@ def show_main_window() -> None:
     imgui.spacing()
     style = imgui.get_style()
     gear_icon_size = em * 1.8
-    filter_w = header_w - gear_icon_size - style.item_spacing.x
+    # "Add N to Team" shares this row on ALL view (ALL-view only, since batch
+    # selection only exists there). Reserve its width up front so the filter box
+    # lands consistently, and so the button -- disabled-not-hidden, like Launch
+    # Team -- doesn't shift the row as the selection count crosses zero.
+    in_all_view = STATE.current_team_id is None
+    reserved = gear_icon_size + style.item_spacing.x
+    if in_all_view:
+        reserved += _batch_add_to_team_width() + style.item_spacing.x
+    filter_w = header_w - reserved
     imgui.set_next_item_width(filter_w)
     _, STATE.name_filter = imgui.input_text_with_hint("##name_filter", "Filter by name...", STATE.name_filter)
     imgui.same_line()
     show_settings_gear_button()
+    if in_all_view:
+        imgui.same_line()
+        show_batch_add_to_team_control()
 
     imgui.unindent(header_pad)
     imgui.dummy((0.0, header_pad))
@@ -2104,7 +2240,21 @@ def show_main_window() -> None:
         p_min = card_origin
         p_max = (card_origin[0] + card_w, card_origin[1] + card_h)
 
-        hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(p_min, p_max)
+        in_all_view = STATE.current_team_id is None
+        checkbox_hovered = False
+        if in_all_view:
+            checkbox_min, checkbox_max = batch_checkbox_rect(card_origin, card_h, em)
+            checkbox_hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(checkbox_min, checkbox_max)
+            if checkbox_hovered and imgui.is_mouse_clicked(0):
+                if profile.id in STATE.batch_selected_ids:
+                    STATE.batch_selected_ids.discard(profile.id)
+                else:
+                    STATE.batch_selected_ids.add(profile.id)
+
+        # Excludes the checkbox's own rect so the two click targets can't collide:
+        # a click on the checkbox toggles batch selection only, never also selects
+        # or foregrounds the card underneath it.
+        hovered = grid_is_hoverable and imgui.is_mouse_hovering_rect(p_min, p_max) and not checkbox_hovered
         running = STATE.is_running(profile.id)
         launching = STATE.is_launching(profile.id)
         session = STATE.sessions.get(profile.id)
@@ -2166,6 +2316,9 @@ def show_main_window() -> None:
             hovered=hovered, selected=(STATE.selected_id == profile.id),
             running=running, launching=launching or is_error,
             status_text=status_text, is_error=is_error,
+            show_batch_checkbox=in_all_view,
+            batch_checked=(profile.id in STATE.batch_selected_ids),
+            checkbox_hovered=checkbox_hovered,
         )
 
     if show_add_card:
