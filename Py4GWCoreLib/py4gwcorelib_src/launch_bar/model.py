@@ -54,7 +54,10 @@ class Tile:
     """One occupant of the grid.
 
     A tile may bind a widget via ``widget_id`` (its full ``folder_script_name``); such a tile
-    renders the widget's icon and launches/toggles it. An unbound tile is a placeholder.
+    renders the widget's icon and launches/toggles it. Alternatively it may bind a catalog
+    *function* via ``function_id`` — a fire-and-forget call into another library/system,
+    rendered with a Font Awesome glyph (``icon``). ``widget_id``/``function_id``/``action`` are
+    mutually exclusive; an unbound tile is a placeholder.
     """
 
     id: str
@@ -62,9 +65,11 @@ class Tile:
     row: int
     w: int = 1
     h: int = 1
-    name: str = ""                     # display name (widget/action name, or user label)
+    name: str = ""                     # display name (widget/function/action name, or user label)
     widget_id: Optional[str] = None
     action: Optional[str] = None       # built-in system action (e.g. "browser")
+    function_id: Optional[str] = None  # catalog function id (functions_catalog.py)
+    icon: Optional[str] = None         # chosen Font Awesome constant NAME, e.g. "ICON_BOLT"
     deletable: bool = True             # False for fixed system buttons; everything else True
 
     def cells(self):
@@ -81,6 +86,8 @@ class Tile:
     def from_dict(cls, data: dict) -> "Tile":
         wid = data.get("widget_id")
         action = data.get("action")
+        fid = data.get("function_id")
+        icon = data.get("icon")
         return cls(
             id=str(data["id"]),
             col=int(data["col"]),
@@ -90,6 +97,8 @@ class Tile:
             name=str(data.get("name", "")),
             widget_id=str(wid) if wid else None,
             action=str(action) if action else None,
+            function_id=str(fid) if fid else None,
+            icon=str(icon) if icon else None,
             deletable=bool(data.get("deletable", True)),
         )
 

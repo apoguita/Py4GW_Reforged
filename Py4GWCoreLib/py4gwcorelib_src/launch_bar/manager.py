@@ -18,6 +18,9 @@ import math
 import PyImGui
 
 from .browser import WidgetBrowser
+from .function_runtime import FunctionRuntime
+from .function_runtime import list_icons
+from .function_runtime import resolve_icon
 from .host import LaunchBarHost
 from .model import BarSide
 from .model import LaunchBarSet
@@ -42,6 +45,7 @@ class LaunchBarManager:
         self.bar_set = bar_set
         self.hosts: dict = {}
         self.runtime = WidgetRuntime()     # enumerate/toggle widgets (safe if runtime absent)
+        self.functions = FunctionRuntime()  # enumerate/invoke catalog functions (fire-and-forget)
         self.browser = WidgetBrowser()     # Explorer-style widget browser window
         self.selected_id = bar_set.bars[0].id if bar_set.bars else ""
         self.editing_id = None
@@ -57,8 +61,11 @@ class LaunchBarManager:
         self._confirm_ok_label = ""
         self._confirm_action = None
         self._add_bar_menu_pending = False   # "+" tab / toolbar add button -> open the template menu
-        self.assign_tile_id = None           # tile whose inline widget picker is open
-        self.assign_search = ""              # search text in that inline picker
+        self.assign_tile_id = None           # tile whose inline binding picker is open
+        self.assign_mode = "widget"          # which picker is open: "widget" | "function" | "icon"
+        self.assign_search = ""              # search text in the widget/function picker
+        self.icon_search = ""                # search text in the Font Awesome icon picker
+        self._icon_cache = None              # cached (name, glyph) list for the icon picker
         for bar in bar_set.bars:
             self._ensure_host(bar)
 
@@ -81,6 +88,10 @@ class LaunchBarManager:
     def do_action(self, action) -> None:
         if action == "browser":
             self.browser_open = not self.browser_open
+
+    # ---- function tiles (fire-and-forget calls from the catalog) ---------------------
+    def invoke_function(self, function_id) -> None:
+        self.functions.invoke(function_id)
 
     _PRESET_NAMES = {"active": "Active", "favorites": "Favorites"}
 
@@ -207,6 +218,10 @@ class LaunchBarManager:
             self._draw_items()
         if self.browser_open:
             self._draw_browser()
+        # Widget-manager lifecycle the launchpad now owns (moved off Py4GW_widget_manager):
+        # render any open configure() panels + the System-widget disable confirmation modal.
+        self.runtime.draw_configuring()
+        self.runtime.draw_disable_confirmation()
         self._persist()
 
     # ---- persistence (account Settings document) ------------------------------------
@@ -423,7 +438,14 @@ class LaunchBarManager:
             PyImGui.separator()
             for tile in list(bar.tiles):
                 PyImGui.push_id(tile.id)
-                label = tile.name or ("<action:%s>" % tile.action if tile.action else "<empty>")
+                if tile.name:
+                    label = tile.name
+                elif tile.action:
+                    label = "<action:%s>" % tile.action
+                elif tile.function_id:
+                    label = "<fn:%s>" % tile.function_id
+                else:
+                    label = "<empty>"
                 if PyImGui.collapsing_header("%s  -  %dx%d  (%d,%d)" % (label, tile.w, tile.h, tile.col, tile.row)):
                     self.selected_tile_id = tile.id
                     self.editing_id = bar.id
@@ -462,11 +484,22 @@ class LaunchBarManager:
             self._bind_tile(tile, widget_id)
             self.selected_tile_id = tile.id
 
-    # ---- assign a widget to an EXISTING (empty) tile --------------------------------
+    # ---- bind a widget / function / icon to an EXISTING tile ------------------------
+    # widget_id and function_id are mutually exclusive; binding one clears the other.
     def _bind_tile(self, tile, widget_id) -> None:
+        tile.function_id = None
+        tile.icon = None
         tile.widget_id = widget_id
         meta = self.runtime.get(widget_id)
         tile.name = meta.name if meta is not None else widget_id
+
+    def _bind_function(self, tile, function_id) -> None:
+        tile.widget_id = None
+        tile.function_id = function_id
+        fmeta = self.functions.get(function_id)
+        tile.name = fmeta.name if fmeta is not None else function_id
+        # seed the tile's icon from the catalog default (user can override via the icon picker)
+        tile.icon = fmeta.icon if fmeta is not None else None
 
     def _find_tile(self, tile_id):
         for bar in self.bar_set.bars:
@@ -475,11 +508,13 @@ class LaunchBarManager:
                 return t
         return None
 
-    def start_assign(self, tile_id) -> None:
-        """Open the inline search picker for this tile (no browser round-trip)."""
+    def start_assign(self, tile_id, mode="widget") -> None:
+        """Open an inline picker for this tile. ``mode`` = "widget" | "function" | "icon"."""
 
         self.assign_tile_id = tile_id
+        self.assign_mode = mode
         self.assign_search = ""
+        self.icon_search = ""
 
     def cancel_assign(self) -> None:
         self.assign_tile_id = None
@@ -494,31 +529,83 @@ class LaunchBarManager:
             self._log("assigned widget %s to tile %s" % (widget_id, tile.id))
         self.assign_tile_id = None
 
-    def clear_tile_widget(self, tile) -> None:
+    def assign_function(self, function_id) -> None:
+        """Bind the picked catalog function to the tile whose picker is open, then close it."""
+
+        tile = self._find_tile(self.assign_tile_id) if self.assign_tile_id else None
+        if tile is not None:
+            self._bind_function(tile, function_id)
+            self.selected_tile_id = tile.id
+            self._log("assigned function %s to tile %s" % (function_id, tile.id))
+        self.assign_tile_id = None
+
+    def set_tile_icon(self, tile, icon_name) -> None:
+        """Override a function tile's Font Awesome glyph, then close the icon picker."""
+
+        tile.icon = icon_name
+        self.assign_tile_id = None
+
+    def clear_tile_binding(self, tile) -> None:
         tile.widget_id = None
+        tile.function_id = None
+        tile.icon = None
         tile.name = ""
 
+    def _icon_entries(self):
+        """Cached ``(name, glyph)`` list for the icon picker (built once, empty offline)."""
+
+        if self._icon_cache is None:
+            self._icon_cache = list_icons()
+        return self._icon_cache
+
     def _draw_tile_binding(self, tile) -> None:
-        """Link a widget to this button via an inline search picker (no browser needed)."""
+        """Bind a widget or a catalog function to this button via inline search pickers."""
 
         if tile.action:
             PyImGui.text_disabled("System action: %s" % tile.action)
             return
         assigning = self.assign_tile_id == tile.id
-        if tile.widget_id and not assigning:
-            PyImGui.text("Widget: %s" % (tile.name or tile.widget_id))
-            if PyImGui.button("Change widget...##chgw"):
-                self.start_assign(tile.id)
-            PyImGui.same_line(0.0, 6.0)
-            if PyImGui.button("Clear##clrw"):
-                self.clear_tile_widget(tile)
-            return
         if not assigning:
-            PyImGui.text_disabled("No widget bound.")
+            if tile.widget_id:
+                PyImGui.text("Widget: %s" % (tile.name or tile.widget_id))
+                if PyImGui.button("Change widget...##chgw"):
+                    self.start_assign(tile.id, "widget")
+                PyImGui.same_line(0.0, 6.0)
+                if PyImGui.button("Clear##clrbind"):
+                    self.clear_tile_binding(tile)
+                return
+            if tile.function_id:
+                fmeta = self.functions.get(tile.function_id)
+                PyImGui.text("Function: %s" % (tile.name or (fmeta.name if fmeta else tile.function_id)))
+                glyph = resolve_icon(tile.icon)
+                PyImGui.text_disabled("Icon: %s %s" % (glyph or "", tile.icon or "(default)"))
+                if PyImGui.button("Change function...##chgf"):
+                    self.start_assign(tile.id, "function")
+                PyImGui.same_line(0.0, 6.0)
+                if PyImGui.button("Change icon...##chgi"):
+                    self.start_assign(tile.id, "icon")
+                PyImGui.same_line(0.0, 6.0)
+                if PyImGui.button("Clear##clrbind"):
+                    self.clear_tile_binding(tile)
+                return
+            PyImGui.text_disabled("No binding.")
             if PyImGui.button("Assign widget...##asgw"):
-                self.start_assign(tile.id)
+                self.start_assign(tile.id, "widget")
+            PyImGui.same_line(0.0, 6.0)
+            if PyImGui.button("Assign function...##asgf"):
+                self.start_assign(tile.id, "function")
             return
-        # --- inline search picker ---
+        # --- an inline picker is open for this tile: dispatch by mode ---
+        if self.assign_mode == "function":
+            self._draw_function_picker()
+        elif self.assign_mode == "icon":
+            self._draw_icon_picker(tile)
+        else:
+            self._draw_widget_picker()
+        if PyImGui.button("Cancel##canasg"):
+            self.cancel_assign()
+
+    def _draw_widget_picker(self) -> None:
         self.assign_search = PyImGui.input_text("Search##asgsearch", self.assign_search)
         q = self.assign_search.lower().strip()
         if PyImGui.begin_child("##asglist", (0.0, 130.0), True):
@@ -532,8 +619,61 @@ class LaunchBarManager:
             if shown == 0:
                 PyImGui.text_disabled("No widgets match.")
         PyImGui.end_child()
-        if PyImGui.button("Cancel##canasg"):
-            self.cancel_assign()
+
+    def _draw_function_picker(self) -> None:
+        self.assign_search = PyImGui.input_text("Search##asgfsearch", self.assign_search)
+        q = self.assign_search.lower().strip()
+        if PyImGui.begin_child("##asgflist", (0.0, 220.0), True):
+            # build group -> category -> [functions], applying the search filter
+            tree: dict = {}
+            for f in self.functions.list_functions():
+                if q and q not in f.name.lower() and q not in f.id.lower() \
+                        and q not in (f.category or "").lower() and q not in (f.group or "").lower():
+                    continue
+                g = f.group or "Uncategorized"
+                c = f.category or "General"
+                tree.setdefault(g, {}).setdefault(c, []).append(f)
+            if not tree:
+                PyImGui.text_disabled("No functions match. Add some in functions_catalog.py.")
+            for g in sorted(tree, key=str.lower):                 # top-level group
+                PyImGui.text_disabled(g)
+                for c in sorted(tree[g], key=str.lower):          # subcategory under the group
+                    PyImGui.indent(10)
+                    PyImGui.text_disabled(c)
+                    PyImGui.indent(10)
+                    for f in sorted(tree[g][c], key=lambda x: x.name.lower()):
+                        glyph = resolve_icon(f.icon)
+                        label = ("%s  %s" % (glyph, f.name)) if glyph else f.name
+                        if PyImGui.selectable("%s##pickf_%s" % (label, f.id), False, 0, (0.0, 0.0)):
+                            self.assign_function(f.id)
+                    PyImGui.unindent(10)
+                    PyImGui.unindent(10)
+        PyImGui.end_child()
+
+    def _draw_icon_picker(self, tile) -> None:
+        self.icon_search = PyImGui.input_text("Search##asgisearch", self.icon_search)
+        q = self.icon_search.lower().strip()
+        cols = 6
+        if PyImGui.begin_child("##asgilist", (0.0, 210.0), True):
+            shown = 0
+            if PyImGui.begin_table("##icongrid", cols, 0):
+                col = 0
+                for name, glyph in self._icon_entries():
+                    if q and q not in name.lower():
+                        continue
+                    if col == 0:
+                        PyImGui.table_next_row(0, 30)
+                    PyImGui.table_set_column_index(col)
+                    if PyImGui.button("%s##ic_%s" % (glyph, name), 0.0, 0.0):
+                        self.set_tile_icon(tile, name)
+                    if PyImGui.is_item_hovered():
+                        PyImGui.set_item_tooltip(name)
+                    shown += 1
+                    col = (col + 1) % cols
+                PyImGui.end_table()
+            if shown == 0:
+                PyImGui.text_disabled("No icons match." if self._icon_entries() else "Icons unavailable offline.")
+        PyImGui.end_child()
 
     # ---- confirmation modal (centered, blocks all other input) ----------------------
     def _draw_confirmation_modal(self) -> None:

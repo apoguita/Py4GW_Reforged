@@ -134,6 +134,82 @@ class WidgetRuntime:
             except Exception:
                 pass
 
+    # ---- global widget-manager actions (browser toolbar) ---------------------------
+    def is_optional_paused(self) -> bool:
+        """True if optional (non-System) widgets are currently paused."""
+
+        h = _handler()
+        return bool(getattr(h, "optional_widgets_paused", False)) if h is not None else False
+
+    def toggle_optional_paused(self) -> None:
+        """Pause/resume all optional widgets, broadcasting to other accounts (multibox)."""
+
+        h = _handler()
+        if h is None:
+            return
+        try:
+            h.toggle_optional_widgets_paused()   # flips state + ShMem PauseWidgets/ResumeWidgets broadcast
+        except Exception:
+            pass
+
+    def reload_all(self) -> None:
+        """Re-discover and reload all widgets (the old WM 'Reload' button)."""
+
+        h = _handler()
+        if h is None:
+            return
+        try:
+            h.reload_widgets()
+        except Exception:
+            pass
+
+    def is_all_paused(self) -> bool:
+        """True if every widget on this client is paused."""
+
+        h = _handler()
+        return bool(getattr(h, "paused", False)) if h is not None else False
+
+    def toggle_pause_all(self) -> None:
+        """Pause/resume every widget on this client (does not broadcast)."""
+
+        h = _handler()
+        if h is None:
+            return
+        try:
+            if bool(getattr(h, "paused", False)):
+                h.ResumeAllWidgets()
+            else:
+                h.PauseAllWidgets()
+        except Exception:
+            pass
+
+    # ---- per-frame widget-manager lifecycle (owned by the launchpad now) ------------
+    def draw_configuring(self) -> None:
+        """Render each configuring widget's configure() panel (was the WM entry's job)."""
+
+        h = _handler()
+        if h is None:
+            return
+        try:
+            h.execute_configuring_widgets()
+        except Exception:
+            pass
+
+    def draw_disable_confirmation(self) -> None:
+        """Render the System-widget disable confirmation modal (was the WM entry's job).
+
+        WidgetRuntime.toggle/disable defer System widgets to a pending flag; this must be drawn
+        each frame or disabling a System widget silently stalls.
+        """
+
+        h = _handler()
+        if h is None:
+            return
+        try:
+            h._draw_pending_disable_confirmation()
+        except Exception:
+            pass
+
     def set_configuring(self, widget_id: str, value: bool = True) -> None:
         h = _handler()
         w = self._widget(widget_id)

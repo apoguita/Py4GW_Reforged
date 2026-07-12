@@ -1,91 +1,95 @@
-from typing import Optional
-import PyImGui
-from Py4GWCoreLib._legacy_facade import ImGui_Legacy
-from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib.enums_src.IO_enums import Key
-import Widgets.WidgetCatalog.Py4GW_widget_catalog as widget_catalog
+"""Py4GW widget host — the always-on script the C++ DLL runs (`g_widget_host`).
 
-from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import LayoutMode, Py4GWLibrary, WidgetHandler, get_widget_handler
+The DLL calls this module's ``main()`` **every draw frame** (via ExecuteDraw, which runs both
+``draw()`` and ``main()``). It has two jobs now:
+
+  1. **Bootstrap once** — resolve the manager settings key, discover widgets, apply the saved
+     enabled-state (forcing System widgets on). Widgets then run via their C++ PyCallbacks.
+  2. **Render the launchpad every frame** — the launchpad (LaunchBar) is the widget-manager UI,
+     and this always-on host is where it must be drawn (HEAD drew the old WM UI here). Without
+     this the launchpad has no host and nothing appears on screen.
+
+Both are made bulletproof: a missing/broken settings file must never stop the launchpad — the
+cornerstone UI — from rendering.
+"""
+
 import os
 
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import WidgetHandler
+from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
+
 MODULE_NAME = "Widget Manager"
-          
-#region Main
-# ------------------------------------------------------------
-# Config
-# ------------------------------------------------------------
-widget_manager : WidgetHandler = get_widget_handler()
-py4_gw_library : Optional[Py4GWLibrary] = None
+
+widget_manager: WidgetHandler = get_widget_handler()
 
 INI_KEY = ""
 INI_PATH = "Widgets/WidgetManager"
 INI_FILENAME = "WidgetManager.ini"
 
-def update():
-    return 
-    # #deprecated in place of callbacks
-    if widget_manager.enable_all:
-        widget_manager.execute_enabled_widgets_update()
-    
-def draw():
-    return #deprecated in place of callbacks
-    if widget_manager.enable_all:
-        widget_manager.execute_enabled_widgets_draw()     
-        
-widget_manager_initialized = False
-widget_manager_initializing = False
 
-def main():
-    global INI_KEY, widget_manager_initialized, widget_manager_initializing, py4_gw_library
+def _log(msg: str) -> None:
+    try:
+        import PySystem
 
-    if not INI_KEY:
+        PySystem.Console.Log(MODULE_NAME, msg, PySystem.Console.MessageType.Warning)
+    except Exception:
+        pass
+
+
+def _bootstrap_once() -> None:
+    """Resolve settings + discover widgets + apply saved state. Retries each frame until done."""
+
+    global INI_KEY
+    if INI_KEY:
+        return
+    try:
         if not os.path.exists(INI_PATH):
             os.makedirs(INI_PATH, exist_ok=True)
 
-        INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
-
-        if not INI_KEY: return
-
-        cfg = Settings.find(INI_KEY)
-        if cfg is None: return
-
-        widget_manager.MANAGER_INI_KEY = INI_KEY
-
-        widget_manager.discover()
-
-        # FIX 1: Explicitly load the global manager state into the handler
-        widget_manager.enable_all = bool(cfg.get_bool("Configuration", "enable_all", True))
-        widget_manager._apply_ini_configuration()
-
-
-    if INI_KEY:
-        cfg = Settings.find(INI_KEY)
+        key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
+        if not key:
+            return  # settings not ready yet — retry next frame (launchpad still renders below)
+        cfg = Settings.find(key)
         if cfg is None:
             return
 
-        widget_catalog.main()
-        show_adavanced = widget_catalog.show_adavanced_enabled()
+        # Order is load-bearing: MANAGER_INI_KEY must be set before discovery (it reads each
+        # widget's saved-enabled state during load), then _apply_ini_configuration re-applies
+        # and force-enables System widgets.
+        INI_KEY = key
+        widget_manager.MANAGER_INI_KEY = INI_KEY
+        widget_manager.discover()
+        widget_manager.enable_all = bool(cfg.get_bool("Configuration", "enable_all", True))
+        widget_manager._apply_ini_configuration()
+    except Exception as exc:
+        _log("bootstrap error (will retry): %s" % exc)
 
-        if show_adavanced:
-            use_library = bool(cfg.get_bool("Configuration", "use_library", True))
-            if use_library:
-                if py4_gw_library is None:
-                    py4_gw_library = Py4GWLibrary(INI_KEY, MODULE_NAME, widget_manager)
-            
-                py4_gw_library.draw_window()
-            else:
-                if ImGui_Legacy.Begin(ini_key=INI_KEY, name="Widget Manager", flags=PyImGui.WindowFlags.AlwaysAutoResize):
-                    widget_manager.draw_ui(INI_KEY)
-                ImGui_Legacy.End(INI_KEY)
-        else:
-            widget_catalog.draw()
-            
-        widget_manager._draw_pending_disable_confirmation()
-    
-    if widget_manager.enable_all:
-        #deprecated in place of callbacks
-        #widget_manager.execute_enabled_widgets_main()
-        widget_manager.execute_configuring_widgets()
+
+def _draw_launchpad() -> None:
+    """Render the launchpad (the widget-manager UI) each frame — hosted here, always on."""
+
+    try:
+        import LaunchBar
+
+        LaunchBar.main()
+    except Exception as exc:
+        _log("launchpad render error: %s" % exc)
+
+
+def update():
+    return  # widgets run via C++ callbacks; nothing on the update loop here
+
+
+def draw():
+    return  # rendering happens in main() (ExecuteDraw calls both draw() and main())
+
+
+def main():
+    """Called every draw frame by the widget host: bootstrap once, then render the launchpad."""
+
+    _bootstrap_once()
+    _draw_launchpad()
 
 
 if __name__ == "__main__":
