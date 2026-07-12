@@ -59,7 +59,6 @@ an injected GW1 session.
 
 ## Not yet built
 
-- GW1 client auto-update/patching
 - Name-obfuscation config delivery to the injected DLL (the hook point
   exists; the feature behind it doesn't yet)
 
