@@ -17,16 +17,15 @@ INI_FILENAME = "WidgetTemplate.ini" #ini file name
 def draw_widget():
     """Draws the widget interface."""
     global INI_KEY
-    cfg = Settings.find(INI_KEY)
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     if ImGui_Legacy.Begin(INI_KEY,MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
 
         PyImGui.text("Add your stuff here")
 
-        if cfg:
-            val = cfg.get_bool("TestBoolVar", "value", False)
-            new_val = PyImGui.checkbox("Test Bool Variable", val)
-            if new_val != val:
-                cfg.set("TestBoolVar", "value", new_val)
+        val = cfg.get_bool("TestBoolVar", "value", False)
+        new_val = PyImGui.checkbox("Test Bool Variable", val)
+        if new_val != val:
+            cfg.set("TestBoolVar", "value", new_val)
 
     ImGui_Legacy.End(INI_KEY)
     
@@ -96,7 +95,7 @@ def main():
     if not Routines.Checks.Map.MapValid():
         return
     if not INI_KEY:
-        INI_KEY = Settings(f"{"Widgets/WidgetTemplate"}/{"WidgetTemplate.ini"}", "account").name
+        INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
         if not INI_KEY:
             return
 

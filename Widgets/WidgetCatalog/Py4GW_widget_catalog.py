@@ -1255,7 +1255,7 @@ class WidgetCatalogWindow:
 
     def _load_saved_search_entries(self, view: browser_view_state | None = None) -> None:
         active_view = view or self._get_active_view()
-        cfg = Settings.find(self.ini_key)
+        cfg = Settings(self.ini_key, "account") if self.ini_key else None
         saved_entries_value = cfg.get_str("Search", "saved_entries", "") if cfg else ""
 
         if isinstance(saved_entries_value, str):
@@ -1347,9 +1347,9 @@ class WidgetCatalogWindow:
 
     @staticmethod
     def _write_ini_value_immediately(ini_key: str, var_name: str, value, *, section: str, name: str) -> None:
-        cfg = Settings.find(ini_key)
-        if cfg is None:
+        if not ini_key:
             return
+        cfg = Settings(ini_key, "account")
 
         cfg.set(section, name, value)
 
@@ -1389,7 +1389,7 @@ class WidgetCatalogWindow:
         if self.runtime.settings_loaded:
             return
 
-        cfg = Settings.find(self.ini_key)
+        cfg = Settings(self.ini_key, "account") if self.ini_key else None
 
         self.floating_button.load_visibility()
         if cfg is not None:
@@ -1435,7 +1435,7 @@ class WidgetCatalogWindow:
 
     def _get_favorite_ids(self) -> set[str]:
         ini_key = self._manager_ini_key()
-        cfg = Settings.find(ini_key)
+        cfg = Settings(ini_key, "account") if ini_key else None
         favorites_value = cfg.get_str("Favorites", "favorites", "") if cfg else ""
 
         if isinstance(favorites_value, str):
@@ -1503,9 +1503,9 @@ class WidgetCatalogWindow:
 
     def _save_favorite_ids(self, favorite_ids: set[str]) -> None:
         ini_key = self._manager_ini_key()
-        cfg = Settings.find(ini_key)
-        if cfg:
-            cfg.set("Favorites", "favorites", ",".join(sorted(favorite_ids)))
+        if not ini_key:
+            return
+        Settings(ini_key, "account").set("Favorites", "favorites", ",".join(sorted(favorite_ids)))
 
     def _set_widget_favorite(self, widget, favorite: bool) -> None:
         favorite_ids = self._get_favorite_ids()
@@ -1518,7 +1518,7 @@ class WidgetCatalogWindow:
 
     def _set_widget_active(self, widget : Widget, active: bool) -> None:
         if active:
-            self.widget_manager._set_widget_state(self.widget_manager.MANAGER_INI_KEY, widget.plain_name, state=True)
+            self.widget_manager._set_widget_state(widget.plain_name, state=True)
         else:
             self.widget_manager._request_disable_widget(widget)
 
@@ -2470,9 +2470,8 @@ class WidgetCatalogWindow:
 
             if ImGui_Legacy.begin_menu("Settings"):
                 if ImGui_Legacy.menu_item("Switch To Advanced UI"):
-                    cfg = Settings.find(self.ini_key)
-                    if cfg:
-                        cfg.set("Configuration", "show_adavanced", True)
+                    if self.ini_key:
+                        Settings(self.ini_key, "account").set("Configuration", "show_adavanced", True)
                     self.runtime.show_adavanced = True
                 ImGui_Legacy.show_tooltip("Switch from the catalog UI to the advanced widget manager.")
                 PyImGui.separator()
@@ -2826,17 +2825,9 @@ def _ensure_ini() -> bool:
     if not INI_KEY or not FLOATING_INI_KEY or not SETUP_INI_KEY:
         return False
 
-    _cfg = Settings.find(INI_KEY)
-    if _cfg:
-        _cfg.set("Window config", "init", True)
-
-    _floating_cfg = Settings.find(FLOATING_INI_KEY)
-    if _floating_cfg:
-        _floating_cfg.set("Window config", "init", True)
-
-    _setup_cfg = Settings.find(SETUP_INI_KEY)
-    if _setup_cfg:
-        _setup_cfg.set("Window config", "init", True)
+    Settings(INI_KEY, "account").set("Window config", "init", True)
+    Settings(FLOATING_INI_KEY, "account").set("Window config", "init", True)
+    Settings(SETUP_INI_KEY, "account").set("Window config", "init", True)
 
     INI_INIT = True
     return True
@@ -2854,7 +2845,7 @@ def show_adavanced_enabled() -> bool:
     if not INITIALIZED or _default_window is None:
         return False
     _default_window._load_config_if_needed()
-    _cfg = Settings.find(_default_window.ini_key)
+    _cfg = Settings(_default_window.ini_key, "account") if _default_window.ini_key else None
     _default_window.runtime.show_adavanced = _cfg.get_bool("Configuration", "show_adavanced", False) if _cfg else False
     return _default_window.runtime.show_adavanced
 

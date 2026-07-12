@@ -725,9 +725,9 @@ class BotFactoryDetailTabs:
         return self.tabs[self.active_tab_index]
 
     def load_from_ini(self, ini_key: str) -> None:
-        cfg = Settings.find(ini_key)
-        if cfg is None:
+        if not ini_key:
             return
+        cfg = Settings(ini_key, "account")
         active_label = cfg.get_str("Tabs", "active_tab", self._get_active_tab().tab_label)
         for index, tab in enumerate(self.tabs):
             if tab.tab_label == active_label:
@@ -735,9 +735,9 @@ class BotFactoryDetailTabs:
                 break
 
     def save_to_ini(self, ini_key: str) -> None:
-        cfg = Settings.find(ini_key)
-        if cfg is None:
+        if not ini_key:
             return
+        cfg = Settings(ini_key, "account")
         cfg.set("Tabs", "active_tab", self._get_active_tab().tab_label)
 
     def copy_document_to_clipboard(self) -> None:
@@ -1036,11 +1036,9 @@ def _initialize() -> bool:
         return True
 
     if not INI_KEY:
-        INI_KEY = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
+        cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
+        INI_KEY = cfg.name
         if not INI_KEY:
-            return False
-        cfg = Settings.find(INI_KEY)
-        if cfg is None:
             return False
         cfg.set("Window config", "init", True)
 

@@ -661,10 +661,7 @@ def _save_widget_enabled_state(widget: WidgetLike) -> bool:
         )
         return False
 
-    cfg = Settings.find(manager_ini_key)
-    if cfg is None:
-        return False
-    cfg.set(f"Widget:{widget.name}", _get_widget_enabled_var_name(widget), widget.enabled)
+    Settings(manager_ini_key, "account").set(f"Widget:{widget.name}", _get_widget_enabled_var_name(widget), widget.enabled)
     return True
 
 

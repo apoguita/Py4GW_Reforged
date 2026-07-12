@@ -25,7 +25,6 @@ class EnemyBlacklist:
 
     _instance = None
     _class_initialized = False
-    _ini_key: str = ""
 
     def __new__(cls):
         if cls._instance is None:
@@ -36,19 +35,13 @@ class EnemyBlacklist:
         if self._class_initialized:
             return
         self.__class__._class_initialized = True
-        self._ensure_ini_key()
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _ensure_ini_key(self):
-        if not self.__class__._ini_key:
-            self.__class__._ini_key = Settings(f"{"HeroAI"}/{"EnemyBlacklist.ini"}", "global").name
-
     def _handler(self):
-        self._ensure_ini_key()
-        return Settings.find(self.__class__._ini_key)
+        return Settings("HeroAI/EnemyBlacklist.ini", "global")
 
     def _read(self) -> set[int]:
         handler = self._handler()

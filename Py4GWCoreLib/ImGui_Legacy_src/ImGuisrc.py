@@ -3868,9 +3868,7 @@ class ImGui_Legacy:
             if not ini_key:
                 return
             from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-            cfg = Settings.find(ini_key)
-            if not cfg:
-                return
+            cfg = Settings(ini_key, "account")
             self.icon_path = cfg.get_str("Floating Icon", "icon_path", self.icon_path)
             self.button_size = cfg.get_float("Floating Icon", "button_size", float(self.button_size))
             self.idle_icon_scale = cfg.get_float("Floating Icon", "idle_icon_scale", float(self.idle_icon_scale))
@@ -3880,9 +3878,7 @@ class ImGui_Legacy:
             if not ini_key:
                 return
             from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-            cfg = Settings.find(ini_key)
-            if not cfg:
-                return
+            cfg = Settings(ini_key, "account")
             cfg.set("Floating Icon", "icon_path", self.icon_path)
             cfg.set("Floating Icon", "button_size", float(self.button_size))
             cfg.set("Floating Icon", "idle_icon_scale", float(self.idle_icon_scale))
@@ -3892,9 +3888,7 @@ class ImGui_Legacy:
             if not self.toggle_ini_key or not self.toggle_var_name:
                 return self.visible
             from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-            cfg = Settings.find(self.toggle_ini_key)
-            if not cfg:
-                return self.visible
+            cfg = Settings(self.toggle_ini_key, "account")
             self.visible = cfg.get_bool(self.toggle_section, self.toggle_var_name, self.toggle_default)
             self._visibility_loaded = True
             return self.visible
@@ -3903,9 +3897,7 @@ class ImGui_Legacy:
             if not self.toggle_ini_key or not self.toggle_var_name:
                 return
             from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-            cfg = Settings.find(self.toggle_ini_key)
-            if not cfg:
-                return
+            cfg = Settings(self.toggle_ini_key, "account")
             cfg.set(self.toggle_section, self.toggle_var_name, self.visible)
 
         def reposition_to(self, pos: tuple[float, float]) -> None:

@@ -517,7 +517,7 @@ def ensure_rotation_settings_loaded() -> None:
         return
 
     rotation_settings.ini_key = ini_key
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
 
     rotation_settings.enable_crafting_rotation = cfg.get_bool(
         SETTINGS_SECTION_CRAFTING,
@@ -576,7 +576,7 @@ def save_rotation_setting(var_name: str, value, section: str) -> None:
     ensure_rotation_settings_loaded()
     if not rotation_settings.ini_key:
         return
-    cfg = Settings.find(rotation_settings.ini_key)
+    cfg = Settings(rotation_settings.ini_key, "account")
     cfg.set(section, _ROTATION_SETTING_NAME_MAP.get(var_name, var_name), value)
 
 

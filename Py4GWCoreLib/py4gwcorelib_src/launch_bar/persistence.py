@@ -20,8 +20,7 @@ def _cfg():
     try:
         from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
-        name = Settings.ensure_key(_DOC_PATH, _DOC_FILE)   # account scope
-        return Settings.find(name)
+        return Settings(f"{_DOC_PATH}/{_DOC_FILE}")   # account scope; construction ensures/binds
     except Exception:
         return None
 

@@ -594,7 +594,7 @@ def _load_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     raw = cfg.get_bool(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
     _party_mode = 1 if raw else 0
 
@@ -613,7 +613,7 @@ def _save_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
 
 

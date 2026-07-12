@@ -370,38 +370,11 @@ def PerformTask():
         stop_bot()
         return "Error"
 
-_window_factory = None
-_window_factory_ready = False
-
-
-def _ensure_window_factory():
-    global _window_factory, _window_factory_ready
-    if _window_factory_ready and _window_factory is not None:
-        return True
-    factory = WindowFactory("Widgets/Automation/Bots/Levelers")
-    factory.register_window(
-        ManagedWindowSpec(
-            identifier="main",
-            filename="Farmer Hamnet Bot.ini",
-            title="Simple Farming Bot",
-            flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
-        )
-    )
-    if not factory.ensure_ini():
-        return False
-    _window_factory = factory
-    _window_factory_ready = True
-    return True
-
-
 def main():
     """Main function - entry point for the script"""
     try:
-        # Bot control window (migrated to WindowFactory)
-        _window_ready = _ensure_window_factory() and _window_factory is not None
-        expanded = False
-        if _window_ready:
-            expanded, _ = _window_factory.begin("main")
+        # Bot control window
+        expanded, _ = ImGui_Legacy.begin_with_close("Simple Farming Bot", None, PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize))
         if expanded:
 
             # Bot Title
@@ -445,9 +418,8 @@ def main():
             
             PyImGui.separator()
             
-        if _window_ready:
-            ImGui_Legacy.End(_window_factory.key("main"))
-        
+        ImGui_Legacy.end()
+
         # Run bot logic
         if bot_state.is_running:
             PerformTask()

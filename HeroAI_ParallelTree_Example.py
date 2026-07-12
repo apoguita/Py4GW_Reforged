@@ -117,9 +117,9 @@ def _get_sequence_builders():
 def draw_widget():
     global INI_KEY, botting_tree, move_test_x, move_test_y
 
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
+    if not INI_KEY:
         return
+    cfg = Settings(INI_KEY, "account")
 
     if ImGui_Legacy.Begin(INI_KEY, MODULE_NAME, flags=PyImGui.WindowFlags.AlwaysAutoResize):
         bb = botting_tree.blackboard if botting_tree is not None else {}

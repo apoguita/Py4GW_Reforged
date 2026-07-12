@@ -10,7 +10,7 @@ from HeroAI.utils import IsHeroFlagged
 from HeroAI.constants import NUMBER_OF_SKILLS
 from HeroAI.commands import HeroAICommands
 from Py4GWCoreLib import Py4GW
-from Py4GWCoreLib import Agent, Color, GLOBAL_CACHE, ConsoleLog, ManagedWindowSpec, Player, SharedCommandType, Utils, WindowFactory, WindowVarSpec
+from Py4GWCoreLib import Agent, Color, GLOBAL_CACHE, ConsoleLog, Player, SharedCommandType, Utils
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.ImGui_Legacy_src.IconsFontAwesome5 import IconsFontAwesome5
@@ -47,53 +47,27 @@ class HeroAIFloatingIcon:
     ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Module_Icons", "HeroAI.png")
 
 
-window_factory = WindowFactory(HeroAIFloatingIcon.INI_PATH)
-window_factory.register_window(
-    ManagedWindowSpec(
-        identifier="main",
-        filename=HeroAIFloatingIcon.MAIN_INI_FILENAME,
-        title=HeroAIFloatingIcon.MODULE_NAME,
-        flags=PyImGui.WindowFlags.AlwaysAutoResize,
-    )
-)
-window_factory.register_window(
-    ManagedWindowSpec(
-        identifier="floating",
-        filename=HeroAIFloatingIcon.FLOATING_INI_FILENAME,
-        title="HeroAI Floating",
-        open_var_name="show_main_window",
-        open_default=True,
-    )
-)
-window_factory.register_window(
-    ManagedWindowSpec(
-        identifier="appearance",
-        filename=HeroAIFloatingIcon.CONFIG_INI_FILENAME,
-        title="HeroAI Appearance Settings",
-        flags=PyImGui.WindowFlags.AlwaysAutoResize,
-        open_var_name="show_appearance_window",
-        open_default=False,
-        vars=[
-            WindowVarSpec("float", "panel_table_scale", "Appearance", "panel_table_scale", 1.0),
-            WindowVarSpec("bool", "show_main_skill_toggles", "Appearance", "show_main_skill_toggles", True),
-            WindowVarSpec("bool", "show_players", "Appearance", "show_players", True),
-            WindowVarSpec("bool", "show_player_skill_toggles", "Appearance", "show_player_skill_toggles", True),
-            WindowVarSpec("bool", "use_rich_player_panels", "Appearance", "use_rich_player_panels", False),
-            WindowVarSpec("bool", "show_players_in_individual_windows", "Appearance", "show_players_in_individual_windows", False),
-            WindowVarSpec("bool", "obfuscate_player_names", "Appearance", "obfuscate_player_names", False),
-        ],
-    )
-)
-window_factory.register_window(
-    ManagedWindowSpec(
-        identifier="players",
-        filename="heroai_ui_players_window.ini",
-        title="HeroAI Players",
-        flags=PyImGui.WindowFlags.AlwaysAutoResize,
-        open_var_name="show_player_window",
-        open_default=True,
-    )
-)
+# HeroAI's windows are plain ImGui windows — ImGui persists their placement itself
+# (imgui.ini). The only per-account state (window open flags, appearance prefs) lives
+# directly in these Settings documents; construct one where you need it. Window titles
+# and the open-flag keys are inlined at each draw/toggle site.
+PLAYERS_INI_FILENAME = "heroai_ui_players_window.ini"
+
+
+def _win_name(filename: str) -> str:
+    return f"{HeroAIFloatingIcon.INI_PATH}/{filename}"
+
+
+def _win_cfg(filename: str) -> Settings:
+    return Settings(_win_name(filename), "account")
+
+
+def _appearance_cfg() -> Settings:
+    return _win_cfg(HeroAIFloatingIcon.CONFIG_INI_FILENAME)
+
+
+def _players_cfg() -> Settings:
+    return _win_cfg(PLAYERS_INI_FILENAME)
 
 
 def get_panel_dimensions(scale: float) -> tuple[int, int]:
@@ -984,20 +958,20 @@ class HeroAI_RichPlayerPanelRenderer:
 
 class HeroAI_AppearanceWindow:
     def is_open(self) -> bool:
-        return window_factory.is_open("appearance")
+        return _appearance_cfg().get_bool("Configuration", "show_appearance_window", False)
 
     def set_open(self, value: bool) -> None:
-        window_factory.set_open("appearance", value)
+        _appearance_cfg().set("Configuration", "show_appearance_window", bool(value))
 
     def get_panel_scale(self) -> float:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return 1.0
         scale = cfg.get_float("Appearance", "panel_table_scale", 1.0)
         return max(PANEL_MIN_SCALE, min(PANEL_MAX_SCALE, scale))
 
     def set_panel_scale(self, scale: float) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         clamped_scale = max(PANEL_MIN_SCALE, min(PANEL_MAX_SCALE, scale))
@@ -1006,79 +980,79 @@ class HeroAI_AppearanceWindow:
         cfg.set("Appearance", "panel_table_height", int(round(PANEL_BASE_HEIGHT * clamped_scale)))
 
     def get_show_main_skill_toggles(self) -> bool:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return True
         return cfg.get_bool("Appearance", "show_main_skill_toggles", True)
 
     def set_show_main_skill_toggles(self, value: bool) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         cfg.set("Appearance", "show_main_skill_toggles", bool(value))
 
     def get_show_player_skill_toggles(self) -> bool:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return True
         return cfg.get_bool("Appearance", "show_player_skill_toggles", True)
 
     def set_show_player_skill_toggles(self, value: bool) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         cfg.set("Appearance", "show_player_skill_toggles", bool(value))
 
     def get_show_players(self) -> bool:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return True
         return cfg.get_bool("Appearance", "show_players", True)
 
     def set_show_players(self, value: bool) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         cfg.set("Appearance", "show_players", bool(value))
 
     def get_show_players_in_separate_window(self) -> bool:
-        return window_factory.is_open("players")
+        return _players_cfg().get_bool("Configuration", "show_player_window", True)
 
     def set_show_players_in_separate_window(self, value: bool) -> None:
-        window_factory.set_open("players", value)
+        _players_cfg().set("Configuration", "show_player_window", bool(value))
 
     def get_show_players_in_individual_windows(self) -> bool:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return False
         return cfg.get_bool("Appearance", "show_players_in_individual_windows", False)
 
     def set_show_players_in_individual_windows(self, value: bool) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         cfg.set("Appearance", "show_players_in_individual_windows", bool(value))
 
     def get_use_rich_player_panels(self) -> bool:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return False
         return cfg.get_bool("Appearance", "use_rich_player_panels", False)
 
     def set_use_rich_player_panels(self, value: bool) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         cfg.set("Appearance", "use_rich_player_panels", bool(value))
 
     def get_obfuscate_player_names(self) -> bool:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return False
         return cfg.get_bool("Appearance", "obfuscate_player_names", False)
 
     def set_obfuscate_player_names(self, value: bool) -> None:
-        cfg = Settings.find(window_factory.key("appearance"))
+        cfg = _appearance_cfg()
         if cfg is None:
             return
         cfg.set("Appearance", "obfuscate_player_names", bool(value))
@@ -1087,7 +1061,7 @@ class HeroAI_AppearanceWindow:
         if not self.is_open():
             return
 
-        expanded, open_ = window_factory.begin("appearance", self.is_open())
+        expanded, open_ = ImGui_Legacy.begin_with_close("HeroAI Appearance Settings", self.is_open(), PyImGui.WindowFlags.AlwaysAutoResize)
         self.set_open(open_)
 
         if expanded:
@@ -1159,7 +1133,7 @@ class HeroAI_AppearanceWindow:
 
                 PyImGui.unindent(20)
 
-        ImGui_Legacy.End(window_factory.key("appearance"))
+        ImGui_Legacy.end()
 
 
 class HeroAI_MainWindow:
@@ -1172,20 +1146,20 @@ class HeroAI_MainWindow:
             window_name="HeroAI Toggle",
             tooltip_visible="Hide window",
             tooltip_hidden="Show window",
-            toggle_ini_key=window_factory.key("floating"),
+            toggle_ini_key=_win_name(HeroAIFloatingIcon.FLOATING_INI_FILENAME),
             toggle_var_name="show_main_window",
             toggle_default=True,
             draw_callback=self.draw_window,
         )
 
     def draw_window(self) -> None:
-        expanded, open_ = window_factory.begin("main", self.floating_button.visible)
+        expanded, open_ = ImGui_Legacy.begin_with_close(HeroAIFloatingIcon.MODULE_NAME, self.floating_button.visible, PyImGui.WindowFlags.AlwaysAutoResize)
         self.floating_button.sync_begin_with_close(open_)
 
         if expanded:
             self.DrawPanelButtons()
 
-        ImGui_Legacy.End(window_factory.key("main"))
+        ImGui_Legacy.end()
 
     def DrawPanelButtons(self):
         global cached_data
@@ -1418,7 +1392,7 @@ class HeroAI_PlayersWindow:
                 pop_compact_player_window_spacing(style)
             return
 
-        expanded, open_ = window_factory.begin("players", self.appearance_window.get_show_players_in_separate_window())
+        expanded, open_ = ImGui_Legacy.begin_with_close("HeroAI Players", self.appearance_window.get_show_players_in_separate_window(), PyImGui.WindowFlags.AlwaysAutoResize)
         self.appearance_window.set_show_players_in_separate_window(open_)
 
         if expanded:
@@ -1448,7 +1422,7 @@ class HeroAI_PlayersWindow:
                         self.player_renderer.draw_simple_panel(account.AccountEmail, account_options)
                 PyImGui.spacing()
 
-        ImGui_Legacy.End(window_factory.key("players"))
+        ImGui_Legacy.end()
 
 FloatingButton: HeroAI_MainWindow | None = None
 AppearanceWindow: HeroAI_AppearanceWindow | None = None
@@ -1460,12 +1434,9 @@ def _ensure_ini() -> bool:
     if HeroAIFloatingIcon.INI_INIT:
         return True
 
-    if not window_factory.ensure_ini():
-        return False
-
-    HeroAIFloatingIcon.MAIN_INI_KEY = window_factory.key("main")
-    HeroAIFloatingIcon.FLOATING_INI_KEY = window_factory.key("floating")
-    HeroAIFloatingIcon.CONFIG_INI_KEY = window_factory.key("appearance")
+    HeroAIFloatingIcon.MAIN_INI_KEY = _win_name(HeroAIFloatingIcon.MAIN_INI_FILENAME)
+    HeroAIFloatingIcon.FLOATING_INI_KEY = _win_name(HeroAIFloatingIcon.FLOATING_INI_FILENAME)
+    HeroAIFloatingIcon.CONFIG_INI_KEY = _win_name(HeroAIFloatingIcon.CONFIG_INI_FILENAME)
 
     HeroAIFloatingIcon.INI_INIT = True
     return True

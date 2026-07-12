@@ -126,7 +126,6 @@ _PROGRESS_UNITS_MIN: float = 1.0
 _PROGRESS_UNITS_MAX: float = 100.0
 _EARLY_EXIT_MIN: float = 50.0
 _EARLY_EXIT_MAX: float = 800.0
-_CONFIG_INI_KEY: str = ""
 _CONFIG_VARS_REGISTERED: bool = False
 _CONFIG_RELOAD_TIMER = ThrottledTimer(1000)
 
@@ -151,31 +150,17 @@ def _clamp_early_exit(value: float) -> float:
     return max(_EARLY_EXIT_MIN, min(_EARLY_EXIT_MAX, float(value)))
 
 
-def _ensure_stuck_config_ini_vars() -> str:
-    global _CONFIG_INI_KEY
-    if not _CONFIG_INI_KEY:
-        try:
-            _CONFIG_INI_KEY = Settings(f"{_INI_PATH}/{_INI_FILENAME}", "global").name
-        except Exception:
-            return ""
-    if not _CONFIG_INI_KEY:
-        return ""
-    return _CONFIG_INI_KEY
-
-
 def reload_smart_unstuck_config_from_ini(force_reload: bool = False) -> None:
     """Pull live SMART_UNSTUCK_CFG values from FollowRuntime.ini.
     Throttled to once per second; force_reload bypasses the throttle.
     Lets follower processes pick up slider changes made on the leader.
     """
-    key = _ensure_stuck_config_ini_vars()
-    if not key:
-        return
     if not force_reload and not _CONFIG_RELOAD_TIMER.IsExpired():
         return
     _CONFIG_RELOAD_TIMER.Reset()
-    cfg = Settings.find(key)
-    if cfg is None:
+    try:
+        cfg = Settings(f"{_INI_PATH}/{_INI_FILENAME}", "global")
+    except Exception:
         return
     try:
         cfg.reload()

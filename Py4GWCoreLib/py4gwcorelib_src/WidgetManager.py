@@ -717,26 +717,29 @@ class WidgetHandler:
                 return widget
         return None
         
-    def _set_widget_state(self, INI_KEY, name: str, state: bool):
+    def _manager_cfg(self) -> Settings:
+        # Process-wide singleton; constructing it here returns the same live
+        # document any other consumer gets — no key to pass around or look up.
+        return Settings(f"{self.MANAGER_INI_PATH}/{self.MANAGER_INI_FILENAME}", "account")
+
+    def _set_widget_state(self, name: str, state: bool):
         widget = self._get_widget_by_plain_name(name)
         if not widget:
             PySystem.Console.Log("WidgetHandler", f"Widget '{name}' not found", PySystem.Console.MessageType.Warning)
             return
-        
+
         if state:
             widget.enable()
         else:
             widget.disable()
-        
+
         widget_id = widget.folder_script_name  # full id: "folder/file.py"
         v_enabled = self._widget_var(widget_id, "enabled")  # "folder/file.py__enabled"
 
         cv = self._get_config_var(widget_id, v_enabled)
 
         if cv:
-            cfg = Settings.find(INI_KEY)
-            if cfg:
-                cfg.set(cv.section, "enabled", state)
+            self._manager_cfg().set(cv.section, "enabled", state)
 
     def _request_disable_widget(self, widget: Widget, broadcast: bool = False):
         if widget.category == "System":
@@ -891,8 +894,8 @@ class WidgetHandler:
 
             cv = self._get_config_var(widget.folder_script_name, self._widget_var(widget.folder_script_name, "enabled"))
 
-            _mgr_cfg = Settings.find(self.MANAGER_INI_KEY)
-            enabled = bool(_mgr_cfg.get_bool(cv.section, "enabled", False)) if (cv and _mgr_cfg) else False
+            _mgr_cfg = self._manager_cfg()
+            enabled = bool(_mgr_cfg.get_bool(cv.section, "enabled", False)) if cv else False
             if enabled:
                 widget.enable()
                 
@@ -906,12 +909,12 @@ class WidgetHandler:
     def _apply_ini_configuration(self):
         """Apply saved enabled states and enforce System widget activation"""
         try:
-            _mgr_cfg = Settings.find(self.MANAGER_INI_KEY)
+            _mgr_cfg = self._manager_cfg()
             for wid, w in self.widgets.items():
                 section = f"Widget:{wid}"
 
                 # 1. Read the current state from Settings (which just loaded from disk)
-                enabled = bool(_mgr_cfg.get_bool(section, "enabled", False)) if _mgr_cfg else False
+                enabled = bool(_mgr_cfg.get_bool(section, "enabled", False))
 
                 # 2. THE FORCE: Check if this is a System widget section
                 is_system = "Widget:System" in section
@@ -1138,12 +1141,12 @@ class WidgetHandler:
         return [name for name, info in self.widgets.items() if info.enabled]
     
     def enable_widget(self, name: str):
-        self._set_widget_state(self.MANAGER_INI_KEY,name, True)
+        self._set_widget_state(name, True)
         if name == "HeroAI" or str(name).replace("\\", "/").endswith("/HeroAI.py"):
             self._force_heroai_player_options(True)
 
     def disable_widget(self, name: str):
-        self._set_widget_state(self.MANAGER_INI_KEY,name, False)
+        self._set_widget_state(name, False)
         if name == "HeroAI" or str(name).replace("\\", "/").endswith("/HeroAI.py"):
             self._force_heroai_player_options(False)
 
