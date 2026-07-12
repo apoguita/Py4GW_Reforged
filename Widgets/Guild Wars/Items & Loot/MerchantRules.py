@@ -28179,7 +28179,12 @@ class MerchantRulesWidget:
             PyImGui.table_set_column_index(2)
             new_enabled = PyImGui.checkbox(checkbox_label, enabled)
             self._draw_helper_tooltip("rule_enabled")
+            if opened:
+                # Split the tree scope around EndTable so the table ID is topmost when Dear ImGui closes it.
+                PyImGui.tree_pop()
             PyImGui.end_table()
+            if opened:
+                PyImGui.tree_push(table_id)
             return bool(opened), bool(new_enabled), header_clicked, updated_rule_name, renamed
 
         PyImGui.text_colored("|", type_color)
@@ -31441,6 +31446,7 @@ class MerchantRulesWidget:
         normalized_rule = _normalize_sell_rule(rule)
         if normalized_rule is None:
             self._draw_secondary_text("This legacy sell rule type is no longer supported and will be removed on save.")
+            PyImGui.tree_pop()
             return changed
         if rule.kind in (SELL_KIND_WEAPONS, SELL_KIND_ARMOR):
             self._draw_light_separator()
