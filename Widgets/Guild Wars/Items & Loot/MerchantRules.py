@@ -1,3 +1,14 @@
+"""Plan and execute account-scoped merchant, inventory, and storage rules.
+
+Merchant Rules separates preview construction from live execution: rules first produce a
+``PlanResult`` from an inventory snapshot, and execution then revalidates live state before
+performing queued or destructive actions. Profiles, shared profiles, recovery snapshots,
+multibox requests, and Reforged compatibility adapters are owned by ``MerchantRulesWidget``.
+
+Safety-sensitive operations fail closed when protections, required services, deterministic
+salvage APIs, storage capacity, or preview consistency cannot be verified.
+"""
+
 import json
 import os
 import re
@@ -464,6 +475,8 @@ ATTRIBUTE_NONE_REAL_VALUE = 45
 
 @dataclass(frozen=True)
 class ConsumableCrafterRecipe:
+    """Describe one fixed crafter recipe and its map, title, currency, and material requirements."""
+
     model_id: int
     vendor_key: str
     vendor_name: str
@@ -1687,6 +1700,8 @@ class WhitelistTarget:
 
 @dataclass
 class BuyRule:
+    """Configure stock targets that planning may buy from merchants, traders, or crafters."""
+
     enabled: bool = False
     kind: str = BUY_KIND_MERCHANT_STOCK
     merchant_type: str = MERCHANT_TYPE_MERCHANT
@@ -1731,6 +1746,12 @@ class WeaponModVariantThresholdRule:
 
 @dataclass
 class SellRule:
+    """Configure sale candidates together with hard exclusions and optional storage sources.
+
+    Protection fields are evaluated before sale routing, including when a rule can withdraw
+    candidates from Xunlai storage or material storage.
+    """
+
     enabled: bool = False
     kind: str = SELL_KIND_EXPLICIT_MODELS
     merchant_type: str = MERCHANT_TYPE_MERCHANT
@@ -1762,6 +1783,8 @@ class SellRule:
 
 @dataclass
 class DestroyRule:
+    """Configure inventory items eligible for destruction after keep-count and protection checks."""
+
     enabled: bool = False
     kind: str = DESTROY_KIND_EXPLICIT_MODELS
     model_ids: list[int] = field(default_factory=list)
@@ -1773,6 +1796,8 @@ class DestroyRule:
 
 @dataclass
 class SalvageRule:
+    """Configure material or exact-upgrade salvage candidates and their required selectors."""
+
     enabled: bool = True
     model_ids: list[int] = field(default_factory=list)
     rarities: dict[str, bool] = field(default_factory=dict)
@@ -1787,6 +1812,8 @@ class SalvageRule:
 
 @dataclass
 class SalvageSettings:
+    """Hold normalized salvage rules and the opt-in inventory-change automation switch."""
+
     model_ids: list[int] = field(default_factory=list)
     rarities: dict[str, bool] = field(default_factory=dict)
     categories: dict[str, bool] = field(default_factory=dict)
@@ -1796,6 +1823,8 @@ class SalvageSettings:
 
 @dataclass
 class IdentifySettings:
+    """Select identification rarities and the two opt-in automatic identification triggers."""
+
     rarities: dict[str, bool] = field(default_factory=dict)
     before_execute: bool = False
     on_inventory_change: bool = False
@@ -1841,6 +1870,8 @@ def _normalize_protected_item_model_ids(raw_model_ids: object) -> list[int]:
 
 @dataclass
 class ExecutionPlanEntry:
+    """Represent one user-visible planned, conditional, skipped, or blocked action."""
+
     action_type: str
     merchant_type: str
     label: str
@@ -1901,6 +1932,12 @@ class SellProtectionJumpTarget:
 
 @dataclass
 class InventoryItemInfo:
+    """Capture the normalized live item facts used by matching, protection, and planning.
+
+    Instances are snapshots. Execution must reacquire the item and revalidate relevant state
+    before performing a destructive, sale, salvage, deposit, or withdrawal action.
+    """
+
     item_id: int
     model_id: int
     name: str
@@ -1936,6 +1973,8 @@ class InventoryItemInfo:
 
 @dataclass
 class SalvageCandidate:
+    """Bind a planned inventory item to the salvage rule that claimed it."""
+
     item: InventoryItemInfo
     rule_index: int
     rule: SalvageRule
@@ -1950,6 +1989,8 @@ class SalvageUpgradeTargetMatch:
 
 @dataclass(frozen=True)
 class SalvageUpgradeSlotResolution:
+    """Record a deterministic exact-upgrade slot choice or the reason it must remain blocked."""
+
     selected_option: str = ""
     matched_labels: tuple[str, ...] = ()
     block_reason: str = ""
@@ -1957,12 +1998,21 @@ class SalvageUpgradeSlotResolution:
 
 @dataclass(frozen=True)
 class _ExactUpgradeSalvageBridgeResult:
+    """Report whether exact-upgrade extraction succeeded, failed, or was safely blocked."""
+
     success: bool
     status: str = "failed"
     reason: str = ""
 
 
 class _MerchantRulesExactUpgradeSalvageBridge:
+    """Adapt deterministic native salvage sessions without falling back to ordinary salvage.
+
+    Availability requires all native calls needed to identify and select an exact prefix,
+    suffix, or inscription slot. Missing or unverifiable capability blocks extraction while
+    leaving the matched item protected.
+    """
+
     # Deterministic slot targeting only depends on these native session calls.
     # Finish/transaction calls are handled later when available, after the exact option is selected.
     _REQUIRED_NATIVE_METHODS: tuple[str, ...] = (
@@ -1996,6 +2046,12 @@ class _MerchantRulesExactUpgradeSalvageBridge:
             return None, f"PyInventory.PyInventory() failed: {exc}"
 
     def _load_dependencies(self) -> tuple[bool, str]:
+        """Probe and cache every native capability required for deterministic slot extraction.
+
+        Partial support is treated as unavailable; the bridge never substitutes ordinary
+        salvage when a session or option-selection method is missing.
+        """
+
         if self._load_attempted:
             return self._loaded, self._load_reason
 
@@ -2036,6 +2092,8 @@ class _MerchantRulesExactUpgradeSalvageBridge:
             return False, self._load_reason
 
     def is_available(self) -> tuple[bool, str]:
+        """Return cached exact-upgrade capability and a user-facing fail-closed reason."""
+
         return self._load_dependencies()
 
     def option_to_slot(self, option: object) -> str:
@@ -2104,6 +2162,11 @@ class _MerchantRulesExactUpgradeSalvageBridge:
         return True if left_upgrade is right_upgrade else None
 
     def verify_slot_removed(self, item_id: int, option: object, original_upgrade: object | None = None) -> bool:
+        """Verify that the requested slot changed or that the source item left inventory.
+
+        Unreadable or incomparable live upgrade data is not considered success.
+        """
+
         if original_upgrade is None:
             return False
         if self._inventory_item_ids_provider is not None:
@@ -2133,6 +2196,12 @@ class _MerchantRulesExactUpgradeSalvageBridge:
         timeout_ms: int = 5000,
         poll_ms: int = 50,
     ):
+        """Yield while polling for verified removal of the selected upgrade slot.
+
+        The generator returns ``(success, reason)`` and only invokes native finish handling
+        after a transaction explicitly reports completion.
+        """
+
         waited_ms = 0
         finish_attempted = False
         is_transaction_done = getattr(inventory_instance, "IsSalvageTransactionDone", None)
@@ -2182,6 +2251,13 @@ class _MerchantRulesExactUpgradeSalvageBridge:
         timeout_ms: int = 5000,
         debug_enabled: bool = False,
     ):
+        """Extract one exact upgrade through a validated native salvage session.
+
+        The generator verifies the requested slot before selection and after completion. Any
+        capability gap, popup mismatch, unavailable option, timeout, or unverifiable result
+        returns a blocked or failed bridge result without attempting ordinary salvage.
+        """
+
         available, reason = self._load_dependencies()
         if not available:
             return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
@@ -2304,6 +2380,8 @@ class _MerchantRulesExactUpgradeSalvageBridge:
 
 @dataclass
 class PurchaseTargetCleanup:
+    """Describe post-purchase routing and whether completing a target requires storage access."""
+
     rule_kind: str = ""
     rule_index: int = -1
     target_key: str = ""
@@ -2316,6 +2394,8 @@ class PurchaseTargetCleanup:
 
 @dataclass
 class PlannedMerchantBuy:
+    """Represent an exact quantity to buy from ordinary merchant stock."""
+
     model_id: int
     quantity: int
     label: str
@@ -2324,6 +2404,8 @@ class PlannedMerchantBuy:
 
 @dataclass
 class PlannedMaterialBuy:
+    """Represent a batch-aware material purchase from a material trader."""
+
     merchant_type: str
     model_id: int
     quantity: int
@@ -2334,6 +2416,8 @@ class PlannedMaterialBuy:
 
 @dataclass
 class PlannedMaterialSale:
+    """Represent a quoted material sale with both batch and underlying item quantities."""
+
     merchant_type: str
     item_id: int
     model_id: int
@@ -2345,6 +2429,8 @@ class PlannedMaterialSale:
 
 @dataclass
 class PlannedTraderSale:
+    """Represent one standalone item sale to a specialized trader."""
+
     item_id: int
     model_id: int
     label: str
@@ -2352,6 +2438,8 @@ class PlannedTraderSale:
 
 @dataclass
 class PlannedManualMerchantSale:
+    """Represent an item approved for sale during an already-open manual merchant interaction."""
+
     item_id: int
     model_id: int
     label: str
@@ -2360,6 +2448,8 @@ class PlannedManualMerchantSale:
 
 @dataclass
 class PlannedTraderBuy:
+    """Represent a quantity of a rune or upgrade identifier to buy from its trader."""
+
     identifier: str
     quantity: int
     label: str
@@ -2368,6 +2458,8 @@ class PlannedTraderBuy:
 
 @dataclass
 class PlannedScrollTraderBuy:
+    """Represent an exact-model scroll purchase and its post-purchase cleanup policy."""
+
     model_id: int
     quantity: int
     label: str
@@ -2376,6 +2468,8 @@ class PlannedScrollTraderBuy:
 
 @dataclass
 class PlannedConsumableCraft:
+    """Represent a consumable craft quantity together with the resolved crafter destination."""
+
     model_id: int
     quantity: int
     label: str
@@ -2397,6 +2491,12 @@ class StockLocationCounts:
 
 @dataclass
 class PlannedStorageTransfer:
+    """Represent a bounded deposit or withdrawal selected during preview planning.
+
+    Execution treats the quantity as an upper bound and revalidates the live source,
+    destination capacity, and item safety before moving anything.
+    """
+
     direction: str
     key: str
     label: str
@@ -2408,6 +2508,8 @@ class PlannedStorageTransfer:
 
 @dataclass
 class MaterialStorageDepositResult:
+    """Report verified material-storage progress and whether regular-storage fallback is safe."""
+
     attempted: bool = False
     moved_quantity: int = 0
     remaining_quantity: int = 0
@@ -2423,6 +2525,8 @@ class DestroySplitDestination:
 
 @dataclass
 class PlannedDestroyAction:
+    """Describe a destructive action, including any split required to preserve a keep quantity."""
+
     item_id: int
     model_id: int
     label: str
@@ -2434,6 +2538,13 @@ class PlannedDestroyAction:
 
 @dataclass
 class PlanResult:
+    """Aggregate the immutable intent produced by preview for later live execution.
+
+    The plan records inventory counts, service requirements, conditional storage state, and
+    phase-specific actions. It authorizes no operation by itself; execution rechecks current
+    inventory and protection state before consuming these entries.
+    """
+
     entries: list[ExecutionPlanEntry] = field(default_factory=list)
     supported_map: bool = False
     supported_reason: str = ""
@@ -2470,6 +2581,8 @@ class PlanResult:
 
 @dataclass
 class ManualVendorContext:
+    """Snapshot the currently open merchant services and offered item identifiers."""
+
     signature: str = ""
     merchant_types: set[str] = field(default_factory=set)
     merchant_item_ids: list[int] = field(default_factory=list)
@@ -2478,6 +2591,8 @@ class ManualVendorContext:
 
 @dataclass
 class MultiboxAccountStatus:
+    """Track one follower's request lifecycle, summary counts, and terminal success state."""
+
     email: str
     display_name: str = ""
     state: str = "idle"
@@ -2491,6 +2606,8 @@ class MultiboxAccountStatus:
 
 @dataclass
 class SharedProfileSummary:
+    """Hold validated shared-profile metadata and its normalized serialized payload."""
+
     path: str
     display_name: str
     filename: str
@@ -2514,6 +2631,8 @@ class ParsedUpgradeMatch:
 
 @dataclass(frozen=True)
 class ParsedInventoryModifiers:
+    """Cache normalized equipment requirements, base stats, runes, and exact upgrade matches."""
+
     requirement: int = 0
     requirement_attribute_id: int = 0
     requirement_attribute_name: str = ""
@@ -2535,6 +2654,8 @@ class InventoryModifierCacheEntry:
 
 @dataclass
 class ExecutionPhaseOutcome:
+    """Accumulate verified work and categorized failures for one execution phase."""
+
     label: str
     measure_label: str = "actions"
     attempted: int = 0
@@ -2549,6 +2670,8 @@ class ExecutionPhaseOutcome:
 
 @dataclass
 class GoldTopUpResult:
+    """Report whether a purchase can proceed after an optional bounded storage withdrawal."""
+
     ready: bool
     carried_gold: int = 0
     storage_gold: int = 0
@@ -3040,6 +3163,8 @@ def _strip_window_geometry_from_profile_payload(payload: object) -> dict[str, ob
 
 
 def _looks_like_merchant_rules_payload(raw_payload: object) -> bool:
+    """Return whether a decoded object has the minimum shape of a Merchant Rules profile."""
+
     if not isinstance(raw_payload, dict):
         return False
     return any(
@@ -3220,6 +3345,12 @@ def _get_named_agent_target_definition(agent_kind: object, target_key: object) -
 
 
 def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
+    """Match a live agent name through Reforged's encoded-name facade.
+
+    Any unavailable API, malformed encoding, or conversion failure returns ``False`` so an
+    agent selector cannot silently resolve the wrong target.
+    """
+
     if not encoded_names:
         return False
     try:
@@ -3256,6 +3387,13 @@ def resolve_agent_xy_from_step(
     default_max_dist: float | None = None,
     log_failures: bool = True,
 ) -> tuple[float, float] | None:
+    """Resolve a recipe agent selector to live coordinates without guessing on failure.
+
+    The resolver accepts explicit points and named or filtered live-agent selectors. Missing
+    Reforged agent APIs, ambiguous matches, distance violations, or malformed selector data
+    return ``None`` and can optionally be logged for the calling recipe.
+    """
+
     try:
         from Py4GWCoreLib import Agent
         from Py4GWCoreLib import AgentArray
@@ -4297,6 +4435,8 @@ def _default_destroy_rules() -> list[DestroyRule]:
 
 
 def _normalize_buy_rule(rule: BuyRule) -> BuyRule | None:
+    """Canonicalize a buy rule and discard kinds that cannot produce a valid target."""
+
     legacy_model_id = max(0, _safe_int(rule.model_id, 0))
     legacy_target_count = max(0, _safe_int(rule.target_count, 0))
     legacy_max_per_run = max(0, _safe_int(rule.max_per_run, 0))
@@ -4504,6 +4644,12 @@ def _sell_rule_can_include_material_storage(rule: SellRule) -> bool:
 
 
 def _normalize_sell_rule(rule: SellRule) -> SellRule | None:
+    """Canonicalize sale routing while preserving hard protections and legacy profile meaning.
+
+    Unsupported legacy rule kinds are either migrated to their current equivalent or removed
+    when retaining them could route items unsafely.
+    """
+
     legacy_model_ids = _dedupe_model_ids(getattr(rule, "model_ids", []))
     legacy_keep_count = max(0, int(getattr(rule, "keep_count", 0)))
     if rule.kind == LEGACY_SELL_KIND_WEAPONS_BY_RARITY:
@@ -4600,6 +4746,8 @@ def _normalize_sell_rules(rules: list[SellRule]) -> list[SellRule]:
 
 
 def _normalize_destroy_rule(rule: DestroyRule) -> DestroyRule:
+    """Canonicalize a destroy rule, including per-target keep counts and rarity selectors."""
+
     legacy_model_ids = _dedupe_model_ids(getattr(rule, "model_ids", []))
     legacy_keep_count = max(0, int(getattr(rule, "keep_count", 0)))
     if rule.kind not in DESTROY_RULE_KINDS:
@@ -4714,6 +4862,8 @@ def _salvage_rule_has_selectors(rule: SalvageRule) -> bool:
 
 
 def _normalize_salvage_rule(raw_rule: object) -> SalvageRule | None:
+    """Convert a saved or live salvage rule into its bounded canonical representation."""
+
     if isinstance(raw_rule, SalvageRule):
         rule = SalvageRule(
             enabled=bool(raw_rule.enabled),
@@ -4776,6 +4926,8 @@ def _normalize_salvage_rules(raw_rules: object) -> list[SalvageRule]:
 
 
 def _normalize_salvage_settings(raw_settings: object) -> SalvageSettings:
+    """Normalize salvage automation and migrate legacy single-rule settings without enabling it."""
+
     if isinstance(raw_settings, SalvageSettings):
         legacy_model_ids = _dedupe_model_ids(raw_settings.model_ids)
         legacy_rarities = _normalize_salvage_rarity_flags(raw_settings.rarities)
@@ -4933,6 +5085,8 @@ def _serialize_destroy_rule(rule: DestroyRule) -> dict[str, object]:
 
 
 def _has_explicit_equippable_hard_protection(rule: SellRule) -> bool:
+    """Return whether an equipment sale rule contains an exclusion that must override selling."""
+
     if rule.kind not in (SELL_KIND_WEAPONS, SELL_KIND_ARMOR):
         return False
     if rule.blacklist_model_ids:
@@ -4960,6 +5114,14 @@ def _has_explicit_equippable_hard_protection(rule: SellRule) -> bool:
 
 
 class MerchantRulesWidget:
+    """Own Merchant Rules profiles, planning, execution, UI state, and runtime automation.
+
+    Preview methods create a ``PlanResult`` from normalized rules and live snapshots. Execution
+    runs as cooperative generators, revalidates live inventory and services between phases, and
+    preserves hard protections even when the preview is stale. Automatic and live right-click
+    actions remain opt-in profile settings.
+    """
+
     def __init__(self):
         self.initialized = False
         self.legacy_recovery_artifacts_migrated = False
@@ -5237,6 +5399,8 @@ class MerchantRulesWidget:
         return os.path.join(PySystem.Console.get_projects_path(), MODULE_ICON)
 
     def _ensure_floating_ui_key(self) -> str:
+        """Bind the floating-icon settings document through Reforged's public ``Settings`` API."""
+
         if self.floating_ui_ini_key:
             return self.floating_ui_ini_key
         try:
@@ -5250,6 +5414,12 @@ class MerchantRulesWidget:
         return self.floating_ui_ini_key
 
     def _ensure_floating_ui(self):
+        """Create and synchronize the floating toggle through the public legacy ImGui helper.
+
+        ``ImGui_Legacy.FloatingIcon`` is a temporary Reforged compatibility adapter; it owns
+        icon drawing and visibility callbacks while ``Settings`` owns persistence.
+        """
+
         if self.floating_button is None:
             from Py4GWCoreLib.ImGui_Legacy import ImGui_Legacy
 
@@ -8288,6 +8458,8 @@ class MerchantRulesWidget:
         return normalized_payload != current_payload
 
     def _build_profile_payload(self, *, include_window_geometry: bool = True) -> dict[str, object]:
+        """Serialize current settings into a normalized profile-v35 payload."""
+
         payload = {
             "version": PROFILE_VERSION,
             "auto_cleanup_on_outpost_entry": bool(self.auto_cleanup_on_outpost_entry),
@@ -8328,6 +8500,13 @@ class MerchantRulesWidget:
         return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
     def _normalize_profile_payload(self, raw_payload: object) -> dict[str, object]:
+        """Validate and migrate a decoded profile without weakening safe defaults.
+
+        Missing automatic, destructive, and live-action fields remain disabled. Legacy rule
+        shapes are converted to current structures, while malformed container types raise so
+        the caller can preserve and snapshot the unreadable source file.
+        """
+
         if not isinstance(raw_payload, dict):
             raise ValueError("Merchant Rules profile must be a JSON object.")
 
@@ -8563,6 +8742,8 @@ class MerchantRulesWidget:
         }
 
     def _apply_profile_payload(self, payload: dict[str, object]):
+        """Replace in-memory rules and settings from an already normalized profile payload."""
+
         self.buy_rules = [
             BuyRule(
                 enabled=bool(entry.get("enabled", False)),
@@ -8767,6 +8948,8 @@ class MerchantRulesWidget:
         fallback_name: str = "",
         fallback_path: str = "",
     ) -> dict[str, object]:
+        """Validate a shared-profile wrapper and normalize its embedded Merchant Rules payload."""
+
         if not isinstance(raw_payload, dict):
             raise ValueError("Shared Merchant Rules profile must be a JSON object.")
 
@@ -8982,6 +9165,8 @@ class MerchantRulesWidget:
         return normalized_name, profile_path
 
     def _refresh_shared_profile_entries(self):
+        """Rescan shared profiles, retaining only readable entries and reporting partial failures."""
+
         shared_profiles_dir = self._get_shared_profiles_dir()
         os.makedirs(shared_profiles_dir, exist_ok=True)
         previous_selected_path = self.shared_profile_selected_path
@@ -9302,6 +9487,12 @@ class MerchantRulesWidget:
                 )
 
     def _migrate_legacy_recovery_artifacts(self):
+        """Move old root-level recovery artifacts into the dedicated recovery directory.
+
+        Existing destination files are never overwritten, and failures are diagnostic only so
+        initialization cannot destroy or hide the original backup.
+        """
+
         os.makedirs(RECOVERY_DIR, exist_ok=True)
         try:
             filenames = os.listdir(CONFIG_DIR)
@@ -9331,6 +9522,8 @@ class MerchantRulesWidget:
                 )
 
     def _snapshot_failed_profile(self, config_path: str) -> str:
+        """Copy an unreadable profile into retained recovery storage before falling back to defaults."""
+
         if not os.path.exists(config_path):
             return ""
         timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -9352,6 +9545,12 @@ class MerchantRulesWidget:
         *,
         backup_mode: str = "adjacent",
     ):
+        """Atomically write a profile after flushing it and rotating the requested backup.
+
+        The destination is replaced only after the temporary JSON file is fully written and
+        synchronized. Temporary files are removed on both success and failure.
+        """
+
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
         temp_path = f"{config_path}.tmp-{int(time.time() * 1000)}"
         try:
@@ -9395,6 +9594,8 @@ class MerchantRulesWidget:
         return config_path
 
     def _load_profile_from_path(self, config_path: str) -> dict[str, object]:
+        """Decode one profile path without normalizing or mutating its contents."""
+
         with open(config_path, "r", encoding="utf-8") as file:
             return json.load(file)
 
@@ -9440,6 +9641,8 @@ class MerchantRulesWidget:
         self.last_execution_phase_durations_ms = {}
 
     def _restore_profile_from_backup(self) -> bool:
+        """Validate, normalize, and atomically restore the newest available live-profile backup."""
+
         backup_path = self._get_available_profile_backup_path(self.config_path)
         if not backup_path or not os.path.exists(backup_path):
             self.profile_warning = "No Merchant Rules live config backup file was found to restore."
@@ -9483,6 +9686,12 @@ class MerchantRulesWidget:
             return False
 
     def _reset_runtime_after_profile_load(self, *, status_message: str = "", profile_display_name: str = ""):
+        """Clear previews, running automation, confirmations, and caches after profile replacement.
+
+        Session-only destructive overrides are deliberately reset rather than inherited across
+        profile loads.
+        """
+
         safe_profile_display_name = str(profile_display_name or "").strip()
         if safe_profile_display_name:
             self.active_profile_display_name = safe_profile_display_name
@@ -9546,6 +9755,8 @@ class MerchantRulesWidget:
         preserve_workspace_state: bool = False,
         profile_display_name: str = "",
     ):
+        """Reload the active profile and optionally preserve only UI geometry or workspace state."""
+
         self._ensure_initialized()
         window_geometry_snapshot = self._snapshot_window_geometry_state() if preserve_window_geometry else None
         workspace_snapshot = self.active_workspace if preserve_workspace_state else ""
@@ -9864,6 +10075,12 @@ class MerchantRulesWidget:
         return (float(self.inventory_modifier_cache_hits) / float(total_lookups)) * 100.0
 
     def _compare_current_inventory_against_preview(self) -> bool:
+        """Compare live model counts with the preview snapshot and require drift confirmation.
+
+        Any difference invalidates one-click execution until the user explicitly confirms the
+        newly displayed drift; the stored plan itself is not silently rebuilt here.
+        """
+
         self._clear_preview_inventory_diff()
         if not self.preview_ready:
             self.preview_inventory_diff_summary = "Run Preview before comparing inventory drift."
@@ -13231,6 +13448,13 @@ class MerchantRulesWidget:
         return self._resolve_storage_access_coords() is not None
 
     def _load_profile(self):
+        """Load the account profile with preservation, normalization, and recovery safeguards.
+
+        New accounts receive disabled in-memory defaults. Invalid files are left untouched and
+        snapshot when possible; valid older profiles are normalized and safely rewritten, while
+        profiles from a newer schema are loaded without overwriting their source.
+        """
+
         profile_exists = os.path.exists(self.config_path)
         self.new_profile_session = not profile_exists
         self.active_profile_display_name = self._get_live_profile_display_name()
@@ -13321,6 +13545,8 @@ class MerchantRulesWidget:
                     self.profile_notice = "Live config normalized and saved safely."
 
     def _save_profile(self) -> bool:
+        """Persist the current account profile atomically and report failures without truncation."""
+
         saved_window_geometry = bool(self.window_geometry_dirty)
         payload = self._build_profile_payload()
         try:
@@ -13850,6 +14076,12 @@ class MerchantRulesWidget:
         return parsed_state
 
     def _build_inventory_item_info(self, item_id: int) -> InventoryItemInfo | None:
+        """Read and normalize one live inventory item for rule matching.
+
+        Missing native data or parsing failures return ``None`` so callers cannot plan from a
+        partial item record.
+        """
+
         try:
             safe_item_id = int(item_id)
             model_id = int(GLOBAL_CACHE.Item.GetModelID(safe_item_id))
@@ -14768,6 +15000,8 @@ class MerchantRulesWidget:
         items: list[InventoryItemInfo],
         claimed_item_ids: set[int],
     ) -> None:
+        """Claim and preview identification targets before destructive or sale planning."""
+
         if not self._should_identify_before_execute():
             return
 
@@ -15224,6 +15458,12 @@ class MerchantRulesWidget:
         salvage_kit_id: int = 0,
         mode: str = "manual",
     ) -> str:
+        """Return the first safety or capability reason that forbids salvaging an item.
+
+        Hard protections, customization, identification state, kit suitability, exact-slot
+        capability, and rule-option compatibility are evaluated before execution can claim it.
+        """
+
         hard_protection = self._get_hard_protection_hit(item, enabled_sell_rules)
         if hard_protection is not None:
             return f"protected: {hard_protection[1]}"
@@ -15334,6 +15574,8 @@ class MerchantRulesWidget:
         include_not_selected_blocks: bool = False,
         manual_salvage_rule: SalvageRule | None = None,
     ) -> tuple[list[SalvageCandidate], dict[str, int]]:
+        """Select salvage candidates by rule precedence and bucket every blocked reason."""
+
         candidates: list[SalvageCandidate] = []
         blocked_counts: dict[str, int] = {}
         explicit_rule = _normalize_salvage_rule(manual_salvage_rule) if manual_salvage_rule is not None else None
@@ -15487,6 +15729,8 @@ class MerchantRulesWidget:
         coords: dict[str, tuple[float, float] | None],
         reserved_rune_sell_identifiers: set[str] | None = None,
     ) -> None:
+        """Plan equipment sales while reserving protected, customized, and rune-trader items."""
+
         candidate_label = SELL_KIND_LABELS[rule.kind]
         reserved_rune_sell_identifiers = reserved_rune_sell_identifiers or set()
         had_category_candidate = False
@@ -16327,6 +16571,12 @@ class MerchantRulesWidget:
         storage_open: bool = False,
         storage_context_available: bool | None = None,
     ) -> None:
+        """Plan bounded deposits for explicit cleanup targets and enabled protection sources.
+
+        Storage availability and target scope determine whether entries are direct or
+        conditional; protected keep-out models are never converted into transfer actions.
+        """
+
         if storage_context_available is None:
             storage_context_available = self._can_use_local_storage_actions()
         if not storage_context_available:
@@ -16921,6 +17171,12 @@ class MerchantRulesWidget:
         claimed_item_ids: set[int],
         enabled_sell_rules: list[tuple[int, SellRule]],
     ) -> None:
+        """Plan one destroy rule after applying claims, keep counts, and hard protections.
+
+        Partial stack destruction is emitted only when a safe split destination is available.
+        Session-only protected-item override state is reflected visibly in skipped entries.
+        """
+
         include_protected_items = bool(self.destroy_include_protected_items)
         candidate_label = DESTROY_KIND_LABELS.get(rule.kind, "Destroy Rule")
         rule_reference = self._format_destroy_rule_reference(rule_index, rule)
@@ -17343,6 +17599,8 @@ class MerchantRulesWidget:
         enabled_sell_rules: list[tuple[int, SellRule]],
         claimed_item_ids: set[int],
     ) -> None:
+        """Plan salvage actions before overlapping sell and destroy rules can claim the items."""
+
         if not self._has_enabled_salvage_settings():
             return
 
@@ -17463,6 +17721,12 @@ class MerchantRulesWidget:
         consumable_crafter_only: bool = False,
         exclude_consumable_crafter: bool = False,
     ) -> None:
+        """Plan purchases against simulated inventory, storage, currency, and target reservations.
+
+        The simulation applies earlier planned moves and shared resource consumption so later
+        targets cannot spend the same stock, materials, skill points, or gold twice.
+        """
+
         supported_map = bool(plan.supported_map)
         supported_reason = str(plan.supported_reason or "")
         coords = dict(plan.coords)
@@ -18336,6 +18600,13 @@ class MerchantRulesWidget:
         exclude_consumable_crafter: bool = False,
         supported_context_override: tuple[bool, str, dict[str, tuple[float, float] | None]] | None = None,
     ) -> PlanResult:
+        """Build the complete preview plan without performing live merchant actions.
+
+        Planning snapshots inventory, applies rule precedence and hard protections, models
+        storage certainty and travel services, and records conditional or blocked work. The
+        resulting plan is intent only; every execution phase revalidates its live inputs.
+        """
+
         started_at = time.perf_counter()
         projected_target_outpost_id = 0
         projected_target_outpost_name = ""
@@ -19131,6 +19402,12 @@ class MerchantRulesWidget:
         *,
         purpose: str = "merchant purchase",
     ):
+        """Yield while topping up only the verified gold shortfall required for a purchase.
+
+        Storage is opened only when character plus storage gold can cover the target. The
+        generator reports failure when balances or withdrawal progress cannot be verified.
+        """
+
         safe_required_gold = max(0, int(required_gold))
         character_gold = self._read_gold_amount("GetGoldOnCharacter")
         if character_gold is None:
@@ -19441,6 +19718,12 @@ class MerchantRulesWidget:
         current_quantity: int | None = None,
         planned_model_id: int = 0,
     ) -> MaterialStorageDepositResult:
+        """Deposit a bounded quantity into material storage before considering regular storage.
+
+        Reported success is based on live quantity change. Ambiguous moves set
+        ``abort_regular_fallback`` so the same items cannot be deposited twice.
+        """
+
         safe_item_id = int(item_id)
         safe_requested_quantity = max(0, int(requested_quantity))
         result = MaterialStorageDepositResult(remaining_quantity=safe_requested_quantity)
@@ -19554,6 +19837,12 @@ class MerchantRulesWidget:
         return result
 
     def _execute_destroy_phase(self, destroy_actions: list[PlannedDestroyAction] | list[int]) -> ExecutionPhaseOutcome:
+        """Yield through planned destruction after reacquiring items and preserving keep quantities.
+
+        Split-dependent actions stop safely when source quantity, destination capacity, or live
+        protection state no longer matches the plan.
+        """
+
         raw_destroy_actions = list(destroy_actions or [])
         tracked_item_ids = [
             int(action.item_id) if isinstance(action, PlannedDestroyAction) else int(action)
@@ -19845,6 +20134,8 @@ class MerchantRulesWidget:
         *,
         phase_label: str = "Consumable crafters",
     ) -> ExecutionPhaseOutcome:
+        """Craft planned consumables after revalidating title, materials, gold, and bag capacity."""
+
         outcome = ExecutionPhaseOutcome(
             label=phase_label,
             measure_label="crafts",
@@ -20160,6 +20451,8 @@ class MerchantRulesWidget:
         phase_label: str = "Material buys",
         trader_items: list[int] | None = None,
     ) -> ExecutionPhaseOutcome:
+        """Execute planned material purchases with fresh quotes and verified inventory gains."""
+
         outcome = ExecutionPhaseOutcome(
             label=phase_label,
             measure_label="items",
@@ -20379,6 +20672,8 @@ class MerchantRulesWidget:
         phase_label: str = "Material sales",
         trader_items: list[int] | None = None,
     ) -> ExecutionPhaseOutcome:
+        """Execute planned material sales with fresh quotes and verified stack reductions."""
+
         outcome = ExecutionPhaseOutcome(
             label=phase_label,
             measure_label="trades",
@@ -20517,6 +20812,12 @@ class MerchantRulesWidget:
         *,
         phase_label: str = "Storage transfers",
     ) -> ExecutionPhaseOutcome:
+        """Execute bounded deposits or withdrawals after reacquiring each live source.
+
+        Material deposits prefer material storage and use regular storage only after a verified
+        remainder. Unverifiable moves abort fallback to avoid duplicating a transfer.
+        """
+
         normalized_transfers = [
             transfer
             for transfer in storage_transfers
@@ -21451,6 +21752,12 @@ class MerchantRulesWidget:
         *,
         protected_preview_entries: list[ExecutionPlanEntry] | None = None,
     ) -> tuple[list[PlannedStorageTransfer], list[SellRule]]:
+        """Plan Xunlai withdrawals while reserving keep counts across overlapping sale rules.
+
+        Equipment protections and unsafe storage types produce visible protected entries rather
+        than withdrawal actions.
+        """
+
         all_enabled_sell_rules = self._collect_enabled_sell_rules()
         transfers: list[PlannedStorageTransfer] = []
         model_keep_overrides: dict[tuple[str, int], int] = {}
@@ -21667,6 +21974,8 @@ class MerchantRulesWidget:
         *,
         phase_label: str,
     ) -> ExecutionPhaseOutcome:
+        """Run the merchant and trader sale actions contained in one already validated plan."""
+
         outcome = ExecutionPhaseOutcome(label=phase_label, measure_label="sell action(s)")
 
         material_coords = plan.coords.get(MERCHANT_TYPE_MATERIALS)
@@ -21769,6 +22078,12 @@ class MerchantRulesWidget:
         local_only: bool = False,
         storage_available_here: bool = False,
     ) -> ExecutionPhaseOutcome:
+        """Open Xunlai, rebuild the live withdrawal subplan, move candidates, and then sell them.
+
+        The phase does not trust preview storage item IDs; it rescans storage and reapplies rule
+        protections before any withdrawal.
+        """
+
         enabled_xunlai_rules = self._collect_enabled_xunlai_sell_rules()
         outcome = ExecutionPhaseOutcome(label="Xunlai sells", measure_label="sell action(s)")
         if not enabled_xunlai_rules:
@@ -22287,6 +22602,12 @@ class MerchantRulesWidget:
         *,
         running_already_marked: bool = False,
     ):
+        """Run opt-in automation for the merchant window the user opened manually.
+
+        The generator limits work to services and offers present in the captured context, pauses
+        competing inventory UI when possible, and restores runtime flags in ``finally``.
+        """
+
         if self.manual_vendor_running and not running_already_marked:
             return ExecutionPhaseOutcome(label="Manual merchant automation", measure_label="actions")
         self.manual_vendor_running = True
@@ -22688,6 +23009,13 @@ class MerchantRulesWidget:
         allow_multi_stop: bool = True,
         exclude_consumable_crafter: bool = False,
     ):
+        """Execute the preview as ordered cooperative phases with live revalidation.
+
+        The generator checks preview drift and service availability, pauses competing inventory
+        automation, and stops later phases after a failed prerequisite. Destructive, salvage,
+        storage, sale, buy, and craft work remains bounded by the approved plan.
+        """
+
         if (
             allow_multi_stop
             and not local_only
@@ -23270,6 +23598,8 @@ class MerchantRulesWidget:
             yield
 
     def _execute_cleanup_now(self, *, auto_triggered: bool = False):
+        """Rebuild and execute a cleanup-only plan against current Xunlai state."""
+
         self.auto_cleanup_running = True
         self.last_error = ""
         self.last_cleanup_summary = ""
@@ -23499,6 +23829,12 @@ class MerchantRulesWidget:
         preferred_id_kit_id: int = 0,
         preferred_id_kit_model_id: int = 0,
     ):
+        """Identify selected live items sequentially through the shared action queue.
+
+        Each item is reacquired and its rarity, identification state, and kit availability are
+        checked before queuing. The generator returns an ``ExecutionPhaseOutcome``.
+        """
+
         if self.identify_running and not running_already_marked:
             return ExecutionPhaseOutcome(label=summary_subject, measure_label="items")
         self.identify_running = True
@@ -24492,6 +24828,13 @@ class MerchantRulesWidget:
         explicit_salvage_request: bool = False,
         planned_salvage_item_ids: set[int] | list[int] | tuple[int, ...] | None = None,
     ):
+        """Run a bounded salvage pass with rule claims, kit checks, and stack-progress guards.
+
+        Exact-upgrade candidates use only the deterministic bridge and remain protected when it
+        is unavailable. Normal stack draining stops when quantity, item identity, or kit state
+        fails to make verified progress.
+        """
+
         if self.salvage_running and not running_already_marked:
             return ExecutionPhaseOutcome(label="MR Salvage", measure_label="items")
         self.salvage_running = True
@@ -24683,6 +25026,12 @@ class MerchantRulesWidget:
         summary_subject: str,
         dirty_reason: str,
     ):
+        """Run automatic or manual destruction against a newly rebuilt live plan.
+
+        The generator honors the automatic-enable gate, pauses competing inventory behavior,
+        reapplies protected-item checks, and always clears running state on exit.
+        """
+
         if self.instant_destroy_running:
             return
         if require_auto_enabled and not self._is_destroy_auto_enabled():
@@ -26033,6 +26382,8 @@ class MerchantRulesWidget:
             self._draw_secondary_text(f"...and {len(messages) - 6} more overlap warning(s).", wrapped=False)
 
     def _get_action_block_reason(self, action: str) -> str:
+        """Return the centralized runtime, preview, travel, and confirmation gate for an action."""
+
         busy = self.execution_running or self.travel_preview_running or self.identify_running or self.instant_destroy_running or self.salvage_running or self.storage_scan_running or self.auto_cleanup_running or self.manual_vendor_running
         if action == "preview":
             return "Merchant Rules is already busy." if busy else ""
@@ -26329,6 +26680,12 @@ class MerchantRulesWidget:
         return True
 
     def _start_multibox_sync(self):
+        """Write the leader's normalized profile to selected followers without copying UI geometry.
+
+        Follower writes preserve each account's existing window geometry and report individual
+        status instead of treating the batch as an all-or-nothing operation.
+        """
+
         selected_emails = self._get_selected_multibox_emails()
         if not selected_emails:
             return
@@ -26383,6 +26740,8 @@ class MerchantRulesWidget:
                 )
 
     def _start_multibox_batch(self, action: str, opcode: int):
+        """Create a request-scoped preview or execute batch for selected active followers."""
+
         selected_emails = self._get_selected_multibox_emails()
         if not selected_emails:
             return
@@ -26476,6 +26835,12 @@ class MerchantRulesWidget:
             )
 
     def _advance_multibox_batch(self):
+        """Advance remote requests sequentially and convert elapsed deadlines into terminal timeouts.
+
+        Only one follower executes at a time. Preview requests may remain concurrent, but stale
+        or inactive clients are resolved independently so they cannot stall the whole batch.
+        """
+
         if self.multibox_active_action not in ("preview", "execute"):
             return
         current_time_ms = int(time.time() * 1000)
@@ -26842,6 +27207,12 @@ class MerchantRulesWidget:
         return True
 
     def handle_shared_multibox_message(self, message):
+        """Handle a follower command while restoring temporary destructive and HeroAI state.
+
+        The generator validates receiver and opcode data, applies request-scoped execution flags,
+        sends a correlated result, and restores all temporary options in ``finally``.
+        """
+
         extra0, extra1, extra2, extra3 = self._extract_multibox_message_extra_data(message)
         request_id = str(extra0 or "").strip()
         sender_email = str(getattr(message, "SenderEmail", "") or "").strip()
@@ -26993,6 +27364,8 @@ class MerchantRulesWidget:
                 self.destroy_instant_enabled = original_instant_destroy
 
     def build_remote_preview_result(self) -> dict[str, object]:
+        """Summarize the follower's current preview into a transport-safe result payload."""
+
         self._ensure_initialized()
         direct_count, conditional_count, skipped_count = self._get_preview_entry_counts(self.preview_plan.entries)
         actionable_count = direct_count + conditional_count
@@ -27101,6 +27474,8 @@ class MerchantRulesWidget:
         }
 
     def build_remote_execute_result(self) -> dict[str, object]:
+        """Summarize verified follower execution counts for the active multibox request."""
+
         self._ensure_initialized()
         primary_count, secondary_count = self._get_multibox_plan_counts(self.preview_plan)
         if primary_count > 0:
@@ -27132,6 +27507,8 @@ class MerchantRulesWidget:
         summary: str,
         detail: str,
     ) -> bool:
+        """Accept a correlated follower result and ignore stale, duplicate, or unknown responses."""
+
         normalized_email = _normalize_multibox_account_email(sender_email)
         if not normalized_email:
             return False
