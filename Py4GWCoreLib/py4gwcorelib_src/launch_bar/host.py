@@ -18,6 +18,7 @@ import os
 
 import PyImGui
 
+from .function_runtime import resolve_icon
 from .model import BarSide
 from .model import LaunchBar
 from .model import Tile
@@ -279,7 +280,9 @@ class LaunchBarHost:
         x, y, tw, th = bar.tile_rect(tile)
         cx, cy = ox + x, oy + y
         runtime = getattr(manager, "runtime", None)
+        funcs = getattr(manager, "functions", None)
         meta = runtime.get(tile.widget_id) if (tile.widget_id and runtime is not None) else None
+        fmeta = funcs.get(tile.function_id) if (tile.function_id and funcs is not None) else None
         action = tile.action
         active = meta.enabled if meta is not None else (manager.is_action_active(action) if action else False)
 
@@ -288,18 +291,21 @@ class LaunchBarHost:
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, _hex_rgba01(_lighten(bar.colors.face, 0.12), fa))
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, _hex_rgba01(_lighten(bar.colors.face, 0.20), fa))
         PyImGui.set_cursor_pos((cx, cy))
-        clicked = self._tile_button(bar, tile, meta, tw, th)
+        clicked = self._tile_button(bar, tile, meta, fmeta, tw, th)
         PyImGui.pop_style_color(3)
 
-        # widget / action tiles: tooltip + active indicator when running / open
-        if meta is not None or action:
-            if meta is not None:
-                state = "Active - click to stop" if active else "Inactive - click to launch"
-                PyImGui.set_item_tooltip("%s\n%s\n%s" % (meta.name, meta.category, state))
-            else:
-                PyImGui.set_item_tooltip(_ACTION_TOOLTIP.get(action, action))
-            if active:
-                self._draw_active_indicator(dl, win_pos[0] + cx, win_pos[1] + cy, tw, th)
+        # widget / action / function tiles: tooltip (+ active indicator for stateful kinds).
+        # Functions are fire-and-forget, so they never light the active indicator.
+        if meta is not None:
+            state = "Active - click to stop" if active else "Inactive - click to launch"
+            PyImGui.set_item_tooltip("%s\n%s\n%s" % (meta.name, meta.category, state))
+        elif action:
+            PyImGui.set_item_tooltip(_ACTION_TOOLTIP.get(action, action))
+        elif fmeta is not None:
+            path = "%s > %s" % (fmeta.group or "Uncategorized", fmeta.category or "General")
+            PyImGui.set_item_tooltip("%s\n%s\n%s" % (fmeta.name, path, fmeta.tooltip or "Click to run"))
+        if active:
+            self._draw_active_indicator(dl, win_pos[0] + cx, win_pos[1] + cy, tw, th)
 
         if editing and PyImGui.begin_popup_context_item("##tilemenu_%s_%s" % (bar.id, tile.id)):
             self._tile_menu(manager, tile)
@@ -313,14 +319,16 @@ class LaunchBarHost:
                 x0, y0 = win_pos[0] + cx, win_pos[1] + cy
                 dl.add_rect((x0, y0), (x0 + tw, y0 + th), _rgba01_u32(*_ACCENT), rounding=3.0, thickness=2.0)
         elif clicked:
-            # normal mode: click launches/toggles the widget or fires the system action
+            # normal mode: launch/toggle the widget, fire the system action, or run the function
             if meta is not None:
                 runtime.toggle(tile.widget_id)
             elif action:
                 manager.do_action(action)
+            elif tile.function_id:
+                manager.invoke_function(tile.function_id)
 
-    def _tile_button(self, bar, tile, meta, tw, th) -> bool:
-        """Draw the tile's clickable face: action icon/label, widget icon, or a placeholder."""
+    def _tile_button(self, bar, tile, meta, fmeta, tw, th) -> bool:
+        """Draw the tile's clickable face: action icon/label, function glyph, widget icon, or placeholder."""
 
         if tile.action:
             icon = _ACTION_ICONS.get(tile.action)
@@ -329,6 +337,13 @@ class LaunchBarHost:
 
                 return ImGui_Legacy.image_button("##tile_%s_%s" % (bar.id, tile.id), icon, tw, th)
             label = _ACTION_LABELS.get(tile.action, "?")
+            return PyImGui.button("%s##tile_%s_%s" % (label, bar.id, tile.id), tw, th)
+        if tile.function_id:
+            # tile.icon override wins; fall back to the catalog default; then to initials/"FN"
+            glyph = resolve_icon(tile.icon) or (resolve_icon(fmeta.icon) if fmeta is not None else None)
+            if glyph:
+                return PyImGui.button("%s##tile_%s_%s" % (glyph, bar.id, tile.id), tw, th)
+            label = (fmeta.name[:2].upper() if (fmeta is not None and fmeta.name) else "FN")
             return PyImGui.button("%s##tile_%s_%s" % (label, bar.id, tile.id), tw, th)
         if meta is None:
             return PyImGui.button("%dx%d##tile_%s_%s" % (tile.w, tile.h, bar.id, tile.id), tw, th)

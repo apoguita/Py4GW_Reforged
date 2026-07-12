@@ -21,6 +21,15 @@ def _now_ms() -> float:
         return 0.0
 
 
+def _log(msg: str) -> None:
+    try:
+        import PySystem
+
+        PySystem.Console.Log("LaunchBar", msg, PySystem.Console.MessageType.Warning)
+    except Exception:
+        pass
+
+
 def _ensure_system_bar(bar_set) -> None:
     """Guarantee a non-deletable System bar carrying the widget-browser button exists.
 
@@ -37,6 +46,51 @@ def _ensure_system_bar(bar_set) -> None:
         browser_tile.action = "browser"
         browser_tile.name = "Widgets"
         browser_tile.deletable = False
+
+
+def _default_bar_set(LaunchBarSet):
+    """A sane first-run launchpad: one user bar with a couple of placeholder tiles.
+
+    The System bar is added by :func:`_ensure_system_bar` afterwards, so this only seeds the
+    user-facing bar. Kept trivial so it can never itself fail.
+    """
+
+    bar_set = LaunchBarSet()
+    bar = bar_set.add(x=340.0, y=200.0)
+    bar.add_tile(1, 1)
+    bar.add_tile(2, 1)
+    return bar_set
+
+
+def _clamp_bars_on_screen(bar_set) -> None:
+    """Self-heal bar placement: keep every bar's anchor inside the current viewport.
+
+    A saved x/y from a different resolution (or a bar dragged to the very edge, e.g. x=-1)
+    can leave the bar invisible or unreachable. This nudges the anchor back into view with a
+    small margin. No-op if the display size isn't available yet (never breaks boot).
+    """
+
+    try:
+        import PyImGui
+
+        io = PyImGui.get_io()
+        dw = float(getattr(io, "display_size_x", 0) or 0)
+        dh = float(getattr(io, "display_size_y", 0) or 0)
+    except Exception:
+        return
+    if dw <= 1.0 or dh <= 1.0:
+        return
+    margin = 8.0
+    for bar in bar_set.bars:
+        try:
+            x = float(getattr(bar, "x", 0.0))
+            y = float(getattr(bar, "y", 0.0))
+            # keep the anchor (and thus the drag strip) reachable: at least `margin` from each
+            # edge, and never past `display - margin - 48` so a corner always stays on-screen.
+            bar.x = min(max(x, margin), max(margin, dw - margin - 48.0))
+            bar.y = min(max(y, margin), max(margin, dh - margin - 48.0))
+        except Exception:
+            continue
 
 
 def _boot() -> None:
@@ -57,30 +111,28 @@ def _boot() -> None:
         from Py4GWCoreLib.py4gwcorelib_src.launch_bar.model import LaunchBarSet
         from Py4GWCoreLib.py4gwcorelib_src.launch_bar.persistence import load_state
 
-        state = load_state()
-        if state:
-            # restore the user's saved launchpads/tiles/colors/placement
-            bar_set = LaunchBarSet.from_dict(state)
-        else:
-            # first run: a normal user launchpad with a couple of placeholder tiles
-            bar_set = LaunchBarSet()
-            bar = bar_set.add(x=340.0, y=200.0)
-            bar.add_tile(1, 1)
-            bar.add_tile(2, 1)
-
-        _ensure_system_bar(bar_set)
-
-        manager = LaunchBarManager(bar_set)
-        # editor + edit mode start OFF; the user opens the editor via a bar's right-click "Editor..."
-        _manager = manager
-    except Exception as exc:  # a broken boot must not spam the game loop
-        _boot_failed = True
+        # Load persisted state DEFENSIVELY: missing/empty/corrupt settings must never keep the
+        # launchpad from coming up — this is the cornerstone of the UI. Any problem falls back to
+        # a fresh default, so the System bar always exists.
+        bar_set = None
         try:
-            import PySystem
+            state = load_state()
+            if state:
+                bar_set = LaunchBarSet.from_dict(state)
+        except Exception as exc:
+            _log("state load failed, using default launchpad: %s" % exc)
+            bar_set = None
+        if bar_set is None or not getattr(bar_set, "bars", None):
+            bar_set = _default_bar_set(LaunchBarSet)
 
-            PySystem.Console.Log("LaunchBar", "Boot failed: %s" % exc, PySystem.Console.MessageType.Error)
-        except Exception:
-            pass
+        _ensure_system_bar(bar_set)      # System bar guaranteed to exist
+        _clamp_bars_on_screen(bar_set)   # and every bar guaranteed reachable on-screen
+
+        # editor + edit mode start OFF; the user opens the editor via a bar's right-click "Editor..."
+        _manager = LaunchBarManager(bar_set)
+    except Exception as exc:  # only a hard code error latches (avoids per-frame spam); settings
+        _boot_failed = True   # problems are handled above and never reach here
+        _log("Boot failed: %s" % exc)
 
 
 def main() -> None:

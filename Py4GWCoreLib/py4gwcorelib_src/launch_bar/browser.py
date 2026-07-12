@@ -31,6 +31,10 @@ except Exception:  # pragma: no cover
         ICON_THUMBTACK = "pin"
         ICON_SEARCH = "search"
         ICON_PUZZLE_PIECE = "-"
+        ICON_PAUSE = "||"
+        ICON_PLAY = ">"
+        ICON_USERS = "@@"
+        ICON_SYNC = "R"
 
 
 _VIRTUALS = [("@all", "All"), ("@active", "Active"), ("@favorites", "Favorites"), ("@inactive", "Inactive")]
@@ -187,9 +191,59 @@ class WidgetBrowser:
             if PyImGui.small_button("%s##cr_%d" % (text, i)):
                 self._navigate(sel)
 
-        PyImGui.same_line(0.0, 10.0)
+        # global widget-manager actions (like the old WM toolbar) — right cluster
+        PyImGui.same_line(0.0, 12.0)
+        self._draw_global_actions(manager)
+        PyImGui.same_line(0.0, 6.0)
         if PyImGui.small_button("Close##br_close"):
             manager.browser_open = False
+
+    def _draw_global_actions(self, manager) -> None:
+        """The old WM toolbar's global actions: reload all, pause/resume all, multibox pause."""
+
+        rt = manager.runtime
+        # reload all widgets
+        if PyImGui.small_button(_IC.ICON_SYNC + "##br_reload"):
+            rt.reload_all()
+        if PyImGui.is_item_hovered():
+            PyImGui.set_tooltip("Reload all widgets")
+        # pause / resume every widget on this client
+        PyImGui.same_line(0.0, 4.0)
+        all_paused = rt.is_all_paused()
+        glyph = _IC.ICON_PLAY if all_paused else _IC.ICON_PAUSE
+        if all_paused:
+            PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.98, 0.55, 0.35, 1.0))   # red-ish while all paused
+        clicked_all = PyImGui.small_button("%s##br_pauseall" % glyph)
+        if all_paused:
+            PyImGui.pop_style_color(1)
+        if clicked_all:
+            rt.toggle_pause_all()
+        if PyImGui.is_item_hovered():
+            PyImGui.set_tooltip("Resume all widgets" if all_paused else "Pause all widgets")
+        # pause / resume optional widgets on ALL accounts (multibox)
+        PyImGui.same_line(0.0, 4.0)
+        self._draw_multibox_toggle(manager)
+
+    def _draw_multibox_toggle(self, manager) -> None:
+        """Pause/resume every optional widget on ALL accounts (old WM 'Pause Non-Env' toggle).
+
+        Delegates to WidgetHandler.toggle_optional_widgets_paused, which also broadcasts
+        PauseWidgets/ResumeWidgets to the other accounts over shared memory.
+        """
+        rt = manager.runtime
+        paused = rt.is_optional_paused()
+        glyph = _IC.ICON_PLAY if paused else _IC.ICON_PAUSE
+        if paused:
+            PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.98, 0.70, 0.25, 1.0))   # amber while paused
+        clicked = PyImGui.small_button("%s##br_multibox" % glyph)
+        if paused:
+            PyImGui.pop_style_color(1)
+        if clicked:
+            rt.toggle_optional_paused()
+        if PyImGui.is_item_hovered():
+            PyImGui.set_tooltip(
+                "Resume optional widgets on all accounts" if paused else "Pause optional widgets on all accounts"
+            )
 
     def _draw_buckets(self, metas) -> None:
         for key, name in _VIRTUALS:
