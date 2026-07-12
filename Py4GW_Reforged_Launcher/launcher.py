@@ -1040,42 +1040,56 @@ class BulkLaunchSession:
         self.profiles = profiles
         self.pacing_seconds = pacing_seconds
         self._lock = threading.Lock()
-        self._status_text = "Starting bulk launch..."
         self._done = False
+        self._cancel_event = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self) -> None:
         self._thread.start()
 
-    def _set_status(self, text: str) -> None:
-        with self._lock:
-            self._status_text = text
+    def cancel(self) -> None:
+        """Stops queuing further accounts -- scope is deliberately narrow:
+        never force-closes an already-launched GW client, and never
+        interrupts an in-flight individual LaunchSession (readiness wait
+        included) partway. Checked at the top of each loop iteration in
+        _run(), and passed as should_cancel into wait_for_readiness/
+        apply_pacing_delay so a cancel mid-wait or mid-pacing takes effect
+        within a tenth of a second/a second respectively, rather than
+        waiting out the full 15s readiness cap or up to 90s of pacing.
+        """
+        self._cancel_event.set()
 
     def _run(self) -> None:
         for i, profile in enumerate(self.profiles):
+            if self._cancel_event.is_set():
+                break
+
             # Check STATE.is_running() right before each launch, not just once
             # up front -- an earlier account in this same batch could still be
             # settling into "running" while we reach a later one.
             if STATE.is_running(profile.id):
-                self._set_status(f"Skipping {profile.name or '(unnamed profile)'} (already running)")
+                STATE.update_bulk_launch_countdown(
+                    f"Skipping {profile.name or '(unnamed profile)'} (already running)"
+                )
             else:
-                self._set_status(f"Launching {profile.name or '(unnamed profile)'}...")
+                STATE.update_bulk_launch_countdown(f"Launching {profile.name or '(unnamed profile)'}...")
                 STATE.start_launch(profile)
                 session = STATE.sessions.get(profile.id)
                 if session is not None:
-                    bulk_launch.wait_for_readiness(lambda: session.is_done, on_status=self._set_status)
+                    bulk_launch.wait_for_readiness(
+                        lambda: session.is_done, on_status=STATE.update_bulk_launch_countdown,
+                        should_cancel=self._cancel_event.is_set,
+                    )
 
             is_last = i == len(self.profiles) - 1
             if not is_last:
-                bulk_launch.apply_pacing_delay(self.pacing_seconds, on_status=self._set_status)
+                bulk_launch.apply_pacing_delay(
+                    self.pacing_seconds, on_status=STATE.update_bulk_launch_countdown,
+                    should_cancel=self._cancel_event.is_set,
+                )
 
         with self._lock:
             self._done = True
-
-    @property
-    def status_text(self) -> str:
-        with self._lock:
-            return self._status_text
 
     @property
     def is_done(self) -> bool:
@@ -1472,6 +1486,12 @@ class AppState:
         # lock, separate from any per-session lock. Collapsed by default.
         self.console_lines: "collections.deque[str]" = collections.deque(maxlen=500)
         self._console_lock = threading.Lock()
+        # True right after update_bulk_launch_countdown appended/replaced the
+        # last line -- so the *next* countdown update knows to replace it
+        # in place rather than append another. Reset by append_console_line,
+        # so a real per-profile log line breaking the streak always starts
+        # a fresh line rather than overwriting unrelated prior output.
+        self._console_countdown_active = False
         self.console_expanded: bool = False
         self._last_liveness_check = 0.0
         self.reload_profiles()
@@ -1488,6 +1508,28 @@ class AppState:
         """Thread-safe append of one console line -- called from launch threads."""
         with self._console_lock:
             self.console_lines.append(f"[{profile_name}] {message}")
+            self._console_countdown_active = False
+
+    def update_bulk_launch_countdown(self, message: str) -> None:
+        """Same console append_console_line writes to, but for
+        BulkLaunchSession's own status (per-account launching/skipping,
+        readiness waits, the pacing countdown between accounts)
+        specifically: replaces the previous line in place instead of
+        appending a new one, as long as the previous line was itself one of
+        these updates -- without this, a 30-90s pacing delay alone would
+        spam a new console line every single second. Reads as one
+        continuously-updating status line for the whole bulk sequence
+        instead. Passed directly as the on_status callback to
+        bulk_launch.wait_for_readiness/apply_pacing_delay from
+        BulkLaunchSession._run.
+        """
+        with self._console_lock:
+            line = f"[Bulk Launch] {message}"
+            if self.console_lines and self._console_countdown_active:
+                self.console_lines[-1] = line
+            else:
+                self.console_lines.append(line)
+            self._console_countdown_active = True
 
     def console_text(self) -> str:
         """Thread-safe newline-joined snapshot of the console, for rendering."""
@@ -1938,6 +1980,10 @@ class AppState:
         session = BulkLaunchSession(profiles, self.bulk_launch_pacing_seconds)
         self.bulk_launch_session = session
         session.start()
+
+    def cancel_bulk_launch(self) -> None:
+        if self.bulk_launch_session is not None:
+            self.bulk_launch_session.cancel()
 
     def set_bulk_launch_pacing_seconds(self, seconds: int) -> None:
         self.bulk_launch_pacing_seconds = seconds
@@ -2512,18 +2558,24 @@ def _team_actions_width() -> float:
     strip needs this before it lays out tabs, to reserve room for that control
     sharing the same row rather than tabs running underneath it. On ALL that slot
     is the "Add N to Team" batch control; on a team it's the Launch Team button
-    (plus any live bulk-launch status text trailing it). Mirrors show_team_actions'
-    own logic exactly so the two can't drift apart.
+    (or "Stop launch" while a bulk launch from this team is running). Mirrors
+    show_team_actions' own logic exactly so the two can't drift apart.
+
+    Deliberately just this one fixed label's width, nothing appended for a
+    live status message -- that used to make this (and the button's own
+    on-screen position, via row_origin.x + avail_w - actions_w in the tab
+    strip) change continuously as the bulk-launch status text's length
+    changed from account to account. Confirmed live: the button visibly
+    shifted position mid-launch because of it. "Stop launch" is a second
+    fixed label, not a variable one -- swapping to it changes this width
+    exactly once per launch (start and end), not continuously during one.
     """
     team_id = STATE.current_team_id
     if team_id is None:
         return _batch_add_to_team_width()
-    label = f"Launch Team ({_team_member_count(team_id)})"
+    label = "Stop launch" if STATE.is_bulk_launching() else f"Launch Team ({_team_member_count(team_id)})"
     style = imgui.get_style()
-    width = imgui.calc_text_size(label).x + style.frame_padding.x * 2.0
-    if STATE.is_bulk_launching():
-        width += style.item_spacing.x + imgui.calc_text_size(STATE.bulk_launch_session.status_text).x
-    return width
+    return imgui.calc_text_size(label).x + style.frame_padding.x * 2.0
 
 
 def show_team_actions(pos: tuple[float, float]) -> None:
@@ -2539,18 +2591,30 @@ def show_team_actions(pos: tuple[float, float]) -> None:
     measurement the tab strip uses to reserve room for this on that row
     before laying out tabs.
 
-    Disabled/unarmed when there's no active team (ALL), no account is a member
-    of the currently-viewed team, or a bulk launch is already running (never
-    overlap two at once). The (N) in the label mirrors the member count
-    directly -- team membership is set via each card's right-click "Teams"
-    submenu, not anything drawn here -- so the armed/disabled state reads at
-    a glance instead of being just a greyed-out button with no context.
+    While a bulk launch from this team is running, this same button becomes
+    "Stop launch" -- always clickable (never disabled), calling
+    STATE.cancel_bulk_launch(). That only stops queuing further accounts in
+    the sequence; see BulkLaunchSession.cancel's own docstring for the exact
+    (deliberately narrow) scope. Otherwise (no active bulk launch), it's
+    "Launch Team (N)", disabled/unarmed when there's no active team (ALL) or
+    no account is a member of the currently-viewed team. The (N) mirrors the
+    member count directly -- team membership is set via each card's
+    right-click "Teams" submenu, not anything drawn here -- so the
+    armed/disabled state reads at a glance instead of being just a
+    greyed-out button with no context.
+
+    No live status text next to the button anymore (each account's own card
+    already shows "Launching..." during that phase via STATE.sessions, same
+    as a solo launch -- this was redundant with that, and its
+    variable-per-account-name width was also the reason the button's own
+    screen position kept shifting mid-launch, see _team_actions_width). The
+    pacing countdown between accounts has no other visible surface now --
+    accepted tradeoff; "Stop launch" being present/clickable is enough of a
+    "something is happening" signal for that gap.
 
     "Select all visible" / "Select none" were cut per design review -- they
     didn't earn their toolbar space -- rather than relabeled or relocated. The
-    pacing control moved to the app settings window (gear icon) -- this is
-    just the action and its live status, which stays here since that's what
-    the user is actually watching during a launch.
+    pacing control moved to the app settings window (gear icon).
 
     On the ALL view this same reserved slot holds the "Add N to Team" batch
     control instead of a permanently-disabled Launch Team button -- one live
@@ -2565,10 +2629,14 @@ def show_team_actions(pos: tuple[float, float]) -> None:
         _draw_batch_add_to_team_control(tab_h)
         return
 
+    if STATE.is_bulk_launching():
+        if imgui.button("Stop launch", size=(0, tab_h)):
+            STATE.cancel_bulk_launch()
+        return
+
     team_id = STATE.current_team_id
     members = [p for p in STATE.profiles if team_id in p.team_ids]
-    bulk_launching = STATE.is_bulk_launching()
-    can_launch = bool(members) and not bulk_launching and STATE.multiclient_enabled
+    can_launch = bool(members) and STATE.multiclient_enabled
 
     label = f"Launch Team ({len(members)})"
     if not can_launch:
@@ -2581,10 +2649,6 @@ def show_team_actions(pos: tuple[float, float]) -> None:
             lambda: STATE.start_bulk_launch(members),
             needs_py4gw=any(member.py4gw_enabled for member in members),
         )
-
-    if bulk_launching:
-        imgui.same_line()
-        imgui.text_colored((0.9, 0.75, 0.3, 1.0), STATE.bulk_launch_session.status_text)
 
 
 _BATCH_ADD_POPUP_ID = "Add to team##batch_add_popup"
@@ -4106,12 +4170,12 @@ def _show_mod_repo_section() -> None:
             "Found a folder here, but it isn't a git checkout -- can't check for updates.",
         )
     else:
-        imgui.text_colored(_PREREQ_OK_COLOR, "Checkout found.")
-        imgui.same_line()
         if MOD_REPO_STATE.checking_updates:
             imgui.text_colored(_PREREQ_BUSY_COLOR, "Checking for updates...")
         elif imgui.button("Check for updates"):
             MOD_REPO_STATE.run_check_updates_async()
+        imgui.same_line()
+        imgui.text_colored(_PREREQ_OK_COLOR, "Checkout found.")
 
         check = MOD_REPO_STATE.update_check
         if check is not None:

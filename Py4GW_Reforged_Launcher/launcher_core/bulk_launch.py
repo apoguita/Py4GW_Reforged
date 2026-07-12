@@ -46,6 +46,7 @@ def wait_for_readiness(
     *,
     on_status: Optional[Callable[[str], None]] = None,
     timeout_seconds: float = READINESS_TIMEOUT_SECONDS,
+    should_cancel: Optional[Callable[[], bool]] = None,
 ) -> bool:
     """Poll `is_ready` until it returns True or `timeout_seconds` elapses (a hard
     cap, not user-configurable -- see module docstring). Returns whether
@@ -54,11 +55,23 @@ def wait_for_readiness(
     A timeout is not an error: the caller proceeds regardless, same as the C#
     reference -- this only exists to prevent deadlock on a stuck/failed login,
     not to abort the whole bulk launch over one slow account.
+
+    `should_cancel`, if given, is checked every poll iteration (same 0.1s
+    granularity as the readiness check itself) so a mid-wait cancel takes
+    effect within a tenth of a second rather than waiting out the full 15s
+    cap -- see BulkLaunchSession.cancel in launcher.py, the only caller that
+    passes this. Returns False on cancel, same as a timeout: the caller
+    (BulkLaunchSession._run) doesn't use this return value either way, it
+    only checks its own cancel flag again at the top of the next loop
+    iteration to decide whether to stop queuing further accounts.
     """
     start = time.time()
     while True:
         if is_ready():
             return True
+
+        if should_cancel is not None and should_cancel():
+            return False
 
         elapsed = time.time() - start
         if elapsed >= timeout_seconds:
@@ -71,14 +84,27 @@ def wait_for_readiness(
         time.sleep(_READINESS_POLL_INTERVAL_SECONDS)
 
 
-def apply_pacing_delay(requested_seconds: int, *, on_status: Optional[Callable[[str], None]] = None) -> int:
+def apply_pacing_delay(
+    requested_seconds: int,
+    *,
+    on_status: Optional[Callable[[str], None]] = None,
+    should_cancel: Optional[Callable[[], bool]] = None,
+) -> int:
     """Sleep for the clamped pacing delay, counting down second by second and
     reporting live status text each second -- a multi-second wait should never
     leave the UI silent. Returns the effective (clamped) delay actually used.
+
+    `should_cancel`, if given, is checked once per second (same granularity
+    as the countdown itself) so a mid-pacing cancel takes effect within a
+    second rather than waiting out the full delay (up to 90s) -- see
+    wait_for_readiness above for why the caller doesn't need this function's
+    return value to know a cancel happened.
     """
     effective_seconds = clamp_pacing_seconds(requested_seconds)
 
     for remaining in range(effective_seconds, 0, -1):
+        if should_cancel is not None and should_cancel():
+            break
         if on_status is not None:
             message = (
                 "Launching next account now..." if remaining == 1
