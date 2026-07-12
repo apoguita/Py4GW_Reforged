@@ -4,12 +4,12 @@ tag_name. A single stdlib urllib.request GET + JSON parse against GitHub's
 releases API -- no new dependency (requests, etc.) needed for something
 this simple.
 
-Comparison is deliberately naive: exact string equality against tag_name,
-not real semver-with-prerelease ordering. This is a low-stakes informational
-notice, not a release gate -- the two cases that actually matter in
-practice (a real newer release exists, or you're already on the latest) are
-both correctly identified by a plain equality check, and building real
-version-ordering logic isn't worth the complexity for that.
+Comparison is deliberately simple: a numeric (major, minor, patch) tuple,
+not real semver-with-prerelease ordering. Every tag this project has ever
+cut is "X.Y.Z-alpha" -- the "-alpha" suffix never varies and carries no
+ordering information, so it's stripped rather than compared. This is a
+low-stakes informational notice, not a release gate, so building real
+semver/prerelease-ordering logic isn't worth the complexity here.
 
 Every function here is synchronous and blocking (a real network call) --
 same convention as launcher_core.prereqs/mod_repo: callers on the UI thread
@@ -23,9 +23,38 @@ import dataclasses
 import json
 import urllib.error
 import urllib.request
-from typing import Optional
+from typing import Optional, Tuple
 
 from launcher_core.settings_store import load_launcher_release_repo
+
+
+def _parse_version_tuple(version: str) -> Optional[Tuple[int, ...]]:
+    """Parse "0.2.2-alpha" into (0, 2, 2), ignoring the prerelease suffix.
+    Returns None on anything that doesn't cleanly parse as dot-separated
+    integers -- callers treat that as "can't compare" rather than raising.
+    """
+    base = version.split("-", 1)[0]
+    parts = base.split(".")
+    try:
+        return tuple(int(part) for part in parts)
+    except ValueError:
+        return None
+
+
+def is_newer_version_available(latest_tag: str, current_version: str) -> bool:
+    """True only if latest_tag is a real, strictly newer version than
+    current_version. False (i.e. "you're up to date") both when they're
+    equal and when either fails to parse -- deliberately the same fallback
+    as an unparseable tag, so a local build that happens to run ahead of
+    the last published tag (e.g. mid-release, before publishing) shows the
+    same "up to date" message instead of a misleading "newer version
+    available" pointing at an actually-older release.
+    """
+    latest = _parse_version_tuple(latest_tag)
+    current = _parse_version_tuple(current_version)
+    if latest is None or current is None:
+        return False
+    return latest > current
 
 
 def _releases_api_url() -> str:

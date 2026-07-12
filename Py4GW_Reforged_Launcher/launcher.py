@@ -4454,15 +4454,15 @@ def show_app_settings_window() -> None:
 
         update_result = UPDATE_CHECK_STATE.result
         if update_result is not None and update_result.ok:
-            if update_result.latest_tag == LAUNCHER_VERSION:
-                imgui.text_colored(_PREREQ_OK_COLOR, "You're up to date.")
-            else:
+            if update_check.is_newer_version_available(update_result.latest_tag, LAUNCHER_VERSION):
                 imgui.text_colored(
                     _PREREQ_MISSING_COLOR, f"A newer version is available: {update_result.latest_tag}"
                 )
                 imgui.same_line()
                 if imgui.button("View releases##launcher_update_link"):
                     webbrowser.open(update_check.releases_page_url())
+            else:
+                imgui.text_colored(_PREREQ_OK_COLOR, "You're up to date.")
         # update_result is None (never checked yet) or not ok (the startup
         # check, or a manual one, failed -- no internet, GitHub down, rate
         # limited) shows nothing at all here, on purpose.
