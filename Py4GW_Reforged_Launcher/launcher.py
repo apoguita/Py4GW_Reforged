@@ -3456,7 +3456,7 @@ def show_settings_content() -> None:
             dialog_title="Select gMod DLL", filter_str="DLL files (*.dll)\0*.dll\0All files (*.*)\0*.*\0",
         )
         imgui.spacing()
-        imgui.text("Mod list (.tpf files):")
+        imgui.text("Plugins (.tpf files):")
         # No per-item enable/disable toggle -- the list itself is the enabled
         # set, removing an entry disables it (see dev_notes/gmod_injection_
         # research.md). Static text, not an editable field: mods are picked
@@ -3476,13 +3476,17 @@ def show_settings_content() -> None:
             avail_w = imgui.get_content_region_avail().x
             path_max_w = max(1.0, avail_w - remove_w - style.item_spacing.x)
 
-            display_path = mod_path
-            if imgui.calc_text_size(mod_path).x > path_max_w:
+            # Basename only, no extension -- matches GWxLauncher's own
+            # Path.GetFileNameWithoutExtension(path) display exactly; the
+            # full path is still available via the hover tooltip below.
+            mod_name = os.path.splitext(os.path.basename(mod_path))[0]
+            display_path = mod_name
+            if imgui.calc_text_size(mod_name).x > path_max_w:
                 # Ellipsis at the start, not the end -- the filename at the
                 # tail of a path is usually the more identifying part.
                 display_path = "..."
-                for start in range(len(mod_path)):
-                    candidate = "..." + mod_path[start:]
+                for start in range(len(mod_name)):
+                    candidate = "..." + mod_name[start:]
                     if imgui.calc_text_size(candidate).x <= path_max_w:
                         display_path = candidate
                         break
@@ -3499,9 +3503,9 @@ def show_settings_content() -> None:
                 remove_index = i
         if remove_index is not None:
             del buffer.gmod_plugin_paths[remove_index]
-        if imgui.button("Add mod..."):
+        if imgui.button("Add plugin..."):
             chosen = _browse_for_file(
-                title="Select gMod .tpf file",
+                title="Select gMod plugin (.tpf)",
                 filter_str="TPF files (*.tpf)\0*.tpf\0All files (*.*)\0*.*\0",
             )
             if chosen and chosen not in buffer.gmod_plugin_paths:
