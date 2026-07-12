@@ -190,6 +190,7 @@ try:
         LR_LOADFROMFILE,
         SM_CXSMICON,
         SM_CYSMICON,
+        find_all_visible_windows_for_pid,
         find_running_pid_for_exe_path,
         find_visible_window_for_pid,
         foreground_window,
@@ -491,6 +492,7 @@ def _pre_new_frame_hooks() -> None:
     _apply_window_icon_if_needed()
     _enforce_minimum_window_width_if_needed()
     _apply_imgui_style_theme_if_needed()
+    _apply_title_bar_theme_if_needed()
     # Re-applied every frame on purpose: em_size() changes when the window moves
     # between monitors of different DPI (this process is Per-Monitor-v2 aware),
     # so the threshold must be recomputed rather than set once at startup.
@@ -666,6 +668,73 @@ def _apply_imgui_style_theme_if_needed() -> None:
     _apply_imgui_style_theme()
 
 
+# Native title bar dark/light mode -- ported from GWxLauncher's own
+# UI/ThemeService.cs pattern (DwmSetWindowAttribute with
+# DWMWA_USE_IMMERSIVE_DARK_MODE). hello_imgui/ImGui has no concept of the OS
+# title bar at all (it draws its own client-area chrome only), so this is a
+# separate, raw-ctypes concern from _apply_imgui_style_theme above, needing
+# the real native hwnd the same way _min_window_width_wndproc/the systray
+# code do. Tied to this app's own dark_theme_enabled setting (via
+# _current_theme_is_dark, set_theme's own record of what it was last asked
+# for), not the OS dark-mode registry value -- the in-app toggle is already
+# the single source of truth for every other themed color in this app, and
+# the title bar shouldn't be the one exception that instead follows Windows'
+# own separate setting.
+_DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+_title_bar_theme_applied = False
+
+
+def _apply_title_bar_theme() -> None:
+    """Sets the native title bar's dark/light mode to match
+    _current_theme_is_dark, on *every* currently-open top-level window
+    belonging to this process -- not just whichever one happens to be
+    found first. This app's multi-viewport ImGui makes App Settings and the
+    profile Settings window each a separate, real top-level OS window under
+    the same pid as the main window; confirmed live that applying this to
+    only a single find_visible_window_for_pid() result left whichever
+    window wasn't that one stuck on its previous title-bar color after a
+    theme toggle -- the exact same "first match is ambiguous with several
+    top-level windows" issue already found and fixed for the minimize-to-
+    tray feature, for the same underlying reason.
+
+    Safe to call before any native window exists yet
+    (find_all_visible_windows_for_pid returns [] then -- see
+    _apply_title_bar_theme_if_needed) or on a Windows version too old to
+    support DWMWA_USE_IMMERSIVE_DARK_MODE at all (DwmSetWindowAttribute
+    returns a failure HRESULT rather than raising; this project has no hard
+    Windows-10-1809+ requirement elsewhere, so that's a silent no-op here
+    too, not a crash).
+    """
+    global _title_bar_theme_applied
+    hwnds = find_all_visible_windows_for_pid(os.getpid())
+    if not hwnds:
+        return
+    value = ctypes.c_int(1 if _current_theme_is_dark else 0)
+    applied_any = False
+    for hwnd in hwnds:
+        result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd, _DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(value), ctypes.sizeof(value)
+        )
+        if result == 0:  # S_OK
+            applied_any = True
+    if applied_any:
+        _title_bar_theme_applied = True
+
+
+def _apply_title_bar_theme_if_needed() -> None:
+    """Wired into _pre_new_frame_hooks -- retries _apply_title_bar_theme every
+    frame until the native window exists and the call actually succeeds, then
+    becomes a no-op for the rest of the run. Any later set_theme() call (the
+    user toggling App Settings' checkbox, well after startup, when the hwnd
+    already exists) applies immediately on its own via that same function --
+    same shape as _apply_imgui_style_theme_if_needed above, for the same
+    reason: set_theme() itself already calls _apply_title_bar_theme directly.
+    """
+    if _title_bar_theme_applied:
+        return
+    _apply_title_bar_theme()
+
+
 def set_theme(dark: bool) -> None:
     """Reassigns every palette constant above from DARK_PALETTE or
     LIGHT_PALETTE, and applies the corresponding built-in hello_imgui
@@ -707,6 +776,7 @@ def set_theme(dark: bool) -> None:
 
     _current_theme_is_dark = dark
     _apply_imgui_style_theme()
+    _apply_title_bar_theme()
 
 
 _dark_theme_enabled = load_dark_theme_enabled()

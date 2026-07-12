@@ -95,8 +95,19 @@ def find_running_pid_for_exe_path(exe_path: str, exclude_pids: Optional[set] = N
     return None
 
 
-def find_visible_window_for_pid(pid: int) -> Optional[int]:
-    """Return the first visible top-level window handle owned by `pid`, or None."""
+def find_all_visible_windows_for_pid(pid: int) -> list:
+    """Return every visible top-level window handle owned by `pid` -- unlike
+    find_visible_window_for_pid below, doesn't stop at the first match.
+
+    Needed wherever a caller must reach *every* one of this process's own
+    top-level windows, not just whichever one EnumWindows happens to return
+    first: this app's multi-viewport ImGui creates a separate, real
+    top-level OS window per floating window (App Settings, the profile
+    Settings window), all under this same pid -- confirmed live, applying a
+    native window attribute (DWM dark-mode title bar) via the single-result
+    function below only ever reached one of them, leaving the other(s)
+    stuck on whatever it was set to at startup.
+    """
     found: list = []
 
     def enum_windows_callback(hwnd, _):
@@ -116,10 +127,17 @@ def find_visible_window_for_pid(pid: int) -> Optional[int]:
         # (by design, that's how you signal "stop enumerating"), which pywin32 then
         # surfaces as a generic, misleading EnumWindows exception -- this is what
         # actually crashed the app, not a destroyed-window race. Collecting every
-        # match and taking the first afterward avoids the early-exit trigger entirely.
+        # match and filtering/taking one afterward avoids the early-exit trigger
+        # entirely.
         return True
 
     win32gui.EnumWindows(enum_windows_callback, None)
+    return found
+
+
+def find_visible_window_for_pid(pid: int) -> Optional[int]:
+    """Return the first visible top-level window handle owned by `pid`, or None."""
+    found = find_all_visible_windows_for_pid(pid)
     return found[0] if found else None
 
 
