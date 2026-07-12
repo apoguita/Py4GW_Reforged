@@ -1056,8 +1056,14 @@ class BulkLaunchSession:
         apply_pacing_delay so a cancel mid-wait or mid-pacing takes effect
         within a tenth of a second/a second respectively, rather than
         waiting out the full 15s readiness cap or up to 90s of pacing.
+
+        Logs its own confirmation line immediately (rather than waiting for
+        _run() to notice the flag and actually break) -- clicking "Stop
+        launch" should read back positive, instant feedback that the click
+        registered, not just silently stop the countdown a moment later.
         """
         self._cancel_event.set()
+        STATE.update_bulk_launch_countdown("Launch stopped by user.")
 
     def _run(self) -> None:
         for i, profile in enumerate(self.profiles):
