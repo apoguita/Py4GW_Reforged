@@ -774,7 +774,6 @@ def draw_buffs_bar(account_data: AccountStruct, win_pos: tuple, win_size: tuple,
     style = ImGui_Legacy.get_style()
 
     PyImGui.push_style_var(ImGuiStyleVar.WindowRounding,0.0)
-    PyImGui.push_style_var(ImGuiStyleVar.WindowPadding,0.0)
     PyImGui.push_style_var(ImGuiStyleVar.WindowBorderSize,0.0)
     PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding,0.0,0.0)
     
@@ -792,7 +791,7 @@ def draw_buffs_bar(account_data: AccountStruct, win_pos: tuple, win_size: tuple,
         (win_pos[0], win_pos[1] + win_size[1] + (13 if style.Theme == StyleTheme.Guild_Wars else 4)), PyImGui.ImGuiCond.Always)
     PyImGui.set_next_window_size((win_size[0], 0), PyImGui.ImGuiCond.Always)
     open = PyImGui.begin("##Buffs Bar" + account_data.AccountEmail, True, flags)
-    PyImGui.pop_style_var(4)
+    PyImGui.pop_style_var(3)
 
     if open:
         draw_buffs_and_upkeeps(account_data, skill_size)
