@@ -1471,6 +1471,10 @@ class AppState:
         # None means the built-in "ALL" view -- never a real team, never stored.
         self.current_team_id: Optional[str] = None
         self.sessions: dict[str, LaunchSession] = {}
+        # Manual (non-bulk) launches requested while another manual launch is
+        # still in flight -- drained one at a time in update(). See start_launch's
+        # docstring for why this exists.
+        self._manual_launch_queue: list[GameProfile] = []
         self.running_pids: dict[str, int] = {}
         self.selected_id: Optional[str] = None
         self.settings_window_open = False
@@ -1965,14 +1969,53 @@ class AppState:
 
     def is_launching(self, profile_id: str) -> bool:
         session = self.sessions.get(profile_id)
-        return session is not None and not session.is_done
+        if session is not None and not session.is_done:
+            return True
+        return self.is_queued(profile_id)
+
+    def is_queued(self, profile_id: str) -> bool:
+        return any(p.id == profile_id for p in self._manual_launch_queue)
 
     def is_running(self, profile_id: str) -> bool:
         return profile_id in self.running_pids
 
+    def _any_manual_launch_in_flight(self) -> bool:
+        return any(not s.is_done for s in self.sessions.values())
+
     def start_launch(self, profile: GameProfile) -> None:
+        """Manual (single-account) launch entry point -- also used by
+        BulkLaunchSession, which already serializes its own calls via
+        wait_for_readiness before calling this again, so the queueing below
+        never triggers for it in practice.
+
+        Rapid-fire manual launches used to each spin up their own fully
+        independent LaunchSession with no concurrency limit at all: every
+        session's window-appearance wait polls win32gui.EnumWindows (a full
+        system-wide window scan via a Python callback) several times a
+        second, and several of those running concurrently -- worst case
+        during a real multi-minute unpatched-client patch download -- was
+        enough sustained GIL contention against the ImGui render thread to
+        make the whole UI unresponsive. Queuing manual launches one at a
+        time (like BulkLaunchSession already does) caps this at a single
+        EnumWindows poller at once, same fix shape, without capping how many
+        accounts can be *queued* to launch.
+
+        Deliberately does not reuse bulk_launch.wait_for_readiness's 15s
+        readiness cap -- that exists to keep a *team* bulk launch moving even
+        if one account's login glitches (an anti-bot-pacing concern), and
+        reusing it here would let the next queued launch start while the
+        previous one is still deep in a genuine multi-minute patch download,
+        recreating the exact concurrent-polling problem this is meant to fix.
+        See update() for where the queue is actually drained.
+        """
         if self.is_launching(profile.id) or self.is_running(profile.id):
             return
+        if self._any_manual_launch_in_flight():
+            self._manual_launch_queue.append(profile)
+            return
+        self._start_launch_now(profile)
+
+    def _start_launch_now(self, profile: GameProfile) -> None:
         session = LaunchSession(profile)
         self.sessions[profile.id] = session
         session.start()
@@ -2041,6 +2084,15 @@ class AppState:
                     # keep the session around so its "Failed: ..." status_text stays
                     # visible on the card; only cleared by a fresh launch attempt.
                     pass
+
+        # Drain one queued manual launch once nothing else is in flight -- see
+        # start_launch's docstring. Guards is_launching/is_running again here
+        # (not just at enqueue time) in case the profile started running or
+        # got launched some other way while it was waiting in the queue.
+        if self._manual_launch_queue and not self._any_manual_launch_in_flight():
+            next_profile = self._manual_launch_queue.pop(0)
+            if not self.is_launching(next_profile.id) and not self.is_running(next_profile.id):
+                self._start_launch_now(next_profile)
 
         now = time.time()
         if now - self._last_liveness_check >= 1.0:
@@ -3064,7 +3116,12 @@ def show_main_window() -> None:
         running = STATE.is_running(profile.id)
         launching = STATE.is_launching(profile.id)
         session = STATE.sessions.get(profile.id)
-        status_text = session.status_text if session else ""
+        if session is not None:
+            status_text = session.status_text
+        elif STATE.is_queued(profile.id):
+            status_text = "Queued..."
+        else:
+            status_text = ""
         is_error = bool(session and session.is_done and session.result and not session.result.success)
 
         if profile.id == _dragging_profile_id:
