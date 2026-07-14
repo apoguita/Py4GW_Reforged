@@ -2012,6 +2012,10 @@ class AppState:
             return
         if self._any_manual_launch_in_flight():
             self._manual_launch_queue.append(profile)
+            self.append_console_line(
+                profile.name or "(unnamed profile)",
+                f"Queued for launch ({len(self._manual_launch_queue)} in queue)",
+            )
             return
         self._start_launch_now(profile)
 
@@ -2837,12 +2841,15 @@ def _console_reserved_height() -> float:
 
 def show_console_panel() -> None:
     """Collapsible live console docked at the bottom of the main window: a clickable
-    header (a down/right arrow + "Console") with a Clear button, and when expanded a
-    fixed-height, read-only multiline showing recent launch/injection log lines.
-    Read-only input_text_multiline (not raw text) so selection/copy works for pasting
-    into a bug report. (The arrow is imgui.arrow_button rather than a ▼/▶ text glyph
-    -- the app's font doesn't include those Geometric-Shapes codepoints; arrow_button
-    draws the same triangle via draw_list, matching how the cards draw their icons.)
+    header (a down/right arrow + "Console") with Copy and Clear buttons, and when
+    expanded a fixed-height, read-only multiline showing recent launch/injection log
+    lines. Read-only input_text_multiline (not raw text) so selection/copy works for
+    pasting into a bug report; the body also has its own right-click context menu
+    (Copy All / Clear) since Dear ImGui doesn't give InputText one for free and users
+    expect right-click on any text box. (The arrow is imgui.arrow_button rather than
+    a ▼/▶ text glyph -- the app's font doesn't include those Geometric-Shapes
+    codepoints; arrow_button draws the same triangle via draw_list, matching how the
+    cards draw their icons.)
     """
     global _console_prev_text_len, _console_stick_to_bottom, _console_hovered_last_frame
     global _console_scroll_frames, _console_was_expanded
@@ -2890,6 +2897,16 @@ def show_console_panel() -> None:
             flags=int(imgui.InputTextFlags_.read_only.value),
         )
         _console_hovered_last_frame = imgui.is_item_hovered()
+        # Right-click on the body: input_text_multiline already supports mouse-drag
+        # select + Ctrl+C (that's why it's an InputText and not raw text -- see the
+        # docstring above), but Dear ImGui doesn't give InputText a right-click
+        # context menu on its own, and most users expect one on any text box.
+        if imgui.begin_popup_context_item("##console_context"):
+            if imgui.menu_item("Copy All", "", False)[0]:
+                imgui.set_clipboard_text(text)
+            if imgui.menu_item("Clear", "", False)[0]:
+                STATE.clear_console()
+            imgui.end_popup()
     else:
         _console_was_expanded = False
 
@@ -2897,13 +2914,17 @@ def show_console_panel() -> None:
     if imgui.arrow_button("##console_toggle", arrow_dir):
         STATE.console_expanded = not STATE.console_expanded
     imgui.same_line()
+    copy_w = imgui.calc_text_size("Copy").x + style.frame_padding.x * 2.0
     clear_w = imgui.calc_text_size("Clear").x + style.frame_padding.x * 2.0
     label_w = max(
         hello_imgui.em_size() * 4.0,
-        imgui.get_content_region_avail().x - clear_w - style.item_spacing.x - right_pad,
+        imgui.get_content_region_avail().x - copy_w - clear_w - style.item_spacing.x * 2.0 - right_pad,
     )
     if imgui.selectable("Console", False, size=(label_w, 0.0))[0]:
         STATE.console_expanded = not STATE.console_expanded
+    imgui.same_line()
+    if imgui.button("Copy"):
+        imgui.set_clipboard_text(STATE.console_text())
     imgui.same_line()
     if imgui.button("Clear"):
         STATE.clear_console()
