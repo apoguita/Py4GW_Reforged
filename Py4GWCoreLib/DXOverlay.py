@@ -26,6 +26,9 @@ class DXOverlay:
         def ResetStencilMask(self):
             self.renderer.ResetStencilMask()
 
+        def Setup3DView(self):
+            self.renderer.Setup3DView()
+
         def SaveGeometryToFile(self, filename: str, min_x: float, min_y: float, max_x: float, max_y: float) -> int:
             return self.renderer.SaveGeometryToFile(filename, min_x, min_y, max_x, max_y)
 
@@ -154,19 +157,21 @@ class DXOverlay:
             center = PyOverlay.Vec2f(int(center_x), int(center_y))
             self.renderer.DrawPolyFilled(center, radius, color, segments)
             
-        def DrawPoly3D(self, center_x, center_y, center_z, radius, color, segments = 32, use_occlusion = True, snap_to_ground_segments = 1, floor_offset = 0.0):
+        def DrawPoly3D(self, center_x, center_y, center_z, radius, color, segments = 32, use_occlusion = True, snap_to_ground_segments = 1, floor_offset = 0.0, auto_z = True):
             if center_z == 0:
                 center_z = DXOverlay.FindZ(center_x, center_y) - floor_offset
 
             center = PyOverlay.Vec3f(center_x, center_y, center_z+100)
-            self.renderer.DrawPoly3D(center, radius, color, segments, use_occlusion, snap_to_ground_segments, floor_offset)
+            # Native signature: (center, radius, color, numSegments, autoZ, use_occlusion, segments, floor_offset)
+            self.renderer.DrawPoly3D(center, radius, color, segments, auto_z, use_occlusion, snap_to_ground_segments, floor_offset)
 
-        def DrawPolyFilled3D(self, center_x, center_y, center_z, radius, color, segments = 32, use_occlusion = True, snap_to_ground_segments = 1, floor_offset = 0.0):
+        def DrawPolyFilled3D(self, center_x, center_y, center_z, radius, color, segments = 32, use_occlusion = True, snap_to_ground_segments = 1, floor_offset = 0.0, auto_z = True):
             if center_z == 0:
                 center_z = DXOverlay.FindZ(center_x, center_y) - floor_offset
 
             center = PyOverlay.Vec3f(center_x, center_y, center_z+100)
-            self.renderer.DrawPolyFilled3D(center, radius, color, segments, use_occlusion, snap_to_ground_segments, floor_offset)
+            # Native signature: (center, radius, color, numSegments, autoZ, use_occlusion, segments, floor_offset)
+            self.renderer.DrawPolyFilled3D(center, radius, color, segments, auto_z, use_occlusion, snap_to_ground_segments, floor_offset)
 
         def DrawCubeOutline(self, center_x, center_y, center_z, size, color, use_occlusion = True):
             if center_z == 0:
@@ -219,7 +224,9 @@ class DXOverlay:
                 self._renderer = parent.renderer
 
             def set_screen_space(self, enabled):
-                self._renderer.set_screen_space(enabled)
+                # Native has no set_screen_space; screen-space is the inverse of
+                # the world_space flag that render() branches on.
+                self._renderer.set_world_space(not enabled)
 
             def set_zoom_x(self, zoom):
                 self._renderer.set_screen_zoom_x(zoom)

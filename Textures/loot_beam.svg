@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 400" width="100" height="400" style="background:transparent;">
+  <defs>
+    <!-- Core gradient tracking vertical fade -->
+    <linearGradient id="verticalBeamFade" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="10%" stop-color="#fff" stop-opacity="0.85"/>
+      <stop offset="70%" stop-color="#fff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="laserCoreHorizontal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="60%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Flame/Energy Shroud -->
+  <path d="M35 380 Q10 260 40 180 T45 20 Q55 100 55 220 T65 380 Z" fill="url(#verticalBeamFade)" opacity="0.35"/>
+  <path d="M45 380 Q65 280 45 190 T52 20 Q35 120 52 260 T55 380 Z" fill="url(#verticalBeamFade)" opacity="0.45"/>
+  <!-- Central Stark Laser Pillar -->
+  <rect x="42" y="20" width="16" height="350" fill="url(#laserCoreHorizontal)" opacity="0.75"/>
+  <rect x="46" y="35" width="8" height="320" fill="#ffffff" opacity="0.95"/>
+  <!-- Base Ground Reflection contact rings -->
+  <ellipse cx="50" cy="370" rx="18" ry="5" fill="#ffffff" opacity="0.6"/>
+</svg>

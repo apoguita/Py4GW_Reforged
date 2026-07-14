@@ -1,0 +1,19 @@
+{
+  "namespace": "world_render",
+  "patterns": {
+    "ddi_dispatch_target": {
+      "pattern": "\\xB9\\x10\\x19\\x00\\x00",
+      "mask": "xxxxx",
+      "offset": "0x0",
+      "section": "text"
+    }
+  },
+  "resolvers": {
+    "ddi_dispatch_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "ddi_dispatch_target", "out": "scan" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "scan", "scan_range": "0x300", "out": "final" }
+      ]
+    }
+  }
+}

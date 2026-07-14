@@ -1,7 +1,7 @@
 
 from Py4GWCoreLib import PyImGui
-from Py4GWCoreLib import ImGui_Legacy 
 from Py4GWCoreLib import Routines
+from . import ui
 from Py4GWCoreLib import Allegiance
 from Py4GWCoreLib import Color
 from typing import Tuple
@@ -13,17 +13,7 @@ MODULE_NAME = "Agent Info Viewer"
 LOG_ACTIONS = True
 
 
-#region WinwowStup
-window_module = ImGui_Legacy.WindowModule(
-    MODULE_NAME, 
-    window_name="Agent Info Viewer", 
-    window_size=(0, 0),
-    window_flags=PyImGui.WindowFlags.AlwaysAutoResize
-)
-
-#endregion
-
-#region ImGui_Legacy
+#region View
 SELECTED_ALLIEGANCE = 0
 SELECTED_AGENT_INDEX = 0 
 SELECTED_AGENT_ID = 0    
@@ -189,7 +179,7 @@ def draw_agents_view():
             for attribute in attributes:
                 data.append((attribute.GetName(), str(attribute.level_base), str(attribute.level)))
 
-            ImGui_Legacy.table(f"Attributes Info##attinfo{_AGENT_ID}", headers, data)
+            ui.draw_multi_table(f"Attributes Info##attinfo{_AGENT_ID}", headers, data)
             
         PyImGui.text_colored("Is Living", _colored_bool(Agent.IsLiving(_AGENT_ID)))
         PyImGui.same_line(0, -1)
@@ -459,7 +449,7 @@ def draw_agents_view():
             _format_agent_row("Target:", target),
         ]
 
-        ImGui_Legacy.table("Nearest Agents Data",headers,data)
+        ui.draw_multi_table("Nearest Agents Data", headers, data)
         
         PyImGui.text("Targetting:")
         PyImGui.push_item_width(175)
