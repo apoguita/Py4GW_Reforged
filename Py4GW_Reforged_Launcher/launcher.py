@@ -2820,6 +2820,13 @@ _console_hovered_last_frame = False
 # reach the bottom yet because scroll-max isn't measured until that frame lays out.
 _console_scroll_frames = 0
 _console_was_expanded = False
+# Selection range for "Copy Selected" -- input_text_multiline's return value is
+# just (changed, text), no selection info, so a callback_always callback is the
+# only way to read InputTextCallbackData.selection_start/end/has_selection each
+# frame (Dear ImGui keeps selection state internal to the widget otherwise).
+_console_selection_start = 0
+_console_selection_end = 0
+_console_has_selection = False
 
 
 def _console_reserved_height() -> float:
@@ -2845,14 +2852,18 @@ def show_console_panel() -> None:
     expanded a fixed-height, read-only multiline showing recent launch/injection log
     lines. Read-only input_text_multiline (not raw text) so selection/copy works for
     pasting into a bug report; the body also has its own right-click context menu
-    (Copy All / Clear) since Dear ImGui doesn't give InputText one for free and users
-    expect right-click on any text box. (The arrow is imgui.arrow_button rather than
+    (Copy Selected / Copy All / Clear) since Dear ImGui doesn't give InputText one
+    for free and users expect right-click on any text box. Copy Selected needs a
+    callback_always callback to read InputTextCallbackData's selection fields each
+    frame -- input_text_multiline's own return value carries no selection info.
+    (The arrow is imgui.arrow_button rather than
     a ▼/▶ text glyph -- the app's font doesn't include those Geometric-Shapes
     codepoints; arrow_button draws the same triangle via draw_list, matching how the
     cards draw their icons.)
     """
     global _console_prev_text_len, _console_stick_to_bottom, _console_hovered_last_frame
     global _console_scroll_frames, _console_was_expanded
+    global _console_selection_start, _console_selection_end, _console_has_selection
 
     style = imgui.get_style()
     # The caller indents us by header_pad (em*0.6) on the left; reserve the same on
@@ -2891,10 +2902,18 @@ def show_console_panel() -> None:
             imgui.set_next_window_scroll((-1.0, 1.0e7))  # y huge -> clamps to bottom
             _console_scroll_frames -= 1
 
+        def _capture_selection(data: imgui.InputTextCallbackData) -> int:
+            global _console_selection_start, _console_selection_end, _console_has_selection
+            _console_has_selection = data.has_selection
+            _console_selection_start = data.selection_start
+            _console_selection_end = data.selection_end
+            return 0
+
         imgui.input_text_multiline(
             "##console_output", text,
             size=(imgui.get_content_region_avail().x - right_pad, hello_imgui.em_size() * _CONSOLE_BODY_EM),
-            flags=int(imgui.InputTextFlags_.read_only.value),
+            flags=int(imgui.InputTextFlags_.read_only.value) | int(imgui.InputTextFlags_.callback_always.value),
+            callback=_capture_selection,
         )
         _console_hovered_last_frame = imgui.is_item_hovered()
         # Right-click on the body: input_text_multiline already supports mouse-drag
@@ -2902,6 +2921,9 @@ def show_console_panel() -> None:
         # docstring above), but Dear ImGui doesn't give InputText a right-click
         # context menu on its own, and most users expect one on any text box.
         if imgui.begin_popup_context_item("##console_context"):
+            if imgui.menu_item("Copy Selected", "", False, _console_has_selection)[0]:
+                start, end = sorted((_console_selection_start, _console_selection_end))
+                imgui.set_clipboard_text(text[start:end])
             if imgui.menu_item("Copy All", "", False)[0]:
                 imgui.set_clipboard_text(text)
             if imgui.menu_item("Clear", "", False)[0]:
