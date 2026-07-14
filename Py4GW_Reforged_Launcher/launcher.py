@@ -2904,7 +2904,7 @@ def show_console_panel() -> None:
 
         def _capture_selection(data: imgui.InputTextCallbackData) -> int:
             global _console_selection_start, _console_selection_end, _console_has_selection
-            _console_has_selection = data.has_selection
+            _console_has_selection = data.has_selection()
             _console_selection_start = data.selection_start
             _console_selection_end = data.selection_end
             return 0
