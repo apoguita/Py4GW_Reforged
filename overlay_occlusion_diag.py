@@ -1,34 +1,36 @@
 # =============================================================================
-# Overlay 3D / Occlusion Diagnostic  (in-world compositor version)
+# Overlay 3D / Occlusion Diagnostic  (fully transparent: call Draw*3D, that's it)
 # -----------------------------------------------------------------------------
-# Draws its test primitives via PyWorldRender.register_draw(): the callback runs
-# INSIDE GW's world pass (after the world block, before the HUD) where the depth
-# buffer is live, so the DXOverlay Draw*3D calls are correctly occluded by
-# walls/terrain. Requires the DLL with the world_render module.
+# main() just calls DXOverlay's Draw*3D methods every frame while showing. Each call
+# APPENDS to the class's internal list (the drawing IS the implicit keepalive - no
+# register_draw, no heartbeat, no token). The class lazily registers ONE world-pass
+# callback that draws the WHOLE list on EVERY world pass (never consuming it, so it
+# reaches the visible pass and occludes), and auto-clears ~100ms after Draw*3D calls
+# stop (hidden / script closed).
 #
 # HOW TO USE:
-#   1. Be standing in-game, camera looking at your character.
-#   2. Open the window, click SHOW (anchors the markers at your feet).
-#   3. Walk away / behind a wall. With use_occlusion ON the markers HIDE behind
-#      world geometry; OFF -> visible through everything.
-#
-# Untick SHOW (or close the script) to unregister the callback.
+#   1. Stand in-game, camera on your character.
+#   2. SHOW (anchors markers at your feet). Walk behind a wall - use_occlusion ON
+#      hides them; OFF shows through.
+#   3. Close the script -> markers clear on their own shortly after.
 # =============================================================================
+
+import math
 
 import PyImGui
 import PyDXOverlay
 import PyOverlay
 import PySystem
 import PyWorldRender
+import PyCamera
+import PyTexture
 
 from Py4GWCoreLib.Player import Player
 
-renderer = PyDXOverlay.DXOverlay()
+renderer = PyDXOverlay.get_overlay()   # shared singleton (same object everywhere)
 _overlay = PyOverlay.Overlay()
 
 BEAM_TEXTURE = "Textures/loot_beam.png"
-
-# Each primitive is individually toggleable so we can isolate what draws.
 PRIMS = ["disc", "ring", "line", "triangle", "quad", "cube", "beam", "texture"]
 
 # (label, D3DCMPFUNC value)
@@ -43,19 +45,20 @@ ZFUNC_OPTIONS = [
 state = {
     "show": False,
     "anchor": None,
-    "token": None,           # PyWorldRender registration token
-    "occlude": True,         # use_occlusion for every primitive
+    "occlude": True,
     "radius": 200.0,
     "height": 400.0,
     "prims": {p: (p in ("disc", "ring", "line", "beam")) for p in PRIMS},
 
-    "color": [0.13, 1.0, 0.25, 1.0],   # RGBA (a = beam intensity)
+    "color": [0.13, 1.0, 0.25, 1.0],
     "beam_width": 70.0,
     "beam_top_alpha": 0.0,
     "beam_additive": True,
 
-    "draw_opcode": 30,       # DDI opcode 0x1E - confirmed occlusion draw point
-    "scan_enabled": False,   # heavy per-opcode depth scan (off by default)
+    "draw_opcode": 30,
+    "scan_enabled": False,
+
+    "tex_file_id": 0x2381,   # GW.dat file id of the Toolbox loot-ring sprite
 
     "near": 46.875,
     "far": 48000.0,
@@ -85,6 +88,63 @@ def _v(x, y, z):
     return PyOverlay.Vec3f(x, y, z)
 
 
+def _camera_right_2d():
+    """Ground-plane 'right' vector, perpendicular to the camera's forward direction.
+    Used to billboard the beam: a single upright quad whose flat face turns to always
+    point at the camera (so it never goes edge-on)."""
+    try:
+        cam = PyCamera.PyCamera()
+        fx = cam.look_at_target.x - cam.position.x
+        fy = cam.look_at_target.y - cam.position.y
+    except Exception:
+        return (1.0, 0.0)
+    length = math.hypot(fx, fy)
+    if length < 1e-4:
+        return (1.0, 0.0)
+    return (fy / length, -fx / length)   # perpendicular to forward in XY
+
+
+def _build_beam(x, y, ground_z, height, width, argb, solid_frac=0.25):
+    """Build a Toolbox-style light beam ENTIRELY IN PYTHON, as a triangle list:
+      - camera-facing billboard (one upright quad that turns to face you)
+      - 3x3 vertex grid so alpha fades in two directions
+      - horizontal: opaque center column, transparent left/right edges -> soft column
+      - vertical: bottom `solid_frac` solid, fading to transparent at the top (up = -z)
+    Returns a list of (x, y, z, argb) tuples: 24 verts = 8 triangles.
+    Feed it to renderer.draw_shaded_3d(). This is the geometry+effect, built in Python;
+    C++ only draws the triangles (occluded, HDR-correct)."""
+    rx, ry = _camera_right_2d()
+    half = width * 0.5
+    body = argb & 0x00FFFFFF
+    base_a = (argb >> 24) & 0xFF
+
+    def col(af):
+        a = max(0, min(255, int(base_a * af)))
+        return (a << 24) | body
+
+    rows_z = [ground_z, ground_z - height * solid_frac, ground_z - height]  # base, solid, top
+    rows_v = [1.0, 1.0, 0.0]    # vertical alpha: base/solid solid, top fades to 0
+    cols_c = [-1.0, 0.0, 1.0]   # left, center, right
+    cols_h = [0.0, 1.0, 0.0]    # horizontal alpha: edges transparent, center full
+
+    grid = []
+    for r, gz in enumerate(rows_z):
+        row = []
+        for c, cc in enumerate(cols_c):
+            px = x + rx * half * cc
+            py = y + ry * half * cc
+            row.append((px, py, gz, col(rows_v[r] * cols_h[c])))
+        grid.append(row)
+
+    verts = []
+    for r in range(2):
+        for c in range(2):
+            v00, v01 = grid[r][c], grid[r][c + 1]
+            v10, v11 = grid[r + 1][c], grid[r + 1][c + 1]
+            verts.extend([v00, v01, v11, v00, v11, v10])
+    return verts
+
+
 def _apply_tuning():
     try:
         zfunc = ZFUNC_OPTIONS[state["zfunc_idx"]][1]
@@ -95,9 +155,10 @@ def _apply_tuning():
         state["status"] = "tuning error: %s" % e
 
 
-def _world_draw():
-    """Invoked by the compositor INSIDE GW's world pass (depth live). The Draw*3D
-    calls draw immediately here, so they occlude against world geometry."""
+def _draw_markers():
+    """Called every frame from main(). Each Draw*3D APPENDS to the class's internal
+    list (implicit keepalive); the class draws them (occluded) in the world pass on
+    every pass. No callback/register/heartbeat here."""
     if state["anchor"] is None:
         return
     _apply_tuning()
@@ -107,7 +168,7 @@ def _world_draw():
     occ = bool(s["occlude"])
     r = s["radius"]
     gz = _ground_z(x, y)
-    top_z = gz - s["height"]     # up = decreasing z in this space
+    top_z = gz - s["height"]
     col = _argb(s["color"])
     P = s["prims"]
 
@@ -119,18 +180,22 @@ def _world_draw():
         renderer.DrawLine3D(_v(x, y, gz), _v(x, y, top_z), col, occ, 1, 0.0)
     if P["triangle"]:
         renderer.DrawTriangleFilled3D(
-            _v(x - r, y - r, gz), _v(x + r, y - r, gz), _v(x, y + r, gz),
-            col, occ, 1, 0.0)
+            _v(x - r, y - r, gz), _v(x + r, y - r, gz), _v(x, y + r, gz), col, occ, 1, 0.0)
     if P["quad"]:
         renderer.DrawQuadFilled3D(
             _v(x - r, y - r, gz), _v(x + r, y - r, gz),
-            _v(x + r, y + r, gz), _v(x - r, y + r, gz),
-            col, occ, 1, 0.0)
+            _v(x + r, y + r, gz), _v(x - r, y + r, gz), col, occ, 1, 0.0)
     if P["cube"]:
         renderer.DrawCubeOutline(_v(x, y, gz - r * 0.5), r, col, occ)
     if P["beam"]:
-        renderer.DrawBeam3D(x, y, gz, s["height"], s["beam_width"], col,
-                            s["beam_top_alpha"], s["beam_additive"])
+        # Toolbox-style beam, geometry + effect built in Python, drawn via the generic
+        # shader-geometry primitive. (The old C++ renderer.DrawBeam3D still exists.)
+        beam_verts = _build_beam(x, y, gz, s["height"], s["beam_width"], col, 0.25)
+        try:
+            renderer.draw_shaded_3d(beam_verts, s["beam_additive"], True)
+        except AttributeError:
+            renderer.DrawBeam3D(x, y, gz, s["height"], s["beam_width"], col,
+                                s["beam_top_alpha"], s["beam_additive"])  # DLL not rebuilt yet
     if P["texture"]:
         try:
             renderer.DrawTexture3D(BEAM_TEXTURE, x, y, gz - s["height"] * 0.5,
@@ -150,26 +215,6 @@ def _capture_anchor():
     except Exception as e:
         state["status"] = "no player pos: %s" % e
         return False
-
-
-def _sync_registration():
-    """Register/unregister the world-draw callback to match `show`."""
-    want = state["show"] and state["anchor"] is not None
-    if want and state["token"] is None:
-        try:
-            state["token"] = PyWorldRender.register_draw(_world_draw)
-            state["status"] = "registered (in-world), anchor=%s" % (state["anchor"],)
-        except AttributeError:
-            state["status"] = "PyWorldRender missing - rebuild the DLL"
-        except Exception as e:
-            state["status"] = "register failed: %s" % e
-    elif not want and state["token"] is not None:
-        try:
-            PyWorldRender.unregister_draw(state["token"])
-        except Exception:
-            pass
-        state["token"] = None
-        state["status"] = "unregistered"
 
 
 def _log(msg):
@@ -234,19 +279,39 @@ def _draw_ui():
         s["reverse_z"] = PyImGui.checkbox("reverse-Z", s["reverse_z"])
 
     PyImGui.separator()
+    if PyImGui.collapsing_header("DAT texture viewer (see the ring sprite)"):
+        try:
+            s["tex_file_id"] = PyImGui.input_int("dat file id (0x2381=ring)", s["tex_file_id"], 1, 16, 0)
+        except Exception:
+            PyImGui.text("file id = 0x%X" % s["tex_file_id"])
+        try:
+            tex = PyTexture.get_texture_by_file_id(s["tex_file_id"] & 0xFFFFFFFF)
+            if tex:
+                PyImGui.text("handle: 0x%X  (id 0x%X)" % (tex, s["tex_file_id"]))
+                # draw the raw sprite so we can see exactly what the ring texture is
+                PyImGui.image(tex, (160.0, 160.0), (0.0, 0.0), (1.0, 1.0))
+            else:
+                PyImGui.text("loading... (async - decodes over a few frames, keep it open)")
+        except Exception as e:
+            PyImGui.text("texture err: %s" % e)
+
+    PyImGui.separator()
     PyImGui.text("Status: " + s["status"])
     PyImGui.end()
 
 
 def main():
     _draw_ui()
-    _sync_registration()
     try:
-        PyWorldRender.set_enabled(True)
         PyWorldRender.set_draw_opcode(state["draw_opcode"])
         PyWorldRender.set_scan_enabled(state["scan_enabled"])
     except Exception:
         pass
+    # Fully transparent: just call the draws each frame. Each Draw*3D appends to the
+    # class's list (implicit keepalive - no register, no heartbeat, no token); the class
+    # draws them occluded in the world pass and auto-clears ~100ms after you stop.
+    if state["show"] and state["anchor"] is not None:
+        _draw_markers()
 
 
 if __name__ == "__main__":
