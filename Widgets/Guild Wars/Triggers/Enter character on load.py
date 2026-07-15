@@ -26,14 +26,11 @@ def _ensure_ini() -> bool:
     if INI_INIT:
         return True
 
-    INI_KEY = Settings(f"{"Widgets/EnterCharacterOnLoad"}/{"EnterCharacterOnLoad.ini"}", "global").name
+    cfg = Settings(f"{"Widgets/EnterCharacterOnLoad"}/{"EnterCharacterOnLoad.ini"}", "global")
+    INI_KEY = cfg.name
 
     if not INI_KEY:
         ConsoleLog(module_name, "INI global key creation FAILED (INI_KEY empty).")
-        return False
-
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
         return False
 
     # FORCE: ensure the document has at least 1 var so the file is created.

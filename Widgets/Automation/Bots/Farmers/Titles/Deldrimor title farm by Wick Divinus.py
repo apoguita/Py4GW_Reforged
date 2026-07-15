@@ -735,7 +735,7 @@ def _load_consumable_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     saved_use_conset = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_CONSET_KEY,
@@ -776,7 +776,7 @@ def _load_kit_restock_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     _restock_kits_enabled = cfg.get_bool(
         _SETTINGS_SECTION,
         _USE_RESTOCK_KITS_KEY,
@@ -808,7 +808,7 @@ def _save_consumable_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     cfg.set(
         _SETTINGS_SECTION,
         _USE_CONSET_KEY,
@@ -845,7 +845,7 @@ def _save_kit_restock_settings(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     cfg.set(_SETTINGS_SECTION, _USE_RESTOCK_KITS_KEY, bool(_restock_kits_enabled))
     cfg.set(_SETTINGS_SECTION, _ID_KITS_TARGET_KEY, int(_id_kits_target))
     cfg.set(_SETTINGS_SECTION, _SALVAGE_KITS_TARGET_KEY, int(_salvage_kits_target))
@@ -1149,7 +1149,7 @@ def _load_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     raw = cfg.get_bool(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
     _party_mode = 1 if raw else 0
     _randomize_district = cfg.get_bool(_SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, _randomize_district)
@@ -1167,7 +1167,7 @@ def _save_mode_setting(bot: Botting) -> None:
     ini_key = _ensure_bot_ini(bot)
     if not ini_key:
         return
-    cfg = Settings.find(ini_key)
+    cfg = Settings(ini_key, "account")
     cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
     cfg.set(_SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, bool(_randomize_district))
 

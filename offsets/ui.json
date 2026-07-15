@@ -720,7 +720,8 @@
       "on_fail": "continue",
       "steps": [
         { "name": "scan_anchor", "op": "scan", "pattern": "command_line_number", "out": "anchor" },
-        { "name": "buffer_ref", "op": "add", "in": "anchor", "value": "0x29", "out": "buffer_ref" },
+        { "name": "func_start", "op": "to_function_start", "in": "anchor", "out": "func_start" },
+        { "name": "buffer_ref", "op": "add", "in": "func_start", "value": "0x29", "out": "buffer_ref" },
         { "name": "deref_ptr", "op": "dereference", "in": "buffer_ref", "out": "buffer" },
         { "name": "adjust_ptr", "op": "add", "in": "buffer", "value": "0xC0", "out": "final" }
       ]

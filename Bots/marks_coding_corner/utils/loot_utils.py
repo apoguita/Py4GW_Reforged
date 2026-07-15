@@ -143,15 +143,7 @@ def move_all_crafting_materials_to_storage():
 def set_autoloot_options_for_custom_bots(salvage_golds=False, module_active=False):
     '''Set autoloot options for custom bots using the InventoryPlus INI'''
 
-    ini_key = ''
-    if not ini_key:
-        ini_key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
-        if not ini_key:
-            return
-
-    cfg = Settings.find(ini_key)
-    if cfg is None:
-        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
 
     # === Module State ===
     cfg.set("AutoManager", "module_active", module_active)

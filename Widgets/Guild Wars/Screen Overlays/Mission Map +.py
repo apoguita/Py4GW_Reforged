@@ -928,9 +928,7 @@ def _config_items_by_name() -> dict[str, ConfigItem]:
 
 def _apply_config() -> None:
     global mission_map
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
-        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     mission_map.snap_enabled = cfg.get_bool("Map", "snap_enabled", mission_map.snap_enabled)
     mission_map.snap_pause_on_danger = cfg.get_bool("Map", "snap_pause_on_danger", mission_map.snap_pause_on_danger)
     mission_map.snap_danger_radius = cfg.get_float("Map", "snap_danger_radius", mission_map.snap_danger_radius)
@@ -1944,9 +1942,7 @@ def configure():
     if not _ensure_ini():
         return
 
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
-        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     marker_names = list(shapes.keys())
     grouped_items = _config_items_by_name()
 

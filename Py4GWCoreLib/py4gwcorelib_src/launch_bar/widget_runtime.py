@@ -234,7 +234,7 @@ class WidgetRuntime:
         try:
             from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
-            return Settings.find(key)
+            return Settings(key, "account")
         except Exception:
             return None
 

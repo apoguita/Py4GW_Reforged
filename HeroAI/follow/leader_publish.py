@@ -100,9 +100,6 @@ class FollowTuningConfig:
 
 @dataclass(slots=True)
 class FollowPublisherState:
-    formations_ini_key: str = ""
-    settings_ini_key: str = ""
-    runtime_ini_key: str = ""
     ini_vars_registered: bool = False
     registered_follow_sections: set[str] = field(default_factory=set)
     selected_id_cache: str = ""
@@ -165,28 +162,26 @@ class FollowFormationPublisher:
             pass
         return default
 
-    def _ensure_global_ini_key_strict(self, path: str, filename: str) -> str:
-        return Settings(f"{path}/{filename}", "global").name
+    # The three follow documents are process-wide singletons; constructing
+    # Settings(name, "global") anywhere returns the same live document, so there
+    # is nothing to pre-ensure or look up — just build the accessor and use it.
+    def _formations_cfg(self) -> Settings:
+        return Settings(f"{self.ini.global_ini_path}/{self.ini.formations_ini_name}", "global")
 
-    def _ensure_follow_ini_keys(self) -> None:
-        if not self.state.formations_ini_key:
-            self.state.formations_ini_key = self._ensure_global_ini_key_strict(self.ini.global_ini_path, self.ini.formations_ini_name)
-        if not self.state.settings_ini_key:
-            self.state.settings_ini_key = self._ensure_global_ini_key_strict(self.ini.global_ini_path, self.ini.settings_ini_name)
-        if not self.state.runtime_ini_key:
-            self.state.runtime_ini_key = self._ensure_global_ini_key_strict(self.ini.global_ini_path, self.ini.runtime_ini_name)
+    def _settings_cfg(self) -> Settings:
+        return Settings(f"{self.ini.global_ini_path}/{self.ini.settings_ini_name}", "global")
+
+    def _runtime_cfg(self) -> Settings:
+        return Settings(f"{self.ini.global_ini_path}/{self.ini.runtime_ini_name}", "global")
 
     def _load_ini_vars_once(
         self,
-        key: str,
+        cfg: Settings,
         force_var_refresh: bool = False,
         reload_from_disk: bool = False,
     ) -> None:
-        if not key:
-            return
-        cfg = Settings.find(key)
-        if cfg is None:
-            return
+        # Followers pull cross-process edits the leader wrote to disk; reload()
+        # is the legitimate escape hatch for that.
         try:
             if reload_from_disk:
                 cfg.reload()
@@ -194,11 +189,7 @@ class FollowFormationPublisher:
             pass
 
     def _reload_thresholds(self) -> None:
-        if not self.state.runtime_ini_key:
-            return
-        cfg = Settings.find(self.state.runtime_ini_key)
-        if cfg is None:
-            return
+        cfg = self._runtime_cfg()
         self.thresholds.default_follow_threshold = max(
             0.0,
             float(cfg.get_float(self.ini.runtime_section, "follow_move_threshold_default", float(Range.Area.value)))
@@ -213,10 +204,8 @@ class FollowFormationPublisher:
         )
 
     def _resolve_selected_formation_id(self) -> str:
-        settings_cfg = Settings.find(self.state.settings_ini_key)
-        formations_cfg = Settings.find(self.state.formations_ini_key)
-        if settings_cfg is None or formations_cfg is None:
-            return ""
+        settings_cfg = self._settings_cfg()
+        formations_cfg = self._formations_cfg()
         selected_id = str(settings_cfg.get_str(self.ini.formations_section, self.ini.selected_id_key, "") or "").strip()
         if selected_id:
             return selected_id
@@ -238,9 +227,7 @@ class FollowFormationPublisher:
 
     def _resolve_selected_formation_section(self, selected_id: str) -> str:
         section = f"{self.ini.formation_id_prefix}{selected_id}"
-        formations_cfg = Settings.find(self.state.formations_ini_key)
-        if formations_cfg is None:
-            return section
+        formations_cfg = self._formations_cfg()
         if formations_cfg.get_str(section, "name", ""):
             return section
 
@@ -256,27 +243,9 @@ class FollowFormationPublisher:
 
     def _reload_follow_points_from_ini(self) -> None:
         try:
-            self._ensure_follow_ini_keys()
-            if not self.state.formations_ini_key or not self.state.settings_ini_key:
-                self.state.selected_id_cache = "builtin_default"
-                self.state.points_cache = self._get_default_follow_points()
-                return
-
-            self._load_ini_vars_once(
-                self.state.settings_ini_key,
-                force_var_refresh=True,
-                reload_from_disk=True,
-            )
-            self._load_ini_vars_once(
-                self.state.formations_ini_key,
-                force_var_refresh=True,
-                reload_from_disk=True,
-            )
-            self._load_ini_vars_once(
-                self.state.runtime_ini_key,
-                force_var_refresh=True,
-                reload_from_disk=True,
-            )
+            self._load_ini_vars_once(self._settings_cfg(), force_var_refresh=True, reload_from_disk=True)
+            self._load_ini_vars_once(self._formations_cfg(), force_var_refresh=True, reload_from_disk=True)
+            self._load_ini_vars_once(self._runtime_cfg(), force_var_refresh=True, reload_from_disk=True)
             self._reload_thresholds()
 
             selected_id = self._resolve_selected_formation_id()
@@ -286,11 +255,7 @@ class FollowFormationPublisher:
                 return
 
             section = self._resolve_selected_formation_section(selected_id)
-            formations_cfg = Settings.find(self.state.formations_ini_key)
-            if formations_cfg is None:
-                self.state.selected_id_cache = "builtin_default"
-                self.state.points_cache = self._get_default_follow_points()
-                return
+            formations_cfg = self._formations_cfg()
             point_count = max(
                 0,
                 min(

@@ -10,7 +10,7 @@ from .._legacy_facade import ImGui_Legacy
 from ..Overlay import Overlay
 from ..Player import Player
 from ..py4gwcorelib_src.Color import Color, ColorPalette
-from ..py4gwcorelib_src.WindowFactory import ManagedWindowSpec, WindowFactory
+from ..py4gwcorelib_src.Settings import Settings
 
 if TYPE_CHECKING:
     from ..BottingTree import BottingTree
@@ -229,9 +229,10 @@ class _BottingTreeUI:
         self._selected_start_index = 0
         self._show_tree = True
         self._debug_console_height = 200.0
-        self._window_factory: WindowFactory | None = None
+        self._main_ini_name: str = ''
+        self._floating_ini_name: str = ''
         self._floating_button: ImGui_Legacy.FloatingIcon | None = None
-        self._window_factory_ready = False
+        self._window_paths_ready = False
         self._window_args: dict[str, object] = {
             'main_child_dimensions': (350, 325),
             'icon_path': '',
@@ -247,40 +248,22 @@ class _BottingTreeUI:
     def _default_icon_path(self) -> str:
         return os.path.join(PySystem.Console.get_projects_path(), 'python_icon_round.png')
 
-    def _ensure_window_factory(self) -> bool:
-        if self._window_factory_ready and self._window_factory is not None:
+    def _ensure_window_paths(self) -> bool:
+        # The window documents are process-wide Settings singletons; we only need
+        # their names (constructing Settings(name) binds/loads them on demand). No
+        # factory, no per-window registration, no position ini — ImGui persists
+        # window placement itself.
+        if self._window_paths_ready:
             return True
-
         safe_name = self._sanitize_identifier(self.parent.bot_name)
         ini_path = f'Widgets/Automation/BottingTree/{safe_name}'
-        factory = WindowFactory(ini_path)
-        factory.register_window(
-            ManagedWindowSpec(
-                identifier='main',
-                filename='BottingTreeUI.ini',
-                title=self.parent.bot_name,
-                flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
-                open_var_name='show_main_window',
-                open_default=True,
-            )
-        )
-        factory.register_window(
-            ManagedWindowSpec(
-                identifier='floating',
-                filename='BottingTreeFloating.ini',
-                title=f'{self.parent.bot_name} Toggle',
-            )
-        )
-
-        if not factory.ensure_ini():
-            return False
-
-        self._window_factory = factory
-        self._window_factory_ready = True
+        self._main_ini_name = f'{ini_path}/BottingTreeUI.ini'
+        self._floating_ini_name = f'{ini_path}/BottingTreeFloating.ini'
+        self._window_paths_ready = True
         return True
 
     def _ensure_floating_button(self, icon_path: str = '') -> ImGui_Legacy.FloatingIcon | None:
-        if not self._ensure_window_factory() or self._window_factory is None:
+        if not self._ensure_window_paths():
             return None
 
         resolved_icon_path = icon_path or self._default_icon_path()
@@ -292,13 +275,13 @@ class _BottingTreeUI:
                 window_name=f'{self.parent.bot_name} Toggle',
                 tooltip_visible=f'Hide {self.parent.bot_name}',
                 tooltip_hidden=f'Show {self.parent.bot_name}',
-                toggle_ini_key=self._window_factory.key('main'),
+                toggle_ini_key=self._main_ini_name,
                 toggle_var_name='show_main_window',
                 toggle_default=True,
                 draw_callback=self._draw_managed_window,
             )
             self._floating_button.load_visibility()
-            self._floating_button.load_config(self._window_factory.key('floating'))
+            self._floating_button.load_config(self._floating_ini_name)
         else:
             self._floating_button.icon_path = resolved_icon_path
             self._floating_button.draw_callback = self._draw_managed_window
@@ -306,12 +289,18 @@ class _BottingTreeUI:
         return self._floating_button
 
     def _draw_managed_window(self) -> None:
-        if self._window_factory is None:
+        if not self._ensure_window_paths():
             return
 
-        expanded, open_ = self._window_factory.begin(
-            'main',
-            p_open=(self._floating_button.visible if self._floating_button is not None else self._window_factory.is_open('main')),
+        p_open = (
+            self._floating_button.visible
+            if self._floating_button is not None
+            else Settings(self._main_ini_name, "account").get_bool("Configuration", "show_main_window", True)
+        )
+        expanded, open_ = ImGui_Legacy.begin_with_close(
+            self.parent.bot_name,
+            p_open,
+            PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
         )
         if self._floating_button is not None:
             self._floating_button.sync_begin_with_close(open_)
@@ -358,7 +347,7 @@ class _BottingTreeUI:
 
                 PyImGui.end_tab_bar()
 
-        ImGui_Legacy.End(self._window_factory.key('main'))
+        ImGui_Legacy.end()
 
     def override_draw_texture(self, draw_fn: Callable[[], None] | None = None) -> None:
         self.draw_texture_fn = draw_fn
@@ -620,8 +609,8 @@ class _BottingTreeUI:
         }
 
         floating_button = self._ensure_floating_button(icon_path)
-        if floating_button is not None and self._window_factory is not None:
-            floating_button.draw(self._window_factory.key('floating'))
+        if floating_button is not None and self._floating_ini_name:
+            floating_button.draw(self._floating_ini_name)
         else:
             self._draw_managed_window()
 

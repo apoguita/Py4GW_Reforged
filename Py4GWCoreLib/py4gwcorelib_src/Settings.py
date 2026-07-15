@@ -59,9 +59,12 @@ Two addressing styles, both backed by the same document:
 
 Typical usage
 -------------
-    # own a per-account document (path + filename joined into the document name)
-    key = Settings.ensure_key("Widgets/MyWidget", "MyWidget.ini")   # -> "Widgets/MyWidget/MyWidget.ini"
-    cfg = Settings.find(key)                                         # the already-open document
+    # own a per-account document — just construct it. A document is a process-wide
+    # singleton (same (name, scope) -> same object), bound/loaded/seeded automatically
+    # by the native side, so there is NO separate ensure/find step: construct where you
+    # need it and read/write.
+    cfg = Settings("Widgets/MyWidget/MyWidget.ini")                 # account scope (default)
+    # cfg = Settings("Foo/Bar.ini", "global")                      # machine-wide
 
     scale = cfg.get_float("Layout", "scale", 1.0)                   # never throws; default on miss
     cfg.set("Layout", "scale", 1.25)                                # in memory now; autosaved later
@@ -73,7 +76,6 @@ writes of its own.
 """
 
 from typing import Any
-from typing import Optional
 
 import PySettings
 
@@ -90,11 +92,10 @@ class Settings:
     cached per ``(name, scope)`` (see :meth:`__new__`), so anyone who asks for the same document
     shares the same object and the same in-memory state — there is no risk of two divergent copies.
 
-    You normally acquire one of these in one of two ways:
-    - :meth:`ensure_key` / :meth:`ensure_global_key` — open (and cache) a document by
-      ``path`` + ``filename`` and get back its *name* (the string other APIs, e.g. the ImGui window
-      wrappers, expect). This is the usual entry point for a script that owns a settings file.
-    - :meth:`find` — look up an already-open document by name when you were handed only the name.
+    You acquire one simply by constructing it: ``Settings("path/filename")`` (account scope) or
+    ``Settings("path/filename", "global")`` (machine-wide). Because instances are cached per
+    ``(name, scope)``, any code that constructs the same name/scope shares the one live document —
+    there is nothing to "ensure" first and no name to pass around and look up.
 
     Persistence is automatic and debounced (see the module docstring); treat this object as a live,
     always-saved view of the file rather than something you must explicitly load or flush.
@@ -188,48 +189,9 @@ class Settings:
         p = str(self._doc.path())
         return p if p else self._name
 
-    @classmethod
-    def ensure_key(cls, path: str, filename: str, scope: str = 'account') -> str:
-        """Open (and cache) a document from ``path`` + ``filename`` and return its *name*.
-
-        The name is ``"{path}/{filename}"`` (or just ``filename`` when ``path`` is empty); this is
-        the string identifier that :meth:`find`, ``ImGui_Legacy.Begin/End`` and similar APIs expect
-        (the old ``ini_key``). Idempotent — safe to call every frame; it just returns the name.
-
-        No account-readiness gate: the native side does not initialize account documents until the
-        email is acquired, and the email is always present by the time a script runs, so the
-        returned document is usable immediately.
-        """
-        path = str(path).strip('/')
-        filename = str(filename).strip('/')
-        name = f"{path}/{filename}" if path else filename
-        if not name:
-            return ""
-        cls(name, scope)
-        return name
-
-    @classmethod
-    def ensure_global_key(cls, path: str, filename: str) -> str:
-        """Like :meth:`ensure_key` but opens the document in the machine-wide ``global`` scope."""
-        return cls.ensure_key(path, filename, scope='global')
-
-    @classmethod
-    def find(cls, name: str) -> Optional['Settings']:
-        """Return the already-open document with this ``name`` (any scope), or None.
-
-        Used by callers that were handed only the document name (the old ``ini_key``) and need the
-        instance someone else already created via :meth:`ensure_key` / the constructor. Returns None
-        if nothing has opened that name yet — it does **not** open one.
-        """
-        name = str(name)
-        for (n, _scope), inst in cls._instances.items():
-            if n == name:
-                return inst
-        return None
-
     @property
     def name(self) -> str:
-        """The document's name (``"path/filename"``), i.e. its identifier for :meth:`find`."""
+        """The document's name (``"path/filename"``), i.e. its ``(name, scope)`` identity."""
         return self._name
 
     @property

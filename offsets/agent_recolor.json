@@ -5,6 +5,24 @@
       "assertion_file": "AvApi.cpp",
       "assertion_message": "agent",
       "line_number": "0x1e9"
+    },
+    "char_get_text_data_color_writes": {
+      "pattern": "\\x89\\x77\\x0C\\x89\\x07\\xC7\\x47\\x04\\x00\\x00\\x00\\x00\\x89\\x77\\x08\\xC6\\x47\\x0F\\xC0",
+      "mask": "xxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "gadget_get_text_data_color_writes": {
+      "pattern": "\\xC7\\x46\\x0C\\x00\\xFF\\xFF\\xFF\\x83\\xC4\\x04\\x89\\x06\\xC7\\x46\\x04\\x00\\x00\\x00\\x00\\xC7\\x46\\x08\\x00\\xFF\\xFF\\xFF\\xC6\\x46\\x0F\\xC0",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "item_get_text_data_ownership_color": {
+      "pattern": "\\x1B\\xF6\\x81\\xE6\\x80\\x7F\\x7F\\x00\\x81\\xC6\\x80\\x80\\x80\\xFF",
+      "mask": "xxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
     }
   },
   "resolvers": {
@@ -34,6 +52,45 @@
             { "name": "to_wrapper_start", "op": "to_function_start", "in": "assert_addr", "scan_range": "0xFFF", "out": "wrapper" },
             { "name": "resolver_callsite", "op": "add", "in": "wrapper", "value": "0x31", "out": "resolver_callsite" },
             { "name": "resolver_target", "op": "function_from_near_call", "in": "resolver_callsite", "out": "final" }
+          ]
+        }
+      ]
+    },
+    "char_get_text_data_func": {
+      "log_level": "error",
+      "on_fail": "continue",
+      "attempts": [
+        {
+          "name": "color_write_prologue_walkback",
+          "steps": [
+            { "name": "scan_color_writes", "op": "scan", "pattern": "char_get_text_data_color_writes", "out": "scan" },
+            { "name": "to_function_start", "op": "to_function_start", "in": "scan", "scan_range": "0x40", "out": "final" }
+          ]
+        }
+      ]
+    },
+    "gadget_get_text_data_func": {
+      "log_level": "error",
+      "on_fail": "continue",
+      "attempts": [
+        {
+          "name": "color_write_prologue_walkback",
+          "steps": [
+            { "name": "scan_color_writes", "op": "scan", "pattern": "gadget_get_text_data_color_writes", "out": "scan" },
+            { "name": "to_function_start", "op": "to_function_start", "in": "scan", "scan_range": "0x40", "out": "final" }
+          ]
+        }
+      ]
+    },
+    "item_get_text_data_func": {
+      "log_level": "error",
+      "on_fail": "continue",
+      "attempts": [
+        {
+          "name": "ownership_color_walkback",
+          "steps": [
+            { "name": "scan_ownership_color", "op": "scan", "pattern": "item_get_text_data_ownership_color", "out": "scan" },
+            { "name": "to_function_start", "op": "to_function_start", "in": "scan", "scan_range": "0x200", "out": "final" }
           ]
         }
       ]

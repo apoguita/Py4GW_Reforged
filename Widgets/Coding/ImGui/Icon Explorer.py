@@ -35,9 +35,9 @@ def _build_icon_index():
 
 def _load_settings():
     global favorites_only, grid_columns, sort_mode, favorites
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
+    if not INI_KEY:
         return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     favorites_only = cfg.get_bool("View", "favorites_only", False)
     grid_columns = max(2, min(8, cfg.get_int("View", "grid_columns", 4)))
     sort_mode = cfg.get_int("View", "sort_mode", 1)
@@ -48,9 +48,10 @@ def _load_settings():
 
 
 def _save_setting(name: str, value, section: str):
-    cfg = Settings.find(INI_KEY)
-    if cfg:
-        cfg.set(section, name, value)
+    if not INI_KEY:
+        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
+    cfg.set(section, name, value)
 
 
 def _save_favorites():

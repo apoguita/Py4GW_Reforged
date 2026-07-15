@@ -563,29 +563,6 @@ class SkillData:
         table_end = PyImGui.get_item_rect_max()
     
  
-_window_factory = None
-_window_factory_ready = False
-
-
-def _ensure_window_factory():
-    global _window_factory, _window_factory_ready
-    if _window_factory_ready and _window_factory is not None:
-        return True
-    factory = WindowFactory("Widgets/Coding/Examples/Skills")
-    factory.register_window(
-        ManagedWindowSpec(
-            identifier="main",
-            filename="SkillInfo.ini",
-            title=MODULE_NAME,
-            flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
-        )
-    )
-    if not factory.ensure_ini():
-        return False
-    _window_factory = factory
-    _window_factory_ready = True
-    return True
- 
 class FilterButton:
     def __init__(self, profession: str, texture_path: str, width: int = 32, height: int = 32):
         self.profession_name = profession
@@ -618,9 +595,7 @@ ProfessionButtons = [
 ]
     
 def DrawMainWindow():
-    if not _ensure_window_factory() or _window_factory is None:
-        return
-    expanded, _ = _window_factory.begin("main")
+    expanded, _ = ImGui_Legacy.begin_with_close(MODULE_NAME, None, PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize))
     if expanded:
         
         window_size = PyImGui.get_window_size()
@@ -634,7 +609,7 @@ def DrawMainWindow():
                 PyImGui.same_line(0, 5)
 
 
-    ImGui_Legacy.End(_window_factory.key("main"))
+    ImGui_Legacy.end()
 
 
 

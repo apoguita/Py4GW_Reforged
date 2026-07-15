@@ -47,12 +47,10 @@ def _bootstrap_once() -> None:
         if not os.path.exists(INI_PATH):
             os.makedirs(INI_PATH, exist_ok=True)
 
-        key = Settings(f"{INI_PATH}/{INI_FILENAME}", "account").name
+        cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
+        key = cfg.name
         if not key:
             return  # settings not ready yet — retry next frame (launchpad still renders below)
-        cfg = Settings.find(key)
-        if cfg is None:
-            return
 
         # Order is load-bearing: MANAGER_INI_KEY must be set before discovery (it reads each
         # widget's saved-enabled state during load), then _apply_ini_configuration re-applies

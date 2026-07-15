@@ -1239,9 +1239,7 @@ def _load_settings(bot: Botting) -> None:
     if not ini_key:
         return
 
-    cfg = Settings.find(ini_key)
-    if cfg is None:
-        return
+    cfg = Settings(f"{f"BottingClass/bot_{bot.config.bot_name}"}/{f"bot_{bot.config.bot_name}.ini"}", "account")
 
     _party_mode = 1 if cfg.get_bool(
         _SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1
@@ -1311,9 +1309,7 @@ def _save_settings(bot: Botting) -> None:
     if not ini_key:
         return
 
-    cfg = Settings.find(ini_key)
-    if cfg is None:
-        return
+    cfg = Settings(f"{f"BottingClass/bot_{bot.config.bot_name}"}/{f"bot_{bot.config.bot_name}.ini"}", "account")
 
     cfg.set(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, _party_mode == 1)
     cfg.set(_SETTINGS_SECTION, _RANDOMIZE_DISTRICT_KEY, bool(_randomize_district))

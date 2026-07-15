@@ -1275,21 +1275,16 @@ class InventoryPlusWidget:
         return True
 
     def _ini_get_bool(self, section: str, var_name: str, default: bool) -> bool:
-        cfg = Settings.find(self.ini_key)
-        return cfg.get_bool(section, var_name, default) if cfg is not None else default
+        return Settings(f"{INI_PATH}/{INI_FILENAME}", "global").get_bool(section, var_name, default)
 
     def _ini_get_int(self, section: str, var_name: str, default: int) -> int:
-        cfg = Settings.find(self.ini_key)
-        return cfg.get_int(section, var_name, default) if cfg is not None else default
+        return Settings(f"{INI_PATH}/{INI_FILENAME}", "global").get_int(section, var_name, default)
 
     def _ini_get_str(self, section: str, var_name: str, default: str) -> str:
-        cfg = Settings.find(self.ini_key)
-        return cfg.get_str(section, var_name, default) if cfg is not None else default
+        return Settings(f"{INI_PATH}/{INI_FILENAME}", "global").get_str(section, var_name, default)
 
     def _ini_set(self, section: str, var_name: str, value) -> None:
-        cfg = Settings.find(self.ini_key)
-        if cfg is not None:
-            cfg.set(section, var_name, value)
+        Settings(f"{INI_PATH}/{INI_FILENAME}", "global").set(section, var_name, value)
 
     def _set_colorize_enabled(self, enabled: bool) -> None:
         self.colorize_settings.enable_colorize = enabled

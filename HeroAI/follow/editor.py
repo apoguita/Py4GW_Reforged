@@ -179,24 +179,22 @@ def _ini_reload_now(key: str):
     if not key:
         return
     try:
-        cfg = Settings.find(key)
-        if cfg:
-            cfg.reload()
+        Settings(key, "global").reload()
     except Exception:
         pass
 
 
 def _ini_write_now(key: str, section: str, name: str, value):
     # Synchronous write for explicit Save actions (avoids deferred flush races).
-    cfg = Settings.find(key)
-    if cfg:
-        cfg.set(section, name, value)
+    if not key:
+        return
+    Settings(key, "global").set(section, name, value)
 
 
 def _ini_delete_section_now(key: str, section: str):
-    cfg = Settings.find(key)
-    if cfg:
-        cfg.delete_section(section)
+    if not key:
+        return
+    Settings(key, "global").delete_section(section)
 
 
 def _ensure_global_ini_key_strict(path: str, filename: str) -> str:
@@ -204,8 +202,9 @@ def _ensure_global_ini_key_strict(path: str, filename: str) -> str:
 
 
 def _get_ini_filename(key: str) -> str:
-    cfg = Settings.find(key)
-    return cfg.resolved_path() if cfg else ""
+    if not key:
+        return ""
+    return Settings(key, "global").resolved_path()
 
 
 def _sec_formation(name: str) -> str:
@@ -541,11 +540,7 @@ def _reset_generator_defaults():
 
 
 def _load_from_ini():
-    _ini_reload_now(FORMATIONS_INI_KEY)
-    _ini_reload_now(SETTINGS_INI_KEY)
-    cfg_form = Settings.find(FORMATIONS_INI_KEY)
-    cfg_set = Settings.find(SETTINGS_INI_KEY)
-    if cfg_form is None or cfg_set is None:
+    if not FORMATIONS_INI_KEY or not SETTINGS_INI_KEY:
         if not ui.formations:
             f = Formation(DEFAULT_FORMATION_NAME)
             f.generator.slot_count = 4
@@ -556,6 +551,10 @@ def _load_from_ini():
         ui.shared_mem_dirty = True
         ui.data_loaded = True
         return
+    _ini_reload_now(FORMATIONS_INI_KEY)
+    _ini_reload_now(SETTINGS_INI_KEY)
+    cfg_form = Settings(FORMATIONS_INI_KEY, "global")
+    cfg_set = Settings(SETTINGS_INI_KEY, "global")
     entries: list[tuple[str, str]] = []  # (id, name)
     count = max(0, cfg_form.get_int(SEC_FORMATIONS, "count", 0))
     for i in range(count):
@@ -652,7 +651,7 @@ def _load_from_ini():
 def _save_to_ini():
     _ini_reload_now(FORMATIONS_INI_KEY)
     _ini_reload_now(SETTINGS_INI_KEY)
-    cfg_form = Settings.find(FORMATIONS_INI_KEY)
+    cfg_form = Settings(FORMATIONS_INI_KEY, "global") if FORMATIONS_INI_KEY else None
     prev_count = max(0, cfg_form.get_int(SEC_FORMATIONS, "count", 0)) if cfg_form else 0
     prev_ids: list[str] = []
     for i in range(prev_count):
@@ -718,9 +717,9 @@ def _save_to_ini():
 
 
 def _save_ui_state_only():
-    cfg_set = Settings.find(SETTINGS_INI_KEY)
-    if cfg_set is None:
+    if not SETTINGS_INI_KEY:
         return
+    cfg_set = Settings(SETTINGS_INI_KEY, "global")
     cfg_set.set(SEC_FORMATIONS, "selected_id", _current_formation().id)
     cfg_set.set(SEC_FORMATIONS, "selected", _current_formation().name)
     cfg_set.set(SEC_WINDOWS, "show_control_window", int(ui.show_control_window))

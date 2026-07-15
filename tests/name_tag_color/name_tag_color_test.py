@@ -1,10 +1,15 @@
 """
 name_tag_color_test.py - in-client test harness for native agent name-tag coloring.
 
-Exercises the PyAgentTagColor embedded module (resolver detour on
-AvCharGetConsiderColor / FUN_007d9cf0) end-to-end AND validates the RE'd
-allegiance -> color table against the live client. See
-docs/RE/name_tag_color_reverse_engineering.md.
+Exercises the PyAgentRecolor embedded module end-to-end AND validates the RE'd
+allegiance -> color table against the live client. PyAgentRecolor now recolors
+THREE categories via three native detours: living agents (GetConsiderColor
+resolver FUN_007f02e0), gadgets (CGadgetAgent::GetTextData FUN_007f9950), and
+ground items with rich filters (CItemAgent::GetTextData FUN_007fa6a0). This
+harness covers agent validation plus quick gadget/item recolor sections; the
+Py4GW DEMO 2.0 "Agent Recolor" tab is the full rich tester. See
+docs/RE/name_tag_color_reverse_engineering.md and
+docs/RE/item_gadget_recolor_reverse_engineering.md.
 
 Workflow:
   1. Load this harness in-client (REQUIRES the current rebuilt DLL).
@@ -66,6 +71,11 @@ _summary = {"pass": 0, "fail": 0, "unknown": 0}
 _last_error: str | None = None
 _ui_agent_id = 0
 _ui_color_hex = "FFFF00FF"
+_ui_gadget_id = 0
+_ui_item_rarity = 3  # Gold
+_ui_item_name = "ecto"
+_ui_item_model = 0
+_RARITY_NAMES = {0: "White", 1: "Blue", 2: "Purple", 3: "Gold", 4: "Green"}
 
 
 def _log_msg(m: str) -> None:
@@ -91,16 +101,16 @@ def _argb(value: int | None) -> str:
 
 
 def _module():
-    """Lazy-import PyAgentTagColor; None (with logged error) if the DLL lacks it."""
+    """Lazy-import PyAgentRecolor; None (with logged error) if the DLL lacks it."""
     global _last_error
     try:
-        import PyAgentTagColor  # type: ignore[import-not-found]
+        import PyAgentRecolor  # type: ignore[import-not-found]
     except Exception as exc:  # noqa: BLE001
         _last_error = repr(exc)
-        _log_msg(f"PyAgentTagColor import failed (rebuild+reinject DLL?): {exc!r}")
+        _log_msg(f"PyAgentRecolor import failed (rebuild+reinject DLL?): {exc!r}")
         return None
     _last_error = None
-    return PyAgentTagColor
+    return PyAgentRecolor
 
 
 def _agent_api():
@@ -259,7 +269,8 @@ def _status() -> dict:
             "import_ok": True,
             "hook_installed": module.is_hook_installed(),
             "enabled": module.is_enabled(),
-            "diagnostics": module.get_diagnostics(),
+            # agent-scoped legacy diagnostics view (has last_color / resolver_calls_seen)
+            "diagnostics": module.get_agent_diagnostics(),
         }
     except Exception as exc:  # noqa: BLE001
         _log_msg(f"status failed: {exc!r}")
@@ -270,6 +281,108 @@ def dump_status() -> None:
     """Write a full status + diagnostics snapshot to log.txt for offline analysis."""
     st = _status()
     _log_msg(f"STATUS {st}")
+
+
+def _test_color() -> int:
+    try:
+        return int(_ui_color_hex, 16) & 0xFFFFFFFF
+    except Exception:  # noqa: BLE001
+        return 0xFFFF00FF
+
+
+def _draw_gadget_section() -> None:
+    global _ui_gadget_id
+    m = _module()
+    PyImGui.text_colored("=== Gadgets (signposts/chests/shrines) ===", (0.7, 0.7, 0.3, 1.0))
+    if m is None:
+        return
+    diag = {}
+    try:
+        diag = m.get_diagnostics() or {}
+    except Exception:  # noqa: BLE001
+        pass
+    PyImGui.text(
+        f"hook={diag.get('gadget_hook_installed')} enabled={diag.get('gadget_enabled')} "
+        f"calls={diag.get('gadget_calls_seen')} hits={diag.get('gadget_rule_hits')}"
+    )
+    if PyImGui.button("Gadget Enable"):
+        m.gadget_enable()
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Gadget Disable"):
+        m.gadget_disable()
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Gadget Clear"):
+        m.gadget_clear_rules()
+    if PyImGui.button("Recolor ALL gadgets (test color)"):
+        m.set_all_gadget_color(_test_color())
+        _log_msg(f"set_all_gadget_color -> {_argb(_test_color())}")
+    try:
+        _ui_gadget_id = int(PyImGui.input_int("Gadget agent id", int(_ui_gadget_id)))
+    except Exception:  # noqa: BLE001
+        pass
+    if PyImGui.button("Recolor gadget by id"):
+        m.set_gadget_color(int(_ui_gadget_id), _test_color())
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Remove gadget color"):
+        m.remove_gadget_color(int(_ui_gadget_id))
+
+
+def _draw_item_section() -> None:
+    global _ui_item_rarity, _ui_item_name, _ui_item_model
+    m = _module()
+    PyImGui.text_colored("=== Items (ground labels; rich filters) ===", (0.7, 0.7, 0.3, 1.0))
+    if m is None:
+        return
+    diag = {}
+    try:
+        diag = m.get_diagnostics() or {}
+    except Exception:  # noqa: BLE001
+        pass
+    PyImGui.text(
+        f"hook={diag.get('item_hook_installed')} enabled={diag.get('item_enabled')} "
+        f"calls={diag.get('item_calls_seen')} hits={diag.get('item_rule_hits')} "
+        f"names={diag.get('item_name_cache_size')}"
+    )
+    if PyImGui.button("Item Enable"):
+        m.item_enable()
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Item Disable"):
+        m.item_disable()
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Item Clear"):
+        m.item_clear_rules()
+
+    # by rarity
+    try:
+        _ui_item_rarity = int(PyImGui.combo("Rarity", int(_ui_item_rarity), [f"{k} {v}" for k, v in _RARITY_NAMES.items()]))
+    except Exception:  # noqa: BLE001
+        pass
+    if PyImGui.button("Set rarity color"):
+        m.set_item_rarity_color(int(_ui_item_rarity), _test_color())
+        _log_msg(f"set_item_rarity_color {_ui_item_rarity} -> {_argb(_test_color())}")
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Remove rarity color"):
+        m.remove_item_rarity_color(int(_ui_item_rarity))
+
+    # by name substring
+    _ui_item_name = PyImGui.input_text("Name contains", _ui_item_name)
+    if PyImGui.button("Set name color"):
+        m.set_item_name_color(_ui_item_name, _test_color())
+        _log_msg(f"set_item_name_color {_ui_item_name!r} -> {_argb(_test_color())}")
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Remove name color"):
+        m.remove_item_name_color(_ui_item_name)
+
+    # by model id
+    try:
+        _ui_item_model = int(PyImGui.input_int("Model id", int(_ui_item_model)))
+    except Exception:  # noqa: BLE001
+        pass
+    if PyImGui.button("Set model color"):
+        m.set_item_model_color(int(_ui_item_model), _test_color())
+    PyImGui.same_line(0, -1)
+    if PyImGui.button("Remove model color"):
+        m.remove_item_model_color(int(_ui_item_model))
 
 
 def main() -> None:
@@ -283,7 +396,7 @@ def main() -> None:
     # --- Module status (live) ---
     st = _status()
     if not st.get("import_ok"):
-        PyImGui.text_colored("PyAgentTagColor NOT loaded â€” rebuild + reinject the DLL.", (1.0, 0.4, 0.4, 1.0))
+        PyImGui.text_colored("PyAgentRecolor NOT loaded - rebuild + reinject the DLL.", (1.0, 0.4, 0.4, 1.0))
         if _last_error:
             PyImGui.text(f"import error: {_last_error}")
     else:
@@ -374,6 +487,15 @@ def main() -> None:
     PyImGui.same_line(0, -1)
     if PyImGui.button("Allies -> cyan"):
         _set_allegiance_color(ALLEGIANCE_ALLY, CYAN)
+
+    PyImGui.separator()
+
+    # --- Gadgets (new: CGadgetAgent::GetTextData hook) ---
+    _draw_gadget_section()
+    PyImGui.separator()
+
+    # --- Items (new: CItemAgent::GetTextData hook + rich filters) ---
+    _draw_item_section()
 
     PyImGui.separator()
     PyImGui.text_colored("=== Log ===", (0.7, 0.7, 0.3, 1.0))

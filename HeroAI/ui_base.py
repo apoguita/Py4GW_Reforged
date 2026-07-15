@@ -55,9 +55,6 @@ class HeroAI_BaseUI:
     capture_hero_index = -1
     capture_hero_flag = False
     capture_flag_all = False
-    follow_formations_ini_key = ""
-    follow_formations_settings_key = ""
-    follow_runtime_ini_key = ""
     follow_window_ini_vars_registered = False
     follow_window_ini_vars_registered_key = ""
     follow_formations_names: list[str] = []
@@ -1507,19 +1504,25 @@ class HeroAI_BaseUI:
                 return i
         return 0
 
+    # The three follow documents are process-wide global singletons; construct
+    # them directly wherever needed — no key to ensure, store, or look up.
+    @staticmethod
+    def _follow_formations_cfg() -> Settings:
+        return Settings("HeroAI/FollowModule_Formations.ini", "global")
+
+    @staticmethod
+    def _follow_settings_cfg() -> Settings:
+        return Settings("HeroAI/FollowModule_Settings.ini", "global")
+
+    @staticmethod
+    def _follow_runtime_cfg() -> Settings:
+        return Settings("HeroAI/FollowRuntime.ini", "global")
+
     @staticmethod
     def _ensure_follow_module_ini_keys():
-        if not HeroAI_BaseUI.follow_formations_ini_key:
-            HeroAI_BaseUI.follow_formations_ini_key = Settings(f"{"HeroAI"}/{"FollowModule_Formations.ini"}", "global").name
-        if not HeroAI_BaseUI.follow_formations_settings_key:
-            HeroAI_BaseUI.follow_formations_settings_key = Settings(f"{"HeroAI"}/{"FollowModule_Settings.ini"}", "global").name
-        if not HeroAI_BaseUI.follow_runtime_ini_key:
-            HeroAI_BaseUI.follow_runtime_ini_key = Settings(f"{"HeroAI"}/{"FollowRuntime.ini"}", "global").name
-        return bool(
-            HeroAI_BaseUI.follow_formations_ini_key
-            and HeroAI_BaseUI.follow_formations_settings_key
-            and HeroAI_BaseUI.follow_runtime_ini_key
-        )
+        # Retained as a trivial guard for existing callers; construction of the
+        # accessors above is what actually binds the documents.
+        return True
 
     @staticmethod
     def _ensure_follow_window_ini_vars(ini_key: str):
@@ -1527,12 +1530,7 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def _load_follow_runtime_config(ini_key: str):
-        if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
-            return
-        ini_key = HeroAI_BaseUI.follow_runtime_ini_key
-        cfg = Settings.find(ini_key)
-        if cfg is None:
-            return
+        cfg = HeroAI_BaseUI._follow_runtime_cfg()
         hero_globals.show_broadcast_follow_positions = bool(cfg.get_bool("FollowRuntime", "show_broadcast_follow_positions", True))
         hero_globals.show_broadcast_follow_threshold_rings = bool(cfg.get_bool("FollowRuntime", "show_broadcast_follow_threshold_rings", True))
         hero_globals.show_followers_unstuck_overlay = bool(cfg.get_bool("FollowRuntime", "show_followers_unstuck_overlay", False))
@@ -1587,12 +1585,7 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def _save_follow_runtime_config(ini_key: str):
-        if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
-            return
-        ini_key = HeroAI_BaseUI.follow_runtime_ini_key
-        cfg = Settings.find(ini_key)
-        if cfg is None:
-            return
+        cfg = HeroAI_BaseUI._follow_runtime_cfg()
         cfg.set("FollowRuntime", "show_broadcast_follow_positions", bool(hero_globals.show_broadcast_follow_positions))
         cfg.set("FollowRuntime", "show_broadcast_follow_threshold_rings", bool(hero_globals.show_broadcast_follow_threshold_rings))
         cfg.set("FollowRuntime", "show_followers_unstuck_overlay", bool(hero_globals.show_followers_unstuck_overlay))
@@ -1616,18 +1609,8 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def _load_follow_formations_quick_data():
-        if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
-            HeroAI_BaseUI.follow_formations_names = []
-            HeroAI_BaseUI.follow_formations_ids = []
-            HeroAI_BaseUI.follow_formations_selected_index = 0
-            return
-        cfg_form = Settings.find(HeroAI_BaseUI.follow_formations_ini_key)
-        cfg_set = Settings.find(HeroAI_BaseUI.follow_formations_settings_key)
-        if cfg_form is None or cfg_set is None:
-            HeroAI_BaseUI.follow_formations_names = []
-            HeroAI_BaseUI.follow_formations_ids = []
-            HeroAI_BaseUI.follow_formations_selected_index = 0
-            return
+        cfg_form = HeroAI_BaseUI._follow_formations_cfg()
+        cfg_set = HeroAI_BaseUI._follow_settings_cfg()
         try:
             cfg_form.reload()
             cfg_set.reload()
@@ -1659,19 +1642,15 @@ class HeroAI_BaseUI:
 
     @staticmethod
     def _set_selected_follow_formation(index: int):
-        if not HeroAI_BaseUI._ensure_follow_module_ini_keys():
-            return
         if index < 0 or index >= len(HeroAI_BaseUI.follow_formations_ids):
             return
         HeroAI_BaseUI.follow_formations_selected_index = index
         selected_id = HeroAI_BaseUI.follow_formations_ids[index]
         selected_name = HeroAI_BaseUI.follow_formations_names[index]
 
-        key = HeroAI_BaseUI.follow_formations_settings_key
-        cfg = Settings.find(key)
-        if cfg:
-            cfg.set("Formations", "selected_id", selected_id)
-            cfg.set("Formations", "selected", selected_name)
+        cfg = HeroAI_BaseUI._follow_settings_cfg()
+        cfg.set("Formations", "selected_id", selected_id)
+        cfg.set("Formations", "selected", selected_name)
 
     @staticmethod
     def _set_party_follow_option(cached_data: CacheData, option_name: str, value: bool) -> None:

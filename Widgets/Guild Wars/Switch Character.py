@@ -10,8 +10,6 @@ from Py4GWCoreLib import ProfessionShort, Profession, Campaign
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import PyImGui
 from Py4GWCoreLib import ImGui_Legacy
-from Py4GWCoreLib import WindowFactory
-from Py4GWCoreLib import ManagedWindowSpec
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Map
@@ -217,29 +215,7 @@ class RerollCharacter:
             
 
 reroll_widget = RerollCharacter()
-_window_factory: WindowFactory | None = None
-_window_factory_ready = False
 is_visible = False
-
-
-def _ensure_window_factory() -> bool:
-    global _window_factory, _window_factory_ready
-    if _window_factory_ready and _window_factory is not None:
-        return True
-    factory = WindowFactory("Widgets/Guild Wars")
-    factory.register_window(
-        ManagedWindowSpec(
-            identifier="main",
-            filename="Switch Character.ini",
-            title=MODULE_NAME,
-            flags=PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize),
-        )
-    )
-    if not factory.ensure_ini():
-        return False
-    _window_factory = factory
-    _window_factory_ready = True
-    return True
 
 tmp_is_selected = False
 def DrawWindow():
@@ -295,10 +271,8 @@ def DrawWindow():
             reroll_widget.start_reroll()  
             
     global tmp_is_selected
-    if not _ensure_window_factory() or _window_factory is None:
-        return
 
-    expanded, _ = _window_factory.begin("main")
+    expanded, _ = ImGui_Legacy.begin_with_close(MODULE_NAME, None, PyImGui.WindowFlags(PyImGui.WindowFlags.AlwaysAutoResize))
     if expanded:
         characters = sorted(Map.Pregame.GetAvailableCharacterList(), key=lambda c: c.player_name.lower())
         
@@ -375,7 +349,7 @@ def DrawWindow():
                 PyImGui.end_table()
         PyImGui.end_child()
 
-    ImGui_Legacy.End(_window_factory.key("main"))
+    ImGui_Legacy.end()
 
 def tooltip():
     PyImGui.begin_tooltip()

@@ -226,9 +226,7 @@ _SETTING_KEYS = {
 
 
 def _load_settings():
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
-        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     STATE.daemon_host = str(cfg.get_str("Connection", "host", "127.0.0.1"))
     STATE.daemon_port = int(cfg.get_int("Connection", "port", port))
     STATE.auth_token = str(cfg.get_str("Connection", "token", ""))
@@ -238,9 +236,8 @@ def _load_settings():
 
 
 def _save_setting(name: str, value: Any):
-    cfg = Settings.find(INI_KEY)
-    if cfg:
-        cfg.set("Connection", _SETTING_KEYS.get(name, name), value)
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
+    cfg.set("Connection", _SETTING_KEYS.get(name, name), value)
 
 
 def _apply_connection_settings():

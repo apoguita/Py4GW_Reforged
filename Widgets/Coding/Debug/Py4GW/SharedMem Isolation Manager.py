@@ -10,7 +10,6 @@ MODULE_ICON = "Textures/Module_Icons/Isolation.png"
 # --- Module-level state ---
 _groups: dict[int, str] = {}
 _next_group_id: int = 1
-_ini_key: str = ""
 _ini_loaded: bool = False
 _assignments_applied: bool = False
 _ini_reload_timer: ThrottledTimer = ThrottledTimer(2000)
@@ -56,27 +55,13 @@ def tooltip():
     PyImGui.end_tooltip()
 
 
-def _ensure_ini():
-    global _ini_key
-    if _ini_key:
-        return
-    _ini_key = Settings(f"{"Py4GW"}/{"IsolationGroups.ini"}", "global").name
-
-
 def _load_groups(force: bool = False):
     global _groups, _next_group_id, _ini_loaded
     if _ini_loaded and not force:
         if not _ini_reload_timer.IsExpired():
             return
         _ini_reload_timer.Reset()
-    _ensure_ini()
-    if not _ini_key:
-        _ini_loaded = True
-        return
-    cfg = Settings.find(_ini_key)
-    if cfg is None:
-        _ini_loaded = True
-        return
+    cfg = Settings(f"{"Py4GW"}/{"IsolationGroups.ini"}", "global")
     cfg.reload()
     count = cfg.get_int("Groups", "count", 0)
     _next_group_id = max(1, cfg.get_int("Groups", "next_id", 1))
@@ -92,12 +77,7 @@ def _load_groups(force: bool = False):
 
 
 def _save_groups():
-    _ensure_ini()
-    if not _ini_key:
-        return
-    cfg = Settings.find(_ini_key)
-    if cfg is None:
-        return
+    cfg = Settings(f"{"Py4GW"}/{"IsolationGroups.ini"}", "global")
     cfg.set("Groups", "count", len(_groups))
     cfg.set("Groups", "next_id", _next_group_id)
     for i, (gid, name) in enumerate(sorted(_groups.items())):
@@ -106,12 +86,9 @@ def _save_groups():
 
 
 def _save_assignment(email: str, group_id: int):
-    _ensure_ini()
-    if not _ini_key or not email:
+    if not email:
         return
-    cfg = Settings.find(_ini_key)
-    if cfg is None:
-        return
+    cfg = Settings(f"{"Py4GW"}/{"IsolationGroups.ini"}", "global")
     cfg.set("Assignments", email, group_id)
 
 
@@ -119,14 +96,7 @@ def _apply_assignments():
     global _assignments_applied
     if _assignments_applied:
         return
-    _ensure_ini()
-    if not _ini_key:
-        _assignments_applied = True
-        return
-    cfg = Settings.find(_ini_key)
-    if cfg is None:
-        _assignments_applied = True
-        return
+    cfg = Settings(f"{"Py4GW"}/{"IsolationGroups.ini"}", "global")
     accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False, include_isolated=True) or []
     for account in accounts:
         email = str(account.AccountEmail or "").strip()

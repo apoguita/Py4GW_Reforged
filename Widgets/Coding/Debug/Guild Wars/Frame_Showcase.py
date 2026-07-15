@@ -2,7 +2,7 @@
 # Frame Showcase — Comprehensive UIManager Feature Explorer & Tester
 # ========================================================================
 import Py4GW
-from Py4GWCoreLib import (UIManager, Color, Utils, ManagedWindowSpec, WindowFactory, WindowVarSpec)
+from Py4GWCoreLib import (UIManager, Color, Utils)
 from Py4GWCoreLib._legacy_facade import ImGui_Legacy
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui, PyUIManager, PyCallback, PyOverlay
@@ -24,23 +24,7 @@ json_file_name = os.path.join(projects_root, "Py4GWCoreLib", "frame_aliases.json
 
 
 # ========================================================================
-# WindowFactory Setup
-# ========================================================================
-_window_factory = WindowFactory("Coding/Debug/Guild Wars")
-_window_factory.register_window(
-    ManagedWindowSpec(
-        identifier="main",
-        filename="frame_showcase.ini",
-        title="Frame Showcase — UIManager Explorer",
-        flags=PyImGui.WindowFlags.NoFlag,
-        open_var_name="open",
-        open_default=True,
-    )
-)
-
-
-# ========================================================================
-# ShowcaseConfig — Persistent Configuration via WindowVarSpec
+# ShowcaseConfig — in-memory UI state
 # ========================================================================
 @dataclass
 class ShowcaseConfig:
@@ -1199,8 +1183,8 @@ class InspectorManager:
                 title += f' "{alias}"'
             title += f"###finsp_win_{fid}"
 
-            cfg = Settings.find(ini_key)
-            initial_open = cfg.get_bool("Window", "open", True) if cfg else True
+            cfg = Settings(f"{"Coding/Debug/Guild Wars"}/{f"inspector_{fid}.ini"}", "global")
+            initial_open = cfg.get_bool("Window", "open", True)
             expanded, open_ = ImGui_Legacy.BeginWithClose(ini_key, title, p_open=initial_open)
 
             if expanded and open_:
@@ -1210,8 +1194,7 @@ class InspectorManager:
             ImGui_Legacy.End(ini_key)
 
             if not open_:
-                if cfg:
-                    cfg.set("Window", "open", False)
+                cfg.set("Window", "open", False)
                 closed.append(fid)
 
         for fid in closed:
@@ -1237,15 +1220,9 @@ class FrameShowcase:
         self._ini_ready = False
 
     def _ensure_ini(self) -> bool:
-        """Retry INI init on each render() call until account is ready."""
-        if self._ini_ready:
-            return True
-        try:
-            _window_factory.ensure_ini()
-            self._ini_ready = True
-            return True
-        except Exception:
-            return False
+        """The main window persists nothing of its own (ImGui owns placement; per-inspector
+        docs are constructed on demand), so there is nothing to set up here."""
+        return True
 
     def register_callbacks(self):
         """Register PyCallback for throttled tree update and log refresh."""
@@ -1287,7 +1264,7 @@ class FrameShowcase:
             self.inspector_mgr.open_inspector(fid)
 
         # Main window
-        expanded, open_ = _window_factory.begin("main")
+        expanded, open_ = ImGui_Legacy.begin_with_close("Frame Showcase — UIManager Explorer", None, PyImGui.WindowFlags.NoFlag)
 
         if expanded:
             if PyImGui.begin_tab_bar("FSMainTabBar"):
@@ -1309,7 +1286,7 @@ class FrameShowcase:
 
                 PyImGui.end_tab_bar()
 
-        ImGui_Legacy.End(_window_factory.key("main"))
+        ImGui_Legacy.end()
 
         # Clean up callbacks when main window is closed
         if not open_:

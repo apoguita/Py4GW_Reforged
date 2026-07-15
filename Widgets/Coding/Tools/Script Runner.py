@@ -61,9 +61,7 @@ def _load_config() -> None:
     global DELAY_MS_INPUT
     global LOG_TAIL_LINE_COUNT
 
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
-        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     SCRIPT_PATH_INPUT = str(cfg.get_str("ScriptRunner", "script_path", _default_script_path()) or _default_script_path())
     LOG_PATH_INPUT = str(cfg.get_str("ScriptRunner", "log_path", _default_log_path()) or _default_log_path())
     DELAY_MS_INPUT = int(cfg.get_int("ScriptRunner", "delay_ms", DELAY_MS_INPUT) or DELAY_MS_INPUT)
@@ -71,9 +69,7 @@ def _load_config() -> None:
 
 
 def _save_config() -> None:
-    cfg = Settings.find(INI_KEY)
-    if cfg is None:
-        return
+    cfg = Settings(f"{INI_PATH}/{INI_FILENAME}", "account")
     cfg.set("ScriptRunner", "script_path", SCRIPT_PATH_INPUT)
     cfg.set("ScriptRunner", "log_path", LOG_PATH_INPUT)
     cfg.set("ScriptRunner", "delay_ms", DELAY_MS_INPUT)
