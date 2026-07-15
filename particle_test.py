@@ -15,8 +15,8 @@ from Py4GWCoreLib.Player import Player
 
 _overlay = PyOverlay.Overlay()
 
-geyser = None
-swirl = None
+geyser: "PyParticles.ParticleEmitter | None" = None
+swirl: "PyParticles.ParticleEmitter | None" = None
 
 state = {
     "color": [1.0, 0.54, 0.17, 1.0],   # rarity color (orange-ish), RGBA
@@ -58,7 +58,7 @@ def _setup():
 
 
 def _apply():
-    if geyser is None:
+    if geyser is None or swirl is None:
         return
     col = _argb(state["color"])
     tail = col & 0x00FFFFFF   # same rgb, alpha 0 -> fades out
@@ -145,8 +145,9 @@ def main():
         if x == 0 and y == 0:
             return
         z = _ground_z(x, y)
-        geyser.set_origin(x, y, z)
-        swirl.set_origin(x, y, z)
+        if geyser is not None and swirl is not None:
+            geyser.set_origin(x, y, z)
+            swirl.set_origin(x, y, z)
     except Exception as e:
         state["status"] = "no player: %s" % e
 
