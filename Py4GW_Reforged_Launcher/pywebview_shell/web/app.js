@@ -467,7 +467,21 @@ async function onRemoveTeamClick() {
 
 // ---------- Window controls (carried over from Phase A) ----------
 
-function startResize(edge) {
+function startResize(edge, event) {
+  // pywebview's own easy_drag attaches a window-level mousedown listener
+  // that arms JS-side window-MOVE tracking on every mousedown, anywhere in
+  // the window (DRAG_REGION_DIRECT_TARGET_ONLY defaults to False and this
+  // app never overrides it -- confirmed in webview/js/customize.js/util.py).
+  // Without stopping propagation here, a resize-zone click both starts our
+  // own native resize handoff (async, over the JS<->Python bridge) AND
+  // arms that same move-tracking in parallel -- if the user moves the
+  // mouse before the async handoff completes, pywebview's own synchronous
+  // move-tracking could win the race and move the window instead of
+  // resizing it. A real, confirmed race condition (RELAY 018) -- fixed
+  // here regardless, though it turned out NOT to be the main cause of the
+  // move-instead-of-resize bug Chris reported; that one's still open, see
+  // RELAY.md 018's summary.
+  if (event) event.stopPropagation();
   window.pywebview.api.start_resize(edge);
 }
 
