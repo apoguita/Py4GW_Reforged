@@ -62,8 +62,21 @@ def main() -> None:
         "Py4GW Reforged Launcher",
         url=str(WEB_DIR / "index.html"),
         js_api=bridge,
-        width=1000,
-        height=720,
+        # Default first-run size, tuned so the ALL/team card grid renders
+        # exactly 2 columns x 4 rows (8 cards) with no scrollbar and no
+        # leftover slack below the last row -- confirmed by measuring a
+        # live, user-resized window pixel-by-pixel at 100% DPI (target
+        # OUTER rect 585x778; see dev_notes/RELAY.md's footnote after
+        # entry 027 for the exact measurements this came from).
+        #
+        # The values below are NOT 585/778 directly -- create_window's own
+        # width/height consistently produce a smaller real GetWindowRect
+        # than requested (confirmed reproducibly: the old 1000x720 default
+        # measured 984x681 in every screenshot this app has ever had taken
+        # of it, a constant (16, 39) shortfall). Compensated for here so
+        # the ACTUAL window really is 585x778, not 569x739.
+        width=601,
+        height=817,
         min_size=MIN_SIZE,
         frameless=True,
         easy_drag=False,  # we move the window ourselves (bridge.drag_tick, wired
