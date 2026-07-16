@@ -93,6 +93,7 @@ function renderCards() {
   for (const p of visible) {
     const card = document.createElement("div");
     card.className = "card" + (checkedIds.has(p.id) ? " selected" : "");
+    card.setAttribute("data-card", p.id);
     const midText = clientFolderLabel(p.executable_path);
     card.innerHTML = `
       <div class="card-top">
@@ -110,7 +111,7 @@ function renderCards() {
         ${p.auto_login_enabled ? badgeHtml("AUTO", true) : ""}
       </div>
       <div class="card-bottom-row">
-        <button class="card-action" disabled>&#9654; Launch</button>
+        <button class="card-action">&#9654; Launch</button>
         <button class="card-edit-btn" data-edit="${p.id}" title="Edit profile">&#9998;</button>
       </div>
     `;
@@ -122,9 +123,103 @@ function renderCards() {
       e.stopPropagation();
       openEditDrawer(p.id);
     };
+    applyCardLaunchVisual(card, p); // Launch/Stop button + dot + status per launchState
     grid.appendChild(card);
   }
 }
+
+// ---------- Individual launch (Phase E) ----------
+// launchState[profileId] = { phase, status, pid, error }. Kept separate from
+// `profiles` so a re-render (team switch, filter, CRUD) preserves a launch in
+// progress, and so live push updates can target one card without a full
+// re-render. Python (bridge.launch_profile) runs the real pipeline on a thread
+// and pushes 'launch_log'/'launch_done' back here via window.shellBridge.on.
+const launchState = {};
+
+function applyCardLaunchVisual(card, p) {
+  const st = launchState[p.id] || { phase: "idle" };
+  const dot = card.querySelector(".card-dot");
+  const sub = card.querySelector(".card-sub");
+  const action = card.querySelector(".card-action");
+  card.classList.remove("state-launching", "state-running", "state-error");
+
+  if (st.phase === "launching") {
+    card.classList.add("state-launching");
+    sub.textContent = st.status || "Launching...";
+    sub.removeAttribute("title");
+    action.innerHTML = "&#8987; " + escapeHtml(st.status || "Launching...");
+    action.disabled = true;
+    action.onclick = null;
+  } else if (st.phase === "running") {
+    card.classList.add("state-running");
+    sub.textContent = "Running · PID " + st.pid;
+    sub.removeAttribute("title");
+    action.textContent = "■ Stop";
+    action.disabled = false;
+    action.onclick = (e) => { e.stopPropagation(); stopProfile(p.id); };
+  } else {
+    // idle or error: button offers Launch either way; error shows why.
+    if (st.phase === "error") {
+      card.classList.add("state-error");
+      sub.textContent = st.error || "Launch failed";
+      sub.title = st.error || "";
+    } else {
+      sub.textContent = clientFolderLabel(p.executable_path);
+      sub.title = p.executable_path || "";
+    }
+    action.innerHTML = "&#9654; Launch";
+    action.disabled = false;
+    action.onclick = (e) => { e.stopPropagation(); launchProfile(p.id); };
+  }
+}
+
+function refreshCard(id) {
+  const card = document.querySelector('[data-card="' + id + '"]');
+  if (!card) return; // not currently on screen (other team / filtered out)
+  const p = profiles.find((x) => x.id === id);
+  if (p) applyCardLaunchVisual(card, p);
+}
+
+async function launchProfile(id) {
+  launchState[id] = { phase: "launching", status: "Launching..." };
+  refreshCard(id);
+  const res = await window.pywebview.api.launch_profile(id);
+  if (!res || !res.ok) {
+    launchState[id] = { phase: "error", error: (res && res.error) || "Could not start launch" };
+    refreshCard(id);
+  }
+  // On success, the launch_log / launch_done pushes drive the rest.
+}
+
+async function stopProfile(id) {
+  const res = await window.pywebview.api.stop_profile(id);
+  if (res && res.ok) {
+    delete launchState[id];
+  } else {
+    launchState[id] = { phase: "error", error: (res && res.error) || "Could not stop the client" };
+  }
+  refreshCard(id);
+}
+
+// Python -> JS push target (bridge.push_event -> window.shellBridge.on).
+window.shellBridge = {
+  on(event, data) {
+    if (!data || !data.profile_id) return;
+    const id = data.profile_id;
+    if (event === "launch_log") {
+      const st = launchState[id];
+      if (st && st.phase === "launching") {
+        st.status = data.status;
+        refreshCard(id);
+      }
+    } else if (event === "launch_done") {
+      launchState[id] = data.success
+        ? { phase: "running", pid: data.pid }
+        : { phase: "error", error: data.error || "Launch failed" };
+      refreshCard(id);
+    }
+  },
+};
 
 function escapeHtml(s) {
   const div = document.createElement("div");

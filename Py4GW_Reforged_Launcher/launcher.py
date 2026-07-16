@@ -861,43 +861,13 @@ def _grid_columns_and_card_width(avail_w: float, min_card_w: float, card_gap: fl
 
 # -----------------------------------------------------------------------------
 # Live status classification: maps gw1_launch's raw log lines to short, honest
-# progress text. This is the actual point of the earlier stall-detection work --
-# specifically surfacing the "window found but hung" signal as "waiting for game
-# update" instead of collapsing every wait state into one generic spinner. Ordered
-# most-specific-substring-first since matching is just "is this substring present".
+# progress text. Moved to launcher_core/launch_progress.py so the pywebview shell
+# (pywebview_shell/bridge.py) shares the exact same mapping from one source; the
+# point of the earlier stall-detection work is preserved -- surfacing "window
+# found but hung" as "waiting for game update" instead of one generic spinner.
 # -----------------------------------------------------------------------------
 
-_PROGRESS_PATTERNS: list[tuple[str, str]] = [
-    ("but reports hung", "Waiting for game update..."),
-    ("recovered from hung state", "Update finished, resuming..."),
-    ("has been hung for", "Game appears frozen..."),
-    ("Hit the absolute ceiling", "Still waiting..."),
-    ("is no longer running", "Handling game update (relaunching)..."),
-    ("no longer exists", "Handling game update (relaunching)..."),
-    ("Scanning for the follow-up process", "Waiting for the game to relaunch..."),
-    ("Found follow-up process", "Game relaunched, resuming..."),
-    ("Timed out waiting for a follow-up process", "Still waiting for the game to relaunch..."),
-    ("Multiclient patch on the follow-up process failed", "Resuming after relaunch..."),
-    ("Multiclient patch - patched", "Applying compatibility patch..."),
-    ("Launching (suspended)", "Launching..."),
-    ("Process resumed", "Starting..."),
-    ("Waiting for a window or process exit", "Waiting for the game window..."),
-    ("Waiting for GW window", "Waiting for the game window..."),
-    (", responsive", "Game window ready..."),
-    ("window(s) for PID", "Game window ready..."),
-    ("Window found; waiting", "Preparing to inject Py4GW..."),
-    ("Timed out waiting for a window", "Still waiting for the game window..."),
-    ("starting injection of", "Injecting Py4GW..."),
-    ("injection thread exit code", "Verifying injection..."),
-    ("injection reported success", "Injected!"),
-]
-
-
-def classify_progress_message(raw_message: str) -> str:
-    for needle, friendly in _PROGRESS_PATTERNS:
-        if needle in raw_message:
-            return friendly
-    return "Working..."
+from launcher_core.launch_progress import classify_progress_message  # noqa: E402
 
 
 # -----------------------------------------------------------------------------

@@ -14,12 +14,16 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import threading
 import weakref
 from typing import Any, Optional
 
 import webview
 
 from launcher_core import crypto, profile_store
+from launcher_core.gw1_launch import launch_py4gw_profile
+from launcher_core.launch_progress import classify_progress_message
+from launcher_core.process_control import terminate_process
 from launcher_core.profile import GameProfile
 from launcher_core.team import Team
 from pywebview_shell import snap
@@ -85,6 +89,14 @@ class ShellBridge:
         self._snap_rect: Optional[tuple[int, int, int, int]] = None
         self._preview = None  # shared SnapPreview overlay, set by the app
         self._min_size_logical: tuple[int, int] = (0, 0)  # set via set_min_size
+        # Phase E individual launch. profile_id -> pid of the running client,
+        # populated on a successful launch and consumed by stop_profile. Guarded
+        # because it's written from the launch background thread and read from
+        # the (JS-called) UI thread. profile_id -> True while a launch thread is
+        # in flight, to reject a double-launch of the same profile.
+        self._launch_lock = threading.Lock()
+        self._running_pids: dict[str, int] = {}
+        self._in_flight: set[str] = set()
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -246,6 +258,78 @@ class ShellBridge:
             "profiles": profile_dicts,
             "teams": [t.to_dict() for t in teams],
         }
+
+    # ---- Phase E: individual (single-profile) launch ----
+
+    def launch_profile(self, profile_id: str) -> dict:
+        """Launch one profile through the real GW1 pipeline
+        (launcher_core.gw1_launch.launch_py4gw_profile) on a background thread --
+        it blocks for the whole launch (seconds to, rarely, minutes). Progress
+        is pushed to that profile's card via push_event('launch_log') and the
+        final outcome via push_event('launch_done'); this call returns
+        immediately. Team/bulk launch is a separate, later phase, not here.
+
+        The whole GameProfile is handed to the pipeline, so every per-profile
+        toggle (py4gw_enabled/gmod_enabled/auto_login_enabled/windowed_mode_
+        enabled/...) already flows through with no extra wiring. The App Settings
+        global master switches (multiclient/py4gw/gmod injection) aren't wired in
+        the shell yet, so the pipeline's own defaults (all enabled) apply -- same
+        as launcher.py before those switches existed.
+        """
+        profile = self._find_profile(profile_id)
+        if profile is None:
+            return {"ok": False, "error": "Profile not found"}
+        with self._launch_lock:
+            if profile_id in self._in_flight or profile_id in self._running_pids:
+                return {"ok": False, "error": "Already launching or running"}
+            self._in_flight.add(profile_id)
+        threading.Thread(target=self._run_launch, args=(profile,), daemon=True).start()
+        return {"ok": True}
+
+    def _find_profile(self, profile_id: str) -> Optional[GameProfile]:
+        # Load fresh from disk so a launch always uses current data AND can see
+        # password_protected (which list_profiles strips) for auto-login.
+        for p in profile_store.load_profiles():
+            if p.id == profile_id:
+                return p
+        return None
+
+    def _run_launch(self, profile: GameProfile) -> None:
+        def on_log(message: str) -> None:
+            self.push_event(
+                "launch_log",
+                {"profile_id": profile.id, "status": classify_progress_message(message)},
+            )
+
+        try:
+            result = launch_py4gw_profile(profile, on_log=on_log)
+            success, pid, error = bool(result.success), result.pid, result.error
+        except Exception as exc:  # a crashed launch thread must not vanish silently
+            success, pid, error = False, None, f"Launch crashed: {exc}"
+
+        with self._launch_lock:
+            self._in_flight.discard(profile.id)
+            if success and pid is not None:
+                self._running_pids[profile.id] = pid
+        self.push_event(
+            "launch_done",
+            {"profile_id": profile.id, "success": success, "pid": pid, "error": error},
+        )
+
+    def stop_profile(self, profile_id: str) -> dict:
+        """Terminate the running client tracked for this profile (Phase E Stop).
+        This kills an already-running, injected client -- it does NOT cancel an
+        in-progress launch (a different, later concern; Stop only appears once
+        the card is 'running')."""
+        with self._launch_lock:
+            pid = self._running_pids.get(profile_id)
+        if pid is None:
+            return {"ok": False, "error": "No running client tracked for this profile"}
+        killed = terminate_process(pid)
+        if killed:
+            with self._launch_lock:
+                self._running_pids.pop(profile_id, None)
+        return {"ok": killed, "pid": pid}
 
     def save_profile(self, data: dict) -> dict:
         """Add or update a profile (RELAY 011) -- `data["id"]` matching an

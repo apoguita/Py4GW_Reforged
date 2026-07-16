@@ -399,14 +399,45 @@ select {
   color: var(--accent, #7c8cff);
 }
 .card-action {
+  flex: 1;
   border: none;
   border-radius: var(--radius-sm, 9px);
   font-weight: 700;
-  cursor: default;
+  cursor: pointer;
   padding: 7px;
   font-size: 11.5px;
   background: var(--accent-soft, rgba(124, 140, 255, 0.16));
   color: var(--accent, #7c8cff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-action:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+/* Launch -> Stop toggle + status dot per launch phase (Phase E). */
+.card.state-launching .card-dot {
+  background: var(--warn, #ffd166);
+  animation: card-dot-pulse 1s ease-in-out infinite;
+}
+.card.state-running .card-dot {
+  background: var(--good, #5ce0b0);
+}
+.card.state-error .card-dot {
+  background: var(--bad, #ff6b8a);
+}
+.card.state-running .card-action {
+  background: var(--bad-soft, rgba(255, 107, 138, 0.16));
+  color: var(--bad, #ff6b8a);
+}
+.card.state-error .card-sub {
+  color: var(--bad, #ff6b8a);
+  white-space: normal;
+}
+@keyframes card-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 #no-results,
 #no-profiles {
