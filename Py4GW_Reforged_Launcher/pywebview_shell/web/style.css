@@ -42,68 +42,8 @@ select {
   background: transparent;
 }
 
-/* ---------- Resize hit-zones (carried over from Phase A / RELAY 009) ---------- */
-
-.resize-zone {
-  position: fixed;
-  z-index: 1000;
-}
-#rz-top {
-  top: 0;
-  left: 6px;
-  right: 6px;
-  height: 6px;
-  cursor: n-resize;
-}
-#rz-bottom {
-  bottom: 0;
-  left: 6px;
-  right: 6px;
-  height: 6px;
-  cursor: s-resize;
-}
-#rz-left {
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 6px;
-  cursor: w-resize;
-}
-#rz-right {
-  right: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 6px;
-  cursor: e-resize;
-}
-#rz-topleft,
-#rz-topright,
-#rz-bottomleft,
-#rz-bottomright {
-  width: 6px;
-  height: 6px;
-  z-index: 1001;
-}
-#rz-topleft {
-  top: 0;
-  left: 0;
-  cursor: nw-resize;
-}
-#rz-topright {
-  top: 0;
-  right: 0;
-  cursor: ne-resize;
-}
-#rz-bottomleft {
-  bottom: 0;
-  left: 0;
-  cursor: sw-resize;
-}
-#rz-bottomright {
-  bottom: 0;
-  right: 0;
-  cursor: se-resize;
-}
+/* Resize hit-zones removed -- Windows' native WS_THICKFRAME border in the
+   non-client margin handles resizing. See index.html / bridge.py. */
 
 /* ---------- Custom title bar ---------- */
 

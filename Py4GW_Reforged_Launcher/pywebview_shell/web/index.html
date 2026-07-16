@@ -7,18 +7,16 @@
 </head>
 <body>
 
-<!-- Edge/corner resize hit-zones -- carried over from Phase A (RELAY 009).
-     Frameless window has no native WS_THICKFRAME border for a human to grab,
-     so these thin strips stand in for one. mousedown hands off to Windows'
-     own native sizing loop via the bridge (window_shell.start_native_resize). -->
-<div id="rz-top" class="resize-zone" onmousedown="startResize('top')"></div>
-<div id="rz-bottom" class="resize-zone" onmousedown="startResize('bottom')"></div>
-<div id="rz-left" class="resize-zone" onmousedown="startResize('left')"></div>
-<div id="rz-right" class="resize-zone" onmousedown="startResize('right')"></div>
-<div id="rz-topleft" class="resize-zone" onmousedown="startResize('topleft')"></div>
-<div id="rz-topright" class="resize-zone" onmousedown="startResize('topright')"></div>
-<div id="rz-bottomleft" class="resize-zone" onmousedown="startResize('bottomleft')"></div>
-<div id="rz-bottomright" class="resize-zone" onmousedown="startResize('bottomright')"></div>
+<!-- No JS resize hit-zones. The window has WS_THICKFRAME
+     (window_shell.ensure_native_resize_style), so Windows' own native resize
+     border in the non-client margin handles all edge/corner resizing directly,
+     the same as any normal window. The old .resize-zone divs (RELAY 009) lived
+     INSIDE WebView2's client area, which holds mouse capture, so their
+     ReleaseCapture/WM_NCLBUTTONDOWN handoff never reliably took for a real
+     mouse -- they only showed a false CSS resize cursor over content that then
+     moved (easy_drag) instead of resizing. See dev_notes/
+     AERO_SNAP_INVESTIGATION.md ("resize dead-zone") for the measured NCHITTEST
+     map behind this. -->
 
 <div id="titlebar">
   <span class="title">Py4GW Reforged Launcher</span>

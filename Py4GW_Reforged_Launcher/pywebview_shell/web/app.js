@@ -391,10 +391,8 @@ async function onRemoveTeamClick() {
 }
 
 // ---------- Window controls (carried over from Phase A) ----------
-
-function startResize(edge) {
-  window.pywebview.api.start_resize(edge);
-}
+// Resize is handled entirely by Windows' native WS_THICKFRAME border (no JS
+// resize zones -- see index.html). Only the title-bar drag + snap is wired here.
 
 // Hand-rolled Aero Snap (dev_notes/AERO_SNAP_INVESTIGATION.md). easy_drag still
 // does the actual moving; we only tell Python when a title-bar drag starts (so
