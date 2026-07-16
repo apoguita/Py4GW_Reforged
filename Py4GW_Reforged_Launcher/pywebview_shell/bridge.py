@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 import webview
 
+from launcher_core import profile_store
 from pywebview_shell import snap
 from pywebview_shell.window_shell import start_native_resize
 
@@ -176,6 +177,29 @@ class ShellBridge:
         window = self._window()
         if window is not None:
             window.destroy()
+
+    def list_profiles(self) -> dict:
+        """Real, read-only data path (RELAY 010) -- loads whatever's actually on
+        disk via launcher_core.profile_store, same module the imgui app itself
+        uses. No caching: called once per page load, cheap enough (small local
+        JSON files) that staleness isn't worth the complexity yet.
+
+        `password_protected` is stripped before returning -- it's always a
+        DPAPI-encrypted blob, never plaintext (see launcher_core/profile.py),
+        but the render layer has no legitimate reason to see even that, and
+        Add/Edit isn't wired this phase so nothing needs it round-tripped back.
+        """
+        profiles = profile_store.load_profiles()
+        teams = profile_store.load_teams()
+        profile_dicts = []
+        for p in profiles:
+            d = p.to_dict()
+            d.pop("password_protected", None)
+            profile_dicts.append(d)
+        return {
+            "profiles": profile_dicts,
+            "teams": [t.to_dict() for t in teams],
+        }
 
     def ping(self, payload: Any = None) -> dict:
         """Minimal JS->Python round trip: JS calls this, Python returns a
