@@ -147,6 +147,22 @@
   </div>
 </div>
 
+<!-- Themed prompt/confirm modal -- replaces native prompt()/confirm() dialogs
+     (New Team, Remove from Team, Remove Team, Delete). RELAY 016. Opened via
+     app.js's openConfirmModal(); can appear on top of #drawer (Delete lives
+     in the edit drawer's footer), so it's a separate layer, not part of it. -->
+<div id="confirm-scrim"></div>
+<div id="confirm-modal">
+  <span class="title" id="confirm-title"></span>
+  <p id="confirm-message"></p>
+  <input class="field-input" id="confirm-input" placeholder="">
+  <div id="confirm-footer">
+    <div style="flex:1"></div>
+    <button class="ghost-btn" id="confirm-cancel-btn">Cancel</button>
+    <button class="primary-btn" id="confirm-btn">Confirm</button>
+  </div>
+</div>
+
 <script src="theme.js"></script>
 <script src="app.js"></script>
 </body>
