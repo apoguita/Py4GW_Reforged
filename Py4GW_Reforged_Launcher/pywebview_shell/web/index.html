@@ -204,7 +204,10 @@
         <div>
           <h4 style="margin-bottom:8px">Client</h4>
           <label class="field-label">Gw.exe path</label>
-          <input class="field-input" id="edit-path" placeholder="C:\Games\Guild Wars\Gw.exe">
+          <div class="path-browse-row">
+            <input class="field-input" id="edit-path" placeholder="C:\Games\Guild Wars\Gw.exe">
+            <button class="ghost-btn" onclick="onBrowsePathClick('edit-path','Guild Wars executable','*.exe')">Browse…</button>
+          </div>
           <label class="field-label">Extra launch args</label>
           <input class="field-input" id="edit-args" placeholder="-optional -flags">
         </div>
