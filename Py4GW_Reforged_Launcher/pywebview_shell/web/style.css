@@ -188,6 +188,12 @@ select {
   background: var(--border, #2a2f55);
   flex-shrink: 0;
 }
+#rail-teams {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
 .rail-all {
   width: 46px;
   height: 38px;
@@ -555,6 +561,7 @@ body.drawer-open #drawer {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 6px 0;
 }
 .pal-row span {
   flex: 1;
@@ -574,6 +581,42 @@ body.drawer-open #drawer {
 .pal-row input[type="range"] {
   width: 120px;
   accent-color: var(--accent, #7c8cff);
+}
+/* Toggle pill (ported from the approved mockup's swCss/knobCss pattern) --
+   real checkbox underneath (app.js reads/writes .checked unchanged), just
+   restyled as a track+knob instead of a native browser checkbox. */
+.pal-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 42px;
+  height: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--border, #2a2f55);
+  background: var(--panel2, #1f2340);
+  position: relative;
+  cursor: pointer;
+  transition: 0.15s;
+  flex-shrink: 0;
+  margin: 0;
+}
+.pal-row input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--muted, #9a9ecb);
+  transition: 0.15s;
+}
+.pal-row input[type="checkbox"]:checked {
+  background: var(--accent, #7c8cff);
+  border-color: var(--accent, #7c8cff);
+}
+.pal-row input[type="checkbox"]:checked::before {
+  left: 22px;
+  background: var(--accent-ink, #0a0c22);
 }
 .pal-row select {
   background: var(--panel2, #1f2340);

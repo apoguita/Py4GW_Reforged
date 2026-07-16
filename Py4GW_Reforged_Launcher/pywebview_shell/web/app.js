@@ -62,6 +62,18 @@ function badgeHtml(label, on) {
   return `<span class="badge${on ? " on" : ""}" title="${label} — ${on ? "on" : "off"} for this profile">${label}</span>`;
 }
 
+// Cards are too narrow for a real Gw.exe path -- CSS ellipsis just chops it
+// mid-string ("C:\Games\Guild Wars 1\Client_..."), which reads as broken, not
+// truncated. The folder immediately containing Gw.exe is what actually tells
+// two profiles apart (e.g. "Client 02"), so show that short label instead and
+// keep the full path as a hover tooltip.
+function clientFolderLabel(execPath) {
+  if (!execPath) return "no client path set";
+  const parts = execPath.split(/[\\/]/).filter(Boolean);
+  if (parts.length < 2) return execPath;
+  return parts[parts.length - 2];
+}
+
 function renderCards() {
   const members = membersOfActiveTeam();
   const q = filterText.toLowerCase().trim();
@@ -81,14 +93,14 @@ function renderCards() {
   for (const p of visible) {
     const card = document.createElement("div");
     card.className = "card" + (checkedIds.has(p.id) ? " selected" : "");
-    const midText = p.executable_path ? p.executable_path : "no client path set";
+    const midText = clientFolderLabel(p.executable_path);
     card.innerHTML = `
       <div class="card-top">
         <div class="card-check${checkedIds.has(p.id) ? " checked" : ""}" data-check="${p.id}">${checkedIds.has(p.id) ? "&#10003;" : ""}</div>
         <div class="card-avatar" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
         <div class="card-name-block">
           <div class="card-name">${escapeHtml(p.name || "(unnamed)")}</div>
-          <div class="card-sub">${escapeHtml(midText)}</div>
+          <div class="card-sub" title="${escapeHtml(p.executable_path || "")}">${escapeHtml(midText)}</div>
         </div>
         <span class="card-dot"></span>
       </div>
