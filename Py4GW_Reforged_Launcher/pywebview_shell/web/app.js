@@ -471,20 +471,34 @@ async function onRemoveTeamClick() {
 // patch on the old startResize(): with the resize-zone divs gone there's no
 // zone-click left to race pywebview's move-tracking, so that fix is moot here.
 
-// Hand-rolled Aero Snap (dev_notes/AERO_SNAP_INVESTIGATION.md). easy_drag still
-// does the actual moving; we only tell Python when a title-bar drag starts (so
-// it can show the snap preview / restore a snapped window) and when it ends (so
-// it can snap into whatever zone the cursor was released over). Python reads the
-// real cursor itself, so no coordinates need to cross the bridge.
-document.getElementById("titlebar").addEventListener("mousedown", (e) => {
-  if (e.button !== 0) return; // left button only
-  if (e.target.closest("button")) return; // let the window-control buttons through
-  window.pywebview.api.on_drag_start();
-});
-
-window.addEventListener("mouseup", () => {
-  window.pywebview.api.on_drag_end();
-});
+// Title-bar drag + hand-rolled Aero Snap (dev_notes/AERO_SNAP_INVESTIGATION.md).
+// We move the window ourselves (easy_drag=False) so only the title bar drags it
+// and there's no WS_THICKFRAME-border jump -- see bridge.on_drag_start/drag_tick.
+// on_drag_start latches the cursor offset; each mousemove asks Python to move
+// the window to follow (Python reads the real cursor, so no coords cross the
+// bridge); mouseup runs the snap. Listeners are added on mousedown and removed
+// on mouseup so a plain click elsewhere never moves the window.
+(function () {
+  let dragging = false;
+  function onMove() {
+    if (dragging) window.pywebview.api.drag_tick();
+  }
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    window.pywebview.api.on_drag_end();
+  }
+  document.getElementById("titlebar").addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return; // left button only
+    if (e.target.closest("button")) return; // let the window-control buttons through
+    dragging = true;
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    window.pywebview.api.on_drag_start();
+  });
+})();
 
 document.addEventListener("keydown", (e) => {
   // confirm-open is deliberately excluded here -- the confirm modal can open

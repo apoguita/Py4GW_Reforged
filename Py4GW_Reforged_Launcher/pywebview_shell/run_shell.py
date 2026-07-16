@@ -66,8 +66,10 @@ def main() -> None:
         height=720,
         min_size=MIN_SIZE,
         frameless=True,
-        easy_drag=True,  # dragging stays on pywebview's own mechanism
-                         # (proven working, RELAY 006/008/009)
+        easy_drag=False,  # we move the window ourselves (bridge.drag_tick, wired
+                          # from the title bar in web/app.js). easy_drag armed on
+                          # a mousedown ANYWHERE and jumped the window by the
+                          # WS_THICKFRAME border -- see bridge.on_drag_start.
     )
     bridge.bind_window(window)
 

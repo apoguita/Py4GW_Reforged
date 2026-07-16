@@ -67,11 +67,19 @@ class ShellBridge:
         self._window_ref: Optional[weakref.ReferenceType] = None
         self._hwnd: Optional[int] = None
         self._maximized = False
-        # Hand-rolled Aero Snap state (see snap.py / preview.py; RELAY 009
-        # follow-up). easy_drag does the actual movement; we observe the drag
-        # to reproduce the snapped *result*, since a frameless window can't use
-        # Windows' native snap-aware move loop without WS_CAPTION.
+        # Title-bar drag + hand-rolled Aero Snap state (snap.py / preview.py).
+        # We own the window MOVE ourselves now (drag_tick), not pywebview's
+        # easy_drag -- easy_drag arms on a mousedown ANYWHERE in the window (so
+        # clicking a button could nudge it) and its move math assumes the
+        # content starts at the window's top-left, which is off by the
+        # WS_THICKFRAME border we added for native resize (~15px), jumping the
+        # window right+down on the first move. Doing it here (title-bar only,
+        # offset from the raw window rect) fixes both. A frameless window still
+        # can't use Windows' native snap-aware move loop (needs WS_CAPTION), so
+        # snap stays hand-rolled: we watch the drag and reproduce the result.
         self._drag_start_pos: Optional[tuple[int, int]] = None
+        self._dragging = False
+        self._drag_offset: tuple[int, int] = (0, 0)  # cursor - raw window top-left
         self._snapped = False
         self._pre_snap_size: Optional[tuple[int, int]] = None
         self._snap_rect: Optional[tuple[int, int, int, int]] = None
@@ -125,9 +133,9 @@ class ShellBridge:
 
     def on_drag_start(self) -> bool:
         """A title-bar mousedown. Record the cursor so on_drag_end can tell a
-        drag from a click, start the preview, and -- if this window is snapped
-        -- restore its pre-snap SIZE so the user drags a normal window again
-        (easy_drag then repositions it, so we only fix size here).
+        drag from a click, start the preview, restore a snapped window's
+        pre-snap size, then latch the cursor->window offset so drag_tick can
+        move the window under the cursor with no jump.
         """
         self._drag_start_pos = snap.get_cursor_pos()
         if self._preview is not None:
@@ -147,6 +155,25 @@ class ShellBridge:
             self._snapped = False
             self._pre_snap_size = None
             self._snap_rect = None
+        # Latch the offset from the (possibly just-restored) window's RAW
+        # top-left. Using the raw rect for both this and the SetWindowPos in
+        # drag_tick is what keeps the window exactly under the cursor -- the
+        # WS_THICKFRAME border cancels out instead of jumping the window.
+        if self._hwnd is not None:
+            wx, wy, _, _ = snap.get_window_rect(self._hwnd)
+            cx, cy = self._drag_start_pos
+            self._drag_offset = (cx - wx, cy - wy)
+            self._dragging = True
+        return True
+
+    def drag_tick(self) -> bool:
+        """Called from JS on each mousemove during a title-bar drag. Move the
+        window so the cursor stays at the same offset from its raw top-left."""
+        if not self._dragging or self._hwnd is None:
+            return False
+        cx, cy = snap.get_cursor_pos()
+        ox, oy = self._drag_offset
+        snap.move_window(self._hwnd, cx - ox, cy - oy)
         return True
 
     def on_drag_end(self) -> bool:
@@ -156,6 +183,7 @@ class ShellBridge:
         """
         start = self._drag_start_pos
         self._drag_start_pos = None
+        self._dragging = False
         if self._preview is not None:
             self._preview.end_drag()
         if start is None or self._hwnd is None:

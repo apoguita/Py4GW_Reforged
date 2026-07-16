@@ -207,6 +207,7 @@ def zone_rect(
 # ---------------------------------------------------------------------------
 
 _MONITOR_DEFAULTTONEAREST = 2
+SWP_NOSIZE = 0x0001
 SWP_NOZORDER = 0x0004
 SWP_NOACTIVATE = 0x0010
 _DWMWA_EXTENDED_FRAME_BOUNDS = 9
@@ -306,3 +307,11 @@ def get_window_rect(hwnd: int) -> tuple[int, int, int, int]:
     r = wt.RECT()
     ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(r))
     return r.left, r.top, r.right - r.left, r.bottom - r.top
+
+
+def move_window(hwnd: int, x: int, y: int) -> None:
+    """Move the window's top-left to (x, y) in physical px, keeping its size
+    (SWP_NOSIZE). Used by the title-bar drag (bridge.drag_tick)."""
+    ctypes.windll.user32.SetWindowPos(
+        hwnd, 0, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+    )
