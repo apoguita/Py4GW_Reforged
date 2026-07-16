@@ -39,6 +39,11 @@ from pywebview_shell.window_shell import ensure_dpi_awareness, ensure_native_res
 
 WEB_DIR = Path(__file__).parent / "web"
 RESIZE_MARGIN = 6
+# LOGICAL px (pywebview's own unit for create_window's min_size). Single
+# source of truth -- also handed to the bridge (set_min_size) so the
+# hand-rolled Snap's quarter targets can clamp against it in physical px at
+# whatever the actual DPI scale turns out to be (RELAY 012).
+MIN_SIZE = (560, 400)
 
 
 def main() -> None:
@@ -51,13 +56,14 @@ def main() -> None:
 
     bridge = ShellBridge("main")
     bridge.set_preview(preview)
+    bridge.set_min_size(*MIN_SIZE)
     window = webview.create_window(
         "Py4GW Reforged Launcher",
         url=str(WEB_DIR / "index.html"),
         js_api=bridge,
         width=1000,
         height=720,
-        min_size=(560, 400),
+        min_size=MIN_SIZE,
         frameless=True,
         easy_drag=True,  # dragging stays on pywebview's own mechanism
                          # (proven working, RELAY 006/008/009)

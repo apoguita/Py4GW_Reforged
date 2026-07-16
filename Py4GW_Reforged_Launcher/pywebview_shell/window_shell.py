@@ -120,6 +120,19 @@ def start_native_resize(hwnd: int, edge: str) -> bool:
     return True
 
 
+def get_dpi_scale(hwnd: int) -> float:
+    """Return this window's current per-monitor DPI scale (1.0 == 100%,
+    2.5 == 250%), via `GetDpiForWindow` (Windows 10 1607+, matches this
+    app's baseline -- same API family as `SetProcessDpiAwarenessContext`
+    above). Used by the hand-rolled Aero Snap fix (RELAY 012) to convert
+    `create_window`'s `min_size` -- which pywebview treats as LOGICAL px --
+    into physical px for comparison against monitor work-area rects, which
+    are always physical.
+    """
+    dpi = ctypes.windll.user32.GetDpiForWindow(hwnd)
+    return dpi / 96.0
+
+
 def wait_for_native_hwnd(window: webview.Window, retries: int = 10, delay: float = 0.3) -> Optional[int]:
     """Poll this specific window's own `.native` property until it's ready.
 

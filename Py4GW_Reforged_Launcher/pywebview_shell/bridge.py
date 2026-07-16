@@ -23,7 +23,7 @@ from launcher_core import crypto, profile_store
 from launcher_core.profile import GameProfile
 from launcher_core.team import Team
 from pywebview_shell import snap
-from pywebview_shell.window_shell import start_native_resize
+from pywebview_shell.window_shell import get_dpi_scale, start_native_resize
 
 
 def _rects_close(a, b, tol: int = 4) -> bool:
@@ -76,6 +76,7 @@ class ShellBridge:
         self._pre_snap_size: Optional[tuple[int, int]] = None
         self._snap_rect: Optional[tuple[int, int, int, int]] = None
         self._preview = None  # shared SnapPreview overlay, set by the app
+        self._min_size_logical: tuple[int, int] = (0, 0)  # set via set_min_size
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -89,6 +90,16 @@ class ShellBridge:
         a private name for consistency with the window back-reference.
         """
         self._hwnd = hwnd
+
+    def set_min_size(self, width: int, height: int) -> None:
+        """Called once from Python (run_shell.py), not JS -- the window's own
+        `create_window(min_size=...)` value, in LOGICAL px (pywebview's unit
+        for that parameter). Plain ints, safe to store directly (same
+        reasoning as `bind_hwnd`). Used by `on_drag_end` to keep the
+        hand-rolled Snap's quarter targets from overshooting the work area
+        at high DPI (RELAY 012) -- see `snap._clamp_into_work_area`.
+        """
+        self._min_size_logical = (width, height)
 
     def start_resize(self, edge: str) -> bool:
         """JS mousedown on one of the frameless window's edge/corner
@@ -153,7 +164,10 @@ class ShellBridge:
         if abs(end[0] - start[0]) + abs(end[1] - start[1]) < 6:
             return False  # a click, not a drag
         pre = snap.get_window_rect(self._hwnd) if not self._snapped else None
-        applied = snap.apply_snap(self._hwnd)
+        scale = get_dpi_scale(self._hwnd)
+        min_w = round(self._min_size_logical[0] * scale)
+        min_h = round(self._min_size_logical[1] * scale)
+        applied = snap.apply_snap(self._hwnd, min_w=min_w, min_h=min_h)
         if applied is not None:
             if pre is not None:
                 self._pre_snap_size = (pre[2], pre[3])

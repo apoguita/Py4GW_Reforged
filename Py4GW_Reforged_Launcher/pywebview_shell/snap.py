@@ -97,15 +97,79 @@ def classify_zone(
     return None
 
 
+def _clamp_into_work_area(
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    work_left: int,
+    work_top: int,
+    work_right: int,
+    work_bottom: int,
+    min_w: int,
+    min_h: int,
+) -> tuple[int, int, int, int]:
+    """Grow (w, h) up to (min_w, min_h) if either is smaller, then shift the
+    rect so it never overshoots the work area (RELAY 012).
+
+    Generalized, not bottom/right-specific: a quarter's target size can fall
+    below the window's own declared minimum at high DPI (a quarter of a
+    2880x1800 work area is 1440x900 physical, below a 560x400-logical/
+    250%-scale 1400x1000-physical minimum) -- WinForms then clamps the
+    applied size UP to the minimum regardless, and a bottom- or right-
+    anchored quarter (whose position was computed assuming the smaller,
+    un-clamped size) overshoots past the work area into the taskbar or off
+    the far edge. Confirmed via live measurement on real hardware
+    (dev_notes/AERO_SNAP_INVESTIGATION.md's "OPEN BUG" section) -- this
+    isn't speculative.
+
+    Fix shape: after growing, if the rect's far edge now exceeds the work
+    area, pull the NEAR edge back so the far edge lands exactly on the work
+    area boundary instead -- e.g. a bottom-anchored quarter grows upward
+    (the visible symptom's fix), a right-anchored quarter grows leftward.
+    Top/left-anchored zones (already anchored at work_top/work_left) only
+    need this in the degenerate case where the minimum exceeds the entire
+    work area dimension -- ordinary growth there just extends toward the
+    opposite edge, which is always safe (at most it overlaps the adjacent
+    quarter, an accepted visual trade-off, not a broken one). Applying the
+    same logic unconditionally to every zone (rather than special-casing
+    "bottom") means top-anchored zones get identical correctness even though
+    their current symptom is invisible, per this entry's own instruction.
+
+    A no-op whenever the zone's natural size already meets the minimum
+    (the common, non-DPI-constrained case) -- both `if` bodies below are
+    skipped entirely, so this never touches a rect that wasn't going to be
+    clamped anyway.
+    """
+    if w < min_w:
+        w = min_w
+        if x + w > work_right:
+            x = work_right - w
+        x = max(x, work_left)
+    if h < min_h:
+        h = min_h
+        if y + h > work_bottom:
+            y = work_bottom - h
+        y = max(y, work_top)
+    return (x, y, w, h)
+
+
 def zone_rect(
     zone: Zone,
     work_left: int,
     work_top: int,
     work_right: int,
     work_bottom: int,
+    min_w: int = 0,
+    min_h: int = 0,
 ) -> tuple[int, int, int, int]:
     """Target (x, y, w, h) in physical pixels for a Zone, within the *work
     area* (so half/quarter/maximized all respect the taskbar).
+
+    `min_w`/`min_h` (physical pixels, default 0 -- meaning "no minimum,"
+    preserving old behavior for any caller that doesn't pass them) are the
+    window's own declared minimum size -- see `_clamp_into_work_area` for
+    why a quarter can legitimately need this at high DPI.
     """
     ww = work_right - work_left
     hh = work_bottom - work_top
@@ -119,20 +183,23 @@ def zone_rect(
     mid_y = work_top + half_h
 
     if zone is Zone.LEFT:
-        return (left, top, half_w, hh)
-    if zone is Zone.RIGHT:
-        return (mid_x, top, right_w, hh)
-    if zone is Zone.MAX:
-        return (left, top, ww, hh)
-    if zone is Zone.TOP_LEFT:
-        return (left, top, half_w, half_h)
-    if zone is Zone.TOP_RIGHT:
-        return (mid_x, top, right_w, half_h)
-    if zone is Zone.BOTTOM_LEFT:
-        return (left, mid_y, half_w, bottom_h)
-    if zone is Zone.BOTTOM_RIGHT:
-        return (mid_x, mid_y, right_w, bottom_h)
-    raise ValueError(zone)
+        rect = (left, top, half_w, hh)
+    elif zone is Zone.RIGHT:
+        rect = (mid_x, top, right_w, hh)
+    elif zone is Zone.MAX:
+        rect = (left, top, ww, hh)
+    elif zone is Zone.TOP_LEFT:
+        rect = (left, top, half_w, half_h)
+    elif zone is Zone.TOP_RIGHT:
+        rect = (mid_x, top, right_w, half_h)
+    elif zone is Zone.BOTTOM_LEFT:
+        rect = (left, mid_y, half_w, bottom_h)
+    elif zone is Zone.BOTTOM_RIGHT:
+        rect = (mid_x, mid_y, right_w, bottom_h)
+    else:
+        raise ValueError(zone)
+
+    return _clamp_into_work_area(*rect, work_left, work_top, work_right, work_bottom, min_w, min_h)
 
 
 # ---------------------------------------------------------------------------
@@ -179,14 +246,18 @@ def zone_at_cursor() -> tuple[Optional[Zone], tuple[int, int, int, int]]:
     return classify_zone(cx, cy, *mon), work
 
 
-def apply_snap(hwnd: int) -> Optional[tuple[int, int, int, int]]:
+def apply_snap(hwnd: int, min_w: int = 0, min_h: int = 0) -> Optional[tuple[int, int, int, int]]:
     """If the cursor is over a snap zone, move/resize the window to it via
     SetWindowPos and return the applied (x, y, w, h). Otherwise return None.
+
+    `min_w`/`min_h` (physical pixels) are the window's own declared minimum
+    size -- see `_clamp_into_work_area` (RELAY 012). Defaults to 0 (no
+    minimum enforced) so any other caller keeps its old behavior.
     """
     zone, work = zone_at_cursor()
     if zone is None:
         return None
-    x, y, w, h = zone_rect(zone, *work)
+    x, y, w, h = zone_rect(zone, *work, min_w=min_w, min_h=min_h)
     ctypes.windll.user32.SetWindowPos(
         hwnd, 0, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE
     )
