@@ -282,6 +282,36 @@ class ShellBridge:
             "teams": [t.to_dict() for t in teams],
         }
 
+    # ---- App Settings (RELAY 029) -- the settings_store-backed controls ----
+    # this phase wires UI onto. "Reload profiles/teams from disk" needs no
+    # bridge method of its own -- list_profiles() above already reads fresh
+    # from disk every call, so the JS side just calls loadData() again.
+
+    def get_app_settings(self) -> dict:
+        return {
+            "multiclient_enabled": settings_store.load_multiclient_enabled(),
+            "py4gw_injection_enabled": settings_store.load_py4gw_injection_enabled(),
+            "gmod_injection_enabled": settings_store.load_gmod_injection_enabled(),
+            "bulk_launch_pacing_seconds": settings_store.load_bulk_launch_pacing_seconds(),
+        }
+
+    def save_multiclient_enabled(self, enabled: bool) -> None:
+        settings_store.save_multiclient_enabled(bool(enabled))
+
+    def save_py4gw_injection_enabled(self, enabled: bool) -> None:
+        settings_store.save_py4gw_injection_enabled(bool(enabled))
+
+    def save_gmod_injection_enabled(self, enabled: bool) -> None:
+        settings_store.save_gmod_injection_enabled(bool(enabled))
+
+    def save_bulk_launch_pacing_seconds(self, seconds: int) -> None:
+        # No clamp here -- bulk_launch.clamp_pacing_seconds() already
+        # enforces the real [MIN_PACING_SECONDS, MAX_PACING_SECONDS] floor/
+        # ceiling at use time (_run_bulk_launch), regardless of whatever
+        # raw value this stores. Duplicating the clamp here would just be a
+        # second copy of the same rule to keep in sync.
+        settings_store.save_bulk_launch_pacing_seconds(int(seconds))
+
     # ---- Live console (RELAY 021) -- shared by both launch paths below ----
 
     def get_console_lines(self) -> list:
@@ -394,7 +424,20 @@ class ShellBridge:
             self._append_console_line(profile.name or "(unnamed profile)", message)
 
         try:
-            result = launch_py4gw_profile(profile, on_log=on_log)
+            # RELAY 029: these three are the App Settings global master
+            # switches -- confirmed as the ONLY launch_py4gw_profile call
+            # site in pywebview_shell/ (grep), so this is the single place
+            # that needs to read them. Before this fix, the launch pipeline
+            # silently used the function's own hardcoded True defaults,
+            # completely ignoring whatever settings_store had saved -- the
+            # App Settings toggles would have looked real but done nothing.
+            result = launch_py4gw_profile(
+                profile,
+                multiclient_enabled=settings_store.load_multiclient_enabled(),
+                py4gw_injection_enabled=settings_store.load_py4gw_injection_enabled(),
+                gmod_injection_enabled=settings_store.load_gmod_injection_enabled(),
+                on_log=on_log,
+            )
             success, pid, error = bool(result.success), result.pid, result.error
         except Exception as exc:  # a crashed launch thread must not vanish silently
             success, pid, error = False, None, f"Launch crashed: {exc}"

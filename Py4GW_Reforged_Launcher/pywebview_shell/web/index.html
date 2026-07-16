@@ -141,10 +141,33 @@
           <option value="Spectral">Spectral</option>
         </select>
       </div>
+      <!-- App Settings, part 1 (RELAY 029) -- the cheap settings_store-
+           backed controls. dark_theme_enabled has no control here on
+           purpose: this app's light/dark rendering is already a live-
+           derived property of whichever palette is active (theme.js
+           computes it straight from the background color's own
+           luminance), not a separate persisted flag -- a toggle for it
+           would be redundant with the palette system above. -->
+      <div>
+        <h4 style="margin-bottom:8px">Launch behavior</h4>
+        <div class="pal-row"><span>Multiclient patch</span><input type="checkbox" id="settings-multiclient"></div>
+        <div class="pal-row"><span>Py4GW injection <span style="color:var(--faint,#5f6491);font-weight:400">(global)</span></span><input type="checkbox" id="settings-py4gw-injection"></div>
+        <div class="pal-row"><span>gMod injection <span style="color:var(--faint,#5f6491);font-weight:400">(global)</span></span><input type="checkbox" id="settings-gmod-injection"></div>
+        <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+          These master switches gate every profile's own Inject Py4GW/gMod
+          toggle (edit drawer's Mods tab) -- off here means off everywhere,
+          regardless of what any individual profile has set.
+        </p>
+        <label class="field-label">Bulk launch pacing (seconds)</label>
+        <input class="field-input" type="number" id="settings-pacing" min="5" max="90" step="1">
+      </div>
+      <div>
+        <h4 style="margin-bottom:8px">Data</h4>
+        <button class="ghost-btn" onclick="onReloadDataClick()">Reload profiles/teams from disk</button>
+      </div>
       <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
-        Prerequisites, mod repository, accounts, and injection master switches
-        aren't wired up yet -- this phase is structure + theme + real profile
-        data only (RELAY 010).
+        Prerequisites, mod repository, and account backup/import aren't
+        wired up yet.
       </p>
     </div>
   </div>

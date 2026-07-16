@@ -42,9 +42,16 @@ function teamName(teamId) {
   return t ? t.name : "";
 }
 
+// RELAY 029: alphabetical-by-name is the only ordering model this app will
+// ever have -- no drag-and-drop reorder exists or is planned (Chris, having
+// lived with the old imgui app's real custom-order feature through real
+// multi-account use: "it really turned out to be unnecessary fluff"), so
+// there's no toggle here, just a permanent sort. Case-insensitive, matching
+// the old app's own sort(key=lambda p: p.name.lower()) convention. Sorts a
+// copy -- never mutates the shared `profiles` array itself.
 function membersOfActiveTeam() {
-  if (activeTeamId === "ALL") return profiles;
-  return profiles.filter((p) => (p.team_ids || []).includes(activeTeamId));
+  const members = activeTeamId === "ALL" ? profiles : profiles.filter((p) => (p.team_ids || []).includes(activeTeamId));
+  return [...members].sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
 }
 
 function renderRail() {
@@ -600,6 +607,41 @@ function wirePaletteControls() {
   };
 }
 
+// ---------- App Settings, part 1 (RELAY 029) ----------
+// The cheap settings_store-backed controls -- loaded eagerly at startup
+// (same pattern as palette/profiles/console above) rather than lazily on
+// drawer-open, so the drawer never shows a flash of stale/default values.
+
+async function loadAppSettings() {
+  const s = await window.pywebview.api.get_app_settings();
+  document.getElementById("settings-multiclient").checked = !!s.multiclient_enabled;
+  document.getElementById("settings-py4gw-injection").checked = !!s.py4gw_injection_enabled;
+  document.getElementById("settings-gmod-injection").checked = !!s.gmod_injection_enabled;
+  document.getElementById("settings-pacing").value = s.bulk_launch_pacing_seconds;
+}
+
+function wireAppSettingsControls() {
+  document.getElementById("settings-multiclient").onchange = (e) => {
+    window.pywebview.api.save_multiclient_enabled(e.target.checked);
+  };
+  document.getElementById("settings-py4gw-injection").onchange = (e) => {
+    window.pywebview.api.save_py4gw_injection_enabled(e.target.checked);
+  };
+  document.getElementById("settings-gmod-injection").onchange = (e) => {
+    window.pywebview.api.save_gmod_injection_enabled(e.target.checked);
+  };
+  // Deliberately no JS-side clamp on this field beyond the native min/max
+  // attributes -- bulk_launch.clamp_pacing_seconds() already enforces the
+  // real floor/ceiling at use time regardless of what's stored here.
+  document.getElementById("settings-pacing").onchange = (e) => {
+    window.pywebview.api.save_bulk_launch_pacing_seconds(Number(e.target.value));
+  };
+}
+
+async function onReloadDataClick() {
+  await loadData();
+}
+
 // ---------- Add/Edit profile (RELAY 011) ----------
 
 function openEditDrawer(profileId) {
@@ -889,6 +931,8 @@ window.addEventListener("pywebviewready", () => {
   wirePaletteControls();
   loadData();
   loadConsoleHistory();
+  loadAppSettings();
+  wireAppSettingsControls();
 });
 
 async function loadConsoleHistory() {
