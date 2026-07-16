@@ -69,6 +69,16 @@ function renderHeader() {
   // (same visibility rule remove-team-btn already uses).
   document.getElementById("launch-team-btn").style.display =
     activeTeamId === "ALL" || bulkLaunchActive ? "none" : "inline-block";
+  updateAddToTeamBtn();
+}
+
+// Add to Team (RELAY 023): ALL view only -- redundant on a team-scoped view
+// since a profile shown there is already in that team; reassigning between
+// teams is ALL's job. Shares the header's primary action slot with Launch
+// Team (mutually exclusive: never both real teams and ALL at once).
+function updateAddToTeamBtn() {
+  document.getElementById("add-to-team-btn").style.display =
+    activeTeamId === "ALL" && checkedIds.size > 0 ? "inline-block" : "none";
 }
 
 function badgeHtml(label, on) {
@@ -241,7 +251,7 @@ async function onLaunchSelectedClick() {
   if (checkedIds.size === 0 || bulkLaunchActive) return;
   const ids = Array.from(checkedIds);
   checkedIds = new Set();
-  document.getElementById("add-to-team-btn").style.display = "none";
+  updateAddToTeamBtn();
   const res = await window.pywebview.api.launch_profiles_bulk(ids);
   if (res && res.ok) setBulkLaunchActive(true);
   renderCards();
@@ -392,7 +402,7 @@ function escapeHtml(s) {
 function toggleCheck(profileId) {
   if (checkedIds.has(profileId)) checkedIds.delete(profileId);
   else checkedIds.add(profileId);
-  document.getElementById("add-to-team-btn").style.display = checkedIds.size > 0 ? "inline-block" : "none";
+  updateAddToTeamBtn();
   updateLaunchSelectedBtn();
   renderCards();
 }
@@ -412,7 +422,7 @@ function selectTeam(teamId) {
   filterText = "";
   checkedIds = new Set();
   document.getElementById("filter-input").value = "";
-  document.getElementById("add-to-team-btn").style.display = "none";
+  updateAddToTeamBtn();
   updateLaunchSelectedBtn();
   renderRail();
   renderHeader();
@@ -690,7 +700,7 @@ function onAddToTeamClick() {
       await window.pywebview.api.add_profiles_to_team(Array.from(checkedIds), t.id);
       menu.remove();
       checkedIds = new Set();
-      document.getElementById("add-to-team-btn").style.display = "none";
+      updateAddToTeamBtn();
       await loadData();
     };
     menu.appendChild(row);

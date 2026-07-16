@@ -229,7 +229,8 @@ select {
   cursor: pointer;
 }
 #launch-team-btn,
-#bulk-stop-btn {
+#bulk-stop-btn,
+#add-to-team-btn {
   font-size: 11px;
   font-weight: 700;
   border-radius: 7px;
@@ -237,8 +238,24 @@ select {
   cursor: pointer;
   white-space: nowrap;
 }
+/* Add to Team moved here from the filter row (RELAY 023) -- same neutral
+   look it always had, just compact-sized to match this button group. */
+#add-to-team-btn {
+  background: var(--panel2, #1f2340);
+  color: var(--text, #e6e8ff);
+  border: 1px solid var(--border, #2a2f55);
+}
 
+/* RELAY 023: filter-row is now a flex row of siblings (search box + action
+   buttons), gap-separated, rather than everything crammed inside
+   #filter-box's own bordered pill -- that shared border/background is what
+   made the search field read as "fused" with the buttons next to it. A
+   bounded max-width (not flex-fill-to-edge) keeps the search box from
+   dominating the row once the action buttons sit beside it, not inside it. */
 #filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 14px;
   flex-shrink: 0;
 }
@@ -246,13 +263,26 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  max-width: 360px;
   background: var(--panel2, #1f2340);
   border: 1px solid var(--border-soft, #20233f);
   border-radius: 9px;
   padding: 7px 11px;
 }
+#filter-icon {
+  /* Real mockup uses a precise 14x14 SVG; a plain emoji glyph here inherits
+     the page's base font-size (larger, and with its own glyph metrics),
+     which is what made the whole search box read as taller than intended
+     even though #filter-box's own padding already matched the mockup's
+     7px/11px exactly. */
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
 #filter-input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: none;
   outline: none;
@@ -273,21 +303,6 @@ select {
   place-items: center;
   flex-shrink: 0;
   font-size: 19px;
-  margin-left: 8px;
-}
-#add-to-team-btn {
-  border: 1px solid var(--border, #2a2f55);
-  border-radius: 9px;
-  padding: 0 12px;
-  height: 34px;
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  background: var(--panel2, #1f2340);
-  color: var(--text, #e6e8ff);
-  white-space: nowrap;
-  margin-left: 8px;
-  flex-shrink: 0;
 }
 #launch-selected-btn {
   border: none;
@@ -300,7 +315,6 @@ select {
   background: var(--accent, #7c8cff);
   color: var(--accent-ink, #0a0c22);
   white-space: nowrap;
-  margin-left: 8px;
   flex-shrink: 0;
 }
 
@@ -434,8 +448,8 @@ select {
   cursor: pointer;
   padding: 7px;
   font-size: 11.5px;
-  background: var(--accent-soft, rgba(124, 140, 255, 0.16));
-  color: var(--accent, #7c8cff);
+  background: var(--accent, #7c8cff);
+  color: var(--accent-ink, #0a0c22);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -448,6 +462,14 @@ select {
 .card.state-launching .card-dot {
   background: var(--warn, #ffd166);
   animation: card-dot-pulse 1s ease-in-out infinite;
+}
+/* RELAY 023: idle's base .card-action rule above is now solid (matches the
+   mockup's real per-state colors, Launcher.dc.html ~line 638-643) -- launching
+   needs its own explicit soft-tinted rule now that it can no longer piggyback
+   on idle's old (wrong) default. */
+.card.state-launching .card-action {
+  background: var(--accent-soft, rgba(124, 140, 255, 0.16));
+  color: var(--accent, #7c8cff);
 }
 .card.state-running .card-dot {
   background: var(--good, #5ce0b0);
@@ -468,6 +490,12 @@ select {
 .card.state-error .card-sub {
   color: var(--bad, #ff6b8a);
   white-space: normal;
+}
+/* RELAY 023: no rule existed for this before, so error silently fell back to
+   the base .card-action rule (soft blue) instead of the mockup's soft red. */
+.card.state-error .card-action {
+  background: var(--bad-soft, rgba(255, 107, 138, 0.16));
+  color: var(--bad, #ff6b8a);
 }
 @keyframes card-dot-pulse {
   0%, 100% { opacity: 1; }
