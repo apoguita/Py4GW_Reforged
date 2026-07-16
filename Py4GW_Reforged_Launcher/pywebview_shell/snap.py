@@ -209,6 +209,7 @@ def zone_rect(
 _MONITOR_DEFAULTTONEAREST = 2
 SWP_NOZORDER = 0x0004
 SWP_NOACTIVATE = 0x0010
+_DWMWA_EXTENDED_FRAME_BOUNDS = 9
 
 
 class _MONITORINFO(ctypes.Structure):
@@ -258,6 +259,36 @@ def apply_snap(hwnd: int, min_w: int = 0, min_h: int = 0) -> Optional[tuple[int,
     if zone is None:
         return None
     x, y, w, h = zone_rect(zone, *work, min_w=min_w, min_h=min_h)
+
+    # DWM visible-frame correction (RELAY 014 Step 2 / RELAY 015). Windows
+    # reserves an invisible resize-border margin around this window (no
+    # WS_CAPTION to tell DWM otherwise) that GetWindowRect/SetWindowPos
+    # operate on but that isn't actually painted -- confirmed via
+    # DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS), the *visible*
+    # frame, sitting inset from the raw window rect on every edge except the
+    # top. Left uncorrected, a window "snapped" flush via the raw rect lands
+    # its true visible edge a few px short of the work-area boundary. Not a
+    # fixed physical-px constant across DPI (confirmed 14px@300%, 6px@100%,
+    # not simple 3x/1x scaling), so queried fresh here rather than hardcoded
+    # or derived from a DPI percentage. Deliberately only touches this
+    # impure edge, right alongside the existing SetWindowPos call -- zone_rect
+    # and its pure geometry stay untouched.
+    window_rect = wt.RECT()
+    ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(window_rect))
+    visible_rect = wt.RECT()
+    hr = ctypes.windll.dwmapi.DwmGetWindowAttribute(
+        hwnd, _DWMWA_EXTENDED_FRAME_BOUNDS, ctypes.byref(visible_rect), ctypes.sizeof(visible_rect)
+    )
+    if hr == 0:
+        left_inset = visible_rect.left - window_rect.left
+        top_inset = visible_rect.top - window_rect.top
+        right_inset = window_rect.right - visible_rect.right
+        bottom_inset = window_rect.bottom - visible_rect.bottom
+        x -= left_inset
+        y -= top_inset
+        w += left_inset + right_inset
+        h += top_inset + bottom_inset
+
     ctypes.windll.user32.SetWindowPos(
         hwnd, 0, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE
     )
