@@ -212,13 +212,11 @@ select {
   font-size: 11px;
   color: var(--muted, #9a9ecb);
 }
-#header-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* RELAY 026: row 1 is identity-only now -- Remove Team is the sole
+   right-aligned element left in this row, so it carries its own
+   margin-left:auto instead of relying on a wrapper div. */
 #remove-team-btn {
+  margin-left: auto;
   font-size: 11px;
   font-weight: 600;
   color: var(--muted, #9a9ecb);
@@ -228,43 +226,54 @@ select {
   padding: 5px 10px;
   cursor: pointer;
 }
-#launch-team-btn,
-#bulk-stop-btn,
-#add-to-team-btn {
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 7px;
-  padding: 5px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-/* Add to Team moved here from the filter row (RELAY 023) -- same neutral
-   look it always had, just compact-sized to match this button group. */
-#add-to-team-btn {
-  background: var(--panel2, #1f2340);
-  color: var(--text, #e6e8ff);
-  border: 1px solid var(--border, #2a2f55);
-}
 
-/* RELAY 023: filter-row is now a flex row of siblings (search box + action
-   buttons), gap-separated, rather than everything crammed inside
-   #filter-box's own bordered pill -- that shared border/background is what
-   made the search field read as "fused" with the buttons next to it. A
-   bounded max-width (not flex-fill-to-edge) keeps the search box from
-   dominating the row once the action buttons sit beside it, not inside it. */
-#filter-row {
+/* RELAY 026: dedicated action-buttons row (mockup's real row 2) -- left
+   group (Launch Team/Stop-launch toggle, Launch Selected, Add to Team)
+   sized consistently per the mockup's real values (border-radius:9px,
+   padding:10px 14px, font-size:12.5px, font-weight:700), a flex spacer,
+   then the small square icon buttons right-aligned. */
+#action-row {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
+#launch-team-btn,
+#bulk-stop-btn,
+#add-to-team-btn,
+#launch-selected-btn {
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+/* Add to Team/Launch Selected: bordered, neutral panel look (mockup's own
+   real pattern -- only Launch Team is solid-filled, via .primary-btn). */
+#add-to-team-btn,
+#launch-selected-btn {
+  background: var(--panel2, #1f2340);
+  color: var(--text, #e6e8ff);
+  border: 1px solid var(--border, #2a2f55);
+}
+
+#filter-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+/* RELAY 026: filter-row is search-only now (no more sibling buttons to
+   share space with), so the box goes back to filling the full row width,
+   matching the mockup's own row 3. */
 #filter-box {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
-  max-width: 360px;
   background: var(--panel2, #1f2340);
   border: 1px solid var(--border-soft, #20233f);
   border-radius: 9px;
@@ -303,19 +312,6 @@ select {
   place-items: center;
   flex-shrink: 0;
   font-size: 19px;
-}
-#launch-selected-btn {
-  border: none;
-  border-radius: 9px;
-  padding: 0 12px;
-  height: 34px;
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  background: var(--accent, #7c8cff);
-  color: var(--accent-ink, #0a0c22);
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 #card-area {
