@@ -22,6 +22,12 @@ from pywebview_shell import snap
 from pywebview_shell.window_shell import start_native_resize
 
 
+def _rects_close(a, b, tol: int = 4) -> bool:
+    """Whether two (x, y, w, h) rects match within a few px (SetWindowPos can
+    land a pixel or two off after DPI rounding)."""
+    return all(abs(pa - pb) <= tol for pa, pb in zip(a, b))
+
+
 class ShellBridge:
     """One instance per window, matching pywebview's one-js_api-per-window
     model. The window back-reference is bound after webview.create_window()
@@ -64,6 +70,7 @@ class ShellBridge:
         self._drag_start_pos: Optional[tuple[int, int]] = None
         self._snapped = False
         self._pre_snap_size: Optional[tuple[int, int]] = None
+        self._snap_rect: Optional[tuple[int, int, int, int]] = None
         self._preview = None  # shared SnapPreview overlay, set by the app
 
     def _window(self) -> Optional[webview.Window]:
@@ -93,6 +100,14 @@ class ShellBridge:
         """Bind the shared snap-preview overlay (one per app, not per window)."""
         self._preview = preview
 
+    def set_accent(self, r: int, g: int, b: int) -> bool:
+        """The page reports its theme ACCENT (from CSS --accent) so the snap
+        preview overlay is drawn in the user's accent, not a hardcoded colour.
+        """
+        if self._preview is not None:
+            self._preview.set_accent(r, g, b)
+        return True
+
     def on_drag_start(self) -> bool:
         """A title-bar mousedown. Record the cursor so on_drag_end can tell a
         drag from a click, start the preview, and -- if this window is snapped
@@ -102,12 +117,21 @@ class ShellBridge:
         self._drag_start_pos = snap.get_cursor_pos()
         if self._preview is not None:
             self._preview.begin_drag()
-        if self._snapped and self._pre_snap_size and self._hwnd is not None:
-            w, h = self._pre_snap_size
-            cx, cy = self._drag_start_pos
-            snap.set_window_rect(self._hwnd, cx - w // 2, cy - 18, w, h)
+        # Restore the pre-snap size only if the window is STILL sitting in the
+        # rect we snapped it to. If it's been moved or resized since (incl. via
+        # the native WS_THICKFRAME border, which bypasses start_resize), it's no
+        # longer "snapped" -- respect the user's change and don't restore.
+        if self._snapped and self._hwnd is not None:
+            still_snapped = self._snap_rect is not None and _rects_close(
+                snap.get_window_rect(self._hwnd), self._snap_rect
+            )
+            if still_snapped and self._pre_snap_size is not None:
+                w, h = self._pre_snap_size
+                cx, cy = self._drag_start_pos
+                snap.set_window_rect(self._hwnd, cx - w // 2, cy - 18, w, h)
             self._snapped = False
             self._pre_snap_size = None
+            self._snap_rect = None
         return True
 
     def on_drag_end(self) -> bool:
@@ -129,6 +153,7 @@ class ShellBridge:
         if applied is not None:
             if pre is not None:
                 self._pre_snap_size = (pre[2], pre[3])
+            self._snap_rect = applied
             self._snapped = True
         return applied is not None
 

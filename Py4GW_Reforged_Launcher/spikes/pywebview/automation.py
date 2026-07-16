@@ -21,12 +21,17 @@ regardless of focus, so bringing the window forward isn't needed anyway.
 
 32-bit process: GetWindowLongW/SetWindowLongW only (not ...LongPtrW).
 
-Usage (from the shell venv):
-  python -m pywebview_shell.aero_snap.automation find "<title substr>"
-  python -m pywebview_shell.aero_snap.automation rect "<title substr>"
-  python -m pywebview_shell.aero_snap.automation shot "<title substr>" out.png
-  python -m pywebview_shell.aero_snap.automation drag <x0> <y0> <x1> <y1> [steps]
-  python -m pywebview_shell.aero_snap.automation style "<title substr>"
+Standalone script (needs pywin32 + Pillow; no internal imports). Originally
+built for the Aero Snap investigation (dev_notes/AERO_SNAP_INVESTIGATION.md);
+kept here alongside the other pywebview spikes as the concrete implementation of
+RELAY 009's GUI-automation methodology, reusable for whatever's tested next.
+
+Usage (from a venv with pywin32 + Pillow):
+  python automation.py find "<title substr>"
+  python automation.py rect "<title substr>"
+  python automation.py shot "<title substr>" out.png
+  python automation.py drag <x0> <y0> <x1> <y1> [steps]
+  python automation.py style "<title substr>"
 """
 from __future__ import annotations
 

@@ -45,7 +45,14 @@ from pywebview_shell.window_shell import (
 RESIZE_MARGIN = 6
 
 HTML = """
-<html><body style="margin:0;background:#1e1e1e;color:#eee;font-family:sans-serif;">
+<html><head><style>
+/* --accent is the theme accent, as "r, g, b" components so it works both as
+   rgb(var(--accent)) in CSS and parsed by JS to report to Python for the snap
+   preview. Placeholder value here; the real buildTheme() will set this from
+   user input in a later phase, and the same JS reporting will pick it up. */
+:root {{ --accent: 20, 184, 166; }}
+</style></head>
+<body style="margin:0;background:#1e1e1e;color:#eee;font-family:sans-serif;">
 <!-- Edge/corner resize hit-zones (RELAY 009) -- frameless windows have no
      native WS_THICKFRAME border for a human to grab, so these thin strips
      stand in for one. mousedown on any of them hands off to Windows' own
@@ -61,6 +68,7 @@ HTML = """
 <div onmousedown="startResize('bottomright')" style="position:fixed;bottom:0;right:0;width:{m}px;height:{m}px;cursor:se-resize;z-index:1001;"></div>
 
 <div id="titlebar" style="-webkit-app-region:drag;height:36px;background:#2a2a2a;
+border-bottom:2px solid rgb(var(--accent));
 display:flex;align-items:center;padding:0 10px;user-select:none;">
   <span style="flex:1;pointer-events:none;">Phase A shell -- {label}</span>
   <button onclick="pywebview.api.minimize_clicked()" style="-webkit-app-region:no-drag;">_</button>
@@ -103,6 +111,17 @@ titlebar.addEventListener('mousedown', function(ev) {{
 window.addEventListener('mouseup', function() {{
   window.pywebview.api.on_drag_end();
 }});
+// Report the theme accent (CSS --accent) to Python once the bridge is ready,
+// so the snap preview overlay is drawn in the user's accent, not a fixed blue.
+function reportAccent() {{
+  var raw = getComputedStyle(document.documentElement).getPropertyValue('--accent');
+  var p = raw.split(',').map(function(s) {{ return parseInt(s, 10); }});
+  if (p.length === 3 && p.every(function(n) {{ return !isNaN(n); }})) {{
+    window.pywebview.api.set_accent(p[0], p[1], p[2]);
+  }}
+}}
+if (window.pywebview && window.pywebview.api) {{ reportAccent(); }}
+else {{ window.addEventListener('pywebviewready', reportAccent); }}
 </script>
 </body></html>
 """
