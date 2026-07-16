@@ -100,10 +100,16 @@ class ExpBridge(ShellBridge):
         self._drag_start_pos = None
         self._snapped = False
         self._pre_snap_size = None  # (w, h) physical, to restore on drag-away
+        self._preview = None  # SnapPreview, set by main()
+
+    def set_preview(self, preview) -> None:
+        self._preview = preview
 
     # --- Attempt 2: hand-rolled snap (easy_drag does the move) ---
     def on_drag_start(self) -> bool:
         self._drag_start_pos = snap.get_cursor_pos()
+        if self._preview is not None:
+            self._preview.begin_drag()
         # If we're grabbing a snapped window, restore its pre-snap SIZE so the
         # user drags a normal-sized window again (native behavior). easy_drag
         # then repositions it to follow the cursor, so we only need to fix the
@@ -120,6 +126,8 @@ class ExpBridge(ShellBridge):
     def on_drag_end(self) -> bool:
         start = self._drag_start_pos
         self._drag_start_pos = None
+        if self._preview is not None:
+            self._preview.end_drag()
         if start is None or self._hwnd is None:
             return False
         end = snap.get_cursor_pos()
@@ -155,7 +163,14 @@ class ExpBridge(ShellBridge):
 
 def main() -> None:
     ensure_dpi_awareness()
+    preview = None
+    if MODE == "hand_snap":
+        from pywebview_shell.aero_snap.preview import SnapPreview
+
+        preview = SnapPreview()
     bridge = ExpBridge("exp")
+    if preview is not None:
+        bridge.set_preview(preview)
     easy = MODE in ("easy_drag", "hand_snap")  # hand_snap keeps easy_drag for the move
     window = webview.create_window(
         TITLE,
@@ -176,6 +191,8 @@ def main() -> None:
         if hwnd is not None:
             bridge.bind_hwnd(hwnd)
             ensure_native_resize_style(hwnd)
+        if preview is not None:
+            preview.start()
 
     webview.start(on_shown, debug=False)
 
