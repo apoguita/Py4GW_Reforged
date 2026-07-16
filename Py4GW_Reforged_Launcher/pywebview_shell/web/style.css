@@ -212,8 +212,13 @@ select {
   font-size: 11px;
   color: var(--muted, #9a9ecb);
 }
-#remove-team-btn {
+#header-actions {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#remove-team-btn {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted, #9a9ecb);
@@ -222,6 +227,15 @@ select {
   border-radius: 7px;
   padding: 5px 10px;
   cursor: pointer;
+}
+#launch-team-btn,
+#bulk-stop-btn {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 7px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 #filter-row {
@@ -271,6 +285,20 @@ select {
   cursor: pointer;
   background: var(--panel2, #1f2340);
   color: var(--text, #e6e8ff);
+  white-space: nowrap;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+#launch-selected-btn {
+  border: none;
+  border-radius: 9px;
+  padding: 0 12px;
+  height: 34px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--accent, #7c8cff);
+  color: var(--accent-ink, #0a0c22);
   white-space: nowrap;
   margin-left: 8px;
   flex-shrink: 0;
@@ -426,6 +454,12 @@ select {
 }
 .card.state-error .card-dot {
   background: var(--bad, #ff6b8a);
+}
+.card.state-queued .card-dot {
+  background: var(--muted, #9a9ecb); /* static, not pulsing -- waiting, not actively progressing */
+}
+.card.state-queued .card-sub {
+  color: var(--muted, #9a9ecb);
 }
 .card.state-running .card-action {
   background: var(--bad-soft, rgba(255, 107, 138, 0.16));

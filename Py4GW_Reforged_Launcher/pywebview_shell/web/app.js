@@ -22,6 +22,7 @@ let activeTeamId = "ALL";
 let filterText = "";
 let checkedIds = new Set();
 let editingProfileId = null; // null while the edit drawer is closed or adding new
+let bulkLaunchActive = false; // Phase F -- a team/bulk launch sequence is currently running
 
 function teamName(teamId) {
   if (teamId === "ALL") return "All Profiles";
@@ -56,6 +57,10 @@ function renderHeader() {
   document.getElementById("team-name").textContent = teamName(activeTeamId);
   document.getElementById("team-count").textContent = `${members.length} profile${members.length === 1 ? "" : "s"}`;
   document.getElementById("remove-team-btn").style.display = activeTeamId === "ALL" ? "none" : "inline-block";
+  // "Launch Team" only makes sense for a real team, not the ALL pseudo-view
+  // (same visibility rule remove-team-btn already uses).
+  document.getElementById("launch-team-btn").style.display =
+    activeTeamId === "ALL" || bulkLaunchActive ? "none" : "inline-block";
 }
 
 function badgeHtml(label, on) {
@@ -141,9 +146,16 @@ function applyCardLaunchVisual(card, p) {
   const dot = card.querySelector(".card-dot");
   const sub = card.querySelector(".card-sub");
   const action = card.querySelector(".card-action");
-  card.classList.remove("state-launching", "state-running", "state-error");
+  card.classList.remove("state-launching", "state-running", "state-error", "state-queued");
 
-  if (st.phase === "launching") {
+  if (st.phase === "queued") {
+    card.classList.add("state-queued");
+    sub.textContent = st.status || "Queued...";
+    sub.removeAttribute("title");
+    action.innerHTML = "&#8987; Queued";
+    action.disabled = true;
+    action.onclick = null;
+  } else if (st.phase === "launching") {
     card.classList.add("state-launching");
     sub.textContent = st.status || "Launching...";
     sub.removeAttribute("title");
@@ -201,21 +213,81 @@ async function stopProfile(id) {
   refreshCard(id);
 }
 
+// ---------- Team/bulk launch (Phase F) ----------
+// "Launch Selected" and "Launch Team" both call the same bridge method,
+// bulk_launch_profiles -- they only differ in which profile ids they pass
+// (checkedIds vs. every member of the active team). Pacing/sequencing/
+// readiness all live on the Python side (bridge._run_bulk_launch); this
+// side just triggers it and reflects the per-card 'launch_queued' pushes
+// it drives (see applyCardLaunchVisual's "queued" branch and
+// window.shellBridge.on above/below).
+
+function setBulkLaunchActive(active) {
+  bulkLaunchActive = active;
+  document.getElementById("bulk-stop-btn").style.display = active ? "inline-block" : "none";
+  updateLaunchSelectedBtn();
+  renderHeader(); // launch-team-btn's own visibility depends on bulkLaunchActive too
+}
+
+async function onLaunchSelectedClick() {
+  if (checkedIds.size === 0 || bulkLaunchActive) return;
+  const ids = Array.from(checkedIds);
+  checkedIds = new Set();
+  document.getElementById("add-to-team-btn").style.display = "none";
+  const res = await window.pywebview.api.launch_profiles_bulk(ids);
+  if (res && res.ok) setBulkLaunchActive(true);
+  renderCards();
+}
+
+async function onLaunchTeamClick() {
+  if (activeTeamId === "ALL" || bulkLaunchActive) return;
+  const ids = membersOfActiveTeam().map((p) => p.id);
+  if (ids.length === 0) return;
+  const res = await window.pywebview.api.launch_profiles_bulk(ids);
+  if (res && res.ok) setBulkLaunchActive(true);
+}
+
+async function onBulkStopClick() {
+  await window.pywebview.api.cancel_bulk_launch();
+  // bulk_launch_done (pushed once the sequence's loop actually exits)
+  // is what flips bulkLaunchActive back off -- not this call itself,
+  // since cancelling only stops queuing further accounts, it doesn't
+  // instantly end the sequence (an in-flight readiness wait/pacing tick
+  // still finishes its own current step first).
+}
+
 // Python -> JS push target (bridge.push_event -> window.shellBridge.on).
 window.shellBridge = {
   on(event, data) {
+    if (event === "bulk_launch_done") {
+      // Whatever never got started (mid-sequence cancel) goes back to
+      // idle instead of being left showing "Queued" forever.
+      setBulkLaunchActive(false);
+      for (const id of (data && data.reset_profile_ids) || []) {
+        delete launchState[id];
+        refreshCard(id);
+      }
+      return;
+    }
     if (!data || !data.profile_id) return;
     const id = data.profile_id;
     if (event === "launch_log") {
-      const st = launchState[id];
-      if (st && st.phase === "launching") {
-        st.status = data.status;
-        refreshCard(id);
-      }
+      // Always authoritative for "this profile is actively launching" --
+      // not gated on an already-"launching" phase, since a bulk-launched
+      // card never went through launchProfile()'s own client-side
+      // pre-set (individual clicks do; this covers both paths the same
+      // way). Log events for a given attempt are always pushed strictly
+      // before that attempt's own launch_done, so this can't stomp a
+      // later running/error state with stale text.
+      launchState[id] = { phase: "launching", status: data.status };
+      refreshCard(id);
     } else if (event === "launch_done") {
       launchState[id] = data.success
         ? { phase: "running", pid: data.pid }
         : { phase: "error", error: data.error || "Launch failed" };
+      refreshCard(id);
+    } else if (event === "launch_queued") {
+      launchState[id] = { phase: "queued", status: data.status };
       refreshCard(id);
     }
   },
@@ -231,7 +303,18 @@ function toggleCheck(profileId) {
   if (checkedIds.has(profileId)) checkedIds.delete(profileId);
   else checkedIds.add(profileId);
   document.getElementById("add-to-team-btn").style.display = checkedIds.size > 0 ? "inline-block" : "none";
+  updateLaunchSelectedBtn();
   renderCards();
+}
+
+function updateLaunchSelectedBtn() {
+  const btn = document.getElementById("launch-selected-btn");
+  if (checkedIds.size > 0 && !bulkLaunchActive) {
+    btn.style.display = "inline-block";
+    btn.textContent = `▶ Launch Selected (${checkedIds.size})`;
+  } else {
+    btn.style.display = "none";
+  }
 }
 
 function selectTeam(teamId) {
@@ -240,6 +323,7 @@ function selectTeam(teamId) {
   checkedIds = new Set();
   document.getElementById("filter-input").value = "";
   document.getElementById("add-to-team-btn").style.display = "none";
+  updateLaunchSelectedBtn();
   renderRail();
   renderHeader();
   renderCards();

@@ -44,13 +44,18 @@
       <div id="header">
         <span class="team-name" id="team-name">All Profiles</span>
         <span class="team-count" id="team-count">0 profiles</span>
-        <button id="remove-team-btn" style="display:none" onclick="onRemoveTeamClick()">Remove team</button>
+        <div id="header-actions">
+          <button id="bulk-stop-btn" class="danger-btn" style="display:none" onclick="onBulkStopClick()" title="Stop queuing further accounts (does not close already-launched clients)">■ Stop launch</button>
+          <button id="launch-team-btn" class="primary-btn" style="display:none" onclick="onLaunchTeamClick()" title="Launch every profile in this team, paced">▶ Launch Team</button>
+          <button id="remove-team-btn" style="display:none" onclick="onRemoveTeamClick()">Remove team</button>
+        </div>
       </div>
 
       <div id="filter-row">
         <div id="filter-box">
           <span>&#128269;</span>
           <input id="filter-input" placeholder="Filter by name…" oninput="onFilterInput()">
+          <button id="launch-selected-btn" style="display:none" onclick="onLaunchSelectedClick()" title="Launch the checked profiles, paced">▶ Launch Selected</button>
           <button id="add-to-team-btn" style="display:none" onclick="onAddToTeamClick()" title="Add checked profiles to another team">+ Add to Team</button>
           <button id="add-profile-btn" onclick="openEditDrawer(null)" title="Add profile">+</button>
           <button id="settings-btn" onclick="openSettingsDrawer()" title="Settings &amp; theme">&#9881;</button>

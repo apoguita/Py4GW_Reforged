@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 import webview
 
-from launcher_core import crypto, profile_store
+from launcher_core import bulk_launch, crypto, profile_store, settings_store
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -97,6 +97,12 @@ class ShellBridge:
         self._launch_lock = threading.Lock()
         self._running_pids: dict[str, int] = {}
         self._in_flight: set[str] = set()
+        # Phase F team/bulk launch. Only one sequence at a time -- a second
+        # call while one's already running is rejected, not queued behind
+        # it (see launch_profiles_bulk). Both guarded by _launch_lock,
+        # same as the individual-launch state above.
+        self._bulk_cancel_event: Optional[threading.Event] = None
+        self._bulk_thread: Optional[threading.Thread] = None
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -267,7 +273,7 @@ class ShellBridge:
         it blocks for the whole launch (seconds to, rarely, minutes). Progress
         is pushed to that profile's card via push_event('launch_log') and the
         final outcome via push_event('launch_done'); this call returns
-        immediately. Team/bulk launch is a separate, later phase, not here.
+        immediately.
 
         The whole GameProfile is handed to the pipeline, so every per-profile
         toggle (py4gw_enabled/gmod_enabled/auto_login_enabled/windowed_mode_
@@ -275,7 +281,26 @@ class ShellBridge:
         global master switches (multiclient/py4gw/gmod injection) aren't wired in
         the shell yet, so the pipeline's own defaults (all enabled) apply -- same
         as launcher.py before those switches existed.
+
+        Rejects while a team/bulk launch (Phase F) is active -- a manual
+        click launching a second, independent EnumWindows-polling pipeline
+        concurrently with an active bulk sequence is exactly the GIL-
+        contention hang class RELAY.md 004 already fixed once (see
+        launch_profiles_bulk's docstring) -- the simplest guard is just
+        refusing the second concurrent attempt here. The bulk sequence
+        itself calls _start_launch directly, bypassing this check, since
+        it IS the active sequence.
         """
+        with self._launch_lock:
+            if self._bulk_thread is not None and self._bulk_thread.is_alive():
+                return {"ok": False, "error": "A team/bulk launch is already in progress"}
+        return self._start_launch(profile_id)
+
+    def _start_launch(self, profile_id: str) -> dict:
+        """The actual single-launch start logic, factored out of
+        launch_profile so _run_bulk_launch can call it directly without
+        tripping launch_profile's own "reject during an active bulk
+        sequence" guard (see launch_profile's docstring)."""
         profile = self._find_profile(profile_id)
         if profile is None:
             return {"ok": False, "error": "Profile not found"}
@@ -330,6 +355,136 @@ class ShellBridge:
             with self._launch_lock:
                 self._running_pids.pop(profile_id, None)
         return {"ok": killed, "pid": pid}
+
+    # ---- Phase F: team/bulk launch ----
+
+    def launch_profiles_bulk(self, profile_ids: list) -> dict:
+        """Launch multiple profiles in order through the same single-launch
+        pipeline _start_launch uses, paced between each per bulk_launch.py's
+        proven anti-bot throttling (ported from GWxLauncher's
+        BulkLaunchThrottlingPolicy.cs). Powers both "Launch Selected"
+        (explicit profile_ids from the page's checkbox selection) and
+        "Launch Team" (JS passes every profile currently in the active
+        team) -- same method either way, the caller decides the list.
+
+        Pacing comes from launcher_settings.json
+        (settings_store.load_bulk_launch_pacing_seconds) -- the same shared
+        setting the old imgui app's App Settings screen writes to. The
+        pywebview shell has no App Settings UI yet (RELAY 019's known gap),
+        so this reads whatever's already configured (or the same 30s
+        default) rather than inventing a second, disconnected pacing value.
+
+        Only one bulk sequence runs at a time -- a second call while one's
+        already in flight is rejected outright, not queued behind it.
+        Concurrent manual single-card launches are separately guarded in
+        launch_profile (see its docstring) -- this is the same production
+        bug class RELAY.md 004 fixed once already (concurrent EnumWindows-
+        polling launches causing enough GIL contention to hang the app),
+        and bulk sequencing naturally serializes its own launches one at a
+        time by construction, but a manual click landing on top of an
+        active sequence needed its own explicit guard.
+        """
+        with self._launch_lock:
+            if self._bulk_thread is not None and self._bulk_thread.is_alive():
+                return {"ok": False, "error": "A team/bulk launch is already in progress"}
+            profiles = [p for p in (self._find_profile(pid) for pid in profile_ids) if p is not None]
+            if not profiles:
+                return {"ok": False, "error": "No valid profiles to launch"}
+            pacing_seconds = settings_store.load_bulk_launch_pacing_seconds()
+            self._bulk_cancel_event = threading.Event()
+            self._bulk_thread = threading.Thread(
+                target=self._run_bulk_launch, args=(profiles, pacing_seconds), daemon=True
+            )
+            self._bulk_thread.start()
+        return {"ok": True, "count": len(profiles)}
+
+    def cancel_bulk_launch(self) -> dict:
+        """Stops queuing further accounts -- never force-closes an already-
+        launched client, and never interrupts an in-flight individual
+        launch (readiness wait included) partway. Same scope as the old
+        imgui app's BulkLaunchSession.cancel.
+        """
+        with self._launch_lock:
+            event = self._bulk_cancel_event
+        if event is None:
+            return {"ok": False, "error": "No bulk launch in progress"}
+        event.set()
+        return {"ok": True}
+
+    def _run_bulk_launch(self, profiles: list, pacing_seconds: int) -> None:
+        """Runs on its own background thread (started by
+        launch_profiles_bulk). Mirrors launcher.py's BulkLaunchSession._run
+        shape -- loop in order, skip an already-running profile with a
+        status note, launch through _start_launch, wait_for_readiness
+        (bounded, not the full launch -- see module docstring on why a
+        timeout here isn't an error), pace before the next one (not after
+        the last).
+
+        Every profile is marked "queued" up front (not just as the loop
+        reaches each one) so the UI reflects the whole sequence immediately
+        on click, not one card at a time. Whatever's still queued when the
+        loop ends (cancelled, or -- shouldn't happen -- an unhandled
+        exception) gets pushed back to idle explicitly via
+        'bulk_launch_done' rather than left showing "Queued" forever.
+        """
+        cancel_event = self._bulk_cancel_event
+        total = len(profiles)
+
+        for position, profile in enumerate(profiles, start=1):
+            self.push_event(
+                "launch_queued", {"profile_id": profile.id, "status": f"Queued... ({position} of {total})"}
+            )
+
+        started_ids: set[str] = set()
+        try:
+            for i, profile in enumerate(profiles):
+                if cancel_event.is_set():
+                    break
+
+                # Fresh check right before each launch, not just once up
+                # front -- an earlier account in this same batch could
+                # still be settling into "running" while we reach a later
+                # one.
+                with self._launch_lock:
+                    already_running = profile.id in self._running_pids
+                if already_running:
+                    started_ids.add(profile.id)
+                    self.push_event(
+                        "launch_queued", {"profile_id": profile.id, "status": "Skipped (already running)"}
+                    )
+                else:
+                    result = self._start_launch(profile.id)
+                    started_ids.add(profile.id)
+                    if not result.get("ok"):
+                        self.push_event(
+                            "launch_queued",
+                            {"profile_id": profile.id, "status": f"Skipped ({result.get('error', 'could not start')})"},
+                        )
+                    else:
+                        bulk_launch.wait_for_readiness(
+                            lambda pid=profile.id: pid not in self._in_flight,
+                            on_status=lambda msg, pid=profile.id: self.push_event(
+                                "launch_queued", {"profile_id": pid, "status": msg}
+                            ),
+                            should_cancel=cancel_event.is_set,
+                        )
+
+                is_last = i == total - 1
+                if not is_last and not cancel_event.is_set():
+                    next_profile = profiles[i + 1]
+                    bulk_launch.apply_pacing_delay(
+                        pacing_seconds,
+                        on_status=lambda msg, pid=next_profile.id: self.push_event(
+                            "launch_queued", {"profile_id": pid, "status": msg}
+                        ),
+                        should_cancel=cancel_event.is_set,
+                    )
+        finally:
+            never_started = [p.id for p in profiles if p.id not in started_ids]
+            with self._launch_lock:
+                self._bulk_cancel_event = None
+                self._bulk_thread = None
+            self.push_event("bulk_launch_done", {"reset_profile_ids": never_started})
 
     def save_profile(self, data: dict) -> dict:
         """Add or update a profile (RELAY 011) -- `data["id"]` matching an
