@@ -53,6 +53,7 @@ def main() -> None:
     # docstring). Owns its own thread + layered window; the page reports the
     # theme accent into it via bridge.set_accent().
     preview = SnapPreview()
+    preview.set_min_size(*MIN_SIZE)
 
     bridge = ShellBridge("main")
     bridge.set_preview(preview)

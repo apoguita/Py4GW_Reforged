@@ -52,6 +52,26 @@ _AC_SRC_ALPHA = 0x01
 
 _gdi32 = ctypes.windll.gdi32
 _user32 = ctypes.windll.user32
+_shcore = ctypes.windll.shcore
+
+_MONITOR_DEFAULTTONEAREST = 2
+_MDT_EFFECTIVE_DPI = 0
+
+
+def _dpi_scale_at_point(cx: int, cy: int) -> float:
+    """DPI scale (1.0 == 100%) of the monitor under a given point, via
+    MonitorFromPoint + GetDpiForMonitor -- deliberately NOT GetDpiForWindow
+    (what bridge.py/window_shell.py use for the window's own monitor):
+    during a drag the cursor's monitor can differ from the window's, and the
+    preview needs the DPI of wherever it's about to be drawn, not wherever
+    the window currently sits (RELAY 014).
+    """
+    pt = wt.POINT(cx, cy)
+    hmon = _user32.MonitorFromPoint(pt, _MONITOR_DEFAULTTONEAREST)
+    dpi_x = wt.UINT()
+    dpi_y = wt.UINT()
+    _shcore.GetDpiForMonitor(hmon, _MDT_EFFECTIVE_DPI, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+    return dpi_x.value / 96.0
 
 
 class _BITMAPINFOHEADER(ctypes.Structure):
@@ -121,6 +141,7 @@ class SnapPreview:
         self._active = False
         self._ready = threading.Event()
         self._thread = threading.Thread(target=self._run, name="SnapPreview", daemon=True)
+        self._min_size_logical: tuple[int, int] = (0, 0)  # set via set_min_size
 
     def start(self) -> None:
         self._thread.start()
@@ -131,6 +152,19 @@ class SnapPreview:
 
     def end_drag(self) -> None:
         self._active = False
+
+    def set_min_size(self, width: int, height: int) -> None:
+        """Same shape/caller as bridge.set_min_size (run_shell.py's MIN_SIZE
+        constant, one source of truth across bridge/preview/run_shell),
+        LOGICAL px. Without this the preview's own zone_rect call stayed
+        unclamped after RELAY 012's DPI fix (which only reached
+        bridge.on_drag_end's real window-positioning path), so at a clamped
+        quarter on high DPI the ghost promised a smaller rect than the
+        window would actually land at -- confirmed exactly 100px off at
+        250% by CLI Laptop (dev_notes/AERO_SNAP_INVESTIGATION.md, "NEW,
+        SMALL REGRESSION"). Quarters only; halves/max never clamp.
+        """
+        self._min_size_logical = (width, height)
 
     def set_accent(self, r: int, g: int, b: int) -> None:
         """Theme accent for the overlay fill/border. Called from the page's JS
@@ -177,7 +211,18 @@ class SnapPreview:
             accent = self._accent
             if self._active:
                 zone, work = snap.zone_at_cursor()
-                rect = snap.zone_rect(zone, *work) if zone is not None else None
+                if zone is not None:
+                    # A second GetCursorPos (zone_at_cursor already did one
+                    # internally) rather than threading it through -- keeps
+                    # this fix entirely inside preview.py's own code, not
+                    # snap.py's tested geometry functions (RELAY 014).
+                    cx, cy = snap.get_cursor_pos()
+                    scale = _dpi_scale_at_point(cx, cy)
+                    min_w = round(self._min_size_logical[0] * scale)
+                    min_h = round(self._min_size_logical[1] * scale)
+                    rect = snap.zone_rect(zone, *work, min_w=min_w, min_h=min_h)
+                else:
+                    rect = None
             else:
                 rect = None
             if rect is None:
