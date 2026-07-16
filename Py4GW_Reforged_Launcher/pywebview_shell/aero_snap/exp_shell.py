@@ -24,7 +24,7 @@ import os
 
 import webview
 
-from pywebview_shell.aero_snap import snap
+from pywebview_shell import snap
 from pywebview_shell.bridge import ShellBridge
 from pywebview_shell.window_shell import (
     ensure_dpi_awareness,
@@ -165,7 +165,7 @@ def main() -> None:
     ensure_dpi_awareness()
     preview = None
     if MODE == "hand_snap":
-        from pywebview_shell.aero_snap.preview import SnapPreview
+        from pywebview_shell.preview import SnapPreview
 
         preview = SnapPreview()
     bridge = ExpBridge("exp")

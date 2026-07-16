@@ -29,7 +29,7 @@ import win32api
 import win32con
 import win32gui
 
-from pywebview_shell.aero_snap import snap
+from pywebview_shell import snap
 
 LWA_ALPHA = 0x00000002
 

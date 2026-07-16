@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 import webview
 
+from pywebview_shell import snap
 from pywebview_shell.window_shell import start_native_resize
 
 
@@ -56,6 +57,14 @@ class ShellBridge:
         self._window_ref: Optional[weakref.ReferenceType] = None
         self._hwnd: Optional[int] = None
         self._maximized = False
+        # Hand-rolled Aero Snap state (see snap.py / preview.py; RELAY 009
+        # follow-up). easy_drag does the actual movement; we observe the drag
+        # to reproduce the snapped *result*, since a frameless window can't use
+        # Windows' native snap-aware move loop without WS_CAPTION.
+        self._drag_start_pos: Optional[tuple[int, int]] = None
+        self._snapped = False
+        self._pre_snap_size: Optional[tuple[int, int]] = None
+        self._preview = None  # shared SnapPreview overlay, set by the app
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -79,6 +88,49 @@ class ShellBridge:
         if self._hwnd is None:
             return False
         return start_native_resize(self._hwnd, edge)
+
+    def set_preview(self, preview) -> None:
+        """Bind the shared snap-preview overlay (one per app, not per window)."""
+        self._preview = preview
+
+    def on_drag_start(self) -> bool:
+        """A title-bar mousedown. Record the cursor so on_drag_end can tell a
+        drag from a click, start the preview, and -- if this window is snapped
+        -- restore its pre-snap SIZE so the user drags a normal window again
+        (easy_drag then repositions it, so we only fix size here).
+        """
+        self._drag_start_pos = snap.get_cursor_pos()
+        if self._preview is not None:
+            self._preview.begin_drag()
+        if self._snapped and self._pre_snap_size and self._hwnd is not None:
+            w, h = self._pre_snap_size
+            cx, cy = self._drag_start_pos
+            snap.set_window_rect(self._hwnd, cx - w // 2, cy - 18, w, h)
+            self._snapped = False
+            self._pre_snap_size = None
+        return True
+
+    def on_drag_end(self) -> bool:
+        """A mouseup ending a title-bar drag. If the cursor is over a snap zone,
+        move/resize this window into it (remembering the floating size first so
+        a later drag-away can restore it). Hide the preview either way.
+        """
+        start = self._drag_start_pos
+        self._drag_start_pos = None
+        if self._preview is not None:
+            self._preview.end_drag()
+        if start is None or self._hwnd is None:
+            return False
+        end = snap.get_cursor_pos()
+        if abs(end[0] - start[0]) + abs(end[1] - start[1]) < 6:
+            return False  # a click, not a drag
+        pre = snap.get_window_rect(self._hwnd) if not self._snapped else None
+        applied = snap.apply_snap(self._hwnd)
+        if applied is not None:
+            if pre is not None:
+                self._pre_snap_size = (pre[2], pre[3])
+            self._snapped = True
+        return applied is not None
 
     def minimize_clicked(self) -> None:
         window = self._window()
