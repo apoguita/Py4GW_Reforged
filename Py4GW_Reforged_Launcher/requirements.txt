@@ -14,17 +14,30 @@
 #        .venv\Scripts\pip install --only-binary=:all: imgui_bundle-1.92.801-cp313-cp313-win32.whl
 #   2. Then the rest:
 #        .venv\Scripts\pip install --only-binary=:all: -r requirements.txt
+#
+# One more exception (Phase A, pywebview shell): pywebview's own dependency
+# `proxy_tools` only ships an sdist, no wheel -- but it's pure Python (no C
+# extension, no compiler needed), so it's safe to install from source. Add
+# `--no-binary=proxy_tools` to the command above, or just drop
+# --only-binary=:all: for this one package if installing it standalone.
 annotated-types==0.7.0
+bottle==0.13.4
+cffi==2.1.0
+clr_loader==0.3.1
 dulwich==1.2.10
 glfw==2.10.0
 imgui-bundle==1.92.801
 munch==4.0.0
 numpy==2.5.1
 pillow==12.3.0
+proxy_tools==0.1.0
 psutil==7.1.1
+pycparser==3.0
 pydantic==2.13.4
 pydantic_core==2.46.4
 PyOpenGL==3.1.10
+pythonnet==3.1.0
+pywebview==6.2.1
 pywin32==312
 typing-inspection==0.4.2
 typing_extensions==4.16.0
