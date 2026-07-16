@@ -23,6 +23,14 @@ let filterText = "";
 let checkedIds = new Set();
 let editingProfileId = null; // null while the edit drawer is closed or adding new
 let bulkLaunchActive = false; // Phase F -- a team/bulk launch sequence is currently running
+// Console (RELAY 021). consoleLines mirrors bridge.py's own bounded deque --
+// entries are {id, text, err}, appended/replaced one at a time via the
+// 'console_line' push (see window.shellBridge.on) rather than resending the
+// whole history on every line.
+let consoleLines = [];
+let consoleSelected = new Set();
+let consoleNextId = 0;
+const CONSOLE_MAX_LINES = 500; // mirrors bridge.py's deque(maxlen=500)
 
 function teamName(teamId) {
   if (teamId === "ALL") return "All Profiles";
@@ -259,6 +267,16 @@ async function onBulkStopClick() {
 // Python -> JS push target (bridge.push_event -> window.shellBridge.on).
 window.shellBridge = {
   on(event, data) {
+    if (event === "console_line") {
+      if (data.replace_last && consoleLines.length > 0) {
+        consoleLines[consoleLines.length - 1] = { ...consoleLines[consoleLines.length - 1], text: data.line };
+      } else {
+        consoleLines.push({ id: consoleNextId++, text: data.line, err: /\bfailed\b|\berror\b/i.test(data.line) });
+        if (consoleLines.length > CONSOLE_MAX_LINES) consoleLines.shift();
+      }
+      renderConsole();
+      return;
+    }
     if (event === "bulk_launch_done") {
       // Whatever never got started (mid-sequence cancel) goes back to
       // idle instead of being left showing "Queued" forever.
@@ -286,12 +304,84 @@ window.shellBridge = {
         ? { phase: "running", pid: data.pid }
         : { phase: "error", error: data.error || "Launch failed" };
       refreshCard(id);
+      // Auto-expand on error (TODO.md's console spec, confirmed against the
+      // approved mockup's own everError->consoleOpen behavior) -- a launch
+      // failing is exactly the "something actually went wrong" moment the
+      // panel should surface itself for, not wait for the user to notice.
+      if (!data.success) openConsole();
     } else if (event === "launch_queued") {
       launchState[id] = { phase: "queued", status: data.status };
       refreshCard(id);
     }
   },
 };
+
+// ---------- Console/log panel (RELAY 021) ----------
+
+function openConsole() {
+  document.body.classList.add("console-open");
+}
+
+function toggleConsole() {
+  document.body.classList.toggle("console-open");
+}
+
+function renderConsole() {
+  const body = document.getElementById("console-body");
+  const wasAtBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 12;
+  body.innerHTML = "";
+  for (const entry of consoleLines) {
+    const row = document.createElement("div");
+    row.className = "console-line" + (entry.err ? " err" : "") + (consoleSelected.has(entry.id) ? " selected" : "");
+    row.innerHTML = `<span>${escapeHtml(entry.text)}</span>`;
+    row.onclick = () => toggleConsoleLineSelection(entry.id);
+    body.appendChild(row);
+  }
+  if (wasAtBottom) body.scrollTop = body.scrollHeight;
+
+  document.getElementById("console-count").textContent = `${consoleLines.length} line${consoleLines.length === 1 ? "" : "s"}`;
+  document.getElementById("console-latest").textContent =
+    consoleLines.length > 0 ? consoleLines[consoleLines.length - 1].text : "No activity yet";
+  updateConsoleSelectedText();
+}
+
+function toggleConsoleLineSelection(id) {
+  if (consoleSelected.has(id)) consoleSelected.delete(id);
+  else consoleSelected.add(id);
+  renderConsole();
+}
+
+function updateConsoleSelectedText() {
+  const el = document.getElementById("console-selected-text");
+  const n = consoleSelected.size;
+  el.textContent = n > 0 ? `${n} line${n === 1 ? "" : "s"} selected · click lines to toggle` : "Tip: click log lines to select, then Copy";
+}
+
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // Clipboard permission can be denied in some WebView2 configurations --
+    // fail quietly rather than throwing into an onclick handler.
+  }
+}
+
+function copyAllLog() {
+  copyToClipboard(consoleLines.map((l) => l.text).join("\n"));
+}
+
+function copySelectedLog() {
+  const selected = consoleLines.filter((l) => consoleSelected.has(l.id));
+  if (selected.length === 0) return;
+  copyToClipboard(selected.map((l) => l.text).join("\n"));
+}
+
+async function clearLog() {
+  await window.pywebview.api.clear_console();
+  consoleLines = [];
+  consoleSelected = new Set();
+  renderConsole();
+}
 
 function escapeHtml(s) {
   const div = document.createElement("div");
@@ -695,4 +785,16 @@ window.addEventListener("pywebviewready", () => {
   syncPaletteControls();
   wirePaletteControls();
   loadData();
+  loadConsoleHistory();
 });
+
+async function loadConsoleHistory() {
+  // The console itself never survives a full app restart (bridge.py's
+  // store is in-memory only, matching launcher.py's own console_lines --
+  // never persisted to disk), but this still guards against showing a
+  // stale-looking empty panel if the page itself ever reloads while the
+  // same Python process keeps running.
+  const lines = await window.pywebview.api.get_console_lines();
+  consoleLines = (lines || []).map((text) => ({ id: consoleNextId++, text, err: /\bfailed\b|\berror\b/i.test(text) }));
+  renderConsole();
+}

@@ -12,6 +12,7 @@ Bidirectional shape:
 """
 from __future__ import annotations
 
+import collections
 import dataclasses
 import json
 import threading
@@ -103,6 +104,22 @@ class ShellBridge:
         # same as the individual-launch state above.
         self._bulk_cancel_event: Optional[threading.Event] = None
         self._bulk_thread: Optional[threading.Thread] = None
+        # Phase G live console (RELAY 021). Same shape as launcher.py's own
+        # STATE.console_lines -- a bounded, thread-safe deque fed from both
+        # launch paths, own lock (several launch threads can append
+        # concurrently during a bulk sequence). In-memory only, same as the
+        # imgui app's version -- never persisted to disk, doesn't survive a
+        # full app restart.
+        self._console_lock = threading.Lock()
+        self._console_lines: collections.deque[str] = collections.deque(maxlen=500)
+        # True right after _update_console_countdown appended/replaced the
+        # last line -- so the *next* countdown update knows to replace it in
+        # place rather than append another (otherwise a 30-90s pacing delay
+        # alone would spam one new line per second). Reset by
+        # _append_console_line, so a real per-profile log line breaking the
+        # streak always starts a fresh line -- ported from launcher.py's
+        # _console_countdown_active exactly.
+        self._console_countdown_active = False
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -265,6 +282,50 @@ class ShellBridge:
             "teams": [t.to_dict() for t in teams],
         }
 
+    # ---- Live console (RELAY 021) -- shared by both launch paths below ----
+
+    def get_console_lines(self) -> list:
+        """Called once on page load (see app.js's loadConsoleHistory) so a
+        page reload while this same process keeps running doesn't show an
+        empty panel despite real history existing -- see the console
+        deque's own docstring in __init__ for why this never survives a
+        full app restart."""
+        with self._console_lock:
+            return list(self._console_lines)
+
+    def clear_console(self) -> dict:
+        with self._console_lock:
+            self._console_lines.clear()
+            self._console_countdown_active = False
+        return {"ok": True}
+
+    def _append_console_line(self, profile_name: str, message: str) -> None:
+        """The normal append path -- one new line, always. Ported from
+        launcher.py's append_console_line exactly (same "[name] message"
+        format), called from a launch thread's own on_log."""
+        line = f"[{profile_name}] {message}"
+        with self._console_lock:
+            self._console_lines.append(line)
+            self._console_countdown_active = False
+        self.push_event("console_line", {"line": line, "replace_last": False})
+
+    def _update_console_countdown(self, message: str) -> None:
+        """The bulk-sequence status path -- replaces the last line in place
+        instead of appending, as long as the previous line was itself one
+        of these updates (see _console_countdown_active's docstring).
+        Ported from launcher.py's update_bulk_launch_countdown exactly
+        (same "[Bulk Launch] message" format and replace-in-place
+        semantics)."""
+        line = f"[Bulk Launch] {message}"
+        with self._console_lock:
+            replace = bool(self._console_lines) and self._console_countdown_active
+            if replace:
+                self._console_lines[-1] = line
+            else:
+                self._console_lines.append(line)
+            self._console_countdown_active = True
+        self.push_event("console_line", {"line": line, "replace_last": replace})
+
     # ---- Phase E: individual (single-profile) launch ----
 
     def launch_profile(self, profile_id: str) -> dict:
@@ -325,6 +386,12 @@ class ShellBridge:
                 "launch_log",
                 {"profile_id": profile.id, "status": classify_progress_message(message)},
             )
+            # Console gets the raw message (launcher.py's own console shows
+            # raw pipeline output, not the friendly classified text the
+            # per-card status line uses) -- same hook point for both the
+            # individual and bulk launch paths, since bulk calls
+            # _start_launch -> _run_launch too.
+            self._append_console_line(profile.name or "(unnamed profile)", message)
 
         try:
             result = launch_py4gw_profile(profile, on_log=on_log)
@@ -435,6 +502,10 @@ class ShellBridge:
                 "launch_queued", {"profile_id": profile.id, "status": f"Queued... ({position} of {total})"}
             )
 
+        def status_update(pid: str, msg: str) -> None:
+            self.push_event("launch_queued", {"profile_id": pid, "status": msg})
+            self._update_console_countdown(msg)
+
         started_ids: set[str] = set()
         try:
             for i, profile in enumerate(profiles):
@@ -452,7 +523,9 @@ class ShellBridge:
                     self.push_event(
                         "launch_queued", {"profile_id": profile.id, "status": "Skipped (already running)"}
                     )
+                    self._update_console_countdown(f"Skipping {profile.name or '(unnamed profile)'} (already running)")
                 else:
+                    self._update_console_countdown(f"Launching {profile.name or '(unnamed profile)'}...")
                     result = self._start_launch(profile.id)
                     started_ids.add(profile.id)
                     if not result.get("ok"):
@@ -460,12 +533,11 @@ class ShellBridge:
                             "launch_queued",
                             {"profile_id": profile.id, "status": f"Skipped ({result.get('error', 'could not start')})"},
                         )
+                        self._update_console_countdown(f"Skipping {profile.name or '(unnamed profile)'} ({result.get('error', 'could not start')})")
                     else:
                         bulk_launch.wait_for_readiness(
                             lambda pid=profile.id: pid not in self._in_flight,
-                            on_status=lambda msg, pid=profile.id: self.push_event(
-                                "launch_queued", {"profile_id": pid, "status": msg}
-                            ),
+                            on_status=lambda msg, pid=profile.id: status_update(pid, msg),
                             should_cancel=cancel_event.is_set,
                         )
 
@@ -474,9 +546,7 @@ class ShellBridge:
                     next_profile = profiles[i + 1]
                     bulk_launch.apply_pacing_delay(
                         pacing_seconds,
-                        on_status=lambda msg, pid=next_profile.id: self.push_event(
-                            "launch_queued", {"profile_id": pid, "status": msg}
-                        ),
+                        on_status=lambda msg, pid=next_profile.id: status_update(pid, msg),
                         should_cancel=cancel_event.is_set,
                     )
         finally:

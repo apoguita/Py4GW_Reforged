@@ -69,6 +69,27 @@
       </div>
     </div>
   </div>
+
+  <!-- Live console/log panel (RELAY 021). Data shape ported from the proven
+       launcher.py console (STATE.console_lines); collapsed-strip/auto-expand/
+       counter polish built fresh from dev_notes/TODO.md's spec + the real
+       approved mockup (Launcher.dc.html, inside dev_notes/mockups/Guild Wars
+       Launcher Redesign_4.zip). Collapsed by default. -->
+  <div id="console-bar" onclick="toggleConsole()">
+    <span id="console-label">CONSOLE</span>
+    <span id="console-latest">No activity yet</span>
+    <span id="console-count">0 lines</span>
+    <span id="console-chevron">&#9662;</span>
+  </div>
+  <div id="console-panel">
+    <div id="console-toolbar">
+      <span id="console-selected-text">Tip: click log lines to select, then Copy</span>
+      <button id="console-copy-selected-btn" class="small-btn" onclick="copySelectedLog()">Copy Selected</button>
+      <button class="small-btn" onclick="copyAllLog()">Copy All</button>
+      <button class="small-btn danger" onclick="clearLog()">Clear</button>
+    </div>
+    <div id="console-body"></div>
+  </div>
 </div>
 
 <div id="drawer-scrim" onclick="closeDrawer()"></div>
