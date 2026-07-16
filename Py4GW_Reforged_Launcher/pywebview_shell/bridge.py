@@ -18,6 +18,8 @@ from typing import Any, Optional
 
 import webview
 
+from pywebview_shell.window_shell import start_native_resize
+
 
 class ShellBridge:
     """One instance per window, matching pywebview's one-js_api-per-window
@@ -52,6 +54,7 @@ class ShellBridge:
     def __init__(self, label: str) -> None:
         self.label = label
         self._window_ref: Optional[weakref.ReferenceType] = None
+        self._hwnd: Optional[int] = None
         self._maximized = False
 
     def _window(self) -> Optional[webview.Window]:
@@ -59,6 +62,23 @@ class ShellBridge:
 
     def bind_window(self, window: webview.Window) -> None:
         self._window_ref = weakref.ref(window)
+
+    def bind_hwnd(self, hwnd: int) -> None:
+        """Plain int, not a live object -- safe to store directly (no
+        get_functions recursion risk; see the class docstring), but kept on
+        a private name for consistency with the window back-reference.
+        """
+        self._hwnd = hwnd
+
+    def start_resize(self, edge: str) -> bool:
+        """JS mousedown on one of the frameless window's edge/corner
+        hit-zones calls this (RELAY 009) -- hands off to Windows' own native
+        sizing loop instead of reimplementing resize in Python. See
+        window_shell.start_native_resize for why this works at all.
+        """
+        if self._hwnd is None:
+            return False
+        return start_native_resize(self._hwnd, edge)
 
     def minimize_clicked(self) -> None:
         window = self._window()

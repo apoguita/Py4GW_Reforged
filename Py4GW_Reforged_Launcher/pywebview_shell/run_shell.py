@@ -5,21 +5,22 @@ structure rather than the throwaway spike folder. No real page content --
 placeholder HTML only, matching Phase A's scope (shell only, no business
 logic, don't load the actual Launcher.dc.html mockup yet).
 
-Frameless windows with a custom HTML/CSS title bar -- decided during this
-phase (dev_notes/RELAY.md 008) after hands-on testing of both bordered and
-frameless. Real, known gaps carried forward rather than silently fixed here,
-since fixing them is follow-up work, not Phase A's scope:
+Frameless windows with a custom HTML/CSS title bar -- decided in RELAY 008
+after hands-on testing of both bordered and frameless. Current state
+(RELAY 009):
 - Dragging works via pywebview's own `easy_drag=True` (NOT CSS
-  `-webkit-app-region: drag`, confirmed dead on this backend) -- but it
-  stopped registering drags after one minimize/restore cycle in testing,
-  reproduced once, not fully root-caused.
-- Resize is only proven at the "OS accepts a resize command" level
-  (WM_SYSCOMMAND/SC_SIZE, no visual glitches) -- there's no actual
-  grabbable screen edge yet, since frameless windows have no WS_THICKFRAME
-  border; a human resizing by dragging an edge needs custom WM_NCHITTEST
-  edge hit-testing that doesn't exist yet.
-- Native Aero Snap does not trigger from an easy_drag-driven move -- the
-  window travels off-screen instead of snapping. Not reimplemented here.
+  `-webkit-app-region: drag`, confirmed dead on this backend).
+- Resize is real and confirmed via live mouse drags on all 4 edges + both
+  tested corners (window_shell.start_native_resize -- hands a mousedown off
+  to Windows' own native sizing loop instead of reimplementing it), no
+  visual glitches.
+- Native Aero Snap does NOT trigger -- confirmed a real, structural gap,
+  not a missing feature: Snap needs a genuine native *caption*-drag
+  (WM_NCLBUTTONDOWN/HTCAPTION), which needs WS_CAPTION, which makes Windows
+  paint a real native title bar over the custom HTML one (confirmed via
+  screenshot). Not pursued further -- see ensure_native_resize_style's
+  docstring and RELAY.md 009's summary for the full reasoning and the
+  decision to stop rather than push into a WM_NCCALCSIZE override.
 
 Run directly: .venv\\Scripts\\python.exe -m pywebview_shell.run_shell
 """
@@ -28,10 +29,30 @@ from __future__ import annotations
 import webview
 
 from pywebview_shell.bridge import ShellBridge
-from pywebview_shell.window_shell import ensure_dpi_awareness, wait_for_native_hwnd
+from pywebview_shell.window_shell import (
+    ensure_dpi_awareness,
+    ensure_native_resize_style,
+    wait_for_native_hwnd,
+)
+
+RESIZE_MARGIN = 6
 
 HTML = """
 <html><body style="margin:0;background:#1e1e1e;color:#eee;font-family:sans-serif;">
+<!-- Edge/corner resize hit-zones (RELAY 009) -- frameless windows have no
+     native WS_THICKFRAME border for a human to grab, so these thin strips
+     stand in for one. mousedown on any of them hands off to Windows' own
+     native sizing loop via the bridge (window_shell.start_native_resize) --
+     not a Python-side reimplementation of resize. -->
+<div onmousedown="startResize('top')" style="position:fixed;top:0;left:{m}px;right:{m}px;height:{m}px;cursor:n-resize;z-index:1000;"></div>
+<div onmousedown="startResize('bottom')" style="position:fixed;bottom:0;left:{m}px;right:{m}px;height:{m}px;cursor:s-resize;z-index:1000;"></div>
+<div onmousedown="startResize('left')" style="position:fixed;left:0;top:{m}px;bottom:{m}px;width:{m}px;cursor:w-resize;z-index:1000;"></div>
+<div onmousedown="startResize('right')" style="position:fixed;right:0;top:{m}px;bottom:{m}px;width:{m}px;cursor:e-resize;z-index:1000;"></div>
+<div onmousedown="startResize('topleft')" style="position:fixed;top:0;left:0;width:{m}px;height:{m}px;cursor:nw-resize;z-index:1001;"></div>
+<div onmousedown="startResize('topright')" style="position:fixed;top:0;right:0;width:{m}px;height:{m}px;cursor:ne-resize;z-index:1001;"></div>
+<div onmousedown="startResize('bottomleft')" style="position:fixed;bottom:0;left:0;width:{m}px;height:{m}px;cursor:sw-resize;z-index:1001;"></div>
+<div onmousedown="startResize('bottomright')" style="position:fixed;bottom:0;right:0;width:{m}px;height:{m}px;cursor:se-resize;z-index:1001;"></div>
+
 <div style="-webkit-app-region:drag;height:36px;background:#2a2a2a;
 display:flex;align-items:center;padding:0 10px;user-select:none;">
   <span style="flex:1;">Phase A shell -- {label}</span>
@@ -60,6 +81,9 @@ function doPing() {{
 function doPush() {{
   window.pywebview.api.trigger_push();
 }}
+function startResize(edge) {{
+  window.pywebview.api.start_resize(edge);
+}}
 </script>
 </body></html>
 """
@@ -81,16 +105,16 @@ def main() -> None:
         bridge = DemoBridge(label)
         window = webview.create_window(
             f"Phase A shell -- {label}",
-            html=HTML.format(label=label),
+            html=HTML.format(label=label, m=RESIZE_MARGIN),
             js_api=bridge,
             width=500,
             height=350,
             x=100 + i * 550,
             y=150,
             frameless=True,
-            easy_drag=True,  # required -- CSS app-region alone doesn't move
-                              # the window on this backend, confirmed in
-                              # spikes/pywebview/test_frameless.py
+            easy_drag=True,  # dragging stays on pywebview's own mechanism
+                              # (proven working, RELAY 006/008) -- RELAY 009
+                              # only adds resize, per that entry's own scope.
         )
         bridge.bind_window(window)
         bridges[label] = bridge
@@ -100,6 +124,9 @@ def main() -> None:
         for label, window in windows.items():
             hwnd = wait_for_native_hwnd(window)
             print(f"[shell] {label}: hwnd={hwnd!r}")
+            if hwnd is not None:
+                bridges[label].bind_hwnd(hwnd)
+                ensure_native_resize_style(hwnd)
 
     webview.start(on_shown, debug=False)
 
