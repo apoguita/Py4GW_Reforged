@@ -181,6 +181,61 @@ function closeDrawer() {
   editingProfileId = null;
 }
 
+// ---------- Themed confirm/prompt modal (RELAY 016) ----------
+// Replaces native prompt()/confirm() -- one component covers both shapes:
+// an input variant (New Team) and a message-only variant (Remove from
+// Team/Remove Team/Delete). Promise-based so call sites keep the same
+// early-return shape the native calls had (`const name = await
+// openConfirmModal(...); if (!name) return;`).
+
+function openConfirmModal({ title, message, inputPlaceholder, confirmLabel = "Confirm", danger = false }) {
+  const scrim = document.getElementById("confirm-scrim");
+  const modal = document.getElementById("confirm-modal");
+  const titleEl = document.getElementById("confirm-title");
+  const messageEl = document.getElementById("confirm-message");
+  const inputEl = document.getElementById("confirm-input");
+  const confirmBtn = document.getElementById("confirm-btn");
+  const cancelBtn = document.getElementById("confirm-cancel-btn");
+  const hasInput = inputPlaceholder !== undefined;
+
+  titleEl.textContent = title;
+  messageEl.textContent = message || "";
+  messageEl.style.display = message ? "block" : "none";
+  inputEl.style.display = hasInput ? "block" : "none";
+  inputEl.value = "";
+  inputEl.placeholder = inputPlaceholder || "";
+  confirmBtn.textContent = confirmLabel;
+  confirmBtn.className = danger ? "danger-btn" : "primary-btn";
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      document.body.classList.remove("confirm-open");
+      scrim.onclick = null;
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      document.removeEventListener("keydown", onKeydown);
+      resolve(result);
+    };
+    const onKeydown = (e) => {
+      if (e.key === "Escape") finish(hasInput ? null : false);
+      else if (e.key === "Enter" && (!hasInput || document.activeElement === inputEl)) {
+        finish(hasInput ? inputEl.value.trim() : true);
+      }
+    };
+
+    scrim.onclick = () => finish(hasInput ? null : false);
+    cancelBtn.onclick = () => finish(hasInput ? null : false);
+    confirmBtn.onclick = () => finish(hasInput ? inputEl.value.trim() : true);
+    document.addEventListener("keydown", onKeydown);
+
+    document.body.classList.add("confirm-open");
+    if (hasInput) setTimeout(() => inputEl.focus(), 0);
+  });
+}
+
 // ---------- Settings / theme (RELAY 010) ----------
 
 function renderPresetRow() {
@@ -312,11 +367,22 @@ async function onEditDeleteClick() {
   const name = p ? p.name : "this profile";
 
   if (activeTeamId === "ALL") {
-    if (!confirm(`Permanently delete "${name}"? This removes it from every team.`)) return;
+    const ok = await openConfirmModal({
+      title: "Delete profile",
+      message: `Permanently delete "${name}"? This removes it from every team.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     await window.pywebview.api.delete_profile(editingProfileId);
   } else {
     const tn = teamName(activeTeamId);
-    if (!confirm(`Remove "${name}" from "${tn}"? The profile stays in ALL and any other teams.`)) return;
+    const ok = await openConfirmModal({
+      title: "Remove from team",
+      message: `Remove "${name}" from "${tn}"? The profile stays in ALL and any other teams.`,
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
     await window.pywebview.api.remove_profile_from_team(editingProfileId, activeTeamId);
   }
   closeDrawer();
@@ -374,9 +440,13 @@ function onAddToTeamClick() {
 // ---------- Teams (new / remove, RELAY 011) ----------
 
 async function onNewTeamClick() {
-  const name = prompt("New team name:");
-  if (!name || !name.trim()) return;
-  const newTeam = await window.pywebview.api.add_team(name.trim());
+  const name = await openConfirmModal({
+    title: "New team",
+    inputPlaceholder: "Team name",
+    confirmLabel: "Create",
+  });
+  if (!name) return;
+  const newTeam = await window.pywebview.api.add_team(name);
   await loadData();
   selectTeam(newTeam.id);
 }
@@ -384,7 +454,12 @@ async function onNewTeamClick() {
 async function onRemoveTeamClick() {
   if (activeTeamId === "ALL") return;
   const tn = teamName(activeTeamId);
-  if (!confirm(`Remove team "${tn}"? Profiles are kept -- they just lose membership in this team.`)) return;
+  const ok = await openConfirmModal({
+    title: "Remove team",
+    message: `Remove team "${tn}"? Profiles are kept -- they just lose membership in this team.`,
+    confirmLabel: "Remove",
+  });
+  if (!ok) return;
   await window.pywebview.api.remove_team(activeTeamId);
   selectTeam("ALL");
   await loadData();
@@ -392,7 +467,9 @@ async function onRemoveTeamClick() {
 
 // ---------- Window controls (carried over from Phase A) ----------
 // Resize is handled entirely by Windows' native WS_THICKFRAME border (no JS
-// resize zones -- see index.html). Only the title-bar drag + snap is wired here.
+// resize zones -- see index.html). This supersedes RELAY 018's stopPropagation
+// patch on the old startResize(): with the resize-zone divs gone there's no
+// zone-click left to race pywebview's move-tracking, so that fix is moot here.
 
 // Hand-rolled Aero Snap (dev_notes/AERO_SNAP_INVESTIGATION.md). easy_drag still
 // does the actual moving; we only tell Python when a title-bar drag starts (so
@@ -410,7 +487,12 @@ window.addEventListener("mouseup", () => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && document.body.classList.contains("drawer-open")) {
+  // confirm-open is deliberately excluded here -- the confirm modal can open
+  // on top of the drawer (Delete lives in the edit drawer's footer), and its
+  // own keydown listener (openConfirmModal) already handles Escape for
+  // itself. Without this guard, Escape while the modal is open would close
+  // both layers in one press instead of just the topmost one.
+  if (e.key === "Escape" && document.body.classList.contains("drawer-open") && !document.body.classList.contains("confirm-open")) {
     closeDrawer();
   }
 });

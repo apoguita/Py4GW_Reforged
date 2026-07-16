@@ -641,3 +641,57 @@ body.drawer-open #drawer {
   flex: 1;
   min-height: 0;
 }
+
+/* ---------- Confirm/prompt modal (RELAY 016) ---------- */
+/* Scrim dim (rgba(0,0,0,.34)) matches #drawer-scrim's real current value
+   exactly, not the mockup's original .edscrim spec (28%) -- confirmed by
+   reading the actual rule above, not re-guessed. z-index (65/66) sits above
+   the drawer (55/56) and the Add-to-Team dropdown (70 -- see app.js) is
+   deliberately lower, since that menu closes itself on outside click before
+   this modal would ever need to layer over it. */
+#confirm-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.34);
+  z-index: 65;
+  display: none;
+}
+#confirm-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  max-width: 88%;
+  background: var(--surface, #14162b);
+  border: 1px solid var(--border, #2a2f55);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  z-index: 66;
+  display: none;
+  flex-direction: column;
+  padding: 18px;
+  gap: 12px;
+}
+body.confirm-open #confirm-scrim {
+  display: block;
+}
+body.confirm-open #confirm-modal {
+  display: flex;
+}
+#confirm-modal .title {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--font-display, "Sora", sans-serif);
+}
+#confirm-message {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted, #9a9ecb);
+  line-height: 1.5;
+}
+#confirm-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
