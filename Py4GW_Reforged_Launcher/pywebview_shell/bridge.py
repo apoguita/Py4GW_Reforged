@@ -602,6 +602,22 @@ class ShellBridge:
         result.pop("password_protected", None)
         return result
 
+    def browse_for_file(self, type_label: str, pattern: str) -> Optional[str]:
+        """Native file-browse dialog for the edit drawer's Mods tab (RELAY
+        024) -- DLL paths and gMod plugin (.tpf) selection. `pattern` is a
+        glob like "*.dll", matching pywebview's own file_types format
+        (`create_file_dialog`'s docstring: `'Description (*.ext[;*.ext2...])'`
+        tuples). Investigated the text-paste fallback the entry allowed for,
+        but this API is straightforward to call from a bridge method with no
+        extra wiring, so there's no reason to fall back to it.
+        """
+        window = self._window()
+        if window is None:
+            return None
+        file_types = (f"{type_label} ({pattern})", "All files (*.*)")
+        result = window.create_file_dialog(webview.FileDialog.OPEN, file_types=file_types)
+        return result[0] if result else None
+
     def delete_profile(self, profile_id: str) -> bool:
         """Permanently remove a profile from every team it belonged to.
         Only the right call while viewing ALL -- see remove_profile_from_team

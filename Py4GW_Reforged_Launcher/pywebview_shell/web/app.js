@@ -22,6 +22,10 @@ let activeTeamId = "ALL";
 let filterText = "";
 let checkedIds = new Set();
 let editingProfileId = null; // null while the edit drawer is closed or adding new
+// RELAY 024: gMod plugin list is an array field, not a simple form control --
+// held here while the drawer's open, same lifecycle as editingProfileId, and
+// written back into save_profile's data on Save.
+let editPluginPaths = [];
 let bulkLaunchActive = false; // Phase F -- a team/bulk launch sequence is currently running
 // Console (RELAY 021). consoleLines mirrors bridge.py's own bounded deque --
 // entries are {id, text, err}, appended/replaced one at a time via the
@@ -601,6 +605,16 @@ function openEditDrawer(profileId) {
   document.getElementById("edit-autoselect").checked = p ? !!p.auto_select_character_enabled : false;
   document.getElementById("edit-charname").value = p ? p.character_name || "" : "";
 
+  // RELAY 024: Mods/Window tab fields.
+  document.getElementById("edit-py4gw-dll-path").value = p ? p.py4gw_dll_path || "" : "";
+  document.getElementById("edit-gmod-dll-path").value = p ? p.gmod_dll_path || "" : "";
+  editPluginPaths = p ? [...(p.gmod_plugin_paths || [])] : [];
+  renderPluginList();
+  // GameProfile.windowed_mode_enabled defaults to True -- match that default
+  // for a brand-new profile too, not false.
+  document.getElementById("edit-windowed").checked = p ? !!p.windowed_mode_enabled : true;
+  selectEditTab("general");
+
   // Delete button: hidden entirely for a brand-new (unsaved) profile -- there's
   // nothing to delete/remove yet. Label is context-aware per RELAY 011's spec:
   // viewing a specific team -> "Remove from Team" (profile survives elsewhere);
@@ -618,6 +632,63 @@ function openEditDrawer(profileId) {
   document.body.classList.add("drawer-open");
 }
 
+// ---------- Edit drawer tabs (RELAY 024) ----------
+
+function selectEditTab(tab) {
+  for (const btn of document.querySelectorAll(".edit-tab")) {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  }
+  for (const panel of document.querySelectorAll(".edit-tab-panel")) {
+    panel.style.display = panel.id === `edit-tab-${tab}` ? "flex" : "none";
+  }
+}
+
+// ---------- Mods tab: DLL path browse + gMod plugin list (RELAY 024) ----------
+
+async function onBrowsePathClick(inputId, typeLabel, pattern) {
+  const chosen = await window.pywebview.api.browse_for_file(typeLabel, pattern);
+  if (chosen) document.getElementById(inputId).value = chosen;
+}
+
+function renderPluginList() {
+  const list = document.getElementById("gmod-plugin-list");
+  if (editPluginPaths.length === 0) {
+    list.innerHTML = `<div class="plugin-list-empty">No plugins added</div>`;
+    return;
+  }
+  list.innerHTML = "";
+  editPluginPaths.forEach((path, i) => {
+    // Basename, no extension -- matches GWxLauncher's own
+    // Path.GetFileNameWithoutExtension(path) display (same convention
+    // launcher.py's own Mods tab uses); full path is the hover tooltip.
+    const parts = path.split(/[\\/]/).filter(Boolean);
+    const base = parts.length ? parts[parts.length - 1] : path;
+    const nameNoExt = base.replace(/\.[^.]+$/, "");
+    const row = document.createElement("div");
+    row.className = "plugin-row";
+    row.title = path;
+    row.innerHTML = `
+      <span class="plugin-name">${escapeHtml(nameNoExt)}</span>
+      <button class="plugin-remove" title="Remove">&#10005;</button>
+    `;
+    row.querySelector(".plugin-remove").onclick = () => onRemovePlugin(i);
+    list.appendChild(row);
+  });
+}
+
+function onRemovePlugin(index) {
+  editPluginPaths.splice(index, 1);
+  renderPluginList();
+}
+
+async function onAddPluginClick() {
+  const chosen = await window.pywebview.api.browse_for_file("TPF files", "*.tpf");
+  if (chosen && !editPluginPaths.includes(chosen)) {
+    editPluginPaths.push(chosen);
+    renderPluginList();
+  }
+}
+
 async function onSaveProfileClick() {
   const data = {
     id: editingProfileId || undefined,
@@ -630,6 +701,10 @@ async function onSaveProfileClick() {
     auto_login_enabled: document.getElementById("edit-autologin").checked,
     auto_select_character_enabled: document.getElementById("edit-autoselect").checked,
     character_name: document.getElementById("edit-charname").value.trim(),
+    py4gw_dll_path: document.getElementById("edit-py4gw-dll-path").value.trim(),
+    gmod_dll_path: document.getElementById("edit-gmod-dll-path").value.trim(),
+    gmod_plugin_paths: editPluginPaths.slice(),
+    windowed_mode_enabled: document.getElementById("edit-windowed").checked,
   };
   const newPassword = document.getElementById("edit-password").value;
   if (newPassword) data.new_password = newPassword;

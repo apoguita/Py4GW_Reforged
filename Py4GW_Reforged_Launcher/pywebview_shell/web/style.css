@@ -813,9 +813,88 @@ body.drawer-open #drawer {
   color: var(--text, #e6e8ff);
   outline: none;
 }
-#edit-drawer-content #drawer-body > div {
-  margin-bottom: 14px;
+/* RELAY 024: General/Mods/Window tabs -- active-tab values (panel
+   background, accent text, inset underline) reused from the mockup's own
+   tabOn/tabOff CSS strings (Launcher.dc.html ~line 699-700), the rest of
+   the tab content is this app's own (see index.html's comment above the
+   edit drawer for why the mockup's own Mods/Window CONTENT isn't used). */
+#edit-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px 0;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-soft, #20233f);
 }
+.edit-tab {
+  padding: 7px 13px;
+  border-radius: 8px 8px 0 0;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--muted, #9a9ecb);
+}
+.edit-tab.active {
+  background: var(--panel, #191c33);
+  color: var(--accent, #7c8cff);
+  box-shadow: inset 0 -2px 0 var(--accent, #7c8cff);
+}
+.edit-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.path-browse-row {
+  display: flex;
+  gap: 7px;
+}
+.path-browse-row .field-input {
+  flex: 1;
+}
+
+#gmod-plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.plugin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel2, #1f2340);
+  border: 1px solid var(--border, #2a2f55);
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+.plugin-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plugin-remove {
+  border: none;
+  background: none;
+  color: var(--muted, #9a9ecb);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding: 2px 4px;
+}
+.plugin-remove:hover {
+  color: var(--bad, #ff6b8a);
+}
+.plugin-list-empty {
+  font-size: 11.5px;
+  color: var(--faint, #5f6491);
+  padding: 4px 0;
+}
+
 #drawer-footer {
   display: flex;
   align-items: center;

@@ -140,42 +140,89 @@
     </div>
   </div>
 
-  <!-- Add/Edit profile content -- RELAY 011 -->
+  <!-- Add/Edit profile content -- RELAY 011. Real General/Mods/Window tabs
+       (RELAY 024) match the proven imgui app's SETTINGS_TABS shape
+       (launcher.py ~3448/show_profile_settings_window), not the mockup's own
+       fictional Mods/Window content (auto-run scripts, window rename --
+       neither exists on GameProfile). The tab bar's own visual style IS
+       reused from the mockup (Launcher.dc.html ~line 317-320, 699-700). -->
   <div id="edit-drawer-content" style="display:none">
     <div id="drawer-header">
       <span class="title" id="edit-drawer-title">Add Profile</span>
       <button class="drawer-x" onclick="closeDrawer()">&#10005;</button>
     </div>
+
+    <div id="edit-tabs">
+      <button class="edit-tab active" data-tab="general" onclick="selectEditTab('general')">General</button>
+      <button class="edit-tab" data-tab="mods" onclick="selectEditTab('mods')">Mods</button>
+      <button class="edit-tab" data-tab="window" onclick="selectEditTab('window')">Window</button>
+    </div>
+
     <div id="drawer-body">
-      <div>
-        <h4 style="margin-bottom:8px">Identity</h4>
-        <label class="field-label">Profile name</label>
-        <input class="field-input" id="edit-name" placeholder="e.g. Aldric Vale">
-        <label class="field-label">Account email</label>
-        <input class="field-input" id="edit-email" placeholder="account@email.com">
-        <label class="field-label">Password</label>
-        <input class="field-input" id="edit-password" type="password" placeholder="••••••••">
+      <div id="edit-tab-general" class="edit-tab-panel">
+        <div>
+          <h4 style="margin-bottom:8px">Identity</h4>
+          <label class="field-label">Profile name</label>
+          <input class="field-input" id="edit-name" placeholder="e.g. Aldric Vale">
+          <label class="field-label">Account email</label>
+          <input class="field-input" id="edit-email" placeholder="account@email.com">
+          <label class="field-label">Password</label>
+          <input class="field-input" id="edit-password" type="password" placeholder="••••••••">
+        </div>
+        <div>
+          <h4 style="margin-bottom:8px">Client</h4>
+          <label class="field-label">Gw.exe path</label>
+          <input class="field-input" id="edit-path" placeholder="C:\Games\Guild Wars\Gw.exe">
+          <label class="field-label">Extra launch args</label>
+          <input class="field-input" id="edit-args" placeholder="-optional -flags">
+        </div>
+        <div>
+          <h4 style="margin-bottom:8px">Injection</h4>
+          <div class="pal-row"><span>Inject Py4GW</span><input type="checkbox" id="edit-py4gw"></div>
+          <div class="pal-row"><span>Inject gMod</span><input type="checkbox" id="edit-gmod"></div>
+        </div>
+        <div>
+          <h4 style="margin-bottom:8px">Auto-Login</h4>
+          <div class="pal-row"><span>Enable auto-login</span><input type="checkbox" id="edit-autologin"></div>
+          <div class="pal-row"><span>Auto-select character</span><input type="checkbox" id="edit-autoselect"></div>
+          <label class="field-label">Character name to auto-select</label>
+          <input class="field-input" id="edit-charname" placeholder="in-game character name">
+        </div>
       </div>
-      <div>
-        <h4 style="margin-bottom:8px">Client</h4>
-        <label class="field-label">Gw.exe path</label>
-        <input class="field-input" id="edit-path" placeholder="C:\Games\Guild Wars\Gw.exe">
-        <label class="field-label">Extra launch args</label>
-        <input class="field-input" id="edit-args" placeholder="-optional -flags">
+
+      <div id="edit-tab-mods" class="edit-tab-panel" style="display:none">
+        <div>
+          <h4 style="margin-bottom:8px">Py4GW</h4>
+          <label class="field-label">Py4GW DLL path</label>
+          <div class="path-browse-row">
+            <input class="field-input" id="edit-py4gw-dll-path" placeholder="C:\...\Py4GW.dll">
+            <button class="ghost-btn" onclick="onBrowsePathClick('edit-py4gw-dll-path','DLL files','*.dll')">Browse…</button>
+          </div>
+        </div>
+        <div>
+          <h4 style="margin-bottom:8px">gMod</h4>
+          <label class="field-label">gMod DLL path</label>
+          <div class="path-browse-row">
+            <input class="field-input" id="edit-gmod-dll-path" placeholder="C:\...\gMod.dll">
+            <button class="ghost-btn" onclick="onBrowsePathClick('edit-gmod-dll-path','DLL files','*.dll')">Browse…</button>
+          </div>
+          <label class="field-label">Plugins (.tpf files)</label>
+          <div id="gmod-plugin-list"></div>
+          <button class="ghost-btn" onclick="onAddPluginClick()">+ Add plugin…</button>
+        </div>
       </div>
-      <div>
-        <h4 style="margin-bottom:8px">Injection</h4>
-        <div class="pal-row"><span>Inject Py4GW</span><input type="checkbox" id="edit-py4gw"></div>
-        <div class="pal-row"><span>Inject gMod</span><input type="checkbox" id="edit-gmod"></div>
-      </div>
-      <div>
-        <h4 style="margin-bottom:8px">Auto-Login</h4>
-        <div class="pal-row"><span>Enable auto-login</span><input type="checkbox" id="edit-autologin"></div>
-        <div class="pal-row"><span>Auto-select character</span><input type="checkbox" id="edit-autoselect"></div>
-        <label class="field-label">Character name to auto-select</label>
-        <input class="field-input" id="edit-charname" placeholder="in-game character name">
+
+      <div id="edit-tab-window" class="edit-tab-panel" style="display:none">
+        <div>
+          <h4 style="margin-bottom:8px">Window</h4>
+          <div class="pal-row"><span>Windowed mode</span><input type="checkbox" id="edit-windowed"></div>
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
+            Recommended: fullscreen can cause problems when running multiple accounts.
+          </p>
+        </div>
       </div>
     </div>
+
     <div id="drawer-footer">
       <button id="edit-delete-btn" class="danger-btn" onclick="onEditDeleteClick()">Delete</button>
       <div style="flex:1"></div>
