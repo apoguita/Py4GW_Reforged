@@ -197,3 +197,10 @@ def set_window_rect(hwnd: int, x: int, y: int, w: int, h: int) -> None:
     ctypes.windll.user32.SetWindowPos(
         hwnd, 0, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE
     )
+
+
+def get_window_rect(hwnd: int) -> tuple[int, int, int, int]:
+    """(x, y, w, h) in physical pixels for a per-monitor-aware process."""
+    r = wt.RECT()
+    ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(r))
+    return r.left, r.top, r.right - r.left, r.bottom - r.top

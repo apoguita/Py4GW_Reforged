@@ -98,10 +98,23 @@ class ExpBridge(ShellBridge):
     def __init__(self, label: str) -> None:
         super().__init__(label)
         self._drag_start_pos = None
+        self._snapped = False
+        self._pre_snap_size = None  # (w, h) physical, to restore on drag-away
 
     # --- Attempt 2: hand-rolled snap (easy_drag does the move) ---
     def on_drag_start(self) -> bool:
         self._drag_start_pos = snap.get_cursor_pos()
+        # If we're grabbing a snapped window, restore its pre-snap SIZE so the
+        # user drags a normal-sized window again (native behavior). easy_drag
+        # then repositions it to follow the cursor, so we only need to fix the
+        # size here; leaving position to easy_drag avoids fighting its own
+        # cursor-offset math.
+        if self._snapped and self._pre_snap_size and self._hwnd is not None:
+            w, h = self._pre_snap_size
+            cx, cy = self._drag_start_pos
+            snap.set_window_rect(self._hwnd, cx - w // 2, cy - 18, w, h)
+            self._snapped = False
+            self._pre_snap_size = None
         return True
 
     def on_drag_end(self) -> bool:
@@ -113,7 +126,14 @@ class ExpBridge(ShellBridge):
         moved = abs(end[0] - start[0]) + abs(end[1] - start[1])
         if moved < 6:  # a click, not a drag
             return False
+        # Remember the floating size before we snap, so a later drag-away can
+        # restore it. Only capture when transitioning floating -> snapped.
+        pre = snap.get_window_rect(self._hwnd) if not self._snapped else None
         applied = snap.apply_snap(self._hwnd)
+        if applied is not None:
+            if pre is not None:
+                self._pre_snap_size = (pre[2], pre[3])
+            self._snapped = True
         print(f"[exp] on_drag_end moved={moved} cursor={end} snapped={applied}", flush=True)
         return applied is not None
 
