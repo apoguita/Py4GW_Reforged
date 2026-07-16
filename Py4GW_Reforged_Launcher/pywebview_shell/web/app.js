@@ -293,10 +293,14 @@ async function onBulkStopClick() {
 window.shellBridge = {
   on(event, data) {
     if (event === "console_line") {
+      // RELAY 030: category comes from the server (classify_progress_
+      // category, launcher_core/launch_progress.py) -- no client-side
+      // regex guess anymore, that old .err-only heuristic is fully
+      // replaced, not run alongside this.
       if (data.replace_last && consoleLines.length > 0) {
-        consoleLines[consoleLines.length - 1] = { ...consoleLines[consoleLines.length - 1], text: data.line };
+        consoleLines[consoleLines.length - 1] = { ...consoleLines[consoleLines.length - 1], text: data.line, category: data.category };
       } else {
-        consoleLines.push({ id: consoleNextId++, text: data.line, err: /\bfailed\b|\berror\b/i.test(data.line) });
+        consoleLines.push({ id: consoleNextId++, text: data.line, category: data.category });
         if (consoleLines.length > CONSOLE_MAX_LINES) consoleLines.shift();
       }
       renderConsole();
@@ -357,7 +361,7 @@ function renderConsole() {
   body.innerHTML = "";
   for (const entry of consoleLines) {
     const row = document.createElement("div");
-    row.className = "console-line" + (entry.err ? " err" : "") + (consoleSelected.has(entry.id) ? " selected" : "");
+    row.className = "console-line" + (entry.category ? " " + entry.category : "") + (consoleSelected.has(entry.id) ? " selected" : "");
     row.innerHTML = `<span>${escapeHtml(entry.text)}</span>`;
     row.onclick = () => toggleConsoleLineSelection(entry.id);
     body.appendChild(row);
@@ -941,7 +945,10 @@ async function loadConsoleHistory() {
   // never persisted to disk), but this still guards against showing a
   // stale-looking empty panel if the page itself ever reloads while the
   // same Python process keeps running.
+  // RELAY 030: each entry is now {line, category} (bridge.py classifies
+  // once, at write time), not a bare string -- so history reload shows
+  // the same coloring a live push would have, not a re-guessed one.
   const lines = await window.pywebview.api.get_console_lines();
-  consoleLines = (lines || []).map((text) => ({ id: consoleNextId++, text, err: /\bfailed\b|\berror\b/i.test(text) }));
+  consoleLines = (lines || []).map((entry) => ({ id: consoleNextId++, text: entry.line, category: entry.category }));
   renderConsole();
 }

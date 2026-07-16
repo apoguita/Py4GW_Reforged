@@ -23,7 +23,7 @@ import webview
 
 from launcher_core import bulk_launch, crypto, profile_store, settings_store
 from launcher_core.gw1_launch import launch_py4gw_profile
-from launcher_core.launch_progress import classify_progress_message
+from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
 from launcher_core.profile import GameProfile
 from launcher_core.team import Team
@@ -111,7 +111,11 @@ class ShellBridge:
         # imgui app's version -- never persisted to disk, doesn't survive a
         # full app restart.
         self._console_lock = threading.Lock()
-        self._console_lines: collections.deque[str] = collections.deque(maxlen=500)
+        # Each entry is {"line": str, "category": str} -- category added
+        # RELAY 030 (classify_progress_category) so a page/history reload
+        # (get_console_lines) shows the same coloring as a live-pushed line,
+        # not just the live push_event path.
+        self._console_lines: collections.deque[dict] = collections.deque(maxlen=500)
         # True right after _update_console_countdown appended/replaced the
         # last line -- so the *next* countdown update knows to replace it in
         # place rather than append another (otherwise a 30-90s pacing delay
@@ -332,12 +336,17 @@ class ShellBridge:
     def _append_console_line(self, profile_name: str, message: str) -> None:
         """The normal append path -- one new line, always. Ported from
         launcher.py's append_console_line exactly (same "[name] message"
-        format), called from a launch thread's own on_log."""
+        format), called from a launch thread's own on_log.
+
+        Category (RELAY 030) is classified off the raw, unprefixed
+        `message` -- the same text gw1_launch.py's own _log() calls emit,
+        matching classify_progress_category's needle list exactly."""
         line = f"[{profile_name}] {message}"
+        category = classify_progress_category(message)
         with self._console_lock:
-            self._console_lines.append(line)
+            self._console_lines.append({"line": line, "category": category})
             self._console_countdown_active = False
-        self.push_event("console_line", {"line": line, "replace_last": False})
+        self.push_event("console_line", {"line": line, "category": category, "replace_last": False})
 
     def _update_console_countdown(self, message: str) -> None:
         """The bulk-sequence status path -- replaces the last line in place
@@ -347,14 +356,16 @@ class ShellBridge:
         (same "[Bulk Launch] message" format and replace-in-place
         semantics)."""
         line = f"[Bulk Launch] {message}"
+        category = classify_progress_category(message)
         with self._console_lock:
             replace = bool(self._console_lines) and self._console_countdown_active
+            entry = {"line": line, "category": category}
             if replace:
-                self._console_lines[-1] = line
+                self._console_lines[-1] = entry
             else:
-                self._console_lines.append(line)
+                self._console_lines.append(entry)
             self._console_countdown_active = True
-        self.push_event("console_line", {"line": line, "replace_last": replace})
+        self.push_event("console_line", {"line": line, "category": category, "replace_last": replace})
 
     # ---- Phase E: individual (single-profile) launch ----
 
@@ -553,6 +564,10 @@ class ShellBridge:
         try:
             for i, profile in enumerate(profiles):
                 if cancel_event.is_set():
+                    # RELAY 030: previously silent -- the loop just broke
+                    # with no console line, so cancellation was only
+                    # inferable from the sequence stopping, never stated.
+                    self._update_console_countdown("Bulk launch cancelled")
                     break
 
                 # Fresh check right before each launch, not just once up

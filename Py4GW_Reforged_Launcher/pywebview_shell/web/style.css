@@ -645,6 +645,20 @@ body.console-open #console-panel {
 .console-line.err {
   color: var(--bad, #ff6b8a);
 }
+/* RELAY 030: ok/warn/acc, ported from the mockup's real colorMap
+   (Launcher.dc.html) -- the same --good/--warn/--accent variables this
+   app already uses elsewhere, no new theme variables needed. Base
+   .console-line's own color (--muted) already matches colorMap's '' /
+   neutral default, so no separate class is needed for that case. */
+.console-line.ok {
+  color: var(--good, #5ce0b0);
+}
+.console-line.warn {
+  color: var(--warn, #ffd166);
+}
+.console-line.acc {
+  color: var(--accent, #7c8cff);
+}
 
 /* ---------- Settings drawer ---------- */
 
