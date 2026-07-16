@@ -447,6 +447,19 @@ function renderAll() {
   renderHeader();
   renderCards();
   updateLaunchSelectedBtn();
+  updateFirstRunCues();
+}
+
+// RELAY 028: reactive first-run guidance, not a one-time flag -- re-evaluated
+// on every renderAll() so the cue disappears the moment its condition stops
+// being true (first profile/team created), same lifecycle as everything else
+// in this function. Only one cue is ever active: Add Profile is the real
+// first step for a brand-new user; Add Team only matters once a profile
+// already exists. Settings deliberately gets no cue (two competing accented
+// buttons would dilute which one is the actual recommended first step).
+function updateFirstRunCues() {
+  document.getElementById("add-profile-btn").classList.toggle("accent-cue", profiles.length === 0);
+  document.getElementById("rail-add-team-btn").classList.toggle("accent-cue", profiles.length > 0 && teams.length === 0);
 }
 
 async function loadData() {

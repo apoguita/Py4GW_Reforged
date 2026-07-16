@@ -37,7 +37,7 @@
       </div>
       <div id="rail-teams"></div>
       <div style="flex:1"></div>
-      <div class="rail-icon" title="Add team" onclick="onNewTeamClick()">+</div>
+      <div id="rail-add-team-btn" class="rail-icon" title="Add team" onclick="onNewTeamClick()">+</div>
     </div>
 
     <div id="main">
@@ -73,7 +73,16 @@
       </div>
 
       <div id="card-area">
-        <div id="no-profiles" style="display:none">No profiles yet -- create one in the old launcher or drop a profiles.json in place.</div>
+        <!-- RELAY 028: "import your accounts.json from Settings" references
+             App Settings/legacy import, which does NOT exist in the
+             pywebview shell yet -- deliberate, not an oversight. This
+             branch (feature/pywebview-shell) has never shipped to anyone
+             (no tags/PRs, unlike feature/launcher's public alpha), so this
+             copy is written in its final intended form now rather than
+             needing a pointless return trip later. Don't "fix" this back to
+             a simpler message, and don't build import just to make it true
+             ahead of schedule. -->
+        <div id="no-profiles" style="display:none">No profiles yet — click + to add one, or import your accounts.json from Settings.</div>
         <div id="no-results" style="display:none"></div>
         <div id="card-grid"></div>
       </div>
@@ -177,11 +186,6 @@
           <input class="field-input" id="edit-args" placeholder="-optional -flags">
         </div>
         <div>
-          <h4 style="margin-bottom:8px">Injection</h4>
-          <div class="pal-row"><span>Inject Py4GW</span><input type="checkbox" id="edit-py4gw"></div>
-          <div class="pal-row"><span>Inject gMod</span><input type="checkbox" id="edit-gmod"></div>
-        </div>
-        <div>
           <h4 style="margin-bottom:8px">Auto-Login</h4>
           <div class="pal-row"><span>Enable auto-login</span><input type="checkbox" id="edit-autologin"></div>
           <div class="pal-row"><span>Auto-select character</span><input type="checkbox" id="edit-autoselect"></div>
@@ -193,6 +197,7 @@
       <div id="edit-tab-mods" class="edit-tab-panel" style="display:none">
         <div>
           <h4 style="margin-bottom:8px">Py4GW</h4>
+          <div class="pal-row"><span>Inject Py4GW</span><input type="checkbox" id="edit-py4gw"></div>
           <label class="field-label">Py4GW DLL path</label>
           <div class="path-browse-row">
             <input class="field-input" id="edit-py4gw-dll-path" placeholder="C:\...\Py4GW.dll">
@@ -201,6 +206,7 @@
         </div>
         <div>
           <h4 style="margin-bottom:8px">gMod</h4>
+          <div class="pal-row"><span>Inject gMod</span><input type="checkbox" id="edit-gmod"></div>
           <label class="field-label">gMod DLL path</label>
           <div class="path-browse-row">
             <input class="field-input" id="edit-gmod-dll-path" placeholder="C:\...\gMod.dll">

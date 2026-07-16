@@ -327,6 +327,18 @@ select {
   flex-shrink: 0;
   font-size: 19px;
 }
+/* RELAY 028: first-run accent cues -- solid accent/accent-ink is the same
+   "this is the primary action" treatment the idle Launch button already
+   uses (RELAY 023), reused here rather than inventing a new visual
+   language. ID+class beats the plain-ID rules above without !important.
+   Toggled reactively in app.js's updateFirstRunCues(), not a one-time
+   first-launch flag -- reverts the instant the condition stops being true. */
+#add-profile-btn.accent-cue,
+#rail-add-team-btn.accent-cue {
+  background: var(--accent, #7c8cff);
+  color: var(--accent-ink, #0a0c22);
+  border-color: var(--accent, #7c8cff);
+}
 
 #card-area {
   flex: 1;
