@@ -259,6 +259,20 @@ select {
   color: var(--text, #e6e8ff);
   border: 1px solid var(--border, #2a2f55);
 }
+/* RELAY 027: always-visible-but-disabled instead of hide-until-checked --
+   mockup's own launchSelCss/addSelCss values, reused exactly. Launch
+   Selected's border/text go accent-colored when active (Add to Team's
+   active state is just its own default look above, no extra mockup
+   override); both dim to opacity:.5 with a default cursor when disabled. */
+#launch-selected-btn:not(:disabled) {
+  border-color: var(--accent, #7c8cff);
+  color: var(--accent, #7c8cff);
+}
+#add-to-team-btn:disabled,
+#launch-selected-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
 #filter-row {
   display: flex;

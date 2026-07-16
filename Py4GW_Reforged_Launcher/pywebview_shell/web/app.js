@@ -74,11 +74,15 @@ function renderHeader() {
 
 // Add to Team (RELAY 023): ALL view only -- redundant on a team-scoped view
 // since a profile shown there is already in that team; reassigning between
-// teams is ALL's job. Shares the header's primary action slot with Launch
-// Team (mutually exclusive: never both real teams and ALL at once).
+// teams is ALL's job.
+// RELAY 027: within the ALL view, always visible rather than hidden until
+// checked -- disabled (real attribute) when there's nothing selected, same
+// reversal as updateLaunchSelectedBtn above.
 function updateAddToTeamBtn() {
-  document.getElementById("add-to-team-btn").style.display =
-    activeTeamId === "ALL" && checkedIds.size > 0 ? "inline-block" : "none";
+  const btn = document.getElementById("add-to-team-btn");
+  const onAll = activeTeamId === "ALL";
+  btn.style.display = onAll ? "inline-block" : "none";
+  btn.disabled = !onAll || checkedIds.size === 0;
 }
 
 function badgeHtml(label, on) {
@@ -407,14 +411,14 @@ function toggleCheck(profileId) {
   renderCards();
 }
 
+// RELAY 027: always visible (on any view it appears on), disabled rather
+// than hidden when there's nothing to act on -- Chris's reversal of 020/023's
+// hide-until-checked call ("the missing disabled buttons remove the feedback
+// needed to prompt a user... steering them towards the profile checkbox").
 function updateLaunchSelectedBtn() {
   const btn = document.getElementById("launch-selected-btn");
-  if (checkedIds.size > 0 && !bulkLaunchActive) {
-    btn.style.display = "inline-block";
-    btn.textContent = `▶ Launch Selected (${checkedIds.size})`;
-  } else {
-    btn.style.display = "none";
-  }
+  btn.disabled = checkedIds.size === 0 || bulkLaunchActive;
+  btn.textContent = `▶ Launch Selected${checkedIds.size > 0 ? ` (${checkedIds.size})` : ""}`;
 }
 
 function selectTeam(teamId) {
@@ -438,6 +442,7 @@ function renderAll() {
   renderRail();
   renderHeader();
   renderCards();
+  updateLaunchSelectedBtn();
 }
 
 async function loadData() {
