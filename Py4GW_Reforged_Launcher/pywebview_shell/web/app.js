@@ -1,21 +1,27 @@
-// Phase B/C real UI (RELAY 010) -- structure + theme + one real data slice.
+// Phase B/C/D real UI (RELAY 010/011) -- structure + theme + real profile CRUD.
 // No framework: the mockup this is built from uses a small proprietary
 // component/templating system (DCLogic/sc-for/sc-if) that isn't portable outside
 // Claude Design's own export tooling, so this is hand-written vanilla JS doing the
 // same job (render from state, re-render on change) without that dependency.
 //
-// Explicitly NOT wired here (RELAY 010's own out-of-scope list): Add/Edit/Delete
-// profile actions, GW1 launch, console/log, App Settings' real prerequisite
-// checks/mod repo/accounts sections, auto-login fields, edit-dialog tabs, cross-team
-// search, checkbox/subset launch, click-to-focus tracking. Cards render real data
-// read-only; the Launch button is present for visual structure but intentionally
-// does nothing yet.
+// RELAY 011 wires real writes (Add/Edit/Delete profiles, team membership) onto the
+// read-only structure RELAY 010 built. Still explicitly NOT wired: GW1 launch,
+// console/log, App Settings' real prerequisite checks/mod repo/accounts sections,
+// edit-dialog tabs decision, cross-team search, checkbox/subset launch,
+// click-to-focus tracking. The Launch button remains disabled -- present for visual
+// structure only.
+//
+// No `run_as_admin` field/control anywhere here -- deliberate (RELAY 011):
+// GameProfile has no such field, and the real UAC/elevation mechanism is still
+// undesigned, so a toggle with nothing behind it would just lie about what it does.
 
 let palette = { ...THEME_PRESETS[0] };
 let profiles = [];
 let teams = [];
 let activeTeamId = "ALL";
 let filterText = "";
+let checkedIds = new Set();
+let editingProfileId = null; // null while the edit drawer is closed or adding new
 
 function teamName(teamId) {
   if (teamId === "ALL") return "All Profiles";
@@ -49,6 +55,7 @@ function renderHeader() {
   const members = membersOfActiveTeam();
   document.getElementById("team-name").textContent = teamName(activeTeamId);
   document.getElementById("team-count").textContent = `${members.length} profile${members.length === 1 ? "" : "s"}`;
+  document.getElementById("remove-team-btn").style.display = activeTeamId === "ALL" ? "none" : "inline-block";
 }
 
 function badgeHtml(label, on) {
@@ -67,16 +74,17 @@ function renderCards() {
   noProfiles.style.display = profiles.length === 0 ? "block" : "none";
   noResults.style.display = profiles.length > 0 && visible.length === 0 ? "block" : "none";
   if (noResults.style.display === "block") {
-    noResults.textContent = `No profiles match "${filterText}"`;
+    noResults.textContent = q ? `No profiles match "${filterText}"` : "No profiles in this team yet";
   }
 
   grid.innerHTML = "";
   for (const p of visible) {
     const card = document.createElement("div");
-    card.className = "card";
+    card.className = "card" + (checkedIds.has(p.id) ? " selected" : "");
     const midText = p.executable_path ? p.executable_path : "no client path set";
     card.innerHTML = `
       <div class="card-top">
+        <div class="card-check${checkedIds.has(p.id) ? " checked" : ""}" data-check="${p.id}">${checkedIds.has(p.id) ? "&#10003;" : ""}</div>
         <div class="card-avatar" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
         <div class="card-name-block">
           <div class="card-name">${escapeHtml(p.name || "(unnamed)")}</div>
@@ -89,8 +97,19 @@ function renderCards() {
         ${badgeHtml("gM", !!p.gmod_enabled)}
         ${p.auto_login_enabled ? badgeHtml("AUTO", true) : ""}
       </div>
-      <button class="card-action" disabled>&#9654; Launch</button>
+      <div class="card-bottom-row">
+        <button class="card-action" disabled>&#9654; Launch</button>
+        <button class="card-edit-btn" data-edit="${p.id}" title="Edit profile">&#9998;</button>
+      </div>
     `;
+    card.querySelector("[data-check]").onclick = (e) => {
+      e.stopPropagation();
+      toggleCheck(p.id);
+    };
+    card.querySelector("[data-edit]").onclick = (e) => {
+      e.stopPropagation();
+      openEditDrawer(p.id);
+    };
     grid.appendChild(card);
   }
 }
@@ -101,10 +120,19 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
+function toggleCheck(profileId) {
+  if (checkedIds.has(profileId)) checkedIds.delete(profileId);
+  else checkedIds.add(profileId);
+  document.getElementById("add-to-team-btn").style.display = checkedIds.size > 0 ? "inline-block" : "none";
+  renderCards();
+}
+
 function selectTeam(teamId) {
   activeTeamId = teamId;
   filterText = "";
+  checkedIds = new Set();
   document.getElementById("filter-input").value = "";
+  document.getElementById("add-to-team-btn").style.display = "none";
   renderRail();
   renderHeader();
   renderCards();
@@ -128,15 +156,20 @@ async function loadData() {
   renderAll();
 }
 
-// ---------- Settings drawer / theme ----------
+// ---------- Drawer (shared shell -- settings vs edit content) ----------
 
-function openDrawer() {
+function openSettingsDrawer() {
+  document.getElementById("settings-drawer-content").style.display = "flex";
+  document.getElementById("edit-drawer-content").style.display = "none";
   document.body.classList.add("drawer-open");
 }
 
 function closeDrawer() {
   document.body.classList.remove("drawer-open");
+  editingProfileId = null;
 }
+
+// ---------- Settings / theme (RELAY 010) ----------
 
 function renderPresetRow() {
   const row = document.getElementById("preset-row");
@@ -197,6 +230,152 @@ function wirePaletteControls() {
     palette.font = e.target.value;
     applyTheme(palette);
   };
+}
+
+// ---------- Add/Edit profile (RELAY 011) ----------
+
+function openEditDrawer(profileId) {
+  editingProfileId = profileId;
+  const p = profileId ? profiles.find((x) => x.id === profileId) : null;
+
+  document.getElementById("edit-drawer-title").textContent = p ? "Edit Profile" : "Add Profile";
+  document.getElementById("edit-name").value = p ? p.name || "" : "";
+  document.getElementById("edit-email").value = p ? p.email || "" : "";
+  document.getElementById("edit-password").value = "";
+  document.getElementById("edit-path").value = p ? p.executable_path || "" : "";
+  document.getElementById("edit-args").value = p ? p.launch_arguments || "" : "";
+  document.getElementById("edit-py4gw").checked = p ? !!p.py4gw_enabled : false;
+  document.getElementById("edit-gmod").checked = p ? !!p.gmod_enabled : false;
+  document.getElementById("edit-autologin").checked = p ? !!p.auto_login_enabled : false;
+  document.getElementById("edit-autoselect").checked = p ? !!p.auto_select_character_enabled : false;
+  document.getElementById("edit-charname").value = p ? p.character_name || "" : "";
+
+  // Delete button: hidden entirely for a brand-new (unsaved) profile -- there's
+  // nothing to delete/remove yet. Label is context-aware per RELAY 011's spec:
+  // viewing a specific team -> "Remove from Team" (profile survives elsewhere);
+  // viewing ALL -> real "Delete" (removes the profile everywhere).
+  const deleteBtn = document.getElementById("edit-delete-btn");
+  if (!p) {
+    deleteBtn.style.display = "none";
+  } else {
+    deleteBtn.style.display = "inline-block";
+    deleteBtn.textContent = activeTeamId === "ALL" ? "Delete" : "Remove from Team";
+  }
+
+  document.getElementById("settings-drawer-content").style.display = "none";
+  document.getElementById("edit-drawer-content").style.display = "flex";
+  document.body.classList.add("drawer-open");
+}
+
+async function onSaveProfileClick() {
+  const data = {
+    id: editingProfileId || undefined,
+    name: document.getElementById("edit-name").value.trim(),
+    email: document.getElementById("edit-email").value.trim(),
+    executable_path: document.getElementById("edit-path").value.trim(),
+    launch_arguments: document.getElementById("edit-args").value.trim(),
+    py4gw_enabled: document.getElementById("edit-py4gw").checked,
+    gmod_enabled: document.getElementById("edit-gmod").checked,
+    auto_login_enabled: document.getElementById("edit-autologin").checked,
+    auto_select_character_enabled: document.getElementById("edit-autoselect").checked,
+    character_name: document.getElementById("edit-charname").value.trim(),
+  };
+  const newPassword = document.getElementById("edit-password").value;
+  if (newPassword) data.new_password = newPassword;
+
+  // New profile scoped to whatever's currently being viewed -- "the + you
+  // clicked is scoped to what you're looking at" (RELAY 011's spec).
+  if (!editingProfileId) {
+    data.team_ids = activeTeamId === "ALL" ? [] : [activeTeamId];
+  }
+
+  await window.pywebview.api.save_profile(data);
+  closeDrawer();
+  await loadData();
+}
+
+async function onEditDeleteClick() {
+  if (!editingProfileId) return;
+  const p = profiles.find((x) => x.id === editingProfileId);
+  const name = p ? p.name : "this profile";
+
+  if (activeTeamId === "ALL") {
+    if (!confirm(`Permanently delete "${name}"? This removes it from every team.`)) return;
+    await window.pywebview.api.delete_profile(editingProfileId);
+  } else {
+    const tn = teamName(activeTeamId);
+    if (!confirm(`Remove "${name}" from "${tn}"? The profile stays in ALL and any other teams.`)) return;
+    await window.pywebview.api.remove_profile_from_team(editingProfileId, activeTeamId);
+  }
+  closeDrawer();
+  await loadData();
+}
+
+// ---------- Add to Team (bulk, RELAY 011) ----------
+
+function onAddToTeamClick() {
+  const existing = document.getElementById("add-to-team-menu");
+  if (existing) {
+    existing.remove();
+    return;
+  }
+  if (teams.length === 0) {
+    alert("No teams exist yet -- create one with the rail's + button first.");
+    return;
+  }
+  const btn = document.getElementById("add-to-team-btn");
+  const menu = document.createElement("div");
+  menu.id = "add-to-team-menu";
+  menu.style.cssText =
+    "position:absolute;z-index:70;background:var(--surface,#14162b);border:1px solid var(--border,#2a2f55);" +
+    "border-radius:10px;box-shadow:0 16px 42px rgba(0,0,0,.45);padding:6px;min-width:180px;";
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = rect.bottom + 6 + "px";
+  menu.style.left = rect.left + "px";
+
+  for (const t of teams) {
+    const row = document.createElement("div");
+    row.textContent = t.name;
+    row.style.cssText = "padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;";
+    row.onmouseenter = () => (row.style.background = "var(--panel2, #1f2340)");
+    row.onmouseleave = () => (row.style.background = "");
+    row.onclick = async () => {
+      await window.pywebview.api.add_profiles_to_team(Array.from(checkedIds), t.id);
+      menu.remove();
+      checkedIds = new Set();
+      document.getElementById("add-to-team-btn").style.display = "none";
+      await loadData();
+    };
+    menu.appendChild(row);
+  }
+  document.body.appendChild(menu);
+
+  const closeOnOutsideClick = (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) {
+      menu.remove();
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+    }
+  };
+  setTimeout(() => document.addEventListener("mousedown", closeOnOutsideClick), 0);
+}
+
+// ---------- Teams (new / remove, RELAY 011) ----------
+
+async function onNewTeamClick() {
+  const name = prompt("New team name:");
+  if (!name || !name.trim()) return;
+  const newTeam = await window.pywebview.api.add_team(name.trim());
+  await loadData();
+  selectTeam(newTeam.id);
+}
+
+async function onRemoveTeamClick() {
+  if (activeTeamId === "ALL") return;
+  const tn = teamName(activeTeamId);
+  if (!confirm(`Remove team "${tn}"? Profiles are kept -- they just lose membership in this team.`)) return;
+  await window.pywebview.api.remove_team(activeTeamId);
+  selectTeam("ALL");
+  await loadData();
 }
 
 // ---------- Window controls (carried over from Phase A) ----------

@@ -12,13 +12,16 @@ Bidirectional shape:
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import weakref
 from typing import Any, Optional
 
 import webview
 
-from launcher_core import profile_store
+from launcher_core import crypto, profile_store
+from launcher_core.profile import GameProfile
+from launcher_core.team import Team
 from pywebview_shell import snap
 from pywebview_shell.window_shell import start_native_resize
 
@@ -186,8 +189,9 @@ class ShellBridge:
 
         `password_protected` is stripped before returning -- it's always a
         DPAPI-encrypted blob, never plaintext (see launcher_core/profile.py),
-        but the render layer has no legitimate reason to see even that, and
-        Add/Edit isn't wired this phase so nothing needs it round-tripped back.
+        but the render layer has no legitimate reason to see even that.
+        Saving a changed password goes through save_profile's `new_password`
+        field instead of ever round-tripping this blob back from JS.
         """
         profiles = profile_store.load_profiles()
         teams = profile_store.load_teams()
@@ -200,6 +204,120 @@ class ShellBridge:
             "profiles": profile_dicts,
             "teams": [t.to_dict() for t in teams],
         }
+
+    def save_profile(self, data: dict) -> dict:
+        """Add or update a profile (RELAY 011) -- `data["id"]` matching an
+        existing profile means update, otherwise a new one is created.
+
+        Password handling: `list_profiles()` never sends `password_protected`
+        to JS, and this method ignores any `password_protected` the caller
+        supplies too (never trust a client-side value for an encrypted
+        field) -- the only way to actually change a password is a non-empty
+        `new_password` (plaintext, freshly typed in the drawer). An empty/
+        absent `new_password` leaves an existing profile's real DPAPI blob
+        completely untouched, which is what lets the edit drawer show a
+        blank/placeholder password field without silently wiping the stored
+        password every time someone saves unrelated changes.
+
+        No `run_as_admin`-shaped field here -- deliberately not added this
+        round (RELAY 011): `GameProfile` has no such field today, and the
+        actual UAC/elevation mechanism is still undesigned, so a stored
+        field with nothing behind it would be a control that lies about
+        what it does. Left out entirely rather than half-built.
+        """
+        profiles = profile_store.load_profiles()
+        profile_id = data.get("id")
+        new_password = data.pop("new_password", "") or ""
+        data.pop("password_protected", None)
+
+        writable_fields = {f.name for f in dataclasses.fields(GameProfile)} - {"password_protected"}
+        existing = next((p for p in profiles if p.id == profile_id), None) if profile_id else None
+
+        if existing is not None:
+            for field_name in writable_fields:
+                if field_name in data:
+                    setattr(existing, field_name, data[field_name])
+            target = existing
+        else:
+            filtered = {k: v for k, v in data.items() if k in writable_fields}
+            target = GameProfile(**filtered)
+            profiles.append(target)
+
+        if new_password:
+            target.password_protected = crypto.protect_password(new_password)
+
+        profile_store.save_profiles(profiles)
+        result = target.to_dict()
+        result.pop("password_protected", None)
+        return result
+
+    def delete_profile(self, profile_id: str) -> bool:
+        """Permanently remove a profile from every team it belonged to.
+        Only the right call while viewing ALL -- see remove_profile_from_team
+        for the team-scoped version (RELAY 011's context-aware distinction).
+        """
+        profiles = profile_store.load_profiles()
+        remaining = [p for p in profiles if p.id != profile_id]
+        if len(remaining) == len(profiles):
+            return False
+        profile_store.save_profiles(remaining)
+        return True
+
+    def remove_profile_from_team(self, profile_id: str, team_id: str) -> bool:
+        """Strip one team's id from one profile's team_ids -- the profile
+        itself is untouched and keeps existing in ALL and any other teams.
+        The team-scoped counterpart to delete_profile (RELAY 011).
+        """
+        profiles = profile_store.load_profiles()
+        target = next((p for p in profiles if p.id == profile_id), None)
+        if target is None:
+            return False
+        if team_id in target.team_ids:
+            target.team_ids = [t for t in target.team_ids if t != team_id]
+            profile_store.save_profiles(profiles)
+        return True
+
+    def add_profiles_to_team(self, profile_ids: list, team_id: str) -> bool:
+        """Bulk-assign: append `team_id` to every listed profile's team_ids,
+        skipping any that already have it.
+        """
+        profiles = profile_store.load_profiles()
+        changed = False
+        for p in profiles:
+            if p.id in profile_ids and team_id not in p.team_ids:
+                p.team_ids.append(team_id)
+                changed = True
+        if changed:
+            profile_store.save_profiles(profiles)
+        return True
+
+    def add_team(self, name: str) -> dict:
+        teams = profile_store.load_teams()
+        new_team = Team(name=name)
+        teams.append(new_team)
+        profile_store.save_teams(teams)
+        return new_team.to_dict()
+
+    def remove_team(self, team_id: str) -> bool:
+        """Deletes the Team itself, but never deletes profiles -- every
+        profile that had this team's id gets it stripped from team_ids and
+        falls back to whatever other teams it's in (or ALL-only).
+        """
+        teams = profile_store.load_teams()
+        remaining_teams = [t for t in teams if t.id != team_id]
+        if len(remaining_teams) == len(teams):
+            return False
+        profile_store.save_teams(remaining_teams)
+
+        profiles = profile_store.load_profiles()
+        changed = False
+        for p in profiles:
+            if team_id in p.team_ids:
+                p.team_ids = [t for t in p.team_ids if t != team_id]
+                changed = True
+        if changed:
+            profile_store.save_profiles(profiles)
+        return True
 
     def ping(self, payload: Any = None) -> dict:
         """Minimal JS->Python round trip: JS calls this, Python returns a

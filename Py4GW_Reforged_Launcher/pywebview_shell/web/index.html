@@ -37,19 +37,24 @@
         <span id="rail-all-count">0</span>
       </div>
       <div id="rail-teams"></div>
+      <div style="flex:1"></div>
+      <div class="rail-icon" title="Add team" onclick="onNewTeamClick()">+</div>
     </div>
 
     <div id="main">
       <div id="header">
         <span class="team-name" id="team-name">All Profiles</span>
         <span class="team-count" id="team-count">0 profiles</span>
+        <button id="remove-team-btn" style="display:none" onclick="onRemoveTeamClick()">Remove team</button>
       </div>
 
       <div id="filter-row">
         <div id="filter-box">
           <span>&#128269;</span>
           <input id="filter-input" placeholder="Filter by name…" oninput="onFilterInput()">
-          <button id="settings-btn" onclick="openDrawer()" title="Settings &amp; theme">&#9881;</button>
+          <button id="add-to-team-btn" style="display:none" onclick="onAddToTeamClick()" title="Add checked profiles to another team">+ Add to Team</button>
+          <button id="add-profile-btn" onclick="openEditDrawer(null)" title="Add profile">+</button>
+          <button id="settings-btn" onclick="openSettingsDrawer()" title="Settings &amp; theme">&#9881;</button>
         </div>
       </div>
 
@@ -64,34 +69,81 @@
 
 <div id="drawer-scrim" onclick="closeDrawer()"></div>
 <div id="drawer">
-  <div id="drawer-header">
-    <span class="title">App Settings</span>
-    <button id="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  <!-- Settings (theme) content -- RELAY 010 -->
+  <div id="settings-drawer-content">
+    <div id="drawer-header">
+      <span class="title">App Settings</span>
+      <button class="drawer-x" onclick="closeDrawer()">&#10005;</button>
+    </div>
+    <div id="drawer-body">
+      <div>
+        <h4 style="margin-bottom:8px">Theme &amp; palette</h4>
+        <div class="preset-row" id="preset-row"></div>
+      </div>
+      <div class="pal-row"><span>Accent</span><input type="color" id="pal-accent"></div>
+      <div class="pal-row"><span>Background</span><input type="color" id="pal-bg"></div>
+      <div class="pal-row"><span>Surface</span><input type="color" id="pal-surface"></div>
+      <div class="pal-row"><span>Text</span><input type="color" id="pal-text"></div>
+      <div class="pal-row"><span>Corner radius</span><input type="range" id="pal-radius" min="4" max="18" step="1"><span id="pal-radius-val">12px</span></div>
+      <div class="pal-row">
+        <span>Font</span>
+        <select id="pal-font">
+          <option value="Sora">Sora</option>
+          <option value="Manrope">Manrope</option>
+          <option value="Chakra Petch">Chakra Petch</option>
+          <option value="Spectral">Spectral</option>
+        </select>
+      </div>
+      <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
+        Prerequisites, mod repository, accounts, and injection master switches
+        aren't wired up yet -- this phase is structure + theme + real profile
+        data only (RELAY 010).
+      </p>
+    </div>
   </div>
-  <div id="drawer-body">
-    <div>
-      <h4 style="margin-bottom:8px">Theme &amp; palette</h4>
-      <div class="preset-row" id="preset-row"></div>
+
+  <!-- Add/Edit profile content -- RELAY 011 -->
+  <div id="edit-drawer-content" style="display:none">
+    <div id="drawer-header">
+      <span class="title" id="edit-drawer-title">Add Profile</span>
+      <button class="drawer-x" onclick="closeDrawer()">&#10005;</button>
     </div>
-    <div class="pal-row"><span>Accent</span><input type="color" id="pal-accent"></div>
-    <div class="pal-row"><span>Background</span><input type="color" id="pal-bg"></div>
-    <div class="pal-row"><span>Surface</span><input type="color" id="pal-surface"></div>
-    <div class="pal-row"><span>Text</span><input type="color" id="pal-text"></div>
-    <div class="pal-row"><span>Corner radius</span><input type="range" id="pal-radius" min="4" max="18" step="1"><span id="pal-radius-val">12px</span></div>
-    <div class="pal-row">
-      <span>Font</span>
-      <select id="pal-font">
-        <option value="Sora">Sora</option>
-        <option value="Manrope">Manrope</option>
-        <option value="Chakra Petch">Chakra Petch</option>
-        <option value="Spectral">Spectral</option>
-      </select>
+    <div id="drawer-body">
+      <div>
+        <h4 style="margin-bottom:8px">Identity</h4>
+        <label class="field-label">Profile name</label>
+        <input class="field-input" id="edit-name" placeholder="e.g. Aldric Vale">
+        <label class="field-label">Account email</label>
+        <input class="field-input" id="edit-email" placeholder="account@email.com">
+        <label class="field-label">Password</label>
+        <input class="field-input" id="edit-password" type="password" placeholder="•••••••• (leave blank to keep unchanged)">
+      </div>
+      <div>
+        <h4 style="margin-bottom:8px">Client</h4>
+        <label class="field-label">Gw.exe path</label>
+        <input class="field-input" id="edit-path" placeholder="C:\Games\Guild Wars\Gw.exe">
+        <label class="field-label">Extra launch args</label>
+        <input class="field-input" id="edit-args" placeholder="-optional -flags">
+      </div>
+      <div>
+        <h4 style="margin-bottom:8px">Injection</h4>
+        <div class="pal-row"><span>Inject Py4GW</span><input type="checkbox" id="edit-py4gw"></div>
+        <div class="pal-row"><span>Inject gMod</span><input type="checkbox" id="edit-gmod"></div>
+      </div>
+      <div>
+        <h4 style="margin-bottom:8px">Auto-Login</h4>
+        <div class="pal-row"><span>Enable auto-login</span><input type="checkbox" id="edit-autologin"></div>
+        <div class="pal-row"><span>Auto-select character</span><input type="checkbox" id="edit-autoselect"></div>
+        <label class="field-label">Character name to auto-select</label>
+        <input class="field-input" id="edit-charname" placeholder="in-game character name">
+      </div>
     </div>
-    <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
-      Prerequisites, mod repository, accounts, and injection master switches
-      aren't wired up yet -- this phase is structure + theme + real profile
-      data only (RELAY 010).
-    </p>
+    <div id="drawer-footer">
+      <button id="edit-delete-btn" class="danger-btn" onclick="onEditDeleteClick()">Delete</button>
+      <div style="flex:1"></div>
+      <button class="ghost-btn" onclick="closeDrawer()">Cancel</button>
+      <button class="primary-btn" onclick="onSaveProfileClick()">Save</button>
+    </div>
   </div>
 </div>
 
