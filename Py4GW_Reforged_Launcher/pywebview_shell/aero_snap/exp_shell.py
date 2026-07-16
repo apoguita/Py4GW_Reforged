@@ -24,6 +24,7 @@ import os
 
 import webview
 
+from pywebview_shell.aero_snap import snap
 from pywebview_shell.bridge import ShellBridge
 from pywebview_shell.window_shell import (
     ensure_dpi_awareness,
@@ -31,7 +32,7 @@ from pywebview_shell.window_shell import (
     wait_for_native_hwnd,
 )
 
-MODE = os.environ.get("AERO_MODE", "native_move")
+MODE = os.environ.get("AERO_MODE", "hand_snap")
 RESIZE_MARGIN = 6
 
 WM_NCLBUTTONDOWN = 0x00A1
@@ -64,21 +65,59 @@ display:flex;align-items:center;padding:0 10px;user-select:none;cursor:default;"
 </div>
 <script>
 function startResize(edge) {{ window.pywebview.api.start_resize(edge); }}
-
-// Native-move drag: mousedown anywhere on the title bar (except the buttons)
-// hands the gesture straight to Windows' native move loop via the bridge.
+var MODE = "{mode}";
 var tb = document.getElementById('titlebar');
-tb.addEventListener('mousedown', function(ev) {{
-  if (ev.target.tagName === 'BUTTON') return;   // let button clicks through
-  if (ev.button !== 0) return;                   // left button only
-  window.pywebview.api.start_move();
-}});
+
+if (MODE === "native_move") {{
+  // Native-move drag: mousedown on the title bar (except buttons) hands the
+  // gesture straight to Windows' native move loop via the bridge.
+  tb.addEventListener('mousedown', function(ev) {{
+    if (ev.target.tagName === 'BUTTON') return;
+    if (ev.button !== 0) return;
+    window.pywebview.api.start_move();
+  }});
+}} else if (MODE === "hand_snap") {{
+  // easy_drag does the actual movement; we only observe the drag to fake a
+  // snapped result on release. Title-bar mousedown starts observing; the
+  // window-level mouseup ends it (Python reads the real cursor + monitor).
+  tb.addEventListener('mousedown', function(ev) {{
+    if (ev.target.tagName === 'BUTTON') return;
+    if (ev.button !== 0) return;
+    window.pywebview.api.on_drag_start();
+  }});
+  window.addEventListener('mouseup', function(ev) {{
+    window.pywebview.api.on_drag_end();
+  }});
+}}
 </script>
 </body></html>
 """
 
 
 class ExpBridge(ShellBridge):
+    def __init__(self, label: str) -> None:
+        super().__init__(label)
+        self._drag_start_pos = None
+
+    # --- Attempt 2: hand-rolled snap (easy_drag does the move) ---
+    def on_drag_start(self) -> bool:
+        self._drag_start_pos = snap.get_cursor_pos()
+        return True
+
+    def on_drag_end(self) -> bool:
+        start = self._drag_start_pos
+        self._drag_start_pos = None
+        if start is None or self._hwnd is None:
+            return False
+        end = snap.get_cursor_pos()
+        moved = abs(end[0] - start[0]) + abs(end[1] - start[1])
+        if moved < 6:  # a click, not a drag
+            return False
+        applied = snap.apply_snap(self._hwnd)
+        print(f"[exp] on_drag_end moved={moved} cursor={end} snapped={applied}", flush=True)
+        return applied is not None
+
+    # --- Attempt 1: native caption-drag (kept for reference) ---
     def start_move(self) -> bool:
         """Attempt 1: native caption-drag. ReleaseCapture (WebView2 child holds
         capture from the JS mousedown) then WM_NCLBUTTONDOWN/HTCAPTION on the
@@ -97,10 +136,10 @@ class ExpBridge(ShellBridge):
 def main() -> None:
     ensure_dpi_awareness()
     bridge = ExpBridge("exp")
-    easy = MODE == "easy_drag"
+    easy = MODE in ("easy_drag", "hand_snap")  # hand_snap keeps easy_drag for the move
     window = webview.create_window(
         TITLE,
-        html=HTML.format(m=RESIZE_MARGIN, title=TITLE),
+        html=HTML.format(m=RESIZE_MARGIN, title=TITLE, mode=MODE),
         js_api=bridge,
         width=560,
         height=380,
