@@ -633,6 +633,39 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
   });
 }
 
+// ---------- Import result modal (RELAY 034) ----------
+// A genuinely different shape from openConfirmModal above -- informational,
+// "Close"-only, variable-length content -- so it's its own small function
+// rather than stretching openConfirmModal's yes/no semantics to also cover
+// this. One shared renderer backs both Restore's and Old Launcher Import's
+// result display (ported from the old imgui app's _render_import_result_
+// body real copy, line for line).
+
+function showImportResultModal(result) {
+  const body = document.getElementById("result-body");
+  let html = `<div class="line">Profiles: ${result.added_profiles} added, ${result.skipped_profiles} already present.</div>`;
+  html += `<div class="line">Teams: ${result.added_teams} added, ${result.skipped_teams} already present.</div>`;
+  if (result.warnings && result.warnings.length > 0) {
+    html += `<div class="line warning">Some old-launcher settings weren't carried over:</div>`;
+    for (const w of result.warnings) html += `<div class="line muted">${escapeHtml(w)}</div>`;
+  }
+  if (result.path_warnings && result.path_warnings.length > 0) {
+    html += `<div class="line warning">Some imported paths don't exist on this machine:</div>`;
+    for (const w of result.path_warnings) html += `<div class="line muted">${escapeHtml(w)}</div>`;
+    html += `<div class="line muted">Fix these in each profile's Settings on this machine.</div>`;
+  }
+  body.innerHTML = html;
+  document.getElementById("result-title").textContent = "Import Result";
+  document.body.classList.add("result-open");
+}
+
+function closeResultModal() {
+  document.body.classList.remove("result-open");
+}
+
+document.getElementById("result-close-btn").onclick = closeResultModal;
+document.getElementById("result-scrim").onclick = closeResultModal;
+
 // ---------- Settings / theme (RELAY 010) ----------
 
 function renderPresetRow() {
@@ -933,6 +966,58 @@ async function onModRepoUpdateClick() {
     modRepoUpdateInProgress = false;
     modRepoOpDoneMessage = (res && res.error) || "Could not start update";
     renderModRepoSection();
+  }
+}
+
+// ---------- Backup/Restore accounts + Old Launcher Import (RELAY 034) ----------
+// Ported from the old imgui app's _show_export_import_section, real copy
+// reused verbatim (both confirm-popup warning strings, quoted not
+// paraphrased -- what they're warning about is a real plaintext secret).
+
+async function onBackupAccountsClick() {
+  const includePasswords = document.getElementById("roster-include-passwords").checked;
+  const ok = await openConfirmModal({
+    title: "Back up accounts?",
+    message: includePasswords
+      ? "This file will contain your saved account passwords in plain text.\n\nStore it securely and delete it once you're done restoring it elsewhere."
+      : "Back up your profiles and teams to a file.\n\nPasswords are not included -- restored profiles will need their passwords re-entered.",
+    confirmLabel: "Choose file and back up…",
+  });
+  if (!ok) return;
+  // Real Save-As only runs after the warning is confirmed -- mirrors the
+  // old app's own deferred-browse shape (_export_browse_pending), just
+  // expressed as sequential awaits instead of a next-frame flag.
+  const chosen = await window.pywebview.api.browse_for_save_file("py4gw_reforged_roster.json", "JSON files", "*.json");
+  if (!chosen) return;
+  const res = await window.pywebview.api.export_roster(chosen, includePasswords);
+  const statusEl = document.getElementById("roster-status-message");
+  statusEl.style.display = "block";
+  statusEl.textContent = res.ok ? `Backed up to ${chosen}` : `Backup failed: ${res.error}`;
+}
+
+async function onRestoreAccountsClick() {
+  const chosen = await window.pywebview.api.browse_for_file("JSON files", "*.json");
+  if (!chosen) return;
+  const res = await window.pywebview.api.import_roster(chosen);
+  document.getElementById("roster-status-message").style.display = "none";
+  if (res.ok) {
+    showImportResultModal(res.result);
+    await loadData(); // newly-added profiles/teams should show up immediately
+  } else {
+    await openConfirmModal({ title: "Import failed", message: res.error, confirmLabel: "OK" });
+  }
+}
+
+async function onLegacyImportClick() {
+  const chosen = await window.pywebview.api.browse_for_file("JSON files", "*.json");
+  if (!chosen) return;
+  const res = await window.pywebview.api.import_legacy_accounts(chosen);
+  document.getElementById("roster-status-message").style.display = "none";
+  if (res.ok) {
+    showImportResultModal(res.result);
+    await loadData();
+  } else {
+    await openConfirmModal({ title: "Import failed", message: res.error, confirmLabel: "OK" });
   }
 }
 

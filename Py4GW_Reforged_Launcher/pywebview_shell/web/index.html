@@ -236,14 +236,36 @@
         </div>
       </div>
 
-      <!-- Advanced: occasional, higher-stakes actions (034/035, not yet
-           built) -- exporting accounts writes plaintext passwords to a
-           file, importing merges in outside data, elevating triggers a
-           full relaunch + UAC prompt. Kept as its own "use deliberately"
-           tab rather than scattered into General. -->
+      <!-- Advanced: occasional, higher-stakes actions -- exporting
+           accounts writes plaintext passwords to a file, importing
+           merges in outside data, elevating (035, not yet built)
+           triggers a full relaunch + UAC prompt. Kept as its own "use
+           deliberately" tab rather than scattered into General.
+           Backup/Restore + Old Launcher Import (RELAY 034) ported from
+           the old imgui app's _show_export_import_section, real copy
+           reused verbatim. -->
       <div id="settings-tab-advanced" class="settings-tab-panel" style="display:none">
+        <div>
+          <h4 style="margin-bottom:8px">Backup / Restore Accounts</h4>
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+            Move your accounts to another computer, or just keep a backup.
+          </p>
+          <div class="pal-row"><span>Include passwords</span><input type="checkbox" id="roster-include-passwords" checked></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="ghost-btn" onclick="onBackupAccountsClick()">Backup accounts…</button>
+            <button class="ghost-btn" onclick="onRestoreAccountsClick()">Restore accounts…</button>
+          </div>
+          <div id="roster-status-message" style="display:none;font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin-top:8px"></div>
+        </div>
+        <div>
+          <h4 style="margin-bottom:8px">Old Launcher Import</h4>
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+            Have an accounts.json from the previous Python launcher? Import it below.
+          </p>
+          <button class="ghost-btn" onclick="onLegacyImportClick()">Import</button>
+        </div>
         <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
-          Account backup/import and run-as-administrator aren't wired up yet.
+          Run-as-administrator isn't wired up yet.
         </p>
       </div>
     </div>
@@ -360,6 +382,26 @@
     <div style="flex:1"></div>
     <button class="ghost-btn" id="confirm-cancel-btn">Cancel</button>
     <button class="primary-btn" id="confirm-btn">Confirm</button>
+  </div>
+</div>
+
+<!-- Import result modal (RELAY 034) -- a genuinely different shape from
+     the confirm modal above (informational "Close"-only display of a
+     variable-length result: counts, then optional warnings/path_warnings
+     lists with their own per-line styling), not the same yes/no gate, so
+     it's its own element rather than overloading openConfirmModal's
+     confirm/cancel semantics. Shares the confirm modal's real CSS via
+     comma-separated selectors (style.css), same visual language, same
+     scrim z-index layering. One shared renderer (showImportResultModal)
+     backs Restore's and Old Launcher Import's result display -- not two
+     copies. -->
+<div id="result-scrim"></div>
+<div id="result-modal">
+  <span class="title" id="result-title"></span>
+  <div id="result-body"></div>
+  <div id="result-footer">
+    <div style="flex:1"></div>
+    <button class="primary-btn" id="result-close-btn">Close</button>
   </div>
 </div>
 

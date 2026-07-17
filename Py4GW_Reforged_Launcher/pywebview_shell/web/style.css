@@ -1037,15 +1037,21 @@ body.drawer-open #drawer {
    reading the actual rule above, not re-guessed. z-index (65/66) sits above
    the drawer (55/56) and the Add-to-Team dropdown (70 -- see app.js) is
    deliberately lower, since that menu closes itself on outside click before
-   this modal would ever need to layer over it. */
-#confirm-scrim {
+   this modal would ever need to layer over it. RELAY 034's #result-* shares
+   this same box/scrim/z-index styling (comma-separated below) -- same
+   visual language, but a genuinely different informational "Close"-only
+   shape, not the same yes/no confirm gate, so it's a separate element/
+   trigger class rather than overloading openConfirmModal's semantics. */
+#confirm-scrim,
+#result-scrim {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.34);
   z-index: 65;
   display: none;
 }
-#confirm-modal {
+#confirm-modal,
+#result-modal {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1062,13 +1068,25 @@ body.drawer-open #drawer {
   padding: 18px;
   gap: 12px;
 }
+/* Wider than the plain confirm modal -- result content can include real
+   file paths, which need more room than a short yes/no message. */
+#result-modal {
+  width: 420px;
+}
 body.confirm-open #confirm-scrim {
   display: block;
 }
 body.confirm-open #confirm-modal {
   display: flex;
 }
-#confirm-modal .title {
+body.result-open #result-scrim {
+  display: block;
+}
+body.result-open #result-modal {
+  display: flex;
+}
+#confirm-modal .title,
+#result-modal .title {
   font-size: 15px;
   font-weight: 800;
   font-family: var(--font-display, "Sora", sans-serif);
@@ -1097,7 +1115,33 @@ body.confirm-open #confirm-modal {
   color: var(--bad, #ff6b8a);
   line-height: 1.5;
 }
-#confirm-footer {
+/* RELAY 034: variable-length result content (counts, then optional
+   warnings/path_warnings lists) -- a flex column of lines rather than
+   #confirm-message's single paragraph, since the line count and per-line
+   color both vary by what actually happened. */
+#result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+#result-body .line {
+  font-size: 12.5px;
+  color: var(--text, #e6e8ff);
+  line-height: 1.5;
+}
+#result-body .line.muted {
+  color: var(--muted, #9a9ecb);
+  font-size: 11.5px;
+}
+#result-body .line.warning {
+  color: var(--bad, #ff6b8a);
+  font-weight: 700;
+  margin-top: 6px;
+}
+#confirm-footer,
+#result-footer {
   display: flex;
   align-items: center;
   gap: 8px;

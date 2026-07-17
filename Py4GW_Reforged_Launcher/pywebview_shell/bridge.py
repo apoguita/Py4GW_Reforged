@@ -22,7 +22,7 @@ from typing import Any, Optional
 
 import webview
 
-from launcher_core import bulk_launch, config_seeding, crypto, mod_repo, prereqs, profile_store, settings_store
+from launcher_core import bulk_launch, config_seeding, crypto, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -517,6 +517,159 @@ class ShellBridge:
             return None
         result = window.create_file_dialog(webview.FileDialog.FOLDER, directory=str(_resolve_mod_repo_path()))
         return result[0] if result else None
+
+    # ---- Backup/Restore accounts + Old Launcher Import (RELAY 034) ----
+    # All three are fast, synchronous, local file operations (JSON read/
+    # write, no network) -- no threading/push_event needed here, unlike
+    # 032/033's slow install/clone/fetch operations. The de-dupe logic
+    # below is ported directly from the old imgui app's STATE.import_
+    # roster/import_legacy_accounts (there's no "STATE" object here, so it
+    # lives inline in these two methods instead).
+
+    def browse_for_save_file(self, default_filename: str, type_label: str, pattern: str) -> Optional[str]:
+        """Sibling to browse_for_file (RELAY 024) -- same API, SAVE dialog
+        type instead of OPEN, for the roster export's Save-As. Same
+        file_types format, same reasoning."""
+        window = self._window()
+        if window is None:
+            return None
+        file_types = (f"{type_label} ({pattern})", "All files (*.*)")
+        result = window.create_file_dialog(
+            webview.FileDialog.SAVE, save_filename=default_filename, file_types=file_types
+        )
+        return result[0] if result else None
+
+    def export_roster(self, path: str, include_passwords: bool) -> dict:
+        try:
+            roster_transfer.export_roster(
+                profile_store.load_profiles(), profile_store.load_teams(), path,
+                include_passwords=bool(include_passwords),
+            )
+            return {"ok": True, "path": path}
+        except OSError as e:
+            return {"ok": False, "error": str(e)}
+
+    @staticmethod
+    def _result_to_dict(
+        added_profiles: int, added_teams: int, skipped_profiles: int, skipped_teams: int,
+        path_warnings: list, warnings: list,
+    ) -> dict:
+        return {
+            "added_profiles": added_profiles,
+            "added_teams": added_teams,
+            "skipped_profiles": skipped_profiles,
+            "skipped_teams": skipped_teams,
+            "path_warnings": path_warnings,
+            "warnings": warnings,
+        }
+
+    def import_roster(self, path: str) -> dict:
+        """De-dupe by id (matches STATE.import_roster exactly) -- safe to
+        re-import the same file twice, or import onto a machine that
+        already has some of these profiles/teams."""
+        try:
+            imported_profiles, imported_teams = roster_transfer.import_roster(path)
+        except Exception as e:  # a hand-edited or foreign JSON file can fail in many ways
+            return {"ok": False, "error": str(e)}
+
+        profiles = profile_store.load_profiles()
+        teams = profile_store.load_teams()
+        existing_profile_ids = {p.id for p in profiles}
+        existing_team_ids = {t.id for t in teams}
+
+        added_profiles = []
+        skipped_profiles = 0
+        for profile in imported_profiles:
+            if profile.id in existing_profile_ids:
+                skipped_profiles += 1
+            else:
+                existing_profile_ids.add(profile.id)  # also guards dup ids within the bundle
+                profiles.append(profile)
+                added_profiles.append(profile)
+
+        added_teams = 0
+        skipped_teams = 0
+        for team in imported_teams:
+            if team.id in existing_team_ids:
+                skipped_teams += 1
+            else:
+                existing_team_ids.add(team.id)
+                teams.append(team)
+                added_teams += 1
+
+        if added_profiles:
+            profile_store.save_profiles(profiles)
+        if added_teams:
+            profile_store.save_teams(teams)
+
+        return {
+            "ok": True,
+            "result": self._result_to_dict(
+                len(added_profiles), added_teams, skipped_profiles, skipped_teams,
+                roster_transfer.find_missing_paths(added_profiles), [],
+            ),
+        }
+
+    def import_legacy_accounts(self, path: str) -> dict:
+        """De-dupe rules differ from the native roster import (matches
+        STATE.import_legacy_accounts exactly) -- legacy files carry no
+        ids: teams match by name (reusing the existing team's id),
+        profiles match by email when present, else by (executable_path,
+        character_name)."""
+        try:
+            imported_profiles, imported_teams, warnings = legacy_import.parse_legacy_accounts(path)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+        profiles = profile_store.load_profiles()
+        teams = profile_store.load_teams()
+
+        existing_team_by_name = {t.name: t for t in teams}
+        team_id_remap: dict = {}
+        added_teams = 0
+        skipped_teams = 0
+        for team in imported_teams:
+            existing = existing_team_by_name.get(team.name)
+            if existing is not None:
+                team_id_remap[team.id] = existing.id
+                skipped_teams += 1
+            else:
+                teams.append(team)
+                existing_team_by_name[team.name] = team
+                team_id_remap[team.id] = team.id
+                added_teams += 1
+        for profile in imported_profiles:
+            profile.team_ids = [team_id_remap.get(tid, tid) for tid in profile.team_ids]
+
+        def _profile_key(p: GameProfile):
+            if p.email:
+                return ("email", p.email)
+            return ("exe_char", p.executable_path, p.character_name)
+
+        existing_keys = {_profile_key(p) for p in profiles}
+        added_profiles = []
+        skipped_profiles = 0
+        for profile in imported_profiles:
+            key = _profile_key(profile)
+            if key in existing_keys:
+                skipped_profiles += 1
+            else:
+                existing_keys.add(key)  # also guards duplicates within the same file
+                profiles.append(profile)
+                added_profiles.append(profile)
+
+        if added_profiles:
+            profile_store.save_profiles(profiles)
+        if added_teams:
+            profile_store.save_teams(teams)
+
+        return {
+            "ok": True,
+            "result": self._result_to_dict(
+                len(added_profiles), added_teams, skipped_profiles, skipped_teams,
+                roster_transfer.find_missing_paths(added_profiles), warnings,
+            ),
+        }
 
     # ---- Live console (RELAY 021) -- shared by both launch paths below ----
 
