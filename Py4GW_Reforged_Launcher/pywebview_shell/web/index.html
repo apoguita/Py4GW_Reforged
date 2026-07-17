@@ -47,6 +47,12 @@
         <span class="team-name" id="team-name">All Profiles</span>
         <span class="team-count" id="team-count">0 profiles</span>
         <button id="remove-team-btn" style="display:none" onclick="onRemoveTeamClick()">Remove team</button>
+        <!-- RELAY 035: keyed off the CURRENT process's real elevation state
+             (get_run_as_admin_state().elevated), not the toggle setting --
+             visible whenever this session actually is elevated, regardless
+             of how it got that way. Markup/inline style matches the
+             approved mockup verbatim (_launcher_export_src.html ~58). -->
+        <span id="admin-badge" title="Launcher elevated" style="display:none;font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--warn,#ffd166);background:var(--warn-soft,rgba(255,209,102,.16));border:1px solid var(--warn,#ffd166);border-radius:5px;padding:3px 7px">ADMIN</span>
       </div>
 
       <!-- Row 2: left group = whichever launch/bulk actions apply to the
@@ -264,9 +270,14 @@
           </p>
           <button class="ghost-btn" onclick="onLegacyImportClick()">Import</button>
         </div>
-        <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
-          Run-as-administrator isn't wired up yet.
-        </p>
+        <div>
+          <h4 style="margin-bottom:8px">Launcher</h4>
+          <div class="pal-row"><span>Run launcher as administrator</span><input type="checkbox" id="settings-run-as-admin"></div>
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+            Elevates once; applies to every client launched this session.
+          </p>
+          <div id="run-as-admin-status" style="display:none;font-size:11px;color:var(--faint,#5f6491);line-height:1.5"></div>
+        </div>
       </div>
     </div>
   </div>

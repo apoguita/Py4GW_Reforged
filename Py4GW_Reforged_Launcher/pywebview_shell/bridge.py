@@ -22,7 +22,7 @@ from typing import Any, Optional
 
 import webview
 
-from launcher_core import bulk_launch, config_seeding, crypto, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store
+from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -151,6 +151,12 @@ class ShellBridge:
         # checkout.
         self._mod_repo_op_lock = threading.Lock()
         self._mod_repo_op_in_progress: Optional[str] = None
+        # RELAY 035 -- guards against a second elevation relaunch attempt
+        # starting while the first (real, potentially slow -- waiting on the
+        # user's own UAC response) one is still in flight, same shape as the
+        # locks above.
+        self._run_as_admin_lock = threading.Lock()
+        self._run_as_admin_relaunch_in_progress = False
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -342,6 +348,67 @@ class ShellBridge:
         # raw value this stores. Duplicating the clamp here would just be a
         # second copy of the same rule to keep in sync.
         settings_store.save_bulk_launch_pacing_seconds(int(seconds))
+
+    # ---- Run as administrator (RELAY 035) ----
+
+    def get_run_as_admin_state(self) -> dict:
+        """`elevated` is a live fact about THIS running process
+        (elevation.is_elevated()), independent of `enabled` -- someone can be
+        running elevated right now without the toggle on (e.g. they
+        right-clicked the exe themselves), and the header's ADMIN badge (see
+        app.js) is keyed off `elevated` alone for exactly that reason."""
+        return {
+            "enabled": settings_store.load_run_as_admin_enabled(),
+            "elevated": elevation.is_elevated(),
+        }
+
+    def save_run_as_admin_enabled(self, enabled: bool) -> dict:
+        """Turning OFF never touches the current (possibly already-elevated)
+        session -- de-elevating a running process isn't possible, so this
+        only ever saves the preference and confirms it via a console line;
+        "takes effect next restart" is communicated by the Advanced tab's own
+        status text (app.js), not by anything this method does.
+
+        Turning ON while already elevated needs no relaunch -- just persists
+        the preference. Turning ON while NOT elevated spawns a background
+        thread that triggers a real UAC prompt (elevation.relaunch_elevated,
+        which blocks on the user's own response) and reports back via
+        push_event rather than blocking this call, same shape as every other
+        real slow operation in this bridge (032/033) -- waiting on a UAC
+        response is, if anything, less bounded than either of those.
+        """
+        enabled = bool(enabled)
+        settings_store.save_run_as_admin_enabled(enabled)
+
+        if not enabled:
+            self._push_console_line("Administrator elevation disabled", "acc")
+            return {"ok": True, "elevated": elevation.is_elevated()}
+
+        if elevation.is_elevated():
+            return {"ok": True, "elevated": True}
+
+        with self._run_as_admin_lock:
+            if self._run_as_admin_relaunch_in_progress:
+                return {"ok": True, "elevated": False, "relaunching": True}
+            self._run_as_admin_relaunch_in_progress = True
+
+        def worker() -> None:
+            try:
+                elevation.relaunch_elevated()
+            except OSError as e:
+                with self._run_as_admin_lock:
+                    self._run_as_admin_relaunch_in_progress = False
+                self.push_event("run_as_admin_relaunch_failed", {"error": str(e)})
+                return
+            # Real success -- an elevated copy is now starting (or already
+            # up). This (non-elevated) instance's job is done; tell the page
+            # to close it via the normal close path (window.destroy(), same
+            # as the titlebar's own close button) rather than tearing the
+            # window down from this background thread directly.
+            self.push_event("run_as_admin_relaunching", {})
+
+        threading.Thread(target=worker, daemon=True).start()
+        return {"ok": True, "elevated": False, "relaunching": True}
 
     # ---- Prerequisites (RELAY 032) -- Python/VC++/DirectX checks, ported
     # onto push_event instead of the old imgui app's PrereqState polling
@@ -687,6 +754,29 @@ class ShellBridge:
             self._console_lines.clear()
             self._console_countdown_active = False
         return {"ok": True}
+
+    def _record_console_line(self, line: str, category: str) -> None:
+        """Appends without pushing -- for a line seeded before the page has
+        loaded (RELAY 035: run_shell.main's startup elevation-confirmation
+        line, added right after bind_window but before webview.start()). A
+        live push_event that early would race the page's own
+        `window.shellBridge` assignment; get_console_lines() picking this up
+        on the page's normal load (see loadConsoleHistory in app.js) is the
+        only delivery path that matters for a line this early."""
+        with self._console_lock:
+            self._console_lines.append({"line": line, "category": category})
+            self._console_countdown_active = False
+
+    def _push_console_line(self, line: str, category: str) -> None:
+        """Appends AND live-pushes -- for a pre-formatted, pre-categorized
+        line added once the page is already loaded and interactive (RELAY
+        035: the admin toggle flipped off mid-session). Bypasses
+        _append_console_line's "[name] message" prefix and
+        classify_progress_category's gw1_launch-specific needle list,
+        neither of which apply to a launcher-level line with no profile or
+        bulk-sequence context."""
+        self._record_console_line(line, category)
+        self.push_event("console_line", {"line": line, "category": category, "replace_last": False})
 
     def _append_console_line(self, profile_name: str, message: str) -> None:
         """The normal append path -- one new line, always. Ported from

@@ -379,6 +379,18 @@ window.shellBridge = {
       // next mod_repo_result/mod_repo_update_result push.
       return;
     }
+    if (event === "run_as_admin_relaunching") {
+      // A real elevated copy just started (bridge.save_run_as_admin_enabled's
+      // background worker) -- this (non-elevated) instance's job is done.
+      // Same close path as the titlebar's own close button, not a teardown
+      // special-cased for this event.
+      window.pywebview.api.close_clicked();
+      return;
+    }
+    if (event === "run_as_admin_relaunch_failed") {
+      openConfirmModal({ title: "Elevation failed", message: data.error, confirmLabel: "OK" });
+      return;
+    }
     if (!data || !data.profile_id) return;
     const id = data.profile_id;
     if (event === "launch_log") {
@@ -762,6 +774,42 @@ function wireAppSettingsControls() {
 
 async function onReloadDataClick() {
   await loadData();
+}
+
+// ---------- Run as administrator (RELAY 035) ----------
+
+const adminState = { enabled: false, elevated: false };
+
+function renderRunAsAdminUI() {
+  document.getElementById("admin-badge").style.display = adminState.elevated ? "inline-block" : "none";
+  document.getElementById("settings-run-as-admin").checked = adminState.enabled;
+  const statusEl = document.getElementById("run-as-admin-status");
+  let text = "";
+  if (adminState.elevated) {
+    text = "Currently running as Administrator.";
+    if (!adminState.enabled) text += " Turning this off takes effect next restart.";
+  } else if (adminState.enabled) {
+    text = "Will run elevated the next time the launcher starts.";
+  }
+  statusEl.textContent = text;
+  statusEl.style.display = text ? "block" : "none";
+}
+
+async function loadRunAsAdminState() {
+  const s = await window.pywebview.api.get_run_as_admin_state();
+  adminState.enabled = !!s.enabled;
+  adminState.elevated = !!s.elevated;
+  renderRunAsAdminUI();
+}
+
+function wireRunAsAdminControl() {
+  document.getElementById("settings-run-as-admin").onchange = async (e) => {
+    const checked = e.target.checked;
+    const res = await window.pywebview.api.save_run_as_admin_enabled(checked);
+    adminState.enabled = checked;
+    if (res && res.elevated !== undefined) adminState.elevated = res.elevated;
+    renderRunAsAdminUI();
+  };
 }
 
 // ---------- Prerequisites (RELAY 032) ----------
@@ -1312,6 +1360,8 @@ window.addEventListener("pywebviewready", () => {
   loadConsoleHistory();
   loadAppSettings();
   wireAppSettingsControls();
+  loadRunAsAdminState();
+  wireRunAsAdminControl();
   // RELAY 032: checked once automatically at startup, same as the old
   // imgui app's PREREQS.run_check_async() at module load -- not gated
   // behind opening the Settings drawer, so results are usually already

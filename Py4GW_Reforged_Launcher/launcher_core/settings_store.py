@@ -203,3 +203,18 @@ def load_minimize_to_tray_enabled(path: Path | str | None = None) -> bool:
 def save_minimize_to_tray_enabled(minimize_to_tray_enabled: bool, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("minimize_to_tray_enabled", minimize_to_tray_enabled, resolved)
+
+
+def load_run_as_admin_enabled(path: Path | str | None = None) -> bool:
+    """Default False -- opt-in (RELAY 035). Sticky: run_shell.main() checks
+    this on every normal start (not just the moment the toggle is flipped)
+    and relaunches itself elevated if it's True and the current process
+    isn't already elevated."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("run_as_admin_enabled", False))
+
+
+def save_run_as_admin_enabled(run_as_admin_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("run_as_admin_enabled", run_as_admin_enabled, resolved)

@@ -33,6 +33,7 @@ from pathlib import Path
 
 import webview
 
+from launcher_core import elevation, settings_store
 from pywebview_shell.bridge import ShellBridge
 from pywebview_shell.preview import SnapPreview
 from pywebview_shell.window_shell import ensure_dpi_awareness, ensure_native_resize_style, wait_for_native_hwnd
@@ -48,6 +49,20 @@ MIN_SIZE = (560, 400)
 
 def main() -> None:
     ensure_dpi_awareness()
+
+    # RELAY 035 -- "run as administrator" is sticky: honored on every normal
+    # start (double-click, Launch.bat), not just the moment the App Settings
+    # toggle is flipped. A declined UAC prompt here falls through to a
+    # normal non-elevated start rather than refusing to launch at all --
+    # the setting stays True (elevation.relaunch_elevated raises without
+    # touching settings_store), so the next start prompts again.
+    if settings_store.load_run_as_admin_enabled() and not elevation.is_elevated():
+        try:
+            elevation.relaunch_elevated()
+        except OSError:
+            pass
+        else:
+            return
 
     # Snap-preview overlay for the hand-rolled Aero Snap (see this module's
     # docstring). Owns its own thread + layered window; the page reports the
@@ -85,6 +100,15 @@ def main() -> None:
                           # WS_THICKFRAME border -- see bridge.on_drag_start.
     )
     bridge.bind_window(window)
+
+    # Seeded (not push_event'd -- see _record_console_line's own docstring)
+    # before the page loads, so get_console_lines() picks it up on the
+    # normal load path. Fires whenever this session is genuinely elevated
+    # AND the toggle is on -- covers both "just relaunched via the gate
+    # above" and "already elevated some other way with the toggle already
+    # saved on," both real and both worth confirming, not just the former.
+    if settings_store.load_run_as_admin_enabled() and elevation.is_elevated():
+        bridge._record_console_line("Launcher will run elevated (admin)", "acc")
 
     def on_shown():
         hwnd = wait_for_native_hwnd(window)
