@@ -29,12 +29,13 @@ Run directly: .venv\\Scripts\\python.exe -m pywebview_shell.run_shell
 """
 from __future__ import annotations
 
+import ctypes
 import sys
 from pathlib import Path
 
 import webview
 
-from launcher_core import elevation, settings_store
+from launcher_core import elevation, settings_store, window_control
 from pywebview_shell.bridge import ShellBridge
 from pywebview_shell.preview import SnapPreview
 from pywebview_shell.window_shell import ensure_dpi_awareness, ensure_native_resize_style, wait_for_native_hwnd
@@ -64,6 +65,26 @@ MIN_SIZE = (560, 400)
 
 def main() -> None:
     ensure_dpi_awareness()
+
+    # RELAY 046: in dev-mode, Windows' taskbar groups this window's presence
+    # under python.exe's own shared identity by default (no distinct
+    # AppUserModelID set) -- confirmed live: window_control.set_window_icon
+    # correctly changed the window's own WM_GETICON handles (both SMALL and
+    # BIG extracted and pixel-verified as the real icon), but the taskbar
+    # button itself kept showing python.exe's generic icon regardless, and
+    # survived minimize/restore AND pin/unpin (both real, standard icon-
+    # cache-refresh tricks that would have fixed a simple stale-cache case).
+    # That specific symptom -- correct per-window icon, wrong taskbar icon,
+    # immune to cache-refresh tricks -- is the known signature of taskbar
+    # identity grouping, not a caching bug: explicitly giving this process
+    # its own AppUserModelID (must be set before any window is created)
+    # tells the shell to treat it as its own distinct app rather than
+    # inheriting python.exe's. Harmless no-op once frozen (a real .exe
+    # already has its own distinct identity from its own file path).
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Py4GW.ReforgedLauncher")
+    except OSError:
+        pass
 
     # RELAY 035 -- "run as administrator" is sticky: honored on every normal
     # start (double-click, Launch.bat), not just the moment the App Settings
@@ -131,6 +152,26 @@ def main() -> None:
         if hwnd is not None:
             bridge.bind_hwnd(hwnd)
             ensure_native_resize_style(hwnd)
+            # RELAY 046: dev-mode only. Confirmed empirically (real
+            # WM_GETICON handle extracted and pixel-compared against
+            # assets/python_icon.ico, both a built .exe and a live
+            # screenshot) that a BUILT .exe's live window ALREADY shows the
+            # real icon in taskbar/Alt-Tab for free -- Windows falls back
+            # to the process's own embedded icon resource (this .spec's
+            # own icon= EXE option, RELAY 043) with zero runtime call
+            # needed, so calling this there too would be redundant, not
+            # just harmless -- skipped rather than also bundling the icon
+            # as a runtime datas asset it would never actually use.
+            # Dev-mode has no such resource (confirmed the same way: the
+            # extracted icon was python.exe's own generic icon, not ours,
+            # and Chris independently confirmed this live) -- this is the
+            # only case that actually needs the explicit WM_SETICON call.
+            # Frameless (no WS_CAPTION): there is no native title-bar icon
+            # slot to fill either way -- this affects the taskbar/Alt-Tab
+            # icon only, confirmed via the same real screenshot check.
+            if not getattr(sys, "frozen", False):
+                icon_path = Path(__file__).parent.parent / "assets" / "python_icon.ico"
+                window_control.set_window_icon(hwnd, str(icon_path))
         preview.start()
 
     webview.start(on_shown, debug=False)
