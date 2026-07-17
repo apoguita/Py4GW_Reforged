@@ -36,6 +36,19 @@ let consoleSelected = new Set();
 let consoleNextId = 0;
 const CONSOLE_MAX_LINES = 500; // mirrors bridge.py's deque(maxlen=500)
 
+// Mod Repository (RELAY 033) -- mirrors the old imgui app's ModRepoState
+// property names closely on purpose, not renamed/combined, so this stays
+// easy to compare against that real, proven reference.
+let modRepoPath = "";
+let modRepoUrl = "";
+let modRepoDetection = null; // null while checking, else {status, path}
+let modRepoCheckingUpdates = false;
+let modRepoUpdateCheck = null; // null until "Check for updates" resolves once
+let modRepoCloneInProgress = false;
+let modRepoUpdateInProgress = false;
+let modRepoOpStatusText = "";
+let modRepoOpDoneMessage = null;
+
 function teamName(teamId) {
   if (teamId === "ALL") return "All Profiles";
   const t = teams.find((x) => x.id === teamId);
@@ -338,6 +351,32 @@ window.shellBridge = {
       // No restart needed to see the result -- the bridge already re-runs
       // check_prereqs() right after this event, so the rows themselves
       // refresh on their own via the next "prereqs_result" push.
+      return;
+    }
+    if (event === "mod_repo_result") {
+      modRepoDetection = data;
+      renderModRepoSection();
+      return;
+    }
+    if (event === "mod_repo_update_result") {
+      modRepoCheckingUpdates = false;
+      modRepoUpdateCheck = data;
+      renderModRepoSection();
+      return;
+    }
+    if (event === "mod_repo_op_status") {
+      modRepoOpStatusText = data.text;
+      renderModRepoSection();
+      return;
+    }
+    if (event === "mod_repo_op_done") {
+      modRepoCloneInProgress = false;
+      modRepoUpdateInProgress = false;
+      modRepoOpDoneMessage = data.message;
+      renderModRepoSection();
+      // Bridge already re-runs detect (and, for update, check-updates too)
+      // right after this event -- the section refreshes itself via the
+      // next mod_repo_result/mod_repo_update_result push.
       return;
     }
     if (!data || !data.profile_id) return;
@@ -729,7 +768,13 @@ function updatePrereqRow(component, result) {
   const statusEl = document.getElementById(`prereq-status-${component}`);
   const installBtn = document.getElementById(`prereq-install-${component}`);
   if (result.is_ok) {
-    statusEl.textContent = `OK -- ${result.diagnostic_text}`;
+    // RELAY 033: Python/DirectX's real diagnostic text ends "...detected
+    // at <path>"/"...found at <path>" -- a real path has no spaces to
+    // wrap on, so it ran off the drawer's edge instead of wrapping
+    // (Chris, live). Break it onto its own line right before the path
+    // (style.css's .prereq-status has white-space:pre-line to render
+    // this \n as a real line break).
+    statusEl.textContent = `OK -- ${result.diagnostic_text.replace(" at ", " at\n")}`;
     statusEl.className = "prereq-status ok";
     installBtn.style.display = "none";
   } else {
@@ -754,6 +799,140 @@ async function onPrereqInstallClick(component) {
     const statusEl = document.getElementById(`prereq-status-${component}`);
     statusEl.textContent = (res && res.error) || "Could not start install";
     statusEl.className = "prereq-status missing";
+  }
+}
+
+// ---------- Mod Repository (RELAY 033) ----------
+// Ported from the old imgui app's ModRepoState/_show_mod_repo_section,
+// branch-for-branch, onto push_event instead of that class's polling.
+
+async function loadModRepoInfo() {
+  const info = await window.pywebview.api.get_mod_repo_info();
+  modRepoPath = info.path;
+  modRepoUrl = info.url;
+  document.getElementById("modrepo-path").value = modRepoPath;
+}
+
+function renderModRepoSection() {
+  const area = document.getElementById("modrepo-status-area");
+
+  if (modRepoDetection === null) {
+    area.innerHTML = `<div class="prereq-status">Checking...</div>`;
+    return;
+  }
+
+  let html = "";
+  if (modRepoDetection.status === "not_found") {
+    html += `<div class="prereq-status missing">No Py4GW_Reforged checkout found at this location.</div>`;
+    if (modRepoCloneInProgress) {
+      html += `<div class="prereq-status busy" style="margin-top:4px">${escapeHtml(modRepoOpStatusText)}</div>`;
+    } else {
+      html += `<button class="small-btn" style="margin-top:6px" onclick="onModRepoCloneClick()">Clone Py4GW_Reforged</button>`;
+    }
+  } else if (modRepoDetection.status === "not_a_git_repo") {
+    html += `<div class="prereq-status missing">Found a folder here, but it isn't a git checkout -- can't check for updates.</div>`;
+  } else {
+    // ok
+    html += `<div class="prereq-status-row">`;
+    if (modRepoCheckingUpdates) {
+      html += `<span class="prereq-status busy">Checking for updates...</span>`;
+    } else {
+      html += `<button class="small-btn" onclick="onModRepoCheckUpdatesClick()">Check for updates</button>`;
+    }
+    html += `<span class="prereq-status ok">Checkout found.</span>`;
+    html += `</div>`;
+
+    if (modRepoUpdateCheck !== null) {
+      const check = modRepoUpdateCheck;
+      if (check.status === "up_to_date") {
+        html += `<div class="prereq-status ok" style="margin-top:4px">${escapeHtml(check.message)}</div>`;
+      } else if (check.status === "behind") {
+        html += `<div class="prereq-status-row" style="margin-top:4px">`;
+        html += `<span class="prereq-status missing">${escapeHtml(check.message)}</span>`;
+        if (modRepoUpdateInProgress) {
+          html += `<span class="prereq-status busy">${escapeHtml(modRepoOpStatusText)}</span>`;
+        } else {
+          html += `<button class="small-btn" onclick="onModRepoUpdateClick()">Update now</button>`;
+        }
+        html += `</div>`;
+      } else {
+        // ahead or error -- informational only, no fast-forward possible/needed.
+        html += `<div class="prereq-status" style="margin-top:4px">${escapeHtml(check.message)}</div>`;
+      }
+    }
+  }
+
+  if (modRepoOpDoneMessage && !modRepoCloneInProgress && !modRepoUpdateInProgress) {
+    html += `<div class="prereq-status" style="margin-top:6px">${escapeHtml(modRepoOpDoneMessage)}</div>`;
+  }
+
+  area.innerHTML = html;
+}
+
+async function onBrowseModRepoFolderClick() {
+  const chosen = await window.pywebview.api.browse_for_folder();
+  if (!chosen) return;
+  modRepoPath = chosen;
+  document.getElementById("modrepo-path").value = chosen;
+  // Any earlier update-check result was about the OLD location -- clear it
+  // rather than leave it showing a stale answer for a path no longer in
+  // effect, same reasoning ModRepoState.set_configured_path uses.
+  modRepoDetection = null;
+  modRepoUpdateCheck = null;
+  renderModRepoSection();
+  await window.pywebview.api.save_mod_repo_path(chosen);
+}
+
+async function onModRepoCheckUpdatesClick() {
+  if (modRepoCheckingUpdates) return;
+  modRepoCheckingUpdates = true;
+  renderModRepoSection();
+  await window.pywebview.api.check_mod_repo_updates();
+}
+
+async function onModRepoCloneClick() {
+  const ok = await openConfirmModal({
+    title: "Clone Py4GW_Reforged?",
+    message: `This will clone the full Py4GW_Reforged repository from:\n${modRepoUrl}\n\ninto:\n${modRepoPath}\n\nThis is the full mod repository (roughly 600MB) and can take a minute or two depending on your connection.`,
+    confirmLabel: "Clone",
+  });
+  if (!ok) return;
+  modRepoCloneInProgress = true;
+  modRepoOpStatusText = "Starting...";
+  renderModRepoSection();
+  const res = await window.pywebview.api.start_mod_repo_clone();
+  if (!res || !res.ok) {
+    modRepoCloneInProgress = false;
+    modRepoOpDoneMessage = (res && res.error) || "Could not start clone";
+    renderModRepoSection();
+  }
+}
+
+async function onModRepoUpdateClick() {
+  const behindText = modRepoUpdateCheck ? ` (${modRepoUpdateCheck.message})` : "";
+  const ok = await openConfirmModal({
+    title: "Update Py4GW_Reforged?",
+    message:
+      `This will fast-forward the checkout at:\n${modRepoPath}\nto the latest Py4GW_Reforged${behindText}.\n\n` +
+      // Real behavior per update_mod_repo's own docstring (RELAY 033
+      // verify-before-building read), not the old imgui app's slightly
+      // broader popup wording ("refused... if the checkout has any
+      // uncommitted changes") -- confirmed directly against dulwich's own
+      // pull() that only a file the incoming update actually touches can
+      // ever cause a refusal, so this says that precisely instead of
+      // repeating the old app's looser claim.
+      "Only ever fast-forwards -- refused automatically if the update would overwrite a file you've changed locally, so nothing local is silently discarded.",
+    confirmLabel: "Update",
+  });
+  if (!ok) return;
+  modRepoUpdateInProgress = true;
+  modRepoOpStatusText = "Starting...";
+  renderModRepoSection();
+  const res = await window.pywebview.api.start_mod_repo_update();
+  if (!res || !res.ok) {
+    modRepoUpdateInProgress = false;
+    modRepoOpDoneMessage = (res && res.error) || "Could not start update";
+    renderModRepoSection();
   }
 }
 
@@ -1053,6 +1232,11 @@ window.addEventListener("pywebviewready", () => {
   // behind opening the Settings drawer, so results are usually already
   // there by the time someone looks.
   window.pywebview.api.check_prereqs();
+  // RELAY 033: same eager-detect pattern -- MOD_REPO_STATE.run_detect_async()
+  // also fires at the old app's module load, not gated behind the drawer.
+  // check_mod_repo_updates() is deliberately NOT called here (real network
+  // fetch, only ever on the explicit button click).
+  loadModRepoInfo().then(() => window.pywebview.api.check_mod_repo());
 });
 
 async function loadConsoleHistory() {

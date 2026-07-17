@@ -196,9 +196,23 @@
           <div id="prereq-done-message" style="display:none;font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin-top:6px"></div>
           <button class="ghost-btn" style="margin-top:8px" onclick="onCheckPrereqsClick()">Check now</button>
         </div>
-        <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
-          Mod repository isn't wired up yet.
-        </p>
+        <!-- Mod Repository (RELAY 033) -- ported from the old imgui app's
+             ModRepoState/_show_mod_repo_section, onto push_event instead
+             of that class's own polling design. Status area's content
+             varies by real state (checking/not-found/not-a-git-repo/ok +
+             nested up-to-date/behind/ahead/error), rendered via JS
+             (renderModRepoSection) rather than a large pre-declared DOM
+             with visibility toggles -- same shape this app already uses
+             for renderCards/renderConsole's own per-item variability. -->
+        <div>
+          <h4 style="margin-bottom:8px">Mod Repository</h4>
+          <label class="field-label">Location</label>
+          <div class="path-browse-row">
+            <input class="field-input" id="modrepo-path" readonly>
+            <button class="ghost-btn" onclick="onBrowseModRepoFolderClick()">Browse…</button>
+          </div>
+          <div id="modrepo-status-area" style="margin-top:8px"></div>
+        </div>
       </div>
 
       <!-- General: the routine, tweak-often settings (029, unchanged). -->

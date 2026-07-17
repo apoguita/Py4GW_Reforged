@@ -642,11 +642,26 @@ body.console-open #console-panel {
   display: flex;
   align-items: center;
   gap: 9px;
+  flex-wrap: wrap;
 }
+/* No white-space:nowrap -- the prereq rows' own "OK -- version X" text is
+   always short, but the mod repository's real status messages (RELAY 033,
+   e.g. "Diverged from the remote (152 ahead, 3 behind) -- can't fast-
+   forward.") can genuinely run longer than this drawer's width and need to
+   wrap, not get clipped off the visible edge. min-width:0 is needed
+   alongside flex-wrap on the row above -- a flex item's default min-width
+   is its own content size, which silently defeats wrapping/shrinking
+   without this. */
 .prereq-status {
   font-size: 11.5px;
   color: var(--muted, #9a9ecb);
-  white-space: nowrap;
+  min-width: 0;
+  /* Python/DirectX's real diagnostic text ends in "...at <path>" -- a real
+     Windows path has no spaces to wrap on by itself, so it just ran off
+     the drawer's edge instead (Chris, live). app.js inserts a literal \n
+     before the path (updatePrereqRow) for exactly this line to break on;
+     pre-line is what makes that \n actually render as a line break. */
+  white-space: pre-line;
 }
 .prereq-status.ok {
   color: var(--good, #5ce0b0);

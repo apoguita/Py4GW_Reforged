@@ -17,11 +17,12 @@ import dataclasses
 import json
 import threading
 import weakref
+from pathlib import Path
 from typing import Any, Optional
 
 import webview
 
-from launcher_core import bulk_launch, crypto, prereqs, profile_store, settings_store
+from launcher_core import bulk_launch, config_seeding, crypto, mod_repo, prereqs, profile_store, settings_store
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -35,6 +36,19 @@ def _rects_close(a, b, tol: int = 4) -> bool:
     """Whether two (x, y, w, h) rects match within a few px (SetWindowPos can
     land a pixel or two off after DPI rounding)."""
     return all(abs(pa - pb) <= tol for pa, pb in zip(a, b))
+
+
+def _resolve_mod_repo_path():
+    """RELAY 033: mirrors the old imgui app's ModRepoState.__init__ exactly
+    -- settings_store's saved override if one exists, otherwise
+    config_seeding's own mod-root assumption (this launcher's own parent
+    directory), never duplicated/reimplemented here. Resolved fresh on
+    every call (no bridge-instance caching), matching every other
+    settings_store-backed read in this app (029/032) -- a path change on
+    disk (or via save_mod_repo_path) is visible immediately, nothing to
+    invalidate."""
+    saved = settings_store.load_mod_repo_path()
+    return Path(saved) if saved else config_seeding._mod_root()
 
 
 class ShellBridge:
@@ -131,6 +145,12 @@ class ShellBridge:
         # exactly this, no reason to reintroduce a polling design).
         self._prereq_install_lock = threading.Lock()
         self._prereq_install_in_progress: Optional[str] = None
+        # Phase G part 3 (RELAY 033) -- same guard shape as prereq installs
+        # above, one shared slot since clone and update are mutually
+        # exclusive real network/filesystem operations against the same
+        # checkout.
+        self._mod_repo_op_lock = threading.Lock()
+        self._mod_repo_op_in_progress: Optional[str] = None
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -392,6 +412,111 @@ class ShellBridge:
         # check now that something may have changed, same as the old
         # app's PrereqState._run_install did.
         self._run_prereq_checks()
+
+    # ---- Mod repository (RELAY 033) -- ported from the old imgui app's
+    # ModRepoState/_show_mod_repo_section, onto push_event instead of that
+    # class's own polling design (same reasoning as Prerequisites above).
+
+    def get_mod_repo_info(self) -> dict:
+        """Synchronous, cheap -- the configured path (or its real default)
+        plus the configured clone URL, for the drawer's read-only path
+        field and the clone-confirm popup's own message."""
+        return {"path": str(_resolve_mod_repo_path()), "url": settings_store.load_mod_repo_url()}
+
+    def save_mod_repo_path(self, path: str) -> dict:
+        """Persists the new location and re-detects against it -- any
+        earlier update-check result was about the OLD location, so the JS
+        side clears it itself before calling this (mirrors ModRepoState.
+        set_configured_path's own "clear update_check, it's now stale")."""
+        settings_store.save_mod_repo_path(path)
+        threading.Thread(target=self._run_mod_repo_detect, daemon=True).start()
+        return {"ok": True}
+
+    def check_mod_repo(self) -> dict:
+        """Cheap, filesystem-only -- safe to call automatically (this app's
+        pywebviewready init does, same as check_prereqs) and after every
+        path change/clone/update, same as detect_checkout's own docstring."""
+        threading.Thread(target=self._run_mod_repo_detect, daemon=True).start()
+        return {"ok": True}
+
+    def _run_mod_repo_detect(self) -> None:
+        result = mod_repo.detect_checkout(_resolve_mod_repo_path())
+        self.push_event("mod_repo_result", {"status": result.status.value, "path": str(result.path)})
+
+    def check_mod_repo_updates(self) -> dict:
+        """Unlike detection, this hits the network (a real git fetch) --
+        never called automatically, only from the page's explicit "Check
+        for updates" click, same reasoning check_prereqs' checks don't
+        apply to this one."""
+        threading.Thread(target=self._run_mod_repo_check_updates, daemon=True).start()
+        return {"ok": True}
+
+    def _run_mod_repo_check_updates(self) -> None:
+        result = mod_repo.check_for_updates(_resolve_mod_repo_path())
+        self.push_event(
+            "mod_repo_update_result",
+            {
+                "status": result.status.value,
+                "message": result.message,
+                "behind_count": result.behind_count,
+                "ahead_count": result.ahead_count,
+            },
+        )
+
+    def start_mod_repo_clone(self) -> dict:
+        with self._mod_repo_op_lock:
+            if self._mod_repo_op_in_progress is not None:
+                return {"ok": False, "error": "An operation is already in progress"}
+            self._mod_repo_op_in_progress = "clone"
+        threading.Thread(target=self._run_mod_repo_clone, daemon=True).start()
+        return {"ok": True}
+
+    def _run_mod_repo_clone(self) -> None:
+        def on_status(text: str) -> None:
+            self.push_event("mod_repo_op_status", {"text": text})
+
+        success, message = mod_repo.clone_mod_repo(_resolve_mod_repo_path(), on_status)
+        with self._mod_repo_op_lock:
+            self._mod_repo_op_in_progress = None
+        self.push_event("mod_repo_op_done", {"success": success, "message": message})
+        self._run_mod_repo_detect()
+
+    def start_mod_repo_update(self) -> dict:
+        with self._mod_repo_op_lock:
+            if self._mod_repo_op_in_progress is not None:
+                return {"ok": False, "error": "An operation is already in progress"}
+            self._mod_repo_op_in_progress = "update"
+        threading.Thread(target=self._run_mod_repo_update, daemon=True).start()
+        return {"ok": True}
+
+    def _run_mod_repo_update(self) -> None:
+        def on_status(text: str) -> None:
+            self.push_event("mod_repo_op_status", {"text": text})
+
+        success, message = mod_repo.update_mod_repo(_resolve_mod_repo_path(), on_status)
+        with self._mod_repo_op_lock:
+            self._mod_repo_op_in_progress = None
+        self.push_event("mod_repo_op_done", {"success": success, "message": message})
+        # Same double re-run as the old app's _run_update -- detect (did the
+        # checkout itself change) AND re-check-updates (are we caught up
+        # now), not just one or the other.
+        self._run_mod_repo_detect()
+        self._run_mod_repo_check_updates()
+
+    def browse_for_folder(self) -> Optional[str]:
+        """Native folder-picker (RELAY 033) -- webview.FileDialog.FOLDER,
+        pywebview's own built-in mode, no reason to port the old app's raw
+        Win32 SHBrowseForFolder call (that exists there because ImGui has
+        no native file-dialog primitive at all, a constraint this app
+        doesn't share -- browse_for_file, RELAY 024, already made this
+        same call for files). No title parameter -- confirmed via
+        create_file_dialog's real signature that pywebview doesn't expose
+        one for any dialog type, not an oversight here."""
+        window = self._window()
+        if window is None:
+            return None
+        result = window.create_file_dialog(webview.FileDialog.FOLDER, directory=str(_resolve_mod_repo_path()))
+        return result[0] if result else None
 
     # ---- Live console (RELAY 021) -- shared by both launch paths below ----
 
