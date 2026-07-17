@@ -13,9 +13,9 @@ an injected GW1 session.
 > **Status: alpha.** Built and tested by the two of us across two machines,
 > plus live multi-account playtesting that's already surfaced and fixed real
 > bugs. Nothing here is vaporware — every flow below has been run for real —
-> but it hasn't had other hands on it yet. There's no CI wired up yet, and
-> real automated test coverage is narrow: 22 unit tests cover the window
-> edge-drag/snap-zone geometry, nothing else.
+> but it hasn't had other hands on it yet. CI builds the `.exe` and runs the
+> real test suite on every push, but real automated test coverage is narrow:
+> 22 unit tests cover the window edge-drag/snap-zone geometry, nothing else.
 
 ## Screenshots
 
