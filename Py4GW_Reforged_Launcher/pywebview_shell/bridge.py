@@ -20,6 +20,7 @@ import weakref
 from pathlib import Path
 from typing import Any, Optional
 
+import psutil
 import webview
 
 from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store
@@ -30,6 +31,20 @@ from launcher_core.profile import GameProfile
 from launcher_core.team import Team
 from pywebview_shell import snap
 from pywebview_shell.window_shell import get_dpi_scale, start_native_resize
+
+
+def _is_process_alive(pid: int) -> bool:
+    """RELAY 040: same real liveness-check pattern gw1_launch.py's own
+    `_wait_for_window_or_exit`/`_wait_for_gw_window` already use
+    (`psutil.Process(pid).status()`/`psutil.NoSuchProcess`), reused here
+    rather than hand-classifying every LaunchResult failure-reason string
+    as "definitely alive" or "definitely dead" -- several genuinely are
+    ambiguous from the reason text alone (see gw1_launch.py's ~884/894/
+    897/900 failure returns, none of which call TerminateProcess)."""
+    try:
+        return psutil.Process(pid).status() == psutil.STATUS_RUNNING
+    except psutil.NoSuchProcess:
+        return False
 
 
 def _rects_close(a, b, tol: int = 4) -> bool:
@@ -910,13 +925,23 @@ class ShellBridge:
         except Exception as exc:  # a crashed launch thread must not vanish silently
             success, pid, error = False, None, f"Launch crashed: {exc}"
 
+        # RELAY 040: some failure paths (e.g. "Py4GW DLL injection failed")
+        # deliberately leave the real Gw.exe process running -- gw1_launch.py
+        # never calls TerminateProcess there, unlike the multiclient-patch
+        # failure path, which does. A real liveness check (not a guess off
+        # the failure-reason string, several of which are genuinely
+        # ambiguous) decides whether this failure needs tracking too, so
+        # Stop can actually reach an orphaned client instead of the UI only
+        # offering Launch -- which would spawn a second, duplicate process
+        # for the same account.
+        still_running = not success and pid is not None and _is_process_alive(pid)
         with self._launch_lock:
             self._in_flight.discard(profile.id)
-            if success and pid is not None:
+            if (success or still_running) and pid is not None:
                 self._running_pids[profile.id] = pid
         self.push_event(
             "launch_done",
-            {"profile_id": profile.id, "success": success, "pid": pid, "error": error},
+            {"profile_id": profile.id, "success": success, "pid": pid, "error": error, "still_running": still_running},
         )
 
     def stop_profile(self, profile_id: str) -> dict:

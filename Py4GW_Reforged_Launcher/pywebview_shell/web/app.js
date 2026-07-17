@@ -215,6 +215,20 @@ function applyCardLaunchVisual(card, p) {
     action.textContent = "■ Stop";
     action.disabled = false;
     action.onclick = (e) => { e.stopPropagation(); stopProfile(p.id); };
+  } else if (st.phase === "error-running") {
+    // RELAY 040: a real, orphaned, still-alive Gw.exe from a failed
+    // injection (bridge.py's _run_launch confirmed this via a real
+    // psutil liveness check, not a guess) -- error text stays visible
+    // (same rendering as plain "error" below) AND Stop actually reaches
+    // the orphaned process, since bridge.py tracked its pid. Deliberately
+    // NOT "Launch" here -- that would spawn a second, duplicate process
+    // for the same account instead of doing anything to the first one.
+    card.classList.add("state-error");
+    sub.textContent = st.error || "Launch failed";
+    sub.title = st.error || "";
+    action.textContent = "■ Stop";
+    action.disabled = false;
+    action.onclick = (e) => { e.stopPropagation(); stopProfile(p.id); };
   } else {
     // idle or error: button offers Launch either way; error shows why.
     if (st.phase === "error") {
@@ -477,8 +491,16 @@ window.shellBridge = {
       launchState[id] = { phase: "launching", status: data.status };
       refreshCard(id);
     } else if (event === "launch_done") {
+      // RELAY 040: still_running (real, from bridge.py's own psutil
+      // liveness check) means the launch failed but the game process is
+      // genuinely still alive and orphaned -- error-running gets a
+      // working Stop instead of Launch (applyCardLaunchVisual), so
+      // clicking the only available action doesn't spawn a duplicate
+      // process for the same account.
       launchState[id] = data.success
         ? { phase: "running", pid: data.pid }
+        : data.still_running
+        ? { phase: "error-running", error: data.error || "Launch failed", pid: data.pid }
         : { phase: "error", error: data.error || "Launch failed" };
       refreshCard(id);
       // Auto-expand on error (TODO.md's console spec, confirmed against the
