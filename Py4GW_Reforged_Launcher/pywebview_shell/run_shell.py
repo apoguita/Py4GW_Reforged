@@ -30,7 +30,11 @@ Run directly: .venv\\Scripts\\python.exe -m pywebview_shell.run_shell
 from __future__ import annotations
 
 import ctypes
+import os
 import sys
+import tempfile
+import threading
+import time
 from pathlib import Path
 
 import webview
@@ -61,6 +65,91 @@ RESIZE_MARGIN = 6
 # hand-rolled Snap's quarter targets can clamp against it in physical px at
 # whatever the actual DPI scale turns out to be (RELAY 012).
 MIN_SIZE = (560, 400)
+
+
+def _webview2_storage_path() -> str:
+    """Return a stable, reused WebView2 user-data-dir, creating it if needed.
+
+    RELAY 054: without this, pywebview's default (private_mode=True and no
+    storage_path) makes its winforms backend set WebView2's UserDataFolder to
+    `tempfile.TemporaryDirectory().name` (webview/platforms/winforms.py,
+    init_storage). That idiom is a leak: the TemporaryDirectory object is
+    discarded the instant `.name` is read, so its finalizer deletes the
+    still-empty dir immediately -- then WebView2 re-creates and populates that
+    exact path and nothing ever cleans it up. Net effect: one orphaned
+    `%TEMP%\\tmpXXXX\\EBWebView` profile (~15-30MB) leaks on EVERY launch (68
+    dirs / ~894MB seen in the wild, RELAY 022), and cold-start time measurably
+    climbs as the count grows (confirmed: +~0.3-0.5s across a 40-launch run).
+
+    Passing an explicit storage_path makes pywebview take its persistent
+    branch and reuse ONE stable profile dir instead: no per-launch leak, no
+    unbounded accumulation, and no delete-then-recreate window during cold
+    start. Sharing a single user-data-dir across (rare) concurrent instances
+    is WebView2's normal, supported mode -- it's exactly what pywebview itself
+    does by default for every non-private app (a shared %APPDATA%/pywebview).
+    """
+    base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or tempfile.gettempdir()
+    path = Path(base) / "Py4GW_Reforged_Launcher" / "webview2"
+    path.mkdir(parents=True, exist_ok=True)
+    return str(path)
+
+
+# RELAY 054 render watchdog. A healthy window becomes visible within ~1s
+# (no load) and reliably under ~5s even under heavy CPU/disk contention
+# (measured live), so 8s is comfortably past any legitimate slow start and
+# only trips on the genuine stuck state. SW_MINIMIZE/SW_RESTORE is the exact
+# repaint-forcing recovery confirmed to un-stick a blank window in place
+# (RELAY 022's 2026-07-17 occurrence, and reproduced+re-confirmed here).
+_RENDER_READY_TIMEOUT = 8.0
+_RECOVER_ATTEMPTS = 2
+_SW_MINIMIZE = 6
+_SW_RESTORE = 9
+
+
+def _start_render_watchdog(hwnd: int, bridge: ShellBridge) -> None:
+    """Guard against the intermittent stuck/blank-window cold-start race
+    (RELAY 054): under resource contention WebView2's content area can come up
+    fully blank-white with the top-level window never even flipping to visible
+    (`IsWindowVisible` stays 0), and it does NOT self-recover by waiting --
+    confirmed reproducible (a single packaged-exe launch under sustained
+    CPU/disk load reproduces it on demand; the underlying race lives in
+    WebView2/pywebview cold start, not in this app's own code, so it can't be
+    eliminated from here -- only detected and recovered).
+
+    Root cause is NOT temp-dir accumulation (ruled out: crossing the old
+    ~68-dir threshold with zero blanks when unloaded, and an explicit
+    storage_path that stops the accumulation entirely does NOT lower the
+    stuck rate under load) -- accumulation is a real but separate leak, fixed
+    independently by `_webview2_storage_path`.
+
+    Detects the stuck state via `IsWindowVisible` (the observed signature) and
+    forces a repaint with the proven minimize/restore recovery, retrying a
+    couple of times, instead of leaving the user staring at a blank window.
+    Daemon thread -- never blocks shutdown, and a no-op on every healthy launch
+    (returns the instant the window shows, which is almost always <2s).
+    """
+    def watch() -> None:
+        deadline = time.time() + _RENDER_READY_TIMEOUT
+        while time.time() < deadline:
+            if ctypes.windll.user32.IsWindowVisible(hwnd):
+                return  # healthy -- shown well within budget, do nothing
+            time.sleep(0.25)
+        # Still not visible past the budget: treat as the stuck cold-start
+        # race and force a repaint. Re-check after each attempt.
+        for _ in range(_RECOVER_ATTEMPTS):
+            bridge._record_console_line(
+                "Window failed to render on start -- forcing a repaint (RELAY 054)", "err"
+            )
+            ctypes.windll.user32.ShowWindow(hwnd, _SW_MINIMIZE)
+            time.sleep(1.0)
+            ctypes.windll.user32.ShowWindow(hwnd, _SW_RESTORE)
+            recheck = time.time() + 4.0
+            while time.time() < recheck:
+                if ctypes.windll.user32.IsWindowVisible(hwnd):
+                    return
+                time.sleep(0.25)
+
+    threading.Thread(target=watch, name="render-watchdog", daemon=True).start()
 
 
 def main() -> None:
@@ -172,9 +261,10 @@ def main() -> None:
             if not getattr(sys, "frozen", False):
                 icon_path = Path(__file__).parent.parent / "assets" / "python_icon.ico"
                 window_control.set_window_icon(hwnd, str(icon_path))
+            _start_render_watchdog(hwnd, bridge)
         preview.start()
 
-    webview.start(on_shown, debug=False)
+    webview.start(on_shown, debug=False, storage_path=_webview2_storage_path())
 
 
 if __name__ == "__main__":
