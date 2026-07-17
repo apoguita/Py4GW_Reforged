@@ -10,18 +10,23 @@ and DirectX runtime it needs, then clones/updates the Py4GW_Reforged mod repo
 itself. No manual Python or git setup required to get from a bare machine to
 an injected GW1 session.
 
-> **Status: alpha.** Built and tested by the two of us across two machines.
-> Nothing here is vaporware — the flows below have all been run for real —
-> but it hasn't had other hands on it yet, and there's no automated test
-> suite or CI behind it.
+> **Status: alpha.** Built and tested by the two of us across two machines,
+> plus live multi-account playtesting that's already surfaced and fixed real
+> bugs. Nothing here is vaporware — every flow below has been run for real —
+> but it hasn't had other hands on it yet. There's no CI wired up yet, and
+> real automated test coverage is narrow: 22 unit tests cover the window
+> edge-drag/snap-zone geometry, nothing else.
 
 ## Screenshots
 
 | | Dark | Light |
 |---|---|---|
 | Main window | ![Main window, dark theme](assets/screenshots/main-dark.png) | ![Main window, light theme](assets/screenshots/main-light.png) |
-| Profile settings | ![Profile settings, dark theme](assets/screenshots/settings-dark.png) | ![Profile settings, light theme](assets/screenshots/settings-light.png) |
-| App settings | ![App settings, dark theme](assets/screenshots/app-settings-dark.png) | ![App settings, light theme](assets/screenshots/app-settings-light.png) |
+| Theme & palette | ![Theme tab, dark theme](assets/screenshots/theme-dark.png) | ![Theme tab, light theme](assets/screenshots/theme-light.png) |
+| Setup & prerequisites | ![Setup tab, dark theme](assets/screenshots/setup-dark.png) | ![Setup tab, light theme](assets/screenshots/setup-light.png) |
+
+(Account names shown are placeholders — no real accounts or credentials in
+any of these.)
 
 ## What works today
 
@@ -29,42 +34,59 @@ an injected GW1 session.
   redistributables (x86 + x64), and the DirectX End-User Runtime; installs
   each on request and re-verifies with no restart needed. Validated
   end-to-end on a genuinely clean machine, all the way through a real
-  injected GW1 launch.
+  injected GW1 launch. A launch that actually needs Py4GW injection gets
+  gated with a real warning (not a silent failure) if something's still
+  missing — "Launch anyway" is always one click away, never a hard block.
 - **Mod repo management** — clones and updates the Py4GW_Reforged repo
   directly from the app, including into a completely empty folder.
 - **GW1 launch + Py4GW injection** — auto-login, character selection,
   windowed/fullscreen toggle, GW1 client window retitling, multiclient
-  patch support.
+  patch support. A failed injection that leaves the real game process alive
+  (rather than a clean failure) is detected and offers Stop, not another
+  Launch — no accidental duplicate clients.
 - **Multibox team launch** — group accounts into named teams, launch a
   whole team with a paced, staggered login sequence (anti-bot-safe timing,
   not a naive loop).
 - **gMod injection** — per-profile mod lists (add/remove `.tpf` files in
   the Mods tab), independent per account even when several accounts share
   one GW install. Opt-in alongside Py4GW injection, not a replacement.
-- **Custom card order** — drag and drop account cards to reorder them, or
-  leave them alphabetical (the default, one click to restore in App
-  Settings).
-- **Minimize to tray** — opt-in; minimizing hides the taskbar entry and
-  parks an icon in the system tray instead.
+- **Click a card to focus its game window** — brings that profile's real
+  running client to the foreground and marks the card as focused; the
+  reverse works too — Alt-Tabbing or clicking a game window directly
+  updates the card grid to match, live, with no click needed in the app.
+- **Run as administrator** — an explicit, opt-in App Settings toggle (never
+  automatic/silent). Elevates the launcher itself so every client launched
+  that session inherits it too — real fix for clients installed under a
+  UAC-protected path like `Program Files`. A persistent "ADMIN" badge shows
+  whenever the running session actually is elevated.
 - **Legacy `accounts.json` import** — bring accounts in directly from the
-  old Python launcher's data, including team structure.
+  old Python launcher's data, including team structure, with a real
+  warning list for anything the old format carried that doesn't have a
+  home here (GWToolbox++ settings, `run_as_admin`, auto-run scripts).
 - **Roster backup/restore** — export and reimport your full profile/team
-  setup, for moving between machines.
+  setup, for moving between machines. Passwords are opt-in and clearly
+  labeled plaintext when included (backups aren't a place to be vague
+  about that).
+- **App Settings, as a real tabbed drawer** — Theme, Setup, General, and
+  Advanced, not one long scroll:
+  - **Theme** — every palette color (accent, background, surface, text,
+    plus the good/warn/bad status colors) is live-editable via swatch or
+    hex field, on top of 5 built-in presets, with a one-click reset. Your
+    palette actually survives an app restart.
+  - **Setup** — prerequisites and mod repository, in one place.
+  - **General** — launch pacing, master injection switches.
+  - **Advanced** — backup/restore, old launcher import, run-as-admin.
 - **Live console panel** — a docked, collapsible view of launch/injection
-  log output as it happens.
+  log output as it happens, color-coded by real category (success/warning/
+  error/informational), not a flat log dump.
 - **Update check** — App Settings shows the running version and can check
   whether a newer release is out, linking straight to it.
 - **Dark/light theme**, DPI-aware sizing, and a card-grid UI (not a dense
   always-expanded account form).
 
-## Not yet built
-
-- Name-obfuscation config delivery to the injected DLL (the hook point
-  exists; the feature behind it doesn't yet)
-
 ## Getting it
 
-The launcher is a standalone Python/ImGui app — its code and data are
+The launcher is a standalone Python/pywebview app — its code and data are
 entirely separate from the rest of this repo. Profile/team data lives
 under `%APPDATA%\Py4GW_Reforged_Launcher\`, not inside the repo folder.
 
@@ -74,13 +96,14 @@ as unrecognized. Building from source avoids that entirely:
 
 ```
 py -3.13-32 -m venv .venv
-.venv\Scripts\pip install --only-binary=:all: -r requirements.txt
-.venv\Scripts\python.exe launcher.py
+.venv\Scripts\pip install --only-binary=:all: --no-binary=proxy_tools -r requirements.txt
+.venv\Scripts\python.exe -m pywebview_shell.run_shell
 ```
 
 (32-bit Python is required — GW1's `Gw.exe` is a 32-bit process, and the
-injection pipeline needs matching bitness. See `requirements.txt`'s header
-for a wheel-availability note on `imgui-bundle`.)
+injection pipeline needs matching bitness. `proxy_tools`, one of
+`pywebview`'s own dependencies, only ships an sdist — it's pure Python, so
+installing it from source needs no compiler.)
 
 **Or grab a built `.exe`:** if you'd rather not build from source, ask for
 a release build directly. If Windows blocks it on first run (Smart App
@@ -93,20 +116,23 @@ If you're checking this out for the first time, a fast path through the
 core flows:
 
 1. Launch the app — if anything's missing (Python/VC++/DirectX), the
-   prerequisite check will offer to install it.
+   Setup tab in App Settings will offer to install it.
 2. Add a profile (character name, email/password, GW1 install path).
 3. Launch that profile solo and confirm Py4GW injects cleanly.
 4. Create a team, add 2+ profiles to it, and launch the team — watch the
    staggered/paced login.
-5. If you have an `accounts.json` from the old launcher handy, try the
-   import.
+5. Open App Settings → Theme and try editing a color live — it applies
+   instantly and survives a restart.
+6. If you have an `accounts.json` from the old launcher handy, try the
+   import (App Settings → Advanced).
 
 ## Advanced
 
 A couple of settings live only in `launcher_settings.json` (under
 `%APPDATA%\Py4GW_Reforged_Launcher\`) with no in-app UI control — most
 people will never need to touch these, but they're there as a manual
-escape hatch:
+escape hatch. (The mod repository's own local *path* has a real Browse
+button in App Settings → Setup; these two are different, rarer settings.)
 
 - `mod_repo_url` — where the Py4GW_Reforged mod code itself is cloned and
   updated from. Defaults to the upstream repo.
