@@ -29,14 +29,6 @@ datas = []
 # pywebview_shell/ is loaded by path except this directory.
 datas += [('pywebview_shell/web', 'pywebview_shell/web')]
 
-# config_defaults/ (the bundled Py4GW.ini template) -- launcher_core.
-# config_seeding still references this via a plain Path join (confirmed
-# via source: bridge.py -> config_seeding._mod_root(), and config_seeding
-# itself joins _LAUNCHER_DIR / "config_defaults"), same real need the old
-# spec's own comment already documented, unchanged by the ImGui app's
-# retirement since this module is shared, not old-app-only.
-datas += [('config_defaults', 'config_defaults')]
-
 # assets/python_icon.ico is used ONLY for the icon= EXE option below (the
 # .exe's own Explorer/taskbar icon) here -- deliberately NOT also added as
 # a runtime datas entry the way the old spec needed, since pywebview_shell

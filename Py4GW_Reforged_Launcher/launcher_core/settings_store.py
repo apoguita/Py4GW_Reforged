@@ -62,7 +62,7 @@ def save_bulk_launch_pacing_seconds(seconds: int, path: Path | str | None = None
 
 
 def load_mod_repo_path(path: Path | str | None = None) -> Optional[str]:
-    """None means "use the default" (launcher_core.config_seeding's own
+    """None means "use the default" (launcher_core.mod_root's own
     _mod_root() assumption -- this launcher's own parent directory) --
     callers resolve that default themselves rather than this module
     duplicating that path logic, per the task that added this."""

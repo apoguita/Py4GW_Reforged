@@ -48,7 +48,7 @@ if getattr(sys, "frozen", False):
     # in this package does, so plain __file__-relative resolution silently
     # pointed WEB_DIR at a nonexistent "<_MEIPASS>/web" and pywebview's own
     # local server 404'd on index.html. Same class of frozen-vs-dev gotcha
-    # config_seeding.py's own _mod_root() already documents for a different
+    # mod_root.py's own _mod_root() already documents for a different
     # path -- sys._MEIPASS is the correct root once frozen; the .spec's own
     # datas entry (`('pywebview_shell/web', 'pywebview_shell/web')`)
     # preserves that destination structure there, so this really does exist.

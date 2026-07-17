@@ -31,13 +31,6 @@ Settings/*/
 # 4. Keep ALL contents of Defaults directory
 !Settings/Defaults/**
 
-# Same pattern as Settings/Defaults/ above: the blanket "Py4GW.ini" rule
-# further up is for each developer's own live, per-machine runtime config
-# (window positions, etc.) -- but this directory holds the *bundled*
-# default template the launcher seeds a fresh Py4GW.ini from
-# (launcher_core/config_seeding.py), which needs to actually ship in the repo.
-!Py4GW_Reforged_Launcher/config_defaults/
-!Py4GW_Reforged_Launcher/config_defaults/**
 
 # Ignore ALL Logs in root
 Logs/*

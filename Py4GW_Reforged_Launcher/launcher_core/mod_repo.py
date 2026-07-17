@@ -1,8 +1,7 @@
 """Detection, first-run clone, and update-checking for the actual Py4GW_Reforged
 mod-code checkout -- a different concern from launcher_core.prereqs (which asks
-"is the right *software* installed") and from config_seeding (which asks "do the
-right *config files* exist"). This asks "does the mod's actual code exist at the
-configured location, and is it current."
+"is the right *software* installed"). This asks "does the mod's actual code
+exist at the configured location, and is it current."
 
 Uses dulwich (a pure-Python git implementation, pip-installable, no compiled
 extension required at runtime beyond what its own wheel already ships) rather
@@ -110,7 +109,7 @@ def clone_mod_repo(target: Path, on_status: Callable[[str], None]) -> tuple[bool
     or overwriting them, including overwriting a pre-existing file whose
     content actually differs), and never touches or deletes anything already
     on disk at a path the source tree doesn't have. This matters because the
-    real default target (config_seeding._mod_root()) is this launcher's own
+    real default target (mod_root._mod_root()) is this launcher's own
     parent directory, which already contains the running launcher's own
     Py4GW_Reforged_Launcher/ subfolder -- today the mod repo's tree has no
     entry at that path at all (this launcher isn't upstreamed yet), so there's

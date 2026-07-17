@@ -25,7 +25,7 @@ from typing import Any, Optional
 import psutil
 import webview
 
-from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store, update_check, window_control
+from launcher_core import bulk_launch, crypto, elevation, legacy_import, mod_repo, mod_root, prereqs, profile_store, roster_transfer, settings_store, update_check, window_control
 from launcher_core import version as launcher_version
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
@@ -59,14 +59,14 @@ def _rects_close(a, b, tol: int = 4) -> bool:
 def _resolve_mod_repo_path():
     """RELAY 033: mirrors the old imgui app's ModRepoState.__init__ exactly
     -- settings_store's saved override if one exists, otherwise
-    config_seeding's own mod-root assumption (this launcher's own parent
+    mod_root's own mod-root assumption (this launcher's own parent
     directory), never duplicated/reimplemented here. Resolved fresh on
     every call (no bridge-instance caching), matching every other
     settings_store-backed read in this app (029/032) -- a path change on
     disk (or via save_mod_repo_path) is visible immediately, nothing to
     invalidate."""
     saved = settings_store.load_mod_repo_path()
-    return Path(saved) if saved else config_seeding._mod_root()
+    return Path(saved) if saved else mod_root._mod_root()
 
 
 class ShellBridge:

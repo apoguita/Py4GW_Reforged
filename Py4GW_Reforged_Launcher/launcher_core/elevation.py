@@ -43,7 +43,7 @@ def relaunch_elevated() -> None:
     """
     if getattr(sys, "frozen", False):
         # Packaged (PyInstaller) build -- sys.executable IS the real .exe,
-        # same real-hardware-confirmed pattern config_seeding._mod_root()
+        # same real-hardware-confirmed pattern mod_root._mod_root()
         # already uses for this exact frozen/dev split.
         exe = sys.executable
         params = subprocess.list2cmdline(sys.argv[1:])
