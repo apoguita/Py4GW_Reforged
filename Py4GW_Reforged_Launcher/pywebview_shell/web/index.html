@@ -403,6 +403,12 @@
   <input class="field-input" id="confirm-input" placeholder="">
   <div id="confirm-footer">
     <div style="flex:1"></div>
+    <!-- RELAY 037: optional third action, distinct from Cancel -- the
+         prereq launch gate's real "Open App Settings" button (launcher.py's
+         _show_prereq_launch_confirm_popup), a genuinely different outcome
+         than either canceling or launching anyway. Hidden/unused by every
+         other openConfirmModal call site (no secondaryLabel passed). -->
+    <button class="ghost-btn" id="confirm-secondary-btn" style="display:none"></button>
     <button class="ghost-btn" id="confirm-cancel-btn">Cancel</button>
     <button class="primary-btn" id="confirm-btn">Confirm</button>
   </div>

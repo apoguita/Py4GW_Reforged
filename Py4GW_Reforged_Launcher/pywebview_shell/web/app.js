@@ -238,7 +238,65 @@ function refreshCard(id) {
   if (p) applyCardLaunchVisual(card, p);
 }
 
+// ---------- Launch-time prerequisite gate (RELAY 037) ----------
+// Ported from launcher.py's _try_launch_with_prereq_gate exactly, not
+// reinvented -- a real, already-proven design (see that function's own
+// docstring): never a hard block. Gates ONLY when all three hold: this
+// specific launch actually uses Py4GW injection (computed per-launch, not
+// app-wide -- a GW1-only profile/team has nothing to check), the prereq
+// check has definitively finished AND found something missing (still-
+// checking, i.e. cachedPrereqsResult still null, never blocks), and the
+// user hasn't already clicked "Launch anyway" earlier this session
+// (session-scoped -- resets every app restart, on purpose, matching the
+// old app; NOT settings_store-backed).
+
+let cachedPrereqsResult = null; // last real "prereqs_result" push, or null before the first one arrives
+let prereqLaunchAcknowledged = false;
+
+function missingPrereqNames() {
+  if (!cachedPrereqsResult) return null; // still checking -- never gate on this
+  const names = [];
+  for (const component of PREREQ_COMPONENTS) {
+    const result = cachedPrereqsResult[component];
+    if (!result || !result.is_ok) names.push(PREREQ_INFO[component].label);
+  }
+  return names;
+}
+
+async function tryLaunchWithPrereqGate(launchAction, needsPy4gw) {
+  const missing = needsPy4gw ? missingPrereqNames() : [];
+  if (!missing || missing.length === 0 || prereqLaunchAcknowledged) {
+    launchAction();
+    return;
+  }
+  const count = missing.length;
+  // Real copy, quoted verbatim from _try_launch_with_prereq_gate's own
+  // popup (_show_prereq_launch_confirm_popup) -- don't paraphrase.
+  const result = await openConfirmModal({
+    title: "Prerequisites missing",
+    message: `Py4GW injection needs ${count} prerequisite${count !== 1 ? "s" : ""} that aren't installed yet:\n${missing.join(", ")}`,
+    confirmLabel: "Launch anyway",
+    secondaryLabel: "Open App Settings",
+  });
+  if (result === "secondary") {
+    document.getElementById("settings-drawer-content").style.display = "flex";
+    document.getElementById("edit-drawer-content").style.display = "none";
+    document.body.classList.add("drawer-open");
+    selectSettingsTab("setup"); // where Prerequisites actually lives (RELAY 036)
+    return;
+  }
+  if (result === true) {
+    prereqLaunchAcknowledged = true;
+    launchAction();
+  }
+}
+
 async function launchProfile(id) {
+  const p = profiles.find((x) => x.id === id);
+  tryLaunchWithPrereqGate(() => reallyLaunchProfile(id), !!(p && p.py4gw_enabled));
+}
+
+async function reallyLaunchProfile(id) {
   launchState[id] = { phase: "launching", status: "Launching..." };
   refreshCard(id);
   const res = await window.pywebview.api.launch_profile(id);
@@ -278,19 +336,29 @@ function setBulkLaunchActive(active) {
 async function onLaunchSelectedClick() {
   if (checkedIds.size === 0 || bulkLaunchActive) return;
   const ids = Array.from(checkedIds);
-  checkedIds = new Set();
-  updateAddToTeamBtn();
-  const res = await window.pywebview.api.launch_profiles_bulk(ids);
-  if (res && res.ok) setBulkLaunchActive(true);
-  renderCards();
+  const needsPy4gw = ids.some((id) => {
+    const p = profiles.find((x) => x.id === id);
+    return !!(p && p.py4gw_enabled);
+  });
+  await tryLaunchWithPrereqGate(async () => {
+    checkedIds = new Set();
+    updateAddToTeamBtn();
+    const res = await window.pywebview.api.launch_profiles_bulk(ids);
+    if (res && res.ok) setBulkLaunchActive(true);
+    renderCards();
+  }, needsPy4gw);
 }
 
 async function onLaunchTeamClick() {
   if (activeTeamId === "ALL" || bulkLaunchActive) return;
-  const ids = membersOfActiveTeam().map((p) => p.id);
+  const members = membersOfActiveTeam();
+  const ids = members.map((p) => p.id);
   if (ids.length === 0) return;
-  const res = await window.pywebview.api.launch_profiles_bulk(ids);
-  if (res && res.ok) setBulkLaunchActive(true);
+  const needsPy4gw = members.some((p) => p.py4gw_enabled);
+  await tryLaunchWithPrereqGate(async () => {
+    const res = await window.pywebview.api.launch_profiles_bulk(ids);
+    if (res && res.ok) setBulkLaunchActive(true);
+  }, needsPy4gw);
 }
 
 async function onBulkStopClick() {
@@ -330,6 +398,11 @@ window.shellBridge = {
       return;
     }
     if (event === "prereqs_result") {
+      // RELAY 037: cached for the launch-time gate (tryLaunchWithPrereqGate)
+      // -- a fresh check_prereqs() call at click time would be slower and
+      // pointless (032 already checks automatically at startup and pushes
+      // here whenever a real check finishes, install included).
+      cachedPrereqsResult = data;
       for (const component of PREREQ_COMPONENTS) {
         updatePrereqRow(component, data[component]);
       }
@@ -592,7 +665,7 @@ function closeDrawer() {
 // early-return shape the native calls had (`const name = await
 // openConfirmModal(...); if (!name) return;`).
 
-function openConfirmModal({ title, message, warningLine, inputPlaceholder, confirmLabel = "Confirm", danger = false }) {
+function openConfirmModal({ title, message, warningLine, inputPlaceholder, confirmLabel = "Confirm", secondaryLabel, danger = false }) {
   const scrim = document.getElementById("confirm-scrim");
   const modal = document.getElementById("confirm-modal");
   const titleEl = document.getElementById("confirm-title");
@@ -601,7 +674,9 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
   const inputEl = document.getElementById("confirm-input");
   const confirmBtn = document.getElementById("confirm-btn");
   const cancelBtn = document.getElementById("confirm-cancel-btn");
+  const secondaryBtn = document.getElementById("confirm-secondary-btn");
   const hasInput = inputPlaceholder !== undefined;
+  const hasSecondary = secondaryLabel !== undefined;
 
   titleEl.textContent = title;
   messageEl.textContent = message || "";
@@ -615,6 +690,13 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
   inputEl.placeholder = inputPlaceholder || "";
   confirmBtn.textContent = confirmLabel;
   confirmBtn.className = danger ? "danger-btn" : "primary-btn";
+  // RELAY 037: optional third action (e.g. the prereq launch gate's real
+  // "Open App Settings" button) -- resolves the promise with the string
+  // "secondary", distinct from true (confirm)/false or null (cancel), so a
+  // caller can tell all three outcomes apart. Every other call site leaves
+  // secondaryLabel unset and never sees this value.
+  secondaryBtn.textContent = secondaryLabel || "";
+  secondaryBtn.style.display = hasSecondary ? "inline-block" : "none";
 
   return new Promise((resolve) => {
     let settled = false;
@@ -625,6 +707,7 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
       scrim.onclick = null;
       confirmBtn.onclick = null;
       cancelBtn.onclick = null;
+      secondaryBtn.onclick = null;
       document.removeEventListener("keydown", onKeydown);
       resolve(result);
     };
@@ -638,6 +721,7 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
     scrim.onclick = () => finish(hasInput ? null : false);
     cancelBtn.onclick = () => finish(hasInput ? null : false);
     confirmBtn.onclick = () => finish(hasInput ? inputEl.value.trim() : true);
+    secondaryBtn.onclick = () => finish("secondary");
     document.addEventListener("keydown", onKeydown);
 
     document.body.classList.add("confirm-open");
