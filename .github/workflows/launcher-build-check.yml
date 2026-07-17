@@ -47,6 +47,23 @@ jobs:
       - name: Run snap-geometry unit tests
         run: python -m unittest pywebview_shell.test_snap -v
 
+      - name: Byte-compile every real source module
+        # Real, found-live gap in a first version of this workflow: a
+        # syntax error in bridge.py (transitively imported by run_shell.py,
+        # never the PyInstaller entry point itself) did NOT fail "Build the
+        # launcher .exe" below -- PyInstaller's own Analysis silently
+        # tolerated the broken module (no warning, no error, a real
+        # reasonably-sized .exe still got produced) rather than hard-
+        # failing, unlike a syntax error in the entry point itself (which
+        # RELAY 003's own original deliberate-breakage test happened to use,
+        # and which DOES hard-fail Analysis immediately). Confirmed via a
+        # real broken push, not assumed -- PyInstaller succeeding is not
+        # proof every module it silently skipped is actually valid.
+        # compileall walks and byte-compiles every .py file individually,
+        # so it catches this class of bug regardless of whether PyInstaller
+        # ever actually reaches the broken module.
+        run: python -m compileall -q pywebview_shell launcher_core
+
       - name: Install PyInstaller
         run: pip install pyinstaller==6.12.0
 
