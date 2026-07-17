@@ -997,6 +997,18 @@ MERCHANT_RULES_OPCODE_ERROR_RESULT = 199
 PLAN_STATE_WILL_EXECUTE = "will execute"
 PLAN_STATE_CONDITIONAL = "conditional"
 PLAN_STATE_SKIPPED = "skipped"
+PREVIEW_STATUS_NO_MATCH = "no_match"
+PREVIEW_STATUS_ALREADY_DONE = "already_done"
+PREVIEW_STATUS_SKIPPED = "skipped"
+PREVIEW_STATUS_PROTECTED = "protected"
+PREVIEW_STATUS_BLOCKED = "blocked"
+PREVIEW_STATUS_UNSAFE = "unsafe"
+PREVIEW_STATUS_WARNING = "warning"
+PREVIEW_STATUS_READY = "ready"
+PREVIEW_STATUS_LIVE_CHECK = "live_check"
+PREVIEW_STATUS_NEEDS_XUNLAI = "needs_xunlai"
+PREVIEW_STATUS_AFTER_TRAVEL = "after_travel"
+PREVIEW_STATUS_TRAVEL = "travel"
 PROJECTED_PREVIEW_CONTEXT_COORDS = (0.0, 0.0)
 UI_COLOR_INFO = (0.30, 0.72, 1.00, 1.0)
 UI_COLOR_SUCCESS = (0.18, 0.86, 0.40, 1.0)
@@ -1012,6 +1024,43 @@ UI_COLOR_SUBSECTION_HEADING = UI_COLOR_WARNING_SOFT
 UI_COLOR_TEAL = (0.14, 0.79, 0.76, 1.0)
 UI_COLOR_INDIGO = (0.48, 0.62, 1.00, 1.0)
 UI_COLOR_PURPLE_ACCENT = (0.79, 0.57, 0.96, 1.0)
+PREVIEW_STATUS_LABELS: dict[str, str] = {
+    PREVIEW_STATUS_NO_MATCH: "No match",
+    PREVIEW_STATUS_ALREADY_DONE: "Already done",
+    PREVIEW_STATUS_SKIPPED: "Skipped",
+    PREVIEW_STATUS_PROTECTED: "Protected",
+    PREVIEW_STATUS_BLOCKED: "Blocked",
+    PREVIEW_STATUS_UNSAFE: "Unsafe",
+    PREVIEW_STATUS_WARNING: "Warning",
+    PREVIEW_STATUS_READY: "Ready now",
+    PREVIEW_STATUS_LIVE_CHECK: "Needs live check",
+    PREVIEW_STATUS_NEEDS_XUNLAI: "Needs Xunlai",
+    PREVIEW_STATUS_AFTER_TRAVEL: "After travel",
+    PREVIEW_STATUS_TRAVEL: "Travel",
+}
+PREVIEW_STATUS_COLORS: dict[str, tuple[float, float, float, float]] = {
+    PREVIEW_STATUS_NO_MATCH: UI_COLOR_WARNING_SOFT,
+    PREVIEW_STATUS_ALREADY_DONE: UI_COLOR_SUCCESS,
+    PREVIEW_STATUS_SKIPPED: UI_COLOR_MUTED,
+    PREVIEW_STATUS_PROTECTED: UI_COLOR_PURPLE_ACCENT,
+    PREVIEW_STATUS_BLOCKED: UI_COLOR_WARNING,
+    PREVIEW_STATUS_UNSAFE: UI_COLOR_DANGER,
+    PREVIEW_STATUS_WARNING: UI_COLOR_WARNING_SOFT,
+    PREVIEW_STATUS_READY: UI_COLOR_SUCCESS,
+    PREVIEW_STATUS_LIVE_CHECK: UI_COLOR_WARNING,
+    PREVIEW_STATUS_NEEDS_XUNLAI: UI_COLOR_WARNING,
+    PREVIEW_STATUS_AFTER_TRAVEL: UI_COLOR_INFO,
+    PREVIEW_STATUS_TRAVEL: UI_COLOR_INFO,
+}
+PREVIEW_NOT_CHANGED_STATUS_ORDER: tuple[str, ...] = (
+    PREVIEW_STATUS_UNSAFE,
+    PREVIEW_STATUS_BLOCKED,
+    PREVIEW_STATUS_PROTECTED,
+    PREVIEW_STATUS_WARNING,
+    PREVIEW_STATUS_SKIPPED,
+    PREVIEW_STATUS_NO_MATCH,
+    PREVIEW_STATUS_ALREADY_DONE,
+)
 
 HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     "helper_tooltips_enabled": {
@@ -1879,6 +1928,7 @@ class ExecutionPlanEntry:
     state: str
     reason: str = ""
     model_id: int = 0
+    status_hint: str = ""
 
 
 PROTECTED_DESTROY_SKIP_REASON_MARKERS = (
@@ -5285,6 +5335,9 @@ class MerchantRulesWidget:
         self.identify_last_signature: tuple[tuple[int, int], ...] = ()
         self.active_workspace = WORKSPACE_OVERVIEW
         self.active_preview_plan_workspace = PREVIEW_PLAN_WORKSPACE_PLANNED
+        self.preview_not_changed_hide_already_done = False
+        self.preview_not_changed_group_open: dict[str, bool] = {}
+        self.preview_not_changed_group_initialized: set[str] = set()
         self.active_rules_workspace = RULES_WORKSPACE_BUY
         self.active_buy_rule_kind = BUY_RULE_WORKSPACE_ORDER[0]
         self.active_sell_rule_kind = SELL_RULE_WORKSPACE_ORDER[0]
@@ -13781,18 +13834,21 @@ class MerchantRulesWidget:
             )
 
         is_guild_hall_target = self._is_guild_hall_target(safe_outpost_id)
-        selector_mode = "specific selectors" if safe_outpost_id in SUPPORTED_MAP_NPC_SELECTORS else "generic selectors"
         arrival_label = "Guild Hall arrival" if is_guild_hall_target else "arrival"
         travel_reason = (
-            f"Travel to Guild Hall first, then rebuild the merchant plan in {selector_mode}."
+            "Travel to the Guild Hall. After arrival, Merchant Rules will check the available services "
+            "and rebuild the plan before executing."
             if is_guild_hall_target
-            else f"Travel first, then rebuild the merchant plan in {selector_mode}."
+            else (
+                "After arrival, Merchant Rules will check the available services and rebuild the plan "
+                "before executing."
+            )
         )
         result = PlanResult(
             supported_map=True,
             supported_reason=(
                 f"Previewing travel to {outpost_name} ({safe_outpost_id}). "
-                f"Merchant actions will be re-planned after {arrival_label} using {selector_mode}."
+                f"Merchant actions will be checked and re-planned after {arrival_label}."
             ),
             travel_to_outpost_id=safe_outpost_id,
             travel_to_outpost_name=outpost_name,
@@ -13807,7 +13863,7 @@ class MerchantRulesWidget:
                 state=PLAN_STATE_WILL_EXECUTE,
                 reason=travel_reason,
             )
-            )
+        )
         return result
 
     def _build_consumable_crafter_multi_stop_preview(self, destination_outpost_id: int) -> PlanResult:
@@ -15012,6 +15068,7 @@ class MerchantRulesWidget:
                     0,
                     PLAN_STATE_SKIPPED,
                     "No unidentified items found for the selected exact rarities.",
+                    status_hint=PREVIEW_STATUS_NO_MATCH,
                 )
             )
             return
@@ -15031,6 +15088,7 @@ class MerchantRulesWidget:
                         PLAN_STATE_SKIPPED,
                         "No ID kit found.",
                         model_id=item.model_id,
+                        status_hint=PREVIEW_STATUS_BLOCKED,
                     )
                 )
                 continue
@@ -15591,6 +15649,12 @@ class MerchantRulesWidget:
                     rule_index = int(rule_match[0])
                     salvage_rule = rule_match[1]
                     selection_reason = rule_match[2]
+            if salvage_rule is None or not selection_reason:
+                if include_not_selected_blocks:
+                    bucket = self._get_salvage_block_bucket("not selected by salvage settings")
+                    if bucket:
+                        blocked_counts[bucket] = blocked_counts.get(bucket, 0) + 1
+                continue
             salvage_kit_id = 0
             if salvage_rule is not None:
                 salvage_option = getattr(salvage_rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
@@ -15729,6 +15793,7 @@ class MerchantRulesWidget:
         """Plan equipment sales while reserving protected, customized, and rune-trader items."""
 
         candidate_label = SELL_KIND_LABELS[rule.kind]
+        rule_reference = self._format_sell_rule_reference(rule_index, rule)
         reserved_rune_sell_identifiers = reserved_rune_sell_identifiers or set()
         had_category_candidate = False
         had_rarity_candidate = False
@@ -15772,7 +15837,7 @@ class MerchantRulesWidget:
                         item.quantity,
                         "skipped",
                         (
-                            f"Blocked by {self._format_sell_rule_reference(rule_index, rule)}: "
+                            f"Blocked by {rule_reference}: "
                             f"{MERCHANT_TYPE_LABELS[destination]} could not be found in the current map."
                         ),
                         model_id=item.model_id,
@@ -15792,15 +15857,16 @@ class MerchantRulesWidget:
             else:
                 plan.merchant_sell_item_ids.append(item.item_id)
 
-            reason = (
-                "Standalone weapon upgrade component."
+            reason_detail = (
+                " Standalone weapon upgrade component."
                 if rule.kind == SELL_KIND_WEAPONS and item.standalone_kind == WEAPON_MOD_STANDALONE_KIND
                 else (
-                    "Standalone rune / insignia item."
+                    " Standalone rune / insignia item."
                     if rule.kind == SELL_KIND_ARMOR and item.standalone_kind == RUNE_STANDALONE_KIND
                     else ""
                 )
             )
+            reason = f"Matched {rule_reference}.{reason_detail}"
             plan.entries.append(
                 ExecutionPlanEntry(
                     "sell",
@@ -15827,11 +15893,30 @@ class MerchantRulesWidget:
             return
         if not had_category_candidate:
             plan.entries.append(
-                ExecutionPlanEntry("sell", MERCHANT_TYPE_MERCHANT, candidate_label, 0, "skipped", "No matching inventory items found.")
+                ExecutionPlanEntry(
+                    "sell",
+                    MERCHANT_TYPE_MERCHANT,
+                    candidate_label,
+                    0,
+                    "skipped",
+                    (
+                        f"No matching inventory items are available to {rule_reference} "
+                        "after earlier actions and protections."
+                    ),
+                    status_hint=PREVIEW_STATUS_NO_MATCH,
+                )
             )
         elif not had_rarity_candidate:
             plan.entries.append(
-                ExecutionPlanEntry("sell", MERCHANT_TYPE_MERCHANT, candidate_label, 0, "skipped", "No matching items found for the enabled rarities.")
+                ExecutionPlanEntry(
+                    "sell",
+                    MERCHANT_TYPE_MERCHANT,
+                    candidate_label,
+                    0,
+                    "skipped",
+                    f"No matching items are available to {rule_reference} for its selected rarities.",
+                    status_hint=PREVIEW_STATUS_NO_MATCH,
+                )
             )
         self._debug_log(
             f"{candidate_label}: category_candidates={category_candidates} rarity_matches={rarity_matches} "
@@ -15848,6 +15933,7 @@ class MerchantRulesWidget:
         claimed_item_ids: set[int],
         coords: dict[str, tuple[float, float] | None],
     ) -> None:
+        rule_reference = self._format_sell_rule_reference(rule_index, rule)
         rune_targets = _normalize_rune_sell_targets(getattr(rule, "rune_sell_targets", []))
         if not rune_targets:
             plan.entries.append(
@@ -15857,12 +15943,11 @@ class MerchantRulesWidget:
                     SELL_KIND_LABELS[SELL_KIND_RUNE_TRADER_TARGET],
                     0,
                     PLAN_STATE_SKIPPED,
-                    "No rune or insignia targets selected.",
+                    f"{rule_reference} has no rune or insignia targets selected.",
                 )
             )
             return
 
-        rule_reference = self._format_sell_rule_reference(rule_index, rule)
         rune_trader_coords = coords.get(MERCHANT_TYPE_RUNE_TRADER)
         planned_sale_count = 0
         blocked_matches = 0
@@ -15889,7 +15974,8 @@ class MerchantRulesWidget:
                         target_label,
                         0,
                         PLAN_STATE_SKIPPED,
-                        "No matching standalone rune or insignia found.",
+                        f"No matching standalone rune or insignia is available to {rule_reference}.",
+                        status_hint=PREVIEW_STATUS_NO_MATCH,
                     )
                 )
                 continue
@@ -15951,7 +16037,7 @@ class MerchantRulesWidget:
                         item.name,
                         item.quantity,
                         PLAN_STATE_WILL_EXECUTE,
-                        "Exact rune / insignia target.",
+                        f"Matched an exact rune or insignia target in {rule_reference}.",
                         model_id=item.model_id,
                     )
                 )
@@ -15998,6 +16084,26 @@ class MerchantRulesWidget:
             completes_target=bool(completes_target),
             xunlai_involved=bool(xunlai_involved),
         )
+
+    def _get_purchase_cleanup_preview_suffix(
+        self,
+        after_purchase: object,
+        *,
+        completes_target: bool,
+        xunlai_involved: bool = False,
+    ) -> str:
+        action = _normalize_after_purchase_action(after_purchase)
+        if action == AFTER_PURCHASE_KEEP:
+            return ""
+        if not bool(completes_target):
+            return "The configured after-purchase change will wait until a verified purchase completes the target."
+        if bool(xunlai_involved):
+            return "The configured after-purchase change will not run because this target uses Xunlai Storage."
+        if action == AFTER_PURCHASE_RESET_QUANTITY:
+            return "After a verified purchase completes the target, reset its quantity to 0."
+        if action == AFTER_PURCHASE_REMOVE_ENTRY:
+            return "After a verified purchase completes the target, remove this target."
+        return ""
 
     def _apply_after_purchase_cleanup(self, cleanup: PurchaseTargetCleanup, *, label: str = "") -> bool:
         action = _normalize_after_purchase_action(getattr(cleanup, "after_purchase", AFTER_PURCHASE_KEEP))
@@ -16278,6 +16384,7 @@ class MerchantRulesWidget:
                     0,
                     PLAN_STATE_SKIPPED,
                     f"Could not verify free inventory slots. Consumable crafting may need up to {estimated_needed} free slot(s).",
+                    status_hint=PREVIEW_STATUS_WARNING,
                 )
             )
             return
@@ -16290,6 +16397,7 @@ class MerchantRulesWidget:
                     0,
                     PLAN_STATE_SKIPPED,
                     f"Low inventory space: consumable crafting may need up to {estimated_needed} free slot(s); found {free_slots}.",
+                    status_hint=PREVIEW_STATUS_WARNING,
                 )
             )
 
@@ -16600,20 +16708,23 @@ class MerchantRulesWidget:
                         0,
                         PLAN_STATE_SKIPPED,
                         "No matching inventory items found for this deposit target.",
+                        status_hint=PREVIEW_STATUS_NO_MATCH,
                     )
                 )
                 continue
 
+            total_quantity = sum(max(1, int(item.quantity)) for item in matching_items)
             if target_model_id in cleanup_blacklist_model_ids:
                 plan.entries.append(
                     ExecutionPlanEntry(
                         "deposit",
                         MERCHANT_TYPE_STORAGE,
                         target_label,
-                        0,
+                        total_quantity,
                         PLAN_STATE_SKIPPED,
                         "Skipped by deposit keep-out.",
                         model_id=target_model_id,
+                        status_hint=PREVIEW_STATUS_PROTECTED,
                     )
                 )
                 blacklisted_item_ids = {int(item.item_id) for item in matching_items}
@@ -16624,16 +16735,18 @@ class MerchantRulesWidget:
                 ]
                 continue
 
-            total_quantity = sum(max(1, int(item.quantity)) for item in matching_items)
             if total_quantity <= keep_on_character:
                 plan.entries.append(
                     ExecutionPlanEntry(
                         "deposit",
                         MERCHANT_TYPE_STORAGE,
                         target_label,
-                        0,
+                        total_quantity,
                         PLAN_STATE_SKIPPED,
-                        f"Deposit reserve keeps {keep_on_character} on character.",
+                        (
+                            f"All {total_quantity} matching items remain in inventory because "
+                            f"the keep amount is {keep_on_character}."
+                        ),
                     )
                 )
                 continue
@@ -16645,7 +16758,7 @@ class MerchantRulesWidget:
                         "deposit",
                         MERCHANT_TYPE_STORAGE,
                         target_label,
-                        0,
+                        total_quantity,
                         PLAN_STATE_SKIPPED,
                         "Deposit reserve left nothing eligible to move.",
                     )
@@ -16682,6 +16795,7 @@ class MerchantRulesWidget:
                         0,
                         PLAN_STATE_SKIPPED,
                         "Linked sell rule no longer exists.",
+                        status_hint=PREVIEW_STATUS_BLOCKED,
                     )
                 )
                 continue
@@ -16696,6 +16810,7 @@ class MerchantRulesWidget:
                         0,
                         PLAN_STATE_SKIPPED,
                         "Linked deposit sources only support weapon or armor sell protections.",
+                        status_hint=PREVIEW_STATUS_BLOCKED,
                     )
                 )
                 continue
@@ -16732,10 +16847,11 @@ class MerchantRulesWidget:
                             "deposit",
                             MERCHANT_TYPE_STORAGE,
                             item.name,
-                            0,
+                            item.quantity,
                             PLAN_STATE_SKIPPED,
                             f"Skipped by deposit keep-out. Protected by {rule_reference}: {detail}",
                             model_id=item.model_id,
+                            status_hint=PREVIEW_STATUS_PROTECTED,
                         )
                     )
                     continue
@@ -16771,6 +16887,7 @@ class MerchantRulesWidget:
                         0,
                         PLAN_STATE_SKIPPED,
                         "No protected inventory items matched this linked deposit source.",
+                        status_hint=PREVIEW_STATUS_NO_MATCH,
                     )
                 )
                 continue
@@ -17217,6 +17334,7 @@ class MerchantRulesWidget:
                             0,
                             PLAN_STATE_SKIPPED,
                             missing_reason,
+                            status_hint=PREVIEW_STATUS_NO_MATCH,
                         )
                     )
                     continue
@@ -17347,6 +17465,7 @@ class MerchantRulesWidget:
                             PLAN_STATE_SKIPPED,
                             f"Blocked by {rule_reference}: {protection_reason}",
                             model_id=item.model_id,
+                            status_hint=PREVIEW_STATUS_PROTECTED,
                         )
                     )
 
@@ -17360,10 +17479,16 @@ class MerchantRulesWidget:
                             PLAN_STATE_SKIPPED,
                             f"Blocked by {rule_reference}: selected for MR Salvage ({salvage_reason}); salvage wins over destroy.",
                             model_id=item.model_id,
+                            status_hint=PREVIEW_STATUS_SKIPPED,
                         )
                     )
 
                 if destroy_block_reason:
+                    destroy_status_hint = (
+                        PREVIEW_STATUS_UNSAFE
+                        if "Keep count requires splitting" in destroy_block_reason
+                        else PREVIEW_STATUS_BLOCKED
+                    )
                     plan.entries.append(
                         ExecutionPlanEntry(
                             "destroy",
@@ -17372,6 +17497,7 @@ class MerchantRulesWidget:
                             0,
                             PLAN_STATE_SKIPPED,
                             f"Blocked by {rule_reference}: {destroy_block_reason}",
+                            status_hint=destroy_status_hint,
                         )
                     )
 
@@ -17478,6 +17604,7 @@ class MerchantRulesWidget:
                     0,
                     PLAN_STATE_SKIPPED,
                     reason,
+                    status_hint=PREVIEW_STATUS_NO_MATCH,
                 )
             )
             return
@@ -17526,6 +17653,7 @@ class MerchantRulesWidget:
                     PLAN_STATE_SKIPPED,
                     f"Blocked by {rule_reference}: {protection_reason}",
                     model_id=item.model_id,
+                    status_hint=PREVIEW_STATUS_PROTECTED,
                 )
             )
 
@@ -17539,6 +17667,7 @@ class MerchantRulesWidget:
                     PLAN_STATE_SKIPPED,
                     f"Blocked by {rule_reference}: selected for MR Salvage ({salvage_reason}); salvage wins over destroy.",
                     model_id=item.model_id,
+                    status_hint=PREVIEW_STATUS_SKIPPED,
                 )
             )
 
@@ -17621,9 +17750,17 @@ class MerchantRulesWidget:
             reason = str(candidate.reason or "").strip()
             if not reason:
                 reason = "Selected for salvage"
-            reason = f"{reason}; {_get_salvage_option_label(rule.salvage_option)} via {rule_reference}."
+            option_label = _get_salvage_option_label(rule.salvage_option)
+            if _is_auto_exact_upgrade_salvage_option(rule.salvage_option):
+                slot_resolution = self._get_auto_salvage_upgrade_slot_resolution(rule, item)
+                if slot_resolution.selected_option:
+                    option_label = _get_salvage_option_label(slot_resolution.selected_option)
+            reason = f"{reason}; {option_label} via {rule_reference}."
             if self._salvage_candidate_allows_stack_drain(candidate):
-                reason = f"{reason} Stackable item will continue until the stack is gone or no longer qualifies."
+                reason = (
+                    f"{reason} Up to {item.quantity} from this stack; stop early if it no longer qualifies "
+                    "or a safety check fails."
+                )
             plan.salvage_item_ids.append(item_id)
             claimed_item_ids.add(item_id)
             plan.entries.append(
@@ -17642,6 +17779,13 @@ class MerchantRulesWidget:
             safe_count = max(0, int(count))
             if safe_count <= 0:
                 continue
+            status_hint = (
+                PREVIEW_STATUS_PROTECTED
+                if reason == "protected"
+                else PREVIEW_STATUS_SKIPPED
+                if reason in {"not selected", "immediate disabled"}
+                else PREVIEW_STATUS_BLOCKED
+            )
             plan.entries.append(
                 ExecutionPlanEntry(
                     "salvage",
@@ -17650,6 +17794,7 @@ class MerchantRulesWidget:
                     safe_count,
                     PLAN_STATE_SKIPPED,
                     f"Skipped {safe_count} {reason}.",
+                    status_hint=status_hint,
                 )
             )
 
@@ -17806,6 +17951,7 @@ class MerchantRulesWidget:
                 continue
             if exclude_consumable_crafter and buy_rule.kind == BUY_KIND_CONSUMABLE_CRAFTER_TARGET:
                 continue
+            buy_rule_reference = self._format_buy_rule_reference(buy_rule_index, buy_rule)
 
             if buy_rule.kind == BUY_KIND_MATERIAL_TARGET:
                 if not buy_rule.material_targets:
@@ -17816,7 +17962,7 @@ class MerchantRulesWidget:
                             BUY_KIND_LABELS[buy_rule.kind],
                             0,
                             PLAN_STATE_SKIPPED,
-                            "No crafting materials selected.",
+                            f"{buy_rule_reference} has no crafting materials selected.",
                         )
                     )
                     continue
@@ -17832,7 +17978,7 @@ class MerchantRulesWidget:
                                 BUY_KIND_LABELS[buy_rule.kind],
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Crafting material model is required.",
+                                f"Choose a crafting material for {buy_rule_reference}.",
                             )
                         )
                         continue
@@ -17846,7 +17992,8 @@ class MerchantRulesWidget:
                                 material_label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Selected item is not a supported crafting material.",
+                                f"{buy_rule_reference} cannot buy this item as a crafting material.",
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -17883,7 +18030,18 @@ class MerchantRulesWidget:
                     missing = max(0, int(material_target.target_count) - current_count)
                     if missing <= 0:
                         plan.entries.append(
-                            ExecutionPlanEntry("buy", merchant_type, material_label, 0, PLAN_STATE_SKIPPED, "Target already met.")
+                            ExecutionPlanEntry(
+                                "buy",
+                                merchant_type,
+                                material_label,
+                                0,
+                                PLAN_STATE_SKIPPED,
+                                (
+                                    f"Target already met: inventory has {current_count}; "
+                                    f"target is {material_target.target_count}."
+                                ),
+                                status_hint=PREVIEW_STATUS_ALREADY_DONE,
+                            )
                         )
                         continue
 
@@ -17900,7 +18058,11 @@ class MerchantRulesWidget:
                                         material_label,
                                         0,
                                         PLAN_STATE_SKIPPED,
-                                        f"Common materials buy in lots of {batch_size}; Max Per Run is below one full batch.",
+                                        (
+                                            f"Cannot buy this material because the trader sells lots of {batch_size}, "
+                                            f"but Max Per Run is {material_target.max_per_run}."
+                                        ),
+                                        status_hint=PREVIEW_STATUS_BLOCKED,
                                     )
                                 )
                                 continue
@@ -17910,7 +18072,18 @@ class MerchantRulesWidget:
 
                     if needed <= 0:
                         plan.entries.append(
-                            ExecutionPlanEntry("buy", merchant_type, material_label, 0, PLAN_STATE_SKIPPED, "Target already met.")
+                            ExecutionPlanEntry(
+                                "buy",
+                                merchant_type,
+                                material_label,
+                                0,
+                                PLAN_STATE_SKIPPED,
+                                (
+                                    f"Target already met: inventory has {current_count}; "
+                                    f"target is {material_target.target_count}."
+                                ),
+                                status_hint=PREVIEW_STATUS_ALREADY_DONE,
+                            )
                         )
                         continue
 
@@ -17933,12 +18106,22 @@ class MerchantRulesWidget:
                             ),
                         )
                     )
-                    reason = "Checks carried gold before each purchase and can top up from Xunlai when available."
+                    reason = (
+                        f"Inventory has {current_count}; target is {material_target.target_count}. "
+                        f"Buy {needed}. Live check: verify carried gold before each purchase."
+                    )
                     if batch_size > 1:
                         reason = (
-                            f"{needed // batch_size} full trader batch(es) of {batch_size}. "
-                            "Checks carried gold before each purchase and can top up from Xunlai when available."
+                            f"Inventory has {current_count}; target is {material_target.target_count}. "
+                            f"Buy {needed} as {needed // batch_size} trader lots of {batch_size}; "
+                            f"the shortage is {missing}. Live check: verify carried gold before each purchase."
                         )
+                    cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                        material_target.after_purchase,
+                        completes_target=current_count + needed >= int(material_target.target_count),
+                    )
+                    if cleanup_suffix:
+                        reason = f"{reason} {cleanup_suffix}"
                     plan.entries.append(
                         ExecutionPlanEntry("buy", merchant_type, material_label, needed, PLAN_STATE_WILL_EXECUTE, reason)
                     )
@@ -17954,7 +18137,7 @@ class MerchantRulesWidget:
                             BUY_KIND_LABELS[buy_rule.kind],
                             0,
                             PLAN_STATE_SKIPPED,
-                            "No merchant stock items selected.",
+                            f"{buy_rule_reference} has no merchant stock items selected.",
                         )
                     )
                     continue
@@ -17973,7 +18156,7 @@ class MerchantRulesWidget:
                                 BUY_KIND_LABELS[buy_rule.kind],
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Model ID is required.",
+                                f"Choose an item for {buy_rule_reference}.",
                             )
                         )
                         continue
@@ -18020,7 +18203,11 @@ class MerchantRulesWidget:
                                 model_label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Target already met.",
+                                (
+                                    f"Target already met: inventory has {current_count}; "
+                                    f"target is {merchant_stock_target.target_count}."
+                                ),
+                                status_hint=PREVIEW_STATUS_ALREADY_DONE,
                             )
                         )
                         continue
@@ -18043,7 +18230,9 @@ class MerchantRulesWidget:
                             )
                         )
                         entry_reason = (
-                            "Confirmed scroll trader stock. Will request a quote and buy only if the Scroll Trader or Rare Scroll Trader offers the item."
+                            f"Inventory has {current_count}; target is {merchant_stock_target.target_count}. "
+                            "Live check: buy only if an available Scroll Trader offers this item and returns "
+                            "a valid quote."
                         )
                     else:
                         plan.merchant_stock_buys.append(
@@ -18062,7 +18251,16 @@ class MerchantRulesWidget:
                                 ),
                             )
                         )
-                        entry_reason = "Will attempt this buy only if the currently opened merchant offers the item."
+                        entry_reason = (
+                            f"Inventory has {current_count}; target is {merchant_stock_target.target_count}. "
+                            "Live check: buy only if the Merchant offers this item with a usable price."
+                        )
+                    cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                        merchant_stock_target.after_purchase,
+                        completes_target=current_count + needed >= int(merchant_stock_target.target_count),
+                    )
+                    if cleanup_suffix:
+                        entry_reason = f"{entry_reason} {cleanup_suffix}"
                     plan.entries.append(
                         ExecutionPlanEntry(
                             "buy",
@@ -18089,7 +18287,7 @@ class MerchantRulesWidget:
                             BUY_KIND_LABELS[buy_rule.kind],
                             0,
                             PLAN_STATE_SKIPPED,
-                            "No consumable crafter items selected.",
+                            f"{buy_rule_reference} has no Consumable Crafter items selected.",
                         )
                     )
                     continue
@@ -18107,7 +18305,8 @@ class MerchantRulesWidget:
                                 crafter_label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Selected item is not a supported Embark Beach consumable crafter recipe.",
+                                f"{buy_rule_reference} has no supported Consumable Crafter recipe for this item.",
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -18131,7 +18330,11 @@ class MerchantRulesWidget:
                                 crafter_label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Consumable crafters are currently supported at Embark Beach only.",
+                                (
+                                    "Cannot craft this item because its Consumable Crafter is available only "
+                                    "at Embark Beach."
+                                ),
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -18145,7 +18348,11 @@ class MerchantRulesWidget:
                                 crafter_label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                f"{recipe.vendor_name} requires rank {recipe.required_rank}; current rank is {current_rank} ({tier_name}).",
+                                (
+                                    f"Cannot craft this item because {recipe.vendor_name} requires rank "
+                                    f"{recipe.required_rank}; current rank is {current_rank} ({tier_name})."
+                                ),
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -18163,9 +18370,28 @@ class MerchantRulesWidget:
                         missing = max(0, int(crafter_target.target_count) - current_count)
                         needed = self._apply_max_per_run(missing, int(crafter_target.max_per_run))
                     if needed <= 0:
-                        reason = "No craft quantity requested." if craft_requested_amount else "Target already met."
+                        reason = (
+                            "Craft amount is 0, so no crafting is planned."
+                            if craft_requested_amount
+                            else (
+                                f"Target already met: expected total is {current_count}; "
+                                f"target is {crafter_target.target_count}."
+                            )
+                        )
                         plan.entries.append(
-                            ExecutionPlanEntry("buy", MERCHANT_TYPE_CONSUMABLE_CRAFTER, crafter_label, 0, PLAN_STATE_SKIPPED, reason)
+                            ExecutionPlanEntry(
+                                "buy",
+                                MERCHANT_TYPE_CONSUMABLE_CRAFTER,
+                                crafter_label,
+                                0,
+                                PLAN_STATE_SKIPPED,
+                                reason,
+                                status_hint=(
+                                    PREVIEW_STATUS_SKIPPED
+                                    if craft_requested_amount
+                                    else PREVIEW_STATUS_ALREADY_DONE
+                                ),
+                            )
                         )
                         continue
 
@@ -18191,6 +18417,17 @@ class MerchantRulesWidget:
                                 ),
                             )
                         )
+                        conditional_reason = (
+                            f"Xunlai Storage has not been scanned. Up to {needed} may be crafted after "
+                            "stored consumables, Material Storage, gold, and current resources are checked."
+                        )
+                        cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                            crafter_target.after_purchase,
+                            completes_target=False,
+                            xunlai_involved=True,
+                        )
+                        if cleanup_suffix:
+                            conditional_reason = f"{conditional_reason} {cleanup_suffix}"
                         plan.entries.append(
                             ExecutionPlanEntry(
                                 "buy",
@@ -18198,7 +18435,7 @@ class MerchantRulesWidget:
                                 crafter_label,
                                 needed,
                                 PLAN_STATE_CONDITIONAL,
-                                "Needs exact Xunlai/material-storage scan before crafting.",
+                                conditional_reason,
                             )
                         )
                         continue
@@ -18218,9 +18455,13 @@ class MerchantRulesWidget:
                                 "buy",
                                 MERCHANT_TYPE_CONSUMABLE_CRAFTER,
                                 crafter_label,
-                                0,
+                                needed,
                                 PLAN_STATE_SKIPPED,
-                                " ".join(blockers) or "Missing skill points, gold, or materials.",
+                                (
+                                    f"Cannot craft any of the {needed} requested: "
+                                    f"{' '.join(blockers) or 'skill points, gold, or materials are missing.'}"
+                                ),
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -18261,11 +18502,14 @@ class MerchantRulesWidget:
                             ),
                         )
                     )
-                    reason = f"{recipe.vendor_name}; rank {current_rank} ({tier_name})."
+                    reason = (
+                        f"Craft {craft_quantity} with {recipe.vendor_name}; current rank {current_rank} "
+                        f"meets required rank {recipe.required_rank} ({tier_name})."
+                    )
                     if craft_requested_amount:
-                        reason = f"{reason} Craft requested amount mode."
+                        reason = f"{reason} Craft-amount mode ignores existing finished consumables."
                     if craft_quantity < needed:
-                        reason = f"{reason} Capped by available skill points, gold, or materials."
+                        reason = f"{reason} Planned {craft_quantity} of {needed}; resources limit the remainder."
                         remaining_needed = max(0, int(needed) - int(craft_quantity))
                         if remaining_needed > 0:
                             post_resource_counts, post_skill_points, post_gold = _ensure_consumable_reserved_resources(recipe)
@@ -18278,6 +18522,17 @@ class MerchantRulesWidget:
                             )
                             if remaining_blockers:
                                 reason = f"{reason} Remaining request: {' '.join(remaining_blockers)}"
+                    cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                        crafter_target.after_purchase,
+                        completes_target=(
+                            craft_quantity >= int(crafter_target.target_count)
+                            if craft_requested_amount
+                            else current_count + craft_quantity >= int(crafter_target.target_count)
+                        ),
+                        xunlai_involved=craft_uses_xunlai_items,
+                    )
+                    if cleanup_suffix:
+                        reason = f"{reason} {cleanup_suffix}"
                     plan.entries.append(
                         ExecutionPlanEntry(
                             "buy",
@@ -18304,7 +18559,7 @@ class MerchantRulesWidget:
                             BUY_KIND_LABELS[buy_rule.kind],
                             0,
                             PLAN_STATE_SKIPPED,
-                            "No confirmed scroll trader stock selected.",
+                            f"{buy_rule_reference} has no supported Scroll Trader items selected.",
                         )
                     )
                     continue
@@ -18321,7 +18576,8 @@ class MerchantRulesWidget:
                                 BUY_KIND_LABELS[buy_rule.kind],
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Selected item is not confirmed scroll trader stock.",
+                                f"This item is not supported Scroll Trader stock for {buy_rule_reference}.",
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -18365,7 +18621,11 @@ class MerchantRulesWidget:
                                 scroll_label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Target already met.",
+                                (
+                                    f"Target already met: inventory has {current_count}; "
+                                    f"target is {scroll_target.target_count}."
+                                ),
+                                status_hint=PREVIEW_STATUS_ALREADY_DONE,
                             )
                         )
                         continue
@@ -18387,6 +18647,17 @@ class MerchantRulesWidget:
                             ),
                         )
                     )
+                    scroll_reason = (
+                        f"Inventory has {current_count}; target is {scroll_target.target_count}. "
+                        "Live check: buy only if the available Scroll Trader offers this item and returns "
+                        "a valid quote."
+                    )
+                    cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                        scroll_target.after_purchase,
+                        completes_target=current_count + needed >= int(scroll_target.target_count),
+                    )
+                    if cleanup_suffix:
+                        scroll_reason = f"{scroll_reason} {cleanup_suffix}"
                     plan.entries.append(
                         ExecutionPlanEntry(
                             "buy",
@@ -18394,7 +18665,7 @@ class MerchantRulesWidget:
                             scroll_label,
                             needed,
                             PLAN_STATE_CONDITIONAL,
-                            "Will request a Scroll Trader quote and buy only if the trader currently offers the item.",
+                            scroll_reason,
                         )
                     )
                 continue
@@ -18409,7 +18680,7 @@ class MerchantRulesWidget:
                             BUY_KIND_LABELS[buy_rule.kind],
                             0,
                             PLAN_STATE_SKIPPED,
-                            "No rune or insignia targets selected.",
+                            f"{buy_rule_reference} has no rune or insignia targets selected.",
                         )
                     )
                     continue
@@ -18426,7 +18697,7 @@ class MerchantRulesWidget:
                                 BUY_KIND_LABELS[buy_rule.kind],
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Rune or insignia identifier is required.",
+                                f"Choose a rune or insignia for {buy_rule_reference}.",
                             )
                         )
                         continue
@@ -18464,18 +18735,32 @@ class MerchantRulesWidget:
                                 label,
                                 0,
                                 PLAN_STATE_SKIPPED,
-                                "Target already met.",
+                                (
+                                    f"Target already met: inventory has {stock_counts.inventory_count}; "
+                                    f"target is {rune_target.target_count}."
+                                ),
+                                status_hint=PREVIEW_STATUS_ALREADY_DONE,
                             )
                         )
                         continue
 
                     if not plan.storage_exact:
                         reason_parts = [
-                            f"Inventory is short by up to {needed}.",
-                            "Open Xunlai for exact storage scan so Merchant Rules can plan withdraws before any Rune Trader buy.",
+                            (
+                                f"Inventory has {stock_counts.inventory_count}; target is {rune_target.target_count}. "
+                                f"Xunlai Storage has not been scanned, so up to {needed} may need to be "
+                                "withdrawn or bought."
+                            ),
                         ]
                         if rune_trader_coords is None:
                             reason_parts.append("Rune Trader could not be found in the current map.")
+                        cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                            rune_target.after_purchase,
+                            completes_target=False,
+                            xunlai_involved=True,
+                        )
+                        if cleanup_suffix:
+                            reason_parts.append(cleanup_suffix)
                         plan.entries.append(
                             ExecutionPlanEntry(
                                 "buy",
@@ -18507,6 +18792,17 @@ class MerchantRulesWidget:
                             rune_xunlai_involved = True
                             planned_rune_withdraw_quantity += planned_withdraw_quantity
                             plan.storage_transfers.extend(transfers)
+                            remaining_after_withdraw = max(0, needed - planned_withdraw_quantity)
+                            withdraw_reason = (
+                                "Move this quantity from Xunlai Storage to inventory; this satisfies the target, "
+                                "so no purchase is needed."
+                                if remaining_after_withdraw <= 0
+                                else (
+                                    "Move this quantity from Xunlai Storage to inventory first; "
+                                    f"buy the remaining {remaining_after_withdraw} only if the Rune Trader "
+                                    "confirms availability."
+                                )
+                            )
                             plan.entries.append(
                                 ExecutionPlanEntry(
                                     "withdraw",
@@ -18514,7 +18810,7 @@ class MerchantRulesWidget:
                                     label,
                                     planned_withdraw_quantity,
                                     PLAN_STATE_WILL_EXECUTE,
-                                    "Withdraw from Xunlai before buying.",
+                                    withdraw_reason,
                                 )
                             )
                             self._adjust_stock_count_for_key(
@@ -18543,7 +18839,11 @@ class MerchantRulesWidget:
                                 label,
                                 needed,
                                 PLAN_STATE_SKIPPED,
-                                "Rune Trader could not be found in the current map after storage withdrawals.",
+                                (
+                                    f"Stored copies will be withdrawn, but the remaining {needed} cannot be bought "
+                                    "because no Rune Trader is available here."
+                                ),
+                                status_hint=PREVIEW_STATUS_BLOCKED,
                             )
                         )
                         continue
@@ -18574,6 +18874,20 @@ class MerchantRulesWidget:
                         model_counts=sim_model_counts,
                         identifier_counts=inventory_identifier_counts,
                     )
+                    buy_reason = (
+                        f"After planned withdrawals, inventory still needs {needed}. Live check: buy only if "
+                        "the Rune Trader still offers this item and returns a valid quote."
+                    )
+                    cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
+                        rune_target.after_purchase,
+                        completes_target=(
+                            stock_counts.inventory_count + planned_rune_withdraw_quantity + needed
+                            >= int(rune_target.target_count)
+                        ),
+                        xunlai_involved=rune_xunlai_involved,
+                    )
+                    if cleanup_suffix:
+                        buy_reason = f"{buy_reason} {cleanup_suffix}"
                     plan.entries.append(
                         ExecutionPlanEntry(
                             "buy",
@@ -18581,7 +18895,7 @@ class MerchantRulesWidget:
                             label,
                             needed,
                             PLAN_STATE_CONDITIONAL,
-                            "Will attempt this exact Rune Trader buy after any storage withdrawals if the trader currently offers the item.",
+                            buy_reason,
                         )
                     )
 
@@ -19004,10 +19318,11 @@ class MerchantRulesWidget:
                                             item.name,
                                             item.quantity,
                                             PLAN_STATE_SKIPPED,
-                                                (
-                                                    f"Blocked by {rule_reference}: "
-                                                    f"{MERCHANT_TYPE_LABELS[MERCHANT_TYPE_MERCHANT]} could not be found in the current map."
-                                                ),
+                                            (
+                                                f"Blocked by {rule_reference}: "
+                                                f"{MERCHANT_TYPE_LABELS[MERCHANT_TYPE_MERCHANT]} could not be "
+                                                "found in the current map."
+                                            ),
                                             model_id=item.model_id,
                                         )
                                     )
@@ -19022,7 +19337,7 @@ class MerchantRulesWidget:
                                         item.name,
                                         item.quantity,
                                         PLAN_STATE_WILL_EXECUTE,
-                                        "",
+                                        f"Matched {rule_reference}.",
                                         model_id=item.model_id,
                                     )
                                 )
@@ -19063,7 +19378,7 @@ class MerchantRulesWidget:
                                         item.name,
                                         item.quantity,
                                         PLAN_STATE_WILL_EXECUTE,
-                                        "Standalone rune / insignia item.",
+                                        f"Matched {rule_reference}: standalone rune or insignia.",
                                         model_id=item.model_id,
                                     )
                                 )
@@ -19123,10 +19438,11 @@ class MerchantRulesWidget:
                                             item.name,
                                             remaining_quantity,
                                             PLAN_STATE_SKIPPED,
-                                                (
-                                                    f"Blocked by {rule_reference}: "
-                                                    f"{MERCHANT_TYPE_LABELS[MERCHANT_TYPE_MERCHANT]} could not be found in the current map."
-                                                ),
+                                            (
+                                                f"Blocked by {rule_reference}: "
+                                                f"{MERCHANT_TYPE_LABELS[MERCHANT_TYPE_MERCHANT]} could not be "
+                                                "found in the current map."
+                                            ),
                                             model_id=item.model_id,
                                         )
                                     )
@@ -19221,7 +19537,10 @@ class MerchantRulesWidget:
                         "Sell from Xunlai too",
                         sum(max(0, int(transfer.quantity)) for transfer in xunlai_sell_transfers),
                         PLAN_STATE_WILL_EXECUTE if storage_open else PLAN_STATE_CONDITIONAL,
-                        f"Before selling, Merchant Rules will pull matching stacks from {source_detail}, then sell the combined inventory.",
+                        (
+                            f"Move matching item stacks from {source_detail} to inventory, then sell them under "
+                            "the enabled Sell from Xunlai rules."
+                        ),
                     )
                 )
             elif not storage_open:
@@ -19232,7 +19551,10 @@ class MerchantRulesWidget:
                         "Sell from Xunlai too",
                         0,
                         PLAN_STATE_CONDITIONAL,
-                        f"Xunlai contents are not scanned yet. Open Xunlai for an exact scan before preview can confirm matching stacks in {source_detail}.",
+                        (
+                            "Xunlai Storage has not been scanned. Use Open Xunlai + Refresh to confirm "
+                            f"matching item stacks in {source_detail}."
+                        ),
                     )
                 )
             if xunlai_sell_protected_preview_entries:
@@ -21655,7 +21977,7 @@ class MerchantRulesWidget:
     ) -> None:
         if entries is None:
             return
-        for item, _source_label, protection_reason in source_items:
+        for item, source_label, protection_reason in source_items:
             entries.append(
                 ExecutionPlanEntry(
                     "withdraw",
@@ -21663,8 +21985,12 @@ class MerchantRulesWidget:
                     self._get_xunlai_sell_withdraw_label(item),
                     max(1, int(item.quantity)),
                     PLAN_STATE_SKIPPED,
-                    f"Blocked by {rule_reference}: {protection_reason}",
+                    (
+                        f"Will remain in {source_label} because {rule_reference} protects it from sale: "
+                        f"{protection_reason}"
+                    ),
                     model_id=int(item.model_id),
+                    status_hint=PREVIEW_STATUS_PROTECTED,
                 )
             )
 
@@ -33501,23 +33827,94 @@ class MerchantRulesWidget:
             self._save_profile()
             self._mark_preview_dirty("Sell rules changed. Preview again before execution.")
 
-    def _get_skipped_preview_status(
+    def _get_skipped_preview_status_key(
         self,
         entry: ExecutionPlanEntry,
         displayed_reason: str,
-    ) -> tuple[str, tuple[float, float, float, float]]:
-        reason_text = f"{entry.reason or ''} {displayed_reason or ''}".strip().lower()
+    ) -> str:
+        status_hint = str(getattr(entry, "status_hint", "") or "").strip().lower()
+        if status_hint in PREVIEW_NOT_CHANGED_STATUS_ORDER:
+            return status_hint
+
+        # Backward-compatible fallback for entries that do not yet carry a semantic hint.
+        # Only the stable raw planner reason participates; friendly display wording does not.
+        reason_text = str(entry.reason or "").strip().lower()
+        action_type = str(entry.action_type or "").strip().lower()
+        label_text = str(entry.label or "").strip().lower()
+        if action_type == "buy" and label_text == "inventory space":
+            return PREVIEW_STATUS_WARNING
+        if action_type == "deposit" and "deposit keep-out" in reason_text:
+            return PREVIEW_STATUS_PROTECTED
         if "protected" in reason_text:
-            return "Protected", UI_COLOR_PURPLE_ACCENT
+            return PREVIEW_STATUS_PROTECTED
         if "unsafe" in reason_text or "safely" in reason_text or "safe split" in reason_text:
-            return "Unsafe", UI_COLOR_DANGER
+            return PREVIEW_STATUS_UNSAFE
         if "target already met" in reason_text:
-            return "Already done", UI_COLOR_SUCCESS
-        if "no matching" in reason_text or "nothing" in reason_text:
-            return "No match", UI_COLOR_WARNING_SOFT
-        if "blocked" in reason_text or "could not" in reason_text or "not available" in reason_text:
-            return "Blocked", UI_COLOR_WARNING
-        return "Skipped", UI_COLOR_MUTED
+            return PREVIEW_STATUS_ALREADY_DONE
+        if (
+            "no matching" in reason_text
+            or "nothing found" in reason_text
+            or "no unidentified items found" in reason_text
+        ):
+            return PREVIEW_STATUS_NO_MATCH
+        if (
+            "blocked" in reason_text
+            or "could not" in reason_text
+            or "not available" in reason_text
+            or "unavailable" in reason_text
+            or "no id kit" in reason_text
+            or "no normal salvage kit" in reason_text
+            or "no upgrade salvage kit" in reason_text
+            or "identify before salvaging" in reason_text
+            or "cannot infer" in reason_text
+            or "ambiguous" in reason_text
+            or "requires rank" in reason_text
+            or "map is not ready" in reason_text
+            or "not an outpost or guild hall" in reason_text
+        ):
+            return PREVIEW_STATUS_BLOCKED
+        return PREVIEW_STATUS_SKIPPED
+
+    def _get_preview_status_presentation(
+        self,
+        status_key: str,
+    ) -> tuple[str, tuple[float, float, float, float]]:
+        safe_key = str(status_key or PREVIEW_STATUS_SKIPPED)
+        return (
+            PREVIEW_STATUS_LABELS.get(safe_key, PREVIEW_STATUS_LABELS[PREVIEW_STATUS_SKIPPED]),
+            PREVIEW_STATUS_COLORS.get(safe_key, UI_COLOR_MUTED),
+        )
+
+    def _get_preview_entry_status_key(
+        self,
+        entry: ExecutionPlanEntry,
+        displayed_reason: str,
+        *,
+        is_conditional: bool,
+        available_here: bool,
+        unavailable_here_reason: str,
+        muted: bool,
+        plan: PlanResult | None = None,
+    ) -> str:
+        if muted:
+            return self._get_skipped_preview_status_key(entry, displayed_reason)
+        if str(entry.action_type) == "travel" or str(entry.merchant_type) == MERCHANT_TYPE_TRAVEL:
+            return PREVIEW_STATUS_TRAVEL
+        if is_conditional:
+            if self._preview_has_execute_travel_pending() or bool(
+                plan is not None and int(plan.travel_to_outpost_id) > 0
+            ):
+                return PREVIEW_STATUS_AFTER_TRAVEL
+            if str(entry.merchant_type) == MERCHANT_TYPE_STORAGE:
+                return PREVIEW_STATUS_NEEDS_XUNLAI
+            return PREVIEW_STATUS_LIVE_CHECK
+        if available_here:
+            return PREVIEW_STATUS_READY
+        if "xunlai" in str(unavailable_here_reason or "").lower():
+            return PREVIEW_STATUS_NEEDS_XUNLAI
+        if unavailable_here_reason:
+            return PREVIEW_STATUS_AFTER_TRAVEL
+        return PREVIEW_STATUS_READY
 
     def _get_preview_entry_status(
         self,
@@ -33528,20 +33925,18 @@ class MerchantRulesWidget:
         available_here: bool,
         unavailable_here_reason: str,
         muted: bool,
+        plan: PlanResult | None = None,
     ) -> tuple[str, tuple[float, float, float, float]]:
-        if muted:
-            return self._get_skipped_preview_status(entry, displayed_reason)
-        if str(entry.action_type) == "travel" or str(entry.merchant_type) == MERCHANT_TYPE_TRAVEL:
-            return "Travel", UI_COLOR_INFO
-        if is_conditional:
-            return "Needs check", UI_COLOR_WARNING
-        if available_here:
-            return "Ready now", UI_COLOR_SUCCESS
-        if "xunlai" in str(unavailable_here_reason or "").lower():
-            return "Needs Xunlai", UI_COLOR_WARNING
-        if unavailable_here_reason:
-            return "Needs travel", UI_COLOR_WARNING
-        return "Ready now", UI_COLOR_SUCCESS
+        status_key = self._get_preview_entry_status_key(
+            entry,
+            displayed_reason,
+            is_conditional=is_conditional,
+            available_here=available_here,
+            unavailable_here_reason=unavailable_here_reason,
+            muted=muted,
+            plan=plan,
+        )
+        return self._get_preview_status_presentation(status_key)
 
     def _get_preview_item_text_color(
         self,
@@ -33596,16 +33991,25 @@ class MerchantRulesWidget:
         note: str,
         *,
         muted: bool,
+        status_key: str = "",
     ) -> tuple[float, float, float, float]:
         note_text = str(note or "").lower()
+        if (
+            "unsafe" in note_text
+            or "safe split" in note_text
+            or "permanently destroy" in note_text
+            or "permanently destroyed" in note_text
+            or "protected-item override" in note_text
+        ):
+            return UI_COLOR_DANGER
         if "protected" in note_text:
             return UI_COLOR_PURPLE_ACCENT
-        if "unsafe" in note_text or "safe split" in note_text:
-            return UI_COLOR_DANGER
         if "blocked" in note_text or "could not" in note_text or "not available" in note_text:
             return UI_COLOR_WARNING_SOFT
         if "target already met" in note_text:
             return UI_COLOR_SUCCESS
+        if status_key in PREVIEW_STATUS_COLORS:
+            return PREVIEW_STATUS_COLORS[status_key]
         if muted:
             return UI_COLOR_SECONDARY_TEXT
         return UI_COLOR_SECONDARY_TEXT
@@ -33626,9 +34030,9 @@ class MerchantRulesWidget:
         table_flags = PyImGui.TableFlags.Borders | PyImGui.TableFlags.RowBg
         if PyImGui.begin_table(table_id, 5, table_flags):
             PyImGui.table_setup_column("Action", PyImGui.TableColumnFlags.WidthFixed, 76.0)
-            PyImGui.table_setup_column("Status", PyImGui.TableColumnFlags.WidthFixed, 98.0)
+            PyImGui.table_setup_column("Status", PyImGui.TableColumnFlags.WidthFixed, 112.0)
             PyImGui.table_setup_column("Where", PyImGui.TableColumnFlags.WidthFixed, 118.0)
-            PyImGui.table_setup_column("Item", PyImGui.TableColumnFlags.WidthStretch)
+            PyImGui.table_setup_column("Item / Rule", PyImGui.TableColumnFlags.WidthStretch)
             PyImGui.table_setup_column("Qty", PyImGui.TableColumnFlags.WidthFixed, 52.0)
 
             PyImGui.table_next_row()
@@ -33639,7 +34043,7 @@ class MerchantRulesWidget:
             PyImGui.table_set_column_index(2)
             self._draw_secondary_text("Where", wrapped=False)
             PyImGui.table_set_column_index(3)
-            self._draw_secondary_text("Item", wrapped=False)
+            self._draw_secondary_text("Item / Rule", wrapped=False)
             PyImGui.table_set_column_index(4)
             self._draw_secondary_text("Qty", wrapped=False)
 
@@ -33648,7 +34052,11 @@ class MerchantRulesWidget:
                 is_conditional = str(entry.state) == PLAN_STATE_CONDITIONAL
                 if is_conditional:
                     action_label = f"{action_label}*"
-                quantity_text = "-" if int(entry.quantity) <= 0 else str(int(entry.quantity))
+                quantity_text = (
+                    "-"
+                    if str(entry.action_type) == "travel" or int(entry.quantity) <= 0
+                    else str(int(entry.quantity))
+                )
                 available_here = self._is_preview_entry_available_here(
                     entry,
                     availability_here=availability_here,
@@ -33676,14 +34084,16 @@ class MerchantRulesWidget:
                         plan=plan,
                     )
                 displayed_reason = self._get_preview_reason_for_display(entry)
-                status_label, status_color = self._get_preview_entry_status(
+                status_key = self._get_preview_entry_status_key(
                     entry,
                     displayed_reason,
                     is_conditional=is_conditional,
                     available_here=available_here,
                     unavailable_here_reason=unavailable_here_reason,
                     muted=muted,
+                    plan=plan,
                 )
+                status_label, status_color = self._get_preview_status_presentation(status_key)
 
                 PyImGui.table_next_row()
                 PyImGui.table_set_column_index(0)
@@ -33705,7 +34115,11 @@ class MerchantRulesWidget:
                 if unavailable_here_reason:
                     self._draw_colored_text(
                         unavailable_here_reason,
-                        self._get_preview_note_color(unavailable_here_reason, muted=muted),
+                        self._get_preview_note_color(
+                            unavailable_here_reason,
+                            muted=muted,
+                            status_key=status_key,
+                        ),
                     )
                 if self._should_show_preview_reason(
                     entry,
@@ -33715,8 +34129,15 @@ class MerchantRulesWidget:
                 ):
                     self._draw_colored_text(
                         displayed_reason,
-                        self._get_preview_note_color(displayed_reason, muted=muted),
+                        self._get_preview_note_color(
+                            displayed_reason,
+                            muted=muted,
+                            status_key=status_key,
+                        ),
                     )
+                    raw_reason = str(entry.reason or "").strip()
+                    if raw_reason and raw_reason != displayed_reason:
+                        self._draw_hover_tooltip(f"Internal detail: {raw_reason}")
 
                 PyImGui.table_set_column_index(4)
                 if muted:
@@ -33765,17 +34186,242 @@ class MerchantRulesWidget:
         )
         return display_reason
 
+    def _normalize_preview_entry_reason_display_text(
+        self,
+        entry: ExecutionPlanEntry,
+        reason: str,
+    ) -> str:
+        display_reason = self._normalize_preview_reason_display_text(reason)
+        if not display_reason:
+            return ""
+
+        action_type = str(entry.action_type or "").strip().lower()
+        state = str(entry.state or "").strip().lower()
+        display_reason = display_reason.replace("rune / insignia", "rune or insignia")
+        display_reason = display_reason.replace("unit(s)", "items")
+        display_reason = display_reason.replace("batch(es)", "lots")
+        display_reason = display_reason.replace("trade(s)", "trades")
+        display_reason = display_reason.replace("free slot(s)", "free inventory slots")
+        display_reason = re.sub(
+            r"\bNo material model whitelist configured\.?",
+            "This rule has no material targets configured.",
+            display_reason,
+        )
+        display_reason = re.sub(
+            r"\bNo explicit model whitelist configured\.?",
+            "This rule has no exact item targets configured.",
+            display_reason,
+        )
+        display_reason = re.sub(
+            r"\bModel ID is required\.?",
+            "Choose an item for this rule.",
+            display_reason,
+        )
+        display_reason = re.sub(
+            r"\bcould not be found in the current map\.?",
+            "is not available here.",
+            display_reason,
+        )
+        display_reason = display_reason.replace(
+            "Map is not ready.",
+            "Cannot evaluate Merchant Rules because the map is not ready.",
+        )
+        display_reason = display_reason.replace(
+            "Current map is not an outpost or Guild Hall.",
+            "Cannot use merchant services because the current map is not an outpost or Guild Hall.",
+        )
+        display_reason = re.sub(
+            r"^(?:Outpost|Guild Hall) ready: .+?\. Using (?:specific|generic) merchant selectors\. "
+            r"No merchant or trader NPCs were found\.$",
+            "No matching merchant or trader service is available here.",
+            display_reason,
+        )
+
+        if action_type == "travel":
+            display_reason = re.sub(
+                r"Travel first, then rebuild the merchant plan in (?:specific|generic) selectors\.?",
+                (
+                    "After arrival, Merchant Rules will check the available services and rebuild the plan "
+                    "before executing."
+                ),
+                display_reason,
+            )
+            display_reason = display_reason.replace(
+                "Travel to Embark Beach first for Consumable Crafter buys.",
+                "First stop: travel to Embark Beach to craft the selected consumables.",
+            )
+            display_reason = display_reason.replace(
+                "Travel to the selected Auto Travel destination for remaining Merchant Rules work.",
+                "After crafting, travel here and rebuild the remaining merchant plan.",
+            )
+
+        if action_type == "identify":
+            display_reason = re.sub(
+                r"^selected exact rarity (.+)$",
+                r"Matched exact rarity: \1.",
+                display_reason,
+                flags=re.IGNORECASE,
+            )
+            display_reason = display_reason.replace(
+                "No unidentified items found for the selected exact rarities.",
+                "No matching unidentified inventory items were found for the selected rarities.",
+            )
+            display_reason = display_reason.replace(
+                "No ID kit found.",
+                "Cannot identify this item because no Identification Kit with uses remaining is available.",
+            )
+
+        if action_type == "buy":
+            display_reason = display_reason.replace(
+                "No consumable crafter items selected.",
+                "This rule has no Consumable Crafter items selected.",
+            )
+            display_reason = display_reason.replace(
+                "Selected item is not a supported Embark Beach consumable crafter recipe.",
+                "This item has no supported Consumable Crafter recipe.",
+            )
+            display_reason = display_reason.replace(
+                "Consumable crafters are currently supported at Embark Beach only.",
+                "Cannot craft this item because its Consumable Crafter is available only at Embark Beach.",
+            )
+            display_reason = display_reason.replace(
+                "Needs exact Xunlai/material-storage scan before crafting.",
+                (
+                    "Xunlai Storage has not been scanned; crafting will be confirmed after stored items and "
+                    "materials are checked."
+                ),
+            )
+            display_reason = display_reason.replace(
+                "Will attempt this buy only if the currently opened merchant offers the item.",
+                "Live check: buy only if the Merchant offers this item with a usable price.",
+            )
+            display_reason = display_reason.replace(
+                "Will request a Scroll Trader quote and buy only if the trader currently offers the item.",
+                "Live check: buy only if the available Scroll Trader offers this item and returns a valid quote.",
+            )
+            display_reason = display_reason.replace(
+                (
+                    "Will attempt this exact Rune Trader buy after any storage withdrawals if the trader currently "
+                    "offers the item."
+                ),
+                (
+                    "Live check: after planned withdrawals, buy the remaining quantity only if the Rune Trader "
+                    "still offers it."
+                ),
+            )
+            if str(entry.merchant_type) == MERCHANT_TYPE_CONSUMABLE_CRAFTER and state != PLAN_STATE_SKIPPED:
+                if not re.search(r"\bcraft", display_reason, flags=re.IGNORECASE):
+                    display_reason = f"Craft the quantity shown. {display_reason}"
+
+        if action_type == "withdraw":
+            display_reason = display_reason.replace(
+                "Withdraw from Xunlai before buying.",
+                "Move the quantity shown from Xunlai Storage to inventory before any remaining purchase.",
+            )
+
+        if action_type == "deposit":
+            display_reason = display_reason.replace(
+                "No matching inventory items found for this deposit target.",
+                "No matching items are expected to remain in inventory when deposits run.",
+            )
+            display_reason = display_reason.replace(
+                "Skipped by deposit keep-out.",
+                "Will remain in inventory because this target is in Deposit Keep-outs.",
+            )
+            display_reason = re.sub(
+                r"Deposit reserve keeps (\d+) on character\.",
+                r"Will remain in inventory because this target keeps \1.",
+                display_reason,
+            )
+            display_reason = re.sub(
+                r"Deposit target keeps (\d+) on character\.",
+                r"Move the quantity shown from inventory to Xunlai Storage; keep \1 in inventory.",
+                display_reason,
+            )
+            display_reason = display_reason.replace(
+                "Deposit reserve left nothing eligible to move.",
+                "All matching items are reserved to remain in inventory.",
+            )
+            display_reason = display_reason.replace(
+                "Linked sell rule no longer exists.",
+                "Cannot deposit from this protection link because its Sell rule was deleted.",
+            )
+            display_reason = display_reason.replace(
+                "Linked deposit sources only support weapon or armor sell protections.",
+                "Cannot use this link because protected-item deposits support only Weapons and Armor Sell rules.",
+            )
+            display_reason = display_reason.replace(
+                "No protected inventory items matched this linked deposit source.",
+                "No inventory items match this linked Sell-rule source.",
+            )
+            if state != PLAN_STATE_SKIPPED and display_reason.startswith("Protected by "):
+                protection_detail = display_reason[len("Protected by ") :]
+                display_reason = (
+                    "Move this item from inventory to Xunlai Storage; it is protected from sale by "
+                    f"{protection_detail}"
+                )
+
+        if action_type == "sell":
+            display_reason = display_reason.replace(
+                "Standalone rune or insignia item.",
+                "Sell this standalone rune or insignia.",
+            )
+            display_reason = display_reason.replace(
+                "Standalone weapon upgrade component.",
+                "Sell this standalone weapon upgrade component.",
+            )
+            display_reason = re.sub(
+                r"^Kept by ([^:]+): reserved to satisfy keep count (\d+)\.?$",
+                r"Will remain in inventory because \1 keeps at least \2.",
+                display_reason,
+            )
+
+        if action_type == "salvage":
+            display_reason = re.sub(r"^selected model ", "Matched exact item target: ", display_reason)
+            display_reason = re.sub(r"^selected rarity ", "Matched rarity ", display_reason)
+            aggregate_match = re.match(r"^Skipped (\d+) (.+)\.$", display_reason)
+            if aggregate_match:
+                count = int(aggregate_match.group(1))
+                blocker = aggregate_match.group(2).replace("no normal salvage kit", "no Salvage Kit is available")
+                blocker = blocker.replace("no upgrade salvage kit", "no compatible upgrade Salvage Kit is available")
+                display_reason = (
+                    f"{count} inventory {'entry was' if count == 1 else 'entries were'} not salvaged: {blocker}."
+                )
+
+        if action_type == "destroy":
+            display_reason = display_reason.replace("selected for MR Salvage", "reserved for Salvage")
+            display_reason = display_reason.replace(
+                "; salvage wins over destroy.",
+                (
+                    "; Destroy is suppressed because Salvage has priority. The item remains untouched if "
+                    "Salvage cannot run."
+                ),
+            )
+            display_reason = re.sub(r"^Matched by ([^.]+)\.", r"Matched \1.", display_reason)
+            display_reason = display_reason.replace(
+                "Included protected item:",
+                "Protected-item override is active; this item will be permanently destroyed despite:",
+            )
+            display_reason = display_reason.replace(
+                "Keep count requires splitting a stack",
+                "Cannot safely split this stack",
+            )
+            if state == PLAN_STATE_WILL_EXECUTE and "permanent" not in display_reason.lower():
+                display_reason = f"{display_reason} Permanently destroy the quantity shown.".strip()
+
+        return display_reason
+
     def _get_preview_reason_for_display(self, entry: ExecutionPlanEntry) -> str:
         reason = str(entry.reason or "").strip()
         if not reason:
             return ""
         if not self._preview_has_execute_travel_pending():
-            return self._normalize_preview_reason_display_text(reason)
+            return self._normalize_preview_entry_reason_display_text(entry, reason)
 
         target_outpost_name = self.preview_execute_travel_target_outpost_name or "the selected outpost"
         suffix = self._get_projected_preview_reason_suffix(entry.merchant_type, target_outpost_name)
         if not suffix:
-            return self._normalize_preview_reason_display_text(reason)
+            return self._normalize_preview_entry_reason_display_text(entry, reason)
         legacy_suffix = suffix.replace("Travel + Execute", "Execute") if suffix else ""
         if reason == suffix:
             return ""
@@ -33783,16 +34429,19 @@ class MerchantRulesWidget:
             return ""
         spaced_suffix = f" {suffix}"
         if reason.endswith(spaced_suffix):
-            return self._normalize_preview_reason_display_text(reason[: -len(spaced_suffix)].rstrip())
+            return self._normalize_preview_entry_reason_display_text(entry, reason[: -len(spaced_suffix)].rstrip())
         if reason.endswith(suffix):
-            return self._normalize_preview_reason_display_text(reason[: -len(suffix)].rstrip())
+            return self._normalize_preview_entry_reason_display_text(entry, reason[: -len(suffix)].rstrip())
         if legacy_suffix:
             legacy_spaced_suffix = f" {legacy_suffix}"
             if reason.endswith(legacy_spaced_suffix):
-                return self._normalize_preview_reason_display_text(reason[: -len(legacy_spaced_suffix)].rstrip())
+                return self._normalize_preview_entry_reason_display_text(
+                    entry,
+                    reason[: -len(legacy_spaced_suffix)].rstrip(),
+                )
             if reason.endswith(legacy_suffix):
-                return self._normalize_preview_reason_display_text(reason[: -len(legacy_suffix)].rstrip())
-        return self._normalize_preview_reason_display_text(reason)
+                return self._normalize_preview_entry_reason_display_text(entry, reason[: -len(legacy_suffix)].rstrip())
+        return self._normalize_preview_entry_reason_display_text(entry, reason)
 
     def _should_show_preview_reason(
         self,
@@ -33804,6 +34453,19 @@ class MerchantRulesWidget:
     ) -> bool:
         if not str(displayed_reason or "").strip():
             return False
+        raw_reason = str(entry.reason or "").strip().lower()
+        if str(entry.action_type) == "destroy" and str(entry.state) == PLAN_STATE_WILL_EXECUTE:
+            return True
+        if any(
+            marker in raw_reason
+            for marker in (
+                "included protected item",
+                "keep count requires splitting",
+                "protected-item override",
+                "permanently destroy",
+            )
+        ):
+            return True
         return bool(
             show_reasons
             or is_conditional
@@ -33932,11 +34594,14 @@ class MerchantRulesWidget:
 
         if self.preview_ready and self._plan_needs_exact_storage_scan(self.preview_plan):
             exact_scan_message = (
-                "Storage planning needs a fresh Xunlai count. Use Open Xunlai + Refresh to confirm withdraw steps."
+                (
+                    "Xunlai Storage has not been scanned. Use Open Xunlai + Refresh to confirm stored items and "
+                    "exact withdraw or buy quantities."
+                )
                 if self._can_use_local_storage_actions()
                 else (
-                    "Storage planning needs Xunlai counts. They will stay estimated until Execute reaches an outpost "
-                    "or Guild Hall and can open storage."
+                    "Xunlai Storage counts are not available yet. Travel + Execute will open storage at the "
+                    "destination and rebuild the plan before moving or buying anything."
                 )
             )
             self._draw_warning_text(exact_scan_message)
@@ -33954,16 +34619,22 @@ class MerchantRulesWidget:
                 "Current stock, recipes, trader offers, quotes, or Xunlai access can still change the final result."
             )
 
+        if self.preview_ready and self.preview_plan.identify_item_ids:
+            self._draw_secondary_text(
+                "Identify runs first. Execute then rebuilds the plan, so identified items may match later Sell, "
+                "Salvage, or Destroy rules."
+            )
+
         if self.preview_ready and self.preview_plan.multi_stop_route:
             embark_label = self.preview_plan.multi_stop_consumable_outpost_name or self._get_embark_beach_outpost_name()
             destination_label = self.preview_plan.multi_stop_destination_outpost_name
             route_detail = (
                 (
-                    f"Multi-stop route: travel to {embark_label}, run Consumable Crafter buys, "
+                    f"Multi-stop route: travel to {embark_label}, craft the selected consumables, "
                     f"then travel to {destination_label} for the rest."
                 )
                 if destination_label
-                else f"Multi-stop route: travel to {embark_label}, run Consumable Crafter buys, then stop there."
+                else f"Multi-stop route: travel to {embark_label}, craft the selected consumables, then stop there."
             )
             self._draw_colored_text(route_detail, UI_COLOR_INFO)
             self._draw_secondary_text(
@@ -33980,7 +34651,7 @@ class MerchantRulesWidget:
             )
             self._draw_secondary_text(
                 (
-                    "Ready-now rows can also run here. Rows marked Needs travel or Needs check wait for "
+                    "Ready-now rows can also run here. Rows marked After travel or Needs live check wait for "
                     "the travel target or the matching service."
                 )
             )
@@ -34008,6 +34679,199 @@ class MerchantRulesWidget:
                 self._set_active_preview_plan_workspace(workspace_id)
             if tab_index + 1 < len(PREVIEW_PLAN_WORKSPACE_ORDER):
                 PyImGui.same_line(0, 6)
+
+    def _group_preview_entries_by_action(
+        self,
+        entries: list[ExecutionPlanEntry],
+    ) -> list[tuple[str, list[ExecutionPlanEntry]]]:
+        grouped_entries: dict[str, list[ExecutionPlanEntry]] = {}
+        action_order: list[str] = []
+        for entry in entries:
+            action_type = str(entry.action_type or "unknown")
+            if action_type not in grouped_entries:
+                grouped_entries[action_type] = []
+                action_order.append(action_type)
+            grouped_entries[action_type].append(entry)
+        return [(action_type, grouped_entries[action_type]) for action_type in action_order]
+
+    def _get_not_changed_entry_status_key(self, entry: ExecutionPlanEntry) -> str:
+        displayed_reason = self._get_preview_reason_for_display(entry)
+        return self._get_skipped_preview_status_key(entry, displayed_reason)
+
+    def _get_visible_not_changed_entries(
+        self,
+        entries: list[ExecutionPlanEntry],
+    ) -> list[ExecutionPlanEntry]:
+        if not bool(self.preview_not_changed_hide_already_done):
+            return list(entries)
+        return [
+            entry
+            for entry in entries
+            if self._get_not_changed_entry_status_key(entry) != PREVIEW_STATUS_ALREADY_DONE
+        ]
+
+    def _get_not_changed_group_header_id(self, action_type: str) -> str:
+        return f"merchant_rules_preview_not_changed_group_{str(action_type or 'unknown')}"
+
+    def _get_not_changed_group_table_id(self, action_type: str) -> str:
+        return f"merchant_rules_preview_not_changed_table_{str(action_type or 'unknown')}"
+
+    def _get_not_changed_status_counts(
+        self,
+        entries: list[ExecutionPlanEntry],
+    ) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for entry in entries:
+            status_key = self._get_not_changed_entry_status_key(entry)
+            counts[status_key] = counts.get(status_key, 0) + 1
+        return counts
+
+    def _get_not_changed_group_default_open(
+        self,
+        entries: list[ExecutionPlanEntry],
+    ) -> bool:
+        if not entries or len(entries) >= 20:
+            return False
+        status_counts = self._get_not_changed_status_counts(entries)
+        if set(status_counts).issubset({PREVIEW_STATUS_NO_MATCH, PREVIEW_STATUS_ALREADY_DONE}):
+            return False
+        attention_statuses = {
+            PREVIEW_STATUS_UNSAFE,
+            PREVIEW_STATUS_BLOCKED,
+            PREVIEW_STATUS_PROTECTED,
+            PREVIEW_STATUS_WARNING,
+            PREVIEW_STATUS_SKIPPED,
+        }
+        return any(status_counts.get(status_key, 0) > 0 for status_key in attention_statuses)
+
+    def _get_not_changed_group_header_text(
+        self,
+        action_type: str,
+        visible_entries: list[ExecutionPlanEntry],
+        all_entries: list[ExecutionPlanEntry],
+    ) -> tuple[str, str]:
+        action_label = ACTION_TYPE_LABELS.get(action_type, action_type.title())
+        visible_count = len(visible_entries)
+        full_count = len(all_entries)
+        count_text = str(visible_count) if visible_count == full_count else f"{visible_count} shown of {full_count}"
+        status_counts = self._get_not_changed_status_counts(visible_entries)
+        full_status_counts = self._get_not_changed_status_counts(all_entries)
+        nonzero_statuses = [
+            status_key
+            for status_key in PREVIEW_NOT_CHANGED_STATUS_ORDER
+            if status_counts.get(status_key, 0) > 0
+        ]
+        header_statuses = nonzero_statuses[:3]
+        header_parts = [f"{action_label} ({count_text})"]
+        header_parts.extend(
+            f"{PREVIEW_STATUS_LABELS[status_key]} {status_counts[status_key]}"
+            for status_key in header_statuses
+        )
+        if len(nonzero_statuses) > len(header_statuses):
+            header_parts.append(f"+{len(nonzero_statuses) - len(header_statuses)} more")
+
+        tooltip_parts = [f"{action_label}: showing {visible_count} of {full_count} entries."]
+        if nonzero_statuses:
+            tooltip_parts.append(
+                "Visible statuses: "
+                + ", ".join(
+                    f"{PREVIEW_STATUS_LABELS[status_key]} {status_counts[status_key]}"
+                    for status_key in nonzero_statuses
+                )
+                + "."
+            )
+        full_nonzero_statuses = [
+            status_key
+            for status_key in PREVIEW_NOT_CHANGED_STATUS_ORDER
+            if full_status_counts.get(status_key, 0) > 0
+        ]
+        if visible_count != full_count and full_nonzero_statuses:
+            tooltip_parts.append(
+                "Full statuses: "
+                + ", ".join(
+                    f"{PREVIEW_STATUS_LABELS[status_key]} {full_status_counts[status_key]}"
+                    for status_key in full_nonzero_statuses
+                )
+                + "."
+            )
+        hidden_count = full_count - visible_count
+        if hidden_count > 0:
+            tooltip_parts.append(f"Hidden by Hide Already done: {hidden_count}.")
+        return " | ".join(header_parts), " ".join(tooltip_parts)
+
+    def _draw_not_changed_entries_child(
+        self,
+        child_id: str,
+        entries: list[ExecutionPlanEntry],
+        *,
+        availability_here: dict[str, bool],
+    ):
+        if PyImGui.begin_child(child_id, (0, 0), True, PyImGui.WindowFlags.NoFlag):
+            if not self.preview_ready:
+                self._draw_secondary_text("Run Preview Plan to see what Merchant Rules will do.")
+                PyImGui.end_child()
+                return
+            if not entries:
+                self._draw_secondary_text("Nothing is currently left unchanged.")
+                PyImGui.end_child()
+                return
+
+            grouped_entries = self._group_preview_entries_by_action(entries)
+            action_types = [action_type for action_type, _group_entries in grouped_entries]
+            if PyImGui.button("Expand All##merchant_rules_preview_not_changed_expand_all"):
+                for action_type in action_types:
+                    self.preview_not_changed_group_open[action_type] = True
+                    self.preview_not_changed_group_initialized.add(action_type)
+            PyImGui.same_line(0, 6)
+            if PyImGui.button("Collapse All##merchant_rules_preview_not_changed_collapse_all"):
+                for action_type in action_types:
+                    self.preview_not_changed_group_open[action_type] = False
+                    self.preview_not_changed_group_initialized.add(action_type)
+            PyImGui.same_line(0, 10)
+            self.preview_not_changed_hide_already_done = PyImGui.checkbox(
+                "Hide Already done##merchant_rules_preview_not_changed_hide_already_done",
+                bool(self.preview_not_changed_hide_already_done),
+            )
+
+            visible_total = len(self._get_visible_not_changed_entries(entries))
+            if visible_total != len(entries):
+                self._draw_secondary_text(f"Showing {visible_total} of {len(entries)} Not Changed entries.")
+            PyImGui.spacing()
+
+            for action_type, group_entries in grouped_entries:
+                visible_entries = self._get_visible_not_changed_entries(group_entries)
+                if action_type not in self.preview_not_changed_group_initialized:
+                    self.preview_not_changed_group_open[action_type] = self._get_not_changed_group_default_open(
+                        group_entries
+                    )
+                    self.preview_not_changed_group_initialized.add(action_type)
+
+                header_text, header_tooltip = self._get_not_changed_group_header_text(
+                    action_type,
+                    visible_entries,
+                    group_entries,
+                )
+                self._force_next_item_open(bool(self.preview_not_changed_group_open.get(action_type, False)))
+                header_id = self._get_not_changed_group_header_id(action_type)
+                opened = PyImGui.collapsing_header(f"{header_text}##{header_id}")
+                self.preview_not_changed_group_open[action_type] = bool(opened)
+                self._draw_hover_tooltip(header_tooltip)
+                if not opened:
+                    continue
+                if visible_entries:
+                    table_id = self._get_not_changed_group_table_id(action_type)
+                    self._draw_preview_entries_table(
+                        table_id,
+                        visible_entries,
+                        show_reasons=True,
+                        muted=True,
+                        plan=self.preview_plan,
+                        availability_here=availability_here,
+                    )
+                else:
+                    self._draw_secondary_text("All entries in this group are hidden by Hide Already done.")
+                PyImGui.spacing()
+        PyImGui.end_child()
 
     def _draw_preview_plan_entries_child(
         self,
@@ -34048,12 +34912,9 @@ class MerchantRulesWidget:
         PyImGui.spacing()
 
         if self.active_preview_plan_workspace == PREVIEW_PLAN_WORKSPACE_SKIPPED:
-            self._draw_preview_plan_entries_child(
+            self._draw_not_changed_entries_child(
                 "merchant_rules_preview_plan_skipped",
                 skipped_entries,
-                "Nothing is currently left unchanged.",
-                show_reasons=True,
-                muted=True,
                 availability_here=availability_here,
             )
         else:
