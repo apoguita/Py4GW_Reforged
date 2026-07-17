@@ -46,13 +46,25 @@
       <div id="header">
         <span class="team-name" id="team-name">All Profiles</span>
         <span class="team-count" id="team-count">0 profiles</span>
-        <button id="remove-team-btn" style="display:none" onclick="onRemoveTeamClick()">Remove team</button>
-        <!-- RELAY 035: keyed off the CURRENT process's real elevation state
-             (get_run_as_admin_state().elevated), not the toggle setting --
-             visible whenever this session actually is elevated, regardless
-             of how it got that way. Markup/inline style matches the
-             approved mockup verbatim (_launcher_export_src.html ~58). -->
-        <span id="admin-badge" title="Launcher elevated" style="display:none;font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--warn,#ffd166);background:var(--warn-soft,rgba(255,209,102,.16));border:1px solid var(--warn,#ffd166);border-radius:5px;padding:3px 7px">ADMIN</span>
+        <!-- RELAY 035: a single shared wrapper carries the row's one
+             margin-left:auto push, rather than each child carrying its
+             own -- two SEPARATE auto margins in the same flex line split
+             the free space between them instead of one consuming it all,
+             which visibly dragged remove-team-btn away from the right
+             edge toward the middle whenever both it and the badge were
+             visible together (found live, Chris caught it). A wrapper
+             means the push is correct regardless of which children
+             inside it are actually visible. -->
+        <div id="header-right">
+          <button id="remove-team-btn" style="display:none" onclick="onRemoveTeamClick()">Remove team</button>
+          <!-- Keyed off the CURRENT process's real elevation state
+               (get_run_as_admin_state().elevated), not the toggle setting
+               -- visible whenever this session actually is elevated,
+               regardless of how it got that way. Markup/inline style
+               matches the approved mockup verbatim
+               (_launcher_export_src.html ~58). -->
+          <span id="admin-badge" title="Launcher elevated" style="display:none;font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--warn,#ffd166);background:var(--warn-soft,rgba(255,209,102,.16));border:1px solid var(--warn,#ffd166);border-radius:5px;padding:3px 7px">ADMIN</span>
+        </div>
       </div>
 
       <!-- Row 2: left group = whichever launch/bulk actions apply to the

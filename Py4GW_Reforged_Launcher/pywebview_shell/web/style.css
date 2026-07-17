@@ -212,11 +212,34 @@ select {
   font-size: 11px;
   color: var(--muted, #9a9ecb);
 }
-/* RELAY 026: row 1 is identity-only now -- Remove Team is the sole
-   right-aligned element left in this row, so it carries its own
-   margin-left:auto instead of relying on a wrapper div. */
-#remove-team-btn {
+/* RELAY 026: row 1 is identity-only now -- #header-right (Remove Team +,
+   RELAY 035, the ADMIN badge) is the only right-aligned group in this
+   row, so IT carries the margin-left:auto, not its individual children.
+   Two real bugs found live during RELAY 035 verification (Chris caught
+   both), neither obvious from a code read alone:
+   1. margin-left:auto on each child separately -- wrong: two SEPARATE
+      auto margins in the same flex line split the free space between
+      them instead of one consuming it all, dragging remove-team-btn
+      away from the right edge toward the middle whenever both it and
+      the badge were visible together. A shared wrapper's single auto
+      margin is correct regardless of which children inside it are
+      actually visible (remove-team-btn is display:none on the ALL
+      view).
+   2. display:flex on that wrapper -- also wrong, but more subtly: it
+      silently ate #header's own padding-right (confirmed via a
+      temporary debug border showing the wrapper flush against the
+      window edge with zero inset, where the gear icon row below still
+      had its normal padding). display:inline-flex fixes it -- a nested
+      BLOCK-level flex container as the last item of a baseline-aligned
+      flex row doesn't respect the parent's padding-right in this
+      WebView2/Chromium build; inline-flex does. */
+#header-right {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+#remove-team-btn {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted, #9a9ecb);
