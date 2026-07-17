@@ -529,6 +529,17 @@ window.shellBridge = {
       setFocusedProfile(data.profile_id);
       return;
     }
+    if (event === "profile_exited") {
+      // RELAY 042: a client closed OUTSIDE the app (its own Exit, closing
+      // the window directly) -- bridge.py's focus-poll loop already
+      // confirmed via a real liveness check the pid is actually gone, not
+      // a guess. Reuses stopProfile's own success-path shape exactly
+      // (same state transition, just triggered externally instead of by a
+      // click), not a second, parallel way to revert a card to idle.
+      delete launchState[data.profile_id];
+      refreshCard(data.profile_id);
+      return;
+    }
     if (!data || !data.profile_id) return;
     const id = data.profile_id;
     if (event === "launch_log") {

@@ -385,6 +385,17 @@ select {
   background: var(--panel, #191c33);
   cursor: pointer;
   transition: box-shadow 0.15s, border-color 0.15s;
+  /* RELAY 042: a CSS corner radius can never exceed half an element's own
+     height, so .card-focused::before's 12px radius on a 3px-tall stripe
+     clamped to ~1.5px of real visible curve -- barely rounded, not
+     matching the card's own rounded top corners (Chris caught this live).
+     Clipping the card's own painted content to its already-correct
+     rounded shape is the standard fix for a thin decorative bar meant to
+     look flush with a rounded container -- confirmed via grep nothing
+     under .card relies on overflowing its bounds (no context menu,
+     tooltip, or absolutely-positioned descendant exists here today) before
+     adding this. */
+  overflow: hidden;
 }
 .card.selected {
   box-shadow: 0 0 0 1px var(--accent, #7c8cff), 0 0 0 4px var(--accent-soft, rgba(124, 140, 255, 0.16));

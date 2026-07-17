@@ -985,16 +985,17 @@ class ShellBridge:
         return {"ok": True}
 
     def _run_focus_poll(self) -> None:
-        """Direction 2: continuously detect focus changes made OUTSIDE this
-        app (Alt-Tab, taskbar, clicking a game window directly) and push
-        which tracked profile (if any) now owns the OS foreground window.
-        Polling (not SetWinEventHook), same pattern as every other real-
-        time feature in this app (032/033's slow-operation push_event) --
-        consistency over a "more proper" but second, different live-update
-        mechanism for a first attempt at this. ~500ms is responsive enough
-        to feel live without meaningfully costing anything (one
-        GetForegroundWindow + one GetWindowThreadProcessId per tick,
-        regardless of how many profiles exist).
+        """Direction 2 of RELAY 041: continuously detect focus changes made
+        OUTSIDE this app (Alt-Tab, taskbar, clicking a game window
+        directly) and push which tracked profile (if any) now owns the OS
+        foreground window. Polling (not SetWinEventHook), same pattern as
+        every other real-time feature in this app (032/033's slow-
+        operation push_event) -- consistency over a "more proper" but
+        second, different live-update mechanism for a first attempt at
+        this. ~500ms is responsive enough to feel live without
+        meaningfully costing anything (one GetForegroundWindow + one
+        GetWindowThreadProcessId per tick, regardless of how many profiles
+        exist).
 
         Pushes "focused_profile_changed" only when the resolved profile_id
         actually changes, not every tick, to avoid redundant DOM churn on
@@ -1003,6 +1004,21 @@ class ShellBridge:
         cased -- resolves to profile_id None, clearing every card's
         focused indicator (Chris's own confirmed answer: clear entirely,
         not persist the last one, when focus moves to something untracked).
+
+        RELAY 042: also validates every tracked `_running_pids` entry each
+        tick (`_is_process_alive`, same real check RELAY 040 already added
+        for this exact purpose) -- before this, a client closed OUTSIDE the
+        app (its own Exit, closing the window directly, not this app's
+        Stop) left `_running_pids` stale forever, since the only place that
+        ever popped an entry was `stop_profile` itself, a click-driven
+        action. This loop already iterates that same dict every tick for
+        the focus-match above, so checking liveness in the same pass is
+        not new polling overhead, not a second thread -- reusing what 041
+        already built, per this entry's own instruction. A pid found dead
+        is popped and reported via a new "profile_exited" push per profile,
+        BEFORE the focus-match check for that tick, so an exited pid can
+        never be misreported as newly focused in the same tick it's
+        removed.
         """
         last_reported: Optional[str] = "__unset__"  # sentinel: always push once, even if the real first state is None
         while True:
@@ -1010,12 +1026,17 @@ class ShellBridge:
             try:
                 foreground_pid = window_control.get_foreground_window_pid()
                 matched_profile_id = None
+                exited_profile_ids: list = []
                 with self._launch_lock:
-                    if foreground_pid is not None:
-                        for candidate_id, pid in self._running_pids.items():
-                            if pid == foreground_pid:
-                                matched_profile_id = candidate_id
-                                break
+                    for candidate_id, pid in list(self._running_pids.items()):
+                        if not _is_process_alive(pid):
+                            exited_profile_ids.append(candidate_id)
+                            del self._running_pids[candidate_id]
+                            continue
+                        if foreground_pid is not None and pid == foreground_pid:
+                            matched_profile_id = candidate_id
+                for profile_id in exited_profile_ids:
+                    self.push_event("profile_exited", {"profile_id": profile_id})
                 if matched_profile_id != last_reported:
                     last_reported = matched_profile_id
                     self.push_event("focused_profile_changed", {"profile_id": matched_profile_id})
