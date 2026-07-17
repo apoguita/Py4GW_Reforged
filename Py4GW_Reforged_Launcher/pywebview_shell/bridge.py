@@ -1,5 +1,3 @@
-SCRATCH_DELIBERATE_SYNTAX_ERROR_RELAY_045 = (
-
 """Python<->JS bridge scaffold. Phase A proves the mechanism works cleanly
 in this app's real structure -- no real business logic wired to it yet.
 
