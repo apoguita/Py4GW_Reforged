@@ -1,44 +1,39 @@
 # Dependency setup for the launcher's dev venv.
 #
 # Create the venv at .venv INSIDE this folder (Py4GW_Reforged_Launcher\.venv) --
-# that exact location is the convention Launch.bat depends on:
+# that exact location is the convention Launch_Reforged.bat depends on:
 #     py -3.13-32 -m venv .venv
 #
 # Then install wheels-only (plain `pip install` falls back to source builds for
-# some of these on 32-bit CPython 3.13 / Windows and fails without a C compiler):
-#   1. imgui-bundle 1.92.801 has no win32 wheel on PyPI, so install its prebuilt
-#      wheel from this repo's standalone "wheels" release FIRST:
-#        https://github.com/Royel-Payne/Py4GW_Reforged/releases/download/wheels/imgui_bundle-1.92.801-cp313-cp313-win32.whl
-#      That satisfies the imgui-bundle pin below, so step 2 won't try -- and fail
-#      -- to fetch it from PyPI:
-#        .venv\Scripts\pip install --only-binary=:all: imgui_bundle-1.92.801-cp313-cp313-win32.whl
-#   2. Then the rest:
-#        .venv\Scripts\pip install --only-binary=:all: -r requirements.txt
+# some of these on 32-bit CPython 3.13 / Windows and fails without a C compiler),
+# with one exception: pywebview's own dependency `proxy_tools` only ships an
+# sdist, no wheel -- but it's pure Python (no C extension, no compiler needed),
+# so it's safe to install from source:
+#   .venv\Scripts\pip install --only-binary=:all: --no-binary=proxy_tools -r requirements.txt
 #
-# One more exception (Phase A, pywebview shell): pywebview's own dependency
-# `proxy_tools` only ships an sdist, no wheel -- but it's pure Python (no C
-# extension, no compiler needed), so it's safe to install from source. Add
-# `--no-binary=proxy_tools` to the command above, or just drop
-# --only-binary=:all: for this one package if installing it standalone.
-annotated-types==0.7.0
+# RELAY 043: trimmed after the old ImGui app (launcher.py, imgui-bundle) retired.
+# Every package below was verified empirically, not guessed from grep alone --
+# imgui-bundle uninstalled from the real dev venv, `pip check` run clean, and a
+# real run_shell.py launch confirmed working end to end -- before removing
+# annotated-types/glfw/munch/numpy/pillow/pydantic/pydantic_core/PyOpenGL/
+# typing-inspection (all either exclusively required by imgui-bundle's own
+# dependency tree, per `pip show <pkg>`'s real Required-by field, or -- typing-
+# inspection specifically -- not even actually installed despite being pinned
+# here). Every package kept below either has a real `import` somewhere in
+# launcher_core/ or pywebview_shell/ (psutil, pywin32, dulwich, pywebview) or is
+# a real, confirmed (via `pip show`) transitive dependency of one that is
+# (bottle/proxy_tools/pythonnet <- pywebview, clr_loader <- pythonnet, cffi <-
+# clr_loader, pycparser <- cffi, typing_extensions <- pywebview, urllib3 <-
+# dulwich).
 bottle==0.13.4
 cffi==2.1.0
 clr_loader==0.3.1
 dulwich==1.2.10
-glfw==2.10.0
-imgui-bundle==1.92.801
-munch==4.0.0
-numpy==2.5.1
-pillow==12.3.0
 proxy_tools==0.1.0
 psutil==7.1.1
 pycparser==3.0
-pydantic==2.13.4
-pydantic_core==2.46.4
-PyOpenGL==3.1.10
 pythonnet==3.1.0
 pywebview==6.2.1
 pywin32==312
-typing-inspection==0.4.2
 typing_extensions==4.16.0
 urllib3==2.7.0

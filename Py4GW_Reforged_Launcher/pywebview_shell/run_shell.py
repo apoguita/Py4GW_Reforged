@@ -29,6 +29,7 @@ Run directly: .venv\\Scripts\\python.exe -m pywebview_shell.run_shell
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import webview
@@ -38,7 +39,21 @@ from pywebview_shell.bridge import ShellBridge
 from pywebview_shell.preview import SnapPreview
 from pywebview_shell.window_shell import ensure_dpi_awareness, ensure_native_resize_style, wait_for_native_hwnd
 
-WEB_DIR = Path(__file__).parent / "web"
+if getattr(sys, "frozen", False):
+    # RELAY 043: PyInstaller flattens the ENTRY-POINT script's own extraction
+    # location to directly under sys._MEIPASS -- confirmed live against a
+    # real built exe: __file__ resolved to "<_MEIPASS>/run_shell.py", not
+    # "<_MEIPASS>/pywebview_shell/run_shell.py" the way every other module
+    # in this package does, so plain __file__-relative resolution silently
+    # pointed WEB_DIR at a nonexistent "<_MEIPASS>/web" and pywebview's own
+    # local server 404'd on index.html. Same class of frozen-vs-dev gotcha
+    # config_seeding.py's own _mod_root() already documents for a different
+    # path -- sys._MEIPASS is the correct root once frozen; the .spec's own
+    # datas entry (`('pywebview_shell/web', 'pywebview_shell/web')`)
+    # preserves that destination structure there, so this really does exist.
+    WEB_DIR = Path(sys._MEIPASS) / "pywebview_shell" / "web"
+else:
+    WEB_DIR = Path(__file__).parent / "web"
 RESIZE_MARGIN = 6
 # LOGICAL px (pywebview's own unit for create_window's min_size). Single
 # source of truth -- also handed to the bridge (set_min_size) so the

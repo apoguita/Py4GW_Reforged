@@ -1,45 +1,56 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# Build with the project's 32-bit venv (imgui_bundle has no 64-bit wheel for it and
-# the GW1 injection pipeline needs same-bitness with GW1's own 32-bit process):
-#   C:\Users\Chris\Projects\Py4GW\myenv\Scripts\python.exe -m PyInstaller Py4GW_Reforged_Launcher.spec
+# Build with the project's 32-bit venv (GW1's own process is 32-bit, and the
+# injection pipeline needs same-bitness with it):
+#   .venv\Scripts\python.exe -m PyInstaller Py4GW_Reforged_Launcher.spec
 #
-# collect_all('imgui_bundle') is required, not optional -- imgui_bundle has no
-# dedicated PyInstaller hook, and a bare Analysis() misses its compiled extension
-# module's sibling DLL (glfw3.dll) and its data assets (fonts, default app_settings)
-# since PyInstaller's static import analysis can't discover non-Python data/binary
-# files on its own. console=False matches Launch.bat's pythonw.exe behavior (no
-# console flash) -- see launcher.py's top-of-file startup guard for how failures
-# still get reported via a message box despite that.
-from PyInstaller.utils.hooks import collect_all
+# RELAY 043: replaces the old ImGui app's spec (Analysis(['launcher.py']),
+# collect_all('imgui_bundle')) now that launcher.py itself is retired.
+# pywebview needs no collect_all treatment here -- unlike imgui_bundle
+# (which had no dedicated PyInstaller hook at all, confirmed via the old
+# spec's own comment), pywebview ships its own official hook
+# (webview/__pyinstaller/hook-webview.py, auto-discovered by PyInstaller's
+# standard hook-directory convention) that already bundles its WebView2
+# DLLs (lib/) and JS shim (js/) on its own -- confirmed by reading that
+# hook file directly, not assumed.
+#
+# console=False matches Launch_Reforged.bat's expected no-console-flash
+# behavior for real end users (dev testing still uses a visible console via
+# that .bat's own python.exe, not pythonw.exe -- see its own comments for
+# why that's fine for dev and irrelevant to this packaged build).
 
 datas = []
-binaries = []
-hiddenimports = []
-tmp_ret = collect_all('imgui_bundle')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
-# assets/python_icon.ico is loaded at runtime too (launcher.py's _apply_window_icon,
-# for the actual window/taskbar icon via WM_SETICON) -- not just for the icon= build
-# option below, which only covers the .exe's own Explorer/file-icon. Both need it.
-datas += [('assets/python_icon.ico', 'assets')]
+# pywebview_shell/web/*.html|css|js are loaded by PATH at runtime
+# (run_shell.py's WEB_DIR / "index.html"), not via Python import -- the
+# same "PyInstaller's static analysis can't discover non-import data on
+# its own" problem the old spec's own comments describe for its two
+# manual datas entries below. Confirmed via grep: nothing else under
+# pywebview_shell/ is loaded by path except this directory.
+datas += [('pywebview_shell/web', 'pywebview_shell/web')]
 
-# config_defaults/ (the bundled Py4GW.ini template launcher_core.config_seeding
-# seeds a fresh checkout with) was missing here entirely -- confirmed directly
-# against a real packaged exe that this silently broke Py4GW.ini seeding in
-# every built .exe to date: config_seeding.py references this directory via a
-# plain Path join, not an import, so PyInstaller's static analysis has no way
-# to discover it needs bundling on its own, the same reason python_icon.ico
-# above needs its own explicit entry rather than being picked up automatically.
+# config_defaults/ (the bundled Py4GW.ini template) -- launcher_core.
+# config_seeding still references this via a plain Path join (confirmed
+# via source: bridge.py -> config_seeding._mod_root(), and config_seeding
+# itself joins _LAUNCHER_DIR / "config_defaults"), same real need the old
+# spec's own comment already documented, unchanged by the ImGui app's
+# retirement since this module is shared, not old-app-only.
 datas += [('config_defaults', 'config_defaults')]
 
+# assets/python_icon.ico is used ONLY for the icon= EXE option below (the
+# .exe's own Explorer/taskbar icon) here -- deliberately NOT also added as
+# a runtime datas entry the way the old spec needed, since pywebview_shell
+# doesn't call anything like the old app's _apply_window_icon/WM_SETICON
+# at runtime (confirmed via grep: zero matches for icon-setting code
+# anywhere under pywebview_shell/) -- a real, separate gap, not silently
+# assumed to already exist just because the old app had it.
 
 a = Analysis(
-    ['launcher.py'],
+    ['pywebview_shell/run_shell.py'],
     pathex=[],
-    binaries=binaries,
+    binaries=[],
     datas=datas,
-    hiddenimports=hiddenimports,
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
