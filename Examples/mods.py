@@ -211,7 +211,7 @@ armor_mods = {
 
 def GetMods(item_id, mod_list):
     mods = []
-    for mod in Item.Customization.Modifiers.GetModifiers(item_id):
+    for mod in Item.Mods.GetModifiers(item_id):
         mod_hex = f'{mod.GetIdentifier():04x}{mod.GetArg():04x}'.upper()
         if mod_hex in mod_list:
             mods.append(mod_list[mod_hex])

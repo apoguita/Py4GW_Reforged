@@ -1075,25 +1075,25 @@ def ShowItemDataWindow(item_id):
 
                 headers = ["Value", "Data"]
                 data = [
-                    ("IsInscription:",GLOBAL_CACHE.Item.Customization.IsInscription(item_id)),
-                    ("IsInscribable:",GLOBAL_CACHE.Item.Customization.IsInscribable(item_id)),
-                    ("IsPrefixUpgradable:",GLOBAL_CACHE.Item.Customization.IsPrefixUpgradable(item_id)),
-                    ("IsSuffixUpgradable:",GLOBAL_CACHE.Item.Customization.IsSuffixUpgradable(item_id)),
-                    ("Item Formula:",GLOBAL_CACHE.Item.Customization.GetItemFormula(item_id)),
-                    ("Item Formula(Hex):",hex(GLOBAL_CACHE.Item.Customization.GetItemFormula(item_id))),
-                    ("Item Formula(Bin):",bin(GLOBAL_CACHE.Item.Customization.GetItemFormula(item_id))),
+                    ("IsInscription:",GLOBAL_CACHE.Item.Properties.IsInscription(item_id)),
+                    ("IsInscribable:",GLOBAL_CACHE.Item.Properties.IsInscribable(item_id)),
+                    ("IsPrefixUpgradable:",GLOBAL_CACHE.Item.Properties.IsPrefixUpgradable(item_id)),
+                    ("IsSuffixUpgradable:",GLOBAL_CACHE.Item.Properties.IsSuffixUpgradable(item_id)),
+                    ("Item Formula:",GLOBAL_CACHE.Item.Properties.GetItemFormula(item_id)),
+                    ("Item Formula(Hex):",hex(GLOBAL_CACHE.Item.Properties.GetItemFormula(item_id))),
+                    ("Item Formula(Bin):",bin(GLOBAL_CACHE.Item.Properties.GetItemFormula(item_id))),
                     ("Interaction:",GLOBAL_CACHE.Item.Properties.GetInteraction(item_id)),
                     ("Interaction(Bin):",formatted_bin),
                     
-                    ("IsStackable:",GLOBAL_CACHE.Item.Customization.IsStackable(item_id)),
-                    ("IsSparkly:",GLOBAL_CACHE.Item.Customization.IsSparkly(item_id)),
+                    ("IsStackable:",GLOBAL_CACHE.Item.Properties.IsStackable(item_id)),
+                    ("IsSparkly:",GLOBAL_CACHE.Item.Properties.IsSparkly(item_id)),
                 ]
                 ImGui_Legacy.table("Item customization common info", headers, data)
 
                 if PyImGui.collapsing_header("Modifiers"):
 
-                    modifiers = GLOBAL_CACHE.Item.Customization.Modifiers.GetModifiers(item_id)
-                    modifier_count = GLOBAL_CACHE.Item.Customization.Modifiers.GetModifierCount(item_id)
+                    modifiers = GLOBAL_CACHE.Item.Mods.GetModifiers(item_id)
+                    modifier_count = GLOBAL_CACHE.Item.Mods.GetModifierCount(item_id)
 
                     PyImGui.text("Modifier Count: " + str(modifier_count))
 
@@ -1118,7 +1118,7 @@ def ShowItemDataWindow(item_id):
                             ImGui_Legacy.table("Item modifier common info"+ str(idx + 1), headers, data)
 
                 if PyImGui.collapsing_header("DyeInfo"):
-                    dye_info = GLOBAL_CACHE.Item.Customization.GetDyeInfo(item_id)
+                    dye_info = GLOBAL_CACHE.Item.Dye.GetInfo(item_id)
                     dye_tint = dye_info.dye_tint
 
                     PyImGui.text(f"Dye Tint: {dye_tint}")

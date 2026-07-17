@@ -6,9 +6,11 @@ from Py4GWCoreLib.Item import Item
 from Py4GWCoreLib.enums_src.GameData_enums import DyeColor
 from Py4GWCoreLib.enums_src.Item_enums import ItemType, Rarity
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
-from Py4GWCoreLib.item_mods_src.item_mod import ItemMod
-from Py4GWCoreLib.item_mods_src.upgrades import Upgrade
+from Py4GWCoreLib.mods_types import ModifierIdentifier as ModId
 from Sources.frenkeyLib.ItemHandling.Items.item_snapshot import ItemSnapshot
+
+# item_mods_src removed; upgrades are names (str) now (deprecated frenkey rule engine).
+Upgrade = str
 
 class Rule:
     _registry: ClassVar[dict[str, type["Rule"]]] = {}
@@ -249,10 +251,10 @@ class UpgradeRule(Rule):
         normalized_upgrades: list[tuple[Upgrade, list[ItemType]]] = []
         if upgrades is not None:
             for upgrade in upgrades:
-                if isinstance(upgrade, Upgrade):
+                if isinstance(upgrade, str):
                     normalized_upgrades.append((upgrade, []))
-                    
-                elif isinstance(upgrade, tuple) and len(upgrade) == 2 and isinstance(upgrade[0], Upgrade) and (isinstance(upgrade[1], list) and all(isinstance(item_type, ItemType) for item_type in upgrade[1]) or upgrade[1] is None):
+
+                elif isinstance(upgrade, tuple) and len(upgrade) == 2 and isinstance(upgrade[0], str) and (isinstance(upgrade[1], list) and all(isinstance(item_type, ItemType) for item_type in upgrade[1]) or upgrade[1] is None):
                     normalized_upgrades.append((upgrade[0], upgrade[1] if upgrade[1] is not None else []))
                     
         self.upgrades: list[tuple[Upgrade, list[ItemType]]] = normalized_upgrades
@@ -270,18 +272,19 @@ class UpgradeRule(Rule):
         
         item_type = item_snapshot.item_type
         if item_type == ItemType.Rune_Mod:
-            item_type = ItemMod.get_target_item_type(item_id) or item_type
-        
-        prefix, suffix, inscription, inherent = ItemMod.get_item_upgrades(item_id)
-        item_upgrades = [upgrade for upgrade in [prefix, suffix, inscription, *(inherent or [])] if upgrade is not None]
-        
-        ## check if any of the specified upgrades match an upgrade on the item, while also matching the item type requirement by checking ItemType.is_matching_item_type() to allow for meta types like Weapon or EquippableItem
+            tgt = Item.Mods.GetSubtype(item_id, ModId.TargetItemType)
+            item_type = tgt if isinstance(tgt, ItemType) else item_type
+
+        item_upgrades = [name for name, _slot in Item.Mods.GetUpgrades(item_id)]
+
+        ## check if any of the specified upgrades (by name) match an upgrade on the item, while also
+        ## matching the item type requirement (meta types like Weapon/EquippableItem via ItemType.matches)
         for rule_upgrade, valid_item_types in self.upgrades:
             if valid_item_types is not None and len(valid_item_types) > 0 and not any(item_type.matches(valid_type) for valid_type in valid_item_types):
                 continue
-            
+
             for item_upgrade in item_upgrades:
-                if rule_upgrade.matches(item_upgrade):
+                if rule_upgrade == item_upgrade:
                     return True
 
         return False
@@ -290,7 +293,7 @@ class UpgradeRule(Rule):
         return {
             "upgrades": [
                 {
-                    "upgrade": upgrade.to_dict(),
+                    "upgrade": upgrade,  # upgrade is a name (str) now
                     "item_types": [item_type.name for item_type in item_types] if item_types is not None else None,
                 }
                 for upgrade, item_types in self.upgrades
@@ -301,8 +304,8 @@ class UpgradeRule(Rule):
         normalized_data = []
         for upgrade, item_types in self.upgrades:
             item_type_names = tuple(sorted(item_type.name for item_type in item_types)) if item_types is not None else None
-            normalized_data.append((upgrade._comparison_data(), item_type_names))
-        
+            normalized_data.append((upgrade, item_type_names))
+
         return tuple(sorted(normalized_data))
 
     def _deserialize_data(self, data: dict[str, Any]) -> None:
@@ -311,12 +314,10 @@ class UpgradeRule(Rule):
             upgrade_data = entry.get("upgrade", None)
             item_type_names = entry.get("item_types", None)
 
-            if upgrade_data is None:
+            if not isinstance(upgrade_data, str):
                 continue
-            
-            upgrade = Upgrade.from_dict(upgrade_data)
-            if upgrade is None:
-                continue
+
+            upgrade = upgrade_data  # a name (str)
             
             item_types : list[ItemType] | None = None
             if item_type_names is not None:

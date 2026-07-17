@@ -1478,7 +1478,7 @@ class Inventory:
     
         MAX_STACK_SIZE = 250
 
-        is_stackable = Item.Customization.IsStackable(item_id)
+        is_stackable = Item.Properties.IsStackable(item_id)
         quantity = Item.Properties.GetQuantity(item_id)
 
         if quantity == 0:
@@ -1541,7 +1541,7 @@ class Inventory:
         from .enums import Bags
         MAX_STACK_SIZE = 250
 
-        is_stackable = Item.Customization.IsStackable(item_id)
+        is_stackable = Item.Properties.IsStackable(item_id)
         quantity = min(quantity, Item.Properties.GetQuantity(item_id))
 
         if quantity == 0:

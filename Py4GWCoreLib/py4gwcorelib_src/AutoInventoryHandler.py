@@ -280,13 +280,13 @@ class AutoInventoryHandler():
         else:
             return []
 
-        prefix, suffix, inscription, _ = Item.Customization.GetUpgrades(item.id)
+        upgrade_slots = {slot for _, slot in Item.Mods.GetUpgrades(item.id)}
         upgrade_modes: list[SalvageMode] = []
-        if kit_caps["upgrade"] and inscription is not None:
+        if kit_caps["upgrade"] and Item.Mods.Slot.Inscription in upgrade_slots:
             upgrade_modes.append(SalvageMode.Inscription)
-        if kit_caps["upgrade"] and suffix is not None:
+        if kit_caps["upgrade"] and Item.Mods.Slot.Suffix in upgrade_slots:
             upgrade_modes.append(SalvageMode.Suffix)
-        if kit_caps["upgrade"] and prefix is not None:
+        if kit_caps["upgrade"] and Item.Mods.Slot.Prefix in upgrade_slots:
             upgrade_modes.append(SalvageMode.Prefix)
 
         ordered_modes = material_modes + upgrade_modes if (strategy if strategy is not None else self._normalize_salvage_strategy()) == 0 else upgrade_modes + material_modes
@@ -514,7 +514,7 @@ class AutoInventoryHandler():
                 is_dye = (model_id == ModelID.Vial_Of_Dye.value)
                 dye1_to_match = None
                 if is_dye:
-                    dye_info = GLOBAL_CACHE.Item.Customization.GetDyeInfo(item_id)
+                    dye_info = GLOBAL_CACHE.Item.Dye.GetInfo(item_id)
                     dye1_to_match = dye_info.dye1.ToInt()
                     
                 if is_dye and dye1_to_match in self.deposit_dyes_blacklist:

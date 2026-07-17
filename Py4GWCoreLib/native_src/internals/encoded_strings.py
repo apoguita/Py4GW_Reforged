@@ -4,7 +4,7 @@ from typing import Optional, Sequence, TypeAlias
 from Py4GWCoreLib.enums_src.GameData_enums import Ailment, Attribute, DamageType, Profession, Reduced_Ailment
 from Py4GWCoreLib.enums_src.Item_enums import BowType, ItemType, Rarity
 from Py4GWCoreLib.native_src.internals import string_table
-from Py4GWCoreLib.item_mods_src.types import ItemBaneSpecies
+from Py4GWCoreLib.mods_types import ItemBaneSpecies
 
 PlaceholderReplacement: TypeAlias = bytes | Sequence[int]
 

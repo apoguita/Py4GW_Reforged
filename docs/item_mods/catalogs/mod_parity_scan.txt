@@ -1,0 +1,3385 @@
+MOD PARITY SCAN  (GAME enc-strings vs. Item.Mods decode)
+==============================================================================
+items scanned: 185
+
+------------------------------------------------------------------------------
+ITEM 76  'Superior Identification Kit'
+  GAME:
+    Uses remaining: 99
+    Use to identify another item in your inventory.
+    Value: 248 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 77  'Jade Wand'
+  GAME:
+    Fire Dmg: 11-21 (Requires 11 Fire Magic)
+  OURS (Item.Mods):
+    Requires 11 Fire Magic
+    Fire Dmg: 11-21
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=10  a2=11   -> Requires 11 Fire Magic
+    0x24B Damage Type              a1=5   a2=0    (structural)
+    0x27A Damage                   a1=21  a2=11   -> Fire Dmg: 11-21
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 78  'Superior Identification Kit'
+  GAME:
+    Uses remaining: 100
+    Use to identify another item in your inventory.
+    Value: 250 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 79  'Superior Identification Kit'
+  GAME:
+    Uses remaining: 100
+    Use to identify another item in your inventory.
+    Value: 250 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 80  'Golem User Manual'
+  GAME:
+    Use to read. To run the golem tutorial simulation and receive your mission from Zinn, use the Enter Mission button inside the book. M.O.X. must be in your party and you must be inside an outpost to run the tutorial. If you lose your Golem User Manual, you can acquire a new one from Zinn in his secret underground Lair.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 81  'Jade Wand'
+  GAME:
+    Dark Dmg: 11-21 (Requires 10 Curses)
+  OURS (Item.Mods):
+    Requires 10 Curses
+    Dark Dmg: 11-21
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=10   -> Requires 10 Curses
+    0x24B Damage Type              a1=7   a2=0    (structural)
+    0x27A Damage                   a1=21  a2=11   -> Dark Dmg: 11-21
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 82  "Scroll of Hunter's Insight"
+  GAME:
+    Your party gains 175% XP from combat. Hunter's Insight ends if your party fails to kill a boss for 5 minutes.
+    Value: 150 gold
+    Use to activate. One use only.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 83  "5 Confessor's Orders"
+  GAME:
+    Instructions from Confessor Isaiah. These commands will never be executed now, but the document may reveal useful information to the right person.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 84  'Jade Wand'
+  GAME:
+    Earth Dmg: 10-19 (Requires 8 Spawning Power)
+    Halves casting time of Earth Magic spells (Chance: 14%)
+    Value: 95 gold
+  OURS (Item.Mods):
+    Requires 8 Spawning Power
+    Halves casting time of Earth Magic spells (Chance: 14%)
+    Earth Dmg: 10-19
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=36  a2=8    -> Requires 8 Spawning Power
+    0x24B Damage Type              a1=11  a2=0    (structural)
+    0x221 Halves Casting (attribut a1=14  a2=9    -> Halves casting time of Earth Magic spells (Chance: 14%)
+    0x27A Damage                   a1=19  a2=10   -> Earth Dmg: 10-19
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 85  'Jade Wand'
+  GAME:
+    Lightning Dmg: 10-20 (Requires 11 Communing)
+  OURS (Item.Mods):
+    Requires 11 Communing
+    Lightning Dmg: 10-20
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=32  a2=11   -> Requires 11 Communing
+    0x24B Damage Type              a1=4   a2=0    (structural)
+    0x27A Damage                   a1=20  a2=10   -> Lightning Dmg: 10-20
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 86  '2 Vabbian Keys'
+  GAME:
+    Value: 600 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 87  '2 Scales'
+  GAME:
+    Common crafting material
+    Value: 6 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 88  "Scroll of Adventurer's Insight"
+  GAME:
+    For 10 minutes your party gains +50% XP from combat.
+    Value: 100 gold
+    Use to activate. One use only.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 89  'Jade Wand'
+  GAME:
+    Fire Dmg: 11-21 (Requires 10 Fire Magic)
+    Improved sale value
+    Value: 126 gold
+  OURS (Item.Mods):
+    Requires 10 Fire Magic
+    Increased Sale Value
+    Fire Dmg: 11-21
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=10  a2=10   -> Requires 10 Fire Magic
+    0x24B Damage Type              a1=5   a2=0    (structural)
+    0x25F Increased Sale Value     a1=0   a2=35   -> Increased Sale Value
+    0x27A Damage                   a1=21  a2=11   -> Fire Dmg: 11-21
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 90  '2 Lockpicks'
+  GAME:
+    Value: 1 platinum, 500 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 91  'Jade Wand'
+  GAME:
+    Fire Dmg: 11-21 (Requires 9 Fire Magic)
+  OURS (Item.Mods):
+    Requires 9 Fire Magic
+    Fire Dmg: 11-21
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=10  a2=9    -> Requires 9 Fire Magic
+    0x24B Damage Type              a1=5   a2=0    (structural)
+    0x27A Damage                   a1=21  a2=11   -> Fire Dmg: 11-21
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 92  '2 Naga Skins'
+  GAME:
+    Value: 60 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 93  "2 Scrolls of Rampager's Insight"
+  GAME:
+    Your party gains double XP from combat. Rampager's Insight ends if your party fails to kill a foe for 30 seconds.
+    Value: 250 gold
+    Use to activate. One use only.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 94  'Keen Oni Talon'
+  GAME:
+    Value: 25 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 95  'Earth Scroll'
+  GAME:
+    Energy +12 (Requires 12 Earth Magic)
+    Unidentified
+  OURS (Item.Mods):
+    Requires 12 Earth Magic
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=9   a2=12   -> Requires 12 Earth Magic
+    0x27C Energy                   a1=12  a2=6    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 96  '215 Golden Eggs'
+  GAME:
+    Uses remaining: 1
+    Use to raise all of your attributes by 1 for 30 minutes. This item cannot be used in PvP.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 97  '47 Birthday Cupcakes'
+  GAME:
+    Uses remaining: 1
+    Use to grant yourself +100 maximum health, +10 maximum energy, and 25% increased movement speed for 30 minutes. This item cannot be used in PvP.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 98  '52 Candy Apples'
+  GAME:
+    Uses remaining: 1
+    Use to grant yourself +100 maximum health and +10 maximum energy for 30 minutes. This item cannot be used in PvP.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 99  '67 Slices of Pumpkin Pie'
+  GAME:
+    Uses remaining: 1
+    Use to increase your attack speed by 25%, and to reduce your skill activation time by 15% for the next 30 minutes. This item cannot be used in PvP.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 100  '57 Candy Corn'
+  GAME:
+    Uses remaining: 1
+    Use to raise all of your attributes by 1 for 30 minutes. This item cannot be used in PvP.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 101  '53 War Supplies'
+  GAME:
+    Uses remaining: 1
+    Trade to the Shining Blade for other items or use to gain +5 armor and +1 Health regeneration for 30 minutes.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 102  "Artificer's Sleek Mask of Superior Fast Casting"
+  GAME:
+    Armor: 60
+    Fast Casting +1 (Stacking)
+    Fast Casting +3 (Non-stacking)
+    Health -75
+    Infused
+    Armor +3 (for each equipped Signet)
+    Value: 68 gold
+  OURS (Item.Mods):
+    Fast Casting +1 (Stacking)
+    Fast Casting +3 (Non-stacking)
+    Health -75
+    Infused
+    Armor: 60
+    Armor +3 (for each equipped Signet)
+  RAW mods (id / args / upgrade_id / status):
+    0x21F Headpiece Attribute      a1=0   a2=1    -> Fast Casting +1 (Stacking)
+    0x240 Upgrade                  a1=1   a2=226  upgrade: ArtificersInsignia
+    0x240 Upgrade                  a1=0   a2=187  upgrade: ?UNKNOWN (uid=0xBB)
+    0x253 Tooltip                  a1=1   a2=119  (structural)
+    0x21E Attribute                a1=0   a2=3    upgrade: MesmerRuneOfSuperiorFastCasting
+    0x253 Tooltip                  a1=1   a2=119  (structural)
+    0x20D Health -                 a1=0   a2=75   -> Health -75
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=196  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 103  "Artificer's Ascalon Attire of Superior Vigor"
+  GAME:
+    Energy +5
+    Armor: 60
+    Health +50 (Non-stacking)
+    Infused
+    Armor +3 (for each equipped Signet)
+    Value: 203 gold
+  OURS (Item.Mods):
+    Infused
+    Energy +5
+    Armor: 60
+    Armor +3 (for each equipped Signet)
+    Health +50 (Non-stacking)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=226  upgrade: ArtificersInsignia
+    0x240 Upgrade                  a1=1   a2=1    upgrade: RuneOfSuperiorVigor
+    0x253 Tooltip                  a1=2   a2=3    (structural)
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22C Energy                   a1=5   a2=0    -> Energy +5
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=196  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 104  "Artificer's Ascalon Gloves of Vitae"
+  GAME:
+    Energy +5
+    Armor: 60
+    Health +10
+    Infused
+    Armor +3 (for each equipped Signet)
+    Value: 68 gold
+  OURS (Item.Mods):
+    Health +10
+    Infused
+    Energy +5
+    Armor: 60
+    Armor +3 (for each equipped Signet)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=226  upgrade: ArtificersInsignia
+    0x240 Upgrade                  a1=2   a2=18   upgrade: RuneOfVitae
+    0x253 Tooltip                  a1=4   a2=37   (structural)
+    0x234 Health                   a1=10  a2=0    -> Health +10
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22C Energy                   a1=5   a2=0    -> Energy +5
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=196  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 105  "Artificer's Ascalon Hose of Vitae"
+  GAME:
+    Armor: 60
+    Health +10
+    Infused
+    Energy recovery +1
+    Armor +3 (for each equipped Signet)
+    Value: 135 gold
+  OURS (Item.Mods):
+    Health +10
+    Infused
+    Energy Recovery +1
+    Armor: 60
+    Armor +3 (for each equipped Signet)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=226  upgrade: ArtificersInsignia
+    0x240 Upgrade                  a1=2   a2=18   upgrade: RuneOfVitae
+    0x253 Tooltip                  a1=4   a2=37   (structural)
+    0x234 Health                   a1=10  a2=0    -> Health +10
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22E Energy Recovery          a1=1   a2=0    -> Energy Recovery +1
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=196  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 106  "Artificer's Ascalon Footwear of Vitae"
+  GAME:
+    Armor: 60
+    Health +10
+    Infused
+    Energy recovery +1
+    Armor +3 (for each equipped Signet)
+    Value: 68 gold
+  OURS (Item.Mods):
+    Health +10
+    Infused
+    Energy Recovery +1
+    Armor: 60
+    Armor +3 (for each equipped Signet)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=226  upgrade: ArtificersInsignia
+    0x240 Upgrade                  a1=2   a2=18   upgrade: RuneOfVitae
+    0x253 Tooltip                  a1=4   a2=37   (structural)
+    0x234 Health                   a1=10  a2=0    -> Health +10
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22E Energy Recovery          a1=1   a2=0    -> Energy Recovery +1
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=196  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 107  'Wingstorm'
+  GAME:
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x239 Halves Recharge (attribu a1=20  a2=2    -> Halves skill recharge of Domination Magic spells (Chance: 20%)
+    0x221 Halves Casting (attribut a1=20  a2=2    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 108  "Droknar's Domination Focus"
+  GAME:
+    Energy +12 (Requires 9 Domination Magic)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Value: 35 gold
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x221 Halves Casting (attribut a1=20  a2=2    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=2    -> Halves skill recharge of Domination Magic spells (Chance: 20%)
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 109  "Prodigy's Shing Jea Attire of Minor Fast Casting"
+  GAME:
+    Energy +5
+    Armor: 60
+    Fast Casting +1 (Non-stacking)
+    Infused
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Value: 203 gold
+  OURS (Item.Mods):
+    Fast Casting +1 (Non-stacking)
+    Infused
+    Energy +5
+    Armor: 60
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=227  upgrade: ProdigysInsignia
+    0x240 Upgrade                  a1=0   a2=175  upgrade: ?UNKNOWN (uid=0xAF)
+    0x253 Tooltip                  a1=1   a2=95   (structural)
+    0x21E Attribute                a1=0   a2=1    upgrade: MesmerRuneOfMinorFastCasting
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22C Energy                   a1=5   a2=0    -> Energy +5
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=198  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 110  "Prodigy's Shing Jea Hose of Vitae"
+  GAME:
+    Armor: 60
+    Health +10
+    Infused
+    Energy recovery +1
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Value: 135 gold
+  OURS (Item.Mods):
+    Health +10
+    Infused
+    Energy Recovery +1
+    Armor: 60
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=227  upgrade: ProdigysInsignia
+    0x240 Upgrade                  a1=2   a2=18   upgrade: RuneOfVitae
+    0x253 Tooltip                  a1=4   a2=37   (structural)
+    0x234 Health                   a1=10  a2=0    -> Health +10
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22E Energy Recovery          a1=1   a2=0    -> Energy Recovery +1
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=198  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 111  "Prodigy's Shing Jea Mask of Superior Domination Magic"
+  GAME:
+    Armor: 60
+    Domination Magic +1 (Stacking)
+    Domination Magic +3 (Non-stacking)
+    Health -75
+    Infused
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Value: 68 gold
+  OURS (Item.Mods):
+    Domination Magic +1 (Stacking)
+    Domination Magic +3 (Non-stacking)
+    Health -75
+    Infused
+    Armor: 60
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Armor +10 (while not affected by an Enchantment Spell)
+  RAW mods (id / args / upgrade_id / status):
+    0x21F Headpiece Attribute      a1=2   a2=1    -> Domination Magic +1 (Stacking)
+    0x240 Upgrade                  a1=1   a2=227  upgrade: ProdigysInsignia
+    0x240 Upgrade                  a1=0   a2=187  upgrade: ?UNKNOWN (uid=0xBB)
+    0x253 Tooltip                  a1=1   a2=119  (structural)
+    0x21E Attribute                a1=2   a2=3    upgrade: ForsakenInsignia
+    0x253 Tooltip                  a1=1   a2=119  (structural)
+    0x20D Health -                 a1=0   a2=75   -> Health -75
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=198  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 112  "Prodigy's Shing Jea Footwear of Vitae"
+  GAME:
+    Armor: 60
+    Health +10
+    Infused
+    Energy recovery +1
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Value: 68 gold
+  OURS (Item.Mods):
+    Health +10
+    Infused
+    Energy Recovery +1
+    Armor: 60
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=227  upgrade: ProdigysInsignia
+    0x240 Upgrade                  a1=2   a2=18   upgrade: RuneOfVitae
+    0x253 Tooltip                  a1=4   a2=37   (structural)
+    0x234 Health                   a1=10  a2=0    -> Health +10
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22E Energy Recovery          a1=1   a2=0    -> Energy Recovery +1
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=198  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 113  "Prodigy's Shing Jea Gloves of Superior Vigor"
+  GAME:
+    Energy +5
+    Armor: 60
+    Health +50 (Non-stacking)
+    Infused
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Value: 68 gold
+  OURS (Item.Mods):
+    Infused
+    Energy +5
+    Armor: 60
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Health +50 (Non-stacking)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=227  upgrade: ProdigysInsignia
+    0x240 Upgrade                  a1=1   a2=1    upgrade: RuneOfSuperiorVigor
+    0x253 Tooltip                  a1=2   a2=3    (structural)
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x22C Energy                   a1=5   a2=0    -> Energy +5
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=198  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 114  '6 Medals of Honor'
+  GAME:
+    A medal given by the Shining Blade to recognize your heroics. It's uncommon, so it must be valuable, right? This item cannot be traded or sold.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 115  "Prodigy's Imposing Mask"
+  GAME:
+    Armor: 60
+    Illusion Magic +1 (Stacking)
+    Infused
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+    Value: 98 gold
+  OURS (Item.Mods):
+    Illusion Magic +1 (Stacking)
+    Infused
+    Armor: 60
+    Armor +5 (while recharging 1 or more skills)
+    Armor +5 (while recharging 3 or more skills)
+    Armor +5 (while recharging 5 or more skills)
+  RAW mods (id / args / upgrade_id / status):
+    0x21F Headpiece Attribute      a1=1   a2=1    -> Illusion Magic +1 (Stacking)
+    0x240 Upgrade                  a1=1   a2=227  upgrade: ProdigysInsignia
+    0x262 Infused                  a1=0   a2=1    -> Infused
+    0x23C Armor                    a1=60  a2=0    -> Armor: 60
+    0x253 Tooltip                  a1=3   a2=198  (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 116  'Armbrace of Truth'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 117  '36 Stolen Sunspear Armor'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 118  '63 Primeval Armor Remnants'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 119  '9 Books of Secrets'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 120  '17 Deldrimor Talismans'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 121  "7 Droknar's Keys"
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 122  '23 Deldrimor Armor Remnants'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 123  '4 Amulets of the Mists'
+  GAME:
+    (no info-string)
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 124  'Expert Salvage Kit'
+  GAME:
+    Uses remaining: 24
+    Use to salvage upgrade components and crafting materials (rare or common) from an item.
+    Value: 192 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 125  'Spiritspeaker'
+  GAME:
+    Lightning Dmg: 11-22 (Requires 9 Channeling Magic)
+    Halves skill recharge of Channeling Magic spells (Chance: 20%)
+    Energy +15
+    Energy regeneration -1
+  OURS (Item.Mods):
+    Requires 9 Channeling Magic
+    Halves skill recharge of Channeling Magic spells (Chance: 20%)
+    Energy +15
+    Energy regeneration -1
+    Lightning Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=34  a2=9    -> Requires 9 Channeling Magic
+    0x24B Damage Type              a1=4   a2=0    (structural)
+    0x239 Halves Recharge (attribu a1=20  a2=34   -> Halves skill recharge of Channeling Magic spells (Chance: 20%)
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x27A Damage                   a1=22  a2=11   -> Lightning Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 126  "Droknar's Inspiration Scepter"
+  GAME:
+    Chaos Dmg: 11-22 (Requires 9 Inspiration Magic)
+    Halves casting time of Inspiration Magic spells (Chance: 20%)
+    Halves skill recharge of Inspiration Magic spells (Chance: 20%)
+    Value: 35 gold
+  OURS (Item.Mods):
+    Requires 9 Inspiration Magic
+    Halves casting time of Inspiration Magic spells (Chance: 20%)
+    Halves skill recharge of Inspiration Magic spells (Chance: 20%)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=3   a2=9    -> Requires 9 Inspiration Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x221 Halves Casting (attribut a1=20  a2=3    -> Halves casting time of Inspiration Magic spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=3    -> Halves skill recharge of Inspiration Magic spells (Chance: 20%)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 127  "Kemil's Scepter"
+  GAME:
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x221 Halves Casting (attribut a1=20  a2=2    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=2    -> Halves skill recharge of Domination Magic spells (Chance: 20%)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 128  "Vanahk's Staff"
+  GAME:
+    Energy +10
+    Dark Dmg: 11-22 (Requires 9 Blood Magic)
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Blood Magic
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Energy +10
+    Health +30 (Non-stacking)
+    Dark Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=4   a2=9    -> Requires 9 Blood Magic
+    0x24B Damage Type              a1=7   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=2   a2=16   upgrade: Adept
+    0x253 Tooltip                  a1=4   a2=32   (structural)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Blood Magic spells (Chance: 20%)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Blood Magic spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Dark Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 129  "Kyril's Fervor"
+  GAME:
+    Energy +10
+    Dark Dmg: 11-22 (Requires 9 Blood Magic)
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Halves skill recharge of spells (Chance: 20%)
+    Enchantments last 20% longer
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Blood Magic
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Halves skill recharge of spells (Chance: 20%)
+    Enchantments last 20% longer
+    Health +30
+    Energy +10
+    Dark Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=4   a2=9    -> Requires 9 Blood Magic
+    0x24B Damage Type              a1=7   a2=0    (structural)
+    0x221 Halves Casting (attribut a1=20  a2=4    -> Halves casting time of Blood Magic spells (Chance: 20%)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=225  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=1   a2=195  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x240 Upgrade                  a1=0   a2=157  upgrade: Hale
+    0x253 Tooltip                  a1=1   a2=58   (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x27A Damage                   a1=22  a2=11   -> Dark Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 130  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 131  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 132  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 133  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 134  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 135  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 136  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 137  'Plaguebinder'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Curses +1 (20% chance while using skills)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Curses
+    Curses +1 (20% chance while using skills)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=7   a2=9    -> Requires 9 Curses
+    0x241 Attribute +1             a1=7   a2=20   -> Curses +1 (20% chance while using skills)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 138  'The Bloodspear'
+  GAME:
+    Piercing Dmg: 14-27 (Requires 9 Spear Mastery)
+    Damage +15% (while Health is above 50%)
+    Life Draining: 3
+    Health regeneration -1
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Spear Mastery
+    Damage +15% (while Health is above 50%)
+    Life Draining: 3
+    Health regeneration -1
+    Health +30 (Non-stacking)
+    Piercing Dmg: 14-27
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=37  a2=9    -> Requires 9 Spear Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=114  upgrade: VampiricMinor
+    0x253 Tooltip                  a1=2   a2=228  (structural)
+    0x252 Life Stealing            a1=3   a2=0    -> Life Draining: 3
+    0x253 Tooltip                  a1=2   a2=228  (structural)
+    0x20E Health Regeneration      a1=0   a2=1    -> Health regeneration -1
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=27  a2=14   -> Piercing Dmg: 14-27
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 139  'Everlasting Ghostly Hero Tonic'
+  GAME:
+    Use to transform yourself into the Ghostly Hero. This item has unlimited uses.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 140  'Miniature M.O.X.'
+  GAME:
+    Use to take out or put away.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 141  'Miniature Bone Dragon'
+  GAME:
+    Use to take out or put away.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 142  'Miniature Eye of Janthir'
+  GAME:
+    Use to take out or put away.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 143  'Prismatic Focus'
+  GAME:
+    Energy +12 (Requires 9 Energy Storage)
+    Halves skill recharge of Energy Storage spells (Chance: 20%)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Energy Storage
+    Halves skill recharge of Energy Storage spells (Chance: 20%)
+    Energy +12
+    Health +30 (Non-stacking)
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=12  a2=9    -> Requires 9 Energy Storage
+    0x239 Halves Recharge (attribu a1=20  a2=12   -> Halves skill recharge of Energy Storage spells (Chance: 20%)
+    0x27C Energy                   a1=12  a2=6    -> Energy +12
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 144  "Snapjaw's Powerstone"
+  GAME:
+    Energy +12 (Requires 9 Energy Storage)
+    Energy +15
+    Energy regeneration -1
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Energy Storage
+    Energy +15
+    Energy regeneration -1
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=12  a2=9    -> Requires 9 Energy Storage
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 145  "Arbor's Earth Staff"
+  GAME:
+    Energy +10
+    Earth Dmg: 11-22 (Requires 9 Earth Magic)
+    Halves casting time of Earth Magic spells (Chance: 20%)
+    Halves skill recharge of spells (Chance: 20%)
+    Earth Magic +1 (20% chance while using skills)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Earth Magic
+    Halves casting time of Earth Magic spells (Chance: 20%)
+    Halves skill recharge of spells (Chance: 20%)
+    Earth Magic +1 (20% chance while using skills)
+    Health +30
+    Energy +10
+    Earth Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=9   a2=9    -> Requires 9 Earth Magic
+    0x24B Damage Type              a1=11  a2=0    (structural)
+    0x221 Halves Casting (attribut a1=20  a2=9    -> Halves casting time of Earth Magic spells (Chance: 20%)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=195  upgrade: OfAttribute
+    0x253 Tooltip                  a1=1   a2=135  (structural)
+    0x241 Attribute +1             a1=9   a2=20   -> Earth Magic +1 (20% chance while using skills)
+    0x240 Upgrade                  a1=0   a2=157  upgrade: Hale
+    0x253 Tooltip                  a1=1   a2=58   (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x27A Damage                   a1=22  a2=11   -> Earth Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 146  "Havok's Shield"
+  GAME:
+    Armor: 16 (Requires 9 Tactics)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Tactics
+    Received physical damage -2 (while in a Stance)
+    Health +30 (Non-stacking)
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=21  a2=9    -> Requires 9 Tactics
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 147  "Havok's Shield"
+  GAME:
+    Armor: 16 (Requires 9 Tactics)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Tactics
+    Received physical damage -2 (while in a Stance)
+    Health +30 (Non-stacking)
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=21  a2=9    -> Requires 9 Tactics
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 148  "Tarlok's Flagon"
+  GAME:
+    Energy +12 (Requires 9 Energy Storage)
+    Energy +15
+    Energy regeneration -1
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Energy Storage
+    Energy +15
+    Energy regeneration -1
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=12  a2=9    -> Requires 9 Energy Storage
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 149  "Inallay's Hornbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Hornbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=4   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 150  "Inallay's Hornbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Hornbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=4   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 151  "Inallay's Hornbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Hornbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=4   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 152  "Inallay's Hornbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Hornbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=4   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 153  "Inallay's Hornbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Hornbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=4   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 154  "Ahvha's Longbow"
+  GAME:
+    Piercing Dmg: 11-17 (Requires 6 Marksmanship)
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Two-handed Longbow
+  OURS (Item.Mods):
+    Requires 6 Marksmanship
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Piercing Dmg: 11-17
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=6    -> Requires 6 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=10   -> Damage +10% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=10  a2=10   -> Armor penetration +10% (Chance: 10%)
+    0x240 Upgrade                  a1=0   a2=233  upgrade: OfMarksmanship
+    0x253 Tooltip                  a1=1   a2=211  (structural)
+    0x241 Attribute +1             a1=25  a2=20   -> Marksmanship +1 (20% chance while using skills)
+    0x27A Damage                   a1=17  a2=11   -> Piercing Dmg: 11-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 155  "Ahvha's Longbow"
+  GAME:
+    Piercing Dmg: 11-17 (Requires 6 Marksmanship)
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Two-handed Longbow
+    Value: 41 gold
+  OURS (Item.Mods):
+    Requires 6 Marksmanship
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Piercing Dmg: 11-17
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=6    -> Requires 6 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=10   -> Damage +10% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=10  a2=10   -> Armor penetration +10% (Chance: 10%)
+    0x240 Upgrade                  a1=0   a2=233  upgrade: OfMarksmanship
+    0x253 Tooltip                  a1=1   a2=211  (structural)
+    0x241 Attribute +1             a1=25  a2=20   -> Marksmanship +1 (20% chance while using skills)
+    0x27A Damage                   a1=17  a2=11   -> Piercing Dmg: 11-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 156  "Ahvha's Longbow"
+  GAME:
+    Piercing Dmg: 11-17 (Requires 6 Marksmanship)
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Two-handed Longbow
+  OURS (Item.Mods):
+    Requires 6 Marksmanship
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Piercing Dmg: 11-17
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=6    -> Requires 6 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=10   -> Damage +10% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=10  a2=10   -> Armor penetration +10% (Chance: 10%)
+    0x240 Upgrade                  a1=0   a2=233  upgrade: OfMarksmanship
+    0x253 Tooltip                  a1=1   a2=211  (structural)
+    0x241 Attribute +1             a1=25  a2=20   -> Marksmanship +1 (20% chance while using skills)
+    0x27A Damage                   a1=17  a2=11   -> Piercing Dmg: 11-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 157  "Ahvha's Longbow"
+  GAME:
+    Piercing Dmg: 11-17 (Requires 6 Marksmanship)
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Two-handed Longbow
+  OURS (Item.Mods):
+    Requires 6 Marksmanship
+    Damage +10% (while Health is above 50%)
+    Armor penetration +10% (Chance: 10%)
+    Marksmanship +1 (20% chance while using skills)
+    Piercing Dmg: 11-17
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=6    -> Requires 6 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=10   -> Damage +10% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=10  a2=10   -> Armor penetration +10% (Chance: 10%)
+    0x240 Upgrade                  a1=0   a2=233  upgrade: OfMarksmanship
+    0x253 Tooltip                  a1=1   a2=211  (structural)
+    0x241 Attribute +1             a1=25  a2=20   -> Marksmanship +1 (20% chance while using skills)
+    0x27A Damage                   a1=17  a2=11   -> Piercing Dmg: 11-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 158  "Chkkr's Flatbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15%
+    Armor -10 (while attacking)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Flatbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15%
+    Armor -10 (while attacking)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=2   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x223 Damage %                 a1=0   a2=15   -> Damage +15%
+    0x201 Armor (while attacking)  a1=0   a2=10   -> Armor -10 (while attacking)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 159  "Razortongue's Recurve Bow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15%
+    Energy -5
+    Life Draining: 5
+    Health regeneration -1
+    Marksmanship +1 (20% chance while using skills)
+    Two-handed Recurve Bow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15%
+    Energy - +5
+    Life Draining: 5
+    Health regeneration -1
+    Marksmanship +1 (20% chance while using skills)
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=3   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x223 Damage %                 a1=0   a2=15   -> Damage +15%
+    0x20B Energy -                 a1=0   a2=5    -> Energy - +5
+    0x240 Upgrade                  a1=0   a2=169  upgrade: VampiricMajor
+    0x253 Tooltip                  a1=1   a2=82   (structural)
+    0x252 Life Stealing            a1=5   a2=0    -> Life Draining: 5
+    0x253 Tooltip                  a1=1   a2=82   (structural)
+    0x20E Health Regeneration      a1=0   a2=1    -> Health regeneration -1
+    0x240 Upgrade                  a1=0   a2=233  upgrade: OfMarksmanship
+    0x253 Tooltip                  a1=1   a2=211  (structural)
+    0x241 Attribute +1             a1=25  a2=20   -> Marksmanship +1 (20% chance while using skills)
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 160  "Elswyth's Recurve Bow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Life Draining: 5
+    Health regeneration -1
+    Health +30
+    Two-handed Recurve Bow
+  OURS (Item.Mods):
+    Damage +15% (while Health is above 50%)
+    Life Draining: 5
+    Health regeneration -1
+    Health +30
+    Piercing Dmg: 5-8
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=3   a2=0    (structural)
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=169  upgrade: VampiricMajor
+    0x253 Tooltip                  a1=1   a2=82   (structural)
+    0x252 Life Stealing            a1=5   a2=0    -> Life Draining: 5
+    0x253 Tooltip                  a1=1   a2=82   (structural)
+    0x20E Health Regeneration      a1=0   a2=1    -> Health regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x248 Damage                   a1=8   a2=5    -> Piercing Dmg: 5-8
+    0x248 Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 161  "Emeju's Longbow"
+  GAME:
+    Piercing Dmg: 12-21 (Requires 6 Marksmanship)
+    Damage +10% (while Health is above 50%)
+    Armor penetration +20% (Chance: 20%)
+    Health +20
+    Two-handed Longbow
+  OURS (Item.Mods):
+    Requires 6 Marksmanship
+    Damage +10% (while Health is above 50%)
+    Armor penetration +20% (Chance: 20%)
+    Health +20 (Non-stacking)
+    Piercing Dmg: 12-21
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=6    -> Requires 6 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=10   -> Damage +10% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x289 Health                   a1=0   a2=20   -> Health +20 (Non-stacking)
+    0x27A Damage                   a1=21  a2=12   -> Piercing Dmg: 12-21
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 162  "Swiftscale's Shortbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while in a Stance)
+    Life Draining: 5
+    Health regeneration -1
+    Health +30
+    Two-handed Shortbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while in a Stance)
+    Life Draining: 5
+    Health regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=0   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x22A Damage (in a stance)     a1=0   a2=15   -> Damage +15% (while in a Stance)
+    0x240 Upgrade                  a1=0   a2=169  upgrade: VampiricMajor
+    0x253 Tooltip                  a1=1   a2=82   (structural)
+    0x252 Life Stealing            a1=5   a2=0    -> Life Draining: 5
+    0x253 Tooltip                  a1=1   a2=82   (structural)
+    0x20E Health Regeneration      a1=0   a2=1    -> Health regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 163  "Tarnok's Recurve Bow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Enchanted)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Two-handed Recurve Bow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Enchanted)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=3   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x226 Damage (while enchanted) a1=0   a2=15   -> Damage +15% (while Enchanted)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=223  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=1   a2=191  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 164  "Gargash's Recurve Bow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Enchanted)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Recurve Bow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Enchanted)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=3   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x226 Damage (while enchanted) a1=0   a2=15   -> Damage +15% (while Enchanted)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 165  'Ironwing Flatbow'
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Flatbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=2   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 166  'Ironwing Flatbow'
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Two-handed Flatbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=2   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=165  upgrade: Zealous
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=1   a2=74   (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=0   a2=218  upgrade: OfFortitude
+    0x253 Tooltip                  a1=1   a2=181  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 167  "Strongroot's Shelter"
+  GAME:
+    Armor: 16 (Requires 9 Strength)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Strength
+    Received physical damage -2 (while in a Stance)
+    Health +30
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=17  a2=9    -> Requires 9 Strength
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 168  'Destructive Shield'
+  GAME:
+    Armor: 16 (Requires 9 Strength)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Strength
+    Received physical damage -2 (while in a Stance)
+    Health +30 (Non-stacking)
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=17  a2=9    -> Requires 9 Strength
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 169  "Droknar's Daggers"
+  GAME:
+    Slashing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+    Value: 35 gold
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30 (Non-stacking)
+    Slashing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=17  a2=7    -> Slashing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 170  "Droknar's Daggers"
+  GAME:
+    Slashing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+    Value: 35 gold
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30 (Non-stacking)
+    Slashing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=17  a2=7    -> Slashing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 171  "Droknar's Daggers"
+  GAME:
+    Slashing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+    Value: 35 gold
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30 (Non-stacking)
+    Slashing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=17  a2=7    -> Slashing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 172  "Darkroot's Daggers"
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Enchanted)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Enchanted)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x226 Damage (while enchanted) a1=0   a2=15   -> Damage +15% (while Enchanted)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 173  "Arius' Sai"
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Energy +5
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Both hands
+  OURS (Item.Mods):
+    Energy +5
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Piercing Dmg: 3-5
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x22D Energy                   a1=0   a2=5    -> Energy +5
+    0x240 Upgrade                  a1=1   a2=52   upgrade: Sundering
+    0x253 Tooltip                  a1=2   a2=104  (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=1   a2=68   upgrade: OfEnchanting
+    0x253 Tooltip                  a1=2   a2=137  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x248 Damage                   a1=5   a2=3    -> Piercing Dmg: 3-5
+    0x248 Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 174  'Daggers of Xuekao'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Enchanted)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Enchanted)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x226 Damage (while enchanted) a1=0   a2=15   -> Damage +15% (while Enchanted)
+    0x240 Upgrade                  a1=1   a2=52   upgrade: Sundering
+    0x253 Tooltip                  a1=2   a2=104  (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=1   a2=68   upgrade: OfEnchanting
+    0x253 Tooltip                  a1=2   a2=137  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 175  'Storm Ember'
+  GAME:
+    Energy +12 (Requires 12 Fire Magic)
+    Inscription: "Run For Your Life!"
+    Received physical damage -2 (while in a Stance)
+    Value: 284 gold
+  OURS (Item.Mods):
+    Requires 12 Fire Magic
+    Received physical damage -2 (while in a Stance)
+    Energy +12
+    Inscription: "Run For Your Life"
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=10  a2=12   -> Requires 12 Fire Magic
+    0x240 Upgrade                  a1=1   a2=213  upgrade: RunForYourLife
+    0x253 Tooltip                  a1=3   a2=170  (structural)
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x27C Energy                   a1=12  a2=6    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 176  'Daggers of Xuekao'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Enchanted)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Enchanted)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x226 Damage (while enchanted) a1=0   a2=15   -> Damage +15% (while Enchanted)
+    0x240 Upgrade                  a1=1   a2=52   upgrade: Sundering
+    0x253 Tooltip                  a1=2   a2=104  (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=1   a2=68   upgrade: OfEnchanting
+    0x253 Tooltip                  a1=2   a2=137  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 177  'Ceremonial Daggers'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 178  'Ceremonial Daggers'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 179  'Ceremonial Daggers'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 3-5
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x248 Damage                   a1=5   a2=3    -> Piercing Dmg: 3-5
+    0x248 Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 180  'Ceremonial Daggers'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 181  'Ceremonial Daggers'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 182  'Ceremonial Daggers'
+  GAME:
+    Piercing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Health +30
+    Piercing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=50   upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=100  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=69   upgrade: OfFortitude
+    0x253 Tooltip                  a1=2   a2=139  (structural)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27A Damage                   a1=17  a2=7    -> Piercing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 183  'Straw Effigy'
+  GAME:
+    Energy +12 (Requires 9 Death Magic)
+    Halves skill recharge of Death Magic spells (Chance: 20%)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Death Magic
+    Halves skill recharge of Death Magic spells (Chance: 20%)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=5   a2=9    -> Requires 9 Death Magic
+    0x239 Halves Recharge (attribu a1=20  a2=5    -> Halves skill recharge of Death Magic spells (Chance: 20%)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 184  'Straw Effigy'
+  GAME:
+    Energy +12 (Requires 9 Domination Magic)
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of Domination Magic spells (Chance: 20%)
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x239 Halves Recharge (attribu a1=20  a2=2    -> Halves skill recharge of Domination Magic spells (Chance: 20%)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 185  "Strongroot's Shelter"
+  GAME:
+    Armor: 16 (Requires 9 Strength)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Strength
+    Received physical damage -2 (while in a Stance)
+    Health +30
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=17  a2=9    -> Requires 9 Strength
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 186  "Strongroot's Shelter"
+  GAME:
+    Armor: 16 (Requires 9 Strength)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Strength
+    Received physical damage -2 (while in a Stance)
+    Health +30
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=17  a2=9    -> Requires 9 Strength
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 187  "Strongroot's Shelter"
+  GAME:
+    Armor: 16 (Requires 9 Strength)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Strength
+    Received physical damage -2 (while in a Stance)
+    Health +30
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=17  a2=9    -> Requires 9 Strength
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 188  "Strongroot's Shelter"
+  GAME:
+    Armor: 16 (Requires 9 Strength)
+    Received physical damage -2 (while in a Stance)
+    Health +30
+  OURS (Item.Mods):
+    Requires 9 Strength
+    Received physical damage -2 (while in a Stance)
+    Health +30
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=17  a2=9    -> Requires 9 Strength
+    0x20A Reduce Phys Damage (stan a1=0   a2=2    -> Received physical damage -2 (while in a Stance)
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 189  'Shield Handle of Devotion'
+  GAME:
+    Upgrade component
+    Health +43 (while Enchanted)
+    Attaches to: Shield
+    Use to apply to another item.
+  OURS (Item.Mods):
+    Health +43 (while Enchanted)
+  RAW mods (id / args / upgrade_id / status):
+    0x25B Target Item Type         a1=24  a2=0    (structural)
+    0x240 Upgrade                  a1=1   a2=98   upgrade: OfDevotion
+    0x253 Tooltip                  a1=2   a2=197  (structural)
+    0x236 Health (while enchanted) a1=43  a2=0    -> Health +43 (while Enchanted)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 190  'Shield Handle of Devotion'
+  GAME:
+    Upgrade component
+    Health +44 (while Enchanted)
+    Attaches to: Shield
+    Use to apply to another item.
+  OURS (Item.Mods):
+    Health +44 (while Enchanted)
+  RAW mods (id / args / upgrade_id / status):
+    0x25B Target Item Type         a1=24  a2=0    (structural)
+    0x240 Upgrade                  a1=1   a2=98   upgrade: OfDevotion
+    0x253 Tooltip                  a1=2   a2=197  (structural)
+    0x236 Health (while enchanted) a1=44  a2=0    -> Health +44 (while Enchanted)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 191  "Droknar's Command Shield"
+  GAME:
+    Armor: 16 (Requires 9 Command)
+    Received physical damage -5 (Chance: 20%)
+    Health +30
+    Value: 35 gold
+  OURS (Item.Mods):
+    Requires 9 Command
+    Received physical damage -5 (Chance: 20%)
+    Health +30 (Non-stacking)
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=38  a2=9    -> Requires 9 Command
+    0x207 Receive Less Damage      a1=20  a2=5    -> Received physical damage -5 (Chance: 20%)
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 192  'Tengu Soul Reaping Staff'
+  GAME:
+    Energy +10
+    Dark Dmg: 11-22 (Requires 9 Soul Reaping)
+    Halves skill recharge of spells (Chance: 20%)
+    Damage +20%
+    Inscription: None
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Soul Reaping
+    Halves skill recharge of spells (Chance: 20%)
+    Energy +10
+    Dark Dmg: 11-22
+    Damage +20%
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=6   a2=9    -> Requires 9 Soul Reaping
+    0x24B Damage Type              a1=7   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x27A Damage                   a1=22  a2=11   -> Dark Dmg: 11-22
+    0x249 Damage %                 a1=120 a2=0    -> Damage +20%
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 193  "Thunderfist's Brass Knuckles"
+  GAME:
+    Slashing Dmg: 7-17 (Requires 9 Dagger Mastery)
+    Inscription: None
+    Both hands
+  OURS (Item.Mods):
+    Requires 9 Dagger Mastery
+    Slashing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=9    -> Requires 9 Dagger Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x27A Damage                   a1=17  a2=7    -> Slashing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 194  'Totem Axe'
+  GAME:
+    Slashing Dmg: 6-28 (Requires 9 Axe Mastery)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+  OURS (Item.Mods):
+    Requires 9 Axe Mastery
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+    Slashing Dmg: 6-28
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=18  a2=9    -> Requires 9 Axe Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x240 Upgrade                  a1=0   a2=171  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=86   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=222  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=1   a2=189  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x22D Energy                   a1=0   a2=5    -> Energy +5
+    0x27A Damage                   a1=28  a2=6    -> Slashing Dmg: 6-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 195  'Totem Axe'
+  GAME:
+    Slashing Dmg: 6-28 (Requires 9 Axe Mastery)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+  OURS (Item.Mods):
+    Requires 9 Axe Mastery
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+    Slashing Dmg: 6-28
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=18  a2=9    -> Requires 9 Axe Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x240 Upgrade                  a1=0   a2=171  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=86   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=222  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=1   a2=189  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x22D Energy                   a1=0   a2=5    -> Energy +5
+    0x27A Damage                   a1=28  a2=6    -> Slashing Dmg: 6-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 196  'Totem Axe'
+  GAME:
+    Slashing Dmg: 6-28 (Requires 9 Axe Mastery)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+  OURS (Item.Mods):
+    Requires 9 Axe Mastery
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+    Slashing Dmg: 6-28
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=18  a2=9    -> Requires 9 Axe Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x240 Upgrade                  a1=0   a2=171  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=86   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=222  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=1   a2=189  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x22D Energy                   a1=0   a2=5    -> Energy +5
+    0x27A Damage                   a1=28  a2=6    -> Slashing Dmg: 6-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 197  'Totem Axe'
+  GAME:
+    Slashing Dmg: 6-28 (Requires 9 Axe Mastery)
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+  OURS (Item.Mods):
+    Requires 9 Axe Mastery
+    Armor penetration +20% (Chance: 20%)
+    Enchantments last 20% longer
+    Energy +5
+    Slashing Dmg: 6-28
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=18  a2=9    -> Requires 9 Axe Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x240 Upgrade                  a1=0   a2=171  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=86   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=222  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=1   a2=189  (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x22D Energy                   a1=0   a2=5    -> Energy +5
+    0x27A Damage                   a1=28  a2=6    -> Slashing Dmg: 6-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 198  'Accursed Icon'
+  GAME:
+    Energy +12 (Requires 9 Curses)
+    Halves casting time of Curses spells (Chance: 20%)
+    Halves skill recharge of Curses spells (Chance: 20%)
+    Value: 125 gold
+  OURS (Item.Mods):
+    Halves casting time of Curses spells (Chance: 20%)
+    Halves skill recharge of Curses spells (Chance: 20%)
+    Energy +3
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x221 Halves Casting (attribut a1=20  a2=7    -> Halves casting time of Curses spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=7    -> Halves skill recharge of Curses spells (Chance: 20%)
+    0x22C Energy                   a1=3   a2=0    -> Energy +3
+    0x22C Energy                   a1=12  a2=0    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 199  'Grim Cesta'
+  GAME:
+    Energy +6 (Requires 5 Blood Magic)
+    Health -50
+    Energy +3 (while Enchanted)
+    Energy +3 (while Hexed)
+    Energy +5 (while Health is below 40%)
+    Value: 21 gold
+  OURS (Item.Mods):
+    Requires 5 Blood Magic
+    Health -50
+    Energy +3 (while Enchanted)
+    Energy +3 (while Hexed)
+    Energy +5 (while Health is below 40%)
+    Energy +6
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=4   a2=5    -> Requires 5 Blood Magic
+    0x20D Health -                 a1=0   a2=50   -> Health -50
+    0x22F Energy (while enchanted) a1=0   a2=3    -> Energy +3 (while Enchanted)
+    0x232 Energy (while hexed)     a1=0   a2=3    -> Energy +3 (while Hexed)
+    0x231 Energy (health below)    a1=40  a2=5    -> Energy +5 (while Health is below 40%)
+    0x27C Energy                   a1=6   a2=3    -> Energy +6
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 200  'Grim Cesta'
+  GAME:
+    Energy +6 (Requires 5 Blood Magic)
+    Health -50
+    Energy +3 (while Enchanted)
+    Energy +3 (while Hexed)
+    Energy +5 (while Health is below 40%)
+    Value: 28 gold
+  OURS (Item.Mods):
+    Requires 5 Blood Magic
+    Health -50
+    Energy +3 (while Enchanted)
+    Energy +3 (while Hexed)
+    Energy +5 (while Health is below 40%)
+    Energy +6
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=4   a2=5    -> Requires 5 Blood Magic
+    0x20D Health -                 a1=0   a2=50   -> Health -50
+    0x22F Energy (while enchanted) a1=0   a2=3    -> Energy +3 (while Enchanted)
+    0x232 Energy (while hexed)     a1=0   a2=3    -> Energy +3 (while Hexed)
+    0x231 Energy (health below)    a1=40  a2=5    -> Energy +5 (while Health is below 40%)
+    0x27C Energy                   a1=6   a2=3    -> Energy +6
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 201  'Grim Cesta'
+  GAME:
+    Energy +6 (Requires 5 Blood Magic)
+    Health -50
+    Energy +3 (while Enchanted)
+    Energy +3 (while Hexed)
+    Energy +5 (while Health is below 40%)
+  OURS (Item.Mods):
+    Requires 5 Blood Magic
+    Health -50
+    Energy +3 (while Enchanted)
+    Energy +3 (while Hexed)
+    Energy +5 (while Health is below 40%)
+    Energy +6
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=4   a2=5    -> Requires 5 Blood Magic
+    0x20D Health -                 a1=0   a2=50   -> Health -50
+    0x22F Energy (while enchanted) a1=0   a2=3    -> Energy +3 (while Enchanted)
+    0x232 Energy (while hexed)     a1=0   a2=3    -> Energy +3 (while Hexed)
+    0x231 Energy (health below)    a1=40  a2=5    -> Energy +5 (while Health is below 40%)
+    0x27C Energy                   a1=6   a2=3    -> Energy +6
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 202  'Idol'
+  GAME:
+    Energy +12 (Requires 9 Blood Magic)
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Halves skill recharge of Blood Magic spells (Chance: 20%)
+    Value: 125 gold
+  OURS (Item.Mods):
+    Requires 9 Blood Magic
+    Halves casting time of Blood Magic spells (Chance: 20%)
+    Halves skill recharge of Blood Magic spells (Chance: 20%)
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=4   a2=9    -> Requires 9 Blood Magic
+    0x221 Halves Casting (attribut a1=20  a2=4    -> Halves casting time of Blood Magic spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=4    -> Halves skill recharge of Blood Magic spells (Chance: 20%)
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 203  'Hallowed Idol'
+  GAME:
+    Energy +12 (Requires 9 Smiting Prayers)
+    Energy +15
+    Energy regeneration -1
+    Health +30
+    Value: 300 gold
+  OURS (Item.Mods):
+    Energy +15
+    Energy regeneration -1
+    Health +30
+    Energy +3
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x22C Energy                   a1=3   a2=0    -> Energy +3
+    0x22C Energy                   a1=12  a2=0    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 204  'Wand Wrapping of the Monk'
+  GAME:
+    Upgrade component
+    Divine Favor: 5 (if your rank is lower. No effect in PvP.)
+    Attaches to: Rod
+    Value: 26 gold
+    Use to apply to another item.
+  OURS (Item.Mods):
+    Divine Favor: 5
+  RAW mods (id / args / upgrade_id / status):
+    0x25B Target Item Type         a1=22  a2=0    (structural)
+    0x240 Upgrade                  a1=2   a2=42   upgrade: OfTheProfession
+    0x253 Tooltip                  a1=4   a2=85   (structural)
+    0x28A Of the Profession        a1=16  a2=5    -> Divine Favor: 5
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 205  "/.U )'dS2hq^"
+  GAME:
+    Holy Dmg: 11-22 (Requires 9 Smiting Prayers)
+    Halves skill recharge of Smiting Prayers spells (Chance: 20%)
+    Energy +15
+    Energy regeneration -1
+    Value: 109 gold
+  OURS (Item.Mods):
+    Halves skill recharge of Smiting Prayers spells (Chance: 20%)
+    Energy +15
+    Energy regeneration -1
+    Holy Dmg: 2-4
+    Holy Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x24B Damage Type              a1=8   a2=0    (structural)
+    0x239 Halves Recharge (attribu a1=20  a2=14   -> Halves skill recharge of Smiting Prayers spells (Chance: 20%)
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x248 Damage                   a1=4   a2=2    -> Holy Dmg: 2-4
+    0x248 Damage                   a1=22  a2=11   -> Holy Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 206  'Sundering Shortbow of Shelter'
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15% (while Health is above 50%)
+    Armor penetration +20% (Chance: 20%)
+    Armor +7 (vs. physical damage)
+    Two-handed Shortbow
+    Value: 317 gold
+  OURS (Item.Mods):
+    Damage +15% (while Health is above 50%)
+    Armor penetration +20% (Chance: 20%)
+    Armor +7 (vs. physical damage)
+    Piercing Dmg: 7-10
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=0   a2=0    (structural)
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=0   a2=173  upgrade: Sundering
+    0x253 Tooltip                  a1=1   a2=90   (structural)
+    0x23F Armor Penetration        a1=20  a2=20   -> Armor penetration +20% (Chance: 20%)
+    0x240 Upgrade                  a1=0   a2=206  upgrade: OfShelter
+    0x253 Tooltip                  a1=1   a2=157  (structural)
+    0x215 Armor vs. Physical       a1=0   a2=7    -> Armor +7 (vs. physical damage)
+    0x248 Damage                   a1=10  a2=7    -> Piercing Dmg: 7-10
+    0x248 Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 207  'Flame Artifact'
+  GAME:
+    Energy +12 (Requires 9 Fire Magic)
+    Energy +15
+    Energy regeneration -1
+    Health +30
+    Value: 125 gold
+  OURS (Item.Mods):
+    Requires 9 Fire Magic
+    Energy +15
+    Energy regeneration -1
+    Health +30
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=10  a2=9    -> Requires 9 Fire Magic
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x234 Health                   a1=30  a2=0    -> Health +30
+    0x27C Energy                   a1=12  a2=3    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 208  'Fiery Dragon Sword'
+  GAME:
+    Fire Dmg: 15-22 (Requires 9 Swordsmanship)
+    Inscription: "I have the power!"
+    Energy +5
+    Value: 64 gold
+  OURS (Item.Mods):
+    Requires 9 Swordsmanship
+    Energy +5
+    Fire Dmg: 15-22
+    Inscription: "IHave The Power"
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=20  a2=9    -> Requires 9 Swordsmanship
+    0x240 Upgrade                  a1=0   a2=144  upgrade: Fiery
+    0x253 Tooltip                  a1=1   a2=32   (structural)
+    0x24B Damage Type              a1=5   a2=0    (structural)
+    0x240 Upgrade                  a1=1   a2=92   upgrade: IHaveThePower
+    0x253 Tooltip                  a1=2   a2=184  (structural)
+    0x22D Energy                   a1=0   a2=5    -> Energy +5
+    0x27A Damage                   a1=22  a2=15   -> Fire Dmg: 15-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 209  'Fire Wand'
+  GAME:
+    Fire Dmg: 7-13 (Requires 6 Fire Magic)
+    Energy +15
+    Energy regeneration -1
+    Value: 48 gold
+  OURS (Item.Mods):
+    Requires 6 Fire Magic
+    Energy +15
+    Energy regeneration -1
+    Fire Dmg: 7-13
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=10  a2=6    -> Requires 6 Fire Magic
+    0x24B Damage Type              a1=5   a2=0    (structural)
+    0x22D Energy                   a1=0   a2=15   -> Energy +15
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x27A Damage                   a1=13  a2=7    -> Fire Dmg: 7-13
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 210  'Holy Rod'
+  GAME:
+    Fire Dmg: 11-22 (Requires 9 Divine Favor)
+    Halves casting time of Smiting Prayers spells (Chance: 20%)
+    Energy +5 (while Health is above 50%)
+    Damage +20%
+    Value: 208 gold
+  OURS (Item.Mods):
+    Requires 9 Divine Favor
+    Halves casting time of Smiting Prayers spells (Chance: 20%)
+    Energy +5 (while Health is above 50%)
+    Fire Dmg: 11-22
+    Damage +20%
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=16  a2=9    -> Requires 9 Divine Favor
+    0x24B Damage Type              a1=5   a2=0    (structural)
+    0x221 Halves Casting (attribut a1=20  a2=14   -> Halves casting time of Smiting Prayers spells (Chance: 20%)
+    0x230 Energy (health above)    a1=50  a2=5    -> Energy +5 (while Health is above 50%)
+    0x27A Damage                   a1=22  a2=11   -> Fire Dmg: 11-22
+    0x249 Damage %                 a1=120 a2=0    -> Damage +20%
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 211  "Kaykitt's Focus"
+  GAME:
+    Energy +12 (Requires 9 Healing Prayers)
+    Halves casting time of Healing Prayers spells (Chance: 20%)
+    Halves skill recharge of Healing Prayers spells (Chance: 20%)
+  OURS (Item.Mods):
+    Requires 9 Healing Prayers
+    Halves casting time of Healing Prayers spells (Chance: 20%)
+    Halves skill recharge of Healing Prayers spells (Chance: 20%)
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=13  a2=9    -> Requires 9 Healing Prayers
+    0x221 Halves Casting (attribut a1=20  a2=13   -> Halves casting time of Healing Prayers spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=13   -> Halves skill recharge of Healing Prayers spells (Chance: 20%)
+    0x27C Energy                   a1=12  a2=6    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 212  "Kaykitt's Focus"
+  GAME:
+    Energy +12 (Requires 9 Healing Prayers)
+    Halves casting time of Healing Prayers spells (Chance: 20%)
+    Halves skill recharge of Healing Prayers spells (Chance: 20%)
+  OURS (Item.Mods):
+    Requires 9 Healing Prayers
+    Halves casting time of Healing Prayers spells (Chance: 20%)
+    Halves skill recharge of Healing Prayers spells (Chance: 20%)
+    Energy +12
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=13  a2=9    -> Requires 9 Healing Prayers
+    0x221 Halves Casting (attribut a1=20  a2=13   -> Halves casting time of Healing Prayers spells (Chance: 20%)
+    0x239 Halves Recharge (attribu a1=20  a2=13   -> Halves skill recharge of Healing Prayers spells (Chance: 20%)
+    0x27C Energy                   a1=12  a2=6    -> Energy +12
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 213  "Asterius' Scythe"
+  GAME:
+    Slashing Dmg: 9-41 (Requires 9 Scythe Mastery)
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Enchantments last 20% longer
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Scythe Mastery
+    Damage +15% (while Health is above 50%)
+    Energy gain on hit: 1
+    Energy regeneration -1
+    Enchantments last 20% longer
+    Slashing Dmg: 9-41
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=41  a2=9    -> Requires 9 Scythe Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x227 Damage (health above)    a1=50  a2=15   -> Damage +15% (while Health is above 50%)
+    0x240 Upgrade                  a1=1   a2=111  upgrade: Zealous
+    0x253 Tooltip                  a1=2   a2=222  (structural)
+    0x251 Energy Gain on Hit       a1=0   a2=1    -> Energy gain on hit: 1
+    0x253 Tooltip                  a1=2   a2=222  (structural)
+    0x20C Energy Regeneration      a1=0   a2=1    -> Energy regeneration -1
+    0x240 Upgrade                  a1=1   a2=139  upgrade: OfEnchanting
+    0x253 Tooltip                  a1=3   a2=23   (structural)
+    0x22B Enchantment Duration     a1=0   a2=20   -> Enchantments last 20% longer
+    0x27A Damage                   a1=41  a2=9    -> Slashing Dmg: 9-41
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 214  '250 Glacial Stones'
+  GAME:
+    Value: 5 platinum
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 215  '250 Glacial Stones'
+  GAME:
+    Value: 5 platinum
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 216  '250 Glacial Stones'
+  GAME:
+    Value: 5 platinum
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 217  '241 Glacial Stones'
+  GAME:
+    Value: 4 platinum, 820 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 218  '250 Glacial Stones'
+  GAME:
+    Value: 5 platinum
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 219  '250 Glacial Stones'
+  GAME:
+    Value: 5 platinum
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 220  "Morolah's Staff"
+  GAME:
+    Energy +10
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Energy +10
+    Health +30 (Non-stacking)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=2   a2=16   upgrade: Adept
+    0x253 Tooltip                  a1=4   a2=32   (structural)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 221  "Morolah's Staff"
+  GAME:
+    Energy +10
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Energy +10
+    Health +30 (Non-stacking)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=2   a2=16   upgrade: Adept
+    0x253 Tooltip                  a1=4   a2=32   (structural)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 222  "Morolah's Staff"
+  GAME:
+    Energy +10
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Energy +10
+    Health +30 (Non-stacking)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=2   a2=16   upgrade: Adept
+    0x253 Tooltip                  a1=4   a2=32   (structural)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 223  "Morolah's Staff"
+  GAME:
+    Energy +10
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Energy +10
+    Health +30 (Non-stacking)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=2   a2=16   upgrade: Adept
+    0x253 Tooltip                  a1=4   a2=32   (structural)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 224  "Morolah's Staff"
+  GAME:
+    Energy +10
+    Chaos Dmg: 11-22 (Requires 9 Domination Magic)
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Health +30
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Domination Magic
+    Halves skill recharge of spells (Chance: 20%)
+    Halves casting time of Domination Magic spells (Chance: 20%)
+    Energy +10
+    Health +30 (Non-stacking)
+    Chaos Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=2   a2=9    -> Requires 9 Domination Magic
+    0x24B Damage Type              a1=6   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x240 Upgrade                  a1=2   a2=16   upgrade: Adept
+    0x253 Tooltip                  a1=4   a2=32   (structural)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x280 Halves Casting (item att a1=20  a2=0    -> Halves casting time of Domination Magic spells (Chance: 20%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=30   -> Health +30 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Chaos Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 225  "Chehbaba's Longbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15%
+    Armor -10 (while attacking)
+    Lengthens Crippled duration on foes by 33% (Stacking)
+    Armor +7 (vs. physical damage)
+    Two-handed Longbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15%
+    Armor -10 (while attacking)
+    Lengthens Crippled duration on foes by 33% (Stacking)
+    Armor +7 (vs. physical damage)
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x223 Damage %                 a1=0   a2=15   -> Damage +15%
+    0x201 Armor (while attacking)  a1=0   a2=10   -> Armor -10 (while attacking)
+    0x240 Upgrade                  a1=1   a2=72   upgrade: Crippling
+    0x253 Tooltip                  a1=2   a2=144  (structural)
+    0x246 Lengthens Condition      a1=1   a2=225  -> Lengthens Crippled duration on foes by 33% (Stacking)
+    0x240 Upgrade                  a1=0   a2=206  upgrade: OfShelter
+    0x253 Tooltip                  a1=1   a2=157  (structural)
+    0x215 Armor vs. Physical       a1=0   a2=7    -> Armor +7 (vs. physical damage)
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 226  'Ranger Tome'
+  GAME:
+    Uses remaining: 1
+    Use to learn any non-elite Ranger skill that is already unlocked on your account while in a town or outpost.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 227  '250 Piles of Glittering Dust'
+  GAME:
+    Common crafting material
+    Value: 750 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 228  '179 Bolts of Cloth'
+  GAME:
+    Common crafting material
+    Value: 537 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 229  "Banor's Sacred Branch"
+  GAME:
+    Energy +10
+    Holy Dmg: 11-22 (Requires 9 Protection Prayers)
+    Halves skill recharge of spells (Chance: 20%)
+    Energy +5 (while Health is above 50%)
+    Health +60
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Protection Prayers
+    Halves skill recharge of spells (Chance: 20%)
+    Energy +5 (while Health is above 50%)
+    Energy +10
+    Health +60 (Non-stacking)
+    Holy Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=15  a2=9    -> Requires 9 Protection Prayers
+    0x24B Damage Type              a1=8   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x230 Energy (health above)    a1=50  a2=5    -> Energy +5 (while Health is above 50%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=60   -> Health +60 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Holy Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 230  '244 Iron Ingots'
+  GAME:
+    Common crafting material
+    Value: 1 platinum, 220 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 231  '250 Wood Planks'
+  GAME:
+    Common crafting material
+    Value: 1 platinum
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 232  '163 Tanned Hide Squares'
+  GAME:
+    Common crafting material
+    Value: 489 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 233  'Passage Scroll to the Underworld'
+  GAME:
+    Use to teleport your party to the Underworld. This item can only be used in Temple of the Ages, Zin Ku Corridor, Chantry of Secrets, or Embark Beach.
+    Value: 500 gold
+    Use to activate. One use only.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 234  "Banor's Sacred Branch"
+  GAME:
+    Energy +10
+    Holy Dmg: 11-22 (Requires 9 Protection Prayers)
+    Halves skill recharge of spells (Chance: 20%)
+    Energy +5 (while Health is above 50%)
+    Health +60
+    Two-handed
+  OURS (Item.Mods):
+    Requires 9 Protection Prayers
+    Halves skill recharge of spells (Chance: 20%)
+    Energy +5 (while Health is above 50%)
+    Energy +10
+    Health +60 (Non-stacking)
+    Holy Dmg: 11-22
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=15  a2=9    -> Requires 9 Protection Prayers
+    0x24B Damage Type              a1=8   a2=0    (structural)
+    0x23A Halves Recharge          a1=20  a2=0    -> Halves skill recharge of spells (Chance: 20%)
+    0x230 Energy (health above)    a1=50  a2=5    -> Energy +5 (while Health is above 50%)
+    0x22C Energy                   a1=10  a2=0    -> Energy +10
+    0x289 Health                   a1=0   a2=60   -> Health +60 (Non-stacking)
+    0x27A Damage                   a1=22  a2=11   -> Holy Dmg: 11-22
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 235  'Vial of Dye [Yellow]'
+  GAME:
+    Value: 1 gold
+    Use to apply to another item.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 236  '31 Granite Slabs'
+  GAME:
+    Common crafting material
+    Value: 93 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 237  "Scroll of Hero's Insight"
+  GAME:
+    For 10 minutes your party gains double XP from combat.
+    Value: 400 gold
+    Use to activate. One use only.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 238  '48 Chitin Fragments'
+  GAME:
+    Common crafting material
+    Value: 144 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 239  '104 Scales'
+  GAME:
+    Common crafting material
+    Value: 312 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 240  '4 Warrior Tomes'
+  GAME:
+    Uses remaining: 1
+    Use to learn any non-elite Warrior skill that is already unlocked on your account while in a town or outpost.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 241  '185 Bones'
+  GAME:
+    Common crafting material
+    Value: 555 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 242  'Monstrous Claw'
+  GAME:
+    Rare crafting material
+    Value: 100 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 243  '32 Feathers'
+  GAME:
+    Common crafting material
+    Value: 96 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 244  '173 Piles of Glittering Dust'
+  GAME:
+    Common crafting material
+    Value: 519 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 245  '25 Plant Fibers'
+  GAME:
+    Common crafting material
+    Value: 75 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 246  'Passage Scroll to the Fissure of Woe'
+  GAME:
+    Use to teleport your party to the Fissure of Woe. This item can only be used in Temple of the Ages, Zin Ku Corridor, Chantry of Secrets, or Embark Beach.
+    Value: 500 gold
+    Use to activate. One use only.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 247  '4 Necromancer Tomes'
+  GAME:
+    Uses remaining: 1
+    Use to learn any non-elite Necromancer skill that is already unlocked on your account while in a town or outpost.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 248  '13 Stolen Provisions'
+  GAME:
+    Value: 390 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 249  '9 Rot Wallow Tusks'
+  GAME:
+    Value: 225 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 250  '2 Bone Charms'
+  GAME:
+    Value: 50 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 251  '6 Naga Skins'
+  GAME:
+    Value: 180 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 252  'Survivor Outcast Bracers of Superior Marksmanship'
+  GAME:
+    Salvage item
+    Armor: 40
+    Health +15 (on chest armor)
+    Health +10 (on leg armor)
+    Health +5 (on other armor)
+    Marksmanship +3 (Non-stacking)
+    Health -75
+    Value: 208 gold
+    Use Salvage Kits, to produce crafting materials and upgrade components.
+  OURS (Item.Mods):
+    Marksmanship +3 (Non-stacking)
+    Health -75
+    Armor: 40
+    Health +15 (on chest armor)
+    Health +10 (on leg armor)
+    Health +5 (on other armor)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=230  upgrade: SurvivorInsignia
+    0x253 Tooltip                  a1=3   a2=204  (structural)
+    0x240 Upgrade                  a1=0   a2=192  upgrade: ?UNKNOWN (uid=0xC0)
+    0x253 Tooltip                  a1=1   a2=129  (structural)
+    0x21E Attribute                a1=25  a2=3    upgrade: RangerRuneOfSuperiorMarksmanship
+    0x253 Tooltip                  a1=1   a2=129  (structural)
+    0x20D Health -                 a1=0   a2=75   -> Health -75
+    0x23C Armor                    a1=40  a2=0    -> Armor: 40
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 253  'Crippling Hooked Daggers of Shelter'
+  GAME:
+    Slashing Dmg: 7-17 (Requires 10 Dagger Mastery)
+    Damage +19% (while Health is below 50%)
+    Lengthens Crippled duration on foes by 33% (Stacking)
+    Armor +7 (vs. physical damage)
+    Both hands
+    Value: 208 gold
+  OURS (Item.Mods):
+    Requires 10 Dagger Mastery
+    Damage +19% (while Health is below 50%)
+    Lengthens Crippled duration on foes by 33% (Stacking)
+    Armor +7 (vs. physical damage)
+    Slashing Dmg: 7-17
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=29  a2=10   -> Requires 10 Dagger Mastery
+    0x24B Damage Type              a1=2   a2=0    (structural)
+    0x228 Damage (health below)    a1=50  a2=19   -> Damage +19% (while Health is below 50%)
+    0x240 Upgrade                  a1=1   a2=54   upgrade: Crippling
+    0x253 Tooltip                  a1=2   a2=108  (structural)
+    0x246 Lengthens Condition      a1=1   a2=225  -> Lengthens Crippled duration on foes by 33% (Stacking)
+    0x240 Upgrade                  a1=1   a2=67   upgrade: OfShelter
+    0x253 Tooltip                  a1=2   a2=135  (structural)
+    0x215 Armor vs. Physical       a1=0   a2=7    -> Armor +7 (vs. physical damage)
+    0x27A Damage                   a1=17  a2=7    -> Slashing Dmg: 7-17
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 254  "Scout's Yeti Plating of Superior Shadow Arts"
+  GAME:
+    Salvage item
+    Armor: 40
+    Shadow Arts +3 (Non-stacking)
+    Health -75
+    Armor +10 (while using a Preparation)
+    Value: 268 gold
+    Use Salvage Kits, to produce crafting materials and upgrade components.
+  OURS (Item.Mods):
+    Shadow Arts +3 (Non-stacking)
+    Health -75
+    Armor: 40
+    Armor +10 (while using a Preparation)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=2   a2=1    upgrade: ScoutsInsignia
+    0x240 Upgrade                  a1=1   a2=61   upgrade: ?UNKNOWN (uid=0x13D)
+    0x253 Tooltip                  a1=2   a2=123  (structural)
+    0x21E Attribute                a1=31  a2=3    upgrade: AssassinRuneOfSuperiorShadowArts
+    0x253 Tooltip                  a1=2   a2=123  (structural)
+    0x20D Health -                 a1=0   a2=75   -> Health -75
+    0x23C Armor                    a1=40  a2=0    -> Armor: 40
+    0x253 Tooltip                  a1=4   a2=2    (structural)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 255  'Keen Oni Talon'
+  GAME:
+    Value: 25 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 256  'Emblazoned Defender'
+  GAME:
+    Armor: 16 (Requires 12 Tactics)
+    Armor +10 (vs. Earth damage)
+    Value: 232 gold
+  OURS (Item.Mods):
+    Requires 12 Tactics
+    Armor +10 (vs. Earth damage)
+    Armor: 16
+  RAW mods (id / args / upgrade_id / status):
+    0x279 Requirement              a1=21  a2=12   -> Requires 12 Tactics
+    0x211 Armor vs. Damage         a1=11  a2=10   -> Armor +10 (vs. Earth damage)
+    0x27B Armor                    a1=16  a2=8    -> Armor: 16
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 257  'Pyrebound Naga Trappings of Superior Deadly Arts'
+  GAME:
+    Salvage item
+    Armor: 40
+    Deadly Arts +3 (Non-stacking)
+    Health -75
+    Armor +15 (vs. Fire damage)
+    Value: 204 gold
+    Use Salvage Kits, to produce crafting materials and upgrade components.
+  OURS (Item.Mods):
+    Deadly Arts +3 (Non-stacking)
+    Health -75
+    Armor: 40
+    Armor +15 (vs. Fire damage)
+  RAW mods (id / args / upgrade_id / status):
+    0x240 Upgrade                  a1=1   a2=254  upgrade: PyreboundInsignia
+    0x240 Upgrade                  a1=1   a2=61   upgrade: ?UNKNOWN (uid=0x13D)
+    0x253 Tooltip                  a1=2   a2=123  (structural)
+    0x21E Attribute                a1=30  a2=3    upgrade: AssassinRuneOfSuperiorDeadlyArts
+    0x253 Tooltip                  a1=2   a2=123  (structural)
+    0x20D Health -                 a1=0   a2=75   -> Health -75
+    0x23C Armor                    a1=40  a2=0    -> Armor: 40
+    0x253 Tooltip                  a1=3   a2=252  (structural)
+    0x211 Armor vs. Damage         a1=5   a2=15   -> Armor +15 (vs. Fire damage)
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 258  'Elite Ranger Tome'
+  GAME:
+    Uses remaining: 1
+    Use to learn any elite Ranger skill that is already unlocked on your account while in a town or outpost.
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 259  'Monstrous Fang'
+  GAME:
+    Rare crafting material
+    Value: 100 gold
+  OURS (Item.Mods):
+    (no mods)
+  RAW mods (id / args / upgrade_id / status):
+    0x000 Empty                    a1=0   a2=0    (structural)
+------------------------------------------------------------------------------
+ITEM 260  "Chehbaba's Longbow"
+  GAME:
+    Piercing Dmg: 15-28 (Requires 9 Marksmanship)
+    Damage +15%
+    Armor -10 (while attacking)
+    Lengthens Crippled duration on foes by 33% (Stacking)
+    Armor +7 (vs. physical damage)
+    Two-handed Longbow
+  OURS (Item.Mods):
+    Requires 9 Marksmanship
+    Damage +15%
+    Armor -10 (while attacking)
+    Lengthens Crippled duration on foes by 33% (Stacking)
+    Armor +7 (vs. physical damage)
+    Piercing Dmg: 15-28
+  RAW mods (id / args / upgrade_id / status):
+    0x261 Bow Type                 a1=1   a2=0    (structural)
+    0x279 Requirement              a1=25  a2=9    -> Requires 9 Marksmanship
+    0x24B Damage Type              a1=1   a2=0    (structural)
+    0x223 Damage %                 a1=0   a2=15   -> Damage +15%
+    0x201 Armor (while attacking)  a1=0   a2=10   -> Armor -10 (while attacking)
+    0x240 Upgrade                  a1=1   a2=72   upgrade: Crippling
+    0x253 Tooltip                  a1=2   a2=144  (structural)
+    0x246 Lengthens Condition      a1=1   a2=225  -> Lengthens Crippled duration on foes by 33% (Stacking)
+    0x240 Upgrade                  a1=0   a2=206  upgrade: OfShelter
+    0x253 Tooltip                  a1=1   a2=157  (structural)
+    0x215 Armor vs. Physical       a1=0   a2=7    -> Armor +7 (vs. physical damage)
+    0x27A Damage                   a1=28  a2=15   -> Piercing Dmg: 15-28
+    0x000 Empty                    a1=0   a2=0    (structural)

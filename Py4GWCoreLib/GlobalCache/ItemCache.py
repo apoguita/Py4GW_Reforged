@@ -198,9 +198,9 @@ class ItemCache:
         self.Properties = self._Properties(self)
         self.Type = self._Type(self)
         self.Usage = self._Usage(self)
-        self.Customization = self._Customization(self)
-        self.Trade = self._Trade(self)
-        
+        self.Mods = self._Mods(self)
+        self.Dye = self._Dye(self)
+
     def _update_cache(self):
         now = time.time() * 1000
         for item_id in list(self.name_requested):
@@ -400,7 +400,43 @@ class ItemCache:
             if item is None:
                 return 0
             return item.interaction
-        
+
+        def IsInscription(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_inscription) if item is not None else False
+
+        def IsInscribable(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_inscribable) if item is not None else False
+
+        def IsPrefixUpgradable(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_prefix_upgradable) if item is not None else False
+
+        def IsSuffixUpgradable(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_suffix_upgradable) if item is not None else False
+
+        def IsStackable(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return (item.interaction & 0x80000) != 0 if item is not None else False
+
+        def IsSparkly(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_sparkly) if item is not None else False
+
+        def GetItemFormula(self, item_id: int):
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return item.item_formula if item is not None else 0
+
+        def IsOfferedInTrade(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_offered_in_trade) if item is not None else False
+
+        def IsTradable(self, item_id: int) -> bool:
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return bool(item.is_tradable) if item is not None else False
+
     class _Type:
         def __init__(self, parent):
             self._parent = parent
@@ -527,115 +563,49 @@ class ItemCache:
                 return False
             return item.is_identified
         
-    class _Customization:
+    class _Mods:
+        """Cached raw-modifier access (replaces the deleted _Customization.Modifiers)."""
         def __init__(self, parent):
             self._parent = parent
-            self.Modifiers = self._Modifiers(parent)
-        
-        def IsInscription(self, item_id: int) -> bool:
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_inscription   
-        
-        def IsInscribable(self, item_id: int) -> bool:
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_inscribable
-        
-        def IsPrefixUpgradable(self, item_id: int) -> bool:
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_prefix_upgradable
-        
-        def IsSuffixUpgradable(self, item_id: int) -> bool:
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_suffix_upgradable
-        
-        class _Modifiers:
-            def __init__(self, parent):
-                self._parent = parent
-            
-            def GetModifierCount(self, item_id):
-                item = self._parent.raw_item_array.get_item_by_id(item_id)
-                if item is None:
-                    return 0
-                return len(item.modifiers)
-            
-            def GetModifiers(self, item_id):
-                item = self._parent.raw_item_array.get_item_by_id(item_id)
-                if item is None:
-                    return []
-                return item.modifiers
-        
-            def ModifierExists(self, item_id, mod_id):
-                item = self._parent.raw_item_array.get_item_by_id(item_id)
-                if item is None:
-                    return False
-                for mod in item.modifiers:
-                    if mod.GetIdentifier() == mod_id:
-                        return True
-                return False
 
-            def GetModifierValues(self, item_id,identifier_lookup):
-                item = self._parent.raw_item_array.get_item_by_id(item_id)
-                if item is None:
-                    return None, None, None
-                for modifier in item.modifiers:
-                    if modifier.GetIdentifier() == identifier_lookup:
-                        arg = modifier.GetArg()
-                        arg1 = modifier.GetArg1()
-                        arg2 = modifier.GetArg2()
+        def GetModifiers(self, item_id):
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return item.modifiers if item is not None else []
 
-                        return arg, arg1, arg2
+        def GetModifierCount(self, item_id):
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            return len(item.modifiers) if item is not None else 0
 
+        def ModifierExists(self, item_id, mod_id):
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            if item is None:
+                return False
+            for mod in item.modifiers:
+                if mod.GetIdentifier() == mod_id:
+                    return True
+            return False
+
+        def GetModifierValues(self, item_id, identifier_lookup):
+            item = self._parent.raw_item_array.get_item_by_id(item_id)
+            if item is None:
                 return None, None, None
-        
-        def GetDyeInfo(self, item_id):
+            for modifier in item.modifiers:
+                if modifier.GetIdentifier() == identifier_lookup:
+                    return modifier.GetArg(), modifier.GetArg1(), modifier.GetArg2()
+            return None, None, None
+
+    class _Dye:
+        """Cached dye reads (replaces the deleted _Customization.GetDyeInfo)."""
+        def __init__(self, parent):
+            self._parent = parent
+
+        def GetInfo(self, item_id):
             item = self._parent.raw_item_array.get_item_by_id(item_id)
             if item is None:
                 return PyItem.PyItem(item_id).dye_info
             return item.dye_info
-        
-        def GetItemFormula(self, item_id):
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return 0
-            return item.item_formula
-        
-        def IsStackable(self, item_id):
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return (item.interaction & 0x80000) != 0
-        
-        def IsSparkly(self, item_id):
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_sparkly
-        
-    class _Trade:
-        def __init__(self, parent):
-            self._parent = parent
-        
-        def IsOfferedInTrade(self, item_id: int) -> bool:
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_offered_in_trade
-        
-        def IsTradable(self, item_id: int) -> bool:
-            item = self._parent.raw_item_array.get_item_by_id(item_id)
-            if item is None:
-                return False
-            return item.is_tradable
-        
-        
+
+
 class ItemArray:
     _raw_item_cache: RawItemCache = RawItemCache()
     

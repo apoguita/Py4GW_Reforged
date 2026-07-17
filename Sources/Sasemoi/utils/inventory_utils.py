@@ -113,7 +113,7 @@ def filter_valuable_inscription_type(item_id: int) -> bool:
     if item_type_int not in desired_types:
         return False
 
-    modifiers = Item.Customization.Modifiers.GetModifiers(item_id)
+    modifiers = Item.Mods.GetModifiers(item_id)
 
     # Loop over modifiers
     for mod in modifiers:

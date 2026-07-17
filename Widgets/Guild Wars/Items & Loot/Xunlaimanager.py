@@ -1046,11 +1046,11 @@ def _collect_storage_item_entries(available_storage_bags):
 			quantity = _get_item_quantity(item)
 			if quantity <= 0:
 				quantity = 1
-			is_stackable = GLOBAL_CACHE.Item.Customization.IsStackable(item.item_id)
+			is_stackable = GLOBAL_CACHE.Item.Properties.IsStackable(item.item_id)
 			dye_key = None
 			if model_id == ModelID.Vial_Of_Dye.value:
 				try:
-					dye_info = GLOBAL_CACHE.Item.Customization.GetDyeInfo(item.item_id)
+					dye_info = GLOBAL_CACHE.Item.Dye.GetInfo(item.item_id)
 					dye_key = int(dye_info.dye1.ToInt())
 				except Exception:
 					dye_key = None

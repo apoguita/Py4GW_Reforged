@@ -6405,7 +6405,7 @@ try:
             source_is_stackable = True
             if source_item_id > 0:
                 try:
-                    source_is_stackable = bool(Item.Customization.IsStackable(int(source_item_id)))
+                    source_is_stackable = bool(Item.Properties.IsStackable(int(source_item_id)))
                 except Exception:
                     source_is_stackable = True
 
@@ -6696,7 +6696,7 @@ try:
                     continue
 
                 try:
-                    is_stackable = bool(Item.Customization.IsStackable(int(source_item_id)))
+                    is_stackable = bool(Item.Properties.IsStackable(int(source_item_id)))
                 except Exception:
                     is_stackable = True
 
@@ -6789,7 +6789,7 @@ try:
                 source_qty = 1
 
             try:
-                is_stackable = bool(Item.Customization.IsStackable(int(source_item_id)))
+                is_stackable = bool(Item.Properties.IsStackable(int(source_item_id)))
             except Exception:
                 is_stackable = True
 
@@ -7028,7 +7028,7 @@ try:
             source_is_stackable = True
             if source_item_id > 0:
                 try:
-                    source_is_stackable = bool(Item.Customization.IsStackable(int(source_item_id)))
+                    source_is_stackable = bool(Item.Properties.IsStackable(int(source_item_id)))
                 except Exception:
                     source_is_stackable = True
             probe_destinations = _storage_deposit_destinations(int(model_id), 1, bool(source_is_stackable))

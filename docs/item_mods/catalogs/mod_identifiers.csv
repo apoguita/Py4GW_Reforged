@@ -1,0 +1,83 @@
+modid,value_arg,n_mods,example_names,example_descriptions
+0x2018,arg2,1,"Inscription: ""To the Pain!""",Damage +10% \n Armor -10 \n (while attacking
+0x2078,both,1,"Inscription: ""Luck of the Draw""",Received physical damage -5 \n (Chance: 10%)
+0x2088,arg2,1,"Inscription: ""Sheltered by Faith""",Received physical damage -1 \n (while Enchan
+0x2098,arg2,1,"Inscription: ""Nothing to Fear""",Received physical damage -1 \n (while Hexed)
+0x20a8,arg2,1,"Inscription: ""Run For Your Life!""",Received physical damage -1 \n (while in a S
+0x20b8,arg2,2,"Inscription: ""Brawn over Brains"" | Inscription: ""Ignorance is Bliss""",Armor +4 \n Energy -5 | Damage +10% \n Energy -5
+0x20c8,arg2,9,"Inscription: ""Live for Today"" | Inscription: ""Seize the Day"" | Zealous",Energy +10 \n Energy regeneration -1 | Energy gain on hit: 1 \n Energy regeneration
+0x20d8,arg2,85,Assassin  of Major Critical Stri | Assassin  of Major Dagger Master | Assassin  of Major Deadly Arts | Assassin  of Major Shadow Arts,Air Magic +2 \n (Non-stacking) \n Health -35 | Air Magic +3 \n (Non-stacking) \n Health -75 | Armor +4 \n Health -20
+0x20e8,arg2,7,Vampiric,Life Draining: 1 \n Health regeneration -1
+0x2108,arg2,11,"Defensive | Inscription: ""Ignorance is Bliss"" | Inscription: ""Life is Pain"" | of Defense",Armor +4 | Armor +4 \n Energy -5 | Armor +4 \n Health -20
+0x2128,arg2,9,"Inscription: ""Man for All Seasons"" | of Warding",Armor +4 \n (vs. elemental damage)
+0x2158,arg2,9,"Inscription: ""Survival of the Fittes | of Shelter",Armor +4 \n (vs. physical damage)
+0x2178,arg2,1,"Inscription: ""Might makes Right""",Armor +4 \n (while attacking)
+0x2188,arg2,1,"Inscription: ""Knowing is Half the Ba",Armor +4 \n (while casting)
+0x2198,arg2,1,"Inscription: ""Faith is My Shield""",Armor +4 \n (while Enchanted)
+0x21a8,both,1,"Inscription: ""Hail to the King""",Armor +4 \n (while Health is above 50%)
+0x21b8,both,1,"Inscription: ""Down But Not Out""",Armor +5 \n (while Health is below 50%)
+0x21c8,arg2,1,"Inscription: ""Be Just and Fear Not""",Armor +5 \n (while Hexed)
+0x21e8,both,126,Assassin  of Major Critical Stri | Assassin  of Major Dagger Master | Assassin  of Major Deadly Arts | Assassin  of Major Shadow Arts,Air Magic +1 \n (Non-stacking) | Air Magic +2 \n (Non-stacking) \n Health -35 | Air Magic +3 \n (Non-stacking) \n Health -75
+0x2208,arg1,3,"Inscription: ""Don't Think Twice"" | Swift | of Swiftness",Halves casting time of spells \n (Chance: 5%
+0x2238,arg2,2,"Inscription: ""Brawn over Brains"" | Inscription: ""To the Pain!""",Damage +10% \n Armor -10 \n (while attacking | Damage +10% \n Energy -5
+0x2258,arg2,1,"Inscription: ""Too Much Information""",Damage +10% \n (vs. Hexed foes)
+0x2268,arg2,1,"Inscription: ""Guided by Fate""",Damage +10% \n (while Enchanted)
+0x2278,both,1,"Inscription: ""Strength and Honor""",Damage +10% \n (while Health is above 50%)
+0x2288,both,1,"Inscription: ""Vengeance is Mine""",Damage +10% \n (while Health is below 50%)
+0x2298,arg2,1,"Inscription: ""Don't Fear the Reaper""",Damage +10% \n (while Hexed)
+0x22a8,arg2,1,"Inscription: ""Dance with Death""",Damage +10% \n (while in a Stance)
+0x22b8,arg2,8,of Enchanting,Enchantments last 10% longer
+0x22d8,arg2,5,"Inscription: ""I have the power!"" | Inscription: ""Live for Today"" | Inscription: ""Seize the Day"" | Insightful",Energy +1 | Energy +10 \n Energy regeneration -1 | Energy +2
+0x22f8,arg2,1,"Inscription: ""Have Faith""",Energy +4 \n (while Enchanted)
+0x2308,both,1,"Inscription: ""Hale and Hearty""",Energy +4 \n (while Health is above 50%)
+0x2318,both,1,"Inscription: ""Don't call it a comeba",Energy +5 \n (while Health is below 50%)
+0x2328,arg2,1,"Inscription: ""I am Sorrow.""",Energy +5 \n (while Hexed)
+0x2348,arg1,12,Hale | of Fortitude | of Vitae,Health +10 | Health +20
+0x2368,arg1,3,of Devotion,Health +30 \n (while Enchanted)
+0x2378,arg1,3,of Valor,Health +45 \n (while Hexed)
+0x2388,arg1,3,of Endurance,Health +30 \n (while in a Stance)
+0x23a8,arg1,3,"Inscription: ""Let the Memory Live Ag | Inscription: ""Serenity Now"" | of Quickening",Halves skill recharge of spells \n (Chance:
+0x23b8,arg2,6,Furious,Double adrenaline gain \n (Chance: 5%)
+0x23f8,both,7,Sundering,Armor penetration +20% \n (Chance: 10%) | Armor penetration +20% \n (Chance: 20%)
+0x2418,arg1,7,of Axe Mastery | of Dagger Mastery | of Hammer Mastery | of Marksmanship,Axe Mastery +1 \n (0% chance while using ski | Dagger Mastery +1 \n (0% chance while using | Hammer Mastery +1 \n (0% chance while using
+0x2468,both,31,Barbed | Crippling | Cruel | Heavy,Lengthens Bleeding duration on foes by 33% \ | Lengthens Crippled duration on foes by 33% \ | Lengthens Dazed duration on foes by 33% \n (
+0x24b8,arg1,28,Ebon | Fiery | Icy | Shocking,Cold Damage | Earth Damage | Fire Damage
+0x2518,arg2,7,Zealous,Energy gain on hit: 1 \n Energy regeneration
+0x2528,arg1,7,Vampiric,Life Draining: 1 \n Health regeneration -1
+0x26c8,arg2,1,Radiant,Energy +3 \n (on chest armor) \n Energy +2 \
+0x26d8,arg1,1,Survivor,Health +15 \n (on chest armor) \n Health +10
+0x2778,both,4,of Clarity | of Purity | of Recovery | of Restoration,Reduces Bleeding duration on you by 20% \n ( | Reduces Blind duration on you by 20% \n (Non | Reduces Dazed duration on you by 20% \n (Non
+0x27e8,both,7,Bloodstained  [Necromancer] | Lieutenant's  [Warrior] | Stonefist  [Warrior] | Warrior  of Minor Absorption,Health +30 \n (Non-stacking) | Increases knockdown time of foes by 1 second | Reduces casting time of spells that exploit
+0x27e9,arg1,2,Warrior  of Major Absorption | of Major Vigor,Health +41 \n (Non-stacking) | Reduces physical damage by 2 \n (Non-stackin
+0x27ea,both,2,Warrior  of Superior Absorption | of Superior Vigor,Health +50 \n (Non-stacking) | Reduces physical damage by 3 \n (Non-stackin
+0x2808,arg1,3,"Adept | Inscription: ""Aptitude not Attitude"" | of Aptitude",Halves casting time on spells of item's attr
+0x2828,arg1,2,"Inscription: ""Forget Me Not"" | of Memory",Halves skill recharge on spells of item's at
+0x2838,arg1,2,"Inscription: ""Master of My Domain"" | of Mastery",Item's attribute +1 \n (Chance: 10%)
+0x2858,arg1,8,"Inscription: ""Cast Out the Unclean"" | Inscription: ""Fear Cuts Deeper"" | Inscription: ""I Can See Clearly Now"" | Inscription: ""Only the Strong Surviv",Reduces Bleeding duration on you by 20% \n ( | Reduces Blind duration on you by 20% \n (Sta | Reduces Crippled duration on you by 20% \n (
+0x2868,both,1,Tormentor's  [Necromancer],Holy damage you receive increased by 6 \n (o
+0x8010,arg2,1,Sentinel's  [Warrior],"Armor +20 \n (Requires 13 Strength), \n vs."
+0x8070,both,15,Beastmaster's  [Ranger] | Blessed | Blighter's  [Necromancer] | Brawler's,"Armor +10 \n (while affected by a Shout, Ech | Armor +10 \n (while affected by an Enchantme | Armor +10 \n (while attacking)"
+0x8090,arg2,2,Brawler's | Nightstalker's  [Assassin],Armor +10 \n (while attacking) | Armor +15 \n (while attacking)
+0x80a0,arg2,2,Mystic's  [Ritualist] | Virtuoso's  [Mesmer],Armor +15 \n (while activating skills)
+0x80b0,arg1,4,Blessed | Blighter's  [Necromancer] | Disciple's  [Monk] | Ghost Forge  [Ritualist],Armor +10 \n (while affected by an Enchantme | Armor +15 \n (while affected by a Condition) | Armor +15 \n (while affected by a Weapon Spe
+0x80c0,arg2,1,Herald's,Armor +10 \n (while holding an item)
+0x80d0,arg2,1,Scout's  [Ranger],Armor +10 \n (while using a Preparation)
+0x8110,arg2,1,Sentry's,Armor +10 \n (while in a Stance)
+0x8120,arg2,1,Beastmaster's  [Ranger],Armor +10 \n (while your pet is alive)
+0x8130,arg2,1,Centurion's  [Paragon],"Armor +10 \n (while affected by a Shout, Ech"
+0x8140,arg1,1,Forsaken  [Dervish],Armor +10 \n (while not affected by an Encha
+0xa0f8,arg1,15,Beastmaster's  [Ranger] | Blessed | Blighter's  [Necromancer] | Brawler's,"Armor +10 \n (while affected by a Shout, Ech | Armor +10 \n (while affected by an Enchantme | Armor +10 \n (while attacking)"
+0xa0fb,arg1,1,Lieutenant's  [Warrior],Reduces hex durations on you by 20% and dama
+0xa118,both,19,Aeromancer  [Elementalist] | Bonelace  [Necromancer] | Earthbound  [Ranger] | Frostbound  [Ranger],Armor +10 \n (vs. elemental damage) \n Armor | Armor +10 \n (vs. physical damage) \n Armor | Armor +15 \n (vs. Cold damage)
+0xa128,arg2,7,Aeromancer  [Elementalist] | Dreadnought  [Warrior] | Geomancer  [Elementalist] | Hydromancer  [Elementalist],"Armor +10 \n (vs. elemental damage) | Armor +10 \n (vs. elemental damage) \n Armor | Armor +20 \n (Requires 13 Strength), \n vs."
+0xa158,arg2,4,Infiltrator's  [Assassin] | Saboteur's  [Assassin] | Stalwart | Vanguard's  [Assassin],Armor +10 \n (vs. physical damage) | Armor +10 \n (vs. physical damage) \n Armor
+0xa530,arg1,48,Aeromancer  [Elementalist] | Anchorite's  [Monk] | Artificer's  [Mesmer] | Beastmaster's  [Ranger],Armor +10 \n (vs. elemental damage) | Armor +10 \n (vs. elemental damage) \n Armor | Armor +10 \n (vs. physical damage)
+0xa532,both,7,"Inscription: ""Leaf on the Wind"" | Inscription: ""Like a Rolling Stone"" | Inscription: ""Not the face!"" | Inscription: ""Riders on the Storm""",Armor +5 \n (vs. Blunt damage) | Armor +5 \n (vs. Cold damage) | Armor +5 \n (vs. Earth damage)
+0xa6e8,arg1,1,Minion Master's  [Necromance,Armor +5 \n (while you control 1 or more min
+0xa6f8,arg1,1,Shaman's  [Ritualist],Armor +5 \n (while you control 1 or more Spi
+0xa708,both,1,Prismatic  [Elementalist],Armor +5 \n (Requires 9 Air Magic) \n Armor
+0xa718,arg1,1,Windwalker  [Dervish],Armor +5 \n (while affected by or more Encha
+0xa728,arg1,2,Anchorite's  [Monk] | Prodigy's  [Mesmer],Armor +5 \n (while recharging 1 or more skil
+0xa738,arg1,1,Undertaker's  [Necromancer],Armor +5 \n (while Health is below 80%) \n A
+0xa748,arg1,1,Artificer's  [Mesmer],Armor +3 \n (for each equipped Signet)
+0xa7f8,arg1,1,Knight's  [Warrior],Received physical damage -3

@@ -1,0 +1,17 @@
+============================================================
+  Jade Wand   (item 91)
+============================================================
+
+WHAT THE GAME SHOWS:
+    Chaos Dmg: 11-21 (Requires 11 Illusion Magic)
+
+MODS ON THIS ITEM:
+    #    modid     arg1  arg2  value  NAME
+    -    ------    ----  ----  -----  ------------------------------
+    0    0x2798    1     11    11     Requirement 11 (IllusionMagic)
+    1    0x24B8    6     0     6      Damage Type (Blunt)
+    2    0x2698    0     4     4      ??? (mod_0x2698 needs a name)
+    3    0xA7A8    21    11    11     Damage 11
+    4    0xC000    0     0     0      (item identity / model)
+
+(names marked ??? still need identifying -- tell me what each should be.)

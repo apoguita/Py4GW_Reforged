@@ -101,7 +101,7 @@ class Util:
             (as an `Attribute` object) and the requirement level (as an integer) 
             if the item has a requirement. Returns `None` if no requirements are found.
         """
-        _, attribute_id, requirement = GLOBAL_CACHE.Item.Customization.Modifiers.GetModifierValues(
+        _, attribute_id, requirement = GLOBAL_CACHE.Item.Mods.GetModifierValues(
             item_id, ModifierIdentifier.Requirement)
 
         if attribute_id == None or requirement == None:
@@ -124,15 +124,15 @@ class Util:
             Optional[tuple[int, int]]: A tuple containing the minimum and maximum damage
             values, or None if no damage values are available.
         """
-        _, max_damage, min_damage = Item.Customization.Modifiers.GetModifierValues(
+        _, max_damage, min_damage = Item.Mods.GetModifierValues(
             item_id, ModifierIdentifier.Damage)
 
         if max_damage == None and min_damage == None:
-            _, attribute_id, requirement = GLOBAL_CACHE.Item.Customization.Modifiers.GetModifierValues(
+            _, attribute_id, requirement = GLOBAL_CACHE.Item.Mods.GetModifierValues(
                 item_id, ModifierIdentifier.Requirement)
 
             if attribute_id == None or requirement == None:
-                _, max_damage, min_damage = Item.Customization.Modifiers.GetModifierValues(
+                _, max_damage, min_damage = Item.Mods.GetModifierValues(
                     item_id, ModifierIdentifier.Damage_NoReq)
 
                 return min_damage if min_damage else 0, max_damage if max_damage else 0
@@ -153,7 +153,7 @@ class Util:
             Optional[DamageType]: The damage type of the item if it exists, 
             otherwise None.
         """
-        _, damage_type_id, _ = Item.Customization.Modifiers.GetModifierValues(
+        _, damage_type_id, _ = Item.Mods.GetModifierValues(
             item_id, ModifierIdentifier.DamageType)
         return DamageType(damage_type_id) if damage_type_id else None
 
@@ -168,7 +168,7 @@ class Util:
         Returns:
             Optional[int]: The armor value of the shield if it exists, otherwise None.
         """
-        _, armor_at_or_above_requirement, armor_below_requirement = Item.Customization.Modifiers.GetModifierValues(
+        _, armor_at_or_above_requirement, armor_below_requirement = Item.Mods.GetModifierValues(
             item_id, ModifierIdentifier.ShieldArmor)
 
         if armor_at_or_above_requirement == None or armor_below_requirement == None:
@@ -569,7 +569,7 @@ class Util:
         Returns:
             Optional[ItemType]: The target item type if found, otherwise None.
         """
-        _, value, _ = Item.Customization.Modifiers.GetModifierValues(
+        _, value, _ = Item.Mods.GetModifierValues(
             item_id, ModifierIdentifier.TargetItemType)
 
         return ItemType(value) if value else None
@@ -715,7 +715,7 @@ class Util:
         if GLOBAL_CACHE.Item.GetModelID(item_id) == ModelID.Vial_Of_Dye:
             # ConsoleLog("LootEx", f"Item ID: {item_id} is a dye item.")
             
-            dye_info = GLOBAL_CACHE.Item.Customization.GetDyeInfo(item_id)
+            dye_info = GLOBAL_CACHE.Item.Dye.GetInfo(item_id)
 
             if dye_info is not None:
                 color_id = dye_info.dye1.ToInt() if dye_info.dye1 else -1

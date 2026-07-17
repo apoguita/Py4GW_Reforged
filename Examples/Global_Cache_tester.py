@@ -74,7 +74,7 @@ def main():
                 
                 PyImGui.text(f"Item ID: {item_id} - {item_name} - {item_quantity} - {item_value}")
                 if PyImGui.collapsing_header(f"Mods {item_id}"):
-                    mods = GLOBAL_CACHE.Item.Customization.Modifiers.GetModifiers(item_id)
+                    mods = GLOBAL_CACHE.Item.Mods.GetModifiers(item_id)
                     for mod in mods:
                         PyImGui.text(f"Mod ID: {mod.ToString()}")
                         

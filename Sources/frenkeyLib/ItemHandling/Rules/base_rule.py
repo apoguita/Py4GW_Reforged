@@ -10,8 +10,10 @@ from Py4GWCoreLib.enums_src.Item_enums import ItemType, Rarity
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Sources.frenkeyLib.ItemHandling.Items.ItemData import DAMAGE_RANGES
 from Sources.frenkeyLib.ItemHandling.Items.item_snapshot import ItemSnapshot
-from Py4GWCoreLib.item_mods_src.properties import ItemProperty
-from Py4GWCoreLib.item_mods_src.upgrades import HeavyUpgrade, Upgrade
+# item_mods_src removed. This (deprecated, inactive) frenkey rule engine now represents an
+# upgrade by its name (str). Aliases keep annotations/import clean.
+Upgrade = str
+ItemProperty = Any
 from Sources.frenkeyLib.ItemHandling.Rules.types import ItemAction
 
 PropertyFilter = ItemProperty | dict[str, int | str]
@@ -461,43 +463,17 @@ class UpgradeRule(BaseRule):
             return False
 
         item = self.get_item(item_id)
-        return self.upgrade.id in [item.prefix.id if item.prefix else None, item.suffix.id if item.suffix else None, item.inscription.id if item.inscription else None] if item and self.upgrade else False
+        return self.upgrade in [item.prefix, item.suffix, item.inscription] if item and self.upgrade else False
 
     def _serialize_data(self) -> dict[str, Any]:
-        return {"upgrade_class": type(self.upgrade).__name__ if self.upgrade is not None else None}
+        return {"upgrade_class": self.upgrade if self.upgrade is not None else None}
 
     def _deserialize_data(self, data: dict[str, Any]) -> None:
         upgrade_class_name = data.get("upgrade_class", None)
         if not isinstance(upgrade_class_name, str):
             return
-        
-        from Py4GWCoreLib.item_mods_src import upgrades as upgrades_module        
-
-        upgrade_cls = getattr(upgrades_module, upgrade_class_name, None)
-
-        if not isinstance(upgrade_cls, type):
-            return
-
-        # Hot reloads / duplicate module imports can create a different Upgrade class identity,
-        # so strict issubclass(upgrade_cls, Upgrade) may be False even for valid upgrade classes.
-        mro = getattr(upgrade_cls, "__mro__", ())
-        is_upgrade_like = any(base.__name__ == "Upgrade" for base in mro)
-
-        if not is_upgrade_like:
-            return
-
-        try:
-            instance = upgrade_cls()
-            
-        except Exception as ex: 
-            PySystem.Console.Log(
-                "UpgradeRule",
-                f"Failed to instantiate upgrade '{upgrade_class_name}' for rule '{self.name}': {type(ex).__name__}: {ex}",
-                PySystem.Console.MessageType.Warning
-            )
-            return
-
-        self.upgrade = instance
+        # Upgrades are names (str) now.
+        self.upgrade = upgrade_class_name
 
 class SalvagesToMaterialRule(BaseRule):
     """

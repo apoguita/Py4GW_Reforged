@@ -20,6 +20,7 @@ class Range(Enum):
 # region DyeColor
 class DyeColor(IntEnum):
     NoColor = 0
+    Mixed = 1
     Blue = 2
     Green = 3
     Purple = 4

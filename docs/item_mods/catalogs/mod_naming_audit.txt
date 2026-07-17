@@ -1,0 +1,2131 @@
+MOD NAMING AUDIT
+==============================================================================
+items scanned: 273   distinct modids: 73   named: 56   UNNAMED(alias-only): 17
+
+=== UNNAMED modids (need a real name/alias) ===
+  modid 0x2218   count=1   args=[(20,16)]
+     alias: mod_0x2218
+     seen on: "<c=@ItemUnique>Hukhrah's Staff</c>"
+     item info-string: '<c=@ItemBasic>Energy +10</c> | <c=@ItemBasic>Fire Dmg: 11-22</c> <c=@ItemDull>(Requires 9 Divine Favor)</c> | <c=@ItemUnique>Halves casting time of Divine Favor spells</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemUnique>Halves skill recharge of spells</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemUnique>Divine Favor +1</c> <c=@ItemDull>(20% chance while using skills)</c> | <c=@ItemUnique>Energy +5</c> | <c=@ItemDull>Two-handed</c>'
+  modid 0x2408   count=45   args=[(0,132), (0,149), (0,155), (0,156), (0,157), (0,159), (0,163), (0,171), (0,187), (0,189), (0,190), (0,191), (0,192), (0,195), (0,206), (0,217), (0,221), (0,222), (0,225), (0,235), (1,1), (1,61), (1,72), (1,82), (1,104), (1,203), (1,222), (1,230), (1,231), (1,237), (1,241), (1,242), (1,247), (1,251), (2,17), (2,21), (2,38)]
+     alias: mod_0x2408
+     seen on: "<c=@ItemUnique>Wing's Axe</c>"
+     item info-string: '<c=@ItemBasic>Slashing Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemUnique>Damage +15%</c> <c=@ItemDull>(while Health is above 50%)</c> | <c=@ItemUnique>Energy gain on hit: 1</c> | <c=@ItemUnique>Energy regeneration -1</c> | <c=@ItemUnique>Health +30</c> | <c=@ItemBasic>Damage +20%</c>'
+  modid 0x24D8   count=1   args=[(11,1)]
+     alias: mod_0x24D8
+     seen on: '<c=@ItemCommon>4 Vials of Dye [Gray]</c>'
+     item info-string: '<c=@ItemDull>Value: 100 gold</c> | <c=@ItemDull>Use to apply to another item.</c>'
+  modid 0x24E8   count=1   args=[(0,11)]
+     alias: mod_0x24E8
+     seen on: '<c=@ItemCommon>4 Vials of Dye [Gray]</c>'
+     item info-string: '<c=@ItemDull>Value: 100 gold</c> | <c=@ItemDull>Use to apply to another item.</c>'
+  modid 0x2530   count=41   args=[(1,8), (1,42), (1,54), (1,56), (1,58), (1,62), (1,70), (1,86), (1,119), (1,123), (1,125), (1,127), (1,129), (1,135), (1,157), (1,179), (1,187), (1,189), (1,195), (1,215), (2,3), (2,123), (2,144), (2,165), (3,204), (4,35), (4,43), (4,77)]
+     alias: mod_0x2530
+     seen on: "<c=@ItemUnique>Wing's Axe</c>"
+     item info-string: '<c=@ItemBasic>Slashing Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemUnique>Damage +15%</c> <c=@ItemDull>(while Health is above 50%)</c> | <c=@ItemUnique>Energy gain on hit: 1</c> | <c=@ItemUnique>Energy regeneration -1</c> | <c=@ItemUnique>Health +30</c> | <c=@ItemBasic>Damage +20%</c>'
+  modid 0x25E8   count=7   args=[(1,0), (2,0), (3,0), (6,0)]
+     alias: mod_0x25E8
+     seen on: '<c=@ItemCommon>Superior Identification Kit</c>'
+     item info-string: '<c=@ItemDull>Uses remaining: 85</c> | <c=@ItemDull>Use to identify another item in your inventory.</c> | <c=@ItemDull>Value: 213 gold</c>'
+  modid 0x2618   count=3   args=[(0,0), (1,0)]
+     alias: mod_0x2618
+     seen on: "<c=@ItemUnique>Chehbaba's Longbow</c>"
+     item info-string: '<c=@ItemBasic>Piercing Dmg: 15-28</c> <c=@ItemDull>(Requires 9 Marksmanship)</c> | <c=@ItemUnique>Damage +15%</c> | <c=@ItemUnique>Armor -10</c> <c=@ItemDull>(while attacking)</c> | <c=@ItemUnique>Lengthens Crippled duration on foes by 33%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemUnique>Armor +7</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemDull>Two-handed Longbow</c>'
+  modid 0x2638   count=53   args=[(0,0)]
+     alias: mod_0x2638
+     seen on: '<c=@ItemCommon>98 Hard Apple Ciders</c>'
+     item info-string: '<c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to drink. Excessive alcohol consumption will result in intoxication.</c>'
+  modid 0x2648   count=1   args=[(2,0)]
+     alias: mod_0x2648
+     seen on: '<c=@ItemRare>Fiery Double-bladed Axe of the Necromancer</c>'
+     item info-string: '<c=@ItemRare>Fire Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemRare>Soul Reaping: 5</c> <c=@ItemDull>(if your rank is lower. No effect in PvP.)</c> | <c=@ItemRare>Inscription: "Dance with Death"</c> | <c=@ItemRare>Damage +15%</c> <c=@ItemDull>(while in a Stance)</c> | <c=@ItemBasic>Damage +20%</c> | <c=@ItemDull>Value: 208 gold</c>'
+  modid 0x2688   count=15   args=[(23,0), (24,0)]
+     alias: mod_0x2688
+     seen on: '<c=@ItemCommon>56 Lockpicks</c>'
+     item info-string: '<c=@ItemDull>Value: 42 platinum</c>'
+  modid 0x2698   count=12   args=[(0,2), (0,4), (0,6), (0,144)]
+     alias: mod_0x2698
+     seen on: '<c=@ItemCommon>Jade Wand</c>'
+     item info-string: '<c=@ItemBasic>Cold Dmg: 11-20</c> <c=@ItemDull>(Requires 10 Water Magic)</c>'
+  modid 0x26A8   count=1   args=[(0,125)]
+     alias: mod_0x26A8
+     seen on: '<c=@ItemRare>Miniature World-Famous Racing Beetle</c>'
+     item info-string: '<c=@ItemDull>Use to take out or put away.</c>'
+  modid 0x2878   count=2   args=[(0,7), (0,24)]
+     alias: mod_0x2878
+     seen on: '<c=@ItemCommon>Golem User Manual</c>'
+     item info-string: '<c=@ItemDull>Use to read. To run the golem tutorial simulation and receive your mission from Zinn, use the Enter Mission button inside the book. M.O.X. must be in your party and you must be inside an outpost to run the tutorial. If you lose your Golem User Manual, you can acquire a new one from Zinn in his secret underground Lair.</c>'
+  modid 0x2888   count=2   args=[(0,31), (31,255)]
+     alias: mod_0x2888
+     seen on: '<c=@ItemCommon>Golem User Manual</c>'
+     item info-string: '<c=@ItemDull>Use to read. To run the golem tutorial simulation and receive your mission from Zinn, use the Enter Mission button inside the book. M.O.X. must be in your party and you must be inside an outpost to run the tutorial. If you lose your Golem User Manual, you can acquire a new one from Zinn in his secret underground Lair.</c>'
+  modid 0x8040   count=6   args=[(0,0)]
+     alias: mod_0x8040
+     seen on: "<c=@ItemEnhance>Sentinel's Canthan Cuirass of Superior Vigor</c>"
+     item info-string: '<c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Health +50</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemBasic>Infused</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(Requires 13 Strength, vs. elemental damage)</c> | <c=@ItemDull>Value: 368 gold</c>'
+  modid 0xA498   count=5   args=[(120,0)]
+     alias: mod_0xA498
+     seen on: "<c=@ItemUnique>Wing's Axe</c>"
+     item info-string: '<c=@ItemBasic>Slashing Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemUnique>Damage +15%</c> <c=@ItemDull>(while Health is above 50%)</c> | <c=@ItemUnique>Energy gain on hit: 1</c> | <c=@ItemUnique>Energy regeneration -1</c> | <c=@ItemUnique>Health +30</c> | <c=@ItemBasic>Damage +20%</c>'
+  modid 0xC000   count=273   args=[(0,0)]
+     alias: mod_0xC000
+     seen on: '<c=@ItemCommon>Superior Identification Kit</c>'
+     item info-string: '<c=@ItemDull>Uses remaining: 85</c> | <c=@ItemDull>Use to identify another item in your inventory.</c> | <c=@ItemDull>Value: 213 gold</c>'
+
+=== named modids ===
+modid    source    name                                     example item
+0x2018   ModId     DAMAGE_ARMOR                             <c=@ItemUnique>Chehbaba's Long
+0x2078   ModId     RECEIVED_PHYSICAL_DAMAGE                 <c=@ItemUnique>Mallyx's Motiva
+0x20A8   ModId     RECEIVED_PHYSICAL_DAMAGE_4               <c=@ItemUnique>Arrahhsh's Aegi
+0x20C8   ModId     ENERGY_ENERGY_REGENERATION               <c=@ItemUnique>Wing's Axe</c>
+0x20D8   ModId     AIR_MAGIC                                <c=@ItemEnhance>Sentinel's Can
+0x2118   game-text Armor +8 (vs. Piercing damage)           <c=@ItemUncommon>Embossed Aegi
+0x2158   ModId     ARMOR_3                                  <c=@ItemUnique>Chehbaba's Long
+0x21B8   ModId     ARMOR_8                                  <c=@ItemEnhance>Divine Symbol<
+0x21E8   ModId     AIR_MAGIC_2                              <c=@ItemEnhance>Sentinel's Can
+0x21F8   game-text Strength +1 (Stacking)                   <c=@ItemEnhance>Sentinel's Can
+0x2238   ModId     DAMAGE_ARMOR_2                           <c=@ItemUnique>Chehbaba's Long
+0x2278   ModId     DAMAGE_3                                 <c=@ItemUnique>Wing's Axe</c>
+0x2298   ModId     DAMAGE_5                                 <c=@ItemRare>Poisonous Naga Sh
+0x22A8   ModId     DAMAGE_6                                 <c=@ItemRare>Fiery Double-blad
+0x22B8   ModId     ENCHANTMENTS_LAST_LONGER                 <c=@ItemUnique>Totem Axe</c>
+0x22D8   ModId     ENERGY                                   <c=@ItemEnhance>Sentinel's Can
+0x22F8   ModId     ENERGY_2                                 <c=@ItemRare>Spawning Wand</c>
+0x2308   ModId     ENERGY_3                                 <c=@ItemUnique>Mallyx's Malice
+0x2318   ModId     ENERGY_4                                 <c=@ItemEnhance>Divine Symbol<
+0x2348   ModId     HEALTH                                   <c=@ItemUnique>Wing's Axe</c>
+0x2388   ModId     HEALTH_4                                 <c=@ItemUnique>Arrahhsh's Aegi
+0x23A8   ModId     HALVES_SKILL_RECHARGE_SPELLS             <c=@ItemUnique>Mallyx's Malice
+0x23B8   ModId     DOUBLE_ADRENALINE_GAIN                   <c=@ItemUnique>Sskai's Sword</
+0x23F8   ModId     ARMOR_PENETRATION                        <c=@ItemUnique>Totem Axe</c>
+0x2418   ModId     AXE_MASTERY                              <c=@ItemUnique>Hukhrah's Staff
+0x2458   game-text Uses remaining: 85                       <c=@ItemCommon>Superior Identi
+0x2468   ModId     LENGTHENS_BLEEDING_DURATION_FOES         <c=@ItemUnique>Chehbaba's Long
+0x2478   game-text Value: 228 gold                          <c=@ItemRare>Hale Jade Staff</
+0x24B8   ModId     COLD_DAMAGE                              <c=@ItemCommon>Jade Wand</c>
+0x2508   game-text Value: 1 platinum, 250 gold              <c=@ItemCommon>250 Iron Ingots
+0x2518   ModId     ENERGY_GAIN_HIT_ENERGY                   <c=@ItemUnique>Wing's Axe</c>
+0x2532   game-text Value: 208 gold                          <c=@ItemRare>Fiery Double-blad
+0x2628   game-text Strength +1 (Stacking)                   <c=@ItemEnhance>Sentinel's Can
+0x26D8   ModId     HEALTH_5                                 <c=@ItemEnhance>Survivor Canth
+0x2778   ModId     REDUCES_BLEEDING_DURATION                <c=@ItemEnhance>Sentinel's Can
+0x2788   game-text Uses remaining: 1                        <c=@ItemCommon>98 Hard Apple C
+0x2798   game-text Cold Dmg: 11-20 (Requires 10 Water Magic <c=@ItemCommon>Jade Wand</c>
+0x27E8   ModId     HEALTH_6                                 <c=@ItemEnhance>Scroll of Ramp
+0x27EA   ModId     HEALTH_8                                 <c=@ItemEnhance>Sentinel's Can
+0x2858   ModId     REDUCES_BLEEDING_DURATION_2              <c=@ItemRare>Defender of Endur
+0x28A8   game-text Soul Reaping: 5 (if your rank is lower.  <c=@ItemRare>Fiery Double-blad
+0x62C8   game-text Energy +3                                <c=@ItemEnhance>Divine Symbol<
+0x8010   ModId     ARMOR_10                                 <c=@ItemEnhance>Sentinel's Can
+0x8070   ModId     ARMOR_11                                 <c=@ItemEnhance>Sentinel's Can
+0x80B0   ModId     ARMOR_14                                 <c=@ItemRare>Disciple's Naga S
+0xA0F8   ModId     ARMOR_21                                 <c=@ItemEnhance>Sentinel's Can
+0xA118   ModId     ARMOR_22                                 <c=@ItemRare>Hydromancer Yeti 
+0xA128   ModId     ARMOR_23                                 <c=@ItemEnhance>Sentinel's Can
+0xA158   ModId     ARMOR_24                                 <c=@ItemRare>Stalwart Naga Tra
+0xA3C8   game-text Armor: 80                                <c=@ItemEnhance>Sentinel's Can
+0xA488   game-text Slashing Dmg: 5-5                        <c=@ItemCommon>Brass Knuckles<
+0xA530   ModId     ARMOR_25                                 <c=@ItemEnhance>Sentinel's Can
+0xA708   ModId     ARMOR_29                                 <c=@ItemRare>Prismatic Naga Sp
+0xA738   ModId     ARMOR_32                                 <c=@ItemRare>Undertaker's Naga
+0xA7A8   game-text Cold Dmg: 11-20 (Requires 10 Water Magic <c=@ItemCommon>Jade Wand</c>
+0xA7B8   game-text Armor +8 (vs. Piercing damage)           <c=@ItemUncommon>Embossed Aegi
+
+==============================================================================
+=== PER-ITEM DETAIL (entire inventory) ===
+==============================================================================
+
+ITEM id=76  '<c=@ItemCommon>Superior Identification Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 85</c> | <c=@ItemDull>Use to identify another item in your inventory.</c> | <c=@ItemDull>Value: 213 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               1     0     1               
+  0x2458   Uses remaining: 85                       0     85    85              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=77  '<c=@ItemCommon>Jade Wand</c>'
+  info: <c=@ItemBasic>Cold Dmg: 11-20</c> <c=@ItemDull>(Requires 10 Water Magic)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Cold Dmg: 11-20 (Requires 10 Water Magic 11    10    10              
+  0x24B8   COLD_DAMAGE                              3     0     3               
+  0x2698   mod_0x2698                               0     4     4               
+  0xA7A8   Cold Dmg: 11-20 (Requires 10 Water Magic 20    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=78  '<c=@ItemCommon>Superior Identification Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 100</c> | <c=@ItemDull>Use to identify another item in your inventory.</c> | <c=@ItemDull>Value: 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               1     0     1               
+  0x2458   Uses remaining: 100                      0     100   100             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=79  '<c=@ItemCommon>Salvage Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 10</c> | <c=@ItemDull>Use to salvage common crafting materials from an item.</c> | <c=@ItemDull>Value: 20 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               3     0     3               
+  0x2458   Uses remaining: 10                       0     10    10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=80  '<c=@ItemCommon>Salvage Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 10</c> | <c=@ItemDull>Use to salvage common crafting materials from an item.</c> | <c=@ItemDull>Value: 20 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               3     0     3               
+  0x2458   Uses remaining: 10                       0     10    10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=81  '<c=@ItemCommon>Golem User Manual</c>'
+  info: <c=@ItemDull>Use to read. To run the golem tutorial simulation and receive your mission from Zinn, use the Enter Mission button inside the book. M.O.X. must be in your party and you must be inside an outpost to run the tutorial. If you lose your Golem User Manual, you can acquire a new one from Zinn in his secret underground Lair.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2878   mod_0x2878                               0     24    24              
+  0x2788   mod_0x2788                               0     133   133             
+  0x2888   mod_0x2888                               0     31    31              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=82  '<c=@ItemRare>2 Margonite Gemstones</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=83  "<c=@ItemEnhance>Scroll of Rampager's Insight</c>"
+  info: <c=@ItemBonus>Your party gains double XP from combat. Rampager's Insight ends if your party fails to kill a foe for 30 seconds.</c> | <c=@ItemDull>Value: 125 gold</c> | <c=@ItemDull>Use to activate. One use only.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x27E8   HEALTH_6                                 3     126   126    3        
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=84  '<c=@ItemCommon>Salvage Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 10</c> | <c=@ItemDull>Use to salvage common crafting materials from an item.</c> | <c=@ItemDull>Value: 20 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               3     0     3               
+  0x2458   Uses remaining: 10                       0     10    10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=85  '<c=@ItemCommon>Jade Wand</c>'
+  info: <c=@ItemBasic>Dark Dmg: 10-20</c> <c=@ItemDull>(Requires 11 Curses)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Dark Dmg: 10-20 (Requires 11 Curses)     7     11    11              
+  0x24B8   COLD_DAMAGE                              7     0     7               
+  0x2698   mod_0x2698                               0     4     4               
+  0xA7A8   Dark Dmg: 10-20 (Requires 11 Curses)     20    10    10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=86  '<c=@ItemUncommon>Embossed Aegis</c>'
+  info: <c=@ItemBasic>Armor: 16</c> <c=@ItemDull>(Requires 10 Tactics)</c> | <c=@ItemUncommon>Armor +8</c> <c=@ItemDull>(vs. Piercing damage)</c> | <c=@ItemDull>Value: 194 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Armor: 16 (Requires 10 Tactics)          21    10    10              
+  0x2118   Armor +8 (vs. Piercing damage)           1     8     8               
+  0xA7B8   Armor +8 (vs. Piercing damage)           16    8     8               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=87  "<c=@ItemCommon>Zho's Journal</c>"
+  info: <c=@ItemDull>Use to read.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2878   mod_0x2878                               0     7     7               
+  0x2788   mod_0x2788                               0     74    74              
+  0x2888   mod_0x2888                               31    255   255             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=88  '<c=@ItemCommon>Jade Wand</c>'
+  info: <c=@ItemBasic>Earth Dmg: 11-21</c> <c=@ItemDull>(Requires 10 Spawning Power)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Earth Dmg: 11-21 (Requires 10 Spawning P 36    10    10              
+  0x24B8   COLD_DAMAGE                              11    0     11              
+  0x2698   mod_0x2698                               0     4     4               
+  0xA7A8   Earth Dmg: 11-21 (Requires 10 Spawning P 21    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=89  '<c=@ItemCommon>Jade Wand</c>'
+  info: <c=@ItemBasic>Chaos Dmg: 11-21</c> <c=@ItemDull>(Requires 10 Domination Magic)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Chaos Dmg: 11-21 (Requires 10 Domination 2     10    10              
+  0x24B8   COLD_DAMAGE                              6     0     6               
+  0x2698   mod_0x2698                               0     4     4               
+  0xA7A8   Chaos Dmg: 11-21 (Requires 10 Domination 21    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=90  '<c=@ItemCommon>Jade Wand</c>'
+  info: <c=@ItemBasic>Fire Dmg: 10-20</c> <c=@ItemDull>(Requires 10 Divine Favor)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Fire Dmg: 10-20 (Requires 10 Divine Favo 16    10    10              
+  0x24B8   COLD_DAMAGE                              5     0     5               
+  0x2698   mod_0x2698                               0     4     4               
+  0xA7A8   Fire Dmg: 10-20 (Requires 10 Divine Favo 20    10    10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=91  '<c=@ItemCommon>Jade Wand</c>'
+  info: <c=@ItemBasic>Chaos Dmg: 11-21</c> <c=@ItemDull>(Requires 11 Illusion Magic)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Chaos Dmg: 11-21 (Requires 11 Illusion M 1     11    11              
+  0x24B8   COLD_DAMAGE                              6     0     6               
+  0x2698   mod_0x2698                               0     4     4               
+  0xA7A8   Chaos Dmg: 11-21 (Requires 11 Illusion M 21    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=92  '<c=@ItemCommon>4 Vials of Dye [Gray]</c>'
+  info: <c=@ItemDull>Value: 100 gold</c> | <c=@ItemDull>Use to apply to another item.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x24D8   mod_0x24D8                               11    1     1               
+  0x24E8   mod_0x24E8                               0     11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=93  "<c=@ItemUnique>Wing's Axe</c>"
+  info: <c=@ItemBasic>Slashing Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemUnique>Damage +15%</c> <c=@ItemDull>(while Health is above 50%)</c> | <c=@ItemUnique>Energy gain on hit: 1</c> | <c=@ItemUnique>Energy regeneration -1</c> | <c=@ItemUnique>Health +30</c> | <c=@ItemBasic>Damage +20%</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Slashing Dmg: 6-28 (Requires 9 Axe Maste 18    9     9               
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0x2278   DAMAGE_3                                 50    15    15     50       
+  0x2408   mod_0x2408                               0     163   163             0xA3
+  0x2530   mod_0x2530                               1     70    70              
+  0x2518   ENERGY_GAIN_HIT_ENERGY                   0     1     1               
+  0x2530   mod_0x2530                               1     70    70              
+  0x20C8   ENERGY_ENERGY_REGENERATION               0     1     1               
+  0x2408   mod_0x2408                               0     217   217             0xD9
+  0x2530   mod_0x2530                               1     179   179             
+  0x2348   HEALTH                                   30    0     30              
+  0xA7A8   Slashing Dmg: 6-28 (Requires 9 Axe Maste 28    6     6               
+  0xA498   mod_0xA498                               120   0     120             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=94  '<c=@ItemCommon>98 Hard Apple Ciders</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to drink. Excessive alcohol consumption will result in intoxication.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   Uses remaining: 1                        0     1     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=95  '<c=@ItemCommon>250 Hard Apple Ciders</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to drink. Excessive alcohol consumption will result in intoxication.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   Uses remaining: 1                        0     1     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=96  '<c=@ItemCommon>111 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=97  '<c=@ItemRare>63 Scrolls of Resurrection</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to resurrect all dead party members within earshot at 25% Health and Energy. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     61    61              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=98  '<c=@ItemCommon>79 Golden Eggs</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to raise all of your attributes by 1 for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     41    41              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=99  '<c=@ItemRare>Proof of Triumph</c>'
+  info: <c=@ItemDull><c=#FFFFFF>A record of your many deeds. Carrying this relic causes an extra boss to spawn in Perdition Rock, Raisu Palace, the Ruptured Heart, or Sacnoth Valley.</c> <c=@SkillDull>This item cannot be traded or sold.</c></c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               1     98    98              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=100  '<c=@ItemCommon>56 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 42 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=101  '<c=@ItemRare>156 Armors of Salvation</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members immunity to 50% of critical hits, +10 armor, +1 Health regeneration, and damage reduction of 5 for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     57    57              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=102  '<c=@ItemRare>110 Essences of Celerity</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members 20% faster movement and attack speeds, and to reduce their skill activation and recharge times by 20% for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     56    56              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=103  '<c=@ItemRare>158 Grails of Might</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members +100 maximum Health, +10 maximum Energy, and +1 to all of their attributes for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     58    58              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=104  '<c=@ItemCommon>119 Honeycombs</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to give your party a 5% morale boost. This morale boost does not cause skills to instantly recharge. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     12    12              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=105  '<c=@ItemCommon>45 Birthday Cupcakes</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant yourself +100 maximum health, +10 maximum energy, and 25% increased movement speed for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     49    49              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=106  '<c=@ItemCommon>50 Candy Apples</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant yourself +100 maximum health and +10 maximum energy for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     78    78              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=107  '<c=@ItemCommon>67 Slices of Pumpkin Pie</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to increase your attack speed by 25%, and to reduce your skill activation time by 15% for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     83    83              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=108  '<c=@ItemCommon>53 Candy Corn</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to raise all of your attributes by 1 for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     77    77              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=109  '<c=@ItemCommon>149 War Supplies</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull><c=#FFFFFF>Trade to the Shining Blade for other items or use to gain +5 armor and +1 Health regeneration for 30 minutes.</c></c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     237   237             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=110  "<c=@ItemUnique>Chehbaba's Longbow</c>"
+  info: <c=@ItemBasic>Piercing Dmg: 15-28</c> <c=@ItemDull>(Requires 9 Marksmanship)</c> | <c=@ItemUnique>Damage +15%</c> | <c=@ItemUnique>Armor -10</c> <c=@ItemDull>(while attacking)</c> | <c=@ItemUnique>Lengthens Crippled duration on foes by 33%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemUnique>Armor +7</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemDull>Two-handed Longbow</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2618   mod_0x2618                               1     0     1               
+  0x2798   Piercing Dmg: 15-28 (Requires 9 Marksman 25    9     9               
+  0x24B8   COLD_DAMAGE                              1     0     1               
+  0x2238   DAMAGE_ARMOR_2                           0     15    15              
+  0x2018   DAMAGE_ARMOR                             0     10    10              
+  0x2408   mod_0x2408                               1     72    72              0x148
+  0x2530   mod_0x2530                               2     144   144             
+  0x2468   LENGTHENS_BLEEDING_DURATION_FOES         1     225   225    1        
+  0x2408   mod_0x2408                               0     206   206             0xCE
+  0x2530   mod_0x2530                               1     157   157             
+  0x2158   ARMOR_3                                  0     7     7               
+  0xA7A8   Piercing Dmg: 15-28 (Requires 9 Marksman 28    15    15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=111  "<c=@ItemUnique>Arrahhsh's Aegis</c>"
+  info: <c=@ItemBasic>Armor: 16</c> <c=@ItemDull>(Requires 9 Strength)</c> | <c=@ItemUnique>Received physical damage -2</c> <c=@ItemDull>(while in a Stance)</c> | <c=@ItemUnique>Health +45</c> <c=@ItemDull>(while in a Stance)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Armor: 16 (Requires 9 Strength)          17    9     9               
+  0x20A8   RECEIVED_PHYSICAL_DAMAGE_4               0     2     2               
+  0x2388   HEALTH_4                                 45    0     45              
+  0xA7B8   mod_0xA7B8                               16    8     8               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=112  '<c=@ItemRare>Fiery Double-bladed Axe of the Necromancer</c>'
+  info: <c=@ItemRare>Fire Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemRare>Soul Reaping: 5</c> <c=@ItemDull>(if your rank is lower. No effect in PvP.)</c> | <c=@ItemRare>Inscription: "Dance with Death"</c> | <c=@ItemRare>Damage +15%</c> <c=@ItemDull>(while in a Stance)</c> | <c=@ItemBasic>Damage +20%</c> | <c=@ItemDull>Value: 208 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Fire Dmg: 6-28 (Requires 9 Axe Mastery)  18    9     9               
+  0x2648   mod_0x2648                               2     0     2               
+  0x2408   mod_0x2408                               0     132   132             0x84
+  0x2530   mod_0x2530                               1     8     8               
+  0x24B8   COLD_DAMAGE                              5     0     5               
+  0x2408   mod_0x2408                               2     38    38              0x226
+  0x2530   mod_0x2530                               4     77    77              
+  0x28A8   Soul Reaping: 5 (if your rank is lower.  6     5     5               
+  0x2408   mod_0x2408                               1     104   104             0x168
+  0x2532   Value: 208 gold                          2     208   208             
+  0x22A8   DAMAGE_6                                 0     15    15              
+  0xA7A8   Fire Dmg: 6-28 (Requires 9 Axe Mastery)  28    6     6               
+  0xA498   mod_0xA498                               120   0     120             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=113  '<c=@ItemRare>Defender of Endurance</c>'
+  info: <c=@ItemBasic>Armor: 16</c> <c=@ItemDull>(Requires 10 Strength)</c> | <c=@ItemRare>Health +45</c> <c=@ItemDull>(while in a Stance)</c> | <c=@ItemRare>Inscription: "I Can See Clearly Now"</c> | <c=@ItemRare>Reduces Blind duration on you by 20%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemDull>Value: 416 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Armor: 16 (Requires 10 Strength)         17    10    10              
+  0x2408   mod_0x2408                               1     82    82              0x152
+  0x2530   mod_0x2530                               2     165   165             
+  0x2388   HEALTH_4                                 45    0     45              
+  0x2408   mod_0x2408                               1     203   203             0x1CB
+  0x2532   mod_0x2532                               3     150   150             
+  0x2858   REDUCES_BLEEDING_DURATION_2              1     0     1               
+  0xA7B8   mod_0xA7B8                               16    8     8               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=114  "<c=@ItemEnhance>Sentinel's Canthan Cuirass of Superior Vigor</c>"
+  info: <c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Health +50</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemBasic>Infused</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(Requires 13 Strength, vs. elemental damage)</c> | <c=@ItemDull>Value: 368 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     1     1               0x101
+  0x2530   mod_0x2530                               2     3     3               
+  0x27EA   HEALTH_8                                 2     194   194    2        
+  0x2408   mod_0x2408                               1     251   251             0x1FB
+  0x2628   mod_0x2628                               0     1     1               
+  0xA3C8   Armor: 80                                80    0     80              
+  0x8040   mod_0x8040                               0     0     0               
+  0xA0F8   ARMOR_21                                 20    0     20              
+  0x8070   ARMOR_11                                 3     246   246    3        
+  0x8010   ARMOR_10                                 17    13    13              
+  0xA530   ARMOR_25                                 3     246   3               
+  0xA128   ARMOR_23                                 0     20    20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=115  "<c=@ItemEnhance>Sentinel's Canthan Leggings of Attunement</c>"
+  info: <c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Energy +2</c> | <c=@ItemBasic>Infused</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(Requires 13 Strength, vs. elemental damage)</c> | <c=@ItemDull>Value: 245 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     251   251             0x1FB
+  0x2408   mod_0x2408                               2     17    17              0x211
+  0x2530   mod_0x2530                               4     35    35              
+  0x22D8   ENERGY                                   0     2     2               
+  0x2628   mod_0x2628                               0     1     1               
+  0xA3C8   Armor: 80                                80    0     80              
+  0x8040   mod_0x8040                               0     0     0               
+  0xA0F8   ARMOR_21                                 20    0     20              
+  0x8070   ARMOR_11                                 3     246   246    3        
+  0x8010   ARMOR_10                                 17    13    13              
+  0xA530   ARMOR_25                                 3     246   3               
+  0xA128   ARMOR_23                                 0     20    20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=116  "<c=@ItemEnhance>Sentinel's Canthan Helm of Superior Strength</c>"
+  info: <c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Strength +1</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemBonus>Strength +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemBonus>Health -75</c> | <c=@ItemBasic>Infused</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(Requires 13 Strength, vs. elemental damage)</c> | <c=@ItemDull>Value: 123 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x21F8   Strength +1 (Stacking)                   17    1     1               
+  0x2408   mod_0x2408                               0     191   191             0xBF
+  0x2530   mod_0x2530                               1     127   127             
+  0x21E8   AIR_MAGIC_2                              17    3     3      17       
+  0x2530   mod_0x2530                               1     127   127             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0x2408   mod_0x2408                               1     251   251             0x1FB
+  0x2628   Strength +1 (Stacking)                   0     1     1               
+  0xA3C8   Armor: 80                                80    0     80              
+  0x8040   mod_0x8040                               0     0     0               
+  0xA0F8   ARMOR_21                                 20    0     20              
+  0x8070   ARMOR_11                                 3     246   246    3        
+  0x8010   ARMOR_10                                 17    13    13              
+  0xA530   ARMOR_25                                 3     246   3               
+  0xA128   ARMOR_23                                 0     20    20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=117  "<c=@ItemEnhance>Sentinel's Canthan Boots of Attunement</c>"
+  info: <c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Energy +2</c> | <c=@ItemBasic>Infused</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(Requires 13 Strength, vs. elemental damage)</c> | <c=@ItemDull>Value: 123 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     251   251             0x1FB
+  0x2408   mod_0x2408                               2     17    17              0x211
+  0x2530   mod_0x2530                               4     35    35              
+  0x22D8   ENERGY                                   0     2     2               
+  0x2628   mod_0x2628                               0     1     1               
+  0xA3C8   Armor: 80                                80    0     80              
+  0x8040   mod_0x8040                               0     0     0               
+  0xA0F8   ARMOR_21                                 20    0     20              
+  0x8070   ARMOR_11                                 3     246   246    3        
+  0x8010   ARMOR_10                                 17    13    13              
+  0xA530   ARMOR_25                                 3     246   3               
+  0xA128   ARMOR_23                                 0     20    20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=118  "<c=@ItemEnhance>Sentinel's Canthan Gauntlets of Clarity</c>"
+  info: <c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Reduces Blind duration on you by 20%</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemBonus>Reduces Weakness duration on you by 20%</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemBasic>Infused</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(Requires 13 Strength, vs. elemental damage)</c> | <c=@ItemDull>Value: 123 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               2     21    21              0x215
+  0x2530   mod_0x2530                               4     43    43              
+  0x2778   REDUCES_BLEEDING_DURATION                8     1     1      8        
+  0x2408   mod_0x2408                               1     251   251             0x1FB
+  0x2628   mod_0x2628                               0     1     1               
+  0xA3C8   Armor: 80                                80    0     80              
+  0x8040   mod_0x8040                               0     0     0               
+  0xA0F8   ARMOR_21                                 20    0     20              
+  0x8070   ARMOR_11                                 3     246   246    3        
+  0x8010   ARMOR_10                                 17    13    13              
+  0xA530   ARMOR_25                                 3     246   3               
+  0xA128   ARMOR_23                                 0     20    20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=119  '<c=@ItemCommon>Expert Salvage Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 15</c> | <c=@ItemDull>Use to salvage upgrade components and crafting materials (rare or common) from an item.</c> | <c=@ItemDull>Value: 120 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               2     0     2               
+  0x2458   Uses remaining: 15                       0     15    15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=120  '<c=@ItemRare>Perfect Salvage Kit</c>'
+  info: <c=@ItemDull>Uses remaining: 5</c> | <c=@ItemDull>Use to salvage upgrade components or crafting materials from an item. While using this kit to salvage out upgrade components, the item you are salvaging from will not break.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x25E8   mod_0x25E8                               6     0     6               
+  0x2458   Uses remaining: 5                        0     5     5               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=121  '<c=@ItemRare>33 Proofs of Legend</c>'
+  info: <c=@ItemDull><c=#FFFFFF>A memento of your triumph in missions. Give this to the Ancient Anniversary Weaponsmith in Embark Beach for a reward. Palora, Sworn to Earth in Embark Beach may be interested to see it as well.</c> <c=@SkillDull>This item cannot be traded or sold.</c></c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               1     89    89              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=122  '<c=@ItemRare>250 Gifts of the Traveler</c>'
+  info: <c=@ItemDull><c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     166   166             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=123  '<c=@ItemRare>250 Gifts of the Traveler</c>'
+  info: <c=@ItemDull><c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     166   166             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=124  '<c=@ItemRare>250 Gifts of the Traveler</c>'
+  info: <c=@ItemDull><c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     166   166             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=125  '<c=@ItemRare>250 Gifts of the Traveler</c>'
+  info: <c=@ItemDull><c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     166   166             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=126  '<c=@ItemRare>250 Gifts of the Traveler</c>'
+  info: <c=@ItemDull><c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     166   166             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=127  '<c=@ItemRare>115 Gifts of the Traveler</c>'
+  info: <c=@ItemDull><c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     166   166             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=128  '<c=@ItemRare>2 Powerstones of Courage</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove all death penalty from your party. Your entire party then receives a 10% morale boost. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     59    59              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=129  '<c=@ItemRare>Essence of Celerity</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members 20% faster movement and attack speeds, and to reduce their skill activation and recharge times by 20% for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     56    56              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=130  '<c=@ItemRare>250 Essences of Celerity</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members 20% faster movement and attack speeds, and to reduce their skill activation and recharge times by 20% for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     56    56              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=131  '<c=@ItemRare>215 Essences of Celerity</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members 20% faster movement and attack speeds, and to reduce their skill activation and recharge times by 20% for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     56    56              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=132  '<c=@ItemRare>250 Grails of Might</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members +100 maximum Health, +10 maximum Energy, and +1 to all of their attributes for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     58    58              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=133  '<c=@ItemRare>250 Grails of Might</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members +100 maximum Health, +10 maximum Energy, and +1 to all of their attributes for 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     58    58              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=134  '<c=@ItemRare>250 Armors of Salvation</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members immunity to 50% of critical hits, +10 armor, +1 Health regeneration, and damage reduction of 5 for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     57    57              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=135  '<c=@ItemRare>250 Armors of Salvation</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to grant your party members immunity to 50% of critical hits, +10 armor, +1 Health regeneration, and damage reduction of 5 for the next 30 minutes. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     57    57              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=136  '<c=@ItemCommon>55 Racing Medals</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=137  '<c=@ItemRare>116 Birthday Present Vouchers</c>'
+  info: <c=@ItemDull>Happy birthday, hero! (This voucher good for a present from the Xunlai Gift-Giver in Lion's Arch, Shing Jea Monestary, Kamadan, pre-Searing Ascalon City, or the Great Temple of Balthazar.)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               1     78    78              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=138  "<c=@ItemRare>29 Strategist's Zaishen Strongboxes</c>"
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Awarded for achievements in Codex Arena. Use to open.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               1     48    48              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=139  '<c=@ItemCommon>14 Medals of Honor</c>'
+  info: <c=@ItemDull><c=#FFFFFF>A medal given by the Shining Blade to recognize your heroics. It's uncommon, so it must be valuable, right?</c> <c=@SkillDull>This item cannot be traded or sold.</c></c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     238   238             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=140  '<c=@ItemRare>60 Golden Flames of Balthazar</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to gain 3000 Balthazar faction.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     37    37              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=141  '<c=@ItemCommon>121 Flames of Balthazar</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to gain 1000 Balthazar faction.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     0     0               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=142  '<c=@ItemRare>Miniature World-Famous Racing Beetle</c>'
+  info: <c=@ItemDull>Use to take out or put away.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x26A8   mod_0x26A8                               0     125   125             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=143  '<c=@ItemRare>21 Zaishen Keys</c>'
+  info: <c=@ItemDull>Used to open the Zaishen Chest on the Isle of the Nameless.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     86    86              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=144  '<c=@ItemRare>13 Margonite Gemstones</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=145  '<c=@ItemRare>27 Stygian Gemstones</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=146  '<c=@ItemRare>23 Titan Gemstones</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=147  '<c=@ItemRare>22 Torment Gemstones</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=148  "<c=@ItemCommon>250 Confessor's Orders</c>"
+  info: <c=@ItemDull>Instructions from Confessor Isaiah. These commands will never be executed now, but the document may reveal useful information to the right person.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     236   236             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=149  "<c=@ItemRare>Thunderfist's Brass Knuckles</c>"
+  info: <c=@ItemBasic>Slashing Dmg: 7-17</c> <c=@ItemDull>(Requires 9 Dagger Mastery)</c> | <c=@ItemRare>Inscription: None</c> | <c=@ItemDull>Both hands</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Slashing Dmg: 7-17 (Requires 9 Dagger Ma 29    9     9               
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0xA7A8   Slashing Dmg: 7-17 (Requires 9 Dagger Ma 17    7     7               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=150  "<c=@ItemRare>Thunderfist's Brass Knuckles</c>"
+  info: <c=@ItemBasic>Slashing Dmg: 7-17</c> <c=@ItemDull>(Requires 9 Dagger Mastery)</c> | <c=@ItemRare>Inscription: None</c> | <c=@ItemDull>Both hands</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Slashing Dmg: 7-17 (Requires 9 Dagger Ma 29    9     9               
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0xA7A8   Slashing Dmg: 7-17 (Requires 9 Dagger Ma 17    7     7               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=151  '<c=@ItemCommon>Brass Knuckles</c>'
+  info: <c=@ItemBasic>Slashing Dmg: 5-5</c> | <c=@ItemDull>Both hands</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0xA488   Slashing Dmg: 5-5                        5     5     5               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=152  '<c=@ItemEnhance>Survivor Canthan Helm of Superior Swordsmanship</c>'
+  info: <c=@ItemBasic>Armor: 80</c> | <c=@ItemBonus>Swordsmanship +1</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemBonus>Swordsmanship +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemBonus>Health -75</c> | <c=@ItemBonus>Health +5</c> | <c=@ItemBonus>Armor +20</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemDull>Value: 123 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x21F8   Swordsmanship +1 (Stacking)              20    1     1               
+  0x2408   mod_0x2408                               0     191   191             0xBF
+  0x2530   mod_0x2530                               1     127   127             
+  0x21E8   AIR_MAGIC_2                              20    3     3      20       
+  0x2530   mod_0x2530                               1     127   127             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0x2408   mod_0x2408                               1     230   230             0x1E6
+  0x2530   mod_0x2530                               3     204   204             
+  0x26D8   HEALTH_5                                 5     0     5               
+  0xA3C8   Armor: 80                                80    0     80              
+  0x8040   mod_0x8040                               0     0     0               
+  0xA0F8   ARMOR_21                                 20    0     20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=153  '<c=@ItemEnhance>Divine Symbol</c>'
+  info: <c=@ItemBasic>Energy +3</c> | <c=@ItemBonus>Health -20</c> | <c=@ItemBonus>Energy +12</c> <c=@ItemDull>(while Health is below 33%)</c> | <c=@ItemBonus>Armor +10</c> <c=@ItemDull>(while Health is below 33%)</c> | <c=@ItemDull>Value: 11 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x20D8   AIR_MAGIC                                0     20    20              
+  0x2318   ENERGY_4                                 33    12    12     33       
+  0x21B8   ARMOR_8                                  33    10    10     33       
+  0x62C8   Energy +3                                3     0     3               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=154  '<c=@ItemUnique>Totem Axe</c>'
+  info: <c=@ItemBasic>Slashing Dmg: 6-28</c> <c=@ItemDull>(Requires 9 Axe Mastery)</c> | <c=@ItemUnique>Armor penetration +20%</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemUnique>Enchantments last 20% longer</c> | <c=@ItemUnique>Energy +5</c> | <c=@ItemBasic>Damage +20%</c> | <c=@ItemDull>Value: 39 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Slashing Dmg: 6-28 (Requires 9 Axe Maste 18    9     9               
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0x2408   mod_0x2408                               0     171   171             0xAB
+  0x2530   mod_0x2530                               1     86    86              
+  0x23F8   ARMOR_PENETRATION                        20    20    20     20       
+  0x2408   mod_0x2408                               0     222   222             0xDE
+  0x2530   mod_0x2530                               1     189   189             
+  0x22B8   ENCHANTMENTS_LAST_LONGER                 0     20    20              
+  0x22D8   ENERGY                                   0     5     5               
+  0xA7A8   Slashing Dmg: 6-28 (Requires 9 Axe Maste 28    6     6               
+  0xA498   mod_0xA498                               120   0     120             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=155  '<c=@ItemRare>Anniversary Scythe "Sufferer"</c>'
+  info: <c=@ItemBasic>Dark Dmg: 9-41</c> <c=@ItemDull>(Requires 9 Soul Reaping)</c> | <c=@ItemBasic>Damage +20%</c> | <c=@ItemRare>Inscription: None</c> | <c=@ItemDull>Two-handed</c> | <c=@ItemDull><c=#FFFFFF>Crafted in tribute to an enduring legend.</c></c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Dark Dmg: 9-41 (Requires 9 Soul Reaping) 6     9     9               
+  0x24B8   COLD_DAMAGE                              7     0     7               
+  0x2788   mod_0x2788                               1     94    94              
+  0xA7A8   Dark Dmg: 9-41 (Requires 9 Soul Reaping) 41    9     9               
+  0xA498   mod_0xA498                               120   0     120             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=156  '<c=@ItemRare>Anniversary Shortbow "Whisper"</c>'
+  info: <c=@ItemBasic>Piercing Dmg: 15-28</c> <c=@ItemDull>(Requires 9 Critical Strikes)</c> | <c=@ItemBasic>Damage +20%</c> | <c=@ItemRare>Inscription: None</c> | <c=@ItemDull>Two-handed Shortbow</c> | <c=@ItemDull><c=#FFFFFF>Crafted in tribute to an enduring legend.</c></c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2618   mod_0x2618                               0     0     0               
+  0x2798   Piercing Dmg: 15-28 (Requires 9 Critical 35    9     9               
+  0x24B8   COLD_DAMAGE                              1     0     1               
+  0x2788   mod_0x2788                               1     94    94              
+  0xA7A8   Piercing Dmg: 15-28 (Requires 9 Critical 28    15    15              
+  0xA498   mod_0xA498                               120   0     120             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=157  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=158  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=159  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=160  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=161  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=162  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=163  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=164  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=165  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=166  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=167  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=168  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=169  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=170  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=171  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=172  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=173  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=174  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=175  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=176  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=177  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=178  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=179  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=180  '<c=@ItemCommon>250 Four-Leaf Clovers</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     38    38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=181  '<c=@ItemRare>25 <c=#C78017>Copper Zaishen Coins</c></c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               38    0     38              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=182  '<c=@ItemRare>122 <c=@ItemRare>Gold Zaishen Coins</c></c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               40    0     40              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=183  '<c=@ItemCommon>13 Destroyer Cores</c>'
+  info: <c=@ItemDull>Value: 390 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=184  '<c=@ItemCommon>40 Superb Charr Carvings</c>'
+  info: <c=@ItemDull>Value: 1 platinum, 200 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=185  '<c=@ItemCommon>38 Granite Slabs</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 114 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               8     0     8               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=186  '<c=@ItemCommon>163 Tanned Hide Squares</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 489 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               2     0     2               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=187  '<c=@ItemCommon>250 Wood Planks</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               6     0     6               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=188  '<c=@ItemUnique>Primeval Armor Remnants</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=189  "<c=@ItemUnique>Mallyx's Malice</c>"
+  info: <c=@ItemBasic>Dark Dmg: 11-22</c> <c=@ItemDull>(Requires 9 Soul Reaping)</c> | <c=@ItemUnique>Halves skill recharge of spells</c> <c=@ItemDull>(Chance: 10%)</c> | <c=@ItemUnique>Energy +5</c> <c=@ItemDull>(while Health is above 50%)</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Dark Dmg: 11-22 (Requires 9 Soul Reaping 6     9     9               
+  0x24B8   COLD_DAMAGE                              7     0     7               
+  0x2698   mod_0x2698                               0     2     2               
+  0x23A8   HALVES_SKILL_RECHARGE_SPELLS             10    0     10              
+  0x2308   ENERGY_3                                 50    5     5      50       
+  0xA7A8   Dark Dmg: 11-22 (Requires 9 Soul Reaping 22    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=190  "<c=@ItemUnique>Mallyx's Motivation</c>"
+  info: <c=@ItemBasic>Armor: 16</c> <c=@ItemDull>(Requires 9 Motivation)</c> | <c=@ItemUnique>Received physical damage -5</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemUnique>Health +30</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Armor: 16 (Requires 9 Motivation)        39    9     9               
+  0x2078   RECEIVED_PHYSICAL_DAMAGE                 20    5     5      20       
+  0x2348   HEALTH                                   30    0     30              
+  0xA7B8   mod_0xA7B8                               16    8     8               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=191  '<c=@ItemCommon>162 Bolts of Cloth</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 486 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               5     0     5               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=192  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=193  "<c=@ItemRare>Scroll of Hero's Insight</c>"
+  info: <c=@ItemRare>For 10 minutes your party gains double XP from combat.</c> | <c=@ItemDull>Value: 400 gold</c> | <c=@ItemDull>Use to activate. One use only.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x27E8   HEALTH_6                                 2     253   253    2        
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=194  '<c=@ItemCommon>99 Chitin Fragments</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 297 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               4     0     4               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=195  '<c=@ItemCommon>Volcanic Rock</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=196  '<c=@ItemCommon>140 Wood Planks</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 560 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               6     0     6               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=197  '<c=@ItemCommon>206 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 618 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=198  '<c=@ItemCommon>101 Scales</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 303 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               3     0     3               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=199  '<c=@ItemCommon>4 Elementalist Tomes</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to learn any non-elite Elementalist skill that is already unlocked on your account while in a town or outpost.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     29    29              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=200  '<c=@ItemCommon>250 Bones</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               0     0     0               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=201  '<c=@ItemCommon>7 Bolts of Linen</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 105 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               13    0     13              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=202  '<c=@ItemCommon>6 Spiritwood Planks</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 120 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               35    0     35              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=203  "<c=@ItemUnique>Sskai's Sword</c>"
+  info: <c=@ItemBasic>Slashing Dmg: 15-22</c> <c=@ItemDull>(Requires 9 Swordsmanship)</c> | <c=@ItemUnique>Damage +15%</c> <c=@ItemDull>(while Health is above 50%)</c> | <c=@ItemUnique>Double adrenaline gain</c> <c=@ItemDull>(Chance: 10%)</c> | <c=@ItemUnique>Health +30</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Slashing Dmg: 15-22 (Requires 9 Swordsma 20    9     9               
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0x2278   DAMAGE_3                                 50    15    15     50       
+  0x2408   mod_0x2408                               0     155   155             0x9B
+  0x2530   mod_0x2530                               1     54    54              
+  0x23B8   DOUBLE_ADRENALINE_GAIN                   0     10    10              
+  0x2408   mod_0x2408                               0     221   221             0xDD
+  0x2530   mod_0x2530                               1     187   187             
+  0x2348   HEALTH                                   30    0     30              
+  0xA7A8   Slashing Dmg: 15-22 (Requires 9 Swordsma 22    15    15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=204  '<c=@ItemCommon>3 Monstrous Claws</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 300 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               19    0     19              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=205  '<c=@ItemCommon>30 Feathers</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 90 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               11    0     11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=206  '<c=@ItemCommon>161 Bones</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 483 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               0     0     0               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=207  '<c=@ItemCommon>56 Plant Fibers</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 168 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               10    0     10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=208  '<c=@ItemCommon>Necromancer Tome</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to learn any non-elite Necromancer skill that is already unlocked on your account while in a town or outpost.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     28    28              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=209  '<c=@ItemCommon>3 Monstrous Eyes</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 300 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               20    0     20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=210  '<c=@ItemCommon>Monstrous Fang</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 100 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               21    0     21              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=211  '<c=@ItemUnique>Book of Secrets</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=212  '<c=@ItemCommon>10 Monastery Credits</c>'
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=213  '<c=@ItemUnique>Igneous Summoning Stone</c>'
+  info: <c=@ItemDull>Use to summon a Fire Imp ally of your level that lasts for 60 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item has unlimited uses, cannot be used by level 20 characters, and can only be used in explorable areas.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     136   136             
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=214  '<c=@ItemCommon>4 Steel Ingots</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 120 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               17    0     17              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=215  '<c=@ItemCommon>14 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 70 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=216  '<c=@ItemCommon>28 Rot Wallow Tusks</c>'
+  info: <c=@ItemDull>Value: 700 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=217  '<c=@ItemCommon>16 Stolen Provisions</c>'
+  info: <c=@ItemDull>Value: 480 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=218  '<c=@ItemCommon>3 Keen Oni Talons</c>'
+  info: <c=@ItemDull>Value: 75 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=219  "<c=@ItemRare>Undertaker's Naga Spaulder of Superior Protection Prayers</c>"
+  info: <c=@ItemBasic>Salvage item</c> | <c=@ItemBasic>Armor: 40</c> | <c=@ItemRare>Protection Prayers +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemRare>Health -75</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(while Health is below 80%)</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(while Health is below 60%)</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(while Health is below 40%)</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(while Health is below 20%)</c> | <c=@ItemDull>Value: 292 gold</c> | <c=@ItemDull>Use Salvage Kits, to produce crafting materials and upgrade components.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     237   237             0x1ED
+  0x2408   mod_0x2408                               0     190   190             0xBE
+  0x2530   mod_0x2530                               1     125   125             
+  0x21E8   AIR_MAGIC_2                              15    3     3      15       
+  0x2530   mod_0x2530                               1     125   125             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0xA3C8   Armor: 40                                40    0     40              
+  0xA530   ARMOR_25                                 3     218   3               
+  0xA738   ARMOR_32                                 5     0     5               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=220  '<c=@ItemCommon>5 Bone Charms</c>'
+  info: <c=@ItemDull>Value: 125 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=221  '<c=@ItemCommon>Monk Tome</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to learn any non-elite Monk skill that is already unlocked on your account while in a town or outpost.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     30    30              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=222  '<c=@ItemCommon>20 Naga Skins</c>'
+  info: <c=@ItemDull>Value: 600 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=223  '<c=@ItemRare>Stalwart Naga Trappings of Superior Fire Magic</c>'
+  info: <c=@ItemBasic>Salvage item</c> | <c=@ItemBasic>Armor: 40</c> | <c=@ItemRare>Fire Magic +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemRare>Health -75</c> | <c=@ItemRare>Armor +10</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemDull>Value: 208 gold</c> | <c=@ItemDull>Use Salvage Kits, to produce crafting materials and upgrade components.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     231   231             0x1E7
+  0x2408   mod_0x2408                               0     189   189             0xBD
+  0x2530   mod_0x2530                               1     123   123             
+  0x21E8   AIR_MAGIC_2                              10    3     3      10       
+  0x2530   mod_0x2530                               1     123   123             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0xA3C8   Armor: 40                                40    0     40              
+  0xA530   ARMOR_25                                 3     206   3               
+  0xA158   ARMOR_24                                 0     10    10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=224  '<c=@ItemCommon>2 Guardian Moss</c>'
+  info: <c=@ItemDull>Value: 60 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=225  "<c=@ItemRare>Disciple's Naga Spaulder of Superior Earth Magic</c>"
+  info: <c=@ItemBasic>Salvage item</c> | <c=@ItemBasic>Armor: 40</c> | <c=@ItemRare>Earth Magic +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemRare>Health -75</c> | <c=@ItemRare>Armor +15</c> <c=@ItemDull>(while affected by a Condition)</c> | <c=@ItemDull>Value: 228 gold</c> | <c=@ItemDull>Use Salvage Kits, to produce crafting materials and upgrade components.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     247   247             0x1F7
+  0x2408   mod_0x2408                               0     189   189             0xBD
+  0x2530   mod_0x2530                               1     123   123             
+  0x21E8   AIR_MAGIC_2                              9     3     3      9        
+  0x2530   mod_0x2530                               1     123   123             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0xA3C8   Armor: 40                                40    0     40              
+  0x8070   ARMOR_11                                 3     238   238    3        
+  0x80B0   ARMOR_14                                 8     0     8               
+  0xA530   ARMOR_25                                 3     238   3               
+  0xA0F8   ARMOR_21                                 15    0     15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=226  '<c=@ItemRare>Hale Jade Staff</c>'
+  info: <c=@ItemBasic>Halves skill recharge of spells</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemBasic>Energy +10</c> | <c=@ItemBasic>Lightning Dmg: 11-22</c> <c=@ItemDull>(Requires 10 Air Magic)</c> | <c=@ItemRare>Reduces Poison duration on you by 20%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemRare>Health +27</c> | <c=@ItemDull>Two-handed</c> | <c=@ItemDull>Value: 228 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x23A8   HALVES_SKILL_RECHARGE_SPELLS             20    1     20              
+  0x2798   Energy +10                               8     10    10              
+  0x24B8   COLD_DAMAGE                              4     0     4               
+  0x2478   Value: 228 gold                          1     228   228             
+  0x2408   mod_0x2408                               0     157   157             0x9D
+  0x2530   mod_0x2530                               1     58    58              
+  0x2348   HEALTH                                   27    0     27              
+  0x2698   mod_0x2698                               0     4     4               
+  0x62C8   Energy +10                               10    0     10              
+  0xA7A8   Lightning Dmg: 11-22 (Requires 10 Air Ma 22    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=227  '<c=@ItemRare>Hydromancer Yeti Plating of Superior Deadly Arts</c>'
+  info: <c=@ItemBasic>Salvage item</c> | <c=@ItemBasic>Armor: 40</c> | <c=@ItemRare>Deadly Arts +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemRare>Health -75</c> | <c=@ItemRare>Armor +10</c> <c=@ItemDull>(vs. elemental damage)</c> | <c=@ItemRare>Armor +10</c> <c=@ItemDull>(vs. Cold damage)</c> | <c=@ItemDull>Value: 224 gold</c> | <c=@ItemDull>Use Salvage Kits, to produce crafting materials and upgrade components.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     242   242             0x1F2
+  0x2408   mod_0x2408                               1     61    61              0x13D
+  0x2530   mod_0x2530                               2     123   123             
+  0x21E8   AIR_MAGIC_2                              30    3     3      30       
+  0x2530   mod_0x2530                               2     123   123             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0xA3C8   Armor: 40                                40    0     40              
+  0xA530   ARMOR_25                                 3     228   3               
+  0xA128   ARMOR_23                                 0     10    10              
+  0xA530   ARMOR_25                                 3     228   3               
+  0xA118   ARMOR_22                                 3     10    10     3        
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=228  "<c=@ItemRare>Vanguard's Yeti Plating of Superior Marksmanship</c>"
+  info: <c=@ItemBasic>Salvage item</c> | <c=@ItemBasic>Armor: 40</c> | <c=@ItemRare>Marksmanship +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemRare>Health -75</c> | <c=@ItemRare>Armor +10</c> <c=@ItemDull>(vs. physical damage)</c> | <c=@ItemRare>Armor +10</c> <c=@ItemDull>(vs. Blunt damage)</c> | <c=@ItemDull>Value: 220 gold</c> | <c=@ItemDull>Use Salvage Kits, to produce crafting materials and upgrade components.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     222   222             0x1DE
+  0x2408   mod_0x2408                               0     192   192             0xC0
+  0x2530   mod_0x2530                               1     129   129             
+  0x21E8   AIR_MAGIC_2                              25    3     3      25       
+  0x2530   mod_0x2530                               1     129   129             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0xA3C8   Armor: 40                                40    0     40              
+  0xA530   ARMOR_25                                 3     188   3               
+  0xA158   ARMOR_24                                 0     10    10              
+  0xA530   ARMOR_25                                 3     188   3               
+  0xA118   ARMOR_22                                 0     10    10     0        
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=229  '<c=@ItemRare>Prismatic Naga Spaulder of Superior Illusion Magic</c>'
+  info: <c=@ItemBasic>Salvage item</c> | <c=@ItemBasic>Armor: 40</c> | <c=@ItemRare>Illusion Magic +3</c> <c=@ItemDull>(Non-stacking)</c> | <c=@ItemRare>Health -75</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(Requires 9 Air Magic)</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(Requires 9 Earth Magic)</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(Requires 9 Fire Magic)</c> | <c=@ItemRare>Armor +5</c> <c=@ItemDull>(Requires 9 Water Magic)</c> | <c=@ItemDull>Value: 208 gold</c> | <c=@ItemDull>Use Salvage Kits, to produce crafting materials and upgrade components.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2408   mod_0x2408                               1     241   241             0x1F1
+  0x2408   mod_0x2408                               0     187   187             0xBB
+  0x2530   mod_0x2530                               1     119   119             
+  0x21E8   AIR_MAGIC_2                              1     3     3      1        
+  0x2530   mod_0x2530                               1     119   119             
+  0x20D8   AIR_MAGIC                                0     75    75              
+  0xA3C8   Armor: 40                                40    0     40              
+  0xA530   ARMOR_25                                 3     226   3               
+  0xA708   ARMOR_29                                 5     9     9      5        
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=230  '<c=@ItemRare>Spawning Wand</c>'
+  info: <c=@ItemBasic>Fire Dmg: 11-22</c> <c=@ItemDull>(Requires 12 Spawning Power)</c> | <c=@ItemRare>Energy +5</c> <c=@ItemDull>(while Enchanted)</c> | <c=@ItemDull>Value: 204 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Fire Dmg: 11-22 (Requires 12 Spawning Po 36    12    12              
+  0x24B8   COLD_DAMAGE                              5     0     5               
+  0x22F8   ENERGY_2                                 0     5     5               
+  0x2698   mod_0x2698                               0     6     6               
+  0xA7A8   Fire Dmg: 11-22 (Requires 12 Spawning Po 22    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=231  '<c=@ItemRare>Passage Scroll to the Fissure of Woe</c>'
+  info: <c=@ItemDull>Use to teleport your party to the Fissure of Woe. This item can only be used in Temple of the Ages, Zin Ku Corridor, Chantry of Secrets, or Embark Beach.</c> | <c=@ItemDull>Value: 500 gold</c> | <c=@ItemDull>Use to activate. One use only.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2788   mod_0x2788                               0     48    48              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=232  '<c=@ItemRare>Hale Jade Staff of Enchanting</c>'
+  info: <c=@ItemBasic>Halves skill recharge of spells</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemBasic>Energy +10</c> | <c=@ItemBasic>Fire Dmg: 11-22</c> <c=@ItemDull>(Requires 11 Fire Magic)</c> | <c=@ItemRare>Reduces Disease duration on you by 20%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemRare>Health +27</c> | <c=@ItemRare>Enchantments last 19% longer</c> | <c=@ItemDull>Two-handed</c> | <c=@ItemDull>Value: 244 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x23A8   HALVES_SKILL_RECHARGE_SPELLS             20    1     20              
+  0x2798   Fire Dmg: 11-22 (Requires 11 Fire Magic) 10    11    11              
+  0x24B8   COLD_DAMAGE                              5     0     5               
+  0x2478   mod_0x2478                               1     227   227             
+  0x2408   mod_0x2408                               0     157   157             0x9D
+  0x2530   mod_0x2530                               1     58    58              
+  0x2348   HEALTH                                   27    0     27              
+  0x2408   mod_0x2408                               0     225   225             0xE1
+  0x2530   mod_0x2530                               1     195   195             
+  0x22B8   ENCHANTMENTS_LAST_LONGER                 0     19    19              
+  0x2698   mod_0x2698                               0     4     4               
+  0x62C8   Energy +10                               10    0     10              
+  0xA7A8   Fire Dmg: 11-22 (Requires 11 Fire Magic) 22    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=233  '<c=@ItemCommon>Warrior Tome</c>'
+  info: <c=@ItemDull>Uses remaining: 1</c> | <c=@ItemDull>Use to learn any non-elite Warrior skill that is already unlocked on your account while in a town or outpost.</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2638   mod_0x2638                               0     0     0               
+  0x2458   Uses remaining: 1                        0     1     1               
+  0x2788   mod_0x2788                               0     31    31              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=234  '<c=@ItemRare>Poisonous Naga Shortbow</c>'
+  info: <c=@ItemBasic>Piercing Dmg: 15-28</c> <c=@ItemDull>(Requires 13 Marksmanship)</c> | <c=@ItemRare>Damage +19%</c> <c=@ItemDull>(while Hexed)</c> | <c=@ItemRare>Lengthens Poison duration on foes by 33%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemDull>Two-handed Shortbow</c> | <c=@ItemDull>Value: 232 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Piercing Dmg: 15-28 (Requires 13 Marksma 25    13    13              
+  0x24B8   COLD_DAMAGE                              1     0     1               
+  0x2298   DAMAGE_5                                 0     19    19              
+  0x2408   mod_0x2408                               0     159   159             0x9F
+  0x2530   mod_0x2530                               1     62    62              
+  0x2468   LENGTHENS_BLEEDING_DURATION_FOES         1     228   228    1        
+  0x2618   mod_0x2618                               0     0     0               
+  0x2698   mod_0x2698                               0     144   144             
+  0xA7A8   Piercing Dmg: 15-28 (Requires 13 Marksma 28    15    15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=235  "<c=@ItemUnique>Hukhrah's Staff</c>"
+  info: <c=@ItemBasic>Energy +10</c> | <c=@ItemBasic>Fire Dmg: 11-22</c> <c=@ItemDull>(Requires 9 Divine Favor)</c> | <c=@ItemUnique>Halves casting time of Divine Favor spells</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemUnique>Halves skill recharge of spells</c> <c=@ItemDull>(Chance: 20%)</c> | <c=@ItemUnique>Divine Favor +1</c> <c=@ItemDull>(20% chance while using skills)</c> | <c=@ItemUnique>Energy +5</c> | <c=@ItemDull>Two-handed</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Fire Dmg: 11-22 (Requires 9 Divine Favor 16    9     9               
+  0x24B8   COLD_DAMAGE                              5     0     5               
+  0x2698   mod_0x2698                               0     4     4               
+  0x2218   mod_0x2218                               20    16    16              
+  0x23A8   HALVES_SKILL_RECHARGE_SPELLS             20    0     20              
+  0x2408   mod_0x2408                               0     195   195             0xC3
+  0x2530   mod_0x2530                               1     135   135             
+  0x2418   AXE_MASTERY                              16    20    16              
+  0x2408   mod_0x2408                               0     156   156             0x9C
+  0x2530   mod_0x2530                               1     56    56              
+  0x22D8   ENERGY                                   0     5     5               
+  0x62C8   Energy +10                               10    0     10              
+  0xA7A8   Fire Dmg: 11-22 (Requires 9 Divine Favor 22    11    11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=236  '<c=@ItemRare>Crippling Jade Sword of Swordsmanship</c>'
+  info: <c=@ItemBasic>Slashing Dmg: 15-22</c> <c=@ItemDull>(Requires 10 Swordsmanship)</c> | <c=@ItemRare>Damage +20%</c> <c=@ItemDull>(while Hexed)</c> | <c=@ItemRare>Lengthens Crippled duration on foes by 33%</c> <c=@ItemDull>(Stacking)</c> | <c=@ItemRare>Swordsmanship +1</c> <c=@ItemDull>(19% chance while using skills)</c> | <c=@ItemDull>Value: 224 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2798   Slashing Dmg: 15-22 (Requires 10 Swordsm 20    10    10              
+  0x24B8   COLD_DAMAGE                              2     0     2               
+  0x2298   DAMAGE_5                                 0     20    20              
+  0x2408   mod_0x2408                               0     149   149             0x95
+  0x2530   mod_0x2530                               1     42    42              
+  0x2468   LENGTHENS_BLEEDING_DURATION_FOES         1     225   225    1        
+  0x2408   mod_0x2408                               0     235   235             0xEB
+  0x2530   mod_0x2530                               1     215   215             
+  0x2418   AXE_MASTERY                              20    19    20              
+  0xA7A8   Slashing Dmg: 15-22 (Requires 10 Swordsm 22    15    15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=237  '<c=@ItemCommon>Archaic Kappa Shell</c>'
+  info: <c=@ItemDull>Value: 25 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=238  '<c=@ItemCommon>3 Demonic Keys</c>'
+  info: <c=@ItemDull>Value: 1 platinum, 875 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               23    0     23              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=239  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=240  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=241  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=242  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=243  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=244  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=245  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=246  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=247  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=248  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=249  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=250  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=251  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=252  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=253  '<c=@ItemCommon>250 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=254  '<c=@ItemCommon>68 Glacial Stones</c>'
+  info: <c=@ItemDull>Value: 1 platinum, 360 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=255  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=256  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=257  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=258  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=259  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=260  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=261  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=262  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=263  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=264  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=265  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=266  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=267  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=268  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=269  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=270  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=271  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=272  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=273  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=274  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=275  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=276  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=277  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=278  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=279  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=280  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=281  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=282  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=283  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=284  '<c=@ItemCommon>250 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 750 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=285  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=286  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=287  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=288  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=289  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=290  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=291  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=292  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=293  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=294  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=295  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=296  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=297  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=298  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=299  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=300  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=301  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=302  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=303  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=304  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=305  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=306  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=307  '<c=@ItemCommon>250 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 1 platinum, 250 gold              1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=308  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=309  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=310  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=311  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=312  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=313  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=314  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=315  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=316  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=317  '<c=@ItemCommon>250 Lockpicks</c>'
+  info: <c=@ItemDull>Value: 187 platinum, 500 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2688   mod_0x2688                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=393  '<c=@ItemCommon>1000 Bones</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               0     0     0               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=394  '<c=@ItemCommon>1000 Iron Ingots</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 5 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               1     0     1               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=395  '<c=@ItemCommon>1000 Tanned Hide Squares</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               2     0     2               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=396  '<c=@ItemCommon>1000 Scales</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 3 platinum                        3     0     3               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=397  '<c=@ItemCommon>1000 Chitin Fragments</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               4     0     4               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=398  '<c=@ItemCommon>1000 Bolts of Cloth</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               5     0     5               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=399  '<c=@ItemCommon>1000 Wood Planks</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 4 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               6     0     6               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=400  '<c=@ItemCommon>1000 Granite Slabs</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               8     0     8               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=401  '<c=@ItemCommon>1000 Piles of Glittering Dust</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 3 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               9     0     9               
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=402  '<c=@ItemCommon>356 Plant Fibers</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 1 platinum, 68 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               10    0     10              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=403  '<c=@ItemCommon>150 Feathers</c>'
+  info: <c=@ItemBasic>Common crafting material</c> | <c=@ItemDull>Value: 450 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               11    0     11              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=404  '<c=@ItemCommon>1000 Fur Squares</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 10 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               12    0     12              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=405  '<c=@ItemCommon>498 Bolts of Linen</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 7 platinum, 470 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               13    0     13              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=406  '<c=@ItemCommon>801 Bolts of Silk</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 12 platinum, 15 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   Value: 12 platinum, 15 gold              15    0     15              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=407  '<c=@ItemCommon>419 Globs of Ectoplasm</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 41 platinum, 900 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               16    0     16              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=408  '<c=@ItemCommon>58 Steel Ingots</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 1 platinum, 740 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               17    0     17              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=409  '<c=@ItemCommon>127 Monstrous Claws</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 12 platinum, 700 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               19    0     19              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=410  '<c=@ItemCommon>149 Monstrous Eyes</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 14 platinum, 900 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               20    0     20              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=411  '<c=@ItemCommon>203 Monstrous Fangs</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 20 platinum, 300 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               21    0     21              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=412  '<c=@ItemCommon>21 Rubies</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 5 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               22    0     22              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=413  '<c=@ItemCommon>29 Sapphires</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 7 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               23    0     23              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=414  '<c=@ItemCommon>89 Diamonds</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 22 platinum, 250 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               24    0     24              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=415  '<c=@ItemCommon>156 Onyx Gemstones</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 39 platinum</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               25    0     25              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=416  '<c=@ItemCommon>152 Lumps of Charcoal</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 4 platinum, 560 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               26    0     26              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=417  '<c=@ItemCommon>319 Obsidian Shards</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 31 platinum, 900 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               27    0     27              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=418  '<c=@ItemCommon>Tempered Glass Vial</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 20 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               29    0     29              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=419  '<c=@ItemCommon>Elonian Leather Square</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 30 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               31    0     31              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=420  '<c=@ItemCommon>Vial of Ink</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 20 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               32    0     32              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=421  '<c=@ItemCommon>885 Spiritwood Planks</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 17 platinum, 700 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               35    0     35              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=422  '<c=@ItemCommon>383 Amber Chunks</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 38 platinum, 300 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               36    0     36              
+  0xC000   mod_0xC000                               0     0     0               
+
+ITEM id=423  '<c=@ItemCommon>28 Jadeite Shards</c>'
+  info: <c=@ItemBasic>Rare crafting material</c> | <c=@ItemDull>Value: 2 platinum, 800 gold</c>
+  modid    name                                     arg1  arg2  value  subtype  upg_id
+  0x2508   mod_0x2508                               37    0     37              
+  0xC000   mod_0xC000                               0     0     0               

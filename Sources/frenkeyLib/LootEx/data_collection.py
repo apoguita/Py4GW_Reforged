@@ -52,7 +52,7 @@ class CollectionEntry(Item):
         
         self.raw_name = ""
         self.unformatted_name = ""    
-        self.mods_info = ItemModifiersInformation.GetModsFromModifiers(GLOBAL_CACHE.Item.Customization.Modifiers.GetModifiers(self.item_id), self.item_type, self.model_id, GLOBAL_CACHE.Item.Customization.IsInscribable(self.item_id))
+        self.mods_info = ItemModifiersInformation.GetModsFromModifiers(GLOBAL_CACHE.Item.Mods.GetModifiers(self.item_id), self.item_type, self.model_id, GLOBAL_CACHE.Item.Properties.IsInscribable(self.item_id))
 
         
         self.get_profession()
@@ -193,11 +193,11 @@ class CollectionEntry(Item):
                         continue
                     
                     if mod.Mod.mod_type == ModType.Prefix:
-                        if self.item_type == ItemType.Rune_Mod or not GLOBAL_CACHE.Item.Customization.IsPrefixUpgradable(self.item_id):
+                        if self.item_type == ItemType.Rune_Mod or not GLOBAL_CACHE.Item.Properties.IsPrefixUpgradable(self.item_id):
                             continue
                         
                     if mod.Mod.mod_type == ModType.Suffix:
-                        if not GLOBAL_CACHE.Item.Customization.IsSuffixUpgradable(self.item_id):
+                        if not GLOBAL_CACHE.Item.Properties.IsSuffixUpgradable(self.item_id):
                             continue
 
                     if server_language == ServerLanguage.Italian:
@@ -445,9 +445,9 @@ class DataCollector:
         if len(item.mods) == 0 or not (utility.Util.CanHoldMod(item.item_type)):
             return False, "No mods found for item"
                 
-        inherent = GLOBAL_CACHE.Item.Customization.IsInscribable(item.id) and not utility.Util.is_inscription_model_item(item.model_id)
-        prefixes = GLOBAL_CACHE.Item.Customization.IsPrefixUpgradable(item.id)
-        suffixes = GLOBAL_CACHE.Item.Customization.IsSuffixUpgradable(item.id)
+        inherent = GLOBAL_CACHE.Item.Properties.IsInscribable(item.id) and not utility.Util.is_inscription_model_item(item.model_id)
+        prefixes = GLOBAL_CACHE.Item.Properties.IsPrefixUpgradable(item.id)
+        suffixes = GLOBAL_CACHE.Item.Properties.IsSuffixUpgradable(item.id)
         
         if not inherent and not prefixes and not suffixes:
             return False, "Item has no upgradable mods"

@@ -1690,7 +1690,7 @@ def GetInventorySalvageKitCount(bags=None) -> int:
     return quantity
 
 # def GetDyeColorIdFromItem(item_id: int) -> int:
-#     modifiers = Item.Customization.Modifiers.GetModifiers(item_id)
+#     modifiers = Item.Mods.GetModifiers(item_id)
 #     Item.GetItemType(item_id)
 #     for mod in modifiers:
 #         modColor = mod.GetArg1()
