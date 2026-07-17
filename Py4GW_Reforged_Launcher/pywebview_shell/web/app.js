@@ -777,52 +777,115 @@ function renderPresetRow() {
       palette = { ...preset };
       applyTheme(palette);
       syncPaletteControls();
+      schedulePaletteSave();
     };
     row.appendChild(el);
   }
 }
 
+// RELAY 038: every swatch/hex-field pair this drawer edits, field name ->
+// {swatch element id, hex-text element id}. Iterated by syncPaletteControls/
+// wirePaletteControls instead of 7 near-identical blocks each -- accent/bg/
+// surface/text plus (new this entry) good/warn/bad, the exact fields
+// theme.js's buildTheme already applies as real --good/--warn/--bad CSS vars
+// (RELAY 030's console coloring, card running/error states) but that had no
+// direct-edit UI before this.
+const PALETTE_FIELDS = {
+  accent: { swatch: "pal-accent", hex: "pal-accent-hex" },
+  bg: { swatch: "pal-bg", hex: "pal-bg-hex" },
+  surface: { swatch: "pal-surface", hex: "pal-surface-hex" },
+  text: { swatch: "pal-text", hex: "pal-text-hex" },
+  good: { swatch: "pal-good", hex: "pal-good-hex" },
+  warn: { swatch: "pal-warn", hex: "pal-warn-hex" },
+  bad: { swatch: "pal-bad", hex: "pal-bad-hex" },
+};
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
 function syncPaletteControls() {
-  document.getElementById("pal-accent").value = palette.accent;
-  document.getElementById("pal-bg").value = palette.bg;
-  document.getElementById("pal-surface").value = palette.surface;
-  document.getElementById("pal-text").value = palette.text;
+  for (const [field, ids] of Object.entries(PALETTE_FIELDS)) {
+    document.getElementById(ids.swatch).value = palette[field];
+    const hexEl = document.getElementById(ids.hex);
+    hexEl.value = palette[field];
+    hexEl.classList.remove("invalid");
+  }
   document.getElementById("pal-radius").value = palette.radius;
   document.getElementById("pal-radius-val").textContent = palette.radius + "px";
   document.getElementById("pal-font").value = palette.font;
   renderPresetRow();
 }
 
+// Debounced (RELAY 038): a dragged native color-picker swatch fires oninput
+// once per drag frame, and this same helper backs every palette mutation
+// (preset click, reset, hex onchange, radius drag, font select too) for one
+// consistent save path rather than special-casing which ones need it --
+// writing to disk on every frame would be real, pointless I/O for a purely
+// visual live-preview value.
+let paletteSaveTimeout = null;
+function schedulePaletteSave() {
+  if (paletteSaveTimeout) clearTimeout(paletteSaveTimeout);
+  paletteSaveTimeout = setTimeout(() => {
+    window.pywebview.api.save_custom_palette(palette);
+  }, 400);
+}
+
+async function loadPalette() {
+  const saved = await window.pywebview.api.get_custom_palette();
+  if (saved) {
+    palette = { ...THEME_PRESETS[0], ...saved };
+    applyTheme(palette);
+    syncPaletteControls();
+  }
+}
+
 function wirePaletteControls() {
-  document.getElementById("pal-accent").oninput = (e) => {
-    palette.accent = e.target.value;
-    applyTheme(palette);
-    renderPresetRow();
-  };
-  document.getElementById("pal-bg").oninput = (e) => {
-    palette.bg = e.target.value;
-    applyTheme(palette);
-    renderPresetRow();
-  };
-  document.getElementById("pal-surface").oninput = (e) => {
-    palette.surface = e.target.value;
-    applyTheme(palette);
-    renderPresetRow();
-  };
-  document.getElementById("pal-text").oninput = (e) => {
-    palette.text = e.target.value;
-    applyTheme(palette);
-    renderPresetRow();
-  };
+  for (const [field, ids] of Object.entries(PALETTE_FIELDS)) {
+    document.getElementById(ids.swatch).oninput = (e) => {
+      palette[field] = e.target.value;
+      document.getElementById(ids.hex).value = e.target.value;
+      document.getElementById(ids.hex).classList.remove("invalid");
+      applyTheme(palette);
+      renderPresetRow();
+      schedulePaletteSave();
+    };
+    // onchange (fires on blur/Enter), not oninput -- don't apply a
+    // half-typed hex value on every keystroke, same reasoning as any other
+    // free-text input elsewhere in this app that feeds something visual.
+    document.getElementById(ids.hex).onchange = (e) => {
+      const value = e.target.value.trim();
+      if (!HEX_COLOR_RE.test(value)) {
+        e.target.classList.add("invalid");
+        e.target.value = palette[field]; // revert to the last real value
+        return;
+      }
+      e.target.classList.remove("invalid");
+      palette[field] = value;
+      document.getElementById(ids.swatch).value = value;
+      applyTheme(palette);
+      renderPresetRow();
+      schedulePaletteSave();
+    };
+  }
   document.getElementById("pal-radius").oninput = (e) => {
     palette.radius = Number(e.target.value);
     document.getElementById("pal-radius-val").textContent = palette.radius + "px";
     applyTheme(palette);
+    schedulePaletteSave();
   };
   document.getElementById("pal-font").onchange = (e) => {
     palette.font = e.target.value;
     applyTheme(palette);
+    schedulePaletteSave();
   };
+}
+
+function onResetThemeClick() {
+  // Functionally identical to clicking the first preset swatch -- reuses
+  // the exact same sequence renderPresetRow's own onclick already proves,
+  // not a second code path for the same effect.
+  palette = { ...THEME_PRESETS[0] };
+  applyTheme(palette);
+  syncPaletteControls();
+  schedulePaletteSave();
 }
 
 // ---------- App Settings, part 1 (RELAY 029) ----------
@@ -1440,6 +1503,12 @@ window.addEventListener("pywebviewready", () => {
   applyTheme(palette);
   syncPaletteControls();
   wirePaletteControls();
+  // RELAY 038: real persisted palette, once it arrives -- `palette` above
+  // starts as THEME_PRESETS[0] (an instant first paint, same as before this
+  // entry) and gets swapped for the real saved one moments later, same
+  // fire-and-don't-block pattern loadAppSettings/loadRunAsAdminState below
+  // already use for their own startup values.
+  loadPalette();
   loadData();
   loadConsoleHistory();
   loadAppSettings();

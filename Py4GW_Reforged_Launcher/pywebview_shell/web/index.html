@@ -159,10 +159,10 @@
           <h4 style="margin-bottom:8px">Theme &amp; palette</h4>
           <div class="preset-row" id="preset-row"></div>
         </div>
-        <div class="pal-row"><span>Accent</span><input type="color" id="pal-accent"></div>
-        <div class="pal-row"><span>Background</span><input type="color" id="pal-bg"></div>
-        <div class="pal-row"><span>Surface</span><input type="color" id="pal-surface"></div>
-        <div class="pal-row"><span>Text</span><input type="color" id="pal-text"></div>
+        <div class="pal-row"><span>Accent</span><input type="color" id="pal-accent"><input type="text" class="pal-hex" id="pal-accent-hex" maxlength="7" spellcheck="false"></div>
+        <div class="pal-row"><span>Background</span><input type="color" id="pal-bg"><input type="text" class="pal-hex" id="pal-bg-hex" maxlength="7" spellcheck="false"></div>
+        <div class="pal-row"><span>Surface</span><input type="color" id="pal-surface"><input type="text" class="pal-hex" id="pal-surface-hex" maxlength="7" spellcheck="false"></div>
+        <div class="pal-row"><span>Text</span><input type="color" id="pal-text"><input type="text" class="pal-hex" id="pal-text-hex" maxlength="7" spellcheck="false"></div>
         <div class="pal-row"><span>Corner radius</span><input type="range" id="pal-radius" min="4" max="18" step="1"><span id="pal-radius-val">12px</span></div>
         <div class="pal-row">
           <span>Font</span>
@@ -173,6 +173,19 @@
             <option value="Spectral">Spectral</option>
           </select>
         </div>
+        <!-- RELAY 038: good/warn/bad are already real palette fields
+             (theme.js buildTheme -- --good/--warn/--bad + -soft variants,
+             the exact plumbing RELAY 030's console coloring and card
+             running/error states consume), but had no direct-edit UI
+             before this -- only ever changed indirectly via a whole
+             preset swap. -->
+        <div>
+          <h4 style="margin:12px 0 8px">Status colors</h4>
+          <div class="pal-row"><span>Good</span><input type="color" id="pal-good"><input type="text" class="pal-hex" id="pal-good-hex" maxlength="7" spellcheck="false"></div>
+          <div class="pal-row"><span>Warn</span><input type="color" id="pal-warn"><input type="text" class="pal-hex" id="pal-warn-hex" maxlength="7" spellcheck="false"></div>
+          <div class="pal-row"><span>Bad</span><input type="color" id="pal-bad"><input type="text" class="pal-hex" id="pal-bad-hex" maxlength="7" spellcheck="false"></div>
+        </div>
+        <button class="ghost-btn" onclick="onResetThemeClick()" style="align-self:flex-start">Reset to default</button>
       </div>
 
       <!-- Setup: "is my environment ready" -- Prerequisites (032) here as-

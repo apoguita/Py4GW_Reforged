@@ -410,6 +410,18 @@ class ShellBridge:
         threading.Thread(target=worker, daemon=True).start()
         return {"ok": True, "elevated": False, "relaunching": True}
 
+    # ---- Theme palette persistence (RELAY 038) ----
+    # Real bug fix, not just new UI: before this entry, the palette never
+    # persisted at all (app.js hardcoded THEME_PRESETS[0] on every load,
+    # confirmed via grep -- no save/load call anywhere), so any custom
+    # color edit silently vanished on restart.
+
+    def get_custom_palette(self) -> Optional[dict]:
+        return settings_store.load_custom_palette()
+
+    def save_custom_palette(self, palette: dict) -> None:
+        settings_store.save_custom_palette(dict(palette))
+
     # ---- Prerequisites (RELAY 032) -- Python/VC++/DirectX checks, ported
     # onto push_event instead of the old imgui app's PrereqState polling
     # class (this app already has a proven async-push mechanism -- see

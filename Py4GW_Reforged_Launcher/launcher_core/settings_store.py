@@ -218,3 +218,22 @@ def load_run_as_admin_enabled(path: Path | str | None = None) -> bool:
 def save_run_as_admin_enabled(run_as_admin_enabled: bool, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("run_as_admin_enabled", run_as_admin_enabled, resolved)
+
+
+def load_custom_palette(path: Path | str | None = None) -> Optional[dict]:
+    """None means "nothing saved yet" -- the caller (app.js's loadPalette)
+    falls back to THEME_PRESETS[0] itself, same "None means use the
+    default, caller resolves it" shape as load_mod_repo_path. Real bug fix
+    (RELAY 038): before this, the palette never persisted at all -- app.js
+    hardcoded THEME_PRESETS[0] on every load with no save/load call
+    anywhere, so any custom color edit silently vanished on the next
+    restart."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    value = data.get("custom_palette")
+    return dict(value) if value else None
+
+
+def save_custom_palette(custom_palette: dict, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("custom_palette", dict(custom_palette), resolved)

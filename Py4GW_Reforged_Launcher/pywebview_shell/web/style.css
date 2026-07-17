@@ -840,6 +840,26 @@ body.drawer-open #drawer {
   padding: 2px;
   flex-shrink: 0;
 }
+/* RELAY 038: compact hex text field alongside each color swatch --
+   deliberately narrow (fits "#rrggbb", 7 chars) rather than reusing
+   .field-input's width:100%, since it sits inline in a .pal-row next to
+   the swatch, not on its own line like every other .field-input in this
+   app. */
+.pal-row input.pal-hex {
+  width: 72px;
+  background: var(--panel2, #1f2340);
+  border: 1px solid var(--border, #2a2f55);
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text, #e6e8ff);
+  outline: none;
+  flex-shrink: 0;
+}
+.pal-row input.pal-hex.invalid {
+  border-color: var(--bad, #ff6b8a);
+}
 .pal-row input[type="range"] {
   width: 120px;
   accent-color: var(--accent, #7c8cff);
