@@ -390,6 +390,25 @@ select {
   box-shadow: 0 0 0 1px var(--accent, #7c8cff), 0 0 0 4px var(--accent-soft, rgba(124, 140, 255, 0.16));
   border-color: var(--accent, #7c8cff);
 }
+/* RELAY 041: a genuinely separate visual channel from .selected (bulk-
+   checked) and .state-* (launch state) -- window-focus must never collide
+   with either, since all three can be true on the same card at once (a
+   bulk-checked card whose game window also happens to be OS-focused).
+   Technique (thin absolute top stripe), not meaning, borrowed from an
+   early, unused-here mockup direction (dev_notes/mockups/Game launcher
+   desktop utility.zip's "1c Roster" -- Game Launcher.dc.html ~line 419,
+   there colored by launch state; here always --accent, since this app's
+   own state system already owns dot/card coloring). */
+.card.card-focused::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent, #7c8cff);
+  border-radius: var(--radius, 12px) var(--radius, 12px) 0 0;
+}
 .card-top {
   display: flex;
   align-items: center;

@@ -152,6 +152,26 @@ def set_window_title(hwnd: int, title: str) -> bool:
     return bool(user32.SetWindowTextW(hwnd, title))
 
 
+def get_foreground_window_pid() -> Optional[int]:
+    """The pid owning the CURRENT OS foreground window, or None if it can't
+    be resolved (no window currently has focus -- a rare but real
+    transient state, e.g. between Alt-Tab switches).
+
+    Used by the two-way card<->window focus sync (RELAY 041) to detect
+    focus changes made OUTSIDE this app (Alt-Tab, taskbar, clicking a game
+    window directly) -- the app's own window is never special-cased here;
+    it's simply whatever pid owns the foreground at the moment, and a
+    caller comparing this against its own tracked pids naturally treats
+    the launcher's own window (or anything else untracked) as "nothing
+    tracked is focused," with no separate check needed.
+    """
+    hwnd = win32gui.GetForegroundWindow()
+    if not hwnd:
+        return None
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    return pid or None
+
+
 def foreground_window(hwnd: int) -> None:
     """Bring `hwnd` to the foreground, restoring it first if minimized.
 

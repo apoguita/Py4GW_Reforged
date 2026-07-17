@@ -16,6 +16,7 @@ import collections
 import dataclasses
 import json
 import threading
+import time
 import weakref
 from pathlib import Path
 from typing import Any, Optional
@@ -23,7 +24,7 @@ from typing import Any, Optional
 import psutil
 import webview
 
-from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store
+from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store, window_control
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -172,12 +173,18 @@ class ShellBridge:
         # locks above.
         self._run_as_admin_lock = threading.Lock()
         self._run_as_admin_relaunch_in_progress = False
+        # RELAY 041 -- guards against bind_window ever starting a second
+        # focus-poll thread (shouldn't happen, but costs nothing to guard).
+        self._focus_poll_started = False
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
 
     def bind_window(self, window: webview.Window) -> None:
         self._window_ref = weakref.ref(window)
+        if not self._focus_poll_started:
+            self._focus_poll_started = True
+            threading.Thread(target=self._run_focus_poll, daemon=True).start()
 
     def bind_hwnd(self, hwnd: int) -> None:
         """Plain int, not a live object -- safe to store directly (no
@@ -958,6 +965,62 @@ class ShellBridge:
             with self._launch_lock:
                 self._running_pids.pop(profile_id, None)
         return {"ok": killed, "pid": pid}
+
+    # ---- Two-way card <-> game-window focus sync (RELAY 041) ----
+
+    def focus_profile_window(self, profile_id: str) -> dict:
+        """Direction 1: click a card -> bring that profile's real running
+        game window to the foreground. Synchronous, cheap (a handful of
+        Win32 calls) -- same simple shape as stop_profile above, not
+        032/033's threaded pattern; nothing here is slow enough to need it.
+        """
+        with self._launch_lock:
+            pid = self._running_pids.get(profile_id)
+        if pid is None:
+            return {"ok": False, "error": "Profile is not running"}
+        hwnd = window_control.find_visible_window_for_pid(pid)
+        if hwnd is None:
+            return {"ok": False, "error": "No visible window found for this profile"}
+        window_control.foreground_window(hwnd)
+        return {"ok": True}
+
+    def _run_focus_poll(self) -> None:
+        """Direction 2: continuously detect focus changes made OUTSIDE this
+        app (Alt-Tab, taskbar, clicking a game window directly) and push
+        which tracked profile (if any) now owns the OS foreground window.
+        Polling (not SetWinEventHook), same pattern as every other real-
+        time feature in this app (032/033's slow-operation push_event) --
+        consistency over a "more proper" but second, different live-update
+        mechanism for a first attempt at this. ~500ms is responsive enough
+        to feel live without meaningfully costing anything (one
+        GetForegroundWindow + one GetWindowThreadProcessId per tick,
+        regardless of how many profiles exist).
+
+        Pushes "focused_profile_changed" only when the resolved profile_id
+        actually changes, not every tick, to avoid redundant DOM churn on
+        the JS side. Any foreground window that isn't a tracked pid --
+        including this launcher's own window, deliberately not special-
+        cased -- resolves to profile_id None, clearing every card's
+        focused indicator (Chris's own confirmed answer: clear entirely,
+        not persist the last one, when focus moves to something untracked).
+        """
+        last_reported: Optional[str] = "__unset__"  # sentinel: always push once, even if the real first state is None
+        while True:
+            time.sleep(0.5)
+            try:
+                foreground_pid = window_control.get_foreground_window_pid()
+                matched_profile_id = None
+                with self._launch_lock:
+                    if foreground_pid is not None:
+                        for candidate_id, pid in self._running_pids.items():
+                            if pid == foreground_pid:
+                                matched_profile_id = candidate_id
+                                break
+                if matched_profile_id != last_reported:
+                    last_reported = matched_profile_id
+                    self.push_event("focused_profile_changed", {"profile_id": matched_profile_id})
+            except Exception:
+                pass  # best-effort -- one bad tick (a window destroyed mid-check, etc.) must not stop this loop
 
     # ---- Phase F: team/bulk launch ----
 

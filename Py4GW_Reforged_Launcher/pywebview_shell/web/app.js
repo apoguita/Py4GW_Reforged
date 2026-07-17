@@ -21,6 +21,14 @@ let teams = [];
 let activeTeamId = "ALL";
 let filterText = "";
 let checkedIds = new Set();
+// RELAY 041: the profile whose real game window currently owns OS focus,
+// or null if nothing tracked does (this app's own window included --
+// deliberately not special-cased, see bridge.py's _run_focus_poll).
+// Genuinely separate from checkedIds -- that means "checked for a bulk
+// action," this means "this card's window is the one you're looking at
+// right now." Reusing one mechanism for both would corrupt whichever
+// wasn't the most recent click.
+let focusedProfileId = null;
 let editingProfileId = null; // null while the edit drawer is closed or adding new
 // RELAY 024: gMod plugin list is an array field, not a simple form control --
 // held here while the drawer's open, same lifecycle as editingProfileId, and
@@ -143,7 +151,7 @@ function renderCards() {
   grid.innerHTML = "";
   for (const p of visible) {
     const card = document.createElement("div");
-    card.className = "card" + (checkedIds.has(p.id) ? " selected" : "");
+    card.className = "card" + (checkedIds.has(p.id) ? " selected" : "") + (p.id === focusedProfileId ? " card-focused" : "");
     card.setAttribute("data-card", p.id);
     const midText = clientFolderLabel(p.executable_path);
     card.innerHTML = `
@@ -174,6 +182,11 @@ function renderCards() {
       e.stopPropagation();
       openEditDrawer(p.id);
     };
+    // RELAY 041, direction 1: the card <div> itself has no click handler
+    // of its own before this -- only its children do, each already
+    // stopping propagation, so this only fires on a genuine click
+    // elsewhere on the card (avatar, name, badges, empty space).
+    card.onclick = () => onCardClick(p.id);
     applyCardLaunchVisual(card, p); // Launch/Stop button + dot + status per launchState
     grid.appendChild(card);
   }
@@ -250,6 +263,36 @@ function refreshCard(id) {
   if (!card) return; // not currently on screen (other team / filtered out)
   const p = profiles.find((x) => x.id === id);
   if (p) applyCardLaunchVisual(card, p);
+}
+
+// ---------- Two-way card <-> game-window focus sync (RELAY 041) ----------
+
+// Targeted DOM update, not a full renderCards() -- this can fire every
+// ~500ms from the background poll (direction 2), and re-rendering the
+// whole grid on a tick where nothing the user asked for changed would be
+// real, unnecessary churn (a re-render mid-drag/scroll/edit would also be
+// actively disruptive, unlike a plain class toggle).
+function setFocusedProfile(profileId) {
+  if (focusedProfileId === profileId) return;
+  if (focusedProfileId !== null) {
+    const prev = document.querySelector('[data-card="' + focusedProfileId + '"]');
+    if (prev) prev.classList.remove("card-focused");
+  }
+  focusedProfileId = profileId;
+  if (focusedProfileId !== null) {
+    const next = document.querySelector('[data-card="' + focusedProfileId + '"]');
+    if (next) next.classList.add("card-focused");
+  }
+}
+
+async function onCardClick(id) {
+  const res = await window.pywebview.api.focus_profile_window(id);
+  // Optimistic -- don't make a deliberate click wait up to ~500ms for the
+  // background poll's own next tick to confirm what just happened.
+  // bridge.py's own poll will independently re-confirm (or correct, if
+  // Windows refused the foreground request) this on its next tick either
+  // way, via the same setFocusedProfile call the push handler below uses.
+  if (res && res.ok) setFocusedProfile(id);
 }
 
 // ---------- Launch-time prerequisite gate (RELAY 037) ----------
@@ -476,6 +519,14 @@ window.shellBridge = {
     }
     if (event === "run_as_admin_relaunch_failed") {
       openConfirmModal({ title: "Elevation failed", message: data.error, confirmLabel: "OK" });
+      return;
+    }
+    if (event === "focused_profile_changed") {
+      // data.profile_id is legitimately null here (nothing tracked is
+      // OS-focused) -- placed before the `!data.profile_id` guard below
+      // for exactly that reason; every other event past this point
+      // requires a real profile_id.
+      setFocusedProfile(data.profile_id);
       return;
     }
     if (!data || !data.profile_id) return;
