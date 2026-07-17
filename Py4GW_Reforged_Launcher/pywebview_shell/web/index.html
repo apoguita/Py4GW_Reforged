@@ -141,6 +141,41 @@
           <option value="Spectral">Spectral</option>
         </select>
       </div>
+      <!-- App Settings, part 2 (RELAY 032) -- ported from the old imgui
+           app's PrereqState/_draw_prereq_row/_show_prereq_install_confirm_
+           popup (launcher.py), onto push_event instead of that class's own
+           polling design (see bridge.py's check_prereqs/install_prereq).
+           Shown first among the App Settings sections below Theme, same
+           "genuinely doesn't work without them" priority the old app
+           gives this. -->
+      <div>
+        <h4 style="margin-bottom:8px">Prerequisites</h4>
+        <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+          Required for Py4GW/gMod injection to work at all.
+        </p>
+        <div class="prereq-row" id="prereq-row-python">
+          <span class="prereq-label">Python 3.13.0 (32-bit)</span>
+          <span class="prereq-status" id="prereq-status-python">Checking...</span>
+          <button class="small-btn" id="prereq-install-python" style="display:none" onclick="onPrereqInstallClick('python')">Install now</button>
+        </div>
+        <div class="prereq-row" id="prereq-row-vcredist_x86">
+          <span class="prereq-label">VC++ Redistributable (x86)</span>
+          <span class="prereq-status" id="prereq-status-vcredist_x86">Checking...</span>
+          <button class="small-btn" id="prereq-install-vcredist_x86" style="display:none" onclick="onPrereqInstallClick('vcredist_x86')">Install now</button>
+        </div>
+        <div class="prereq-row" id="prereq-row-vcredist_x64">
+          <span class="prereq-label">VC++ Redistributable (x64)</span>
+          <span class="prereq-status" id="prereq-status-vcredist_x64">Checking...</span>
+          <button class="small-btn" id="prereq-install-vcredist_x64" style="display:none" onclick="onPrereqInstallClick('vcredist_x64')">Install now</button>
+        </div>
+        <div class="prereq-row" id="prereq-row-directx_runtime">
+          <span class="prereq-label">DirectX End-User Runtime</span>
+          <span class="prereq-status" id="prereq-status-directx_runtime">Checking...</span>
+          <button class="small-btn" id="prereq-install-directx_runtime" style="display:none" onclick="onPrereqInstallClick('directx_runtime')">Install now</button>
+        </div>
+        <div id="prereq-done-message" style="display:none;font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin-top:6px"></div>
+        <button class="ghost-btn" style="margin-top:8px" onclick="onCheckPrereqsClick()">Check now</button>
+      </div>
       <!-- App Settings, part 1 (RELAY 029) -- the cheap settings_store-
            backed controls. dark_theme_enabled has no control here on
            purpose: this app's light/dark rendering is already a live-
@@ -166,8 +201,7 @@
         <button class="ghost-btn" onclick="onReloadDataClick()">Reload profiles/teams from disk</button>
       </div>
       <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5">
-        Prerequisites, mod repository, and account backup/import aren't
-        wired up yet.
+        Mod repository and account backup/import aren't wired up yet.
       </p>
     </div>
   </div>
@@ -272,6 +306,12 @@
 <div id="confirm-modal">
   <span class="title" id="confirm-title"></span>
   <p id="confirm-message"></p>
+  <!-- RELAY 032: optional second line for a quoted-verbatim warning that
+       needs its own visual weight (e.g. the DirectX runtime's real
+       "cannot be uninstalled" notice) -- distinct from #confirm-message's
+       own muted color, same pattern the old imgui app used
+       (text_colored(_PREREQ_MISSING_COLOR, ...) as a second line). -->
+  <p id="confirm-warning" style="display:none"></p>
   <input class="field-input" id="confirm-input" placeholder="">
   <div id="confirm-footer">
     <div style="flex:1"></div>

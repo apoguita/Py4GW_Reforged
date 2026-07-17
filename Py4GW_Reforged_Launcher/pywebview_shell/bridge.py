@@ -21,7 +21,7 @@ from typing import Any, Optional
 
 import webview
 
-from launcher_core import bulk_launch, crypto, profile_store, settings_store
+from launcher_core import bulk_launch, crypto, prereqs, profile_store, settings_store
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -124,6 +124,13 @@ class ShellBridge:
         # streak always starts a fresh line -- ported from launcher.py's
         # _console_countdown_active exactly.
         self._console_countdown_active = False
+        # Phase G part 2 (RELAY 032) -- guards against a second install
+        # starting while one's already running, same shape as _in_flight
+        # above (a plain lock-guarded value, not the old imgui app's
+        # PrereqState polling class -- this app already has push_event for
+        # exactly this, no reason to reintroduce a polling design).
+        self._prereq_install_lock = threading.Lock()
+        self._prereq_install_in_progress: Optional[str] = None
 
     def _window(self) -> Optional[webview.Window]:
         return self._window_ref() if self._window_ref is not None else None
@@ -315,6 +322,76 @@ class ShellBridge:
         # raw value this stores. Duplicating the clamp here would just be a
         # second copy of the same rule to keep in sync.
         settings_store.save_bulk_launch_pacing_seconds(int(seconds))
+
+    # ---- Prerequisites (RELAY 032) -- Python/VC++/DirectX checks, ported
+    # onto push_event instead of the old imgui app's PrereqState polling
+    # class (this app already has a proven async-push mechanism -- see
+    # this class's own docstring on push_event, and RELAY 021/029's own
+    # use of the identical pattern).
+
+    def check_prereqs(self) -> dict:
+        """Kicks off a background check of all 4 real prereqs.py rows;
+        results arrive via a "prereqs_result" push_event once done -- never
+        blocks the caller, same immediate-ack-then-push shape as
+        launch_profiles_bulk."""
+        threading.Thread(target=self._run_prereq_checks, daemon=True).start()
+        return {"ok": True}
+
+    def _run_prereq_checks(self) -> None:
+        python_result = prereqs.check_python_prereq()
+        vcredist_result = prereqs.check_vcredist_prereq()
+        directx_result = prereqs.check_directx_runtime_prereq()
+        self.push_event(
+            "prereqs_result",
+            {
+                "python": {"is_ok": python_result.is_ok, "diagnostic_text": python_result.diagnostic_text},
+                "vcredist_x86": {
+                    "is_ok": vcredist_result.x86_status == prereqs.VcRedistStatus.OK,
+                    "diagnostic_text": f"version {vcredist_result.x86_version}" if vcredist_result.x86_version else "not found",
+                },
+                "vcredist_x64": {
+                    "is_ok": vcredist_result.x64_status == prereqs.VcRedistStatus.OK,
+                    "diagnostic_text": f"version {vcredist_result.x64_version}" if vcredist_result.x64_version else "not found",
+                },
+                "directx_runtime": {"is_ok": directx_result.is_ok, "diagnostic_text": directx_result.diagnostic_text},
+            },
+        )
+
+    def install_prereq(self, component: str) -> dict:
+        """component is "python"/"vcredist_x86"/"vcredist_x64"/
+        "directx_runtime". Rejects a second concurrent install -- the real
+        user-facing prevention is the UI disabling the button while one's
+        in flight, this is just the server-side guard behind it."""
+        with self._prereq_install_lock:
+            if self._prereq_install_in_progress is not None:
+                return {"ok": False, "error": "An install is already in progress"}
+            self._prereq_install_in_progress = component
+        threading.Thread(target=self._run_prereq_install, args=(component,), daemon=True).start()
+        return {"ok": True}
+
+    def _run_prereq_install(self, component: str) -> None:
+        def on_status(text: str) -> None:
+            self.push_event("prereq_install_status", {"component": component, "text": text})
+
+        if component == "python":
+            success, message = prereqs.download_and_install_python(on_status)
+        elif component == "vcredist_x86":
+            success, message = prereqs.download_and_install_vcredist("x86", on_status)
+        elif component == "vcredist_x64":
+            success, message = prereqs.download_and_install_vcredist("x64", on_status)
+        elif component == "directx_runtime":
+            success, message = prereqs.download_and_install_directx_runtime(on_status)
+        else:
+            success, message = False, "Unknown component"
+
+        with self._prereq_install_lock:
+            self._prereq_install_in_progress = None
+        self.push_event("prereq_install_done", {"component": component, "success": success, "message": message})
+        # No restart needed to see the result -- prereqs.refresh_env_from_
+        # registry's own docstring explains why -- so just re-run every
+        # check now that something may have changed, same as the old
+        # app's PrereqState._run_install did.
+        self._run_prereq_checks()
 
     # ---- Live console (RELAY 021) -- shared by both launch paths below ----
 

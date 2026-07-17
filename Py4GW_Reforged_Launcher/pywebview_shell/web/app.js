@@ -316,6 +316,30 @@ window.shellBridge = {
       }
       return;
     }
+    if (event === "prereqs_result") {
+      for (const component of PREREQ_COMPONENTS) {
+        updatePrereqRow(component, data[component]);
+      }
+      return;
+    }
+    if (event === "prereq_install_status") {
+      // Busy text takes over the row's status slot in place of the Install
+      // button, same swap the old imgui app did (text_colored(_PREREQ_
+      // BUSY_COLOR, ...) same_line() instead of the button).
+      const statusEl = document.getElementById(`prereq-status-${data.component}`);
+      statusEl.textContent = data.text;
+      statusEl.className = "prereq-status busy";
+      return;
+    }
+    if (event === "prereq_install_done") {
+      const doneEl = document.getElementById("prereq-done-message");
+      doneEl.textContent = data.message;
+      doneEl.style.display = "block";
+      // No restart needed to see the result -- the bridge already re-runs
+      // check_prereqs() right after this event, so the rows themselves
+      // refresh on their own via the next "prereqs_result" push.
+      return;
+    }
     if (!data || !data.profile_id) return;
     const id = data.profile_id;
     if (event === "launch_log") {
@@ -500,11 +524,12 @@ function closeDrawer() {
 // early-return shape the native calls had (`const name = await
 // openConfirmModal(...); if (!name) return;`).
 
-function openConfirmModal({ title, message, inputPlaceholder, confirmLabel = "Confirm", danger = false }) {
+function openConfirmModal({ title, message, warningLine, inputPlaceholder, confirmLabel = "Confirm", danger = false }) {
   const scrim = document.getElementById("confirm-scrim");
   const modal = document.getElementById("confirm-modal");
   const titleEl = document.getElementById("confirm-title");
   const messageEl = document.getElementById("confirm-message");
+  const warningEl = document.getElementById("confirm-warning");
   const inputEl = document.getElementById("confirm-input");
   const confirmBtn = document.getElementById("confirm-btn");
   const cancelBtn = document.getElementById("confirm-cancel-btn");
@@ -513,6 +538,10 @@ function openConfirmModal({ title, message, inputPlaceholder, confirmLabel = "Co
   titleEl.textContent = title;
   messageEl.textContent = message || "";
   messageEl.style.display = message ? "block" : "none";
+  // RELAY 032: optional quoted-verbatim warning line, own color, distinct
+  // from the main message (e.g. the DirectX runtime install confirm).
+  warningEl.textContent = warningLine || "";
+  warningEl.style.display = warningLine ? "block" : "none";
   inputEl.style.display = hasInput ? "block" : "none";
   inputEl.value = "";
   inputEl.placeholder = inputPlaceholder || "";
@@ -644,6 +673,71 @@ function wireAppSettingsControls() {
 
 async function onReloadDataClick() {
   await loadData();
+}
+
+// ---------- Prerequisites (RELAY 032) ----------
+// Ported from the old imgui app's PrereqState/_draw_prereq_row/
+// _show_prereq_install_confirm_popup, onto push_event instead of that
+// class's polling design (see bridge.py's check_prereqs/install_prereq).
+
+const PREREQ_COMPONENTS = ["python", "vcredist_x86", "vcredist_x64", "directx_runtime"];
+// Labels/URLs mirrored from launcher_core/prereqs.py's own real constants
+// (PYTHON_DOWNLOAD_URL, VCREDIST_2013_X86_URL, VCREDIST_2013_X64_URL,
+// DIRECTX_RUNTIME_DOWNLOAD_URL) -- JS can't import that module directly,
+// so keep these in sync by hand if the Python side's URLs ever change.
+const PREREQ_INFO = {
+  python: { label: "Python 3.13.0 (32-bit)", url: "https://www.python.org/ftp/python/3.13.0/python-3.13.0.exe" },
+  vcredist_x86: { label: "VC++ Redistributable (x86)", url: "https://aka.ms/highdpimfc2013x86enu" },
+  vcredist_x64: { label: "VC++ Redistributable (x64)", url: "https://aka.ms/highdpimfc2013x64enu" },
+  directx_runtime: {
+    label: "DirectX End-User Runtime",
+    url: "https://download.microsoft.com/download/8/4/a/84a35bf1-dafe-4ae8-82af-ad2ae20b6b14/directx_Jun2010_redist.exe",
+  },
+};
+// Quoted verbatim from Microsoft's own download page (id=8109), same
+// reasoning as any other quoted-source text in this app -- don't paraphrase.
+const DIRECTX_RUNTIME_CANNOT_UNINSTALL_NOTICE = "The DirectX runtime cannot be uninstalled.";
+
+function onCheckPrereqsClick() {
+  for (const component of PREREQ_COMPONENTS) {
+    const statusEl = document.getElementById(`prereq-status-${component}`);
+    statusEl.textContent = "Checking...";
+    statusEl.className = "prereq-status";
+    document.getElementById(`prereq-install-${component}`).style.display = "none";
+  }
+  window.pywebview.api.check_prereqs();
+}
+
+function updatePrereqRow(component, result) {
+  const statusEl = document.getElementById(`prereq-status-${component}`);
+  const installBtn = document.getElementById(`prereq-install-${component}`);
+  if (result.is_ok) {
+    statusEl.textContent = `OK -- ${result.diagnostic_text}`;
+    statusEl.className = "prereq-status ok";
+    installBtn.style.display = "none";
+  } else {
+    statusEl.textContent = "NOT FOUND";
+    statusEl.className = "prereq-status missing";
+    installBtn.style.display = "inline-block";
+  }
+}
+
+async function onPrereqInstallClick(component) {
+  const info = PREREQ_INFO[component];
+  const ok = await openConfirmModal({
+    title: "Install prerequisite?",
+    message: `This will download and run the installer for:\n${info.label}\n\n${info.url}`,
+    warningLine: component === "directx_runtime" ? DIRECTX_RUNTIME_CANNOT_UNINSTALL_NOTICE : undefined,
+    confirmLabel: "Install",
+  });
+  if (!ok) return;
+  document.getElementById("prereq-install-" + component).style.display = "none";
+  const res = await window.pywebview.api.install_prereq(component);
+  if (!res || !res.ok) {
+    const statusEl = document.getElementById(`prereq-status-${component}`);
+    statusEl.textContent = (res && res.error) || "Could not start install";
+    statusEl.className = "prereq-status missing";
+  }
 }
 
 // ---------- Add/Edit profile (RELAY 011) ----------
@@ -937,6 +1031,11 @@ window.addEventListener("pywebviewready", () => {
   loadConsoleHistory();
   loadAppSettings();
   wireAppSettingsControls();
+  // RELAY 032: checked once automatically at startup, same as the old
+  // imgui app's PREREQS.run_check_async() at module load -- not gated
+  // behind opening the Settings drawer, so results are usually already
+  // there by the time someone looks.
+  window.pywebview.api.check_prereqs();
 });
 
 async function loadConsoleHistory() {
