@@ -1,0 +1,69 @@
+name: Launcher build check
+
+# Build + snap-geometry tests for Py4GW_Reforged_Launcher, not a full test
+# suite -- pywebview_shell/test_snap.py's 22 tests cover ONE module's pure
+# geometry (snap.py's Aero-Snap zone classification); there is zero test
+# coverage for bridge.py, the launch pipeline, settings persistence, or
+# anything else (see Py4GW_Reforged_Launcher/README.md's own status line).
+# Confirms the actual PyInstaller .exe still builds; it doesn't run or
+# exercise it.
+#
+# RELAY 045: replaces ci/launcher-build-check (RELAY 003), which proved this
+# same real pattern but only ever lived on its own orphaned branch and was
+# never merged anywhere, so it never actually ran as real CI. That branch
+# targeted the old ImGui app (launcher.py, its own .spec) -- both retired in
+# RELAY 043 -- so this is a real repoint, not a copy: the pywebview shell's
+# own new .spec/trimmed requirements.txt, no more imgui-bundle wheel install
+# step (nothing here needs a non-PyPI wheel anymore).
+on:
+  push:
+    branches: [feature/pywebview-shell, main]
+    paths:
+      - Py4GW_Reforged_Launcher/**
+      - .github/workflows/launcher-build-check.yml
+  pull_request:
+    paths:
+      - Py4GW_Reforged_Launcher/**
+      - .github/workflows/launcher-build-check.yml
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Py4GW_Reforged_Launcher
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: 'x86'
+
+      - name: Install the launcher's dependencies
+        run: |
+          pip install --only-binary=:all: --no-binary=proxy_tools -r requirements.txt
+
+      - name: Run snap-geometry unit tests
+        run: python -m unittest pywebview_shell.test_snap -v
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller==6.12.0
+
+      - name: Build the launcher .exe
+        run: python -m PyInstaller Py4GW_Reforged_Launcher.spec --noconfirm
+
+      - name: Verify the .exe was actually produced
+        shell: pwsh
+        run: |
+          $exePath = "dist/Py4GW_Reforged_Launcher.exe"
+          if (-not (Test-Path $exePath)) {
+            Write-Error "Build did not produce $exePath"
+            exit 1
+          }
+          $size = (Get-Item $exePath).Length
+          Write-Host "Built $exePath ($size bytes)"
+          if ($size -lt 1MB) {
+            Write-Error "$exePath is suspiciously small ($size bytes) -- likely a broken/incomplete build"
+            exit 1
+          }
