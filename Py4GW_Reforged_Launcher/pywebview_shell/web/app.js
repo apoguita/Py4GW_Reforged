@@ -510,6 +510,23 @@ function openSettingsDrawer() {
   document.getElementById("settings-drawer-content").style.display = "flex";
   document.getElementById("edit-drawer-content").style.display = "none";
   document.body.classList.add("drawer-open");
+  selectSettingsTab("theme");
+}
+
+// ---------- App Settings drawer tabs (RELAY 036) ----------
+// Deliberately separate from selectEditTab/.edit-tab* despite the
+// identical visual shape (see style.css's comment on the shared CSS
+// rules) -- both functions use an unscoped querySelectorAll, so sharing
+// the exact same classes would have one drawer's tab switch silently
+// hide the other drawer's panels.
+
+function selectSettingsTab(tab) {
+  for (const btn of document.querySelectorAll(".settings-tab")) {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  }
+  for (const panel of document.querySelectorAll(".settings-tab-panel")) {
+    panel.style.display = panel.id === `settings-tab-${tab}` ? "flex" : "none";
+  }
 }
 
 function closeDrawer() {

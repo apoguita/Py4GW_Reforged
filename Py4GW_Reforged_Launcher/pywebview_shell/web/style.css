@@ -621,18 +621,27 @@ body.console-open #console-panel {
 
 /* ---------- Prerequisites (RELAY 032) ---------- */
 
+/* RELAY 036 fix: label and status used to sit side by side in one flex
+   row (`flex:1` label + status sibling) -- fine for short labels, but
+   "VC++ Redistributable (x64)" wraps at this drawer's real width, and a
+   wrapped label's second line collided with the status text sitting next
+   to it instead of below it (Chris: "formatting... looks a bit
+   scrambled"). Stacked instead: label always gets its own full-width
+   line, status+button sit together on their own line below -- no
+   wrapping collision possible regardless of label length. */
 .prereq-row {
+  padding: 6px 0;
+}
+.prereq-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.prereq-status-row {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 5px 0;
-  flex-wrap: wrap;
-}
-.prereq-label {
-  flex: 1;
-  min-width: 140px;
-  font-size: 12.5px;
-  font-weight: 600;
 }
 .prereq-status {
   font-size: 11.5px;
@@ -874,15 +883,24 @@ body.drawer-open #drawer {
    background, accent text, inset underline) reused from the mockup's own
    tabOn/tabOff CSS strings (Launcher.dc.html ~line 699-700), the rest of
    the tab content is this app's own (see index.html's comment above the
-   edit drawer for why the mockup's own Mods/Window CONTENT isn't used). */
-#edit-tabs {
+   edit drawer for why the mockup's own Mods/Window CONTENT isn't used).
+   RELAY 036 shares these same rules for #settings-tabs/.settings-tab* --
+   same visual language, but genuinely separate class names, not the exact
+   same classes: selectEditTab/selectSettingsTab each query their own
+   classes with an unscoped querySelectorAll, so reusing identical class
+   names verbatim would have one drawer's tab switch silently hide the
+   other drawer's panels (confirmed by tracing selectEditTab's real
+   behavior before writing selectSettingsTab, not assumed safe). */
+#edit-tabs,
+#settings-tabs {
   display: flex;
   gap: 4px;
   padding: 10px 16px 0;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-soft, #20233f);
 }
-.edit-tab {
+.edit-tab,
+.settings-tab {
   padding: 7px 13px;
   border-radius: 8px 8px 0 0;
   border: none;
@@ -892,12 +910,14 @@ body.drawer-open #drawer {
   background: transparent;
   color: var(--muted, #9a9ecb);
 }
-.edit-tab.active {
+.edit-tab.active,
+.settings-tab.active {
   background: var(--panel, #191c33);
   color: var(--accent, #7c8cff);
   box-shadow: inset 0 -2px 0 var(--accent, #7c8cff);
 }
-.edit-tab-panel {
+.edit-tab-panel,
+.settings-tab-panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
