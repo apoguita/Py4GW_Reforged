@@ -18,13 +18,15 @@ import json
 import threading
 import time
 import weakref
+import webbrowser
 from pathlib import Path
 from typing import Any, Optional
 
 import psutil
 import webview
 
-from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store, window_control
+from launcher_core import bulk_launch, config_seeding, crypto, elevation, legacy_import, mod_repo, prereqs, profile_store, roster_transfer, settings_store, update_check, window_control
+from launcher_core import version as launcher_version
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
 from launcher_core.process_control import terminate_process
@@ -431,6 +433,45 @@ class ShellBridge:
 
         threading.Thread(target=worker, daemon=True).start()
         return {"ok": True, "elevated": False, "relaunching": True}
+
+    # ---- Launcher self-update check (RELAY 048) ----
+    # Real gap found live: this never made it into the pywebview shell at
+    # all (confirmed via this file's own import line before this entry --
+    # neither update_check nor version was ever imported). Ported from the
+    # old app's real UpdateCheckState/App Settings render block, adapted
+    # onto this app's own push_event pattern (032/033) instead of that
+    # class's per-frame ImGui polling, which this app has no equivalent of.
+
+    def get_launcher_version(self) -> str:
+        return launcher_version.__version__
+
+    def check_launcher_update(self) -> dict:
+        """Kicks off a real GitHub releases API check on a background
+        thread; result arrives via a "launcher_update_result" push_event.
+        Same immediate-ack-then-push shape as check_prereqs -- never
+        blocks the caller. Safe to call unconditionally (fetch_latest_
+        release_tag never raises, always returns a result -- see its own
+        docstring), so this is auto-triggered once at startup exactly like
+        the old app's own UpdateCheckState.run_check_async, in addition to
+        the explicit "Check for updates" click."""
+        threading.Thread(target=self._run_launcher_update_check, daemon=True).start()
+        return {"ok": True}
+
+    def _run_launcher_update_check(self) -> None:
+        result = update_check.fetch_latest_release_tag()
+        current = launcher_version.__version__
+        self.push_event(
+            "launcher_update_result",
+            {
+                "ok": result.ok,
+                "latest_tag": result.latest_tag,
+                "current_version": current,
+                "is_newer": result.ok and update_check.is_newer_version_available(result.latest_tag, current),
+            },
+        )
+
+    def open_releases_page(self) -> None:
+        webbrowser.open(update_check.releases_page_url())
 
     # ---- Theme palette persistence (RELAY 038) ----
     # Real bug fix, not just new UI: before this entry, the palette never

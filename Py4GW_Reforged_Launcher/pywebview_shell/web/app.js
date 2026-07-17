@@ -540,6 +540,12 @@ window.shellBridge = {
       refreshCard(data.profile_id);
       return;
     }
+    if (event === "launcher_update_result") {
+      // No profile_id -- placed before the guard below for exactly that
+      // reason, same as focused_profile_changed/run_as_admin_relaunch_failed.
+      renderLauncherUpdateResult(data);
+      return;
+    }
     if (!data || !data.profile_id) return;
     const id = data.profile_id;
     if (event === "launch_log") {
@@ -1041,6 +1047,60 @@ function wireRunAsAdminControl() {
     if (res && res.elevated !== undefined) adminState.elevated = res.elevated;
     renderRunAsAdminUI();
   };
+}
+
+// ---------- Launcher self-update check (RELAY 048) ----------
+// Ported from the old imgui app's real UpdateCheckState + App Settings
+// render block, onto push_event instead of that class's per-frame polling
+// (this app has no render loop to poll from) -- same real copy/behavior:
+// silent on a failed check (no internet, GitHub down, rate-limited --
+// never shown as an error), auto-checked once at startup in addition to
+// the explicit button click.
+
+function setLauncherUpdateChecking(checking) {
+  document.getElementById("launcher-update-check-btn").style.display = checking ? "none" : "inline-block";
+  const statusEl = document.getElementById("launcher-update-status");
+  if (checking) {
+    statusEl.style.display = "inline";
+    statusEl.className = "prereq-status busy";
+    statusEl.textContent = "Checking for updates...";
+  }
+}
+
+async function loadLauncherVersion() {
+  const v = await window.pywebview.api.get_launcher_version();
+  document.getElementById("launcher-version-text").textContent = v;
+}
+
+function onLauncherUpdateCheckClick() {
+  setLauncherUpdateChecking(true);
+  window.pywebview.api.check_launcher_update();
+}
+
+function onViewReleasesClick(e) {
+  e.preventDefault();
+  window.pywebview.api.open_releases_page();
+}
+
+function renderLauncherUpdateResult(data) {
+  setLauncherUpdateChecking(false);
+  const statusEl = document.getElementById("launcher-update-status");
+  // ok is false (no internet, GitHub down, rate-limited, unexpected
+  // response shape) or never-checked-yet: show nothing at all, matching
+  // the old app's own real behavior exactly -- this is an informational
+  // notice, not something worth surfacing as an error.
+  if (!data || !data.ok) {
+    statusEl.style.display = "none";
+    return;
+  }
+  statusEl.style.display = "inline";
+  if (data.is_newer) {
+    statusEl.className = "prereq-status missing";
+    statusEl.innerHTML = `A newer version is available: ${escapeHtml(data.latest_tag)} <a href="#" onclick="onViewReleasesClick(event)" style="color:inherit;text-decoration:underline">View releases</a>`;
+  } else {
+    statusEl.className = "prereq-status ok";
+    statusEl.textContent = "You're up to date.";
+  }
 }
 
 // ---------- Prerequisites (RELAY 032) ----------
@@ -1599,6 +1659,11 @@ window.addEventListener("pywebviewready", () => {
   wireAppSettingsControls();
   loadRunAsAdminState();
   wireRunAsAdminControl();
+  loadLauncherVersion();
+  // RELAY 048: same eager-once-at-startup pattern as 032/033 below --
+  // matches the old app's own UpdateCheckState.run_check_async, "safe to
+  // call unconditionally" (never raises, silent on failure).
+  window.pywebview.api.check_launcher_update();
   // RELAY 032: checked once automatically at startup, same as the old
   // imgui app's PREREQS.run_check_async() at module load -- not gated
   // behind opening the Settings drawer, so results are usually already

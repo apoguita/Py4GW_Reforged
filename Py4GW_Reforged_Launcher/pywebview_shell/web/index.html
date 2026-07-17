@@ -297,7 +297,20 @@
         </div>
         <div>
           <h4 style="margin-bottom:8px">Launcher</h4>
-          <div class="pal-row"><span>Run launcher as administrator</span><input type="checkbox" id="settings-run-as-admin"></div>
+          <!-- RELAY 048: "here's what you're running" before "here's whether
+               it's configured right" -- same real ordering the old app used
+               (version/update-check above Prerequisites there); here that
+               means above Run-as-administrator, the other real item already
+               in this same "Launcher" sub-section. -->
+          <div class="pal-row">
+            <span>Version</span>
+            <span id="launcher-version-text" style="font-size:12.5px;color:var(--text,#e6e8ff)"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+            <button class="ghost-btn" id="launcher-update-check-btn" onclick="onLauncherUpdateCheckClick()">Check for updates</button>
+            <span id="launcher-update-status" class="prereq-status" style="display:none"></span>
+          </div>
+          <div class="pal-row" style="margin-top:10px"><span>Run launcher as administrator</span><input type="checkbox" id="settings-run-as-admin"></div>
           <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
             Elevates once; applies to every client launched this session.
           </p>
