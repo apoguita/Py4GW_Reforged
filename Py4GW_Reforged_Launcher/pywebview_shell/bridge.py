@@ -371,6 +371,7 @@ class ShellBridge:
             "py4gw_injection_enabled": settings_store.load_py4gw_injection_enabled(),
             "gmod_injection_enabled": settings_store.load_gmod_injection_enabled(),
             "bulk_launch_pacing_seconds": settings_store.load_bulk_launch_pacing_seconds(),
+            "py4gw_injection_delay_seconds": settings_store.load_py4gw_injection_delay_seconds(),
         }
 
     def save_multiclient_enabled(self, enabled: bool) -> None:
@@ -389,6 +390,15 @@ class ShellBridge:
         # raw value this stores. Duplicating the clamp here would just be a
         # second copy of the same rule to keep in sync.
         settings_store.save_bulk_launch_pacing_seconds(int(seconds))
+
+    def save_py4gw_injection_delay_seconds(self, seconds: float) -> None:
+        # RELAY 062: unlike bulk_launch_pacing_seconds, there's no existing
+        # clamp_* function for this setting to defer to -- this is the only
+        # enforcement, so it lives here rather than being skipped. 0 is a
+        # legitimate choice (no settle delay at all); time.sleep() itself
+        # would raise on a negative value, and there's no real reason for
+        # this to ever need more than a minute.
+        settings_store.save_py4gw_injection_delay_seconds(max(0.0, min(float(seconds), 60.0)))
 
     # ---- Run as administrator (RELAY 035) ----
 
@@ -1071,6 +1081,15 @@ class ShellBridge:
                 multiclient_enabled=settings_store.load_multiclient_enabled(),
                 py4gw_injection_enabled=settings_store.load_py4gw_injection_enabled(),
                 gmod_injection_enabled=settings_store.load_gmod_injection_enabled(),
+                # RELAY 062: post_window_settle_delay already existed as a real
+                # parameter (gw1_launch.py, default 5.0) but was never threaded
+                # through from a setting -- permanently hardcoded at the
+                # function's own default. gMod is deliberately NOT given an
+                # equivalent delay: it injects pre-resume (opposite timing from
+                # Py4GW's post-resume injection) with zero time.sleep() anywhere
+                # in that path, and the old standalone launcher's 3s post-gMod
+                # delay doesn't apply to this app's different injection model.
+                post_window_settle_delay=settings_store.load_py4gw_injection_delay_seconds(),
                 on_log=on_log,
             )
             success, pid, error = bool(result.success), result.pid, result.error

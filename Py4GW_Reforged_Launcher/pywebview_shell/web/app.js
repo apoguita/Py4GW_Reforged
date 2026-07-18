@@ -323,30 +323,42 @@ function missingPrereqNames() {
 
 async function tryLaunchWithPrereqGate(launchAction, needsPy4gw) {
   const missing = needsPy4gw ? missingPrereqNames() : [];
-  if (!missing || missing.length === 0 || prereqLaunchAcknowledged) {
-    launchAction();
-    return;
-  }
-  const count = missing.length;
-  // Real copy, quoted verbatim from _try_launch_with_prereq_gate's own
-  // popup (_show_prereq_launch_confirm_popup) -- don't paraphrase.
-  const result = await openConfirmModal({
-    title: "Prerequisites missing",
-    message: `Py4GW injection needs ${count} prerequisite${count !== 1 ? "s" : ""} that aren't installed yet:\n${missing.join(", ")}`,
-    confirmLabel: "Launch anyway",
-    secondaryLabel: "Open App Settings",
-  });
-  if (result === "secondary") {
-    document.getElementById("settings-drawer-content").style.display = "flex";
-    document.getElementById("edit-drawer-content").style.display = "none";
-    document.body.classList.add("drawer-open");
-    selectSettingsTab("setup"); // where Prerequisites actually lives (RELAY 036)
-    return;
-  }
-  if (result === true) {
+  // RELAY 062: this used to be a blocking openConfirmModal gate
+  // ("Launch anyway? / Open App Settings") before launchAction() ran --
+  // Chris's call, once false positives are possible (Apo's real, working
+  // Python install wasn't visible to the py launcher mechanism
+  // specifically) a blocking gate is a more alarming false alarm than a
+  // helpful one. Now purely informational: launchAction() always runs
+  // immediately, and a non-blocking toast (same once-per-session
+  // prereqLaunchAcknowledged guard as before) just states what looks
+  // missing alongside it.
+  if (missing && missing.length > 0 && !prereqLaunchAcknowledged) {
     prereqLaunchAcknowledged = true;
-    launchAction();
+    const count = missing.length;
+    // Same real copy as the old blocking modal used, just delivered as a
+    // toast now.
+    showPrereqToast(
+      `Py4GW injection needs ${count} prerequisite${count !== 1 ? "s" : ""} that aren't installed yet:\n${missing.join(", ")}`
+    );
   }
+  launchAction();
+}
+
+function showPrereqToast(message) {
+  document.getElementById("prereq-toast-message").textContent = message;
+  document.body.classList.add("prereq-toast-open");
+}
+
+function dismissPrereqToast() {
+  document.body.classList.remove("prereq-toast-open");
+}
+
+function onPrereqToastSettingsClick() {
+  dismissPrereqToast();
+  document.getElementById("settings-drawer-content").style.display = "flex";
+  document.getElementById("edit-drawer-content").style.display = "none";
+  document.body.classList.add("drawer-open");
+  selectSettingsTab("setup"); // where Prerequisites actually lives (RELAY 036)
 }
 
 async function launchProfile(id) {
@@ -987,12 +999,22 @@ function onResetThemeClick() {
 // (same pattern as palette/profiles/console above) rather than lazily on
 // drawer-open, so the drawer never shows a flash of stale/default values.
 
+// RELAY 062: cached (not read fresh via get_app_settings() every time the
+// edit drawer opens) -- injection delay is a GLOBAL settings_store value
+// but Chris's call put its control on the per-profile edit drawer's Mods
+// tab (next to Inject Py4GW), not the App Settings drawer, so it needs a
+// value ready synchronously whenever openEditDrawer() populates that tab's
+// fields. Kept in sync by loadAppSettings() at startup and by this field's
+// own onchange handler below.
+let cachedPy4gwInjectionDelay = 5;
+
 async function loadAppSettings() {
   const s = await window.pywebview.api.get_app_settings();
   document.getElementById("settings-multiclient").checked = !!s.multiclient_enabled;
   document.getElementById("settings-py4gw-injection").checked = !!s.py4gw_injection_enabled;
   document.getElementById("settings-gmod-injection").checked = !!s.gmod_injection_enabled;
   document.getElementById("settings-pacing").value = s.bulk_launch_pacing_seconds;
+  cachedPy4gwInjectionDelay = s.py4gw_injection_delay_seconds;
 }
 
 function wireAppSettingsControls() {
@@ -1010,6 +1032,21 @@ function wireAppSettingsControls() {
   // real floor/ceiling at use time regardless of what's stored here.
   document.getElementById("settings-pacing").onchange = (e) => {
     window.pywebview.api.save_bulk_launch_pacing_seconds(Number(e.target.value));
+  };
+  // RELAY 062: lives in the edit drawer's Mods tab (next to Inject Py4GW),
+  // but it's still a GLOBAL settings_store value, not part of the profile
+  // being edited -- saves immediately on change, same as every other
+  // control in this function, rather than waiting for onSaveProfileClick's
+  // per-profile Save button. Deliberately no JS-side clamp here either --
+  // save_py4gw_injection_delay_seconds (bridge.py) already clamps to
+  // [0, 60] at save time, same division of responsibility as the pacing
+  // field above. Bound here (not inside openEditDrawer) since this is a
+  // one-time listener bind, not something that needs to re-run every time
+  // the drawer opens -- same reasoning as every other control in this
+  // function.
+  document.getElementById("edit-py4gw-delay").onchange = (e) => {
+    cachedPy4gwInjectionDelay = Number(e.target.value);
+    window.pywebview.api.save_py4gw_injection_delay_seconds(cachedPy4gwInjectionDelay);
   };
 }
 
@@ -1386,6 +1423,10 @@ function openEditDrawer(profileId) {
   document.getElementById("edit-py4gw-dll-path").value = p ? p.py4gw_dll_path || "" : "";
   document.getElementById("edit-gmod-dll-path").value = p ? p.gmod_dll_path || "" : "";
   document.getElementById("edit-script-path").value = p ? p.script_path || "" : "";
+  // RELAY 062: NOT profile data (p) -- a global settings_store value, same
+  // one shown for every profile, from the cache loadAppSettings() fills at
+  // startup and this field's own onchange handler keeps current.
+  document.getElementById("edit-py4gw-delay").value = cachedPy4gwInjectionDelay;
   editPluginPaths = p ? [...(p.gmod_plugin_paths || [])] : [];
   renderPluginList();
   // GameProfile.windowed_mode_enabled defaults to True -- match that default

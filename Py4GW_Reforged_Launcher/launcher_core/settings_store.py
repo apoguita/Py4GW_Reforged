@@ -26,6 +26,11 @@ SETTINGS_FILENAME = "launcher_settings.json"
 # clamp_pacing_seconds(), which runs regardless of what's stored here.
 DEFAULT_BULK_LAUNCH_PACING_SECONDS = 30
 
+# RELAY 062: matches launch_py4gw_profile's own existing default
+# (gw1_launch.py's post_window_settle_delay=5.0) -- was already a real,
+# working value, just never threaded through from a setting before.
+DEFAULT_PY4GW_INJECTION_DELAY_SECONDS = 5.0
+
 
 def default_settings_path() -> Path:
     appdata = os.environ.get("APPDATA")
@@ -59,6 +64,17 @@ def load_bulk_launch_pacing_seconds(path: Path | str | None = None) -> int:
 def save_bulk_launch_pacing_seconds(seconds: int, path: Path | str | None = None) -> None:
     resolved = Path(path) if path is not None else default_settings_path()
     _save_one("bulk_launch_pacing_seconds", seconds, resolved)
+
+
+def load_py4gw_injection_delay_seconds(path: Path | str | None = None) -> float:
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return float(data.get("py4gw_injection_delay_seconds", DEFAULT_PY4GW_INJECTION_DELAY_SECONDS))
+
+
+def save_py4gw_injection_delay_seconds(seconds: float, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("py4gw_injection_delay_seconds", seconds, resolved)
 
 
 def load_mod_repo_path(path: Path | str | None = None) -> Optional[str]:

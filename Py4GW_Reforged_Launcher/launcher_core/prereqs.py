@@ -205,6 +205,83 @@ class PythonPrereqResult:
         return self.status == PythonPrereqStatus.OK
 
 
+def _validate_probe_lines(lines: list[str]) -> PythonPrereqResult:
+    """Shared by both the py-launcher probe and the RELAY 062 bare
+    python/python3 fallback -- same 3-line (version, bitness, executable
+    path) parsing and version/bitness validation either way."""
+    version, bitness_str, exec_path = lines[0], lines[1], lines[2]
+    try:
+        bitness = int(bitness_str)
+    except ValueError:
+        return PythonPrereqResult(
+            PythonPrereqStatus.CHECK_FAILED, diagnostic_text=f"Failed to parse probe output: {lines!r}"
+        )
+
+    if version != PYTHON_REQUIRED_VERSION_STRING:
+        return PythonPrereqResult(
+            PythonPrereqStatus.WRONG_VERSION,
+            detected_version=version, detected_bitness=bitness, executable_path=exec_path,
+            diagnostic_text=f"Expected {PYTHON_REQUIRED_VERSION_STRING}, found {version}",
+        )
+    if bitness != PYTHON_REQUIRED_BITNESS:
+        return PythonPrereqResult(
+            PythonPrereqStatus.WRONG_BITNESS,
+            detected_version=version, detected_bitness=bitness, executable_path=exec_path,
+            diagnostic_text=f"Expected 32-bit, found {bitness}-bit",
+        )
+
+    return PythonPrereqResult(
+        PythonPrereqStatus.OK,
+        detected_version=version, detected_bitness=bitness, executable_path=exec_path,
+        diagnostic_text=f"Python {version} (32-bit) detected at {exec_path}",
+    )
+
+
+def _check_bare_python_fallback(env: dict) -> Optional[PythonPrereqResult]:
+    """RELAY 062: when the `py` launcher itself isn't found, or is found but
+    can't resolve a matching install, fall back to bare `python`/`python3` on
+    PATH. Real cause of Apo's false positive: his Python was genuinely
+    installed and working (his own terminal confirmed exactly 3.13.0,
+    32-bit), but not discoverable via the `py -3.13-32` launcher mechanism
+    specifically -- his own words on Discord: "the library forces us to have
+    python 32bit on the path... you can just parse the result of 'python'."
+    Tried in order (python, then python3); returns None (not a result, so
+    the caller keeps its original py-launcher failure) only if NEITHER name
+    resolves on PATH at all -- if a name resolves but the probe against it
+    fails to run/parse, that's still reported (not silently skipped to try
+    the next name), matching how the primary py-launcher check itself
+    reports a real probe failure rather than pretending it didn't happen.
+    """
+    for candidate in ("python", "python3"):
+        candidate_path = shutil.which(candidate, path=env["PATH"])
+        if candidate_path is None:
+            continue
+        try:
+            result = subprocess.run(
+                [candidate_path, "-c", _PROBE_SCRIPT],
+                capture_output=True, text=True, timeout=5.0,
+                cwd=str(Path.home()), env=env,
+            )
+        except subprocess.TimeoutExpired:
+            return PythonPrereqResult(PythonPrereqStatus.CHECK_FAILED, diagnostic_text=f"{candidate} timed out")
+        except OSError as e:
+            return PythonPrereqResult(PythonPrereqStatus.CHECK_FAILED, diagnostic_text=f"Unexpected error: {e}")
+
+        if result.returncode != 0 or not result.stdout.strip():
+            return PythonPrereqResult(
+                PythonPrereqStatus.CHECK_FAILED,
+                diagnostic_text=f"{candidate} failed: {(result.stderr or '').strip()}",
+            )
+
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if len(lines) < 3:
+            return PythonPrereqResult(
+                PythonPrereqStatus.CHECK_FAILED, diagnostic_text=f"Failed to parse probe output: {result.stdout!r}"
+            )
+        return _validate_probe_lines(lines)
+    return None
+
+
 def check_python_prereq() -> PythonPrereqResult:
     """Port of PythonPrereqService.Check(): resolve py.exe, run
     `py -3.13-32 -c "<probe>"`, classify failure by matching substrings in
@@ -228,10 +305,21 @@ def check_python_prereq() -> PythonPrereqResult:
     executable's path via shutil.which(path=...) against the fresh PATH,
     then invoking *that* resolved path, actually respects a PATH change
     without restarting this app.
+
+    RELAY 062: `py -3.13-32` stays the first attempt -- it correctly
+    disambiguates when multiple Pythons are installed, which a bare
+    `python`/`python3` lookup can't. The bare-name fallback (see
+    `_check_bare_python_fallback`) only runs when this check comes up
+    completely empty (PY_LAUNCHER_NOT_FOUND or PYTHON_NOT_FOUND) -- not on
+    WRONG_VERSION/WRONG_BITNESS, where `py` DID find something and the
+    fallback wouldn't disambiguate any better than it already has.
     """
     env = refresh_env_from_registry()
     py_launcher_path = shutil.which("py", path=env["PATH"])
     if py_launcher_path is None:
+        fallback = _check_bare_python_fallback(env)
+        if fallback is not None:
+            return fallback
         return PythonPrereqResult(
             PythonPrereqStatus.PY_LAUNCHER_NOT_FOUND,
             diagnostic_text="Python Launcher (py.exe) not found in PATH",
@@ -251,11 +339,17 @@ def check_python_prereq() -> PythonPrereqResult:
     if result.returncode != 0 or not result.stdout.strip():
         stderr_lower = (result.stderr or "").lower()
         if "no python at" in stderr_lower or "not found" in stderr_lower:
+            fallback = _check_bare_python_fallback(env)
+            if fallback is not None:
+                return fallback
             return PythonPrereqResult(
                 PythonPrereqStatus.PYTHON_NOT_FOUND,
                 diagnostic_text=f"Python {PYTHON_REQUIRED_VERSION_STRING} (32-bit) not found by py launcher",
             )
         if "py" in stderr_lower and "not recognized" in stderr_lower:
+            fallback = _check_bare_python_fallback(env)
+            if fallback is not None:
+                return fallback
             return PythonPrereqResult(
                 PythonPrereqStatus.PY_LAUNCHER_NOT_FOUND,
                 diagnostic_text="Python Launcher (py.exe) not found in PATH",
@@ -271,32 +365,7 @@ def check_python_prereq() -> PythonPrereqResult:
             PythonPrereqStatus.CHECK_FAILED, diagnostic_text=f"Failed to parse probe output: {result.stdout!r}"
         )
 
-    version, bitness_str, exec_path = lines[0], lines[1], lines[2]
-    try:
-        bitness = int(bitness_str)
-    except ValueError:
-        return PythonPrereqResult(
-            PythonPrereqStatus.CHECK_FAILED, diagnostic_text=f"Failed to parse probe output: {result.stdout!r}"
-        )
-
-    if version != PYTHON_REQUIRED_VERSION_STRING:
-        return PythonPrereqResult(
-            PythonPrereqStatus.WRONG_VERSION,
-            detected_version=version, detected_bitness=bitness, executable_path=exec_path,
-            diagnostic_text=f"Expected {PYTHON_REQUIRED_VERSION_STRING}, found {version}",
-        )
-    if bitness != PYTHON_REQUIRED_BITNESS:
-        return PythonPrereqResult(
-            PythonPrereqStatus.WRONG_BITNESS,
-            detected_version=version, detected_bitness=bitness, executable_path=exec_path,
-            diagnostic_text=f"Expected 32-bit, found {bitness}-bit",
-        )
-
-    return PythonPrereqResult(
-        PythonPrereqStatus.OK,
-        detected_version=version, detected_bitness=bitness, executable_path=exec_path,
-        diagnostic_text=f"Python {version} (32-bit) detected at {exec_path}",
-    )
+    return _validate_probe_lines(lines)
 
 
 def download_and_install_python(on_status: Callable[[str], None]) -> tuple[bool, str]:

@@ -387,6 +387,21 @@
             <input class="field-input" id="edit-py4gw-dll-path" placeholder="C:\...\Py4GW.dll">
             <button class="ghost-btn" onclick="onBrowsePathClick('edit-py4gw-dll-path','DLL files','*.dll')">Browse…</button>
           </div>
+          <!-- RELAY 062: post_window_settle_delay already existed as a real
+               parameter (gw1_launch.py, default 5.0s) but was never threaded
+               through from a setting -- permanently hardcoded. Chris's call:
+               belongs here next to Inject Py4GW, not in the global Advanced
+               settings tab -- it's still a settings_store-backed GLOBAL
+               value (same load/save shape as bulk_launch_pacing_seconds),
+               just surfaced where it's actually relevant. gMod is
+               deliberately excluded (see settings_store.py/bridge.py
+               comments for why) -- Py4GW only, no equivalent gMod field. -->
+          <label class="field-label">Injection delay (seconds) <span style="color:var(--faint,#5f6491);font-weight:400">(global)</span></label>
+          <input class="field-input" type="number" id="edit-py4gw-delay" min="0" max="60" step="0.5">
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:4px 0 0">
+            How long to wait after the game window appears before injecting.
+            Applies to every profile, not just this one.
+          </p>
         </div>
         <div>
           <h4 style="margin-bottom:8px">gMod</h4>
@@ -501,6 +516,24 @@
     <span id="search-close-btn" title="Close">&#10005;</span>
   </div>
   <div id="search-results"></div>
+</div>
+
+<!-- Non-blocking prereq toast (RELAY 062) -- replaces RELAY 037's
+     launch-time blocking openConfirmModal. False positives (Apo's real,
+     working Python install just not visible to the py launcher
+     mechanism) made a launch-blocking gate an alarming false alarm
+     rather than a helpful one. No scrim, corner-anchored, deliberately
+     NOT sharing confirm-modal's centered/scrimmed styling so it doesn't
+     read as another blocking dialog -- by the time this shows,
+     launchAction() has already run. No existing toast/transient-
+     notification pattern existed anywhere in this app before this
+     (grepped) -- new UI, not a port. -->
+<div id="prereq-toast">
+  <div id="prereq-toast-message"></div>
+  <div id="prereq-toast-actions">
+    <button class="ghost-btn" onclick="onPrereqToastSettingsClick()">Open App Settings</button>
+    <button class="ghost-btn" onclick="dismissPrereqToast()">Dismiss</button>
+  </div>
 </div>
 
 <script src="theme.js"></script>
