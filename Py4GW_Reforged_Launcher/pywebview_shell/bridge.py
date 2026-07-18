@@ -1216,9 +1216,19 @@ class ShellBridge:
                     already_running = profile.id in self._running_pids
                 if already_running:
                     started_ids.add(profile.id)
-                    self.push_event(
-                        "launch_queued", {"profile_id": profile.id, "status": "Skipped (already running)"}
-                    )
+                    # RELAY 069: launch_done, not launch_queued -- this
+                    # profile isn't queued, it's already running (real pid
+                    # already tracked in self._running_pids). Reuses the
+                    # exact same handler a normal successful launch already
+                    # takes (app.js ~568-580: success + pid -> "running"
+                    # phase, real Stop button) instead of the queued
+                    # branch, which had no follow-up event to ever move
+                    # this card out of "Queued" -- confirmed live: it got
+                    # stuck there forever, disabled button, even though
+                    # the console line correctly said "already running".
+                    with self._launch_lock:
+                        pid = self._running_pids[profile.id]
+                    self.push_event("launch_done", {"profile_id": profile.id, "success": True, "pid": pid})
                     self._update_console_countdown(f"Skipping {profile.name or '(unnamed profile)'} (already running)")
                 else:
                     self._update_console_countdown(f"Launching {profile.name or '(unnamed profile)'}...")
@@ -1238,7 +1248,12 @@ class ShellBridge:
                         )
 
                 is_last = i == total - 1
-                if not is_last and not cancel_event.is_set():
+                # RELAY 069: also skip when this iteration was an
+                # already-running skip -- the pacing delay exists to let a
+                # FRESHLY-launched client settle before starting the next
+                # one's injection timing; nothing was actually started
+                # this iteration, so there's nothing to wait out.
+                if not is_last and not already_running and not cancel_event.is_set():
                     next_profile = profiles[i + 1]
                     bulk_launch.apply_pacing_delay(
                         pacing_seconds,
