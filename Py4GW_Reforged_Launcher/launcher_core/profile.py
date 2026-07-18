@@ -39,6 +39,14 @@ class GameProfile:
     gmod_dll_path: str = ""
     gmod_plugin_paths: list[str] = dataclasses.field(default_factory=list)
 
+    # RELAY 057: auto-run script at launch. Old-launcher-compatible field
+    # (legacy_import.py already flagged this exact name as dropped/
+    # unsupported on import before this field existed) -- written into
+    # Py4GW.ini's [settings] autoexec_script key immediately before
+    # injection, same mechanism Py4GW_Reforged_Native's RunAutoexecOnce()
+    # already consumes. Empty string = no auto-run script for this profile.
+    script_path: str = ""
+
     # -----------------------------
     # Auto-login
     # -----------------------------

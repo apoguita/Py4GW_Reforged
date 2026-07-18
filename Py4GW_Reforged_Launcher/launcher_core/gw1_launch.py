@@ -79,6 +79,7 @@ environment-block-construction logic against a guessed format.
 
 from __future__ import annotations
 
+import configparser
 import ctypes
 import ctypes.wintypes
 import dataclasses
@@ -96,6 +97,7 @@ import win32gui
 import win32process
 
 from launcher_core.crypto import unprotect_password
+from launcher_core.mod_root import _mod_root
 from launcher_core.profile import GameProfile
 from launcher_core.profile_store import APPDATA_SUBDIR
 
@@ -311,6 +313,48 @@ def _apply_multiclient_patch(pid: int, log: list) -> bool:
         return True
     finally:
         kernel32.CloseHandle(process_handle)
+
+
+def _write_autoexec_script(script_path: str, log: list) -> None:
+    """RELAY 057: writes `script_path` into Py4GW.ini's [settings]
+    autoexec_script key, immediately before injection -- the same key
+    Py4GW_Reforged_Native's RunAutoexecOnce() reads once per session,
+    after the settings document binds (confirmed directly against
+    Py4GW_Reforged_Native/src/Py4GW.cpp). Mirrors the old standalone
+    Py4GW_Launcher.py's own IniHandler.write_key exactly (plain
+    configparser read-modify-write, preserving every other section/key)
+    -- NOT the native-backed Settings/PySettings class, which isn't
+    importable from this process (confirmed directly: it only exists
+    inside an injected Gw.exe, this launcher runs before injection, as
+    its own separate process). Deliberately its own small function, not
+    a general ini-write utility -- this is the only real caller.
+
+    `Py4GW.ini` is root-scoped (RELAY 053's own investigation confirmed
+    this directly against upstream's IniManager migration) -- one shared
+    file for the whole mod checkout, not per-account. A concurrent/paced
+    multibox launch with different scripts per account can race on this
+    shared key (confirmed: the old launcher had the same latent gap) --
+    accepted, per Apo's own call (2026-07-17 Discord): "not a real
+    problem in practice... up to you if you want to improve on it." The
+    mixed-script warning (see bridge.py) is the mitigation, not a fix.
+
+    Best-effort: a write failure here (e.g. the mod repo isn't actually
+    checked out, or Py4GW.ini doesn't exist yet) must not block the
+    actual GW1 launch, which doesn't depend on this succeeding.
+    """
+    ini_path = _mod_root() / "Py4GW.ini"
+    try:
+        config = configparser.ConfigParser()
+        if ini_path.exists():
+            config.read(ini_path)
+        if not config.has_section("settings"):
+            config.add_section("settings")
+        config.set("settings", "autoexec_script", script_path)
+        with open(ini_path, "w") as f:
+            config.write(f)
+        _log(log, f"Wrote autoexec_script to {ini_path}")
+    except OSError as e:
+        _log(log, f"Could not write autoexec_script to Py4GW.ini (non-fatal): {e}")
 
 
 def _inject_dll(pid: int, dll_path: str, log: list) -> bool:
@@ -910,6 +954,9 @@ def launch_py4gw_profile(
     if profile.py4gw_enabled and py4gw_injection_enabled:
         _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")
         time.sleep(post_window_settle_delay)
+
+        if profile.script_path:
+            _write_autoexec_script(profile.script_path, log)
 
         if not _inject_dll(pid, profile.py4gw_dll_path, log):
             return LaunchResult(False, pid, "Py4GW DLL injection failed", log)

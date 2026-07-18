@@ -29,7 +29,7 @@
 <div id="app">
   <div id="body">
     <div id="rail">
-      <div class="rail-icon" title="Search (not wired yet)">&#128269;</div>
+      <div class="rail-icon" title="Search all teams" onclick="onSearchClick()">&#128269;</div>
       <div class="rail-sep"></div>
       <div id="rail-all" class="rail-all active" onclick="selectTeam('ALL')">
         <span>ALL</span>
@@ -45,6 +45,7 @@
            026, matches the mockup's real 3-row split). -->
       <div id="header">
         <span class="team-name" id="team-name">All Profiles</span>
+        <button id="team-rename-btn" class="team-rename-btn" style="display:none" title="Rename team" onclick="onRenameTeamClick()">&#9998;</button>
         <span class="team-count" id="team-count">0 profiles</span>
         <!-- RELAY 035: a single shared wrapper carries the row's one
              margin-left:auto push, rather than each child carrying its
@@ -390,6 +391,21 @@
           <div id="gmod-plugin-list"></div>
           <button class="ghost-btn" onclick="onAddPluginClick()">+ Add plugin…</button>
         </div>
+        <div>
+          <!-- RELAY 057: auto-run script at launch, matches the mockup's
+               real Automation section (Mods tab). Written into
+               Py4GW.ini's autoexec_script key right before injection
+               (launcher_core/gw1_launch.py) -- see bridge.py's mixed-
+               script warning for the real, accepted caveat when
+               different profiles in the same launching batch have
+               different scripts set. -->
+          <h4 style="margin-bottom:8px">Automation</h4>
+          <label class="field-label">Auto-run script at launch</label>
+          <div class="path-browse-row">
+            <input class="field-input" id="edit-script-path" placeholder="C:\...\script.py">
+            <button class="ghost-btn" onclick="onBrowsePathClick('edit-script-path','Python scripts','*.py')">Browse…</button>
+          </div>
+        </div>
       </div>
 
       <div id="edit-tab-window" class="edit-tab-panel" style="display:none">
@@ -458,6 +474,24 @@
     <div style="flex:1"></div>
     <button class="primary-btn" id="result-close-btn">Close</button>
   </div>
+</div>
+
+<!-- Cross-team search (RELAY 057). Real intended shape ported from the
+     mockup (dev_notes/mockups/.../_launcher_export_src.html ~202-227,
+     searchOpen/searchGroups), adapted onto this app's own real CSS
+     class/id convention (matches confirm-modal/result-modal's own
+     scrim+modal+body.foo-open pattern) rather than the mockup's raw
+     inline styles. Built entirely client-side -- profiles/teams are
+     already loaded (loadData()), no new bridge call needed (confirmed
+     via source before building, per this entry's own verify step). -->
+<div id="search-scrim"></div>
+<div id="search-modal">
+  <div id="search-header">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.2-4.2"></path></svg>
+    <input id="search-input" placeholder="Search characters across all teams…" oninput="onSearchInput()">
+    <span id="search-close-btn" title="Close">&#10005;</span>
+  </div>
+  <div id="search-results"></div>
 </div>
 
 <script src="theme.js"></script>

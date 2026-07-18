@@ -70,6 +70,7 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
             profile.py4gw_enabled = bool(account.get("inject_py4gw", False))
             profile.gmod_enabled = bool(account.get("inject_gmod", False))
             profile.gmod_plugin_paths = list(account.get("gmod_mods", []) or [])
+            profile.script_path = account.get("script_path", "")
             profile.team_ids = [team.id]
             profiles.append(profile)
 
@@ -101,11 +102,6 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
                 warnings.append(
                     f"{label}: gMod injection was enabled in the old launcher; "
                     "the gMod DLL path must be set manually in Settings."
-                )
-            if account.get("script_path"):
-                warnings.append(
-                    f"{label}: an auto-run script ({account['script_path']}) was set in the old launcher; "
-                    "not supported, not imported."
                 )
             if (
                 account.get("enable_client_rename")

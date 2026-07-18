@@ -97,6 +97,7 @@ function renderHeader() {
   document.getElementById("team-name").textContent = teamName(activeTeamId);
   document.getElementById("team-count").textContent = `${members.length} profile${members.length === 1 ? "" : "s"}`;
   document.getElementById("remove-team-btn").style.display = activeTeamId === "ALL" ? "none" : "inline-block";
+  document.getElementById("team-rename-btn").style.display = activeTeamId === "ALL" ? "none" : "grid";
   // "Launch Team" only makes sense for a real team, not the ALL pseudo-view
   // (same visibility rule remove-team-btn already uses).
   document.getElementById("launch-team-btn").style.display =
@@ -755,7 +756,7 @@ function closeDrawer() {
 // early-return shape the native calls had (`const name = await
 // openConfirmModal(...); if (!name) return;`).
 
-function openConfirmModal({ title, message, warningLine, inputPlaceholder, confirmLabel = "Confirm", secondaryLabel, danger = false }) {
+function openConfirmModal({ title, message, warningLine, inputPlaceholder, inputValue, confirmLabel = "Confirm", secondaryLabel, danger = false }) {
   const scrim = document.getElementById("confirm-scrim");
   const modal = document.getElementById("confirm-modal");
   const titleEl = document.getElementById("confirm-title");
@@ -776,7 +777,10 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
   warningEl.textContent = warningLine || "";
   warningEl.style.display = warningLine ? "block" : "none";
   inputEl.style.display = hasInput ? "block" : "none";
-  inputEl.value = "";
+  // RELAY 057: rename team pre-fills the current name (edit, not create-
+  // from-blank) -- every prior caller left inputValue unset, so this
+  // defaults to the same "" every other input-modal caller already gets.
+  inputEl.value = inputValue || "";
   inputEl.placeholder = inputPlaceholder || "";
   confirmBtn.textContent = confirmLabel;
   confirmBtn.className = danger ? "danger-btn" : "primary-btn";
@@ -815,7 +819,7 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, confi
     document.addEventListener("keydown", onKeydown);
 
     document.body.classList.add("confirm-open");
-    if (hasInput) setTimeout(() => inputEl.focus(), 0);
+    if (hasInput) setTimeout(() => inputEl.select(), 0);
   });
 }
 
@@ -1381,6 +1385,7 @@ function openEditDrawer(profileId) {
   // RELAY 024: Mods/Window tab fields.
   document.getElementById("edit-py4gw-dll-path").value = p ? p.py4gw_dll_path || "" : "";
   document.getElementById("edit-gmod-dll-path").value = p ? p.gmod_dll_path || "" : "";
+  document.getElementById("edit-script-path").value = p ? p.script_path || "" : "";
   editPluginPaths = p ? [...(p.gmod_plugin_paths || [])] : [];
   renderPluginList();
   // GameProfile.windowed_mode_enabled defaults to True -- match that default
@@ -1476,6 +1481,7 @@ async function onSaveProfileClick() {
     character_name: document.getElementById("edit-charname").value.trim(),
     py4gw_dll_path: document.getElementById("edit-py4gw-dll-path").value.trim(),
     gmod_dll_path: document.getElementById("edit-gmod-dll-path").value.trim(),
+    script_path: document.getElementById("edit-script-path").value.trim(),
     gmod_plugin_paths: editPluginPaths.slice(),
     windowed_mode_enabled: document.getElementById("edit-windowed").checked,
   };
@@ -1583,6 +1589,20 @@ async function onNewTeamClick() {
   selectTeam(newTeam.id);
 }
 
+async function onRenameTeamClick() {
+  if (activeTeamId === "ALL") return;
+  const currentName = teamName(activeTeamId);
+  const newName = await openConfirmModal({
+    title: "Rename team",
+    inputPlaceholder: "Team name",
+    inputValue: currentName,
+    confirmLabel: "Save",
+  });
+  if (!newName || newName === currentName) return;
+  await window.pywebview.api.rename_team(activeTeamId, newName);
+  await loadData();
+}
+
 async function onRemoveTeamClick() {
   if (activeTeamId === "ALL") return;
   const tn = teamName(activeTeamId);
@@ -1596,6 +1616,96 @@ async function onRemoveTeamClick() {
   selectTeam("ALL");
   await loadData();
 }
+
+// ---------- Cross-team search (RELAY 057) ----------
+// Entirely client-side -- profiles/teams are already loaded via loadData(),
+// confirmed via source there's no need for a new bridge call.
+
+function onSearchClick() {
+  document.body.classList.add("search-open");
+  const input = document.getElementById("search-input");
+  input.value = "";
+  renderSearchResults("");
+  setTimeout(() => input.focus(), 0);
+}
+
+function closeSearch() {
+  document.body.classList.remove("search-open");
+}
+
+function onSearchInput() {
+  renderSearchResults(document.getElementById("search-input").value);
+}
+
+function renderSearchResults(query) {
+  const results = document.getElementById("search-results");
+  const q = query.trim().toLowerCase();
+
+  // Grouped by team, in the same order teams appear in the rail -- a
+  // profile with no team membership at all is grouped under "No team"
+  // (matches the ALL view's own real possibility: team_ids can be empty).
+  const groups = [];
+  for (const t of teams) {
+    const rows = profiles.filter(
+      (p) => (p.team_ids || []).includes(t.id) && (!q || (p.name || "").toLowerCase().includes(q))
+    );
+    if (rows.length) groups.push({ teamName: t.name, rows });
+  }
+  const noTeamRows = profiles.filter(
+    (p) => (p.team_ids || []).length === 0 && (!q || (p.name || "").toLowerCase().includes(q))
+  );
+  if (noTeamRows.length) groups.push({ teamName: "No team", rows: noTeamRows });
+
+  if (!groups.length) {
+    results.innerHTML = `<div id="search-empty">No matches</div>`;
+    return;
+  }
+
+  results.innerHTML = groups
+    .map(
+      (g) => `
+        <div class="search-group-label">${escapeHtml(g.teamName)}</div>
+        ${g.rows
+          .map(
+            (p) => `
+              <div class="search-row" data-search-row="${p.id}">
+                <div class="card-avatar" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
+                <div style="min-width:0">
+                  <div class="search-row-name">${escapeHtml(p.name || "(unnamed)")}</div>
+                  <div class="search-row-sub">${escapeHtml(clientFolderLabel(p.executable_path))}</div>
+                </div>
+                <span class="search-row-team">${escapeHtml(g.teamName)}</span>
+              </div>`
+          )
+          .join("")}`
+    )
+    .join("");
+
+  for (const el of results.querySelectorAll("[data-search-row]")) {
+    el.onclick = () => onSearchResultClick(el.getAttribute("data-search-row"));
+  }
+}
+
+// Jumps to the FIRST team the clicked profile belongs to (a profile can be
+// in several) and focuses its card -- matches "search finds it, take me
+// there" rather than just closing the modal with no follow-through.
+function onSearchResultClick(profileId) {
+  const p = profiles.find((x) => x.id === profileId);
+  closeSearch();
+  if (!p) return;
+  const teamId = (p.team_ids || [])[0] || "ALL";
+  selectTeam(teamId);
+  focusedProfileId = profileId;
+  renderCards();
+  const card = document.querySelector(`[data-card="${profileId}"]`);
+  if (card) card.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+document.getElementById("search-scrim").addEventListener("click", closeSearch);
+document.getElementById("search-close-btn").addEventListener("click", closeSearch);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.body.classList.contains("search-open")) closeSearch();
+});
 
 // ---------- Window controls (carried over from Phase A) ----------
 // Resize is handled entirely by Windows' native WS_THICKFRAME border (no JS

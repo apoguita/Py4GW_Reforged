@@ -1124,6 +1124,21 @@ class ShellBridge:
                 target=self._run_bulk_launch, args=(profiles, pacing_seconds), daemon=True
             )
             self._bulk_thread.start()
+        # RELAY 057: Py4GW.ini's autoexec_script key is root-scoped (one
+        # shared file, not per-account) -- a concurrent/paced batch with
+        # different scripts per profile can race on that shared key
+        # (accepted, Apo's own call: "not a real problem in practice").
+        # Cheap set-comparison over just the profiles about to launch, not
+        # a pacing/timing fix -- silent whenever every profile shares the
+        # same script (or none set at all), which is the common case.
+        # Pushed as a real console line (bridge.py's own established
+        # pattern for launcher-level heads-ups, e.g. _run_bulk_launch's
+        # own "[Bulk Launch]" lines) rather than a new UI element.
+        distinct_scripts = {p.script_path for p in profiles if p.script_path}
+        if len(distinct_scripts) > 1:
+            self._push_console_line(
+                "Mixed auto-run scripts — assignment isn't guaranteed during concurrent launches.", "warn"
+            )
         return {"ok": True, "count": len(profiles)}
 
     def cancel_bulk_launch(self) -> dict:
@@ -1329,6 +1344,18 @@ class ShellBridge:
         teams.append(new_team)
         profile_store.save_teams(teams)
         return new_team.to_dict()
+
+    def rename_team(self, team_id: str, new_name: str) -> dict:
+        """RELAY 057: reuses the same load/mutate/save shape as add_team/
+        remove_team, not a new pattern -- rename never existed before this,
+        confirmed via source (only add_team/remove_team were ever wired)."""
+        teams = profile_store.load_teams()
+        for t in teams:
+            if t.id == team_id:
+                t.name = new_name
+                profile_store.save_teams(teams)
+                return t.to_dict()
+        return {}
 
     def remove_team(self, team_id: str) -> bool:
         """Deletes the Team itself, but never deletes profiles -- every
