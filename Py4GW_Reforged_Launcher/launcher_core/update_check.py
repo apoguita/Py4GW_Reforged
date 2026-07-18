@@ -15,6 +15,17 @@ Every function here is synchronous and blocking (a real network call) --
 same convention as launcher_core.prereqs/mod_repo: callers on the UI thread
 run this on a background thread and poll for the result, never call it
 directly from the render loop.
+
+RELAY 067: currently unreferenced from the UI (the "Check for updates"
+button, its status row, and the auto-check-at-startup call were all
+removed from app.js/index.html) -- Apo isn't going to keep cutting
+GitHub Releases for this launcher going forward, so a check against
+whether a newer *release* exists would be checking something about to
+stop happening, not just an unused feature. This module and bridge.py's
+own methods around it (fetch_latest_release_tag, is_newer_version_
+available, releases_page_url) are left fully intact on purpose -- not
+dead code to clean up, just dormant. Safe to wire back into the UI if
+the distribution model ever moves back toward discrete GitHub Releases.
 """
 
 from __future__ import annotations

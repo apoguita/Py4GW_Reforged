@@ -553,12 +553,6 @@ window.shellBridge = {
       refreshCard(data.profile_id);
       return;
     }
-    if (event === "launcher_update_result") {
-      // No profile_id -- placed before the guard below for exactly that
-      // reason, same as focused_profile_changed/run_as_admin_relaunch_failed.
-      renderLauncherUpdateResult(data);
-      return;
-    }
     if (!data || !data.profile_id) return;
     const id = data.profile_id;
     if (event === "launch_log") {
@@ -839,9 +833,10 @@ function openConfirmModal({ title, message, warningLine, inputPlaceholder, input
 // A genuinely different shape from openConfirmModal above -- informational,
 // "Close"-only, variable-length content -- so it's its own small function
 // rather than stretching openConfirmModal's yes/no semantics to also cover
-// this. One shared renderer backs both Restore's and Old Launcher Import's
-// result display (ported from the old imgui app's _render_import_result_
-// body real copy, line for line).
+// this (ported from the old imgui app's _render_import_result_body real
+// copy, line for line). RELAY 067: was also shared with the "Old Launcher
+// Import" result display, removed -- Restore's own result display is now
+// this function's only caller.
 
 function showImportResultModal(result) {
   const body = document.getElementById("result-body");
@@ -1015,6 +1010,10 @@ async function loadAppSettings() {
   document.getElementById("settings-gmod-injection").checked = !!s.gmod_injection_enabled;
   document.getElementById("settings-pacing").value = s.bulk_launch_pacing_seconds;
   cachedPy4gwInjectionDelay = s.py4gw_injection_delay_seconds;
+  // RELAY 067: General-tab duplicate of the same global value -- both this
+  // and the edit drawer's own field (below) read from the same fetched
+  // `s`, not two separate bridge calls.
+  document.getElementById("settings-py4gw-delay").value = s.py4gw_injection_delay_seconds;
 }
 
 function wireAppSettingsControls() {
@@ -1047,6 +1046,16 @@ function wireAppSettingsControls() {
   document.getElementById("edit-py4gw-delay").onchange = (e) => {
     cachedPy4gwInjectionDelay = Number(e.target.value);
     window.pywebview.api.save_py4gw_injection_delay_seconds(cachedPy4gwInjectionDelay);
+    document.getElementById("settings-py4gw-delay").value = cachedPy4gwInjectionDelay;
+  };
+  // RELAY 067: General-tab duplicate of the same control above -- deliberate
+  // redundancy (Chris's own call), not a relocation. Same save call, same
+  // no-JS-side-clamp reasoning, and keeps the edit drawer's own field (if
+  // already populated) in sync too so the two never visibly disagree.
+  document.getElementById("settings-py4gw-delay").onchange = (e) => {
+    cachedPy4gwInjectionDelay = Number(e.target.value);
+    window.pywebview.api.save_py4gw_injection_delay_seconds(cachedPy4gwInjectionDelay);
+    document.getElementById("edit-py4gw-delay").value = cachedPy4gwInjectionDelay;
   };
 }
 
@@ -1090,58 +1099,18 @@ function wireRunAsAdminControl() {
   };
 }
 
-// ---------- Launcher self-update check (RELAY 048) ----------
-// Ported from the old imgui app's real UpdateCheckState + App Settings
-// render block, onto push_event instead of that class's per-frame polling
-// (this app has no render loop to poll from) -- same real copy/behavior:
-// silent on a failed check (no internet, GitHub down, rate-limited --
-// never shown as an error), auto-checked once at startup in addition to
-// the explicit button click.
-
-function setLauncherUpdateChecking(checking) {
-  document.getElementById("launcher-update-check-btn").style.display = checking ? "none" : "inline-block";
-  const statusEl = document.getElementById("launcher-update-status");
-  if (checking) {
-    statusEl.style.display = "inline";
-    statusEl.className = "prereq-status busy";
-    statusEl.textContent = "Checking for updates...";
-  }
-}
+// ---------- Launcher version display (RELAY 048) ----------
+// RELAY 067: the self-update CHECK removed (button, status row, and the
+// auto-check-at-startup call below) -- Apo isn't going to keep cutting
+// GitHub Releases for this launcher going forward, so a check against
+// whether a newer *release* exists was checking something about to stop
+// happening. The static version text stays -- still genuinely useful for
+// support/debugging. bridge.py's update_check.py plumbing is untouched,
+// just unreferenced from here now (see that module's own top-of-file note).
 
 async function loadLauncherVersion() {
   const v = await window.pywebview.api.get_launcher_version();
   document.getElementById("launcher-version-text").textContent = v;
-}
-
-function onLauncherUpdateCheckClick() {
-  setLauncherUpdateChecking(true);
-  window.pywebview.api.check_launcher_update();
-}
-
-function onViewReleasesClick(e) {
-  e.preventDefault();
-  window.pywebview.api.open_releases_page();
-}
-
-function renderLauncherUpdateResult(data) {
-  setLauncherUpdateChecking(false);
-  const statusEl = document.getElementById("launcher-update-status");
-  // ok is false (no internet, GitHub down, rate-limited, unexpected
-  // response shape) or never-checked-yet: show nothing at all, matching
-  // the old app's own real behavior exactly -- this is an informational
-  // notice, not something worth surfacing as an error.
-  if (!data || !data.ok) {
-    statusEl.style.display = "none";
-    return;
-  }
-  statusEl.style.display = "inline";
-  if (data.is_newer) {
-    statusEl.className = "prereq-status missing";
-    statusEl.innerHTML = `A newer version is available: ${escapeHtml(data.latest_tag)} <a href="#" onclick="onViewReleasesClick(event)" style="color:inherit;text-decoration:underline">View releases</a>`;
-  } else {
-    statusEl.className = "prereq-status ok";
-    statusEl.textContent = "You're up to date.";
-  }
 }
 
 // ---------- Prerequisites (RELAY 032) ----------
@@ -1349,10 +1318,13 @@ async function onModRepoUpdateClick() {
   }
 }
 
-// ---------- Backup/Restore accounts + Old Launcher Import (RELAY 034) ----------
+// ---------- Backup/Restore accounts (RELAY 034) ----------
 // Ported from the old imgui app's _show_export_import_section, real copy
 // reused verbatim (both confirm-popup warning strings, quoted not
 // paraphrased -- what they're warning about is a real plaintext secret).
+// RELAY 067: the sibling "Old Launcher Import" feature (also 034) removed
+// from this section -- accounts.json is this app's own live store now
+// (066), not an import target.
 
 async function onBackupAccountsClick() {
   const includePasswords = document.getElementById("roster-include-passwords").checked;
@@ -1383,19 +1355,6 @@ async function onRestoreAccountsClick() {
   if (res.ok) {
     showImportResultModal(res.result);
     await loadData(); // newly-added profiles/teams should show up immediately
-  } else {
-    await openConfirmModal({ title: "Import failed", message: res.error, confirmLabel: "OK" });
-  }
-}
-
-async function onLegacyImportClick() {
-  const chosen = await window.pywebview.api.browse_for_file("JSON files", "*.json");
-  if (!chosen) return;
-  const res = await window.pywebview.api.import_legacy_accounts(chosen);
-  document.getElementById("roster-status-message").style.display = "none";
-  if (res.ok) {
-    showImportResultModal(res.result);
-    await loadData();
   } else {
     await openConfirmModal({ title: "Import failed", message: res.error, confirmLabel: "OK" });
   }
@@ -1811,10 +1770,6 @@ window.addEventListener("pywebviewready", () => {
   loadRunAsAdminState();
   wireRunAsAdminControl();
   loadLauncherVersion();
-  // RELAY 048: same eager-once-at-startup pattern as 032/033 below --
-  // matches the old app's own UpdateCheckState.run_check_async, "safe to
-  // call unconditionally" (never raises, silent on failure).
-  window.pywebview.api.check_launcher_update();
   // RELAY 032: checked once automatically at startup, same as the old
   // imgui app's PREREQS.run_check_async() at module load -- not gated
   // behind opening the Settings drawer, so results are usually already

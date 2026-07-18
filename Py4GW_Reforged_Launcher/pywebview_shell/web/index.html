@@ -261,6 +261,14 @@
           </p>
           <label class="field-label">Bulk launch pacing (seconds)</label>
           <input class="field-input" type="number" id="settings-pacing" min="5" max="90" step="1">
+          <!-- RELAY 067: deliberate redundancy, Chris's own call -- this
+               global value already lives on the edit drawer's Mods tab
+               (062, id="edit-py4gw-delay"), but it belongs on the same
+               "control panel" screen as the other global launch-timing
+               knob above too, since it's tuned often. Both controls stay
+               in sync via the same cachedPy4gwInjectionDelay (app.js). -->
+          <label class="field-label" style="margin-top:10px">Py4GW injection delay (seconds)</label>
+          <input class="field-input" type="number" id="settings-py4gw-delay" min="0" max="60" step="0.5">
         </div>
         <div>
           <h4 style="margin-bottom:8px">Data</h4>
@@ -273,9 +281,13 @@
            merges in outside data, elevating (035, not yet built)
            triggers a full relaunch + UAC prompt. Kept as its own "use
            deliberately" tab rather than scattered into General.
-           Backup/Restore + Old Launcher Import (RELAY 034) ported from
-           the old imgui app's _show_export_import_section, real copy
-           reused verbatim. -->
+           Backup/Restore (RELAY 034) ported from the old imgui app's
+           _show_export_import_section, real copy reused verbatim.
+           RELAY 067: the sibling "Old Launcher Import" section (also
+           034) removed -- accounts.json is this app's own live,
+           permanent store now (066), not an import target; a separate
+           merge-in-from-elsewhere button was a real gap in 066's own
+           scope, not a deliberate keep. -->
       <div id="settings-tab-advanced" class="settings-tab-panel" style="display:none">
         <div>
           <h4 style="margin-bottom:8px">Backup / Restore Accounts</h4>
@@ -289,36 +301,22 @@
           </div>
           <div id="roster-status-message" style="display:none;font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin-top:8px"></div>
         </div>
-        <!-- RELAY 060: real visual separation from Backup/Restore above --
-             Apo's own screenshot showed him reaching for "Restore
-             accounts..." when he meant this section; the two previously
-             sat one after another with no divider at all (just the panel's
-             own 14px flex gap), easy to blend together at a glance. A top
-             border + extra top padding gives this its own visual "start
-             of a different action group" cue, and the button label now
-             names the expected file itself rather than a bare "Import". -->
-        <div style="border-top:1px solid var(--border,#2a2f55);padding-top:16px">
-          <h4 style="margin-bottom:8px">Old Launcher Import</h4>
-          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
-            Have an accounts.json from the previous Python launcher? Import it below.
-            (Different file than a backup made by this app -- use Restore above for those.)
-          </p>
-          <button class="ghost-btn" onclick="onLegacyImportClick()">Import accounts.json…</button>
-        </div>
         <div>
           <h4 style="margin-bottom:8px">Launcher</h4>
           <!-- RELAY 048: "here's what you're running" before "here's whether
                it's configured right" -- same real ordering the old app used
                (version/update-check above Prerequisites there); here that
                means above Run-as-administrator, the other real item already
-               in this same "Launcher" sub-section. -->
+               in this same "Launcher" sub-section.
+               RELAY 067: the update-CHECK button+status removed below --
+               Apo isn't going to keep cutting GitHub Releases for this
+               launcher going forward, so a button checking for a newer
+               *release* would be checking against something that's about
+               to stop happening. The static Version display stays --
+               still useful for support/debugging regardless. -->
           <div class="pal-row">
             <span>Version</span>
             <span id="launcher-version-text" style="font-size:12.5px;color:var(--text,#e6e8ff)"></span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
-            <button class="ghost-btn" id="launcher-update-check-btn" onclick="onLauncherUpdateCheckClick()">Check for updates</button>
-            <span id="launcher-update-status" class="prereq-status" style="display:none"></span>
           </div>
           <div class="pal-row" style="margin-top:10px"><span>Run launcher as administrator</span><input type="checkbox" id="settings-run-as-admin"></div>
           <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
@@ -487,9 +485,9 @@
      it's its own element rather than overloading openConfirmModal's
      confirm/cancel semantics. Shares the confirm modal's real CSS via
      comma-separated selectors (style.css), same visual language, same
-     scrim z-index layering. One shared renderer (showImportResultModal)
-     backs Restore's and Old Launcher Import's result display -- not two
-     copies. -->
+     scrim z-index layering. Rendered via showImportResultModal --
+     RELAY 067: was also shared with "Old Launcher Import"'s own result
+     display, removed; Restore's result display is now its only caller. -->
 <div id="result-scrim"></div>
 <div id="result-modal">
   <span class="title" id="result-title"></span>
