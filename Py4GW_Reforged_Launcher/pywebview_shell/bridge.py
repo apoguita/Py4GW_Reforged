@@ -69,6 +69,23 @@ def _resolve_mod_repo_path():
     return Path(saved) if saved else mod_root._mod_root()
 
 
+def _find_dll_under_mod_root(filename: str) -> str:
+    """RELAY 060: auto-default a DLL path when a profile is created (new or
+    imported) with the matching injection enabled and no path already set.
+    Globs for the real filename under the resolved mod root rather than
+    assuming a specific subfolder -- confirmed directly against a real
+    checkout: Py4GW.dll sits at the mod root itself, gMod.dll under
+    Addons/, two different depths, so a fixed relative path would be
+    wrong for at least one of them. Returns "" (leave blank, keep the
+    existing "must be set manually" warning) unless EXACTLY one match is
+    found -- an ambiguous multi-match is a worse guess than no guess."""
+    root = _resolve_mod_repo_path()
+    if not root.is_dir():
+        return ""
+    matches = list(root.rglob(filename))
+    return str(matches[0]) if len(matches) == 1 else ""
+
+
 class ShellBridge:
     """One instance per window, matching pywebview's one-js_api-per-window
     model. The window back-reference is bound after webview.create_window()
@@ -574,6 +591,24 @@ class ShellBridge:
         threading.Thread(target=self._run_mod_repo_detect, daemon=True).start()
         return {"ok": True}
 
+    def check_legacy_autodetect(self) -> dict:
+        """RELAY 060: first-run offer, ported from the retired imgui app's
+        real `_show_legacy_autodetect_popup()` (its own zero-profiles gate
+        is the whole guard -- self-resolves the moment any profile exists,
+        no persisted "don't ask again" flag needed). Synchronous and cheap
+        (one file-exists check + a profile count), called once per session
+        from the page's own init flow -- JS decides once-per-session-ness
+        by only calling this during initial load, not on every
+        loadData() refresh."""
+        try:
+            accounts_path = _resolve_mod_repo_path() / "accounts.json"
+            if profile_store.load_profiles() or not accounts_path.is_file():
+                return {"found": False}
+            count = legacy_import.count_accounts(accounts_path)
+            return {"found": True, "path": str(accounts_path), "count": count}
+        except (OSError, ValueError):
+            return {"found": False}
+
     def check_mod_repo(self) -> dict:
         """Cheap, filesystem-only -- safe to call automatically (this app's
         pywebviewready init does, same as check_prereqs) and after every
@@ -788,19 +823,62 @@ class ShellBridge:
                 return ("email", p.email)
             return ("exe_char", p.executable_path, p.character_name)
 
-        existing_keys = {_profile_key(p) for p in profiles}
+        # RELAY 060: existing_by_key maps to the actual GameProfile (not just
+        # a seen-key set) so a cross-team duplicate can MERGE its team_ids
+        # into the profile already kept, instead of the whole duplicate
+        # object -- including the team membership it was carrying -- being
+        # discarded outright. Root cause of Apo's real "teams came in with
+        # zero members" report: his real file has overlapping team
+        # categories (a class-based grouping and a misc/campaign grouping
+        # both containing the same characters), so the same real account
+        # legitimately appears under multiple team keys in one file: the
+        # old set-based version correctly recognized the second occurrence
+        # as "the same account" but then dropped its team_id along with it,
+        # so a team whose members were ALL already-claimed-elsewhere
+        # characters came back with zero members. Covers both a duplicate
+        # against an already-stored profile and a duplicate within the same
+        # import file (both go through this same dict).
+        existing_by_key = {_profile_key(p): p for p in profiles}
         added_profiles = []
         skipped_profiles = 0
+        merged_team_ids = False  # a duplicate-profile merge alone (no new profiles) still needs saving
         for profile in imported_profiles:
             key = _profile_key(profile)
-            if key in existing_keys:
+            existing = existing_by_key.get(key)
+            if existing is not None:
+                for tid in profile.team_ids:
+                    if tid not in existing.team_ids:
+                        existing.team_ids.append(tid)
+                        merged_team_ids = True
                 skipped_profiles += 1
             else:
-                existing_keys.add(key)  # also guards duplicates within the same file
+                existing_by_key[key] = profile  # also guards duplicates within the same file
+                # RELAY 060: same new-profile DLL auto-default save_profile
+                # applies -- a merged duplicate is skipped, not appended, so
+                # only genuinely-new profiles need this.
+                if profile.py4gw_enabled and not profile.py4gw_dll_path:
+                    profile.py4gw_dll_path = _find_dll_under_mod_root("Py4GW.dll")
+                if profile.gmod_enabled and not profile.gmod_dll_path:
+                    profile.gmod_dll_path = _find_dll_under_mod_root("gMod.dll")
+                # RELAY 060: the "must be set manually" warning moved here
+                # from legacy_import.py, computed AFTER the auto-default
+                # attempt above -- only warn if it's still genuinely missing,
+                # not a stale warning on a profile that just got auto-filled.
+                label = profile.character_name or "(unnamed profile)"
+                if profile.py4gw_enabled and not profile.py4gw_dll_path:
+                    warnings.append(
+                        f"{label}: Py4GW injection was enabled in the old launcher; "
+                        "the Py4GW DLL path must be set manually in Settings."
+                    )
+                if profile.gmod_enabled and not profile.gmod_dll_path:
+                    warnings.append(
+                        f"{label}: gMod injection was enabled in the old launcher; "
+                        "the gMod DLL path must be set manually in Settings."
+                    )
                 profiles.append(profile)
                 added_profiles.append(profile)
 
-        if added_profiles:
+        if added_profiles or merged_team_ids:
             profile_store.save_profiles(profiles)
         if added_teams:
             profile_store.save_teams(teams)
@@ -1272,6 +1350,14 @@ class ShellBridge:
         else:
             filtered = {k: v for k, v in data.items() if k in writable_fields}
             target = GameProfile(**filtered)
+            # RELAY 060: auto-default DLL paths on a brand-new profile only
+            # (an existing profile's own explicit blank is left alone --
+            # this is a new-profile convenience, not a standing "fill in
+            # whatever's missing" behavior).
+            if target.py4gw_enabled and not target.py4gw_dll_path:
+                target.py4gw_dll_path = _find_dll_under_mod_root("Py4GW.dll")
+            if target.gmod_enabled and not target.gmod_dll_path:
+                target.gmod_dll_path = _find_dll_under_mod_root("gMod.dll")
             profiles.append(target)
 
         if new_password:

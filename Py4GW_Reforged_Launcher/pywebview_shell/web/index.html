@@ -289,12 +289,21 @@
           </div>
           <div id="roster-status-message" style="display:none;font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin-top:8px"></div>
         </div>
-        <div>
+        <!-- RELAY 060: real visual separation from Backup/Restore above --
+             Apo's own screenshot showed him reaching for "Restore
+             accounts..." when he meant this section; the two previously
+             sat one after another with no divider at all (just the panel's
+             own 14px flex gap), easy to blend together at a glance. A top
+             border + extra top padding gives this its own visual "start
+             of a different action group" cue, and the button label now
+             names the expected file itself rather than a bare "Import". -->
+        <div style="border-top:1px solid var(--border,#2a2f55);padding-top:16px">
           <h4 style="margin-bottom:8px">Old Launcher Import</h4>
           <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
             Have an accounts.json from the previous Python launcher? Import it below.
+            (Different file than a backup made by this app -- use Restore above for those.)
           </p>
-          <button class="ghost-btn" onclick="onLegacyImportClick()">Import</button>
+          <button class="ghost-btn" onclick="onLegacyImportClick()">Import accounts.json…</button>
         </div>
         <div>
           <h4 style="margin-bottom:8px">Launcher</h4>

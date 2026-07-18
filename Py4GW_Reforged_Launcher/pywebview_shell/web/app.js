@@ -1784,7 +1784,30 @@ window.addEventListener("pywebviewready", () => {
   // check_mod_repo_updates() is deliberately NOT called here (real network
   // fetch, only ever on the explicit button click).
   loadModRepoInfo().then(() => window.pywebview.api.check_mod_repo());
+  // RELAY 060: first-run offer, ported from the retired imgui app's own
+  // _show_legacy_autodetect_popup() -- checked once here at startup only
+  // (not on every loadData() refresh), same "self-resolves once any
+  // profile exists" gate the old app used, no persisted flag needed.
+  checkLegacyAutodetect();
 });
+
+async function checkLegacyAutodetect() {
+  const res = await window.pywebview.api.check_legacy_autodetect();
+  if (!res || !res.found) return;
+  const ok = await openConfirmModal({
+    title: "Import old launcher accounts?",
+    message: `Found accounts.json from the old launcher at:\n${res.path}\n\nImport ${res.count} account${res.count !== 1 ? "s" : ""} now?`,
+    confirmLabel: "Import",
+  });
+  if (!ok) return;
+  const importRes = await window.pywebview.api.import_legacy_accounts(res.path);
+  if (importRes.ok) {
+    showImportResultModal(importRes.result);
+    await loadData();
+  } else {
+    await openConfirmModal({ title: "Import failed", message: importRes.error, confirmLabel: "OK" });
+  }
+}
 
 async function loadConsoleHistory() {
   // The console itself never survives a full app restart (bridge.py's

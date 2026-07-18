@@ -26,6 +26,37 @@ def count_accounts(path: Path | str) -> int:
     return sum(len(accounts) for accounts in data.values() if isinstance(accounts, list))
 
 
+def _looks_like_legacy_accounts(data: object) -> bool:
+    """RELAY 060: cheap structural check -- Apo's own screenshot surfaced a
+    real gap, picking the wrong import button (native roster restore
+    instead of this one) on a file that doesn't match this format
+    silently returned a 0/0 result with no explanation. Doesn't validate
+    every field, just enough to distinguish "this is plausibly a legacy
+    accounts.json" from "this is some other JSON file" -- a foreign or
+    hand-edited file that happens to satisfy this shape still goes
+    through the real per-field parsing above, which is the actual
+    source of truth."""
+    if not isinstance(data, dict) or not data:
+        return False
+    # This app's own native roster bundle (roster_transfer.export_roster)
+    # uses exactly these two reserved top-level keys -- an empty bundle
+    # ({"profiles": [], "teams": []}) would otherwise trivially pass the
+    # per-account loop below (nothing inside an empty list to fail on),
+    # a real false negative confirmed via a live test with Apo's own
+    # cross-wired-file scenario in reverse.
+    if set(data.keys()) >= {"profiles", "teams"}:
+        return False
+    for accounts in data.values():
+        if not isinstance(accounts, list):
+            return False
+        for account in accounts:
+            if not isinstance(account, dict):
+                return False
+            if "character_name" not in account and "gw_path" not in account:
+                return False
+    return True
+
+
 def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Team], list[str]]:
     """Parse an old-launcher accounts.json into (profiles, teams, warnings).
 
@@ -35,6 +66,11 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
     imported -- returned, not raised, so the caller can surface them.
     """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not _looks_like_legacy_accounts(data):
+        raise ValueError(
+            "This doesn't look like a legacy accounts.json from the old launcher "
+            "(expected team names mapping to lists of accounts)."
+        )
 
     profiles: list[GameProfile] = []
     teams: list[Team] = []
@@ -47,13 +83,21 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
         teams.append(team)
 
         for account in accounts:
-            name = account.get("gw_client_name", "")
+            # RELAY 060: character_name is the real, always-populated identity
+            # field (the old launcher's own account-list display label,
+            # Py4GW_Launcher.py lines 1218/1271/1595) -- gw_client_name is a
+            # separate, optional, cosmetic field ("Rename GW Client") that's
+            # confirmed dead code in the real source (only ever written, never
+            # read for any actual behavior -- grepped every use) and on a real
+            # multi-account roster is essentially guaranteed blank. Using it
+            # for profile.name produced the "(unnamed)" wall Apo hit on his
+            # real 60-account import.
             character_name = account.get("character_name", "")
             email = account.get("email", "")
             password = account.get("password", "")
 
             profile = GameProfile()
-            profile.name = name
+            profile.name = character_name
             profile.character_name = character_name
             profile.email = email
             # The old launcher has no auto-login toggle -- it always sends both when
@@ -74,7 +118,7 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
             profile.team_ids = [team.id]
             profiles.append(profile)
 
-            label = name or "(unnamed profile)"
+            label = character_name or "(unnamed profile)"
             # GWToolbox++ is unsupported (see profile.py's docstring). Check BOTH keys:
             # older files (like this one) use inject_gwtoolbox, current upstream renamed
             # it to inject_blackbox -- reading only one would miss it or KeyError.
@@ -90,31 +134,24 @@ def parse_legacy_accounts(path: Path | str) -> tuple[list[GameProfile], list[Tea
             # The old accounts.json format never had a per-account DLL path field
             # for either injection type -- inject_py4gw/inject_gmod can come in
             # True with py4gw_dll_path/gmod_dll_path both staying empty (set
-            # above from fields that don't exist in this format), which would
-            # otherwise fail to inject with no explanation until someone
-            # noticed in Settings.
-            if profile.py4gw_enabled and not profile.py4gw_dll_path:
-                warnings.append(
-                    f"{label}: Py4GW injection was enabled in the old launcher; "
-                    "the Py4GW DLL path must be set manually in Settings."
-                )
-            if profile.gmod_enabled and not profile.gmod_dll_path:
-                warnings.append(
-                    f"{label}: gMod injection was enabled in the old launcher; "
-                    "the gMod DLL path must be set manually in Settings."
-                )
-            if (
-                account.get("enable_client_rename")
-                and not account.get("use_character_name")
-                and account.get("custom_client_name")
-            ):
-                warnings.append(
-                    f"{label}: a custom window title ('{account['custom_client_name']}') was set in the "
-                    "old launcher; not carried over."
-                )
+            # above from fields that don't exist in this format). RELAY 060:
+            # a missing-DLL-path warning is NOT generated here anymore --
+            # bridge.py's import_legacy_accounts now tries a real auto-default
+            # (glob for the DLL under the resolved mod root) before deciding
+            # whether a warning is actually still warranted, and this module
+            # has no access to that resolution (mod-repo path is a bridge.py/
+            # settings_store concern). Generating the warning here, before
+            # that auto-default even runs, would produce a stale "must be set
+            # manually" message on a profile that ends up auto-filled anyway.
             # Silently dropped (no warning): runtime stats (last_launch_time,
             # *_runtime, current_session_time), window geometry (top_left, width,
             # height), preview_area, resize_client, launch_selected,
-            # launcher_account_uid, gwtoolbox_path.
+            # launcher_account_uid, gwtoolbox_path. Also gw_client_name/
+            # enable_client_rename/use_character_name/custom_client_name
+            # (RELAY 060) -- confirmed dead code in the real old-launcher
+            # source (the only consumer is wrapped in a triple-quoted,
+            # never-executed block), so there's no real behavior lost and no
+            # warning is warranted, unlike the genuinely-dropped features
+            # above.
 
     return profiles, teams, warnings

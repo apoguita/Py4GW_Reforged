@@ -66,6 +66,18 @@ def import_roster(path: Path | str) -> tuple[list[GameProfile], list[Team]]:
     """Reverse of export_roster: re-encrypt each ``password_plaintext`` back into a
     ``password_protected`` DPAPI blob for this Windows user, then rebuild models."""
     bundle = json.loads(Path(path).read_text(encoding="utf-8"))
+    # RELAY 060: same real gap legacy_import.py's own validity check fixes --
+    # confirmed this path had the identical silent-0/0 issue: bundle.get(
+    # "profiles", [])/bundle.get("teams", []) quietly returns empty lists for
+    # ANY JSON file lacking these exact keys (e.g. a legacy accounts.json
+    # picked here by mistake, matching Apo's own real screenshot), giving no
+    # explanation at all. Cheap shape check, not full validation -- matches
+    # export_roster's own real bundle shape ({"profiles": [...], "teams": [...]}).
+    if not isinstance(bundle, dict) or not isinstance(bundle.get("profiles"), list) or not isinstance(bundle.get("teams"), list):
+        raise ValueError(
+            "This doesn't look like a roster backup from this app "
+            '(expected a {"profiles": [...], "teams": [...]} bundle).'
+        )
 
     profiles = []
     for entry in bundle.get("profiles", []):

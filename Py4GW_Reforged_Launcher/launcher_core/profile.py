@@ -32,7 +32,13 @@ class GameProfile:
     # -----------------------------
     # Mods / injection (Py4GW, gMod only -- no Toolbox)
     # -----------------------------
-    py4gw_enabled: bool = False
+    # RELAY 060: True by default for a brand-new profile -- a fresh product
+    # decision (Apo's own feedback batch), NOT restoring old behavior:
+    # confirmed via `git log -S` across this repo's entire history that the
+    # retired imgui launcher never defaulted this True either. Imported
+    # profiles are unaffected -- legacy_import.py already sets this
+    # explicitly from the source data, never from this dataclass default.
+    py4gw_enabled: bool = True
     py4gw_dll_path: str = ""
 
     gmod_enabled: bool = False
@@ -50,7 +56,10 @@ class GameProfile:
     # -----------------------------
     # Auto-login
     # -----------------------------
-    auto_login_enabled: bool = False
+    # RELAY 060: same fresh-default reasoning as py4gw_enabled above -- True
+    # for a brand-new profile, confirmed never true historically either,
+    # imported profiles unaffected (legacy_import.py sets this explicitly).
+    auto_login_enabled: bool = True
     email: str = ""
     password_protected: str = ""  # base64; DPAPI-encrypted. Never plaintext.
 
