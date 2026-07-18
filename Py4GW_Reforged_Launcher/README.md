@@ -75,24 +75,28 @@ any of these.)
     palette actually survives an app restart.
   - **Setup** — prerequisites and mod repository, in one place.
   - **General** — launch pacing, master injection switches.
-  - **Advanced** — backup/restore, old launcher import, run-as-admin.
+  - **Advanced** — backup/restore, run-as-admin, version display.
 - **Live console panel** — a docked, collapsible view of launch/injection
   log output as it happens, color-coded by real category (success/warning/
   error/informational), not a flat log dump.
-- **Update check** — App Settings shows the running version and can check
-  whether a newer release is out, linking straight to it.
 - **Dark/light theme**, DPI-aware sizing, and a card-grid UI (not a dense
   always-expanded account form).
 
 ## Getting it
 
-The launcher is a standalone Python/pywebview app — its code and data are
-entirely separate from the rest of this repo. Profile/team data lives
-under `%APPDATA%\Py4GW_Reforged_Launcher\`, not inside the repo folder.
+The launcher is a standalone Python/pywebview app, but its own data and
+the built `.exe` both live inside this repo — not a separate distribution
+channel. Get the repo however you'd normally get it (`git clone`/`pull`,
+or a ZIP download both work), and:
 
-**Build from source (recommended for now):** the packaged `.exe` isn't
-code-signed yet, so Windows Smart App Control may flag a downloaded build
-as unrecognized. Building from source avoids that entirely:
+**Just run the `.exe`:** `Py4GW_Reforged_Launcher.exe` sits at the actual
+repo root, committed and updated alongside the code. If Windows blocks it
+on first run (Smart App Control / SmartScreen — expected for an unsigned
+binary from a small project), right-click the `.exe` → Properties →
+Unblock, then run it again.
+
+**Or build from source** (if you're changing the launcher's own code, or
+just prefer it):
 
 ```
 py -3.13-32 -m venv .venv
@@ -105,10 +109,10 @@ injection pipeline needs matching bitness. `proxy_tools`, one of
 `pywebview`'s own dependencies, only ships an sdist — it's pure Python, so
 installing it from source needs no compiler.)
 
-**Or grab a built `.exe`:** if you'd rather not build from source, ask for
-a release build directly. If Windows blocks it on first run (Smart App
-Control / SmartScreen — expected for an unsigned binary from a small
-project), right-click the `.exe` → Properties → Unblock, then run it again.
+Profile/team data lives at `Settings/Py4GW_Reforged_Launcher/accounts.json`
+inside your checkout — the same on-disk format the old standalone
+launcher used, so this app can read an existing one directly on first run
+with no manual import step.
 
 ## Quick tour
 
@@ -123,26 +127,27 @@ core flows:
    staggered/paced login.
 5. Open App Settings → Theme and try editing a color live — it applies
    instantly and survives a restart.
-6. If you have an `accounts.json` from the old launcher handy, try the
-   import (App Settings → Advanced).
+6. Back up your accounts (App Settings → Advanced) before making any risky
+   changes — it's a plain JSON export, real Save-As dialog.
 
 ## Advanced
 
 A couple of settings live only in `launcher_settings.json` (under
-`%APPDATA%\Py4GW_Reforged_Launcher\`) with no in-app UI control — most
-people will never need to touch these, but they're there as a manual
-escape hatch. (The mod repository's own local *path* has a real Browse
-button in App Settings → Setup; these two are different, rarer settings.)
+`Settings/Py4GW_Reforged_Launcher/` inside your checkout, alongside
+`accounts.json`) with no in-app UI control — most people will never need
+to touch these, but they're there as a manual escape hatch. (The mod
+repository's own local *path* has a real Browse button in App Settings →
+Setup; this is a different, rarer setting.)
 
 - `mod_repo_url` — where the Py4GW_Reforged mod code itself is cloned and
   updated from. Defaults to the upstream repo.
-- `launcher_release_repo` (`owner/repo` form, e.g. `apoguita/Py4GW_Reforged`)
-  — which GitHub repo the "Check for updates" feature in App Settings
-  checks releases against. Also defaults to upstream; a fork can override
-  this to point update-checks at its own releases instead.
 
-Both are read fresh on the next check/use, no restart needed — just add or
-edit the key by hand and save the file.
+Read fresh on the next use, no restart needed — just add or edit the key
+by hand and save the file. (`launcher_release_repo`, a sibling setting
+from when this launcher shipped discrete GitHub Releases, is currently
+unused — no UI checks it anymore now that the `.exe` lives in the repo
+itself; see `launcher_core/update_check.py`'s own note if that ever
+changes.)
 
 Feedback welcome on any of it — this is genuinely meant to become the
 launcher for the project, not a side experiment.
