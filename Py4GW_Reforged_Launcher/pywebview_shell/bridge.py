@@ -818,10 +818,23 @@ class ShellBridge:
         for profile in imported_profiles:
             profile.team_ids = [team_id_remap.get(tid, tid) for tid in profile.team_ids]
 
-        def _profile_key(p: GameProfile):
+        def _profile_keys(p: GameProfile):
+            # RELAY 061: exe_char is always computable (executable_path/
+            # character_name are always present) so it's listed first and
+            # always checked -- email is appended only when present. A
+            # single-key version (pick email if present, else exe_char) let
+            # the same real account fail to merge if it appeared with email
+            # populated in one team listing and blank in another (plausible:
+            # credentials filled in once, the character re-entered elsewhere
+            # without them) -- confirmed via a mock 30-character file where
+            # 5 accounts with inconsistent email presence produced 35
+            # profiles instead of 30. Checking/indexing both forms means a
+            # match on EITHER key merges the profiles, regardless of which
+            # listing was encountered first.
+            keys = [("exe_char", p.executable_path, p.character_name)]
             if p.email:
-                return ("email", p.email)
-            return ("exe_char", p.executable_path, p.character_name)
+                keys.append(("email", p.email))
+            return keys
 
         # RELAY 060: existing_by_key maps to the actual GameProfile (not just
         # a seen-key set) so a cross-team duplicate can MERGE its team_ids
@@ -838,21 +851,34 @@ class ShellBridge:
         # characters came back with zero members. Covers both a duplicate
         # against an already-stored profile and a duplicate within the same
         # import file (both go through this same dict).
-        existing_by_key = {_profile_key(p): p for p in profiles}
+        existing_by_key: dict = {}
+        for p in profiles:
+            for k in _profile_keys(p):
+                existing_by_key[k] = p
         added_profiles = []
         skipped_profiles = 0
         merged_team_ids = False  # a duplicate-profile merge alone (no new profiles) still needs saving
         for profile in imported_profiles:
-            key = _profile_key(profile)
-            existing = existing_by_key.get(key)
+            keys = _profile_keys(profile)
+            existing = None
+            for k in keys:
+                existing = existing_by_key.get(k)
+                if existing is not None:
+                    break
             if existing is not None:
                 for tid in profile.team_ids:
                     if tid not in existing.team_ids:
                         existing.team_ids.append(tid)
                         merged_team_ids = True
+                # RELAY 061: backfill whichever key form(s) this listing
+                # carried but weren't indexed yet -- so a third listing with
+                # yet another email/blank combination still resolves.
+                for k in keys:
+                    existing_by_key[k] = existing
                 skipped_profiles += 1
             else:
-                existing_by_key[key] = profile  # also guards duplicates within the same file
+                for k in keys:
+                    existing_by_key[k] = profile  # also guards duplicates within the same file
                 # RELAY 060: same new-profile DLL auto-default save_profile
                 # applies -- a merged duplicate is skipped, not appended, so
                 # only genuinely-new profiles need this.
