@@ -2021,6 +2021,21 @@ class InventoryItemInfo:
     weapon_mod_matches: list["ParsedUpgradeMatch"] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class InventoryShortcutXunlaiDisplayState:
+    """Cache popup-only Xunlai availability without authorizing a live transfer."""
+
+    item_id: int
+    model_id: int
+    context_key: tuple[str, str, int]
+    storage_open: bool
+    label: str
+    enabled: bool
+    available_quantity: int | None
+    capacity: int | None
+    vault_quantity: int | None
+
+
 @dataclass
 class SalvageCandidate:
     """Bind a planned inventory item to the salvage rule that claimed it."""
@@ -5373,6 +5388,7 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_popup_visible = False
         self.inventory_shortcuts_popup_opened_at_ms = 0
         self.inventory_shortcuts_popup_last_hovered_at_ms = 0
+        self.inventory_shortcuts_xunlai_display_state: InventoryShortcutXunlaiDisplayState | None = None
         self.inventory_shortcuts_live_confirm_action = ""
         self.inventory_shortcuts_live_confirm_item_id = 0
         self.inventory_shortcuts_live_confirm_model_id = 0
@@ -6260,12 +6276,15 @@ class MerchantRulesWidget:
     def _get_inventory_shortcut_xunlai_withdraw_label_state(
         self,
         item: InventoryItemInfo,
+        *,
+        storage_open: bool | None = None,
     ) -> tuple[str, bool, int | None, int | None]:
         item_name = self._format_inventory_shortcut_base_item_name(item)
         base_label = f"Withdraw {item_name} From Xunlai Panes"
         if not self._is_inventory_shortcut_xunlai_pane_withdraw_candidate(item):
             return base_label, False, None, None
-        if not self._is_storage_open():
+        is_storage_open = self._is_storage_open() if storage_open is None else bool(storage_open)
+        if not is_storage_open:
             return f"{base_label} (Xunlai unavailable)", False, None, None
         available_quantity = self._get_inventory_shortcut_xunlai_pane_withdraw_quantity(item)
         if available_quantity is None:
@@ -6281,8 +6300,73 @@ class MerchantRulesWidget:
             return f"{base_label} ({available_quantity} available)", True, available_quantity, capacity
         return f"{base_label} ({available_quantity} available / {capacity} fits)", True, available_quantity, capacity
 
+    def _get_inventory_shortcut_xunlai_display_context_key(self) -> tuple[str, str, int]:
+        return (
+            str(self.account_key or "").strip(),
+            str(self.config_path or "").strip(),
+            max(0, _safe_int(self.map_snapshot, 0)),
+        )
+
+    def _clear_inventory_shortcut_xunlai_display_cache(self) -> None:
+        self.inventory_shortcuts_xunlai_display_state = None
+
+    def _get_cached_inventory_shortcut_xunlai_withdraw_label_state(
+        self,
+        item: InventoryItemInfo,
+    ) -> tuple[str, bool, int | None, int | None]:
+        item_id = max(0, _safe_int(getattr(item, "item_id", 0), 0))
+        model_id = max(0, _safe_int(getattr(item, "model_id", 0), 0))
+        context_key = self._get_inventory_shortcut_xunlai_display_context_key()
+        storage_open = self._is_storage_open()
+        cached_state = self.inventory_shortcuts_xunlai_display_state
+        if (
+            cached_state is not None
+            and int(cached_state.item_id) == item_id
+            and int(cached_state.model_id) == model_id
+            and cached_state.context_key == context_key
+            and bool(cached_state.storage_open) == bool(storage_open)
+        ):
+            return (
+                str(cached_state.label),
+                bool(cached_state.enabled),
+                cached_state.available_quantity,
+                cached_state.capacity,
+            )
+
+        label, enabled, available_quantity, capacity = self._get_inventory_shortcut_xunlai_withdraw_label_state(
+            item,
+            storage_open=storage_open,
+        )
+        vault_quantity = available_quantity
+        if storage_open and not self._is_inventory_shortcut_xunlai_pane_withdraw_candidate(item):
+            vault_quantity = self._get_inventory_shortcut_vault_quantity(item)
+        self.inventory_shortcuts_xunlai_display_state = InventoryShortcutXunlaiDisplayState(
+            item_id=item_id,
+            model_id=model_id,
+            context_key=context_key,
+            storage_open=bool(storage_open),
+            label=str(label),
+            enabled=bool(enabled),
+            available_quantity=available_quantity,
+            capacity=capacity,
+            vault_quantity=vault_quantity,
+        )
+        return label, enabled, available_quantity, capacity
+
+    def _get_cached_inventory_shortcut_header_vault_state(
+        self,
+        item: InventoryItemInfo,
+    ) -> tuple[bool, int | None]:
+        self._get_cached_inventory_shortcut_xunlai_withdraw_label_state(item)
+        cached_state = self.inventory_shortcuts_xunlai_display_state
+        if cached_state is None:
+            return False, None
+        return bool(cached_state.storage_open), cached_state.vault_quantity
+
     def _format_inventory_shortcut_xunlai_withdraw_label(self, item: InventoryItemInfo) -> tuple[str, bool]:
-        label, enabled, _available_quantity, _capacity = self._get_inventory_shortcut_xunlai_withdraw_label_state(item)
+        label, enabled, _available_quantity, _capacity = (
+            self._get_cached_inventory_shortcut_xunlai_withdraw_label_state(item)
+        )
         return label, enabled
 
     def _get_inventory_shortcut_material_storage_withdraw_label_state(
@@ -6379,22 +6463,31 @@ class MerchantRulesWidget:
             and max(0, _safe_int(getattr(candidate, "quantity", 0), 0)) > 0
         ]
 
-    def _format_inventory_shortcut_menu_header(self, item: InventoryItemInfo | None) -> str:
+    def _format_inventory_shortcut_menu_header_base(self, item: InventoryItemInfo | None) -> str:
         item_name = self._format_inventory_shortcut_item_name(item)
         if item is None:
             return item_name
 
-        parts = [f"Bags: {self._get_inventory_shortcut_bag_quantity(item)}"]
-        vault_quantity = self._get_inventory_shortcut_vault_quantity(item)
-        parts.append(
-            f"Vault: {vault_quantity}"
-            if vault_quantity is not None
-            else "Vault: unavailable"
-        )
+        return f"{item_name} - Bags: {self._get_inventory_shortcut_bag_quantity(item)}"
+
+    def _format_inventory_shortcut_menu_header_from_cached_display_state(
+        self,
+        item: InventoryItemInfo | None,
+        header_base: str,
+    ) -> str:
+        if item is None:
+            return header_base
+
+        storage_open, vault_quantity = self._get_cached_inventory_shortcut_header_vault_state(item)
+        parts = [f"Vault: {vault_quantity}" if storage_open and vault_quantity is not None else "Vault: unavailable"]
         material_storage_quantity = self._get_inventory_shortcut_material_storage_quantity(item)
         if material_storage_quantity is not None:
             parts.append(f"Material Storage: {material_storage_quantity} last seen")
-        return f"{item_name} - {', '.join(parts)}"
+        return f"{header_base}, {', '.join(parts)}"
+
+    def _format_inventory_shortcut_menu_header(self, item: InventoryItemInfo | None) -> str:
+        header_base = self._format_inventory_shortcut_menu_header_base(item)
+        return self._format_inventory_shortcut_menu_header_from_cached_display_state(item, header_base)
 
     def _get_hovered_inventory_shortcut_item(self) -> InventoryItemInfo | None:
         inventory_api = getattr(GLOBAL_CACHE, "Inventory", None)
@@ -6438,8 +6531,9 @@ class MerchantRulesWidget:
         self._prune_inventory_shortcut_live_confirmation(now_ms)
         if not self._inventory_shortcut_live_confirmation_targets_item(clicked_item):
             self._clear_inventory_shortcut_live_confirmation()
+        self._clear_inventory_shortcut_xunlai_display_cache()
         self.inventory_shortcuts_selected_item = clicked_item
-        self.inventory_shortcuts_selected_header = self._format_inventory_shortcut_menu_header(clicked_item)
+        self.inventory_shortcuts_selected_header = self._format_inventory_shortcut_menu_header_base(clicked_item)
         self.inventory_shortcuts_popup_opened_at_ms = now_ms
         self.inventory_shortcuts_popup_last_hovered_at_ms = 0
         PyImGui.open_popup(INVENTORY_SHORTCUTS_POPUP_ID)
@@ -6485,6 +6579,7 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_selected_header = ""
         self.inventory_shortcuts_popup_opened_at_ms = 0
         self.inventory_shortcuts_popup_last_hovered_at_ms = 0
+        self._clear_inventory_shortcut_xunlai_display_cache()
         if clear_confirmation:
             self._clear_inventory_shortcut_live_confirmation()
         try:
@@ -8206,7 +8301,7 @@ class MerchantRulesWidget:
         pane_state_captured = False
         if self._is_inventory_shortcut_xunlai_pane_withdraw_candidate(item):
             withdraw_label, withdraw_enabled, pane_quantity, pane_capacity = (
-                self._get_inventory_shortcut_xunlai_withdraw_label_state(item)
+                self._get_cached_inventory_shortcut_xunlai_withdraw_label_state(item)
             )
             pane_state_captured = True
             if self._draw_inventory_shortcut_live_menu_item(
@@ -8221,7 +8316,7 @@ class MerchantRulesWidget:
         if self._is_inventory_shortcut_material_withdraw_candidate(item):
             if not pane_state_captured:
                 _pane_label, _pane_enabled, pane_quantity, pane_capacity = (
-                    self._get_inventory_shortcut_xunlai_withdraw_label_state(item)
+                    self._get_cached_inventory_shortcut_xunlai_withdraw_label_state(item)
                 )
             material_storage_label, material_storage_enabled, material_storage_quantity = (
                 self._get_inventory_shortcut_material_storage_withdraw_label_state(item)
@@ -8375,7 +8470,14 @@ class MerchantRulesWidget:
                 if selected_item is None:
                     self._draw_secondary_text("No inventory item selected.", wrapped=False)
                 else:
-                    header_text = self.inventory_shortcuts_selected_header or self._format_inventory_shortcut_menu_header(selected_item)
+                    if not self.inventory_shortcuts_selected_header:
+                        self.inventory_shortcuts_selected_header = self._format_inventory_shortcut_menu_header_base(
+                            selected_item
+                        )
+                    header_text = self._format_inventory_shortcut_menu_header_from_cached_display_state(
+                        selected_item,
+                        self.inventory_shortcuts_selected_header,
+                    )
                     PyImGui.text(header_text)
                     PyImGui.separator()
                     if self._draw_inventory_shortcut_kit_live_actions(selected_item):
@@ -8428,9 +8530,11 @@ class MerchantRulesWidget:
             self.inventory_shortcuts_selected_header = ""
             self.inventory_shortcuts_popup_opened_at_ms = 0
             self.inventory_shortcuts_popup_last_hovered_at_ms = 0
+            self._clear_inventory_shortcut_xunlai_display_cache()
             self._prune_inventory_shortcut_live_confirmation()
 
     def on_enable(self):
+        self._clear_inventory_shortcut_xunlai_display_cache()
         self._set_main_window_visible(False, expand_on_show=True)
 
     def _tick_runtime(self):
@@ -9788,6 +9892,7 @@ class MerchantRulesWidget:
         self.manual_vendor_cooldown_until_ms = 0
         self._clear_sell_protection_jump("runtime reset after profile load")
         self._clear_inventory_shortcut_material_storage_count_cache("runtime reset after profile load")
+        self._clear_inventory_shortcut_xunlai_display_cache()
         self._clear_preview_inventory_diff()
         self.map_ready_snapshot = bool(Map.IsMapReady())
         self.map_snapshot = int(Map.GetMapID() or 0) if self.map_ready_snapshot else 0
@@ -9864,12 +9969,14 @@ class MerchantRulesWidget:
             self.preview_ready = False
             self.preview_plan = PlanResult()
             self._clear_inventory_shortcut_material_storage_count_cache("map changed")
+            self._clear_inventory_shortcut_xunlai_display_cache()
             self._clear_preview_projection_state()
             self._clear_preview_inventory_diff()
 
         if map_changed or map_ready_changed or instance_changed:
             if not map_changed:
                 self._clear_inventory_shortcut_material_storage_count_cache("map/session state changed")
+                self._clear_inventory_shortcut_xunlai_display_cache()
             self._invalidate_supported_context_cache()
             self.auto_cleanup_zone_attempted = False
             self.auto_cleanup_zone_token = (
