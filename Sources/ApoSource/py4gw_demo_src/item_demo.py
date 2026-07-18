@@ -161,7 +161,7 @@ def _properties_block(item_id):
 def _bitfields_block(item_id):
     """Interaction + item formula rendered dec / hex / bin (R1 §6, item bitfields)."""
     interaction = casts.safe(GLOBAL_CACHE.Item.Properties.GetInteraction, item_id, default=0)
-    formula = casts.safe(GLOBAL_CACHE.Item.Customization.GetItemFormula, item_id, default=0)
+    formula = casts.safe(GLOBAL_CACHE.Item.Properties.GetItemFormula, item_id, default=0)
     rows = [
         ("Interaction", *casts.dec_hex_bin(interaction)),
         ("Item Formula", *casts.dec_hex_bin(formula)),
@@ -202,29 +202,28 @@ def _usage_block(item_id):
 
 def _customization_block(item_id):
     bools = ui.bool_block("Customization Flags", [
-        ("Inscription", bool(casts.safe(GLOBAL_CACHE.Item.Customization.IsInscription, item_id))),
-        ("Inscribable", bool(casts.safe(GLOBAL_CACHE.Item.Customization.IsInscribable, item_id))),
-        ("Prefix Upgradable", bool(casts.safe(GLOBAL_CACHE.Item.Customization.IsPrefixUpgradable, item_id))),
-        ("Suffix Upgradable", bool(casts.safe(GLOBAL_CACHE.Item.Customization.IsSuffixUpgradable, item_id))),
-        ("Stackable", bool(casts.safe(GLOBAL_CACHE.Item.Customization.IsStackable, item_id))),
-        ("Sparkly", bool(casts.safe(GLOBAL_CACHE.Item.Customization.IsSparkly, item_id))),
-        ("Has Upgrades", bool(casts.safe(Item.Customization.HasUpgrades, item_id))),  # base wrapper: not on GLOBAL_CACHE
-        ("Has Inherent Upgrades", bool(casts.safe(Item.Customization.HasInherentUpgrades, item_id))),  # base wrapper: not on GLOBAL_CACHE
+        ("Inscription", bool(casts.safe(GLOBAL_CACHE.Item.Properties.IsInscription, item_id))),
+        ("Inscribable", bool(casts.safe(GLOBAL_CACHE.Item.Properties.IsInscribable, item_id))),
+        ("Prefix Upgradable", bool(casts.safe(GLOBAL_CACHE.Item.Properties.IsPrefixUpgradable, item_id))),
+        ("Suffix Upgradable", bool(casts.safe(GLOBAL_CACHE.Item.Properties.IsSuffixUpgradable, item_id))),
+        ("Stackable", bool(casts.safe(GLOBAL_CACHE.Item.Properties.IsStackable, item_id))),
+        ("Sparkly", bool(casts.safe(GLOBAL_CACHE.Item.Properties.IsSparkly, item_id))),
+        ("Has Upgrades", bool(casts.safe(Item.Mods.GetUpgrades, item_id))),
+        ("Has Inherent Upgrades", bool(casts.safe(Item.Mods.HasUpgradeInSlot, item_id, Item.Mods.Slot.Inherent))),
     ])
-    inherent = casts.safe(Item.Customization.GetInherentUpgrades, item_id, default=None)  # base wrapper: not on GLOBAL_CACHE
-    inherent_str = "None" if not inherent else "; ".join(_upgrade_str(u) for u in inherent)
+    _Slot = Item.Mods.Slot
     kv = ui.kv_block("Upgrades", [
-        ("Prefix", _upgrade_str(casts.safe(Item.Customization.GetPrefixUpgrade, item_id))),  # base wrapper: not on GLOBAL_CACHE
-        ("Suffix", _upgrade_str(casts.safe(Item.Customization.GetSuffixUpgrade, item_id))),  # base wrapper: not on GLOBAL_CACHE
-        ("Inscription", _upgrade_str(casts.safe(Item.Customization.GetInscriptionUpgrade, item_id))),  # base wrapper: not on GLOBAL_CACHE
-        ("Inherent", inherent_str),
+        ("Prefix", casts.safe(Item.Mods.GetUpgradeInSlot, item_id, _Slot.Prefix) or "None"),
+        ("Suffix", casts.safe(Item.Mods.GetUpgradeInSlot, item_id, _Slot.Suffix) or "None"),
+        ("Inscription", casts.safe(Item.Mods.GetUpgradeInSlot, item_id, _Slot.Inscription) or "None"),
+        ("Inherent", casts.safe(Item.Mods.GetUpgradeInSlot, item_id, _Slot.Inherent) or "None"),
     ])
     return [bools, kv]
 
 
 def _modifiers_block(item_id):
-    count = casts.safe(GLOBAL_CACHE.Item.Customization.Modifiers.GetModifierCount, item_id, default=0)
-    mods = casts.safe(GLOBAL_CACHE.Item.Customization.Modifiers.GetModifiers, item_id, default=[]) or []
+    count = casts.safe(GLOBAL_CACHE.Item.Mods.GetModifierCount, item_id, default=0)
+    mods = casts.safe(GLOBAL_CACHE.Item.Mods.GetModifiers, item_id, default=[]) or []
     headers = ["#", "Identifier", "Valid", "Arg", "Arg1", "Arg2"]
     rows = []
     for idx, mod in enumerate(mods):
@@ -240,7 +239,7 @@ def _modifiers_block(item_id):
 
 
 def _dye_block(item_id):
-    dye_info = casts.safe(GLOBAL_CACHE.Item.Customization.GetDyeInfo, item_id, default=None)
+    dye_info = casts.safe(GLOBAL_CACHE.Item.Dye.GetInfo, item_id, default=None)
     tint = casts.safe(getattr, dye_info, "dye_tint", default="<n/a>") if dye_info is not None else "<n/a>"
     kv = ui.kv_block("Dye", [
         ("Dye Color (first non-zero Arg1)", casts.safe(GLOBAL_CACHE.Item.GetDyeColor, item_id)),

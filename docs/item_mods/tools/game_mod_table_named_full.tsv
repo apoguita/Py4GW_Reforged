@@ -1,0 +1,390 @@
+0	0x0	<pending>	
+1	0x81	Icy Axe Haft	Cold Damage
+2	0x82	Ebon Axe Haft	Earth Damage
+3	0x83	Shocking Axe Haft	Lightning Damage
+4	0x84	Fiery Axe Haft	Fire Damage
+5	0x85	Icy Bowstring	Cold Damage
+6	0x86	Ebon Bowstring	Earth Damage
+7	0x87	Shocking Bowstring	Lightning Damage
+8	0x88	Fiery Bowstring	Fire Damage
+9	0x89	Icy Hammer Haft	Cold Damage
+10	0x8A	Ebon Hammer Haft	Earth Damage
+11	0x8B	Shocking Hammer Haft	Lightning Damage
+12	0x8C	Fiery Hammer Haft	Fire Damage
+13	0x8D	Icy Sword Hilt	Cold Damage
+14	0x8E	Ebon Sword Hilt	Earth Damage
+15	0x8F	Shocking Sword Hilt	Lightning Damage
+16	0x90	Fiery Sword Hilt	Fire Damage
+17	0x99	Furious Axe Haft	Double adrenaline gain \n (Chance: 5%)
+18	0x9A	Furious Hammer Haft	Double adrenaline gain \n (Chance: 5%)
+19	0x9B	Furious Sword Hilt	Double adrenaline gain \n (Chance: 5%)
+20	0xC2	Rune of Minor Vigor	Health +30 \n (Non-stacking)
+21	0xC1	Warrior Rune of Minor Absorption	Reduces physical damage by 1 \n (Non-stacking)
+22	0xAF	Mesmer Rune of Minor Fast Casting	Fast Casting +1 \n (Non-stacking)
+23	0xAF	Mesmer Rune of Minor Domination Magic	Domination Magic +1 \n (Non-stacking)
+24	0xAF	Mesmer Rune of Minor Illusion Magic	Illusion Magic +1 \n (Non-stacking)
+25	0xAF	Mesmer Rune of Minor Inspiration Magic	Inspiration Magic +1 \n (Non-stacking)
+26	0xB0	Necromancer Rune of Minor Blood Magic	Blood Magic +1 \n (Non-stacking)
+27	0xB0	Necromancer Rune of Minor Death Magic	Death Magic +1 \n (Non-stacking)
+28	0xB0	Necromancer Rune of Minor Curses	Curses +1 \n (Non-stacking)
+29	0xB0	Necromancer Rune of Minor Soul Reaping	Soul Reaping +1 \n (Non-stacking)
+30	0xB1	Elementalist Rune of Minor Energy Storage	Energy Storage +1 \n (Non-stacking)
+31	0xB1	Elementalist Rune of Minor Fire Magic	Fire Magic +1 \n (Non-stacking)
+32	0xB1	Elementalist Rune of Minor Air Magic	Air Magic +1 \n (Non-stacking)
+33	0xB1	Elementalist Rune of Minor Earth Magic	Earth Magic +1 \n (Non-stacking)
+34	0xB1	Elementalist Rune of Minor Water Magic	Water Magic +1 \n (Non-stacking)
+35	0xB2	Monk Rune of Minor Healing Prayers	Healing Prayers +1 \n (Non-stacking)
+36	0xB2	Monk Rune of Minor Smiting Prayers	Smiting Prayers +1 \n (Non-stacking)
+37	0xB2	Monk Rune of Minor Protection Prayers	Protection Prayers +1 \n (Non-stacking)
+38	0xB2	Monk Rune of Minor Divine Favor	Divine Favor +1 \n (Non-stacking)
+39	0xB3	Warrior Rune of Minor Tactics	Tactics +1 \n (Non-stacking)
+40	0xB3	Warrior Rune of Minor Strength	Strength +1 \n (Non-stacking)
+41	0xB3	Warrior Rune of Minor Axe Mastery	Axe Mastery +1 \n (Non-stacking)
+42	0xB3	Warrior Rune of Minor Hammer Mastery	Hammer Mastery +1 \n (Non-stacking)
+43	0xB3	Warrior Rune of Minor Swordsmanship	Swordsmanship +1 \n (Non-stacking)
+44	0xB4	Ranger Rune of Minor Wilderness Survival	Wilderness Survival +1 \n (Non-stacking)
+45	0xB4	Ranger Rune of Minor Expertise	Expertise +1 \n (Non-stacking)
+46	0xB4	Ranger Rune of Minor Beast Mastery	Beast Mastery +1 \n (Non-stacking)
+47	0xB4	Ranger Rune of Minor Marksmanship	Marksmanship +1 \n (Non-stacking)
+48	0xB5	Mesmer Rune of Major Fast Casting	Fast Casting +2 \n (Non-stacking) \n Health -35
+49	0xB5	Mesmer Rune of Major Domination Magic	Domination Magic +2 \n (Non-stacking) \n Health -35
+50	0xB5	Mesmer Rune of Major Illusion Magic	Illusion Magic +2 \n (Non-stacking) \n Health -35
+51	0xB5	Mesmer Rune of Major Inspiration Magic	Inspiration Magic +2 \n (Non-stacking) \n Health -35
+52	0xB6	Necromancer Rune of Major Blood Magic	Blood Magic +2 \n (Non-stacking) \n Health -35
+53	0xB6	Necromancer Rune of Major Death Magic	Death Magic +2 \n (Non-stacking) \n Health -35
+54	0xB6	Necromancer Rune of Major Curses	Curses +2 \n (Non-stacking) \n Health -35
+55	0xB6	Necromancer Rune of Major Soul Reaping	Soul Reaping +2 \n (Non-stacking) \n Health -35
+56	0xB7	Elementalist Rune of Major Energy Storage	Energy Storage +2 \n (Non-stacking) \n Health -35
+57	0xB7	Elementalist Rune of Major Fire Magic	Fire Magic +2 \n (Non-stacking) \n Health -35
+58	0xB7	Elementalist Rune of Major Air Magic	Air Magic +2 \n (Non-stacking) \n Health -35
+59	0xB7	Elementalist Rune of Major Earth Magic	Earth Magic +2 \n (Non-stacking) \n Health -35
+60	0xB7	Elementalist Rune of Major Water Magic	Water Magic +2 \n (Non-stacking) \n Health -35
+61	0xB8	Monk Rune of Major Healing Prayers	Healing Prayers +2 \n (Non-stacking) \n Health -35
+62	0xB8	Monk Rune of Major Smiting Prayers	Smiting Prayers +2 \n (Non-stacking) \n Health -35
+63	0xB8	Monk Rune of Major Protection Prayers	Protection Prayers +2 \n (Non-stacking) \n Health -35
+64	0xB8	Monk Rune of Major Divine Favor	Divine Favor +2 \n (Non-stacking) \n Health -35
+65	0xB9	Warrior Rune of Major Tactics	Tactics +2 \n (Non-stacking) \n Health -35
+66	0xB9	Warrior Rune of Major Strength	Strength +2 \n (Non-stacking) \n Health -35
+67	0xB9	Warrior Rune of Major Axe Mastery	Axe Mastery +2 \n (Non-stacking) \n Health -35
+68	0xB9	Warrior Rune of Major Hammer Mastery	Hammer Mastery +2 \n (Non-stacking) \n Health -35
+69	0xB9	Warrior Rune of Major Swordsmanship	Swordsmanship +2 \n (Non-stacking) \n Health -35
+70	0xBA	Ranger Rune of Major Wilderness Survival	Wilderness Survival +2 \n (Non-stacking) \n Health -35
+71	0xBA	Ranger Rune of Major Expertise	Expertise +2 \n (Non-stacking) \n Health -35
+72	0xBA	Ranger Rune of Major Beast Mastery	Beast Mastery +2 \n (Non-stacking) \n Health -35
+73	0xBA	Ranger Rune of Major Marksmanship	Marksmanship +2 \n (Non-stacking) \n Health -35
+74	0xBB	Mesmer Rune of Superior Fast Casting	Fast Casting +3 \n (Non-stacking) \n Health -75
+75	0xBB	Mesmer Rune of Superior Domination Magic	Domination Magic +3 \n (Non-stacking) \n Health -75
+76	0xBB	Mesmer Rune of Superior Illusion Magic	Illusion Magic +3 \n (Non-stacking) \n Health -75
+77	0xBB	Mesmer Rune of Superior Inspiration Magic	Inspiration Magic +3 \n (Non-stacking) \n Health -75
+78	0xBC	Necromancer Rune of Superior Blood Magic	Blood Magic +3 \n (Non-stacking) \n Health -75
+79	0xBC	Necromancer Rune of Superior Death Magic	Death Magic +3 \n (Non-stacking) \n Health -75
+80	0xBC	Necromancer Rune of Superior Curses	Curses +3 \n (Non-stacking) \n Health -75
+81	0xBC	Necromancer Rune of Superior Soul Reaping	Soul Reaping +3 \n (Non-stacking) \n Health -75
+82	0xBD	Elementalist Rune of Superior Energy Storage	Energy Storage +3 \n (Non-stacking) \n Health -75
+83	0xBD	Elementalist Rune of Superior Fire Magic	Fire Magic +3 \n (Non-stacking) \n Health -75
+84	0xBD	Elementalist Rune of Superior Air Magic	Air Magic +3 \n (Non-stacking) \n Health -75
+85	0xBD	Elementalist Rune of Superior Earth Magic	Earth Magic +3 \n (Non-stacking) \n Health -75
+86	0xBD	Elementalist Rune of Superior Water Magic	Water Magic +3 \n (Non-stacking) \n Health -75
+87	0xBE	Monk Rune of Superior Healing Prayers	Healing Prayers +3 \n (Non-stacking) \n Health -75
+88	0xBE	Monk Rune of Superior Smiting Prayers	Smiting Prayers +3 \n (Non-stacking) \n Health -75
+89	0xBE	Monk Rune of Superior Protection Prayers	Protection Prayers +3 \n (Non-stacking) \n Health -75
+90	0xBE	Monk Rune of Superior Divine Favor	Divine Favor +3 \n (Non-stacking) \n Health -75
+91	0xBF	Warrior Rune of Superior Tactics	Tactics +3 \n (Non-stacking) \n Health -75
+92	0xBF	Warrior Rune of Superior Strength	Strength +3 \n (Non-stacking) \n Health -75
+93	0xBF	Warrior Rune of Superior Axe Mastery	Axe Mastery +3 \n (Non-stacking) \n Health -75
+94	0xBF	Warrior Rune of Superior Hammer Mastery	Hammer Mastery +3 \n (Non-stacking) \n Health -75
+95	0xBF	Warrior Rune of Superior Swordsmanship	Swordsmanship +3 \n (Non-stacking) \n Health -75
+96	0xC0	Ranger Rune of Superior Wilderness Survival	Wilderness Survival +3 \n (Non-stacking) \n Health -75
+97	0xC0	Ranger Rune of Superior Expertise	Expertise +3 \n (Non-stacking) \n Health -75
+98	0xC0	Ranger Rune of Superior Beast Mastery	Beast Mastery +3 \n (Non-stacking) \n Health -75
+99	0xC0	Ranger Rune of Superior Marksmanship	Marksmanship +3 \n (Non-stacking) \n Health -75
+100	0x91	Defensive Staff Head	Armor +4
+101	0x92	Barbed Axe Haft	Lengthens Bleeding duration on foes by 33% \n (Stacking)
+102	0x93	Barbed Sword Hilt	Lengthens Bleeding duration on foes by 33% \n (Stacking)
+103	0x94	Crippling Axe Haft	Lengthens Crippled duration on foes by 33% \n (Stacking)
+104	0x95	Crippling Sword Hilt	Lengthens Crippled duration on foes by 33% \n (Stacking)
+105	0x96	Cruel Axe Haft	Lengthens Deep Wound duration on foes by 33% \n (Stacking)
+106	0x97	Cruel Hammer Haft	Lengthens Deep Wound duration on foes by 33% \n (Stacking)
+107	0x98	Cruel Sword Hilt	Lengthens Deep Wound duration on foes by 33% \n (Stacking)
+108	0x9C	Insightful Staff Head	Energy +1
+109	0x9D	Hale Staff Head	Health +10
+110	0x9E	Poisonous Axe Haft	Lengthens Poison duration on foes by 33% \n (Stacking)
+111	0x9F	Poisonous Bowstring	Lengthens Poison duration on foes by 33% \n (Stacking)
+112	0xA0	Poisonous Sword Hilt	Lengthens Poison duration on foes by 33% \n (Stacking)
+113	0xA1	Heavy Axe Haft	Lengthens Weakness duration on foes by 33% \n (Stacking)
+114	0xA2	Heavy Hammer Haft	Lengthens Weakness duration on foes by 33% \n (Stacking)
+115	0xA3	Zealous Axe Haft	Energy gain on hit: 1 \n Energy regeneration -1
+116	0xA4	Zealous Hammer Haft	Energy gain on hit: 1 \n Energy regeneration -1
+117	0xA5	Zealous Bowstring	Energy gain on hit: 1 \n Energy regeneration -1
+118	0xA6	Zealous Sword Hilt	Energy gain on hit: 1 \n Energy regeneration -1
+119	0xA7	Vampiric Axe Haft	Life Draining: 1 \n Health regeneration -1
+120	0xA8	Vampiric Hammer Haft	Life Draining: 1 \n Health regeneration -1
+121	0xA9	Vampiric Bowstring	Life Draining: 1 \n Health regeneration -1
+122	0xAA	Vampiric Sword Hilt	Life Draining: 1 \n Health regeneration -1
+123	0x182	Dervish Rune of Minor Mysticism	Mysticism +1 \n (Non-stacking)
+124	0x182	Dervish Rune of Minor Earth Prayers	Earth Prayers +1 \n (Non-stacking)
+125	0x182	Dervish Rune of Minor Scythe Mastery	Scythe Mastery +1 \n (Non-stacking)
+126	0x182	Dervish Rune of Minor Wind Prayers	Wind Prayers +1 \n (Non-stacking)
+127	0xC5	Axe Grip of Defense	Armor +4
+128	0xC6	Bow Grip of Defense	Armor +4
+129	0xC7	Axe Grip of Warding	Armor +4 \n (vs. elemental damage)
+130	0xC8	Bow Grip of Warding	Armor +4 \n (vs. elemental damage)
+131	0xC9	Hammer Grip of Warding	Armor +4 \n (vs. elemental damage)
+132	0xCA	Staff Wrapping of Warding	Armor +4 \n (vs. elemental damage)
+133	0xCB	Sword Pommel of Warding	Armor +4 \n (vs. elemental damage)
+134	0xCC	Hammer Grip of Defense	Armor +4
+135	0xCD	Axe Grip of Shelter	Armor +4 \n (vs. physical damage)
+136	0xCE	Bow Grip of Shelter	Armor +4 \n (vs. physical damage)
+137	0xCF	Hammer Grip of Shelter	Armor +4 \n (vs. physical damage)
+138	0xD0	Staff Wrapping of Shelter	Armor +4 \n (vs. physical damage)
+139	0xD1	Sword Pommel of Shelter	Armor +4 \n (vs. physical damage)
+140	0xD2	Staff Wrapping of Defense	Armor +4
+141	0xD3	Sword Pommel of Defense	Armor +4
+142	0xD9	Axe Grip of Fortitude	Health +20
+143	0xDA	Bow Grip of Fortitude	Health +20
+144	0xDB	Hammer Grip of Fortitude	Health +20
+145	0xDC	Staff Wrapping of Fortitude	Health +20
+146	0xDD	Sword Pommel of Fortitude	Health +20
+147	0xDE	Axe Grip of Enchanting	Enchantments last 10% longer
+148	0xDF	Bow Grip of Enchanting	Enchantments last 10% longer
+149	0xE0	Hammer Grip of Enchanting	Enchantments last 10% longer
+150	0xE1	Staff Wrapping of Enchanting	Enchantments last 10% longer
+151	0xE2	Sword Pommel of Enchanting	Enchantments last 10% longer
+152	0xE8	Axe Grip of Axe Mastery	Axe Mastery +1 \n (0% chance while using skills)
+153	0xE9	Bow Grip of Marksmanship	Marksmanship +1 \n (0% chance while using skills)
+154	0xEA	Hammer Grip of Hammer Mastery	Hammer Mastery +1 \n (0% chance while using skills)
+155	0xEB	Sword Pommel of Swordsmanship	Swordsmanship +1 \n (0% chance while using skills)
+156	0xFF	Rune of Minor Vigor	Health +30 \n (Non-stacking)
+157	0x100	Rune of Major Vigor	Health +41 \n (Non-stacking)
+158	0x101	Rune of Superior Vigor	Health +50 \n (Non-stacking)
+159	0xFC	Warrior Rune of Minor Absorption	Reduces physical damage by 1 \n (Non-stacking)
+160	0xFD	Warrior Rune of Major Absorption	Reduces physical damage by 2 \n (Non-stacking)
+161	0xFE	Warrior Rune of Superior Absorption	Reduces physical damage by 3 \n (Non-stacking)
+162	0x13B	Assassin Rune of Minor Critical Strikes	Critical Strikes +1 \n (Non-stacking)
+163	0x13B	Assassin Rune of Minor Dagger Mastery	Dagger Mastery +1 \n (Non-stacking)
+164	0x13B	Assassin Rune of Minor Deadly Arts	Deadly Arts +1 \n (Non-stacking)
+165	0x13B	Assassin Rune of Minor Shadow Arts	Shadow Arts +1 \n (Non-stacking)
+166	0x13E	Ritualist Rune of Minor Channeling Magic	Channeling Magic +1 \n (Non-stacking)
+167	0x13E	Ritualist Rune of Minor Restoration Magic	Restoration Magic +1 \n (Non-stacking)
+168	0x13E	Ritualist Rune of Minor Communing	Communing +1 \n (Non-stacking)
+169	0x13E	Ritualist Rune of Minor Spawning Power	Spawning Power +1 \n (Non-stacking)
+170	0x13C	Assassin Rune of Major Critical Strikes	Critical Strikes +2 \n (Non-stacking) \n Health -35
+171	0x13C	Assassin Rune of Major Dagger Mastery	Dagger Mastery +2 \n (Non-stacking) \n Health -35
+172	0x13C	Assassin Rune of Major Deadly Arts	Deadly Arts +2 \n (Non-stacking) \n Health -35
+173	0x13C	Assassin Rune of Major Shadow Arts	Shadow Arts +2 \n (Non-stacking) \n Health -35
+174	0x13F	Ritualist Rune of Major Channeling Magic	Channeling Magic +2 \n (Non-stacking) \n Health -35
+175	0x13F	Ritualist Rune of Major Restoration Magic	Restoration Magic +2 \n (Non-stacking) \n Health -35
+176	0x13F	Ritualist Rune of Major Communing	Communing +2 \n (Non-stacking) \n Health -35
+177	0x13F	Ritualist Rune of Major Spawning Power	Spawning Power +2 \n (Non-stacking) \n Health -35
+178	0x13D	Assassin Rune of Superior Critical Strikes	Critical Strikes +3 \n (Non-stacking) \n Health -75
+179	0x13D	Assassin Rune of Superior Dagger Mastery	Dagger Mastery +3 \n (Non-stacking) \n Health -75
+180	0x13D	Assassin Rune of Superior Deadly Arts	Deadly Arts +3 \n (Non-stacking) \n Health -75
+181	0x13D	Assassin Rune of Superior Shadow Arts	Shadow Arts +3 \n (Non-stacking) \n Health -75
+182	0x140	Ritualist Rune of Superior Channeling Magic	Channeling Magic +3 \n (Non-stacking) \n Health -75
+183	0x140	Ritualist Rune of Superior Restoration Magic	Restoration Magic +3 \n (Non-stacking) \n Health -75
+184	0x140	Ritualist Rune of Superior Communing	Communing +3 \n (Non-stacking) \n Health -75
+185	0x140	Ritualist Rune of Superior Spawning Power	Spawning Power +3 \n (Non-stacking) \n Health -75
+186	0x12E	Icy Dagger Tang	Cold Damage
+187	0x12F	Ebon Dagger Tang	Earth Damage
+188	0x130	Fiery Dagger Tang	Fire Damage
+189	0x131	Shocking Dagger Tang	Lightning Damage
+190	0x132	Zealous Dagger Tang	Energy gain on hit: 1 \n Energy regeneration -1
+191	0x133	Vampiric Dagger Tang	Life Draining: 1 \n Health regeneration -1
+192	0x135	Barbed Dagger Tang	Lengthens Bleeding duration on foes by 33% \n (Stacking)
+193	0x136	Crippling Dagger Tang	Lengthens Crippled duration on foes by 33% \n (Stacking)
+194	0x137	Cruel Dagger Tang	Lengthens Deep Wound duration on foes by 33% \n (Stacking)
+195	0x138	Poisonous Dagger Tang	Lengthens Poison duration on foes by 33% \n (Stacking)
+196	0x139	Silencing Dagger Tang	Lengthens Dazed duration on foes by 33% \n (Stacking)
+197	0x13A	Furious Dagger Tang	Double adrenaline gain \n (Chance: 5%)
+198	0x185	Paragon Rune of Minor Leadership	Leadership +1 \n (Non-stacking)
+199	0x146	Dagger Handle of Dagger Mastery	Dagger Mastery +1 \n (0% chance while using skills)
+200	0x141	Dagger Handle of Defense	Armor +4
+201	0x143	Dagger Handle of Shelter	Armor +4 \n (vs. physical damage)
+202	0x142	Dagger Handle of Warding	Armor +4 \n (vs. elemental damage)
+203	0x144	Dagger Handle of Enchanting	Enchantments last 10% longer
+204	0x145	Dagger Handle of Fortitude	Health +20
+205	0x147	Barbed Bowstring	Lengthens Bleeding duration on foes by 33% \n (Stacking)
+206	0x148	Crippling Bowstring	Lengthens Crippled duration on foes by 33% \n (Stacking)
+207	0x149	Silencing Bowstring	Lengthens Dazed duration on foes by 33% \n (Stacking)
+208	0xAB	Sundering Axe Haft	Armor penetration +20% \n (Chance: 10%)
+209	0xAD	Sundering Bowstring	Armor penetration +20% \n (Chance: 10%)
+210	0xAC	Sundering Hammer Haft	Armor penetration +20% \n (Chance: 10%)
+211	0xAE	Sundering Sword Hilt	Armor penetration +20% \n (Chance: 10%)
+212	0x134	Sundering Dagger Tang	Armor penetration +20% \n (Chance: 10%)
+213	0x185	Paragon Rune of Minor Motivation	Motivation +1 \n (Non-stacking)
+214	0x185	Paragon Rune of Minor Command	Command +1 \n (Non-stacking)
+215	0x185	Paragon Rune of Minor Spear Mastery	Spear Mastery +1 \n (Non-stacking)
+216	0x183	Dervish Rune of Major Mysticism	Mysticism +2 \n (Non-stacking) \n Health -35
+217	0x183	Dervish Rune of Major Earth Prayers	Earth Prayers +2 \n (Non-stacking) \n Health -35
+218	0x183	Dervish Rune of Major Scythe Mastery	Scythe Mastery +2 \n (Non-stacking) \n Health -35
+219	0x183	Dervish Rune of Major Wind Prayers	Wind Prayers +2 \n (Non-stacking) \n Health -35
+220	0x186	Paragon Rune of Major Leadership	Leadership +2 \n (Non-stacking) \n Health -35
+221	0x186	Paragon Rune of Major Motivation	Motivation +2 \n (Non-stacking) \n Health -35
+222	0x186	Paragon Rune of Major Command	Command +2 \n (Non-stacking) \n Health -35
+223	0x186	Paragon Rune of Major Spear Mastery	Spear Mastery +2 \n (Non-stacking) \n Health -35
+224	0x184	Dervish Rune of Superior Mysticism	Mysticism +3 \n (Non-stacking) \n Health -75
+225	0x184	Dervish Rune of Superior Earth Prayers	Earth Prayers +3 \n (Non-stacking) \n Health -75
+226	0x184	Dervish Rune of Superior Scythe Mastery	Scythe Mastery +3 \n (Non-stacking) \n Health -75
+227	0x184	Dervish Rune of Superior Wind Prayers	Wind Prayers +3 \n (Non-stacking) \n Health -75
+228	0x187	Paragon Rune of Superior Leadership	Leadership +3 \n (Non-stacking) \n Health -75
+229	0x187	Paragon Rune of Superior Motivation	Motivation +3 \n (Non-stacking) \n Health -75
+230	0x187	Paragon Rune of Superior Command	Command +3 \n (Non-stacking) \n Health -75
+231	0x187	Paragon Rune of Superior Spear Mastery	Spear Mastery +3 \n (Non-stacking) \n Health -75
+232	0x16B	Icy Scythe Snathe	Cold Damage
+233	0x16C	Ebon Scythe Snathe	Earth Damage
+234	0x16F	Zealous Scythe Snathe	Energy gain on hit: 1 \n Energy regeneration -1
+235	0x171	Vampiric Scythe Snathe	Life Draining: 1 \n Health regeneration -1
+236	0x173	Sundering Scythe Snathe	Armor penetration +20% \n (Chance: 20%)
+237	0x174	Barbed Scythe Snathe	Lengthens Bleeding duration on foes by 33% \n (Stacking)
+238	0x175	Crippling Scythe Snathe	Lengthens Crippled duration on foes by 33% \n (Stacking)
+239	0x176	Cruel Scythe Snathe	Lengthens Deep Wound duration on foes by 33% \n (Stacking)
+240	0x179	Furious Scythe Snathe	Double adrenaline gain \n (Chance: 5%)
+241	0x177	Poisonous Scythe Snathe	Lengthens Poison duration on foes by 33% \n (Stacking)
+242	0x178	Heavy Scythe Snathe	Lengthens Weakness duration on foes by 33% \n (Stacking)
+243	0x18D	Scythe Grip of Scythe Mastery	Scythe Mastery +1 \n (0% chance while using skills)
+244	0x188	Scythe Grip of Defense	Armor +4
+245	0x18A	Scythe Grip of Shelter	Armor +4 \n (vs. physical damage)
+246	0x189	Scythe Grip of Warding	Armor +4 \n (vs. elemental damage)
+247	0x18B	Scythe Grip of Enchanting	Enchantments last 10% longer
+248	0x18C	Scythe Grip of Fortitude	Health +20
+249	0x16D	Fiery Spearhead	Fire Damage
+250	0x16E	Shocking Spearhead	Lightning Damage
+251	0x170	Zealous Spearhead	Energy gain on hit: 1 \n Energy regeneration -1
+252	0x172	Vampiric Spearhead	Life Draining: 1 \n Health regeneration -1
+253	0x17A	Sundering Spearhead	Armor penetration +20% \n (Chance: 20%)
+254	0x17B	Barbed Spearhead	Lengthens Bleeding duration on foes by 33% \n (Stacking)
+255	0x17C	Crippling Spearhead	Lengthens Crippled duration on foes by 33% \n (Stacking)
+256	0x17D	Cruel Spearhead	Lengthens Deep Wound duration on foes by 33% \n (Stacking)
+257	0x180	Furious Spearhead	Double adrenaline gain \n (Chance: 5%)
+258	0x17E	Poisonous Spearhead	Lengthens Poison duration on foes by 33% \n (Stacking)
+259	0x17F	Silencing Spearhead	Lengthens Dazed duration on foes by 33% \n (Stacking)
+260	0x181	Heavy Spearhead	Lengthens Weakness duration on foes by 33% \n (Stacking)
+261	0x193	Spear Grip of Spear Mastery	Spear Mastery +1 \n (0% chance while using skills)
+262	0x18E	Spear Grip of Defense	Armor +4
+263	0x190	Spear Grip of Shelter	Armor +4 \n (vs. physical damage)
+264	0x18F	Spear Grip of Warding	Armor +4 \n (vs. elemental damage)
+265	0x191	Spear Grip of Enchanting	Enchantments last 10% longer
+266	0x192	Spear Grip of Fortitude	Health +20
+267	0x21B	Focus Core of Endurance	Health +30 \n (while in a Stance)
+268	0x21A	Focus Core of Valor	Health +45 \n (while Hexed)
+269	0x20B	Fiery Scythe Snathe	Fire Damage
+270	0x20C	Shocking Scythe Snathe	Lightning Damage
+271	0x20D	Icy Spearhead	Cold Damage
+272	0x20E	Ebon Spearhead	Earth Damage
+273	0x20F	Swift Staff Head	Halves casting time of spells \n (Chance: 5%)
+274	0x154	Staff Wrapping of Devotion	Health +30 \n (while Enchanted)
+275	0x156	Staff Wrapping of Endurance	Health +30 \n (while in a Stance)
+276	0x155	Staff Wrapping of Valor	Health +45 \n (while Hexed)
+277	0x15E	Inscription: "Let the Memory Live Again"	Halves skill recharge of spells \n (Chance: 5%)
+278	0x1D9	Inscription: "Have Faith"	Energy +4 \n (while Enchanted)
+279	0x1DB	Inscription: "Don't call it a comeback!"	Energy +5 \n (while Health is below 50%)
+280	0x1DC	Inscription: "I am Sorrow."	Energy +5 \n (while Hexed)
+281	0x1DD	Inscription: "Don't Think Twice"	Halves casting time of spells \n (Chance: 5%)
+282	0x163	Inscription: "Too Much Information"	Damage +10% \n (vs. Hexed foes)
+283	0x164	Inscription: "Guided by Fate"	Damage +10% \n (while Enchanted)
+284	0x1D0	Inscription: "Soundness of Mind"	Reduces Dazed duration on you by 20% \n (Stacking)
+285	0x1D1	Inscription: "Only the Strong Survive"	Reduces Weakness duration on you by 20% \n (Stacking)
+286	0x167	Inscription: "Don't Fear the Reaper"	Damage +10% \n (while Hexed)
+287	0x168	Inscription: "Dance with Death"	Damage +10% \n (while in a Stance)
+288	0x169	Inscription: "Brawn over Brains"	Damage +10% \n Energy -5
+289	0x16A	Inscription: "To the Pain!"	Damage +10% \n Armor -10 \n (while attacking)
+290	0x1E6	Survivor Insignia	Health +15 \n (on chest armor) \n Health +10 \n (on leg armor) \n Health +5 \n (on other armor)
+291	0x1E5	Radiant Insignia	Energy +3 \n (on chest armor) \n Energy +2 \n (on leg armor) \n Energy +1 \n (on other armor)
+292	0x1E7	Stalwart Insignia	Armor +10 \n (vs. physical damage)
+293	0x1E8	Brawler's Insignia	Armor +10 \n (while attacking)
+294	0x1E9	Blessed Insignia	Armor +10 \n (while affected by an Enchantment Spell)
+295	0x1EA	Herald's Insignia	Armor +10 \n (while holding an item)
+296	0x1EB	Sentry's Insignia	Armor +10 \n (while in a Stance)
+297	0x1DE	Vanguard's Insignia [Assassin]	Armor +10 \n (vs. physical damage) \n Armor +10 \n (vs. Blunt damage)
+298	0x1DF	Infiltrator's Insignia [Assassin]	Armor +10 \n (vs. physical damage) \n Armor +10 \n (vs. Piercing damage)
+299	0x1E0	Saboteur's Insignia [Assassin]	Armor +10 \n (vs. physical damage) \n Armor +10 \n (vs. Slashing damage)
+300	0x1E1	Nightstalker's Insignia [Assassin]	Armor +15 \n (while attacking)
+301	0x1E4	Virtuoso's Insignia [Mesmer]	Armor +15 \n (while activating skills)
+302	0x20A	Bloodstained Insignia [Necromancer]	Reduces casting time of spells that exploit corpses by 25% \n (Non-stacking)
+303	0x1EC	Tormentor's Insignia [Necromancer]	Holy damage you receive increased by 6 \n (on chest armor) \n Holy damage you receive increased by 4 \n (on leg armor) \n Holy damage you receive increased by 2 \n (on other armor) \n Armor +10
+304	0x1EE	Bonelace Insignia [Necromancer]	Armor +15 \n (vs. Piercing damage)
+305	0x1EF	Minion Master's Insignia [Necromancer]	Armor +5 \n (while you control 1 or more minions) \n Armor +5 \n (while you control 3 or more minions) \n Armor +5 \n (while you control 5 or more minions)
+306	0x1F0	Blighter's Insignia [Necromancer]	Armor +20 \n (while affected by a Hex Spell)
+307	0x1F2	Hydromancer Insignia [Elementalist]	Armor +10 \n (vs. elemental damage) \n Armor +10 \n (vs. Cold damage)
+308	0x1F3	Geomancer Insignia [Elementalist]	Armor +10 \n (vs. elemental damage) \n Armor +10 \n (vs. Earth damage)
+309	0x1F4	Pyromancer Insignia [Elementalist]	Armor +10 \n (vs. elemental damage) \n Armor +10 \n (vs. Fire damage)
+310	0x1F5	Aeromancer Insignia [Elementalist]	Armor +10 \n (vs. elemental damage) \n Armor +10 \n (vs. Lightning damage)
+311	0x1F6	Wanderer's Insignia [Monk]	Armor +10 \n (vs. elemental damage)
+312	0x1F7	Disciple's Insignia [Monk]	Armor +15 \n (while affected by a Condition)
+313	0x1F9	Knight's Insignia [Warrior]	Received physical damage -3
+314	0x208	Lieutenant's Insignia [Warrior]	Reduces hex durations on you by 20% and damage dealt by you by 5% \n (Non-stacking) \n Armor -20
+315	0x209	Stonefist Insignia [Warrior]	Increases knockdown time of foes by 1 second. (Maximum: 3 seconds) \n (Non-stacking)
+316	0x1FA	Dreadnought Insignia [Warrior]	Armor +10 \n (vs. elemental damage)
+317	0x1FB	Sentinel's Insignia [Warrior]	Armor +20 \n (Requires 13 Strength), \n vs. elemental damage
+318	0x1FC	Frostbound Insignia [Ranger]	Armor +15 \n (vs. Cold damage)
+319	0x1FE	Pyrebound Insignia [Ranger]	Armor +15 \n (vs. Fire damage)
+320	0x1FF	Stormbound Insignia [Ranger]	Armor +15 \n (vs. Lightning damage)
+321	0x201	Scout's Insignia [Ranger]	Armor +10 \n (while using a Preparation)
+322	0x204	Shaman's Insignia [Ritualist]	Armor +5 \n (while you control 1 or more Spirits) \n Armor +5 \n (while you control 2 or more Spirits) \n Armor +5 \n (while you control 3 or more Spirits)
+323	0x205	Ghost Forge Insignia [Ritualist]	Armor +15 \n (while affected by a Weapon Spell)
+324	0x206	Mystic's Insignia [Ritualist]	Armor +15 \n (while activating skills)
+325	0x1BC	Inscription: "Faith is My Shield"	Armor +4 \n (while Enchanted)
+326	0x1C0	Inscription: "Live for Today"	Energy +10 \n Energy regeneration -1
+327	0x1C1	Inscription: "Serenity Now"	Halves skill recharge of spells \n (Chance: 5%)
+328	0x1C2	Inscription: "Forget Me Not"	Halves skill recharge on spells of item's attribute \n (Chance: 10%)
+329	0x15C	Inscription: "I have the power!"	Energy +5
+330	0x1D2	Inscription: "Luck of the Draw"	Received physical damage -5 \n (Chance: 10%)
+331	0x1D3	Inscription: "Sheltered by Faith"	Received physical damage -1 \n (while Enchanted)
+332	0x1D4	Inscription: "Nothing to Fear"	Received physical damage -1 \n (while Hexed)
+333	0x1D5	Inscription: "Run For Your Life!"	Received physical damage -1 \n (while in a Stance)
+334	0x1D6	Inscription: "Master of My Domain"	Item's attribute +1 \n (Chance: 10%)
+335	0x1D7	Inscription: "Aptitude not Attitude"	Halves casting time on spells of item's attribute \n (Chance: 10%)
+336	0x1D8	Inscription: "Seize the Day"	Energy +10 \n Energy regeneration -1
+337	0x1DA	Inscription: "Hale and Hearty"	Energy +4 \n (while Health is above 50%)
+338	0x165	Inscription: "Strength and Honor"	Damage +10% \n (while Health is above 50%)
+339	0x166	Inscription: "Vengeance is Mine"	Damage +10% \n (while Health is below 50%)
+340	0x218	Focus Core of Fortitude	Health +10
+341	0x219	Focus Core of Devotion	Health +30 \n (while Enchanted)
+342	0x21C	Focus Core of Swiftness	Halves casting time of spells \n (Chance: 5%)
+343	0x217	Focus Core of Aptitude	Halves casting time on spells of item's attribute \n (Chance: 10%)
+344	0x160	Wand Wrapping of Quickening	Halves skill recharge of spells \n (Chance: 5%)
+345	0x15F	Wand Wrapping of Memory	Halves skill recharge on spells of item's attribute \n (Chance: 10%)
+346	0x161	Shield Handle of Fortitude	Health +10
+347	0x162	Shield Handle of Devotion	Health +30 \n (while Enchanted)
+348	0x152	Shield Handle of Endurance	Health +30 \n (while in a Stance)
+349	0x151	Shield Handle of Valor	Health +45 \n (while Hexed)
+350	0x210	Adept Staff Head	Halves casting time on spells of item's attribute \n (Chance: 10%)
+351	0x153	Staff Wrapping of Mastery	Item's attribute +1 \n (Chance: 10%)
+352	0x211	Rune of Attunement	Energy +2
+353	0x212	Rune of Vitae	Health +10
+354	0x213	Rune of Recovery	Reduces Dazed duration on you by 20% \n (Non-stacking) \n Reduces Deep Wound duration on you by 20% \n (Non-stacking)
+355	0x214	Rune of Restoration	Reduces Bleeding duration on you by 20% \n (Non-stacking) \n Reduces Crippled duration on you by 20% \n (Non-stacking)
+356	0x215	Rune of Clarity	Reduces Blind duration on you by 20% \n (Non-stacking) \n Reduces Weakness duration on you by 20% \n (Non-stacking)
+357	0x216	Rune of Purity	Reduces Disease duration on you by 20% \n (Non-stacking) \n Reduces Poison duration on you by 20% \n (Non-stacking)
+358	0x1E2	Artificer's Insignia [Mesmer]	Armor +3 \n (for each equipped Signet)
+359	0x1E3	Prodigy's Insignia [Mesmer]	Armor +5 \n (while recharging 1 or more skills) \n Armor +5 \n (while recharging 3 or more skills) \n Armor +5 \n (while recharging 5 or more skills)
+360	0x1ED	Undertaker's Insignia [Necromancer]	Armor +5 \n (while Health is below 80%) \n Armor +5 \n (while Health is below 60%) \n Armor +5 \n (while Health is below 40%) \n Armor +5 \n (while Health is below 20%)
+361	0x1F1	Prismatic Insignia [Elementalist]	Armor +5 \n (Requires 9 Air Magic) \n Armor +5 \n (Requires 9 Earth Magic) \n Armor +5 \n (Requires 9 Fire Magic) \n Armor +5 \n (Requires 9 Water Magic)
+362	0x1F8	Anchorite's Insignia [Monk]	Armor +5 \n (while recharging 1 or more skills) \n Armor +5 \n (while recharging 3 or more skills) \n Armor +5 \n (while recharging 5 or more skills)
+363	0x1FD	Earthbound Insignia [Ranger]	Armor +15 \n (vs. Earth damage)
+364	0x200	Beastmaster's Insignia [Ranger]	Armor +10 \n (while your pet is alive)
+365	0x202	Windwalker Insignia [Dervish]	Armor +5 \n (while affected by or more Enchantment Spell) \n Armor +5 \n (while affected by 2 or more Enchantment Spells) \n Armor +5 \n (while affected by 3 or more Enchantment Spells) \n Armor +5 \n (while affected by 4 or more Enchantment Spells)
+366	0x203	Forsaken Insignia [Dervish]	Armor +10 \n (while not affected by an Enchantment Spell)
+367	0x207	Centurion's Insignia [Paragon]	Armor +10 \n (while affected by a Shout, Echo, or Chant)
+368	0x1B6	Inscription: "Ignorance is Bliss"	Armor +4 \n Energy -5
+369	0x1B7	Inscription: "Life is Pain"	Armor +4 \n Health -20
+370	0x1B8	Inscription: "Man for All Seasons"	Armor +4 \n (vs. elemental damage)
+371	0x1B9	Inscription: "Survival of the Fittest"	Armor +4 \n (vs. physical damage)
+372	0x1BA	Inscription: "Might makes Right"	Armor +4 \n (while attacking)
+373	0x1BB	Inscription: "Knowing is Half the Battle."	Armor +4 \n (while casting)
+374	0x1BD	Inscription: "Down But Not Out"	Armor +5 \n (while Health is below 50%)
+375	0x1BE	Inscription: "Hail to the King"	Armor +4 \n (while Health is above 50%)
+376	0x1BF	Inscription: "Be Just and Fear Not"	Armor +5 \n (while Hexed)
+377	0x1C3	Inscription: "Not the face!"	Armor +5 \n (vs. Blunt damage)
+378	0x1C4	Inscription: "Leaf on the Wind"	Armor +5 \n (vs. Cold damage)
+379	0x1C5	Inscription: "Like a Rolling Stone"	Armor +5 \n (vs. Earth damage)
+380	0x1C6	Inscription: "Riders on the Storm"	Armor +5 \n (vs. Lightning damage)
+381	0x1C7	Inscription: "Sleep Now in the Fire"	Armor +5 \n (vs. Fire damage)
+382	0x1C8	Inscription: "Through Thick and Thin"	Armor +5 \n (vs. Piercing damage)
+383	0x1C9	Inscription: "The Riddle of Steel"	Armor +5 \n (vs. Slashing damage)
+384	0x1CA	Inscription: "Fear Cuts Deeper"	Reduces Bleeding duration on you by 20% \n (Stacking)
+385	0x1CB	Inscription: "I Can See Clearly Now"	Reduces Blind duration on you by 20% \n (Stacking)
+386	0x1CC	Inscription: "Swift as the Wind"	Reduces Crippled duration on you by 20% \n (Stacking)
+387	0x1CD	Inscription: "Strength of Body"	Reduces Deep Wound duration on you by 20% \n (Stacking)
+388	0x1CE	Inscription: "Cast Out the Unclean"	Reduces Disease duration on you by 20% \n (Stacking)
+389	0x1CF	Inscription: "Pure of Heart"	Reduces Poison duration on you by 20% \n (Stacking)

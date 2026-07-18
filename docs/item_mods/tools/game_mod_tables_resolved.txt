@@ -1,0 +1,512 @@
+RESOLVED LABEL TABLES (ETextStr id -> in-game text)
+======================================================================
+
+ECHARATTRIB
+----------------------------------------------------------------------
+    0 : 0x81E     Fast Casting
+    1 : 0x820     Illusion Magic
+    2 : 0x822     Domination Magic
+    3 : 0x824     Inspiration Magic
+    4 : 0x826     Blood Magic
+    5 : 0x82A     Death Magic
+    6 : 0x82C     Soul Reaping
+    7 : 0x828     Curses
+    8 : 0x82E     Air Magic
+    9 : 0x830     Earth Magic
+   10 : 0x834     Fire Magic
+   11 : 0x836     Water Magic
+   12 : 0x832     Energy Storage
+   13 : 0x83A     Healing Prayers
+   14 : 0x83E     Smiting Prayers
+   15 : 0x83C     Protection Prayers
+   16 : 0x838     Divine Favor
+   17 : 0x840     Strength
+   18 : 0x842     Axe Mastery
+   19 : 0x844     Hammer Mastery
+   20 : 0x846     Swordsmanship
+   21 : 0x848     Tactics
+   22 : 0x850     Beast Mastery
+   23 : 0x852     Expertise
+   24 : 0x854     Wilderness Survival
+   25 : 0x856     Marksmanship
+   26 : 0x84A     ]¥u(Uv"§XO{¥~¤Wjsr[z
+   27 : 0x84C     0rZluqelpZu :-u`,¨g X4/T>p3W
+   28 : 0x84E     mt}§O'rewR{uoUW¬mT5x¦4Pr>>
+   29 : 0x85A     Dagger Mastery
+   30 : 0x85C     Deadly Arts
+   31 : 0x85E     Shadow Arts
+   32 : 0x860     Communing
+   33 : 0x864     Restoration Magic
+   34 : 0x866     Channeling Magic
+   35 : 0x858     Critical Strikes
+   36 : 0x862     Spawning Power
+   37 : 0x8F20    Spear Mastery
+   38 : 0x84D5    Command
+   39 : 0x901A    Motivation
+   40 : 0x9033    Leadership
+   41 : 0x8F22    Scythe Mastery
+   42 : 0x9035    Wind Prayers
+   43 : 0x9037    Earth Prayers
+   44 : 0x9039    Mysticism
+   45 : 0x1192E   _6¤rT>5~¢2w6c
+   46 : 0x187A1   )0ub <¬§sXp6{\qk
+   47 : 0x187A5   ¯r:R<ug|s(r]
+   48 : 0x187A3   u-«Qhcg5Z]
+   49 : 0x187A7   ¦[ud1R]`V(}\SW>¨z
+   50 : 0x187A9   ww'cncZ3`h}\
+
+ECHARCONDITION
+----------------------------------------------------------------------
+    0 : 0x6188    Bleeding
+    1 : 0x618A    Blind
+    2 : 0x618C    Burning
+    3 : 0x618E    Crippled
+    4 : 0x6190    Deep Wound
+    5 : 0x6192    Disease
+    6 : 0x6194    Poison
+    7 : 0x6196    Dazed
+    8 : 0x6198    Weakness
+
+ECHARDAMAGEPREFIX
+----------------------------------------------------------------------
+    0 : 0x7D1     Blunt
+    1 : 0x7D2     Piercing
+    2 : 0x7D3     Slashing
+    3 : 0x7D4     Icy
+    4 : 0x7D6     Shocking
+    5 : 0x7D7     Fiery
+    6 : 0x7D8     Chaotic
+    7 : 0x7D9     Unholy
+    8 : 0x7DA     Holy
+    9 : 0x7DC     Wooden
+   10 : 0x7DD     Sacrificial
+   11 : 0x7D5     Ebon
+   12 : 0x7DB     Magical
+   13 : 0x7D9     Unholy
+
+ECHARDAMAGETEXT
+----------------------------------------------------------------------
+    0 : 0x7DE     Blunt
+    1 : 0x7DF     Piercing
+    2 : 0x7E0     Slashing
+    3 : 0x7E1     Cold
+    4 : 0x7E3     Lightning
+    5 : 0x7E4     Fire
+    6 : 0x7E5     Chaos
+    7 : 0x7E6     Dark
+    8 : 0x7E7     Holy
+    9 : 0x7E9     Nature
+   10 : 0x7EA     Sacrifice
+   11 : 0x7E2     Earth
+   12 : 0x7E8     Generic
+   13 : 0x7E6     Dark
+
+ECHARKINDSLAYING
+----------------------------------------------------------------------
+    0 : 0x968     Deathbane
+    1 : 0x95D     Charrslaying
+    2 : 0x967     Trollslaying
+    3 : 0x964     Pruning
+    4 : 0x965     Skeletonslaying
+    5 : 0x962     Giantslaying
+    6 : 0x960     Dwarfslaying
+    7 : 0x966     Tenguslaying
+    8 : 0x95E     Demonslaying
+    9 : 0x95F     Dragonslaying
+   10 : 0x961     Ogreslaying
+   11 : 0x963     Snakeslaying
+
+ECHARKIND
+----------------------------------------------------------------------
+    0 : 0x7F7     undead
+    1 : 0x7EC     Charr
+    2 : 0x7F6     trolls
+    3 : 0x7F3     plants
+    4 : 0x7F4     skeletons
+    5 : 0x7F1     giants
+    6 : 0x7EF     Dwarves
+    7 : 0x7F5     Tengu
+    8 : 0x7ED     Demons
+    9 : 0x7EE     Dragons
+   10 : 0x7F0     Ogres
+   11 : 0x7F2     Snakes
+
+EITEMCOLOR
+----------------------------------------------------------------------
+    0 : 0x86C     Identity
+    1 : 0x86D     Mixed
+    2 : 0x86E     Blue
+    3 : 0x86F     Green
+    4 : 0x870     Purple
+    5 : 0x871     Red
+    6 : 0x872     Yellow
+    7 : 0x873     Brown
+    8 : 0x874     Orange
+    9 : 0x875     Silver
+   10 : 0x876     Black
+   11 : 0xCFEF    Gray
+   12 : 0xD191    White
+   13 : 0x1689E   Pink
+
+EITEMDESCRIPTION
+----------------------------------------------------------------------
+    0 : 0xD748    Use to gain 1000 Balthazar faction.
+    1 : 0xD9D3    Use to drink. Excessive alcohol consumption will result in intoxication.
+    2 : 0xD9CF    Use for an armor bonus. This item cannot be used in PvP.
+    3 : 0xD9D1    Use for a Health bonus. This item cannot be used in PvP.
+    4 : 0xD9D0    Use for a Health regeneration bonus. This item cannot be used in PvP.
+    5 : 0xD9D2    Use to open.
+    6 : 0xD9D4    Use to remove all Death Penalty. This item cannot be used in PvP.
+    7 : 0xD9D5    Use to create a snowman.
+    8 : 0xD9D6    Use while in town. Eating sweets may give you a Sugar Rush.
+    9 : 0xB7CB    Use to gain a 10% morale boost. This morale boost does not cause skills to instantly recharge. This item cannot be used in PvP.
+   10 : 0xE0F8    Use to embody the spirit of Halloween. This item cannot be used in PvP.
+   11 : 0xE0F9    Use to embody the spirit of Wintersday. This item cannot be used in PvP.
+   12 : 0xDFB9    Use to give your party a 5% morale boost. This morale boost does not cause skills to instantly recharge. This item cannot be used in PvP.
+   13 : 0xDFBA    Use to remove 15% of your Death Penalty. This item cannot be used in PvP.
+   14 : 0xE505    Use while in an explorable area.
+   15 : 0xE506    Use while in a town or explorable area.
+   16 : 0xE508    Use to learn any elite Assassin skill that is already unlocked on your account while in a town or outpost.
+   17 : 0xE509    Use to learn any elite Mesmer skill that is already unlocked on your account while in a town or outpost.
+   18 : 0xE50A    Use to learn any elite Necromancer skill that is already unlocked on your account while in a town or outpost.
+   19 : 0xE50B    Use to learn any elite Elementalist skill that is already unlocked on your account while in a town or outpost.
+   20 : 0xE50C    Use to learn any elite Monk skill that is already unlocked on your account while in a town or outpost.
+   21 : 0xE50D    Use to learn any elite Warrior skill that is already unlocked on your account while in a town or outpost.
+   22 : 0xE50E    Use to learn any elite Ranger skill that is already unlocked on your account while in a town or outpost.
+   23 : 0xE50F    Use to learn any elite Dervish skill that is already unlocked on your account while in a town or outpost.
+   24 : 0xE510    Use to learn any elite Ritualist skill that is already unlocked on your account while in a town or outpost.
+   25 : 0xE511    Use to learn any elite Paragon skill that is already unlocked on your account while in a town or outpost.
+   26 : 0xE512    Use to learn any non-elite Assassin skill that is already unlocked on your account while in a town or outpost.
+   27 : 0xE513    Use to learn any non-elite Mesmer skill that is already unlocked on your account while in a town or outpost.
+   28 : 0xE514    Use to learn any non-elite Necromancer skill that is already unlocked on your account while in a town or outpost.
+   29 : 0xE515    Use to learn any non-elite Elementalist skill that is already unlocked on your account while in a town or outpost.
+   30 : 0xE516    Use to learn any non-elite Monk skill that is already unlocked on your account while in a town or outpost.
+   31 : 0xE517    Use to learn any non-elite Warrior skill that is already unlocked on your account while in a town or outpost.
+   32 : 0xE518    Use to learn any non-elite Ranger skill that is already unlocked on your account while in a town or outpost.
+   33 : 0xE519    Use to learn any non-elite Dervish skill that is already unlocked on your account while in a town or outpost.
+   34 : 0xE51A    Use to learn any non-elite Ritualist skill that is already unlocked on your account while in a town or outpost.
+   35 : 0xE51B    Use to learn any non-elite Paragon skill that is already unlocked on your account while in a town or outpost.
+   36 : 0xE507    Use while in town.
+   37 : 0xE9B3    Use to gain 3000 Balthazar faction.
+   38 : 0xE6FD    Use to remove a random amount of DP (5%-15%) from your entire party. If 15% DP is removed, you gain 4 points towards the Lucky title track. This item cannot be used in PvP.
+   39 : 0xE9E5    Use to transform yourself into a Beetle. This item can only be used in a town or outpost.
+   40 : 0xE9E6    Use to transform yourself into a Beetle. This item has unlimited uses, and can only be used in a town or outpost.
+   41 : 0xF0FA    Use to raise all of your attributes by 1 for 30 minutes. This item cannot be used in PvP.
+   42 : 0xF0F7    Happy 1st birthday!
+   43 : 0xF0F8    Happy 2nd birthday!
+   44 : 0xF0F9    Happy 3rd birthday!
+   45 : 0xF9DB    Use to teleport your party to Urgoz's Warren. This item can only be used in House zu Heltzer and Embark Beach.
+   46 : 0xF9DC    Use to teleport your party to the Underworld. This item can only be used in Temple of the Ages, Zin Ku Corridor, Chantry of Secrets, or Embark Beach.
+   47 : 0xF9DD    Use to teleport your party to the Deep. This item can only be used in Cavalon and Embark Beach.
+   48 : 0xF9DE    Use to teleport your party to the Fissure of Woe. This item can only be used in Temple of the Ages, Zin Ku Corridor, Chantry of Secrets, or Embark Beach.
+   49 : 0xFCB5    Use to grant yourself +100 maximum health, +10 maximum energy, and 25% increased movement speed for 30 minutes. This item cannot be used in PvP.
+   50 : 0x10D50   Koris Deeprunner may be interested in this.
+   51 : 0x10D51   A ratty tome filled with strange symbols. Perhaps Master Arcanist Zepp could decipher its secrets.
+   52 : 0x11832   Use to reveal important locations in the current dungeon level.
+   53 : 0x11C31   Use Alkar's Concoction to do 100 damage to nearby Destroyers.
+   54 : 0x11C30   Sorry for throwing the fight, but duty called!  XOXO – The Great Zehtuka
+   55 : 0x123C2   The Marketplace List has been deprecated. Please travel to Xunlai Market and look for the market button in the party panel. Thank you for testing this feature!
+   56 : 0x123C4   Use to grant your party members 20% faster movement and attack speeds, and to reduce their skill activation and recharge times by 20% for the next 30 minutes. This item cannot be used in PvP.
+   57 : 0x123C5   Use to grant your party members immunity to 50% of critical hits, +10 armor, +1 Health regeneration, and damage reduction of 5 for the next 30 minutes. This item cannot be used in PvP.
+   58 : 0x123C6   Use to grant your party members +100 maximum Health, +10 maximum Energy, and +1 to all of their attributes for 30 minutes. This item cannot be used in PvP.
+   59 : 0x123C7   Use to remove all death penalty from your party. Your entire party then receives a 10% morale boost. This item cannot be used in PvP.
+   60 : 0x123C8   Use to remove 15% of your death penalty. This item cannot be used in PvP.
+   61 : 0x123C9   Use to resurrect all dead party members within earshot at 25% Health and Energy. This item cannot be used in PvP.
+   62 : 0x123CA   Use to gain a skill point.
+   63 : 0x123CB   Use to salvage upgrade components or crafting materials from an item. While using this kit to salvage out upgrade components, the item you are salvaging from will not break.
+   64 : 0xF4DF    AMFSSKJJID QRS REWFD REA FDESASDS RESASDD UYTEVE RSS DSDSOODS DSDAS GUM GUM ASHFSAIVB DSDSAAGUMSD SADASDE SADSE SDSDD DD DSAETH
+   65 : 0xF557    NGUELLY CHUQRS REWFD REA FDESASDS RESASDD SADASD ASD JNYTH RDH JUNKLE HTHS SHGSH TRG SGGSHR T FUG UDUFDU UDYUFW
+   66 : 0xF559    GWAHN MUALEH NILKNARF SNAEB SKASOO ERIMGAUQ DSD SDSADA ABIHCIM TSFD GD SA TOM SA EWQ RERWER ASDT DS TDSD
+   67 : 0x11086   Used to unlock a single monument inside the Hall of Monuments.
+   68 : 0x11084   Use to read. Keep this book with you to record your deeds as you complete dungeons.
+   69 : 0x11085   Use to read. Keep this book with you to record your deeds as you complete dungeons in Hard Mode.
+   70 : 0x11082   Use to read. Keep this book with you to record your deeds as you complete primary quests.
+   71 : 0x11083   Use to read. Keep this book with you to record your deeds as you complete primary quests in Hard Mode.
+   72 : 0x11081   Use to decipher secret messages.
+   73 : 0x11080   Use to open.
+   74 : 0x11685   Use to read.
+   75 : 0x11AFE   Fragile. (Cannot be dropped or traded.)
+   76 : 0x12E95   Use to give your party a 10% morale boost. This morale boost does not cause skills to instantly recharge. This item cannot be used in PvP.
+   77 : 0x131FA   Use to raise all of your attributes by 1 for 30 minutes. This item cannot be used in PvP.
+   78 : 0x131F9   Use to grant yourself +100 maximum health and +10 maximum energy for 30 minutes. This item cannot be used in PvP.
+   79 : 0x13200   This story has been authorized by the historian Durmand. Take it to Akemi the scribe to choose your reward.
+   80 : 0x13201   This story has been authorized by the historian Durmand. Take it to the Archivist of Whispers to choose your reward.
+   81 : 0x13202   This story has been authorized by the historian Durmand. Take it to Tuomas the scribe to choose your reward.
+   82 : 0x13203   This story has been authorized by the historian Durmand. Take it to Diane the scribe to choose your reward.
+   83 : 0x133F3   Use to increase your attack speed by 25%, and to reduce your skill activation time by 15% for the next 30 minutes. This item cannot be used in PvP.
+   84 : 0x134B7   Use to embody the spirit of Halloween. This item has unlimited uses, and cannot be used in PvP.
+   85 : 0x134B8   Use to embody the spirit of Wintersday. This item has unlimited uses, and cannot be used in PvP.
+   86 : 0x134B6   Used to open the Zaishen Chest on the Isle of the Nameless.
+   87 : 0x132B7   Take this to Arkor Leadfoot in Boreal Station to receive a weapon of your choosing.
+   88 : 0x13ACC   ...
+   89 : 0x13AAF   Use to activate a 10 minute fireworks display. This item can only be used in a guild hall.
+   90 : 0x13C69   Year of the Pig
+   91 : 0x13C6A   Year of the Rat
+   92 : 0x13C6B   Year of the Ox
+   93 : 0x13C6C   Year of the Tiger
+   94 : 0x13C6D   Year of the Rabbit
+   95 : 0x13C6E   Year of the Dragon
+   96 : 0x13C6F   Year of the Snake
+   97 : 0x13C70   Year of the Horse
+   98 : 0x13C71   Year of the Sheep
+   99 : 0x13C72   Year of the Monkey
+  100 : 0x13C73   Year of the Rooster
+  101 : 0x13C74   Year of the Dog
+  102 : 0x13FB0   Use to activate a 3 minute fireworks display. This item can only be used in towns, outposts, and guild halls.
+  103 : 0x13FB1   ...
+  104 : 0x141E9   <c=#FFFF00>"With you always, he is."</c>
+  105 : 0x141EA   <c=#FFFF00>"It's good to be The Frog."</c>
+  106 : 0x141EB   Thanks for everything Gaile!
+  107 : 0x142BD   Use to transform yourself into an Abyssal. This item can only be used in a town or outpost.
+  108 : 0x142BE   Use to transform yourself into an Abyssal. This item has unlimited uses, and can only be used in a town or outpost.
+  109 : 0x142BF   Use to transform yourself into an Asura. This item can only be used in a town or outpost.
+  110 : 0x142C0   Use to transform yourself into an Asura. This item has unlimited uses, and can only be used in a town or outpost.
+  111 : 0x142C1   Use to transform yourself into an Awakened Head. This item can only be used in a town or outpost.
+  112 : 0x142C2   Use to transform yourself into an Awakened Head. This item has unlimited uses, and can only be used in a town or outpost.
+  113 : 0x142C3   Use to transform yourself into a Spider. This item can only be used in a town or outpost.
+  114 : 0x142C4   Use to transform yourself into a Spider. This item has unlimited uses, and can only be used in a town or outpost.
+  115 : 0x142C5   Use to transform yourself into a Charr. This item can only be used in a town or outpost.
+  116 : 0x142C6   Use to transform yourself into a Charr. This item has unlimited uses, and can only be used in a town or outpost.
+  117 : 0x142C7   Use to transform yourself into a Golem. This item can only be used in a town or outpost.
+  118 : 0x142C8   Use to transform yourself into a Golem. This item has unlimited uses, and can only be used in a town or outpost.
+  119 : 0x142C9   Use to transform yourself into a Hellhound. This item can only be used in a town or outpost.
+  120 : 0x142CA   Use to transform yourself into a Hellhound. This item has unlimited uses, and can only be used in a town or outpost.
+  121 : 0x142CB   Use to transform yourself into a Norn. This item can only be used in a town or outpost.
+  122 : 0x142CC   Use to transform yourself into a Norn. This item has unlimited uses, and can only be used in a town or outpost.
+  123 : 0x142CD   Use to transform yourself into an Ooze. This item can only be used in a town or outpost.
+  124 : 0x142CE   Use to transform yourself into an Ooze. This item has unlimited uses, and can only be used in a town or outpost.
+  125 : 0x142CF   Use to transform yourself into a Rift Warden. This item can only be used in a town or outpost.
+  126 : 0x142D0   Use to transform yourself into a Rift Warden. This item has unlimited uses, and can only be used in a town or outpost.
+  127 : 0x142D1   ...
+  128 : 0x142D2   ...
+  129 : 0x142D3   Use to transform yourself into a Yeti. This item can only be used in a town or outpost.
+  130 : 0x142D4   Use to transform yourself into a Yeti. This item has unlimited uses, and can only be used in a town or outpost.
+  131 : 0x142D5   Use to transform yourself into a Snowman. This item can only be used in a town or outpost.
+  132 : 0x142D6   Use to transform yourself into a Snowman. This item has unlimited uses, and can only be used in a town or outpost.
+  133 : 0x14563   Use to read. To run the golem tutorial simulation and receive your mission from Zinn, use the Enter Mission button inside the book. M.O.X. must be in your party and you must be inside an outpost to run the tutorial. If you lose your Golem User Manual, you can acquire a new one from Zinn in his secret underground Lair.
+  134 : 0x14463   Use to transform yourself into a Sinister Golem. This item can only be used in a town or outpost.
+  135 : 0x14464   Use to transform yourself into a Sinister Golem. This item has unlimited uses, and can only be used in a town or outpost.
+  136 : 0x14375   Use to summon a Fire Imp ally of your level that lasts for 60 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item has unlimited uses, cannot be used by level 20 characters, and can only be used in explorable areas.
+  137 : 0x14603   Use to summon a Golem ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  138 : 0x14826   Use to read. Keep this book with you to record your deeds as you complete missions.
+  139 : 0x14827   Use to read. Keep this book with you to record your deeds as you complete missions in Hard Mode.
+  140 : 0x14682   Use to summon a Devourer ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  141 : 0x14684   Use to summon a Gaki ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  142 : 0x14686   Use to summon a Juggernaut ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  143 : 0x14688   Use to summon a Kveldulf ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  144 : 0x1468A   Use to summon an Oni ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  145 : 0x1468C   Use to summon an Ooze ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  146 : 0x1468E   Use to summon a Raptor ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  147 : 0x14690   Use to summon a Siege Turtle ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  148 : 0x14850   Use to transform yourself into a Grentch. This item can only be used in a town or outpost.
+  149 : 0x14851   Use to transform yourself into a Grentch. This item has unlimited uses, and can only be used in a town or outpost.
+  150 : 0x148CD   Roasted to a golden brown, these look tasty!
+  151 : 0x148CF   A beverage that redefines "spiked" eggnog.
+  152 : 0x148D1   An ornate, delicate, handcrafted snowflake.
+  153 : 0x1484D   Use to summon a Grentch ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  154 : 0x1484F   Use to summon a Snowman ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  155 : 0x15086   <c=#FFFFFF>"Powered from the inside by one of Zinn's magical micro golems." -Nicholas</c>
+  156 : 0x1508A   <c=#FFFFFF>"The real Yakkington is 6 foot 8, and weighs about a ton." -Nicholas</c>
+  157 : 0x155C4   Use to transform yourself into a Mursaat. This item can only be used in a town or outpost.
+  158 : 0x155C5   Use to transform yourself into a Mursaat. This item has unlimited uses, and can only be used in a town or outpost.
+  159 : 0x15066   Use to transform yourself into a random form. This item can only be used in a town or outpost.
+  160 : 0x15068   Use to transform yourself into a Rabbit. This item can only be used in a town or outpost.
+  161 : 0x1506A   Use to transform yourself into a Rabbit. This item has unlimited uses, and can only be used in a town or outpost.
+  162 : 0x1506C   Use to transform yourself into a random form. This item cannot be used in PvP.
+  163 : 0x1506E   Use to drink. Excessive alcohol consumption will result in intoxication.
+  164 : 0x15070   <c=#FFFFFF>"I trust that you will be able to get to the bottom of this." -Nicholas</c>
+  165 : 0x15072   Use to activate a 10 minute fireworks display. This item has unlimited uses, and can only be used in a guild hall.
+  166 : 0x15074   <c=#FFFFFF>"Remember, it's the thought that counts." -Nicholas</c> <br>Use to open.
+  167 : 0x15076   <c=#FFFFFF>"These are a few of my favorite things." -Nicholas</c> <br>Use to open.
+  168 : 0x159C4   Use to summon a Dream Rider ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  169 : 0x15078   Use while in town. Eating sweets may give you a Sugar Rush.
+  170 : 0x1507A   Use to increase your movement and attack speeds by 25%, and to reduce your skill activation times by 20% for the next 30 minutes. This item cannot be used in PvP.
+  171 : 0x1507C   Use to increase your movement and attack speeds by 15%, and to reduce your skill activation times by 15% for the next 30 minutes. This item cannot be used in PvP.
+  172 : 0x1507E   Use to increase your movement and attack speeds by 33%, and to reduce your skill activation times by 25% for the next 30 minutes. This item cannot be used in PvP.
+  173 : 0x1508D   <c=#FFFFFF>"Next to my walking stick, this is my second most favorite staff." -Nicholas</c>
+  174 : 0x1508F   <c=#FFFFFF>"Tread lightly, and carry a big walking stick." -Nicholas</c>
+  175 : 0x15080   Use to summon a Merchant ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  176 : 0x15082   Use to summon a random ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  177 : 0x15084   Use to summon a random ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  178 : 0x15091   <c=#FFFFFF>"Yakkington had to win a tug of war battle with an Ice Imp for this little treasure!" -Nicholas</c>
+  179 : 0x15093   <c=#FFFFFF>"Necromancer Munne sometimes gives these to me in trade." -Nicholas</c>
+  180 : 0x15095   <c=#FFFFFF>"It's made with bits of real Deldrimor Steel, so you know it's good." -Nicholas</c>
+  181 : 0x1509D   <c=#FFFFFF>"Emryd of the Zaishen Menagerie may know more about this." -Nicholas</c>
+  182 : 0x14F16   Stores both armor and weapons that have been customized to this character, and also any armor or weapons that have yet to be customized.
+  183 : 0x15088   <c=#FFFFFF>"Descended from the infamous rabbit of Ashford." -Nicholas</c>
+  184 : 0x15642   Happy 4th birthday!
+  185 : 0x15643   Happy 5th birthday!
+  186 : 0x15097   Speak with Zehnchu in the Great Temple of Balthazar to learn more about what Copper Zaishen Coins are used for.
+  187 : 0x15099   Speak with Zehnchu in the Great Temple of Balthazar to learn more about what Gold Zaishen Coins are used for.
+  188 : 0x1509B   Speak with Zehnchu in the Great Temple of Balthazar to learn more about what Silver Zaishen Coins are used for.
+  189 : 0x15927   Use to attempt to capture target Skeleton of Dhuum.
+  190 : 0x15929   The Everlasting Mobstopper is warm and glowing from containing the energy of a Skeleton of Dhuum.
+  191 : 0x15A72   Use to transform yourself into Pudash. This item has unlimited uses, and cannot be used in PvP.
+  192 : 0x15A73   Use to transform yourself into Dahlia. This item has unlimited uses, and cannot be used in PvP.
+  193 : 0x15A74   Use to transform yourself into Disenmaedel. This item has unlimited uses, and cannot be used in PvP.
+  194 : 0x15A75   Use to transform yourself into Errol Hyl. This item has unlimited uses, and cannot be used in PvP.
+  195 : 0x15A76   Use to transform yourself into Lulu Xan. This item has unlimited uses, and cannot be used in PvP.
+  196 : 0x15A77   Use to transform yourself into Tannaros. This item has unlimited uses, and cannot be used in PvP.
+  197 : 0x15A78   Use to transform yourself into Cassie Santi. This item has unlimited uses, and cannot be used in PvP.
+  198 : 0x15A79   Use to transform yourself into Redemptor Frohs. This item has unlimited uses, and cannot be used in PvP.
+  199 : 0x15A7A   Use to transform yourself into Julyia. This item has unlimited uses, and cannot be used in PvP.
+  200 : 0x15A7B   Use to transform yourself into Bellicus. This item has unlimited uses, and cannot be used in PvP.
+  201 : 0x15A7C   Use to transform yourself into Dirk Shadowrise. This item has unlimited uses, and cannot be used in PvP.
+  202 : 0x15A7D   Use to transform yourself into Vincent Evan. This item has unlimited uses, and cannot be used in PvP.
+  203 : 0x15A7E   Use to transform yourself into Luzy Fiera. This item has unlimited uses, and cannot be used in PvP.
+  204 : 0x15A7F   Use to transform yourself into Motoko Kai. This item has unlimited uses, and cannot be used in PvP.
+  205 : 0x15A80   Use to transform yourself into Hinata. This item has unlimited uses, and cannot be used in PvP.
+  206 : 0x15A81   Use to transform yourself into Kah Xan. This item has unlimited uses, and cannot be used in PvP.
+  207 : 0x15A82   Use to transform yourself into Narcissia. This item has unlimited uses, and cannot be used in PvP.
+  208 : 0x15A83   Use to transform yourself into Zen Siert. This item has unlimited uses, and cannot be used in PvP.
+  209 : 0x15A84   Use to transform yourself into Blenkeh. This item has unlimited uses, and cannot be used in PvP.
+  210 : 0x15A85   Use to transform yourself into Aurora Allesandra. This item has unlimited uses, and cannot be used in PvP.
+  211 : 0x15A86   Use to transform yourself into Teena the Raptor. This item has unlimited uses, and cannot be used in PvP.
+  212 : 0x15A87   Use to transform yourself into Lora Lanaya. This item has unlimited uses, and cannot be used in PvP.
+  213 : 0x15A88   Use to transform yourself into Adepte. This item has unlimited uses, and cannot be used in PvP.
+  214 : 0x15A89   Use to transform yourself into Haldibarn Earendul. This item has unlimited uses, and cannot be used in PvP.
+  215 : 0x15A8A   Use to transform yourself into Daky. This item has unlimited uses, and cannot be used in PvP.
+  216 : 0x15A8B   Use to transform yourself into Syn Spellstrike. This item has unlimited uses, and cannot be used in PvP.
+  217 : 0x15A8C   Use to transform yourself into Divinus Tutela. This item has unlimited uses, and cannot be used in PvP.
+  218 : 0x15A8D   Use to transform yourself into Blahks. This item has unlimited uses, and cannot be used in PvP.
+  219 : 0x15A8E   Use to transform yourself into Erick. This item has unlimited uses, and cannot be used in PvP.
+  220 : 0x15A8F   Use to transform yourself into Ghavin. This item has unlimited uses, and cannot be used in PvP.
+  221 : 0x15A90   Use to transform yourself into Hobba Inaste. This item has unlimited uses, and cannot be used in PvP.
+  222 : 0x15A91   Use to transform yourself into Bacchi Coi. This item has unlimited uses, and cannot be used in PvP.
+  223 : 0x15A92   Use to transform yourself into Suzu. This item has unlimited uses, and cannot be used in PvP.
+  224 : 0x15A93   Use to transform yourself into Rollo Lowlo. This item has unlimited uses, and cannot be used in PvP.
+  225 : 0x15A94   Use to transform yourself into Fuu Rin. This item has unlimited uses, and cannot be used in PvP.
+  226 : 0x15A95   Use to transform yourself into Nuno. This item has unlimited uses, and cannot be used in PvP.
+  227 : 0x15A96   Use to transform yourself into Alsacien. This item has unlimited uses, and cannot be used in PvP.
+  228 : 0x15A97   Use to transform yourself into Uto Wrotki. This item has unlimited uses, and cannot be used in PvP.
+  229 : 0x15A98   Use to transform yourself into Khai Kemnebi. This item has unlimited uses, and cannot be used in PvP.
+  230 : 0x15A99   Use to transform yourself into Cole. This item has unlimited uses, and cannot be used in PvP.
+  231 : 0x15C15   Use to transform yourself into a random Reindeer. This item has unlimited uses, and can only be used in a town or outpost.
+  232 : 0x15C5E   Use to summon a random Celestial ally of your level that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas.
+  233 : 0x15D79   <c=#FFFFFF>Hand crafted by Necromancer Munne.</c>
+  234 : 0x15D7B   <c=#FFFFFF>Lieutenant Thackeray traded this for the perfect touch.</c> <br>Use to open.
+  235 : 0x15D7D   <c=#FFFFFF>A token reward from Lieutenant Thackeray for giving it a good shot.</c> <br>Use to open.
+  236 : 0x163E3   Instructions from Confessor Isaiah. These commands will never be executed now, but the document may reveal useful information to the right person.
+  237 : 0x163E5   <c=#FFFFFF>Trade to the Shining Blade for other items or use to gain +5 armor and +1 Health regeneration for 30 minutes.</c>
+  238 : 0x163E7   <c=#FFFFFF>A medal given by the Shining Blade to recognize your heroics. It's uncommon, so it must be valuable, right?</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  239 : 0x163E9   <c=#FFFFFF>A gift from the Krytan royal coffers.</c> <br>Use to open.
+  240 : 0x163EB   Use to remove 15% of your Death Penalty. This item cannot be used in PvP.
+  241 : 0x163ED   Use to drink. Excessive alcohol consumption will result in intoxication.
+  242 : 0x163EF   Use while in town. Eating sweets may give you a Sugar Rush.
+  243 : 0x163F1   Use to summon 3 Shining Blade allies of your level that last for 30 minutes or until slain in combat. The War Horn and summoning stones can only be activated once every 10 minutes per character, and only one group of allies summoned from these items can be present in an instance at a time. This item can only be used in explorable areas.
+  244 : 0x1687C   A special blend created to support breast cancer awareness. This item is not sellable or tradable.
+  245 : 0x170F4   Happy 6th birthday!
+  246 : 0x170F5   Happy 7th birthday!
+  247 : 0x170F6   Happy 8th birthday!
+  248 : 0x170F7   Happy 9th birthday!
+  249 : 0x170F8   Use to transform yourself into Koss. This item has unlimited uses.
+  250 : 0x170F9   Use to transform yourself into Dunkoro. This item has unlimited uses.
+  251 : 0x170FA   Use to transform yourself into Melonni. This item has unlimited uses.
+  252 : 0x170FB   Use to transform yourself into Acolyte Jin. This item has unlimited uses.
+  253 : 0x170FC   Use to transform yourself into Acolyte Sousuke. This item has unlimited uses.
+  254 : 0x170FD   Use to transform yourself into Tahlkora. This item has unlimited uses.
+  255 : 0x170FE   Use to transform yourself into Zhed Shadowhoof. This item has unlimited uses.
+  256 : 0x170FF   Use to transform yourself into Margrid the Sly. This item has unlimited uses.
+  257 : 0x17100   Use to transform yourself into the Master of Whispers. This item has unlimited uses.
+  258 : 0x17101   Use to transform yourself into Goren. This item has unlimited uses.
+  259 : 0x17102   Use to transform yourself into Norgu. This item has unlimited uses.
+  260 : 0x17103   Use to transform yourself into Morgahn. This item has unlimited uses.
+  261 : 0x17104   Use to transform yourself into Razah. This item has unlimited uses.
+  262 : 0x17105   Use to transform yourself into Olias. This item has unlimited uses.
+  263 : 0x17106   Use to transform yourself into Zenmai. This item has unlimited uses.
+  264 : 0x17107   Use to transform yourself into Ogden Stonehealer. This item has unlimited uses.
+  265 : 0x17108   Use to transform yourself into Vekk. This item has unlimited uses.
+  266 : 0x17109   Use to transform yourself into Gwen. This item has unlimited uses.
+  267 : 0x1710A   Use to transform yourself into Xandra. This item has unlimited uses.
+  268 : 0x1710B   Use to transform yourself into Kahmu. This item has unlimited uses.
+  269 : 0x1710C   Use to transform yourself into Jora. This item has unlimited uses.
+  270 : 0x1710D   Use to transform yourself into Pyre Fierceshot. This item has unlimited uses.
+  271 : 0x1710E   Use to transform yourself into Anton. This item has unlimited uses.
+  272 : 0x1710F   Use to transform yourself into Hayda. This item has unlimited uses.
+  273 : 0x17110   Use to transform yourself into Livia. This item has unlimited uses.
+  274 : 0x17111   Use to transform yourself into Keiran Thackeray. This item has unlimited uses.
+  275 : 0x17112   Use to transform yourself into Miku. This item has unlimited uses.
+  276 : 0x17113   Use to transform yourself into M.O.X. This item has unlimited uses.
+  277 : 0x17114   Use to transform yourself into Shiro. This item has unlimited uses.
+  278 : 0x17115   ...
+  279 : 0x17116   Use to transform yourself into Prince Rurik. This item has unlimited uses.
+  280 : 0x17117   Use to transform yourself into a Margonite. This item has unlimited uses.
+  281 : 0x17118   Use to transform yourself into a Destroyer. This item has unlimited uses.
+  282 : 0x17119   Use to transform yourself into Queen Salma. This item has unlimited uses.
+  283 : 0x1711A   ...
+  284 : 0x1711B   Use to transform yourself into Mad King Thorn. This item has unlimited uses.
+  285 : 0x1711C   Use to transform yourself into Kuunavang. This item has unlimited uses.
+  286 : 0x1711D   ...
+  287 : 0x1711E   ...
+  288 : 0x171FA   Use to transform yourself into the Guild Lord. This item has unlimited uses.
+  289 : 0x171FB   ...
+  290 : 0x171FC   ...
+  291 : 0x171FD   Use to transform yourself into a Knight. This item has unlimited uses.
+  292 : 0x171FE   ...
+  293 : 0x171FF   ...
+  294 : 0x17200   Use to transform yourself into the Avatar of Balthazar. This item has unlimited uses.
+  295 : 0x17201   Use to transform yourself into a Priest of Balthazar. This item has unlimited uses.
+  296 : 0x17202   Use to transform yourself into the Ghostly Hero. This item has unlimited uses.
+  297 : 0x17203   Use to transform yourself into a Champion of Balthazar. This item has unlimited uses.
+  298 : 0x17204   ...
+  299 : 0x17205   Use to transform yourself into the Ghostly Priest. This item has unlimited uses.
+  300 : 0x17206   Use to transform yourself into a Flame Sentinel. This item has unlimited uses.
+  301 : 0x1722A   Awarded for GvG achievements. Use to open.
+  302 : 0x1722C   Awarded for achievements in Heroes' Ascent. Use to open.
+  303 : 0x1722E   Awarded for achievements in Random Arena. Use to open.
+  304 : 0x17230   Awarded for achievements in Codex Arena. Use to open.
+  305 : 0x1724A   Use while in town. Eating sweets may give you a Sugar Rush.<br><c=#FFFFFF>You must eat it.</c>
+  306 : 0x1724C   Use to drink. Excessive alcohol consumption will result in intoxication.<br><c=#FFFFFF>May or may not contain actual tea.</c>
+  307 : 0x1732D   Use while in town.<br><c=#FFFFFF>Get the party started!</c>
+  308 : 0x17B3C   <c=#FFFFFF>A voucher used by the Imperial Guard to obtain weapons and equipment from official suppliers. Exactly what is being requisitioned is hard to make out, but it must be valuable, right?</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  309 : 0x17F42   Use to remove 15% of all party member's Death Penalty. This item cannot be used in PvP.
+  310 : 0x17F44   Use to remove all Death Penalty from all party members. This item cannot be used in PvP.
+  311 : 0xD9D6    Use while in town. Eating sweets may give you a Sugar Rush.
+  312 : 0x17F47   Use to summon 3 Tengu allies of your level that last for 30 minutes or until slain in combat. This flare and other summoning objects can only be activated once every 10 minutes per character, and only one group of summoned allies from these items can be present in an instance at a time. This item can only be used in explorable areas.
+  313 : 0x17F49   Use to summon 3 Imperial Guard allies of your level that last for 30 minutes or until slain in combat. This reinforcement order and other summoning objects can only be activated once every 10 minutes per character, and only one group of summoned allies from these items can be present in an instance at a time. This item can only be used in explorable areas.
+  314 : 0x17F4B   Use to gain a 10% morale boost. This item cannot be used in PvP.
+  315 : 0x182E0   <c=#FFFFFF>Grants the bearer permission to keep pandas at their Imperially certified or Zaishen-administrated menagerie. -Imperial Zoological Warden</c>
+  316 : 0x182F3   Contains various items confiscated by the Imperial Guard. Use to open.
+  317 : 0x1846D   ...
+  318 : 0x184AC   Exchange for your choice of Dragon Festival mask.
+  319 : 0x184AE   Contains a random selection of festival items. (Bag cannot be worn as a hat.)
+  320 : 0x184B0   Exchange for your choice of Halloween accessory.
+  321 : 0x184B2   Contains a batch of spine-chilling tonics. (Bag cannot be worn as a hat.)
+  322 : 0x184B4   Exchange for your choice of Wintersday accessory. (Token cannot be traded or sold.)
+  323 : 0x184B6   Contains a random selection of festive items. (Bag cannot be worn as a hat.)
+  324 : 0x184B8   Exchange for your choice of celestial miniature. (Token cannot be traded or sold.)
+  325 : 0x184BA   Contains a random selection of festive items. (Bag cannot be deployed as a miniature.)
+  326 : 0x1851E   <c=#FFFFFF>A token found during the Wayfarer's Reverie. Trade it to collectors in town for a reward!</c>
+  327 : 0x18520   <c=#FFFFFF>A memento of your journey to some of Tyria's famous locations. Fylinn, Sworn To Winds in Embark Beach may be interested to see it.</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  328 : 0x18522   <c=#FFFFFF>A memento of your journey to some of Cantha's famous locations. Fylinn, Sworn To Winds in Embark Beach may be interested to see it.</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  329 : 0x18524   <c=#FFFFFF>A memento of your journey to some of Elona's famous locations. Fylinn, Sworn To Winds in Embark Beach may be interested to see it.</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  330 : 0x18526   <c=#FFFFFF>A memento of your journey to some of the Northern Shiverpeaks' famous locations. Fylinn, Sworn To Winds in Embark Beach may be interested to see it.</c><c=@SkillDull>This item cannot be traded or sold.</c>
+  331 : 0x18528   <c=#FFFFFF>A gift from Fylinn, Sworn to Winds.</c> <br>Use to open. <c=@SkillDull>This item cannot be traded or sold.</c>
+  332 : 0x185BF   Use to transform yourself into a random eerie form. This extra festive item can only be used in a town or outpost.
+  333 : 0x185C1   Use to transform yourself into a Minutely Mad King. This item cannot be used in PvP.
+  334 : 0x1864B   Happy birthday, hero! (This voucher good for a present from the Xunlai Gift-Giver in Lion's Arch, Shing Jea Monestary, Kamadan, pre-Searing Ascalon City, or the Great Temple of Balthazar.)
+  335 : 0x1864D   Contains a random miniature from the First Birthday series. Use to open.
+  336 : 0x1864F   Contains a random miniature from the Second Birthday series. Use to open.
+  337 : 0x18651   Contains a random miniature from the Third Birthday series. Use to open.
+  338 : 0x18653   Contains a random miniature from the Fourth Birthday series. Use to open.
+  339 : 0x18655   Contains a random miniature from the Fifth Birthday series. Use to open.
+  340 : 0x18657   Contains a random everlasting tonic from the Sixth Birthday series. Use to open.
+  341 : 0x18659   Contains a random miniature from the Seventh Birthday series. Use to open.
+  342 : 0x186F9   Use to transform yourself into a Charr Legionnaire. This item has unlimited uses and can only be used in a town or outpost.
+  343 : 0x186FB   Use to summon an ally from the mists that lasts for 30 minutes or until slain in combat. Summoning stones can only be activated once every 10 minutes per character, and only one summoned ally from a summoning stone can be present in an instance at a time. This item can only be used in explorable areas. This item costs 1 Skill Point to activate.
+  344 : 0x186FF   <c=#FFFFFF>"You've made an error by facing me. I shall excise you with the swiftest cuts." - Xunlai Archivist Argentum</c>
+  345 : 0x18757   <c=#FFFFFF>A memento of your triumph in missions. Give this to the Ancient Anniversary Weaponsmith in Embark Beach for a reward. Palora, Sworn to Earth in Embark Beach may be interested to see it as well.</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  346 : 0x18759   <c=#FFFFFF>A memento of your triumph in PvP. Give this to Zaishen Anniversary Collectors for a reward.</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  347 : 0x18769   Contains a random selection of party items, alcohol, or sweets. Use to open.
+  348 : 0x1876B   Contains a number of Zaishen Keys. Use to open.
+  349 : 0x1876D   Contains a large number of Flames of Balthazar. Use to open.
+  350 : 0x1875A   <c=#FFFFFF>Crafted in tribute to an enduring legend.</c>
+  351 : 0x1876F   Unlocks the Anniversary Storage at Xunlai Chests. Use to redeem.
+  352 : 0x18798   <c=#FFFFFF>Give this to Zaishen Weapon Masters in the Isle of the Nameless to receive Balthazar's weaponry.</c>
+  353 : 0x187A0   <c=@SkillDull>Hides off-hand items.</c>
+  354 : 0x1357A   <c=#FFFFFF>A record of your many deeds. Carrying this relic causes an extra boss to spawn in Perdition Rock, Raisu Palace, the Ruptured Heart, or Sacnoth Valley.</c> <c=@SkillDull>This item cannot be traded or sold.</c>
+  355 : 0x135A7   <c=@SkillDull>This item cannot be traded or sold.</c>
+  356 : 0x13962   Use to summon 2 Ascalonian guards that last for 60 minutes or until slain in combat. Summons can only be activated once every 10 minutes per character, and only one active summon can be present in an instance at a time. This item can only be used in explorable areas.
+  357 : 0x13964   Use to summon 2 Ascalonian guards that last for 60 minutes or until slain in combat. Summons can only be activated once every 10 minutes per character, and only one active summon can be present in an instance at a time. This item has unlimited uses and can only be used in explorable areas.
+  358 : 0x13AE4   Use to summon 2 Ascalonian guards that last for 60 minutes or until slain in combat. Summons can only be activated once every 10 minutes per character, and only one active summon can be present in an instance at a time. This item can only be used in explorable areas.
+  359 : 0x13AE6   Use to summon 2 Ascalonian guards that last for 60 minutes or until slain in combat. Summons can only be activated once every 10 minutes per character, and only one active summon can be present in an instance at a time. This item has unlimited uses and can only be used in explorable areas.

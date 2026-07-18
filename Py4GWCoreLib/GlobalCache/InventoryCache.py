@@ -602,7 +602,7 @@ class InventoryCache:
         
         MAX_STACK_SIZE = 250
         quantity = self.item_cache.Properties.GetQuantity(item_id)
-        is_stackable = self.item_cache.Customization.IsStackable(item_id)
+        is_stackable = self.item_cache.Properties.IsStackable(item_id)
 
         if quantity == 0:
             return False  # Nothing to move
@@ -611,7 +611,7 @@ class InventoryCache:
         is_dye = (model_id == ModelID.Vial_Of_Dye.value)
         dye1_to_match = None
         if is_dye:
-            dye_info = Item.Customization.GetDyeInfo(item_id)
+            dye_info = Item.Dye.GetInfo(item_id)
             dye1_to_match = dye_info.dye1.ToInt()
 
         storage_bags = GetStorageBags()
@@ -628,7 +628,7 @@ class InventoryCache:
                         continue
 
                     if is_dye:
-                        item_dye_info = self.item_cache.Customization.GetDyeInfo(self._item_id(item))
+                        item_dye_info = self.item_cache.Dye.GetInfo(self._item_id(item))
                         if item_dye_info.dye1.ToInt() != dye1_to_match:
                             continue
 
@@ -671,7 +671,7 @@ class InventoryCache:
         """
         MAX_STACK_SIZE = 250
         quantity = self.item_cache.Properties.GetQuantity(item_id)
-        is_stackable = self.item_cache.Customization.IsStackable(item_id)
+        is_stackable = self.item_cache.Properties.IsStackable(item_id)
 
         if quantity == 0:
             return False  # Nothing to move
@@ -689,7 +689,7 @@ class InventoryCache:
         is_dye = (model_id == ModelID.Vial_Of_Dye.value)
         dye1_to_match = None
         if is_dye:
-            dye_info = self.item_cache.Customization.GetDyeInfo(item_id)
+            dye_info = self.item_cache.Dye.GetInfo(item_id)
             dye1_to_match = dye_info.dye1.ToInt()
 
         # Fill every partial stack across all inventory bags before using empty slots.
@@ -706,7 +706,7 @@ class InventoryCache:
                         continue
 
                     if is_dye:
-                        item_dye_info = self.item_cache.Customization.GetDyeInfo(self._item_id(item))
+                        item_dye_info = self.item_cache.Dye.GetInfo(self._item_id(item))
                         if item_dye_info.dye1.ToInt() != dye1_to_match:
                             continue
 

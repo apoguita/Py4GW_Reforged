@@ -132,6 +132,20 @@
       "offset": "0x0",
       "section": "text"
     },
+    "const_item_pvp_unlock_def_assertion": {
+      "assertion_file": "\\Code\\Gw\\Const\\ConstItemPvp.cpp",
+      "assertion_message": "unlockIndex < ITEM_PVP_UNLOCK_COUNT",
+      "line_number": "0",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "item_cli_pvp_unlock_get_name_assertion": {
+      "assertion_file": "ItCliApi.cpp",
+      "assertion_message": "unlockIndex < ITEM_PVP_UNLOCK_COUNT",
+      "line_number": "0",
+      "offset": "0x0",
+      "section": "text"
+    },
     "near_call_opcode": {
       "pattern": "\\xE8",
       "mask": "x",
@@ -309,6 +323,18 @@
         { "name": "scan_anchor", "op": "scan", "pattern": "item_formulas_assertion", "out": "anchor" },
         { "name": "count_ref", "op": "add", "in": "anchor", "value": "-0xB", "out": "count_ref" },
         { "name": "read_count", "op": "read_u32", "in": "count_ref", "out": "final" }
+      ]
+    },
+    "const_item_pvp_get_unlock_def_func": {
+      "steps": [
+        { "name": "scan_anchor", "op": "scan", "pattern": "const_item_pvp_unlock_def_assertion", "out": "anchor" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "anchor", "out": "final" }
+      ]
+    },
+    "item_cli_pvp_unlock_get_name_func": {
+      "steps": [
+        { "name": "scan_anchor", "op": "scan", "pattern": "item_cli_pvp_unlock_get_name_assertion", "out": "anchor" },
+        { "name": "to_function_start", "op": "to_function_start", "in": "anchor", "out": "final" }
       ]
     }
   }

@@ -54,7 +54,7 @@ def StashItem(item_id: int) -> bool:
     stash = GLOBAL_CACHE.Inventory.GetZeroFilledStorageArray()
     model_id = GLOBAL_CACHE.Item.GetModelID(item_id)
 
-    if GLOBAL_CACHE.Item.Customization.IsStackable(item_id):
+    if GLOBAL_CACHE.Item.Properties.IsStackable(item_id):
         amount = GLOBAL_CACHE.Item.Properties.GetQuantity(
             item_id)
         color = utility.Util.get_color(item_id)

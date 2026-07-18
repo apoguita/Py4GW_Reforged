@@ -1,0 +1,1499 @@
+index,price,ingredient_count,ingredients
+0,150.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:15
+1,200.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:20
+2,250.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:25
+3,300.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:30
+4,350.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:35
+5,400.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:40
+6,450.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:45
+7,500.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:50
+8,600.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:60
+9,700.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:70
+10,800.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:80
+11,900.0,1,<c=#C78017>Copper Zaishen Coin[s]</c>:90
+12,100.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:1
+13,200.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:2
+14,300.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:3
+15,400.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:4
+16,500.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:5
+17,600.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:6
+18,700.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:7
+19,800.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:8
+20,900.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:9
+21,1000.0,1,<c=#B4C1DF>Silver Zaishen Coin[s]</c>:10
+22,1000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:1
+23,2000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:2
+24,3000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:3
+25,5000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:5
+26,10000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:10
+27,15000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:15
+28,50000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:50
+29,100000.0,1,<c=@ItemRare>Gold Zaishen Coin[s]</c>:100
+30,25.0,3,Bolt[s] of Cloth:10; Bolt[s] of Linen:1; Bolt[s] of Silk:1
+31,16.670000076293945,2,Tanned Hide Square[s]:5; Leather Square[s]:1
+32,3.0,1,Pile[s] of Glittering Dust:1
+33,22.0,3,Iron Ingot[s]:5; Steel Ingot[s]:1; Tanned Hide Square[s]:5
+34,15.0,2,Bolt[s] of Cloth:5; Pile[s] of Glittering Dust:5
+35,26.670000076293945,2,Iron Ingot[s]:5; Steel Ingot[s]:1
+36,3.0,1,Bolt[s] of Cloth:1
+37,3.0,1,Bolt[s] of Cloth:1
+38,6.0,1,Bolt[s] of Cloth:2
+39,9.0,1,Bolt[s] of Cloth:3
+40,12.0,1,Bolt[s] of Cloth:4
+41,24.0,1,Bolt[s] of Cloth:8
+42,27.0,1,Bolt[s] of Cloth:9
+43,33.0,1,Bolt[s] of Cloth:11
+44,812.5,4,Bolt[s] of Cloth:50; Lump[s] of Charcoal:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+45,806.25,4,Bolt[s] of Cloth:50; Bolt[s] of Damask:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+46,7.5,2,Bolt[s] of Cloth:4; Pile[s] of Glittering Dust:1
+47,10.5,2,Bolt[s] of Cloth:6; Pile[s] of Glittering Dust:1
+48,15.0,2,Bolt[s] of Cloth:8; Pile[s] of Glittering Dust:2
+49,18.0,2,Bolt[s] of Cloth:9; Pile[s] of Glittering Dust:3
+50,21.0,2,Bolt[s] of Cloth:11; Pile[s] of Glittering Dust:3
+51,43.5,2,Bolt[s] of Cloth:25; Pile[s] of Glittering Dust:4
+52,82.5,2,Bolt[s] of Cloth:50; Pile[s] of Glittering Dust:5
+53,791.25,4,Bolt[s] of Cloth:50; Pile[s] of Glittering Dust:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+54,7.5,2,Bolt[s] of Cloth:4; Feather[s]:1
+55,10.5,2,Bolt[s] of Cloth:6; Feather[s]:1
+56,15.0,2,Bolt[s] of Cloth:8; Feather[s]:2
+57,18.0,2,Bolt[s] of Cloth:9; Feather[s]:3
+58,21.0,2,Bolt[s] of Cloth:11; Feather[s]:3
+59,43.5,2,Bolt[s] of Cloth:25; Feather[s]:4
+60,82.5,2,Bolt[s] of Cloth:50; Feather[s]:5
+61,791.25,4,Bolt[s] of Cloth:50; Feather[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+62,7.5,2,Bolt[s] of Cloth:4; Granite Slab[s]:1
+63,10.5,2,Bolt[s] of Cloth:6; Granite Slab[s]:1
+64,15.0,2,Bolt[s] of Cloth:8; Granite Slab[s]:2
+65,18.0,2,Bolt[s] of Cloth:9; Granite Slab[s]:3
+66,21.0,2,Bolt[s] of Cloth:11; Granite Slab[s]:3
+67,43.5,2,Bolt[s] of Cloth:25; Granite Slab[s]:4
+68,82.5,2,Bolt[s] of Cloth:50; Granite Slab[s]:5
+69,791.25,4,Bolt[s] of Cloth:50; Granite Slab[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+70,7.5,2,Bolt[s] of Cloth:4; Tanned Hide Square[s]:1
+71,10.5,2,Bolt[s] of Cloth:6; Tanned Hide Square[s]:1
+72,15.0,2,Bolt[s] of Cloth:8; Tanned Hide Square[s]:2
+73,18.0,2,Bolt[s] of Cloth:9; Tanned Hide Square[s]:3
+74,21.0,2,Bolt[s] of Cloth:11; Tanned Hide Square[s]:3
+75,43.5,2,Bolt[s] of Cloth:25; Tanned Hide Square[s]:4
+76,82.5,2,Bolt[s] of Cloth:50; Tanned Hide Square[s]:5
+77,791.25,4,Bolt[s] of Cloth:50; Tanned Hide Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+78,800.0,4,Bolt[s] of Cloth:50; Vial[s] of Ink:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+79,16.0,2,Bolt[s] of Cloth:4; Leather Square[s]:1
+80,19.0,2,Bolt[s] of Cloth:6; Leather Square[s]:1
+81,32.0,2,Bolt[s] of Cloth:8; Leather Square[s]:2
+82,43.5,2,Bolt[s] of Cloth:9; Leather Square[s]:3
+83,46.5,2,Bolt[s] of Cloth:11; Leather Square[s]:3
+84,77.5,2,Bolt[s] of Cloth:25; Leather Square[s]:4
+85,125.0,2,Bolt[s] of Cloth:50; Elonian Leather Square[s]:5
+86,812.5,4,Bolt[s] of Cloth:50; Elonian Leather Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+87,13.5,2,Bolt[s] of Cloth:4; Bolt[s] of Linen:1
+88,16.5,2,Bolt[s] of Cloth:6; Bolt[s] of Linen:1
+89,27.0,2,Bolt[s] of Cloth:8; Bolt[s] of Linen:2
+90,36.0,2,Bolt[s] of Cloth:9; Bolt[s] of Linen:3
+91,39.0,2,Bolt[s] of Cloth:11; Bolt[s] of Linen:3
+92,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+93,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+94,806.25,4,Bolt[s] of Cloth:50; Bolt[s] of Damask:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+95,11.0,2,Bolt[s] of Cloth:4; Fur Square[s]:1
+96,14.0,2,Bolt[s] of Cloth:6; Fur Square[s]:1
+97,22.0,2,Bolt[s] of Cloth:8; Fur Square[s]:2
+98,28.5,2,Bolt[s] of Cloth:9; Fur Square[s]:3
+99,31.5,2,Bolt[s] of Cloth:11; Fur Square[s]:3
+100,57.5,2,Bolt[s] of Cloth:25; Fur Square[s]:4
+101,100.0,2,Bolt[s] of Cloth:50; Fur Square[s]:5
+102,800.0,4,Bolt[s] of Cloth:50; Fur Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+103,6.0,1,Bolt[s] of Cloth:2
+104,7.5,2,Bolt[s] of Cloth:4; Scale[s]:1
+105,10.5,2,Bolt[s] of Cloth:6; Scale[s]:1
+106,15.0,2,Bolt[s] of Cloth:8; Scale[s]:2
+107,18.0,2,Bolt[s] of Cloth:9; Scale[s]:3
+108,21.0,2,Bolt[s] of Cloth:11; Scale[s]:3
+109,43.5,2,Bolt[s] of Cloth:25; Scale[s]:4
+110,82.5,2,Bolt[s] of Cloth:50; Scale[s]:5
+111,791.25,4,Bolt[s] of Cloth:50; Scale[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+112,7.5,2,Bolt[s] of Cloth:4; Chitin Fragment[s]:1
+113,10.5,2,Bolt[s] of Cloth:6; Chitin Fragment[s]:1
+114,15.0,2,Bolt[s] of Cloth:8; Chitin Fragment[s]:2
+115,18.0,2,Bolt[s] of Cloth:9; Chitin Fragment[s]:3
+116,21.0,2,Bolt[s] of Cloth:11; Chitin Fragment[s]:3
+117,43.5,2,Bolt[s] of Cloth:25; Chitin Fragment[s]:4
+118,82.5,2,Bolt[s] of Cloth:50; Chitin Fragment[s]:5
+119,791.25,4,Bolt[s] of Cloth:50; Chitin Fragment[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+120,21.0,2,Bolt[s] of Cloth:4; Steel Ingot[s]:1
+121,24.0,2,Bolt[s] of Cloth:6; Steel Ingot[s]:1
+122,42.0,2,Bolt[s] of Cloth:8; Steel Ingot[s]:2
+123,58.5,2,Bolt[s] of Cloth:9; Steel Ingot[s]:3
+124,61.5,2,Bolt[s] of Cloth:11; Steel Ingot[s]:3
+125,97.5,2,Bolt[s] of Cloth:25; Steel Ingot[s]:4
+126,150.0,2,Bolt[s] of Cloth:50; Deldrimor Steel Ingot[s]:5
+127,825.0,4,Bolt[s] of Cloth:50; Deldrimor Steel Ingot[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+128,13.5,2,Bolt[s] of Cloth:4; Bolt[s] of Silk:1
+129,16.5,2,Bolt[s] of Cloth:6; Bolt[s] of Silk:1
+130,27.0,2,Bolt[s] of Cloth:8; Bolt[s] of Silk:2
+131,36.0,2,Bolt[s] of Cloth:9; Bolt[s] of Silk:3
+132,39.0,2,Bolt[s] of Cloth:11; Bolt[s] of Silk:3
+133,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+134,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+135,806.25,4,Bolt[s] of Cloth:50; Bolt[s] of Silk:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+136,812.5,4,Bolt[s] of Cloth:50; Spiritwood Plank[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+137,800.0,4,Bolt[s] of Cloth:50; Roll[s] of Vellum:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+138,3.0,1,Pile[s] of Glittering Dust:1
+139,3.0,1,Pile[s] of Glittering Dust:1
+140,3.0,1,Pile[s] of Glittering Dust:1
+141,6.0,1,Pile[s] of Glittering Dust:2
+142,9.0,1,Pile[s] of Glittering Dust:3
+143,12.0,1,Pile[s] of Glittering Dust:4
+144,24.0,1,Pile[s] of Glittering Dust:8
+145,27.0,1,Pile[s] of Glittering Dust:9
+146,33.0,1,Pile[s] of Glittering Dust:11
+147,7.5,2,Pile[s] of Glittering Dust:4; Granite Slab[s]:1
+148,10.5,2,Pile[s] of Glittering Dust:6; Granite Slab[s]:1
+149,15.0,2,Pile[s] of Glittering Dust:8; Granite Slab[s]:2
+150,18.0,2,Pile[s] of Glittering Dust:9; Granite Slab[s]:3
+151,21.0,2,Pile[s] of Glittering Dust:11; Granite Slab[s]:3
+152,43.5,2,Pile[s] of Glittering Dust:25; Granite Slab[s]:4
+153,82.5,2,Pile[s] of Glittering Dust:50; Granite Slab[s]:5
+154,791.25,4,Pile[s] of Glittering Dust:50; Granite Slab[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+155,16.0,2,Pile[s] of Glittering Dust:4; Iron Ingot[s]:4
+156,24.0,2,Pile[s] of Glittering Dust:6; Iron Ingot[s]:6
+157,32.0,2,Pile[s] of Glittering Dust:8; Iron Ingot[s]:8
+158,36.0,2,Pile[s] of Glittering Dust:9; Iron Ingot[s]:9
+159,44.0,2,Pile[s] of Glittering Dust:11; Iron Ingot[s]:11
+160,100.0,2,Pile[s] of Glittering Dust:25; Iron Ingot[s]:25
+161,200.0,2,Pile[s] of Glittering Dust:50; Iron Ingot[s]:50
+162,850.0,4,Pile[s] of Glittering Dust:50; Iron Ingot[s]:50; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+163,40.0,1,Wood Plank[s]:10
+164,3.0,2,Brick[s] of Mud:1; Pile[s] of Glittering Dust:1
+165,15.0,1,Plant Fiber[s]:5
+166,15.0,2,Plant Fiber[s]:5; Pile[s] of Glittering Dust:5
+167,30.0,2,Pile[s] of Glittering Dust:10; Bolt[s] of Cloth:10
+168,15.0,1,Pile[s] of Glittering Dust:5
+169,15.0,1,Tanned Hide Square[s]:5
+170,15.0,2,Tanned Hide Square[s]:5; Pile[s] of Glittering Dust:5
+171,16.0,2,Plant Fiber[s]:4; Tempered Glass Vial[s]:1
+172,45.0,2,Iron Ingot[s]:10; Lump[s] of Charcoal:1
+173,31.360000610351562,3,Iron Ingot[s]:10; Lump[s] of Charcoal:1; Pile[s] of Glittering Dust:5
+174,20.0,1,Wood Plank[s]:5
+175,17.5,2,Wood Plank[s]:5; Pile[s] of Glittering Dust:5
+176,25.0,2,Wood Plank[s]:5; Pile[s] of Glittering Dust:10
+177,12.0,1,Bone[s]:4
+178,27.079999923706055,3,Bone[s]:4; Iron Ingot[s]:1; Monstrous Claw[s]:1
+179,7.5,2,Pile[s] of Glittering Dust:4; Granite Slab[s]:1
+180,3.0,1,Pile[s] of Glittering Dust:1
+181,9.0,2,Pile[s] of Glittering Dust:5; Granite Slab[s]:1
+182,37.5,2,Pile[s] of Glittering Dust:20; Granite Slab[s]:5
+183,75.0,2,Pile[s] of Glittering Dust:40; Granite Slab[s]:10
+184,150.0,2,Pile[s] of Glittering Dust:75; Granite Slab[s]:25
+185,300.0,2,Pile[s] of Glittering Dust:150; Granite Slab[s]:50
+186,22.0,2,Iron Ingot[s]:4; Steel Ingot[s]:1
+187,5.0,1,Iron Ingot[s]:1
+188,25.0,1,Iron Ingot[s]:5
+189,46.0,2,Iron Ingot[s]:10; Steel Ingot[s]:1
+190,66.0,2,Iron Ingot[s]:15; Steel Ingot[s]:1
+191,104.0,2,Iron Ingot[s]:20; Steel Ingot[s]:4
+192,196.0,2,Iron Ingot[s]:40; Steel Ingot[s]:6
+193,300.0,2,Tanned Hide Square[s]:150; Pile[s] of Glittering Dust:50
+194,22.0,2,Roll[s] of Parchment:4; Wood Plank[s]:1
+195,10.0,1,Roll[s] of Parchment:1
+196,12.0,2,Roll[s] of Parchment:2; Wood Plank[s]:1
+197,19.0,2,Roll[s] of Parchment:3; Wood Plank[s]:2
+198,25.0,2,Roll[s] of Parchment:3; Wood Plank[s]:5
+199,55.0,2,Roll[s] of Parchment:5; Wood Plank[s]:15
+200,110.0,2,Roll[s] of Parchment:10; Wood Plank[s]:30
+201,7.5,2,Granite Slab[s]:4; Chitin Fragment[s]:1
+202,3.0,1,Granite Slab[s]:1
+203,9.0,2,Granite Slab[s]:5; Chitin Fragment[s]:1
+204,37.5,2,Granite Slab[s]:20; Chitin Fragment[s]:5
+205,75.0,2,Granite Slab[s]:40; Chitin Fragment[s]:10
+206,150.0,2,Granite Slab[s]:75; Chitin Fragment[s]:25
+207,300.0,2,Granite Slab[s]:150; Chitin Fragment[s]:50
+208,9.5,2,Wood Plank[s]:4; Tanned Hide Square[s]:1
+209,4.0,1,Wood Plank[s]:1
+210,11.5,2,Wood Plank[s]:5; Tanned Hide Square[s]:1
+211,27.5,2,Wood Plank[s]:10; Tanned Hide Square[s]:5
+212,65.0,2,Wood Plank[s]:25; Tanned Hide Square[s]:10
+213,122.5,2,Wood Plank[s]:50; Tanned Hide Square[s]:15
+214,245.0,2,Wood Plank[s]:100; Tanned Hide Square[s]:30
+215,16.0,1,Wood Plank[s]:4
+216,3.0,1,Bone[s]:1
+217,9.0,2,Bone[s]:5; Scale[s]:1
+218,30.0,2,Bone[s]:15; Scale[s]:5
+219,75.0,2,Bone[s]:40; Scale[s]:10
+220,135.0,2,Bone[s]:75; Scale[s]:15
+221,270.0,2,Bone[s]:150; Scale[s]:30
+222,23.329999923706055,2,Iron Ingot[s]:4; Steel Ingot[s]:1
+223,25.0,1,Iron Ingot[s]:5
+224,30.0,2,Iron Ingot[s]:6; Steel Ingot[s]:1
+225,50.0,2,Iron Ingot[s]:9; Steel Ingot[s]:2
+226,163.3300018310547,2,Iron Ingot[s]:40; Steel Ingot[s]:3
+227,20.670000076293945,2,Wood Plank[s]:4; Steel Ingot[s]:1
+228,3.0,1,Tanned Hide Square[s]:1
+229,3.0,1,Tanned Hide Square[s]:1
+230,6.0,1,Tanned Hide Square[s]:2
+231,9.0,1,Tanned Hide Square[s]:3
+232,12.0,1,Tanned Hide Square[s]:4
+233,24.0,1,Tanned Hide Square[s]:8
+234,27.0,1,Tanned Hide Square[s]:9
+235,33.0,1,Tanned Hide Square[s]:11
+236,12.0,2,Tanned Hide Square[s]:4; Bone[s]:4
+237,15.0,2,Tanned Hide Square[s]:6; Bone[s]:4
+238,24.0,2,Tanned Hide Square[s]:8; Bone[s]:8
+239,27.0,2,Tanned Hide Square[s]:9; Bone[s]:9
+240,33.0,2,Tanned Hide Square[s]:11; Bone[s]:11
+241,75.0,2,Tanned Hide Square[s]:25; Bone[s]:25
+242,150.0,2,Tanned Hide Square[s]:50; Bone[s]:50
+243,825.0,4,Tanned Hide Square[s]:50; Bone[s]:50; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+244,812.5,4,Tanned Hide Square[s]:50; Lump[s] of Charcoal:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+245,1037.5,4,Tanned Hide Square[s]:50; Monstrous Claw[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+246,6.0,2,Tanned Hide Square[s]:2; Bolt[s] of Cloth:2
+247,12.0,2,Tanned Hide Square[s]:4; Bolt[s] of Cloth:4
+248,15.0,2,Tanned Hide Square[s]:6; Bolt[s] of Cloth:4
+249,24.0,2,Tanned Hide Square[s]:8; Bolt[s] of Cloth:8
+250,27.0,2,Tanned Hide Square[s]:9; Bolt[s] of Cloth:9
+251,33.0,2,Tanned Hide Square[s]:11; Bolt[s] of Cloth:11
+252,75.0,2,Tanned Hide Square[s]:25; Bolt[s] of Cloth:25
+253,150.0,2,Tanned Hide Square[s]:50; Bolt[s] of Cloth:50
+254,825.0,4,Tanned Hide Square[s]:50; Bolt[s] of Cloth:50; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+255,806.25,4,Tanned Hide Square[s]:50; Bolt[s] of Damask:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+256,912.5,4,Tanned Hide Square[s]:50; Monstrous Eye[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+257,7.5,2,Tanned Hide Square[s]:4; Granite Slab[s]:1
+258,10.5,2,Tanned Hide Square[s]:6; Granite Slab[s]:1
+259,15.0,2,Tanned Hide Square[s]:8; Granite Slab[s]:2
+260,18.0,2,Tanned Hide Square[s]:9; Granite Slab[s]:3
+261,21.0,2,Tanned Hide Square[s]:11; Granite Slab[s]:3
+262,43.5,2,Tanned Hide Square[s]:25; Granite Slab[s]:4
+263,82.5,2,Tanned Hide Square[s]:50; Granite Slab[s]:5
+264,791.25,4,Tanned Hide Square[s]:50; Granite Slab[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+265,6.0,1,Tanned Hide Square[s]:2
+266,16.0,2,Tanned Hide Square[s]:4; Leather Square[s]:1
+267,19.0,2,Tanned Hide Square[s]:6; Leather Square[s]:1
+268,32.0,2,Tanned Hide Square[s]:8; Leather Square[s]:2
+269,43.5,2,Tanned Hide Square[s]:9; Leather Square[s]:3
+270,46.5,2,Tanned Hide Square[s]:11; Leather Square[s]:3
+271,77.5,2,Tanned Hide Square[s]:25; Leather Square[s]:4
+272,125.0,2,Tanned Hide Square[s]:50; Elonian Leather Square[s]:5
+273,812.5,4,Tanned Hide Square[s]:50; Elonian Leather Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+274,11.0,2,Tanned Hide Square[s]:4; Fur Square[s]:1
+275,14.0,2,Tanned Hide Square[s]:6; Fur Square[s]:1
+276,22.0,2,Tanned Hide Square[s]:8; Fur Square[s]:2
+277,28.5,2,Tanned Hide Square[s]:9; Fur Square[s]:3
+278,31.5,2,Tanned Hide Square[s]:11; Fur Square[s]:3
+279,57.5,2,Tanned Hide Square[s]:25; Fur Square[s]:4
+280,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+281,800.0,4,Tanned Hide Square[s]:50; Fur Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+282,6.0,1,Tanned Hide Square[s]:2
+283,7.5,2,Tanned Hide Square[s]:4; Scale[s]:1
+284,10.5,2,Tanned Hide Square[s]:6; Scale[s]:1
+285,15.0,2,Tanned Hide Square[s]:8; Scale[s]:2
+286,18.0,2,Tanned Hide Square[s]:9; Scale[s]:3
+287,21.0,2,Tanned Hide Square[s]:11; Scale[s]:3
+288,43.5,2,Tanned Hide Square[s]:25; Scale[s]:4
+289,82.5,2,Tanned Hide Square[s]:50; Scale[s]:5
+290,791.25,4,Tanned Hide Square[s]:50; Scale[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+291,7.5,2,Tanned Hide Square[s]:4; Chitin Fragment[s]:1
+292,10.5,2,Tanned Hide Square[s]:6; Chitin Fragment[s]:1
+293,15.0,2,Tanned Hide Square[s]:8; Chitin Fragment[s]:2
+294,18.0,2,Tanned Hide Square[s]:9; Chitin Fragment[s]:3
+295,21.0,2,Tanned Hide Square[s]:11; Chitin Fragment[s]:3
+296,43.5,2,Tanned Hide Square[s]:25; Chitin Fragment[s]:4
+297,82.5,2,Tanned Hide Square[s]:50; Chitin Fragment[s]:5
+298,791.25,4,Tanned Hide Square[s]:50; Chitin Fragment[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+299,812.5,4,Tanned Hide Square[s]:50; Spiritwood Plank[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+300,21.0,2,Tanned Hide Square[s]:4; Steel Ingot[s]:1
+301,24.0,2,Tanned Hide Square[s]:6; Steel Ingot[s]:1
+302,42.0,2,Tanned Hide Square[s]:8; Steel Ingot[s]:2
+303,58.5,2,Tanned Hide Square[s]:9; Steel Ingot[s]:3
+304,61.5,2,Tanned Hide Square[s]:11; Steel Ingot[s]:3
+305,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+306,150.0,2,Tanned Hide Square[s]:50; Deldrimor Steel Ingot[s]:5
+307,825.0,4,Tanned Hide Square[s]:50; Deldrimor Steel Ingot[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+308,7.5,2,Tanned Hide Square[s]:4; Granite Slab[s]:1
+309,10.5,2,Tanned Hide Square[s]:6; Granite Slab[s]:1
+310,15.0,2,Tanned Hide Square[s]:8; Granite Slab[s]:2
+311,18.0,2,Tanned Hide Square[s]:9; Granite Slab[s]:3
+312,21.0,2,Tanned Hide Square[s]:11; Granite Slab[s]:3
+313,43.5,2,Tanned Hide Square[s]:25; Granite Slab[s]:4
+314,82.5,2,Tanned Hide Square[s]:50; Granite Slab[s]:5
+315,791.25,4,Tanned Hide Square[s]:50; Granite Slab[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+316,7.5,2,Tanned Hide Square[s]:4; Scale[s]:1
+317,10.5,2,Tanned Hide Square[s]:6; Scale[s]:1
+318,15.0,2,Tanned Hide Square[s]:8; Scale[s]:2
+319,18.0,2,Tanned Hide Square[s]:9; Scale[s]:3
+320,21.0,2,Tanned Hide Square[s]:11; Scale[s]:3
+321,43.5,2,Tanned Hide Square[s]:25; Scale[s]:4
+322,82.5,2,Tanned Hide Square[s]:50; Scale[s]:5
+323,791.25,4,Tanned Hide Square[s]:50; Scale[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+324,7.0,2,Tanned Hide Square[s]:2; Wood Plank[s]:2
+325,14.0,2,Tanned Hide Square[s]:4; Wood Plank[s]:4
+326,17.0,2,Tanned Hide Square[s]:6; Wood Plank[s]:4
+327,28.0,2,Tanned Hide Square[s]:8; Wood Plank[s]:8
+328,31.5,2,Tanned Hide Square[s]:9; Wood Plank[s]:9
+329,38.5,2,Tanned Hide Square[s]:11; Wood Plank[s]:11
+330,87.5,2,Tanned Hide Square[s]:25; Wood Plank[s]:25
+331,175.0,2,Tanned Hide Square[s]:50; Wood Plank[s]:50
+332,837.5,4,Tanned Hide Square[s]:50; Wood Plank[s]:50; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+333,5.0,1,Iron Ingot[s]:1
+334,5.0,1,Iron Ingot[s]:1
+335,10.0,1,Iron Ingot[s]:2
+336,15.0,1,Iron Ingot[s]:3
+337,20.0,1,Iron Ingot[s]:4
+338,40.0,1,Iron Ingot[s]:8
+339,45.0,1,Iron Ingot[s]:9
+340,55.0,1,Iron Ingot[s]:11
+341,11.5,2,Iron Ingot[s]:4; Granite Slab[s]:1
+342,16.5,2,Iron Ingot[s]:6; Granite Slab[s]:1
+343,23.0,2,Iron Ingot[s]:8; Granite Slab[s]:2
+344,27.0,2,Iron Ingot[s]:9; Granite Slab[s]:3
+345,32.0,2,Iron Ingot[s]:11; Granite Slab[s]:3
+346,68.5,2,Iron Ingot[s]:25; Granite Slab[s]:4
+347,132.5,2,Iron Ingot[s]:50; Granite Slab[s]:5
+348,816.25,4,Iron Ingot[s]:50; Granite Slab[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+349,16.0,2,Iron Ingot[s]:4; Tanned Hide Square[s]:4
+350,24.0,2,Iron Ingot[s]:6; Tanned Hide Square[s]:6
+351,32.0,2,Iron Ingot[s]:8; Tanned Hide Square[s]:8
+352,36.0,2,Iron Ingot[s]:9; Tanned Hide Square[s]:9
+353,44.0,2,Iron Ingot[s]:11; Tanned Hide Square[s]:11
+354,86.5,2,Iron Ingot[s]:25; Tanned Hide Square[s]:16
+355,149.0,2,Iron Ingot[s]:50; Tanned Hide Square[s]:16
+356,824.5,4,Iron Ingot[s]:50; Tanned Hide Square[s]:16; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+357,20.0,2,Iron Ingot[s]:4; Leather Square[s]:1
+358,25.0,2,Iron Ingot[s]:6; Leather Square[s]:1
+359,40.0,2,Iron Ingot[s]:8; Leather Square[s]:2
+360,52.5,2,Iron Ingot[s]:9; Leather Square[s]:3
+361,57.5,2,Iron Ingot[s]:11; Leather Square[s]:3
+362,102.5,2,Iron Ingot[s]:25; Leather Square[s]:4
+363,175.0,2,Iron Ingot[s]:50; Elonian Leather Square[s]:5
+364,837.5,4,Iron Ingot[s]:50; Elonian Leather Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+365,15.0,2,Iron Ingot[s]:4; Fur Square[s]:1
+366,20.0,2,Iron Ingot[s]:6; Fur Square[s]:1
+367,30.0,2,Iron Ingot[s]:8; Fur Square[s]:2
+368,37.5,2,Iron Ingot[s]:9; Fur Square[s]:3
+369,42.5,2,Iron Ingot[s]:11; Fur Square[s]:3
+370,82.5,2,Iron Ingot[s]:25; Fur Square[s]:4
+371,150.0,2,Iron Ingot[s]:50; Fur Square[s]:5
+372,825.0,4,Iron Ingot[s]:50; Fur Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+373,10.0,1,Iron Ingot[s]:2
+374,11.5,2,Iron Ingot[s]:4; Scale[s]:1
+375,16.5,2,Iron Ingot[s]:6; Scale[s]:1
+376,23.0,2,Iron Ingot[s]:8; Scale[s]:2
+377,27.0,2,Iron Ingot[s]:9; Scale[s]:3
+378,32.0,2,Iron Ingot[s]:11; Scale[s]:3
+379,68.5,2,Iron Ingot[s]:25; Scale[s]:4
+380,132.5,2,Iron Ingot[s]:50; Scale[s]:5
+381,816.25,4,Iron Ingot[s]:50; Scale[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+382,17.5,2,Iron Ingot[s]:4; Bolt[s] of Silk:1
+383,22.5,2,Iron Ingot[s]:6; Bolt[s] of Silk:1
+384,35.0,2,Iron Ingot[s]:8; Bolt[s] of Silk:2
+385,45.0,2,Iron Ingot[s]:9; Bolt[s] of Silk:3
+386,50.0,2,Iron Ingot[s]:11; Bolt[s] of Silk:3
+387,92.5,2,Iron Ingot[s]:25; Bolt[s] of Silk:4
+388,162.5,2,Iron Ingot[s]:50; Bolt[s] of Silk:5
+389,831.25,4,Iron Ingot[s]:50; Bolt[s] of Silk:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+390,25.0,2,Iron Ingot[s]:4; Steel Ingot[s]:1
+391,30.0,2,Iron Ingot[s]:6; Steel Ingot[s]:1
+392,50.0,2,Iron Ingot[s]:8; Steel Ingot[s]:2
+393,67.5,2,Iron Ingot[s]:9; Steel Ingot[s]:3
+394,72.5,2,Iron Ingot[s]:11; Steel Ingot[s]:3
+395,122.5,2,Iron Ingot[s]:25; Steel Ingot[s]:4
+396,200.0,2,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5
+397,850.0,4,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+398,3.0,2,Bone[s]:1; Tanned Hide Square[s]:1
+399,3.0,2,Bolt[s] of Cloth:1; Bone[s]:1
+400,13.90999984741211,2,Pile[s] of Glittering Dust:1; Bolt[s] of Silk:1
+401,3.0,2,Tanned Hide Square[s]:1; Bone[s]:1
+402,8.670000076293945,2,Tanned Hide Square[s]:1; Leather Square[s]:1
+403,5.329999923706055,2,Tanned Hide Square[s]:1; Fur Square[s]:1
+404,3.0,4,Bone[s]:1; Tanned Hide Square[s]:1; Bolt[s] of Cloth:1; Scale[s]:1
+405,10.0,1,Roll[s] of Parchment:1
+406,20.0,1,Roll[s] of Parchment:2
+407,40.0,1,Roll[s] of Parchment:4
+408,31.5,2,Roll[s] of Parchment:6; Feather[s]:1
+409,43.0,2,Roll[s] of Parchment:8; Feather[s]:2
+410,49.5,2,Roll[s] of Parchment:9; Feather[s]:3
+411,59.5,2,Roll[s] of Parchment:11; Feather[s]:3
+412,131.0,2,Roll[s] of Parchment:25; Feather[s]:4
+413,257.5,2,Roll[s] of Vellum:50; Feather[s]:5
+414,878.75,4,Roll[s] of Vellum:50; Feather[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+415,3.0,2,Tanned Hide Square[s]:1; Bone[s]:1
+416,5.309999942779541,4,Feather[s]:1; Bone[s]:1; Monstrous Claw[s]:1; Monstrous Eye[s]:1
+417,3.0,1,Bone[s]:1
+418,3.0,1,Pile[s] of Glittering Dust:1
+419,3.0,1,Pile[s] of Glittering Dust:1
+420,11.84000015258789,4,"Scale[s]:1; Lump[s] of Charcoal:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+421,12.380000114440918,2,Chitin Fragment[s]:1; Monstrous Claw[s]:1
+422,3.9700000286102295,3,Plant Fiber[s]:1; Wood Plank[s]:1; Monstrous Eye[s]:1
+423,13.890000343322754,4,Scale[s]:1; Bone[s]:1; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+424,25.979999542236328,4,"Pile[s] of Glittering Dust:1; Glob[s] of Ectoplasm:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+425,8.930000305175781,4,"Granite Slab[s]:1; Lump[s] of Charcoal:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+426,7.800000190734863,3,Granite Slab[s]:1; Scale[s]:1; Monstrous Claw[s]:1
+427,3.0,2,Bone[s]:1; Pile[s] of Glittering Dust:1
+428,9.050000190734863,3,Iron Ingot[s]:1; Granite Slab[s]:4; Lump[s] of Charcoal:1
+429,25.979999542236328,4,"Pile[s] of Glittering Dust:1; Obsidian Shard[s]:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+430,52.5,3,Bone[s]:20; Bolt[s] of Damask:1; Feather[s]:5
+431,10.449999809265137,2,Roll[s] of Parchment:1; Feather[s]:5
+432,52.08000183105469,3,Granite Slab[s]:20; Roll[s] of Vellum:1; Feather[s]:5
+433,19.170000076293945,3,Spiritwood Plank[s]:1; Bolt[s] of Silk:1; Feather[s]:5
+434,3.0,2,Tanned Hide Square[s]:1; Bone[s]:1
+435,3.0,1,Bone[s]:1
+436,5.829999923706055,2,Granite Slab[s]:1; Lump[s] of Charcoal:1
+437,3.0,1,Bolt[s] of Cloth:1
+438,3.0,1,Pile[s] of Glittering Dust:1
+439,4.400000095367432,2,Pile[s] of Glittering Dust:1; Fur Square[s]:1
+440,3.0,1,Feather[s]:1
+441,3.0,1,Pile[s] of Glittering Dust:1
+442,3.0,1,Bone[s]:1
+443,3.0,1,Chitin Fragment[s]:1
+444,4.550000190734863,2,Tanned Hide Square[s]:1; Leather Square[s]:1
+445,5.0,1,Iron Ingot[s]:1
+446,10.0,1,Roll[s] of Parchment:1
+447,3.0,1,Plant Fiber[s]:1
+448,3.0,1,Scale[s]:1
+449,3.0,1,Granite Slab[s]:1
+450,4.0,1,Wood Plank[s]:1
+451,16.0,3,Iron Ingot[s]:2; Wood Plank[s]:2; Steel Ingot[s]:1
+452,7.0,2,Granite Slab[s]:2; Wood Plank[s]:2
+453,16.0,1,Wood Plank[s]:4
+454,7.0,2,Wood Plank[s]:2; Bone[s]:2
+455,16.329999923706055,3,Iron Ingot[s]:2; Wood Plank[s]:2; Steel Ingot[s]:1
+456,14.329999923706055,3,Granite Slab[s]:2; Wood Plank[s]:2; Steel Ingot[s]:1
+457,22.079999923706055,3,Wood Plank[s]:4; Iron Ingot[s]:1; Monstrous Eye[s]:1
+458,21.920000076293945,3,Wood Plank[s]:4; Pile[s] of Glittering Dust:1; Monstrous Eye[s]:1
+459,27.079999923706055,3,Bone[s]:4; Iron Ingot[s]:1; Monstrous Claw[s]:1
+460,16.0,1,Wood Plank[s]:4
+461,11.5,2,Iron Ingot[s]:4; Granite Slab[s]:1
+462,25.25,3,Iron Ingot[s]:4; Monstrous Fang[s]:1; Scale[s]:1
+463,15.369999885559082,3,Wood Plank[s]:4; Feather[s]:1; Sapphire[s]:1
+464,7.5,2,Granite Slab[s]:4; Pile[s] of Glittering Dust:1
+465,18.450000762939453,2,Iron Ingot[s]:4; Scale[s]:1
+466,9.5,2,Wood Plank[s]:4; Chitin Fragment[s]:1
+467,23.329999923706055,2,Iron Ingot[s]:4; Steel Ingot[s]:1
+468,15.369999885559082,3,Wood Plank[s]:4; Feather[s]:1; Sapphire[s]:1
+469,3.0,1,Bone[s]:1
+470,20.0,1,Iron Ingot[s]:4
+471,27.079999923706055,3,Bone[s]:4; Iron Ingot[s]:1; Monstrous Claw[s]:1
+472,16.0,1,Wood Plank[s]:4
+473,22.079999923706055,3,Wood Plank[s]:4; Iron Ingot[s]:1; Monstrous Eye[s]:1
+474,7.5,2,Granite Slab[s]:4; Pile[s] of Glittering Dust:1
+475,18.450000762939453,2,Iron Ingot[s]:4; Scale[s]:1
+476,21.920000076293945,3,Wood Plank[s]:4; Pile[s] of Glittering Dust:1; Monstrous Eye[s]:1
+477,17.329999923706055,2,Wood Plank[s]:4; Leather Square[s]:1
+478,18.0,2,Bone[s]:4; Steel Ingot[s]:1
+479,11.5,2,Iron Ingot[s]:4; Granite Slab[s]:1
+480,23.329999923706055,2,Iron Ingot[s]:4; Steel Ingot[s]:1
+481,9.5,2,Wood Plank[s]:4; Chitin Fragment[s]:1
+482,16.0,1,Wood Plank[s]:4
+483,300.0,2,Deldrimor Steel Ingot[s]:10; Steel Ingot[s]:10
+484,300.0,2,Deldrimor Steel Ingot[s]:10; Steel Ingot[s]:10
+485,23.329999923706055,2,Iron Ingot[s]:4; Steel Ingot[s]:1
+486,18.0,2,Granite Slab[s]:4; Steel Ingot[s]:1
+487,18.0,2,Pile[s] of Glittering Dust:4; Steel Ingot[s]:1
+488,16.030000686645508,2,Iron Ingot[s]:4; Wood Plank[s]:1
+489,32.060001373291016,2,Iron Ingot[s]:8; Wood Plank[s]:2
+490,38.900001525878906,3,Iron Ingot[s]:10; Wood Plank[s]:3; Steel Ingot[s]:1
+491,46.060001373291016,3,Iron Ingot[s]:12; Wood Plank[s]:4; Steel Ingot[s]:1
+492,81.70999908447266,3,Iron Ingot[s]:20; Wood Plank[s]:5; Steel Ingot[s]:3
+493,190.32000732421875,3,Iron Ingot[s]:50; Wood Plank[s]:10; Steel Ingot[s]:5
+494,190.32000732421875,3,Iron Ingot[s]:50; Wood Plank[s]:10; Steel Ingot[s]:5
+495,190.32000732421875,3,Iron Ingot[s]:50; Wood Plank[s]:10; Steel Ingot[s]:5
+496,20.0,1,Wood Plank[s]:5
+497,40.0,1,Wood Plank[s]:10
+498,45.0,2,Wood Plank[s]:15; Feather[s]:5
+499,76.66999816894531,2,Wood Plank[s]:25; Feather[s]:10
+500,158.3300018310547,2,Wood Plank[s]:50; Feather[s]:25
+501,316.6700134277344,2,Wood Plank[s]:100; Feather[s]:50
+502,316.6700134277344,2,Wood Plank[s]:100; Feather[s]:50
+503,316.6700134277344,2,Wood Plank[s]:100; Feather[s]:50
+504,316.6700134277344,2,Wood Plank[s]:100; Plant Fiber[s]:50
+505,316.6700134277344,2,Wood Plank[s]:100; Plant Fiber[s]:50
+506,316.6700134277344,2,Wood Plank[s]:100; Plant Fiber[s]:50
+507,13.260000228881836,2,Iron Ingot[s]:3; Wood Plank[s]:2
+508,26.530000686645508,2,Iron Ingot[s]:6; Wood Plank[s]:4
+509,38.2400016784668,3,Iron Ingot[s]:9; Wood Plank[s]:6; Steel Ingot[s]:1
+510,49.40999984741211,3,Iron Ingot[s]:12; Wood Plank[s]:8; Steel Ingot[s]:1
+511,70.05999755859375,3,Iron Ingot[s]:15; Wood Plank[s]:10; Steel Ingot[s]:3
+512,139.55999755859375,3,Iron Ingot[s]:30; Wood Plank[s]:25; Steel Ingot[s]:5
+513,139.55999755859375,3,Iron Ingot[s]:30; Wood Plank[s]:25; Steel Ingot[s]:5
+514,139.55999755859375,3,Iron Ingot[s]:30; Wood Plank[s]:25; Steel Ingot[s]:5
+515,14.819999694824219,2,Wood Plank[s]:4; Pile[s] of Glittering Dust:1
+516,9.09000015258789,2,Chitin Fragment[s]:3; Iron Ingot[s]:2
+517,20.0,1,Wood Plank[s]:5
+518,11.449999809265137,2,Wood Plank[s]:3; Pile[s] of Glittering Dust:2
+519,11.449999809265137,2,Bone[s]:4; Pile[s] of Glittering Dust:2
+520,8.640000343322754,2,Pile[s] of Glittering Dust:3; Iron Ingot[s]:1
+521,9.0,2,Iron Ingot[s]:3; Pile[s] of Glittering Dust:1
+522,20.0,1,Iron Ingot[s]:4
+523,10.5,2,Iron Ingot[s]:3; Pile[s] of Glittering Dust:2
+524,11.449999809265137,2,Wood Plank[s]:3; Pile[s] of Glittering Dust:2
+525,9.5,2,Wood Plank[s]:4; Pile[s] of Glittering Dust:1
+526,11.449999809265137,2,Wood Plank[s]:3; Chitin Fragment[s]:2
+527,8.0,2,Iron Ingot[s]:2; Pile[s] of Glittering Dust:2
+528,9.5,2,Wood Plank[s]:4; Bone[s]:1
+529,8.729999542236328,2,Bone[s]:3; Plant Fiber[s]:2
+530,11.359999656677246,2,Wood Plank[s]:3; Iron Ingot[s]:1
+531,22.360000610351562,2,Wood Plank[s]:6; Pile[s] of Glittering Dust:2
+532,16.81999969482422,2,Chitin Fragment[s]:6; Iron Ingot[s]:1
+533,32.0,1,Wood Plank[s]:8
+534,19.0,2,Wood Plank[s]:5; Pile[s] of Glittering Dust:3
+535,16.90999984741211,2,Bone[s]:6; Pile[s] of Glittering Dust:2
+536,17.270000457763672,2,Pile[s] of Glittering Dust:6; Iron Ingot[s]:2
+537,18.0,2,Iron Ingot[s]:6; Pile[s] of Glittering Dust:2
+538,40.0,1,Iron Ingot[s]:8
+539,16.0,2,Iron Ingot[s]:4; Pile[s] of Glittering Dust:4
+540,22.360000610351562,2,Wood Plank[s]:6; Pile[s] of Glittering Dust:2
+541,14.5,2,Wood Plank[s]:5; Pile[s] of Glittering Dust:3
+542,22.360000610351562,2,Wood Plank[s]:6; Chitin Fragment[s]:2
+543,18.0,2,Iron Ingot[s]:6; Pile[s] of Glittering Dust:2
+544,14.5,2,Wood Plank[s]:5; Bone[s]:3
+545,12.0,2,Bone[s]:4; Plant Fiber[s]:4
+546,22.729999542236328,2,Wood Plank[s]:6; Iron Ingot[s]:2
+547,38.0,2,Wood Plank[s]:10; Pile[s] of Glittering Dust:6
+548,25.90999984741211,2,Chitin Fragment[s]:9; Iron Ingot[s]:3
+549,45.45000076293945,2,Wood Plank[s]:10; Monstrous Eye[s]:1
+550,38.0,2,Wood Plank[s]:10; Pile[s] of Glittering Dust:6
+551,26.18000030517578,2,Bone[s]:9; Pile[s] of Glittering Dust:6
+552,30.0,2,Pile[s] of Glittering Dust:10; Iron Ingot[s]:6
+553,34.0,2,Iron Ingot[s]:10; Pile[s] of Glittering Dust:6
+554,41.72999954223633,2,Iron Ingot[s]:9; Scale[s]:3
+555,34.0,2,Iron Ingot[s]:10; Pile[s] of Glittering Dust:6
+556,38.0,2,Wood Plank[s]:10; Pile[s] of Glittering Dust:6
+557,29.0,2,Wood Plank[s]:10; Pile[s] of Glittering Dust:6
+558,38.0,2,Wood Plank[s]:10; Chitin Fragment[s]:6
+559,26.5,2,Iron Ingot[s]:7; Pile[s] of Glittering Dust:6
+560,29.0,2,Wood Plank[s]:10; Bone[s]:6
+561,28.90999984741211,2,Bone[s]:10; Plant Fiber[s]:6
+562,34.09000015258789,2,Wood Plank[s]:9; Iron Ingot[s]:3
+563,183.4499969482422,2,Iron Ingot[s]:40; Plant Fiber[s]:6
+564,111.81999969482422,2,Chitin Fragment[s]:40; Iron Ingot[s]:6
+565,184.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+566,147.08999633789062,2,Wood Plank[s]:40; Plant Fiber[s]:6
+567,110.7300033569336,2,Bone[s]:40; Plant Fiber[s]:6
+568,111.81999969482422,2,Pile[s] of Glittering Dust:40; Iron Ingot[s]:6
+569,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+570,183.4499969482422,2,Iron Ingot[s]:40; Scale[s]:6
+571,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+572,109.0,2,Iron Ingot[s]:40; Feather[s]:6
+573,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+574,183.4499969482422,2,Iron Ingot[s]:40; Chitin Fragment[s]:6
+575,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+576,110.7300033569336,2,Bone[s]:40; Tanned Hide Square[s]:6
+577,110.7300033569336,2,Bone[s]:40; Plant Fiber[s]:6
+578,110.7300033569336,2,Bone[s]:40; Pile[s] of Glittering Dust:6
+579,147.08999633789062,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+580,111.81999969482422,2,Chitin Fragment[s]:40; Iron Ingot[s]:6
+581,154.5500030517578,2,Wood Plank[s]:40; Monstrous Eye[s]:1
+582,147.08999633789062,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+583,110.7300033569336,2,Bone[s]:40; Pile[s] of Glittering Dust:6
+584,111.81999969482422,2,Pile[s] of Glittering Dust:40; Iron Ingot[s]:6
+585,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+586,183.4499969482422,2,Iron Ingot[s]:40; Scale[s]:6
+587,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+588,147.08999633789062,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+589,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+590,147.08999633789062,2,Wood Plank[s]:40; Chitin Fragment[s]:6
+591,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+592,89.0,2,Wood Plank[s]:40; Bone[s]:6
+593,110.7300033569336,2,Bone[s]:40; Plant Fiber[s]:6
+594,148.17999267578125,2,Wood Plank[s]:40; Iron Ingot[s]:6
+595,25.0,1,Iron Ingot[s]:5
+596,40.0,1,Iron Ingot[s]:8
+597,43.33000183105469,2,Iron Ingot[s]:10; Steel Ingot[s]:1
+598,60.0,2,Iron Ingot[s]:15; Steel Ingot[s]:1
+599,106.66999816894531,2,Iron Ingot[s]:20; Steel Ingot[s]:4
+600,193.3300018310547,2,Iron Ingot[s]:40; Steel Ingot[s]:6
+601,193.3300018310547,2,Iron Ingot[s]:40; Steel Ingot[s]:6
+602,193.3300018310547,2,Iron Ingot[s]:40; Steel Ingot[s]:6
+603,25.0,2,Bolt[s] of Cloth:10; Bolt[s] of Silk:1
+604,3.0,2,Bone[s]:1; Chitin Fragment[s]:1
+605,3.5,2,Bone[s]:1; Wood Plank[s]:1
+606,3.3299999237060547,2,Tanned Hide Square[s]:1; Fur Square[s]:1
+607,11.819999694824219,2,Pile[s] of Glittering Dust:1; Monstrous Eye[s]:1
+608,11.819999694824219,2,Bone[s]:1; Monstrous Fang[s]:1
+609,20.90999984741211,2,Bone[s]:1; Monstrous Claw[s]:1
+610,3.0,2,Bone[s]:1; Chitin Fragment[s]:1
+611,5.679999828338623,4,Bolt[s] of Cloth:1; Plant Fiber[s]:1; Tempered Glass Vial[s]:1; Vial[s] of Ink:1
+612,7.559999942779541,4,Bolt[s] of Cloth:1; Plant Fiber[s]:1; Tempered Glass Vial[s]:1; Vial[s] of Ink:1
+613,4.5,2,Iron Ingot[s]:1; Wood Plank[s]:1
+614,3.640000104904175,3,Pile[s] of Glittering Dust:1; Bone[s]:1; Monstrous Eye[s]:1
+615,4.949999809265137,2,Pile[s] of Glittering Dust:1; Monstrous Claw[s]:1
+616,3.9600000381469727,2,Pile[s] of Glittering Dust:1; Monstrous Eye[s]:1
+617,3.9600000381469727,2,Pile[s] of Glittering Dust:1; Monstrous Fang[s]:1
+618,11.819999694824219,2,Scale[s]:1; Monstrous Fang[s]:1
+619,3.0,2,Bone[s]:1; Chitin Fragment[s]:1
+620,7.460000038146973,3,Tanned Hide Square[s]:1; Fur Square[s]:1; Sapphire[s]:1
+621,7.360000133514404,3,Bolt[s] of Cloth:1; Bolt[s] of Silk:1; Amber Chunk[s]:1
+622,7.360000133514404,3,Bolt[s] of Cloth:1; Bolt[s] of Silk:1; Jadeite Shard[s]:1
+623,8.170000076293945,3,"Bolt[s] of Cloth:1; Bolt[s] of Linen:1; Ruby[pl:""Rubies""]:1"
+624,8.170000076293945,3,Bolt[s] of Cloth:1; Bolt[s] of Linen:1; Sapphire[s]:1
+625,4.53000020980835,4,Scale[s]:1; Bone[s]:1; Monstrous Eye[s]:1; Jadeite Shard[s]:1
+626,14.729999542236328,4,"Chitin Fragment[s]:1; Monstrous Eye[s]:1; Amber Chunk[s]:1; Ruby[pl:""Rubies""]:1"
+627,45.0,4,Scale[s]:1; Bolt[s] of Cloth:1; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+628,6.25,4,"Granite Slab[s]:1; Pile[s] of Glittering Dust:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+629,71.5,4,Bone[s]:15; Monstrous Eye[s]:1; Monstrous Fang[s]:1; Monstrous Claw[s]:1
+630,7.619999885559082,4,"Plant Fiber[s]:1; Wood Plank[s]:1; Spiritwood Plank[s]:1; Ruby[pl:""Rubies""]:1"
+631,27.5,3,Bone[s]:1; Monstrous Claw[s]:1; Monstrous Eye[s]:1
+632,24.0,4,Tanned Hide Square[s]:1; Fur Square[s]:1; Monstrous Fang[s]:1; Monstrous Claw[s]:1
+633,5.860000133514404,4,Tanned Hide Square[s]:1; Bolt[s] of Cloth:1; Fur Square[s]:1; Sapphire[s]:1
+634,11.5,3,Wood Plank[s]:2; Iron Ingot[s]:2; Steel Ingot[s]:1
+635,18.0,2,Iron Ingot[s]:2; Steel Ingot[s]:1
+636,22.729999542236328,2,Iron Ingot[s]:1; Monstrous Claw[s]:1
+637,13.640000343322754,2,Iron Ingot[s]:1; Monstrous Eye[s]:1
+638,13.640000343322754,2,Iron Ingot[s]:1; Monstrous Fang[s]:1
+639,4.690000057220459,3,Wood Plank[s]:1; Pile[s] of Glittering Dust:1; Spiritwood Plank[s]:1
+640,12.670000076293945,2,Wood Plank[s]:1; Steel Ingot[s]:1
+641,10.0,2,Iron Ingot[s]:1; Spiritwood Plank[s]:1
+642,9.329999923706055,2,Wood Plank[s]:1; Spiritwood Plank[s]:1
+643,3.9600000381469727,2,Pile[s] of Glittering Dust:1; Amber Chunk[s]:1
+644,3.9600000381469727,2,Pile[s] of Glittering Dust:1; Jadeite Shard[s]:1
+645,4.949999809265137,3,Iron Ingot[s]:1; Pile[s] of Glittering Dust:1; Amber Chunk[s]:1
+646,4.949999809265137,3,Iron Ingot[s]:1; Pile[s] of Glittering Dust:1; Jadeite Shard[s]:1
+647,4.460000038146973,3,Wood Plank[s]:1; Pile[s] of Glittering Dust:1; Amber Chunk[s]:1
+648,4.460000038146973,3,Wood Plank[s]:1; Pile[s] of Glittering Dust:1; Jadeite Shard[s]:1
+649,5.5,2,Tanned Hide Square[s]:2; Iron Ingot[s]:1
+650,11.0,2,Tanned Hide Square[s]:4; Iron Ingot[s]:2
+651,42.0,2,Tanned Hide Square[s]:8; Steel Ingot[s]:2
+652,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+653,4.5,2,Bolt[s] of Cloth:2; Pile[s] of Glittering Dust:1
+654,9.0,2,Bolt[s] of Cloth:4; Pile[s] of Glittering Dust:2
+655,27.0,2,Bolt[s] of Cloth:8; Bolt[s] of Silk:2
+656,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+657,4.5,2,Tanned Hide Square[s]:2; Bone[s]:1
+658,9.0,2,Tanned Hide Square[s]:4; Bone[s]:2
+659,24.0,2,Tanned Hide Square[s]:8; Bone[s]:8
+660,75.0,2,Tanned Hide Square[s]:25; Bone[s]:25
+661,4.5,2,Bolt[s] of Cloth:2; Pile[s] of Glittering Dust:1
+662,9.0,2,Bolt[s] of Cloth:4; Pile[s] of Glittering Dust:2
+663,27.0,2,Bolt[s] of Cloth:8; Bolt[s] of Silk:2
+664,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+665,4.5,2,Bolt[s] of Cloth:2; Tanned Hide Square[s]:1
+666,9.0,2,Bolt[s] of Cloth:4; Tanned Hide Square[s]:2
+667,27.0,2,Bolt[s] of Cloth:8; Bolt[s] of Linen:2
+668,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+669,5.5,2,Bolt[s] of Cloth:2; Iron Ingot[s]:1
+670,11.0,2,Bolt[s] of Cloth:4; Iron Ingot[s]:2
+671,27.0,2,Bolt[s] of Cloth:8; Bolt[s] of Damask:2
+672,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Damask:4
+673,5.0,2,Tanned Hide Square[s]:2; Wood Plank[s]:1
+674,10.0,2,Tanned Hide Square[s]:4; Wood Plank[s]:2
+675,28.0,2,Tanned Hide Square[s]:8; Wood Plank[s]:8
+676,87.5,2,Tanned Hide Square[s]:25; Wood Plank[s]:25
+677,4.5,2,Tanned Hide Square[s]:2; Bone[s]:1
+678,9.0,2,Tanned Hide Square[s]:4; Bone[s]:2
+679,212.0,2,Tanned Hide Square[s]:8; Monstrous Claw[s]:2
+680,437.5,2,Tanned Hide Square[s]:25; Monstrous Claw[s]:4
+681,3.0,1,Bolt[s] of Cloth:1
+682,3.0,1,Bolt[s] of Cloth:1
+683,6.0,1,Bolt[s] of Cloth:2
+684,6.0,1,Bolt[s] of Cloth:2
+685,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+686,18.0,1,Bolt[s] of Cloth:6
+687,77.5,2,Bolt[s] of Cloth:25; Leather Square[s]:4
+688,75.0,1,Bolt[s] of Cloth:25
+689,125.0,2,Bolt[s] of Cloth:50; Leather Square[s]:5
+690,165.0,3,Tanned Hide Square[s]:25; Steel Ingot[s]:4; Amber Chunk[s]:3
+691,75.0,1,Tanned Hide Square[s]:25
+692,433.3299865722656,3,Tanned Hide Square[s]:50; Steel Ingot[s]:5; Amber Chunk[s]:10
+693,165.0,3,Tanned Hide Square[s]:25; Steel Ingot[s]:4; Jadeite Shard[s]:3
+694,75.0,1,Tanned Hide Square[s]:25
+695,433.3299865722656,3,Tanned Hide Square[s]:50; Steel Ingot[s]:5; Jadeite Shard[s]:10
+696,97.5,2,Chitin Fragment[s]:25; Steel Ingot[s]:4
+697,75.0,1,Chitin Fragment[s]:25
+698,150.0,2,Chitin Fragment[s]:50; Steel Ingot[s]:5
+699,812.5,4,Bolt[s] of Cloth:50; Leather Square[s]:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+700,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+701,75.0,1,Tanned Hide Square[s]:25
+702,150.0,2,Tanned Hide Square[s]:50; Steel Ingot[s]:5
+703,3.0,1,Tanned Hide Square[s]:1
+704,3.0,1,Tanned Hide Square[s]:1
+705,6.0,1,Tanned Hide Square[s]:2
+706,6.0,1,Tanned Hide Square[s]:2
+707,49.5,2,Tanned Hide Square[s]:3; Steel Ingot[s]:3
+708,18.0,1,Tanned Hide Square[s]:6
+709,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+710,75.0,1,Tanned Hide Square[s]:25
+711,3.0,1,Bolt[s] of Cloth:1
+712,3.0,1,Bolt[s] of Cloth:1
+713,6.0,1,Bolt[s] of Cloth:2
+714,6.0,1,Bolt[s] of Cloth:2
+715,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+716,18.0,1,Bolt[s] of Cloth:6
+717,45.0,2,Bolt[s] of Cloth:25; Bolt[s] of Damask:1
+718,75.0,1,Bolt[s] of Cloth:25
+719,3.0,1,Bolt[s] of Cloth:1
+720,3.0,1,Bolt[s] of Cloth:1
+721,6.0,1,Bolt[s] of Cloth:2
+722,6.0,1,Bolt[s] of Cloth:2
+723,9.0,2,Bolt[s] of Cloth:3; Pile[s] of Glittering Dust:3
+724,18.0,1,Bolt[s] of Cloth:6
+725,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+726,75.0,1,Bolt[s] of Cloth:25
+727,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+728,145.0,3,Tanned Hide Square[s]:25; Bolt[s] of Silk:4; Amber Chunk[s]:3
+729,75.0,1,Tanned Hide Square[s]:25
+730,408.3299865722656,3,Tanned Hide Square[s]:50; Bolt[s] of Silk:5; Amber Chunk[s]:10
+731,3.0,1,Bolt[s] of Cloth:1
+732,3.0,1,Bolt[s] of Cloth:1
+733,6.0,1,Bolt[s] of Cloth:2
+734,6.0,1,Bolt[s] of Cloth:2
+735,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+736,18.0,1,Bolt[s] of Cloth:6
+737,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+738,75.0,1,Bolt[s] of Cloth:25
+739,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+740,75.0,1,Bolt[s] of Cloth:25
+741,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+742,75.0,1,Bolt[s] of Cloth:25
+743,145.0,3,Bolt[s] of Cloth:25; Bolt[s] of Silk:4; Jadeite Shard[s]:3
+744,75.0,1,Bolt[s] of Cloth:25
+745,408.3299865722656,3,Bolt[s] of Cloth:50; Bolt[s] of Silk:5; Jadeite Shard[s]:10
+746,3.0,1,Bolt[s] of Cloth:1
+747,3.0,1,Bolt[s] of Cloth:1
+748,6.0,1,Bolt[s] of Cloth:2
+749,6.0,1,Bolt[s] of Cloth:2
+750,9.0,2,Bolt[s] of Cloth:3; Pile[s] of Glittering Dust:3
+751,18.0,1,Bolt[s] of Cloth:6
+752,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+753,75.0,1,Bolt[s] of Cloth:25
+754,3.0,1,Bone[s]:1
+755,3.0,1,Bone[s]:1
+756,6.0,1,Bone[s]:2
+757,6.0,1,Bone[s]:2
+758,9.0,2,Bone[s]:3; Tanned Hide Square[s]:3
+759,18.0,1,Bone[s]:6
+760,118.75,4,Bone[s]:25; Monstrous Eye[s]:1; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+761,75.0,1,Bone[s]:25
+762,137.5,4,Bone[s]:50; Monstrous Eye[s]:1; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+763,165.0,3,Tanned Hide Square[s]:25; Steel Ingot[s]:4; Amber Chunk[s]:3
+764,75.0,1,Tanned Hide Square[s]:25
+765,433.3299865722656,3,Tanned Hide Square[s]:50; Steel Ingot[s]:5; Amber Chunk[s]:10
+766,383.3299865722656,3,Roll[s] of Parchment:10; Vial[s] of Ink:5; Amber Chunk[s]:10
+767,3.0,1,Pile[s] of Glittering Dust:1
+768,3.0,1,Pile[s] of Glittering Dust:1
+769,6.0,1,Pile[s] of Glittering Dust:2
+770,6.0,1,Pile[s] of Glittering Dust:2
+771,18.0,1,Pile[s] of Glittering Dust:6
+772,18.0,1,Pile[s] of Glittering Dust:6
+773,45.0,2,Roll[s] of Parchment:5; Vial[s] of Ink:4
+774,20.0,2,Roll[s] of Parchment:3; Vial[s] of Ink:1
+775,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+776,3.0,1,Tanned Hide Square[s]:1
+777,3.0,1,Tanned Hide Square[s]:1
+778,6.0,1,Tanned Hide Square[s]:2
+779,6.0,1,Tanned Hide Square[s]:2
+780,12.0,2,Tanned Hide Square[s]:3; Iron Ingot[s]:3
+781,18.0,1,Tanned Hide Square[s]:6
+782,77.5,2,Tanned Hide Square[s]:25; Leather Square[s]:4
+783,75.0,1,Tanned Hide Square[s]:25
+784,102.5,2,Iron Ingot[s]:25; Leather Square[s]:4
+785,125.0,1,Iron Ingot[s]:25
+786,77.5,2,Chitin Fragment[s]:25; Leather Square[s]:4
+787,75.0,1,Chitin Fragment[s]:25
+788,258.3299865722656,3,Scale[s]:25; Monstrous Fang[s]:4; Jadeite Shard[s]:3
+789,75.0,1,Scale[s]:25
+790,550.0,3,Scale[s]:50; Monstrous Fang[s]:5; Jadeite Shard[s]:10
+791,383.3299865722656,3,Roll[s] of Parchment:10; Vial[s] of Ink:5; Jadeite Shard[s]:10
+792,3.0,1,Tanned Hide Square[s]:1
+793,3.0,1,Tanned Hide Square[s]:1
+794,6.0,1,Tanned Hide Square[s]:2
+795,6.0,1,Tanned Hide Square[s]:2
+796,9.0,2,Tanned Hide Square[s]:3; Bone[s]:3
+797,18.0,1,Tanned Hide Square[s]:6
+798,75.0,2,Tanned Hide Square[s]:25; Bone[s]:25
+799,75.0,1,Tanned Hide Square[s]:25
+800,3.0,1,Bolt[s] of Cloth:1
+801,3.0,1,Bolt[s] of Cloth:1
+802,6.0,1,Bolt[s] of Cloth:2
+803,6.0,1,Bolt[s] of Cloth:2
+804,9.0,2,Bolt[s] of Cloth:3; Pile[s] of Glittering Dust:3
+805,18.0,1,Bolt[s] of Cloth:6
+806,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+807,75.0,1,Bolt[s] of Cloth:25
+808,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+809,145.0,3,Bolt[s] of Cloth:25; Bolt[s] of Silk:4; Amber Chunk[s]:3
+810,75.0,1,Bolt[s] of Cloth:25
+811,408.3299865722656,3,Bolt[s] of Cloth:50; Bolt[s] of Silk:5; Amber Chunk[s]:10
+812,9.0,1,Pile[s] of Glittering Dust:3
+813,3.0,1,Pile[s] of Glittering Dust:1
+814,6.0,1,Pile[s] of Glittering Dust:2
+815,6.0,1,Pile[s] of Glittering Dust:2
+816,18.0,1,Pile[s] of Glittering Dust:6
+817,18.0,1,Pile[s] of Glittering Dust:6
+818,77.5,2,Pile[s] of Glittering Dust:25; Tempered Glass Vial[s]:4
+819,75.0,1,Pile[s] of Glittering Dust:25
+820,125.0,2,Pile[s] of Glittering Dust:50; Tempered Glass Vial[s]:5
+821,3.0,1,Bolt[s] of Cloth:1
+822,3.0,1,Bolt[s] of Cloth:1
+823,6.0,1,Bolt[s] of Cloth:2
+824,6.0,1,Bolt[s] of Cloth:2
+825,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+826,18.0,1,Bolt[s] of Cloth:6
+827,77.5,2,Bolt[s] of Cloth:25; Leather Square[s]:4
+828,75.0,1,Bolt[s] of Cloth:25
+829,45.0,2,Bolt[s] of Cloth:25; Bolt[s] of Damask:1
+830,75.0,1,Bolt[s] of Cloth:25
+831,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+832,75.0,1,Bolt[s] of Cloth:25
+833,145.0,3,Bolt[s] of Cloth:25; Bolt[s] of Silk:4; Jadeite Shard[s]:3
+834,75.0,1,Bolt[s] of Cloth:25
+835,408.3299865722656,3,Bolt[s] of Cloth:50; Bolt[s] of Silk:5; Jadeite Shard[s]:10
+836,3.0,1,Bolt[s] of Cloth:1
+837,3.0,1,Bolt[s] of Cloth:1
+838,6.0,1,Bolt[s] of Cloth:2
+839,6.0,1,Bolt[s] of Cloth:2
+840,9.0,2,Bolt[s] of Cloth:3; Pile[s] of Glittering Dust:3
+841,18.0,1,Bolt[s] of Cloth:6
+842,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+843,75.0,1,Bolt[s] of Cloth:25
+844,3.0,1,Bolt[s] of Cloth:1
+845,3.0,1,Bolt[s] of Cloth:1
+846,6.0,1,Bolt[s] of Cloth:2
+847,6.0,1,Bolt[s] of Cloth:2
+848,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+849,18.0,1,Bolt[s] of Cloth:6
+850,45.0,2,Bolt[s] of Cloth:25; Bolt[s] of Damask:1
+851,75.0,1,Bolt[s] of Cloth:25
+852,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+853,135.0,3,Bolt[s] of Cloth:25; Bolt[s] of Damask:2; Amber Chunk[s]:3
+854,75.0,1,Bolt[s] of Cloth:25
+855,408.3299865722656,3,Bolt[s] of Cloth:50; Bolt[s] of Damask:5; Amber Chunk[s]:10
+856,383.3299865722656,3,Roll[s] of Parchment:10; Vial[s] of Ink:5; Amber Chunk[s]:10
+857,3.0,1,Pile[s] of Glittering Dust:1
+858,3.0,1,Pile[s] of Glittering Dust:1
+859,6.0,1,Pile[s] of Glittering Dust:2
+860,6.0,1,Pile[s] of Glittering Dust:2
+861,18.0,1,Pile[s] of Glittering Dust:6
+862,18.0,1,Pile[s] of Glittering Dust:6
+863,45.0,2,Roll[s] of Parchment:5; Vial[s] of Ink:4
+864,20.0,2,Roll[s] of Parchment:3; Vial[s] of Ink:1
+865,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+866,3.0,1,Bolt[s] of Cloth:1
+867,3.0,1,Bolt[s] of Cloth:1
+868,6.0,1,Bolt[s] of Cloth:2
+869,6.0,1,Bolt[s] of Cloth:2
+870,9.0,2,Bolt[s] of Cloth:3; Plant Fiber[s]:3
+871,18.0,1,Bolt[s] of Cloth:6
+872,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+873,75.0,1,Bolt[s] of Cloth:25
+874,45.0,2,Bolt[s] of Cloth:25; Bolt[s] of Damask:1
+875,75.0,1,Bolt[s] of Cloth:25
+876,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+877,75.0,1,Bolt[s] of Cloth:25
+878,138.3300018310547,3,Bolt[s] of Cloth:25; Vial[s] of Ink:4; Jadeite Shard[s]:3
+879,75.0,1,Bolt[s] of Cloth:25
+880,400.0,3,Bolt[s] of Cloth:50; Vial[s] of Ink:5; Jadeite Shard[s]:10
+881,383.3299865722656,3,Roll[s] of Parchment:10; Vial[s] of Ink:5; Jadeite Shard[s]:10
+882,3.0,1,Bolt[s] of Cloth:1
+883,3.0,1,Bolt[s] of Cloth:1
+884,6.0,1,Bolt[s] of Cloth:2
+885,6.0,1,Bolt[s] of Cloth:2
+886,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+887,18.0,1,Bolt[s] of Cloth:6
+888,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+889,75.0,1,Bolt[s] of Cloth:25
+890,5.0,1,Iron Ingot[s]:1
+891,5.0,1,Iron Ingot[s]:1
+892,10.0,1,Iron Ingot[s]:2
+893,10.0,1,Iron Ingot[s]:2
+894,12.0,2,Iron Ingot[s]:3; Tanned Hide Square[s]:3
+895,30.0,1,Iron Ingot[s]:6
+896,122.5,2,Iron Ingot[s]:25; Steel Ingot[s]:4
+897,125.0,1,Iron Ingot[s]:25
+898,200.0,2,Iron Ingot[s]:50; Steel Ingot[s]:5
+899,181.6699981689453,3,Iron Ingot[s]:25; Steel Ingot[s]:4; Amber Chunk[s]:3
+900,125.0,1,Iron Ingot[s]:25
+901,466.6700134277344,3,Iron Ingot[s]:50; Steel Ingot[s]:5; Amber Chunk[s]:10
+902,3.0,1,Tanned Hide Square[s]:1
+903,3.0,1,Tanned Hide Square[s]:1
+904,6.0,1,Tanned Hide Square[s]:2
+905,6.0,1,Tanned Hide Square[s]:2
+906,12.0,2,Tanned Hide Square[s]:3; Iron Ingot[s]:3
+907,18.0,1,Tanned Hide Square[s]:6
+908,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+909,75.0,1,Tanned Hide Square[s]:25
+910,122.5,2,Iron Ingot[s]:25; Steel Ingot[s]:4
+911,125.0,1,Iron Ingot[s]:25
+912,122.5,2,Iron Ingot[s]:25; Steel Ingot[s]:4
+913,125.0,1,Iron Ingot[s]:25
+914,150.0,3,Scale[s]:25; Chitin Fragment[s]:25; Jadeite Shard[s]:3
+915,75.0,1,Scale[s]:25
+916,433.3299865722656,3,Scale[s]:50; Chitin Fragment[s]:50; Jadeite Shard[s]:10
+917,3.0,1,Bolt[s] of Cloth:1
+918,3.0,1,Bolt[s] of Cloth:1
+919,6.0,1,Bolt[s] of Cloth:2
+920,6.0,1,Bolt[s] of Cloth:2
+921,12.0,2,Bolt[s] of Cloth:3; Iron Ingot[s]:3
+922,18.0,1,Bolt[s] of Cloth:6
+923,45.0,2,Bolt[s] of Cloth:25; Bolt[s] of Damask:1
+924,75.0,1,Bolt[s] of Cloth:25
+925,3.0,1,Bolt[s] of Cloth:1
+926,3.0,1,Bolt[s] of Cloth:1
+927,6.0,1,Bolt[s] of Cloth:2
+928,6.0,1,Bolt[s] of Cloth:2
+929,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+930,18.0,1,Bolt[s] of Cloth:6
+931,57.5,2,Bolt[s] of Cloth:25; Fur Square[s]:4
+932,75.0,1,Bolt[s] of Cloth:25
+933,100.0,2,Scale[s]:50; Fur Square[s]:5
+934,145.0,3,Bolt[s] of Cloth:25; Bolt[s] of Linen:4; Amber Chunk[s]:3
+935,75.0,1,Bolt[s] of Cloth:25
+936,408.3299865722656,3,Bolt[s] of Cloth:50; Bolt[s] of Linen:5; Amber Chunk[s]:10
+937,3.0,1,Tanned Hide Square[s]:1
+938,3.0,1,Tanned Hide Square[s]:1
+939,6.0,1,Tanned Hide Square[s]:2
+940,6.0,1,Tanned Hide Square[s]:2
+941,9.0,2,Tanned Hide Square[s]:3; Feather[s]:3
+942,18.0,1,Tanned Hide Square[s]:6
+943,77.5,2,Tanned Hide Square[s]:25; Leather Square[s]:4
+944,75.0,1,Tanned Hide Square[s]:25
+945,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+946,75.0,1,Bolt[s] of Cloth:25
+947,75.0,2,Tanned Hide Square[s]:25; Bone[s]:25
+948,75.0,1,Tanned Hide Square[s]:25
+949,150.0,3,Scale[s]:25; Chitin Fragment[s]:25; Jadeite Shard[s]:3
+950,75.0,1,Scale[s]:25
+951,433.3299865722656,3,Scale[s]:50; Chitin Fragment[s]:50; Jadeite Shard[s]:10
+952,3.0,1,Tanned Hide Square[s]:1
+953,3.0,1,Tanned Hide Square[s]:1
+954,6.0,1,Tanned Hide Square[s]:2
+955,6.0,1,Tanned Hide Square[s]:2
+956,10.5,2,Tanned Hide Square[s]:3; Wood Plank[s]:3
+957,18.0,1,Tanned Hide Square[s]:6
+958,87.5,2,Tanned Hide Square[s]:25; Wood Plank[s]:25
+959,75.0,1,Tanned Hide Square[s]:25
+960,3.0,1,Bolt[s] of Cloth:1
+961,3.0,1,Bolt[s] of Cloth:1
+962,6.0,1,Bolt[s] of Cloth:2
+963,6.0,1,Bolt[s] of Cloth:2
+964,9.0,2,Bolt[s] of Cloth:3; Feather[s]:3
+965,18.0,1,Bolt[s] of Cloth:6
+966,97.5,2,Bolt[s] of Cloth:25; Steel Ingot[s]:4
+967,75.0,1,Bolt[s] of Cloth:25
+968,100.0,2,Bolt[s] of Cloth:50; Vial[s] of Ink:5
+969,138.3300018310547,3,Tanned Hide Square[s]:25; Vial[s] of Ink:4; Amber Chunk[s]:3
+970,75.0,1,Tanned Hide Square[s]:25
+971,400.0,3,Tanned Hide Square[s]:50; Vial[s] of Ink:5; Amber Chunk[s]:10
+972,138.3300018310547,3,Bolt[s] of Cloth:25; Vial[s] of Ink:4; Jadeite Shard[s]:3
+973,75.0,1,Bolt[s] of Cloth:25
+974,400.0,3,Bolt[s] of Cloth:50; Vial[s] of Ink:5; Jadeite Shard[s]:10
+975,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+976,75.0,1,Bolt[s] of Cloth:25
+977,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+978,800.0,4,Bolt[s] of Cloth:50; Vial[s] of Ink:5; Glob[s] of Ectoplasm:15; Obsidian Shard[s]:15
+979,75.0,2,Tanned Hide Square[s]:25; Bone[s]:25
+980,36.0,2,Tanned Hide Square[s]:12; Bone[s]:12
+981,150.0,2,Tanned Hide Square[s]:50; Bone[s]:50
+982,3.0,1,Tanned Hide Square[s]:1
+983,3.0,1,Tanned Hide Square[s]:1
+984,6.0,1,Tanned Hide Square[s]:2
+985,6.0,1,Tanned Hide Square[s]:2
+986,9.0,2,Tanned Hide Square[s]:3; Bone[s]:3
+987,18.0,1,Tanned Hide Square[s]:6
+988,437.5,2,Tanned Hide Square[s]:25; Monstrous Claw[s]:4
+989,75.0,1,Tanned Hide Square[s]:25
+990,3.0,1,Bolt[s] of Cloth:1
+991,3.0,1,Bolt[s] of Cloth:1
+992,6.0,1,Bolt[s] of Cloth:2
+993,6.0,1,Bolt[s] of Cloth:2
+994,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+995,18.0,1,Bolt[s] of Cloth:6
+996,77.5,2,Bolt[s] of Cloth:25; Leather Square[s]:4
+997,75.0,1,Bolt[s] of Cloth:25
+998,10.539999961853027,4,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3; Tempered Glass Vial[s]:1; Vial[s] of Ink:1
+999,19.559999465942383,4,Bolt[s] of Cloth:7; Tanned Hide Square[s]:7; Tempered Glass Vial[s]:1; Vial[s] of Ink:1
+1000,64.4000015258789,3,Pile[s] of Glittering Dust:7; Granite Slab[s]:5; Sapphire[s]:1
+1001,64.4000015258789,3,"Pile[s] of Glittering Dust:7; Granite Slab[s]:5; Ruby[pl:""Rubies""]:1"
+1002,62.0,4,"Tempered Glass Vial[s]:1; Vial[s] of Ink:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+1003,4.090000152587891,4,Bolt[s] of Cloth:1; Tanned Hide Square[s]:1; Bolt[s] of Linen:1; Bolt[s] of Silk:1
+1004,6.0,2,Bolt[s] of Cloth:2; Tanned Hide Square[s]:2
+1005,9.350000381469727,4,Bolt[s] of Cloth:1; Tanned Hide Square[s]:1; Feather[s]:1; Monstrous Claw[s]:1
+1006,4.409999847412109,4,Bolt[s] of Cloth:1; Tanned Hide Square[s]:1; Bolt[s] of Linen:1; Bolt[s] of Silk:1
+1007,3.0,3,Tanned Hide Square[s]:1; Bolt[s] of Cloth:1; Bone[s]:1
+1008,71.5,4,Bone[s]:15; Monstrous Eye[s]:1; Monstrous Fang[s]:1; Monstrous Claw[s]:1
+1009,4.619999885559082,2,Bolt[s] of Cloth:1; Roll[s] of Parchment:1
+1010,27.5,3,Bone[s]:1; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1011,3.0,2,Pile[s] of Glittering Dust:1; Plant Fiber[s]:1
+1012,5.449999809265137,2,Pile[s] of Glittering Dust:1; Diamond[s]:1
+1013,44.16999816894531,2,Pile[s] of Glittering Dust:1; Diamond[s]:1
+1014,137.72999572753906,4,"Pile[s] of Glittering Dust:1; Diamond[s]:1; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+1015,7.840000152587891,2,"Pile[s] of Glittering Dust:1; Ruby[pl:""Rubies""]:1"
+1016,44.16999816894531,2,"Pile[s] of Glittering Dust:1; Ruby[pl:""Rubies""]:1"
+1017,7.840000152587891,2,Pile[s] of Glittering Dust:1; Sapphire[s]:1
+1018,44.16999816894531,2,Pile[s] of Glittering Dust:1; Sapphire[s]:1
+1019,3.0,2,Feather[s]:1; Bone[s]:1
+1020,147.5,3,"Pile[s] of Glittering Dust:15; Ruby[pl:""Rubies""]:1; Sapphire[s]:1"
+1021,4.059999942779541,3,Scale[s]:1; Tanned Hide Square[s]:1; Leather Square[s]:1
+1022,3.0,1,Bone[s]:1
+1023,20.90999984741211,2,Bone[s]:1; Monstrous Claw[s]:1
+1024,3.0,2,Bone[s]:1; Bolt[s] of Cloth:1
+1025,11.819999694824219,2,Bone[s]:1; Monstrous Eye[s]:1
+1026,3.0,2,Bone[s]:1; Feather[s]:1
+1027,3.0,1,Pile[s] of Glittering Dust:1
+1028,3.0,2,Pile[s] of Glittering Dust:1; Bone[s]:1
+1029,11.819999694824219,2,Pile[s] of Glittering Dust:1; Monstrous Eye[s]:1
+1030,11.5,2,Pile[s] of Glittering Dust:1; Tempered Glass Vial[s]:1
+1031,5.239999771118164,3,Pile[s] of Glittering Dust:1; Iron Ingot[s]:1; Steel Ingot[s]:1
+1032,83.12000274658203,3,Iron Ingot[s]:1; Diamond[s]:1; Steel Ingot[s]:1
+1033,6.5,2,Pile[s] of Glittering Dust:1; Roll[s] of Parchment:1
+1034,14.760000228881836,2,"Pile[s] of Glittering Dust:1; Ruby[pl:""Rubies""]:1"
+1035,3.0,2,Pile[s] of Glittering Dust:1; Granite Slab[s]:1
+1036,3.5,2,Pile[s] of Glittering Dust:1; Wood Plank[s]:1
+1037,3.5,2,Plant Fiber[s]:1; Wood Plank[s]:1
+1038,3.0,2,Tanned Hide Square[s]:1; Bolt[s] of Cloth:1
+1039,3.180000066757202,2,Tanned Hide Square[s]:1; Iron Ingot[s]:1
+1040,3.0899999141693115,2,Tanned Hide Square[s]:1; Wood Plank[s]:1
+1041,5.420000076293945,3,Iron Ingot[s]:1; Bone[s]:1; Steel Ingot[s]:1
+1042,5.420000076293945,3,Iron Ingot[s]:1; Bolt[s] of Cloth:1; Steel Ingot[s]:1
+1043,67.0,3,Iron Ingot[s]:1; Monstrous Eye[s]:1; Steel Ingot[s]:1
+1044,10.0,2,Roll[s] of Parchment:1; Roll[s] of Vellum:1
+1045,3.0,1,Scale[s]:1
+1046,3.0,1,Chitin Fragment[s]:1
+1047,3.0,1,Granite Slab[s]:1
+1048,5.239999771118164,3,Granite Slab[s]:1; Iron Ingot[s]:1; Steel Ingot[s]:1
+1049,14.760000228881836,2,"Granite Slab[s]:1; Ruby[pl:""Rubies""]:1"
+1050,4.0,1,Wood Plank[s]:1
+1051,3.5,2,Wood Plank[s]:1; Bone[s]:1
+1052,3.5,2,Wood Plank[s]:1; Bolt[s] of Cloth:1
+1053,12.729999542236328,2,Wood Plank[s]:1; Monstrous Eye[s]:1
+1054,5.710000038146973,3,Wood Plank[s]:1; Iron Ingot[s]:1; Steel Ingot[s]:1
+1055,175.0,2,Iron Ingot[s]:50; Elonian Leather Square[s]:5
+1056,288.75,4,"Tanned Hide Square[s]:25; Elonian Leather Square[s]:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1057,125.0,2,Tanned Hide Square[s]:50; Elonian Leather Square[s]:5
+1058,3.0,1,Bolt[s] of Cloth:1
+1059,6.0,1,Bolt[s] of Cloth:2
+1060,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+1061,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+1062,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1063,3.0,1,Tanned Hide Square[s]:1
+1064,6.0,1,Tanned Hide Square[s]:2
+1065,9.0,2,Tanned Hide Square[s]:3; Bolt[s] of Cloth:3
+1066,77.5,2,Tanned Hide Square[s]:25; Leather Square[s]:4
+1067,288.75,4,"Bolt[s] of Cloth:25; Elonian Leather Square[s]:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1068,100.0,2,Bolt[s] of Cloth:50; Fur Square[s]:5
+1069,250.0,3,Tanned Hide Square[s]:50; Monstrous Claw[s]:2; Monstrous Fang[s]:2
+1070,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1071,3.0,1,Tanned Hide Square[s]:1
+1072,6.0,1,Tanned Hide Square[s]:2
+1073,9.0,2,Tanned Hide Square[s]:3; Feather[s]:3
+1074,75.0,2,Tanned Hide Square[s]:25; Feather[s]:25
+1075,125.0,2,Tanned Hide Square[s]:50; Elonian Leather Square[s]:5
+1076,3.0,1,Tanned Hide Square[s]:1
+1077,6.0,1,Tanned Hide Square[s]:2
+1078,9.0,2,Tanned Hide Square[s]:3; Scale[s]:3
+1079,75.0,2,Tanned Hide Square[s]:25; Scale[s]:25
+1080,3.0,1,Pile[s] of Glittering Dust:1
+1081,6.0,1,Pile[s] of Glittering Dust:2
+1082,18.0,1,Pile[s] of Glittering Dust:6
+1083,40.0,2,Roll[s] of Parchment:5; Vial[s] of Ink:3
+1084,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1085,283.75,4,"Tanned Hide Square[s]:25; Bolt[s] of Linen:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1086,270.0,4,"Roll[s] of Parchment:5; Vial[s] of Ink:3; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1087,112.5,2,Scale[s]:50; Chitin Fragment[s]:25
+1088,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1089,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1090,3.0,1,Bolt[s] of Cloth:1
+1091,6.0,1,Bolt[s] of Cloth:2
+1092,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+1093,77.5,2,Bolt[s] of Cloth:25; Leather Square[s]:4
+1094,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1095,3.0,1,Bolt[s] of Cloth:1
+1096,6.0,1,Bolt[s] of Cloth:2
+1097,9.0,2,Bolt[s] of Cloth:3; Tanned Hide Square[s]:3
+1098,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Silk:4
+1099,3.0,1,Pile[s] of Glittering Dust:1
+1100,6.0,1,Pile[s] of Glittering Dust:2
+1101,18.0,1,Pile[s] of Glittering Dust:6
+1102,75.0,1,Pile[s] of Glittering Dust:25
+1103,150.0,1,Pile[s] of Glittering Dust:50
+1104,283.75,4,"Bolt[s] of Cloth:25; Bolt[s] of Linen:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1105,358.3299865722656,3,"Pile[s] of Glittering Dust:25; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1106,125.0,2,Bolt[s] of Cloth:50; Wood Plank[s]:25
+1107,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1108,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1109,3.0,1,Bolt[s] of Cloth:1
+1110,6.0,1,Bolt[s] of Cloth:2
+1111,34.5,2,Bolt[s] of Cloth:3; Leather Square[s]:3
+1112,77.5,2,Bolt[s] of Cloth:25; Leather Square[s]:4
+1113,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1114,3.0,1,Bolt[s] of Cloth:1
+1115,6.0,1,Bolt[s] of Cloth:2
+1116,9.0,2,Bolt[s] of Cloth:3; Plant Fiber[s]:3
+1117,67.5,2,Bolt[s] of Cloth:25; Bolt[s] of Linen:4
+1118,3.0,1,Pile[s] of Glittering Dust:1
+1119,6.0,1,Pile[s] of Glittering Dust:2
+1120,18.0,1,Pile[s] of Glittering Dust:6
+1121,40.0,2,Roll[s] of Parchment:5; Vial[s] of Ink:3
+1122,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1123,283.75,4,"Bolt[s] of Cloth:25; Bolt[s] of Linen:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1124,270.0,4,"Roll[s] of Parchment:5; Vial[s] of Ink:3; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1125,250.0,3,Bolt[s] of Cloth:50; Monstrous Claw[s]:2; Monstrous Fang[s]:2
+1126,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1127,175.0,2,Iron Ingot[s]:50; Elonian Leather Square[s]:5
+1128,5.0,1,Iron Ingot[s]:1
+1129,10.0,1,Iron Ingot[s]:2
+1130,12.0,2,Iron Ingot[s]:3; Tanned Hide Square[s]:3
+1131,122.5,2,Iron Ingot[s]:25; Steel Ingot[s]:4
+1132,200.0,2,Iron Ingot[s]:50; Steel Ingot[s]:5
+1133,3.0,1,Tanned Hide Square[s]:1
+1134,6.0,1,Tanned Hide Square[s]:2
+1135,12.0,2,Tanned Hide Square[s]:3; Iron Ingot[s]:3
+1136,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+1137,296.25,4,"Iron Ingot[s]:25; Bolt[s] of Linen:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1138,150.0,2,Bone[s]:50; Steel Ingot[s]:5
+1139,125.0,2,Tanned Hide Square[s]:50; Elonian Leather Square[s]:5
+1140,3.0,1,Bolt[s] of Cloth:1
+1141,6.0,1,Bolt[s] of Cloth:2
+1142,9.0,2,Bolt[s] of Cloth:3; Chitin Fragment[s]:3
+1143,75.0,2,Bolt[s] of Cloth:25; Chitin Fragment[s]:25
+1144,125.0,2,Bolt[s] of Cloth:50; Elonian Leather Square[s]:5
+1145,3.0,1,Tanned Hide Square[s]:1
+1146,6.0,1,Tanned Hide Square[s]:2
+1147,9.0,2,Tanned Hide Square[s]:3; Bone[s]:3
+1148,77.5,2,Tanned Hide Square[s]:25; Leather Square[s]:4
+1149,288.75,4,"Bolt[s] of Cloth:25; Elonian Leather Square[s]:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1150,100.0,2,Bone[s]:50; Fur Square[s]:5
+1151,125.0,2,Tanned Hide Square[s]:50; Elonian Leather Square[s]:5
+1152,3.0,1,Tanned Hide Square[s]:1
+1153,6.0,1,Tanned Hide Square[s]:2
+1154,12.0,2,Tanned Hide Square[s]:3; Iron Ingot[s]:3
+1155,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+1156,150.0,2,Tanned Hide Square[s]:50; Steel Ingot[s]:5
+1157,3.0,1,Tanned Hide Square[s]:1
+1158,6.0,1,Tanned Hide Square[s]:2
+1159,9.0,2,Tanned Hide Square[s]:3; Bolt[s] of Cloth:3
+1160,67.5,2,Tanned Hide Square[s]:25; Bolt[s] of Linen:4
+1161,288.75,4,"Bolt[s] of Cloth:25; Elonian Leather Square[s]:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1162,125.0,2,Bone[s]:50; Elonian Leather Square[s]:5
+1163,97.5,2,Tanned Hide Square[s]:25; Steel Ingot[s]:4
+1164,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Linen:5
+1165,283.75,4,"Tanned Hide Square[s]:25; Bolt[s] of Silk:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1166,175.0,2,Iron Ingot[s]:50; Elonian Leather Square[s]:5
+1167,5.0,1,Iron Ingot[s]:1
+1168,10.0,1,Iron Ingot[s]:2
+1169,12.0,2,Iron Ingot[s]:3; Tanned Hide Square[s]:3
+1170,122.5,2,Iron Ingot[s]:25; Steel Ingot[s]:4
+1171,175.0,2,Iron Ingot[s]:50; Elonian Leather Square[s]:5
+1172,3.0,1,Tanned Hide Square[s]:1
+1173,6.0,1,Tanned Hide Square[s]:2
+1174,9.0,2,Tanned Hide Square[s]:3; Bolt[s] of Cloth:3
+1175,77.5,2,Tanned Hide Square[s]:25; Leather Square[s]:4
+1176,3.0,1,Pile[s] of Glittering Dust:1
+1177,6.0,1,Pile[s] of Glittering Dust:2
+1178,18.0,1,Pile[s] of Glittering Dust:6
+1179,75.0,1,Pile[s] of Glittering Dust:25
+1180,150.0,1,Pile[s] of Glittering Dust:50
+1181,301.25,4,"Iron Ingot[s]:25; Elonian Leather Square[s]:4; Ruby[pl:""Rubies""]:2; Sapphire[s]:2"
+1182,200.0,2,Iron Ingot[s]:50; Steel Ingot[s]:5
+1183,102.5,2,Iron Ingot[s]:25; Leather Square[s]:4
+1184,10.0,1,Iron Ingot[s]:2
+1185,8.0,1,Wood Plank[s]:2
+1186,8.0,1,Wood Plank[s]:2
+1187,10.0,1,Iron Ingot[s]:2
+1188,10.0,1,Iron Ingot[s]:2
+1189,10.0,1,Iron Ingot[s]:2
+1190,10.0,1,Iron Ingot[s]:2
+1191,8.0,1,Wood Plank[s]:2
+1192,8.0,1,Wood Plank[s]:2
+1193,8.0,1,Wood Plank[s]:2
+1194,8.0,1,Wood Plank[s]:2
+1195,8.0,1,Wood Plank[s]:2
+1196,8.0,1,Wood Plank[s]:2
+1197,8.0,1,Wood Plank[s]:2
+1198,8.0,1,Wood Plank[s]:2
+1199,10.0,1,Iron Ingot[s]:2
+1200,10.0,1,Iron Ingot[s]:2
+1201,10.0,1,Iron Ingot[s]:2
+1202,8.0,1,Wood Plank[s]:2
+1203,10.0,1,Iron Ingot[s]:2
+1204,15.0,1,Iron Ingot[s]:3
+1205,12.0,1,Wood Plank[s]:3
+1206,12.0,1,Wood Plank[s]:3
+1207,15.0,1,Iron Ingot[s]:3
+1208,15.0,1,Iron Ingot[s]:3
+1209,15.0,1,Iron Ingot[s]:3
+1210,15.0,1,Iron Ingot[s]:3
+1211,12.0,1,Wood Plank[s]:3
+1212,9.0,1,Bone[s]:3
+1213,12.0,1,Wood Plank[s]:3
+1214,9.0,1,Bone[s]:3
+1215,12.0,1,Wood Plank[s]:3
+1216,12.0,1,Wood Plank[s]:3
+1217,12.0,1,Wood Plank[s]:3
+1218,12.0,1,Wood Plank[s]:3
+1219,15.0,1,Iron Ingot[s]:3
+1220,15.0,1,Iron Ingot[s]:3
+1221,15.0,1,Iron Ingot[s]:3
+1222,12.0,1,Wood Plank[s]:3
+1223,15.0,1,Iron Ingot[s]:3
+1224,13.5,2,Iron Ingot[s]:3; Wood Plank[s]:3
+1225,10.5,2,Wood Plank[s]:3; Feather[s]:3
+1226,10.5,2,Wood Plank[s]:3; Granite Slab[s]:3
+1227,24.0,1,Wood Plank[s]:6
+1228,13.5,2,Wood Plank[s]:3; Iron Ingot[s]:3
+1229,13.5,2,Wood Plank[s]:3; Iron Ingot[s]:3
+1230,13.5,2,Wood Plank[s]:3; Iron Ingot[s]:3
+1231,13.5,2,Iron Ingot[s]:3; Wood Plank[s]:3
+1232,30.0,1,Iron Ingot[s]:6
+1233,13.5,2,Iron Ingot[s]:3; Wood Plank[s]:3
+1234,12.0,2,Iron Ingot[s]:3; Pile[s] of Glittering Dust:3
+1235,10.5,2,Wood Plank[s]:3; Pile[s] of Glittering Dust:3
+1236,18.0,1,Bone[s]:6
+1237,10.5,2,Wood Plank[s]:3; Bolt[s] of Cloth:3
+1238,18.0,1,Bone[s]:6
+1239,24.0,1,Wood Plank[s]:6
+1240,10.5,2,Wood Plank[s]:3; Granite Slab[s]:3
+1241,10.5,2,Wood Plank[s]:3; Pile[s] of Glittering Dust:3
+1242,10.5,2,Wood Plank[s]:3; Pile[s] of Glittering Dust:3
+1243,12.0,2,Iron Ingot[s]:3; Pile[s] of Glittering Dust:3
+1244,30.0,1,Iron Ingot[s]:6
+1245,30.0,1,Iron Ingot[s]:6
+1246,10.5,2,Wood Plank[s]:3; Bolt[s] of Cloth:3
+1247,13.5,2,Iron Ingot[s]:3; Wood Plank[s]:3
+1248,112.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+1249,89.0,2,Wood Plank[s]:40; Granite Slab[s]:6
+1250,89.0,2,Wood Plank[s]:40; Granite Slab[s]:6
+1251,95.0,2,Wood Plank[s]:40; Iron Ingot[s]:6
+1252,95.0,2,Wood Plank[s]:40; Iron Ingot[s]:6
+1253,95.0,2,Wood Plank[s]:40; Iron Ingot[s]:6
+1254,112.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+1255,112.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+1256,112.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+1257,112.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+1258,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+1259,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+1260,69.0,2,Bone[s]:40; Bolt[s] of Cloth:6
+1261,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+1262,69.0,2,Bone[s]:40; Pile[s] of Glittering Dust:6
+1263,72.0,2,Granite Slab[s]:40; Wood Plank[s]:6
+1264,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+1265,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+1266,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+1267,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+1268,109.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:6
+1269,109.0,2,Iron Ingot[s]:40; Bolt[s] of Cloth:6
+1270,89.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:6
+1271,112.0,2,Iron Ingot[s]:40; Wood Plank[s]:6
+1272,150.0,2,Tanned Hide Square[s]:50; Steel Ingot[s]:5
+1273,100.0,2,Bolt[s] of Cloth:50; Fur Square[s]:5
+1274,125.0,2,Scale[s]:50; Leather Square[s]:5
+1275,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1276,100.0,2,Bolt[s] of Cloth:50; Fur Square[s]:5
+1277,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1278,283.3299865722656,3,Scale[s]:50; Monstrous Fang[s]:3; Monstrous Claw[s]:2
+1279,126.66999816894531,3,Tanned Hide Square[s]:50; Fur Square[s]:3; Monstrous Fang[s]:2
+1280,150.0,2,Tanned Hide Square[s]:50; Steel Ingot[s]:5
+1281,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1282,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1283,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1284,150.0,2,Tanned Hide Square[s]:50; Steel Ingot[s]:5
+1285,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1286,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1287,125.0,2,Bolt[s] of Cloth:50; Leather Square[s]:5
+1288,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1289,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1290,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1291,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1292,75.0,2,Roll[s] of Parchment:10; Vial[s] of Ink:5
+1293,200.0,2,Iron Ingot[s]:50; Steel Ingot[s]:5
+1294,150.0,2,Feather[s]:50; Deldrimor Steel Ingot[s]:5
+1295,316.6700134277344,3,Iron Ingot[s]:50; Monstrous Fang[s]:3; Monstrous Claw[s]:2
+1296,150.0,2,Chitin Fragment[s]:50; Steel Ingot[s]:5
+1297,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1298,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1299,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1300,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1301,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1302,150.0,2,Bolt[s] of Cloth:50; Steel Ingot[s]:5
+1303,100.0,2,Bolt[s] of Cloth:50; Vial[s] of Ink:5
+1304,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1305,100.0,2,Tanned Hide Square[s]:50; Vial[s] of Ink:5
+1306,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1307,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1308,175.0,2,Iron Ingot[s]:50; Leather Square[s]:5
+1309,150.0,2,Tanned Hide Square[s]:50; Deldrimor Steel Ingot[s]:5
+1310,575.0,2,Tanned Hide Square[s]:50; Monstrous Claw[s]:5
+1311,150.0,2,Tanned Hide Square[s]:50; Deldrimor Steel Ingot[s]:5
+1312,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1313,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1314,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1315,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1316,125.0,2,Bone[s]:50; Leather Square[s]:5
+1317,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1318,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1319,112.5,2,Tanned Hide Square[s]:50; Bolt[s] of Silk:5
+1320,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1321,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1322,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1323,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Silk:5
+1324,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1325,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1326,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1327,112.5,2,Bolt[s] of Cloth:50; Bolt[s] of Damask:5
+1328,200.0,2,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5
+1329,200.0,2,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5
+1330,200.0,2,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5
+1331,200.0,2,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5
+1332,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1333,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1334,112.5,2,Tanned Hide Square[s]:50; Bolt[s] of Damask:5
+1335,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1336,200.0,2,Iron Ingot[s]:50; Deldrimor Steel Ingot[s]:5
+1337,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1338,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1339,150.0,2,Bolt[s] of Cloth:50; Deldrimor Steel Ingot[s]:5
+1340,100.0,2,Scale[s]:50; Fur Square[s]:5
+1341,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1342,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1343,125.0,2,Tanned Hide Square[s]:50; Leather Square[s]:5
+1344,50.0,2,Roll[s] of Vellum:5; Vial[s] of Ink:5
+1345,133.3300018310547,3,Pile[s] of Glittering Dust:50; Tempered Glass Vial[s]:5; Steel Ingot[s]:5
+1346,4125.0,2,Pile[s] of Glittering Dust:250; Glob[s] of Ectoplasm:75
+1347,762.5,4,Scale[s]:250; Deldrimor Steel Ingot[s]:50; Monstrous Fang[s]:4; Monstrous Eye[s]:4
+1348,150.0,1,Pile[s] of Glittering Dust:50
+1349,475.0,2,Granite Slab[s]:250; Lump[s] of Charcoal:10
+1350,475.0,2,Granite Slab[s]:250; Lump[s] of Charcoal:10
+1351,150.0,1,Bolt[s] of Cloth:50
+1352,150.0,1,Bolt[s] of Cloth:50
+1353,200.0,2,Iron Ingot[s]:50; Steel Ingot[s]:5
+1354,150.0,1,Bolt[s] of Cloth:50
+1355,100.0,2,Tanned Hide Square[s]:50; Fur Square[s]:5
+1356,1562.5,4,Granite Slab[s]:250; Iron Ingot[s]:100; Onyx Gemstone[s]:10; Diamond[s]:10
+1357,650.0,2,Spiritwood Plank[s]:50; Steel Ingot[s]:10
+1358,175.0,2,Wood Plank[s]:50; Plant Fiber[s]:50
+1359,150.0,2,Feather[s]:50; Pile[s] of Glittering Dust:50
+1360,200.0,2,Iron Ingot[s]:50; Bone[s]:50
+1361,200.0,2,Iron Ingot[s]:50; Pile[s] of Glittering Dust:50
+1362,300.0,2,Granite Slab[s]:100; Pile[s] of Glittering Dust:100
+1363,75.0,2,Plant Fiber[s]:25; Bone[s]:25
+1364,87.5,2,Wood Plank[s]:25; Plant Fiber[s]:25
+1365,243.3300018310547,3,Granite Slab[s]:10; Chitin Fragment[s]:100; Monstrous Eye[s]:4
+1366,136.6699981689453,3,Granite Slab[s]:10; Bone[s]:100; Spiritwood Plank[s]:4
+1367,216.6699981689453,3,Granite Slab[s]:10; Iron Ingot[s]:100; Steel Ingot[s]:4
+1368,157.5,4,Granite Slab[s]:10; Pile[s] of Glittering Dust:100; Lump[s] of Charcoal:5; Monstrous Eye[s]:2
+1369,161.25,4,Granite Slab[s]:10; Plant Fiber[s]:25; Amber Chunk[s]:5; Spiritwood Plank[s]:2
+1370,123.33000183105469,3,Granite Slab[s]:10; Bone[s]:100; Fur Square[s]:4
+1371,136.6699981689453,3,Granite Slab[s]:10; Pile[s] of Glittering Dust:100; Lump[s] of Charcoal:4
+1372,193.3300018310547,3,Granite Slab[s]:10; Pile[s] of Glittering Dust:100; Diamond[s]:1
+1373,176.6699981689453,3,Granite Slab[s]:10; Bone[s]:100; Monstrous Claw[s]:1
+1374,156.6699981689453,3,Granite Slab[s]:10; Pile[s] of Glittering Dust:100; Lump[s] of Charcoal:7
+1375,201.25,4,Granite Slab[s]:10; Scale[s]:25; Jadeite Shard[s]:5; Monstrous Eye[s]:2
+1376,112.5,2,Iron Ingot[s]:25; Wood Plank[s]:25
+1377,7.840000152587891,2,Pile[s] of Glittering Dust:1; Onyx Gemstone[s]:1
+1378,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1379,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1380,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1381,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1382,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1383,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1384,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1385,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1386,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1387,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1388,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1389,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1390,110.0,2,Wood Plank[s]:40; Plant Fiber[s]:20
+1391,300.0,1,Iron Ingot[s]:60
+1392,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1393,110.0,2,Wood Plank[s]:40; Feather[s]:20
+1394,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1395,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1396,100.0,2,Feather[s]:40; Wood Plank[s]:20
+1397,300.0,1,Iron Ingot[s]:60
+1398,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1399,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1400,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1401,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1402,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1403,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1404,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1405,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1406,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1407,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1408,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1409,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1410,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1411,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1412,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1413,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1414,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1415,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1416,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1417,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1418,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1419,117.5,4,Bone[s]:40; Fur Square[s]:5; Monstrous Claw[s]:1; Monstrous Fang[s]:1
+1420,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1421,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1422,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1423,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1424,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1425,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1426,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1427,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1428,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1429,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1430,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1431,110.0,2,Wood Plank[s]:40; Granite Slab[s]:20
+1432,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1433,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1434,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1435,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1436,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1437,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1438,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1439,90.0,2,Bone[s]:40; Bolt[s] of Cloth:20
+1440,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1441,90.0,2,Bone[s]:40; Pile[s] of Glittering Dust:20
+1442,90.0,2,Bone[s]:40; Pile[s] of Glittering Dust:20
+1443,100.0,2,Granite Slab[s]:40; Wood Plank[s]:20
+1444,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1445,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1446,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1447,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1448,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1449,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1450,130.0,2,Iron Ingot[s]:40; Bolt[s] of Cloth:20
+1451,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1452,110.0,2,Wood Plank[s]:40; Bone[s]:20
+1453,90.0,2,Bone[s]:40; Plant Fiber[s]:20
+1454,90.0,2,Bone[s]:40; Plant Fiber[s]:20
+1455,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1456,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1457,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1458,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1459,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1460,130.0,2,Iron Ingot[s]:40; Bone[s]:20
+1461,130.0,2,Iron Ingot[s]:40; Bone[s]:20
+1462,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1463,90.0,2,Bone[s]:40; Plant Fiber[s]:20
+1464,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1465,90.0,2,Granite Slab[s]:40; Pile[s] of Glittering Dust:20
+1466,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1467,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1468,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1469,140.0,2,Iron Ingot[s]:40; Wood Plank[s]:20
+1470,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1471,130.0,2,Iron Ingot[s]:40; Chitin Fragment[s]:20
+1472,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1473,110.0,2,Wood Plank[s]:40; Plant Fiber[s]:20
+1474,100.0,2,Plant Fiber[s]:40; Wood Plank[s]:20
+1475,110.0,2,Wood Plank[s]:40; Plant Fiber[s]:20
+1476,100.0,2,Plant Fiber[s]:40; Wood Plank[s]:20
+1477,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1478,130.0,2,Wood Plank[s]:40; Iron Ingot[s]:20
+1479,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1480,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1481,90.0,2,Bone[s]:40; Granite Slab[s]:20
+1482,110.0,2,Wood Plank[s]:40; Bone[s]:20
+1483,90.0,2,Bone[s]:40; Pile[s] of Glittering Dust:20
+1484,90.0,2,Bone[s]:40; Granite Slab[s]:20
+1485,90.0,2,Pile[s] of Glittering Dust:40; Granite Slab[s]:20
+1486,110.0,2,Wood Plank[s]:40; Pile[s] of Glittering Dust:20
+1487,130.0,2,Iron Ingot[s]:40; Pile[s] of Glittering Dust:20
+1488,90.0,2,Pile[s] of Glittering Dust:40; Granite Slab[s]:20
+1489,90.0,2,Granite Slab[s]:40; Pile[s] of Glittering Dust:20
+1490,110.0,2,Wood Plank[s]:40; Tanned Hide Square[s]:20
+1491,90.0,2,Granite Slab[s]:40; Chitin Fragment[s]:20
+1492,90.0,2,Pile[s] of Glittering Dust:40; Granite Slab[s]:20
+1493,90.0,2,Granite Slab[s]:40; Chitin Fragment[s]:20
+1494,90.0,2,Tanned Hide Square[s]:40; Pile[s] of Glittering Dust:20
+1495,130.0,2,Iron Ingot[s]:40; Tanned Hide Square[s]:20
+1496,90.0,2,Pile[s] of Glittering Dust:40; Granite Slab[s]:20
+1497,90.0,2,Tanned Hide Square[s]:40; Pile[s] of Glittering Dust:20

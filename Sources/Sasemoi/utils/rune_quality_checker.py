@@ -257,7 +257,7 @@ def item_has_valuable_rune(item_id: int) -> bool:
         return result
 
 
-    modifiers = Item.Customization.Modifiers.GetModifiers(item_id)
+    modifiers = Item.Mods.GetModifiers(item_id)
     found_8680 = False
     found_9224 = False
 

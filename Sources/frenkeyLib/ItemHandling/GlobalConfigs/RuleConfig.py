@@ -7,7 +7,8 @@ from typing import ClassVar
 from Py4GWCoreLib.enums_src.GameData_enums import DyeColor
 from Py4GWCoreLib.enums_src.Item_enums import ItemType, Rarity
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
-from Py4GWCoreLib.item_mods_src.upgrades import Upgrade
+# item_mods_src removed; upgrades are names (str) now (deprecated frenkey rule engine).
+Upgrade = str
 from Sources.frenkeyLib.ItemHandling.GlobalConfigs.Rule import DyesRule, ItemTypesRule, ModelIdsRule, RaritiesRule, Rule, UpgradeRule
 
 

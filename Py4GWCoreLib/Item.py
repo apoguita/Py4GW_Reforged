@@ -3,15 +3,12 @@ from typing import Iterable, Optional, Type
 import PyItem
 import PyInventory
 
-from enum import Enum
+from enum import Enum, IntEnum
 
 from Py4GWCoreLib.enums_src.GameData_enums import Attribute, DyeColor, Gender
 from Py4GWCoreLib.enums_src.Item_enums import DAMAGE_RANGES, ItemType, Rarity
-from Py4GWCoreLib.item_mods_src._typing import TUpgrade
-from Py4GWCoreLib.item_mods_src.item_mod import ItemMod
-from Py4GWCoreLib.item_mods_src.item_modifier_parser import ItemModifierParser
-from Py4GWCoreLib.item_mods_src.properties import ArmorProperty, AttributeRequirement, DamageProperty, EnergyProperty
-from Py4GWCoreLib.item_mods_src.upgrades import Upgrade
+from Py4GWCoreLib import mods_core
+from Py4GWCoreLib.mods_types import ModifierIdentifier as ModId
 
 class Bag(Enum):
     NoBag = 0
@@ -39,7 +36,180 @@ class Bag(Enum):
     Equipped_Items = 22
     Max = 23
 
-class Item:    
+
+class Item:
+        # ── Item.Mods ────────────────────────────────────────────────────────────
+        # Read/filter an item's modifiers. `mod` = a ModId (ModifierIdentifier) member or its
+        # int. Backed by mods_core (one reader + a small effect table); replaces the
+        # item_mods_src parser and the deprecated Item.Customization.Modifiers.
+        class Mods:
+            Slot = mods_core.Slot   # Prefix / Suffix / Inscription / Rune / Insignia / Inherent
+
+            @staticmethod
+            def GetMods(item_id) -> list:
+                """The distinct mod ids present on the item, as ModId members."""
+                seen: list[int] = []
+                for dm in mods_core.decode_item(item_id):
+                    if dm.identifier not in seen:
+                        seen.append(dm.identifier)
+                return [ModId(i) for i in seen]
+
+            @staticmethod
+            def GetName(mod) -> str:
+                """The mod's effect/base name, from its id."""
+                return mods_core.effect_name(int(mod))
+
+            @staticmethod
+            def GetDescriptions(item_id) -> list:
+                """Game-style human-readable lines for the item (upgrades + effect mods).
+                The render/oracle layer — compare against the game's decoded info-string."""
+                return mods_core.describe_item(item_id)
+
+            @staticmethod
+            def GetRawDump(item_id) -> list:
+                """Every decoded mod word with id/args/upgrade_id + render status (diagnostics)."""
+                return mods_core.raw_dump(item_id)
+
+            @staticmethod
+            def GetValues(item_id, mod) -> list:
+                """Value(s) of the first matching mod — ALWAYS a list ([] if absent/valueless)."""
+                for dm in mods_core.decode_item(item_id):
+                    if dm.identifier == int(mod):
+                        return mods_core.value_of(dm)
+                return []
+
+            @staticmethod
+            def GetSubtype(item_id, mod):
+                """Catalog subtype (enum member) of the first matching mod, or None."""
+                for dm in mods_core.decode_item(item_id):
+                    if dm.identifier == int(mod):
+                        return mods_core.subtype_of(dm)
+                return None
+
+            @staticmethod
+            def GetRaw(item_id, mod):
+                """(arg1, arg2) of the first matching mod, or None."""
+                for dm in mods_core.decode_item(item_id):
+                    if dm.identifier == int(mod):
+                        return (dm.arg1, dm.arg2)
+                return None
+
+            @staticmethod
+            def GetUpgrades(item_id) -> list:
+                """Applied upgrades as (name, Slot) — prefixes/suffixes/inscriptions/runes/insignias."""
+                return [(name, mods_core.Slot(slot)) for name, slot in mods_core.upgrades_on(item_id)]
+
+            @staticmethod
+            def GetSlot(item_id, upgrade_name):
+                """The slot of an applied upgrade (by name), or None."""
+                slot = mods_core.slot_of_upgrade(str(upgrade_name))
+                return mods_core.Slot(slot) if slot is not None else None
+
+            @staticmethod
+            def GetUpgradeInSlot(item_id, slot):
+                """The name of the applied upgrade in the given slot, or None."""
+                for name, s in Item.Mods.GetUpgrades(item_id):
+                    if s == slot:
+                        return name
+                return None
+
+            @staticmethod
+            def HasUpgradeInSlot(item_id, slot) -> bool:
+                """True if an upgrade occupies the given slot."""
+                return any(s == slot for _, s in Item.Mods.GetUpgrades(item_id))
+
+            @staticmethod
+            def IsMaxed(item_id, upgrade_name) -> bool:
+                """True if the named upgrade's value is at the top of its roll range."""
+                return mods_core.upgrade_is_maxed(item_id, str(upgrade_name))
+
+            @staticmethod
+            def HasMod(item_id, mod, *values) -> bool:
+                """True if the item has `mod`, optionally filtered by values.
+                An enum arg = a subtype filter; a number = a value threshold ('N or better',
+                direction from the mod's metadata); a callable = predicate(value)."""
+                modid = int(mod)
+                subtype_filter = None
+                value_filters: list = []
+                for v in values:
+                    if isinstance(v, IntEnum):
+                        subtype_filter = v
+                    else:
+                        value_filters.append(v)
+                for dm in mods_core.decode_item(item_id):
+                    if dm.identifier != modid:
+                        continue
+                    if subtype_filter is not None and mods_core.subtype_of(dm) != subtype_filter:
+                        continue
+                    if value_filters and not Item.Mods._values_match(dm, value_filters):
+                        continue
+                    return True
+                return False
+
+            @staticmethod
+            def _values_match(dm, value_filters) -> bool:
+                vals = mods_core.value_of(dm)
+                better_low = mods_core.is_better(dm)
+                for i, f in enumerate(value_filters):
+                    if i >= len(vals):
+                        return False
+                    got = vals[i]
+                    if callable(f):
+                        if not f(got):
+                            return False
+                    elif better_low:
+                        if got > f:
+                            return False
+                    elif got < f:
+                        return False
+                return True
+
+            @staticmethod
+            def HasAllMods(item_id, modlist) -> bool:
+                """True if the item satisfies EVERY entry. Entry = mod | (mod, *values)."""
+                for entry in modlist:
+                    if isinstance(entry, (tuple, list)):
+                        if not Item.Mods.HasMod(item_id, entry[0], *entry[1:]):
+                            return False
+                    elif not Item.Mods.HasMod(item_id, entry):
+                        return False
+                return True
+
+            @staticmethod
+            def HasAnyMods(item_id, modlist) -> bool:
+                """True if the item satisfies ANY entry. Entry = mod | (mod, *values)."""
+                for entry in modlist:
+                    if isinstance(entry, (tuple, list)):
+                        if Item.Mods.HasMod(item_id, entry[0], *entry[1:]):
+                            return True
+                    elif Item.Mods.HasMod(item_id, entry):
+                        return True
+                return False
+
+            # -- raw modifier access (replaces Customization.Modifiers.*) --
+            @staticmethod
+            def GetModifiers(item_id):
+                """The raw ItemModifier list off the item."""
+                return Item.item_instance(item_id).modifiers
+
+            @staticmethod
+            def GetModifierCount(item_id) -> int:
+                return len(Item.item_instance(item_id).modifiers)
+
+            @staticmethod
+            def ModifierExists(item_id, identifier_lookup) -> bool:
+                for m in Item.item_instance(item_id).modifiers:
+                    if m.GetIdentifier() == identifier_lookup:
+                        return True
+                return False
+
+            @staticmethod
+            def GetModifierValues(item_id, identifier_lookup):
+                for m in Item.item_instance(item_id).modifiers:
+                    if m.GetIdentifier() == identifier_lookup:
+                        return m.GetArg(), m.GetArg1(), m.GetArg2()
+                return None, None, None
+
         @staticmethod
         def item_instance(item_id):
             """
@@ -269,11 +439,12 @@ class Item:
                 if not item_type.is_weapon_type():
                     return Attribute.None_, 0
                                 
-                rarity, _ = Item.Rarity.GetRarity(item_id)
-                parser = ItemModifierParser(Item.Customization.Modifiers.GetModifiers(item_id), rarity)
-                properties = parser.get_properties()
-                requirement = next((p for p in properties if isinstance(p, AttributeRequirement)), None)
-                return (requirement.attribute, requirement.attribute_level) if requirement else (Attribute.None_, 0)
+                dm = mods_core.find(item_id, ModId.AttributeRequirement)
+                if dm is None:
+                    return Attribute.None_, 0
+                attr = mods_core.subtype_of(dm)
+                vals = mods_core.value_of(dm)
+                return (attr if isinstance(attr, Attribute) else Attribute.None_, vals[0] if vals else 0)
             
             @staticmethod
             def GetDamage(item_id) -> tuple[int, int]:
@@ -283,11 +454,11 @@ class Item:
                 if not item_type.is_weapon_type() and not item_type in [ItemType.Offhand, ItemType.Shield]:
                     return 0, 0
                                 
-                rarity, _ = Item.Rarity.GetRarity(item_id)
-                parser = ItemModifierParser(Item.Customization.Modifiers.GetModifiers(item_id), rarity)
-                properties = parser.get_properties()
-                weapon_damage = next((p for p in properties if isinstance(p, DamageProperty)), None)
-                return weapon_damage.min_damage if weapon_damage else 0, weapon_damage.max_damage if weapon_damage else 0
+                dm = mods_core.find(item_id, ModId.Damage, ModId.Damage2)
+                if dm is None:
+                    return 0, 0
+                vals = mods_core.value_of(dm)   # [min, max]
+                return (vals[0] if len(vals) > 0 else 0, vals[1] if len(vals) > 1 else 0)
             
             @staticmethod
             def GetArmor(item_id) -> int:                
@@ -295,11 +466,11 @@ class Item:
                 if not item_type.is_armor_type() and not item_type == ItemType.Shield:
                     return 0
                                 
-                rarity, _ = Item.Rarity.GetRarity(item_id)
-                parser = ItemModifierParser(Item.Customization.Modifiers.GetModifiers(item_id), rarity)
-                properties = parser.get_properties()
-                armor_property = next((p for p in properties if isinstance(p, ArmorProperty)), None)
-                return armor_property.armor if armor_property else 0
+                dm = mods_core.find(item_id, ModId.Armor1, ModId.Armor2)
+                if dm is None:
+                    return 0
+                vals = mods_core.value_of(dm)
+                return vals[0] if vals else 0
             
             @staticmethod
             def GetEnergy(item_id) -> int:                
@@ -307,11 +478,66 @@ class Item:
                 if not item_type.is_armor_type() and not item_type in [ItemType.Offhand, ItemType.Staff]:
                     return 0
                                 
-                rarity, _ = Item.Rarity.GetRarity(item_id)
-                parser = ItemModifierParser(Item.Customization.Modifiers.GetModifiers(item_id), rarity)
-                properties = parser.get_properties()
-                energy_property = next((p for p in properties if isinstance(p, EnergyProperty)), None)
-                return energy_property.energy if energy_property else 0
+                dm = mods_core.find(item_id, ModId.Energy, ModId.Energy2)
+                if dm is None:
+                    return 0
+                vals = mods_core.value_of(dm)
+                return vals[0] if vals else 0
+
+            @staticmethod
+            def GetItemFormula(item_id):
+                """Purpose: Retrieve the item (crafting) formula of an item by its ID."""
+                return Item.item_instance(item_id).item_formula
+
+            @staticmethod
+            def IsStackable(item_id):
+                """Purpose: Check if an item is stackable by its ID."""
+                interaction = Item.Properties.GetInteraction(item_id)
+                return (interaction & 0x80000) != 0
+
+            @staticmethod
+            def IsSparkly(item_id):
+                """Purpose: Check if an item is sparkly by its ID."""
+                return Item.item_instance(item_id).is_sparkly
+
+            @staticmethod
+            def IsInscription(item_id):
+                """True if the item is an inscription."""
+                return Item.item_instance(item_id).is_inscription
+
+            @staticmethod
+            def IsInscribable(item_id):
+                """True if the item can take an inscription."""
+                return Item.item_instance(item_id).is_inscribable
+
+            @staticmethod
+            def IsPrefixUpgradable(item_id):
+                """True if the item can take a prefix upgrade."""
+                return Item.item_instance(item_id).is_prefix_upgradable
+
+            @staticmethod
+            def IsSuffixUpgradable(item_id):
+                """True if the item can take a suffix upgrade."""
+                return Item.item_instance(item_id).is_suffix_upgradable
+
+            @staticmethod
+            def IsOfferedInTrade(item_id):
+                """Purpose: Check if an item is offered in trade by its ID."""
+                return Item.item_instance(item_id).is_offered_in_trade
+
+            @staticmethod
+            def IsTradable(item_id):
+                """Purpose: Check if an item is tradable by its ID."""
+                return Item.item_instance(item_id).is_tradable
+
+            @staticmethod
+            def IsMaxDamage(item_id: int) -> bool:
+                """True if a weapon's damage is the max for its type at its requirement."""
+                item_type = ItemType(Item.GetItemType(item_id)[0])
+                _, requirement = Item.Properties.GetRequirement(item_id)
+                damage_for_requirement = DAMAGE_RANGES.get(item_type, {}).get(requirement, (0, 0))
+                _, weapon_max = Item.Properties.GetDamage(item_id)
+                return weapon_max > 0 and weapon_max == damage_for_requirement[1]
 
         class Type:
             @staticmethod
@@ -405,182 +631,46 @@ class Item:
                 """Purpose: Check if an item is identified by its ID."""
                 return Item.item_instance(item_id).is_identified
 
-        class Customization:            
+        class Dye:
+            """Dye reads (own subsystem, not Mods): an item's dye channels + tint, and dye-vial
+            colour. All read-only; keyed by the DyeColor enum. Replaces Customization.GetDyeInfo
+            (dye-colour matching = IsColor)."""
             @staticmethod
-            def IsInscription(item_id): 
-                """Purpose: Check if an item is an inscription by its ID."""
-                return Item.item_instance(item_id).is_inscription
-            
-            @staticmethod
-            def IsInscribable(item_id):
-                """Purpose: Check if an item is inscribable by its ID."""
-                return Item.item_instance(item_id).is_inscribable
-
-            @staticmethod
-            def IsPrefixUpgradable(item_id):
-                """Purpose: Check if an item is prefix upgradable by its ID."""
-                return Item.item_instance(item_id).is_prefix_upgradable
-
-            @staticmethod
-            def IsSuffixUpgradable(item_id):
-                """Purpose: Check if an item is suffix upgradable by its ID."""
-                return Item.item_instance(item_id).is_suffix_upgradable
-
-            class Modifiers:
-                @staticmethod
-                def GetModifierCount(item_id):
-                    """Purpose: Retrieve the number of modifiers of an item by its ID."""
-                    return len(Item.item_instance(item_id).modifiers)
-
-                @staticmethod
-                def GetModifiers(item_id):
-                    """Purpose: Retrieve the modifiers of an item by its ID."""
-                    return Item.item_instance(item_id).modifiers
-
-                @staticmethod
-                def ModifierExists(item_id, identifier_lookup):
-                    """Purpose: Check if a modifier exists in an item by its ID and identifier."""
-                    for modifier in Item.Customization.Modifiers.GetModifiers(item_id):
-                        if modifier.GetIdentifier() == identifier_lookup:
-                            return True
-                    return False
-
-                @staticmethod
-                def GetModifierValues(item_id, identifier_lookup):
-                    """Purpose: Retrieve a modifier of an item by its ID and identifier."""
-                    for modifier in Item.Customization.Modifiers.GetModifiers(item_id):
-                        if modifier.GetIdentifier() == identifier_lookup:
-                            arg = modifier.GetArg()
-                            arg1 = modifier.GetArg1()
-                            arg2 = modifier.GetArg2()
-
-                            return arg, arg1, arg2
-
-                    return None, None, None
-
-            @staticmethod
-            def GetDyeInfo(item_id):
-                """Purpose: Retrieve the dye information of an item by its ID."""
+            def GetInfo(item_id):
+                """Raw DyeInfo struct (tint + 4 colour channels)."""
                 return Item.item_instance(item_id).dye_info
 
             @staticmethod
-            def GetItemFormula(item_id):
-                """Purpose: Retrieve the item formula of an item by its ID."""
-                return Item.item_instance(item_id).item_formula
+            def GetColor(item_id: int) -> DyeColor:
+                """Primary dye colour: a dyed item's dye1, else a dye vial's colour."""
+                try:
+                    primary = DyeColor.from_dye_info(Item.item_instance(item_id).dye_info)
+                    if primary != DyeColor.NoColor:
+                        return primary
+                except Exception:
+                    pass
+                try:
+                    return DyeColor(Item.GetDyeColor(item_id))
+                except Exception:
+                    return DyeColor.NoColor
 
             @staticmethod
-            def IsStackable(item_id):
-                """Purpose: Check if an item is stackable by its ID."""
-                #return Item.item_instance(item_id).is_stackable
-                interaction = Item.Properties.GetInteraction(item_id)
-                return (interaction & 0x80000) != 0
+            def GetChannels(item_id):
+                """(tint, [dye1, dye2, dye3, dye4]) with channels as DyeColor members."""
+                info = Item.item_instance(item_id).dye_info
+
+                def _dc(ch) -> DyeColor:
+                    try:
+                        return DyeColor(ch.ToInt())
+                    except Exception:
+                        return DyeColor.NoColor
+                return (info.dye_tint, [_dc(info.dye1), _dc(info.dye2), _dc(info.dye3), _dc(info.dye4)])
 
             @staticmethod
-            def IsSparkly(item_id):
-                """Purpose: Check if an item is sparkly by its ID."""
-                return Item.item_instance(item_id).is_sparkly
-
-            @staticmethod
-            def GetUpgrade(item_id, upgrade : Type[TUpgrade] | TUpgrade) -> Optional[TUpgrade]:
-                """Gets a specific upgrade of an item by its ID and upgrade type.
-                Args:
-                    item_id (int): The ID of the item to check for the upgrade.
-                    upgrade_type (type | Upgrade): The type of the upgrade to retrieve (e.g., PrefixUpgrade, SuffixUpgrade, InscriptionUpgrade) or an instance of the upgrade.  
-                Returns:
-                    Upgrade | None: The upgrade of the specified type if found, otherwise None.
-                """
-                existing_upgrade : Optional[TUpgrade] = ItemMod.get_upgrade(item_id, upgrade)
-                return existing_upgrade
-            
-            @staticmethod
-            def HasUpgrades(item_id):
-                """Purpose: Check if an item has upgrades by its ID."""
-                return any(upgrade is not None for upgrade in Item.Customization.GetUpgrades(item_id)[:3])
-            
-            @staticmethod
-            def HasInherentUpgrades(item_id):
-                """Purpose: Check if an item has inherent upgrades by its ID."""
-                inherent_upgrades = Item.Customization.GetInherentUpgrades(item_id)
-                return inherent_upgrades is not None and len(inherent_upgrades) > 0
-            
-            @staticmethod
-            def HasUpgradeType(item_id, upgrade_type : Type[TUpgrade], max : bool = False) -> bool:
-                """Purpose: Check if an item has a specific upgrade type by its ID."""             
-                                  
-                if (upgrade := Item.Customization.GetUpgrade(item_id, upgrade_type)) is not None:
-                    return not max or upgrade.is_maxed
-                
-                return False
-            
-            @staticmethod
-            def HasUpgrade(item_id, upgrade : Upgrade) -> bool:
-                """Purpose: Check if an item has a specific upgrade by its ID."""             
-                                  
-                if (item_upgrade := Item.Customization.GetUpgrade(item_id, upgrade)) is not None:
-                    return item_upgrade.matches(upgrade)
-                
-                return False
-                        
-            @staticmethod
-            def GetUpgrades(item_id) -> tuple[Upgrade | None, Upgrade | None, Upgrade | None, list[Upgrade] | None]:
-                """Gets the upgrades of an item by its ID.
-                Returns a tuple of (prefix, suffix, inscription, inherent) where each element is either an Upgrade object or None if not present. This is a helper method that combines the logic of getting the item modifiers and parsing them into properties to extract the relevant upgrade properties.
-                """
-                return ItemMod.get_item_upgrades(item_id)
-            
-            @staticmethod
-            def GetPrefixUpgrade(item_id) -> Upgrade | None:
-                """Gets the prefix upgrade of an item by its ID."""
-                prefix, _, _, _ = ItemMod.get_item_upgrades(item_id)
-                return prefix
-            
-            @staticmethod            
-            def GetSuffixUpgrade(item_id) -> Upgrade | None:
-                """Gets the suffix upgrade of an item by its ID."""   
-                _, suffix, _, _ = ItemMod.get_item_upgrades(item_id)
-                return suffix
-            
-            @staticmethod
-            def GetInscriptionUpgrade(item_id) -> Upgrade | None:
-                """Gets the inscription upgrade of an item by its ID."""   
-                _, _, inscription, _ = ItemMod.get_item_upgrades(item_id)
-                return inscription
-            
-            @staticmethod
-            def GetInherentUpgrades(item_id) -> list[Upgrade] | None:
-                """Gets the inherent upgrades of an item by its ID."""   
-                _, _, _, inherent = ItemMod.get_item_upgrades(item_id)
-                return inherent
-
-        class Trade:
-            @staticmethod
-            def IsOfferedInTrade(item_id):
-                """Purpose: Check if an item is offered in trade by its ID."""
-                return Item.item_instance(item_id).is_offered_in_trade
-
-            @staticmethod
-            def IsTradable(item_id):
-                """Purpose: Check if an item is tradable by its ID."""
-                return Item.item_instance(item_id).is_tradable
-
-        class Filter:
-            class Dye:
-                @staticmethod     
-                def IsDyeColor(item_id: int, color: DyeColor) -> bool:
-                    item_color = Item.GetDyeColor(item_id)
-                    item_type, _ = Item.GetItemType(item_id)
-                    
-                    return item_type == ItemType.Dye and item_color == color
-
-            class Weapon:
-                @staticmethod
-                def IsMaxDamage(item_id: int) -> bool:
-                    item_type = ItemType(Item.GetItemType(item_id)[0])
-                    _, requirement = Item.Properties.GetRequirement(item_id)
-                    damage_for_requirement = DAMAGE_RANGES.get(item_type, {}).get(requirement, (0, 0))
-                    weapon_damage = Item.Properties.GetDamage(item_id)
-                    
-                    return weapon_damage == damage_for_requirement[1]
+            def IsColor(item_id: int, color: DyeColor) -> bool:
+                """True if this item is a dye (vial) of the given colour."""
+                item_type, _ = Item.GetItemType(item_id)
+                return item_type == ItemType.Dye and Item.Dye.GetColor(item_id) == color
 
 
 SUMMONING_SICKNESS_EFFECT_ID = 2886

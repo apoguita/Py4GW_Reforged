@@ -236,7 +236,7 @@ def GetDyeColorIdFromItem(item_id: int) -> int:
     Assumes color ID is stored in the first argument of a modifier.
     Returns 0 if no color ID modifier is found.
     """
-    modifiers = Item.Customization.Modifiers.GetModifiers(item_id)
+    modifiers = Item.Mods.GetModifiers(item_id)
 
     for mod in modifiers:
         modColor = mod.GetArg1() # Assuming GetArg1() returns the color ID

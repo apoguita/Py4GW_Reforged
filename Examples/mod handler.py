@@ -1095,7 +1095,7 @@ def ShowOffhandItemdescription():
             PyImGui.text(f"Type: {item1_type_id} - {item1_type_name}")
 
 
-            modifiers1 = Item.Customization.Modifiers.GetModifiers(item1_id)
+            modifiers1 = Item.Mods.GetModifiers(item1_id)
             if not modifiers1:
                 PyImGui.text("No modifiers found.")
                 PyImGui.end()
@@ -1159,7 +1159,7 @@ def ShowItemdescription():
             PyImGui.text(f"Type: {item1_type_id} - {item1_type_name}")
 
 
-            modifiers1 = Item.Customization.Modifiers.GetModifiers(item1_id)
+            modifiers1 = Item.Mods.GetModifiers(item1_id)
             if not modifiers1:
                 PyImGui.text("No modifiers found.")
                 PyImGui.end()
@@ -1175,7 +1175,7 @@ def ShowItemdescription():
                 return
 
 
-            result = Item.Customization.Modifiers.GetModifierValues(item1_id, 9400)
+            result = Item.Mods.GetModifierValues(item1_id, 9400)
 
             if not result or result == (None, None, None):
                 PyImGui.text("Damage type values could not be retrieved.")
@@ -1189,7 +1189,7 @@ def ShowItemdescription():
 
             first_line = f"{damage_type.representation(arg_eval, arg1_eval, arg2_eval)}"
             
-            result = Item.Customization.Modifiers.GetModifierValues(item1_id, 42920)
+            result = Item.Mods.GetModifierValues(item1_id, 42920)
 
             if not result or result == (None, None, None):
                 PyImGui.text("Damage Range values not be retrieved.")
@@ -1203,7 +1203,7 @@ def ShowItemdescription():
 
             first_line += f"{damage_range.representation(arg_eval, arg1_eval, arg2_eval)}"
        
-            result = Item.Customization.Modifiers.GetModifierValues(item1_id, 10136)
+            result = Item.Mods.GetModifierValues(item1_id, 10136)
 
             if not result or result == (None, None, None):
                 PyImGui.text("Requirement values could not be retrieved.")
@@ -1329,8 +1329,8 @@ def ShowItemComparisonWindow():
             # Modifier comparison
             if PyImGui.collapsing_header("Modifiers"):
                 # Retrieve modifiers for both items
-                modifiers1 = Item.Customization.Modifiers.GetModifiers(item1_id)
-                modifiers2 = Item.Customization.Modifiers.GetModifiers(item2_id)
+                modifiers1 = Item.Mods.GetModifiers(item1_id)
+                modifiers2 = Item.Mods.GetModifiers(item2_id)
 
                 # Gather all unique identifiers for comparison
                 all_identifiers = {mod.GetIdentifier() for mod in modifiers1}.union({mod.GetIdentifier() for mod in modifiers2})

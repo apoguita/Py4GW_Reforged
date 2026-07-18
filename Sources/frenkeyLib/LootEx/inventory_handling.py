@@ -797,7 +797,7 @@ class InventoryHandler:
             inventory_slot = next(
                 (index for index, item in enumerate(self.cached_inventory) if item.id == 0), None)
 
-            if Item.Customization.IsStackable(storage_item_id):
+            if Item.Properties.IsStackable(storage_item_id):
                 existing_slot = next(
                     (index for index, item in enumerate(self.cached_inventory) if item.item_type == item_type and item.quantity < 250), None)
 
@@ -856,7 +856,7 @@ class InventoryHandler:
                 self.model_id = Item.GetModelID(item_id)
                 self.item_type = ItemType(Item.GetItemType(item_id)[
                                           0]) if item_id else ItemType.Unknown
-                self.stackable = Item.Customization.IsStackable(
+                self.stackable = Item.Properties.IsStackable(
                     item_id)
                 self.quantity = Item.Properties.GetQuantity(
                     item_id)
@@ -869,7 +869,7 @@ class InventoryHandler:
             SlotInfo(item_id, bag, local_slot)
             for index, item_id in enumerate(item_array)
             for bag, local_slot in [self.GetBagFromSlot(index, bag_sizes)]
-            if item_id > 0 and Item.Customization.IsStackable(item_id) and (Item.Properties.GetQuantity(item_id) > 0 < 250)
+            if item_id > 0 and Item.Properties.IsStackable(item_id) and (Item.Properties.GetQuantity(item_id) > 0 < 250)
         ]
 
         condensed = False

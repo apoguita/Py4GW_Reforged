@@ -12,10 +12,7 @@ from Py4GWCoreLib.native_src.internals import string_table
 from Py4GWCoreLib.py4gwcorelib_src.FrameCache import frame_cache
 from Sources.frenkeyLib.ItemHandling.Items.ItemData import ITEM_DATA, ItemData
 from Sources.frenkeyLib.ItemHandling.Items.types import INVENTORY_BAGS, STORAGE_BAGS
-from Py4GWCoreLib.item_mods_src.item_mod import ItemMod
-from Py4GWCoreLib.item_mods_src.item_modifier_parser import ItemModifierParser
-from Py4GWCoreLib.item_mods_src.properties import AttributeRequirement, DamageProperty, TargetItemTypeProperty
-from Py4GWCoreLib.item_mods_src.upgrades import Upgrade
+from Py4GWCoreLib.mods_types import ModifierIdentifier as ModId
 from Py4GWCoreLib.native_src.internals.encoded_strings import GWStringEncoded
 
 
@@ -66,10 +63,10 @@ class _LazyParsedItemData:
         self,
         modifiers: list[ItemModifier],
         properties,
-        prefix: Optional[Upgrade],
-        suffix: Optional[Upgrade],
-        inscription: Optional[Upgrade],
-        inherent: Optional[list[Upgrade]],
+        prefix: Optional[str],
+        suffix: Optional[str],
+        inscription: Optional[str],
+        inherent: Optional[list[str]],
         attribute: Attribute,
         requirement: int,
         min_damage: int,
@@ -216,28 +213,30 @@ class ItemSnapshot:
 
     def _get_parsed_item_data(self) -> _LazyParsedItemData:
         if self._parsed_item_data is _UNSET:
-            modifiers: list[ItemModifier] = Item.Customization.Modifiers.GetModifiers(self.id) if self.id > 0 and self.is_valid else []
-            parser = ItemModifierParser(modifiers, self.rarity)
-            properties = parser.get_properties()
+            valid = self.id > 0 and self.is_valid
+            modifiers: list[ItemModifier] = Item.Mods.GetModifiers(self.id) if valid else []
+            _Slot = Item.Mods.Slot
+            upgrades = Item.Mods.GetUpgrades(self.id) if valid else []
 
-            prefix, suffix, inscription, inherent = ItemMod.get_item_upgrades_from_properties(properties, self.rarity)
+            def _in_slot(slot):
+                return next((n for n, s in upgrades if s == slot), None)
 
-            requirement = next((p for p in properties if isinstance(p, AttributeRequirement)), None)
-            damage = next((p for p in properties if isinstance(p, DamageProperty)), None)
-            target_item_type = next((p for p in properties if isinstance(p, TargetItemTypeProperty)), None)
+            attribute, requirement = Item.Properties.GetRequirement(self.id) if valid else (Attribute.None_, 0)
+            min_damage, max_damage = Item.Properties.GetDamage(self.id) if valid else (0, 0)
+            target = Item.Mods.GetSubtype(self.id, ModId.TargetItemType) if valid else None
 
             self._parsed_item_data = _LazyParsedItemData(
                 modifiers=modifiers,
-                properties=properties,
-                prefix=prefix,
-                suffix=suffix,
-                inscription=inscription,
-                inherent=inherent,
-                attribute=requirement.attribute if requirement else Attribute.None_,
-                requirement=requirement.attribute_level if requirement else 0,
-                min_damage=damage.min_damage if damage else 0,
-                max_damage=damage.max_damage if damage else 0,
-                target_item_type=target_item_type.item_type if target_item_type else ItemType.Unknown,
+                properties=[],
+                prefix=_in_slot(_Slot.Prefix),
+                suffix=_in_slot(_Slot.Suffix),
+                inscription=_in_slot(_Slot.Inscription),
+                inherent=[n for n, s in upgrades if s == _Slot.Inherent],
+                attribute=attribute,
+                requirement=requirement,
+                min_damage=min_damage,
+                max_damage=max_damage,
+                target_item_type=target if isinstance(target, ItemType) else ItemType.Unknown,
             )
 
         return cast(_LazyParsedItemData, self._parsed_item_data)
@@ -288,7 +287,7 @@ class ItemSnapshot:
     @property
     def is_stackable(self) -> bool:
         if self._is_stackable is _UNSET:
-            self._is_stackable = Item.Customization.IsStackable(self.id) if self.id > 0 else False
+            self._is_stackable = Item.Properties.IsStackable(self.id) if self.id > 0 else False
 
         return cast(bool, self._is_stackable)
 
@@ -306,19 +305,19 @@ class ItemSnapshot:
         return bool(parsed_data.prefix or parsed_data.suffix or parsed_data.inscription or (parsed_data.inherent and len(parsed_data.inherent) > 0))
 
     @property
-    def prefix(self) -> Optional[Upgrade]:
+    def prefix(self) -> Optional[str]:
         return self._get_parsed_item_data().prefix
 
     @property
-    def suffix(self) -> Optional[Upgrade]:
+    def suffix(self) -> Optional[str]:
         return self._get_parsed_item_data().suffix
 
     @property
-    def inscription(self) -> Optional[Upgrade]:
+    def inscription(self) -> Optional[str]:
         return self._get_parsed_item_data().inscription
 
     @property
-    def inherent(self) -> Optional[list[Upgrade]]:
+    def inherent(self) -> Optional[list[str]]:
         return self._get_parsed_item_data().inherent
 
     @property

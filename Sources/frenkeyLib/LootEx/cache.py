@@ -41,7 +41,7 @@ class Cached_Item:
         
         self.quantity: int = item.quantity if item else 0
         self.uses: int = item.uses if item else 0
-        self.is_stackable: bool = Item.Customization.IsStackable(item_id) if item_id > 0 else False
+        self.is_stackable: bool = Item.Properties.IsStackable(item_id) if item_id > 0 else False
         self.is_customized: bool = item.is_customized if item else False
         self.dye_info: DyeInfo = item.dye_info if item else DyeInfo()
         

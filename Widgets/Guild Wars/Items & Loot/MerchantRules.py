@@ -2127,12 +2127,12 @@ class _MerchantRulesExactUpgradeSalvageBridge:
             from Py4GWCoreLib.Item import Item
 
             inventory_factory = getattr(PyInventory, "PyInventory", None)
-            get_upgrades = getattr(getattr(Item, "Customization", None), "GetUpgrades", None)
+            get_upgrades = getattr(getattr(Item, "Mods", None), "GetUpgrades", None)
             missing = []
             if not callable(inventory_factory):
                 missing.append("PyInventory.PyInventory")
             if not callable(get_upgrades):
-                missing.append("Item.Customization.GetUpgrades")
+                missing.append("Item.Mods.GetUpgrades")
             if not missing:
                 try:
                     inventory_instance = inventory_factory()
@@ -2173,7 +2173,10 @@ class _MerchantRulesExactUpgradeSalvageBridge:
         if not available:
             return {}, reason
         try:
-            prefix, suffix, inscription, _inherent = self._Item.Customization.GetUpgrades(int(item_id))
+            _Slot = self._Item.Mods.Slot
+            prefix = self._Item.Mods.GetUpgradeInSlot(int(item_id), _Slot.Prefix)
+            suffix = self._Item.Mods.GetUpgradeInSlot(int(item_id), _Slot.Suffix)
+            inscription = self._Item.Mods.GetUpgradeInSlot(int(item_id), _Slot.Inscription)
         except Exception as exc:
             return {}, f"upgrade parsing failed: {exc}"
         return {
@@ -14113,7 +14116,7 @@ class MerchantRulesWidget:
     def _get_item_modifier_values(self, item_id: int) -> tuple[tuple[int, int, int], ...]:
         return tuple(
             (int(modifier.GetIdentifier()), int(modifier.GetArg1()), int(modifier.GetArg2()))
-            for modifier in GLOBAL_CACHE.Item.Customization.Modifiers.GetModifiers(item_id)
+            for modifier in GLOBAL_CACHE.Item.Mods.GetModifiers(item_id)
             if modifier is not None
         )
 
@@ -14274,7 +14277,7 @@ class MerchantRulesWidget:
                 identified=bool(GLOBAL_CACHE.Item.Usage.IsIdentified(safe_item_id)),
                 salvageable=bool(GLOBAL_CACHE.Item.Usage.IsSalvageable(safe_item_id)),
                 is_customized=bool(GLOBAL_CACHE.Item.Properties.IsCustomized(safe_item_id)),
-                is_inscribable=bool(GLOBAL_CACHE.Item.Customization.IsInscribable(safe_item_id)),
+                is_inscribable=bool(GLOBAL_CACHE.Item.Properties.IsInscribable(safe_item_id)),
                 is_material=bool(GLOBAL_CACHE.Item.Type.IsMaterial(safe_item_id)),
                 is_rare_material=bool(GLOBAL_CACHE.Item.Type.IsRareMaterial(safe_item_id)),
                 is_weapon_like=is_weapon_like,

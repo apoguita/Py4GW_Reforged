@@ -1,0 +1,391 @@
+index,upgrade_id,name,description,codes
+0,0x0,,,
+1,0x81,Icy Axe Haft,Cold Damage,0x24080081 0x25300102 0x24B80300
+2,0x82,Ebon Axe Haft,Earth Damage,0x24080082 0x25300104 0x24B80B00
+3,0x83,Shocking Axe Haft,Lightning Damage,0x24080083 0x25300106 0x24B80400
+4,0x84,Fiery Axe Haft,Fire Damage,0x24080084 0x25300108 0x24B80500
+5,0x85,Icy Bowstring,Cold Damage,0x24080085 0x2530010A 0x24B80300
+6,0x86,Ebon Bowstring,Earth Damage,0x24080086 0x2530010C 0x24B80B00
+7,0x87,Shocking Bowstring,Lightning Damage,0x24080087 0x2530010E 0x24B80400
+8,0x88,Fiery Bowstring,Fire Damage,0x24080088 0x25300110 0x24B80500
+9,0x89,Icy Hammer Haft,Cold Damage,0x24080089 0x25300112 0x24B80300
+10,0x8A,Ebon Hammer Haft,Earth Damage,0x2408008A 0x25300114 0x24B80B00
+11,0x8B,Shocking Hammer Haft,Lightning Damage,0x2408008B 0x25300116 0x24B80400
+12,0x8C,Fiery Hammer Haft,Fire Damage,0x2408008C 0x25300118 0x24B80500
+13,0x8D,Icy Sword Hilt,Cold Damage,0x2408008D 0x2530011A 0x24B80300
+14,0x8E,Ebon Sword Hilt,Earth Damage,0x2408008E 0x2530011C 0x24B80B00
+15,0x8F,Shocking Sword Hilt,Lightning Damage,0x2408008F 0x2530011E 0x24B80400
+16,0x90,Fiery Sword Hilt,Fire Damage,0x24080090 0x25300120 0x24B80500
+17,0x99,Furious Axe Haft,Double adrenaline gain / (Chance: 5%),0x24080099 0x25300132 0x23B80005
+18,0x9A,Furious Hammer Haft,Double adrenaline gain / (Chance: 5%),0x2408009A 0x25300134 0x23B80005
+19,0x9B,Furious Sword Hilt,Double adrenaline gain / (Chance: 5%),0x2408009B 0x25300136 0x23B80005
+20,0xC2,Rune of Minor Vigor,Health +30 / (Non-stacking),0x240800C2 0x25300185 0x27E802C2
+21,0xC1,Warrior Rune of Minor Absorption,Reduces physical damage by 1 / (Non-stacking),0x240800C1 0x25300183 0x27E802EA
+22,0xAF,Mesmer Rune of Minor Fast Casting,Fast Casting +1 / (Non-stacking),0x240800AF 0x2530015F 0x21E80001
+23,0xAF,Mesmer Rune of Minor Domination Magic,Domination Magic +1 / (Non-stacking),0x240800AF 0x2530015F 0x21E80201
+24,0xAF,Mesmer Rune of Minor Illusion Magic,Illusion Magic +1 / (Non-stacking),0x240800AF 0x2530015F 0x21E80101
+25,0xAF,Mesmer Rune of Minor Inspiration Magic,Inspiration Magic +1 / (Non-stacking),0x240800AF 0x2530015F 0x21E80301
+26,0xB0,Necromancer Rune of Minor Blood Magic,Blood Magic +1 / (Non-stacking),0x240800B0 0x25300161 0x21E80401
+27,0xB0,Necromancer Rune of Minor Death Magic,Death Magic +1 / (Non-stacking),0x240800B0 0x25300161 0x21E80501
+28,0xB0,Necromancer Rune of Minor Curses,Curses +1 / (Non-stacking),0x240800B0 0x25300161 0x21E80701
+29,0xB0,Necromancer Rune of Minor Soul Reaping,Soul Reaping +1 / (Non-stacking),0x240800B0 0x25300161 0x21E80601
+30,0xB1,Elementalist Rune of Minor Energy Storage,Energy Storage +1 / (Non-stacking),0x240800B1 0x25300163 0x21E80C01
+31,0xB1,Elementalist Rune of Minor Fire Magic,Fire Magic +1 / (Non-stacking),0x240800B1 0x25300163 0x21E80A01
+32,0xB1,Elementalist Rune of Minor Air Magic,Air Magic +1 / (Non-stacking),0x240800B1 0x25300163 0x21E80801
+33,0xB1,Elementalist Rune of Minor Earth Magic,Earth Magic +1 / (Non-stacking),0x240800B1 0x25300163 0x21E80901
+34,0xB1,Elementalist Rune of Minor Water Magic,Water Magic +1 / (Non-stacking),0x240800B1 0x25300163 0x21E80B01
+35,0xB2,Monk Rune of Minor Healing Prayers,Healing Prayers +1 / (Non-stacking),0x240800B2 0x25300165 0x21E80D01
+36,0xB2,Monk Rune of Minor Smiting Prayers,Smiting Prayers +1 / (Non-stacking),0x240800B2 0x25300165 0x21E80E01
+37,0xB2,Monk Rune of Minor Protection Prayers,Protection Prayers +1 / (Non-stacking),0x240800B2 0x25300165 0x21E80F01
+38,0xB2,Monk Rune of Minor Divine Favor,Divine Favor +1 / (Non-stacking),0x240800B2 0x25300165 0x21E81001
+39,0xB3,Warrior Rune of Minor Tactics,Tactics +1 / (Non-stacking),0x240800B3 0x25300167 0x21E81501
+40,0xB3,Warrior Rune of Minor Strength,Strength +1 / (Non-stacking),0x240800B3 0x25300167 0x21E81101
+41,0xB3,Warrior Rune of Minor Axe Mastery,Axe Mastery +1 / (Non-stacking),0x240800B3 0x25300167 0x21E81201
+42,0xB3,Warrior Rune of Minor Hammer Mastery,Hammer Mastery +1 / (Non-stacking),0x240800B3 0x25300167 0x21E81301
+43,0xB3,Warrior Rune of Minor Swordsmanship,Swordsmanship +1 / (Non-stacking),0x240800B3 0x25300167 0x21E81401
+44,0xB4,Ranger Rune of Minor Wilderness Survival,Wilderness Survival +1 / (Non-stacking),0x240800B4 0x25300169 0x21E81801
+45,0xB4,Ranger Rune of Minor Expertise,Expertise +1 / (Non-stacking),0x240800B4 0x25300169 0x21E81701
+46,0xB4,Ranger Rune of Minor Beast Mastery,Beast Mastery +1 / (Non-stacking),0x240800B4 0x25300169 0x21E81601
+47,0xB4,Ranger Rune of Minor Marksmanship,Marksmanship +1 / (Non-stacking),0x240800B4 0x25300169 0x21E81901
+48,0xB5,Mesmer Rune of Major Fast Casting,Fast Casting +2 / (Non-stacking) / Health -35,0x240800B5 0x2530016B 0x21E80002 0x2530016B 0x20D80023
+49,0xB5,Mesmer Rune of Major Domination Magic,Domination Magic +2 / (Non-stacking) / Health -35,0x240800B5 0x2530016B 0x21E80202 0x2530016B 0x20D80023
+50,0xB5,Mesmer Rune of Major Illusion Magic,Illusion Magic +2 / (Non-stacking) / Health -35,0x240800B5 0x2530016B 0x21E80102 0x2530016B 0x20D80023
+51,0xB5,Mesmer Rune of Major Inspiration Magic,Inspiration Magic +2 / (Non-stacking) / Health -35,0x240800B5 0x2530016B 0x21E80302 0x2530016B 0x20D80023
+52,0xB6,Necromancer Rune of Major Blood Magic,Blood Magic +2 / (Non-stacking) / Health -35,0x240800B6 0x2530016D 0x21E80402 0x2530016D 0x20D80023
+53,0xB6,Necromancer Rune of Major Death Magic,Death Magic +2 / (Non-stacking) / Health -35,0x240800B6 0x2530016D 0x21E80502 0x2530016D 0x20D80023
+54,0xB6,Necromancer Rune of Major Curses,Curses +2 / (Non-stacking) / Health -35,0x240800B6 0x2530016D 0x21E80702 0x2530016D 0x20D80023
+55,0xB6,Necromancer Rune of Major Soul Reaping,Soul Reaping +2 / (Non-stacking) / Health -35,0x240800B6 0x2530016D 0x21E80602 0x2530016D 0x20D80023
+56,0xB7,Elementalist Rune of Major Energy Storage,Energy Storage +2 / (Non-stacking) / Health -35,0x240800B7 0x2530016F 0x21E80C02 0x2530016F 0x20D80023
+57,0xB7,Elementalist Rune of Major Fire Magic,Fire Magic +2 / (Non-stacking) / Health -35,0x240800B7 0x2530016F 0x21E80A02 0x2530016F 0x20D80023
+58,0xB7,Elementalist Rune of Major Air Magic,Air Magic +2 / (Non-stacking) / Health -35,0x240800B7 0x2530016F 0x21E80802 0x2530016F 0x20D80023
+59,0xB7,Elementalist Rune of Major Earth Magic,Earth Magic +2 / (Non-stacking) / Health -35,0x240800B7 0x2530016F 0x21E80902 0x2530016F 0x20D80023
+60,0xB7,Elementalist Rune of Major Water Magic,Water Magic +2 / (Non-stacking) / Health -35,0x240800B7 0x2530016F 0x21E80B02 0x2530016F 0x20D80023
+61,0xB8,Monk Rune of Major Healing Prayers,Healing Prayers +2 / (Non-stacking) / Health -35,0x240800B8 0x25300171 0x21E80D02 0x25300171 0x20D80023
+62,0xB8,Monk Rune of Major Smiting Prayers,Smiting Prayers +2 / (Non-stacking) / Health -35,0x240800B8 0x25300171 0x21E80E02 0x25300171 0x20D80023
+63,0xB8,Monk Rune of Major Protection Prayers,Protection Prayers +2 / (Non-stacking) / Health -35,0x240800B8 0x25300171 0x21E80F02 0x25300171 0x20D80023
+64,0xB8,Monk Rune of Major Divine Favor,Divine Favor +2 / (Non-stacking) / Health -35,0x240800B8 0x25300171 0x21E81002 0x25300171 0x20D80023
+65,0xB9,Warrior Rune of Major Tactics,Tactics +2 / (Non-stacking) / Health -35,0x240800B9 0x25300173 0x21E81502 0x25300173 0x20D80023
+66,0xB9,Warrior Rune of Major Strength,Strength +2 / (Non-stacking) / Health -35,0x240800B9 0x25300173 0x21E81102 0x25300173 0x20D80023
+67,0xB9,Warrior Rune of Major Axe Mastery,Axe Mastery +2 / (Non-stacking) / Health -35,0x240800B9 0x25300173 0x21E81202 0x25300173 0x20D80023
+68,0xB9,Warrior Rune of Major Hammer Mastery,Hammer Mastery +2 / (Non-stacking) / Health -35,0x240800B9 0x25300173 0x21E81302 0x25300173 0x20D80023
+69,0xB9,Warrior Rune of Major Swordsmanship,Swordsmanship +2 / (Non-stacking) / Health -35,0x240800B9 0x25300173 0x21E81402 0x25300173 0x20D80023
+70,0xBA,Ranger Rune of Major Wilderness Survival,Wilderness Survival +2 / (Non-stacking) / Health -35,0x240800BA 0x25300175 0x21E81802 0x25300175 0x20D80023
+71,0xBA,Ranger Rune of Major Expertise,Expertise +2 / (Non-stacking) / Health -35,0x240800BA 0x25300175 0x21E81702 0x25300175 0x20D80023
+72,0xBA,Ranger Rune of Major Beast Mastery,Beast Mastery +2 / (Non-stacking) / Health -35,0x240800BA 0x25300175 0x21E81602 0x25300175 0x20D80023
+73,0xBA,Ranger Rune of Major Marksmanship,Marksmanship +2 / (Non-stacking) / Health -35,0x240800BA 0x25300175 0x21E81902 0x25300175 0x20D80023
+74,0xBB,Mesmer Rune of Superior Fast Casting,Fast Casting +3 / (Non-stacking) / Health -75,0x240800BB 0x25300177 0x21E80003 0x25300177 0x20D8004B
+75,0xBB,Mesmer Rune of Superior Domination Magic,Domination Magic +3 / (Non-stacking) / Health -75,0x240800BB 0x25300177 0x21E80203 0x25300177 0x20D8004B
+76,0xBB,Mesmer Rune of Superior Illusion Magic,Illusion Magic +3 / (Non-stacking) / Health -75,0x240800BB 0x25300177 0x21E80103 0x25300177 0x20D8004B
+77,0xBB,Mesmer Rune of Superior Inspiration Magic,Inspiration Magic +3 / (Non-stacking) / Health -75,0x240800BB 0x25300177 0x21E80303 0x25300177 0x20D8004B
+78,0xBC,Necromancer Rune of Superior Blood Magic,Blood Magic +3 / (Non-stacking) / Health -75,0x240800BC 0x25300179 0x21E80403 0x25300179 0x20D8004B
+79,0xBC,Necromancer Rune of Superior Death Magic,Death Magic +3 / (Non-stacking) / Health -75,0x240800BC 0x25300179 0x21E80503 0x25300179 0x20D8004B
+80,0xBC,Necromancer Rune of Superior Curses,Curses +3 / (Non-stacking) / Health -75,0x240800BC 0x25300179 0x21E80703 0x25300179 0x20D8004B
+81,0xBC,Necromancer Rune of Superior Soul Reaping,Soul Reaping +3 / (Non-stacking) / Health -75,0x240800BC 0x25300179 0x21E80603 0x25300179 0x20D8004B
+82,0xBD,Elementalist Rune of Superior Energy Storage,Energy Storage +3 / (Non-stacking) / Health -75,0x240800BD 0x2530017B 0x21E80C03 0x2530017B 0x20D8004B
+83,0xBD,Elementalist Rune of Superior Fire Magic,Fire Magic +3 / (Non-stacking) / Health -75,0x240800BD 0x2530017B 0x21E80A03 0x2530017B 0x20D8004B
+84,0xBD,Elementalist Rune of Superior Air Magic,Air Magic +3 / (Non-stacking) / Health -75,0x240800BD 0x2530017B 0x21E80803 0x2530017B 0x20D8004B
+85,0xBD,Elementalist Rune of Superior Earth Magic,Earth Magic +3 / (Non-stacking) / Health -75,0x240800BD 0x2530017B 0x21E80903 0x2530017B 0x20D8004B
+86,0xBD,Elementalist Rune of Superior Water Magic,Water Magic +3 / (Non-stacking) / Health -75,0x240800BD 0x2530017B 0x21E80B03 0x2530017B 0x20D8004B
+87,0xBE,Monk Rune of Superior Healing Prayers,Healing Prayers +3 / (Non-stacking) / Health -75,0x240800BE 0x2530017D 0x21E80D03 0x2530017D 0x20D8004B
+88,0xBE,Monk Rune of Superior Smiting Prayers,Smiting Prayers +3 / (Non-stacking) / Health -75,0x240800BE 0x2530017D 0x21E80E03 0x2530017D 0x20D8004B
+89,0xBE,Monk Rune of Superior Protection Prayers,Protection Prayers +3 / (Non-stacking) / Health -75,0x240800BE 0x2530017D 0x21E80F03 0x2530017D 0x20D8004B
+90,0xBE,Monk Rune of Superior Divine Favor,Divine Favor +3 / (Non-stacking) / Health -75,0x240800BE 0x2530017D 0x21E81003 0x2530017D 0x20D8004B
+91,0xBF,Warrior Rune of Superior Tactics,Tactics +3 / (Non-stacking) / Health -75,0x240800BF 0x2530017F 0x21E81503 0x2530017F 0x20D8004B
+92,0xBF,Warrior Rune of Superior Strength,Strength +3 / (Non-stacking) / Health -75,0x240800BF 0x2530017F 0x21E81103 0x2530017F 0x20D8004B
+93,0xBF,Warrior Rune of Superior Axe Mastery,Axe Mastery +3 / (Non-stacking) / Health -75,0x240800BF 0x2530017F 0x21E81203 0x2530017F 0x20D8004B
+94,0xBF,Warrior Rune of Superior Hammer Mastery,Hammer Mastery +3 / (Non-stacking) / Health -75,0x240800BF 0x2530017F 0x21E81303 0x2530017F 0x20D8004B
+95,0xBF,Warrior Rune of Superior Swordsmanship,Swordsmanship +3 / (Non-stacking) / Health -75,0x240800BF 0x2530017F 0x21E81403 0x2530017F 0x20D8004B
+96,0xC0,Ranger Rune of Superior Wilderness Survival,Wilderness Survival +3 / (Non-stacking) / Health -75,0x240800C0 0x25300181 0x21E81803 0x25300181 0x20D8004B
+97,0xC0,Ranger Rune of Superior Expertise,Expertise +3 / (Non-stacking) / Health -75,0x240800C0 0x25300181 0x21E81703 0x25300181 0x20D8004B
+98,0xC0,Ranger Rune of Superior Beast Mastery,Beast Mastery +3 / (Non-stacking) / Health -75,0x240800C0 0x25300181 0x21E81603 0x25300181 0x20D8004B
+99,0xC0,Ranger Rune of Superior Marksmanship,Marksmanship +3 / (Non-stacking) / Health -75,0x240800C0 0x25300181 0x21E81903 0x25300181 0x20D8004B
+100,0x91,Defensive Staff Head,Armor +4,0x24080091 0x25300122 0x21080004
+101,0x92,Barbed Axe Haft,Lengthens Bleeding duration on foes by 33% / (Stacking),0x24080092 0x25300124 0x246801DE
+102,0x93,Barbed Sword Hilt,Lengthens Bleeding duration on foes by 33% / (Stacking),0x24080093 0x25300126 0x246801DE
+103,0x94,Crippling Axe Haft,Lengthens Crippled duration on foes by 33% / (Stacking),0x24080094 0x25300128 0x246801E1
+104,0x95,Crippling Sword Hilt,Lengthens Crippled duration on foes by 33% / (Stacking),0x24080095 0x2530012A 0x246801E1
+105,0x96,Cruel Axe Haft,Lengthens Deep Wound duration on foes by 33% / (Stacking),0x24080096 0x2530012C 0x246801E2
+106,0x97,Cruel Hammer Haft,Lengthens Deep Wound duration on foes by 33% / (Stacking),0x24080097 0x2530012E 0x246801E2
+107,0x98,Cruel Sword Hilt,Lengthens Deep Wound duration on foes by 33% / (Stacking),0x24080098 0x25300130 0x246801E2
+108,0x9C,Insightful Staff Head,Energy +1,0x2408009C 0x25300138 0x22D80001
+109,0x9D,Hale Staff Head,Health +10,0x2408009D 0x2530013A 0x23480A00
+110,0x9E,Poisonous Axe Haft,Lengthens Poison duration on foes by 33% / (Stacking),0x2408009E 0x2530013C 0x246801E4
+111,0x9F,Poisonous Bowstring,Lengthens Poison duration on foes by 33% / (Stacking),0x2408009F 0x2530013E 0x246801E4
+112,0xA0,Poisonous Sword Hilt,Lengthens Poison duration on foes by 33% / (Stacking),0x240800A0 0x25300140 0x246801E4
+113,0xA1,Heavy Axe Haft,Lengthens Weakness duration on foes by 33% / (Stacking),0x240800A1 0x25300142 0x246801E6
+114,0xA2,Heavy Hammer Haft,Lengthens Weakness duration on foes by 33% / (Stacking),0x240800A2 0x25300144 0x246801E6
+115,0xA3,Zealous Axe Haft,Energy gain on hit: 1 / Energy regeneration -1,0x240800A3 0x25300146 0x25180001 0x25300146 0x20C80001
+116,0xA4,Zealous Hammer Haft,Energy gain on hit: 1 / Energy regeneration -1,0x240800A4 0x25300148 0x25180001 0x25300148 0x20C80001
+117,0xA5,Zealous Bowstring,Energy gain on hit: 1 / Energy regeneration -1,0x240800A5 0x2530014A 0x25180001 0x2530014A 0x20C80001
+118,0xA6,Zealous Sword Hilt,Energy gain on hit: 1 / Energy regeneration -1,0x240800A6 0x2530014C 0x25180001 0x2530014C 0x20C80001
+119,0xA7,Vampiric Axe Haft,Life Draining: 1 / Health regeneration -1,0x240800A7 0x2530014E 0x25280100 0x2530014E 0x20E80001
+120,0xA8,Vampiric Hammer Haft,Life Draining: 1 / Health regeneration -1,0x240800A8 0x25300150 0x25280100 0x25300150 0x20E80001
+121,0xA9,Vampiric Bowstring,Life Draining: 1 / Health regeneration -1,0x240800A9 0x25300152 0x25280100 0x25300152 0x20E80001
+122,0xAA,Vampiric Sword Hilt,Life Draining: 1 / Health regeneration -1,0x240800AA 0x25300154 0x25280100 0x25300154 0x20E80001
+123,0x182,Dervish Rune of Minor Mysticism,Mysticism +1 / (Non-stacking),0x24080182 0x25300305 0x21E82C01
+124,0x182,Dervish Rune of Minor Earth Prayers,Earth Prayers +1 / (Non-stacking),0x24080182 0x25300305 0x21E82B01
+125,0x182,Dervish Rune of Minor Scythe Mastery,Scythe Mastery +1 / (Non-stacking),0x24080182 0x25300305 0x21E82901
+126,0x182,Dervish Rune of Minor Wind Prayers,Wind Prayers +1 / (Non-stacking),0x24080182 0x25300305 0x21E82A01
+127,0xC5,Axe Grip of Defense,Armor +4,0x240800C5 0x2530018B 0x21080004
+128,0xC6,Bow Grip of Defense,Armor +4,0x240800C6 0x2530018D 0x21080004
+129,0xC7,Axe Grip of Warding,Armor +4 / (vs. elemental damage),0x240800C7 0x2530018F 0x21280004
+130,0xC8,Bow Grip of Warding,Armor +4 / (vs. elemental damage),0x240800C8 0x25300191 0x21280004
+131,0xC9,Hammer Grip of Warding,Armor +4 / (vs. elemental damage),0x240800C9 0x25300193 0x21280004
+132,0xCA,Staff Wrapping of Warding,Armor +4 / (vs. elemental damage),0x240800CA 0x25300195 0x21280004
+133,0xCB,Sword Pommel of Warding,Armor +4 / (vs. elemental damage),0x240800CB 0x25300197 0x21280004
+134,0xCC,Hammer Grip of Defense,Armor +4,0x240800CC 0x25300199 0x21080004
+135,0xCD,Axe Grip of Shelter,Armor +4 / (vs. physical damage),0x240800CD 0x2530019B 0x21580004
+136,0xCE,Bow Grip of Shelter,Armor +4 / (vs. physical damage),0x240800CE 0x2530019D 0x21580004
+137,0xCF,Hammer Grip of Shelter,Armor +4 / (vs. physical damage),0x240800CF 0x2530019F 0x21580004
+138,0xD0,Staff Wrapping of Shelter,Armor +4 / (vs. physical damage),0x240800D0 0x253001A1 0x21580004
+139,0xD1,Sword Pommel of Shelter,Armor +4 / (vs. physical damage),0x240800D1 0x253001A3 0x21580004
+140,0xD2,Staff Wrapping of Defense,Armor +4,0x240800D2 0x253001A5 0x21080004
+141,0xD3,Sword Pommel of Defense,Armor +4,0x240800D3 0x253001A7 0x21080004
+142,0xD9,Axe Grip of Fortitude,Health +20,0x240800D9 0x253001B3 0x23481400
+143,0xDA,Bow Grip of Fortitude,Health +20,0x240800DA 0x253001B5 0x23481400
+144,0xDB,Hammer Grip of Fortitude,Health +20,0x240800DB 0x253001B7 0x23481400
+145,0xDC,Staff Wrapping of Fortitude,Health +20,0x240800DC 0x253001B9 0x23481400
+146,0xDD,Sword Pommel of Fortitude,Health +20,0x240800DD 0x253001BB 0x23481400
+147,0xDE,Axe Grip of Enchanting,Enchantments last 10% longer,0x240800DE 0x253001BD 0x22B8000A
+148,0xDF,Bow Grip of Enchanting,Enchantments last 10% longer,0x240800DF 0x253001BF 0x22B8000A
+149,0xE0,Hammer Grip of Enchanting,Enchantments last 10% longer,0x240800E0 0x253001C1 0x22B8000A
+150,0xE1,Staff Wrapping of Enchanting,Enchantments last 10% longer,0x240800E1 0x253001C3 0x22B8000A
+151,0xE2,Sword Pommel of Enchanting,Enchantments last 10% longer,0x240800E2 0x253001C5 0x22B8000A
+152,0xE8,Axe Grip of Axe Mastery,Axe Mastery +1 / (0% chance while using skills),0x240800E8 0x253001D1 0x24181200
+153,0xE9,Bow Grip of Marksmanship,Marksmanship +1 / (0% chance while using skills),0x240800E9 0x253001D3 0x24181900
+154,0xEA,Hammer Grip of Hammer Mastery,Hammer Mastery +1 / (0% chance while using skills),0x240800EA 0x253001D5 0x24181300
+155,0xEB,Sword Pommel of Swordsmanship,Swordsmanship +1 / (0% chance while using skills),0x240800EB 0x253001D7 0x24181400
+156,0xFF,Rune of Minor Vigor,Health +30 / (Non-stacking),0x240800FF 0x253001FF 0x27E802C2
+157,0x100,Rune of Major Vigor,Health +41 / (Non-stacking),0x24080100 0x25300201 0x27E902C2
+158,0x101,Rune of Superior Vigor,Health +50 / (Non-stacking),0x24080101 0x25300203 0x27EA02C2
+159,0xFC,Warrior Rune of Minor Absorption,Reduces physical damage by 1 / (Non-stacking),0x240800FC 0x253001F9 0x27E802EA
+160,0xFD,Warrior Rune of Major Absorption,Reduces physical damage by 2 / (Non-stacking),0x240800FD 0x253001FB 0x27E902EA
+161,0xFE,Warrior Rune of Superior Absorption,Reduces physical damage by 3 / (Non-stacking),0x240800FE 0x253001FD 0x27EA02EA
+162,0x13B,Assassin Rune of Minor Critical Strikes,Critical Strikes +1 / (Non-stacking),0x2408013B 0x25300277 0x21E82301
+163,0x13B,Assassin Rune of Minor Dagger Mastery,Dagger Mastery +1 / (Non-stacking),0x2408013B 0x25300277 0x21E81D01
+164,0x13B,Assassin Rune of Minor Deadly Arts,Deadly Arts +1 / (Non-stacking),0x2408013B 0x25300277 0x21E81E01
+165,0x13B,Assassin Rune of Minor Shadow Arts,Shadow Arts +1 / (Non-stacking),0x2408013B 0x25300277 0x21E81F01
+166,0x13E,Ritualist Rune of Minor Channeling Magic,Channeling Magic +1 / (Non-stacking),0x2408013E 0x2530027D 0x21E82201
+167,0x13E,Ritualist Rune of Minor Restoration Magic,Restoration Magic +1 / (Non-stacking),0x2408013E 0x2530027D 0x21E82101
+168,0x13E,Ritualist Rune of Minor Communing,Communing +1 / (Non-stacking),0x2408013E 0x2530027D 0x21E82001
+169,0x13E,Ritualist Rune of Minor Spawning Power,Spawning Power +1 / (Non-stacking),0x2408013E 0x2530027D 0x21E82401
+170,0x13C,Assassin Rune of Major Critical Strikes,Critical Strikes +2 / (Non-stacking) / Health -35,0x2408013C 0x25300279 0x21E82302 0x25300279 0x20D80023
+171,0x13C,Assassin Rune of Major Dagger Mastery,Dagger Mastery +2 / (Non-stacking) / Health -35,0x2408013C 0x25300279 0x21E81D02 0x25300279 0x20D80023
+172,0x13C,Assassin Rune of Major Deadly Arts,Deadly Arts +2 / (Non-stacking) / Health -35,0x2408013C 0x25300279 0x21E81E02 0x25300279 0x20D80023
+173,0x13C,Assassin Rune of Major Shadow Arts,Shadow Arts +2 / (Non-stacking) / Health -35,0x2408013C 0x25300279 0x21E81F02 0x25300279 0x20D80023
+174,0x13F,Ritualist Rune of Major Channeling Magic,Channeling Magic +2 / (Non-stacking) / Health -35,0x2408013F 0x2530027F 0x21E82202 0x2530027F 0x20D80023
+175,0x13F,Ritualist Rune of Major Restoration Magic,Restoration Magic +2 / (Non-stacking) / Health -35,0x2408013F 0x2530027F 0x21E82102 0x2530027F 0x20D80023
+176,0x13F,Ritualist Rune of Major Communing,Communing +2 / (Non-stacking) / Health -35,0x2408013F 0x2530027F 0x21E82002 0x2530027F 0x20D80023
+177,0x13F,Ritualist Rune of Major Spawning Power,Spawning Power +2 / (Non-stacking) / Health -35,0x2408013F 0x2530027F 0x21E82402 0x2530027F 0x20D80023
+178,0x13D,Assassin Rune of Superior Critical Strikes,Critical Strikes +3 / (Non-stacking) / Health -75,0x2408013D 0x2530027B 0x21E82303 0x2530027B 0x20D8004B
+179,0x13D,Assassin Rune of Superior Dagger Mastery,Dagger Mastery +3 / (Non-stacking) / Health -75,0x2408013D 0x2530027B 0x21E81D03 0x2530027B 0x20D8004B
+180,0x13D,Assassin Rune of Superior Deadly Arts,Deadly Arts +3 / (Non-stacking) / Health -75,0x2408013D 0x2530027B 0x21E81E03 0x2530027B 0x20D8004B
+181,0x13D,Assassin Rune of Superior Shadow Arts,Shadow Arts +3 / (Non-stacking) / Health -75,0x2408013D 0x2530027B 0x21E81F03 0x2530027B 0x20D8004B
+182,0x140,Ritualist Rune of Superior Channeling Magic,Channeling Magic +3 / (Non-stacking) / Health -75,0x24080140 0x25300281 0x21E82203 0x25300281 0x20D8004B
+183,0x140,Ritualist Rune of Superior Restoration Magic,Restoration Magic +3 / (Non-stacking) / Health -75,0x24080140 0x25300281 0x21E82103 0x25300281 0x20D8004B
+184,0x140,Ritualist Rune of Superior Communing,Communing +3 / (Non-stacking) / Health -75,0x24080140 0x25300281 0x21E82003 0x25300281 0x20D8004B
+185,0x140,Ritualist Rune of Superior Spawning Power,Spawning Power +3 / (Non-stacking) / Health -75,0x24080140 0x25300281 0x21E82403 0x25300281 0x20D8004B
+186,0x12E,Icy Dagger Tang,Cold Damage,0x2408012E 0x2530025C 0x24B80300
+187,0x12F,Ebon Dagger Tang,Earth Damage,0x2408012F 0x2530025E 0x24B80B00
+188,0x130,Fiery Dagger Tang,Fire Damage,0x24080130 0x25300260 0x24B80500
+189,0x131,Shocking Dagger Tang,Lightning Damage,0x24080131 0x25300262 0x24B80400
+190,0x132,Zealous Dagger Tang,Energy gain on hit: 1 / Energy regeneration -1,0x24080132 0x25300264 0x25180001 0x25300264 0x20C80001
+191,0x133,Vampiric Dagger Tang,Life Draining: 1 / Health regeneration -1,0x24080133 0x25300266 0x25280100 0x25300266 0x20E80001
+192,0x135,Barbed Dagger Tang,Lengthens Bleeding duration on foes by 33% / (Stacking),0x24080135 0x2530026A 0x246801DE
+193,0x136,Crippling Dagger Tang,Lengthens Crippled duration on foes by 33% / (Stacking),0x24080136 0x2530026C 0x246801E1
+194,0x137,Cruel Dagger Tang,Lengthens Deep Wound duration on foes by 33% / (Stacking),0x24080137 0x2530026E 0x246801E2
+195,0x138,Poisonous Dagger Tang,Lengthens Poison duration on foes by 33% / (Stacking),0x24080138 0x25300270 0x246801E4
+196,0x139,Silencing Dagger Tang,Lengthens Dazed duration on foes by 33% / (Stacking),0x24080139 0x25300272 0x246801E5
+197,0x13A,Furious Dagger Tang,Double adrenaline gain / (Chance: 5%),0x2408013A 0x25300274 0x23B80005
+198,0x185,Paragon Rune of Minor Leadership,Leadership +1 / (Non-stacking),0x24080185 0x2530030B 0x21E82801
+199,0x146,Dagger Handle of Dagger Mastery,Dagger Mastery +1 / (0% chance while using skills),0x24080146 0x2530028D 0x24181D00
+200,0x141,Dagger Handle of Defense,Armor +4,0x24080141 0x25300283 0x21080004
+201,0x143,Dagger Handle of Shelter,Armor +4 / (vs. physical damage),0x24080143 0x25300287 0x21580004
+202,0x142,Dagger Handle of Warding,Armor +4 / (vs. elemental damage),0x24080142 0x25300285 0x21280004
+203,0x144,Dagger Handle of Enchanting,Enchantments last 10% longer,0x24080144 0x25300289 0x22B8000A
+204,0x145,Dagger Handle of Fortitude,Health +20,0x24080145 0x2530028B 0x23481400
+205,0x147,Barbed Bowstring,Lengthens Bleeding duration on foes by 33% / (Stacking),0x24080147 0x2530028E 0x246801DE
+206,0x148,Crippling Bowstring,Lengthens Crippled duration on foes by 33% / (Stacking),0x24080148 0x25300290 0x246801E1
+207,0x149,Silencing Bowstring,Lengthens Dazed duration on foes by 33% / (Stacking),0x24080149 0x25300292 0x246801E5
+208,0xAB,Sundering Axe Haft,Armor penetration +20% / (Chance: 10%),0x240800AB 0x25300156 0x23F80A14
+209,0xAD,Sundering Bowstring,Armor penetration +20% / (Chance: 10%),0x240800AD 0x2530015A 0x23F80A14
+210,0xAC,Sundering Hammer Haft,Armor penetration +20% / (Chance: 10%),0x240800AC 0x25300158 0x23F80A14
+211,0xAE,Sundering Sword Hilt,Armor penetration +20% / (Chance: 10%),0x240800AE 0x2530015C 0x23F80A14
+212,0x134,Sundering Dagger Tang,Armor penetration +20% / (Chance: 10%),0x24080134 0x25300268 0x23F80A14
+213,0x185,Paragon Rune of Minor Motivation,Motivation +1 / (Non-stacking),0x24080185 0x2530030B 0x21E82701
+214,0x185,Paragon Rune of Minor Command,Command +1 / (Non-stacking),0x24080185 0x2530030B 0x21E82601
+215,0x185,Paragon Rune of Minor Spear Mastery,Spear Mastery +1 / (Non-stacking),0x24080185 0x2530030B 0x21E82501
+216,0x183,Dervish Rune of Major Mysticism,Mysticism +2 / (Non-stacking) / Health -35,0x24080183 0x25300307 0x21E82C02 0x25300307 0x20D80023
+217,0x183,Dervish Rune of Major Earth Prayers,Earth Prayers +2 / (Non-stacking) / Health -35,0x24080183 0x25300307 0x21E82B02 0x25300307 0x20D80023
+218,0x183,Dervish Rune of Major Scythe Mastery,Scythe Mastery +2 / (Non-stacking) / Health -35,0x24080183 0x25300307 0x21E82902 0x25300307 0x20D80023
+219,0x183,Dervish Rune of Major Wind Prayers,Wind Prayers +2 / (Non-stacking) / Health -35,0x24080183 0x25300307 0x21E82A02 0x25300307 0x20D80023
+220,0x186,Paragon Rune of Major Leadership,Leadership +2 / (Non-stacking) / Health -35,0x24080186 0x2530030D 0x21E82802 0x2530030D 0x20D80023
+221,0x186,Paragon Rune of Major Motivation,Motivation +2 / (Non-stacking) / Health -35,0x24080186 0x2530030D 0x21E82702 0x2530030D 0x20D80023
+222,0x186,Paragon Rune of Major Command,Command +2 / (Non-stacking) / Health -35,0x24080186 0x2530030D 0x21E82602 0x2530030D 0x20D80023
+223,0x186,Paragon Rune of Major Spear Mastery,Spear Mastery +2 / (Non-stacking) / Health -35,0x24080186 0x2530030D 0x21E82502 0x2530030D 0x20D80023
+224,0x184,Dervish Rune of Superior Mysticism,Mysticism +3 / (Non-stacking) / Health -75,0x24080184 0x25300309 0x21E82C03 0x25300309 0x20D8004B
+225,0x184,Dervish Rune of Superior Earth Prayers,Earth Prayers +3 / (Non-stacking) / Health -75,0x24080184 0x25300309 0x21E82B03 0x25300309 0x20D8004B
+226,0x184,Dervish Rune of Superior Scythe Mastery,Scythe Mastery +3 / (Non-stacking) / Health -75,0x24080184 0x25300309 0x21E82903 0x25300309 0x20D8004B
+227,0x184,Dervish Rune of Superior Wind Prayers,Wind Prayers +3 / (Non-stacking) / Health -75,0x24080184 0x25300309 0x21E82A03 0x25300309 0x20D8004B
+228,0x187,Paragon Rune of Superior Leadership,Leadership +3 / (Non-stacking) / Health -75,0x24080187 0x2530030F 0x21E82803 0x2530030F 0x20D8004B
+229,0x187,Paragon Rune of Superior Motivation,Motivation +3 / (Non-stacking) / Health -75,0x24080187 0x2530030F 0x21E82703 0x2530030F 0x20D8004B
+230,0x187,Paragon Rune of Superior Command,Command +3 / (Non-stacking) / Health -75,0x24080187 0x2530030F 0x21E82603 0x2530030F 0x20D8004B
+231,0x187,Paragon Rune of Superior Spear Mastery,Spear Mastery +3 / (Non-stacking) / Health -75,0x24080187 0x2530030F 0x21E82503 0x2530030F 0x20D8004B
+232,0x16B,Icy Scythe Snathe,Cold Damage,0x2408016B 0x253002D6 0x24B80300
+233,0x16C,Ebon Scythe Snathe,Earth Damage,0x2408016C 0x253002D8 0x24B80B00
+234,0x16F,Zealous Scythe Snathe,Energy gain on hit: 1 / Energy regeneration -1,0x2408016F 0x253002DE 0x25180001 0x253002DE 0x20C80001
+235,0x171,Vampiric Scythe Snathe,Life Draining: 1 / Health regeneration -1,0x24080171 0x253002E2 0x25280100 0x253002E2 0x20E80001
+236,0x173,Sundering Scythe Snathe,Armor penetration +20% / (Chance: 20%),0x24080173 0x253002E6 0x23F81414
+237,0x174,Barbed Scythe Snathe,Lengthens Bleeding duration on foes by 33% / (Stacking),0x24080174 0x253002E8 0x246801DE
+238,0x175,Crippling Scythe Snathe,Lengthens Crippled duration on foes by 33% / (Stacking),0x24080175 0x253002EA 0x246801E1
+239,0x176,Cruel Scythe Snathe,Lengthens Deep Wound duration on foes by 33% / (Stacking),0x24080176 0x253002EC 0x246801E2
+240,0x179,Furious Scythe Snathe,Double adrenaline gain / (Chance: 5%),0x24080179 0x253002F2 0x23B80005
+241,0x177,Poisonous Scythe Snathe,Lengthens Poison duration on foes by 33% / (Stacking),0x24080177 0x253002EE 0x246801E4
+242,0x178,Heavy Scythe Snathe,Lengthens Weakness duration on foes by 33% / (Stacking),0x24080178 0x253002F0 0x246801E6
+243,0x18D,Scythe Grip of Scythe Mastery,Scythe Mastery +1 / (0% chance while using skills),0x2408018D 0x2530031B 0x24182900
+244,0x188,Scythe Grip of Defense,Armor +4,0x24080188 0x25300311 0x21080004
+245,0x18A,Scythe Grip of Shelter,Armor +4 / (vs. physical damage),0x2408018A 0x25300315 0x21580004
+246,0x189,Scythe Grip of Warding,Armor +4 / (vs. elemental damage),0x24080189 0x25300313 0x21280004
+247,0x18B,Scythe Grip of Enchanting,Enchantments last 10% longer,0x2408018B 0x25300317 0x22B8000A
+248,0x18C,Scythe Grip of Fortitude,Health +20,0x2408018C 0x25300319 0x23481400
+249,0x16D,Fiery Spearhead,Fire Damage,0x2408016D 0x253002DA 0x24B80500
+250,0x16E,Shocking Spearhead,Lightning Damage,0x2408016E 0x253002DC 0x24B80400
+251,0x170,Zealous Spearhead,Energy gain on hit: 1 / Energy regeneration -1,0x24080170 0x253002E0 0x25180001 0x253002E0 0x20C80001
+252,0x172,Vampiric Spearhead,Life Draining: 1 / Health regeneration -1,0x24080172 0x253002E4 0x25280100 0x253002E4 0x20E80001
+253,0x17A,Sundering Spearhead,Armor penetration +20% / (Chance: 20%),0x2408017A 0x253002F4 0x23F81414
+254,0x17B,Barbed Spearhead,Lengthens Bleeding duration on foes by 33% / (Stacking),0x2408017B 0x253002F6 0x246801DE
+255,0x17C,Crippling Spearhead,Lengthens Crippled duration on foes by 33% / (Stacking),0x2408017C 0x253002F8 0x246801E1
+256,0x17D,Cruel Spearhead,Lengthens Deep Wound duration on foes by 33% / (Stacking),0x2408017D 0x253002FA 0x246801E2
+257,0x180,Furious Spearhead,Double adrenaline gain / (Chance: 5%),0x24080180 0x25300300 0x23B80005
+258,0x17E,Poisonous Spearhead,Lengthens Poison duration on foes by 33% / (Stacking),0x2408017E 0x253002FC 0x246801E4
+259,0x17F,Silencing Spearhead,Lengthens Dazed duration on foes by 33% / (Stacking),0x2408017F 0x253002FE 0x246801E5
+260,0x181,Heavy Spearhead,Lengthens Weakness duration on foes by 33% / (Stacking),0x24080181 0x25300302 0x246801E6
+261,0x193,Spear Grip of Spear Mastery,Spear Mastery +1 / (0% chance while using skills),0x24080193 0x25300327 0x24182500
+262,0x18E,Spear Grip of Defense,Armor +4,0x2408018E 0x2530031D 0x21080004
+263,0x190,Spear Grip of Shelter,Armor +4 / (vs. physical damage),0x24080190 0x25300321 0x21580004
+264,0x18F,Spear Grip of Warding,Armor +4 / (vs. elemental damage),0x2408018F 0x2530031F 0x21280004
+265,0x191,Spear Grip of Enchanting,Enchantments last 10% longer,0x24080191 0x25300323 0x22B8000A
+266,0x192,Spear Grip of Fortitude,Health +20,0x24080192 0x25300325 0x23481400
+267,0x21B,Focus Core of Endurance,Health +30 / (while in a Stance),0x2408021B 0x25300437 0x23881E00
+268,0x21A,Focus Core of Valor,Health +45 / (while Hexed),0x2408021A 0x25300435 0x23782D00
+269,0x20B,Fiery Scythe Snathe,Fire Damage,0x2408020B 0x25300416 0x24B80500
+270,0x20C,Shocking Scythe Snathe,Lightning Damage,0x2408020C 0x25300418 0x24B80400
+271,0x20D,Icy Spearhead,Cold Damage,0x2408020D 0x2530041A 0x24B80300
+272,0x20E,Ebon Spearhead,Earth Damage,0x2408020E 0x2530041C 0x24B80B00
+273,0x20F,Swift Staff Head,Halves casting time of spells / (Chance: 5%),0x2408020F 0x2530041E 0x22080500
+274,0x154,Staff Wrapping of Devotion,Health +30 / (while Enchanted),0x24080154 0x253002A9 0x23681E00
+275,0x156,Staff Wrapping of Endurance,Health +30 / (while in a Stance),0x24080156 0x253002AD 0x23881E00
+276,0x155,Staff Wrapping of Valor,Health +45 / (while Hexed),0x24080155 0x253002AB 0x23782D00
+277,0x15E,"Inscription: ""Let the Memory Live Again""",Halves skill recharge of spells / (Chance: 5%),0x2408015E 0x253202BC 0x23A80500
+278,0x1D9,"Inscription: ""Have Faith""",Energy +4 / (while Enchanted),0x240801D9 0x253203B2 0x22F80004
+279,0x1DB,"Inscription: ""Don't call it a comeback!""",Energy +5 / (while Health is below 50%),0x240801DB 0x253203B6 0x23183205
+280,0x1DC,"Inscription: ""I am Sorrow.""",Energy +5 / (while Hexed),0x240801DC 0x253203B8 0x23280005
+281,0x1DD,"Inscription: ""Don't Think Twice""",Halves casting time of spells / (Chance: 5%),0x240801DD 0x253203BA 0x22080500
+282,0x163,"Inscription: ""Too Much Information""",Damage +10% / (vs. Hexed foes),0x24080163 0x253202C6 0x2258000A
+283,0x164,"Inscription: ""Guided by Fate""",Damage +10% / (while Enchanted),0x24080164 0x253202C8 0x2268000A
+284,0x1D0,"Inscription: ""Soundness of Mind""",Reduces Dazed duration on you by 20% / (Stacking),0x240801D0 0x253203A0 0x28580700
+285,0x1D1,"Inscription: ""Only the Strong Survive""",Reduces Weakness duration on you by 20% / (Stacking),0x240801D1 0x253203A2 0x28580800
+286,0x167,"Inscription: ""Don't Fear the Reaper""",Damage +10% / (while Hexed),0x24080167 0x253202CE 0x2298000A
+287,0x168,"Inscription: ""Dance with Death""",Damage +10% / (while in a Stance),0x24080168 0x253202D0 0x22A8000A
+288,0x169,"Inscription: ""Brawn over Brains""",Damage +10% / Energy -5,0x24080169 0x253202D2 0x2238000A 0x253202D2 0x20B80005
+289,0x16A,"Inscription: ""To the Pain!""",Damage +10% / Armor -10 / (while attacking),0x2408016A 0x253202D4 0x2238000A 0x253202D4 0x2018000A
+290,0x1E6,Survivor Insignia,Health +15 / (on chest armor) / Health +10 / (on leg armor) / Health +5 / (on other armor),0x240801E6 0x253003CC 0x26D80500
+291,0x1E5,Radiant Insignia,Energy +3 / (on chest armor) / Energy +2 / (on leg armor) / Energy +1 / (on other armor),0x240801E5 0x253003CA 0x26C80001
+292,0x1E7,Stalwart Insignia,Armor +10 / (vs. physical damage),0x240801E7 0xA53003CE 0xA158000A
+293,0x1E8,Brawler's Insignia,Armor +10 / (while attacking),0x240801E8 0x807003D0 0x80900000 0xA53003D0 0xA0F80A00
+294,0x1E9,Blessed Insignia,Armor +10 / (while affected by an Enchantment Spell),0x240801E9 0x807003D2 0x80B00600 0xA53003D2 0xA0F80A00
+295,0x1EA,Herald's Insignia,Armor +10 / (while holding an item),0x240801EA 0x807003D4 0x80C00000 0xA53003D4 0xA0F80A00
+296,0x1EB,Sentry's Insignia,Armor +10 / (while in a Stance),0x240801EB 0x807003D6 0x81100000 0xA53003D6 0xA0F80A00
+297,0x1DE,Vanguard's Insignia [Assassin],Armor +10 / (vs. physical damage) / Armor +10 / (vs. Blunt damage),0x240801DE 0xA53003BC 0xA158000A 0xA53003BC 0xA118000A
+298,0x1DF,Infiltrator's Insignia [Assassin],Armor +10 / (vs. physical damage) / Armor +10 / (vs. Piercing damage),0x240801DF 0xA53003BE 0xA158000A 0xA53003BE 0xA118010A
+299,0x1E0,Saboteur's Insignia [Assassin],Armor +10 / (vs. physical damage) / Armor +10 / (vs. Slashing damage),0x240801E0 0xA53003C0 0xA158000A 0xA53003C0 0xA118020A
+300,0x1E1,Nightstalker's Insignia [Assassin],Armor +15 / (while attacking),0x240801E1 0x807003C2 0x80900000 0xA53003C2 0xA0F80F00
+301,0x1E4,Virtuoso's Insignia [Mesmer],Armor +15 / (while activating skills),0x240801E4 0x807003C8 0x80A00000 0xA53003C8 0xA0F80F00
+302,0x20A,Bloodstained Insignia [Necromancer],Reduces casting time of spells that exploit corpses by 25% / (Non-stacking),0x2408020A 0x25300414 0x27E802A9
+303,0x1EC,Tormentor's Insignia [Necromancer],Holy damage you receive increased by 6 / (on chest armor) / Holy damage you receive increased by 4 / (on leg armor) / Holy damage you receive increased by 2 / (on other armor) / Armor +10,0x240801EC 0x253003D8 0x28680208 0xA53003D8 0xA0F80A00
+304,0x1EE,Bonelace Insignia [Necromancer],Armor +15 / (vs. Piercing damage),0x240801EE 0xA53003DC 0xA118010F
+305,0x1EF,Minion Master's Insignia [Necromancer],Armor +5 / (while you control 1 or more minions) / Armor +5 / (while you control 3 or more minions) / Armor +5 / (while you control 5 or more minions),0x240801EF 0xA53003DE 0xA6E80500
+306,0x1F0,Blighter's Insignia [Necromancer],Armor +20 / (while affected by a Hex Spell),0x240801F0 0x807003E0 0x80B00400 0xA53003E0 0xA0F81400
+307,0x1F2,Hydromancer Insignia [Elementalist],Armor +10 / (vs. elemental damage) / Armor +10 / (vs. Cold damage),0x240801F2 0xA53003E4 0xA128000A 0xA53003E4 0xA118030A
+308,0x1F3,Geomancer Insignia [Elementalist],Armor +10 / (vs. elemental damage) / Armor +10 / (vs. Earth damage),0x240801F3 0xA53003E6 0xA128000A 0xA53003E6 0xA1180B0A
+309,0x1F4,Pyromancer Insignia [Elementalist],Armor +10 / (vs. elemental damage) / Armor +10 / (vs. Fire damage),0x240801F4 0xA53003E8 0xA128000A 0xA53003E8 0xA118050A
+310,0x1F5,Aeromancer Insignia [Elementalist],Armor +10 / (vs. elemental damage) / Armor +10 / (vs. Lightning damage),0x240801F5 0xA53003EA 0xA128000A 0xA53003EA 0xA118040A
+311,0x1F6,Wanderer's Insignia [Monk],Armor +10 / (vs. elemental damage),0x240801F6 0xA53003EC 0xA128000A
+312,0x1F7,Disciple's Insignia [Monk],Armor +15 / (while affected by a Condition),0x240801F7 0x807003EE 0x80B00800 0xA53003EE 0xA0F80F00
+313,0x1F9,Knight's Insignia [Warrior],Received physical damage -3,0x240801F9 0xA53003F2 0xA7F80300
+314,0x208,Lieutenant's Insignia [Warrior],Reduces hex durations on you by 20% and damage dealt by you by 5% / (Non-stacking) / Armor -20,0x24080208 0x25300410 0x27E802B6 0xA5300410 0xA0FBEC00
+315,0x209,Stonefist Insignia [Warrior],Increases knockdown time of foes by 1 second. (Maximum: 3 seconds) / (Non-stacking),0x24080209 0x25300412 0x27E802B7
+316,0x1FA,Dreadnought Insignia [Warrior],Armor +10 / (vs. elemental damage),0x240801FA 0xA53003F4 0xA128000A
+317,0x1FB,Sentinel's Insignia [Warrior],"Armor +20 / (Requires 13 Strength), / vs. elemental damage",0x240801FB 0x807003F6 0x8010110D 0xA53003F6 0xA1280014
+318,0x1FC,Frostbound Insignia [Ranger],Armor +15 / (vs. Cold damage),0x240801FC 0xA53003F8 0xA118030F
+319,0x1FE,Pyrebound Insignia [Ranger],Armor +15 / (vs. Fire damage),0x240801FE 0xA53003FC 0xA118050F
+320,0x1FF,Stormbound Insignia [Ranger],Armor +15 / (vs. Lightning damage),0x240801FF 0xA53003FE 0xA118040F
+321,0x201,Scout's Insignia [Ranger],Armor +10 / (while using a Preparation),0x24080201 0x80700402 0x80D00000 0xA5300402 0xA0F80A00
+322,0x204,Shaman's Insignia [Ritualist],Armor +5 / (while you control 1 or more Spirits) / Armor +5 / (while you control 2 or more Spirits) / Armor +5 / (while you control 3 or more Spirits),0x24080204 0xA5300408 0xA6F80500
+323,0x205,Ghost Forge Insignia [Ritualist],Armor +15 / (while affected by a Weapon Spell),0x24080205 0x8070040A 0x80B01900 0xA530040A 0xA0F80F00
+324,0x206,Mystic's Insignia [Ritualist],Armor +15 / (while activating skills),0x24080206 0x8070040C 0x80A00000 0xA530040C 0xA0F80F00
+325,0x1BC,"Inscription: ""Faith is My Shield""",Armor +4 / (while Enchanted),0x240801BC 0x25320378 0x21980004
+326,0x1C0,"Inscription: ""Live for Today""",Energy +10 / Energy regeneration -1,0x240801C0 0x25320380 0x22D8000A 0x25320380 0x20C80001
+327,0x1C1,"Inscription: ""Serenity Now""",Halves skill recharge of spells / (Chance: 5%),0x240801C1 0x25320382 0x23A80500
+328,0x1C2,"Inscription: ""Forget Me Not""",Halves skill recharge on spells of item's attribute / (Chance: 10%),0x240801C2 0x25320384 0x28280A00
+329,0x15C,"Inscription: ""I have the power!""",Energy +5,0x2408015C 0x253202B8 0x22D80005
+330,0x1D2,"Inscription: ""Luck of the Draw""",Received physical damage -5 / (Chance: 10%),0x240801D2 0x253203A4 0x20780A05
+331,0x1D3,"Inscription: ""Sheltered by Faith""",Received physical damage -1 / (while Enchanted),0x240801D3 0x253203A6 0x20880001
+332,0x1D4,"Inscription: ""Nothing to Fear""",Received physical damage -1 / (while Hexed),0x240801D4 0x253203A8 0x20980001
+333,0x1D5,"Inscription: ""Run For Your Life!""",Received physical damage -1 / (while in a Stance),0x240801D5 0x253203AA 0x20A80001
+334,0x1D6,"Inscription: ""Master of My Domain""",Item's attribute +1 / (Chance: 10%),0x240801D6 0x253203AC 0x28380A00
+335,0x1D7,"Inscription: ""Aptitude not Attitude""",Halves casting time on spells of item's attribute / (Chance: 10%),0x240801D7 0x253203AE 0x28080A00
+336,0x1D8,"Inscription: ""Seize the Day""",Energy +10 / Energy regeneration -1,0x240801D8 0x253203B0 0x22D8000A 0x253203B0 0x20C80001
+337,0x1DA,"Inscription: ""Hale and Hearty""",Energy +4 / (while Health is above 50%),0x240801DA 0x253203B4 0x23083204
+338,0x165,"Inscription: ""Strength and Honor""",Damage +10% / (while Health is above 50%),0x24080165 0x253202CA 0x2278320A
+339,0x166,"Inscription: ""Vengeance is Mine""",Damage +10% / (while Health is below 50%),0x24080166 0x253202CC 0x2288320A
+340,0x218,Focus Core of Fortitude,Health +10,0x24080218 0x25300431 0x23480A00
+341,0x219,Focus Core of Devotion,Health +30 / (while Enchanted),0x24080219 0x25300433 0x23681E00
+342,0x21C,Focus Core of Swiftness,Halves casting time of spells / (Chance: 5%),0x2408021C 0x25300439 0x22080500
+343,0x217,Focus Core of Aptitude,Halves casting time on spells of item's attribute / (Chance: 10%),0x24080217 0x2530042F 0x28080A00
+344,0x160,Wand Wrapping of Quickening,Halves skill recharge of spells / (Chance: 5%),0x24080160 0x253002C1 0x23A80500
+345,0x15F,Wand Wrapping of Memory,Halves skill recharge on spells of item's attribute / (Chance: 10%),0x2408015F 0x253002BF 0x28280A00
+346,0x161,Shield Handle of Fortitude,Health +10,0x24080161 0x253002C3 0x23480A00
+347,0x162,Shield Handle of Devotion,Health +30 / (while Enchanted),0x24080162 0x253002C5 0x23681E00
+348,0x152,Shield Handle of Endurance,Health +30 / (while in a Stance),0x24080152 0x253002A5 0x23881E00
+349,0x151,Shield Handle of Valor,Health +45 / (while Hexed),0x24080151 0x253002A3 0x23782D00
+350,0x210,Adept Staff Head,Halves casting time on spells of item's attribute / (Chance: 10%),0x24080210 0x25300420 0x28080A00
+351,0x153,Staff Wrapping of Mastery,Item's attribute +1 / (Chance: 10%),0x24080153 0x253002A7 0x28380A00
+352,0x211,Rune of Attunement,Energy +2,0x24080211 0x25300423 0x22D80002
+353,0x212,Rune of Vitae,Health +10,0x24080212 0x25300425 0x23480A00
+354,0x213,Rune of Recovery,Reduces Dazed duration on you by 20% / (Non-stacking) / Reduces Deep Wound duration on you by 20% / (Non-stacking),0x24080213 0x25300427 0x27780407
+355,0x214,Rune of Restoration,Reduces Bleeding duration on you by 20% / (Non-stacking) / Reduces Crippled duration on you by 20% / (Non-stacking),0x24080214 0x25300429 0x27780300
+356,0x215,Rune of Clarity,Reduces Blind duration on you by 20% / (Non-stacking) / Reduces Weakness duration on you by 20% / (Non-stacking),0x24080215 0x2530042B 0x27780801
+357,0x216,Rune of Purity,Reduces Disease duration on you by 20% / (Non-stacking) / Reduces Poison duration on you by 20% / (Non-stacking),0x24080216 0x2530042D 0x27780605
+358,0x1E2,Artificer's Insignia [Mesmer],Armor +3 / (for each equipped Signet),0x240801E2 0xA53003C4 0xA7480300
+359,0x1E3,Prodigy's Insignia [Mesmer],Armor +5 / (while recharging 1 or more skills) / Armor +5 / (while recharging 3 or more skills) / Armor +5 / (while recharging 5 or more skills),0x240801E3 0xA53003C6 0xA7280500
+360,0x1ED,Undertaker's Insignia [Necromancer],Armor +5 / (while Health is below 80%) / Armor +5 / (while Health is below 60%) / Armor +5 / (while Health is below 40%) / Armor +5 / (while Health is below 20%),0x240801ED 0xA53003DA 0xA7380500
+361,0x1F1,Prismatic Insignia [Elementalist],Armor +5 / (Requires 9 Air Magic) / Armor +5 / (Requires 9 Earth Magic) / Armor +5 / (Requires 9 Fire Magic) / Armor +5 / (Requires 9 Water Magic),0x240801F1 0xA53003E2 0xA7080509
+362,0x1F8,Anchorite's Insignia [Monk],Armor +5 / (while recharging 1 or more skills) / Armor +5 / (while recharging 3 or more skills) / Armor +5 / (while recharging 5 or more skills),0x240801F8 0xA53003F0 0xA7280500
+363,0x1FD,Earthbound Insignia [Ranger],Armor +15 / (vs. Earth damage),0x240801FD 0xA53003FA 0xA1180B0F
+364,0x200,Beastmaster's Insignia [Ranger],Armor +10 / (while your pet is alive),0x24080200 0x80700400 0x81200000 0xA5300400 0xA0F80A00
+365,0x202,Windwalker Insignia [Dervish],Armor +5 / (while affected by or more Enchantment Spell) / Armor +5 / (while affected by 2 or more Enchantment Spells) / Armor +5 / (while affected by 3 or more Enchantment Spells) / Armor +5 / (while affected by 4 or more Enchantment Spells),0x24080202 0xA5300404 0xA7180506
+366,0x203,Forsaken Insignia [Dervish],Armor +10 / (while not affected by an Enchantment Spell),0x24080203 0x80700406 0x81400600 0xA5300406 0xA0F80A00
+367,0x207,Centurion's Insignia [Paragon],"Armor +10 / (while affected by a Shout, Echo, or Chant)",0x24080207 0x8070040E 0x81300000 0xA530040E 0xA0F80A00
+368,0x1B6,"Inscription: ""Ignorance is Bliss""",Armor +4 / Energy -5,0x240801B6 0x2532036C 0x21080004 0x2532036C 0x20B80005
+369,0x1B7,"Inscription: ""Life is Pain""",Armor +4 / Health -20,0x240801B7 0x2532036E 0x21080004 0x2532036E 0x20D80014
+370,0x1B8,"Inscription: ""Man for All Seasons""",Armor +4 / (vs. elemental damage),0x240801B8 0x25320370 0x21280004
+371,0x1B9,"Inscription: ""Survival of the Fittest""",Armor +4 / (vs. physical damage),0x240801B9 0x25320372 0x21580004
+372,0x1BA,"Inscription: ""Might makes Right""",Armor +4 / (while attacking),0x240801BA 0x25320374 0x21780004
+373,0x1BB,"Inscription: ""Knowing is Half the Battle.""",Armor +4 / (while casting),0x240801BB 0x25320376 0x21880004
+374,0x1BD,"Inscription: ""Down But Not Out""",Armor +5 / (while Health is below 50%),0x240801BD 0x2532037A 0x21B83205
+375,0x1BE,"Inscription: ""Hail to the King""",Armor +4 / (while Health is above 50%),0x240801BE 0x2532037C 0x21A83204
+376,0x1BF,"Inscription: ""Be Just and Fear Not""",Armor +5 / (while Hexed),0x240801BF 0x2532037E 0x21C80005
+377,0x1C3,"Inscription: ""Not the face!""",Armor +5 / (vs. Blunt damage),0x240801C3 0xA5320386 0xA1180005
+378,0x1C4,"Inscription: ""Leaf on the Wind""",Armor +5 / (vs. Cold damage),0x240801C4 0xA5320388 0xA1180305
+379,0x1C5,"Inscription: ""Like a Rolling Stone""",Armor +5 / (vs. Earth damage),0x240801C5 0xA532038A 0xA1180B05
+380,0x1C6,"Inscription: ""Riders on the Storm""",Armor +5 / (vs. Lightning damage),0x240801C6 0xA532038C 0xA1180405
+381,0x1C7,"Inscription: ""Sleep Now in the Fire""",Armor +5 / (vs. Fire damage),0x240801C7 0xA532038E 0xA1180505
+382,0x1C8,"Inscription: ""Through Thick and Thin""",Armor +5 / (vs. Piercing damage),0x240801C8 0xA5320390 0xA1180105
+383,0x1C9,"Inscription: ""The Riddle of Steel""",Armor +5 / (vs. Slashing damage),0x240801C9 0xA5320392 0xA1180205
+384,0x1CA,"Inscription: ""Fear Cuts Deeper""",Reduces Bleeding duration on you by 20% / (Stacking),0x240801CA 0x25320394 0x28580000
+385,0x1CB,"Inscription: ""I Can See Clearly Now""",Reduces Blind duration on you by 20% / (Stacking),0x240801CB 0x25320396 0x28580100
+386,0x1CC,"Inscription: ""Swift as the Wind""",Reduces Crippled duration on you by 20% / (Stacking),0x240801CC 0x25320398 0x28580300
+387,0x1CD,"Inscription: ""Strength of Body""",Reduces Deep Wound duration on you by 20% / (Stacking),0x240801CD 0x2532039A 0x28580400
+388,0x1CE,"Inscription: ""Cast Out the Unclean""",Reduces Disease duration on you by 20% / (Stacking),0x240801CE 0x2532039C 0x28580500
+389,0x1CF,"Inscription: ""Pure of Heart""",Reduces Poison duration on you by 20% / (Stacking),0x240801CF 0x2532039E 0x28580600
