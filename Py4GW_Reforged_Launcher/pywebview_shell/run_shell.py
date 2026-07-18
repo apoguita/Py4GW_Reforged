@@ -94,6 +94,49 @@ def _webview2_storage_path() -> str:
     return str(path)
 
 
+# RELAY 054 root fix. on_shown fires as the top-level window is shown -- the
+# exact moment WebView2 is running its cold-start composite. Calling
+# ensure_native_resize_style right then adds WS_THICKFRAME and issues
+# SetWindowPos(SWP_FRAMECHANGED) INTO that composite; under CPU/disk contention
+# the reframe races the initial present and the content comes up blank-white
+# (the window never even flips to visible), or presents at the pre-reframe
+# client size and renders cut off on the right/bottom edges. Proven by a
+# single-variable A/B under a 6-CPU-burner load: reframe applied in on_shown =
+# 83% stuck (10/12); reframe deferred to after first present = 0% (0/12).
+# 8s past 'shown' is well beyond any legitimate present (measured <5s even
+# under heavy load), so the fallback only fires in the genuinely-stuck case --
+# and applying the style even then is strictly better than permanently losing
+# native edge-resize; the render watchdog handles that stuck case separately.
+_REFRAME_AFTER_SHOW_TIMEOUT = 8.0
+
+
+def _apply_resize_style_after_first_paint(hwnd: int) -> None:
+    """Defer ensure_native_resize_style until WebView2 has presented its first
+    frame, instead of reframing the window mid-composite (RELAY 054 root cause).
+
+    Waiting for IsWindowVisible means the present that mattered has already
+    happened, so adding the resize border afterward is just an ordinary
+    steady-state style change (the window lives its entire life with
+    WS_THICKFRAME anyway -- WebView2 handles frame-size changes routinely during
+    normal use) rather than one racing the cold-start present. In the healthy
+    fast case the window is visible almost immediately and this applies right
+    away; it only actually defers when there IS a present gap -- which is
+    exactly the loaded, race-prone case the reframe must stay out of. A timeout
+    fallback still applies the style if 'visible' never arrives, so native
+    edge-resize is never permanently lost. Daemon thread, same off-GUI-thread
+    context ensure_native_resize_style already ran on when called from on_shown.
+    """
+    def apply() -> None:
+        deadline = time.time() + _REFRAME_AFTER_SHOW_TIMEOUT
+        while time.time() < deadline:
+            if ctypes.windll.user32.IsWindowVisible(hwnd):
+                break
+            time.sleep(0.05)
+        ensure_native_resize_style(hwnd)
+
+    threading.Thread(target=apply, name="deferred-reframe", daemon=True).start()
+
+
 # RELAY 054 render watchdog. A healthy window becomes visible within ~1s
 # (no load) and reliably under ~5s even under heavy CPU/disk contention
 # (measured live), so 8s is comfortably past any legitimate slow start and
@@ -107,14 +150,16 @@ _SW_RESTORE = 9
 
 
 def _start_render_watchdog(hwnd: int, bridge: ShellBridge) -> None:
-    """Guard against the intermittent stuck/blank-window cold-start race
-    (RELAY 054): under resource contention WebView2's content area can come up
-    fully blank-white with the top-level window never even flipping to visible
-    (`IsWindowVisible` stays 0), and it does NOT self-recover by waiting --
-    confirmed reproducible (a single packaged-exe launch under sustained
-    CPU/disk load reproduces it on demand; the underlying race lives in
-    WebView2/pywebview cold start, not in this app's own code, so it can't be
-    eliminated from here -- only detected and recovered).
+    """Belt-and-suspenders net under the RELAY 054 root fix
+    (`_apply_resize_style_after_first_paint`): the confirmed cause of the
+    intermittent stuck/blank-white window was this app's own post-show reframe
+    racing WebView2's cold-start present, and deferring that reframe drives the
+    stuck rate to 0% under the same load that used to blank ~83% of launches.
+    This watchdog stays as a cheap safety net for any residual cold-start
+    stall from deeper in WebView2/pywebview that the app can't reach: under
+    resource contention the content area can come up fully blank-white with the
+    top-level window never even flipping to visible (`IsWindowVisible` stays 0)
+    and not self-recovering by waiting.
 
     Root cause is NOT temp-dir accumulation (ruled out: crossing the old
     ~68-dir threshold with zero blanks when unloaded, and an explicit
@@ -240,7 +285,7 @@ def main() -> None:
         print(f"[shell] main: hwnd={hwnd!r}")
         if hwnd is not None:
             bridge.bind_hwnd(hwnd)
-            ensure_native_resize_style(hwnd)
+            _apply_resize_style_after_first_paint(hwnd)
             # RELAY 046: dev-mode only. Confirmed empirically (real
             # WM_GETICON handle extracted and pixel-compared against
             # assets/python_icon.ico, both a built .exe and a live
