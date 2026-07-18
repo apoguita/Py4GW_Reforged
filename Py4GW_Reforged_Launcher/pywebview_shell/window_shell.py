@@ -43,6 +43,7 @@ def ensure_dpi_awareness() -> bool:
 WM_NCLBUTTONDOWN = 0x00A1
 WM_NCPAINT = 0x0085
 GWL_STYLE = -16
+GWL_EXSTYLE = -20
 GWLP_WNDPROC = -4
 WS_THICKFRAME = 0x00040000
 SWP_FRAMECHANGED = 0x0020
@@ -193,11 +194,54 @@ def ensure_native_resize_style(hwnd: int) -> None:
     regression, and this app doesn't need native caption-drag anymore
     anyway (RELAY 012's hand-rolled Snap covers it).
     """
+    # RELAY 064: grow the OUTER window by the new border's thickness so the
+    # CLIENT (content) area stays exactly the size it was before the reframe,
+    # instead of shrinking it. The old behavior added WS_THICKFRAME with
+    # SWP_NOSIZE -- keeping the outer size fixed, so the ~7px-per-side border
+    # ate into the client area, shrinking it (e.g. 585x778 -> 571x764) AFTER
+    # the page had already painted at the larger size. That left the content
+    # clipped on the right/bottom until WebView2 reflowed to the smaller size,
+    # a resize the app then had to win a cold-start race to apply -- lost ~5% of
+    # launches on fast machines (RELAY 047/059: the faster the machine, the more
+    # often the reframe fires before WebView2 is ready to process the follow-up
+    # resize, so it gets dropped and the clip sticks). Keeping the client size
+    # constant deletes the race outright: the page never sees a size change, so
+    # there is nothing to reflow and nothing to drop. Costs ~14px of extra outer
+    # window footprint (the border becomes real chrome instead of eating content).
+    client = wt.RECT()
+    ctypes.windll.user32.GetClientRect(hwnd, ctypes.byref(client))
+    cw = client.right - client.left
+    ch = client.bottom - client.top
+
     style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_STYLE)
-    ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, style | WS_THICKFRAME)
-    ctypes.windll.user32.SetWindowPos(
-        hwnd, 0, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER
+    new_style = style | WS_THICKFRAME
+    ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, new_style)
+
+    # Outer size that yields client (cw, ch) once WS_THICKFRAME is accounted
+    # for, at this window's real DPI. AdjustWindowRectExForDpi mutates the rect
+    # in place from a client rect to the outer rect that contains it.
+    ex_style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+    dpi = ctypes.windll.user32.GetDpiForWindow(hwnd)
+    outer = wt.RECT(0, 0, cw, ch)
+    ok = ctypes.windll.user32.AdjustWindowRectExForDpi(
+        ctypes.byref(outer), new_style, False, ex_style, dpi
     )
+    if ok:
+        out_w = outer.right - outer.left
+        out_h = outer.bottom - outer.top
+        # Real resize (no SWP_NOSIZE) applied together with the frame change, so
+        # the client size lands directly at (cw, ch) and never transits the
+        # smaller shrunk value -- no clip frame, no reflow.
+        ctypes.windll.user32.SetWindowPos(
+            hwnd, 0, 0, 0, out_w, out_h, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOZORDER
+        )
+    else:
+        # Fallback to the old frame-changed-in-place path if the DPI-aware
+        # adjust is somehow unavailable -- degraded (client shrinks) but never
+        # worse than the pre-064 behavior.
+        ctypes.windll.user32.SetWindowPos(
+            hwnd, 0, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER
+        )
     _fix_native_border_paint(hwnd)
 
 
