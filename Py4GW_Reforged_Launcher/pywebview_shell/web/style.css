@@ -1354,16 +1354,21 @@ body.search-open #search-modal {
   gap: 8px;
 }
 
-/* ---------- Non-blocking prereq toast (RELAY 062) ---------- */
-/* Replaces RELAY 037's launch-time blocking openConfirmModal -- corner-
-   anchored, no scrim, deliberately NOT sharing #confirm-modal's centered/
-   scrimmed styling so it reads as a passive notice rather than another
-   blocking dialog. --warn border (not --bad) matches the Setup tab's own
-   existing "missing prereq" color language. */
-#prereq-toast {
+/* ---------- Non-blocking toast (RELAY 062, generalized RELAY 066) ---------- */
+/* Originally built for RELAY 037's launch-time blocking openConfirmModal
+   replacement -- corner-anchored, no scrim, deliberately NOT sharing
+   #confirm-modal's centered/scrimmed styling so it reads as a passive
+   notice rather than another blocking dialog. RELAY 066 generalized the
+   rules onto a shared .app-toast class (was #prereq-toast-only) so the
+   git-tracking tripwire toast can reuse the exact same mechanism/styling
+   instead of a second copy -- each toast still has its own id + open
+   class for independent show/hide state. --warn border (not --bad)
+   matches the Setup tab's own existing "missing prereq" color language;
+   real end users are never expected to see either of these toasts in
+   normal use. */
+.app-toast {
   position: fixed;
   right: 16px;
-  bottom: 16px;
   width: 320px;
   max-width: calc(100% - 32px);
   background: var(--surface, #14162b);
@@ -1376,21 +1381,32 @@ body.search-open #search-modal {
   flex-direction: column;
   gap: 8px;
 }
-body.prereq-toast-open #prereq-toast {
+#prereq-toast {
+  bottom: 16px;
+}
+/* Stacked above the prereq toast's own corner, not on top of it -- the two
+   are unlikely to co-occur (this one only ever fires once at startup, the
+   prereq one only on a launch click) but stacking removes any chance of a
+   visual overlap if they ever do. */
+#git-tracked-toast {
+  top: 16px;
+}
+body.prereq-toast-open #prereq-toast,
+body.git-tracked-toast-open #git-tracked-toast {
   display: flex;
 }
-#prereq-toast-message {
+.app-toast .toast-message {
   font-size: 12px;
   color: var(--text, #e6e8ff);
   line-height: 1.5;
   white-space: pre-line;
 }
-#prereq-toast-actions {
+.app-toast .toast-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
-#prereq-toast-actions button {
+.app-toast .toast-actions button {
   font-size: 11.5px;
   padding: 5px 10px;
 }

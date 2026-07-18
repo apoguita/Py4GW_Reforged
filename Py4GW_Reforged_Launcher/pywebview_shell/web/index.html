@@ -528,11 +528,27 @@
      launchAction() has already run. No existing toast/transient-
      notification pattern existed anywhere in this app before this
      (grepped) -- new UI, not a port. -->
-<div id="prereq-toast">
-  <div id="prereq-toast-message"></div>
-  <div id="prereq-toast-actions">
+<div id="prereq-toast" class="app-toast">
+  <div id="prereq-toast-message" class="toast-message"></div>
+  <div id="prereq-toast-actions" class="toast-actions">
     <button class="ghost-btn" onclick="onPrereqToastSettingsClick()">Open App Settings</button>
     <button class="ghost-btn" onclick="dismissPrereqToast()">Dismiss</button>
+  </div>
+</div>
+
+<!-- RELAY 066 item 7: real tripwire, not a normal-path UI element -- fires
+     only if accounts.json is somehow tracked by git right now (the exact
+     incident this whole entry exists to prevent a repeat of). Reuses
+     RELAY 062's toast mechanism/styling exactly (.app-toast) rather than
+     a second copy; only real difference is no "Open App Settings" action
+     -- there's nothing in-app to fix this with, the user needs to
+     untrack/gitignore the file themselves. -->
+<div id="git-tracked-toast" class="app-toast">
+  <div class="toast-message">
+    Your accounts.json (Settings/Py4GW_Reforged_Launcher/) is currently tracked by git. This file can contain real account credentials -- it should be gitignored, not committed. See the Settings/*/ rule in this repo's .gitignore.
+  </div>
+  <div class="toast-actions">
+    <button class="ghost-btn" onclick="dismissGitTrackedToast()">Dismiss</button>
   </div>
 </div>
 

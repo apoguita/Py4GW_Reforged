@@ -79,3 +79,25 @@ def _mod_root() -> Path:
             candidate = candidate.parent
         return exe_dir.parent
     return _LAUNCHER_DIR.parent
+
+
+def resolve_mod_repo_path() -> Path:
+    """The real, currently-effective mod-repo root: settings_store's saved
+    override if the user has set one, otherwise _mod_root()'s own
+    assumption above. RELAY 066: moved here from pywebview_shell.bridge's
+    former _resolve_mod_repo_path (RELAY 033) once a second, non-bridge
+    caller (launcher_core.accounts_store) needed the exact same
+    resolution -- bridge.py's own _resolve_mod_repo_path is now a thin
+    wrapper around this, unchanged for its existing call sites.
+
+    Local import (not module-level) to avoid a real import cycle: this
+    module is imported by launcher_core.settings_store's own callers
+    indirectly, and settings_store has no reason to import mod_root back --
+    but keeping the import local here matches this file's own existing
+    pattern just below (the MOD_REPO_MARKER_DIR import inside _mod_root())
+    rather than introducing a new module-level ordering assumption.
+    """
+    from launcher_core import settings_store
+
+    saved = settings_store.load_mod_repo_path()
+    return Path(saved) if saved else _mod_root()

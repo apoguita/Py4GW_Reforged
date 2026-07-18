@@ -9,8 +9,8 @@ bundle visually unmistakable from profiles.json at a glance. The plaintext is a
 real secret at rest -- the UI warns before writing one (see launcher.py's export
 confirm popup), and this module never writes an export except when asked to.
 
-This is separate from profiles.json/teams.json (profile_store) on purpose: those
-are the app's own storage, this is an interchange format that travels between
+This is separate from accounts.json (accounts_store) on purpose: that's the
+app's own storage, this is an interchange format that travels between
 machines/users.
 """
 

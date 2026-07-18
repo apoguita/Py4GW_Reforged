@@ -8,16 +8,30 @@ dict back -- overwriting the file with a single-key dict (an earlier version
 of this module did exactly that for the one setting that existed then) would
 silently discard whichever other setting was already stored, the moment a
 second setting was added.
+
+RELAY 066: relocated from `%APPDATA%\\Py4GW_Reforged_Launcher\\` into
+`Settings/Py4GW_Reforged_Launcher/` under the mod repo, per Apo's "everything
+stays inside the repo" requirement -- same real reasoning as accounts_store's
+own relocation (see that module's docstring). Deliberately resolved via
+mod_root._mod_root() directly, NOT mod_root.resolve_mod_repo_path() (the
+override-aware version accounts_store.py itself uses) -- this file is where
+`mod_repo_path`'s own saved override VALUE lives, so its own location can't
+depend on reading that same override first without a circular bootstrap
+(read settings.json to find the override, whose path depends on
+settings.json). accounts.json has no such constraint (it doesn't store the
+mod-repo-path override itself), so it can safely follow the override.
 """
 
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
-APPDATA_SUBDIR = "Py4GW_Reforged_Launcher"
+from launcher_core.mod_root import _mod_root
+
+SETTINGS_SUBDIR = "Settings"
+LAUNCHER_SETTINGS_DIR = "Py4GW_Reforged_Launcher"
 SETTINGS_FILENAME = "launcher_settings.json"
 
 # Reasonable default within bulk_launch.py's [MIN_PACING_SECONDS, MAX_PACING_SECONDS]
@@ -33,10 +47,7 @@ DEFAULT_PY4GW_INJECTION_DELAY_SECONDS = 5.0
 
 
 def default_settings_path() -> Path:
-    appdata = os.environ.get("APPDATA")
-    if not appdata:
-        raise RuntimeError("%APPDATA% is not set -- expected on Windows")
-    return Path(appdata) / APPDATA_SUBDIR / SETTINGS_FILENAME
+    return _mod_root() / SETTINGS_SUBDIR / LAUNCHER_SETTINGS_DIR / SETTINGS_FILENAME
 
 
 def _load_all(path: Path) -> dict:

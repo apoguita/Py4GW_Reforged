@@ -25,7 +25,7 @@ from typing import Any, Optional
 import psutil
 import webview
 
-from launcher_core import bulk_launch, crypto, elevation, legacy_import, mod_repo, mod_root, prereqs, profile_store, roster_transfer, settings_store, update_check, window_control
+from launcher_core import accounts_store, bulk_launch, crypto, elevation, legacy_import, mod_repo, mod_root, prereqs, roster_transfer, settings_store, update_check, window_control
 from launcher_core import version as launcher_version
 from launcher_core.gw1_launch import launch_py4gw_profile
 from launcher_core.launch_progress import classify_progress_category, classify_progress_message
@@ -64,9 +64,15 @@ def _resolve_mod_repo_path():
     every call (no bridge-instance caching), matching every other
     settings_store-backed read in this app (029/032) -- a path change on
     disk (or via save_mod_repo_path) is visible immediately, nothing to
-    invalidate."""
-    saved = settings_store.load_mod_repo_path()
-    return Path(saved) if saved else mod_root._mod_root()
+    invalidate.
+
+    RELAY 066: the real logic now lives in mod_root.resolve_mod_repo_path()
+    -- launcher_core.accounts_store needed the exact same resolution and
+    this was bridge.py-private, so it moved to a shared location. Kept as
+    a thin wrapper here, unchanged in name/behavior, so every existing
+    call site in this file needed zero edits.
+    """
+    return mod_root.resolve_mod_repo_path()
 
 
 def _find_dll_under_mod_root(filename: str) -> str:
@@ -336,11 +342,24 @@ class ShellBridge:
         if window is not None:
             window.destroy()
 
+    def check_accounts_file_git_tracked(self) -> bool:
+        """RELAY 066 item 7: real tripwire, checked once at startup -- see
+        accounts_store.is_accounts_file_tracked's own docstring for the
+        real incident this guards against. Cheap (one git index lookup),
+        safe to call unconditionally, matching check_prereqs/check_mod_
+        repo's own eager-at-startup pattern. Real end users are never
+        expected to see this come back True, ever.
+        """
+        return accounts_store.is_accounts_file_tracked()
+
     def list_profiles(self) -> dict:
         """Real, read-only data path (RELAY 010) -- loads whatever's actually on
-        disk via launcher_core.profile_store, same module the imgui app itself
-        uses. No caching: called once per page load, cheap enough (small local
-        JSON files) that staleness isn't worth the complexity yet.
+        disk via launcher_core.accounts_store (RELAY 066: was profile_store's
+        %APPDATA% profiles.json/teams.json before this; now the same
+        Settings/Py4GW_Reforged_Launcher/accounts.json this repo's other
+        tools already read). No caching: called once per page load, cheap
+        enough (small local JSON file) that staleness isn't worth the
+        complexity yet.
 
         `password_protected` is stripped before returning -- it's always a
         DPAPI-encrypted blob, never plaintext (see launcher_core/profile.py),
@@ -348,8 +367,8 @@ class ShellBridge:
         Saving a changed password goes through save_profile's `new_password`
         field instead of ever round-tripping this blob back from JS.
         """
-        profiles = profile_store.load_profiles()
-        teams = profile_store.load_teams()
+        profiles = accounts_store.load_profiles()
+        teams = accounts_store.load_teams()
         profile_dicts = []
         for p in profiles:
             d = p.to_dict()
@@ -601,24 +620,6 @@ class ShellBridge:
         threading.Thread(target=self._run_mod_repo_detect, daemon=True).start()
         return {"ok": True}
 
-    def check_legacy_autodetect(self) -> dict:
-        """RELAY 060: first-run offer, ported from the retired imgui app's
-        real `_show_legacy_autodetect_popup()` (its own zero-profiles gate
-        is the whole guard -- self-resolves the moment any profile exists,
-        no persisted "don't ask again" flag needed). Synchronous and cheap
-        (one file-exists check + a profile count), called once per session
-        from the page's own init flow -- JS decides once-per-session-ness
-        by only calling this during initial load, not on every
-        loadData() refresh."""
-        try:
-            accounts_path = _resolve_mod_repo_path() / "accounts.json"
-            if profile_store.load_profiles() or not accounts_path.is_file():
-                return {"found": False}
-            count = legacy_import.count_accounts(accounts_path)
-            return {"found": True, "path": str(accounts_path), "count": count}
-        except (OSError, ValueError):
-            return {"found": False}
-
     def check_mod_repo(self) -> dict:
         """Cheap, filesystem-only -- safe to call automatically (this app's
         pywebviewready init does, same as check_prereqs) and after every
@@ -729,7 +730,7 @@ class ShellBridge:
     def export_roster(self, path: str, include_passwords: bool) -> dict:
         try:
             roster_transfer.export_roster(
-                profile_store.load_profiles(), profile_store.load_teams(), path,
+                accounts_store.load_profiles(), accounts_store.load_teams(), path,
                 include_passwords=bool(include_passwords),
             )
             return {"ok": True, "path": path}
@@ -751,18 +752,29 @@ class ShellBridge:
         }
 
     def import_roster(self, path: str) -> dict:
-        """De-dupe by id (matches STATE.import_roster exactly) -- safe to
-        re-import the same file twice, or import onto a machine that
-        already has some of these profiles/teams."""
+        """De-dupe profiles by id (matches STATE.import_roster exactly) --
+        safe to re-import the same file twice, or import onto a machine
+        that already has some of these profiles/teams.
+
+        RELAY 066: teams de-dupe by NAME now, not id -- a normal export
+        made by this app post-066 already has id==name (accounts_store's
+        own invariant, see add_team's comment), so this only matters for a
+        roster backup made before that change, where a team's id could be
+        an unrelated random uuid. De-duping by name (the real identity in
+        the underlying file format either way) and normalizing any
+        genuinely new team's id to match its name avoids silently
+        producing a team whose id drifts from its name the moment
+        anything reloads.
+        """
         try:
             imported_profiles, imported_teams = roster_transfer.import_roster(path)
         except Exception as e:  # a hand-edited or foreign JSON file can fail in many ways
             return {"ok": False, "error": str(e)}
 
-        profiles = profile_store.load_profiles()
-        teams = profile_store.load_teams()
+        profiles = accounts_store.load_profiles()
+        teams = accounts_store.load_teams()
         existing_profile_ids = {p.id for p in profiles}
-        existing_team_ids = {t.id for t in teams}
+        existing_team_by_name = {t.name: t for t in teams}
 
         added_profiles = []
         skipped_profiles = 0
@@ -776,18 +788,29 @@ class ShellBridge:
 
         added_teams = 0
         skipped_teams = 0
+        team_id_remap: dict = {}
         for team in imported_teams:
-            if team.id in existing_team_ids:
+            existing = existing_team_by_name.get(team.name)
+            if existing is not None:
+                team_id_remap[team.id] = existing.id
                 skipped_teams += 1
             else:
-                existing_team_ids.add(team.id)
+                original_id = team.id
+                team.id = team.name
                 teams.append(team)
+                existing_team_by_name[team.name] = team
+                team_id_remap[original_id] = team.id
                 added_teams += 1
+        for profile in imported_profiles:
+            profile.team_ids = [team_id_remap.get(tid, tid) for tid in profile.team_ids]
 
-        if added_profiles:
-            profile_store.save_profiles(profiles)
-        if added_teams:
-            profile_store.save_teams(teams)
+        # RELAY 066: ONE combined save, not save_profiles()+save_teams()
+        # separately -- see save_accounts' own docstring for the real bug
+        # that pattern caused here (a new team + a profile belonging to it
+        # landing in the unassigned bucket, self-caught during live
+        # verification).
+        if added_profiles or added_teams:
+            accounts_store.save_accounts(profiles, teams)
 
         return {
             "ok": True,
@@ -808,8 +831,8 @@ class ShellBridge:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-        profiles = profile_store.load_profiles()
-        teams = profile_store.load_teams()
+        profiles = accounts_store.load_profiles()
+        teams = accounts_store.load_teams()
 
         existing_team_by_name = {t.name: t for t in teams}
         team_id_remap: dict = {}
@@ -821,9 +844,21 @@ class ShellBridge:
                 team_id_remap[team.id] = existing.id
                 skipped_teams += 1
             else:
+                # RELAY 066: normalize to id=name before adding -- legacy_
+                # import.py's own Team(name=team_name) still gets a random
+                # uuid id, but accounts_store's load path always derives
+                # id=name on every read (the file format has no slot for a
+                # separate id), so a team kept at its original random id
+                # here would silently get a DIFFERENT id the moment
+                # anything reloads. The remap below must key off the
+                # ORIGINAL random id (what imported_profiles' own
+                # team_ids still reference) mapping to the NEW normalized
+                # one -- capture it before overwriting team.id in place.
+                original_id = team.id
+                team.id = team.name
                 teams.append(team)
                 existing_team_by_name[team.name] = team
-                team_id_remap[team.id] = team.id
+                team_id_remap[original_id] = team.id
                 added_teams += 1
         for profile in imported_profiles:
             profile.team_ids = [team_id_remap.get(tid, tid) for tid in profile.team_ids]
@@ -914,10 +949,12 @@ class ShellBridge:
                 profiles.append(profile)
                 added_profiles.append(profile)
 
-        if added_profiles or merged_team_ids:
-            profile_store.save_profiles(profiles)
-        if added_teams:
-            profile_store.save_teams(teams)
+        # RELAY 066: ONE combined save -- see save_accounts' own docstring
+        # for the real bug the old save_profiles()+save_teams() separate-
+        # calls pattern caused here, self-caught during live verification
+        # of this exact method.
+        if added_profiles or merged_team_ids or added_teams:
+            accounts_store.save_accounts(profiles, teams)
 
         return {
             "ok": True,
@@ -1050,7 +1087,7 @@ class ShellBridge:
     def _find_profile(self, profile_id: str) -> Optional[GameProfile]:
         # Load fresh from disk so a launch always uses current data AND can see
         # password_protected (which list_profiles strips) for auto-login.
-        for p in profile_store.load_profiles():
+        for p in accounts_store.load_profiles():
             if p.id == profile_id:
                 return p
         return None
@@ -1379,7 +1416,7 @@ class ShellBridge:
         field with nothing behind it would be a control that lies about
         what it does. Left out entirely rather than half-built.
         """
-        profiles = profile_store.load_profiles()
+        profiles = accounts_store.load_profiles()
         profile_id = data.get("id")
         new_password = data.pop("new_password", "") or ""
         data.pop("password_protected", None)
@@ -1408,7 +1445,7 @@ class ShellBridge:
         if new_password:
             target.password_protected = crypto.protect_password(new_password)
 
-        profile_store.save_profiles(profiles)
+        accounts_store.save_profiles(profiles)
         result = target.to_dict()
         result.pop("password_protected", None)
         return result
@@ -1434,11 +1471,11 @@ class ShellBridge:
         Only the right call while viewing ALL -- see remove_profile_from_team
         for the team-scoped version (RELAY 011's context-aware distinction).
         """
-        profiles = profile_store.load_profiles()
+        profiles = accounts_store.load_profiles()
         remaining = [p for p in profiles if p.id != profile_id]
         if len(remaining) == len(profiles):
             return False
-        profile_store.save_profiles(remaining)
+        accounts_store.save_profiles(remaining)
         return True
 
     def remove_profile_from_team(self, profile_id: str, team_id: str) -> bool:
@@ -1446,45 +1483,79 @@ class ShellBridge:
         itself is untouched and keeps existing in ALL and any other teams.
         The team-scoped counterpart to delete_profile (RELAY 011).
         """
-        profiles = profile_store.load_profiles()
+        profiles = accounts_store.load_profiles()
         target = next((p for p in profiles if p.id == profile_id), None)
         if target is None:
             return False
         if team_id in target.team_ids:
             target.team_ids = [t for t in target.team_ids if t != team_id]
-            profile_store.save_profiles(profiles)
+            accounts_store.save_profiles(profiles)
         return True
 
     def add_profiles_to_team(self, profile_ids: list, team_id: str) -> bool:
         """Bulk-assign: append `team_id` to every listed profile's team_ids,
         skipping any that already have it.
         """
-        profiles = profile_store.load_profiles()
+        profiles = accounts_store.load_profiles()
         changed = False
         for p in profiles:
             if p.id in profile_ids and team_id not in p.team_ids:
                 p.team_ids.append(team_id)
                 changed = True
         if changed:
-            profile_store.save_profiles(profiles)
+            accounts_store.save_profiles(profiles)
         return True
 
     def add_team(self, name: str) -> dict:
-        teams = profile_store.load_teams()
-        new_team = Team(name=name)
+        teams = accounts_store.load_teams()
+        # RELAY 066: id=name, not a random uuid -- accounts.json's own
+        # format has no slot to persist a team id separate from its name
+        # (the team NAME literally is the dict key), so accounts_store's
+        # own load path always derives id=name on every read. Constructing
+        # a fresh team any other way here would only hold until the next
+        # save+reload cycle silently changed its id out from under
+        # whatever the frontend was still tracking (e.g. a "currently
+        # selected team" reference) -- matching the load path avoids that
+        # drift entirely rather than papering over it after the fact.
+        new_team = Team(id=name, name=name)
         teams.append(new_team)
-        profile_store.save_teams(teams)
+        accounts_store.save_teams(teams)
         return new_team.to_dict()
 
     def rename_team(self, team_id: str, new_name: str) -> dict:
         """RELAY 057: reuses the same load/mutate/save shape as add_team/
         remove_team, not a new pattern -- rename never existed before this,
-        confirmed via source (only add_team/remove_team were ever wired)."""
-        teams = profile_store.load_teams()
+        confirmed via source (only add_team/remove_team were ever wired).
+
+        RELAY 066: a team's id IS its name now (see add_team's comment) --
+        renaming changes both, so every profile referencing the OLD
+        name/id under team_ids needs updating to the new one in the same
+        save. Must be ONE combined save (accounts_store.save_accounts),
+        not save_teams() then save_profiles() separately -- self-caught a
+        real bug doing it the separate-calls way during live verification:
+        save_teams() alone writes the renamed team keyed by its NEW name,
+        but the not-yet-updated profiles still carry the OLD name in
+        team_ids, so that write's own member-matching (team_ids entries
+        against real team names) finds no match and drops them into the
+        unassigned bucket -- which on-disk has NO memory of which team
+        they came from, so the follow-up profile-side fix has nothing
+        left to find (`team_id in p.team_ids` is false forever after,
+        since a subsequent load reads their team_ids back as [] from the
+        unassigned bucket). Renaming a team would have silently orphaned
+        every one of its members. One combined save avoids the
+        intermediate on-disk state that causes this entirely.
+        """
+        teams = accounts_store.load_teams()
         for t in teams:
             if t.id == team_id:
                 t.name = new_name
-                profile_store.save_teams(teams)
+                t.id = new_name
+
+                profiles = accounts_store.load_profiles()
+                for p in profiles:
+                    if team_id in p.team_ids:
+                        p.team_ids = [new_name if tid == team_id else tid for tid in p.team_ids]
+                accounts_store.save_accounts(profiles, teams)
                 return t.to_dict()
         return {}
 
@@ -1492,21 +1563,28 @@ class ShellBridge:
         """Deletes the Team itself, but never deletes profiles -- every
         profile that had this team's id gets it stripped from team_ids and
         falls back to whatever other teams it's in (or ALL-only).
+
+        RELAY 066: one combined save (accounts_store.save_accounts), same
+        reasoning as rename_team's own fix -- profiles and teams both
+        change together here, and the separate-calls pattern's real bug
+        (see save_accounts' docstring) applies just as much even though
+        it happened to converge to the right end state for THIS
+        particular operation by accident (removing a team from the teams
+        list already implicitly strips it from every profile's real
+        membership the moment teams alone gets saved, via the same
+        unassigned-bucket fallback that made rename_team's version
+        actually wrong) -- not something worth relying on.
         """
-        teams = profile_store.load_teams()
+        teams = accounts_store.load_teams()
         remaining_teams = [t for t in teams if t.id != team_id]
         if len(remaining_teams) == len(teams):
             return False
-        profile_store.save_teams(remaining_teams)
 
-        profiles = profile_store.load_profiles()
-        changed = False
+        profiles = accounts_store.load_profiles()
         for p in profiles:
             if team_id in p.team_ids:
                 p.team_ids = [t for t in p.team_ids if t != team_id]
-                changed = True
-        if changed:
-            profile_store.save_profiles(profiles)
+        accounts_store.save_accounts(profiles, remaining_teams)
         return True
 
     def ping(self, payload: Any = None) -> dict:

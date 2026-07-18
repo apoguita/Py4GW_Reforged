@@ -96,10 +96,10 @@ import pywintypes
 import win32gui
 import win32process
 
+from launcher_core import mod_root
 from launcher_core.crypto import unprotect_password
 from launcher_core.mod_root import _mod_root
 from launcher_core.profile import GameProfile
-from launcher_core.profile_store import APPDATA_SUBDIR
 
 kernel32 = ctypes.windll.kernel32
 ntdll = ctypes.windll.ntdll
@@ -671,9 +671,10 @@ def _prepare_per_profile_gmod_folder(profile: GameProfile) -> str:
     gMod resolves modlist.txt relative to wherever its *injected* DLL module
     actually lives, not wherever the canonical DLL sits on disk -- confirmed
     from gMod's own source and GWxLauncher's tested PreparePerProfileGModFolder.
-    So each profile gets its own folder (%AppData%\\<APPDATA_SUBDIR>\\accounts\\
-    <profile.id>\\ -- reusing profile_store.APPDATA_SUBDIR for consistency with
-    where profiles.json/teams.json already live) containing:
+    So each profile gets its own folder (RELAY 066: `<mod repo root>\\Settings\\
+    Py4GW_Reforged_Launcher\\accounts\\<profile.id>\\` -- moved off %AppData%
+    together with accounts.json/launcher_settings.json, same "everything
+    stays inside the repo" requirement) containing:
 
     - gMod.dll: a hardlink to profile.gmod_dll_path (os.link), always deleted
       and recreated on every launch rather than diffed, to guarantee it's
@@ -689,11 +690,7 @@ def _prepare_per_profile_gmod_folder(profile: GameProfile) -> str:
     fallback failing) rather than swallowing it -- the caller aborts the
     launch on this, same as any other injection-prep failure in this pipeline.
     """
-    appdata = os.environ.get("APPDATA")
-    if not appdata:
-        raise RuntimeError("%APPDATA% is not set -- expected on Windows")
-
-    folder = Path(appdata) / APPDATA_SUBDIR / "accounts" / profile.id
+    folder = mod_root.resolve_mod_repo_path() / "Settings" / "Py4GW_Reforged_Launcher" / "accounts" / profile.id
     folder.mkdir(parents=True, exist_ok=True)
 
     dll_dest = folder / "gMod.dll"
