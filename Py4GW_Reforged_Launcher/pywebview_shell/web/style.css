@@ -186,6 +186,45 @@ select {
   opacity: 1;
 }
 
+/* RELAY 085: near-instant custom tooltip, replacing native `title`'s browser
+   -default ~0.75s+ hover delay, applied app-wide (Chris, after live testing:
+   "every tooltip has a delay ... we need to apply this fix to all tooltip
+   elements"). First attempt used a CSS-only [data-tooltip]::after
+   pseudo-element -- real bug found via Chris's own testing ("still no
+   tooltip for team buttons"): #rail has overflow-y:auto, and per the CSS
+   overflow spec, setting one axis to a non-visible value forces the OTHER
+   axis non-visible too if it would otherwise be 'visible' -- so any
+   absolutely-positioned content overflowing the rail's 60px width silently
+   clipped, no way to fix with CSS alone since the rail must stay
+   vertically scrollable. Replaced with a single shared #app-tooltip element
+   (position: fixed, positioned via JS getBoundingClientRect() at hover/
+   focus time -- see initTooltips() in app.js) -- fixed positioning escapes
+   ancestor overflow clipping entirely since its containing block is the
+   viewport, not any scrolling parent. Background/border match the confirm-
+   modal dialog's actual floating-surface tone (--surface + --border --
+   checked: --panel, the original entry's own suggestion, is a different
+   derived value, not what the modal really uses), radius matches the
+   badges/buttons' --radius-sm convention. */
+#app-tooltip {
+  position: fixed;
+  background: var(--surface, #14162b);
+  color: var(--text, #e6e8ff);
+  border: 1px solid var(--border, #2a2f55);
+  border-radius: var(--radius-sm, 9px);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.05s linear;
+}
+#app-tooltip.visible {
+  opacity: 1;
+}
+
 /* ---------- Main column ---------- */
 
 #main {

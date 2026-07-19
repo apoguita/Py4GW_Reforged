@@ -385,10 +385,14 @@ class ShellBridge:
             "gmod_injection_enabled": settings_store.load_gmod_injection_enabled(),
             "bulk_launch_pacing_seconds": settings_store.load_bulk_launch_pacing_seconds(),
             "py4gw_injection_delay_seconds": settings_store.load_py4gw_injection_delay_seconds(),
+            "card_sort_mode": settings_store.load_card_sort_mode(),
         }
 
     def save_multiclient_enabled(self, enabled: bool) -> None:
         settings_store.save_multiclient_enabled(bool(enabled))
+
+    def save_card_sort_mode(self, mode: str) -> None:
+        settings_store.save_card_sort_mode(str(mode))
 
     def save_py4gw_injection_enabled(self, enabled: bool) -> None:
         settings_store.save_py4gw_injection_enabled(bool(enabled))

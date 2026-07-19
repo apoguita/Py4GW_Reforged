@@ -30,7 +30,7 @@
 <div id="app">
   <div id="body">
     <div id="rail">
-      <div class="rail-icon" title="Search all teams" onclick="onSearchClick()">&#128269;</div>
+      <div class="rail-icon" data-tooltip="Search all teams" data-tooltip-dir="right" aria-label="Search all teams" onclick="onSearchClick()">&#128269;</div>
       <div class="rail-sep"></div>
       <div id="rail-all" class="rail-all active" onclick="selectTeam('ALL')">
         <span>ALL</span>
@@ -38,7 +38,7 @@
       </div>
       <div id="rail-teams"></div>
       <div style="flex:1"></div>
-      <div id="rail-add-team-btn" class="rail-icon" title="Add team" onclick="onNewTeamClick()">+</div>
+      <div id="rail-add-team-btn" class="rail-icon" data-tooltip="Add team" data-tooltip-dir="right" aria-label="Add team" onclick="onNewTeamClick()">+</div>
     </div>
 
     <div id="main">
@@ -46,7 +46,7 @@
            026, matches the mockup's real 3-row split). -->
       <div id="header">
         <span class="team-name" id="team-name">All Profiles</span>
-        <button id="team-rename-btn" class="team-rename-btn" style="display:none" title="Rename team" onclick="onRenameTeamClick()">&#9998;</button>
+        <button id="team-rename-btn" class="team-rename-btn" style="display:none" data-tooltip="Rename team" aria-label="Rename team" onclick="onRenameTeamClick()">&#9998;</button>
         <span class="team-count" id="team-count">0 profiles</span>
         <!-- RELAY 035: a single shared wrapper carries the row's one
              margin-left:auto push, rather than each child carrying its
@@ -65,7 +65,7 @@
                regardless of how it got that way. Markup/inline style
                matches the approved mockup verbatim
                (_launcher_export_src.html ~58). -->
-          <span id="admin-badge" title="Launcher elevated" style="display:none;font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--warn,#ffd166);background:var(--warn-soft,rgba(255,209,102,.16));border:1px solid var(--warn,#ffd166);border-radius:5px;padding:3px 7px">ADMIN</span>
+          <span id="admin-badge" data-tooltip="Launcher elevated" aria-label="Launcher elevated" style="display:none;font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--warn,#ffd166);background:var(--warn-soft,rgba(255,209,102,.16));border:1px solid var(--warn,#ffd166);border-radius:5px;padding:3px 7px">ADMIN</span>
         </div>
       </div>
 
@@ -74,14 +74,14 @@
            relocated out of the identity row); right group = the small
            square icon buttons, separated by a flex spacer. -->
       <div id="action-row">
-        <button id="bulk-stop-btn" class="danger-btn" style="display:none" onclick="onBulkStopClick()" title="Stop queuing further accounts (does not close already-launched clients)">■ Stop launch</button>
-        <button id="launch-team-btn" class="primary-btn" style="display:none" onclick="onLaunchTeamClick()" title="Launch every profile in this team, paced">▶ Launch Team</button>
-        <button id="launch-selected-btn" onclick="onLaunchSelectedClick()" title="Launch the checked profiles, paced">▶ Launch Selected</button>
+        <button id="bulk-stop-btn" class="danger-btn" style="display:none" onclick="onBulkStopClick()" data-tooltip="Stop queuing further accounts (does not close already-launched clients)" aria-label="Stop queuing further accounts (does not close already-launched clients)">■ Stop launch</button>
+        <button id="launch-team-btn" class="primary-btn" style="display:none" onclick="onLaunchTeamClick()" data-tooltip="Launch every profile in this team, paced" aria-label="Launch every profile in this team, paced">▶ Launch Team</button>
+        <button id="launch-selected-btn" onclick="onLaunchSelectedClick()" data-tooltip="Launch the checked profiles, paced" aria-label="Launch the checked profiles, paced">▶ Launch Selected</button>
         <!-- Add to Team lives ONLY on the ALL view (RELAY 023/026). -->
-        <button id="add-to-team-btn" style="display:none" onclick="onAddToTeamClick()" title="Add checked profiles to another team">+ Add to Team</button>
+        <button id="add-to-team-btn" style="display:none" onclick="onAddToTeamClick()" data-tooltip="Add checked profiles to another team" aria-label="Add checked profiles to another team">+ Add to Team</button>
         <div style="flex:1"></div>
-        <button id="add-profile-btn" onclick="openEditDrawer(null)" title="Add profile">+</button>
-        <button id="settings-btn" onclick="openSettingsDrawer()" title="Settings &amp; theme">&#9881;</button>
+        <button id="add-profile-btn" onclick="openEditDrawer(null)" data-tooltip="Add profile" aria-label="Add profile">+</button>
+        <button id="settings-btn" onclick="openSettingsDrawer()" data-tooltip="Settings &amp; theme" aria-label="Settings &amp; theme">&#9881;</button>
       </div>
 
       <!-- Row 3: search box alone, nothing else shares this row. -->
@@ -250,6 +250,21 @@
 
       <!-- General: the routine, tweak-often settings (029, unchanged). -->
       <div id="settings-tab-general" class="settings-tab-panel" style="display:none">
+        <div>
+          <h4 style="margin-bottom:8px">Display</h4>
+          <div class="pal-row">
+            <span>Card order</span>
+            <select id="settings-card-sort">
+              <option value="added">Added order</option>
+              <option value="alphabetical">Alphabetical</option>
+            </select>
+          </div>
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+            "Added order" matches the order profiles were created in (same as
+            the old launcher). No drag-and-drop reorder -- switch to
+            Alphabetical if you'd rather sort by name.
+          </p>
+        </div>
         <div>
           <h4 style="margin-bottom:8px">Launch behavior</h4>
           <div class="pal-row"><span>Multiclient patch</span><input type="checkbox" id="settings-multiclient"></div>
@@ -519,7 +534,7 @@
   <div id="search-header">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.2-4.2"></path></svg>
     <input id="search-input" placeholder="Search characters across all teams…" oninput="onSearchInput()">
-    <span id="search-close-btn" title="Close">&#10005;</span>
+    <span id="search-close-btn" data-tooltip="Close" aria-label="Close">&#10005;</span>
   </div>
   <div id="search-results"></div>
 </div>
@@ -557,6 +572,14 @@
     <button class="ghost-btn" onclick="dismissGitTrackedToast()">Dismiss</button>
   </div>
 </div>
+
+<!-- RELAY 085: single shared tooltip element for every [data-tooltip]
+     element in the app -- positioned via JS (initTooltips() in app.js) at
+     hover/focus time, not CSS ::after, since fixed positioning is required
+     to escape #rail's overflow-y:auto clipping (a plain absolutely-
+     positioned pseudo-element inside a scrolling ancestor gets clipped --
+     confirmed the real bug via live testing, not guessed). -->
+<div id="app-tooltip" aria-hidden="true"></div>
 
 <script src="theme.js"></script>
 <script src="app.js"></script>

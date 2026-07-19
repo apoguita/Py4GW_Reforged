@@ -219,6 +219,21 @@ def save_custom_card_order_enabled(custom_card_order_enabled: bool, path: Path |
     _save_one("custom_card_order_enabled", custom_card_order_enabled, resolved)
 
 
+def load_card_sort_mode(path: Path | str | None = None) -> str:
+    """RELAY 084: default "added" -- matches the old launcher's own behavior
+    (no sort at all, plain JSON insertion order; Apo's whole mental model of
+    "1st, 2nd, 3rd" is built on that raw order). "alphabetical" is the only
+    other valid value, an explicit opt-in via App Settings."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return data.get("card_sort_mode") or "added"
+
+
+def save_card_sort_mode(card_sort_mode: str, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("card_sort_mode", card_sort_mode, resolved)
+
+
 def load_minimize_to_tray_enabled(path: Path | str | None = None) -> bool:
     """Default False -- opt-in, matches current behavior (plain taskbar minimize)
     for existing installs and anyone who hasn't turned this on in App Settings."""

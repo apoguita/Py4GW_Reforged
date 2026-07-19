@@ -63,16 +63,26 @@ function teamName(teamId) {
   return t ? t.name : "";
 }
 
-// RELAY 029: alphabetical-by-name is the only ordering model this app will
-// ever have -- no drag-and-drop reorder exists or is planned (Chris, having
-// lived with the old imgui app's real custom-order feature through real
-// multi-account use: "it really turned out to be unnecessary fluff"), so
-// there's no toggle here, just a permanent sort. Case-insensitive, matching
-// the old app's own sort(key=lambda p: p.name.lower()) convention. Sorts a
-// copy -- never mutates the shared `profiles` array itself.
+// RELAY 029, REVERSED by RELAY 084: alphabetical-by-name was made the only
+// ordering model this app would ever have -- no drag-and-drop reorder was
+// planned (Chris, having lived with the old imgui app's real custom-order
+// feature through real multi-account use: "it really turned out to be
+// unnecessary fluff"). Apo's real-world feedback after his roster actually
+// loaded correctly (083) reversed this: "I only use the account sort, I know
+// who's 1st, 2nd, 3rd, I don't know their names or their roles" -- his whole
+// mental model is built on the old launcher's raw JSON-insertion order
+// (confirmed against Py4GW_Launcher.py: no sort anywhere, plain append +
+// serialize). Drag-and-drop reorder is still correctly out of scope --
+// "Added" order below IS that original insertion order already, nothing to
+// drag. Default is now "added" (a plain copy, unsorted); "alphabetical" is
+// an explicit opt-in via App Settings, same case-insensitive
+// localeCompare comparator as before.
 function membersOfActiveTeam() {
   const members = activeTeamId === "ALL" ? profiles : profiles.filter((p) => (p.team_ids || []).includes(activeTeamId));
-  return [...members].sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+  if (cachedCardSortMode === "alphabetical") {
+    return [...members].sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+  }
+  return [...members];
 }
 
 function renderRail() {
@@ -85,7 +95,20 @@ function renderRail() {
     const el = document.createElement("div");
     el.className = "rail-team" + (t.id === activeTeamId ? " active" : "");
     el.style.background = avatarColor(t.name);
-    el.title = t.name;
+    // RELAY 085: native `title` replaced with the near-instant custom
+    // tooltip (Apo: "it's like 0.75s delayed"). `title` dropped entirely
+    // rather than kept alongside (would double up after its own native
+    // delay); `aria-label` carries the accessible name instead so this
+    // isn't a net a11y loss. Note: these rail divs have no tabindex and
+    // never did (confirmed -- no tabindex/role anywhere in this file), so
+    // they weren't keyboard-tabbable before this change either; initTooltips'
+    // focusin/focusout handling is there for if that's ever added, not a
+    // regression fix for something that existed. tooltipDir "right" -- see
+    // initTooltips() in this file for why (the rail's own overflow-y:auto
+    // clips anything that would render above/below it).
+    el.dataset.tooltip = t.name;
+    el.dataset.tooltipDir = "right";
+    el.setAttribute("aria-label", t.name);
     el.textContent = initials(t.name);
     el.onclick = () => selectTeam(t.id);
     container.appendChild(el);
@@ -124,11 +147,17 @@ function updateAddToTeamBtn() {
 // mod won't actually run despite the profile-level toggle saying it will.
 // masterOn defaults true so the AUTO badge's existing 2-arg call site
 // (which has no master switch at all) is unaffected.
+// RELAY 085: native `title` replaced with the near-instant custom tooltip
+// here too (frequently hovered during multibox management, same complaint
+// as the rail icons) -- `title` dropped, `aria-label` carries the
+// accessible name, same reasoning as renderRail() above.
 function badgeHtml(label, on, masterOn = true) {
   if (on && !masterOn) {
-    return `<span class="badge warn-off" title="${label} — enabled on profile but master switch is off">${label}</span>`;
+    const msg = `${label} — enabled on profile but master switch is off`;
+    return `<span class="badge warn-off" data-tooltip="${msg}" aria-label="${msg}">${label}</span>`;
   }
-  return `<span class="badge${on ? " on" : ""}" title="${label} — ${on ? "on" : "off"} for this profile">${label}</span>`;
+  const msg = `${label} — ${on ? "on" : "off"} for this profile`;
+  return `<span class="badge${on ? " on" : ""}" data-tooltip="${msg}" aria-label="${msg}">${label}</span>`;
 }
 
 // Cards are too narrow for a real Gw.exe path -- CSS ellipsis just chops it
@@ -163,14 +192,17 @@ function renderCards() {
     const card = document.createElement("div");
     card.className = "card" + (checkedIds.has(p.id) ? " selected" : "") + (p.id === focusedProfileId ? " card-focused" : "");
     card.setAttribute("data-card", p.id);
-    const midText = clientFolderLabel(p.executable_path);
+    // RELAY 084: was clientFolderLabel(p.executable_path) -- blanked here too
+    // so the initial paint isn't self-contradictory with applyCardLaunchVisual's
+    // idle branch (which runs synchronously right after and would overwrite a
+    // non-empty value anyway, but leaving it inconsistent was worth cleaning up).
     card.innerHTML = `
       <div class="card-top">
         <div class="card-check${checkedIds.has(p.id) ? " checked" : ""}" data-check="${p.id}">${checkedIds.has(p.id) ? "&#10003;" : ""}</div>
         <div class="card-avatar" style="background:${avatarColor(p.name)}">${initials(p.name)}</div>
         <div class="card-name-block">
           <div class="card-name">${escapeHtml(p.name || "(unnamed)")}</div>
-          <div class="card-sub" title="${escapeHtml(p.executable_path || "")}">${escapeHtml(midText)}</div>
+          <div class="card-sub"></div>
         </div>
         <span class="card-dot"></span>
       </div>
@@ -181,7 +213,7 @@ function renderCards() {
       </div>
       <div class="card-bottom-row">
         <button class="card-action">&#9654; Launch</button>
-        <button class="card-edit-btn" data-edit="${p.id}" title="Edit profile">&#9998;</button>
+        <button class="card-edit-btn" data-edit="${p.id}" data-tooltip="Edit profile" aria-label="Edit profile">&#9998;</button>
       </div>
     `;
     card.querySelector("[data-check]").onclick = (e) => {
@@ -220,21 +252,21 @@ function applyCardLaunchVisual(card, p) {
   if (st.phase === "queued") {
     card.classList.add("state-queued");
     sub.textContent = st.status || "Queued...";
-    sub.removeAttribute("title");
+    sub.removeAttribute("data-tooltip");
     action.innerHTML = "&#8987; Queued";
     action.disabled = true;
     action.onclick = null;
   } else if (st.phase === "launching") {
     card.classList.add("state-launching");
     sub.textContent = st.status || "Launching...";
-    sub.removeAttribute("title");
+    sub.removeAttribute("data-tooltip");
     action.innerHTML = "&#8987; " + escapeHtml(st.status || "Launching...");
     action.disabled = true;
     action.onclick = null;
   } else if (st.phase === "running") {
     card.classList.add("state-running");
     sub.textContent = "Running · PID " + st.pid;
-    sub.removeAttribute("title");
+    sub.removeAttribute("data-tooltip");
     action.textContent = "■ Stop";
     action.disabled = false;
     action.onclick = (e) => { e.stopPropagation(); stopProfile(p.id); };
@@ -248,7 +280,7 @@ function applyCardLaunchVisual(card, p) {
     // for the same account instead of doing anything to the first one.
     card.classList.add("state-error");
     sub.textContent = st.error || "Launch failed";
-    sub.title = st.error || "";
+    if (st.error) sub.dataset.tooltip = st.error; else sub.removeAttribute("data-tooltip");
     action.textContent = "■ Stop";
     action.disabled = false;
     action.onclick = (e) => { e.stopPropagation(); stopProfile(p.id); };
@@ -257,10 +289,15 @@ function applyCardLaunchVisual(card, p) {
     if (st.phase === "error") {
       card.classList.add("state-error");
       sub.textContent = st.error || "Launch failed";
-      sub.title = st.error || "";
+      if (st.error) sub.dataset.tooltip = st.error; else sub.removeAttribute("data-tooltip");
     } else {
-      sub.textContent = clientFolderLabel(p.executable_path);
-      sub.title = p.executable_path || "";
+      // RELAY 084: was clientFolderLabel(p.executable_path) -- a leftover
+      // mockup placeholder for a live "party position" that isn't available
+      // at rest. Now that card order itself reflects position (084's Added-
+      // order default), this slot has nothing meaningful to show at idle;
+      // deliberately left empty rather than replaced with anything else.
+      sub.textContent = "";
+      sub.removeAttribute("data-tooltip");
     }
     action.innerHTML = "&#9654; Launch";
     action.disabled = false;
@@ -897,7 +934,13 @@ function renderPresetRow() {
     const el = document.createElement("div");
     const isActive = preset.accent === palette.accent && preset.bg === palette.bg;
     el.className = "preset-swatch" + (isActive ? " active" : "");
-    el.title = preset.name;
+    // RELAY 085: broadened from the entry's original rail-icons+badges-only
+    // scope to every tooltip in the app, per Chris after live testing
+    // ("every tooltip has a delay ... apply this fix to all tooltip
+    // elements") -- originally on the "leave alone for now" list, no
+    // longer.
+    el.dataset.tooltip = preset.name;
+    el.setAttribute("aria-label", preset.name);
     el.style.background = `linear-gradient(135deg, ${preset.accent} 0 50%, ${preset.surface} 50% 100%)`;
     el.onclick = () => {
       palette = { ...preset };
@@ -1035,6 +1078,10 @@ let cachedPy4gwInjectionDelay = 5;
 // loadAppSettings() resolving still renders the correct common-case state.
 let cachedPy4gwInjectionMasterOn = true;
 let cachedGmodInjectionMasterOn = true;
+// RELAY 084: default "added" matches settings_store.load_card_sort_mode's
+// own default -- so any card paint that races ahead of loadAppSettings()
+// resolving still renders the correct common-case (new default) order.
+let cachedCardSortMode = "added";
 
 async function loadAppSettings() {
   const s = await window.pywebview.api.get_app_settings();
@@ -1049,6 +1096,8 @@ async function loadAppSettings() {
   document.getElementById("settings-py4gw-delay").value = s.py4gw_injection_delay_seconds;
   cachedPy4gwInjectionMasterOn = !!s.py4gw_injection_enabled;
   cachedGmodInjectionMasterOn = !!s.gmod_injection_enabled;
+  cachedCardSortMode = s.card_sort_mode || "added";
+  document.getElementById("settings-card-sort").value = cachedCardSortMode;
   // loadData() and loadAppSettings() are fired without awaiting each other
   // at startup -- if list_profiles() wins the race and paints cards before
   // this resolves, they'd paint with the stale default above. Re-render so
@@ -1073,6 +1122,14 @@ function wireAppSettingsControls() {
   document.getElementById("settings-gmod-injection").onchange = (e) => {
     window.pywebview.api.save_gmod_injection_enabled(e.target.checked);
     cachedGmodInjectionMasterOn = e.target.checked;
+    renderCards();
+  };
+  // RELAY 084: live re-sort on change, same immediate-feedback pattern as
+  // the injection master switches above -- no reload needed to see cards
+  // reorder.
+  document.getElementById("settings-card-sort").onchange = (e) => {
+    window.pywebview.api.save_card_sort_mode(e.target.value);
+    cachedCardSortMode = e.target.value;
     renderCards();
   };
   // Deliberately no JS-side clamp on this field beyond the native min/max
@@ -1526,10 +1583,13 @@ function renderPluginList() {
     const nameNoExt = base.replace(/\.[^.]+$/, "");
     const row = document.createElement("div");
     row.className = "plugin-row";
-    row.title = path;
+    // RELAY 085: broadened to every tooltip in the app -- see the preset
+    // swatch conversion above for why.
+    row.dataset.tooltip = path;
+    row.setAttribute("aria-label", path);
     row.innerHTML = `
       <span class="plugin-name">${escapeHtml(nameNoExt)}</span>
-      <button class="plugin-remove" title="Remove">&#10005;</button>
+      <button class="plugin-remove" data-tooltip="Remove" aria-label="Remove">&#10005;</button>
     `;
     row.querySelector(".plugin-remove").onclick = () => onRemovePlugin(i);
     list.appendChild(row);
@@ -1829,6 +1889,90 @@ document.addEventListener("keydown", (e) => {
     window.pywebview.api.on_drag_start();
   });
 })();
+
+// RELAY 085: near-instant custom tooltip for every [data-tooltip] element in
+// the app, replacing native `title`'s browser-default ~0.75s+ hover delay
+// (Apo: "it's like 0.75s delayed" -- confirmed team rail icons only had
+// native `title` at the time; Chris then broadened this to every tooltip in
+// the app after live testing).
+//
+// Single shared #app-tooltip element, position: fixed, positioned via
+// getBoundingClientRect() at hover/focus time -- NOT a per-element CSS
+// ::after pseudo-element. That was the first approach tried; it silently
+// failed for the rail icons specifically because #rail has overflow-y:auto,
+// and the CSS overflow spec forces BOTH axes non-visible once either one is
+// (an absolutely-positioned child overflowing the rail's 60px width got
+// clipped even though the hover/opacity logic was otherwise correct --
+// found via Chris's own real hover testing: "still no tooltip for team
+// buttons, other tooltips work"). position: fixed's containing block is the
+// viewport, not any scrolling ancestor, so it escapes that clipping
+// entirely.
+//
+// Delegated via mouseover/mouseout (bubbling, unlike mouseenter/mouseleave)
+// plus focusin/focusout, both on document.body -- one set of listeners
+// covers every current AND future [data-tooltip] element (cards/badges are
+// re-rendered constantly) with no per-element wiring needed.
+function initTooltips() {
+  const tip = document.getElementById("app-tooltip");
+  if (!tip) return;
+
+  function place(el) {
+    const text = el.dataset.tooltip;
+    if (!text) return;
+    tip.textContent = text;
+    tip.classList.add("visible");
+    const rect = el.getBoundingClientRect();
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left, top;
+    if (el.dataset.tooltipDir === "right") {
+      left = rect.right + 8;
+      top = rect.top + rect.height / 2 - th / 2;
+    } else {
+      left = rect.left + rect.width / 2 - tw / 2;
+      top = rect.top - th - 6;
+    }
+    // Clamp so a tooltip near any window edge never renders off-screen
+    // (e.g. rail icons near the top/bottom edge, cards near the right edge).
+    left = Math.max(4, Math.min(left, window.innerWidth - tw - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - th - 4));
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+  }
+
+  function hide() {
+    tip.classList.remove("visible");
+  }
+
+  document.body.addEventListener("mouseover", (e) => {
+    const el = e.target.closest("[data-tooltip]");
+    if (el) place(el);
+  });
+  document.body.addEventListener("mouseout", (e) => {
+    const el = e.target.closest("[data-tooltip]");
+    // relatedTarget is null when the mouse leaves the window entirely, and
+    // el.contains(null) is always false -- hide() correctly fires in both
+    // "moved to a different element" and "moved off-window" cases.
+    if (el && !el.contains(e.relatedTarget)) hide();
+  });
+  // Keyboard-focus parity with the old native-`title` behavior (which never
+  // showed on focus either, but this app has no tabindex anywhere yet --
+  // see renderRail's own comment -- so this is forward-looking, not a
+  // regression fix for something that worked before).
+  document.body.addEventListener("focusin", (e) => {
+    const el = e.target.closest("[data-tooltip]");
+    if (el) place(el);
+  });
+  document.body.addEventListener("focusout", (e) => {
+    const el = e.target.closest("[data-tooltip]");
+    if (el) hide();
+  });
+  // A tooltip anchored to an element that scrolls out from under it (e.g.
+  // the card grid, or a long plugin list) would otherwise float in place --
+  // hide on any scroll rather than trying to track and reposition it.
+  document.addEventListener("scroll", hide, true);
+}
+initTooltips();
 
 document.addEventListener("keydown", (e) => {
   // confirm-open is deliberately excluded here -- the confirm modal can open

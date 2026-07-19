@@ -64,7 +64,30 @@ RESIZE_MARGIN = 6
 # source of truth -- also handed to the bridge (set_min_size) so the
 # hand-rolled Snap's quarter targets can clamp against it in physical px at
 # whatever the actual DPI scale turns out to be (RELAY 012).
-MIN_SIZE = (560, 400)
+# RELAY 086: lowered from (560, 400) -- live-tested, not guessed, since the
+# CSS's own headroom estimate can't account for cross-axis interaction (see
+# below). At the OLD 560x400 floor, ~180px of vertical chrome (titlebar +
+# header + action row + filter row) left comfortable room for the card grid
+# + console bar; shrinking width alone wasn't the whole story, though --
+# below ~340px wide, #action-row's buttons wrap to a 2nd line, which eats
+# ~38px of EXTRA vertical space that a width-only or height-only test would
+# never surface. Confirmed live by shrinking the actual running window,
+# watching for real breakage (not just "cramped," which Chris explicitly
+# wants) at each combination:
+#   - Width alone (600 tall): clean at 320px; 290px wraps the header title
+#     onto 2 lines AND clips card content behind a horizontal scrollbar.
+#   - Height alone (600 wide, no wrap): clean at 250px; 240px clips/overlaps
+#     the console bar's own text.
+#   - BOTH at their independently-found floor (320x250) simultaneously:
+#     broken -- the 2-line-wrapped action row (only present at narrow width)
+#     ate enough extra height to push the card grid AND console bar
+#     completely out of the visible window, invisible not just cramped.
+#   - Re-tested height at the ACTUAL chosen width (320) to find the real
+#     combined floor: clean at 300px, with a safety margin above the
+#     270-290px zone where the console bar starts running right up against
+#     the window edge. 320x300 landed on cleanly, matching every check in
+#     the entry: nothing overlapping, nothing missing, nothing unreachable.
+MIN_SIZE = (320, 300)
 
 
 def _webview2_storage_path() -> str:
