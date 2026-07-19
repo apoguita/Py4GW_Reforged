@@ -331,21 +331,14 @@ SALVAGE_OPTION_DROPDOWN_ORDER: tuple[tuple[str, str], ...] = (
     (SALVAGE_OPTION_MATERIALS, "Materials"),
     (SALVAGE_OPTION_AUTO_UPGRADE, "Specific upgrade"),
 )
-SALVAGE_SESSION_OPTIONS: frozenset[str] = frozenset({
-    SALVAGE_OPTION_MATERIALS,
-    SALVAGE_OPTION_PREFIX,
-    SALVAGE_OPTION_SUFFIX,
-    SALVAGE_OPTION_INSCRIPTION,
-})
 SALVAGE_UPGRADE_OPTIONS: frozenset[str] = frozenset({
     SALVAGE_OPTION_PREFIX,
     SALVAGE_OPTION_SUFFIX,
     SALVAGE_OPTION_INSCRIPTION,
 })
 SALVAGE_UPGRADE_BACKEND_UNAVAILABLE_REASON = (
-    "exact-upgrade salvage disabled: deterministic salvage-session APIs unavailable"
+    "exact-upgrade salvage disabled: deterministic slot-based salvage UI unavailable"
 )
-SALVAGE_NATIVE_SESSION_UNAVAILABLE_REASON = SALVAGE_UPGRADE_BACKEND_UNAVAILABLE_REASON
 
 SELL_RULE_WORKSPACE_LABELS = {
     SELL_KIND_WEAPONS: "Weapons",
@@ -2071,20 +2064,13 @@ class _ExactUpgradeSalvageBridgeResult:
 
 
 class _MerchantRulesExactUpgradeSalvageBridge:
-    """Adapt deterministic native salvage sessions without falling back to ordinary salvage.
+    """Extract one weapon upgrade through Reforged's fixed-slot salvage UI.
 
-    Availability requires all native calls needed to identify and select an exact prefix,
-    suffix, or inscription slot. Missing or unverifiable capability blocks extraction while
-    leaving the matched item protected.
+    The bridge never reads popup text or guesses a visible row. It keeps the canonical upgrade
+    identity captured from ``Item.Mods`` and repeatedly verifies that the same item and physical
+    slot still contain that upgrade until the fixed Prefix, Suffix, or Inscription frame is
+    selected and confirmed.
     """
-
-    # Deterministic slot targeting only depends on these native session calls.
-    # Finish/transaction calls are handled later when available, after the exact option is selected.
-    _REQUIRED_NATIVE_METHODS: tuple[str, ...] = (
-        "StartSalvage",
-        "GetSalvageSessionInfo",
-        "SelectSalvageSessionOption",
-    )
 
     def __init__(
         self,
@@ -2096,59 +2082,49 @@ class _MerchantRulesExactUpgradeSalvageBridge:
         self._load_attempted = False
         self._loaded = False
         self._load_reason = ""
-        self._inventory_factory = None
-        self._PyInventory = None
         self._Item = None
-        # Kept for regression/back-compat introspection. Exact salvage no longer uses the Frenkey BT path.
-        self._BTNodes = None
-
-    def _make_inventory_instance(self):
-        if not self._load_dependencies()[0]:
-            return None, self._load_reason
-        try:
-            return self._inventory_factory(), ""
-        except Exception as exc:
-            return None, f"PyInventory.PyInventory() failed: {exc}"
+        self._AnySalvageWindow = None
+        self._SalvageMode = None
+        self._SalvageOptionsWindow = None
+        self._WindowFrame = None
 
     def _load_dependencies(self) -> tuple[bool, str]:
-        """Probe and cache every native capability required for deterministic slot extraction.
-
-        Partial support is treated as unavailable; the bridge never substitutes ordinary
-        salvage when a session or option-selection method is missing.
-        """
+        """Probe and cache the Item.Mods and fixed-frame UI capabilities used by this bridge."""
 
         if self._load_attempted:
             return self._loaded, self._load_reason
 
         self._load_attempted = True
         try:
-            import PyInventory
-
             from Py4GWCoreLib.Item import Item
+            from Py4GWCoreLib.UIManager import AnySalvageWindow, SalvageOptionsWindow, WindowFrame
+            from Py4GWCoreLib.enums_src.Item_enums import SalvageMode
 
-            inventory_factory = getattr(PyInventory, "PyInventory", None)
             get_upgrades = getattr(getattr(Item, "Mods", None), "GetUpgrades", None)
             missing = []
-            if not callable(inventory_factory):
-                missing.append("PyInventory.PyInventory")
             if not callable(get_upgrades):
                 missing.append("Item.Mods.GetUpgrades")
-            if not missing:
-                try:
-                    inventory_instance = inventory_factory()
-                except Exception as exc:
-                    missing.append(f"PyInventory.PyInventory() ({exc})")
-                else:
-                    for method_name in self._REQUIRED_NATIVE_METHODS:
-                        if not callable(getattr(inventory_instance, method_name, None)):
-                            missing.append(f"PyInventory.{method_name}")
+            for method_name in (
+                "IsActive",
+                "GetSalvageOptionFrame",
+                "IsOptionActive",
+                "SelectOption",
+                "Confirm",
+            ):
+                if not callable(getattr(SalvageOptionsWindow, method_name, None)):
+                    missing.append(f"SalvageOptionsWindow.{method_name}")
+            for method_name in ("IsActive", "CancelActive"):
+                if not callable(getattr(AnySalvageWindow, method_name, None)):
+                    missing.append(f"AnySalvageWindow.{method_name}")
             if missing:
                 self._load_reason = f"{SALVAGE_UPGRADE_BACKEND_UNAVAILABLE_REASON}: missing {', '.join(missing)}"
                 return False, self._load_reason
 
-            self._PyInventory = PyInventory
-            self._inventory_factory = inventory_factory
             self._Item = Item
+            self._AnySalvageWindow = AnySalvageWindow
+            self._SalvageMode = SalvageMode
+            self._SalvageOptionsWindow = SalvageOptionsWindow
+            self._WindowFrame = WindowFrame
             self._loaded = True
             self._load_reason = ""
             return True, ""
@@ -2157,152 +2133,138 @@ class _MerchantRulesExactUpgradeSalvageBridge:
             return False, self._load_reason
 
     def is_available(self) -> tuple[bool, str]:
-        """Return cached exact-upgrade capability and a user-facing fail-closed reason."""
+        """Return cached exact-upgrade UI capability and a user-facing fail-closed reason."""
 
         return self._load_dependencies()
 
-    def option_to_slot(self, option: object) -> str:
+    def option_to_slot(self, option: object):
+        if not self._load_dependencies()[0]:
+            return None
         return {
-            SALVAGE_OPTION_PREFIX: "prefix",
-            SALVAGE_OPTION_SUFFIX: "suffix",
-            SALVAGE_OPTION_INSCRIPTION: "inscription",
-        }.get(_resolve_salvage_session_option(option), "")
+            SALVAGE_OPTION_PREFIX: self._Item.Mods.Slot.Prefix,
+            SALVAGE_OPTION_SUFFIX: self._Item.Mods.Slot.Suffix,
+            SALVAGE_OPTION_INSCRIPTION: self._Item.Mods.Slot.Inscription,
+        }.get(_resolve_salvage_operation(option))
 
-    def read_upgrade_slots(self, item_id: int) -> tuple[dict[str, object | None], str]:
+    def option_to_mode(self, option: object):
+        if not self._load_dependencies()[0]:
+            return None
+        return {
+            SALVAGE_OPTION_PREFIX: self._SalvageMode.Prefix,
+            SALVAGE_OPTION_SUFFIX: self._SalvageMode.Suffix,
+            SALVAGE_OPTION_INSCRIPTION: self._SalvageMode.Inscription,
+        }.get(_resolve_salvage_operation(option))
+
+    def read_upgrade_slots(self, item_id: int) -> tuple[dict[object, str], str]:
         available, reason = self._load_dependencies()
         if not available:
             return {}, reason
         try:
-            _Slot = self._Item.Mods.Slot
-            prefix = self._Item.Mods.GetUpgradeInSlot(int(item_id), _Slot.Prefix)
-            suffix = self._Item.Mods.GetUpgradeInSlot(int(item_id), _Slot.Suffix)
-            inscription = self._Item.Mods.GetUpgradeInSlot(int(item_id), _Slot.Inscription)
+            upgrades = list(self._Item.Mods.GetUpgrades(int(item_id)) or [])
         except Exception as exc:
             return {}, f"upgrade parsing failed: {exc}"
-        return {
-            "prefix": prefix,
-            "suffix": suffix,
-            "inscription": inscription,
-        }, ""
 
-    def get_upgrade_for_option(self, item_id: int, option: object) -> tuple[object | None, str]:
+        slots: dict[object, str] = {}
+        supported_slots = {
+            self._Item.Mods.Slot.Prefix,
+            self._Item.Mods.Slot.Suffix,
+            self._Item.Mods.Slot.Inscription,
+        }
+        for raw_upgrade in upgrades:
+            try:
+                canonical_name, slot = raw_upgrade
+            except Exception:
+                return {}, "upgrade parsing failed: Item.Mods.GetUpgrades returned an invalid entry"
+            if slot not in supported_slots:
+                continue
+            safe_name = str(canonical_name or "").strip()
+            if not safe_name:
+                return {}, "upgrade parsing failed: Item.Mods returned an empty canonical upgrade identity"
+            if slot in slots:
+                return {}, f"upgrade parsing failed: multiple upgrades reported in physical slot {int(slot)}"
+            slots[slot] = safe_name
+        return slots, ""
+
+    def get_upgrade_for_option(self, item_id: int, option: object) -> tuple[str | None, str]:
         slot = self.option_to_slot(option)
-        if not slot:
+        if slot is None:
             return None, "unsupported exact-upgrade salvage option"
         slots, reason = self.read_upgrade_slots(int(item_id))
         if reason:
             return None, reason
         return slots.get(slot), ""
 
-    def upgrades_equivalent(self, left_upgrade: object | None, right_upgrade: object | None) -> bool | None:
-        if left_upgrade is None or right_upgrade is None:
-            return left_upgrade is right_upgrade
-
-        for source_upgrade, target_upgrade in (
-            (left_upgrade, right_upgrade),
-            (right_upgrade, left_upgrade),
-        ):
-            for method_name in ("equals", "matches"):
-                method = getattr(source_upgrade, method_name, None)
-                if not callable(method):
-                    continue
-                try:
-                    return bool(method(target_upgrade))
-                except Exception:
-                    continue
-
-        try:
-            left_to_dict = getattr(left_upgrade, "to_dict", None)
-            right_to_dict = getattr(right_upgrade, "to_dict", None)
-            if callable(left_to_dict) and callable(right_to_dict):
-                return left_to_dict() == right_to_dict()
-        except Exception:
-            pass
-
-        try:
-            left_eq = getattr(type(left_upgrade), "__eq__", object.__eq__)
-            right_eq = getattr(type(right_upgrade), "__eq__", object.__eq__)
-            if left_eq is not object.__eq__ or right_eq is not object.__eq__:
-                return bool(left_upgrade == right_upgrade)
-        except Exception:
-            pass
-
-        return True if left_upgrade is right_upgrade else None
-
-    def verify_slot_removed(self, item_id: int, option: object, original_upgrade: object | None = None) -> bool:
-        """Verify that the requested slot changed or that the source item left inventory.
-
-        Unreadable or incomparable live upgrade data is not considered success.
-        """
-
-        if original_upgrade is None:
-            return False
+    def _item_is_present(self, item_id: int) -> bool:
         if self._inventory_item_ids_provider is not None:
             try:
-                if int(item_id) not in {int(candidate_id) for candidate_id in self._inventory_item_ids_provider()}:
-                    return True
+                return int(item_id) in {int(candidate_id) for candidate_id in self._inventory_item_ids_provider()}
             except Exception:
-                pass
+                return False
+        return True
 
+    def _verify_expected_upgrade(self, item_id: int, option: object, expected_upgrade: str) -> tuple[bool, str]:
+        if not self._item_is_present(int(item_id)):
+            return False, "requested item left inventory before exact-upgrade confirmation"
         current_upgrade, reason = self.get_upgrade_for_option(int(item_id), option)
         if reason:
-            return False
+            return False, reason
         if current_upgrade is None:
-            return True
-        equivalent = self.upgrades_equivalent(current_upgrade, original_upgrade)
-        if equivalent is None:
+            return False, "requested upgrade is missing from the expected physical slot"
+        if current_upgrade != expected_upgrade:
+            return (
+                False,
+                f"requested upgrade changed in the expected slot: expected {expected_upgrade}, found {current_upgrade}",
+            )
+        return True, ""
+
+    def verify_slot_removed(self, item_id: int, option: object, expected_upgrade: str | None = None) -> bool:
+        """Return True only when the source item is gone or the requested physical slot is empty."""
+
+        if not expected_upgrade:
             return False
-        return not equivalent
+        if not self._item_is_present(int(item_id)):
+            return True
+        current_upgrade, reason = self.get_upgrade_for_option(int(item_id), option)
+        return not reason and current_upgrade is None
 
     def _wait_for_targeted_salvage_result(
         self,
-        inventory_instance: object,
         item_id: int,
         option: object,
-        original_upgrade: object,
+        expected_upgrade: str,
         *,
         timeout_ms: int = 5000,
         poll_ms: int = 50,
     ):
-        """Yield while polling for verified removal of the selected upgrade slot.
-
-        The generator returns ``(success, reason)`` and only invokes native finish handling
-        after a transaction explicitly reports completion.
-        """
+        """Yield while polling Item.Mods for verified removal of the requested physical slot."""
 
         waited_ms = 0
-        finish_attempted = False
-        is_transaction_done = getattr(inventory_instance, "IsSalvageTransactionDone", None)
-        finish_salvage = getattr(inventory_instance, "FinishSalvage", None)
         while waited_ms <= max(0, int(timeout_ms)):
-            if self.verify_slot_removed(int(item_id), option, original_upgrade):
+            if self.verify_slot_removed(int(item_id), option, expected_upgrade):
                 return True, ""
 
-            transaction_done = False
-            if callable(is_transaction_done):
-                try:
-                    transaction_done = bool(is_transaction_done())
-                except Exception as exc:
-                    return False, f"salvage completion check failed: IsSalvageTransactionDone failed ({exc})."
-
-            if transaction_done and not finish_attempted:
-                if not callable(finish_salvage):
-                    return False, "salvage completion failed: FinishSalvage unavailable after transaction completed."
-                finish_attempted = True
-                try:
-                    finish_salvage()
-                except Exception as exc:
-                    return False, f"salvage completion failed: FinishSalvage failed ({exc})."
-                yield from Routines.Yield.wait(150)
-                if self.verify_slot_removed(int(item_id), option, original_upgrade):
-                    return True, ""
+            if self._AnySalvageWindow.IsActive() and not self._SalvageOptionsWindow.IsActive():
+                self._cancel_active_salvage_choice_dialog()
+                return False, "unexpected salvage window appeared after exact-upgrade confirmation"
 
             yield from Routines.Yield.wait(max(1, int(poll_ms)))
             waited_ms += max(1, int(poll_ms))
 
-        return False, "salvage completed timeout: targeted upgrade removal could not be verified."
+        self._cancel_active_salvage_choice_dialog()
+        current_upgrade, reason = self.get_upgrade_for_option(int(item_id), option)
+        if reason:
+            return False, f"salvage completion could not be verified: {reason}"
+        if current_upgrade != expected_upgrade:
+            return False, "salvage completion changed the requested slot to an unexpected upgrade"
+        return False, "salvage completed timeout: targeted upgrade removal could not be verified"
 
     def _cancel_active_salvage_choice_dialog(self) -> None:
+        try:
+            if self._AnySalvageWindow is not None and self._AnySalvageWindow.IsActive():
+                self._AnySalvageWindow.CancelActive()
+                return
+        except Exception:
+            pass
         owner_cancel = getattr(self._owner, "_cancel_active_salvage_choice_dialog", None)
         if callable(owner_cancel):
             try:
@@ -2315,126 +2277,140 @@ class _MerchantRulesExactUpgradeSalvageBridge:
         item_id: int,
         option: object,
         *,
+        expected_upgrade: str | None = None,
         preferred_kit_id: int = 0,
         timeout_ms: int = 5000,
         debug_enabled: bool = False,
     ):
-        """Extract one exact upgrade through a validated native salvage session.
-
-        The generator verifies the requested slot before selection and after completion. Any
-        capability gap, popup mismatch, unavailable option, timeout, or unverifiable result
-        returns a blocked or failed bridge result without attempting ordinary salvage.
-        """
+        """Extract one exact upgrade through a serialized, fixed-slot UI transaction."""
 
         available, reason = self._load_dependencies()
         if not available:
             return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
 
-        safe_option = _resolve_salvage_session_option(option)
+        safe_option = _resolve_salvage_operation(option)
         if safe_option not in SALVAGE_UPGRADE_OPTIONS:
             return _ExactUpgradeSalvageBridgeResult(False, "blocked", "unsupported exact-upgrade salvage option")
         if self._owner is None:
-            return _ExactUpgradeSalvageBridgeResult(False, "blocked", "Merchant Rules native salvage owner unavailable")
+            return _ExactUpgradeSalvageBridgeResult(False, "blocked", "Merchant Rules salvage owner unavailable")
 
-        original_upgrade, reason = self.get_upgrade_for_option(int(item_id), safe_option)
-        if reason:
-            return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
-        if original_upgrade is None:
+        safe_expected_upgrade = str(expected_upgrade or "").strip()
+        if not safe_expected_upgrade:
             return _ExactUpgradeSalvageBridgeResult(False, "blocked", "targeted upgrade slot is empty")
         if int(preferred_kit_id) <= 0:
             return _ExactUpgradeSalvageBridgeResult(False, "blocked", "no upgrade salvage kit")
 
-        inventory_instance, reason = self._make_inventory_instance()
-        if inventory_instance is None:
+        mode = self.option_to_mode(safe_option)
+        if mode is None:
+            return _ExactUpgradeSalvageBridgeResult(False, "blocked", "unsupported exact-upgrade salvage option")
+
+        if self._AnySalvageWindow.IsActive():
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(
+                False,
+                "blocked",
+                "stale salvage popup was already open; it was cancelled before starting",
+            )
+
+        matches_expected, reason = self._verify_expected_upgrade(int(item_id), safe_option, safe_expected_upgrade)
+        if not matches_expected:
             return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
 
-        has_native_api = getattr(self._owner, "_has_native_salvage_session_api", None)
-        if not callable(has_native_api) or not bool(has_native_api(inventory_instance)):
-            return _ExactUpgradeSalvageBridgeResult(False, "blocked", SALVAGE_NATIVE_SESSION_UNAVAILABLE_REASON)
+        start_salvage = getattr(self._owner, "_queue_salvage_start", None)
+        if not callable(start_salvage):
+            return _ExactUpgradeSalvageBridgeResult(False, "blocked", "Merchant Rules salvage start helper unavailable")
+        try:
+            started = yield from start_salvage(int(item_id), int(preferred_kit_id), 1)
+        except Exception as exc:
+            return _ExactUpgradeSalvageBridgeResult(False, "failed", f"salvage start failed: {exc}")
+        if not started:
+            return _ExactUpgradeSalvageBridgeResult(False, "failed", "salvage start failed")
 
-        start_and_wait = getattr(self._owner, "_start_salvage_and_wait_for_session", None)
-        select_option = getattr(self._owner, "_select_salvage_session_option", None)
-        confirm_dialog = getattr(self._owner, "_confirm_salvage_choice_dialog", None)
-        session_is_active = getattr(self._owner, "_salvage_session_is_active", None)
-        get_session_item_id = getattr(self._owner, "_get_salvage_session_item_id", None)
-        session_option_available = getattr(self._owner, "_salvage_session_option_available", None)
+        waited_ms = 0
+        popup_timeout_ms = min(max(1, int(timeout_ms)), 3500)
+        while waited_ms <= popup_timeout_ms:
+            matches_expected, reason = self._verify_expected_upgrade(int(item_id), safe_option, safe_expected_upgrade)
+            if not matches_expected:
+                self._cancel_active_salvage_choice_dialog()
+                return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
+            if self._SalvageOptionsWindow.IsActive():
+                break
+            if self._AnySalvageWindow.IsActive():
+                self._cancel_active_salvage_choice_dialog()
+                return _ExactUpgradeSalvageBridgeResult(
+                    False,
+                    "failed",
+                    "unexpected salvage window appeared instead of the exact-upgrade options popup",
+                )
+            yield from Routines.Yield.wait(50)
+            waited_ms += 50
+        else:
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(
+                False,
+                "failed",
+                "salvage popup timeout: exact-upgrade options popup did not appear",
+            )
+
+        option_frame = self._SalvageOptionsWindow.GetSalvageOptionFrame(mode)
+        if option_frame is None or not self._SalvageOptionsWindow.IsOptionActive(mode):
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(
+                False,
+                "blocked",
+                f"salvage option unavailable: {_get_salvage_option_label(safe_option)} control is not visible",
+            )
+        expected_frame_id = int(option_frame.GetFrameID() or 0)
+        if expected_frame_id <= 0:
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(
+                False,
+                "blocked",
+                "salvage option unavailable: invalid fixed slot frame",
+            )
+
+        matches_expected, reason = self._verify_expected_upgrade(int(item_id), safe_option, safe_expected_upgrade)
+        if not matches_expected:
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
+        if not self._SalvageOptionsWindow.SelectOption(mode):
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(False, "failed", "fixed-slot salvage selection failed")
+
+        # Selection and confirmation intentionally occur in different update cycles.
+        yield from Routines.Yield.wait(50)
+
+        matches_expected, reason = self._verify_expected_upgrade(int(item_id), safe_option, safe_expected_upgrade)
+        if not matches_expected:
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(False, "blocked", reason)
+        if not self._SalvageOptionsWindow.IsActive():
+            self._cancel_active_salvage_choice_dialog()
+            return _ExactUpgradeSalvageBridgeResult(False, "failed", "salvage options popup closed before confirmation")
+        selected_frame = self._SalvageOptionsWindow.GetSalvageOptionFrame(mode)
         if (
-            not callable(start_and_wait)
-            or not callable(select_option)
-            or not callable(confirm_dialog)
-            or not callable(session_is_active)
-            or not callable(get_session_item_id)
-            or not callable(session_option_available)
+            selected_frame is None
+            or not self._SalvageOptionsWindow.IsOptionActive(mode)
+            or int(selected_frame.GetFrameID() or 0) != expected_frame_id
         ):
-            return _ExactUpgradeSalvageBridgeResult(
-                False,
-                "blocked",
-                "Merchant Rules native salvage helpers unavailable",
-            )
-
-        try:
-            session, _attempts, start_status = yield from start_and_wait(
-                inventory_instance,
-                int(item_id),
-                int(preferred_kit_id),
-                session_timeout_ms=3500,
-            )
-        except Exception as exc:
-            self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(False, "failed", f"native salvage start failed: {exc}")
-
-        session_active = bool(session_is_active(session))
-        if not session_active:
             self._cancel_active_salvage_choice_dialog()
             return _ExactUpgradeSalvageBridgeResult(
                 False,
                 "failed",
-                f"salvage session unavailable after StartSalvage ({start_status}).",
+                "selected fixed-slot salvage control changed before confirmation",
             )
-        session_item_id = int(get_session_item_id(session))
-        if session_item_id != int(item_id):
+        confirm_frame = self._WindowFrame.SalvageOptionConfirmButton
+        if confirm_frame is None or not confirm_frame.FrameExists():
             self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(
-                False,
-                "failed",
-                f"salvage popup mismatch: active item {session_item_id}, expected {int(item_id)}.",
-            )
-        option_available = bool(session_option_available(session, safe_option))
-        if not option_available:
+            return _ExactUpgradeSalvageBridgeResult(False, "failed", "salvage confirmation control is not visible")
+        if not self._SalvageOptionsWindow.Confirm():
             self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(
-                False,
-                "blocked",
-                f"salvage option unavailable: {_get_salvage_option_label(safe_option)} is not available.",
-            )
-
-        try:
-            selected, select_reason, _option_item_id = yield from select_option(
-                inventory_instance,
-                int(item_id),
-                safe_option,
-            )
-        except Exception as exc:
-            self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(False, "failed", f"native salvage option selection failed: {exc}")
-        if not selected:
-            self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(False, "blocked", select_reason or "salvage option unavailable")
-
-        try:
-            confirm_status = yield from confirm_dialog(int(item_id), auto_confirm_materials_warning=False)
-        except Exception as exc:
-            self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(False, "failed", f"salvage confirm failed: {exc}")
-        if confirm_status != "handled":
-            self._cancel_active_salvage_choice_dialog()
-            return _ExactUpgradeSalvageBridgeResult(False, "failed", f"salvage confirm failed: {confirm_status}.")
+            return _ExactUpgradeSalvageBridgeResult(False, "failed", "salvage confirmation failed")
 
         completed, completion_reason = yield from self._wait_for_targeted_salvage_result(
-            inventory_instance,
             int(item_id),
             safe_option,
-            original_upgrade,
+            safe_expected_upgrade,
             timeout_ms=max(1, int(timeout_ms)),
         )
         if not completed:
@@ -4870,7 +4846,7 @@ def _normalize_salvage_option(raw_option: object) -> str:
     return safe_option if safe_option in valid_options else SALVAGE_OPTION_MATERIALS
 
 
-def _resolve_salvage_session_option(raw_option: object) -> str:
+def _resolve_salvage_operation(raw_option: object) -> str:
     safe_option = _normalize_salvage_option(raw_option)
     if safe_option == SALVAGE_OPTION_DEFAULT:
         return SALVAGE_OPTION_MATERIALS
@@ -7126,7 +7102,7 @@ class MerchantRulesWidget:
 
     def _salvage_kit_model_supports_option(self, model_id: int, option: object) -> bool:
         safe_model_id = max(0, _safe_int(model_id, 0))
-        selected_option = _resolve_salvage_session_option(option)
+        selected_option = _resolve_salvage_operation(option)
         if selected_option in SALVAGE_UPGRADE_OPTIONS or _is_auto_exact_upgrade_salvage_option(option):
             return safe_model_id in UPGRADE_SALVAGE_KIT_MODEL_IDS
         return safe_model_id in SUPPORTED_SALVAGE_KIT_MODEL_IDS
@@ -15440,7 +15416,7 @@ class MerchantRulesWidget:
                 f"{self._format_compact_list(_dedupe_identifiers(unknown_option_labels), limit=3)}"
             )
 
-        safe_selected_option = _resolve_salvage_session_option(selected_option)
+        safe_selected_option = _resolve_salvage_operation(selected_option)
         if safe_selected_option not in SALVAGE_UPGRADE_OPTIONS:
             return "specific upgrade target requires prefix, suffix, or inscription salvage option"
 
@@ -15519,6 +15495,18 @@ class MerchantRulesWidget:
         if match is None:
             return ""
         rule_index, rule, reason = match
+        option_label = _get_salvage_option_label(rule.salvage_option)
+        return f"{reason}; {option_label} via {self._format_salvage_rule_reference(rule_index, rule)}"
+
+    def _get_specific_upgrade_salvage_reservation_reason(self, item: InventoryItemInfo) -> str:
+        """Reserve a first-rule Specific Upgrade match even when extraction must fail closed."""
+
+        match = self._get_matching_salvage_rule(item)
+        if match is None:
+            return ""
+        rule_index, rule, reason = match
+        if not self._get_salvage_rule_upgrade_target_matches(rule, item):
+            return ""
         option_label = _get_salvage_option_label(rule.salvage_option)
         return f"{reason}; {option_label} via {self._format_salvage_rule_reference(rule_index, rule)}"
 
@@ -15608,8 +15596,8 @@ class MerchantRulesWidget:
                 self._debug_log(f"MR Salvage clicked kit skipped: {reason}")
             return kit_id
 
-        session_option = _resolve_salvage_session_option(option)
-        if session_option in SALVAGE_UPGRADE_OPTIONS or _is_auto_exact_upgrade_salvage_option(option):
+        resolved_option = _resolve_salvage_operation(option)
+        if resolved_option in SALVAGE_UPGRADE_OPTIONS or _is_auto_exact_upgrade_salvage_option(option):
             return self._get_upgrade_salvage_kit_id()
         return self._get_normal_salvage_kit_id()
 
@@ -15656,7 +15644,7 @@ class MerchantRulesWidget:
         ):
             return "specific upgrade salvage requires a matching specific upgrade target"
         if require_salvage_kit:
-            selected_option = _resolve_salvage_session_option(
+            selected_option = _resolve_salvage_operation(
                 raw_selected_option
             )
             if selected_rule is not None:
@@ -15673,9 +15661,9 @@ class MerchantRulesWidget:
                         item,
                     ).selected_option
             if selected_option in SALVAGE_UPGRADE_OPTIONS:
-                session_supported, session_reason = self._get_salvage_upgrade_session_support_status()
-                if not session_supported:
-                    return session_reason or SALVAGE_UPGRADE_BACKEND_UNAVAILABLE_REASON
+                upgrade_supported, support_reason = self._get_salvage_upgrade_support_status()
+                if not upgrade_supported:
+                    return support_reason or SALVAGE_UPGRADE_BACKEND_UNAVAILABLE_REASON
             if int(salvage_kit_id) <= 0:
                 if selected_option in SALVAGE_UPGRADE_OPTIONS:
                     return "no upgrade salvage kit"
@@ -15689,6 +15677,9 @@ class MerchantRulesWidget:
         item: InventoryItemInfo,
         enabled_sell_rules: list[tuple[int, SellRule]],
     ) -> str:
+        specific_upgrade_reservation = self._get_specific_upgrade_salvage_reservation_reason(item)
+        if specific_upgrade_reservation:
+            return specific_upgrade_reservation
         block_reason = self._get_salvage_candidate_block_reason(
             item,
             enabled_sell_rules,
@@ -17846,6 +17837,16 @@ class MerchantRulesWidget:
             require_salvage_kit=True,
             mode="manual",
         )
+        candidate_item_ids = {
+            max(0, int(candidate.item.item_id)) for candidate in candidates if max(0, int(candidate.item.item_id)) > 0
+        }
+        for item in items:
+            item_id = max(0, int(item.item_id))
+            if item_id <= 0 or item_id in candidate_item_ids:
+                continue
+            if self._get_specific_upgrade_salvage_reservation_reason(item):
+                claimed_item_ids.add(item_id)
+
         for candidate in candidates:
             item = candidate.item
             item_id = max(0, int(item.item_id))
@@ -24456,112 +24457,6 @@ class MerchantRulesWidget:
         self.salvage_running = True
         GLOBAL_CACHE.Coroutines.append(self._run_salvage_pass(auto_triggered=auto_triggered, running_already_marked=True))
 
-    def _get_salvage_session_value(self, session: object, key: str, default: object = None) -> object:
-        if isinstance(session, dict):
-            return session.get(key, default)
-        return getattr(session, key, default)
-
-    def _salvage_session_is_active(self, session: object) -> bool:
-        return bool(self._get_salvage_session_value(session, "active", False))
-
-    def _get_salvage_session_item_id(self, session: object) -> int:
-        return max(0, _safe_int(self._get_salvage_session_value(session, "item_id", 0), 0))
-
-    def _get_salvage_session_chosen_option(self, session: object) -> str:
-        raw_option = str(self._get_salvage_session_value(session, "chosen_option", "") or "").strip()
-        return _normalize_salvage_option(raw_option) if raw_option else ""
-
-    def _get_salvage_session_available_option_names(self, session: object) -> list[str]:
-        available_names = self._get_salvage_session_value(session, "available_option_names", [])
-        if isinstance(available_names, (list, tuple, set)):
-            return [
-                option
-                for option in (
-                    _normalize_salvage_option(str(value or "").strip())
-                    for value in available_names
-                )
-                if option in SALVAGE_SESSION_OPTIONS
-            ]
-
-        available_options = self._get_salvage_session_value(session, "available_options", {})
-        if isinstance(available_options, dict):
-            return [
-                option
-                for option in (SALVAGE_OPTION_MATERIALS, SALVAGE_OPTION_PREFIX, SALVAGE_OPTION_SUFFIX, SALVAGE_OPTION_INSCRIPTION)
-                if bool(available_options.get(option, False))
-            ]
-        return []
-
-    def _format_salvage_session_option_names(self, session: object) -> str:
-        option_names = self._get_salvage_session_available_option_names(session)
-        return ", ".join(option_names) if option_names else "none"
-
-    def _log_salvage_session_read(self, item_id: int, session: object):
-        session_item_id = self._get_salvage_session_item_id(session)
-        chosen_option = self._get_salvage_session_chosen_option(session) or "none"
-        self._salvage_flow_log(
-            f"MR Salvage session read for item {int(item_id)}: "
-            f"session_item={session_item_id or 'none'} available=[{self._format_salvage_session_option_names(session)}] "
-            f"chosen={chosen_option}."
-        )
-
-    def _salvage_session_option_available(self, session: object, option: str) -> bool:
-        safe_option = _resolve_salvage_session_option(option)
-        available_options = self._get_salvage_session_value(session, "available_options", {})
-        if isinstance(available_options, dict) and bool(available_options.get(safe_option, False)):
-            return True
-        available_names = self._get_salvage_session_value(session, "available_option_names", [])
-        if isinstance(available_names, (list, tuple, set)):
-            return safe_option in {str(value or "").strip().lower() for value in available_names}
-        return False
-
-    def _get_salvage_session_option_item_id(self, session: object, option: str) -> int:
-        safe_option = _resolve_salvage_session_option(option)
-        option_item_ids = self._get_salvage_session_value(session, "option_item_ids", {})
-        if isinstance(option_item_ids, dict):
-            return max(0, _safe_int(option_item_ids.get(safe_option, 0), 0))
-        return 0
-
-    def _wait_for_salvage_session_for_item(
-        self,
-        inventory_instance: object,
-        item_id: int,
-        *,
-        timeout_ms: int = 1500,
-        poll_ms: int = 50,
-    ):
-        waited_ms = 0
-        last_session: object = {}
-        while waited_ms <= max(0, int(timeout_ms)):
-            try:
-                last_session = inventory_instance.GetSalvageSessionInfo()
-            except Exception:
-                last_session = {}
-            if self._salvage_session_is_active(last_session):
-                if self._get_salvage_session_item_id(last_session) == int(item_id):
-                    return last_session
-            yield from Routines.Yield.wait(max(1, int(poll_ms)))
-            waited_ms += max(1, int(poll_ms))
-        return last_session
-
-    def _get_salvage_runtime_state(self, inventory_instance: object) -> tuple[bool, bool]:
-        try:
-            is_salvaging = bool(inventory_instance.IsSalvaging())
-        except Exception:
-            is_salvaging = False
-        try:
-            transaction_done = bool(inventory_instance.IsSalvageTransactionDone())
-        except Exception:
-            transaction_done = False
-        return is_salvaging, transaction_done
-
-    def _has_native_salvage_session_api(self, inventory_instance: object) -> bool:
-        return (
-            callable(getattr(inventory_instance, "StartSalvage", None))
-            and callable(getattr(inventory_instance, "GetSalvageSessionInfo", None))
-            and callable(getattr(inventory_instance, "SelectSalvageSessionOption", None))
-        )
-
     def _get_exact_upgrade_salvage_bridge(self) -> _MerchantRulesExactUpgradeSalvageBridge:
         bridge = getattr(self, "_exact_upgrade_salvage_bridge", None)
         if bridge is None:
@@ -24569,10 +24464,10 @@ class MerchantRulesWidget:
             self._exact_upgrade_salvage_bridge = bridge
         return bridge
 
-    def _get_salvage_upgrade_session_support_status(self) -> tuple[bool, str]:
-        cached_value = getattr(self, "_salvage_upgrade_session_support_cache", None)
+    def _get_salvage_upgrade_support_status(self) -> tuple[bool, str]:
+        cached_value = getattr(self, "_salvage_upgrade_support_cache", None)
         if isinstance(cached_value, bool):
-            cached_reason = str(getattr(self, "_salvage_upgrade_session_support_reason", "") or "").strip()
+            cached_reason = str(getattr(self, "_salvage_upgrade_support_reason", "") or "").strip()
             return cached_value, cached_reason
 
         try:
@@ -24581,21 +24476,13 @@ class MerchantRulesWidget:
             supported = False
             reason = f"{SALVAGE_UPGRADE_BACKEND_UNAVAILABLE_REASON}: check failed: {exc}"
 
-        self._salvage_upgrade_session_support_cache = bool(supported)
-        self._salvage_upgrade_session_support_reason = str(reason or "").strip()
-        return bool(supported), self._salvage_upgrade_session_support_reason
+        self._salvage_upgrade_support_cache = bool(supported)
+        self._salvage_upgrade_support_reason = str(reason or "").strip()
+        return bool(supported), self._salvage_upgrade_support_reason
 
-    def _has_salvage_upgrade_session_support(self) -> bool:
-        supported, _reason = self._get_salvage_upgrade_session_support_status()
+    def _has_salvage_upgrade_support(self) -> bool:
+        supported, _reason = self._get_salvage_upgrade_support_status()
         return bool(supported)
-
-    def _any_salvage_related_window_open(self) -> bool:
-        try:
-            from Sources.frenkeyLib.ItemHandling.UIManagerExtensions import UIManagerExtensions
-
-            return bool(UIManagerExtensions.AnySalvageRelatedWindowOpen())
-        except Exception:
-            return False
 
     def _queue_salvage_start(self, item_id: int, salvage_kit_id: int, attempt: int):
         from Py4GWCoreLib.Inventory import Inventory
@@ -24612,178 +24499,11 @@ class MerchantRulesWidget:
         yield from Routines.Yield.wait(150)
         return True
 
-    def _direct_salvage_start(self, inventory_instance: object, item_id: int, salvage_kit_id: int, attempt: int):
-        start_method = getattr(inventory_instance, "StartSalvage", None)
-        start_method_name = "StartSalvage" if callable(start_method) else "Salvage"
-        self._salvage_flow_log(
-            f"MR Salvage issuing direct start attempt {int(attempt)} for item {int(item_id)} "
-            f"with kit {int(salvage_kit_id)} ({self._get_salvage_kit_label(int(salvage_kit_id))}) "
-            f"via PyInventory.{start_method_name}."
-        )
-        try:
-            if callable(start_method):
-                start_result = start_method(int(salvage_kit_id), int(item_id))
-            else:
-                start_result = inventory_instance.Salvage(int(salvage_kit_id), int(item_id))
-        except Exception as exc:
-            ConsoleLog(
-                MODULE_NAME,
-                f"MR Salvage direct start failed for item {int(item_id)} with kit {int(salvage_kit_id)}: {exc}.",
-                Console.MessageType.Warning,
-            )
-            return False
-        self._salvage_flow_log(
-            f"MR Salvage native start result for item {int(item_id)} via PyInventory.{start_method_name}: {start_result}."
-        )
-        if start_result is False:
-            ConsoleLog(
-                MODULE_NAME,
-                f"MR Salvage native start rejected item {int(item_id)} with kit {int(salvage_kit_id)}.",
-                Console.MessageType.Warning,
-            )
-            return False
-        yield from Routines.Yield.wait(150)
-        return True
-
-    def _start_salvage_and_wait_for_session(
-        self,
-        inventory_instance: object,
-        item_id: int,
-        salvage_kit_id: int,
-        *,
-        max_attempts: int = 2,
-        session_timeout_ms: int = 3500,
-    ):
-        last_session: object = {}
-        attempts = max(1, int(max_attempts))
-        for attempt in range(1, attempts + 1):
-            started = yield from self._direct_salvage_start(inventory_instance, item_id, salvage_kit_id, attempt)
-            if not started:
-                return {}, attempt, "start_failed"
-
-            last_session = yield from self._wait_for_salvage_session_for_item(
-                inventory_instance,
-                item_id,
-                timeout_ms=max(0, int(session_timeout_ms)),
-                poll_ms=50,
-            )
-            self._log_salvage_session_read(item_id, last_session)
-            if self._salvage_session_is_active(last_session):
-                return last_session, attempt, "active"
-
-            is_salvaging, transaction_done = self._get_salvage_runtime_state(inventory_instance)
-            self._salvage_flow_log(
-                f"MR Salvage start attempt {attempt} for item {int(item_id)} produced no active session; "
-                f"is_salvaging={is_salvaging} transaction_done={transaction_done}."
-            )
-
-            if attempt >= attempts:
-                break
-            if self._any_salvage_related_window_open():
-                return last_session, attempt, "window_without_session"
-            live_item = self._build_inventory_item_info(int(item_id))
-            if live_item is None or not bool(live_item.salvageable):
-                return last_session, attempt, "item_changed"
-
-            self._salvage_flow_log(
-                f"MR Salvage retrying start for item {int(item_id)} after no active session appeared."
-            )
-
-        return last_session, attempts, "no_session"
-
-    def _select_salvage_session_option(
-        self,
-        inventory_instance: object,
-        item_id: int,
-        option: str,
-    ):
-        safe_option = _resolve_salvage_session_option(option)
-        try:
-            session = inventory_instance.GetSalvageSessionInfo()
-        except Exception as exc:
-            return False, f"salvage option unavailable: failed reading salvage session ({exc}).", 0
-
-        if not self._salvage_session_is_active(session):
-            return False, "salvage option unavailable: no active salvage session.", 0
-        session_item_id = self._get_salvage_session_item_id(session)
-        if session_item_id != int(item_id):
-            return False, f"salvage popup mismatch: active item {session_item_id}, expected {int(item_id)}.", 0
-        if not self._salvage_session_option_available(session, safe_option):
-            return False, f"salvage option unavailable: {_get_salvage_option_label(safe_option)} is not available.", 0
-
-        option_item_id = self._get_salvage_session_option_item_id(session, safe_option)
-        chosen_option = self._get_salvage_session_chosen_option(session)
-        if chosen_option == safe_option:
-            self._salvage_flow_log(
-                f"MR Salvage option already selected for item {int(item_id)}: requested={safe_option} chosen={chosen_option}."
-            )
-            return True, "", option_item_id
-
-        try:
-            selected = bool(inventory_instance.SelectSalvageSessionOption(safe_option))
-        except Exception as exc:
-            self._salvage_flow_log(
-                f"MR Salvage SelectSalvageSessionOption('{safe_option}') -> error.",
-                Console.MessageType.Warning,
-            )
-            return False, f"salvage option unavailable: SelectSalvageSessionOption failed ({exc}).", option_item_id
-        self._salvage_flow_log(
-            f"MR Salvage SelectSalvageSessionOption('{safe_option}') -> {selected}."
-        )
-        if not selected:
-            return False, f"salvage option unavailable: native selection returned false for {_get_salvage_option_label(safe_option)}.", option_item_id
-
-        waited_ms = 0
-        while waited_ms <= 750:
-            try:
-                next_session = inventory_instance.GetSalvageSessionInfo()
-            except Exception:
-                next_session = {}
-            if (
-                self._salvage_session_is_active(next_session)
-                and self._get_salvage_session_item_id(next_session) == int(item_id)
-                and self._get_salvage_session_chosen_option(next_session) == safe_option
-            ):
-                return True, "", self._get_salvage_session_option_item_id(next_session, safe_option) or option_item_id
-            yield from Routines.Yield.wait(50)
-            waited_ms += 50
-        return False, f"salvage option unavailable: {_get_salvage_option_label(safe_option)} did not become selected.", option_item_id
-
-    def _confirm_salvage_choice_dialog(
-        self,
-        item_id: int,
-        *,
-        auto_confirm_materials_warning: bool = False,
-    ):
-        from Py4GWCoreLib.Inventory import Inventory
-        from Py4GWCoreLib.UIManager import UIManager
-
-        confirm_frame_id = Inventory._get_salvage_choice_confirm_frame_id()
-        if confirm_frame_id == 0:
-            return "confirm_missing"
-
-        ActionQueueManager().AddAction("SALVAGE", UIManager.FrameClick, confirm_frame_id)
-        queue_drained = yield from self._wait_for_action_queue_empty("SALVAGE", timeout_ms=5000, step_ms=50)
-        if not queue_drained:
-            return "queue_timeout"
-
-        return (yield from Inventory._wait_for_salvage_choice_dialog_close(
-            auto_confirm_materials_warning=auto_confirm_materials_warning,
-            queue_name="SALVAGE",
-            log_module=MODULE_NAME,
-            queue_wait_timeout_ms=5000,
-            poll_ms=50,
-            close_timeout_ms=1500,
-            debug_enabled=bool(self.debug_logging),
-            item_id=int(item_id),
-            after_action_label="confirm click",
-        ))
-
     def _cancel_active_salvage_choice_dialog(self) -> bool:
         try:
-            from Sources.frenkeyLib.ItemHandling.UIManagerExtensions import UIManagerExtensions
+            from Py4GWCoreLib.UIManager import AnySalvageWindow
 
-            return bool(UIManagerExtensions.CancelSalvageOption())
+            return bool(AnySalvageWindow.CancelActive())
         except Exception:
             return False
 
@@ -24873,28 +24593,6 @@ class MerchantRulesWidget:
             waited_ms += 50
         return "not_visible"
 
-    def _has_salvage_upgrade_removed(self, item_id: int, option: str) -> bool:
-        if int(item_id) not in set(self._get_inventory_item_ids()):
-            return True
-        safe_option = _resolve_salvage_session_option(option)
-        getter_name_by_option = {
-            SALVAGE_OPTION_PREFIX: "GetPrefixUpgrade",
-            SALVAGE_OPTION_SUFFIX: "GetSuffixUpgrade",
-            SALVAGE_OPTION_INSCRIPTION: "GetInscriptionUpgrade",
-        }
-        getter_name = getter_name_by_option.get(safe_option, "")
-        if not getter_name:
-            return False
-        try:
-            from Py4GWCoreLib.Item import Item
-
-            getter = getattr(Item.Customization, getter_name, None)
-            if not callable(getter):
-                return False
-            return getter(int(item_id)) is None
-        except Exception:
-            return False
-
     def _salvage_one_item_with_rule(
         self,
         candidate: SalvageCandidate,
@@ -24928,7 +24626,7 @@ class MerchantRulesWidget:
             return "blocked"
 
         configured_option = _normalize_salvage_option(rule.salvage_option)
-        selected_option = _resolve_salvage_session_option(configured_option)
+        selected_option = _resolve_salvage_operation(configured_option)
         auto_slot_resolution = SalvageUpgradeSlotResolution()
         if _is_auto_exact_upgrade_salvage_option(configured_option):
             auto_slot_resolution = self._get_auto_salvage_upgrade_slot_resolution(rule, live_item)
@@ -24989,11 +24687,21 @@ class MerchantRulesWidget:
             f"requested={option_label}; kit={int(salvage_kit_id)} ({self._get_salvage_kit_label(int(salvage_kit_id))})."
         )
 
-        option_item_id = 0
         if selected_option in SALVAGE_UPGRADE_OPTIONS:
-            bridge_result = yield from self._get_exact_upgrade_salvage_bridge().salvage_exact_upgrade(
+            exact_bridge = self._get_exact_upgrade_salvage_bridge()
+            expected_upgrade, capture_reason = exact_bridge.get_upgrade_for_option(item_id, selected_option)
+            if capture_reason or not expected_upgrade:
+                ConsoleLog(
+                    MODULE_NAME,
+                    f"MR Salvage skipped {live_item_label} ({item_id}): "
+                    f"{capture_reason or 'targeted upgrade slot is empty'}.",
+                    Console.MessageType.Warning,
+                )
+                return "blocked"
+            bridge_result = yield from exact_bridge.salvage_exact_upgrade(
                 item_id,
                 selected_option,
+                expected_upgrade=expected_upgrade,
                 preferred_kit_id=int(salvage_kit_id),
                 timeout_ms=5000,
                 debug_enabled=bool(self.debug_logging),
@@ -25080,14 +24788,6 @@ class MerchantRulesWidget:
             if current_item is not None and not bool(current_item.salvageable):
                 self._debug_log(f"MR Salvage processed {live_item_label} ({item_id}); item is no longer salvageable.")
                 return "processed"
-            if selected_option in SALVAGE_UPGRADE_OPTIONS and self._has_salvage_upgrade_removed(item_id, selected_option):
-                option_suffix = f" option_item_id={option_item_id}" if option_item_id > 0 else ""
-                self._debug_log(
-                    f"MR Salvage processed {live_item_label} ({item_id}); "
-                    f"{_get_salvage_option_label(selected_option)} removed.{option_suffix}"
-                )
-                return "processed"
-
         ConsoleLog(MODULE_NAME, f"MR Salvage timed out waiting for result on item {item_id}.", Console.MessageType.Warning)
         return "failed"
 
@@ -25101,7 +24801,7 @@ class MerchantRulesWidget:
         configured_option = _normalize_salvage_option(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT))
         if _is_auto_exact_upgrade_salvage_option(configured_option):
             return False
-        return _resolve_salvage_session_option(configured_option) not in SALVAGE_UPGRADE_OPTIONS
+        return _resolve_salvage_operation(configured_option) not in SALVAGE_UPGRADE_OPTIONS
 
     def _add_salvage_status_to_outcome(self, outcome: ExecutionPhaseOutcome, status: str) -> None:
         safe_status = str(status or "")
@@ -25130,7 +24830,7 @@ class MerchantRulesWidget:
         if int(live_item.model_id) != int(original_model_id):
             return "item changed"
         rule = _normalize_salvage_rule(candidate.rule) or SalvageRule()
-        selected_option = _resolve_salvage_session_option(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT))
+        selected_option = _resolve_salvage_operation(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT))
         if max(0, _safe_int(preferred_salvage_kit_id, 0)) > 0:
             salvage_kit_id = self._get_salvage_kit_id_for_option(
                 selected_option,
@@ -32653,7 +32353,7 @@ class MerchantRulesWidget:
             selector_parts.append(f"Categories: {', '.join(category_labels)}")
 
         option_label = _get_salvage_option_label(normalized_rule.salvage_option)
-        selected_option = _resolve_salvage_session_option(normalized_rule.salvage_option)
+        selected_option = _resolve_salvage_operation(normalized_rule.salvage_option)
         is_auto_upgrade_option = _is_auto_exact_upgrade_salvage_option(normalized_rule.salvage_option)
         upgrade_target_count = _get_salvage_rule_upgrade_target_count(normalized_rule)
         if selected_option == SALVAGE_OPTION_MATERIALS and not is_auto_upgrade_option:
@@ -32678,7 +32378,7 @@ class MerchantRulesWidget:
                 option_label = f"{option_label} (specific-upgrade targets require prefix/suffix/inscription)"
         if (
             (selected_option in SALVAGE_UPGRADE_OPTIONS or is_auto_upgrade_option)
-            and not self._has_salvage_upgrade_session_support()
+            and not self._has_salvage_upgrade_support()
         ):
             option_label = f"{option_label} (extraction unavailable)"
         if not selector_parts:
@@ -32774,7 +32474,7 @@ class MerchantRulesWidget:
             return [choice_key for choice_key in choice_keys if choice_key]
 
         target_choice_keys = build_target_choice_keys()
-        selected_option = _resolve_salvage_session_option(rule.salvage_option)
+        selected_option = _resolve_salvage_operation(rule.salvage_option)
         is_auto_upgrade_option = _is_auto_exact_upgrade_salvage_option(rule.salvage_option)
 
         self._draw_secondary_text(
@@ -32791,7 +32491,7 @@ class MerchantRulesWidget:
             )
         elif (
             (selected_option in SALVAGE_UPGRADE_OPTIONS or is_auto_upgrade_option)
-            and not self._has_salvage_upgrade_session_support()
+            and not self._has_salvage_upgrade_support()
         ):
             self._draw_secondary_text(
                 "This extraction mode is not available right now. "
@@ -32935,10 +32635,10 @@ class MerchantRulesWidget:
         self._draw_section_heading("Basic")
         changed = self._draw_salvage_option_combo(index, rule) or changed
         configured_option = _normalize_salvage_option(rule.salvage_option)
-        selected_option = _resolve_salvage_session_option(rule.salvage_option)
+        selected_option = _resolve_salvage_operation(rule.salvage_option)
         is_auto_upgrade_option = _is_auto_exact_upgrade_salvage_option(rule.salvage_option)
         if selected_option in SALVAGE_UPGRADE_OPTIONS or is_auto_upgrade_option:
-            if self._has_salvage_upgrade_session_support():
+            if self._has_salvage_upgrade_support():
                 if is_auto_upgrade_option:
                     self._draw_secondary_text(
                         "Infers prefix, suffix, or inscription from the matched specific upgrade target."

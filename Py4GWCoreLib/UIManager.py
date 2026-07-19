@@ -827,6 +827,38 @@ class UIManager:
         if frame_id not in frame_aray:
             return False
         return UIManager.IsFrameCreated(frame_id) and UIManager.IsVisible(frame_id)
+
+    @staticmethod
+    def IsEffectivelyVisible(frame_id: int) -> bool:
+        """Return True only when the frame and every ancestor are created and visible."""
+
+        try:
+            current_frame_id = int(frame_id)
+            frame_ids = {int(candidate_id) for candidate_id in UIManager.GetFrameArray()}
+            visited_frame_ids: set[int] = set()
+            while current_frame_id > 0:
+                if current_frame_id in visited_frame_ids or current_frame_id not in frame_ids:
+                    return False
+                visited_frame_ids.add(current_frame_id)
+                frame = PyUIManager.UIFrame(current_frame_id)
+                if not frame.is_created or not frame.is_visible:
+                    return False
+                current_frame_id = int(frame.parent_id or 0)
+            return bool(visited_frame_ids)
+        except Exception:
+            return False
+
+    @staticmethod
+    def IsActionable(frame_id: int) -> bool:
+        """Return True for an effectively visible frame with a positive on-screen size."""
+
+        if not UIManager.IsEffectivelyVisible(frame_id):
+            return False
+        try:
+            left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
+            return int(right) > int(left) and int(bottom) > int(top)
+        except Exception:
+            return False
     
     @staticmethod
     def GetParentID(frame_id):
@@ -1383,6 +1415,14 @@ class FrameInfo:
     def FrameExists(self):
         self.update_frame_id()
         return UIManager.FrameExists(self.GetFrameID())
+
+    def IsEffectivelyVisible(self) -> bool:
+        self.update_frame_id()
+        return UIManager.IsEffectivelyVisible(self.GetFrameID())
+
+    def IsActionable(self) -> bool:
+        self.update_frame_id()
+        return UIManager.IsActionable(self.GetFrameID())
     
     def DrawFrame(self, color:int):
         if self.FrameExists():
@@ -2264,6 +2304,17 @@ class SalvageOptionsWindow:
         '''Return True if the Salvage Options Window is open.'''
         
         return WindowFrame.SalvageOptionsFrame.FrameExists()
+
+    @staticmethod
+    @frame_cache(category="SalvageOptionsWindow", source_lib="IsActive")
+    def IsActive() -> bool:
+        '''Return True only when the options popup hierarchy and cancel control are actionable.'''
+
+        return (
+            WindowFrame.SalvageOptionsFrame.IsEffectivelyVisible()
+            and WindowFrame.OptionsSalvageOptionsFrame.IsEffectivelyVisible()
+            and WindowFrame.SalvageOptionCancelButton.IsActionable()
+        )
     
     @staticmethod
     def Cancel() -> bool:
@@ -2316,6 +2367,16 @@ class SalvageOptionsWindow:
             return False
         
         return option_frame.FrameExists()
+
+    @staticmethod
+    @frame_cache(category="SalvageOptionsWindow", source_lib="IsOptionActive")
+    def IsOptionActive(mode: SalvageMode) -> bool:
+        '''Return True only when the active popup exposes an actionable fixed option frame.'''
+
+        if not SalvageOptionsWindow.IsActive():
+            return False
+        option_frame = SalvageOptionsWindow.GetSalvageOptionFrame(mode)
+        return option_frame is not None and option_frame.IsActionable()
     
     @staticmethod
     def SelectOption(mode: SalvageMode) -> bool:
@@ -2353,6 +2414,16 @@ class SalvageConfirmationPopup:
         Return True if the confirmation pop up for salvaging with a salvage kit is open.
         '''
         return WindowFrame.MaterialOptionConfirmationFrame.FrameExists()
+
+    @staticmethod
+    @frame_cache(category="SalvageConfirmationPopup", source_lib="IsActive")
+    def IsActive() -> bool:
+        '''Return True only when the material confirmation hierarchy is actionable.'''
+
+        return (
+            WindowFrame.MaterialOptionConfirmationFrame.IsEffectivelyVisible()
+            and WindowFrame.MaterialOptionConfirmationCancelButton.IsActionable()
+        )
     
     @staticmethod
     def Cancel() -> bool:
@@ -2389,6 +2460,16 @@ class LesserSalvageWindow:
         Return True if the confirmation pop up for salvaging with a normal salvage kit is open.
         '''
         return WindowFrame.LesserSalvageFrame.FrameExists()
+
+    @staticmethod
+    @frame_cache(category="LesserSalvageWindow", source_lib="IsActive")
+    def IsActive() -> bool:
+        '''Return True only when the lesser-salvage hierarchy is actionable.'''
+
+        return (
+            WindowFrame.LesserSalvageFrame.IsEffectivelyVisible()
+            and WindowFrame.LesserSalvageCancelButton.IsActionable()
+        )
     
     @staticmethod
     def Cancel() -> bool:
@@ -2427,6 +2508,16 @@ class ExpertSalvageUnidentifiedWindow:
         '''
                 
         return WindowFrame.ExpertSalvageUnidentifiedFrame.FrameExists()
+
+    @staticmethod
+    @frame_cache(category="ExpertSalvageUnidentifiedWindow", source_lib="IsActive")
+    def IsActive() -> bool:
+        '''Return True only when the unidentified-item salvage hierarchy is actionable.'''
+
+        return (
+            WindowFrame.ExpertSalvageUnidentifiedFrame.IsEffectivelyVisible()
+            and WindowFrame.ExpertSalvageUnidentifiedCancelButton.IsActionable()
+        )
     
     @staticmethod
     def Cancel() -> bool:
@@ -2472,6 +2563,18 @@ class AnySalvageWindow:
         )
 
     @staticmethod
+    @frame_cache(category="AnySalvageWindow", source_lib="AnySalvageWindowActive")
+    def IsActive() -> bool:
+        '''Return True only when a salvage popup is effectively visible and actionable.'''
+
+        return (
+            SalvageConfirmationPopup.IsActive()
+            or SalvageOptionsWindow.IsActive()
+            or LesserSalvageWindow.IsActive()
+            or ExpertSalvageUnidentifiedWindow.IsActive()
+        )
+
+    @staticmethod
     def Cancel() -> bool:
         '''
         Cancel any open salvage-related window, including SalvageOptionsWindow, SalvageConfirmationPopup, LesserSalvageWindow, or ExpertSalvageUnidentifiedWindow. Returns True if a salvage-related window was found and cancelled, False otherwise.
@@ -2488,6 +2591,28 @@ class AnySalvageWindow:
 
         if SalvageConfirmationPopup.IsOpen():
             return SalvageConfirmationPopup.Cancel()
+
+        return False
+
+    @staticmethod
+    def CancelActive() -> bool:
+        '''Cancel the first effectively visible and actionable salvage popup.'''
+
+        if SalvageOptionsWindow.IsActive():
+            WindowFrame.SalvageOptionCancelButton.FrameClick()
+            return True
+
+        if LesserSalvageWindow.IsActive():
+            WindowFrame.LesserSalvageCancelButton.FrameClick()
+            return True
+
+        if ExpertSalvageUnidentifiedWindow.IsActive():
+            WindowFrame.ExpertSalvageUnidentifiedCancelButton.FrameClick()
+            return True
+
+        if SalvageConfirmationPopup.IsActive():
+            WindowFrame.MaterialOptionConfirmationCancelButton.FrameClick()
+            return True
 
         return False
 
