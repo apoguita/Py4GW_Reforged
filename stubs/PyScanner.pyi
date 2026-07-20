@@ -3,7 +3,7 @@
 # Stubs for PyScanner module
 # Auto-generated to match the C++ pybind11 bindings exactly.
 
-from typing import Optional
+from typing import Any, Optional
 
 
 class PyScanner:
@@ -129,4 +129,17 @@ class PyScanner:
                             offset: int, section: int) -> int:
         """
         Find the nth reference to a wide-character string.
+        """
+
+    # ------------------------------
+    # Diagnostics
+    # ------------------------------
+    @staticmethod
+    def GetScanStatus() -> dict[str, dict[str, Any]]:
+        """
+        Recorded pattern-scan and hook results.
+
+        Returns a dict with two entries:
+          "scans" -> {name: resolved_address}
+          "hooks" -> {name: MH_STATUS}  (0 == MH_OK)
         """
