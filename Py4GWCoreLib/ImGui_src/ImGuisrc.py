@@ -10,6 +10,7 @@ from .types import Alignment, HorizontalAlignment, ImGuiStyleVar, StyleTheme, Co
 from .Style import Style
 from .Textures import ThemeTextures, TextureState
 from .WindowModule import WindowModule
+from .SidebarWindow import SidebarWindow
 from .IconsFontAwesome5 import IconsFontAwesome5
 import PyImGui
 import PySystem
@@ -17,6 +18,7 @@ import PySystem
 #region ImGui
 class ImGui:
     WindowModule: TypeAlias = WindowModule
+    SidebarWindow: TypeAlias = SidebarWindow
     ImGuiStyleVar: TypeAlias  = ImGuiStyleVar
     style = PyImGui.StyleConfig()
     __selectable_stack: list[dict[str, bool]] = []

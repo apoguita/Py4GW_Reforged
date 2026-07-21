@@ -17,6 +17,8 @@ from Py4GWCoreLib import ThrottledTimer
 from Py4GWCoreLib import Timer
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
 from Py4GWCoreLib.GlobalCache.WhiteboardLocks import claim_resurrection_target
+from Py4GWCoreLib.GlobalCache.WhiteboardLocks import publish_resurrection_scroll_state
+from Py4GWCoreLib.GlobalCache.WhiteboardLocks import read_resurrection_scroll_states
 from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.py4gwcorelib_src.Console import Console
 from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
@@ -44,8 +46,17 @@ _RES_SKILLS = {
 _RES_SKILL_IDS = set(_RES_SKILLS.keys())
 _RES_SKILL_NAMES = set(_RES_SKILLS.values())
 
+_BROADCAST_INTERVAL_MS = 1000
+
+# SetResurrectionScroll message payload (leader -> account command):
+#   Params = (enabled, skip_if_res_available, field_mask, 0)
+#   field_mask selects which fields to apply; 0 = legacy payload (enabled only, from Params[0]).
+_MSG_FIELD_ENABLED = 1
+_MSG_FIELD_SKIP = 2
+
 _settings = Settings()
 _check_timer = ThrottledTimer(_CHECK_INTERVAL_MS)
+_broadcast_timer = ThrottledTimer(_BROADCAST_INTERVAL_MS)
 _cooldown_timer = Timer()
 _cooldown_timer.Start()
 _aftercast_timer = Timer()
@@ -150,12 +161,47 @@ def _alive_party_member_has_res_skill() -> bool:
     return False
 
 
+def _broadcast_local_state() -> None:
+    """Publish THIS account's resurrection-scroll state on the whiteboard so the party can read it."""
+    publish_resurrection_scroll_state(
+        _settings.get_account_resurrection_scroll_enabled(),
+        _settings.get_account_resurrection_scroll_skip_if_res_available(),
+    )
+
+
+def _send_state_command(
+    target_email: str,
+    *,
+    enabled: bool | None = None,
+    skip: bool | None = None,
+) -> None:
+    """Command another account to change its resurrection-scroll state via Messaging (never by
+    writing its file). The target applies it locally in _consume_toggle_messages and re-broadcasts."""
+    sender_email = str(Player.GetAccountEmail() or "").strip()
+    target = str(target_email or "").strip()
+    if not sender_email or not target:
+        return
+    mask = 0
+    if enabled is not None:
+        mask |= _MSG_FIELD_ENABLED
+    if skip is not None:
+        mask |= _MSG_FIELD_SKIP
+    if mask == 0:
+        return
+    GLOBAL_CACHE.ShMem.SendMessage(
+        sender_email,
+        target,
+        SharedCommandType.SetResurrectionScroll,
+        (1 if enabled else 0, 1 if skip else 0, mask, 0),
+    )
+
+
 def _consume_toggle_messages() -> None:
     account_email = str(Player.GetAccountEmail() or "").strip()
     if not account_email:
         return
 
-    latest_enabled: bool | None = None
+    changed = False
     for message_index, message in GLOBAL_CACHE.ShMem.GetAllMessages():
         if message is None or not getattr(message, "Active", False):
             continue
@@ -164,27 +210,50 @@ def _consume_toggle_messages() -> None:
         if int(getattr(message, "Command", SharedCommandType.NoCommand)) != int(SharedCommandType.SetResurrectionScroll):
             continue
 
-        latest_enabled = bool(int(getattr(message, "Params", (1, 0, 0, 0))[0] or 0))
+        params = getattr(message, "Params", (0, 0, 0, 0)) or (0, 0, 0, 0)
+        mask = int(params[2] or 0) if len(params) > 2 else 0
+
+        if mask == 0 or (mask & _MSG_FIELD_ENABLED):
+            # mask == 0 is the legacy enabled-only payload (enabled in Params[0]).
+            _settings.set_account_resurrection_scroll_enabled(bool(int(params[0] or 0)))
+            changed = True
+        if mask & _MSG_FIELD_SKIP:
+            _settings.set_account_resurrection_scroll_skip_if_res_available(bool(int(params[1] or 0)))
+            changed = True
+
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(account_email, message_index)
 
-    if latest_enabled is not None:
-        _settings.set_account_resurrection_scroll_enabled(latest_enabled, account_email)
+    if changed:
+        _broadcast_local_state()
         ConsoleLog(
             "HeroAI",
-            f"Resurrection Scroll {'enabled' if latest_enabled else 'disabled'} for {account_email}",
-            PySystem.Console.MessageType.Info,
+            f"Resurrection Scroll {'enabled' if is_enabled() else 'disabled'} for {account_email}",
+            Console.MessageType.Info,
         )
 
 
-def is_enabled(account_email: str | None = None) -> bool:
-    return _settings.get_account_resurrection_scroll_enabled(account_email)
+def is_enabled() -> bool:
+    """LOCAL account's resurrection-scroll enabled state (the only one it can read from Settings)."""
+    return _settings.get_account_resurrection_scroll_enabled()
+
+
+def _account_state(account_email: str, states: dict[str, tuple[bool, bool]]) -> tuple[bool, bool]:
+    """(enabled, skip) for an account: own Settings for the local account, whiteboard for the rest."""
+    self_email = str(Player.GetAccountEmail() or "").strip()
+    if account_email == self_email:
+        return (
+            _settings.get_account_resurrection_scroll_enabled(),
+            _settings.get_account_resurrection_scroll_skip_if_res_available(),
+        )
+    return states.get(account_email, (False, False))
 
 
 def are_all_party_accounts_enabled() -> bool:
     accounts = _get_same_party_accounts()
     if not accounts:
         return is_enabled()
-    return all(is_enabled(account.AccountEmail) for account in accounts)
+    states = read_resurrection_scroll_states()
+    return all(_account_state(str(account.AccountEmail or ""), states)[0] for account in accounts)
 
 
 def toggle_all_accounts() -> bool:
@@ -196,19 +265,14 @@ def toggle_all_accounts() -> bool:
     if not accounts:
         return False
 
-    new_enabled = not all(is_enabled(account.AccountEmail) for account in accounts)
+    new_enabled = not are_all_party_accounts_enabled()
     for account in accounts:
-        GLOBAL_CACHE.ShMem.SendMessage(
-            sender_email,
-            account.AccountEmail,
-            SharedCommandType.SetResurrectionScroll,
-            (1 if new_enabled else 0, 0, 0, 0),
-        )
+        _send_state_command(str(account.AccountEmail or ""), enabled=new_enabled)
 
     ConsoleLog(
         "HeroAI",
         f"Resurrection Scroll {'enabled' if new_enabled else 'disabled'} for all accounts",
-        PySystem.Console.MessageType.Info,
+        Console.MessageType.Info,
     )
     return new_enabled
 
@@ -218,6 +282,12 @@ def tick() -> None:
 
     _settings.ensure_initialized()
     _consume_toggle_messages()
+
+    # Heartbeat this account's state onto the whiteboard so party members can read it (even while
+    # disabled, so the leader UI can show a truthful "off").
+    if _broadcast_timer.IsExpired():
+        _broadcast_timer.Reset()
+        _broadcast_local_state()
 
     if not is_enabled():
         _status_text = "Disabled"
@@ -310,22 +380,33 @@ def draw_settings() -> None:
         if not accounts:
             PyImGui.text_disabled("No same-party accounts found.")
         else:
+            self_email = str(Player.GetAccountEmail() or "").strip()
+            states = read_resurrection_scroll_states()
             for account in accounts:
                 account_email = str(account.AccountEmail or "")
                 account_name = str(getattr(getattr(account, "AgentData", None), "CharacterName", "") or account_email)
+                is_local = account_email == self_email
 
-                enabled = _settings.get_account_resurrection_scroll_enabled(account_email)
+                enabled, skip = _account_state(account_email, states)
+
                 new_enabled = PyImGui.checkbox(f"Enable##res_scroll_enabled_{account_email}", enabled)
                 if new_enabled != enabled:
-                    _settings.set_account_resurrection_scroll_enabled(new_enabled, account_email)
+                    if is_local:
+                        _settings.set_account_resurrection_scroll_enabled(new_enabled)
+                        _broadcast_local_state()
+                    else:
+                        _send_state_command(account_email, enabled=new_enabled)
 
                 PyImGui.same_line(0, 8)
                 PyImGui.text(account_name)
 
-                skip = _settings.get_account_resurrection_scroll_skip_if_res_available(account_email)
                 new_skip = PyImGui.checkbox(f"Skip if res skill available##res_scroll_skip_{account_email}", skip)
                 if new_skip != skip:
-                    _settings.set_account_resurrection_scroll_skip_if_res_available(new_skip, account_email)
+                    if is_local:
+                        _settings.set_account_resurrection_scroll_skip_if_res_available(new_skip)
+                        _broadcast_local_state()
+                    else:
+                        _send_state_command(account_email, skip=new_skip)
 
         PyImGui.spacing()
         PyImGui.separator()

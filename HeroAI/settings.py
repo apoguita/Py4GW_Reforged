@@ -1,10 +1,8 @@
-import os
-
 from HeroAI.commands import HeroAICommands
 from HeroAI.types import Docked
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.ImGui_src.types import Alignment
-from Py4GWCoreLib.py4gwcorelib_src.Console import Console, ConsoleLog
+from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings as NativeSettings
 
 class Settings:
@@ -101,17 +99,19 @@ class Settings:
     def __init__(self):
         if self._instance_initialized:
             return
-        
+
         self._instance_initialized = True
-        
-        base_path = PySystem.Console.get_projects_path()
-        self.ini_path = os.path.join(base_path, "Widgets", "Config", "HeroAI.ini")
-        
-        self.save_requested = False        
-        if not os.path.exists(self.ini_path):
-            ConsoleLog("HeroAI", "HeroAI settings file not found. Creating default settings...")
-            self.save_requested = True  
-        
+
+        # Two self-throttling native documents, one per scope (no merging):
+        #   * global  -> settings/Global/Widgets/Config/HeroAI.ini  ([General] + hotbar definitions,
+        #                shared across every account on the machine)
+        #   * account -> settings/<email>/HeroAI.ini                (per-account: hero-panel positions,
+        #                hotbar positions, resurrection scroll — native picks the folder from the
+        #                logged-in account; it can only ever address the LOCAL client's file)
+        # Both bind/load/seed and autosave themselves (see Settings docstring); there is no file
+        # path to compute, no existence check, and no save loop to run here.
+        self.save_requested = False
+
         self.account_ini_handler : NativeSettings | None = None
         self.ini_handler = NativeSettings("Widgets/Config/HeroAI.ini", "global")
         
@@ -178,14 +178,15 @@ class Settings:
         }
         
         self.ConfirmFollowPoint = False
-        
-                
-        self.account_email = ""        
-        self.account_ini_path = ""    
-        self._initialized = False  
 
-        if self.save_requested:
-            self.write_settings()  
+
+        self.account_email = ""
+        self._initialized = False
+
+        # Load the global part ([General] + hotbar definitions) now. The global document binds
+        # immediately (account-independent), so these persist regardless of which account logs in.
+        # The account part is loaded later, once the account anchor resolves (initialize_account_config).
+        self.load_global_settings()
 
     def reset(self): 
         self.account_email = ""
@@ -218,24 +219,56 @@ class Settings:
         return self._initialized and self.account_email == account_email
 
     def initialize_account_config(self):
-        base_path = PySystem.Console.get_projects_path()        
         account_email = Player.GetAccountEmail()
-        
+
         if account_email:
-            config_dir = os.path.join(base_path, "Widgets", "Config", "Accounts", account_email)
-            os.makedirs(config_dir, exist_ok=True)
-            self.account_ini_path = os.path.join(config_dir, "HeroAI.ini")
-            self.account_ini_handler = NativeSettings("HeroAI.ini", "account")            
+            # Native "account" scope resolves to settings/<logged-in email>/HeroAI.ini on its own;
+            # there is no path to build. The (name, scope) pair is a process-wide singleton, so this
+            # is the SAME object every call for the local account.
+            self.account_ini_handler = NativeSettings("HeroAI.ini", "account")
             self.account_email = account_email
-                    
+
         self._initialized = True if account_email and account_email == self.account_email else False
-        
+
         if self._initialized and account_email and self.account_email == account_email:
-            if not os.path.exists(self.account_ini_path):
-                self.save_requested = True                
-                self.write_settings()
-            else:
-                self.load_settings()
+            # One-time migration of any stranded legacy per-account file
+            # (Widgets/Config/Accounts/<email>/HeroAI.ini) into the native account document.
+            self._import_legacy_account_file(account_email)
+            # Always load — the native document self-loads from disk, so reading is always correct
+            # (no "does the file exist?" gate deciding load vs. overwrite-with-defaults).
+            self.load_settings()
+
+    def _import_legacy_account_file(self, account_email: str) -> None:
+        """Copy a pre-migration Widgets/Config/Accounts/<email>/HeroAI.ini into the native account
+        document once, so per-account data saved before the Settings migration is not lost. Runs at
+        most once per account (guarded by a marker key); no-op when there is no legacy file.
+
+        Reads the legacy file THROUGH the Settings class (root scope resolves to a path relative to
+        the project root) — Settings owns all file handling, so there is no manual open/parse here.
+        """
+        if self.account_ini_handler is None:
+            return
+        if self.account_ini_handler.get_bool("Migration", "LegacyImported", False):
+            return
+
+        try:
+            legacy_name = f"Widgets/Config/Accounts/{account_email}/HeroAI.ini"
+            legacy = NativeSettings(legacy_name, "root")
+
+            imported = 0
+            for section in legacy.sections():
+                if section == "Migration":
+                    continue
+                for key, value in legacy.items(section).items():
+                    self.account_ini_handler.set(section, key, value)
+                    imported += 1
+            if imported:
+                ConsoleLog("HeroAI", f"Imported {imported} legacy per-account setting(s) for {account_email}.")
+        except Exception as e:
+            ConsoleLog("HeroAI", f"Failed importing legacy per-account settings for {account_email}: {e}")
+
+        # Mark done even when there was no legacy file, so this check is a single cheap read afterwards.
+        self.account_ini_handler.set("Migration", "LegacyImported", str(True))
                 
     def save_settings(self):
         self.save_requested = True
@@ -299,8 +332,15 @@ class Settings:
             
         self.save_requested = False
         
-    def load_settings(self):          
-        ConsoleLog("HeroAI", "Loading HeroAI settings...")      
+    def load_settings(self):
+        ConsoleLog("HeroAI", "Loading HeroAI settings...")
+        # Global part ([General] + hotbar definitions) always available; account part loaded after.
+        self.load_global_settings()
+
+        self.HeroPanelPositions.clear()
+        self.import_hero_panel_positions(self.account_ini_handler)
+
+    def load_global_settings(self):
         self.ShowCommandPanel = self.ini_handler.get_bool("General", "ShowCommandPanel", True)
         self.PrintDebug = self.ini_handler.get_bool("General", "PrintDebug", False)
         self.ShowDebugWindow = self.ini_handler.get_bool("General", "ShowDebug", False)
@@ -337,12 +377,12 @@ class Settings:
         
         self.ConfirmFollowPoint = self.ini_handler.get_bool("General", "ConfirmFollowPoint", False)
 
-        self.CommandHotBars.clear()
-        self.import_command_hotbars()
-        
-        self.HeroPanelPositions.clear()        
-        self.import_hero_panel_positions(self.account_ini_handler)        
-                    
+        # Only replace the in-memory hotbars when the document actually has stored ones; otherwise
+        # keep the default hotbar built in __init__ (fresh install / empty global doc).
+        if self.ini_handler.items("CommandHotBars"):
+            self.CommandHotBars.clear()
+            self.import_command_hotbars()
+
     def import_hero_panel_positions(self, ini_handler: NativeSettings | None):
         if ini_handler is None:
             return
@@ -405,43 +445,40 @@ class Settings:
         
         return info
 
-    def _get_account_settings_handler(self, account_email: str | None = None) -> NativeSettings | None:
-        resolved_email = str(account_email or Player.GetAccountEmail() or "").strip()
-        if not resolved_email:
-            return None
+    def _get_account_settings_handler(self) -> NativeSettings | None:
+        """The LOCAL account's settings document, or None until the account anchor resolves.
 
-        if (
-            self.account_ini_handler is not None
-            and self.account_email
-            and self.account_email.lower() == resolved_email.lower()
-        ):
+        Native ``account`` scope always maps to the logged-in client's own file — it cannot address
+        another account. Cross-account reads/writes must go through Messaging / SharedMemory /
+        Whiteboard (see resurrection_scroll.py), never by pointing a Settings document at another
+        account's file.
+        """
+        if self.account_ini_handler is not None:
             return self.account_ini_handler
+        if str(Player.GetAccountEmail() or "").strip():
+            self.initialize_account_config()
+        return self.account_ini_handler
 
-        base_path = PySystem.Console.get_projects_path()
-        config_dir = os.path.join(base_path, "Widgets", "Config", "Accounts", resolved_email)
-        os.makedirs(config_dir, exist_ok=True)
-        return NativeSettings("HeroAI.ini", "account")
-
-    def get_account_resurrection_scroll_enabled(self, account_email: str | None = None) -> bool:
-        ini_handler = self._get_account_settings_handler(account_email)
+    def get_account_resurrection_scroll_enabled(self) -> bool:
+        ini_handler = self._get_account_settings_handler()
         if ini_handler is None:
             return False
         return ini_handler.get_bool("ResurrectionScroll", "Enabled", False)
 
-    def set_account_resurrection_scroll_enabled(self, enabled: bool, account_email: str | None = None) -> None:
-        ini_handler = self._get_account_settings_handler(account_email)
+    def set_account_resurrection_scroll_enabled(self, enabled: bool) -> None:
+        ini_handler = self._get_account_settings_handler()
         if ini_handler is None:
             return
         ini_handler.set("ResurrectionScroll", "Enabled", str(bool(enabled)))
 
-    def get_account_resurrection_scroll_skip_if_res_available(self, account_email: str | None = None) -> bool:
-        ini_handler = self._get_account_settings_handler(account_email)
+    def get_account_resurrection_scroll_skip_if_res_available(self) -> bool:
+        ini_handler = self._get_account_settings_handler()
         if ini_handler is None:
             return False
         return ini_handler.get_bool("ResurrectionScroll", "SkipIfResAvailable", False)
 
-    def set_account_resurrection_scroll_skip_if_res_available(self, enabled: bool, account_email: str | None = None) -> None:
-        ini_handler = self._get_account_settings_handler(account_email)
+    def set_account_resurrection_scroll_skip_if_res_available(self, enabled: bool) -> None:
+        ini_handler = self._get_account_settings_handler()
         if ini_handler is None:
             return
         ini_handler.set("ResurrectionScroll", "SkipIfResAvailable", str(bool(enabled)))

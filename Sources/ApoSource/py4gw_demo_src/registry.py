@@ -9,7 +9,11 @@ triggers, and offer a per-section "Dump to file" button (see diagnostics.py).
 Add a new module's view here to make it appear in the sidebar.
 """
 
+import os
+
 import PyImGui
+
+from Py4GWCoreLib import ImGui
 
 from . import ui
 
@@ -158,45 +162,61 @@ GROUPS: "list[tuple[str, list[Section]]]" = [
     ]),
 ]
 
-# Flat name -> Section for dispatch.
-_SECTIONS: "dict[str, Section]" = {
-    s.name: s for _, sections in GROUPS for s in sections
-}
+# The reusable sidebar/content window, built from the GROUPS registry above.
+# Nav, selection, per-panel error isolation, content tabs and markdown help are
+# all handled by ImGui.SidebarWindow; this module only supplies the topic data.
+_HELP_DIR = os.path.join(os.path.dirname(__file__), "help")
 
-_selected: str = "Map"
+_WINDOW = ImGui.SidebarWindow(
+    "Py4GW DEMO 2.0",
+    sidebar_width=250.0,
+    content_width=760.0,
+    height=720.0,
+    selected="Map",
+    help_dir=_HELP_DIR,
+)
+
+_about_cache: str = ""
+
+
+def _draw_about() -> None:
+    """Render the About/help markdown as rich text (demonstrates help files)."""
+    global _about_cache
+    if not _about_cache:
+        try:
+            with open(os.path.join(_HELP_DIR, "about.md"), "r", encoding="utf-8") as fh:
+                _about_cache = fh.read()
+        except Exception:
+            _about_cache = "# Py4GW DEMO 2.0\n\nHelp file `help/about.md` not found."
+    ImGui.SidebarWindow.render_markdown(_about_cache)
+
+
+# A "Guide" group with a rich-text (markdown) topic, demonstrating help files.
+_WINDOW.add_topic(_WINDOW.add_group("Guide"), ImGui.SidebarWindow.Topic("About", draw=_draw_about))
+
+# Every hand-wired Section becomes a Topic in its group.
+for _group_name, _sections in GROUPS:
+    _grp = _WINDOW.add_group(_group_name)
+    for _section in _sections:
+        _WINDOW.add_topic(_grp, ImGui.SidebarWindow.Topic(_section.name, draw=_section.draw))
+
+# Keep "Map" as the initial selection (add_topic set it to "About" first).
+_WINDOW.select("Map")
+
+
+def get_window() -> "ImGui.SidebarWindow":
+    return _WINDOW
 
 
 def get_selected() -> str:
-    return _selected
+    return _WINDOW.selected or ""
 
 
 def draw_sidebar() -> None:
-    """Render the grouped, selectable navigation column (caller owns the child region)."""
-    global _selected
-    for group_name, sections in GROUPS:
-        ui.text_muted(group_name)
-        PyImGui.separator()
-        PyImGui.indent(12.0)
-        for section in sections:
-            if PyImGui.selectable(
-                section.name,
-                _selected == section.name,
-                PyImGui.SelectableFlags.NoFlag,
-                (0.0, 0.0),
-            ):
-                _selected = section.name
-        PyImGui.unindent(12.0)
-        PyImGui.spacing()
+    """Back-compat: render just the nav column (caller owns the child region)."""
+    _WINDOW.draw_sidebar()
 
 
 def draw_content() -> None:
-    """Render the currently-selected section (caller owns the child region)."""
-    section = _SECTIONS.get(_selected)
-    if section is None:
-        ui.not_available(f"unknown section '{_selected}'")
-        return
-    try:
-        section.draw()
-    except Exception as e:  # noqa: BLE001 - keep the widget alive if one panel throws
-        PyImGui.text_colored(f"Panel error in '{_selected}':", ui.ERR_COLOR)
-        PyImGui.text_colored(f"{type(e).__name__}: {e}", ui.ERR_COLOR)
+    """Back-compat: render just the selected section (caller owns the child region)."""
+    _WINDOW.draw_content()

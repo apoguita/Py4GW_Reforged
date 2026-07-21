@@ -250,6 +250,75 @@ def post_resurrection_lock(dead_ally_agent_id: int, skill_id: int = 0, aftercast
         return -1
 
 
+RESURRECTION_SCROLL_STATE_TARGET = 0
+RESURRECTION_SCROLL_STATE_TTL_MS = 3000
+
+
+def publish_resurrection_scroll_state(enabled: bool, skip_if_res_available: bool) -> None:
+    """Broadcast THIS account's resurrection-scroll state on the whiteboard.
+
+    Not a claim — a per-account heartbeat: each owner posts its own slot (owner-keyed), the state is
+    encoded in the KeyID bits (bit0 = enabled, bit1 = skip-if-res-available), and the slot self-
+    expires. Call on an interval (tick) so the value stays fresh; a departed account simply stops
+    broadcasting and drops out of :func:`read_resurrection_scroll_states`.
+    """
+    try:
+        from Py4GWCoreLib import GLOBAL_CACHE
+
+        email, group_id = _owner_context()
+        if not email:
+            return
+        now = int(PySystem.get_tick_count64())
+        state_bits = (1 if enabled else 0) | (2 if skip_if_res_available else 0)
+        # Refresh in place: drop our previous state slot, then post the current bits with a fresh TTL.
+        GLOBAL_CACHE.ShMem.GetAllAccounts().ClearLockByOwnerKindTarget(
+            email,
+            int(WhiteboardLockKind.RESURRECTION_SCROLL_STATE),
+            RESURRECTION_SCROLL_STATE_TARGET,
+            int(group_id),
+        )
+        GLOBAL_CACHE.ShMem.PostLock(
+            email,
+            int(WhiteboardLockKind.RESURRECTION_SCROLL_STATE),
+            int(state_bits),
+            RESURRECTION_SCROLL_STATE_TARGET,
+            now + RESURRECTION_SCROLL_STATE_TTL_MS,
+            int(group_id),
+            int(WhiteboardLockMode.SHARED),  # broadcast: every owner coexists, no exclusive contention
+            255,
+            int(WhiteboardReentryPolicy.OWNER_REENTRANT),
+            int(WhiteboardClaimStrength.SOFT),
+        )
+    except Exception:
+        return
+
+
+def read_resurrection_scroll_states() -> dict[str, tuple[bool, bool]]:
+    """Map ``account_email -> (enabled, skip_if_res_available)`` from live whiteboard broadcasts.
+
+    Keyed by owner email (unique), so callers just look up the accounts they care about; accounts
+    with no live broadcast are absent and the caller defaults them. Expired slots are ignored.
+    """
+    out: dict[str, tuple[bool, bool]] = {}
+    try:
+        from Py4GWCoreLib import GLOBAL_CACHE
+
+        now = int(PySystem.get_tick_count64())
+        for _slot_index, intent in GLOBAL_CACHE.ShMem.GetAllAccounts().GetAllIntents():
+            if int(intent.KindID) != int(WhiteboardLockKind.RESURRECTION_SCROLL_STATE):
+                continue
+            if int(intent.ExpiresAtTick) <= now:
+                continue
+            owner = intent.OwnerEmail or ""
+            if not owner:
+                continue
+            bits = int(intent.SkillID)
+            out[owner] = (bool(bits & 1), bool(bits & 2))
+    except Exception:
+        return out
+    return out
+
+
 def is_hex_removal_lock_blocked(hexed_ally_agent_id: int, now_tick: int | None = None) -> bool:
     """True when another account already reserved this ally for hex removal."""
     if hexed_ally_agent_id <= 0:
@@ -356,7 +425,7 @@ def clear_hex_removal_lock(hexed_ally_agent_id: int) -> bool:
         email, group_id = _owner_context()
         if not email:
             return False
-        cleared = int(GLOBAL_CACHE.ShMem.ClearLockByOwnerKindTarget(
+        cleared = int(GLOBAL_CACHE.ShMem.GetAllAccounts().ClearLockByOwnerKindTarget(
             email,
             int(WhiteboardLockKind.HEX_REMOVAL_TARGET),
             int(hexed_ally_agent_id),
@@ -596,7 +665,7 @@ def clear_loot_lock(item_agent_id: int) -> bool:
         email, group_id = _owner_context()
         if not email:
             return False
-        cleared = int(GLOBAL_CACHE.ShMem.ClearLockByOwnerKindTarget(
+        cleared = int(GLOBAL_CACHE.ShMem.GetAllAccounts().ClearLockByOwnerKindTarget(
             email,
             int(WhiteboardLockKind.LOOT_ITEM),
             int(item_agent_id),
