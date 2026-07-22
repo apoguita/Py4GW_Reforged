@@ -296,7 +296,14 @@ function applyCardLaunchVisual(card, p) {
       // at rest. Now that card order itself reflects position (084's Added-
       // order default), this slot has nothing meaningful to show at idle;
       // deliberately left empty rather than replaced with anything else.
-      sub.textContent = "";
+      // RELAY 089: except one real signal worth surfacing here -- a profile
+      // with no team membership at all, same "No team" definition the
+      // search dropdown's grouping already uses (~line 1808), not a second
+      // one. ALL-view only (a team-scoped view can't contain an orphaned
+      // profile by definition) and idle-only (every other branch above
+      // already returns before reaching here, so this never overwrites a
+      // real launch/queued/running/error status).
+      sub.textContent = (activeTeamId === "ALL" && (p.team_ids || []).length === 0) ? "No team" : "";
       sub.removeAttribute("data-tooltip");
     }
     action.innerHTML = "&#9654; Launch";
