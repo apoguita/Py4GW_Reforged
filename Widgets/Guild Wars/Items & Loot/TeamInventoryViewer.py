@@ -7,6 +7,7 @@ from pathlib import Path
 
 import PyImGui
 import PyJson
+import PySystem
 
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Color
@@ -31,7 +32,7 @@ from Sources.marks_sources.mods_parser import ModDatabase
 from Sources.marks_sources.mods_parser import parse_modifiers
 
 
-project_root = PySystem.Console.get_projects_path() # pyright: ignore[reportUndefinedVariable]
+project_root = PySystem.Console.get_projects_path()
 
 MOD_DB = ModDatabase.load(os.path.join(project_root, "Sources/marks_sources/mods_data"))
 
@@ -678,9 +679,6 @@ def get_mods_from_item(item_id, model_id):
 
 
 def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
-    global current_character_name
-    global multi_store
-
     """Shared coroutine to fetch all items from a bag with modifier and frenkey DB name support."""
 
     def _strip_markup(text):
@@ -963,18 +961,9 @@ def get_weapon_name_from_modifiers(item):
 # region Widget
 def draw_widget():
     global TEAM_INVENTORY_CACHE
-    global window_x
-    global window_y
-    global window_collapsed
-    global first_run
     global all_accounts_search_query
     global search_query
     global on_first_load
-    global current_character_name
-    global multi_store
-    global inventory_model_ids_store
-    global inventory_mod_hash_store
-    global inventory_model_file_ids_store
 
     if on_first_load:
         PyImGui.set_next_window_size(1000, 1250)
