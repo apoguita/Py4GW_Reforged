@@ -281,6 +281,14 @@ class CacheData:
                 local_in_aggro = self.InAggro(AgentArray.GetEnemyArray(), self.GetActiveScanRange())
                 self.data.local_in_aggro = local_in_aggro
 
+                # Publish our own aggro into shared memory so other party members can
+                # aggregate it into party_in_aggro. The C++ writer leaves InAggro
+                # Python-owned (it never writes this field); the migration dropped the
+                # old publish, which left followers' party_in_aggro permanently False
+                # so their combat branch never fired (OOC still ran). Cheap single-bool
+                # write into the already-mapped buffer.
+                GLOBAL_CACHE.ShMem.SetInAggroByEmail(self.account_email, local_in_aggro)
+
                 from .settings import Settings
                 if self.data.party_position == 0 or Settings().get_combat_range_mode() == Settings.COMBAT_RANGE_MODE_LEGACY:
                     effective_in_aggro = local_in_aggro

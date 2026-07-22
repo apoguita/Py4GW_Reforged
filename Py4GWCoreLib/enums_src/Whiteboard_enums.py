@@ -15,6 +15,9 @@ class WhiteboardLockKind(IntEnum):
     INTERRUPT_TARGET = 11
     COOLDOWN = 12
     HEX_REMOVAL_TARGET = 13
+    # State-broadcast kinds (not exclusive claims): each account posts its OWN slot, owner-keyed,
+    # re-posted on an interval and self-expiring, so party members can read live per-account state.
+    RESURRECTION_SCROLL_STATE = 14
 
 
 class WhiteboardLockMode(IntEnum):

@@ -1103,7 +1103,7 @@ class InventoryPlusWidget:
         PyImGui.set_next_window_pos(icon_x, icon_y)
         PyImGui.set_next_window_size(icon_window_width, 0)
         if PyImGui.begin("##InventoryPlusXunlaiSortButton", True, window_flags):
-            #PyImGui.push_style_var2(PyImGui.ImGuiStyleVar.FramePadding, 1, 1)
+            #PyImGui.push_style_var_vec2(PyImGui.ImGuiStyleVar.FramePadding, (1, 1))
             use_texture_button = os.path.exists(self._xunlai_sort_icon_path)
             if sort_running:
                 PyImGui.begin_disabled(True)

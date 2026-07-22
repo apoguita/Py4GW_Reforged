@@ -86,7 +86,7 @@ def main():
     else:
         flags = (PyImGui.WindowFlags.NoTitleBar | PyImGui.WindowFlags.NoBackground)
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0, 0))
   
     window_open = PyImGui.begin(MODULE_NAME, flags)
     collapsed = PyImGui.is_window_collapsed()

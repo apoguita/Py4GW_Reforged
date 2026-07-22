@@ -821,9 +821,9 @@ class HeroAI_RichPlayerPanelRenderer:
     def _draw_buffs_bar(self, account):
         style = ImGui.get_style()
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding, 0.0)
-        PyImGui.push_style_var(ImGuiStyleVar.WindowPadding, 0.0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         PyImGui.push_style_var(ImGuiStyleVar.WindowBorderSize, 0.0)
-        PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         flags = (
             PyImGui.WindowFlags.NoCollapse |
             PyImGui.WindowFlags.NoTitleBar |

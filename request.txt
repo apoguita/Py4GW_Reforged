@@ -1,0 +1,13 @@
+Automatically skip cinematics skips in-game cutscenes without user input.
+Automatically return to outpost on defeat returns the party to the outpost when wiped (only works if you're the party leader).
+Disable gold/green items confirmation removes the confirmation prompt when selling gold and green items to merchants.
+Skip character name input when donating faction automatically fills in your character name when donating faction.
+Auto-cancel Unyielding Aura when re-casting automatically drops Unyielding Aura before recasting it.
+Remove 1.5 second minimum for the cast bar to show allows the cast bar to appear for skills with very short cast times.
+Auto use available keys when interacting with locked chest automatically uses keys when interacting with locked chests.
+Auto use lockpick when interacting with locked chest automatically uses lockpicks when interacting with locked chests.
+Keep current quest when accepting a new one maintains the current active quest when a new quest is added.
+Hide known skills when using a tome, capturing a skill or talking to a skill trainer removes skills your current character already has from the skill selection window.
+Hide all non-elite skills when capturing a skill shows only elite skills in the skill capture window.
+Show warning when earned faction reaches ___% displays a warning when your faction reaches the specified percentage in challenge missions or elite areas.
+Limit signet of capture to 10 in skills window

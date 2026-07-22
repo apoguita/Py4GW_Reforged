@@ -1,12 +1,27 @@
+# PyPacketSniffer stub — Reforged Native surface
+# Exact counterpart of src/GW/packet_sniffer/packet_sniffer_bindings.cpp.
+#
+# Unified packet sniffer: captures raw StoC and CToS packets through a single
+# PacketSniffer facade. Capture is lazy — nothing is hooked until one of the
+# initialize* methods is called.
+
+from enum import IntEnum
 from typing import List
 
 
-class PacketDirection:
-    StoC: 'PacketDirection'
-    CToS: 'PacketDirection'
+class PacketDirection(IntEnum):
+    StoC: int  # 0
+    CToS: int  # 1
+
+
+# py::enum_ ... .export_values() also exports the members at module level.
+StoC: PacketDirection
+CToS: PacketDirection
 
 
 class PacketLogEntry:
+    """One captured packet. All fields are read-only."""
+
     tick: int
     direction: PacketDirection
     header: int
@@ -14,10 +29,11 @@ class PacketLogEntry:
     data: List[int]
 
     def __init__(self) -> None: ...
+    def __repr__(self) -> str: ...
 
 
 class PacketSniffer:
-    def __init__(self) -> None: ...
+    """Stateless facade over GW::packet_sniffer. Not constructible — use instance()."""
 
     @staticmethod
     def instance() -> 'PacketSniffer': ...

@@ -16,7 +16,7 @@ class StyleVar:
         
     def apply(self):
         if self.value2 is not None:
-            PyImGui.push_style_var2(self.img_style_enum, self.value1, self.value2)
+            PyImGui.push_style_var_vec2(self.img_style_enum, (self.value1, self.value2))
         else:
             PyImGui.push_style_var(self.img_style_enum, self.value1)        
         
@@ -126,7 +126,7 @@ class ExStyle:
             return
         
         match theme:
-            case UIStyle.StyleTheme.ImGui:                
+            case UIStyle.StyleTheme.Py4GW:                
                 self.Info_Icon : StyleColor = StyleColor(245, 172, 47, 255)
                 self.Selected_Item : StyleColor = StyleColor(100, 100, 100, 150)
                 self.Hovered_Item : StyleColor = StyleColor(128, 128, 128, 100)

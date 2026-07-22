@@ -79,13 +79,6 @@ def _vec2_is_rect_visible(*args):
     return _PyImGui_is_rect_visible(args)   # (w, h) tuple works as Vec2
 PyImGui.is_rect_visible = _vec2_is_rect_visible
 
-# ── push_style_var2 compatibility: legacy code calls push_style_var2(var, x, y);
-#    Reforged exposes push_style_var_vec2(var, (x, y)). ──
-_PyImGui_push_style_var_vec2 = PyImGui.push_style_var_vec2
-def _push_style_var2(var, x, y):
-    _PyImGui_push_style_var_vec2(var, (x, y))
-PyImGui.push_style_var2 = _push_style_var2
-
 # ── dummy compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
 _PyImGui_dummy = PyImGui.dummy
 def _vec2_dummy(*args):
@@ -138,6 +131,7 @@ import PyUIManager
 import PyCamera
 import PyDXOverlay
 import PyAgentEvents
+import PyListeners
 
 # Inject PySystem, PyPing, PyGameThread into builtins so all widget modules
 # (loaded dynamically via importlib) can access them without explicit import.
@@ -164,6 +158,7 @@ from .Skill import *
 from .Skillbar import *
 from .Effect import *
 from .Merchant import *
+from .Listeners import *
 from .Quest import *
 from .Camera import *
 from .Scanner import *

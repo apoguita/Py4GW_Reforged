@@ -1,25 +1,30 @@
-# PySystem stub — Py4GW system services (2026-07-07)
-# Matches system_bindings.cpp in Py4GW_Reforged_Native.
+# PySystem stub — Py4GW system services.
+# Exact counterpart of src/system/system_bindings.cpp in Py4GW_Reforged_Native
+# (PYBIND11_EMBEDDED_MODULE(PySystem)). Submodules below are exposed as
+# def_submodule() namespaces, modelled here as classes of static methods.
 
-from typing import Any, List, Optional, Tuple
+from enum import IntEnum
+from typing import List, Tuple, overload
 
 
 # ═══════════════ ENUMS ═══════════════════════════════════════════
+# Values from `enum class MessageType` in include/base/logger.h (unscoped, 0-based).
 
-class MessageType:
-    Info: int = ...
-    Warning: int = ...
-    Error: int = ...
-    Debug: int = ...
-    Success: int = ...
-    Performance: int = ...
-    Notice: int = ...
-    Hook: int = ...
+class MessageType(IntEnum):
+    Info = 0
+    Warning = 1
+    Error = 2
+    Debug = 3
+    Success = 4
+    Performance = 5
+    Notice = 6
+    Hook = 7
 
 
 # ═══════════════ CLASSES ═════════════════════════════════════════
 
 class ConsoleMessage:
+    # All members are def_readonly.
     timestamp: str
     display_timestamp: str
     module_name: str
@@ -47,15 +52,15 @@ def get_license() -> str:
     """Get the license for the Py4GW library."""
     ...
 
-def change_working_directory(path: str):
+def change_working_directory(path: str) -> bool:
     """Change the current working directory."""
     ...
 
-def request_shutdown_prompt():
+def request_shutdown_prompt() -> None:
     """Open the Py4GW shutdown confirmation modal."""
     ...
 
-def cancel_shutdown_prompt():
+def cancel_shutdown_prompt() -> None:
     """Dismiss a pending shutdown confirmation modal."""
     ...
 
@@ -82,11 +87,17 @@ def get_settings_directory() -> str:
 
 # ═══════════════ SUBMODULES ══════════════════════════════════════
 
+_MessageTypeAlias = MessageType
+
+
 class Console:
-    MessageType: type  # same as PySystem.MessageType
+    """Authoritative script-facing console: logging, retrieval, and window control."""
+
+    # console.attr("MessageType") = PySystem.MessageType (the same enum object).
+    MessageType = _MessageTypeAlias
 
     @staticmethod
-    def Log(sender: str, message: str, message_type: MessageType = MessageType.Info):
+    def Log(sender: str, message: str, message_type: MessageType = MessageType.Info) -> None:
         """Write a message to the console."""
         ...
 
@@ -100,15 +111,21 @@ class Console:
         """Get the Guild Wars window handle as an integer."""
         ...
 
+    # Two registered overloads: level string first, then MessageType.
+    @overload
     @staticmethod
-    def write(module_name: str, message: str, level_or_type):
-        """Write a message to the console — accepts level string or MessageType."""
-        ...
+    def write(module_name: str, message: str, level: str = "INFO") -> None: ...
+    @overload
+    @staticmethod
+    def write(module_name: str, message: str, message_type: MessageType) -> None: ...
 
+    # Two registered overloads: no-arg (all messages), then filtered by type.
+    @overload
     @staticmethod
-    def get_messages(message_type: Optional[MessageType] = None) -> List[ConsoleMessage]:
-        """Get all buffered console messages, optionally filtered by type."""
-        ...
+    def get_messages() -> List[ConsoleMessage]: ...
+    @overload
+    @staticmethod
+    def get_messages(message_type: MessageType) -> List[ConsoleMessage]: ...
 
     @staticmethod
     def filter_messages(module_name: str = "", level: str = "", contains: str = "") -> List[ConsoleMessage]:
@@ -116,12 +133,12 @@ class Console:
         ...
 
     @staticmethod
-    def clear_messages():
+    def clear_messages() -> None:
         """Clear the console message buffer."""
         ...
 
     @staticmethod
-    def set_output_to_file(enabled: bool):
+    def set_output_to_file(enabled: bool) -> None:
         """Mirror console messages into the injection log file."""
         ...
 
@@ -131,7 +148,7 @@ class Console:
         ...
 
     @staticmethod
-    def set_draw_console(enabled: bool):
+    def set_draw_console(enabled: bool) -> None:
         """Show or hide the full console window."""
         ...
 
@@ -141,7 +158,7 @@ class Console:
         ...
 
     @staticmethod
-    def set_draw_compact_console(enabled: bool):
+    def set_draw_compact_console(enabled: bool) -> None:
         """Show or hide the compact console window."""
         ...
 
@@ -151,17 +168,19 @@ class Console:
         ...
 
     @staticmethod
-    def toggle_console():
+    def toggle_console() -> None:
         """Toggle the full console window."""
         ...
 
     @staticmethod
-    def toggle_compact_console():
+    def toggle_compact_console() -> None:
         """Toggle the compact console window."""
         ...
 
 
 class environment:
+    """Process environment queries."""
+
     @staticmethod
     def get_gw_window_handle() -> int:
         """Get the Guild Wars window handle as an integer."""
@@ -174,18 +193,20 @@ class environment:
 
 
 class window:
+    """Guild Wars window control."""
+
     @staticmethod
-    def resize_window(width: int, height: int):
+    def resize_window(width: int, height: int) -> None:
         """Resize the Guild Wars window."""
         ...
 
     @staticmethod
-    def move_window_to(x: int, y: int):
+    def move_window_to(x: int, y: int) -> None:
         """Move the Guild Wars window to (x, y)."""
         ...
 
     @staticmethod
-    def set_window_geometry(x: int, y: int, width: int, height: int):
+    def set_window_geometry(x: int, y: int, width: int, height: int) -> None:
         """Set the Guild Wars window geometry (x, y, width, height)."""
         ...
 
@@ -200,12 +221,12 @@ class window:
         ...
 
     @staticmethod
-    def set_window_active():
+    def set_window_active() -> None:
         """Set the Guild Wars window as active (focused)."""
         ...
 
     @staticmethod
-    def set_window_title(title: str):
+    def set_window_title(title: str) -> None:
         """Set the Guild Wars window title."""
         ...
 
@@ -225,22 +246,22 @@ class window:
         ...
 
     @staticmethod
-    def set_borderless(enable: bool):
+    def set_borderless(enable: bool) -> None:
         """Enable or disable borderless window mode."""
         ...
 
     @staticmethod
-    def set_always_on_top(enable: bool):
+    def set_always_on_top(enable: bool) -> None:
         """Set or unset always-on-top."""
         ...
 
     @staticmethod
-    def flash_window(repeat_count: int = 1):
+    def flash_window(repeat_count: int = 1) -> None:
         """Flash the Guild Wars taskbar button."""
         ...
 
     @staticmethod
-    def request_attention():
+    def request_attention() -> None:
         """Keep flashing until the window comes to foreground."""
         ...
 
@@ -250,42 +271,44 @@ class window:
         ...
 
     @staticmethod
-    def set_z_order(insert_after: int = 0):
+    def set_z_order(insert_after: int = 0) -> None:
         """Set the Z-order of the Guild Wars window relative to another window."""
         ...
 
     @staticmethod
-    def send_window_to_back():
+    def send_window_to_back() -> None:
         """Send the Guild Wars window to the bottom of the Z-order stack."""
         ...
 
     @staticmethod
-    def bring_window_to_front():
+    def bring_window_to_front() -> None:
         """Bring the Guild Wars window to the front of the Z-order stack."""
         ...
 
     @staticmethod
-    def transparent_click_through(enable: bool):
+    def transparent_click_through(enable: bool) -> None:
         """Make the Guild Wars window click-through."""
         ...
 
     @staticmethod
-    def adjust_window_opacity(alpha: int):
+    def adjust_window_opacity(alpha: int) -> None:
         """Adjust the Guild Wars window opacity (0-255)."""
         ...
 
     @staticmethod
-    def hide_window():
+    def hide_window() -> None:
         """Hide the Guild Wars window."""
         ...
 
     @staticmethod
-    def show_window():
+    def show_window() -> None:
         """Show the Guild Wars window if hidden."""
         ...
 
 
 class script_control:
+    """Python script lifecycle control."""
+
     @staticmethod
     def load(path: str) -> bool:
         """Load a Python script from path."""
@@ -297,17 +320,17 @@ class script_control:
         ...
 
     @staticmethod
-    def stop():
+    def stop() -> None:
         """Stop the currently running script."""
         ...
 
     @staticmethod
-    def pause():
+    def pause() -> bool:
         """Pause the running script."""
         ...
 
     @staticmethod
-    def resume():
+    def resume() -> bool:
         """Resume the paused script."""
         ...
 
@@ -317,29 +340,31 @@ class script_control:
         ...
 
     @staticmethod
-    def defer_load_and_run(path: str, delay_ms: int = 1000):
-        """Stop current if needed, then load and run new script after delay."""
+    def defer_load_and_run(path: str, delay_ms: int = 1000) -> None:
+        """Stop current if needed, then load and run new script after delay (ms)."""
         ...
 
     @staticmethod
-    def defer_stop_load_and_run(path: str, delay_ms: int = 1000):
-        """Force stop, then load and run new script after delay."""
+    def defer_stop_load_and_run(path: str, delay_ms: int = 1000) -> None:
+        """Force stop, then load and run new script after delay (ms)."""
         ...
 
     @staticmethod
-    def defer_stop_and_run(delay_ms: int = 1000):
-        """Stop current script, then rerun it after delay."""
+    def defer_stop_and_run(delay_ms: int = 1000) -> None:
+        """Stop current script, then rerun it after delay (ms)."""
         ...
 
 
 class widget_manager:
+    """Always-on widget manager script host."""
+
     @staticmethod
-    def start():
+    def start() -> bool:
         """Load and run the widget manager script."""
         ...
 
     @staticmethod
-    def stop():
+    def stop() -> None:
         """Stop the widget manager script."""
         ...
 

@@ -43,9 +43,12 @@ _STRIP_HOVER_LIGHTEN = 0.45
 _COLLAPSED_LIGHTEN = 0.28
 _TILE_BORDER_LIGHTEN = 0.18
 _ACCENT = (0.24, 0.48, 0.85, 1.0)  # selection outline / drop-ok
-_ACTION_LABELS = {"browser": "WDG"}      # short face label for a system-action tile (icon fallback)
-_ACTION_ICONS = {"browser": os.path.join(_ROOT, "python_icon.ico")}  # widget-explorer icon
-_ACTION_TOOLTIP = {"browser": "Widget browser"}
+_ACTION_LABELS = {"browser": "WDG", "system_settings": "CFG"}  # face label fallback (no icon)
+_ACTION_ICONS = {  # textured face per system action
+    "browser": os.path.join(_ROOT, "python_icon.ico"),          # widget-explorer icon
+    "system_settings": os.path.join(_ROOT, "Textures", "Icons", "cogs.png"),  # settings cog
+}
+_ACTION_TOOLTIP = {"browser": "Widget browser", "system_settings": "System settings"}
 
 
 # ---- color helpers (operate on '#rrggbb') ---------------------------------------------

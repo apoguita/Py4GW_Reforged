@@ -3060,7 +3060,7 @@ def _draw_toggle_icon_window():
 		| PyImGui.WindowFlags.NoCollapse
 		| PyImGui.WindowFlags.NoBackground
 	)
-	PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+	PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
 	if PyImGui.begin("##XunlaiManagerToggle", icon_window_flags):
 		icon_path = MODULE_ICON
 		absolute_icon_path = os.path.join(project_root, MODULE_ICON)

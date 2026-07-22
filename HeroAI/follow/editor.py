@@ -185,10 +185,25 @@ def _ini_reload_now(key: str):
 
 
 def _ini_write_now(key: str, section: str, name: str, value):
-    # Synchronous write for explicit Save actions (avoids deferred flush races).
+    # In-memory set only. Native Settings.set() is debounced (~2s), NOT synchronous,
+    # so the whole batch is force-flushed via _ini_save_now() at the end of the
+    # write. This matters because this doc is a cross-process channel: the follow
+    # publisher reload()s it every ~1s and would otherwise read stale disk (on
+    # followers) or discard the leader's unflushed edit (same-process singleton).
     if not key:
         return
     Settings(key, "global").set(section, name, value)
+
+
+def _ini_save_now(key: str):
+    # Escape hatch: force the debounced autosave to flush NOW. Only called after a
+    # discrete write batch (explicit Save / selection change), never per-frame.
+    if not key:
+        return
+    try:
+        Settings(key, "global").save()
+    except Exception:
+        pass
 
 
 def _ini_delete_section_now(key: str, section: str):
@@ -714,13 +729,22 @@ def _save_to_ini():
             _ini_write_now(FORMATIONS_INI_KEY, sec, f"o{i}_c", _color_to_str(p.color))
 
     ui.formations_dirty = False
+    # Flush the explicit Save to disk immediately so followers pick it up on their
+    # next ~1s reload and the leader's own publisher reload() can't discard it.
+    _ini_save_now(FORMATIONS_INI_KEY)
+    _ini_save_now(SETTINGS_INI_KEY)
+
+
+_last_flushed_selected_id: str = ""
 
 
 def _save_ui_state_only():
+    global _last_flushed_selected_id
     if not SETTINGS_INI_KEY:
         return
     cfg_set = Settings(SETTINGS_INI_KEY, "global")
-    cfg_set.set(SEC_FORMATIONS, "selected_id", _current_formation().id)
+    sel_id = _current_formation().id
+    cfg_set.set(SEC_FORMATIONS, "selected_id", sel_id)
     cfg_set.set(SEC_FORMATIONS, "selected", _current_formation().name)
     cfg_set.set(SEC_WINDOWS, "show_control_window", int(ui.show_control_window))
     cfg_set.set(SEC_WINDOWS, "show_editor_window", int(ui.show_editor_window))
@@ -734,6 +758,12 @@ def _save_ui_state_only():
     cfg_set.set(SEC_EDITOR, "draw_area_rings", int(ui.draw_area_rings))
     cfg_set.set(SEC_EDITOR, "draw_3d_area_rings", int(ui.draw_3d_area_rings))
     cfg_set.set(SEC_EDITOR, "show_party_preview", int(ui.show_party_preview))
+    # This runs every frame, so only force a flush on an actual selection change
+    # (never per-frame): the follow publisher reads selected_id and would otherwise
+    # discard/miss it across the ~1s reload vs ~2s autosave-debounce window.
+    if sel_id != _last_flushed_selected_id:
+        _last_flushed_selected_id = sel_id
+        _ini_save_now(SETTINGS_INI_KEY)
 
 
 def _formation_to_export_dict(f: Formation) -> dict:

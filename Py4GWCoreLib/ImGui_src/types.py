@@ -1,3 +1,4 @@
+import PyImGui
 from enum import IntEnum, Enum
 
 TEXTURE_FOLDER = "Textures\\Game UI\\"
@@ -10,6 +11,10 @@ class ControlAppearance(Enum):
     Danger = 2
 
 class StyleTheme(IntEnum):
+    Py4GW = 0
+    # Backward-compat alias: settings saved before the rename stored the name
+    # "ImGui". StyleTheme["ImGui"] still resolves; .name reads back as "Py4GW",
+    # so load_theme() looks for Styles/Py4GW.default.json.
     ImGui = 0
     Guild_Wars = 1
     Minimalus = 2
@@ -127,33 +132,42 @@ class SortDirection(Enum):
     Ascending = 1
     Descending = 2    
 
+def _style_var(name: str) -> int:
+    """Resolve a style var index from the live PyImGui binding.
+
+    These indices are positional in ImGui's ImGuiStyleVar_ enum and shift
+    whenever ImGui inserts a new var. Hardcoding them here silently pushed the
+    wrong field (and, where the types disagreed, pushed nothing while still
+    popping), so the values are always taken from the DLL.
+    """
+    return int(getattr(PyImGui.ImGuiStyleVar, name))
+
 class ImGuiStyleVar(IntEnum):
-    Alpha = 0
-    DisabledAlpha = 1
-    WindowPadding = 2
-    WindowRounding = 3
-    WindowBorderSize = 4
-    WindowMinSize = 5
-    WindowTitleAlign = 6
-    ChildRounding = 7
-    ChildBorderSize = 8
-    PopupRounding = 9
-    PopupBorderSize = 10
-    FramePadding = 11
-    FrameRounding = 12
-    FrameBorderSize = 13
-    ItemSpacing = 14
-    ItemInnerSpacing = 15
-    IndentSpacing = 16
-    CellPadding = 17
-    ScrollbarSize = 18
-    ScrollbarRounding = 19
-    GrabMinSize = 20
-    GrabRounding = 21
-    TabRounding = 22
-    ButtonTextAlign = 23
-    SelectableTextAlign = 24
-    SeparatorTextBorderSize = 25
-    SeparatorTextAlign = 26
-    SeparatorTextPadding = 27
-    COUNT = 28
+    Alpha = _style_var('Alpha')
+    DisabledAlpha = _style_var('DisabledAlpha')
+    WindowPadding = _style_var('WindowPadding')
+    WindowRounding = _style_var('WindowRounding')
+    WindowBorderSize = _style_var('WindowBorderSize')
+    WindowMinSize = _style_var('WindowMinSize')
+    WindowTitleAlign = _style_var('WindowTitleAlign')
+    ChildRounding = _style_var('ChildRounding')
+    ChildBorderSize = _style_var('ChildBorderSize')
+    PopupRounding = _style_var('PopupRounding')
+    PopupBorderSize = _style_var('PopupBorderSize')
+    FramePadding = _style_var('FramePadding')
+    FrameRounding = _style_var('FrameRounding')
+    FrameBorderSize = _style_var('FrameBorderSize')
+    ItemSpacing = _style_var('ItemSpacing')
+    ItemInnerSpacing = _style_var('ItemInnerSpacing')
+    IndentSpacing = _style_var('IndentSpacing')
+    CellPadding = _style_var('CellPadding')
+    ScrollbarSize = _style_var('ScrollbarSize')
+    ScrollbarRounding = _style_var('ScrollbarRounding')
+    GrabMinSize = _style_var('GrabMinSize')
+    GrabRounding = _style_var('GrabRounding')
+    TabRounding = _style_var('TabRounding')
+    ButtonTextAlign = _style_var('ButtonTextAlign')
+    SelectableTextAlign = _style_var('SelectableTextAlign')
+    SeparatorTextBorderSize = _style_var('SeparatorTextBorderSize')
+    SeparatorTextAlign = _style_var('SeparatorTextAlign')
+    SeparatorTextPadding = _style_var('SeparatorTextPadding')

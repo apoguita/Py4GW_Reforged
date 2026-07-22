@@ -1,0 +1,99 @@
+# PyMap stub — Reforged Native surface (2026-07-20)
+# Matches src/GW/map/map_bindings.cpp. Module-level free functions only:
+# no classes, no enums, no submodules are exposed by this module.
+
+from typing import List
+from typing import Tuple
+
+# ── Travel ──
+# region defaults to -2 (GW::Constants::ServerRegion::NoRegion sentinel used by the binding).
+def travel(map_id: int, region: int = -2, district_number: int = 0, language: int = 0) -> bool: ...
+def travel_to_district(map_id: int, district: int = 0, district_number: int = 0) -> bool: ...
+
+# ── Map test harness ──
+# map_test_start discards the C++ bool return -> None.
+def map_test_start(
+    map_id: int,
+    alt_map_id: int,
+    number: int = 2,
+    count: int = 3,
+    delay_ms: int = 0,
+    timeout_ms: int = 10000,
+    message_id: int = 0x10000098,
+) -> None: ...
+def map_test_stop() -> None: ...
+def map_test_get_status() -> str: ...
+def map_test_is_active() -> bool: ...
+def map_test_get_count() -> int: ...
+
+# ── Challenge missions ──
+def enter_challenge() -> bool: ...
+def cancel_enter_challenge() -> bool: ...
+
+# ── Terrain / map state ──
+# Returns (result, altitude, normal_x, normal_y, normal_z); result is 1 on success, 0 otherwise.
+def query_altitude(x: float, y: float, radius: float = 100.0) -> Tuple[int, float, float, float, float]: ...
+def get_is_map_loaded() -> bool: ...
+def get_map_id() -> int: ...
+def get_is_map_unlocked(map_id: int) -> bool: ...
+def get_region() -> int: ...
+def get_language() -> int: ...
+def get_is_observing() -> bool: ...
+def get_district() -> int: ...
+def get_instance_time() -> int: ...
+def get_instance_type() -> int: ...
+def get_foes_killed() -> int: ...
+def get_foes_to_kill() -> int: ...
+def get_is_in_cinematic() -> bool: ...
+def skip_cinematic() -> bool: ...
+def region_from_district(district: int) -> int: ...
+def language_from_district(district: int) -> int: ...
+
+# ── RAW collision raycast bridge (derived math is done in Python, Py4GWCoreLib Map.Raycast) ──
+
+def RayCast(start: List[float], unit_dir: List[float]) -> Tuple[bool, float, float, float, int]:
+    """RAW combined terrain + walkable-prop raycast (MapCliQueryIntersection).
+
+    start = world (x, y, z) origin; unit_dir = unit direction (caller-normalized).
+    Returns (has_hit, hit_x, hit_y, hit_z, prop_layer): the engine's raw contact point and
+    prop_layer (0 = terrain, != 0 = prop). No blocked decision / no distance bound.
+    """
+    ...
+
+def RayCastTerrain(start: List[float], end: List[float]) -> Tuple[bool, float]:
+    """RAW terrain-only raycast (ITerrain::QueryIntersection) from start to end (world x, y, z).
+
+    Returns (has_hit, frac): the engine contact flag and the parametric hit position in [0, 1]
+    along start->end (NOT world units).
+    """
+    ...
+
+def RayCastInteractive(
+    start: List[float], unit_dir: List[float], max_range: float
+) -> Tuple[bool, float, int, int]:
+    """RAW interactive-object mesh probe along start + t*unit_dir, t in [0, max_range].
+
+    Returns (has_hit, dist, prop_id, n_scanned). n_scanned == -1 means the probe could not run
+    (unresolved symbol / no map-props context / non-unit dir); 0 means it ran and the map has no
+    interactive-prop meshes (a clear result).
+    """
+    ...
+
+def GetProps() -> List[Tuple[int, float, float, float, bool, int]]:
+    """Enumerate all map props for overlay debugging.
+
+    Returns a list of (prop_id, x, y, z, is_interactive, rec_count) per prop.
+    """
+    ...
+
+def GetPropGeometry(
+    prop_id: int,
+) -> List[Tuple[Tuple[float, float, float, float, float, float, float, float, float, float, float, float], List[Tuple[float, float, float, float, float, float, float, float, float]]]]:
+    """RAW collision MESH of one prop, for wireframe drawing.
+
+    Returns a list of (matrix12, tris_local) per submodel, where matrix12 is 12 floats
+    (row-major 3x4 affine world matrix) and tris_local is a list of
+    (lx1, ly1, lz1, lx2, ly2, lz2, lx3, ly3, lz3) LOCAL-space triangles.
+    Empty if the prop has no geometry.
+    """
+    ...

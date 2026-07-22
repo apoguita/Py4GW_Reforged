@@ -774,9 +774,9 @@ def draw_buffs_bar(account_data: AccountStruct, win_pos: tuple, win_size: tuple,
     style = ImGui.get_style()
 
     PyImGui.push_style_var(ImGuiStyleVar.WindowRounding,0.0)
-    PyImGui.push_style_var(ImGuiStyleVar.WindowPadding,0.0)
+    PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
     PyImGui.push_style_var(ImGuiStyleVar.WindowBorderSize,0.0)
-    PyImGui.push_style_var2(ImGuiStyleVar.WindowPadding,0.0,0.0)
+    PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
     
     flags=( PyImGui.WindowFlags.NoCollapse | 
                 PyImGui.WindowFlags.NoTitleBar |
@@ -1821,7 +1821,7 @@ hotbar_offsets : dict[StyleTheme, dict[str, dict]] = {
             VerticalAlignment.Below.name: 8,
             },
     },
-    StyleTheme.ImGui: {
+    StyleTheme.Py4GW: {
         "PartyWindow": {
             HorizontalAlignment.LeftOf.name: -8,
             HorizontalAlignment.Left.name: 0,
@@ -1906,7 +1906,7 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
                 if party_window:
                     left, top, right, bottom = party_window
                     
-                    offsets = hotbar_offsets.get(style.Theme, hotbar_offsets.get(StyleTheme.ImGui, {})).get("PartyWindow", {})                    
+                    offsets = hotbar_offsets.get(style.Theme, hotbar_offsets.get(StyleTheme.Py4GW, {})).get("PartyWindow", {})                    
                     x_offset = offsets.get(hotbar.alignment.horizontal.name, 0)
                     y_offset = offsets.get(hotbar.alignment.vertical.name, 0)
                     
@@ -1925,7 +1925,7 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
                 if skillbar_window:
                     left, top, right, bottom = skillbar_window
                     
-                    offsets = hotbar_offsets.get(style.Theme, hotbar_offsets.get(StyleTheme.ImGui, {})).get("Skillbar", {})       
+                    offsets = hotbar_offsets.get(style.Theme, hotbar_offsets.get(StyleTheme.Py4GW, {})).get("Skillbar", {})       
                     x_offset = offsets.get(hotbar.alignment.horizontal.name, 0)
                     y_offset = offsets.get(hotbar.alignment.vertical.name, 0)
                     
@@ -2858,96 +2858,26 @@ def draw_configure_window(module_name : str, configure_window : WindowModule):
                     
             if ImGui.begin_tab_item("Hotbars"):
                 if ImGui.begin_child("##HotbarSettingsChild", (0, 0)):
-                    x_avail, y_avail = PyImGui.get_content_region_avail()
-                    
-                    if ImGui.button("Add Hotbar", x_avail - 4):
-                        identifier = f"Hotbar_{len(settings.CommandHotBars) + 1}"
-                        settings.CommandHotBars[identifier] = Settings.CommandHotBar(identifier)
-                        settings.save_settings()
-                    
-                    if ImGui.begin_child("##HotbarListChild", (0, 0), True):
-                        for key, hotbar in settings.CommandHotBars.items():
-                            if ImGui.collapsing_header(f"{hotbar.name}"):
-                                if ImGui.begin_child(f"##HotbarConfigChild_{key}", (0, 0), True):
-                                    x_avail, y_avail = PyImGui.get_content_region_avail()
-                    
-                                    name = ImGui.input_text(f"##hotbar name{key}", hotbar.name)
-                                    if name != hotbar.name:
-                                        if PyImGui.is_key_down(Key.Enter.value):
-                                            hotbar.name = name
-                                            settings.save_settings()
-                                    ImGui.show_tooltip("Name of the hotbar. Press Enter to confirm changes.")
+                    PyImGui.text("Command Hotbars are deprecated.")
+                    PyImGui.spacing()
+                    PyImGui.text_wrapped(
+                        "HeroAI hotbars have moved to the Launch Bar, which already offers a "
+                        "configurable grid of buttons that run these same commands. Open the Launch "
+                        "Bar editor and add commands from the \"HeroAI\" group in the function picker."
+                    )
+                    PyImGui.spacing()
+                    PyImGui.separator()
+                    PyImGui.spacing()
 
-                                        
-                                    PyImGui.same_line(x_avail - 24 - 32, 0)
-
-                                    visible = ImGui.toggle_icon_button(f"{(IconsFontAwesome5.ICON_EYE if hotbar.visible else IconsFontAwesome5.ICON_EYE_SLASH)}##{key}", hotbar.visible, 32, 20)
-                                    if visible != hotbar.visible:
-                                        hotbar.visible = visible
-                                        settings.save_settings()                    
-                                    ImGui.show_tooltip(f"{'Hide' if hotbar.visible else 'Show'} Hotbar '{key}'")
-                                    
-                                    PyImGui.same_line(x_avail - 20, 0)
-                                    
-                                    if ImGui.icon_button(f"{IconsFontAwesome5.ICON_TRASH}##{key}", 32, 20):
-                                        settings.delete_hotbar(key)
-                                        break
-                                    ImGui.show_tooltip(f"Delete Hotbar '{key}'")
-                                    
-                                    positioning = ImGui.combo(f"Docked##positioning {key}", hotbar.docked.value, [Utils.humanize_string(pos.name) for pos in Docked])
-                                    if positioning != hotbar.docked.value:
-                                        hotbar.docked = Docked(positioning)
-                                        settings.save_settings()
-                                    ImGui.show_tooltip("Positioning preset for the hotbar. Custom allows free movement.")
-                                    
-                                    alignment_names = [f"{Utils.humanize_string(pos.name)}" for pos in Alignment]
-                                    current_alignment = f"{Utils.humanize_string(hotbar.alignment.name)}"
-                                    current_alignment_index = alignment_names.index(current_alignment) if current_alignment in alignment_names else 0
-                                    
-                                    alignment = ImGui.combo(f"Alignment##positioning {key}", current_alignment_index, alignment_names)
-                                    if alignment != current_alignment_index:
-                                        hotbar.alignment = Alignment[list(Alignment)[alignment].name]
-                                        settings.save_settings()
-                                        
-                                    ImGui.show_tooltip("Positioning preset for the hotbar. Custom allows free movement.")
-                                    
-                                    btn_size = ImGui.input_int(f"Button Size##{key}", hotbar.button_size)
-                                    if btn_size != hotbar.button_size and btn_size >= 10 and btn_size <= 256:
-                                        hotbar.button_size = btn_size
-                                        settings.save_settings()
-                                        
-                                    rows = ImGui.input_int(f"Rows##{key}", len(hotbar.commands))
-                                    if rows != len(hotbar.commands):
-                                        new_commands = {}
-                                        
-                                        for r in range(rows):
-                                            new_commands[r] = {}
-                                            for c in range(max(1, max(len(row) for _, row in hotbar.commands.items()) if len(hotbar.commands) > 0 else 0)):
-                                                if r in hotbar.commands and c in hotbar.commands[r]:
-                                                    new_commands[r][c] = hotbar.commands[r][c]
-                                                else:
-                                                    new_commands[r][c] = "Empty"
-                                                    
-                                        hotbar.commands = new_commands
-                                        settings.save_settings()
-                                        
-                                    cols = ImGui.input_int(f"Columns##{key}", max(1, max(len(row) for _, row in hotbar.commands.items()) if len(hotbar.commands) > 0 else 0))
-                                    if cols != max(1, max(len(row) for _, row in hotbar.commands.items()) if len(hotbar.commands) > 0 else 0):
-                                        new_commands = {}
-                                        
-                                        for r in range(len(hotbar.commands)):
-                                            new_commands[r] = {}
-                                            for c in range(cols):
-                                                if r in hotbar.commands and c in hotbar.commands[r]:
-                                                    new_commands[r][c] = hotbar.commands[r][c]
-                                                else:
-                                                    new_commands[r][c] = "Empty"
-                                                    
-                                        hotbar.commands = new_commands
-                                        settings.save_settings()
-                                
-                    ImGui.end_child()
-                        
+                    if settings.CommandHotBars:
+                        PyImGui.text(f"You have {len(settings.CommandHotBars)} saved hotbar(s).")
+                        PyImGui.spacing()
+                        if ImGui.button("Import to Launch Bar", 220):
+                            from HeroAI.command_api import HeroAICommandAPI
+                            HeroAICommandAPI().import_hotbars_to_launch_bar()
+                        ImGui.show_tooltip("Recreate each saved hotbar as a Launch Bar, one tile per assigned command.")
+                    else:
+                        PyImGui.text_disabled("No saved hotbars to import.")
                 ImGui.end_child()
                 ImGui.end_tab_item()
             

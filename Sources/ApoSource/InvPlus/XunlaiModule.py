@@ -58,8 +58,8 @@ class XunlaiModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
         
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (5, 5))
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
         
         if PyImGui.begin("XunlaiButtons", flags):
             self.show_transfer_buttons = ImGui.toggle_button(IconsFontAwesome5.ICON_CARET_SQUARE_RIGHT, self.show_transfer_buttons, width=20, height=20)

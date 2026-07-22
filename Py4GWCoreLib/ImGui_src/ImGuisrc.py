@@ -10,6 +10,7 @@ from .types import Alignment, HorizontalAlignment, ImGuiStyleVar, StyleTheme, Co
 from .Style import Style
 from .Textures import ThemeTextures, TextureState
 from .WindowModule import WindowModule
+from .SidebarWindow import SidebarWindow
 from .IconsFontAwesome5 import IconsFontAwesome5
 import PyImGui
 import PySystem
@@ -17,6 +18,7 @@ import PySystem
 #region ImGui
 class ImGui:
     WindowModule: TypeAlias = WindowModule
+    SidebarWindow: TypeAlias = SidebarWindow
     ImGuiStyleVar: TypeAlias  = ImGuiStyleVar
     style = PyImGui.StyleConfig()
     __selectable_stack: list[dict[str, bool]] = []
@@ -77,7 +79,7 @@ class ImGui:
             ImGui.Selected_Style = ImGui.Styles[theme]
 
     @staticmethod
-    def push_theme_window_style(theme: StyleTheme = StyleTheme.ImGui):
+    def push_theme_window_style(theme: StyleTheme = StyleTheme.Py4GW):
         if not theme in ImGui.Styles:
             ImGui.Styles[theme] = Style.load_theme(theme)
 
@@ -88,7 +90,7 @@ class ImGui:
         ImGui.Styles[theme].push_style()
 
     @staticmethod
-    def pop_theme_window_style(theme: StyleTheme = StyleTheme.ImGui):
+    def pop_theme_window_style(theme: StyleTheme = StyleTheme.Py4GW):
         if theme not in ImGui.Styles:
             return
         ImGui.Styles[theme].pop_style()
@@ -2595,7 +2597,7 @@ class ImGui:
     @staticmethod     
     def PushTransparentWindow():
         PyImGui.push_style_var(ImGuiStyleVar.WindowRounding,0.0)
-        PyImGui.push_style_var(ImGuiStyleVar.WindowPadding,0.0)
+        PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         PyImGui.push_style_var(ImGuiStyleVar.WindowBorderSize,0.0)
         PyImGui.push_style_var_vec2(ImGuiStyleVar.WindowPadding, (0.0, 0.0))
         

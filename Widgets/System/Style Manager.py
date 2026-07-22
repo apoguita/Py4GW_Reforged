@@ -86,7 +86,7 @@ theme_compare_window = WindowModule(
 
 py4_gw_ini_handler = Settings("Py4GW.ini", "root")
 selected_theme = StyleTheme[py4_gw_ini_handler.get_str(
-    "settings", "style_theme", StyleTheme.ImGui.name)]
+    "settings", "style_theme", StyleTheme.Py4GW.name)]
 
 force_theme_override = py4_gw_ini_handler.get_bool(
     "settings", "force_theme_override", False)
@@ -145,7 +145,7 @@ class preview_states:
         self.slider_int = 25
         self.slider_float = 33.0
         
-        self.theme_1 = StyleTheme.ImGui
+        self.theme_1 = StyleTheme.Py4GW
         self.theme_2 = StyleTheme.Minimalus
         self.theme_3 = StyleTheme.Guild_Wars
 
@@ -390,7 +390,7 @@ def DrawThemeCompare():
             style = ImGui.get_style()
 
             # region Header
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.CellPadding, 4, 8)
+            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.CellPadding, (4, 8))
             if ImGui.begin_table("Control Preview#Header", 4, PyImGui.TableFlags.BordersOuterH, 0, 30):
                 PyImGui.table_setup_column(
                     "Control", PyImGui.TableColumnFlags.WidthFixed, 150)
@@ -548,7 +548,7 @@ def _reload_default_theme(theme: StyleTheme) -> None:
 def on_enable():
     global selected_theme
     selected_theme = StyleTheme[py4_gw_ini_handler.get_str(
-        "settings", "style_theme", StyleTheme.ImGui.name)]
+        "settings", "style_theme", StyleTheme.Py4GW.name)]
     PySystem.Console.Log(MODULE_NAME, f"Enabled Style Manager with theme: {selected_theme.name}", PySystem.Console.MessageType.Info)
     set_theme(selected_theme)
         

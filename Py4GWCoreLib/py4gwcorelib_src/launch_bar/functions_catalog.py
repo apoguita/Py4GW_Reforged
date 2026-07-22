@@ -72,3 +72,72 @@ FUNCTIONS: list[LaunchFunction] = [
         tooltip="Logs a line to the Py4GW console (example function).",
     ),
 ]
+
+
+def register_function(fn: LaunchFunction) -> None:
+    """Add or replace a catalog function by ``id`` (idempotent).
+
+    Lets external packages contribute functions without editing this file. Safe to call
+    repeatedly — a second call with the same ``id`` replaces the entry rather than duplicating
+    it (important because :data:`FUNCTIONS` is rebuilt on every launch-bar boot; see
+    ``_EXTERNAL_PROVIDERS``).
+    """
+    for index, existing in enumerate(FUNCTIONS):
+        if existing.id == fn.id:
+            FUNCTIONS[index] = fn
+            return
+    FUNCTIONS.append(fn)
+
+
+# Optional external providers, referenced by dotted ``"module:callable"`` strings so this core
+# module never hard-depends on a higher-level package. Each is imported and called once at catalog
+# import — and therefore on every launch-bar boot, since the whole launch_bar package is purged and
+# reimported on reload (see LaunchBar._boot). A provider that is absent or raises is skipped, so the
+# base catalog always comes up.
+_EXTERNAL_PROVIDERS: tuple[str, ...] = (
+    "HeroAI.command_api:register_launch_functions",
+    "Py4GWCoreLib.py4gwcorelib_src.map_overlay.launch_functions:register_launch_functions",
+)
+
+
+_providers_loaded = False
+
+
+def ensure_external_functions() -> None:
+    """Load the external providers once, populating :data:`FUNCTIONS`. Idempotent.
+
+    Called **lazily** — on the first catalog read (see ``FunctionRuntime``), never at import time.
+    This matters: a provider typically imports launch-bar submodules (e.g. ``function_runtime`` for
+    the icon helpers), and if we ran providers while this module were still being imported, that
+    sibling module would only be *partially* initialized, raising ``ImportError``. Deferring to the
+    first read guarantees the whole ``launch_bar`` package has finished importing first.
+
+    Resets to unloaded when the package is purged/reimported on reload, so ``FUNCTIONS`` is rebuilt
+    with the external functions each boot.
+    """
+    global _providers_loaded
+    if _providers_loaded:
+        return
+    _providers_loaded = True  # set first, so a re-entrant read during a provider can't recurse
+
+    import importlib
+
+    for path in _EXTERNAL_PROVIDERS:
+        try:
+            module_name, _, attr = path.partition(":")
+            module = importlib.import_module(module_name)
+            getattr(module, attr)()
+        except Exception as exc:
+            # Optional integration not present / not importable offline — never block the catalog,
+            # but log it: a silently-swallowed failure here means the provider's functions just never
+            # appear, which is very hard to diagnose from the empty menu alone.
+            try:
+                import PySystem
+
+                PySystem.Console.Log(
+                    "LaunchBar",
+                    "external provider '%s' failed to load: %s" % (path, exc),
+                    PySystem.Console.MessageType.Warning,
+                )
+            except Exception:
+                pass

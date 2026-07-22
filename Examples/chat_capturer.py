@@ -21,9 +21,9 @@ def floating_input_text(label, value, x, y, width=120, height=24, color: Color =
         PyImGui.WindowFlags.AlwaysAutoResize
     )
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 3, 5)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (3, 5))
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color.to_tuple_normalized())
 
     new_value = value

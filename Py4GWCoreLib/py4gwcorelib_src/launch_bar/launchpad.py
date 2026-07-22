@@ -35,7 +35,7 @@ def _draw_launchpad() -> None:
     route the call through runcall_scope so the cProfile target registered for
     "Launchpad:draw" is hit; otherwise call it directly (no profiling overhead)."""
     try:
-        import LaunchBar
+        from Py4GWCoreLib.py4gwcorelib_src.launch_bar import app
     except Exception as exc:
         _log("launchpad import error: %s" % exc)
         return
@@ -43,9 +43,9 @@ def _draw_launchpad() -> None:
     reg = ProfilingRegistry()
     try:
         if reg.enabled:
-            reg.runcall_scope("widgets", "%s:draw" % LAUNCHPAD_CALLBACK_NAME, LaunchBar.main)
+            reg.runcall_scope("widgets", "%s:draw" % LAUNCHPAD_CALLBACK_NAME, app.main)
         else:
-            LaunchBar.main()
+            app.main()
     except Exception as exc:
         _log("launchpad render error: %s" % exc)
 

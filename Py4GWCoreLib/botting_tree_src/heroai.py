@@ -235,9 +235,10 @@ class BottingTreeHeroAIMixin:
         return self.resurrection_scroll_enabled
 
     def IsResurrectionScrollEnabled(self: _BottingTreeHeroAIHost) -> bool:
-        account_email = Player.GetAccountEmail()
-        if account_email:
-            self.resurrection_scroll_enabled = bool(Settings().get_account_resurrection_scroll_enabled(account_email))
+        # Settings resurrection-scroll state is LOCAL-account only (native account scope); the host
+        # always runs on its own account, so read it directly with no email argument.
+        if Player.GetAccountEmail():
+            self.resurrection_scroll_enabled = bool(Settings().get_account_resurrection_scroll_enabled())
         return self.resurrection_scroll_enabled
 
     def RestoreHeroAIOptions(self: _BottingTreeHeroAIHost) -> bool:

@@ -1,57 +1,69 @@
-# PyParty stub — Reforged Native surface (2026-07-06)
-# Matches party_bindings.cpp. All legacy classes preserved.
-# NOTE: HeroPartyMember.hero_id is int (not Hero object) in Reforged.
+# PyParty stub — Reforged Native surface.
+# Exact counterpart of src/GW/party/party_bindings.cpp.
+# NOTE: HeroPartyMember.hero_id is int (not a Hero object) in Reforged.
 #       HeroPartyMember.primary/secondary are int (not Profession).
 
-from typing import List, Tuple
+from typing import List
+from typing import overload
 from enum import IntEnum
 
+# GW::Constants::HeroID — plain sequential enum (constants.h), NoHero = 0 .. ZeiRi = 37.
+# NOTE: the binding exposes HeroID::NoHero under the Python name "None"
+#       (py::enum_ .value("None", ...)). That name is a Python keyword and cannot be
+#       declared in a stub; reach it at runtime with getattr(HeroType, "None") — its
+#       value is 0.
 class HeroType(IntEnum):
-    NoHero: int = 0
-    Norgu: int
-    Goren: int
-    Tahlkora: int
-    MasterOfWhispers: int
-    AcolyteJin: int
-    Koss: int
-    Dunkoro: int
-    AcolyteSousuke: int
-    Melonni: int
-    ZhedShadowhoof: int
-    GeneralMorgahn: int
-    MargridTheSly: int
-    Zenmai: int
-    Olias: int
-    Razah: int
-    MOX: int
-    KeiranThackeray: int
-    Jora: int
-    PyreFierceshot: int
-    Anton: int
-    Livia: int
-    Hayda: int
-    Kahmu: int
-    Gwen: int
-    Xandra: int
-    Vekk: int
-    Ogden: int
-    MercenaryHero1: int
-    MercenaryHero2: int
-    MercenaryHero3: int
-    MercenaryHero4: int
-    MercenaryHero5: int
-    MercenaryHero6: int
-    MercenaryHero7: int
-    MercenaryHero8: int
-    Miku: int
-    ZeiRi: int
+    Norgu = 1
+    Goren = 2
+    Tahlkora = 3
+    MasterOfWhispers = 4
+    AcolyteJin = 5
+    Koss = 6
+    Dunkoro = 7
+    AcolyteSousuke = 8
+    Melonni = 9
+    ZhedShadowhoof = 10
+    GeneralMorgahn = 11
+    MargridTheSly = 12
+    Zenmai = 13
+    Olias = 14
+    Razah = 15
+    MOX = 16
+    KeiranThackeray = 17
+    Jora = 18
+    PyreFierceshot = 19
+    Anton = 20
+    Livia = 21
+    Hayda = 22
+    Kahmu = 23
+    Gwen = 24
+    Xandra = 25
+    Vekk = 26
+    Ogden = 27
+    MercenaryHero1 = 28
+    MercenaryHero2 = 29
+    MercenaryHero3 = 30
+    MercenaryHero4 = 31
+    MercenaryHero5 = 32
+    MercenaryHero6 = 33
+    MercenaryHero7 = 34
+    MercenaryHero8 = 35
+    Miku = 36
+    ZeiRi = 37
 
 class Hero:
-    def __init__(self, hero_id_or_name: int | str) -> None: ...
+    # Two ctor overloads only; there is NO default constructor exposed.
+    @overload
+    def __init__(self, arg0: int) -> None: ...
+    @overload
+    def __init__(self, arg0: str) -> None: ...
     def GetID(self) -> int: ...
     def GetName(self) -> str: ...
     def GetProfession(self) -> int: ...
     def FlagHero(self, idx: int) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __repr__(self) -> str: ...
 
 class PartyTick:
     def __init__(self, ticked: bool = False) -> None: ...
@@ -70,7 +82,7 @@ class PlayerPartyMember:
 class HeroPartyMember:
     agent_id: int
     owner_player_id: int
-    hero_id: int       # NOTE: int in Reforged (was Hero object in legacy)
+    hero_id: int        # NOTE: int in Reforged (was Hero object in legacy)
     level: int
     primary: int        # NOTE: int in Reforged (was Profession in legacy)
     secondary: int      # NOTE: int in Reforged (was Profession in legacy)
@@ -83,6 +95,7 @@ class HenchmanPartyMember:
     def __init__(self, agent_id: int = 0, profession: int = 0, level: int = 0) -> None: ...
 
 class PetInfo:
+    # All members are def_readonly.
     agent_id: int
     owner_agent_id: int
     pet_name: str
@@ -122,8 +135,6 @@ class PyParty:
     def KickPlayer(self, player_id: int) -> bool: ...
     def InvitePlayer(self, player_id: int) -> bool: ...
     def LeaveParty(self) -> bool: ...
-    def UseHeroSkill(self, hero_agent_id: int, skill_slot: int, target_id: int) -> None: ...
-    def SetHeroSkillAIEnabled(self, hero_agent_id: int, skill_slot: int, enabled: bool) -> bool: ...
     def FlagHero(self, agent_id: int, x: float, y: float) -> bool: ...
     def FlagAllHeroes(self, x: float, y: float) -> bool: ...
     def UnflagHero(self, agent_id: int) -> bool: ...
@@ -140,9 +151,11 @@ class PyParty:
     def SearchPartyCancel(self) -> bool: ...
     def SearchPartyReply(self, accept: bool) -> bool: ...
     def SetHeroBehavior(self, agent_id: int, behavior: int) -> None: ...
-    def SetPetBehavior(self, behavior: int, lock_target_id: int) -> None: ...
+    def SetPetBehavior(self, behaviour: int, lock_target_id: int) -> None: ...
     def GetPetInfo(self, owner_agent_id: int) -> PetInfo: ...
     def GetIsPlayerTicked(self, player_id: int) -> bool: ...
+    def UseHeroSkill(self, hero_id: int, skill_slot: int, target_id: int) -> None: ...
+    def SetHeroSkillAIEnabled(self, hero_agent_id: int, skill_slot: int, enabled: bool) -> bool: ...
     def GetPartyContextPtr(self) -> int: ...
 
 # ── Module-level free functions ──

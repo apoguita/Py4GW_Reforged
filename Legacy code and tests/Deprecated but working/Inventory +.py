@@ -190,7 +190,7 @@ def floating_checkbox(caption, state,x,y, color):
         PyImGui.WindowFlags.NoScrollWithMouse |
         PyImGui.WindowFlags.AlwaysAutoResize  ) 
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,0.0,0.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color)
        
@@ -223,7 +223,7 @@ def floating_button(caption, name, x,y, color):
         PyImGui.WindowFlags.NoScrollWithMouse |
         PyImGui.WindowFlags.AlwaysAutoResize  ) 
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,-5,-3)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (-5, -3))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
        
     result = False
@@ -320,7 +320,7 @@ class TitleClass():
             PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
             flags= ImGui.PushTransparentWindow()
             
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,0.0,0.0)
+            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
             PyImGui.set_next_window_pos(window_title_x, window_title_y)
             PyImGui.set_next_window_size(0, 15)
             if PyImGui.begin("##titleWindow",True, flags):

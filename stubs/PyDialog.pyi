@@ -1,4 +1,9 @@
 # PyDialog.pyi - Stub file for the PyDialog module
+#
+# Exact counterpart of src/GW/dialog/dialog_bindings.cpp. Single merged module:
+# the legacy PyDialog surface plus the catalog-only read_dialog_* accessors
+# (the legacy PyDialogCatalog module was retired).
+# `initialize` -> GW::dialog::Initialize, `terminate` -> GW::dialog::Shutdown.
 
 from typing import List, Optional
 
@@ -100,6 +105,16 @@ class PyDialog:
     @staticmethod
     def get_dialog_text_decode_status() -> List[DialogTextDecodedInfo]: ...
     @staticmethod
+    def read_dialog_flags(dialog_id: int) -> int: ...
+    @staticmethod
+    def read_dialog_frame_type(dialog_id: int) -> int: ...
+    @staticmethod
+    def read_dialog_event_handler(dialog_id: int) -> int: ...
+    @staticmethod
+    def read_dialog_content_id(dialog_id: int) -> int: ...
+    @staticmethod
+    def read_dialog_property_id(dialog_id: int) -> int: ...
+    @staticmethod
     def get_dialog_event_logs() -> List[DialogEventLog]: ...
     @staticmethod
     def get_dialog_event_logs_received() -> List[DialogEventLog]: ...
@@ -125,14 +140,14 @@ class PyDialog:
     def clear_dialog_callback_journal_sent() -> None: ...
     @staticmethod
     def clear_dialog_callback_journal_filtered(
-        npc_uid: Optional[str] = ...,
-        incoming: Optional[bool] = ...,
-        message_id: Optional[int] = ...,
-        event_type: Optional[str] = ...,
+        npc_uid: Optional[str] = None,
+        incoming: Optional[bool] = None,
+        message_id: Optional[int] = None,
+        event_type: Optional[str] = None,
     ) -> None: ...
     @staticmethod
     def clear_cache() -> None: ...
     @staticmethod
-    def initialize() -> None: ...
+    def initialize() -> bool: ...
     @staticmethod
     def terminate() -> None: ...

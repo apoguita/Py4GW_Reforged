@@ -7,12 +7,14 @@ mutually exclusive. Replaces the legacy ``Mission Map +`` and ``Compass +`` widg
 
 import PySystem
 
-from Py4GWCoreLib.py4gwcorelib_src.map_overlay import MapOverlay
+from Py4GWCoreLib.py4gwcorelib_src.map_overlay import get_overlay
 
 MODULE_NAME = "Map Overlay"
 MODULE_ICON = "Textures\\Module_Icons\\Map Overlay.png"
 
-_overlay = MapOverlay()
+# Use the shared process-wide instance so the launch-bar "toggle mode" command drives the very
+# same overlay this widget renders (see map_overlay.get_overlay / toggle_mode).
+_overlay = get_overlay()
 
 
 def draw() -> None:

@@ -85,8 +85,8 @@ class IdentifyModule:
             PyImGui.WindowFlags.AlwaysAutoResize
         )
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (5, 5))
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
 
         table_flags = (
             PyImGui.TableFlags.BordersInnerV |

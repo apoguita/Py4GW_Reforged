@@ -1,14 +1,18 @@
-# PyPlayer stub — Reforged Native surface (2026-07-06)
-# Matches player_bindings.cpp. PyPlayer class preserved + module-level free functions.
+# PyPlayer stub — Reforged Native surface (2026-07-20)
+# Matches src/GW/player/player_bindings.cpp: PyPlayer class + PlayerStatus enum
+# + module-level free functions. All PyPlayer data members are def_readonly.
 
-from typing import List, Tuple
+from typing import Any
+from typing import List
+from typing import Tuple
 from enum import IntEnum
 
+# GW::Constants::FriendStatus — only these four values are bound (Unknown = 4 is not exposed).
 class PlayerStatus(IntEnum):
-    Offline: int = 0
-    Online: int = 1
-    DND: int = 2
-    Away: int = 3
+    Offline = 0
+    Online = 1
+    DND = 2
+    Away = 3
 
 class PyPlayer:
     id: int
@@ -18,7 +22,10 @@ class PyPlayer:
     observing_id: int
     account_name: str
     account_email: str
-    player_uuid: Tuple[int, int, int, int]
+    # Bound as a raw C array (uint32_t[4]) via def_readonly. pybind11 3.0 ships no C-array
+    # type_caster, so there is no Python conversion for this member — it resolves to an
+    # unregistered opaque type at runtime. Typed Any because no faithful type exists.
+    player_uuid: Any
     wins: int
     losses: int
     rating: int
@@ -64,7 +71,7 @@ class PyPlayer:
     def IsChatHistoryReady(self) -> bool: ...
     def Istyping(self) -> bool: ...
     def SendChatCommand(self, msg: str) -> None: ...
-    def SendChat(self, channel: str, msg: str) -> None: ...
+    def SendChat(self, channel: str, msg: str) -> None: ...  # channel is a single char
     def SendWhisper(self, name: str, msg: str) -> None: ...
     def SendFakeChat(self, channel: int, message: str) -> None: ...
     def SendFakeChatColored(self, channel: int, message: str, r: int, g: int, b: int) -> None: ...
@@ -81,4 +88,4 @@ def get_amount_of_players_in_instance() -> int: ...
 def get_player_number() -> int: ...
 def get_player_name(player_id: int = 0) -> str: ...
 def change_second_profession(profession: int, hero_index: int = 0) -> bool: ...
-def get_title_ids() -> list: ...
+def get_title_ids() -> List[int]: ...

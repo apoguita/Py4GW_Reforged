@@ -26,7 +26,7 @@ class Style:
                 img_style_enum=self.img_style_enum
             ) if value1 is not None else self.get_current()
 
-            if var.img_style_enum:                
+            if var.img_style_enum:
                 if var.value2 is not None:
                     PyImGui.push_style_var_vec2(var.img_style_enum, (var.value1, var.value2))
                 else:
@@ -35,7 +35,7 @@ class Style:
             self.pushed_stack.insert(0, var)
 
         def push_style_var_direct(self, value1: float, value2: float | None = None):
-            if self.img_style_enum:                
+            if self.img_style_enum:
                 if value2 is not None:
                     PyImGui.push_style_var_vec2(self.img_style_enum, (value1, value2))
                 else:
@@ -120,7 +120,7 @@ class Style:
             img_color_enum = data.get("img_color_enum", None)            
             self.img_color_enum = getattr(PyImGui.ImGuiCol, img_color_enum) if img_color_enum in PyImGui.ImGuiCol.__members__ else None
 
-    def __init__(self, theme: StyleTheme = StyleTheme.ImGui):
+    def __init__(self, theme: StyleTheme = StyleTheme.Py4GW):
         # Set the default style as base so we can push it and cover all
         self.Theme : StyleTheme = theme
 
@@ -418,20 +418,20 @@ class Style:
         # Sync baseline from global
         self.pyimgui_style.Pull()
 
-        # Apply Colors
+        # Apply Colors — set_color takes normalized 0.0-1.0 floats, not 0-255.
         for _, attr in self.Colors.items():
             if attr.img_color_enum and isinstance(attr, Style.StyleColor):
-                self.pyimgui_style.set_color(attr.img_color_enum, *attr.to_tuple())
+                self.pyimgui_style.set_color(attr.img_color_enum, *attr.to_tuple_normalized())
 
         # Apply CustomColors
         for _, attr in self.CustomColors.items():
             if attr.img_color_enum and isinstance(attr, Style.StyleColor):
-                self.pyimgui_style.set_color(attr.img_color_enum, *attr.to_tuple())
+                self.pyimgui_style.set_color(attr.img_color_enum, *attr.to_tuple_normalized())
 
         # Apply TextureColors
         for _, attr in self.TextureColors.items():
             if attr.img_color_enum and isinstance(attr, Style.StyleColor):
-                self.pyimgui_style.set_color(attr.img_color_enum, *attr.to_tuple())
+                self.pyimgui_style.set_color(attr.img_color_enum, *attr.to_tuple_normalized())
 
         # StyleVars are handled separately if needed (scalars/vec2s already live in StyleConfig)
 

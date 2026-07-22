@@ -142,7 +142,7 @@ def FloatingSlider(caption, value,x,y,min_value, max_value, color:Color):
         PyImGui.WindowFlags.NoScrollbar |
         PyImGui.WindowFlags.AlwaysAutoResize  ) 
     
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding,0.0,0.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding,0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color.to_tuple())
        
@@ -252,8 +252,8 @@ def FloatingMoveToggle(x: float, y: float, enabled: bool, show_stop: bool = Fals
         PyImGui.WindowFlags.AlwaysAutoResize |
         PyImGui.WindowFlags.NoBackground
     )
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 2.0, 2.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 1.0, 1.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (2.0, 2.0))
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (1.0, 1.0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0.0, 0.0, 0.0, 0.0))
 
@@ -294,7 +294,7 @@ def FloatingMapIdStrip(x: float, y: float, map_id: int, margin: int = 8) -> None
         PyImGui.WindowFlags.AlwaysAutoResize |
         PyImGui.WindowFlags.NoBackground
     )
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 2.0, 2.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (2.0, 2.0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0.0, 0.0, 0.0, 0.0))
 
@@ -324,8 +324,8 @@ def FloatingCoordsStrip(x, y, last_x, last_y, color, width=None, margin=8, label
              PyImGui.WindowFlags.NoBackground)
 
     # clean, overlay look
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 4.0, 4.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 2.0, 2.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (4.0, 4.0))
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (2.0, 2.0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
     PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 0, 0, 0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.Border, color.to_tuple())
@@ -1527,8 +1527,8 @@ def DrawFrame():
             PyImGui.WindowFlags.NoBackground |
             PyImGui.WindowFlags.NoInputs
         )
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0.0, 0.0)
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 0.0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0.0, 0.0))
         return PyImGui.begin("##mission_map_imgui_drawlist", flags)
 
     def _end_imgui_draw_window() -> None:

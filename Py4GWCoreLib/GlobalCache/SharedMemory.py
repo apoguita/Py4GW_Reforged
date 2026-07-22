@@ -386,7 +386,18 @@ class Py4GWSharedMemoryManager:
     def SetHeroAIPropertyByEmail(self, account_email: str, property_name: str, value):
         """Set a specific HeroAI property for the account with the given email."""
         return self.GetAllAccounts().SetHeroAIPropertyByEmail(account_email, property_name, value)
-    
+
+    def SetInAggroByEmail(self, account_email: str, in_aggro: bool) -> bool:
+        """Publish this account's live aggro state into its own shared-memory slot.
+
+        InAggro is left Python-owned by the C++ writer; HeroAI computes it each frame
+        and must republish it so followers can read the aggregated party aggro state.
+        """
+        try:
+            return self.GetAllAccounts().SetInAggroByEmail(account_email, in_aggro)
+        except Exception:
+            return False
+
     @frame_cache(category="SharedMemory", source_lib="GetMapsFromPlayers")
     def GetMapsFromPlayers(self):
         """Get a list of unique maps from all active players."""

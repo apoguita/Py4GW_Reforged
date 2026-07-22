@@ -47,8 +47,8 @@ class LootModule:
         
         if PyImGui.begin("Embedded Loot config",True, flags):
            
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 5, 5)
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (5, 5))
+            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
             
             if PyImGui.button(IconsFontAwesome5.ICON_SAVE + "##save_loot_config", width=25, height=25):
                 pass

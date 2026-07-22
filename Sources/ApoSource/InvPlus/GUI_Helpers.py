@@ -94,10 +94,10 @@ def floating_game_button(caption, name, tooltip,  x, y, width = 18, height = 18 
         PyImGui.WindowFlags.AlwaysAutoResize
     )
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0, 0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemInnerSpacing, 0, 0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.ItemInnerSpacing, (0, 0))
     
 
     result = False
@@ -121,10 +121,10 @@ def floating_game_button(caption, name, tooltip,  x, y, width = 18, height = 18 
     return result
 
 def game_button(caption, name, tooltip, width = 18, height = 18 , color: Color = Color(255, 0, 0, 255)):
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0, 0))
     PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemInnerSpacing, 0, 0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.ItemInnerSpacing, (0, 0))
 
     result = False
 

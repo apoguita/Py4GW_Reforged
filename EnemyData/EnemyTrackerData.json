@@ -3383,6 +3383,12 @@
           "instance_type": "Explorable",
           "name": "Mount Qinkai"
         },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
+        },
         "222": {
           "base_id": 222,
           "id": 222,
@@ -10707,6 +10713,12 @@
           "id": 205,
           "instance_type": "Explorable",
           "name": "Morostav Trail"
+        },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
         }
       },
       "observed_skills": {
@@ -11929,6 +11941,12 @@
           "id": 205,
           "instance_type": "Explorable",
           "name": "Morostav Trail"
+        },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
         }
       },
       "observed_skills": {
@@ -12281,6 +12299,12 @@
           "id": 210,
           "instance_type": "Explorable",
           "name": "Ferndale"
+        },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
         }
       },
       "observed_skills": {
@@ -18895,6 +18919,12 @@
           "instance_type": "Explorable",
           "name": "Ferndale"
         },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
+        },
         "214": {
           "base_id": 214,
           "id": 214,
@@ -19019,6 +19049,12 @@
           "id": 210,
           "instance_type": "Explorable",
           "name": "Ferndale"
+        },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
         }
       },
       "observed_skills": {}
@@ -20579,6 +20615,12 @@
           "id": 210,
           "instance_type": "Explorable",
           "name": "Ferndale"
+        },
+        "211": {
+          "base_id": 211,
+          "id": 211,
+          "instance_type": "Explorable",
+          "name": "Pongmei Valley"
         }
       },
       "observed_skills": {

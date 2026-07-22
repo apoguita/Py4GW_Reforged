@@ -3,9 +3,9 @@
 # configures via EmitterConfig. Emitters are camera-facing billboard quads
 # (no textures), drawn occluded in the world pass.
 
-# Emit modes (EmitterConfig.mode)
-BALLISTIC: int   # dir/speed/spread + gravity/drag  -> geyser / sparks / fountains
-ORBITAL: int     # radius/spin/rise                 -> swirl / vortex / halos
+# Emit modes (EmitterConfig.mode). Bound as plain module int attributes, not an enum.
+BALLISTIC: int   # = 0; dir/speed/spread + gravity/drag  -> geyser / sparks / fountains
+ORBITAL: int     # = 1; radius/spin/rise                 -> swirl / vortex / halos
 
 class EmitterConfig:
     # Every field is a live read/write property; set e.config.<field> = ...

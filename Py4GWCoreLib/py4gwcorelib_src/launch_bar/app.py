@@ -1,11 +1,15 @@
-"""Launch Bar — project entry point (root script).
+"""Launch Bar — package entry point (boot + per-frame render).
 
 Passive on import: importing this module only defines functions; nothing renders or touches the
-game until the Py4GW launcher calls :func:`main` (or :func:`draw`) once per frame.
+game until the launchpad host callback calls :func:`main` once per frame.
 
-This is the new, from-scratch configurable floating toolbar that replaces the old
-``LaunchSurface`` UI. This pass is UI/layout only — tiles are placeholders and do not execute
-anything yet. See ``docs/LaunchBar_ImGui_Implementation_Plan.md``.
+This is the entry/orchestration module for the from-scratch configurable floating toolbar that
+replaced the old ``LaunchSurface`` UI. It owns the persistent :class:`LaunchBarManager` instance
+(``_manager``) and ties the package together; the data model, host and manager live in the sibling
+modules of this package. See ``docs/LaunchBar_ImGui_Implementation_Plan.md``.
+
+Note: this module is named ``app`` (not ``LaunchBar``) on purpose — the package already exports a
+``LaunchBar`` *class* from :mod:`.model`; this is the launch-bar *application*, a different thing.
 """
 
 _manager = None
@@ -30,22 +34,52 @@ def _log(msg: str) -> None:
         pass
 
 
-def _ensure_system_bar(bar_set) -> None:
-    """Guarantee a non-deletable System bar carrying the widget-browser button exists.
+def _ensure_action_tile(bar, action: str, name: str) -> None:
+    """Guarantee a non-deletable tile bound to a mandatory system ``action`` exists on ``bar``.
 
-    The System bar is persisted like any other, so on a restored state it's already present;
-    this only fabricates one on first run or if a saved state somehow lacks it.
+    Idempotent, and RETROACTIVE: existing users already have a persisted system bar (with the
+    widget-browser button but not newer mandatory buttons), so on boot we add any missing one. If
+    the bar has no free slot, the grid is expanded along its major axis first, so a mandatory
+    button always fits rather than being silently dropped.
     """
 
-    if any(b.system for b in bar_set.bars):
+    if any(t.action == action for t in bar.tiles):
         return
-    sysbar = bar_set.add(name="System", x=340.0, y=120.0)
-    sysbar.system = True
-    browser_tile = sysbar.add_tile(1, 1)
-    if browser_tile is not None:
-        browser_tile.action = "browser"
-        browser_tile.name = "Widgets"
-        browser_tile.deletable = False
+    if bar.first_free_block(1, 1) is None:
+        # Full bar — grow the launchpad to make room (a +1 on the major axis always frees a slot).
+        if bar.is_horizontal:
+            bar.columns = bar.columns + 1
+        else:
+            bar.rows = bar.rows + 1
+    tile = bar.add_tile(1, 1)
+    if tile is not None:
+        tile.action = action
+        tile.name = name
+        tile.deletable = False
+
+
+def _ensure_system_bar(bar_set) -> None:
+    """Guarantee a non-deletable System bar carrying the fixed system buttons exists.
+
+    The System bar is persisted like any other, so on a restored state it's already present; this
+    fabricates one only on first run. Either way it then ensures every fixed system button — the
+    widget browser and the library-settings cog — is present, so existing users pick up new system
+    buttons on their next boot without losing their bar.
+    """
+
+    sysbar = next((b for b in bar_set.bars if b.system), None)
+    if sysbar is None:
+        sysbar = bar_set.add(name="System", x=340.0, y=120.0)
+        sysbar.system = True
+    # Migrate legacy action ids on already-persisted system bars so the ensure below recognises the
+    # existing button (rather than adding a duplicate): the settings action was renamed
+    # library_settings -> system_settings.
+    for t in sysbar.tiles:
+        if t.action == "library_settings":
+            t.action = "system_settings"
+            t.name = "Settings"
+    _ensure_action_tile(sysbar, "browser", "Widgets")
+    _ensure_action_tile(sysbar, "system_settings", "Settings")
 
 
 def _default_bar_set(LaunchBarSet):
@@ -100,11 +134,15 @@ def _boot() -> None:
     if _manager is not None or _boot_failed:
         return
     try:
-        # Live-iteration aid: these modules live under Py4GWCoreLib, so a widget reload would
-        # otherwise reuse the cached (stale) code. Purge them so each reload picks up edits.
+        # Live-iteration aid: the package's INTERNAL modules are sys.modules-cached, so a widget
+        # reload would otherwise reuse their stale code. Purge them so each boot re-imports edits.
+        # Keep this entry module and the launchpad host: they own persistent state (the manager
+        # instance below and the native Draw registration), so purging them would re-boot per frame.
         import sys
 
-        for _name in [m for m in list(sys.modules) if m.startswith("Py4GWCoreLib.py4gwcorelib_src.launch_bar")]:
+        _pkg = "Py4GWCoreLib.py4gwcorelib_src.launch_bar"
+        _keep = {"%s.app" % _pkg, "%s.launchpad" % _pkg}
+        for _name in [m for m in list(sys.modules) if m.startswith(_pkg) and m not in _keep]:
             del sys.modules[_name]
 
         from Py4GWCoreLib.py4gwcorelib_src.launch_bar.manager import LaunchBarManager
@@ -133,6 +171,20 @@ def _boot() -> None:
     except Exception as exc:  # only a hard code error latches (avoids per-frame spam); settings
         _boot_failed = True   # problems are handled above and never reach here
         _log("Boot failed: %s" % exc)
+
+
+def add_function_bar(name, layout):
+    """Import a grid of function tiles as a new launch bar. Public entry for external systems.
+
+    ``layout`` is a list of ``(col, row, function_id, display_name)``. Boots the launchpad if it is
+    not up yet, then delegates to :meth:`LaunchBarManager.import_function_bar`. Returns the new bar,
+    or ``None`` if the launchpad could not boot or the layout was empty. Used by HeroAI's
+    hotbar-import button to fold its deprecated CommandHotBars into the launch bar.
+    """
+    _boot()
+    if _manager is None:
+        return None
+    return _manager.import_function_bar(name, layout)
 
 
 def main() -> None:

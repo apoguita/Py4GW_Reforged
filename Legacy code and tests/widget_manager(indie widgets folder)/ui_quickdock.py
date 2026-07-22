@@ -110,9 +110,9 @@ def quick_dock_menu():
             panel_y = quick_dock_y
 
         PyImGui.set_next_window_pos(panel_x, panel_y)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.FramePadding, 0.0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.ItemSpacing, 0.0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowPadding, 0.0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0.0, 0.0))
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.ItemSpacing, (0.0, 0.0))
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0.0, 0.0))
 
         if PyImGui.begin("##quick_dock_expanded", button_flags):
             state.last_popup_size[0], state.last_popup_size[1] = PyImGui.get_window_size()

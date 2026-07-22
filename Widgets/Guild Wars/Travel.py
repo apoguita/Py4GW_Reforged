@@ -350,7 +350,7 @@ def themed_floating_button(button_rect : tuple[float, float, float, float]):
             
             pass
         
-        case Style.StyleTheme.ImGui:
+        case Style.StyleTheme.Py4GW:
             PyImGui.draw_list_add_rect_filled(
                 button_rect[0] + 1,
                 button_rect[1] + 1,

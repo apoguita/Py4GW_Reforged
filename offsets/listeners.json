@@ -1,0 +1,63 @@
+{
+  "namespace": "listeners",
+  "patterns": {
+    "skill_list_uicallback_assertion": {
+      "assertion_file": "GmCtlSkList.cpp",
+      "assertion_message": "!obj",
+      "line_number": "0xc71",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "gold_confirm_patch": {
+      "pattern": "\\xF7\\x40\\x0C\\x10\\x00\\x02\\x00\\x75",
+      "mask": "xxxxxx??",
+      "offset": "0x7",
+      "section": "text"
+    },
+    "cast_bar_minimum_patch": {
+      "pattern": "\\xdf\\xe0\\xf6\\xc4\\x41\\x7a\\x79",
+      "mask": "xxxxxxx",
+      "offset": "0x5",
+      "section": "text"
+    }
+  },
+  "resolvers": {
+    "skill_list_uicallback_func": {
+      "steps": [
+        {
+          "name": "scan_anchor",
+          "op": "scan",
+          "pattern": "skill_list_uicallback_assertion",
+          "out": "anchor"
+        },
+        {
+          "name": "to_function_start",
+          "op": "to_function_start",
+          "in": "anchor",
+          "scan_range": "0x200",
+          "out": "final"
+        }
+      ]
+    },
+    "gold_confirm_patch_addr": {
+      "steps": [
+        {
+          "name": "scan_patch_addr",
+          "op": "scan",
+          "pattern": "gold_confirm_patch",
+          "out": "final"
+        }
+      ]
+    },
+    "cast_bar_minimum_patch_addr": {
+      "steps": [
+        {
+          "name": "scan_patch_addr",
+          "op": "scan",
+          "pattern": "cast_bar_minimum_patch",
+          "out": "final"
+        }
+      ]
+    }
+  }
+}

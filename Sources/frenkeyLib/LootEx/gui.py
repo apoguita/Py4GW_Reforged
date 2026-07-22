@@ -1028,7 +1028,7 @@ class UI:
         PyImGui.set_next_window_size(width, 0)
         PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg,
                                     Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 125)))
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)    
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0, 0))    
         if PyImGui.begin(
             "Loot Ex Vault Controls",
             PyImGui.WindowFlags.NoTitleBar
@@ -1074,7 +1074,7 @@ class UI:
         PyImGui.set_next_window_size(width, 0)
         PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg,
                                 Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 125)))
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0, 0))
 
         if PyImGui.begin(
             "Loot Ex Inventory Controls",
@@ -1625,7 +1625,7 @@ class UI:
                     
                     ImGui.separator()
                     child_size = PyImGui.get_content_region_avail()
-                    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.CellPadding, 2, 2)
+                    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.CellPadding, (2, 2))
                     if self.inventory_view: 
                         if self.action_summary and self.action_summary.cached_inventory and self.inventory_coords: 
                             inventory_width = self.inventory_coords.right - self.inventory_coords.left
@@ -3464,7 +3464,7 @@ class UI:
             hovered_color = Utils.RGBToColor(63, 63, 63, 255)
             style.ChildBg.push_color((63, 63, 63, 255))
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemSpacing, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.ItemSpacing, (0, 0))
         texture_height = 30
         ImGui.begin_child(
             f"LowReqSelectableItem{item.object}",
@@ -3801,7 +3801,7 @@ class UI:
     #endregion
    
     def draw_info_icon(self, draw_action : Callable | None = None, text : str = "", width : float = 200):
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
         screen_cursor = PyImGui.get_cursor_screen_pos()
         rect = (screen_cursor[0], screen_cursor[1], 24, 24)
         hovered = GUI.is_mouse_in_rect(rect)
@@ -4381,7 +4381,7 @@ class UI:
             if False:
                 # Table headers
                 PyImGui.push_style_var(ImGui.ImGuiStyleVar.ChildBorderSize, 0)
-                PyImGui.push_style_var2(ImGui.ImGuiStyleVar.CellPadding, 2, 2)
+                PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.CellPadding, (2, 2))
                 if ImGui.begin_child(
                     f"{tab_name}TableHeaders#1",
                     (tab_size[0] - 20 if self.scroll_bar_visible else 0, 20),
@@ -4473,8 +4473,7 @@ class UI:
                             PyImGui.ImGuiCol.ButtonActive,
                             Utils.ColorToTuple(Utils.RGBToColor(255, 255, 255, 0)),
                         )
-                        PyImGui.push_style_var2(
-                            ImGui.ImGuiStyleVar.FramePadding, 5, 8)
+                        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (5, 8))
                         ImGui.button(
                             IconsFontAwesome5.ICON_SHIELD_ALT + f"##{mod.identifier}")
                         PyImGui.pop_style_color(3)
@@ -4510,8 +4509,7 @@ class UI:
 
                         if mod.is_inscription:
                             unique_id = f"##{mod.identifier}{inscription}"
-                            PyImGui.push_style_var2(
-                                ImGui.ImGuiStyleVar.FramePadding, 0, 8)
+                            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 8))
 
                             is_selected = (
                                 mod.identifier in self.settings.profile.weapon_mods
@@ -4553,8 +4551,7 @@ class UI:
 
                                 if hasWeaponType:
                                     unique_id = f"##{mod.identifier}{weapon_type}"
-                                    PyImGui.push_style_var2(
-                                        ImGui.ImGuiStyleVar.FramePadding, 0, 8)
+                                    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 8))
 
                                     is_selected = (
                                         mod.identifier in self.settings.profile.weapon_mods
@@ -4971,7 +4968,7 @@ class UI:
             PyImGui.push_style_color(
                 PyImGui.ImGuiCol.ChildBg, Utils.ColorToTuple(hovered_color))
 
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.ItemSpacing, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.ItemSpacing, (0, 0))
         ImGui.begin_child(
             f"SelectableItem{item.item_info.model_id}",
             (0, 20),
@@ -5705,7 +5702,7 @@ class UI:
         cursor_pos = PyImGui.get_cursor_screen_pos()
         rect = (cursor_pos[0], cursor_pos[1], width, height)
         transparent_color = Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 0))   
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
         PyImGui.push_style_color(
             PyImGui.ImGuiCol.Text,
             Utils.ColorToTuple(
@@ -5871,7 +5868,7 @@ class UI:
         rect = (cursor_pos[0], cursor_pos[1],
                 width, height)
         transparent_color = Utils.ColorToTuple(Utils.RGBToColor(0, 0, 0, 0))   
-        PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0, 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
         PyImGui.push_style_color(
             PyImGui.ImGuiCol.Text,
             Utils.ColorToTuple(

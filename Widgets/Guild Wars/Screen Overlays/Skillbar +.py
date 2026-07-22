@@ -56,7 +56,7 @@ class SkillBarPlus:
             
             PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0)
             PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowBorderSize, 0)
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 0, 0)
+            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (0, 0))
             
             if PyImGui.begin(caption, flags):
                 PyImGui.text(text)
@@ -193,7 +193,7 @@ class SkillBarPlus:
             PyImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, Utils.ColorToTuple(self.bg_color))
             PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0)
             PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowBorderSize, 0)
-            PyImGui.push_style_var2(ImGui.ImGuiStyleVar.WindowPadding, 2, 2)
+            PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (2, 2))
             
             if PyImGui.begin(caption, flags):
                 PyImGui.text(text)

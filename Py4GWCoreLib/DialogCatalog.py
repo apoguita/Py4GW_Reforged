@@ -9,7 +9,8 @@ except Exception:
     from Dialog import sanitize_dialog_text  # type: ignore
 
 try:
-    import PyDialogCatalog
+    # No such binding in the Reforged DLL; the fallback below is the live path.
+    import PyDialogCatalog  # type: ignore
 except Exception:  # pragma: no cover - runtime specific
     PyDialogCatalog = None
 

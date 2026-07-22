@@ -1606,6 +1606,15 @@ class HeroAI_BaseUI:
         cfg.set("FollowRuntime", "no_progress_move_units", float(SMART_UNSTUCK_CFG.no_progress_move_units))
         cfg.set("FollowRuntime", "no_progress_close_units", float(SMART_UNSTUCK_CFG.no_progress_close_units))
         cfg.set("FollowRuntime", "obstacle_cleared_delta", float(SMART_UNSTUCK_CFG.obstacle_cleared_delta))
+        # Called only on discrete UI changes. Native Settings.set() is debounced
+        # (~2s), but this doc is a cross-process channel the follow publisher
+        # reload()s every ~1s, so force the flush now (the "Force-write immediately"
+        # the callers already intend) or followers read stale thresholds / the value
+        # is discarded from the shared in-process singleton before it persists.
+        try:
+            cfg.save()
+        except Exception:
+            pass
 
     @staticmethod
     def _load_follow_formations_quick_data():

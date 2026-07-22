@@ -1,4 +1,5 @@
-# PyGameThread stub — Reforged Native surface (2026-07-06)
+# PyGameThread stub — Reforged Native surface
+# Matches src/GW/game_thread/game_thread_bindings.cpp.
 # Provides safe game-thread dispatch (replaces legacy Py4GW.Game.enqueue).
 
 from typing import Callable, Any

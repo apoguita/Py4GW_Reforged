@@ -11,6 +11,8 @@ passes) consume it. See ``docs/map_overlay_merge/`` for the design.
 """
 
 from .host import MapOverlay
+from .host import get_overlay
+from .host import toggle_mode
 from .model import CustomMarker
 from .model import MarkerStyle
 from .model import OverlayConfig
@@ -23,6 +25,8 @@ from .model import classify_spirit
 
 __all__ = [
     "MapOverlay",
+    "get_overlay",
+    "toggle_mode",
     "OverlayMode",
     "OverlayConfig",
     "MarkerStyle",

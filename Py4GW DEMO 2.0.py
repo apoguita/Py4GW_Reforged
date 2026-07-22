@@ -7,22 +7,10 @@ MODULE_ICON = "Textures/Module_Icons/Py4GW.png"
 
 #region Main Window
 def draw_window():
-    if PyImGui.begin(MODULE_NAME, True, PyImGui.WindowFlags.AlwaysAutoResize):
-        # ================= LEFT PANEL (grouped nav) =================
-        PyImGui.begin_child("left_panel", (250.0, 720.0), True, 0)
-        PyImGui.text("Modules")
-        PyImGui.separator()
-        registry.draw_sidebar()
-        PyImGui.end_child()
-
-        PyImGui.same_line(0, -1)
-
-        # ================= RIGHT PANEL (selected section) =================
-        PyImGui.begin_child("right_panel", (760.0, 720.0), False, 0)
-        registry.draw_content()
-        PyImGui.end_child()
-
-    PyImGui.end()
+    # Layout, grouped nav, selection, per-panel error isolation and markdown help
+    # are all handled by ImGui.SidebarWindow (built in registry from the GROUPS
+    # registry). The whole sidebar+content window is one call.
+    registry.get_window().draw()
 
 
 def tooltip():

@@ -813,7 +813,27 @@ class AllAccounts(Structure):
                 ConsoleLog(SHMEM_MODULE_NAME, f"Property {property_name} does not exist in HeroAIOptions.", PySystem.Console.MessageType.Error)
         else:
             ConsoleLog(SHMEM_MODULE_NAME, f"Account {account_email} not found.", PySystem.Console.MessageType.Error, log = False)
-    
+
+    def SetInAggroByEmail(self, account_email: str, in_aggro: bool) -> bool:
+        """Publish this account's live aggro state into its own shared-memory slot.
+
+        InAggro is a HeroAI-derived hybrid (party-scan + range + settings); the C++
+        writer deliberately leaves it Python-owned (it fills AccountData in place but
+        skips this field), so HeroAI must write it each frame. Followers read the
+        aggregated party aggro from these flags to decide when to enter combat.
+        Writes only InAggro / InAggroTick64 — never the C++-owned AccountData fields.
+        """
+        if not account_email:
+            return False
+        index = self._find_account_slot_by_email(account_email)
+        if index == -1:
+            return False
+        slot = self.AccountData[index]
+        value = bool(in_aggro)
+        slot.InAggro = value
+        slot.InAggroTick64 = PySystem.get_tick_count64() if value else 0
+        return True
+
     def GetMapsFromPlayers(self):
         """Get a list of unique maps from all active players."""
         maps = set()

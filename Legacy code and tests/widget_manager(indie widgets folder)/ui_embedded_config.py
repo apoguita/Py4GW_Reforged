@@ -55,7 +55,7 @@ def draw_embedded_widget_config():
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0.15, 0.15, 0.15, 1.0))  # darker when clicked
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (1.0, 1.0, 1.0, 1.0))            # pure white
         PyImGui.push_style_var(ImGui.ImGuiStyleVar.FrameRounding, 4.0)
-        PyImGui.push_style_var(ImGui.ImGuiStyleVar.FramePadding , 0)
+        PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0, 0))
         x_off, y_off = ui_button_size_offsets.get(ui_size, (5, 6))
         PyImGui.set_next_window_pos(button_x + x_off, button_y + y_off)
         if PyImGui.begin("##floating_config_button", button_flags):

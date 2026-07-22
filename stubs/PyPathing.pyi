@@ -1,42 +1,64 @@
-from typing import List, Tuple
-from enum import Enum
+# PyPathing stub — Reforged Native surface
+# Matches src/GW/pathing/pathing_bindings.cpp (GW::pathing::PathPlanner).
 
-class PathStatus(Enum):
+from enum import IntEnum
+from typing import List, Tuple
+
+class PathStatus(IntEnum):
     Idle = 0
     Pending = 1
     Ready = 2
     Failed = 3
 
+# py::enum_ .export_values() also injects the members at module level.
+Idle: PathStatus
+Pending: PathStatus
+Ready: PathStatus
+Failed: PathStatus
 
 class PathPlanner:
     def __init__(self) -> None: ...
-    """Create a new path planner instance."""
 
-    def plan(self,
-             start_x: float,
-             start_y: float,
-             start_z: float,
-             goal_x: float,
-             goal_y: float,
-             goal_z: float) -> None: ...
-    """Submit a path planning task to the game thread."""
-    
-    def compute_immediate(self, start_x: float, start_y: float, start_z: float,
-                                goal_x: float, goal_y: float, goal_z: float) -> list[tuple[float, float, float]]:
-        """Compute an immediate path without submitting to the game thread.
-        Returns a list of (x, y, z) tuples if successful, or an empty list if failed."""
+    def plan(
+        self,
+        start_x: float,
+        start_y: float,
+        start_z: float,
+        goal_x: float,
+        goal_y: float,
+        goal_z: float,
+    ) -> None:
+        """Submit a path planning task to the game thread."""
+        ...
 
-    def get_status(self) -> PathStatus: ...
-    """Get current status of the path planner."""
+    def compute_immediate(
+        self,
+        start_x: float,
+        start_y: float,
+        start_z: float,
+        goal_x: float,
+        goal_y: float,
+        goal_z: float,
+    ) -> List[Tuple[float, float, float]]:
+        """Compute the path immediately and return it as a list of (x, y, z) tuples."""
+        ...
 
-    def is_ready(self) -> bool: ...
-    """Return True if a valid path is ready to retrieve."""
+    def get_status(self) -> PathStatus:
+        """Get current planning status (Idle, Pending, Ready, Failed)."""
+        ...
 
-    def was_successful(self) -> bool: ...
-    """Return True if the path was successfully planned."""
+    def is_ready(self) -> bool:
+        """Check if the planned path is ready."""
+        ...
 
-    def get_path(self) -> List[Tuple[float, float, float]]: ...
-    """Retrieve the calculated path as a list of (x, y, z) tuples."""
+    def was_successful(self) -> bool:
+        """Check if the path planning was successful."""
+        ...
 
-    def reset(self) -> None: ...
-    """Reset the planner to Idle and clear the last result."""
+    def get_path(self) -> List[Tuple[float, float, float]]:
+        """Retrieve the calculated path as a list of (x, y, z) tuples."""
+        ...
+
+    def reset(self) -> None:
+        """Reset the planner to Idle state and clear the last result."""
+        ...

@@ -98,7 +98,7 @@ def display_title_progress(title_name, title_id, tiers):
     fraction = max(0.0, min(1.0, fraction))
     overlay = f"{points:,} / {cap:,}"
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 2.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0.0, 2.0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogram,       icon_teal)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogramHovered, icon_teal)
 
@@ -164,7 +164,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
         rep_fraction = max(0.0, min(1.0, rep_fraction))
     rep_overlay = f"{points:,} / {next_rep_threshold:,}"
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 2.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0.0, 2.0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogram,       icon_teal)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogramHovered, icon_teal)
 
@@ -201,7 +201,7 @@ def display_faction(title_name, title_id, get_data_func, tier_list):
     unspent_fraction = float(current_unspent) / max_unspent if max_unspent else 0.0
     unspent_overlay = f"{current_unspent:,} / {max_unspent:,}"
 
-    PyImGui.push_style_var2(ImGui.ImGuiStyleVar.FramePadding, 0.0, 2.0)
+    PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.FramePadding, (0.0, 2.0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogram,       icon_teal)
     PyImGui.push_style_color(PyImGui.ImGuiCol.PlotHistogramHovered, icon_teal)
 
