@@ -50,6 +50,7 @@ Widgets/Data/Inventory/**
 Widgets/Data/InventoryModelIds/**
 Widgets/Data/InventoryModHash/**
 Widgets/Data/InventoryModelFileIds/**
+json/**
 
 Bots/marks_coding_corner/alcohol_procs.ini
 Bots/marks_coding_corner/**.json

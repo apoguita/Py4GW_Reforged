@@ -1,18 +1,19 @@
 import json
 import os
 import re
-import shutil
 import traceback
 from collections import OrderedDict
 from pathlib import Path
 
 import PyImGui
+import PyJson
 
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import DyeColor
 from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import Player
 from Py4GWCoreLib import Routines
@@ -21,6 +22,7 @@ from Py4GWCoreLib import get_texture_for_model
 from Py4GWCoreLib.enums import Bags
 from Py4GWCoreLib.enums import ModelID
 from Py4GWCoreLib.enums_src.Item_enums import ItemType
+from Py4GWCoreLib.enums_src.Item_enums import Rarity
 from Py4GWCoreLib.Item import Item
 
 from Sources.marks_sources.mods_parser import MatchedRuneInfo
@@ -31,15 +33,15 @@ from Sources.marks_sources.mods_parser import parse_modifiers
 
 project_root = PySystem.Console.get_projects_path() # pyright: ignore[reportUndefinedVariable]
 
+# Legacy JSON paths — retained only so the one-shot migration can pick them up.
+# All persistence now lives in the JsonFactory tree (json/Global/... and json/<email>/...).
+LEGACY_DB_BASE_DIR = os.path.join(project_root, "Widgets/Data")
+LEGACY_JSON_INVENTORY_PATH = os.path.join(LEGACY_DB_BASE_DIR, "Inventory")
+LEGACY_JSON_INVENTORY_MODEL_IDS_PATH = os.path.join(LEGACY_DB_BASE_DIR, "InventoryModelIds")
+LEGACY_JSON_INVENTORY_MOD_HASH_PATH = os.path.join(LEGACY_DB_BASE_DIR, "InventoryModHash")
+LEGACY_JSON_INVENTORY_MODEL_FILE_IDS_PATH = os.path.join(LEGACY_DB_BASE_DIR, "InventoryModelFileIds")
 
-BASE_DIR = os.path.join(project_root, "Widgets/Config")
-DB_BASE_DIR = os.path.join(project_root, "Widgets/Data")
-JSON_INVENTORY_PATH = os.path.join(DB_BASE_DIR, "Inventory")
-JSON_INVENTORY_MODEL_IDS_PATH = os.path.join(DB_BASE_DIR, "InventoryModelIds")
-JSON_INVENTORY_MOD_HASH_PATH = os.path.join(DB_BASE_DIR, "InventoryModHash")
-JSON_INVENTORY_MODEL_FILE_IDS_PATH = os.path.join(DB_BASE_DIR, "InventoryModelFileIds")
 MOD_DB = ModDatabase.load(os.path.join(project_root, "Sources/marks_sources/mods_data"))
-os.makedirs(BASE_DIR, exist_ok=True)
 
 MODULE_NAME = "TeamInventoryViewer"
 
@@ -51,11 +53,9 @@ all_accounts_search_query = ''
 search_query = ''
 current_character_name = ''
 
-# â€”â€”â€” Window Persistence Setup â€”â€”â€”
+# Read-side cache the widget iterates when drawing every frame. Populated for the
+# current account from the JsonFactory doc, and for other accounts from a disk scan.
 TEAM_INVENTORY_CACHE = {}
-INVENTORY_MODEL_ID_CACHE = {}
-INVENTORY_MOD_HASH_CACHE = {}
-INVENTORY_MODEL_FILE_ID_CACHE: dict = {}  # {str(model_id): int(file_id)} — populated by any scan
 
 INVENTORY_BAGS = {
     "Backpack": Bags.Backpack.value,
@@ -313,156 +313,83 @@ def clean_gw_item_name(item_name: str):
 
 
 # region JSONStore
+
+def _json_root_dir():
+    """Root of the per-account JSON tree, i.e. the parent of PyJson.get_json_directory().
+
+    Returns None until the account anchor has resolved (get_json_directory is empty
+    up to that point). Everything that needs to enumerate accounts must gate on this.
+    """
+    try:
+        d = PyJson.get_json_directory()
+    except Exception:
+        return None
+    if not d:
+        return None
+    return Path(d).parent
+
+
 class ModelIDJSONStore:
+    """Shared {model_id: model_name} map, backed by a global-scope JsonFactory doc.
+
+    Global scope is safe under multibox: saves merge every client's discoveries
+    through a cross-process lock, so different accounts scanning different items all
+    contribute to the same on-disk map without clobbering each other.
+    """
+
+    FILE = "TeamInventoryViewer/model_ids.json"
+
     def __init__(self):
-        self.path = Path(JSON_INVENTORY_MODEL_IDS_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / "model_ids.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
-
-    def _read(self):
-        if not self.file_path.exists():
-            return {}
-
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {}
-
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            return False
-        temp_file = self.file_path.with_suffix(".tmp")
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("ModelIDJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
+        self.file = JsonFactory(self.FILE, "global")
 
     def save_model_id(self, model_id, model_name):
-        str_model_id = str(model_id)
-        data = self._read()
-        if model_id and model_name:
-            data[str_model_id] = model_name
-            INVENTORY_MODEL_ID_CACHE[str_model_id] = model_name
-            self._write(data)
+        if not model_id or not model_name:
+            return
+        self.file.set(str(model_id), str(model_name))
 
-    def load(self):
-        global INVENTORY_MODEL_ID_CACHE
-
-        if INVENTORY_MODEL_ID_CACHE:
-            return INVENTORY_MODEL_ID_CACHE
-
-        data = self._read()
-        keys_to_delete = []
-        for key, value in data.items():
-            if not value:
-                keys_to_delete.append(key)
-
-        for key in keys_to_delete:
-            del data[key]
-
-        INVENTORY_MODEL_ID_CACHE = data
-        return data
+    def get(self, model_id, default=""):
+        return self.file.get_str(str(model_id), default)
 
 
 class ModelFileIDJSONStore:
-    """Persistent map of {model_id: file_id} so any account can render icons
-    straight from GW.dat via gwdat://<file_id>, even for items whose per-instance
-    file id was never captured. Populated on every scan; shared across accounts."""
+    """Shared {model_id: file_id} lookup so any character can render icons straight
+    from GW.dat, even for items they've never held themselves.
+
+    Global scope; same multibox-safe merge semantics as ModelIDJSONStore.
+    """
+
+    FILE = "TeamInventoryViewer/model_file_ids.json"
 
     def __init__(self):
-        self.path = Path(JSON_INVENTORY_MODEL_FILE_IDS_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / "model_file_ids.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
-
-    def _read(self):
-        if not self.file_path.exists():
-            return {}
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {}
-
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            return False
-        temp_file = self.file_path.with_suffix(".tmp")
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("ModelFileIDJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
+        self.file = JsonFactory(self.FILE, "global")
 
     def save_model_file_id(self, model_id, file_id):
         if not model_id or not file_id or file_id <= 0:
             return
-        key = str(model_id)
-        if INVENTORY_MODEL_FILE_ID_CACHE.get(key) == file_id:
-            return
-        INVENTORY_MODEL_FILE_ID_CACHE[key] = int(file_id)
-        data = self._read()
-        data[key] = int(file_id)
-        self._write(data)
+        self.file.set(str(model_id), int(file_id))
 
-    def load(self):
-        global INVENTORY_MODEL_FILE_ID_CACHE
-        if INVENTORY_MODEL_FILE_ID_CACHE:
-            return INVENTORY_MODEL_FILE_ID_CACHE
-        data = self._read()
-        # Drop bogus entries.
-        for k in [k for k, v in data.items() if not isinstance(v, int) or v <= 0]:
-            del data[k]
-        INVENTORY_MODEL_FILE_ID_CACHE = {k: int(v) for k, v in data.items()}
-        return INVENTORY_MODEL_FILE_ID_CACHE
+    def get(self, model_id, default=0):
+        return self.file.get_int(str(model_id), default)
 
 
 class ModHashJSONStore:
+    """Shared {mod_hash: [prefix, suffix]} map, backed by a global-scope JsonFactory doc."""
+
+    FILE = "TeamInventoryViewer/mod_hash.json"
+
     def __init__(self):
-        self.path = Path(JSON_INVENTORY_MOD_HASH_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / "mod_hash.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
+        self.file = JsonFactory(self.FILE, "global")
 
     @staticmethod
     def hash_mods(modifiers):
-        """
-        Generates a stable 64-bit hash for a list of modifier objects.
-        Extracts identifier + args + modbits from each mod.
-        """
+        """Stable 64-bit hash of a list of modifier objects (identifier + args + modbits)."""
 
         def safe_int(v):
             try:
                 return int(v)
             except Exception:
-                return 0  # fallback for None or weird values
+                return 0
 
-        # Build the integer matrix
         data = []
         for mod in modifiers:
             data.append(
@@ -475,223 +402,181 @@ class ModHashJSONStore:
                 ]
             )
 
-        # === Fast 64-bit hash mixer ===
         h = 0
         for lst in data:
             for num in lst:
                 h = (h * 1315423911) ^ num ^ (h >> 5)
-                h &= 0xFFFFFFFFFFFFFFFF  # keep 64 bits
+                h &= 0xFFFFFFFFFFFFFFFF
 
         return hex(h)[2:]
 
-    def _read(self):
-        if not self.file_path.exists():
-            return {}
-
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {}
-
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            return False
-        temp_file = self.file_path.with_suffix(".tmp")
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("ModelHashJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
-
     def save_mod_hash(self, mod_hash, prefix=None, suffix=None):
-        str_mod_hash = str(mod_hash)
-        data = self._read()
-        if mod_hash and (prefix or suffix):
-            data[str_mod_hash] = [prefix, suffix]
-            INVENTORY_MOD_HASH_CACHE[str_mod_hash] = [prefix, suffix]
-            self._write(data)
+        if not mod_hash or not (prefix or suffix):
+            return
+        self.file.set_json(str(mod_hash), [prefix, suffix])
 
-    def load(self):
-        global INVENTORY_MOD_HASH_CACHE
-
-        if INVENTORY_MOD_HASH_CACHE:
-            return INVENTORY_MOD_HASH_CACHE
-
-        data = self._read()
-        keys_to_delete = []
-        for key, value in data.items():
-            if not value:
-                keys_to_delete.append(key)
-
-        for key in keys_to_delete:
-            del data[key]
-
-        INVENTORY_MOD_HASH_CACHE = data
-        return data
+    def get(self, mod_hash, default=None):
+        return self.file.get_json(str(mod_hash), default)
 
 
 class AccountJSONStore:
+    """Per-account inventory (Characters + Storage), backed by an account-scope
+    JsonFactory doc for the *current* account only.
+
+    Constructing this class with any other email yields a read-only view: load()
+    scans that account's inventory.json off disk and populates TEAM_INVENTORY_CACHE.
+    All write/clear methods no-op on non-current accounts (JsonFactory has no
+    "write to another account's doc from arbitrary state" primitive we can lean on
+    here — the class must own the source of truth).
+    """
+
+    FILE = "TeamInventoryViewer/inventory.json"
+
     def __init__(self, email):
         self.email = email
-        self.path = Path(JSON_INVENTORY_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / f"{self.email}.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
+        current = Player.GetAccountEmail()
+        self._is_current = bool(current) and email == current
+        self.file = JsonFactory(self.FILE, "account") if self._is_current else None
 
-    def _read(self):
-        if not self.file_path.exists():
-            return {"Characters": OrderedDict(), "Storage": OrderedDict()}
+    # ----- Reads -----
 
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {"Characters": OrderedDict(), "Storage": OrderedDict()}
-
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            return False
-        temp_file = self.file_path.with_suffix(".tmp")
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("AccountJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
-
-    def _deep_dict_equal(self, a, b):
-        """
-        Recursively checks if two dictionaries (or nested structures) are equal.
-        Supports dicts, OrderedDicts, and lists.
-        """
-        if isinstance(a, dict) or isinstance(a, OrderedDict):
-            if a.keys() != b.keys():
-                return False
-            return all(self._deep_dict_equal(a[k], b[k]) for k in a)
-
-        if isinstance(a, list):
-            if len(a) != len(b):
-                return False
-            return all(self._deep_dict_equal(x, y) for x, y in zip(a, b))
-
-        # Base case: primitive types
-        return a == b
-
-    # --- Cached interface ---
     def load(self):
-        if self.email in TEAM_INVENTORY_CACHE:
-            return TEAM_INVENTORY_CACHE[self.email]
-
-        data = self._read()
+        if self._is_current and self.file:
+            data = self.file.get_json("", None)
+        else:
+            data = self._read_disk_snapshot()
+        if not data:
+            data = {"Characters": OrderedDict(), "Storage": OrderedDict()}
         TEAM_INVENTORY_CACHE[self.email] = data
         return data
 
-    def save_bag(self, char_name=None, storage_name=None, bag_name=None, bag_items={}):
-        data = self._read()
-        changed = False
+    def _read_disk_snapshot(self):
+        root = _json_root_dir()
+        if root is None:
+            return None
+        p = root / self.email / self.FILE
+        if not p.exists():
+            return None
+        try:
+            with open(p, "r") as f:
+                return json.load(f, object_pairs_hook=OrderedDict)
+        except Exception:
+            return None
 
-        if char_name:
-            chars = data["Characters"]
-            if char_name not in chars:
-                chars[char_name] = {"Inventory": OrderedDict()}
-            inv = chars[char_name]["Inventory"]
-            if not self._deep_dict_equal(inv.get(bag_name), bag_items):
-                inv[bag_name] = bag_items
-                changed = True
+    # ----- Writes (current account only) -----
+
+    def save_bag(self, char_name=None, storage_name=None, bag_name=None, bag_items=None):
+        if not self._is_current or not self.file:
+            return
+        if bag_items is None:
+            bag_items = {}
+        if char_name and bag_name:
+            path = f"Characters/{char_name}/Inventory/{bag_name}"
         elif storage_name:
-            storage = data["Storage"]
-            if not self._deep_dict_equal(storage.get(storage_name), bag_items):
-                storage[storage_name] = bag_items
-                changed = True
-
-        if changed:
-            TEAM_INVENTORY_CACHE[self.email] = data
-            self._write(data)
+            path = f"Storage/{storage_name}"
+        else:
+            return
+        # set_json dedups against the current subtree, so an unchanged assignment is free.
+        self.file.set_json(path, dict(bag_items))
+        TEAM_INVENTORY_CACHE[self.email] = self.file.get_json("", None) or {
+            "Characters": OrderedDict(),
+            "Storage": OrderedDict(),
+        }
 
     def clear_character(self, char_name):
-        if not self.file_path.exists():
+        if not self._is_current or not self.file:
             return
-
-        try:
-            data = self._read()
-            chars = data.get("Characters", {})
-            if char_name in chars:
-                del chars[char_name]
-                self._write(data)
-                ConsoleLog("AccountJSONStore", f"Removed character {char_name} from {self.email}.")
-            else:
-                ConsoleLog("AccountJSONStore", f"[WARN] Character {char_name} not found for {self.email}.")
-            TEAM_INVENTORY_CACHE[self.email] = data
-        except Exception as e:
-            ConsoleLog("AccountJSONStore", f"[ERROR] clear_character: {e}")
+        if self.file.delete(f"Characters/{char_name}"):
+            ConsoleLog("AccountJSONStore", f"Removed character {char_name} from {self.email}.")
+        else:
+            ConsoleLog("AccountJSONStore", f"[WARN] Character {char_name} not found for {self.email}.")
+        TEAM_INVENTORY_CACHE[self.email] = self.file.get_json("", None) or {
+            "Characters": OrderedDict(),
+            "Storage": OrderedDict(),
+        }
 
     def clear_account(self):
+        if self._is_current and self.file:
+            # Can't unlink the file (autosave would just re-persist an empty doc);
+            # emptying the tree is the equivalent operation for JsonFactory.
+            self.file.set_json("", {"Characters": {}, "Storage": {}})
+        TEAM_INVENTORY_CACHE[self.email] = None
+        ConsoleLog("AccountJSONStore", f"Cleared all data for {self.email}.")
+
+    # ----- Legacy migration -----
+
+    def migrate_from(self, legacy_path):
+        """Copy a legacy Widgets/Data/Inventory/<email>.json file into this account's
+        JsonFactory doc. Returns True when migration is complete (or unnecessary),
+        False if the doc isn't bound yet and the caller should retry next tick.
+        """
+        if not self._is_current or not self.file:
+            return True
+        if not self.file.is_ready():
+            return False
+        if self.file.size("") > 0:
+            return True
+        p = Path(legacy_path)
+        if not p.exists():
+            return True
         try:
-            if self.file_path.exists():
-                self.file_path.unlink()
-            if self.backup_path.exists():
-                self.backup_path.unlink()
-            TEAM_INVENTORY_CACHE[self.email] = None
-            ConsoleLog("AccountJSONStore", f"Cleared all data for {self.email}.")
+            with open(p, "r") as f:
+                data = json.load(f)
+            self.file.set_json("", data)
         except Exception as e:
-            ConsoleLog("AccountJSONStore", f"[WARN] Failed to clear account {self.email}: {e}")
+            ConsoleLog("AccountJSONStore", f"[WARN] Legacy migration failed: {e}")
+            return False
+        return True
 
 
 class MultiAccountInventoryStore:
-    def __init__(self):
-        self.inventory_dir = Path(JSON_INVENTORY_PATH)
-        self.inventory_dir.mkdir(exist_ok=True)
-
     def account_store(self, email):
         return AccountJSONStore(email)
 
     def load_all(self):
-        """Load all JSON files into global cache."""
-        for file_path in self.inventory_dir.glob("*.json"):
-            if (
-                file_path.suffix != ".json"
-                or file_path.stem == 'items_cache'
-                or file_path.stem == 'weapon_modifier_cache'
-            ):
-                continue
-            email = file_path.stem
-            AccountJSONStore(email).load()
+        """Populate TEAM_INVENTORY_CACHE with every discoverable account's data.
+
+        Current account: pulled from the in-memory JsonFactory doc (freshest state,
+        including writes made this tick that haven't autosaved yet).
+        Other accounts: scanned off disk from json/<email>/TeamInventoryViewer/inventory.json.
+        """
+        current_email = Player.GetAccountEmail()
+        if current_email:
+            AccountJSONStore(current_email).load()
+
+        root = _json_root_dir()
+        if root is not None and root.exists():
+            for account_dir in root.iterdir():
+                if not account_dir.is_dir():
+                    continue
+                name = account_dir.name
+                if name == "Global" or name == current_email:
+                    continue
+                if not (account_dir / AccountJSONStore.FILE).exists():
+                    continue
+                AccountJSONStore(name).load()
 
         return TEAM_INVENTORY_CACHE
 
     def clear_all_data(self):
-        """Delete all JSON files and clear cache."""
+        """Empty the current account's doc; delete other accounts' inventory files off disk."""
+        current_email = Player.GetAccountEmail()
+        if current_email:
+            AccountJSONStore(current_email).clear_account()
         TEAM_INVENTORY_CACHE.clear()
-        for file_path in self.inventory_dir.glob("*.json"):
-            try:
-                file_path.unlink()
-                backup_path = file_path.with_suffix(".json.bak")
-                if backup_path.exists():
-                    backup_path.unlink()
-            except Exception as e:
-                ConsoleLog("MultiAccountInventoryStore", f"[WARN] Failed to delete {file_path}: {e}")
+
+        root = _json_root_dir()
+        if root is None or not root.exists():
+            return
+        for account_dir in root.iterdir():
+            if not account_dir.is_dir() or account_dir.name == "Global" or account_dir.name == current_email:
+                continue
+            f = account_dir / AccountJSONStore.FILE
+            if f.exists():
+                try:
+                    f.unlink()
+                except Exception as e:
+                    ConsoleLog("MultiAccountInventoryStore", f"[WARN] Failed to delete {f}: {e}")
 
 
 multi_store = MultiAccountInventoryStore()
@@ -702,8 +587,36 @@ inventory_model_file_ids_store = ModelFileIDJSONStore()
 
 ROW_ICON_SIZE = 36.0
 ROW_HEIGHT = 40.0
-ICON_CELL_BG = Color(64, 64, 72, 255).to_color()  # grayish tint behind icons
-_TABLE_BG_TARGET_CELL = 2  # PyImGui table_set_bg_color target: 2 = CellBg
+
+# ImGuiTableBgTarget values (RowBg targets paint the whole row's background slot;
+# TableFlags.RowBg alternates between RowBg0 and RowBg1 for zebra striping, so we
+# override BOTH to keep the rarity tint visible on every row regardless of parity).
+_TABLE_BG_TARGET_ROW_BG0 = 1
+_TABLE_BG_TARGET_ROW_BG1 = 2
+
+# Alpha kept low so item text stays readable over the tint. Missing/unknown rarity
+# yields None from the dict, which short-circuits set_bg_color calls in the helper.
+RARITY_ROW_BG = {
+    Rarity.White.value: Color(64, 64, 72, 55).to_color(),
+    Rarity.Blue.value: Color(60, 130, 220, 55).to_color(),
+    Rarity.Purple.value: Color(160, 100, 220, 55).to_color(),
+    Rarity.Gold.value: Color(220, 180, 60, 55).to_color(),
+    Rarity.Green.value: Color(60, 180, 100, 55).to_color(),
+}
+
+
+def _apply_rarity_row_bg(info):
+    """Tint the current row's background based on the item's stored rarity.
+
+    Must be called immediately after ``PyImGui.table_next_row(...)`` and before any
+    per-cell ``table_set_bg_color`` call in the same row. No-ops on missing/unknown
+    rarity or when the item is White (no tint).
+    """
+    color = RARITY_ROW_BG.get(info.get("rarity"))
+    if not color:
+        return
+    PyImGui.table_set_bg_color(_TABLE_BG_TARGET_ROW_BG0, color, -1)
+    PyImGui.table_set_bg_color(_TABLE_BG_TARGET_ROW_BG1, color, -1)
 
 
 def _icon_texture_for(info):
@@ -718,7 +631,7 @@ def _icon_texture_for(info):
     file_id = int(info.get("model_file_id") or 0)
     if file_id <= 0:
         model_id = info.get("model_id", 0)
-        file_id = int(INVENTORY_MODEL_FILE_ID_CACHE.get(str(model_id)) or 0)
+        file_id = inventory_model_file_ids_store.get(str(model_id), 0)
     if file_id > 0:
         return f"gwdat://{file_id}"
     return get_texture_for_model(info.get("model_id", 0))
@@ -945,17 +858,28 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
         if model_file_id > 0:
             inventory_model_file_ids_store.save_model_file_id(model_id, model_file_id)
 
+        # Rarity drives the row background tint. Fetched per-instance because it's
+        # a live-item property (drop-time value), not derivable from model_id alone.
+        try:
+            rarity_val = int(GLOBAL_CACHE.Item.Rarity.GetRarity(item_id)[0])
+        except Exception:
+            rarity_val = -1
+
         # Always insert or update using the unique name
         if unique_name not in bag_items:
             bag_items[unique_name] = OrderedDict(
                 {
                     "model_id": model_id,
                     "model_file_id": model_file_id,
+                    "rarity": rarity_val,
                     "slot": OrderedDict(),
                 }
             )
-        elif model_file_id and not bag_items[unique_name].get("model_file_id"):
-            bag_items[unique_name]["model_file_id"] = model_file_id
+        else:
+            if model_file_id and not bag_items[unique_name].get("model_file_id"):
+                bag_items[unique_name]["model_file_id"] = model_file_id
+            if rarity_val >= 0 and bag_items[unique_name].get("rarity", -1) < 0:
+                bag_items[unique_name]["rarity"] = rarity_val
 
         bag_items[unique_name]["slot"][str(slot)] = quantity
 
@@ -1017,7 +941,7 @@ def search(query: str, items: list[str]) -> list[str]:
 
 
 def get_armor_name_from_modifiers(item):
-    base_name = INVENTORY_MODEL_ID_CACHE.get(str(item.model_id))
+    base_name = inventory_model_ids_store.get(str(item.model_id), "")
     if not base_name:
         try:
             base_name = ModelID(item.model_id).name.replace("_", " ")
@@ -1042,7 +966,7 @@ def get_armor_name_from_modifiers(item):
 
 
 def get_weapon_name_from_modifiers(item):
-    base_name = INVENTORY_MODEL_ID_CACHE.get(str(item.model_id))
+    base_name = inventory_model_ids_store.get(str(item.model_id), "")
     if not base_name:
         try:
             base_name = ModelID(item.model_id).name.replace("_", " ")
@@ -1072,8 +996,6 @@ def get_weapon_name_from_modifiers(item):
 # region Widget
 def draw_widget():
     global TEAM_INVENTORY_CACHE
-    global INVENTORY_MODEL_ID_CACHE
-    global INVENTORY_MOD_HASH_CACHE
     global window_x
     global window_y
     global window_collapsed
@@ -1093,9 +1015,6 @@ def draw_widget():
         on_first_load = False
 
         TEAM_INVENTORY_CACHE = multi_store.load_all()
-        INVENTORY_MODEL_ID_CACHE = inventory_model_ids_store.load()
-        INVENTORY_MOD_HASH_CACHE = inventory_mod_hash_store.load()
-        inventory_model_file_ids_store.load()
 
     # This triggers a reload of and save of bag data
     if inventory_write_timer.IsExpired() and Routines.Checks.Map.IsOutpost():
@@ -1157,6 +1076,7 @@ def draw_widget():
                                                         "item_name": item_name,
                                                         "model_id": info.get("model_id", 0),
                                                         "model_file_id": info.get("model_file_id", 0),
+                                                        "rarity": info.get("rarity", -1),
                                                         "count": count or str(info.get('count', 0)),
                                                         "location_type": "Character",
                                                     }
@@ -1179,6 +1099,7 @@ def draw_widget():
                                                     "item_name": item_name,
                                                     "model_id": info.get("model_id", 0),
                                                     "model_file_id": info.get("model_file_id", 0),
+                                                    "rarity": info.get("rarity", -1),
                                                     "count": count or str(info.get('count', 0)),
                                                     "location_type": "Storage",
                                                 }
@@ -1204,10 +1125,10 @@ def draw_widget():
                                     texture = _icon_texture_for(entry)
 
                                     PyImGui.table_next_row(0, ROW_HEIGHT)
+                                    _apply_rarity_row_bg(entry)
 
                                     # === ICON ===
                                     PyImGui.table_next_column()
-                                    PyImGui.table_set_bg_color(_TABLE_BG_TARGET_CELL, ICON_CELL_BG, -1)
                                     if texture:
                                         ImGui.DrawTexture(texture, ROW_ICON_SIZE, ROW_ICON_SIZE)
                                     else:
@@ -1295,10 +1216,10 @@ def draw_widget():
                                                 texture = _icon_texture_for(info)
 
                                                 PyImGui.table_next_row(0, ROW_HEIGHT)
+                                                _apply_rarity_row_bg(info)
 
                                                 # === ICON COLUMN ===
                                                 PyImGui.table_next_column()
-                                                PyImGui.table_set_bg_color(_TABLE_BG_TARGET_CELL, ICON_CELL_BG, -1)
                                                 if texture:
                                                     ImGui.DrawTexture(texture, ROW_ICON_SIZE, ROW_ICON_SIZE)
                                                 else:
@@ -1353,10 +1274,10 @@ def draw_widget():
                                             texture = _icon_texture_for(info)
 
                                             PyImGui.table_next_row(0, ROW_HEIGHT)
+                                            _apply_rarity_row_bg(info)
 
                                             # === ICON COLUMN ===
                                             PyImGui.table_next_column()
-                                            PyImGui.table_set_bg_color(_TABLE_BG_TARGET_CELL, ICON_CELL_BG, -1)
                                             if texture:
                                                 ImGui.DrawTexture(texture, ROW_ICON_SIZE, ROW_ICON_SIZE)
                                             else:

@@ -131,6 +131,7 @@ from .py4gwcorelib_src.Profiling import ProfilingRegistry, SimpleProfiler
 from .py4gwcorelib_src.FrameCache import FRAME_CACHE, frame_cache
 from .py4gwcorelib_src.WidgetManager import WidgetHandler, Widget
 from .py4gwcorelib_src.FileDialog import FileDialog
+from .py4gwcorelib_src.JsonFactory import JsonFactory
 
 from .native_src.internals.types import Vec2f, Vec3f, GamePos
 
