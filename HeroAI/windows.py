@@ -13,8 +13,8 @@ from .globals import capture_mouse_timer, show_area_rings, show_hero_follow_grid
 from .utils import IsHeroFlagged, DrawFlagAll, DrawHeroFlag, DistanceFromWaypoint, SameMapAsAccount
 from HeroAI.settings import Settings
 
-from HeroAI.ui import (draw_combined_hero_panel, draw_command_panel, draw_configure_window, draw_dialog_overlay, 
-                       draw_hero_panel, draw_hotbars, draw_party_overlay, draw_party_search_overlay, draw_skip_cutscene_overlay)
+from HeroAI.ui import (draw_combined_hero_panel, draw_command_panel, draw_configure_window, draw_dialog_overlay,
+                       draw_hero_panel, draw_party_overlay, draw_party_search_overlay, draw_skip_cutscene_overlay)
 from HeroAI.call_target import CallTarget
 
 from .cache_data import CacheData
@@ -228,9 +228,10 @@ class HeroAI_FloatingWindows():
                 ):
                 draw_command_panel(HeroAI_FloatingWindows.command_panel_window, cached_data)
             
-            if HeroAI_FloatingWindows.settings.CommandHotBars:
-                draw_hotbars(cached_data)
-                
+            # Command Hotbars are deprecated — their commands now live on the Launch Bar (see
+            # HeroAI/command_api.py). The saved hotbar data is kept only so the "Import to Launch
+            # Bar" button in the Hotbars settings tab can migrate it; it is no longer rendered.
+
             draw_dialog_overlay(cached_data, HeroAI_FloatingWindows.messages)
     
     @staticmethod

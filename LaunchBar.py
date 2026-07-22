@@ -135,6 +135,20 @@ def _boot() -> None:
         _log("Boot failed: %s" % exc)
 
 
+def add_function_bar(name, layout):
+    """Import a grid of function tiles as a new launch bar. Public entry for external systems.
+
+    ``layout`` is a list of ``(col, row, function_id, display_name)``. Boots the launchpad if it is
+    not up yet, then delegates to :meth:`LaunchBarManager.import_function_bar`. Returns the new bar,
+    or ``None`` if the launchpad could not boot or the layout was empty. Used by HeroAI's
+    hotbar-import button to fold its deprecated CommandHotBars into the launch bar.
+    """
+    _boot()
+    if _manager is None:
+        return None
+    return _manager.import_function_bar(name, layout)
+
+
 def main() -> None:
     """Sole per-frame entry: boot once, then render all bars + the settings window.
 

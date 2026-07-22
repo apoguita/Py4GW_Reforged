@@ -23,6 +23,7 @@ from .function_runtime import list_icons
 from .function_runtime import resolve_icon
 from .host import LaunchBarHost
 from .model import BarSide
+from .model import LaunchBar
 from .model import LaunchBarSet
 from .model import Tile
 from .widget_runtime import WidgetRuntime
@@ -117,6 +118,66 @@ class LaunchBarManager:
             # compact 2:1 default sized to the current item count; user can reshape later
             bar.columns = self._compact_cols(len(self._preset_items(source)))
             self._sync_preset_bar(bar)
+        self._ensure_host(bar)
+        self.selected_id = bar.id
+        return bar
+
+    def add_function_group_bar(self, group: str, name: str = "") -> "LaunchBar | None":
+        """Create a MANUAL bar pre-filled with every catalog function in ``group``.
+
+        This is a one-time *population*, not an auto preset: unlike the Active/Favorites bars (which
+        re-derive their tiles every frame and cannot be edited), the result is an ordinary manual bar
+        — the user is free to move, resize, delete, or leave its tiles empty afterwards. Reads the
+        function catalog by group, so the manager stays decoupled from whoever registered the
+        functions (e.g. HeroAI). Returns the new bar; an empty group still yields an empty manual bar
+        so the user is never left with nothing.
+        """
+        funcs = [fn for fn in self.functions.list_functions() if fn.group == group]
+        bar = self.add_bar("manual")
+        bar.name = name or group
+        if not funcs:
+            return bar
+        cols = self._compact_cols(len(funcs))
+        bar.columns = max(1, cols)
+        bar.rows = max(1, math.ceil(len(funcs) / cols))
+        for index, fn in enumerate(funcs):
+            tile = bar.add_tile(1, 1, index % cols, index // cols)
+            if tile is None:
+                continue
+            tile.widget_id = None
+            tile.action = None
+            tile.function_id = fn.id
+            tile.name = fn.name
+        self._ensure_host(bar)
+        self.selected_id = bar.id
+        return bar
+
+    def import_function_bar(self, name: str, layout: list[tuple[int, int, str, str]]) -> "LaunchBar | None":
+        """Create a new manual bar populated with function-bound tiles from ``layout``.
+
+        ``layout`` is ``(col, row, function_id, display_name)`` per tile; the grid is sized to hold
+        every entry. This is the import path for external systems whose own button grids are being
+        folded into the launch bar (e.g. HeroAI's deprecated CommandHotBars). Tiles whose cell is
+        already taken are skipped (collision-checked by ``add_tile``). Returns the new bar, or
+        ``None`` when ``layout`` is empty. The change persists via the normal revision tracking.
+        """
+        if not layout:
+            return None
+        max_col = max(col for col, _row, _fid, _disp in layout)
+        max_row = max(row for _col, row, _fid, _disp in layout)
+        bar = self.add_bar("manual")
+        bar.name = name
+        bar.columns = max(1, max_col + 1)
+        bar.rows = max(1, max_row + 1)
+        for col, row, function_id, display_name in layout:
+            tile = bar.add_tile(1, 1, col, row)
+            if tile is None:
+                continue
+            tile.widget_id = None
+            tile.action = None
+            tile.function_id = function_id
+            if display_name:
+                tile.name = display_name
         self._ensure_host(bar)
         self.selected_id = bar.id
         return bar
@@ -351,6 +412,12 @@ class LaunchBarManager:
                     self.add_bar("active")
                 if PyImGui.menu_item("Favorites (auto)"):
                     self.add_bar("favorites")
+                # One-time populate templates (produce editable manual bars). Only offered when the
+                # provider actually registered functions for the group.
+                if any(fn.group == "HeroAI" for fn in self.functions.list_functions()):
+                    PyImGui.separator()
+                    if PyImGui.menu_item("HeroAI commands (fill)"):
+                        self.add_function_group_bar("HeroAI")
                 PyImGui.end_popup()
 
             # Confirm modal INSIDE this window so open_popup + begin_popup_modal share the same
