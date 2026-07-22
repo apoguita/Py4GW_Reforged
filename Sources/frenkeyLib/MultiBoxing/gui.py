@@ -57,7 +57,7 @@ class GUI:
             region.h = min(region.h, self.settings.screen_size[1])
 
     def draw_row_icon(self, width, height, rows: int = 4, even_color: Optional[Color] = None, odd_color: Optional[Color] = None):
-        PyImGui.dummy(width, height)
+        PyImGui.dummy((width, height))
         
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -82,7 +82,7 @@ class GUI:
                 )
 
     def draw_column_icon(self, width, height, columns: int = 4, even_color: Optional[Color] = None, odd_color: Optional[Color] = None):
-        PyImGui.dummy(width, height)
+        PyImGui.dummy((width, height))
         
         item_rect_min = PyImGui.get_item_rect_min()
         item_rect_max = PyImGui.get_item_rect_max()
@@ -360,7 +360,7 @@ class GUI:
                                             style.Border.pop_color()
                                             style.ChildBg.pop_color()
                                             ImGui.text_centered(region.name, PyImGui.get_content_region_avail()[0])
-                                            PyImGui.set_cursor_pos(250 - 2, 4)
+                                            PyImGui.set_cursor_pos((250 - 2, 4))
                                             if ImGui.icon_button(IconsFontAwesome5.ICON_TRASH, 25, 25):
                                                 self.settings.remove_region(region)
                                                 new_active = None
@@ -494,13 +494,13 @@ class GUI:
         
                 
             # --- Draw the area ---
-        PyImGui.set_cursor_pos(drawing_area_pos[0], drawing_area_pos[1])
+        PyImGui.set_cursor_pos((drawing_area_pos[0], drawing_area_pos[1]))
         drawing_area_screen_pos = PyImGui.get_cursor_screen_pos()
 
         if ImGui.is_mouse_in_rect((drawing_area_screen_pos[0], drawing_area_screen_pos[1], drawing_area_size[0], drawing_area_size[1])):
             self.configure_window.window_flags = PyImGui.WindowFlags.NoMove
                         
-        if drawing_area_size[0] > 0 and drawing_area_size[1] > 0 and PyImGui.is_rect_visible(drawing_area_size[0], drawing_area_size[1]):
+        if drawing_area_size[0] > 0 and drawing_area_size[1] > 0 and PyImGui.is_rect_visible((drawing_area_size[0], drawing_area_size[1])):
             style.WindowPadding.push_style_var(0, 0)
                 
             if PyImGui.begin_child("region_canvas", (drawing_area_size[0], drawing_area_size[1]), False, PyImGui.WindowFlags.NoFlag):

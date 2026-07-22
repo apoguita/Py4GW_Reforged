@@ -662,7 +662,7 @@ class ImGui:
             ImGui._with_font(lambda t: PyImGui.text_colored(t, (1,0,0,1)), text, font_size, font_style)
             ImGui._draw_decorator(decorator, decorator_color.color_int)
             item_rect_min = PyImGui.get_item_rect_min()
-            PyImGui.set_cursor_screen_pos(item_rect_min[0], item_rect_min[1])
+            PyImGui.set_cursor_screen_pos((item_rect_min[0], item_rect_min[1]))
                   
         if color is not None:
             ImGui._with_font(lambda t: PyImGui.text_colored(t, color), text, font_size, font_style)
@@ -1867,7 +1867,7 @@ class ImGui:
         center = item_rect_min[0] + ((item_rect_max[0] - item_rect_min[0]) / 2), item_rect_min[1] + ((item_rect_max[1] - item_rect_min[1]) / 2)    
         
         text_width, text_height = PyImGui.calc_text_size(overlay)
-        PyImGui.set_cursor_screen_pos(center[0] - (text_width / 2), center[1] - (text_height / 2))
+        PyImGui.set_cursor_screen_pos((center[0] - (text_width / 2), center[1] - (text_height / 2)))
         
         style.Text.get_current().push_color()
         PyImGui.text(overlay)
@@ -2516,7 +2516,7 @@ class ImGui:
                         state=TextureState.Normal if completed else TextureState.Active,
                     )
                 else:
-                    PyImGui.set_cursor_screen_pos(cursor[0] - 4, cursor[1])
+                    PyImGui.set_cursor_screen_pos((cursor[0] - 4, cursor[1]))
                     ImGui.bullet_text("")  # draw bullet using ImGui's bullet
                 
                 PyImGui.table_set_column_index(1)

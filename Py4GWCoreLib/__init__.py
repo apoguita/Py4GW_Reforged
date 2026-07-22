@@ -49,57 +49,6 @@ from .py4gwcorelib_src.Console import ConsoleLog
 builtins.Console = PySystem.Console
 builtins.ConsoleLog = ConsoleLog
 
-# ── Vec2 compatibility: PyImGui set_cursor_pos / set_cursor_screen_pos accept a single
-#    Vec2 tuple in Reforged (not two scalar floats). Monkey-patch to accept both forms.
-_PyImGui_set_cursor_pos = PyImGui.set_cursor_pos
-_PyImGui_set_cursor_screen_pos = PyImGui.set_cursor_screen_pos
-def _vec2_set_cursor_pos(*args):
-    if len(args) == 1: return _PyImGui_set_cursor_pos(args[0])
-    return _PyImGui_set_cursor_pos(args)
-def _vec2_set_cursor_screen_pos(*args):
-    if len(args) == 1: return _PyImGui_set_cursor_screen_pos(args[0])
-    return _PyImGui_set_cursor_screen_pos(args)
-PyImGui.set_cursor_pos = _vec2_set_cursor_pos
-PyImGui.set_cursor_screen_pos = _vec2_set_cursor_screen_pos
-
-# ── Vec2 slicing: Reforged PyImGui.Vec2 doesn't support [:2] slicing used
-#    pervasively in legacy code. Monkey-patch __getitem__ to handle slices. ──
-_Vec2 = PyImGui.Vec2
-_Vec2_orig_getitem = _Vec2.__getitem__
-def _vec2_getitem(self, key):
-    if isinstance(key, slice):
-        return tuple(self[i] for i in range(*key.indices(2)))
-    return _Vec2_orig_getitem(self, key)
-_Vec2.__getitem__ = _vec2_getitem
-
-# ── is_rect_visible compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
-_PyImGui_is_rect_visible = PyImGui.is_rect_visible
-def _vec2_is_rect_visible(*args):
-    if len(args) == 1: return _PyImGui_is_rect_visible(args[0])
-    return _PyImGui_is_rect_visible(args)   # (w, h) tuple works as Vec2
-PyImGui.is_rect_visible = _vec2_is_rect_visible
-
-# ── dummy compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
-_PyImGui_dummy = PyImGui.dummy
-def _vec2_dummy(*args):
-    if len(args) == 1: return _PyImGui_dummy(args[0])
-    return _PyImGui_dummy(args)
-PyImGui.dummy = _vec2_dummy
-
-# ── invisible_button compatibility: Reforged takes (Vec2), legacy passes (w, h). ──
-_PyImGui_invisible_button = PyImGui.invisible_button
-def _vec2_invisible_button(str_id, *args):
-    if len(args) >= 2 and isinstance(args[0], (int, float)) and isinstance(args[1], (int, float)):
-        return _PyImGui_invisible_button(str_id, (args[0], args[1]), *args[2:])
-    return _PyImGui_invisible_button(str_id, *args)
-PyImGui.invisible_button = _vec2_invisible_button
-
-# ── begin_tab_item: Reforged binding requires explicit p_open=True;
-#    legacy code calls begin_tab_item(label) with no p_open → defaults nullptr → returns False. ──
-_PyImGui_begin_tab_item = PyImGui.begin_tab_item
-def _tab_item(label, p_open=True, flags=0):
-    return _PyImGui_begin_tab_item(label, p_open, flags)
-PyImGui.begin_tab_item = _tab_item
 
 import PyAgent
 import PyPlayer
@@ -181,6 +130,7 @@ from .GWUI import GWUI
 from .py4gwcorelib_src.Profiling import ProfilingRegistry, SimpleProfiler
 from .py4gwcorelib_src.FrameCache import FRAME_CACHE, frame_cache
 from .py4gwcorelib_src.WidgetManager import WidgetHandler, Widget
+from .py4gwcorelib_src.FileDialog import FileDialog
 
 from .native_src.internals.types import Vec2f, Vec3f, GamePos
 

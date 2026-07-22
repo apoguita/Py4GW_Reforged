@@ -31,7 +31,7 @@ class UI:
         self.gui_open = gui_open
         
         if gui_open:
-            PyImGui.dummy(300, 0)
+            PyImGui.dummy((300, 0))
             # quest_index = PyImGui.combo("Quest", self.quest_index, self.quest_names)
             # if quest_index != self.quest_index:
             #     self.quest_index = quest_index
@@ -81,7 +81,7 @@ class UI:
                             if PyImGui.button(f"Travel to {map_name}", width):
                                 Map.Travel(quest_data.map_to)   
                                 
-                elif PyImGui.is_rect_visible(0, 20) and self.widget_state.quest and self.widget_state.in_arena:       
+                elif PyImGui.is_rect_visible((0, 20)) and self.widget_state.quest and self.widget_state.in_arena:       
                     if not self.widget_state.match_started:
                         PyImGui.text_colored("Please select the polymock pieces in the green order below!", (1.0, 0.0, 0.0, 1.0))
                     
@@ -107,7 +107,7 @@ class UI:
                                 20, 20,
                             )
                         else:
-                            PyImGui.dummy(20, 20)
+                            PyImGui.dummy((20, 20))
                         
                         
                         PyImGui.same_line(0, 0)
@@ -127,7 +127,7 @@ class UI:
                     Map.Travel(data.Polymock_Registration[0])
                                                              
                 
-            if PyImGui.is_rect_visible(0, 20) and self.widget_state.debug:
+            if PyImGui.is_rect_visible((0, 20)) and self.widget_state.debug:
                 PyImGui.begin_table("Debug Table", 2, PyImGui.TableFlags.Borders)
                 PyImGui.table_setup_column("Key")
                 PyImGui.table_setup_column("Value")

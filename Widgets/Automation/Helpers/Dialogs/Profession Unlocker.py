@@ -150,7 +150,7 @@ class ProUnlockWindow(BasicWindow):
         x_offset = max((window_width - badge_width) // 2, 0)
         remaining_height = PyImGui.get_window_height() - PyImGui.get_cursor_pos_y() - badge_height - 8
         if remaining_height > 0:
-            PyImGui.dummy(0, int(remaining_height))
+            PyImGui.dummy((0, int(remaining_height)))
         PyImGui.set_cursor_pos_x(x_offset)
         ImGui.DrawTexture(badge_path, badge_width, badge_height)
 

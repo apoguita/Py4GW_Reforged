@@ -127,6 +127,12 @@ CATALOG: "tuple[Category, ...]" = (
             ),
         ),
     ),
+    Category(
+        key="agents", title="Agents", icon="ICON_USER_SECRET",
+        # Custom category: no listeners. Rendered by the name_obfuscation package's tabbed section
+        # (see system_settings.config_ui.build_window). Future agent-facing options go here too.
+        listeners=(),
+    ),
 )
 
 

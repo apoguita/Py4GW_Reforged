@@ -1331,12 +1331,12 @@ def _draw_hotn_window(icon_path: str) -> None:
             # â”€â”€ Help tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if BotSettings.SHOW_HELP and PyImGui.begin_tab_item("Help"):
                 bot.UI._draw_help_child()
-                PyImGui.dummy(WINDOW_W, 0)
+                PyImGui.dummy((WINDOW_W, 0))
                 PyImGui.end_tab_item()
 
             # â”€â”€ Main tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Main"):
-                PyImGui.dummy(WINDOW_W, 0)
+                PyImGui.dummy((WINDOW_W, 0))
                 _avail = PyImGui.get_content_region_avail()
                 inner_w = int(_avail[0]) if _avail[0] > 0 else (CHILD_W - 10)
 
@@ -1356,7 +1356,7 @@ def _draw_hotn_window(icon_path: str) -> None:
                     bot.UI._draw_texture(texture_path=icon_path, size=(ICON_W, ICON_W))
 
                     PyImGui.table_set_column_index(1)
-                    PyImGui.dummy(0, 3)
+                    PyImGui.dummy((0, 3))
                     ImGui.push_font("Regular", 22)
                     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, Color(255, 255, 0, 255).to_tuple_normalized())
                     PyImGui.text(bot.config.bot_name)
@@ -1438,7 +1438,7 @@ def _draw_hotn_window(icon_path: str) -> None:
 
             # â”€â”€ Navigation tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Navigation"):
-                PyImGui.dummy(WINDOW_W, 0)
+                PyImGui.dummy((WINDOW_W, 0))
                 PyImGui.text("Jump to step (filtered by step index):")
                 bot.UI._draw_fsm_jump_button()
                 PyImGui.separator()
@@ -1448,19 +1448,19 @@ def _draw_hotn_window(icon_path: str) -> None:
             # â”€â”€ Settings tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Settings"):
                 bot.UI._draw_settings_child()
-                PyImGui.dummy(WINDOW_W, 0)
+                PyImGui.dummy((WINDOW_W, 0))
                 PyImGui.end_tab_item()
 
             # â”€â”€ Debug tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Debug"):
                 bot.UI.draw_debug_window()
-                PyImGui.dummy(WINDOW_W, 0)
+                PyImGui.dummy((WINDOW_W, 0))
                 PyImGui.end_tab_item()
 
             # â”€â”€ Statistics tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if PyImGui.begin_tab_item("Statistics"):
                 _draw_stats_tab()                
-                PyImGui.dummy(WINDOW_W, 0)
+                PyImGui.dummy((WINDOW_W, 0))
                 PyImGui.end_tab_item()
 
             PyImGui.end_tab_bar()

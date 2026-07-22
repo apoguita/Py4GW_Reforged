@@ -3074,10 +3074,10 @@ def _draw_toggle_icon_window():
 		try:
 			ImGui.DrawTextureInDrawList(draw_pos, (icon_size, icon_size), icon_path)
 		except Exception:
-			PyImGui.set_cursor_screen_pos(draw_pos[0] + 6.0, draw_pos[1] + 8.0)
+			PyImGui.set_cursor_screen_pos((draw_pos[0] + 6.0, draw_pos[1] + 8.0))
 			PyImGui.text("CM")
 
-		PyImGui.set_cursor_screen_pos(cursor_x, cursor_y)
+		PyImGui.set_cursor_screen_pos((cursor_x, cursor_y))
 		clicked_toggle = PyImGui.invisible_button("##XunlaiManagerToggleButton", (icon_window_size, icon_window_size))
 
 		if clicked_toggle:

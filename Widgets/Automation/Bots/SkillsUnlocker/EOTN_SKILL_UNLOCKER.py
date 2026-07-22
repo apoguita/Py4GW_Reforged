@@ -1626,7 +1626,7 @@ try:
                     GLOBAL_CACHE.Coroutines.clear()
 
 
-            PyImGui.dummy(0, 6)
+            PyImGui.dummy((0, 6))
 
         bot.UI._draw_main_child = types.MethodType(_draw_main_child_minimal, bot.UI)
 

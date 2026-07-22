@@ -68,7 +68,7 @@ class Pin:
         self.is_pressed = PyImGui.invisible_button("pin_button", (self.radius * 2, self.radius * 2))
         self.is_hovered = PyImGui.is_item_hovered()
         self.is_dragged = PyImGui.is_item_active() and PyImGui.is_mouse_dragging(0, -1.0)
-        PyImGui.set_cursor_screen_pos(self.location[0], self.location[1] + self.radius * 2)
+        PyImGui.set_cursor_screen_pos((self.location[0], self.location[1] + self.radius * 2))
         PyImGui.pop_id()
 
     def _draw(self):
@@ -211,7 +211,7 @@ class NodeSpace:
         PyImGui.draw_list_add_line(out_pos[0], out_pos[1], out_pos[0], center_y, PACKED_GREY, self.LINE_THICKNESS)
         PyImGui.draw_list_add_line(in_pos[0], center_y, out_pos[0], center_y, PACKED_GREY, self.LINE_THICKNESS)
 
-        PyImGui.set_cursor_screen_pos(center_x - 5, center_y - 5)
+        PyImGui.set_cursor_screen_pos((center_x - 5, center_y - 5))
         link.exists = not PyImGui.small_button("d")
         PyImGui.pop_id()
 
@@ -233,29 +233,29 @@ class NodeSpace:
         PyImGui.draw_list_add_line(in_pos[0], in_pos[1], in_pos[0], center_y, PACKED_GREY, self.LINE_THICKNESS)
         p1 = False
         if center_y > in_pos[1]:
-            PyImGui.set_cursor_screen_pos(in_pos[0] - self.half_line, in_pos[1])
-            p1 = PyImGui.invisible_button("p2b", self.LINE_THICKNESS, center_y - in_pos[1])
+            PyImGui.set_cursor_screen_pos((in_pos[0] - self.half_line, in_pos[1]))
+            p1 = PyImGui.invisible_button("p2b", (self.LINE_THICKNESS, center_y - in_pos[1]))
         else:
-            PyImGui.set_cursor_screen_pos(in_pos[0] - self.half_line, center_y)
-            p1 = PyImGui.invisible_button("p1b", self.LINE_THICKNESS, in_pos[1] - center_y)
+            PyImGui.set_cursor_screen_pos((in_pos[0] - self.half_line, center_y))
+            p1 = PyImGui.invisible_button("p1b", (self.LINE_THICKNESS, in_pos[1] - center_y))
         PyImGui.draw_list_add_line(out_pos[0], out_pos[1], out_pos[0], center_y, PACKED_GREY, self.LINE_THICKNESS)
         p2 = False
         if center_y > out_pos[1]:
-            PyImGui.set_cursor_screen_pos(out_pos[0] - self.half_line, out_pos[1])
-            p2 = PyImGui.invisible_button("p2b", self.LINE_THICKNESS, center_y - out_pos[1])
+            PyImGui.set_cursor_screen_pos((out_pos[0] - self.half_line, out_pos[1]))
+            p2 = PyImGui.invisible_button("p2b", (self.LINE_THICKNESS, center_y - out_pos[1]))
         else:
-            PyImGui.set_cursor_screen_pos(out_pos[0] - self.half_line, center_y)
-            p2 = PyImGui.invisible_button("p1b", self.LINE_THICKNESS, out_pos[1] - center_y)
+            PyImGui.set_cursor_screen_pos((out_pos[0] - self.half_line, center_y))
+            p2 = PyImGui.invisible_button("p1b", (self.LINE_THICKNESS, out_pos[1] - center_y))
         PyImGui.draw_list_add_line(in_pos[0], center_y, out_pos[0], center_y, PACKED_GREY, self.LINE_THICKNESS)
         p3 = False
         if in_pos[0] > out_pos[0]:
-            PyImGui.set_cursor_screen_pos(out_pos[0], center_y - self.half_line)
-            p3 = PyImGui.invisible_button("p3b", in_pos[0] - out_pos[0], self.LINE_THICKNESS)
+            PyImGui.set_cursor_screen_pos((out_pos[0], center_y - self.half_line))
+            p3 = PyImGui.invisible_button("p3b", (in_pos[0] - out_pos[0], self.LINE_THICKNESS))
         else:
-            PyImGui.set_cursor_screen_pos(in_pos[0], center_y - self.half_line)
-            p3 = PyImGui.invisible_button("p3b", out_pos[0] - in_pos[0], self.LINE_THICKNESS)
+            PyImGui.set_cursor_screen_pos((in_pos[0], center_y - self.half_line))
+            p3 = PyImGui.invisible_button("p3b", (out_pos[0] - in_pos[0], self.LINE_THICKNESS))
 
-        PyImGui.set_cursor_screen_pos(center_x - 5, center_y - 5)
+        PyImGui.set_cursor_screen_pos((center_x - 5, center_y - 5))
         is_pressed = p1 or p2 or p3
         link.exists = not is_pressed
         PyImGui.pop_id()
@@ -274,8 +274,8 @@ class NodeSpace:
         PyImGui.begin_child(f"LogicHeader", (node.width + node.side_padding * 2, node.header_height), border=False)
         pos = PyImGui.get_cursor_pos()
         pressed = PyImGui.invisible_button(f"##LogicBlockButton{node.id}",
-                                           node.width + node.side_padding * 2 - node.del_width,
-                                           node.header_height)
+                                           (node.width + node.side_padding * 2 - node.del_width,
+                                            node.header_height))
         node.hovered = PyImGui.is_item_hovered()
         if PyImGui.is_item_active() and PyImGui.is_mouse_dragging(0, -1.0):
             node.hovered = True
@@ -297,7 +297,7 @@ class NodeSpace:
                 pos = PyImGui.get_cursor_screen_pos()
                 pin.location = pos
                 pin._draw()
-                PyImGui.set_cursor_screen_pos(pos[0], pos[1] + self.SPACER + pin.radius * 2)
+                PyImGui.set_cursor_screen_pos((pos[0], pos[1] + self.SPACER + pin.radius * 2))
         PyImGui.set_cursor_pos((node.side_padding, node.header_height))
         PyImGui.begin_child(f"LogicBody", (node.width, node.height), border=False)
         node.draw_body()
@@ -305,10 +305,10 @@ class NodeSpace:
         PyImGui.set_cursor_pos((node.side_padding * 2 + node.width, node.header_height))
         for pin in out_pins:
             pos = PyImGui.get_cursor_screen_pos()
-            PyImGui.set_cursor_screen_pos(pos[0] - pin.radius * 2 - self.SPACER, pos[1] + self.SPACER)
+            PyImGui.set_cursor_screen_pos((pos[0] - pin.radius * 2 - self.SPACER, pos[1] + self.SPACER))
             pin.location = PyImGui.get_cursor_screen_pos()
             pin._draw()
-            PyImGui.set_cursor_screen_pos(pos[0], pos[1] + pin.radius * 2)
+            PyImGui.set_cursor_screen_pos((pos[0], pos[1] + pin.radius * 2))
         PyImGui.end_child()
         PyImGui.pop_style_color(1)
         PyImGui.pop_id()

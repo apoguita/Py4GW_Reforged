@@ -461,7 +461,9 @@ class Party:
             if isinstance(agent_id_or_name, int):
                 Party.party_instance().InvitePlayer(agent_id_or_name)
             elif isinstance(agent_id_or_name, str):
-                Player.SendChatCommand("invite " + agent_id_or_name)
+                # /invite needs the REAL name; name obfuscation shows aliases. Resolve it back.
+                from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation.resolve import require_real_name
+                Player.SendChatCommand("invite " + require_real_name(agent_id_or_name))
 
             else:
                 raise TypeError("Invalid argument type. Must be int (ID) or str (name).")

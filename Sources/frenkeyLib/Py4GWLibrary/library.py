@@ -819,7 +819,7 @@ class Py4GWLibrary:
             close_rect = (win_pos[0] + win_size[0] - 21, win_pos[1] + 2, 16, 16)
             minimize_rect = (win_pos[0] + 4 + win_size[0] - 50, win_pos[1] + 2, 24, 20)
             cursor_pos = PyImGui.get_cursor_screen_pos()
-            PyImGui.set_cursor_screen_pos(minimize_rect[0], minimize_rect[1])
+            PyImGui.set_cursor_screen_pos((minimize_rect[0], minimize_rect[1]))
                 
             fontawesome_font_size = int(int(PyImGui.get_text_line_height()) * 0.8)
             ImGui.push_font("Regular", fontawesome_font_size)
@@ -836,7 +836,7 @@ class Py4GWLibrary:
                 PyImGui.text("Switch to One Button View")
                 PyImGui.end_tooltip()
             
-            PyImGui.set_cursor_screen_pos(cursor_pos[0], cursor_pos[1])
+            PyImGui.set_cursor_screen_pos((cursor_pos[0], cursor_pos[1]))
             PyImGui.pop_clip_rect()
             
             if ImGui.begin_menu_bar():
@@ -1166,7 +1166,7 @@ class Py4GWLibrary:
                             PyImGui.next_column()
                             continue
                         
-                        is_visible = PyImGui.is_rect_visible(card_width, card_height)                        
+                        is_visible = PyImGui.is_rect_visible((card_width, card_height))                        
                         if is_visible:
                             first_visible = True
                             
@@ -1325,7 +1325,7 @@ class Py4GWLibrary:
         Must be called inside a grid / SameLine layout.
         """
     
-        rect_visible = PyImGui.is_rect_visible(width, height)
+        rect_visible = PyImGui.is_rect_visible((width, height))
         clicked = False
         hovered = False
         cog_hovered = False
@@ -1381,7 +1381,7 @@ class Py4GWLibrary:
                 PyImGui.end_group()
                         
                 if widget.has_configure_property and self.show_configure_button:
-                    PyImGui.set_cursor_pos(available_width - 10, 2)
+                    PyImGui.set_cursor_pos((available_width - 10, 2))
                     configuring = ImGui.toggle_icon_button(IconsFontAwesome5.ICON_COG, widget.configuring, self.BUTTON_HEIGHT, self.BUTTON_HEIGHT)
                     if configuring != widget.configuring:
                         widget.set_configuring(configuring)
@@ -1452,7 +1452,7 @@ class Py4GWLibrary:
         Must be called inside a grid / SameLine layout.
         """
         
-        rect_visible = PyImGui.is_rect_visible(width, 30)
+        rect_visible = PyImGui.is_rect_visible((width, 30))
         clicked = False
         hovered = False
         cog_hovered = False
@@ -1474,7 +1474,7 @@ class Py4GWLibrary:
                 flags=PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse
             )
             
-            if opened and PyImGui.is_rect_visible(width, 30):
+            if opened and PyImGui.is_rect_visible((width, 30)):
                 available_width = PyImGui.get_content_region_avail()[0]
 
                 ImGui.push_font("Regular", 15)
@@ -1483,7 +1483,7 @@ class Py4GWLibrary:
                 ImGui.pop_font()
                                 
                 if widget.has_configure_property:
-                    PyImGui.set_cursor_pos(available_width - 10, 2)
+                    PyImGui.set_cursor_pos((available_width - 10, 2))
                     configuring = ImGui.toggle_icon_button(IconsFontAwesome5.ICON_COG, widget.configuring, self.BUTTON_HEIGHT, self.BUTTON_HEIGHT)
                     if configuring != widget.configuring:
                         widget.set_configuring(configuring)
@@ -1557,7 +1557,7 @@ class Py4GWLibrary:
             button_size = PyImGui.get_content_region_avail()[0] * (1 if win_hovered else 0.8)
             
             if not win_hovered:
-                PyImGui.set_cursor_pos((self.win_size[0] - button_size) / 2, (self.win_size[1] - button_size) / 2)
+                PyImGui.set_cursor_pos(((self.win_size[0] - button_size) / 2, (self.win_size[1] - button_size) / 2))
             
             cx, cy = PyImGui.get_cursor_pos()
             ImGui.image("python_icon_round.png", (button_size, button_size))              

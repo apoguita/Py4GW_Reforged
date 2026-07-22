@@ -522,8 +522,8 @@ def draw_window():
                             )
 
                         # overlay invisible button covering both texts
-                        PyImGui.set_cursor_screen_pos(*text_pos)
-                        if PyImGui.invisible_button(f"quest_btn_{qid}", total_width, max_height):
+                        PyImGui.set_cursor_screen_pos(text_pos)
+                        if PyImGui.invisible_button(f"quest_btn_{qid}", (total_width, max_height)):
                             GLOBAL_CACHE.Quest.SetActiveQuest(qid)
                             GLOBAL_CACHE.Quest.RequestQuestInfo(active_quest, update_marker=True)
                             force_refresh = True

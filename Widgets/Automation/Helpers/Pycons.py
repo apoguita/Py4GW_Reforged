@@ -659,7 +659,7 @@ try:
             if item_h > 0.0 and line_h > 0.0:
                 cursor_x, _cursor_y = PyImGui.get_cursor_screen_pos()
                 text_y = item_y + max((item_h - line_h) * 0.5, 0.0) + float(y_offset)
-                PyImGui.set_cursor_screen_pos(float(cursor_x), float(text_y))
+                PyImGui.set_cursor_screen_pos((float(cursor_x), float(text_y)))
                 return float(text_y)
         except Exception:
             pass
@@ -671,7 +671,7 @@ try:
             return
         try:
             cursor_x, _cursor_y = PyImGui.get_cursor_screen_pos()
-            PyImGui.set_cursor_screen_pos(float(cursor_x), float(screen_y))
+            PyImGui.set_cursor_screen_pos((float(cursor_x), float(screen_y)))
         except Exception:
             pass
 
@@ -10695,7 +10695,7 @@ try:
                 0,
             )
 
-            PyImGui.set_cursor_screen_pos(x + 8.0, text_y)
+            PyImGui.set_cursor_screen_pos((x + 8.0, text_y))
             pushed_text_color = False
             try:
                 PyImGui.push_style_color(PyImGui.ImGuiCol.Text, text_color)
@@ -10707,7 +10707,7 @@ try:
 
             if has_actions:
                 if actions_below:
-                    PyImGui.set_cursor_screen_pos(x + 8.0, y + row_height + max((row_height - line_h) * 0.5, 0.0))
+                    PyImGui.set_cursor_screen_pos((x + 8.0, y + row_height + max((row_height - line_h) * 0.5, 0.0)))
                 else:
                     _same_line(10)
                 if PyImGui.small_button(f"{select_text}##pycons_main_{id_suffix}_section_select_all"):
@@ -10726,7 +10726,7 @@ try:
                     else "Turn every selected item in this category OFF for this session."
                 )
 
-            PyImGui.set_cursor_screen_pos(x, y + height)
+            PyImGui.set_cursor_screen_pos((x, y + height))
         except Exception:
             _section_text(text, section_key)
 
@@ -10750,12 +10750,12 @@ try:
                 if target_offset is not None
                 else _main_section_text_width(str(text)) + float(spacing)
             )
-            PyImGui.set_cursor_screen_pos(float(x), float(y) + float(y_offset))
+            PyImGui.set_cursor_screen_pos((float(x), float(y) + float(y_offset)))
             if color is None:
                 PyImGui.text(str(text))
             else:
                 _text_with_color(str(text), color)
-            PyImGui.set_cursor_screen_pos(float(next_x), float(y))
+            PyImGui.set_cursor_screen_pos((float(next_x), float(y)))
         except Exception:
             if color is None:
                 PyImGui.text(str(text))
@@ -10821,7 +10821,7 @@ try:
         _section_text("Target accounts:", "settings_other_accounts")
         _text_secondary("Select active multibox target accounts below. Both actions use the same target list.")
         _text_secondary("Window layout, presets, and filters stay local. Temporary ON/OFF changes copy only when selected below.")
-        PyImGui.dummy(0, 4)
+        PyImGui.dummy((0, 4))
 
         _text_secondary(f"{len(active_accounts)} active account(s) | {len(selected_accounts)} selected")
         if active_accounts:
@@ -10906,7 +10906,7 @@ try:
         _section_text("Settings copy:", "settings_other_accounts")
         _text_secondary("Copy only the checked settings groups to the selected accounts.")
         _text_secondary("Use this for small setting changes. Use profiles below for a full setup.")
-        PyImGui.dummy(0, 4)
+        PyImGui.dummy((0, 4))
 
         if PyImGui.small_button("Select All Categories##pycons_sync_categories_all"):
             for category_key, _label in PYCONS_SYNC_CATEGORY_DEFS:
@@ -12597,7 +12597,7 @@ try:
                 _text_secondary("Main-window ON/OFF also updates saved enabled defaults.")
             else:
                 _text_secondary("Main-window ON/OFF changes are temporary unless saving is enabled above.")
-            PyImGui.dummy(0, 4)
+            PyImGui.dummy((0, 4))
             _section_text("Filter items:", "settings_select")
             _control_label_for_next_item("Search:")
             changed, new_val = ui_input_text("##pycons_filter", filter_text[0], 64)
@@ -12611,7 +12611,7 @@ try:
             collapse_now = (last_search_active[0] and not search_active)
             last_search_active[0] = search_active
 
-            PyImGui.dummy(0, 6)
+            PyImGui.dummy((0, 6))
 
             explorable_consets = [c for c in CONSUMABLES if c.get("use_where") == "explorable" and c.get("key") in CONSET_KEYS]
             explorable_other = [c for c in CONSUMABLES if c.get("use_where") == "explorable" and c.get("key") not in CONSET_KEYS]

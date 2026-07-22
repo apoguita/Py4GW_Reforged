@@ -906,7 +906,7 @@ def DrawDayCard():
 
             #Prevents crashes of Imgui if the  table is to small
             item_amount = max(len(current_event["dropped_items"]), 1)
-            if PyImGui.is_rect_visible(0, 20):
+            if PyImGui.is_rect_visible((0, 20)):
                 if PyImGui.begin_table("event_drops_table", item_amount, PyImGui.TableFlags.NoFlag):
                     for _ in range(item_amount):
                         PyImGui.table_setup_column("Item", PyImGui.TableColumnFlags.WidthFixed, 48)

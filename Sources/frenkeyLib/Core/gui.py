@@ -40,7 +40,7 @@ class GUI:
             if texture:
                 ImGui.DrawTextureExtended(texture_path=texture, size=(size, size), tint=tint)
             else:
-                PyImGui.dummy(size, size)
+                PyImGui.dummy((size, size))
     
     @staticmethod
     def get_gradient_colors(start_color: tuple[float, float, float, float], end_color: tuple[float, float, float, float], steps: int) -> list[tuple[float, float, float, float]]:
@@ -102,8 +102,8 @@ class GUI:
     
     @staticmethod
     def item_toggle_button(texture: str | None, skin_size : float = 42, selected : bool = False, background: bool = True, padding : tuple[float, float] = (0, 0), selected_color : tuple[int, int, int, int] | None = None) -> tuple[bool, bool]:
-        if not PyImGui.is_rect_visible(skin_size, skin_size):
-            PyImGui.dummy(int(skin_size), int(skin_size))
+        if not PyImGui.is_rect_visible((skin_size, skin_size)):
+            PyImGui.dummy((int(skin_size), int(skin_size)))
             return selected, False
         
         factor = 34 / 42 ## Width / Height ratio of the frame texture
@@ -128,13 +128,13 @@ class GUI:
         ImGui.DrawTextureExtended(texture_path=texture_map.CoreTextures.UI_Inventory_Slot.value, size=(frame_size[0], frame_size[1]), tint=frame_color)
         
         if texture_exists and texture:     
-            PyImGui.set_cursor_screen_pos(screen_cursor[0] + padding[0], screen_cursor[1] + padding[1])                                  
+            PyImGui.set_cursor_screen_pos((screen_cursor[0] + padding[0], screen_cursor[1] + padding[1]))                                  
             ImGui.DrawTextureExtended(texture_path=texture, size=(skin_size, skin_size), tint=texture_color)
         else:
             ImGui.push_font("Bold", int(skin_size * factor))        
             text_size = PyImGui.calc_text_size(IconsFontAwesome5.ICON_QUESTION)
             
-            PyImGui.set_cursor_screen_pos(screen_cursor[0] + ((frame_size[0] - text_size[0]) / 2), screen_cursor[1] + ((frame_size[1] - text_size[1]) / 2))
+            PyImGui.set_cursor_screen_pos((screen_cursor[0] + ((frame_size[0] - text_size[0]) / 2), screen_cursor[1] + ((frame_size[1] - text_size[1]) / 2)))
             PyImGui.push_style_color(
                 PyImGui.ImGuiCol.Text, (texture_color[0] / 255, texture_color[1] / 255, texture_color[2] / 255, texture_color[3] / 255))
             PyImGui.text(IconsFontAwesome5.ICON_QUESTION)  
@@ -176,7 +176,7 @@ class GUI:
         
         tint = (255, 255, 255, 255)  if is_hovered else (200, 200, 200, 255)         
         
-        PyImGui.set_cursor_screen_pos(screen_cursor[0] + padding[0], screen_cursor[1] + padding[1])
+        PyImGui.set_cursor_screen_pos((screen_cursor[0] + padding[0], screen_cursor[1] + padding[1]))
         if is_hovered and hovered_texture_path:
             ImGui.DrawTextureExtended(hovered_texture_path, (texture_size[0], texture_size[1]))
         else:

@@ -276,8 +276,8 @@ class SkillData(SkillDataOG):
         texture_path = GW.GLOBAL_CACHE.Skill.ExtraData.GetTexturePath(self.skill_id)
         pos = PyImGui.get_cursor_pos()
         ImGui.DrawTexture(texture_path, 24, 24)
-        PyImGui.set_cursor_pos(pos[0], pos[1])
-        PyImGui.dummy(24, 24)
+        PyImGui.set_cursor_pos((pos[0], pos[1]))
+        PyImGui.dummy((24, 24))
 
 
 class NodeEffect(dNodes.Node):
@@ -606,7 +606,7 @@ class NodeInputFloat(dNodes.Node):
 
     def draw_body(self):
         self.value = PyImGui.input_float(f"##inputfloat{self.id}", self.value)
-        PyImGui.dummy(0, 0)
+        PyImGui.dummy((0, 0))
         PyImGui.text("< Clear")
 
     def execute(self):
@@ -828,14 +828,14 @@ def DrawGenericSkills():
                 cache.skill_array[n][i] = PyImGui.checkbox(f"##genericskillusebox{n}_{i}", cache.skill_array[n][i])
                 if color_flip:
                     PyImGui.pop_style_color(1)
-                PyImGui.set_cursor_pos(curser_pos[0], curser_pos[1])
+                PyImGui.set_cursor_pos((curser_pos[0], curser_pos[1]))
                 PyImGui.text(f" {i + 1} ")
                 PyImGui.same_line(0, -1)
             else:
                 PyImGui.text(label_text)
                 if PyImGui.is_item_hovered():
                     PyImGui.set_tooltip(hovertip)
-            PyImGui.set_cursor_pos(PyImGui.get_cursor_pos_x(), PyImGui.get_cursor_pos_y() + box_spacing)
+            PyImGui.set_cursor_pos((PyImGui.get_cursor_pos_x(), PyImGui.get_cursor_pos_y() + box_spacing))
         PyImGui.pop_style_color(2)
         for i in range(0, len(cache.combat_ranges)):
             if cache.combat_range_slider < cache.combat_ranges[i]:

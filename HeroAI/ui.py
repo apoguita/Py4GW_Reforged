@@ -718,7 +718,7 @@ def draw_skill_bar(height: float, account_data: AccountStruct, hero_options: Opt
             texture_state = TextureState.Normal if not skill.is_elite else TextureState.Active
 
             ThemeTextures.Skill_Frame.value.get_texture(texture_theme).draw_in_drawlist(
-                item_rect_min[:2],
+                (item_rect_min[0], item_rect_min[1]),
                 (height, height),
                 state=texture_state
             )
@@ -820,7 +820,7 @@ def draw_buffs_and_upkeeps(account_data: AccountStruct, skill_size: float = 28):
         if draw_effect_frame:
             frame_texture, texture_state = effect.frame_texture, effect.texture_state
             frame_texture.draw_in_drawlist(
-                item_rect_min[:2],
+                (item_rect_min[0], item_rect_min[1]),
                 (skill_size, skill_size),
                 state=texture_state
             )
@@ -929,7 +929,7 @@ def draw_buffs_and_upkeeps(account_data: AccountStruct, skill_size: float = 28):
             ImGui.dummy(skill_size + 1, skill_size + 1)
             item_rect_min, item_rect_max, item_rect_size = ImGui.get_item_rect()
             texture.draw_in_drawlist(
-                item_rect_min[:2],
+                (item_rect_min[0], item_rect_min[1]),
                 (skill_size + 1, skill_size + 1),
             )
                 
@@ -1951,7 +1951,7 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
         is_window_active = PySystem.Console.is_window_active()
 
         if ImGui.begin_child("##HotbarCommandsChild" + hotbar.identifier, (width, height), False, PyImGui.WindowFlags.NoScrollbar | PyImGui.WindowFlags.NoScrollWithMouse):
-            if PyImGui.is_rect_visible(width, height):
+            if PyImGui.is_rect_visible((width, height)):
                 if ImGui.begin_table("##HotbarTable" + hotbar.identifier, cols, PyImGui.TableFlags.NoFlag, width=width, height=height):
                     PyImGui.table_next_row()
                     PyImGui.table_next_column()
@@ -2655,7 +2655,9 @@ def draw_party_search_overlay(cached_data: CacheData):
                     
                     if same_map:
                         if not is_party_member:
-                            Player.SendChatCommand("invite " + account.AgentData.CharacterName)
+                            # /invite needs the REAL name; name obfuscation may make the shared name an alias.
+                            from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation.resolve import require_real_name
+                            Player.SendChatCommand("invite " + require_real_name(account.AgentData.CharacterName))
                             GLOBAL_CACHE.ShMem.SendMessage(
                                 sender_email,
                                 account.AccountEmail,

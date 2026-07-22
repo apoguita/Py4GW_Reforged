@@ -724,7 +724,7 @@ def _draw_consumables_window():
 
         filter_text = consumable_filter[0].strip().lower()
 
-        PyImGui.dummy(0, 6)
+        PyImGui.dummy((0, 6))
 
         if PyImGui.button("Select All Visible##select_all_visible"):
             for spec in ALL_CONSUMABLES:
@@ -744,13 +744,13 @@ def _draw_consumables_window():
         for spec in MAINTAIN_CONSUMABLES:
             _draw_consumable_row(spec, filter_text)
 
-        PyImGui.dummy(0, 8)
+        PyImGui.dummy((0, 8))
         PyImGui.text("Conset:")
         PyImGui.separator()
         for spec in CONSETS:
             _draw_consumable_row(spec, filter_text)
 
-        PyImGui.dummy(0, 8)
+        PyImGui.dummy((0, 8))
         PyImGui.text_disabled("Restock is disabled (restock=0). If you run out, it just stops consuming.")
 
         bot_config.save_throttled()

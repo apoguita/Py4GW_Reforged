@@ -363,7 +363,7 @@ class _UI:
             self._draw_texture(texture_path=icon_path, size=(iconwidth, iconwidth))
             PyImGui.table_set_column_index(1)
             
-            PyImGui.dummy(0,3)
+            PyImGui.dummy((0,3))
             ImGui.push_font("Regular", 22)
             PyImGui.push_style_color(PyImGui.ImGuiCol.Text, Color(255, 255, 0, 255).to_tuple_normalized())
             PyImGui.text(f"{self._config.bot_name}")

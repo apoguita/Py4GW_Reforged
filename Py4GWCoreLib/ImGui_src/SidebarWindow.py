@@ -366,9 +366,12 @@ class SidebarWindow:
             self._safe_call(section.draw, self._selected or section.name)
 
     def _draw_tabs(self, section: "SidebarWindow.Section") -> None:
-        if PyImGui.begin_tab_bar(f"{self._safe_id}_tabs_{section.name}", PyImGui.TabBarFlags.NoFlag):
+        if PyImGui.begin_tab_bar(f"{self._safe_id}_tabs_{section.name}"):
             for tab in section.tabs:
-                if PyImGui.begin_tab_item(self._with_icon(tab.icon, tab.name), None, 0):
+                # NOTE: call begin_tab_item with ONLY the label. The 3-arg form
+                # begin_tab_item(label, None, 0) hits a native overload that returns without
+                # rendering the tab (no error) — this is the single-arg form the demo uses.
+                if PyImGui.begin_tab_item(self._with_icon(tab.icon, tab.name)):
                     # ImGui only runs the selected tab's body — record which one.
                     self._selected_tab[section.name] = tab.name
                     self._draw_help(tab, key=f"{section.name}/{tab.name}")

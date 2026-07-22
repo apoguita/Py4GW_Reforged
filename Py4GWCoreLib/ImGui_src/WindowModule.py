@@ -156,7 +156,7 @@ class WindowModule:
                 
                 if has_always_auto_resize:                    
                     cursor = PyImGui.get_cursor_pos()
-                    PyImGui.dummy(int(self.window_name_size[0] + 20), 0)
+                    PyImGui.dummy((int(self.window_name_size[0] + 20), 0))
                     PyImGui.set_cursor_pos((cursor[0], cursor[1]))
                                 
             case _:  
@@ -372,14 +372,14 @@ class WindowModule:
         PyImGui.push_style_var_vec2(ImGui.ImGuiStyleVar.WindowPadding, (-1, -0))
         ImGui.push_style_color(PyImGui.ImGuiCol.WindowBg, (0, 1, 0, 0.0))  # Fully transparent
         PyImGui.begin(f"{self.window_name}##titlebar_fake", flags)
-        PyImGui.invisible_button("##titlebar_dragging_area_1", title_bar_rect[2] - (30 if self.can_close else 0), title_bar_rect[3])
+        PyImGui.invisible_button("##titlebar_dragging_area_1", (title_bar_rect[2] - (30 if self.can_close else 0), title_bar_rect[3]))
         self.__dragging = (PyImGui.is_item_active() or self.__dragging) and can_interact
                     
         if PyImGui.is_item_focused():
             self.__set_focus = True
             
-        PyImGui.set_cursor_screen_pos(self.__close_button_rect[0] + self.__close_button_rect[2], self.__close_button_rect[1] + self.__close_button_rect[3])
-        PyImGui.invisible_button("##titlebar_dragging_area_2", 15, title_bar_rect[3])
+        PyImGui.set_cursor_screen_pos((self.__close_button_rect[0] + self.__close_button_rect[2], self.__close_button_rect[1] + self.__close_button_rect[3]))
+        PyImGui.invisible_button("##titlebar_dragging_area_2", (15, title_bar_rect[3]))
         self.__dragging = (PyImGui.is_item_active() or self.__dragging) and can_interact
                 
         if PyImGui.is_item_focused():
@@ -395,8 +395,8 @@ class WindowModule:
                     self.__resize = True
 
         if self.can_close:
-            PyImGui.set_cursor_screen_pos(self.__close_button_rect[0], self.__close_button_rect[1])
-            if PyImGui.invisible_button(f"##Close", self.__close_button_rect[2] + 1, self.__close_button_rect[3] + 1) and can_interact:
+            PyImGui.set_cursor_screen_pos((self.__close_button_rect[0], self.__close_button_rect[1]))
+            if PyImGui.invisible_button(f"##Close", (self.__close_button_rect[2] + 1, self.__close_button_rect[3] + 1)) and can_interact:
                 self.open = False
                 self.__set_focus = False
                 

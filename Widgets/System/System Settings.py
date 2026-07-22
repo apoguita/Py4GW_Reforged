@@ -10,8 +10,21 @@ Passive on import: building the shared controller only loads persisted values; n
 no native call happens until ``draw()`` runs on the frame loop.
 """
 
+import sys
+
 import PyImGui
 import PySystem
+
+# Dev-reload aid: the system_settings and name_obfuscation implementations are library modules
+# (under Py4GWCoreLib), so Python caches them in sys.modules — a widget reload re-runs THIS file but
+# would otherwise keep the stale cached package code AND the controller's cached window. Purge them
+# so each reload rebuilds from current source. (Mirrors LaunchBar._boot's purge.)
+for _name in [
+    m for m in list(sys.modules)
+    if m.startswith("Py4GWCoreLib.py4gwcorelib_src.system_settings")
+    or m.startswith("Py4GWCoreLib.py4gwcorelib_src.name_obfuscation")
+]:
+    del sys.modules[_name]
 
 from Py4GWCoreLib.py4gwcorelib_src.system_settings import get_controller
 
@@ -30,6 +43,13 @@ def draw() -> None:
         if not _applied:
             # Register the persisted options with the native side once (idempotent thereafter).
             _controller.apply_all_to_native()
+            # Also register the persisted name-obfuscation alias set (global/multi-account) at boot.
+            try:
+                from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation import get_controller as _no_get
+
+                _no_get().apply_to_native()
+            except Exception:
+                pass
             _applied = True
         # Renders the options window only while it is toggled open (via the launchpad cog).
         _controller.draw()

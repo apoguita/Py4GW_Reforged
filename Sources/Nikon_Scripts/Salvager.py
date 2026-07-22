@@ -197,7 +197,7 @@ class BasicWindow:
                             size = PyImGui.calc_text_size(name)
 
                             if size[0] < 200:
-                                PyImGui.dummy(0, 1) # comment out if not on version with dummy implementation
+                                PyImGui.dummy((0, 1)) # comment out if not on version with dummy implementation
                             identified = Item.Usage.IsIdentified(item.item_id)
                             rarity = Item.Rarity.GetRarity(item.item_id)[0]
                             isWhite = rarity == Rarity.White.value
@@ -212,7 +212,7 @@ class BasicWindow:
                                         self.item_to_salvage = item.item_id
                                         StartSalvage(name, item.item_id)
                             else:
-                                PyImGui.dummy(0, 0) # comment out if not on version with dummy implementation
+                                PyImGui.dummy((0, 0)) # comment out if not on version with dummy implementation
                                 self.PrintTextByRarity("(Unidentified)", item.item_id)
                 
                 PyImGui.table_next_row()

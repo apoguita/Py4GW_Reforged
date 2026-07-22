@@ -2299,9 +2299,9 @@ class HeroAI_BaseUI:
             return
 
         def _close_spacing():
-            PyImGui.dummy(0, 5)
+            PyImGui.dummy((0, 5))
             PyImGui.separator()
-            PyImGui.dummy(0, 5)
+            PyImGui.dummy((0, 5))
 
         if ImGui.Begin(ini_key=cached_data.ini_key, name="HeroAI Control Panel", p_open=True, flags=PyImGui.WindowFlags.AlwaysAutoResize):
             if PyImGui.begin_child("ControlPanelChild", (200, 150), False, PyImGui.WindowFlags.AlwaysAutoResize):

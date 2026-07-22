@@ -1,0 +1,157 @@
+[2026-07-22 00:37:33] [Py4GW] Initializing scanner.
+[2026-07-22 00:37:33] [Py4GW] Initializing patterns.
+[2026-07-22 00:37:33] [Py4GW] Initializing Python runtime.
+[2026-07-22 00:37:33] [Py4GW] [python] Initialize: begin.
+[2026-07-22 00:37:33] [Py4GW] [python] Py_IsInitialized (pre): 0
+[2026-07-22 00:37:33] [Py4GW] [python] Step 1: creating interpreter (Py_InitializeFromConfig).
+[2026-07-22 00:37:33] [Py4GW] [python] Step 1 OK: interpreter created.
+[2026-07-22 00:37:33] [Py4GW] [python] Step 2: importing sys.
+[2026-07-22 00:37:33] [Py4GW] [python] Step 2 OK. sys.prefix: F:\GW\GW1
+[2026-07-22 00:37:33] [Py4GW] [python] Step 3: configuring sys.path.
+[2026-07-22 00:37:33] [Py4GW] [python] module directory: C:\Users\Apo\Py4GW_Reforged
+[2026-07-22 00:37:33] [Py4GW] [python] working directory set to module dir: C:\Users\Apo\Py4GW_Reforged
+[2026-07-22 00:37:33] [Py4GW] [python] Step 3 OK: sys.path configured.
+[2026-07-22 00:37:33] [Py4GW] [python] Step 4: importing embedded modules.
+[2026-07-22 00:37:33] [Py4GW] [python] importing Py4GW
+[2026-07-22 00:37:33] [Py4GW] [python] importing PySystem
+[2026-07-22 00:37:33] [Py4GW] [python] importing PySettings
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyJson
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyProfiler
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyCallback
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyListeners
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyAgent
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyAgentRecolor
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyCamera
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyChat
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyAgentEvents
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyEffects
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyFriendList
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyGameThread
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyGuild
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyItem
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyInventory
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyMap
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyMerchant
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyNameObfuscator
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyPacketSniffer
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyParty
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyPathing
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyPing
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyPlayer
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyQuest
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyRender
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyScanner
+[2026-07-22 00:37:33] [Py4GW] [python] importing PySkill
+[2026-07-22 00:37:33] [Py4GW] [python] importing PySkillbar
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyTrade
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyUIManager
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyTexture
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyDialog
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyOverlay
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyDXOverlay
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyWorldRender
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyParticles
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyKeystroke
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyMouse
+[2026-07-22 00:37:33] [Py4GW] [python] importing PyImGui
+[2026-07-22 00:37:33] [Py4GW] [python] Step 4 OK: all embedded modules imported.
+[2026-07-22 00:37:33] [Py4GW] [python] Step 5: importing __main__.
+[2026-07-22 00:37:33] [Py4GW] [python] Step 5 OK.
+[2026-07-22 00:37:33] [Py4GW] [python] Step 6: releasing GIL (PyEval_SaveThread).
+[2026-07-22 00:37:33] [Py4GW] [python] Step 6 OK: Python runtime initialized.
+[2026-07-22 00:37:33] [Py4GW] Initializing Guild Wars modules.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing game_thread.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing stoc.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing render.
+[2026-07-22 00:37:33] [Py4GW] STOC_HEADER_COUNT [487]
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing ui.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing camera.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing memory_manager.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing context.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing effects.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing events.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing friend_list.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing player.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing agent.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing quest.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing map.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing guild.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing chat.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing item.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing trade.
+[2026-07-22 00:37:33] [Py4GW] [trade] Trade module initialized.
+[2026-07-22 00:37:33] [Py4GW] [gw] Initializing merchant.
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing skillbar.
+[2026-07-22 00:37:34] [Py4GW] [SCAN] SkillArray = 008C8ED0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] AttributeArray = 00975740
+[2026-07-22 00:37:34] [Py4GW] [SCAN] ChangeSecondary_Func = 0085FEB0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] LoadAttributes_Func = 0074D170
+[2026-07-22 00:37:34] [Py4GW] [SCAN] LoadSkills_Func = 00756350
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing party.
+[2026-07-22 00:37:34] [Py4GW] [SCAN] TickButtonUICallback = 004AC3B0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] SetDifficulty_Func = 00795CF0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] PartySearchSeek_Func = 00796B80
+[2026-07-22 00:37:34] [Py4GW] [SCAN] SetReadyStatus_Func = 00796D70
+[2026-07-22 00:37:34] [Py4GW] [SCAN] FlagHeroAgent_Func = 0074D7E0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] FlagAll_Func = 0074D800
+[2026-07-22 00:37:34] [Py4GW] [SCAN] SetHeroBehavior_Func = 0074D760
+[2026-07-22 00:37:34] [Py4GW] [SCAN] LockPetTarget_Func = 0085F3B0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] CommandHotKeyDisableAi_Func = 0085F430
+[2026-07-22 00:37:34] [Py4GW] [SCAN] PartyWindowButtonCallback_Func = 004AE8C0
+[2026-07-22 00:37:34] [Py4GW] [SCAN] PartySearchButtonCallback_Func = 004A2E70
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing name_obfuscator.
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing agent_recolor.
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing textures.
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing dialog.
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing native_ui.
+[2026-07-22 00:37:34] [Py4GW] [gw] Initializing world_render.
+[2026-07-22 00:37:34] [Py4GW] [gw] Enabling memory patcher hooks.
+[2026-07-22 00:37:34] [Py4GW] [gw] Guild Wars initialization complete.
+[2026-07-22 00:37:34] [Py4GW] Shared memory publisher ready: Py4GW_Runtime_9864_00030AEC
+[2026-07-22 00:37:34] [Py4GW] Multibox shared memory ready (creator: yes).
+[2026-07-22 00:37:34] [Py4GW] Initializing crash handler.
+[2026-07-22 00:37:34] [Py4GW] [CrashHandler] Path C attached.
+[2026-07-22 00:37:34] [Py4GW] [CrashHandler] installed.
+[2026-07-22 00:37:34] [Py4GW] Py4GW initialized.
+[2026-07-22 00:37:34] [Py4GW] ImGui initialized on Guild Wars render device.
+[2026-07-22 00:37:35] [Py4GW] Account anchor ready: apoguita@gmail.com
+[2026-07-22 00:37:35] [Py4GW] Autoexec script: C:/Users/Apo/Py4GW_python_files/Py4GW - LDoA.py
+[2026-07-22 00:37:35] [Py4GW] Failed to open script file: C:/Users/Apo/Py4GW_python_files/Py4GW - LDoA.py
+[2026-07-22 00:37:35] [Py4GW] Failed to load script.
+[2026-07-22 00:37:35] [Py4GW] Script stopped.
+[2026-07-22 00:37:35] [Py4GW] Autoexec script failed to start.
+[2026-07-22 00:37:35] [WidgetManager] Widget manager compiled successfully.
+[2026-07-22 00:37:35] [WidgetManager] draw() function found.
+[2026-07-22 00:37:35] [WidgetManager] update() function found.
+[2026-07-22 00:37:35] [WidgetManager] main() function found.
+[2026-07-22 00:37:35] [WidgetManager] Widget manager started.
+[2026-07-22 00:37:35] [print:] [ButtonMethods] CtlBtnProc resolved via short-prologue fallback @ 0x004A9200
+[2026-07-22 00:37:35] [print:] [ButtonMethods] FrameSetSize resolved @ 0x00574670
+[2026-07-22 00:37:35] [print:] [ButtonMethods] FrameSetPosition resolved @ 0x005744C0
+[2026-07-22 00:37:35] [print:] [ButtonMethods] FrameMouseEnable resolved via byte-pattern fallback @ 0x00573AB0
+[2026-07-22 00:37:35] [print:] [ButtonMethods] FrameNewSubclass resolved via byte-pattern fallback @ 0x00573E20
+[2026-07-22 00:37:35] [WidgetManager] Failed to load widget module 'Guild Wars\Items & Loot/LootManager.py': Can't find a usable init.tcl in the following directories: 
+    C:/Users/Apo/AppData/Local/Programs/Python/Python313-32/lib/tcl8.6 F:/GW/lib/tcl8.6 F:/lib/tcl8.6 F:/GW/library F:/library F:/tcl8.6.14/library F:/tcl8.6.14/library
+
+
+
+This probably means that Tcl wasn't installed properly.
+
+[2026-07-22 00:37:35] [WidgetManager] Failed to load widget module 'Guild Wars\Items & Loot/LootManager.py': Can't find a usable init.tcl in the following directories: 
+    C:/Users/Apo/AppData/Local/Programs/Python/Python313-32/lib/tcl8.6 F:/GW/lib/tcl8.6 F:/lib/tcl8.6 F:/GW/library F:/library F:/tcl8.6.14/library F:/tcl8.6.14/library
+
+
+
+This probably means that Tcl wasn't installed properly.
+
+[2026-07-22 00:37:36] [Style Manager] Enabled Style Manager with theme: Py4GW
+[2026-07-22 00:37:36] [WidgetManager] Failed to load widget module 'Guild Wars\Items & Loot/LootManager.py': Can't find a usable init.tcl in the following directories: 
+    C:/Users/Apo/AppData/Local/Programs/Python/Python313-32/lib/tcl8.6 F:/GW/lib/tcl8.6 F:/lib/tcl8.6 F:/GW/library F:/library F:/tcl8.6.14/library F:/tcl8.6.14/library
+
+
+
+This probably means that Tcl wasn't installed properly.
+
+[2026-07-22 00:37:36] [HeroAI] Loading HeroAI settings...
+[2026-07-22 00:37:36] [AutoInventoryHandler] Auto Handler Options initialized
+[2026-07-22 00:37:36] [HeroAI] HeroAI initialized successfully.

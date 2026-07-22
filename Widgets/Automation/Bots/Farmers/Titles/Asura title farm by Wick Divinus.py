@@ -1052,7 +1052,7 @@ def _draw_hero_icon(hero_id: int, size: int = 24):
                 ImGui.DrawTexture(texture_path=path, width=size, height=size)
             except Exception:
                 pass
-    PyImGui.dummy(int(size), int(size))
+    PyImGui.dummy((int(size), int(size)))
 
 
 def _draw_hero_combo(label: str, hero_id: int) -> int:
@@ -1064,7 +1064,7 @@ def _draw_hero_combo(label: str, hero_id: int) -> int:
             if hero != HeroType.None_:
                 _draw_hero_icon(int(hero), size=20)
             else:
-                PyImGui.dummy(20, 20)
+                PyImGui.dummy((20, 20))
             PyImGui.same_line(0.0, 8.0)
             if PyImGui.selectable(f"{_HERO_OPTION_LABELS[index]}##{label}_{index}", index == current_index, 0, [0.0, 0.0]):
                 current_index = index

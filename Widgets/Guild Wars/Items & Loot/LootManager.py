@@ -1,16 +1,15 @@
-import tkinter as tk
 from datetime import datetime, timedelta
-from tkinter import filedialog
 
 from Py4GWCoreLib import *
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.py4gwcorelib_src.FileDialog import FileDialog
 
 MODULE_NAME = "Loot Manager"
 MODULE_ICON = "Textures/Module_Icons/LootManager.png"
 
-# Use hidden root for file dialogs
-tk_root = tk.Tk()
-tk_root.withdraw()
+# In-overlay file picker (native ImGui filebrowser addon) — replaces tkinter, which needs a Tcl
+# runtime the injected client doesn't have. Immediate-mode: draw() is polled in the Save/Load block.
+_file_dialog = FileDialog()
 
 
 # --- Globals ---
@@ -457,24 +456,21 @@ def DrawWindow():
 
         # Save Button
         if PyImGui.button(f"{IconsFontAwesome5.ICON_SAVE} Save to File"):
-            path = filedialog.asksaveasfilename(
-                title="Save Loot Config",
-                defaultextension=".json",
-                filetypes=[("JSON Files", "*.json")]
-            )
-            if path:
-                save_loot_config_to(path)
+            _file_dialog.open_save("Save Loot Config", valid_types=".json", tag="save")
 
         PyImGui.same_line(0, 10)
 
         # Load Button
         if PyImGui.button(f"{IconsFontAwesome5.ICON_FILE_UPLOAD} Load from File"):
-            path = filedialog.askopenfilename(
-                title="Load Loot Config",
-                filetypes=[("JSON Files", "*.json")]
-            )
-            if path:
-                load_loot_config_from(path)
+            _file_dialog.open_open("Load Loot Config", valid_types=".json", tag="load")
+
+        # Immediate-mode picker: draw it every frame; it returns the chosen path once on confirm.
+        _picked = _file_dialog.draw()
+        if _picked:
+            if _file_dialog.tag == "save":
+                save_loot_config_to(_picked)
+            elif _file_dialog.tag == "load":
+                load_loot_config_from(_picked)
 
         if PyImGui.tree_node("Common"):
             rw = loot_filter_singleton.loot_whites

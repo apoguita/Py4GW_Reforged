@@ -192,7 +192,7 @@ def _draw_profession_and_settings_tabs() -> None:
 # ============================================================================
 
 def _draw_settings_section() -> None:
-    PyImGui.dummy(0, 6)
+    PyImGui.dummy((0, 6))
 
     if PyImGui.button("Import config##hex_settings_import", 130, 26):
         _State.show_import_section = not _State.show_import_section
@@ -204,17 +204,17 @@ def _draw_settings_section() -> None:
         _set_status(f"Exported to {info}" if ok else f"Export failed: {info}", ok)
 
     if _State.show_import_section:
-        PyImGui.dummy(0, 4)
+        PyImGui.dummy((0, 4))
         _draw_import_section()
 
-    PyImGui.dummy(0, 12)
+    PyImGui.dummy((0, 12))
 
     # === Debug section (plain bold header) ===
     ImGui.push_font("Bold", 14)
     PyImGui.text("Debug")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
 
     hex_debug, lock_debug = get_debug_flags()
     new_hex = PyImGui.checkbox("Hex removal logs##hex_dbg", hex_debug)
@@ -223,7 +223,7 @@ def _draw_settings_section() -> None:
         (0.7, 0.7, 0.7, 1.0),
     )
 
-    PyImGui.dummy(0, 8)
+    PyImGui.dummy((0, 8))
 
     new_lock = PyImGui.checkbox("Hex removal lock logs##hex_lock_dbg", lock_debug)
     PyImGui.text_colored(
@@ -234,14 +234,14 @@ def _draw_settings_section() -> None:
     if new_hex != hex_debug or new_lock != lock_debug:
         set_debug_flags(new_hex, new_lock)
 
-    PyImGui.dummy(0, 16)
+    PyImGui.dummy((0, 16))
 
     # === Reset config section ===
     ImGui.push_font("Bold", 14)
     PyImGui.text("Reset config")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
 
     PyImGui.text_colored(
         "Hard reset sets every hex to NONE on caster / ranged-martial / melee\n"
@@ -249,7 +249,7 @@ def _draw_settings_section() -> None:
         "config first if you want a backup.",
         (0.7, 0.7, 0.7, 1.0),
     )
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
 
     PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0.55, 0.20, 0.20, 1.0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0.75, 0.25, 0.25, 1.0))
@@ -271,18 +271,18 @@ def _draw_hard_reset_modal() -> None:
     PyImGui.text_colored("Hard reset - confirm", _DANGER_COLOR)
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
     PyImGui.text("This will:")
     PyImGui.bullet_text("Set Caster, Ranged-martial, and Melee priorities to NONE")
     PyImGui.bullet_text("Remove every profession override")
     PyImGui.bullet_text("Apply to every hex in every profession sub-tab")
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
     PyImGui.text_colored(
         "This action is IRREVERSIBLE. Export your config to the Desktop\n"
         "first if you want a backup.",
         (1.0, 0.85, 0.4, 1.0),
     )
-    PyImGui.dummy(0, 8)
+    PyImGui.dummy((0, 8))
 
     PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0.55, 0.20, 0.20, 1.0))
     PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0.75, 0.25, 0.25, 1.0))
@@ -367,13 +367,13 @@ def _draw_info_two_col_table(
 
 
 def _draw_info_section() -> None:
-    PyImGui.dummy(0, 6)
+    PyImGui.dummy((0, 6))
 
     ImGui.push_font("Bold", 16)
     PyImGui.text("How Hex Removal works")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
 
     PyImGui.text_wrapped(
         "Each profession sub-tab lists hexes from that profession. Click a row "
@@ -381,12 +381,12 @@ def _draw_info_section() -> None:
         "target roles, plus optional per-profession overrides."
     )
 
-    PyImGui.dummy(0, 10)
+    PyImGui.dummy((0, 10))
     ImGui.push_font("Bold", 14)
     PyImGui.text("Priorities")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 2)
+    PyImGui.dummy((0, 2))
     _draw_info_two_col_table("info_priorities", _INFO_LABEL_COL_W, [
         ("NONE", "never remove on this role"),
         ("LOW",  "remove only if nothing better"),
@@ -394,19 +394,19 @@ def _draw_info_section() -> None:
         ("HIGH", "urgent removal"),
     ])
 
-    PyImGui.dummy(0, 10)
+    PyImGui.dummy((0, 10))
     ImGui.push_font("Bold", 14)
     PyImGui.text("Roles")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 2)
+    PyImGui.dummy((0, 2))
     _draw_info_two_col_table("info_roles", _INFO_LABEL_COL_W, [
         ("Caster",         "Mesmer, Necromancer, Elementalist, Monk, Ritualist"),
         ("Ranged-martial", "Ranger, Paragon"),
         ("Melee",          "Warrior, Assassin, Dervish"),
     ])
 
-    PyImGui.dummy(0, 10)
+    PyImGui.dummy((0, 10))
     ImGui.push_font("Bold", 14)
     PyImGui.text("Profession overrides")
     ImGui.pop_font()
@@ -417,24 +417,24 @@ def _draw_info_section() -> None:
         "removed urgently from any other caster (HIGH)."
     )
 
-    PyImGui.dummy(0, 10)
+    PyImGui.dummy((0, 10))
     ImGui.push_font("Bold", 14)
     PyImGui.text("Per-row controls")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 2)
+    PyImGui.dummy((0, 2))
     _draw_info_two_col_table("info_row_controls", _INFO_LABEL_COL_W, [
         ("Click row",   "expand or collapse the configuration."),
         ("Hover icon",  "show the in-game skill description."),
         ("Reset button", "restore that hex to its default values."),
     ])
 
-    PyImGui.dummy(0, 10)
+    PyImGui.dummy((0, 10))
     ImGui.push_font("Bold", 14)
     PyImGui.text("Settings tab")
     ImGui.pop_font()
     PyImGui.separator()
-    PyImGui.dummy(0, 2)
+    PyImGui.dummy((0, 2))
     _draw_info_two_col_table("info_settings", _INFO_LABEL_COL_W, [
         ("Import config",            "paste a previously exported config from clipboard."),
         ("Export config to desktop", "save a JSONC file you can back up or share."),
@@ -442,7 +442,7 @@ def _draw_info_section() -> None:
         ("Reset config",             "set every hex to NONE everywhere (irreversible)."),
     ])
 
-    PyImGui.dummy(0, 10)
+    PyImGui.dummy((0, 10))
     PyImGui.text_colored(
         "Config file lives at: Settings/<account-email>/HeroAI/Hex removal/"
         "<character-name>/hex_removal_config.json",
@@ -537,16 +537,16 @@ def _draw_hex_row(skill_id: int, name: str, texture_path: str) -> None:
         PyImGui.end_tooltip()
 
     text_y = row_start_y + (_ROW_HEIGHT - _NAME_FONT_SIZE - 4) // 2
-    PyImGui.set_cursor_pos(row_start_x + _NAME_COLUMN_X, text_y)
+    PyImGui.set_cursor_pos((row_start_x + _NAME_COLUMN_X, text_y))
     ImGui.push_font(_NAME_FONT, _NAME_FONT_SIZE)
     PyImGui.text(name.replace("_", " "))
     ImGui.pop_font()
 
-    PyImGui.set_cursor_pos(row_start_x + _CHIPS_COLUMN_X, text_y)
+    PyImGui.set_cursor_pos((row_start_x + _CHIPS_COLUMN_X, text_y))
     _draw_priority_chips(entry)
 
     btn_y = row_start_y + (_ROW_HEIGHT - _RESET_BTN_H) // 2
-    PyImGui.set_cursor_pos(row_start_x + avail_x - _RESET_BTN_W - 8, btn_y)
+    PyImGui.set_cursor_pos((row_start_x + avail_x - _RESET_BTN_W - 8, btn_y))
     if PyImGui.button(f"Reset##reset_{name}", _RESET_BTN_W, _RESET_BTN_H):
         clear_override(name)
         _log(f"'{name}' - reset to default")
@@ -598,7 +598,7 @@ def _draw_priority_chips(entry: HexRemovalEntry) -> None:
 
 def _draw_hex_configure(name: str, entry: HexRemovalEntry) -> None:
     PyImGui.indent(60)
-    PyImGui.dummy(0, 4)
+    PyImGui.dummy((0, 4))
 
     new_caster = entry.caster
     new_ranged = entry.ranged_martial
@@ -622,12 +622,12 @@ def _draw_hex_configure(name: str, entry: HexRemovalEntry) -> None:
 
         PyImGui.end_table()
 
-    PyImGui.dummy(0, 8)
+    PyImGui.dummy((0, 8))
 
     # === Profession overrides section (table with dark-blue header bar) ===
     new_by_profession = _draw_profession_overrides_table(name, entry.by_profession)
 
-    PyImGui.dummy(0, 6)
+    PyImGui.dummy((0, 6))
     PyImGui.unindent(60)
 
     new_entry = HexRemovalEntry(

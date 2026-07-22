@@ -652,7 +652,7 @@ def DrawWindow():
 
         if ImGui.begin_tab_bar("Style Customization"):
             if ImGui.begin_tab_item("Style Customization"):                    
-                if PyImGui.is_rect_visible(0, 10):
+                if PyImGui.is_rect_visible((0, 10)):
                     style.CellPadding.push_style_var(4, 2)
                     style.ItemInnerSpacing.push_style_var(4, 2)
                     
@@ -753,7 +753,7 @@ def DrawWindow():
             if ImGui.begin_tab_item("Control Preview"):
                 style = ImGui.get_style()
 
-                if PyImGui.is_rect_visible(50, 50):
+                if PyImGui.is_rect_visible((50, 50)):
                     column_width = 0
                     item_width = 0
 

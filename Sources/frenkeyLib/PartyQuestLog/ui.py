@@ -152,7 +152,7 @@ class UI():
                     style.ItemSpacing.push_style_var_direct(4, 0)
                     
                     for quest in quests:  
-                        if not PyImGui.is_rect_visible(0, height_selectable):
+                        if not PyImGui.is_rect_visible((0, height_selectable)):
                             ImGui.dummy(width, height_selectable)
                             continue
                         
@@ -254,7 +254,7 @@ class UI():
                         
                         after_y = PyImGui.get_cursor_pos_y()
                         for i, acc in enumerate(accounts.values()):
-                            PyImGui.set_cursor_pos(width - (i * 10) - 20, posY + 2)
+                            PyImGui.set_cursor_pos((width - (i * 10) - 20, posY + 2))
                             ## chek if quest.quest_id is in active quests (.QuestID) 
                             acc_quest = next((q for q in acc.QuestLog.Quests if q.QuestID == quest.quest_id), None)
                             

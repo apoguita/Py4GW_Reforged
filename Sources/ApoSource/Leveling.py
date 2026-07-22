@@ -95,15 +95,15 @@ def Draw_Window():
         text_y = cursor_y + caption_offset[1]
 
         # Shadow first
-        PyImGui.set_cursor_screen_pos(text_x + shadow_offset[0], text_y + shadow_offset[1])
+        PyImGui.set_cursor_screen_pos((text_x + shadow_offset[0], text_y + shadow_offset[1]))
         ImGui.text_colored(caption, color=shadow_color, font_size=font_size, font_style=font_style)
 
         # Main text
-        PyImGui.set_cursor_screen_pos(text_x, text_y)
+        PyImGui.set_cursor_screen_pos((text_x, text_y))
         ImGui.text_colored(caption, color=text_color, font_size=font_size, font_style=font_style)
 
         # Restore cursor below image
-        PyImGui.set_cursor_screen_pos(cursor_x, cursor_y + size[1])
+        PyImGui.set_cursor_screen_pos((cursor_x, cursor_y + size[1]))
         return result
 
 

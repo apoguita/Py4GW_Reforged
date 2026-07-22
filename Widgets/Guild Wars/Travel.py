@@ -285,7 +285,7 @@ def configure():
                 PyImGui.end_tab_item()
                 
             if PyImGui.begin_tab_item("Help"):
-                PyImGui.dummy(455, 0)
+                PyImGui.dummy((455, 0))
                 PyImGui.text("Outpost Travel Configuration")
                 PyImGui.separator()
                 PyImGui.text("This widget allows you to travel to outposts.")
@@ -465,7 +465,7 @@ def DrawWindow():
             style = ImGui.get_style()
             
             if widget_config.favorites and widget_config.show_favorites:
-                if PyImGui.is_rect_visible(0, 20):
+                if PyImGui.is_rect_visible((0, 20)):
                     columns = min(len(widget_config.favorites), 4)
                     if PyImGui.begin_table("##Favorites", columns, PyImGui.TableFlags.NoBordersInBody, 0, 0):
                         for i in range(columns):
@@ -530,7 +530,7 @@ def DrawWindow():
                         ImGui.text(IconsFontAwesome5.ICON_HISTORY)
                         ImGui.pop_font()
                         
-                        PyImGui.set_cursor_pos(x + 20, y)
+                        PyImGui.set_cursor_pos((x + 20, y))
                         
                         ImGui.selectable(outpost + f" ({id})", is_selected, PyImGui.SelectableFlags.NoFlag, (0, 0))
                         if PyImGui.is_item_clicked(0) or (is_selected and PyImGui.is_key_pressed(Key.Enter.value)):

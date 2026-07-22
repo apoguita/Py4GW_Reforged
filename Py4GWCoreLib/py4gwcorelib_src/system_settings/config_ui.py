@@ -14,6 +14,16 @@ from . import model
 
 _INFRA_COLOR = (0.95, 0.75, 0.35, 1.0)
 _MUTED_COLOR = (0.60, 0.60, 0.65, 1.0)
+ERR_COLOR = (0.90, 0.30, 0.30, 1.0)
+
+
+def _log(msg: str) -> None:
+    try:
+        import PySystem
+
+        PySystem.Console.Log("System Settings", msg, PySystem.Console.MessageType.Warning)
+    except Exception:
+        pass
 
 
 def _glyph(icon_name: str) -> str:
@@ -77,6 +87,24 @@ def build_window(controller) -> "ImGui.SidebarWindow":
     )
     for cat in model.CATALOG:
         group = win.add_group(cat.title, icon=_glyph(cat.icon))
+        if cat.key == "agents":
+            # Custom category rendered by the name_obfuscation feature. Lazy import keeps this module
+            # (and the launch_bar toggle path that imports the controller) free of that package until
+            # the window is actually built. Never swallow a build failure silently — an empty section
+            # with no error is undebuggable; surface it (and add a visible placeholder section).
+            try:
+                from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation import config_ui as no_ui
+
+                no_ui.add_sections(win, group)
+            except Exception as exc:
+                import traceback
+
+                _log("Agents / Name Obfuscation section failed to build: %r" % exc)
+                _log(traceback.format_exc())
+                _err = str(exc)
+                win.add_section(group, "Name Obfuscation",
+                                (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
+            continue
         for lsn in cat.listeners:
             # Bind each section to its own listener via default args (avoid late-binding capture).
             win.add_section(

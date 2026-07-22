@@ -525,7 +525,7 @@ class WidgetCatalogTreePanel:
         )
         PyImGui.pop_clip_rect()
 
-        PyImGui.set_cursor_screen_pos(button_x, button_y)
+        PyImGui.set_cursor_screen_pos((button_x, button_y))
         button_clicked = PyImGui.invisible_button(f"##{item.item_id}_button", (button_size, button_size))
         button_min = PyImGui.get_item_rect_min()
         button_max = PyImGui.get_item_rect_max()
@@ -889,7 +889,7 @@ class WidgetCatalogDetailPanel:
 
         current_x = x + name_width
 
-        PyImGui.set_cursor_screen_pos(current_x, y)
+        PyImGui.set_cursor_screen_pos((current_x, y))
         if favorite_texture and on_favorite_click and favorite_width > 1.0:
             button_size = min(max(row_height - detail_rows.icon_padding, 1.0), detail_rows.icon_size_max, favorite_width, row_height)
             favorite_toggled = self.window._draw_centered_texture_toggle_button(
@@ -908,7 +908,7 @@ class WidgetCatalogDetailPanel:
             ImGui.dummy(max(favorite_width, 0.0), row_height)
         current_x += favorite_width
 
-        PyImGui.set_cursor_screen_pos(current_x, y)
+        PyImGui.set_cursor_screen_pos((current_x, y))
         if config_texture and on_config_click and config_width > 1.0:
             button_size = min(max(row_height - detail_rows.icon_padding, 1.0), detail_rows.icon_size_max, config_width, row_height)
             toggled = self.window._draw_centered_texture_toggle_button(
@@ -926,7 +926,7 @@ class WidgetCatalogDetailPanel:
         else:
             ImGui.dummy(max(config_width, 0.0), row_height)
 
-        PyImGui.set_cursor_screen_pos(x, y)
+        PyImGui.set_cursor_screen_pos((x, y))
         ImGui.dummy(total_width, row_height)
         return hovered
 
@@ -1821,7 +1821,7 @@ class WidgetCatalogWindow:
 
         current_x = x + primary_width
 
-        PyImGui.set_cursor_screen_pos(current_x, y)
+        PyImGui.set_cursor_screen_pos((current_x, y))
         if favorite_texture and on_favorite_click:
             favorite_toggled = self._draw_centered_texture_toggle_button(
                 f"{row_id}_fav",
@@ -1839,7 +1839,7 @@ class WidgetCatalogWindow:
             ImGui.dummy(favorite_width, row_height)
         current_x += favorite_width
 
-        PyImGui.set_cursor_screen_pos(current_x, y)
+        PyImGui.set_cursor_screen_pos((current_x, y))
         if config_texture and on_config_click:
             toggled = self._draw_centered_texture_toggle_button(
                 f"{row_id}_cfg",
@@ -1856,7 +1856,7 @@ class WidgetCatalogWindow:
         else:
             ImGui.dummy(config_width, row_height)
 
-        PyImGui.set_cursor_screen_pos(x, y)
+        PyImGui.set_cursor_screen_pos((x, y))
         ImGui.dummy(total_width, row_height)
 
     def _make_virtual_scope_node(self, snapshot, label: str, scope: CatalogScope, path_prefix: str, favorite_ids: set[str]) -> WidgetCatalogNode:
