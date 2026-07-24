@@ -593,6 +593,124 @@ def download_and_install_vcredist(arch: str, on_status: Callable[[str], None]) -
 
 
 # -----------------------------------------------------------------------------
+# Phase 2b -- Visual C++ 2015-2022 (14.x) Redistributable. RELAY 088: a real
+# user (n8unc, Discord) hit a GW.exe crash on injection, root-caused via his
+# own crash dump to a CRT version mismatch -- VCRUNTIME140.dll (bundled with
+# Py4GW.dll) vs. an old MSVCP140.dll already on his system. The VC++ 2013
+# check above doesn't cover this at all -- 2013 (v12.0) and 14.x (the
+# unified runtime line Microsoft has reused across every VS2015/2017/2019/
+# 2022 release) are separate CRT generations with independent installation
+# state. Fixed by installing the current unified redistributable.
+# -----------------------------------------------------------------------------
+
+# Current unified download links for the 14.x line -- confirmed live via a
+# direct HTTP check (not assumed): both resolve with a 301 redirect to a
+# real download.visualstudio.microsoft.com URL serving VC_redist.{arch}.exe
+# (200 OK, correct Content-Disposition filename, ~14MB x86 / ~26MB x64).
+VCREDIST_14_X86_URL = "https://aka.ms/vs/17/release/vc_redist.x86.exe"
+VCREDIST_14_X64_URL = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+
+
+def _check_vcredist14_runtimes_key(arch: str) -> Optional[str]:
+    """Same approach as _check_vcredist_runtimes_key above, but the unified
+    `14.0\\VC\\Runtimes\\{arch}` key Microsoft reuses across every VS2015+
+    release (one key covers VS2015 through the latest VS2022 update, not a
+    new key per release)."""
+    flag = winreg.KEY_WOW64_32KEY if arch == "x86" else winreg.KEY_WOW64_64KEY
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\{arch}", 0,
+            winreg.KEY_READ | flag,
+        )
+        try:
+            version, _ = winreg.QueryValueEx(key, "Version")
+            return version
+        finally:
+            winreg.CloseKey(key)
+    except FileNotFoundError:
+        return None
+
+
+def _check_vcredist14_uninstall_key(arch: str) -> Optional[str]:
+    """Fallback check: scan the Uninstall registry entries for a
+    "Microsoft Visual C++ v14 Redistributable ({arch})" display name.
+
+    Marker string confirmed directly against this project's own dev machine
+    (not guessed/assumed) -- initial assumption was "2015-2022" in the name,
+    but the real installed entry reads "Microsoft Visual C++ v14
+    Redistributable (x64) - 14.51.36247".
+
+    Kept as a fallback for the same documented reason as
+    _check_vcredist_uninstall_key above (VC++ redistributable *updates*
+    have been known to leave the Runtimes key stale/deleted while the
+    software remains installed) -- on this specific dev machine the primary
+    Runtimes key actually resolved fine for both x86 and x64 once queried
+    with the correct explicit WOW64 view, so this fallback wasn't observed
+    firing here. Kept anyway for parity with the proven-necessary 2013
+    pattern rather than assumed unnecessary just because it didn't trigger
+    on one machine.
+    """
+    marker = f"visual c++ v14 redistributable ({arch})"
+    for hive, subkey in (
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+    ):
+        try:
+            key = winreg.OpenKey(hive, subkey, 0, winreg.KEY_READ)
+        except FileNotFoundError:
+            continue
+        try:
+            i = 0
+            while True:
+                try:
+                    subkey_name = winreg.EnumKey(key, i)
+                except OSError:
+                    break
+                i += 1
+                try:
+                    entry = winreg.OpenKey(key, subkey_name)
+                    try:
+                        display_name, _ = winreg.QueryValueEx(entry, "DisplayName")
+                        display_version, _ = winreg.QueryValueEx(entry, "DisplayVersion")
+                    finally:
+                        winreg.CloseKey(entry)
+                except (FileNotFoundError, OSError):
+                    continue
+                if marker in display_name.lower():
+                    return display_version
+        finally:
+            winreg.CloseKey(key)
+    return None
+
+
+def check_vcredist14_prereq() -> VcRedistResult:
+    """Checks both the x86 and x64 Visual C++ 2015-2022 (14.x)
+    Redistributable -- the CRT line Py4GW.dll actually links against
+    (VCRUNTIME140.dll), separate from and not covered by the 2013 check
+    above. Reuses VcRedistResult/VcRedistStatus as-is rather than
+    duplicating an identical dataclass -- neither is 2013-specific in
+    shape, just in the values check_vcredist_prereq happens to fill them
+    with."""
+    x86_version = _check_vcredist14_runtimes_key("x86") or _check_vcredist14_uninstall_key("x86")
+    x64_version = _check_vcredist14_runtimes_key("x64") or _check_vcredist14_uninstall_key("x64")
+    return VcRedistResult(
+        x86_status=VcRedistStatus.OK if x86_version else VcRedistStatus.NOT_FOUND,
+        x64_status=VcRedistStatus.OK if x64_version else VcRedistStatus.NOT_FOUND,
+        x86_version=x86_version,
+        x64_version=x64_version,
+    )
+
+
+def download_and_install_vcredist14(arch: str, on_status: Callable[[str], None]) -> tuple[bool, str]:
+    """arch is "x86" or "x64". Same installer-run pattern as
+    download_and_install_vcredist above."""
+    url = VCREDIST_14_X86_URL if arch == "x86" else VCREDIST_14_X64_URL
+    return _download_and_run_signed_installer(
+        url, f"vcredist_14_{arch}.exe", VCREDIST_EXPECTED_SIGNER, args=[], on_status=on_status
+    )
+
+
+# -----------------------------------------------------------------------------
 # Phase 2 (continued) -- DirectX End-User Runtime (June 2010). Confirmed
 # necessary by Apo directly (Discord, 2026-04-05), linking Microsoft's own
 # download page and stating it's "necessary for install" -- a real, separate

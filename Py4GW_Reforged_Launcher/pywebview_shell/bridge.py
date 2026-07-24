@@ -546,6 +546,7 @@ class ShellBridge:
     def _run_prereq_checks(self) -> None:
         python_result = prereqs.check_python_prereq()
         vcredist_result = prereqs.check_vcredist_prereq()
+        vcredist14_result = prereqs.check_vcredist14_prereq()
         directx_result = prereqs.check_directx_runtime_prereq()
         self.push_event(
             "prereqs_result",
@@ -559,15 +560,26 @@ class ShellBridge:
                     "is_ok": vcredist_result.x64_status == prereqs.VcRedistStatus.OK,
                     "diagnostic_text": f"version {vcredist_result.x64_version}" if vcredist_result.x64_version else "not found",
                 },
+                # RELAY 088: separate CRT generation from the 2013 pair above --
+                # Py4GW.dll links against this one (VCRUNTIME140.dll), not 2013.
+                "vcredist14_x86": {
+                    "is_ok": vcredist14_result.x86_status == prereqs.VcRedistStatus.OK,
+                    "diagnostic_text": f"version {vcredist14_result.x86_version}" if vcredist14_result.x86_version else "not found",
+                },
+                "vcredist14_x64": {
+                    "is_ok": vcredist14_result.x64_status == prereqs.VcRedistStatus.OK,
+                    "diagnostic_text": f"version {vcredist14_result.x64_version}" if vcredist14_result.x64_version else "not found",
+                },
                 "directx_runtime": {"is_ok": directx_result.is_ok, "diagnostic_text": directx_result.diagnostic_text},
             },
         )
 
     def install_prereq(self, component: str) -> dict:
         """component is "python"/"vcredist_x86"/"vcredist_x64"/
-        "directx_runtime". Rejects a second concurrent install -- the real
-        user-facing prevention is the UI disabling the button while one's
-        in flight, this is just the server-side guard behind it."""
+        "vcredist14_x86"/"vcredist14_x64"/"directx_runtime". Rejects a second
+        concurrent install -- the real user-facing prevention is the UI
+        disabling the button while one's in flight, this is just the
+        server-side guard behind it."""
         with self._prereq_install_lock:
             if self._prereq_install_in_progress is not None:
                 return {"ok": False, "error": "An install is already in progress"}
@@ -585,6 +597,10 @@ class ShellBridge:
             success, message = prereqs.download_and_install_vcredist("x86", on_status)
         elif component == "vcredist_x64":
             success, message = prereqs.download_and_install_vcredist("x64", on_status)
+        elif component == "vcredist14_x86":
+            success, message = prereqs.download_and_install_vcredist14("x86", on_status)
+        elif component == "vcredist14_x64":
+            success, message = prereqs.download_and_install_vcredist14("x64", on_status)
         elif component == "directx_runtime":
             success, message = prereqs.download_and_install_directx_runtime(on_status)
         else:
