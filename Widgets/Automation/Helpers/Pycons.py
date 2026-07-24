@@ -26,7 +26,6 @@ PYCONS_SYNC_OPCODE_SET_TEAM_OPT_IN = 5
 PYCONS_SYNC_SELECTION_ENABLED_STATE_ONCE_KEY = "sync_selection_enabled_state_once"
 
 _PYCONS_CONFIG_DIR = os.path.normpath(os.path.join("Widgets", "Config", "Pycons"))
-_PYCONS_PROFILES_DIR = os.path.normpath(os.path.join(_PYCONS_CONFIG_DIR, "Profiles"))
 _LEGACY_CONFIG_DIR = os.path.normpath(os.path.join("Widgets", "Config"))
 
 
@@ -141,9 +140,9 @@ class _SettingsBackedIni:
 
     Lets Pycons' existing ``_get_ini_handler().read_*/write_key`` sites (and the
     ``config = reload(); config.set(...); save(config)`` pattern) run on native
-    ``Settings``, which owns throttling, dirty tracking and autosave. Used for BOTH the
-    account MAIN config (account scope) and profile files (root scope, same on-disk
-    location) - configparser is gone entirely.
+    ``Settings``, which owns throttling, dirty tracking and autosave. Used for the
+    per-account MAIN config (account/global scope) - configparser is gone entirely.
+    The shared PROFILE store lives in a global ``JsonFactory`` document instead.
     """
 
     def __init__(self, name, scope="account"):
@@ -226,14 +225,6 @@ class _SettingsBackedIni:
         return self._settings.sections()
 
 
-def _pycons_profile_settings_name(profile_path):
-    """Root-scope Settings document name for a profile file path. Root scope binds to
-    ``<module>/<name>``, so this keeps profiles at the same on-disk location
-    (Widgets/Config/Pycons/Profiles/<file>) while going through native Settings."""
-    base = os.path.basename(str(profile_path or ""))
-    return f"Widgets/Config/Pycons/Profiles/{base}" if base else ""
-
-
 class _DictSection:
     """Minimal configparser-shaped sink. ``_apply_profile_payload_to_live_config`` calls
     only ``has_section``/``add_section``/``set`` on its config argument, so this harvests
@@ -254,7 +245,6 @@ class _DictSection:
 
 try:
     from typing import Any, cast
-    import shutil
     import re
     import unicodedata
     import PyImGui
@@ -1898,72 +1888,57 @@ try:
     def _save_ini_config(ini_handler, config):
         ini_handler.save(config)
 
-    def _ensure_pycons_profiles_dir() -> bool:
-        try:
-            os.makedirs(_PYCONS_PROFILES_DIR, exist_ok=True)
-            return True
-        except Exception:
-            return False
+    # The shared Pycons profile library now lives in ONE global JsonFactory document
+    # (json/Global/Widgets/Pycons/Profiles.json). Global scope already takes a
+    # cross-process lock + journal-merge on every write, so the old hand-rolled O_EXCL
+    # lock file, the directory-of-.ini-files layout, and the root-scope Settings bypass
+    # are all gone. Each profile is a subtree at ``profiles/<profile_id>``.
+    _pycons_profiles_doc_cache = None
 
-    def _pycons_profiles_lock_path() -> str:
-        return os.path.normpath(os.path.join(_PYCONS_PROFILES_DIR, ".pycons_profiles.lock"))
+    def _get_pycons_profiles_doc():
+        global _pycons_profiles_doc_cache
+        if _pycons_profiles_doc_cache is None:
+            from Py4GWCoreLib import JsonFactory
+            _pycons_profiles_doc_cache = JsonFactory("Widgets/Pycons/Profiles.json", "global")
+        return _pycons_profiles_doc_cache
 
-    def _acquire_pycons_profiles_library_lock(timeout_ms: int = 5000, *, poll_ms: int = 50, stale_after_ms: int = 120000) -> str:
-        import time as _time
+    def _sanitize_profile_id(profile_id: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_-]", "", str(profile_id or "").strip())
 
-        if not _ensure_pycons_profiles_dir():
-            raise OSError("Could not create the shared Pycons profiles folder.")
+    def _profile_doc_path(profile_id: str) -> str:
+        safe_profile_id = _sanitize_profile_id(profile_id)
+        return f"profiles/{safe_profile_id}" if safe_profile_id else ""
 
-        lock_path = _pycons_profiles_lock_path()
-        deadline = _time.monotonic() + max(0.25, float(timeout_ms) / 1000.0)
-        sleep_seconds = max(0.01, float(poll_ms) / 1000.0)
-        stale_after_ms = max(1000, int(stale_after_ms))
+    class _DictBackedProfileReader:
+        """Adapts a stored profile payload dict to the ini_handler read surface used by
+        ``_read_profile_payload_from_ini``, so JSON-stored profiles get the identical
+        clamping/defaults/gating the account-local INI path applies."""
 
-        while True:
+        def __init__(self, values):
+            self._values = dict(values or {})
+
+        def has_key(self, section, key):
+            return key in self._values
+
+        def read_int(self, section, key, default_value=0):
             try:
-                fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                try:
-                    lock_body = (
-                        f"pid={os.getpid()}\n"
-                        f"created_at={_profile_timestamp_now()}\n"
-                    )
-                    os.write(fd, lock_body.encode("utf-8"))
-                finally:
-                    os.close(fd)
-                return lock_path
-            except FileExistsError:
-                try:
-                    lock_age_ms = int(max(0.0, (_time.time() - os.path.getmtime(lock_path)) * 1000.0))
-                except OSError:
-                    lock_age_ms = 0
+                return int(self._values.get(key, default_value))
+            except (TypeError, ValueError):
+                return int(default_value)
 
-                if lock_age_ms >= stale_after_ms:
-                    try:
-                        os.remove(lock_path)
-                        continue
-                    except OSError:
-                        pass
+        def read_bool(self, section, key, default_value=False):
+            val = self._values.get(key, default_value)
+            if isinstance(val, bool):
+                return val
+            if isinstance(val, str):
+                return val.strip().lower() in ("1", "true", "yes", "on")
+            try:
+                return bool(int(val))
+            except (TypeError, ValueError):
+                return bool(default_value)
 
-                if _time.monotonic() >= deadline:
-                    raise TimeoutError("Pycons shared profile library is busy. Try again in a moment.")
-                _time.sleep(sleep_seconds)
-
-    def _release_pycons_profiles_library_lock(lock_path: str):
-        safe_lock_path = str(lock_path or "").strip()
-        if not safe_lock_path:
-            return
-        try:
-            if os.path.exists(safe_lock_path):
-                os.remove(safe_lock_path)
-        except OSError:
-            pass
-
-    def _with_pycons_profiles_library_lock(action, *, timeout_ms: int = 5000):
-        lock_path = _acquire_pycons_profiles_library_lock(timeout_ms=timeout_ms)
-        try:
-            return action()
-        finally:
-            _release_pycons_profiles_library_lock(lock_path)
+        def read_key(self, section, key, default_value=""):
+            return str(self._values.get(key, default_value))
 
     def _profile_section_name(profile_id: str) -> str:
         return f"{PYCONS_PROFILE_SECTION_PREFIX}{str(profile_id or '').strip()}"
@@ -1974,22 +1949,6 @@ try:
         if name.lower().startswith(prefix.lower()):
             return name[len(prefix):]
         return ""
-
-    def _profile_file_path(profile_id: str) -> str:
-        safe_profile_id = re.sub(r"[^A-Za-z0-9_-]", "", str(profile_id or "").strip())
-        if not safe_profile_id:
-            return ""
-        return os.path.normpath(os.path.join(_PYCONS_PROFILES_DIR, f"{safe_profile_id}.ini"))
-
-    def _profile_id_from_path(profile_path: str) -> str:
-        safe_path = str(profile_path or "").strip()
-        if not safe_path:
-            return ""
-        filename = os.path.basename(safe_path)
-        stem, ext = os.path.splitext(filename)
-        if str(ext or "").lower() != ".ini":
-            return ""
-        return re.sub(r"[^A-Za-z0-9_-]", "", str(stem or "").strip())
 
     def _profile_timestamp_now() -> str:
         return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -2441,26 +2400,22 @@ try:
         created_at: str,
         updated_at: str,
     ):
-        profile_path = _profile_file_path(profile_id)
-        if not profile_path:
+        doc_path = _profile_doc_path(profile_id)
+        if not doc_path:
             raise ValueError("Profile id is required.")
-        if not _ensure_pycons_profiles_dir():
-            raise OSError("Could not create the shared Pycons profiles folder.")
 
-        handler = _SettingsBackedIni(_pycons_profile_settings_name(profile_path), "root")
-        config = handler.reload()
-        for section_name in list(config.sections()):
-            config.remove_section(section_name)
-        _write_profile_payload_to_section(
-            config,
-            PYCONS_SHARED_PROFILE_SECTION,
-            profile_id=profile_id,
-            display_name=display_name,
-            payload=payload,
-            created_at=created_at,
-            updated_at=updated_at,
-        )
-        _save_ini_config(handler, config)
+        effective_created_at = str(created_at or _profile_timestamp_now())
+        effective_updated_at = str(updated_at or effective_created_at or _profile_timestamp_now())
+        stored = {
+            "profile_id": _sanitize_profile_id(profile_id),
+            "display_name": _profile_display_name(display_name, profile_id),
+            "created_at": effective_created_at,
+            "updated_at": effective_updated_at,
+            "payload": dict(payload or {}),
+        }
+        # Global scope: the native side takes a cross-process lock + journal-merge on
+        # this write, replacing the old hand-rolled O_EXCL lock. Autosaved.
+        _get_pycons_profiles_doc().set_json(doc_path, stored)
 
     def _apply_profile_payload_to_live_config(config, payload: dict[str, Any], *, profile_name: str):
         if not config.has_section(INI_SECTION):
@@ -2511,36 +2466,31 @@ try:
             set_live_key(restock_target_key, int(max(0, min(2500, int(payload.get(restock_target_key, 0) or 0)))))
         set_live_key("last_applied_preset", _profile_display_name(profile_name))
 
-    def _read_profile_record_from_path(
-        profile_path: str,
+    def _stored_profile_to_record(
+        profile_id: str,
+        stored: Any,
         *,
         include_payload: bool = False,
         fallback_payload: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
-        safe_profile_path = str(profile_path or "").strip()
-        if not safe_profile_path or not os.path.isfile(safe_profile_path):
+        """Build a profile record from a stored JsonFactory subtree. The payload is run
+        back through ``_read_profile_payload_from_ini`` (via a dict-backed reader) so it
+        gets the exact same clamping/defaults/gating as the account-local INI path."""
+        if not isinstance(stored, dict):
             return None
 
-        profile_id = _profile_id_from_path(safe_profile_path)
-        if not profile_id:
-            return None
-
-        handler = _SettingsBackedIni(_pycons_profile_settings_name(safe_profile_path), "root")
-        config = handler.reload()
-        if not config.has_section(PYCONS_SHARED_PROFILE_SECTION):
-            return None
-
+        raw_name = str(stored.get("display_name", stored.get("name", "")) or "")
         entry: dict[str, Any] = {
             "id": str(profile_id),
-            "path": safe_profile_path,
             "section": PYCONS_SHARED_PROFILE_SECTION,
-            "name": _profile_display_name(handler.read_key(PYCONS_SHARED_PROFILE_SECTION, "name", ""), profile_id),
-            "created_at": str(handler.read_key(PYCONS_SHARED_PROFILE_SECTION, "created_at", "") or ""),
-            "updated_at": str(handler.read_key(PYCONS_SHARED_PROFILE_SECTION, "updated_at", "") or ""),
+            "name": _profile_display_name(raw_name, profile_id),
+            "created_at": str(stored.get("created_at", "") or ""),
+            "updated_at": str(stored.get("updated_at", "") or ""),
         }
         if include_payload:
+            reader = _DictBackedProfileReader(stored.get("payload") or {})
             payload = _read_profile_payload_from_ini(
-                handler,
+                reader,
                 PYCONS_SHARED_PROFILE_SECTION,
                 fallback_payload=fallback_payload,
             )
@@ -2549,32 +2499,39 @@ try:
         return entry
 
     def _read_profile_record(profile_id: str, *, include_payload: bool = False, fallback_payload: dict[str, Any] | None = None) -> dict[str, Any] | None:
-        return _read_profile_record_from_path(
-            _profile_file_path(profile_id),
+        doc_path = _profile_doc_path(profile_id)
+        if not doc_path:
+            return None
+        doc = _get_pycons_profiles_doc()
+        if not doc.has(doc_path):
+            return None
+        stored = doc.get_json(doc_path)
+        return _stored_profile_to_record(
+            _sanitize_profile_id(profile_id),
+            stored,
             include_payload=include_payload,
             fallback_payload=fallback_payload,
         )
 
     def _list_pycons_profiles(ini_handler = None, *, include_payload: bool = False, fallback_payload: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         del ini_handler
-        if not _ensure_pycons_profiles_dir():
-            return []
+        doc = _get_pycons_profiles_doc()
 
         profiles = []
         try:
-            filenames = os.listdir(_PYCONS_PROFILES_DIR)
+            profile_ids = list(doc.keys("profiles"))
         except Exception:
             return []
 
-        for filename in filenames:
-            if not str(filename or "").lower().endswith(".ini"):
-                continue
-            profile_path = os.path.join(_PYCONS_PROFILES_DIR, filename)
-            if not os.path.isfile(profile_path):
+        for raw_id in profile_ids:
+            pid = _sanitize_profile_id(raw_id)
+            if not pid:
                 continue
             try:
-                entry = _read_profile_record_from_path(
-                    profile_path,
+                stored = doc.get_json(f"profiles/{raw_id}")
+                entry = _stored_profile_to_record(
+                    pid,
+                    stored,
                     include_payload=include_payload,
                     fallback_payload=fallback_payload,
                 )
@@ -2701,11 +2658,12 @@ try:
         return not _is_generic_ini_path(_get_ini_path())
 
     def _generate_profile_id(display_name: str = "") -> str:
+        doc = _get_pycons_profiles_doc()
         seed = f"{display_name}|{_profile_timestamp_now()}|{os.urandom(8).hex()}"
         candidate = hashlib.md5(seed.encode()).hexdigest()[:12]
         while True:
-            profile_path = _profile_file_path(candidate)
-            if profile_path and not os.path.exists(profile_path):
+            doc_path = _profile_doc_path(candidate)
+            if doc_path and not doc.has(doc_path):
                 return candidate
             seed = f"{seed}|{os.urandom(4).hex()}"
             candidate = hashlib.md5(seed.encode()).hexdigest()[:12]
@@ -2866,10 +2824,9 @@ try:
 
             return imported_count, renamed_count, skipped_duplicate_count
 
-        imported_count, renamed_count, skipped_duplicate_count = _with_pycons_profiles_library_lock(
-            _run_migration_locked,
-            timeout_ms=10000,
-        )
+        # Global-scope JsonFactory writes are already cross-process safe (native lock +
+        # journal-merge), so no library-wide lock wrapper is needed.
+        imported_count, renamed_count, skipped_duplicate_count = _run_migration_locked()
 
         if not config.has_section(INI_SECTION):
             config.add_section(INI_SECTION)
@@ -2916,10 +2873,7 @@ try:
                 )
                 return True, f"Saved profile '{clean_name_locked}'.", profile_id
 
-            return _with_pycons_profiles_library_lock(
-                _save_new_locked,
-                timeout_ms=5000,
-            )
+            return _save_new_locked()
         except Exception as exc:
             return False, f"Failed to save profile '{clean_name}': {exc}", ""
 
@@ -2945,10 +2899,7 @@ try:
                 )
                 return True, f"Updated profile '{display_name}'."
 
-            return _with_pycons_profiles_library_lock(
-                _save_over_locked,
-                timeout_ms=5000,
-            )
+            return _save_over_locked()
         except Exception as exc:
             return False, f"Failed to overwrite the selected profile: {exc}"
 
@@ -2997,10 +2948,7 @@ try:
                     _save_ini_config(ini_handler, config)
                 return True, f"Renamed profile to '{clean_name_locked}'.", clean_name_locked
 
-            return _with_pycons_profiles_library_lock(
-                _rename_locked,
-                timeout_ms=5000,
-            )
+            return _rename_locked()
         except Exception as exc:
             return False, f"Failed to rename the selected profile: {exc}", ""
 
@@ -3032,10 +2980,7 @@ try:
                 )
                 return True, f"Duplicated profile '{source_name}' as '{duplicate_name}'.", duplicate_profile_id, duplicate_name
 
-            return _with_pycons_profiles_library_lock(
-                _duplicate_locked,
-                timeout_ms=5000,
-            )
+            return _duplicate_locked()
         except Exception as exc:
             return False, f"Failed to duplicate the selected profile: {exc}", "", ""
 
@@ -3050,18 +2995,14 @@ try:
                     return False, "The selected profile no longer exists."
 
                 display_name = _profile_display_name(profile_entry.get("name", ""), profile_id)
-                profile_path = str(profile_entry.get("path", "") or "")
-                if not profile_path or not os.path.isfile(profile_path):
+                doc_path = _profile_doc_path(profile_id)
+                if not doc_path or not _get_pycons_profiles_doc().delete(doc_path):
                     return False, "The selected profile no longer exists."
-                os.remove(profile_path)
                 if str(getattr(_rt, "profile_active_applied_id", "") or "") == str(profile_id or ""):
                     _set_active_applied_profile_id("")
                 return True, f"Deleted profile '{display_name}'."
 
-            return _with_pycons_profiles_library_lock(
-                _delete_locked,
-                timeout_ms=5000,
-            )
+            return _delete_locked()
         except Exception as exc:
             return False, f"Failed to delete the selected profile: {exc}"
 
@@ -4129,59 +4070,19 @@ try:
         except Exception:
             return False
 
-    def _ensure_pycons_config_dir() -> bool:
-        try:
-            os.makedirs(_PYCONS_CONFIG_DIR, exist_ok=True)
-            return True
-        except Exception:
-            return False
 
     def _resolve_account_ini_path(account_email: str, migrate_legacy: bool = True, log_migration: bool = False) -> str:
+        # The real config lives in native Settings (see _get_ini_handler); this path is
+        # only a label used for generic-vs-account branching and display. START CLEAN:
+        # no legacy-file copy/exists/makedirs - the account doc self-seeds under settings/.
         email = str(account_email or "").strip()
         if not email:
             return _resolve_generic_ini_path(migrate_legacy=migrate_legacy, log_migration=log_migration)
-
-        canonical, legacy = get_pycons_account_ini_candidates(email)
-
-        if os.path.exists(canonical):
-            return canonical
-
-        if bool(migrate_legacy) and os.path.exists(legacy):
-            try:
-                _ensure_pycons_config_dir()
-                if not os.path.exists(canonical):
-                    shutil.copy2(legacy, canonical)
-                if bool(log_migration):
-                    ConsoleLog(BOT_NAME, f"Migrated config file: {legacy} -> {canonical}", Console.MessageType.Info)
-                return canonical
-            except Exception as e:
-                if bool(log_migration):
-                    ConsoleLog(BOT_NAME, f"Config migration failed ({legacy} -> {canonical}): {e}", Console.MessageType.Warning)
-                return legacy
-
-        _ensure_pycons_config_dir()
+        canonical, _legacy = get_pycons_account_ini_candidates(email)
         return canonical
 
     def _resolve_generic_ini_path(migrate_legacy: bool = True, log_migration: bool = False) -> str:
-        canonical, legacy = get_pycons_generic_ini_candidates()
-
-        if os.path.exists(canonical):
-            return canonical
-
-        if bool(migrate_legacy) and os.path.exists(legacy):
-            try:
-                _ensure_pycons_config_dir()
-                if not os.path.exists(canonical):
-                    shutil.copy2(legacy, canonical)
-                if bool(log_migration):
-                    ConsoleLog(BOT_NAME, f"Migrated config file: {legacy} -> {canonical}", Console.MessageType.Info)
-                return canonical
-            except Exception as e:
-                if bool(log_migration):
-                    ConsoleLog(BOT_NAME, f"Config migration failed ({legacy} -> {canonical}): {e}", Console.MessageType.Warning)
-                return legacy
-
-        _ensure_pycons_config_dir()
+        canonical, _legacy = get_pycons_generic_ini_candidates()
         return canonical
     
     def _get_ini_handler():
@@ -4191,9 +4092,8 @@ try:
 
         # The MAIN config now lives in native Settings (account scope: staged in
         # memory before the account anchor resolves, then bound automatically -
-        # native owns throttling/dirty/autosave). We still resolve the legacy
-        # configparser path because profile code reads it AND it is the one-time
-        # import source below.
+        # native owns throttling/dirty/autosave). We still resolve the ini path
+        # because other code branches on it (generic-vs-account detection, rebind).
         try:
             account_email = str(Player.GetAccountEmail() or "")
         except Exception:
@@ -4204,21 +4104,9 @@ try:
             _ini_path_cache = _resolve_generic_ini_path(migrate_legacy=True, log_migration=False)
 
         handler = _SettingsBackedIni(_PYCONS_ACCOUNT_CONFIG_NAME, "account")
-        # One-time migration: import the legacy per-account ini so existing users keep
-        # their settings. The old file lives at a module-root-relative path, so read it
-        # through native Settings at root scope (no configparser); native seeds nothing.
-        try:
-            if not handler.has_section(INI_SECTION) and _ini_path_cache and os.path.exists(_ini_path_cache):
-                legacy_name = str(_ini_path_cache).replace("\\", "/").lstrip("/")
-                legacy_items = _SettingsBackedIni(legacy_name, "root").list_keys(INI_SECTION)
-                if legacy_items:
-                    for key, value in legacy_items.items():
-                        handler.write_key(INI_SECTION, key, value)
-                    handler.save()
-                    ConsoleLog(BOT_NAME, f"Imported legacy Pycons config ({_ini_path_cache}) into native Settings.", Console.MessageType.Info)
-        except Exception as exc:
-            ConsoleLog(BOT_NAME, f"Legacy Pycons config import skipped: {exc}", Console.MessageType.Warning)
-
+        # START CLEAN: no legacy-file import. Reading an out-of-jail root-scoped file to
+        # seed the account config was itself a jail bypass (and root scope now raises);
+        # the account config self-seeds from defaults under settings/.
         _ini_handler_cache = handler
         return _ini_handler_cache
     
@@ -4249,29 +4137,9 @@ try:
         if _norm_path_lower(new_path) == _norm_path_lower(old_path):
             return False
 
-        if (not os.path.exists(new_path)) and old_path and os.path.exists(old_path):
-            try:
-                _ensure_pycons_config_dir()
-                shutil.copy2(old_path, new_path)
-                ConsoleLog(
-                    BOT_NAME,
-                    f"Seeded account config from generic fallback: {old_path} -> {new_path}",
-                    Console.MessageType.Info,
-                )
-            except Exception as e:
-                ConsoleLog(
-                    BOT_NAME,
-                    f"Failed seeding account config from generic fallback ({old_path} -> {new_path}): {e}",
-                    Console.MessageType.Warning,
-                )
-
+        # START CLEAN: the real config is native Settings (account scope); rebinding just
+        # recreates the handler for the new account. No legacy-file copy, no makedirs.
         _ini_path_cache = new_path
-        try:
-            parent_dir = os.path.dirname(str(_ini_path_cache or ""))
-            if parent_dir:
-                os.makedirs(parent_dir, exist_ok=True)
-        except Exception:
-            pass
         _ini_handler_cache = _SettingsBackedIni(_PYCONS_ACCOUNT_CONFIG_NAME, "account")
         _ini_generic_cached_with_email_logged = False
 

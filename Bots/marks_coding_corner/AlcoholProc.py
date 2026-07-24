@@ -1,7 +1,6 @@
 import atexit
 import ctypes
 import ctypes.wintypes
-import json
 import os
 import sys
 import threading
@@ -14,6 +13,7 @@ from Py4GWCoreLib import Bags
 from Py4GWCoreLib import Effects
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import Item
 from Py4GWCoreLib import ItemArray
@@ -43,14 +43,11 @@ except NameError:
 project_root = find_project_root(script_path, anchor_dir="Py4GW")
 first_run = True
 
-BASE_DIR = os.path.join(project_root, "Bots/marks_coding_corner")
-INI_WIDGET_WINDOW_PATH = os.path.join(BASE_DIR, "AlcoholProc.ini")
-ALCOHOL_PROCS_JSON_PATH = os.path.join(BASE_DIR, "alcohol_procs.json")
-os.makedirs(BASE_DIR, exist_ok=True)
-
 cached_data = CacheData()
 
 ini_window = Settings("Bots/marks_coding_corner/AlcoholProc.ini", "global")
+alcohol_procs = JsonFactory("Bots/marks_coding_corner/AlcoholProc.json")
+DEFAULT_ALCOHOL_PROCS = {"1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7", "8": "8"}
 save_window_timer = Timer()
 save_window_timer.Start()
 
@@ -132,33 +129,12 @@ should_suppress_key = True  # Controlled by your widget toggle
 suppressed_key_callbacks = {}
 
 
-def ensure_alcohol_json_exists():
-    def is_valid_data(data):
-        if not isinstance(data, dict):
-            return False
-        return True
-
-    default_json = {"1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7", "8": "8"}
-
-    should_overwrite = False
-
-    if os.path.exists(ALCOHOL_PROCS_JSON_PATH):
-        try:
-            with open(ALCOHOL_PROCS_JSON_PATH, "r") as f:
-                data = json.load(f)
-            if not is_valid_data(data):
-                print("[AlcoholProc] Invalid format detected, overwriting.")
-                should_overwrite = True
-        except (json.JSONDecodeError, IOError):
-            print("[AlcoholProc] JSON error detected, overwriting.")
-            should_overwrite = True
-    else:
-        should_overwrite = True
-
-    if should_overwrite:
-        with open(ALCOHOL_PROCS_JSON_PATH, "w") as f:
-            json.dump(default_json, f, indent=4)
-            print(f"[AlcoholProc] Formation JSON reset at {ALCOHOL_PROCS_JSON_PATH}")
+def get_alcohol_keybinds() -> dict:
+    data = alcohol_procs.get_json("", {})
+    if not isinstance(data, dict) or not data:
+        data = dict(DEFAULT_ALCOHOL_PROCS)
+        alcohol_procs.set_json("", data)
+    return data
 
 
 def use_alcohol():
@@ -172,9 +148,7 @@ def use_alcohol():
 
 
 def load_alcohol_keybinds_from_json():
-    ensure_alcohol_json_exists()
-    with open(ALCOHOL_PROCS_JSON_PATH, "r") as f:
-        data = json.load(f)
+    data = get_alcohol_keybinds()
 
     suppressed_key_callbacks.clear()
 
@@ -340,7 +314,7 @@ def draw_widget():
             PyImGui.table_next_column()
             PyImGui.text_wrapped(IconsFontAwesome5.ICON_HANDS_HELPING + " Keybinds Help")
             ImGui.show_tooltip(
-                f"Update your current skill keybinds in '{BASE_DIR}\\alcohol_procs.json' - by default it uses 1-8 keys"
+                f"Update your current skill keybinds in '{alcohol_procs.resolved_path()}' - by default it uses 1-8 keys"
             )
             PyImGui.end_table()
     PyImGui.end()

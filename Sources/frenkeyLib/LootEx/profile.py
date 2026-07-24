@@ -1,12 +1,16 @@
-import os
-import json
 from Sources.frenkeyLib.LootEx import skin_rule, filter, messaging
 from Sources.frenkeyLib.LootEx.filter import Filter
 from Sources.frenkeyLib.LootEx.weapon_rule import WeaponRule
 from Sources.frenkeyLib.LootEx.item_configuration import *
 from Py4GWCoreLib import Console
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog
 from Py4GWCoreLib.enums import DyeColor
+
+
+def _profile_doc(name: str) -> JsonFactory:
+    """The account-scoped JsonFactory document backing one named loot profile."""
+    return JsonFactory(f"LootEx/Profiles/{name}.json")
 
 class RuneConfiguration:
     def __init__(self, identifier: str = "", valuable: bool = False, should_sell: bool = False):
@@ -173,14 +177,13 @@ class Profile:
         pass
 
     def save(self):
-        from Sources.frenkeyLib.LootEx.settings import Settings
-        settings = Settings()
-        
+        from Sources.frenkeyLib.LootEx.settings import settings_store
+
         self.setup_lookups()
-        
-        """Save the profile as a JSON file."""
+
+        """Save the profile through the sanctioned account-scoped JsonFactory document."""
         self.changed = True
-        
+
         profile_dict = {
             "name": self.name,            
             "polling_interval": self.polling_interval,
@@ -224,105 +227,101 @@ class Profile:
             "include_storage_materials": self.include_storage_materials,
             "include_material_storage_materials": self.include_material_storage_materials,
         }
-        
-        file_path = os.path.join(
-            settings.profiles_path, f"{self.name}.json")
 
-        with open(file_path, 'w') as file:
-            # ConsoleLog(
-            #     "LootEx", f"Saving profile {self.name}...", Console.MessageType.Debug)
-            json.dump(profile_dict, file, indent=4)
-        
+        _profile_doc(self.name).set_json("", profile_dict)
+
+        # Keep the account-scoped profile registry in sync so the profile store can be
+        # enumerated without scanning a directory.
+        registry = settings_store()
+        names = registry.get_json("profiles", [])
+        if self.name not in names:
+            names.append(self.name)
+            registry.set_json("profiles", names)
+
         messaging.SendReloadProfiles()
 
     def load(self):
-        from Sources.frenkeyLib.LootEx.settings import Settings
-        settings = Settings()
-        
-        """Load the profile from a JSON file."""
-        file_path = os.path.join(
-            settings.profiles_path, f"{self.name}.json")
+        """Load the profile from the sanctioned account-scoped JsonFactory document."""
+        profile_dict = _profile_doc(self.name).get_json("", {})
 
-        try:
-            with open(file_path, 'r') as file:
-                profile_dict = json.load(file)
-                self.name = profile_dict.get("name", self.name)
-                self.polling_interval = profile_dict.get("polling_interval", self.polling_interval)
-                self.loot_range = profile_dict.get("loot_range", self.loot_range)
-                self.deposit_full_stacks = profile_dict.get("deposit_full_stacks", self.deposit_full_stacks)  
-                self.dyes = {DyeColor[dye]: value for dye,
-                value in profile_dict.get("dyes", {}).items()}              
-                self.identification_kits = profile_dict.get(
-                    "identification_kits", self.identification_kits)
-                self.salvage_kits = profile_dict.get(
-                    "salvage_kits", self.salvage_kits)
-                self.expert_salvage_kits = profile_dict.get(
-                    "expert_salvage_kits", self.expert_salvage_kits)
-                self.lockpicks = profile_dict.get("lockpicks", self.lockpicks)
-                self.sell_threshold = profile_dict.get(
-                    "sell_threshold", self.sell_threshold)                                
-                self.rare_weapons = profile_dict.get(
-                    "rare_weapons", self.rare_weapons)
-                self.nick_action = ItemAction[profile_dict.get("nick_action", self.nick_action.name)]
-                self.nick_weeks_to_keep = profile_dict.get(
-                    "nick_weeks_to_keep", self.nick_weeks_to_keep)
-                self.nick_items_to_keep = profile_dict.get(
-                    "nick_items_to_keep", self.nick_items_to_keep)
-                self.filters = [Filter.from_dict(
-                    filter) for filter in profile_dict.get("filters", [])]
-                
-                self.skin_rules = [
-                    skin_rule.SkinRule.from_dict(rule) for rule in profile_dict.get("rules", [])
-                ]
-                
-                weapon_rules = profile_dict.get("weapon_rules", False)
-                if weapon_rules:
-                    self.weapon_rules = {
-                        ItemType[item_type]: WeaponRule.from_dict(rule)
-                        for item_type, rule in weapon_rules.items()
-                    }
-                    
-                self.rune_action = ItemAction[profile_dict.get("rune_action", self.rune_action.name)]
-                self.runes =  {
-                    rune_identifier: RuneConfiguration.from_dict(rune_config)
-                    for rune_identifier, rune_config in profile_dict.get("runes", {}).items()
-                }
-                self.weapon_mod_action = ItemAction[profile_dict.get("weapon_mod_action", self.weapon_mod_action.name)]
-                self.weapon_mods = {
-                    mod_name: {weapon_type: is_active for weapon_type,
-                               is_active in types.items()}
-                    for mod_name, types in profile_dict.get("weapon_mods", {}).items()
-                }
-                
-                self.blacklist = {
-                    ItemType[item_type]: {int(model_id): True for model_id in model_ids}
-                    for item_type, model_ids in profile_dict.get("blacklist", {}).items()
-                }                     
-                self.recipes = profile_dict.get("recipes", self.recipes)
-                self.even_consets = profile_dict.get("even_consets", self.even_consets) 
-                self.include_storage_materials = profile_dict.get("include_storage_materials", self.include_storage_materials)
-                self.include_material_storage_materials = profile_dict.get("include_material_storage_materials", self.include_material_storage_materials)
-                                
-            self.setup_lookups()
-            
-        except FileNotFoundError:
+        if not profile_dict:
             ConsoleLog(
-                "LootEx", f"Profile file {file_path} not found. Using default settings.", Console.MessageType.Warning)
+                "LootEx", f"Profile '{self.name}' not found. Using default settings.", Console.MessageType.Warning)
+            return
+
+        self.name = profile_dict.get("name", self.name)
+        self.polling_interval = profile_dict.get("polling_interval", self.polling_interval)
+        self.loot_range = profile_dict.get("loot_range", self.loot_range)
+        self.deposit_full_stacks = profile_dict.get("deposit_full_stacks", self.deposit_full_stacks)
+        self.dyes = {DyeColor[dye]: value for dye,
+        value in profile_dict.get("dyes", {}).items()}
+        self.identification_kits = profile_dict.get(
+            "identification_kits", self.identification_kits)
+        self.salvage_kits = profile_dict.get(
+            "salvage_kits", self.salvage_kits)
+        self.expert_salvage_kits = profile_dict.get(
+            "expert_salvage_kits", self.expert_salvage_kits)
+        self.lockpicks = profile_dict.get("lockpicks", self.lockpicks)
+        self.sell_threshold = profile_dict.get(
+            "sell_threshold", self.sell_threshold)
+        self.rare_weapons = profile_dict.get(
+            "rare_weapons", self.rare_weapons)
+        self.nick_action = ItemAction[profile_dict.get("nick_action", self.nick_action.name)]
+        self.nick_weeks_to_keep = profile_dict.get(
+            "nick_weeks_to_keep", self.nick_weeks_to_keep)
+        self.nick_items_to_keep = profile_dict.get(
+            "nick_items_to_keep", self.nick_items_to_keep)
+        self.filters = [Filter.from_dict(
+            filter) for filter in profile_dict.get("filters", [])]
+
+        self.skin_rules = [
+            skin_rule.SkinRule.from_dict(rule) for rule in profile_dict.get("rules", [])
+        ]
+
+        weapon_rules = profile_dict.get("weapon_rules", False)
+        if weapon_rules:
+            self.weapon_rules = {
+                ItemType[item_type]: WeaponRule.from_dict(rule)
+                for item_type, rule in weapon_rules.items()
+            }
+
+        self.rune_action = ItemAction[profile_dict.get("rune_action", self.rune_action.name)]
+        self.runes =  {
+            rune_identifier: RuneConfiguration.from_dict(rune_config)
+            for rune_identifier, rune_config in profile_dict.get("runes", {}).items()
+        }
+        self.weapon_mod_action = ItemAction[profile_dict.get("weapon_mod_action", self.weapon_mod_action.name)]
+        self.weapon_mods = {
+            mod_name: {weapon_type: is_active for weapon_type,
+                       is_active in types.items()}
+            for mod_name, types in profile_dict.get("weapon_mods", {}).items()
+        }
+
+        self.blacklist = {
+            ItemType[item_type]: {int(model_id): True for model_id in model_ids}
+            for item_type, model_ids in profile_dict.get("blacklist", {}).items()
+        }
+        self.recipes = profile_dict.get("recipes", self.recipes)
+        self.even_consets = profile_dict.get("even_consets", self.even_consets)
+        self.include_storage_materials = profile_dict.get("include_storage_materials", self.include_storage_materials)
+        self.include_material_storage_materials = profile_dict.get("include_material_storage_materials", self.include_material_storage_materials)
+
+        self.setup_lookups()
 
     def delete(self):
-        from Sources.frenkeyLib.LootEx.settings import Settings
-        settings = Settings()
-        
-        """Delete the profile file."""
-        file_path = os.path.join(
-            settings.profiles_path, f"{self.name}.json")
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            ConsoleLog(
-                "LootEx", f"Profile {self.name} deleted.", Console.MessageType.Info)
-        else:
-            ConsoleLog(
-                "LootEx", f"Profile file {file_path} not found.", Console.MessageType.Warning)
+        from Sources.frenkeyLib.LootEx.settings import settings_store
+
+        """Delete the profile from the account-scoped store and registry."""
+        _profile_doc(self.name).set_json("", {})
+
+        registry = settings_store()
+        names = registry.get_json("profiles", [])
+        if self.name in names:
+            names.remove(self.name)
+            registry.set_json("profiles", names)
+
+        ConsoleLog(
+            "LootEx", f"Profile {self.name} deleted.", Console.MessageType.Info)
 
     def add_filter(self, filter: Filter):
         """Add a filter to the profile."""

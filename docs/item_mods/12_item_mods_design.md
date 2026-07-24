@@ -1,5 +1,15 @@
 # 12 — `Item.Mods`: Agreed Design
 
+> **BUILT — as-shipped note.** This design landed. The live surface is `Item.Mods`
+> (`Py4GWCoreLib/Item.py`) over `Py4GWCoreLib/mods_core.py` + `Py4GWCoreLib/mods_types.py`.
+> Two naming differences between this doc's plan and what shipped:
+> - The planned separate files `mods_value_args.py` / `mod_ids.py` / `mods_metadata.py` were
+>   **never created as separate files** — the per-identifier read rules live in the `_Def` table
+>   inside `mods_core.py`, and the identifiers are `ModifierIdentifier` in `mods_types.py`.
+> - `DyeColor.Mixed = 1` was added (see `GameData_enums.py`).
+>
+> For the current API, follow **doc 10** (it matches the code). This doc remains the rationale.
+
 > This is the **settled design** for the mod read/filter subsystem, distilled from the whole
 > design conversation. It supersedes the exploratory shape in `11_mod_system_research.md`
 > (research) and `mod_defs_sketch.py` (an early sketch that predates the final API). Where a
@@ -230,7 +240,7 @@ Frenkey / `item_mods_src` are the **reference data source**; the structure is ou
 | `Filter.Weapon.IsMaxDamage` | `Filter` | `Properties` | pending |
 | `Filter.Dye.IsDyeColor` | `Filter` | `Item.Dye` | pending (after dye research) |
 | `Customization.Modifiers.*` + upgrade layer | `Customization` | `Item.Mods` | the core build |
-| `mods_value_args.py`, `mod_ids.py`, `mods_metadata.py` | — | folded into the data module, then **deleted** | pending |
+| `mods_value_args.py`, `mod_ids.py`, `mods_metadata.py` | — | **never separate files** — the read rules became the `_Def` table in `mods_core.py`; identifiers are `ModifierIdentifier` in `mods_types.py` | done (as-built) |
 | **`Item.Customization` class (whole thing)** | — | **DELETED** once emptied | the goal |
 
 Vanity single-helper subclasses (`Trade`, `Filter`) are dissolved: every helper lives where it
@@ -261,8 +271,9 @@ from `Item.py`.
 4. Validate against live items (oracle check) until values match the game.
 5. **Repoint callers**: `Item.Customization.*` users → `Item.Mods` / `Item.Properties` / `Item.Dye`;
    `frenkey item_snapshot.py` (imports `properties.py`) → the new surface.
-6. **Delete**: `Item.Customization` class, the `item_mods_src` package, and
-   `mods_value_args.py` / `mod_ids.py` / `mods_metadata.py`.
+6. **Delete**: `Item.Customization` class and the `item_mods_src` package. (The
+   `mods_value_args.py` / `mod_ids.py` / `mods_metadata.py` files were never created — that data
+   became the `_Def` table in `mods_core.py`.)
 
 ### `item_mods_src` teardown — the whole legacy package (12,132 lines, 596 classes)
 

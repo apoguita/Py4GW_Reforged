@@ -28,9 +28,11 @@ Scopes (where the file lives, and when it binds)
   normally from the first frame.
 - ``"global"``  → ``settings/Global/<name>``. **Shared across every account** on the machine.
   Binds immediately.
-- ``"root"``    → ``<name>`` at the project root (e.g. ``Py4GW.ini``). Shared, binds immediately.
-  Reserved for core files that must live at the root; application scripts should prefer
-  ``account`` (personal prefs) or ``global`` (machine-wide prefs).
+
+There is deliberately **no ``"root"`` scope** — every named document lives strictly under
+``settings/``, so nothing can be written outside the jail by choosing a scope. The single file
+allowed at the project root, ``Py4GW.ini`` (a cross-process contract with the external launcher), is
+reached only through the path-less :meth:`Settings.py4gw_ini` accessor.
 
 Saving is automatic (do not micro-manage it)
 --------------------------------------------
@@ -109,7 +111,17 @@ class Settings:
         This mirrors the native "one document per (name, scope)" guarantee on the Python side: two
         constructions with the same pair yield the *same* ``Settings`` object, so all callers share
         one in-memory view of the file.
+
+        ``scope`` must be ``"account"`` or ``"global"`` — both resolve strictly under ``settings/``.
+        There is deliberately **no** ``"root"`` scope: the project root is not addressable by name
+        (that would be a jail-escape surface). The single root file, ``Py4GW.ini``, is reached only
+        through the path-less :meth:`py4gw_ini` accessor.
         """
+        if str(scope) not in ('account', 'global'):
+            raise ValueError(
+                f"Settings scope must be 'account' or 'global' (got {scope!r}); "
+                "the one root file is reached via Settings.py4gw_ini()"
+            )
         instance_key = (str(name), str(scope))
         existing = cls._instances.get(instance_key)
         if existing is not None:
@@ -118,12 +130,34 @@ class Settings:
         cls._instances[instance_key] = instance
         return instance
 
+    @classmethod
+    def py4gw_ini(cls) -> 'Settings':
+        """The one document permitted outside the ``settings/`` jail: the root ``Py4GW.ini``.
+
+        This is the deliberate, unbypassable exception — a cross-process contract with the external
+        (non-injected) launcher, which cannot use the ``settings/`` jail. It takes **no name and no
+        scope**, so it can only ever be that single file; there is no argument to redirect it
+        elsewhere. Use it ONLY for the root-contract keys (theme override, autoexec, version);
+        everything else is per-account or global config via ``Settings(name[, scope])``.
+        """
+        cache_key = ('\x00Py4GW.ini', '\x00root')
+        existing = cls._instances.get(cache_key)
+        if existing is not None:
+            return existing
+        instance = object.__new__(cls)
+        instance._name = 'Py4GW.ini'
+        instance._scope = 'root'
+        instance._doc = PySettings.py4gw_ini()
+        instance._initialized = True
+        cls._instances[cache_key] = instance
+        return instance
+
     def __init__(self, name: str, scope: str = 'account') -> None:
         """Bind to the ``(name, scope)`` document (opening it on the native side once).
 
-        ``scope`` is ``"account"`` (per-account, default), ``"global"`` (machine-wide), or
-        ``"root"`` (project root; reserved for core files). Guarded so the shared instance is only
-        initialized once even though the launcher may construct it repeatedly.
+        ``scope`` is ``"account"`` (per-account, default) or ``"global"`` (machine-wide); both live
+        under ``settings/``. ``"root"`` is not a valid scope (see :meth:`py4gw_ini`). Guarded so the
+        shared instance is only initialized once even though the launcher may construct it repeatedly.
         """
         if getattr(self, '_initialized', False):
             return
@@ -196,7 +230,8 @@ class Settings:
 
     @property
     def scope(self) -> str:
-        """The document's scope: ``"account"``, ``"global"``, or ``"root"``."""
+        """The document's scope: ``"account"`` or ``"global"`` (or ``"root"`` for the lone
+        :meth:`py4gw_ini` document)."""
         return self._scope
 
     # ------------------------------------------------------------------

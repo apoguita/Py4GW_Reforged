@@ -3,10 +3,8 @@ import os
 import re
 import traceback
 from collections import OrderedDict
-from pathlib import Path
 
 import PyImGui
-import PyJson
 import PySystem
 
 from Py4GWCoreLib import GLOBAL_CACHE
@@ -46,8 +44,9 @@ all_accounts_search_query = ''
 search_query = ''
 current_character_name = ''
 
-# Read-side cache the widget iterates when drawing every frame. Populated for the
-# current account from the JsonFactory doc, and for other accounts from a disk scan.
+# Read-side cache the widget iterates when drawing every frame. Populated from the
+# shared global JsonFactory doc: every account (current and peers) is just an
+# email-keyed subtree of that one document, so no cross-account file access is needed.
 TEAM_INVENTORY_CACHE = {}
 
 INVENTORY_BAGS = {
@@ -307,21 +306,6 @@ def clean_gw_item_name(item_name: str):
 
 # region JSONStore
 
-def _json_root_dir():
-    """Root of the per-account JSON tree, i.e. the parent of PyJson.get_json_directory().
-
-    Returns None until the account anchor has resolved (get_json_directory is empty
-    up to that point). Everything that needs to enumerate accounts must gate on this.
-    """
-    try:
-        d = PyJson.get_json_directory()
-    except Exception:
-        return None
-    if not d:
-        return None
-    return Path(d).parent
-
-
 class ModelIDJSONStore:
     """Shared {model_id: model_name} map, backed by a global-scope JsonFactory doc.
 
@@ -413,138 +397,103 @@ class ModHashJSONStore:
 
 
 class AccountJSONStore:
-    """Per-account inventory (Characters + Storage), backed by an account-scope
-    JsonFactory doc for the *current* account only.
+    """Per-account inventory (Characters + Storage) stored as an email-keyed subtree of
+    ONE global-scope JsonFactory document shared by every client.
 
-    Constructing this class with any other email yields a read-only view: load()
-    scans that account's inventory.json off disk and populates TEAM_INVENTORY_CACHE.
-    All write/clear methods no-op on non-current accounts (JsonFactory has no
-    "write to another account's doc from arbitrary state" primitive we can lean on
-    here — the class must own the source of truth).
+    Global scope is multibox-safe: each account only ever writes under its OWN email key,
+    and the native journal-merge folds every client's subtree into the same file without
+    clobbering. Reading a peer is then a normal read of that shared document (its email
+    subtree) — no cross-account file access. Write/clear methods still no-op for any email
+    other than the current account, so a client never mutates another account's subtree.
     """
 
-    FILE = "TeamInventoryViewer/inventory.json"
+    FILE = "TeamInventoryViewer/team_inventory.json"
 
     def __init__(self, email):
         self.email = email
         current = Player.GetAccountEmail()
         self._is_current = bool(current) and email == current
-        self.file = JsonFactory(self.FILE, "account") if self._is_current else None
+        self.file = JsonFactory(self.FILE, "global")
+
+    def _fresh_snapshot(self):
+        return self.file.get_json(self.email, None) or {
+            "Characters": OrderedDict(),
+            "Storage": OrderedDict(),
+        }
 
     # ----- Reads -----
 
     def load(self):
-        if self._is_current and self.file:
-            data = self.file.get_json("", None)
-        else:
-            data = self._read_disk_snapshot()
+        data = self.file.get_json(self.email, None)
         if not data:
             data = {"Characters": OrderedDict(), "Storage": OrderedDict()}
         TEAM_INVENTORY_CACHE[self.email] = data
         return data
 
-    def _read_disk_snapshot(self):
-        root = _json_root_dir()
-        if root is None:
-            return None
-        p = root / self.email / self.FILE
-        if not p.exists():
-            return None
-        try:
-            with open(p, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except Exception:
-            return None
-
-    # ----- Writes (current account only) -----
+    # ----- Writes (own account subtree only) -----
 
     def save_bag(self, char_name=None, storage_name=None, bag_name=None, bag_items=None):
-        if not self._is_current or not self.file:
+        if not self._is_current:
             return
         if bag_items is None:
             bag_items = {}
         if char_name and bag_name:
-            path = f"Characters/{char_name}/Inventory/{bag_name}"
+            path = f"{self.email}/Characters/{char_name}/Inventory/{bag_name}"
         elif storage_name:
-            path = f"Storage/{storage_name}"
+            path = f"{self.email}/Storage/{storage_name}"
         else:
             return
         # set_json dedups against the current subtree, so an unchanged assignment is free.
         self.file.set_json(path, dict(bag_items))
-        TEAM_INVENTORY_CACHE[self.email] = self.file.get_json("", None) or {
-            "Characters": OrderedDict(),
-            "Storage": OrderedDict(),
-        }
+        TEAM_INVENTORY_CACHE[self.email] = self._fresh_snapshot()
 
     def clear_character(self, char_name):
-        if not self._is_current or not self.file:
+        if not self._is_current:
             return
-        if self.file.delete(f"Characters/{char_name}"):
+        if self.file.delete(f"{self.email}/Characters/{char_name}"):
             ConsoleLog("AccountJSONStore", f"Removed character {char_name} from {self.email}.")
         else:
             ConsoleLog("AccountJSONStore", f"[WARN] Character {char_name} not found for {self.email}.")
-        TEAM_INVENTORY_CACHE[self.email] = self.file.get_json("", None) or {
-            "Characters": OrderedDict(),
-            "Storage": OrderedDict(),
-        }
+        TEAM_INVENTORY_CACHE[self.email] = self._fresh_snapshot()
 
     def clear_account(self):
-        if self._is_current and self.file:
-            # Can't unlink the file (autosave would just re-persist an empty doc);
-            # emptying the tree is the equivalent operation for JsonFactory.
-            self.file.set_json("", {"Characters": {}, "Storage": {}})
+        if self._is_current:
+            # Drop this account's whole subtree from the shared doc.
+            self.file.delete(self.email)
         TEAM_INVENTORY_CACHE[self.email] = None
         ConsoleLog("AccountJSONStore", f"Cleared all data for {self.email}.")
 
 
 class MultiAccountInventoryStore:
+    def __init__(self):
+        self.file = JsonFactory(AccountJSONStore.FILE, "global")
+
     def account_store(self, email):
         return AccountJSONStore(email)
 
     def load_all(self):
-        """Populate TEAM_INVENTORY_CACHE with every discoverable account's data.
+        """Populate TEAM_INVENTORY_CACHE from the shared global doc.
 
-        Current account: pulled from the in-memory JsonFactory doc (freshest state,
-        including writes made this tick that haven't autosaved yet).
-        Other accounts: scanned off disk from json/<email>/TeamInventoryViewer/inventory.json.
+        Every account is an email-keyed subtree of the one document, so both the current
+        account (freshest in-memory state, including writes made this tick that haven't
+        autosaved yet) and every peer come from the same read — no disk scan, no
+        cross-account file access.
         """
         current_email = Player.GetAccountEmail()
         if current_email:
             AccountJSONStore(current_email).load()
 
-        root = _json_root_dir()
-        if root is not None and root.exists():
-            for account_dir in root.iterdir():
-                if not account_dir.is_dir():
-                    continue
-                name = account_dir.name
-                if name == "Global" or name == current_email:
-                    continue
-                if not (account_dir / AccountJSONStore.FILE).exists():
-                    continue
-                AccountJSONStore(name).load()
+        for email in self.file.keys(""):
+            if not email or email == current_email:
+                continue
+            AccountJSONStore(email).load()
 
         return TEAM_INVENTORY_CACHE
 
     def clear_all_data(self):
-        """Empty the current account's doc; delete other accounts' inventory files off disk."""
-        current_email = Player.GetAccountEmail()
-        if current_email:
-            AccountJSONStore(current_email).clear_account()
+        """Wipe every account's subtree from the shared global doc and clear the cache."""
+        self.file.set_json("", {})
         TEAM_INVENTORY_CACHE.clear()
-
-        root = _json_root_dir()
-        if root is None or not root.exists():
-            return
-        for account_dir in root.iterdir():
-            if not account_dir.is_dir() or account_dir.name == "Global" or account_dir.name == current_email:
-                continue
-            f = account_dir / AccountJSONStore.FILE
-            if f.exists():
-                try:
-                    f.unlink()
-                except Exception as e:
-                    ConsoleLog("MultiAccountInventoryStore", f"[WARN] Failed to delete {f}: {e}")
 
 
 multi_store = MultiAccountInventoryStore()

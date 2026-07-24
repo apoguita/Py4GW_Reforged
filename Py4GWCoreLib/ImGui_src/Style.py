@@ -4,6 +4,7 @@ import os
 from enum import IntEnum
 from.types import ImGuiStyleVar, StyleColorType, StyleTheme
 from ..Py4GWcorelib import Utils, Color
+from ..py4gwcorelib_src.JsonFactory import JsonFactory
 
 class Style:    
     pyimgui_style = PyImGui.StyleConfig()
@@ -338,15 +339,15 @@ class Style:
             "StyleVars": {k: v.to_json() for k, v in self.StyleVars.items()}
         }
 
-        with open(os.path.join("Styles", f"{self.Theme.name}.json"), "w") as f:
-            json.dump(style_data, f, indent=4)
+        JsonFactory(f"Styles/{self.Theme.name}.json", "global").set_json("", style_data)
 
     def delete(self) -> bool:
-        file_path = os.path.join("Styles", f"{self.Theme.name}.json")
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return True
-        return False
+        # JsonFactory has no "delete the file" (delete("") is a no-op at the root);
+        # emptying the document reverts this theme to its bundled default on reload.
+        doc = JsonFactory(f"Styles/{self.Theme.name}.json", "global")
+        existed = bool(doc.get_json("", None))
+        doc.set_json("", {})
+        return existed
 
     def apply_to_style_config(self):        
         for _, attribute in self.Colors.items():
@@ -366,14 +367,7 @@ class Style:
         self.pyimgui_style.Push()
 
     @classmethod
-    def load_from_json(cls, path: str, theme : StyleTheme) -> "Style":
-        style = cls()
-        if not os.path.exists(path):
-            return style
-
-        with open(path, "r") as f:
-            style_data = json.load(f)
-
+    def _apply_json_data(cls, style: "Style", style_data: dict, theme: StyleTheme) -> "Style":
         style.Theme = theme
 
         for color_name, color_data in style_data.get("Colors", {}).items():
@@ -399,11 +393,25 @@ class Style:
         return style
 
     @classmethod
+    def load_from_json(cls, path: str, theme : StyleTheme) -> "Style":
+        # Bundled read-only theme data (Styles/<name>.default.json shipped with the repo).
+        style = cls()
+        if not os.path.exists(path):
+            return style
+
+        with open(path, "r") as f:
+            style_data = json.load(f)
+
+        return cls._apply_json_data(style, style_data, theme)
+
+    @classmethod
     def load_theme(cls, theme: StyleTheme) -> "Style":
-        file_path = os.path.join("Styles", f"{theme.name}.json")
+        style_data = JsonFactory(f"Styles/{theme.name}.json", "global").get_json("", None)
+        if isinstance(style_data, dict) and style_data:
+            return cls._apply_json_data(cls(), style_data, theme)
+
         default_file_path = os.path.join("Styles", f"{theme.name}.default.json")
-        path = file_path if os.path.exists(file_path) else default_file_path if os.path.exists(default_file_path) else None
-        return cls.load_from_json(path, theme) if path else cls(theme)
+        return cls.load_from_json(default_file_path, theme) if os.path.exists(default_file_path) else cls(theme)
 
     @classmethod
     def load_default_theme(cls, theme: StyleTheme) -> "Style":

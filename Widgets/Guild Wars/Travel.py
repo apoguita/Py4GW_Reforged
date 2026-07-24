@@ -11,9 +11,7 @@ from Py4GWCoreLib import Style
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import Color, ColorPalette
-
-import json
-import os
+from Py4GWCoreLib import JsonFactory
 
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, ThrottledTimer, Utils
@@ -21,8 +19,7 @@ from Py4GWCoreLib.enums import Key
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import Widget, WidgetHandler, get_widget_handler
 MODULE_NAME = "Travel"
 
-script_directory = os.path.dirname(os.path.abspath(__file__))
-root_directory = PySystem.Console.get_projects_path()
+_cfg = JsonFactory("Widgets/Travel.json")  # account scope; self-persisting
 
 save_throttle_time = 1000
 save_throttle_timer = Timer()
@@ -50,41 +47,27 @@ class Config:
         self.button_size : int = 48
     
     def load(self):
-        # Load the configuration from json
-        json_file = os.path.join(root_directory, "Widgets/Config/Travel.json")
-        
-        if os.path.exists(json_file):
-            with open(json_file, "r") as f:
-                data = json.load(f)
-                self.button_position = tuple(data.get("button_position", (100, 100)))
-                self.config_position = tuple(data.get("config_position", (100, 100)))
-                self.favorites = data.get("favorites", [])
-                self.show_travel_history = data.get("show_travel_history", True)
-                self.show_favorites = data.get("show_favorites", True)
-                self.history_length = data.get("history_length", 5)
-                self.close_after_travel = data.get("close_after_travel", True)
-                self.button_size = data.get("button_size", 48)
-                
-    
+        # Load the configuration from the jailed JSON document (self-persisting).
+        self.button_position = tuple(_cfg.get_json("button_position", [100, 100]))
+        self.config_position = tuple(_cfg.get_json("config_position", [100, 100]))
+        self.favorites = _cfg.get_json("favorites", [])
+        self.show_travel_history = _cfg.get_bool("show_travel_history", True)
+        self.show_favorites = _cfg.get_bool("show_favorites", True)
+        self.history_length = _cfg.get_int("history_length", 5)
+        self.close_after_travel = _cfg.get_bool("close_after_travel", True)
+        self.button_size = _cfg.get_int("button_size", 48)
+
     def save(self):
-        # Save the configuration to json
-        dict = {
-            "button_position": self.button_position,
-            "config_position": self.config_position,
-            "favorites": self.favorites,
-            "show_travel_history": self.show_travel_history,
-            "show_favorites": self.show_favorites,
-            "history_length": self.history_length,
-            "close_after_travel": self.close_after_travel,
-            "button_size": self.button_size,
-        }
-        
-        
-        json_file = os.path.join(root_directory, "Widgets/Config/Travel.json")
-        
-        with open(json_file, "w") as f:
-            json.dump(dict, f, indent=4)
-        
+        # Write into the jailed JSON document; autosaved on a debounce.
+        _cfg.set_json("button_position", list(self.button_position))
+        _cfg.set_json("config_position", list(self.config_position))
+        _cfg.set_json("favorites", list(self.favorites))
+        _cfg.set_bool("show_travel_history", self.show_travel_history)
+        _cfg.set_bool("show_favorites", self.show_favorites)
+        _cfg.set_int("history_length", self.history_length)
+        _cfg.set_bool("close_after_travel", self.close_after_travel)
+        _cfg.set_int("button_size", self.button_size)
+
         self.save_requested = False
             
     def request_save(self):

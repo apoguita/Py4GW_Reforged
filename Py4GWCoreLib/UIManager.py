@@ -5,11 +5,11 @@ import PyImGui
 import PyUIManager
 import time
 from typing import Dict, List, Optional
-import json
 import PyOverlay
 from collections import deque, defaultdict
 
 from Py4GWCoreLib.py4gwcorelib_src.FrameCache import frame_cache
+from .py4gwcorelib_src.JsonFactory import JsonFactory
 from .Py4GWcorelib import ConsoleLog, Console
 from .enums_src.Item_enums import INVENTORY_BAGS, INVENTORY_WITH_EQUIPMENT_BAGS, STORAGE_BAGS, Bags, SalvageMode
 from .enums_src.UI_enums import WindowID
@@ -220,54 +220,37 @@ class UIManager:
     
     @staticmethod
     def SaveEntryToJSON(filename: str, frame_id: int, alias: str):
-        """Writes or updates an entry in a JSON file."""
-        try:
-            with open(filename, "r", encoding="utf-8") as file:
-                data: Dict[str, str] = json.load(file)  # Load existing data
-        except (FileNotFoundError, json.JSONDecodeError):
-            data = {}  # Start fresh if file doesn't exist or is invalid
-
+        """Writes or updates an entry in the shared frame-alias document (JsonFactory, global scope)."""
         frame_path = UIManager.ConstructFramePath(frame_id)
 
         if frame_path:  # Ensure the path is valid before saving
-            data[frame_path] = alias
-
-        with open(filename, "w", encoding="utf-8") as file:
-            json.dump(data, file, indent=4)  # Save back to file
+            JsonFactory("frame_aliases.json", "global").set(frame_path, alias)
 
     @staticmethod
     def GetEntryFromJSON(filename: str, frame_id: int) -> str:
         """
-        Reads an entry from a JSON file by constructing the frame's path.
+        Reads an entry from the shared frame-alias document by constructing the frame's path.
 
-        :param filename: The JSON file to read from.
+        :param filename: Retained for call compatibility; the alias map is a global JsonFactory document.
         :param frame_id: The frame ID to locate.
-        :return: The alias if found, otherwise None.
+        :return: The alias if found, otherwise an empty string.
         """
-        try:
-            with open(filename, "r", encoding="utf-8") as file:
-                data = json.load(file)  # Load JSON data
-        except (FileNotFoundError, json.JSONDecodeError):
-            return "" # Return empty string if file doesn't exist or is invalid
-
         frame_path = UIManager.ConstructFramePath(frame_id)
-        
-        return data.get(frame_path) or ""  # Return the alias if found, otherwise an empty string
+        if not frame_path:
+            return ""
+
+        return JsonFactory("frame_aliases.json", "global").get_str(frame_path, "")
 
     @staticmethod
     def GetFrameIDByCustomLabel(filename: str = ".\\Py4GWCoreLib\\frame_aliases.json", frame_label: str = "Game") -> int:
         """
-        Finds the frame_id of a UIFrame by matching its constructed path with a stored alias in the JSON file.
+        Finds the frame_id of a UIFrame by matching its constructed path with a stored alias.
 
-        :param filename: The JSON file containing frame mappings.
+        :param filename: Retained for call compatibility; the alias map is a global JsonFactory document.
         :param frame_label: The label corresponding to a hashed frame path.
         :return: The frame_id if found, otherwise 0.
         """
-        try:
-            with open(filename, "r", encoding="utf-8") as file:
-                data = json.load(file)  # Load JSON data
-        except (FileNotFoundError, json.JSONDecodeError):
-            return 0  # Return 0 if the file is missing or invalid
+        data = JsonFactory("frame_aliases.json", "global").get_json("", {})
 
         # Find the frame path corresponding to the given label
         target_path = next((path for path, alias in data.items() if alias == frame_label), None)

@@ -3,8 +3,6 @@ import PyImGui
 import random
 import time
 import os
-import re
-import shutil
 import copy
 
 from Py4GWCoreLib import *
@@ -34,7 +32,6 @@ CONSOLIDATE_TO_BACK = False        # Sort non-filter-assigned items to the back 
 AUTO_DEPOSIT_MATERIALS = False     # Automatically move materials into Material Storage
 WINDOW_OPEN = False                # Whether the main GUI panel is visible
 INI_KEY = "Xunlai Manager"
-INI_RELATIVE_PATH = "Settings/{account}/Inventory/XunlaiManager/xunlai_manager.ini"
 
 
 project_root = PySystem.Console.get_projects_path()  # Absolute root path of the Py4GW installation
@@ -42,9 +39,8 @@ save_timer = ThrottledTimer(500)                   # Prevents writing the INI on
 _account_check_timer = ThrottledTimer(2000)        # Throttles Player.GetAccountEmail() to once every 2 s
 ini_handler = None                                 # IniHandler instance; created on first account load
 _active_account_email = ""                         # Email of the currently loaded account
-_active_ini_path = ""                              # Full path to the active INI file
 _last_saved_anniversary_slot_unlocked = False      # Tracks whether the anniversary flag needs re-saving
-_selected_settings_account = ""                    # Account selected in the settings copy-from dropdown
+_selected_settings_account = ""                    # Target account selected in the settings copy-to dropdown
 _last_window_width = float(COMPACT_WINDOW_MIN_WIDTH)  # Cached window width used for anchor positioning
 
 # Idle-performance: throttled stats cache â€” avoids scanning all storage bags every frame
@@ -87,13 +83,6 @@ _sort_done_until = 0.0            # Keep progress bar visible until this monoton
 _material_storage_quantities_live = {}  # Snapshot of Material Storage quantities, refreshed each tick
 
 
-def _sanitize_path_component(value: str) -> str:
-	"""Strip characters that are invalid in file-system paths and return a safe folder name."""
-	if not value:
-		return "default_settings"
-	return re.sub(r'[\\/:*?"<>|]+', "_", value).strip() or "default_settings"
-
-
 def _get_current_account_email() -> str:
 	"""Return the logged-in account e-mail, falling back to 'default_settings' on failure."""
 	try:
@@ -103,23 +92,6 @@ def _get_current_account_email() -> str:
 	except Exception:
 		pass
 	return "default_settings"
-
-
-def _build_account_ini_path(account_email: str) -> str:
-	"""Build the absolute INI file path for the given account e-mail."""
-	safe_account = _sanitize_path_component(account_email)
-	relative_path = INI_RELATIVE_PATH.format(account=safe_account)
-	return os.path.join(project_root, relative_path)
-
-
-def _ensure_ini_path_exists(ini_path: str):
-	"""Create the parent directory tree and an empty INI file if they do not yet exist."""
-	parent_dir = os.path.dirname(ini_path)
-	if parent_dir:
-		os.makedirs(parent_dir, exist_ok=True)
-	if not os.path.exists(ini_path):
-		with open(ini_path, "w", encoding="utf-8"):
-			pass
 
 
 def _clear_storage_settings_cache():
@@ -134,53 +106,30 @@ def _clear_storage_settings_cache():
 
 
 def _list_settings_accounts() -> list:
-	"""Return a sorted list of known account folder names that have an existing INI file."""
-	accounts = set()
-	settings_root = os.path.join(project_root, "Settings")
-	if os.path.isdir(settings_root):
-		for entry_name in os.listdir(settings_root):
-			entry_path = os.path.join(settings_root, entry_name)
-			if not os.path.isdir(entry_path):
-				continue
-			ini_path = _build_account_ini_path(entry_name)
-			if os.path.exists(ini_path):
-				accounts.add(entry_name)
+	"""Return the e-mails of other logged-in accounts, taken from shared memory.
 
-	accounts.add(_sanitize_path_component(_get_current_account_email()))
-	if _active_account_email:
-		accounts.add(_sanitize_path_component(_active_account_email))
-
-	return sorted(accounts, key=lambda value: value.lower())
-
-
-def _copy_account_settings_to_current(source_account: str, target_account: str) -> bool:
-	"""Copy the INI file from source_account into target_account's settings folder.
-
-	Returns True on success, False when the source INI does not exist.
+	The Settings jail forbids listing the on-disk settings tree, so the roster comes
+	from GLOBAL_CACHE.ShMem (every client publishes its own account there). The current
+	account is excluded — you copy your settings *to* another account, not to yourself.
 	"""
-	source_account_safe = _sanitize_path_component(source_account)
-	target_account_safe = _sanitize_path_component(target_account)
-	source_ini_path = _build_account_ini_path(source_account_safe)
-	target_ini_path = _build_account_ini_path(target_account_safe)
-
-	if not os.path.exists(source_ini_path):
-		return False
-
-	_ensure_ini_path_exists(target_ini_path)
-	shutil.copyfile(source_ini_path, target_ini_path)
-	return True
+	current_email = _get_current_account_email()
+	emails = []
+	for account_data in GLOBAL_CACHE.ShMem.GetAllAccountData():
+		email = str(account_data.AccountEmail or "").strip()
+		if email and email != current_email and email not in emails:
+			emails.append(email)
+	return sorted(emails, key=lambda value: value.lower())
 
 
 def _ensure_account_settings_loaded(force: bool = False):
 	"""Load (or reload) settings for the currently logged-in account.
 
-	Creates the INI file if missing, initialises all settings globals from disk,
+	Initialises all settings globals from the account-scoped Settings document,
 	and resets the active sort task and filter cache when switching accounts.
 	Pass force=True to reload even if the account has not changed.
 	"""
 	global ini_handler
 	global _active_account_email
-	global _active_ini_path
 	global ANNIVERSARY_SLOT_UNLOCKED
 	global _last_saved_anniversary_slot_unlocked
 	global SHOW_SETTINGS
@@ -199,16 +148,14 @@ def _ensure_account_settings_loaded(force: bool = False):
 	runtime_account_email = _get_current_account_email()
 	_account_check_timer.Reset()
 	target_account_email = runtime_account_email
-	ini_path = _build_account_ini_path(target_account_email)
 
-	if not force and ini_handler is not None and ini_path == _active_ini_path:
+	if not force and ini_handler is not None and target_account_email == _active_account_email:
 		return
 
-	_ensure_ini_path_exists(ini_path)
+	# Account-scoped Settings binds itself to the logged-in account natively; no path
+	# to build and no file to pre-create. Re-reading pulls the freshly-anchored doc.
 	ini_handler = Settings("Inventory/XunlaiManager/xunlai_manager.ini", "account")
 	_active_account_email = target_account_email
-	_selected_settings_account = _sanitize_path_component(target_account_email)
-	_active_ini_path = ini_path
 	ANNIVERSARY_SLOT_UNLOCKED = ini_handler.get_bool(INI_KEY, "anniversary_slot_unlocked", False)
 	_last_saved_anniversary_slot_unlocked = ANNIVERSARY_SLOT_UNLOCKED
 	SHOW_SETTINGS = ini_handler.get_bool(INI_KEY, "show_settings", False)
@@ -3251,21 +3198,23 @@ def _draw_window():
 	PyImGui.separator()
 
 	if SHOW_SETTINGS:
-		runtime_account = _sanitize_path_component(_get_current_account_email())
-		loaded_account = _sanitize_path_component(_active_account_email)
-
+		# Push this account's Xunlai settings onto another logged-in account through the
+		# sanctioned Settings cross-account API. The target roster comes from shared memory,
+		# never from listing the settings tree, and the copy never touches another account's
+		# file directly (the native side overlays it; the peer picks it up on its next reload).
 		account_options = _list_settings_accounts()
 		if len(account_options) > 0:
 			if _selected_settings_account not in account_options:
-				_selected_settings_account = loaded_account if loaded_account in account_options else account_options[0]
+				_selected_settings_account = account_options[0]
 			selected_index = account_options.index(_selected_settings_account)
-			selected_index = PyImGui.combo("Load settings from this account", selected_index, account_options)
+			selected_index = PyImGui.combo("Copy my settings to this account", selected_index, account_options)
 			selected_index = max(0, min(selected_index, len(account_options) - 1))
 			_selected_settings_account = account_options[selected_index]
 
-			if PyImGui.button("Load"):
-				_copy_account_settings_to_current(_selected_settings_account, runtime_account)
-				_ensure_account_settings_loaded(force=True)
+			if PyImGui.button("Copy") and ini_handler is not None:
+				ini_handler.copy_document_to_account(_selected_settings_account)
+		else:
+			PyImGui.text("No other accounts detected in shared memory.")
 
 		PyImGui.separator()
 

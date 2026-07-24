@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Iterator, Optional
 
-import PySystem
+from Py4GWCoreLib import JsonFactory
 from Sources.frenkeyLib.ItemHandling.Rules.base_rule import BaseRule
 from Sources.frenkeyLib.ItemHandling.Rules.types import ItemAction
 
@@ -46,15 +45,9 @@ class RuleProfile:
         self._cache_dirty = False
 
     @staticmethod
-    def get_profiles_directory() -> str:
-        project_path = PySystem.Console.get_projects_path()
-        profile_dir = os.path.join(project_path, "Widgets", "Config", "ItemHandling", "Profiles")
-        os.makedirs(profile_dir, exist_ok=True)
-        return profile_dir
-
-    @property
-    def default_path(self) -> str:
-        return os.path.join(self.get_profiles_directory(), f"{self.name}.json")
+    def _document(name: str) -> JsonFactory:
+        '''The account-scoped JsonFactory document for the profile named ``name`` (one doc per profile).'''
+        return JsonFactory(f"ItemHandling/Profiles/{name}.json")
 
     def add_rule(self, rule: BaseRule, rule_type: Optional[str] = None, index: Optional[int] = None) -> None:
         rule_type_name = rule_type or type(rule).__name__
@@ -197,29 +190,12 @@ class RuleProfile:
     def from_json(cls, json_payload: str) -> "RuleProfile":
         return cls.from_dict(json.loads(json_payload))
 
-    def save(self, path: Optional[str] = None) -> str:
-        target_path = path or self.default_path
-        target_directory = os.path.dirname(target_path)
-        if target_directory:
-            os.makedirs(target_directory, exist_ok=True)
-
-        with open(target_path, "w", encoding="utf-8") as file:
-            json.dump(self.to_dict(), file, indent=4)
-
-        return target_path
-
-    @classmethod
-    def load(cls, path: str) -> "RuleProfile":
-        try:
-            with open(path, "r", encoding="utf-8") as file:
-                payload = json.load(file)
-        
-        except (FileNotFoundError, json.JSONDecodeError):
-            return cls.from_dict({})
-        
-        return cls.from_dict(payload)
+    def save(self) -> None:
+        '''Saves this profile to its own JsonFactory document (account scope, autosaved).'''
+        self._document(self.name).set_json("", self.to_dict())
 
     @classmethod
     def load_by_name(cls, name: str) -> "RuleProfile":
-        path = os.path.join(cls.get_profiles_directory(), f"{name}.json")
-        return cls.load(path)
+        '''Loads the profile named ``name`` from its JsonFactory document (empty doc -> defaults).'''
+        payload = cls._document(name).get_json("", {})
+        return cls.from_dict(payload if isinstance(payload, dict) else {})

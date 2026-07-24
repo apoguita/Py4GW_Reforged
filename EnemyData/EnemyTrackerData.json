@@ -10722,6 +10722,12 @@
         }
       },
       "observed_skills": {
+        "321": {
+          "id": 321,
+          "name": "Wild Blow",
+          "profession": "Warrior",
+          "profession_id": 1
+        },
         "332": {
           "id": 332,
           "name": "Bull's Strike",
@@ -20627,6 +20633,12 @@
         "101": {
           "id": 101,
           "name": "Barbs",
+          "profession": "Necromancer",
+          "profession_id": 4
+        },
+        "1069": {
+          "id": 1069,
+          "name": "Taste of Pain",
           "profession": "Necromancer",
           "profession_id": 4
         },

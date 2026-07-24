@@ -44,7 +44,7 @@ from . import ui
 
 _SECTION = "Settings"
 
-_SCOPES = ["account", "global", "root"]
+_SCOPES = ["account", "global"]
 _VALUE_TYPES = ["str", "int", "float", "bool"]
 _TYPE_TOKENS = {"str": str, "int": int, "float": float, "bool": bool}
 

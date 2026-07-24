@@ -15,8 +15,9 @@ class settings:
     def __init__(self, name: str, scope: str = "account") -> None:
         """Bind to a named settings document.
 
-        ``scope`` is one of ``"account"``, ``"global"``, or ``"root"``. No
-        open/close/save needed — the manager autosave pump persists changes.
+        ``scope`` is ``"account"`` or ``"global"`` (both under ``settings/``). No
+        open/close/save needed — the manager autosave pump persists changes. There
+        is no ``"root"`` scope; the one root file is reached via ``py4gw_ini()``.
         """
         ...
 
@@ -73,6 +74,15 @@ class settings:
     def remove(self, section: str, key: str) -> bool: ...
 
     def items(self, section: str) -> list[tuple[str, str]]: ...
+
+
+def py4gw_ini() -> settings:
+    """The one root-level INI document (``<module>/Py4GW.ini``).
+
+    Hard-coded and path-less: it can only ever be that single file, so it is not a
+    jail-escape surface. This is the only sanctioned way to touch the project root.
+    """
+    ...
 
 
 def copy_document_to_account(name: str, target_email: str) -> bool:

@@ -1,7 +1,5 @@
 # Reload imports
-from datetime import datetime
 from enum import Enum
-import json
 import os
 from typing import Optional
 
@@ -13,6 +11,7 @@ from Py4GWCoreLib.ImGui_src.WindowModule import WindowModule
 from Py4GWCoreLib.ImGui_src.Style import Style 
 from Py4GWCoreLib.ImGui_src.types import Alignment, ControlAppearance, StyleColorType, StyleTheme
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.py4gwcorelib_src.JsonFactory import JsonFactory
 from Py4GWCoreLib import Timer
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
 
@@ -84,7 +83,7 @@ theme_compare_window = WindowModule(
     can_close=True,
 )
 
-py4_gw_ini_handler = Settings("Py4GW.ini", "root")
+py4_gw_ini_handler = Settings.py4gw_ini()
 selected_theme = StyleTheme[py4_gw_ini_handler.get_str(
     "settings", "style_theme", StyleTheme.Py4GW.name)]
 
@@ -92,13 +91,9 @@ force_theme_override = py4_gw_ini_handler.get_bool(
     "settings", "force_theme_override", False)
 
 if force_theme_override:
+    # Revert every theme to its bundled default by clearing the user-override doc.
     for theme in StyleTheme:
-        file_path = os.path.join("Styles", f"{theme.name}.json")
-        if os.path.exists(file_path):
-            time_stamp = datetime.now().strftime("%Y-%m-%d")
-            new_file_path = file_path[:-5] + "-" + time_stamp + ".backup.json"
-            os.rename(file_path, new_file_path)
-    
+        JsonFactory(f"Styles/{theme.name}.json", "global").set_json("", {})
     py4_gw_ini_handler.set("settings", "force_theme_override", "False")
 
 themes = [theme.name.replace("_", " ") + ( f" (Textured)" if theme in ImGui.Textured_Themes else "") for theme in StyleTheme]
@@ -518,7 +513,7 @@ def DrawControlCompare():
         control_compare = False
 
 
-def _save_style_to_path(style: Style, filename: str) -> None:
+def _save_style_to_path(style: Style, name: str) -> None:
     style_data = {
         "Colors": {k: c.to_json() for k, c in style.Colors.items()},
         "CustomColors": {k: c.to_json() for k, c in style.CustomColors.items()},
@@ -526,8 +521,7 @@ def _save_style_to_path(style: Style, filename: str) -> None:
         "StyleVars": {k: v.to_json() for k, v in style.StyleVars.items()},
     }
 
-    with open(os.path.join("Styles", filename), "w") as file:
-        json.dump(style_data, file, indent=4)
+    JsonFactory(f"Styles/{name}.json", "global").set_json("", style_data)
 
 
 def _sanitize_save_name(value: str) -> str:
@@ -538,8 +532,10 @@ def _sanitize_save_name(value: str) -> str:
 
 def _save_current_style(save_name: str) -> None:
     clean_name = _sanitize_save_name(save_name)
-    filename = f"{ImGui.Selected_Style.Theme.name}.default.json" if not clean_name else f"{clean_name}.json"
-    _save_style_to_path(ImGui.Selected_Style, filename)
+    # Empty name saves over the selected theme's user override doc; a name saves a
+    # new preset. The bundled *.default.json templates are never overwritten.
+    name = ImGui.Selected_Style.Theme.name if not clean_name else clean_name
+    _save_style_to_path(ImGui.Selected_Style, name)
 
 
 def _reload_default_theme(theme: StyleTheme) -> None:
@@ -609,7 +605,7 @@ def DrawWindow():
             ImGui.separator()
 
             save_as_file_name = ImGui.input_text("Save As File##style_save_as", save_as_file_name)
-            ImGui.show_tooltip("Leave empty to overwrite the selected theme default template. Enter a name to save to Styles/<name>.json.")
+            ImGui.show_tooltip("Leave empty to save over the selected theme. Enter a name to save a new preset (Styles/<name>).")
 
             remaining = PyImGui.get_content_region_avail()
             button_width = remaining[0]

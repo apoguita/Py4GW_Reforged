@@ -1,22 +1,16 @@
-import json
-
 from Py4GWCoreLib import *
+from Py4GWCoreLib import JsonFactory
 
-LOCATIONS_FILE = "locations.json"
+_locations = JsonFactory("Bots/marks_coding_corner/locations.json")
 recorded_locations = []
 
 
 def save_locations():
-    with open(LOCATIONS_FILE, "w") as f:
-        json.dump(recorded_locations, f, indent=4)
+    _locations.set_json("locations", recorded_locations)
 
 
 def load_locations():
-    try:
-        with open(LOCATIONS_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+    return _locations.get_json("locations", [])
 
 
 def main():

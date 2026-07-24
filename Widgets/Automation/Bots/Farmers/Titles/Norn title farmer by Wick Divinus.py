@@ -5,11 +5,11 @@ from Py4GWCoreLib.enums_src.Title_enums import TitleID, TITLE_TIERS
 from Py4GWCoreLib.botting_src.property import Property
 from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.py4gwcorelib_src.JsonFactory import JsonFactory
 import Py4GW
 import os
 import random
 import time
-import json
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 
@@ -141,8 +141,7 @@ _PRETRAVEL_DISABLE_WIDGETS = ("InventoryPlus",)
 _RANDOM_DISTRICTS = [6, 7, 8, 9]
 
 # Hero config
-_BOT_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-_HERO_CONFIG_PATH = os.path.join(_BOT_SCRIPT_DIR, f"{BOT_NAME} Heroes.json")
+_hero_cfg = JsonFactory(f"Widgets/Bots/{BOT_NAME}/Heroes.json")  # account scope; hero config is per-account/character
 _HERO_ICONS_BASE = os.path.normpath(os.path.join(
     PySystem.Console.get_projects_path(), "..", "Property-of-Wick-Divinus-and-Kendor",
     "PVE Skills Unlocker", "Textures", "Skill_Icons"
@@ -204,7 +203,6 @@ _DEFAULT_HERO_TEMPLATES: Dict[HeroType, str] = {
 _hero_slots: List[_PartyHeroSlot] = [_PartyHeroSlot() for _ in range(_HERO_SLOTS_COUNT)]
 _hero_config_dirty: bool = False
 _hero_config_status: str = ""
-_hero_import_source_index: int = 0
 
 # (model_id, effect_skill_name) Ã¢â‚¬â€ single source of truth for consumable use & restock
 CONSET_ITEMS: list[tuple[int, str]] = [
@@ -1169,30 +1167,21 @@ def _ensure_consumable_settings_ui_loaded(bot: Botting) -> None:
 
 def _load_hero_config():
     global _hero_slots, _hero_config_dirty, _hero_config_status
-    if not os.path.exists(_HERO_CONFIG_PATH):
+    raw = _hero_cfg.get_json("slots", [])
+    if not raw:
         _hero_config_status = ""
         return
-    try:
-        with open(_HERO_CONFIG_PATH, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        _hero_slots = _parse_hero_config_entries(raw)
-        _hero_config_dirty = False
-        _hero_config_status = "Loaded."
-    except Exception as exc:
-        _hero_config_status = f"Load error: {exc}"
+    _hero_slots = _parse_hero_config_entries(raw)
+    _hero_config_dirty = False
+    _hero_config_status = "Loaded."
 
 
 def _save_hero_config():
     global _hero_config_dirty, _hero_config_status
     payload = [{"hero_id": int(s.hero_id), "template": s.template} for s in _hero_slots]
-    try:
-        os.makedirs(os.path.dirname(_HERO_CONFIG_PATH), exist_ok=True)
-        with open(_HERO_CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2)
-        _hero_config_dirty = False
-        _hero_config_status = "Saved."
-    except Exception as exc:
-        _hero_config_status = f"Save error: {exc}"
+    _hero_cfg.set_json("slots", payload)
+    _hero_config_dirty = False
+    _hero_config_status = "Saved."
 
 
 def _reset_hero_config():
@@ -1211,39 +1200,6 @@ def _parse_hero_config_entries(raw) -> List[_PartyHeroSlot]:
             hero_id = 0
         slots.append(_PartyHeroSlot(hero_id=hero_id, template=str(entry.get("template", "") or "")))
     return slots
-
-
-def _list_importable_hero_configs() -> List[str]:
-    try:
-        hero_files = []
-        for entry in os.listdir(_BOT_SCRIPT_DIR):
-            if not entry.endswith(" Heroes.json"):
-                continue
-            full_path = os.path.join(_BOT_SCRIPT_DIR, entry)
-            if os.path.isfile(full_path):
-                hero_files.append(full_path)
-        hero_files.sort(key=lambda path: os.path.basename(path).lower())
-        return hero_files
-    except OSError:
-        return []
-
-
-def _hero_import_label(path: str) -> str:
-    name = os.path.splitext(os.path.basename(path))[0]
-    return name[:-7] if name.endswith(" Heroes") else name
-
-
-def _import_hero_config(path: str):
-    global _hero_slots, _hero_config_dirty, _hero_config_status
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-        _hero_slots = _parse_hero_config_entries(raw)
-        _hero_config_dirty = True
-        _save_hero_config()
-        _hero_config_status = f"Imported from {_hero_import_label(path)} and saved."
-    except Exception as exc:
-        _hero_config_status = f"Import error: {exc}"
 
 
 def _get_hero_icon_path(hero_id: int) -> Optional[str]:
@@ -1330,7 +1286,6 @@ def _draw_hero_slot_editor(slot_index: int):
 
 def _draw_hero_settings_tab():
     import PyImGui
-    global _hero_import_source_index
     PyImGui.text("Configure up to 7 heroes for Single Account mode.")
     PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.7, 0.7, 0.7, 1.0))
     PyImGui.text("Heroes are added in order; duplicates and empty slots are skipped.")
@@ -1351,18 +1306,6 @@ def _draw_hero_settings_tab():
     PyImGui.same_line(0, 8)
     if PyImGui.button("Reset", 100, 26):
         _reset_hero_config()
-    import_paths = _list_importable_hero_configs()
-    if import_paths:
-        if _hero_import_source_index >= len(import_paths):
-            _hero_import_source_index = 0
-        import_labels = [_hero_import_label(path) for path in import_paths]
-        _hero_import_source_index = PyImGui.combo("Import Team From", _hero_import_source_index, import_labels)
-        if PyImGui.button("Import Team", 120, 26):
-            _import_hero_config(import_paths[_hero_import_source_index])
-    else:
-        PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0.7, 0.7, 0.7, 1.0))
-        PyImGui.text("Import Team: save another title bot hero lineup first.")
-        PyImGui.pop_style_color(1)
     PyImGui.separator()
 
     if PyImGui.begin_child("HeroSlotsChild", (0, -1), True):
