@@ -35024,6 +35024,12 @@
         6361
       ],
       "observed_maps": {
+        "501": {
+          "base_id": 501,
+          "id": 501,
+          "instance_type": "Explorable",
+          "name": "Riven Earth"
+        },
         "558": {
           "base_id": 558,
           "id": 558,
@@ -35047,6 +35053,12 @@
         "1027": {
           "id": 1027,
           "name": "Critical Defenses",
+          "profession": "Assassin",
+          "profession_id": 7
+        },
+        "775": {
+          "id": 775,
+          "name": "Death Blossom",
           "profession": "Assassin",
           "profession_id": 7
         }
@@ -37348,6 +37360,12 @@
         6357
       ],
       "observed_maps": {
+        "501": {
+          "base_id": 501,
+          "id": 501,
+          "instance_type": "Explorable",
+          "name": "Riven Earth"
+        },
         "558": {
           "base_id": 558,
           "id": 558,
@@ -38435,6 +38453,88 @@
           "name": "Throw Dirt",
           "profession": "Ranger",
           "profession_id": 2
+        }
+      }
+    },
+    "enc:\\\\x8102\\\\x1446\\\\xE430\\\\x96B6\\\\x545E": {
+      "encoded_names": [
+        "\\\\x8102\\\\x1446\\\\xE430\\\\x96B6\\\\x545E"
+      ],
+      "inferred_primary": "Assassin",
+      "inferred_secondary": "None",
+      "model_ids": [
+        6315
+      ],
+      "observed_maps": {
+        "501": {
+          "base_id": 501,
+          "id": 501,
+          "instance_type": "Explorable",
+          "name": "Riven Earth"
+        }
+      },
+      "observed_skills": {
+        "1022": {
+          "id": 1022,
+          "name": "Wild Strike",
+          "profession": "Assassin",
+          "profession_id": 7
+        },
+        "1027": {
+          "id": 1027,
+          "name": "Critical Defenses",
+          "profession": "Assassin",
+          "profession_id": 7
+        },
+        "1035": {
+          "id": 1035,
+          "name": "Assassin's Promise",
+          "profession": "Assassin",
+          "profession_id": 7
+        },
+        "2081": {
+          "id": 2081,
+          "name": "Twisting_Jaws",
+          "profession": "None",
+          "profession_id": 0
+        },
+        "783": {
+          "id": 783,
+          "name": "Unsuspecting Strike",
+          "profession": "Assassin",
+          "profession_id": 7
+        }
+      }
+    },
+    "enc:\\\\x8102\\\\x1448\\\\xB3B6\\\\xF0DD\\\\x4027": {
+      "encoded_names": [
+        "\\\\x8102\\\\x1448\\\\xB3B6\\\\xF0DD\\\\x4027"
+      ],
+      "inferred_primary": "Assassin",
+      "inferred_secondary": "",
+      "model_ids": [
+        6362
+      ],
+      "observed_maps": {
+        "501": {
+          "base_id": 501,
+          "id": 501,
+          "instance_type": "Explorable",
+          "name": "Riven Earth"
+        }
+      },
+      "observed_skills": {
+        "1025": {
+          "id": 1025,
+          "name": "Disrupting Stab",
+          "profession": "Assassin",
+          "profession_id": 7
+        },
+        "1027": {
+          "id": 1027,
+          "name": "Critical Defenses",
+          "profession": "Assassin",
+          "profession_id": 7
         }
       }
     },
