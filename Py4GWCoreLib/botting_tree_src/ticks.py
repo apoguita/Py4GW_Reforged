@@ -1,7 +1,7 @@
 from typing import Any
 from typing import Protocol
 
-import PySystem
+import Py4GW
 
 from ..GlobalCache import GLOBAL_CACHE
 from ..Routines import Routines
@@ -37,6 +37,7 @@ class _BottingTreeTicksHost(Protocol):
     def EnsureHeroAIOptionsEnabled(self) -> None: ...
     def _should_log_heroai_state(self, state: str) -> bool: ...
     def RestoreAccountIsolation(self) -> bool: ...
+    def GetNamedPlannerStepNames(self) -> list[str]: ...
 
 
 class BottingTreeTicksMixin:
@@ -101,7 +102,7 @@ class BottingTreeTicksMixin:
 
         if not self.IsHeadlessHeroAIEnabled():
             if self._should_log_heroai_state('disabled'):
-                PySystem.Console.Log('BottingTree', 'Headless HeroAI is disabled.', PySystem.Console.MessageType.Info)
+                Py4GW.Console.Log('BottingTree', 'Headless HeroAI is disabled.', Py4GW.Console.MessageType.Info)
             self._last_heroai_state = 'disabled'
             bb['COMBAT_ACTIVE'] = False
             bb['LOOTING_ACTIVE'] = False
@@ -127,7 +128,7 @@ class BottingTreeTicksMixin:
 
         if Routines.Checks.Player.IsDead():
             if self._should_log_heroai_state('player_dead'):
-                PySystem.Console.Log('BottingTree', 'HeroAI paused because player is dead.', PySystem.Console.MessageType.Warning)
+                Py4GW.Console.Log('BottingTree', 'HeroAI paused because player is dead.', Py4GW.Console.MessageType.Warning)
             self._last_heroai_state = 'player_dead'
             bb['COMBAT_ACTIVE'] = False
             bb['LOOTING_ACTIVE'] = False
@@ -139,7 +140,7 @@ class BottingTreeTicksMixin:
 
         if Routines.Checks.Player.IsKnockedDown():
             if self._should_log_heroai_state('knocked_down'):
-                PySystem.Console.Log('BottingTree', 'HeroAI paused because player is knocked down.', PySystem.Console.MessageType.Warning)
+                Py4GW.Console.Log('BottingTree', 'HeroAI paused because player is knocked down.', Py4GW.Console.MessageType.Warning)
             self._last_heroai_state = 'knocked_down'
             bb['COMBAT_ACTIVE'] = bool(self.headless_heroai.cached_data.IsHeadlessCombatPauseActive())
             bb['LOOTING_ACTIVE'] = False
@@ -198,7 +199,7 @@ class BottingTreeTicksMixin:
 
         if self.planner_tree is None:
             if self._last_planner_gate_state != 'idle_no_planner':
-                PySystem.Console.Log('BottingTree', 'Planner tree is not set; planner idling.', PySystem.Console.MessageType.Warning)
+                Py4GW.Console.Log('BottingTree', 'Planner tree is not set; planner idling.', Py4GW.Console.MessageType.Warning)
                 self._last_planner_gate_state = 'idle_no_planner'
             bb['PLANNER_STATUS'] = PlannerStatus.IDLE.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
@@ -212,19 +213,30 @@ class BottingTreeTicksMixin:
         if planner_result is None:
             raise TypeError('Planner tree returned a non-NodeState result.')
         if planner_result == BehaviorTree.NodeState.SUCCESS:
-            PySystem.Console.Log('BottingTree', 'Planner tree completed.', PySystem.Console.MessageType.Success)
+            Py4GW.Console.Log('BottingTree', 'Planner tree completed.', Py4GW.Console.MessageType.Success)
             bb['PLANNER_STATUS'] = 'PLANNER: Completed'
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             self.started = False
             self.paused = False
             self.RestoreAccountIsolation()
         elif planner_result == BehaviorTree.NodeState.FAILURE:
-            PySystem.Console.Log('BottingTree', 'Planner tree failed.', PySystem.Console.MessageType.Warning)
-            bb['PLANNER_STATUS'] = 'PLANNER: Failed'
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
-            self.started = False
-            self.paused = False
-            self.RestoreAccountIsolation()
+            current_step_name = str(bb.get('current_step_name', '') or '')
+            named_step_names = self.GetNamedPlannerStepNames()
+            if current_step_name and current_step_name in named_step_names:
+                Py4GW.Console.Log(
+                    'BottingTree',
+                    f"Planner step '{current_step_name}' failed. Restarting the current named step.",
+                    Py4GW.Console.MessageType.Warning,
+                )
+                bb['PLANNER_STATUS'] = f'PLANNER: Restarting {current_step_name}'
+                bb['restart_step_name_request'] = current_step_name
+            else:
+                Py4GW.Console.Log('BottingTree', 'Planner tree failed.', Py4GW.Console.MessageType.Warning)
+                bb['PLANNER_STATUS'] = 'PLANNER: Failed'
+                self.started = False
+                self.paused = False
+                self.RestoreAccountIsolation()
         return BehaviorTree.NodeState.RUNNING
 
     def _tick_service_tree(
@@ -241,10 +253,10 @@ class BottingTreeTicksMixin:
         if service_result is None:
             raise TypeError(f"Service tree '{service_name}' returned a non-NodeState result.")
         if service_result in (BehaviorTree.NodeState.SUCCESS, BehaviorTree.NodeState.FAILURE):
-            PySystem.Console.Log(
+            Py4GW.Console.Log(
                 'BottingTree',
                 f"Upkeep tree '{service_name}' returned {service_result.name}.",
-                PySystem.Console.MessageType.Info if service_result == BehaviorTree.NodeState.SUCCESS else PySystem.Console.MessageType.Warning,
+                Py4GW.Console.MessageType.Info if service_result == BehaviorTree.NodeState.SUCCESS else Py4GW.Console.MessageType.Warning,
             )
         if service_result in (BehaviorTree.NodeState.SUCCESS, BehaviorTree.NodeState.FAILURE):
             service_tree.reset()

@@ -1,4 +1,4 @@
-import PySystem
+import Py4GW
 
 from ..GlobalCache import GLOBAL_CACHE
 from ..Player import Player
@@ -126,10 +126,10 @@ class BottingTreeIsolationMixin:
                 changed = bool(GLOBAL_CACHE.ShMem.SetAccountGroupByEmail(account_email, 0)) or changed
 
         if changed:
-            PySystem.Console.Log(
+            Py4GW.Console.Log(
                 'BottingTree',
                 f"Account isolation {'enabled' if self.isolation_enabled else 'disabled'} for {account_email}.",
-                PySystem.Console.MessageType.Info,
+                Py4GW.Console.MessageType.Info,
             )
         return bool(changed)
 
@@ -155,10 +155,10 @@ class BottingTreeIsolationMixin:
             changed = bool(GLOBAL_CACHE.ShMem.SetAccountGroupByEmail(account_email, restore_group_id)) or changed
 
         if changed:
-            PySystem.Console.Log(
+            Py4GW.Console.Log(
                 'BottingTree',
                 f"Account isolation restored to {'enabled' if self._previous_isolation_state else 'disabled'} for {account_email}.",
-                PySystem.Console.MessageType.Info,
+                Py4GW.Console.MessageType.Info,
             )
         self._previous_isolation_state = None
         self._previous_isolation_group_id = None
