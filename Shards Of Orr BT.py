@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from types import MethodType
 import os
 import time
 from Py4GWCoreLib.Listeners import Listeners
@@ -302,125 +301,6 @@ botting_tree: BottingTree | None = None
 # endregion
 
 
-# region Custom UI
-
-
-def _draw_image_clean(
-    texture_path: str,
-    size: tuple[float, float],
-) -> None:
-    """Draw a texture without the default framed BottingTree presentation."""
-    import PyImGui
-    from Py4GWCoreLib import ImGui
-
-    if not texture_path or not os.path.isfile(texture_path):
-        return
-
-    try:
-        ImGui.DrawTextureExtended(
-            texture_path=texture_path,
-            size=(float(size[0]), float(size[1])),
-            uv0=(0.0, 0.0),
-            uv1=(1.0, 1.0),
-            tint=(255, 255, 255, 255),
-            border_color=(0, 0, 0, 0),
-        )
-    except Exception as exc:
-        PyImGui.text_disabled(f"Image unavailable: {exc}")
-
-
-def _draw_custom_main(
-    ui,
-    main_child_dimensions: tuple[int, int] = (420, 380),
-    icon_path: str = "",
-    iconwidth: int = 72,
-) -> None:
-    """Compact replacement for the verbose default BottingTree Main tab."""
-    import PyImGui
-
-    status = ui._main_status_snapshot()
-    icon_size = 72.0
-
-    # Header: unframed icon with concise runtime information.
-    _draw_image_clean(icon_path, (icon_size, icon_size))
-    PyImGui.same_line(0, 12)
-    PyImGui.begin_group()
-    PyImGui.text(MODULE_NAME)
-    PyImGui.text_disabled(f"Step: {ui._current_step_name()}")
-    PyImGui.text_disabled(
-        f"Planner: {ui.parent.GetBlackboardValue('PLANNER_STATUS', 'Idle')}"
-    )
-    PyImGui.text_disabled(
-        f"HeroAI: {ui.parent.GetBlackboardValue('HEROAI_STATUS', 'Idle')}"
-    )
-    PyImGui.end_group()
-
-    PyImGui.spacing()
-    PyImGui.separator()
-    PyImGui.spacing()
-
-    if ui.parent.IsStarted():
-        if PyImGui.button("Stop##SoOBotStop"):
-            ui.parent.Stop()
-        PyImGui.same_line(0, 8)
-        if ui.parent.IsPaused():
-            if PyImGui.button("Resume##SoOBotPause"):
-                ui.parent.Pause(False)
-        else:
-            if PyImGui.button("Pause##SoOBotPause"):
-                ui.parent.Pause(True)
-    else:
-        step_names = ui.parent.GetNamedPlannerStepNames()
-        if step_names:
-            ui._selected_start_index = max(
-                0,
-                min(ui._selected_start_index, len(step_names) - 1),
-            )
-            ui._selected_start_index = PyImGui.combo(
-                "Start At",
-                ui._selected_start_index,
-                step_names,
-            )
-            if PyImGui.button("Start##SoOBotStart"):
-                ui.parent.RestartFromNamedPlannerStep(
-                    step_names[ui._selected_start_index],
-                    auto_start=True,
-                )
-        elif PyImGui.button("Start##SoOBotStart"):
-            ui.parent.Start()
-
-    PyImGui.spacing()
-    PyImGui.separator()
-    PyImGui.spacing()
-
-    # Two compact status columns instead of nine debug-like lines.
-    status_flags = (
-        PyImGui.TableFlags.SizingStretchProp
-        | PyImGui.TableFlags.NoHostExtendX
-    )
-    if PyImGui.begin_table("##soo_main_status", 2, status_flags):
-        rows = (
-            ("Bot", "Running" if status["started"] else "Stopped",
-             "Loot", "Enabled" if status["looting_enabled"] else "Disabled"),
-            ("State", "Paused" if status["paused"] else "Active",
-             "Combat", "Active" if status["combat_active"] else "Idle"),
-            ("HeroAI", "Enabled" if status["headless_heroai_enabled"] else "Disabled",
-             "Loot routine", "Active" if status["looting_active"] else "Idle"),
-            ("Isolation", "Enabled" if status["account_isolation_enabled"] else "Disabled",
-             "Res scroll", "Enabled" if status["resurrection_scroll_enabled"] else "Disabled"),
-        )
-        for left_label, left_value, right_label, right_value in rows:
-            PyImGui.table_next_row()
-            PyImGui.table_set_column_index(0)
-            PyImGui.text(f"{left_label}: {left_value}")
-            PyImGui.table_set_column_index(1)
-            PyImGui.text(f"{right_label}: {right_value}")
-        PyImGui.end_table()
-
-
-# endregion
-
-
 # region Run config
 
 
@@ -586,6 +466,7 @@ def _configure_runtime_upkeeps(
         auto_inventory_handler_enabled=True,
         activate_widget_list=(
             "LootManager",
+            "Return to outpost on defeat",
         ),
         consumable_upkeeps=(
             _enabled_consumable_upkeeps()
@@ -1350,15 +1231,7 @@ def _draw_statistics() -> None:
             PyImGui.table_set_column_index(index)
             PyImGui.text(label)
 
-    if os.path.isfile(_BDS_ICON_PATH):
-        _draw_image_clean(_BDS_ICON_PATH, (48.0, 48.0))
-        PyImGui.same_line(0, 10)
-        PyImGui.begin_group()
-        PyImGui.text_colored("Shards of Orr Statistics", gold)
-        PyImGui.text_disabled("Bone Dragon Staff and Glacial Blade tracking")
-        PyImGui.end_group()
-    else:
-        PyImGui.text_colored("Shards of Orr Statistics", gold)
+    PyImGui.text_colored("Shards of Orr Statistics", gold)
     PyImGui.separator()
     PyImGui.spacing()
 
@@ -2153,13 +2026,6 @@ def ensure_botting_tree() -> BottingTree:
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 heroai_state_logging=False,
             ),
-        )
-
-        # Keep the new BT window infrastructure, but replace its verbose Main
-        # tab with a compact SoO-specific layout.
-        botting_tree.UI._draw_main_child = MethodType(
-            _draw_custom_main,
-            botting_tree.UI,
         )
 
     return botting_tree
@@ -2981,8 +2847,8 @@ def main() -> None:
     tree.tick()
     tree.UI.draw_window(
         icon_path=_BDS_ICON_PATH,
-        iconwidth=72,
-        main_child_dimensions=(420, 300),
+        iconwidth=96,
+        main_child_dimensions=(420, 380),
         extra_tabs=[
             ("Statistics", _draw_statistics),
             ("Config", _draw_run_config),
