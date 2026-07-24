@@ -1,9 +1,31 @@
-from typing import Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence
 
 from ..py4gwcorelib_src.BehaviorTree import BehaviorTree
 
 
 class BottingTreeUpkeepMixin:
+    if TYPE_CHECKING:
+        def PartyWipeRecoveryServiceTree(
+            self,
+            default_step_name: str | Callable[[], str | None] | None = None,
+            return_interval_ms: float = 1000.0,
+        ) -> BehaviorTree: ...
+
+    def _coerce_runtime_tree(
+        self, subtree_or_builder: Callable[[], object] | object
+    ) -> BehaviorTree:
+        """Ensure we have a BehaviorTree instance. If a callable is provided,
+        call it to obtain the tree. Raise a TypeError if the result is not
+        a BehaviorTree.
+        """
+        result = subtree_or_builder() if callable(subtree_or_builder) else subtree_or_builder
+        if not isinstance(result, BehaviorTree):
+            raise TypeError("Service/upkeep subtree must be a BehaviorTree instance")
+        return result
+
+    def _rebuild_root_tree(self) -> None:
+        raise NotImplementedError("_rebuild_root_tree must be implemented by subclasses")
+
     def SetServiceTrees(
         self,
         steps: Sequence[tuple[str, Callable[[], object] | object]],
