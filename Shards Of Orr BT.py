@@ -2406,7 +2406,7 @@ def Level3_BrigantRoom() -> BehaviorTree:
                 log=True,
             ),
             BT.WaitForClearEnemiesInArea(-11081, 2374),
-            BT.Move(Vec2f(-11081, 2374))
+            BT.LootItems(),
         ],
     )
 #endregion
