@@ -253,6 +253,49 @@ def _log(log: list, message: str) -> None:
         on_message(message)
 
 
+def _resolve_gmod_launch_decision(profile: GameProfile, gmod_injection_enabled: bool, log: list) -> bool:
+    """RELAY 091: decides whether gMod injection should actually be attempted
+    this launch. Used to be a hard gate that failed the whole launch (even
+    Py4GW) if gmod_dll_path was unresolved -- gMod is opt-in/auxiliary,
+    unlike Py4GW (the equivalent check just above this call site, deliberately
+    left as a hard fail, unchanged), so a missing gMod path shouldn't block
+    the client from launching at all.
+
+    Pulled out as its own function specifically so it's unit-testable without
+    mocking the surrounding Win32 launch pipeline (CreateProcessW etc.) --
+    this repo had no test coverage for gw1_launch.py at all before this,
+    verified via a real search, not assumed.
+
+    If the saved path is missing/stale, re-runs mod_root.find_dll_under_mod_root
+    once before giving up -- auto-detect (RELAY 083) only ever runs at
+    profile creation/import time, so a profile made before the gMod DLL
+    existed on disk (or whose auto-detect found 0/2+ matches back then) would
+    otherwise stay permanently unresolved. If that resolves it, mutates
+    profile.gmod_dll_path in place -- session-only self-heal (helps a same-
+    session retry reuse the same in-memory GameProfile, since gw1_launch.py
+    has no accounts_store/disk-persistence responsibility of its own and
+    bridge.py's _run_launch doesn't save profiles after a launch attempt);
+    deliberately NOT written to accounts.json here, since that would need new
+    plumbing (LaunchResult would need a new field, bridge.py would need to
+    act on it) for a fix whose whole point is "gMod is auxiliary, keep this
+    minimal." Explicit decision, not an oversight -- if this needs to survive
+    an app restart later, that's a separate, bigger follow-up.
+    """
+    if not (profile.gmod_enabled and gmod_injection_enabled):
+        return False
+    if profile.gmod_dll_path and os.path.exists(profile.gmod_dll_path):
+        return True
+
+    redetected = mod_root.find_dll_under_mod_root("gMod.dll")
+    if redetected:
+        profile.gmod_dll_path = redetected
+        _log(log, f"gmod_dll_path was unresolved; auto-detected: {redetected}")
+        return True
+
+    _log(log, "gMod path not set or not found -- launching without gMod injection")
+    return False
+
+
 def _get_process_module_base(process_handle: int) -> Optional[int]:
     pbi = PROCESS_BASIC_INFORMATION()
     return_length = ctypes.c_ulong(0)
@@ -837,11 +880,7 @@ def launch_py4gw_profile(
     ):
         return LaunchResult(False, None, f"py4gw_dll_path not found: {profile.py4gw_dll_path!r}", log)
 
-    if (
-        profile.gmod_enabled and gmod_injection_enabled
-        and (not profile.gmod_dll_path or not os.path.exists(profile.gmod_dll_path))
-    ):
-        return LaunchResult(False, None, f"gmod_dll_path not found: {profile.gmod_dll_path!r}", log)
+    will_inject_gmod = _resolve_gmod_launch_decision(profile, gmod_injection_enabled, log)
 
     command_line = f'"{profile.executable_path}"'
     if profile.windowed_mode_enabled:
@@ -891,7 +930,7 @@ def launch_py4gw_profile(
     # very early (the opposite timing from Py4GW's post-window injection
     # below). _inject_dll uses CreateRemoteThread, which is independent of the
     # primary thread's own suspended state, so this is safe against it.
-    if profile.gmod_enabled and gmod_injection_enabled:
+    if will_inject_gmod:
         try:
             per_profile_gmod_dll = _prepare_per_profile_gmod_folder(profile)
         except Exception as e:
@@ -902,6 +941,14 @@ def launch_py4gw_profile(
             return _abort("gMod DLL injection failed")
 
         _log(log, "gMod DLL injection reported success")
+    elif profile.gmod_enabled and gmod_injection_enabled:
+        # RELAY 091: enabled at both levels, but the path never resolved even
+        # after _resolve_gmod_launch_decision's auto-detect retry -- that
+        # function already logged the specific reason at the point of
+        # discovery, so there's nothing more useful to add here (the old
+        # single else-branch message below would be misleading in this case:
+        # gMod isn't "disabled", it's enabled with an unresolved path).
+        pass
     elif profile.gmod_enabled and not gmod_injection_enabled:
         _log(log, "gMod injection globally disabled (App Settings) -- launching without it")
     else:
