@@ -683,12 +683,68 @@ def TravelToOutpost(outpost_id):
         
 
 
+_commands_registered = False
+
+
+def _resolve_outpost(query: str) -> Optional[int]:
+    """Best-effort resolve a chat query to an outpost id: exact id, exact name, initials,
+    substring, or a defined alias. Priority outposts win ties."""
+    q = query.strip().lower()
+    if not q:
+        return None
+    if q.isdigit() and int(q) in outposts:
+        return int(q)
+    initials_match = None
+    substr_match = None
+    for oid, name in outposts.items():
+        nl = name.lower()
+        if q == nl:
+            return oid
+        if any(q == a for a in outpost_aliases.get(oid, [])):
+            return oid
+        if initials_match is None and q == generate_initials(name).lower():
+            initials_match = oid
+        if substr_match is None and q in nl:
+            substr_match = oid
+    return initials_match if initials_match is not None else substr_match
+
+
+def _chat_travel(args, raw):
+    """/travel <name|initials|id>  — travel to an outpost. No arg opens the travel window."""
+    query = (raw or "").strip() or " ".join(args)
+    if not query:
+        window_module.open = True
+        return
+    oid = _resolve_outpost(query)
+    if oid is not None:
+        TravelToOutpost(oid)
+    else:
+        ConsoleLog(MODULE_NAME, f"No outpost matched '{query}'.", PySystem.Console.MessageType.Warning)
+
+
+def _ensure_commands():
+    global _commands_registered
+    if _commands_registered:
+        return
+    try:
+        from Py4GWCoreLib.ChatCommands import ChatCommands
+
+        ChatCommands.register(
+            "travel", _chat_travel, aliases=["tp"],
+            help="Travel to an outpost: /travel <name|initials|id> (no arg opens the window).",
+        )
+        _commands_registered = True
+    except Exception as e:
+        PySystem.Console.Log(MODULE_NAME, f"chat command register failed: {e}", PySystem.Console.MessageType.Error)
+
+
 def main():
     """Required main function for the widget"""
     global game_throttle_timer, game_throttle_time, is_traveling
     global is_map_ready, is_party_loaded
-    
+
     try:
+        _ensure_commands()
         if game_throttle_timer.HasElapsed(game_throttle_time):
             is_map_ready = Map.IsMapReady()
             is_party_loaded = GLOBAL_CACHE.Party.IsPartyLoaded()

@@ -74,6 +74,50 @@ def _draw_listener(controller, cat: "model.Category", lsn: "model.Listener") -> 
             _draw_option(controller, cat, lsn, opt)
 
 
+def _draw_chat_commands_monitor() -> None:
+    """Read-only view of the ChatCommands registry: usable commands, their aliases, the callee
+    they dispatch to, and how many times each has fired."""
+    try:
+        from Py4GWCoreLib.ChatCommands import ChatCommands
+    except Exception as exc:
+        PyImGui.text_colored("ChatCommands unavailable: %s" % exc, ERR_COLOR)
+        return
+
+    if not ChatCommands.native_available():
+        PyImGui.text_colored("PyChatCommands not available (offline or DLL not rebuilt).", _MUTED_COLOR)
+
+    cmds = ChatCommands.commands()
+    PyImGui.text_colored("Registered commands (%d)" % len(cmds), _MUTED_COLOR)
+    PyImGui.text_wrapped("Type a command in chat, e.g. '/travel gtob' or '/map toggle'. Unknown "
+                         "commands pass through to the game.")
+    PyImGui.separator()
+    if not cmds:
+        PyImGui.text_colored("Nothing registered yet (enable the widgets that provide commands).", _MUTED_COLOR)
+        return
+
+    if PyImGui.begin_table("##chat_cmds", 4, PyImGui.TableFlags.RowBg | PyImGui.TableFlags.Borders, 0.0, 0.0):
+        PyImGui.table_setup_column("Command", PyImGui.TableColumnFlags.WidthFixed, 120.0)
+        PyImGui.table_setup_column("Aliases", PyImGui.TableColumnFlags.WidthFixed, 90.0)
+        PyImGui.table_setup_column("Callee", PyImGui.TableColumnFlags.WidthStretch, 0.0)
+        PyImGui.table_setup_column("Uses", PyImGui.TableColumnFlags.WidthFixed, 45.0)
+        PyImGui.table_headers_row()
+        for cmd in cmds:
+            PyImGui.table_next_row()
+            PyImGui.table_next_column()
+            PyImGui.text("/%s" % cmd.name)
+            if cmd.help:
+                ImGui.show_tooltip(cmd.help)
+            PyImGui.table_next_column()
+            PyImGui.text(", ".join("/%s" % a for a in cmd.aliases) if cmd.aliases else "-")
+            PyImGui.table_next_column()
+            PyImGui.text_colored(cmd.callee, _MUTED_COLOR)
+            if cmd.last_args:
+                ImGui.show_tooltip("last args: %r" % (cmd.last_args,))
+            PyImGui.table_next_column()
+            PyImGui.text(str(cmd.count))
+        PyImGui.end_table()
+
+
 def build_window(controller) -> "ImGui.SidebarWindow":
     """Construct the settings :class:`SidebarWindow` from the catalog (pure construction)."""
     win = ImGui.SidebarWindow(
@@ -116,6 +160,9 @@ def build_window(controller) -> "ImGui.SidebarWindow":
                 _err = str(exc)
                 win.add_section(group, "Agent Recolor",
                                 (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
+            continue
+        if cat.key == "chat_commands":
+            win.add_section(group, "Registered Commands", _draw_chat_commands_monitor)
             continue
         for lsn in cat.listeners:
             # Bind each section to its own listener via default args (avoid late-binding capture).

@@ -133,6 +133,12 @@ CATALOG: "tuple[Category, ...]" = (
         # (see system_settings.config_ui.build_window). Future agent-facing options go here too.
         listeners=(),
     ),
+    Category(
+        key="chat_commands", title="Chat Commands", icon="ICON_TERMINAL",
+        # Custom category: no listeners. Rendered as a read-only monitor of the ChatCommands
+        # registry (registered commands, aliases, callees, invocation counts).
+        listeners=(),
+    ),
 )
 
 

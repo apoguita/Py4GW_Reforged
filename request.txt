@@ -1,13 +1,50 @@
-Automatically skip cinematics skips in-game cutscenes without user input.
-Automatically return to outpost on defeat returns the party to the outpost when wiped (only works if you're the party leader).
-Disable gold/green items confirmation removes the confirmation prompt when selling gold and green items to merchants.
-Skip character name input when donating faction automatically fills in your character name when donating faction.
-Auto-cancel Unyielding Aura when re-casting automatically drops Unyielding Aura before recasting it.
-Remove 1.5 second minimum for the cast bar to show allows the cast bar to appear for skills with very short cast times.
-Auto use available keys when interacting with locked chest automatically uses keys when interacting with locked chests.
-Auto use lockpick when interacting with locked chest automatically uses lockpicks when interacting with locked chests.
-Keep current quest when accepting a new one maintains the current active quest when a new quest is added.
-Hide known skills when using a tome, capturing a skill or talking to a skill trainer removes skills your current character already has from the skill selection window.
-Hide all non-elite skills when capturing a skill shows only elite skills in the skill capture window.
-Show warning when earned faction reaches ___% displays a warning when your faction reaches the specified percentage in challenge missions or elite areas.
-Limit signet of capture to 10 in skills window
+im trying to make somethign for chat commands
+i honestly dont have a use for them but people like their commands
+need ideas on what to actually have those commands to
+only thing i can think is toggling scripts...
+frenkey [PyGW], Role icon, Conquering Hero — 11:20 PM
+/travel map_name
+/guildhall
+/cast skill
+/dialog ID 
+/xunlai
+.... 
+
+Just take a look at toolbox it's what most people look for 
+Apo [PyGW], Role icon, Legendary Hero — 11:20 PM
+/travel map_name find the travel widget to be more convenient bth , but i can add that
+not sure tbh, if we have thelaunchpads and they are bindable to widgets or functions
+its just about toglolin gan item or a function
+}well, guess thats as much as we need to have it done
+defer parameters to the script
+i think i can inject kwargs into the call
+frenkey [PyGW], Role icon, Conquering Hero — 11:22 PM
+Well its up to you I'm just telling you what people want. If you don't like it you decide what to implement.
+Apo [PyGW], Role icon, Legendary Hero — 11:23 PM
+tone it down two knobs 
+were having a conversation
+i think i can make scriupts callabel from the chat
+frenkey [PyGW], Role icon, Conquering Hero — 11:23 PM
+I think you can basically expose a shit ton through chat commands. And I see the point as I've used it a lot too in the past.
+Apo [PyGW], Role icon, Legendary Hero — 11:23 PM
+and pass paramters to them
+so for example /travel gtob
+ywill summon the travel widget with tgtob param
+think that could work
+obviously some aliases can bee devfines tp = travel 
+/tp gtob should call the script with the param
+frenkey [PyGW], Role icon, Conquering Hero — 11:25 PM
+Yep or just map functions/commands directly. But whatever works I guess.
+
+Could even allow modules to register their own chat commands
+ [PyGW], 
+Apo [PyGW], Role icon, Legendary Hero — 11:25 PM
+yes thats whai im thinkingof, to allow scripts to have their handling
+frenkey [PyGW], Role icon, Conquering Hero — 11:25 PM
+So travel chat command is defined in travel widget.
+
+Stash chat command from InventoryPlus etc
+Apo [PyGW], Role icon, Legendary Hero — 11:26 PM
+cool
+thats much better idea of waht i had in mind
+thanks

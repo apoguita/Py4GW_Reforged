@@ -59,6 +59,13 @@ def draw() -> None:
                 _ar_get().boot()
             except Exception:
                 pass
+            # Register the chat-command framework built-ins (/help) once, now that native is up.
+            try:
+                from Py4GWCoreLib.ChatCommands import ChatCommands
+
+                ChatCommands.boot()
+            except Exception:
+                pass
             _applied = True
         # Renders the options window only while it is toggled open (via the launchpad cog).
         _controller.draw()
