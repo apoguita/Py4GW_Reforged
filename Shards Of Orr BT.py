@@ -87,7 +87,7 @@ _BDS_ICON_PATH = os.path.join(
     PySystem.Console.get_projects_path(),
     "Textures", 
     "Module_Icons",
-    "BDS.png",
+    "BDS.png"
 )
 
 
