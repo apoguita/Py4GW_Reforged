@@ -255,3 +255,4 @@ Py4GW_Reforged_Launcher/*.exe
 # so CLI sessions can read them directly (they have no access to that memory
 # store) -- not meant for the eventual PR to Apo, just internal working notes
 Py4GW_Reforged_Launcher/dev_notes/
+py4gwloot.json
