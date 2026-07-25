@@ -124,7 +124,6 @@ def FarmTopazCrests() -> BehaviorTree:
                 name="Clear Topaz Crest Path",
                 steps=KILLING_PATH,
                 pause_on_combat=True,
-                clear_area_radius=Range.SafeCompass.value,
                 log=True
             ),
             BT.Resign(
