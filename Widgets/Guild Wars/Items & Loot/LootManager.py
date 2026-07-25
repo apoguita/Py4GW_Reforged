@@ -296,12 +296,15 @@ def load_loot_config_from(path: str):
 
     # Apply saved rarity filters
     loot_filter_singleton.SetProperties(
-        loot_whites=rarity.get("white", False),
-        loot_blues=rarity.get("blue", False),
-        loot_purples=rarity.get("purple", False),
-        loot_golds=rarity.get("gold", False),
-        loot_greens=rarity.get("green", False),
-        loot_gold_coins=rarity.get("gold_coins", False),
+        # Exported presets use the ``loot_*`` field names.  Accept the old
+        # short names as a fallback so existing manually-created presets keep
+        # working too.
+        loot_whites=rarity.get("loot_whites", rarity.get("white", False)),
+        loot_blues=rarity.get("loot_blues", rarity.get("blue", False)),
+        loot_purples=rarity.get("loot_purples", rarity.get("purple", False)),
+        loot_golds=rarity.get("loot_golds", rarity.get("gold", False)),
+        loot_greens=rarity.get("loot_greens", rarity.get("green", False)),
+        loot_gold_coins=rarity.get("loot_gold_coins", rarity.get("gold_coins", False)),
     )
 
     # Persist changes to avoid core loop overwrite

@@ -807,6 +807,21 @@ class LootConfig:
             if self.IsBlacklisted(model_id):
                 continue
 
+            # Dye vials all share one model ID, so their pickup decision must
+            # use the embedded dye colour rather than the normal model-ID list.
+            if model_id == ModelID.Vial_Of_Dye.value:
+                try:
+                    dye_color = Item.Dye.GetInfo(item_id).dye1.ToInt()
+                except Exception:
+                    dye_color = None
+
+                if dye_color is not None:
+                    if self.IsDyeBlacklisted(dye_color):
+                        continue
+                    if self.IsDyeWhitelisted(dye_color):
+                        pick_up_array.append(agent_id)
+                        continue
+
             # --- Whitelists ---
             if self.IsItemIDWhitelisted(item_id):
                 pick_up_array.append(agent_id)

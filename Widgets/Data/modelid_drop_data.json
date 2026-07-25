@@ -31,6 +31,8 @@
   {"name": "Champagne Popper", "model_id": "ModelID.Champagne_Popper", "group": "Party", "subgroup": "1 Points", "drop_info": "Anniversary Celebration & Wayfarer's Reverie"},
   {"name": "Sparkler", "model_id": "ModelID.Sparkler", "group": "Party", "subgroup": "1 Points", "drop_info": "Anniversary Celebration & Wayfarer's Reverie"},
   {"name": "Snowman Summoner", "model_id": "ModelID.Snowman_Summoner", "group": "Party", "subgroup": "1 Points", "drop_info": "Wintersday & Chest of Wintersday Past"},
+  {"name": "Frosty Tonic", "model_id": "ModelID.Frosty_Tonic", "group": "Party", "subgroup": "2 Points", "drop_info": "Winterday"},
+  {"name": "Mischievous Tonic", "model_id": "ModelID.Mischievious_Tonic", "group": "Party", "subgroup": "2 Points", "drop_info": "Winterday"},
   {"name": "El Mischievious Tonic", "model_id": "ModelID.El_Mischievious_Tonic", "group": "Party", "subgroup": "2 Points", "drop_info": "Winterday"},
   {"name": "El Yuletide Tonic", "model_id": "ModelID.El_Yuletide_Tonic", "group": "Party", "subgroup": "2 Points", "drop_info": "Wintersday & Chest of Wintersday Past"},
   {"name": "Party Beacon", "model_id": "ModelID.Party_Beacon", "group": "Party", "subgroup": "50 Points", "drop_info": "Anniversary Celebration"},
