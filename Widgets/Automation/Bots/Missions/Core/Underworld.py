@@ -19,7 +19,6 @@ del _sys
 
 import enum
 import os
-import json
 import time
 from collections import deque
 from pathlib import Path
@@ -28,6 +27,7 @@ from typing import Any, Generator
 import PyImGui
 import Py4GW
 from Py4GWCoreLib import Botting, Routines, Agent, AgentArray, Player, Utils, AutoPathing, GLOBAL_CACHE, ConsoleLog, Map, Pathing, FlagPreference, Party, Overlay, Item, ItemArray
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.enums_src.Map_enums import name_to_map_id
@@ -2437,15 +2437,13 @@ def ResignAndRepeat(bot_instance: Botting):
 
 
 def _log_successful_run() -> None:
-    """Append a timestamped successful-run entry to the wipe log file."""
-    import json as _json
+    """Append a timestamped successful-run entry to the run log."""
     elapsed_s = max(0, (Map.GetInstanceUptime() - _run_start_uptime_ms) // 1000) if _run_start_uptime_ms else 0
     elapsed_str = f"{elapsed_s // 3600:02d}:{(elapsed_s % 3600) // 60:02d}:{elapsed_s % 60:02d}"
-    entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Run completed successfully. Duration: {elapsed_str}\n"
+    entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Run completed successfully. Duration: {elapsed_str}"
     try:
-        with open(_WIPE_LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(entry)
-    except OSError as exc:
+        _wipe_log_doc.append("entries", entry)
+    except Exception as exc:
         ConsoleLog(BOT_NAME, f"[Run] Could not write run log: {exc}", PySystem.Console.MessageType.Warning)
     # Persist per-quest instance uptimes for the avg column.
     if _quest_completion_times:
@@ -2454,9 +2452,8 @@ def _log_successful_run() -> None:
                 elapsed_q = _quest_completion_times[quest_name] // 1000
                 _quest_times_log.setdefault(quest_name, []).append(elapsed_q)
         try:
-            with open(_QUEST_TIMES_FILE, "w", encoding="utf-8") as f:
-                _json.dump(_quest_times_log, f, indent=2)
-        except OSError as exc:
+            _quest_times_doc.set_json("quest_times", _quest_times_log)
+        except Exception as exc:
             ConsoleLog(BOT_NAME, f"[Run] Could not write quest times log: {exc}", PySystem.Console.MessageType.Warning)
     ConsoleLog(BOT_NAME, "[Run] Successful run logged.", PySystem.Console.MessageType.Info)
 
@@ -2608,7 +2605,10 @@ def _draw_imprisoned_spirits_settings() -> None:
         PyImGui.end_table()
 
 
-_ARMOR_JSON_FILE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "EquippedArmor.json")
+# Shared, cross-account equipped-armor document (global scope so every multibox
+# client reads/writes the same map keyed by account email). Dhuum Helper.py binds
+# this same (name, scope) pair.
+_armor_doc = JsonFactory("Widgets/EquippedArmor.json", "global")
 _ARMOR_SLOT_NAMES = {2: "Chest", 3: "Legs", 4: "Head", 5: "Feet", 6: "Hands"}
 
 _armor_edit_email: str | None = None
@@ -2618,28 +2618,18 @@ _armor_edit_sac: dict[str, int] = {}
 
 
 def _read_armor_json() -> dict:
-    try:
-        if os.path.exists(_ARMOR_JSON_FILE):
-            with open(_ARMOR_JSON_FILE, "r") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
+    data = _armor_doc.get_json("", {})
+    return data if isinstance(data, dict) else {}
 
 
 def _save_armor_json(email: str, normal: dict[str, int], sacrifice: dict[str, int]) -> None:
     try:
-        all_armor = _read_armor_json()
-        existing = all_armor.get(email, {})
+        existing = _armor_doc.get_json(email, {})
         if not isinstance(existing, dict) or "normal" not in existing:
             existing = {}
         existing["normal"] = normal
         existing["sacrifice"] = sacrifice
-        all_armor[email] = existing
-        tmp = _ARMOR_JSON_FILE + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(all_armor, f, indent=2)
-        os.replace(tmp, _ARMOR_JSON_FILE)
+        _armor_doc.set_json(email, existing)
     except Exception as e:
         ConsoleLog(BOT_NAME, f"Armor JSON save error: {e}", PySystem.Console.MessageType.Warning)
 
@@ -2984,19 +2974,16 @@ def _draw_settings():
         PyImGui.end_tab_bar()
 
 
-_WIPE_LOG_FILE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot_wipes.log")
-_QUEST_TIMES_FILE = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Config", "UnderworldBot_quest_times.json")
+# Run/wipe log (list of display strings, shown in the Run Log UI) and per-quest
+# elapsed-time history. Both are self-persisting JSON documents at account scope.
+_wipe_log_doc = JsonFactory("Widgets/UnderworldBot_wipes.json")
+_quest_times_doc = JsonFactory("Widgets/UnderworldBot_quest_times.json")
 
 def _load_quest_times_log() -> dict[str, list[int]]:
-    """Load per-quest elapsed-second lists from the JSON log, or return empty dict."""
-    import json as _json
-    try:
-        with open(_QUEST_TIMES_FILE, "r", encoding="utf-8") as f:
-            data = _json.load(f)
-        if isinstance(data, dict):
-            return {k: [int(v) for v in vs] for k, vs in data.items() if isinstance(vs, list)}
-    except (OSError, ValueError):
-        pass
+    """Load per-quest elapsed-second lists from the JSON document, or return empty dict."""
+    data = _quest_times_doc.get_json("quest_times", {})
+    if isinstance(data, dict):
+        return {k: [int(v) for v in vs] for k, vs in data.items() if isinstance(vs, list)}
     return {}
 
 _quest_times_log: dict[str, list[int]] = _load_quest_times_log()
@@ -3029,11 +3016,10 @@ def _log_wipe_step(fsm) -> None:
     # callback before the FSM is torn down.
     if header == "END":
         return
-    entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Wipe at step: {step_name} [{header}]\n"
+    entry = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Wipe at step: {step_name} [{header}]"
     try:
-        with open(_WIPE_LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(entry)
-    except OSError as exc:
+        _wipe_log_doc.append("entries", entry)
+    except Exception as exc:
         ConsoleLog(BOT_NAME, f"[WIPE] Could not write wipe log: {exc}", PySystem.Console.MessageType.Warning)
     ConsoleLog(BOT_NAME, f"[WIPE] Logged wipe at step: {step_name} [{header}]", PySystem.Console.MessageType.Warning)
 
@@ -3082,29 +3068,20 @@ def _on_party_wipe(bot: "Botting"):
 
 
 def _draw_run_log() -> None:
-    """Display the last 10 entries from the wipe/run log file."""
+    """Display the last 10 entries from the wipe/run log."""
     if PyImGui.button("Clear Log##run_log"):
-        try:
-            with open(_WIPE_LOG_FILE, "w", encoding="utf-8") as f:
-                f.truncate(0)
-        except OSError:
-            pass
+        _wipe_log_doc.set_json("entries", [])
     PyImGui.same_line(0, -1)
-    PyImGui.text(_WIPE_LOG_FILE)
+    PyImGui.text(_wipe_log_doc.resolved_path())
     PyImGui.separator()
-    try:
-        with open(_WIPE_LOG_FILE, "r", encoding="utf-8") as f:
-            lines = [l.rstrip("\n") for l in f.readlines() if l.strip()]
-        last_10 = lines[-10:] if len(lines) > 10 else lines
-        if not last_10:
-            PyImGui.text_wrapped("(log is empty)")
-        else:
-            for line in reversed(last_10):
-                PyImGui.text_wrapped(line)
-    except FileNotFoundError:
-        PyImGui.text_wrapped("(no log file yet — wipes and completed runs will appear here)")
-    except OSError as exc:
-        PyImGui.text_wrapped(f"Error reading log: {exc}")
+    entries = _wipe_log_doc.get_json("entries", [])
+    lines = [str(e) for e in entries if str(e).strip()] if isinstance(entries, list) else []
+    last_10 = lines[-10:] if len(lines) > 10 else lines
+    if not last_10:
+        PyImGui.text_wrapped("(no log yet — wipes and completed runs will appear here)")
+    else:
+        for line in reversed(last_10):
+            PyImGui.text_wrapped(line)
 
 
 def _log_crash(exc: BaseException, tb: str) -> None:
@@ -3122,12 +3099,10 @@ def _log_crash(exc: BaseException, tb: str) -> None:
     )
     for line in tb.splitlines():
         entry += f"  {line}\n"
-    entry += "\n"
     try:
-        with open(_WIPE_LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(entry)
-    except OSError:
-        pass  # Nothing we can do if the file itself fails
+        _wipe_log_doc.append("entries", entry.rstrip("\n"))
+    except Exception:
+        pass  # Nothing we can do if the log write itself fails
 
 
 def _draw_main_additional_ui() -> None:

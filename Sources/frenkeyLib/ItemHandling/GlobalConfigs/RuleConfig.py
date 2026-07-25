@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
-import os
 from typing import ClassVar
 
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib.enums_src.GameData_enums import DyeColor
 from Py4GWCoreLib.enums_src.Item_enums import ItemType, Rarity
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -315,24 +314,24 @@ class RuleConfig(list[Rule]):
     #endregion Json Serialization
     
     #region Loading and Saving
-    def Save(self, file_path: str):
-        '''
-        Saves the config to a JSON file at the specified file path.
-        '''
-        directory = os.path.dirname(file_path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
-        
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(self.to_json_format(), f, indent=4, ensure_ascii=False)
-            
     @classmethod
-    def Load(cls, file_path: str) -> "RuleConfig":
+    def _document(cls) -> JsonFactory:
         '''
-        Loads the config from a JSON file at the specified file path and returns a new instance of the config with the loaded rules.
+        The account-scoped JsonFactory document backing this config. One document per config class
+        (e.g. LootConfig, SalvageConfig) so each keeps its own rule list.
         '''
-        with open(file_path, 'r', encoding='utf-8') as f:
-            json_data = json.load(f)
-        
-        return cls.from_json(json_data)
+        return JsonFactory(f"ItemHandling/{cls.__name__}.json")
+
+    def Save(self):
+        '''
+        Saves the config's rules to its JsonFactory document (account scope, autosaved).
+        '''
+        self._document().set_json("rules", self.to_json_format())
+
+    @classmethod
+    def Load(cls) -> "RuleConfig":
+        '''
+        Loads the config's rules from its JsonFactory document into the singleton instance.
+        '''
+        return cls.from_json(cls._document().get_json("rules", []))
     #endregion Loading and Saving

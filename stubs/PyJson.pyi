@@ -22,8 +22,9 @@ class JsonFile:
     def __init__(self, name: str, scope: str = "account") -> None:
         """Bind to a named JSON document.
 
-        ``scope`` is one of ``"account"``, ``"global"``, or ``"root"``. No
-        open/close/save needed — the factory autosave pump persists changes.
+        ``scope`` is ``"account"`` or ``"global"`` (both under ``json/``). No
+        open/close/save needed — the factory autosave pump persists changes. JSON
+        has no ``"root"`` scope; every document lives under ``json/``.
         """
         ...
 

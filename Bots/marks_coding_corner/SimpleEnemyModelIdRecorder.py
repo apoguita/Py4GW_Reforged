@@ -1,26 +1,21 @@
-import json
 from collections import OrderedDict
 from Py4GWCoreLib import *
+from Py4GWCoreLib import JsonFactory
 
-AGENT_FILE = "recorded_agents.json"
+_agents = JsonFactory("Bots/marks_coding_corner/recorded_agents.json")
 recorded_agents = OrderedDict()
 
 
 def save_agents():
-    """Save recorded agent data to disk (sorted by name)."""
-    with open(AGENT_FILE, "w") as f:
-        json.dump(recorded_agents, f, indent=4)
+    """Save recorded agent data (sorted by name)."""
+    _agents.set_json("agents", dict(recorded_agents))
 
 
 def load_agents():
-    """Load saved agents from disk."""
-    try:
-        with open(AGENT_FILE, "r") as f:
-            data = json.load(f)
-            # Sort alphabetically by name
-            return OrderedDict(sorted(data.items()))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return OrderedDict()
+    """Load saved agents."""
+    data = _agents.get_json("agents", {})
+    # Sort alphabetically by name
+    return OrderedDict(sorted(data.items()))
 
 
 def record_current_enemies():

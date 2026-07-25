@@ -1,10 +1,8 @@
-from cProfile import label
 from Py4GWCoreLib import ImGui, Color, Player, IconsFontAwesome5, Color, ColorPalette, GLOBAL_CACHE, SharedCommandType, ConsoleLog, Utils
+from Py4GWCoreLib import JsonFactory
 import PyImGui
 import Py4GW
 import PyOverlay
-import os
-import ctypes
 
 MODULE_NAME = "Layout Manager"
 MODULE_ICON = "Textures/Module_Icons/layout manager.png"
@@ -14,8 +12,6 @@ screen_overlay.create_overlay(ms=100, destroy=False)
 
 io = PyImGui.get_io()
 screen_width, screen_height = screen_overlay.get_desktop_size()
-
-import ctypes as ct
 
 def _send_message_to(command: SharedCommandType, receiver_email: str, params=(0.0, 0.0, 0.0, 0.0), ExtraData=("", "", "", "")):
     sender_email = Player.GetAccountEmail()
@@ -159,11 +155,13 @@ class LayoutConfig:
 
 
 class WindowLayouts:
+    # Layouts describe window geometry for every client on the machine, so this is
+    # genuinely shared config: one global JSON document, cross-process merged.
+    _layouts_doc = JsonFactory("Widgets/LayoutManager/window_layouts.json", "global")
+
     def __init__(self):
         self.layouts: list[LayoutConfig] = []
         self.all_accounts: list[ClientConfig] = []
-        self.projects_path = PySystem.Console.get_projects_path()
-        self.accounts_file = os.path.join(self.projects_path, "accounts.json")
 
         # existing UI state...
         self._lcw_selected_layout_idx = -1
@@ -175,33 +173,28 @@ class WindowLayouts:
         # NEW: per-client editor windows state
         self._client_editor_windows: list[dict] = []  # each: {"layout_idx": int, "client_idx": int, "open": bool}
         self.load_layouts()
-        self.get_all_accounts_from_json()
         self.get_remaining_accounts_from_shmem()
 
+    @staticmethod
+    def _template_doc(filepath: str) -> JsonFactory:
+        """Map a user-picked path to a jailed template document (by file name only)."""
+        base = filepath.replace("\\", "/").rstrip("/").split("/")[-1] or "template.json"
+        if not base.endswith(".json"):
+            base += ".json"
+        return JsonFactory("Widgets/LayoutManager/Templates/" + base)
+
     def load_layouts(self):
-        config_path = os.path.join(self.projects_path, "Widgets", "Config", "window_layouts.json")
-        if os.path.exists(config_path):
-            import json
-            with open(config_path, "r") as f:
-                data = json.load(f)
-                self.layouts = []
-                for layout_data in data.get("layouts", []):
-                    layout = LayoutConfig()
-                    layout.from_dict(layout_data)
-                    self.layouts.append(layout)
+        self.layouts = []
+        for layout_data in self._layouts_doc.get_json("layouts", []):
+            layout = LayoutConfig()
+            layout.from_dict(layout_data)
+            self.layouts.append(layout)
 
     def save_layouts(self):
-        config_path = os.path.join(self.projects_path, "Widgets", "Config", "window_layouts.json")
-        import json
-        with open(config_path, "w") as f:
-            data = {
-                "layouts": [layout.to_dict() for layout in self.layouts]
-            }
-            json.dump(data, f, indent=4)
+        self._layouts_doc.set_json("layouts", [layout.to_dict() for layout in self.layouts])
 
     def export_template(self, layout: LayoutConfig, filepath: str):
-        """Export layout as a template with placeholder emails."""
-        import json
+        """Export layout as a template with placeholder emails (into the JSON jail)."""
         layout_dict = layout.to_dict()
 
         # Force template flag
@@ -209,14 +202,11 @@ class WindowLayouts:
         for c in layout_dict["clients"]:
             c["email"] = "__TEMPLATE__"
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(layout_dict, f, indent=4)
+        self._template_doc(filepath).set_json("template", layout_dict)
 
     def import_template(self, filepath: str) -> LayoutConfig:
-        """Import a template file into a LayoutConfig object."""
-        import json
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        """Import a template document (from the JSON jail) into a LayoutConfig object."""
+        data = self._template_doc(filepath).get_json("template", {})
 
         layout = LayoutConfig()
         layout.from_dict(data)
@@ -245,46 +235,12 @@ class WindowLayouts:
                 return
 
     def get_all_layouts(self) -> list[LayoutConfig]:
-        return self.layouts    
-
-    def get_all_accounts_from_json (self):
-        import json
-        with open(self.accounts_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        seen = set()
-        unique_accounts: list[ClientConfig] = []
-
-        for group_name, accounts in data.items():
-            for acc in accounts:
-                email = acc.get("email")
-                if not email or email in seen:
-                    continue
-                seen.add(email)
-
-                # Create a ClientConfig using relevant fields
-                client = ClientConfig(
-                    email=email,
-                    alias=acc.get("character_name", email),
-                    x=acc.get("top_left", [0, 0])[0],
-                    y=acc.get("top_left", [0, 0])[1],
-                    width=acc.get("width", 800),
-                    height=acc.get("height", 600),
-                    borderless=acc.get("resize_client", False),
-                    rename_window=acc.get("enable_client_rename", False),
-                    window_title=acc.get("custom_client_name", "")
-                )
-                unique_accounts.append(client)
-
-        # Save into layouts
-        self.all_accounts = unique_accounts
-        self.save_layouts()
-        #PySystem.Console.Log("Layout Manager", f"Loaded {len(self.all_accounts)} accounts from accounts.json")
+        return self.layouts
 
     def get_remaining_accounts_from_shmem(self):
         """
-        Fallback to populate any accounts from SharedMemory that we're not already aware of from accounts.json
-        Allows steam accounts to be managed without their uuid being present in accounts.json
+        Populate the known accounts from SharedMemory (the sanctioned cross-account
+        data channel). Steam accounts without a launcher UUID are covered here too.
         """
         seen = set([acc.email for acc in self.all_accounts])
         unique_accounts: list[ClientConfig] = []

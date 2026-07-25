@@ -1,5 +1,13 @@
 # 11 — Item-Mod System: Research & Design (for approval)
 
+> **RESOLVED / HISTORICAL (kept as a record).** The system this doc explores is **built** — it
+> shipped as `Item.Mods` (`Py4GWCoreLib/Item.py`) backed by `Py4GWCoreLib/mods_core.py` (the one
+> reader + `_Def` read-rule table + `Slot`) and `Py4GWCoreLib/mods_types.py` (`ModifierIdentifier`).
+> The live API and its rationale are in **doc 10**; the settled design is **doc 12**. The candidate
+> filenames floated in the open questions below — `mods_value_args.py`, `mod_ids.py`,
+> `mods_metadata.py` — were **never created**; that data folded directly into `mods_core.py`. Read
+> this doc for the reasoning trail only, not for current names.
+
 > Status: **research + proposed design, no code written.** This document is the dedicated
 > analysis of the modifier system as it exists in three references — frenkey's JSON model,
 > our own `item_mods_src`, and your prior `Examples/itemcompare.py` — reconciled with what

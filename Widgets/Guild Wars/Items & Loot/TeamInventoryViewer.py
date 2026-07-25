@@ -1,74 +1,53 @@
 import json
 import os
 import re
-import shutil
 import traceback
 from collections import OrderedDict
-from pathlib import Path
 
-import Py4GW  # type: ignore
+import PyImGui
+import PySystem
+
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Color
 from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import DyeColor
 from Py4GWCoreLib import ImGui
-from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-import PyImGui
+from Py4GWCoreLib import JsonFactory
+from Py4GWCoreLib import Map
+from Py4GWCoreLib import Player
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib import ThrottledTimer
-from Py4GWCoreLib import Timer
-from Py4GWCoreLib import Map, Player
 from Py4GWCoreLib import get_texture_for_model
 from Py4GWCoreLib.enums import Bags
 from Py4GWCoreLib.enums import ModelID
-from Sources.marks_sources.mods_parser import ModDatabase
+from Py4GWCoreLib.enums_src.Item_enums import ItemType
+from Py4GWCoreLib.enums_src.Item_enums import Rarity
+from Py4GWCoreLib.Item import Item
+
 from Sources.marks_sources.mods_parser import MatchedRuneInfo
 from Sources.marks_sources.mods_parser import MatchedWeaponModInfo
+from Sources.marks_sources.mods_parser import ModDatabase
 from Sources.marks_sources.mods_parser import parse_modifiers
 
 
 project_root = PySystem.Console.get_projects_path()
 
-
-BASE_DIR = os.path.join(project_root, "Widgets/Config")
-DB_BASE_DIR = os.path.join(project_root, "Widgets/Data")
-JSON_INVENTORY_PATH = os.path.join(DB_BASE_DIR, "Inventory")
-JSON_INVENTORY_MODEL_IDS_PATH = os.path.join(DB_BASE_DIR, "InventoryModelIds")
-JSON_INVENTORY_MOD_HASH_PATH = os.path.join(DB_BASE_DIR, "InventoryModHash")
-INI_WIDGET_WINDOW_PATH = os.path.join(BASE_DIR, "team_inventory_viewer.ini")
 MOD_DB = ModDatabase.load(os.path.join(project_root, "Sources/marks_sources/mods_data"))
-os.makedirs(BASE_DIR, exist_ok=True)
 
-# â€”â€”â€” Window Persistence Setup â€”â€”â€”
-ini_window = Settings("Widgets/Config/team_inventory_viewer.ini", "global")
-save_window_timer = Timer()
-save_window_timer.Start()
+MODULE_NAME = "TeamInventoryViewer"
+
 inventory_write_timer = ThrottledTimer(3000)
 inventory_read_timer = ThrottledTimer(5000)
-name_request_timer = ThrottledTimer(1000)
 
-# String consts
-MODULE_NAME = "TeamInventoryViewer"  # Change this Module name
-MODULE_ICON = "Textures/Module_Icons/TeamInventoryViewer.png"
-COLLAPSED = "collapsed"
-X_POS = "x"
-Y_POS = "y"
-
-# load lastâ€saved window state (fallback to 100,100 / un-collapsed)
-window_x = ini_window.get_int(MODULE_NAME, X_POS, 1512)
-window_y = ini_window.get_int(MODULE_NAME, Y_POS, 0)
-window_collapsed = ini_window.get_bool(MODULE_NAME, COLLAPSED, True)
-
-# View data
-first_run = True
 on_first_load = True
 all_accounts_search_query = ''
 search_query = ''
 current_character_name = ''
 
+# Read-side cache the widget iterates when drawing every frame. Populated from the
+# shared global JsonFactory doc: every account (current and peers) is just an
+# email-keyed subtree of that one document, so no cross-account file access is needed.
 TEAM_INVENTORY_CACHE = {}
-INVENTORY_MODEL_ID_CACHE = {}
-INVENTORY_MOD_HASH_CACHE = {}
 
 INVENTORY_BAGS = {
     "Backpack": Bags.Backpack.value,
@@ -326,95 +305,68 @@ def clean_gw_item_name(item_name: str):
 
 
 # region JSONStore
+
 class ModelIDJSONStore:
+    """Shared {model_id: model_name} map, backed by a global-scope JsonFactory doc.
+
+    Global scope is safe under multibox: saves merge every client's discoveries
+    through a cross-process lock, so different accounts scanning different items all
+    contribute to the same on-disk map without clobbering each other.
+    """
+
+    FILE = "TeamInventoryViewer/model_ids.json"
+
     def __init__(self):
-        self.path = Path(JSON_INVENTORY_MODEL_IDS_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / "model_ids.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
-
-    def _read(self):
-        if not self.file_path.exists():
-            return {}
-
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {}
-
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            # Skip writing while map is invalid
-            return False
-
-        temp_file = self.file_path.with_suffix(".tmp")
-
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("ModelIDJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
+        self.file = JsonFactory(self.FILE, "global")
 
     def save_model_id(self, model_id, model_name):
-        str_model_id = str(model_id)
-        data = self._read()
-        if model_id and model_name:
-            data[str_model_id] = model_name
-            INVENTORY_MODEL_ID_CACHE[str_model_id] = model_name
-            self._write(data)
+        if not model_id or not model_name:
+            return
+        self.file.set(str(model_id), str(model_name))
 
-    def load(self):
-        global INVENTORY_MODEL_ID_CACHE
+    def get(self, model_id, default=""):
+        return self.file.get_str(str(model_id), default)
 
-        if INVENTORY_MODEL_ID_CACHE:
-            return INVENTORY_MODEL_ID_CACHE
 
-        data = self._read()
-        keys_to_delete = []
-        for key, value in data.items():
-            if not value:
-                keys_to_delete.append(key)
+class ModelFileIDJSONStore:
+    """Shared {model_id: file_id} lookup so any character can render icons straight
+    from GW.dat, even for items they've never held themselves.
 
-        for key in keys_to_delete:
-            del data[key]
+    Global scope; same multibox-safe merge semantics as ModelIDJSONStore.
+    """
 
-        INVENTORY_MODEL_ID_CACHE = data
-        return data
+    FILE = "TeamInventoryViewer/model_file_ids.json"
+
+    def __init__(self):
+        self.file = JsonFactory(self.FILE, "global")
+
+    def save_model_file_id(self, model_id, file_id):
+        if not model_id or not file_id or file_id <= 0:
+            return
+        self.file.set(str(model_id), int(file_id))
+
+    def get(self, model_id, default=0):
+        return self.file.get_int(str(model_id), default)
 
 
 class ModHashJSONStore:
+    """Shared {mod_hash: [prefix, suffix]} map, backed by a global-scope JsonFactory doc."""
+
+    FILE = "TeamInventoryViewer/mod_hash.json"
+
     def __init__(self):
-        self.path = Path(JSON_INVENTORY_MOD_HASH_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / "mod_hash.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
+        self.file = JsonFactory(self.FILE, "global")
 
     @staticmethod
     def hash_mods(modifiers):
-        """
-        Generates a stable 64-bit hash for a list of modifier objects.
-        Extracts identifier + args + modbits from each mod.
-        """
+        """Stable 64-bit hash of a list of modifier objects (identifier + args + modbits)."""
 
         def safe_int(v):
             try:
                 return int(v)
             except Exception:
-                return 0  # fallback for None or weird values
+                return 0
 
-        # Build the integer matrix
         data = []
         for mod in modifiers:
             data.append(
@@ -427,234 +379,191 @@ class ModHashJSONStore:
                 ]
             )
 
-        # === Fast 64-bit hash mixer ===
         h = 0
         for lst in data:
             for num in lst:
                 h = (h * 1315423911) ^ num ^ (h >> 5)
-                h &= 0xFFFFFFFFFFFFFFFF  # keep 64 bits
+                h &= 0xFFFFFFFFFFFFFFFF
 
         return hex(h)[2:]
 
-    def _read(self):
-        if not self.file_path.exists():
-            return {}
-
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {}
-
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            # Skip writing while map is invalid
-            return False
-
-        temp_file = self.file_path.with_suffix(".tmp")
-
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("ModelHashJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
-
     def save_mod_hash(self, mod_hash, prefix=None, suffix=None):
-        str_mod_hash = str(mod_hash)
-        data = self._read()
-        if mod_hash and (prefix or suffix):
-            data[str_mod_hash] = [prefix, suffix]
-            INVENTORY_MOD_HASH_CACHE[str_mod_hash] = [prefix, suffix]
-            self._write(data)
+        if not mod_hash or not (prefix or suffix):
+            return
+        self.file.set_json(str(mod_hash), [prefix, suffix])
 
-    def load(self):
-        global INVENTORY_MOD_HASH_CACHE
-
-        if INVENTORY_MOD_HASH_CACHE:
-            return INVENTORY_MOD_HASH_CACHE
-
-        data = self._read()
-        keys_to_delete = []
-        for key, value in data.items():
-            if not value:
-                keys_to_delete.append(key)
-
-        for key in keys_to_delete:
-            del data[key]
-
-        INVENTORY_MOD_HASH_CACHE = data
-        return data
+    def get(self, mod_hash, default=None):
+        return self.file.get_json(str(mod_hash), default)
 
 
 class AccountJSONStore:
+    """Per-account inventory (Characters + Storage) stored as an email-keyed subtree of
+    ONE global-scope JsonFactory document shared by every client.
+
+    Global scope is multibox-safe: each account only ever writes under its OWN email key,
+    and the native journal-merge folds every client's subtree into the same file without
+    clobbering. Reading a peer is then a normal read of that shared document (its email
+    subtree) — no cross-account file access. Write/clear methods still no-op for any email
+    other than the current account, so a client never mutates another account's subtree.
+    """
+
+    FILE = "TeamInventoryViewer/team_inventory.json"
+
     def __init__(self, email):
         self.email = email
-        self.path = Path(JSON_INVENTORY_PATH)
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.file_path = self.path / f"{self.email}.json"
-        self.backup_path = self.file_path.with_suffix(".json.bak")
+        current = Player.GetAccountEmail()
+        self._is_current = bool(current) and email == current
+        self.file = JsonFactory(self.FILE, "global")
 
-    def _read(self):
-        if not self.file_path.exists():
-            return {"Characters": OrderedDict(), "Storage": OrderedDict()}
+    def _fresh_snapshot(self):
+        return self.file.get_json(self.email, None) or {
+            "Characters": OrderedDict(),
+            "Storage": OrderedDict(),
+        }
 
-        try:
-            with open(self.file_path, "r") as f:
-                return json.load(f, object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
-            if self.backup_path.exists():
-                try:
-                    with open(self.backup_path, "r") as f:
-                        return json.load(f, object_pairs_hook=OrderedDict)
-                except Exception:
-                    pass
-            return {"Characters": OrderedDict(), "Storage": OrderedDict()}
+    # ----- Reads -----
 
-    def _write(self, data):
-        if not Routines.Checks.Map.MapValid():
-            # Skip writing while map is invalid
-            return False
-
-        temp_file = self.file_path.with_suffix(".tmp")
-
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-            if self.file_path.exists():
-                shutil.copy2(self.file_path, self.backup_path)
-            os.replace(temp_file, self.file_path)
-            return True
-        except Exception as e:
-            ConsoleLog("AccountJSONStore", f"[WARN] Failed to write {self.file_path}: {e}")
-            return False
-
-    def _deep_dict_equal(self, a, b):
-        """
-        Recursively checks if two dictionaries (or nested structures) are equal.
-        Supports dicts, OrderedDicts, and lists.
-        """
-        if isinstance(a, dict) or isinstance(a, OrderedDict):
-            if a.keys() != b.keys():
-                return False
-            return all(self._deep_dict_equal(a[k], b[k]) for k in a)
-
-        if isinstance(a, list):
-            if len(a) != len(b):
-                return False
-            return all(self._deep_dict_equal(x, y) for x, y in zip(a, b))
-
-        # Base case: primitive types
-        return a == b
-
-    # --- Cached interface ---
     def load(self):
-        if self.email in TEAM_INVENTORY_CACHE:
-            return TEAM_INVENTORY_CACHE[self.email]
-
-        data = self._read()
+        data = self.file.get_json(self.email, None)
+        if not data:
+            data = {"Characters": OrderedDict(), "Storage": OrderedDict()}
         TEAM_INVENTORY_CACHE[self.email] = data
         return data
 
-    def save_bag(self, char_name=None, storage_name=None, bag_name=None, bag_items={}):
-        data = self._read()
-        changed = False
+    # ----- Writes (own account subtree only) -----
 
-        if char_name:
-            chars = data["Characters"]
-            if char_name not in chars:
-                chars[char_name] = {"Inventory": OrderedDict()}
-            inv = chars[char_name]["Inventory"]
-            if not self._deep_dict_equal(inv.get(bag_name), bag_items):
-                inv[bag_name] = bag_items
-                changed = True
+    def save_bag(self, char_name=None, storage_name=None, bag_name=None, bag_items=None):
+        if not self._is_current:
+            return
+        if bag_items is None:
+            bag_items = {}
+        if char_name and bag_name:
+            path = f"{self.email}/Characters/{char_name}/Inventory/{bag_name}"
         elif storage_name:
-            storage = data["Storage"]
-            if not self._deep_dict_equal(storage.get(storage_name), bag_items):
-                storage[storage_name] = bag_items
-                changed = True
-
-        if changed:
-            TEAM_INVENTORY_CACHE[self.email] = data
-            self._write(data)
+            path = f"{self.email}/Storage/{storage_name}"
+        else:
+            return
+        # set_json dedups against the current subtree, so an unchanged assignment is free.
+        self.file.set_json(path, dict(bag_items))
+        TEAM_INVENTORY_CACHE[self.email] = self._fresh_snapshot()
 
     def clear_character(self, char_name):
-        if not self.file_path.exists():
+        if not self._is_current:
             return
-
-        try:
-            data = self._read()
-            chars = data.get("Characters", {})
-            if char_name in chars:
-                del chars[char_name]
-                self._write(data)
-                ConsoleLog("AccountJSONStore", f"Removed character {char_name} from {self.email}.")
-            else:
-                ConsoleLog("AccountJSONStore", f"[WARN] Character {char_name} not found for {self.email}.")
-            TEAM_INVENTORY_CACHE[self.email] = data
-        except Exception as e:
-            ConsoleLog("AccountJSONStore", f"[ERROR] clear_character: {e}")
+        if self.file.delete(f"{self.email}/Characters/{char_name}"):
+            ConsoleLog("AccountJSONStore", f"Removed character {char_name} from {self.email}.")
+        else:
+            ConsoleLog("AccountJSONStore", f"[WARN] Character {char_name} not found for {self.email}.")
+        TEAM_INVENTORY_CACHE[self.email] = self._fresh_snapshot()
 
     def clear_account(self):
-        try:
-            if self.file_path.exists():
-                self.file_path.unlink()
-            if self.backup_path.exists():
-                self.backup_path.unlink()
-            TEAM_INVENTORY_CACHE[self.email] = None
-            ConsoleLog("AccountJSONStore", f"Cleared all data for {self.email}.")
-        except Exception as e:
-            ConsoleLog("AccountJSONStore", f"[WARN] Failed to clear account {self.email}: {e}")
+        if self._is_current:
+            # Drop this account's whole subtree from the shared doc.
+            self.file.delete(self.email)
+        TEAM_INVENTORY_CACHE[self.email] = None
+        ConsoleLog("AccountJSONStore", f"Cleared all data for {self.email}.")
 
 
 class MultiAccountInventoryStore:
     def __init__(self):
-        self.inventory_dir = Path(JSON_INVENTORY_PATH)
-        self.inventory_dir.mkdir(exist_ok=True)
+        self.file = JsonFactory(AccountJSONStore.FILE, "global")
 
     def account_store(self, email):
         return AccountJSONStore(email)
 
     def load_all(self):
-        """Load all JSON files into global cache."""
-        for file_path in self.inventory_dir.glob("*.json"):
-            if (
-                file_path.suffix != ".json"
-                or file_path.stem == 'items_cache'
-                or file_path.stem == 'weapon_modifier_cache'
-            ):
+        """Populate TEAM_INVENTORY_CACHE from the shared global doc.
+
+        Every account is an email-keyed subtree of the one document, so both the current
+        account (freshest in-memory state, including writes made this tick that haven't
+        autosaved yet) and every peer come from the same read — no disk scan, no
+        cross-account file access.
+        """
+        current_email = Player.GetAccountEmail()
+        if current_email:
+            AccountJSONStore(current_email).load()
+
+        for email in self.file.keys(""):
+            if not email or email == current_email:
                 continue
-            email = file_path.stem
             AccountJSONStore(email).load()
 
         return TEAM_INVENTORY_CACHE
 
     def clear_all_data(self):
-        """Delete all JSON files and clear cache."""
+        """Wipe every account's subtree from the shared global doc and clear the cache."""
+        self.file.set_json("", {})
         TEAM_INVENTORY_CACHE.clear()
-        for file_path in self.inventory_dir.glob("*.json"):
-            try:
-                file_path.unlink()
-                backup_path = file_path.with_suffix(".json.bak")
-                if backup_path.exists():
-                    backup_path.unlink()
-            except Exception as e:
-                ConsoleLog("MultiAccountInventoryStore", f"[WARN] Failed to delete {file_path}: {e}")
 
 
 multi_store = MultiAccountInventoryStore()
 inventory_model_ids_store = ModelIDJSONStore()
 inventory_mod_hash_store = ModHashJSONStore()
+inventory_model_file_ids_store = ModelFileIDJSONStore()
+
+
+ROW_ICON_SIZE = 36.0
+ROW_HEIGHT = 40.0
+
+# ImGuiTableBgTarget values (RowBg targets paint the whole row's background slot;
+# TableFlags.RowBg alternates between RowBg0 and RowBg1 for zebra striping, so we
+# override BOTH to keep the rarity tint visible on every row regardless of parity).
+_TABLE_BG_TARGET_ROW_BG0 = 1
+_TABLE_BG_TARGET_ROW_BG1 = 2
+
+# Alpha kept low so item text stays readable over the tint. Missing/unknown rarity
+# yields None from the dict, which short-circuits set_bg_color calls in the helper.
+RARITY_ROW_BG = {
+    Rarity.White.value: Color(64, 64, 72, 55).to_color(),
+    Rarity.Blue.value: Color(60, 130, 220, 55).to_color(),
+    Rarity.Purple.value: Color(160, 100, 220, 55).to_color(),
+    Rarity.Gold.value: Color(220, 180, 60, 55).to_color(),
+    Rarity.Green.value: Color(60, 180, 100, 55).to_color(),
+}
+
+
+def _center_cell_y(num_lines=1):
+    """Advance the current cell's cursor so a text block of ``num_lines`` lines
+    sits vertically centered in a ROW_HEIGHT row. Call immediately after
+    ``table_next_column`` and before the ``PyImGui.text(...)`` call."""
+    line_h = PyImGui.get_text_line_height()
+    spacing = PyImGui.get_text_line_height_with_spacing() - line_h
+    block_h = line_h * num_lines + spacing * max(0, num_lines - 1)
+    offset = (ROW_HEIGHT - block_h) / 2.0
+    if offset > 0:
+        PyImGui.set_cursor_pos_y(PyImGui.get_cursor_pos_y() + offset)
+
+
+def _apply_rarity_row_bg(info):
+    """Tint the current row's background based on the item's stored rarity.
+
+    Must be called immediately after ``PyImGui.table_next_row(...)`` and before any
+    per-cell ``table_set_bg_color`` call in the same row. No-ops on missing/unknown
+    rarity or when the item is White (no tint).
+    """
+    color = RARITY_ROW_BG.get(info.get("rarity"))
+    if not color:
+        return
+    PyImGui.table_set_bg_color(_TABLE_BG_TARGET_ROW_BG0, color, -1)
+    PyImGui.table_set_bg_color(_TABLE_BG_TARGET_ROW_BG1, color, -1)
+
+
+def _icon_texture_for(info):
+    """Always render from game memory (gwdat://<file_id>) when possible.
+
+    Lookup order:
+      1. The item's own stored model_file_id (freshest, gender-correct).
+      2. The shared model_id → file_id cache (populated by any scan on any
+         character, so we get real icons even for items we haven't held).
+      3. On-disk PNG atlas via get_texture_for_model (last resort).
+    """
+    file_id = int(info.get("model_file_id") or 0)
+    if file_id <= 0:
+        model_id = info.get("model_id", 0)
+        file_id = inventory_model_file_ids_store.get(str(model_id), 0)
+    if file_id > 0:
+        return f"gwdat://{file_id}"
+    return get_texture_for_model(info.get("model_id", 0))
 
 
 # region Generators
@@ -680,9 +589,22 @@ def get_storage_bag_items_coroutine(bag, bag_id, email, storage_name):
     store.save_bag(storage_name=storage_name, bag_items=bag_items)
 
 
-def get_mods_from_item(item):
+def get_mods_from_item(item_id, model_id):
+    """Fetch modifiers via GLOBAL_CACHE — bag.GetItems() returns bag-slot stubs
+    without a `.modifiers` attribute; the real PyItem instance is what carries
+    them (see Py4GWCoreLib/GlobalCache/ItemCache.py:571)."""
+    raw_modifiers = GLOBAL_CACHE.Item.Mods.GetModifiers(item_id) or []
+    item_type_int, _item_type_name = GLOBAL_CACHE.Item.GetItemType(item_id)
+    if not raw_modifiers:
+        return (None, None, None)
+
+    try:
+        item_type = ItemType(item_type_int)
+    except ValueError:
+        return (None, None, None)
+
     modifiers = []
-    for mod in item.modifiers:
+    for mod in raw_modifiers:
         modifiers.append(
             [
                 mod.GetIdentifier(),
@@ -690,11 +612,10 @@ def get_mods_from_item(item):
                 mod.GetArg2(),
             ]
         )
-    # 2. Parse any item's raw modifiers
     result = parse_modifiers(
         modifiers=modifiers,
-        item_type=item.item_type.ToInt(),
-        model_id=item.model_id,
+        item_type=item_type,
+        model_id=model_id,
         db=MOD_DB,
     )
 
@@ -712,16 +633,13 @@ def get_mods_from_item(item):
 
     if result.suffix and isinstance(result.suffix, MatchedWeaponModInfo):
         suffix = result.suffix.weapon_mod.name
-    elif result.prefix and isinstance(result.suffix, MatchedRuneInfo):
+    elif result.suffix and isinstance(result.suffix, MatchedRuneInfo):
         suffix = result.suffix.rune.name
 
     return (prefix, suffix, inherent)
 
 
 def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
-    global current_character_name
-    global multi_store
-
     """Shared coroutine to fetch all items from a bag with modifier and frenkey DB name support."""
 
     def _strip_markup(text):
@@ -754,9 +672,17 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
         else:
             items = {}
 
+        # Exact match (model + slot + count) — safest for stacks that share a model.
         for item_name, value in items.items():
             if value.get("model_id") == model_id and value.get("slot", {}).get(str(slot), 0) == count:
                 return item_name
+
+        # Unique items (armor/weapons, count=1) rarely stack — accept a model-only
+        # match on the same slot so the name survives a slot swap or empty scan.
+        if count == 1:
+            for item_name, value in items.items():
+                if value.get("model_id") == model_id and str(slot) in value.get("slot", {}):
+                    return item_name
 
         return None
 
@@ -771,6 +697,18 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
         return f"{base_name} #{i}"
 
     bag_items = OrderedDict()
+
+    # Prefetch: fire a name request for every item up front so the server can
+    # resolve them in parallel while we work through the bag. Otherwise each
+    # unknown-model item stalls the coroutine for up to 2s waiting on a name.
+    for item in bag.GetItems():
+        if not item or item.model_id == 0 or not item.item_id:
+            continue
+        try:
+            if not GLOBAL_CACHE.Item.IsNameReady(item.item_id):
+                GLOBAL_CACHE.Item.RequestName(item.item_id)
+        except Exception:
+            pass
 
     for item in bag.GetItems():
         if not item or item.model_id == 0:
@@ -815,8 +753,10 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
                 if final_name:
                     model_name, prefix, suffix = clean_gw_item_name(final_name)
                     inventory_model_ids_store.save_model_id(model_id, model_name)
-                    mod_hash = ModHashJSONStore.hash_mods(item.modifiers)
-                    inventory_mod_hash_store.save_mod_hash(mod_hash, prefix, suffix)
+                    raw_modifiers = GLOBAL_CACHE.Item.Mods.GetModifiers(item_id) or []
+                    if raw_modifiers:
+                        mod_hash = ModHashJSONStore.hash_mods(raw_modifiers)
+                        inventory_mod_hash_store.save_mod_hash(mod_hash, prefix, suffix)
 
             except Exception as e:
                 print(f"Exception fetching name for {item_id}: {e}")
@@ -830,14 +770,42 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
         if final_name in bag_items:
             unique_name = _generate_unique_key(bag_items, final_name)
 
+        try:
+            raw_file_id = int(GLOBAL_CACHE.Item.GetModelFileID(item_id) or 0)
+            # Composite items (armor, most weapons) point at a manifest — resolve
+            # to the actual texture sub-file for the current character's gender.
+            model_file_id = int(Item.GetTrueModelFileID(raw_file_id) or raw_file_id) if raw_file_id > 0 else 0
+        except Exception:
+            model_file_id = 0
+
+        # Feed the shared model_id → file_id cache so other accounts/characters
+        # can render this item's icon straight from GW.dat without needing to
+        # have held it themselves.
+        if model_file_id > 0:
+            inventory_model_file_ids_store.save_model_file_id(model_id, model_file_id)
+
+        # Rarity drives the row background tint. Fetched per-instance because it's
+        # a live-item property (drop-time value), not derivable from model_id alone.
+        try:
+            rarity_val = int(GLOBAL_CACHE.Item.Rarity.GetRarity(item_id)[0])
+        except Exception:
+            rarity_val = -1
+
         # Always insert or update using the unique name
         if unique_name not in bag_items:
             bag_items[unique_name] = OrderedDict(
                 {
                     "model_id": model_id,
+                    "model_file_id": model_file_id,
+                    "rarity": rarity_val,
                     "slot": OrderedDict(),
                 }
             )
+        else:
+            if model_file_id and not bag_items[unique_name].get("model_file_id"):
+                bag_items[unique_name]["model_file_id"] = model_file_id
+            if rarity_val >= 0 and bag_items[unique_name].get("rarity", -1) < 0:
+                bag_items[unique_name]["rarity"] = rarity_val
 
         bag_items[unique_name]["slot"][str(slot)] = quantity
 
@@ -899,17 +867,15 @@ def search(query: str, items: list[str]) -> list[str]:
 
 
 def get_armor_name_from_modifiers(item):
-    try:
-        base_name = ModelID(item.model_id).name.replace("_", " ")
-    except ValueError:
-        base_name = None
-
-    base_name = INVENTORY_MODEL_ID_CACHE.get(str(item.model_id))
+    base_name = inventory_model_ids_store.get(str(item.model_id), "")
     if not base_name:
-        return None
+        try:
+            base_name = ModelID(item.model_id).name.replace("_", " ")
+        except ValueError:
+            return None
 
     # Collect mods
-    prefix, suffix, _inherent = get_mods_from_item(item)
+    prefix, suffix, _inherent = get_mods_from_item(item.item_id, item.model_id)
 
     # --- Construct name ---
     name_parts = []
@@ -926,16 +892,14 @@ def get_armor_name_from_modifiers(item):
 
 
 def get_weapon_name_from_modifiers(item):
-    try:
-        base_name = ModelID(item.model_id).name.replace("_", " ")
-    except ValueError:
-        base_name = None
-
-    base_name = INVENTORY_MODEL_ID_CACHE.get(str(item.model_id))
+    base_name = inventory_model_ids_store.get(str(item.model_id), "")
     if not base_name:
-        return None
+        try:
+            base_name = ModelID(item.model_id).name.replace("_", " ")
+        except ValueError:
+            return None
 
-    prefix, suffix, inherent = get_mods_from_item(item)
+    prefix, suffix, inherent = get_mods_from_item(item.item_id, item.model_id)
 
     # --- Construct name ---
     name_parts = []
@@ -958,19 +922,9 @@ def get_weapon_name_from_modifiers(item):
 # region Widget
 def draw_widget():
     global TEAM_INVENTORY_CACHE
-    global INVENTORY_MODEL_ID_CACHE
-    global INVENTORY_MOD_HASH_CACHE
-    global window_x
-    global window_y
-    global window_collapsed
-    global first_run
     global all_accounts_search_query
     global search_query
     global on_first_load
-    global current_character_name
-    global multi_store
-    global inventory_model_ids_store
-    global inventory_mod_hash_store
 
     if on_first_load:
         PyImGui.set_next_window_size(1000, 1250)
@@ -978,8 +932,6 @@ def draw_widget():
         on_first_load = False
 
         TEAM_INVENTORY_CACHE = multi_store.load_all()
-        INVENTORY_MODEL_ID_CACHE = inventory_model_ids_store.load()
-        INVENTORY_MOD_HASH_CACHE = inventory_mod_hash_store.load()
 
     # This triggers a reload of and save of bag data
     if inventory_write_timer.IsExpired() and Routines.Checks.Map.IsOutpost():
@@ -1039,7 +991,9 @@ def draw_widget():
                                                         "character": char_name,
                                                         "bag": bag_name,
                                                         "item_name": item_name,
-                                                        "model_id": info["model_id"],
+                                                        "model_id": info.get("model_id", 0),
+                                                        "model_file_id": info.get("model_file_id", 0),
+                                                        "rarity": info.get("rarity", -1),
                                                         "count": count or str(info.get('count', 0)),
                                                         "location_type": "Character",
                                                     }
@@ -1060,7 +1014,9 @@ def draw_widget():
                                                     "character": None,
                                                     "bag": storage_name,
                                                     "item_name": item_name,
-                                                    "model_id": info["model_id"],
+                                                    "model_id": info.get("model_id", 0),
+                                                    "model_file_id": info.get("model_file_id", 0),
+                                                    "rarity": info.get("rarity", -1),
                                                     "count": count or str(info.get('count', 0)),
                                                     "location_type": "Storage",
                                                 }
@@ -1075,31 +1031,35 @@ def draw_widget():
                                 5,
                                 PyImGui.TableFlags.Borders | PyImGui.TableFlags.RowBg | PyImGui.TableFlags.ScrollY,
                             ):
-                                PyImGui.table_setup_column("Icon", 0, 30.0)
-                                PyImGui.table_setup_column("Item Name", 0, 300.0)
-                                PyImGui.table_setup_column("Count", 0, 50.0)
-                                PyImGui.table_setup_column("Location", 0, 150.0)
-                                PyImGui.table_setup_column("Account", 0, 150.0)
+                                PyImGui.table_setup_column("Icon", PyImGui.TableColumnFlags.WidthFixed, 40.0)
+                                PyImGui.table_setup_column("Item Name", PyImGui.TableColumnFlags.WidthStretch, 1.0)
+                                PyImGui.table_setup_column("Count", PyImGui.TableColumnFlags.WidthFixed, 40.0)
+                                PyImGui.table_setup_column("Location", PyImGui.TableColumnFlags.WidthFixed, 150.0)
+                                PyImGui.table_setup_column("Account", PyImGui.TableColumnFlags.WidthFixed, 150.0)
                                 PyImGui.table_headers_row()
 
                                 for index, entry in enumerate(search_results):
-                                    texture = get_texture_for_model(entry["model_id"])
+                                    texture = _icon_texture_for(entry)
 
-                                    PyImGui.table_next_row()
+                                    PyImGui.table_next_row(0, ROW_HEIGHT)
+                                    _apply_rarity_row_bg(entry)
 
                                     # === ICON ===
                                     PyImGui.table_next_column()
                                     if texture:
-                                        ImGui.DrawTexture(texture, 20, 20)
+                                        ImGui.DrawTexture(texture, ROW_ICON_SIZE, ROW_ICON_SIZE)
                                     else:
+                                        _center_cell_y(1)
                                         PyImGui.text("N/A")
 
                                     # === ITEM NAME ===
                                     PyImGui.table_next_column()
+                                    _center_cell_y(1)
                                     PyImGui.text(re.sub(r'^\d+\s*', '', entry["item_name"]))
 
                                     # === COUNT ===
                                     PyImGui.table_next_column()
+                                    _center_cell_y(1)
                                     count = 0
                                     for slot_count in entry.get("slot", {}).values():
                                         count += slot_count
@@ -1107,6 +1067,7 @@ def draw_widget():
 
                                     # === LOCATION ===
                                     PyImGui.table_next_column()
+                                    _center_cell_y(2)
                                     if entry["location_type"] == "Character":
                                         PyImGui.text(f"{entry['character']}\n  - {entry['bag']}")
                                     else:
@@ -1114,6 +1075,7 @@ def draw_widget():
 
                                     # === ACCOUNT IDENTIFIER ===
                                     PyImGui.table_next_column()
+                                    _center_cell_y(1)
                                     if PyImGui.collapsing_header(f'{entry["email"]}##{index}'):
                                         PyImGui.text(entry["account_label"])
 
@@ -1166,30 +1128,34 @@ def draw_widget():
                                             3,
                                             PyImGui.TableFlags.Borders | PyImGui.TableFlags.RowBg,
                                         ):
-                                            PyImGui.table_setup_column("Icon", 0, 30.0)
-                                            PyImGui.table_setup_column("Item Name", 0, 300.0)
-                                            PyImGui.table_setup_column("Count", 0, 25.0)
+                                            PyImGui.table_setup_column("Icon", PyImGui.TableColumnFlags.WidthFixed, 40.0)
+                                            PyImGui.table_setup_column("Item Name", PyImGui.TableColumnFlags.WidthStretch, 1.0)
+                                            PyImGui.table_setup_column("Count", PyImGui.TableColumnFlags.WidthFixed, 40.0)
                                             PyImGui.table_headers_row()
 
                                             for item_name in filtered_items:
                                                 info = items[item_name]
-                                                texture = get_texture_for_model(info["model_id"])
+                                                texture = _icon_texture_for(info)
 
-                                                PyImGui.table_next_row()
+                                                PyImGui.table_next_row(0, ROW_HEIGHT)
+                                                _apply_rarity_row_bg(info)
 
                                                 # === ICON COLUMN ===
                                                 PyImGui.table_next_column()
                                                 if texture:
-                                                    ImGui.DrawTexture(texture, 20, 20)
+                                                    ImGui.DrawTexture(texture, ROW_ICON_SIZE, ROW_ICON_SIZE)
                                                 else:
+                                                    _center_cell_y(1)
                                                     PyImGui.text("N/A")
 
                                                 # === ITEM NAME COLUMN ===
                                                 PyImGui.table_next_column()
+                                                _center_cell_y(1)
                                                 PyImGui.text(re.sub(r'^\d+\s*', '', item_name))
 
                                                 # === COUNT COLUMN ===
                                                 PyImGui.table_next_column()
+                                                _center_cell_y(1)
                                                 count = 0
                                                 for slot_count in info.get("slot", {}).values():
                                                     count += slot_count
@@ -1223,30 +1189,34 @@ def draw_widget():
                                         3,
                                         PyImGui.TableFlags.Borders | PyImGui.TableFlags.RowBg,
                                     ):
-                                        PyImGui.table_setup_column("Icon", 0, 30.0)
-                                        PyImGui.table_setup_column("Item Name", 0, 300.0)
-                                        PyImGui.table_setup_column("Count", 0, 25.0)
+                                        PyImGui.table_setup_column("Icon", PyImGui.TableColumnFlags.WidthFixed, 40.0)
+                                        PyImGui.table_setup_column("Item Name", PyImGui.TableColumnFlags.WidthStretch, 1.0)
+                                        PyImGui.table_setup_column("Count", PyImGui.TableColumnFlags.WidthFixed, 40.0)
                                         PyImGui.table_headers_row()
 
                                         for item_name in filtered_items:
                                             info = items[item_name]
-                                            texture = get_texture_for_model(info["model_id"])
+                                            texture = _icon_texture_for(info)
 
-                                            PyImGui.table_next_row()
+                                            PyImGui.table_next_row(0, ROW_HEIGHT)
+                                            _apply_rarity_row_bg(info)
 
                                             # === ICON COLUMN ===
                                             PyImGui.table_next_column()
                                             if texture:
-                                                ImGui.DrawTexture(texture, 20, 20)
+                                                ImGui.DrawTexture(texture, ROW_ICON_SIZE, ROW_ICON_SIZE)
                                             else:
+                                                _center_cell_y(1)
                                                 PyImGui.text("N/A")
 
                                             # === ITEM NAME COLUMN ===
                                             PyImGui.table_next_column()
+                                            _center_cell_y(1)
                                             PyImGui.text(re.sub(r'^\d+\s*', '', item_name))
 
                                             # === COUNT COLUMN ===
                                             PyImGui.table_next_column()
+                                            _center_cell_y(1)
                                             count = 0
                                             for slot_count in info.get("slot", {}).values():
                                                 count += slot_count
@@ -1327,6 +1297,7 @@ def draw_widget():
                     TEAM_INVENTORY_CACHE = multi_store.load_all()
                 PyImGui.pop_style_color(3)
                 PyImGui.end_table()
+    PyImGui.end()
 
     # Window geometry delegated to ImGui native persistence
 

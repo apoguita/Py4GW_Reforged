@@ -231,45 +231,12 @@ class Settings:
         self._initialized = True if account_email and account_email == self.account_email else False
 
         if self._initialized and account_email and self.account_email == account_email:
-            # One-time migration of any stranded legacy per-account file
-            # (Widgets/Config/Accounts/<email>/HeroAI.ini) into the native account document.
-            self._import_legacy_account_file(account_email)
-            # Always load — the native document self-loads from disk, so reading is always correct
+            # The native account document self-loads from disk, so reading is always correct
             # (no "does the file exist?" gate deciding load vs. overwrite-with-defaults).
+            # Start clean: pre-migration files at old locations are NOT imported — that read
+            # would live outside the settings/ jail, which is disallowed.
             self.load_settings()
 
-    def _import_legacy_account_file(self, account_email: str) -> None:
-        """Copy a pre-migration Widgets/Config/Accounts/<email>/HeroAI.ini into the native account
-        document once, so per-account data saved before the Settings migration is not lost. Runs at
-        most once per account (guarded by a marker key); no-op when there is no legacy file.
-
-        Reads the legacy file THROUGH the Settings class (root scope resolves to a path relative to
-        the project root) — Settings owns all file handling, so there is no manual open/parse here.
-        """
-        if self.account_ini_handler is None:
-            return
-        if self.account_ini_handler.get_bool("Migration", "LegacyImported", False):
-            return
-
-        try:
-            legacy_name = f"Widgets/Config/Accounts/{account_email}/HeroAI.ini"
-            legacy = NativeSettings(legacy_name, "root")
-
-            imported = 0
-            for section in legacy.sections():
-                if section == "Migration":
-                    continue
-                for key, value in legacy.items(section).items():
-                    self.account_ini_handler.set(section, key, value)
-                    imported += 1
-            if imported:
-                ConsoleLog("HeroAI", f"Imported {imported} legacy per-account setting(s) for {account_email}.")
-        except Exception as e:
-            ConsoleLog("HeroAI", f"Failed importing legacy per-account settings for {account_email}: {e}")
-
-        # Mark done even when there was no legacy file, so this check is a single cheap read afterwards.
-        self.account_ini_handler.set("Migration", "LegacyImported", str(True))
-                
     def save_settings(self):
         self.save_requested = True
     

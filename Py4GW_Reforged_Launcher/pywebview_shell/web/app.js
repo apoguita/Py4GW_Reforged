@@ -296,7 +296,14 @@ function applyCardLaunchVisual(card, p) {
       // at rest. Now that card order itself reflects position (084's Added-
       // order default), this slot has nothing meaningful to show at idle;
       // deliberately left empty rather than replaced with anything else.
-      sub.textContent = "";
+      // RELAY 089: except one real signal worth surfacing here -- a profile
+      // with no team membership at all, same "No team" definition the
+      // search dropdown's grouping already uses (~line 1808), not a second
+      // one. ALL-view only (a team-scoped view can't contain an orphaned
+      // profile by definition) and idle-only (every other branch above
+      // already returns before reaching here, so this never overwrites a
+      // real launch/queued/running/error status).
+      sub.textContent = (activeTeamId === "ALL" && (p.team_ids || []).length === 0) ? "No team" : "";
       sub.removeAttribute("data-tooltip");
     }
     action.innerHTML = "&#9654; Launch";
@@ -1224,15 +1231,20 @@ async function loadLauncherVersion() {
 // _show_prereq_install_confirm_popup, onto push_event instead of that
 // class's polling design (see bridge.py's check_prereqs/install_prereq).
 
-const PREREQ_COMPONENTS = ["python", "vcredist_x86", "vcredist_x64", "directx_runtime"];
+const PREREQ_COMPONENTS = ["python", "vcredist_x86", "vcredist_x64", "vcredist14_x86", "vcredist14_x64", "directx_runtime"];
 // Labels/URLs mirrored from launcher_core/prereqs.py's own real constants
 // (PYTHON_DOWNLOAD_URL, VCREDIST_2013_X86_URL, VCREDIST_2013_X64_URL,
-// DIRECTX_RUNTIME_DOWNLOAD_URL) -- JS can't import that module directly,
-// so keep these in sync by hand if the Python side's URLs ever change.
+// VCREDIST_14_X86_URL, VCREDIST_14_X64_URL, DIRECTX_RUNTIME_DOWNLOAD_URL) --
+// JS can't import that module directly, so keep these in sync by hand if
+// the Python side's URLs ever change.
 const PREREQ_INFO = {
   python: { label: "Python 3.13.0 (32-bit)", url: "https://www.python.org/ftp/python/3.13.0/python-3.13.0.exe" },
-  vcredist_x86: { label: "VC++ Redistributable (x86)", url: "https://aka.ms/highdpimfc2013x86enu" },
-  vcredist_x64: { label: "VC++ Redistributable (x64)", url: "https://aka.ms/highdpimfc2013x64enu" },
+  vcredist_x86: { label: "VC++ 2013 Redistributable (x86)", url: "https://aka.ms/highdpimfc2013x86enu" },
+  vcredist_x64: { label: "VC++ 2013 Redistributable (x64)", url: "https://aka.ms/highdpimfc2013x64enu" },
+  // RELAY 088: separate CRT generation from the 2013 pair above -- Py4GW.dll
+  // links against this one (VCRUNTIME140.dll), not 2013.
+  vcredist14_x86: { label: "VC++ 2015-2022 Redistributable (x86)", url: "https://aka.ms/vs/17/release/vc_redist.x86.exe" },
+  vcredist14_x64: { label: "VC++ 2015-2022 Redistributable (x64)", url: "https://aka.ms/vs/17/release/vc_redist.x64.exe" },
   directx_runtime: {
     label: "DirectX End-User Runtime",
     url: "https://download.microsoft.com/download/8/4/a/84a35bf1-dafe-4ae8-82af-ad2ae20b6b14/directx_Jun2010_redist.exe",

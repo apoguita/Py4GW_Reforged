@@ -1,5 +1,4 @@
 import ctypes
-import json
 import math
 import os
 import time
@@ -11,6 +10,7 @@ from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import CombatPrepSkillsType
 from Py4GWCoreLib import IconsFontAwesome5
 from Py4GWCoreLib import ImGui
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import PyImGui, Color
 from Py4GWCoreLib import Range
@@ -35,10 +35,11 @@ first_run = True
 MODULE_NAME = "CombatPrep"
 MODULE_ICON = os.path.join(project_root, "Widgets", "Config", "textures", "combat_prep", "single_backline.png")
 BASE_DIR = os.path.join(project_root, "Widgets", "Config")
-FORMATIONS_JSON_PATH = os.path.join(BASE_DIR, "formation_hotkey.json")
 INI_WIDGET_WINDOW_PATH = os.path.join(BASE_DIR, "combat_prep_window.ini")
 TEXTURES_PATH = os.path.join(BASE_DIR, 'textures/combat_prep')
-os.makedirs(BASE_DIR, exist_ok=True)
+
+# Formation hotkey config (self-persisting JSON document; account scope)
+formations_cfg = JsonFactory("Widgets/CombatPrep/formation_hotkey.json")
 
 # String consts
 COLLAPSED = "collapsed"
@@ -155,25 +156,10 @@ def ensure_formation_json_exists():
         },
     }
 
-    should_overwrite = False
-
-    if os.path.exists(FORMATIONS_JSON_PATH):
-        try:
-            with open(FORMATIONS_JSON_PATH, "r") as f:
-                data = json.load(f)
-            if not is_valid_formation_data(data):
-                print("[CombatPrep] Invalid format detected, overwriting.")
-                should_overwrite = True
-        except (json.JSONDecodeError, IOError):
-            print("[CombatPrep] JSON error detected, overwriting.")
-            should_overwrite = True
-    else:
-        should_overwrite = True
-
-    if should_overwrite:
-        with open(FORMATIONS_JSON_PATH, "w") as f:
-            json.dump(default_json, f, indent=4)
-            print(f"[CombatPrep] Formation JSON reset at {FORMATIONS_JSON_PATH}")
+    data = formations_cfg.get_json("formations", None)
+    if not is_valid_formation_data(data):
+        formations_cfg.set_json("formations", default_json)
+        print("[CombatPrep] Formation config initialized with defaults.")
 
 
 def is_my_instance_focused():
@@ -189,9 +175,7 @@ def is_my_instance_focused():
 
 def load_formations_from_json():
     ensure_formation_json_exists()
-    with open(FORMATIONS_JSON_PATH, "r") as f:
-        data = json.load(f)
-    return data
+    return formations_cfg.get_json("formations", {})
 
 
 def get_key_pressed(vk_code):

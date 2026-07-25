@@ -38,12 +38,22 @@ SETTINGS_FILENAME = "launcher_settings.json"
 # clamp range -- this is just a starting value for a fresh install, not itself a
 # safety control. The real floor/ceiling enforcement lives in bulk_launch.py's
 # clamp_pacing_seconds(), which runs regardless of what's stored here.
-DEFAULT_BULK_LAUNCH_PACING_SECONDS = 30
+# RELAY 092: lowered from 30 to 12 per Apo's request (Discord, App Settings
+# screenshot) -- only changes what a brand-new install starts with; anyone
+# with an existing launcher_settings.json keeps whatever they already have
+# saved. 12 is well inside the [5, 90] clamp above, unaffected either way.
+DEFAULT_BULK_LAUNCH_PACING_SECONDS = 12
 
-# RELAY 062: matches launch_py4gw_profile's own existing default
+# RELAY 062: originally matched launch_py4gw_profile's own existing default
 # (gw1_launch.py's post_window_settle_delay=5.0) -- was already a real,
 # working value, just never threaded through from a setting before.
-DEFAULT_PY4GW_INJECTION_DELAY_SECONDS = 5.0
+# RELAY 092: lowered to 3.0 per Apo's request, same fresh-install-only scope
+# as the pacing default above. Deliberately NOT changed in gw1_launch.py --
+# that function's own 5.0 default is only a fallback for a direct/test call
+# that skips the kwarg; the real value in actual use always comes from here,
+# threaded through at the real call site (bridge.py's _run_launch). The two
+# no longer match on purpose, not by oversight.
+DEFAULT_PY4GW_INJECTION_DELAY_SECONDS = 3.0
 
 
 def default_settings_path() -> Path:
