@@ -53,7 +53,7 @@ class UI():
     gray_color = Color(150, 150, 150, 255)
     
     Settings : "Settings" = Settings()
-    QuestLogWindow : WindowModule = WindowModule("PartyQuestLog", "Party Quest Log", window_size=(Settings.LogPosWidth, Settings.LogPosHeight), window_pos=(Settings.LogPosX, Settings.LogPosY), can_close=True)
+    QuestLogWindow : WindowModule = WindowModule("PartyQuestLog", "Party Quest Log", window_size=(Settings.LogPosWidth, Settings.LogPosHeight), window_pos=(Settings.LogPosX, Settings.LogPosY), can_close=False)
     ConfigWindow : WindowModule = WindowModule("PartyQuestLog#Config", "Party Quest Log - Settings", window_size=(500, 300), can_close=True)
     ActiveQuest : QuestNode | None = None
     ActiveQuestObjectiveTokens = []
@@ -96,17 +96,16 @@ class UI():
     
     @staticmethod
     def draw_log(quest_data : QuestData, accounts: dict[int, AccountStruct]):
-        UI.QuestLogWindow.open = UI.Settings.LogOpen
-        
-        if not UI.QuestLogWindow.open:
-            return
+        # Always-on: the window is not hotkey-toggled any more.
+        UI.QuestLogWindow.open = True
+        UI.Settings.LogOpen = True
         
         active_quest_id = Quest.GetActiveQuest()
         has_mission = quest_data.mission_map_quest is not None
 
         UI.ActiveQuest = quest_data.quest_log.get(active_quest_id, quest_data.mission_map_quest if quest_data.mission_map_quest is not None and quest_data.mission_map_quest_loaded else None)
         
-        UI.QuestLogWindow.window_name = f"Party Quest Log [{UI.Settings.hotkey.format_hotkey() if UI.Settings.hotkey else 'No Hotkey'}]"
+        UI.QuestLogWindow.window_name = "Party Quest Log"
         open = UI.QuestLogWindow.begin()
         
         if open:
@@ -120,6 +119,11 @@ class UI():
                 grouped_quests.setdefault(quest_data.mission_map_quest.quest_location, []).append(quest_data.mission_map_quest)
             
             for quest in quest_data.quest_log.values():
+                # The mission map quest carries a real quest id, so it also
+                # appears in quest_log - skip it or it renders twice.
+                if (quest_data.mission_map_quest is not None
+                        and quest.quest_id == quest_data.mission_map_quest.quest_id):
+                    continue
                 if quest.is_primary:
                     grouped_quests.setdefault("Primary", []).append(quest)
                 else:
@@ -284,7 +288,7 @@ class UI():
                 UI.draw_quest_details(UI.ActiveQuest, accounts)
             ImGui.end_child()
             
-        if UI.QuestLogWindow.changed or (not UI.QuestLogWindow.open):
+        if UI.QuestLogWindow.changed:
             pos = UI.QuestLogWindow.window_pos
             UI.Settings.LogPosX = pos[0]
             UI.Settings.LogPosY = pos[1]
@@ -293,7 +297,7 @@ class UI():
             UI.Settings.LogPosWidth = size[0]
             UI.Settings.LogPosHeight = size[1]
             
-            UI.Settings.LogOpen = UI.QuestLogWindow.open
+            UI.Settings.LogOpen = True
             UI.Settings.save_settings()
             UI.QuestLogWindow.changed = False
                                             
@@ -379,6 +383,13 @@ class UI():
         rotation: float = 0.0,  # radians
     ):
         x1, y1, x2, y2 = rect
+
+        # A collapsed/not-yet-laid-out rect gives every edge intersection a
+        # parameter of exactly 0, so the "t > 0" filter below comes back empty
+        # and min() raises ValueError. Nothing sensible to draw either way.
+        if x2 - x1 <= 0 or y2 - y1 <= 0:
+            return
+
         cx = (x1 + x2) * 0.5
         cy = (y1 + y2) * 0.5
 
@@ -406,7 +417,11 @@ class UI():
             t_vals.append((y1 - cy) / dy)
             t_vals.append((y2 - cy) / dy)
 
-        t = min(t for t in t_vals if t > 0)
+        forward = [t for t in t_vals if t > 0]
+        if not forward:
+            return
+
+        t = min(forward)
         ix = cx + dx * t
         iy = cy + dy * t
 
@@ -469,6 +484,21 @@ class UI():
         mini_map_coords = Map.MiniMap.GetWindowCoords() # (x1, y1, x2, y2)  
         compass_center = Map.MiniMap.GetMapScreenCenter() # (x, y)  
         rotation = UI.AnimationTimer.GetElapsedTime() * 0.0005  # radians per milli second
+
+        # IsWindowOpen() can report True while the window still has no usable
+        # geometry (during zoning, cinematics, or a collapsed frame), in which
+        # case these come back as zeros. Treat that as "not drawable".
+        def _rect_is_valid(r) -> bool:
+            return bool(r) and len(r) == 4 and r[2] - r[0] > 0 and r[3] - r[1] > 0
+
+        if not _rect_is_valid(map_coords):
+            mission_map_open = False
+        if not _rect_is_valid(mini_map_coords):
+            mini_map_open = False
+
+        if not mission_map_open and not mini_map_open:
+            overlay.EndDraw()
+            return
         
         for active_quest in active_quests:              
             marker_pos = UI.ConvertQuestMarkerCoordinates(active_quest.MarkerX, active_quest.MarkerY)       
@@ -553,23 +583,17 @@ class UI():
                     avail = PyImGui.get_content_region_avail()
                     _, height = avail[0], avail[1]
                     
-                    ImGui.text_aligned("Quest Log Hotkey", height=22, alignment=Alignment.MidLeft)
-                    PyImGui.same_line(0, 5)
-                    width_avail = PyImGui.get_content_region_avail()[0]
-                    PyImGui.push_item_width(width_avail - 5)
-                    key, modifiers, changed = ImGui.keybinding("##HotkeyInfo", key=UI.Settings.HotKeyKey, modifiers=UI.Settings.Modifiers)
-                    PyImGui.pop_item_width()
-                    
-                    if changed:
-                        ConsoleLog("Party Quest Log", f"Setting new hotkey: {modifiers.name}+{key.name.replace('VK_','')}")
-                        UI.Settings.set_questlog_hotkey_keys(key, modifiers)
-                    
-                    show_only_in_party = ImGui.checkbox("Show Quest Log only when in a Party", UI.Settings.ShowOnlyInParty)
+                    # The quest log window is always visible; there is no
+                    # hotkey to configure any more.
+                    ImGui.text_aligned("The quest log window is always shown.", height=22, alignment=Alignment.MidLeft)
+                    PyImGui.separator()
+
+                    show_only_in_party = ImGui.checkbox("Show map overlays only when in a Party", UI.Settings.ShowOnlyInParty)
                     if show_only_in_party != UI.Settings.ShowOnlyInParty:
                         UI.Settings.ShowOnlyInParty = show_only_in_party
                         UI.Settings.save_settings()
                         
-                    show_only_on_leader = ImGui.checkbox("Show Quest Log only when Party Leader", UI.Settings.ShowOnlyOnLeader)
+                    show_only_on_leader = ImGui.checkbox("Show map overlays only when Party Leader", UI.Settings.ShowOnlyOnLeader)
                     if show_only_on_leader != UI.Settings.ShowOnlyOnLeader:
                         UI.Settings.ShowOnlyOnLeader = show_only_on_leader
                         UI.Settings.save_settings()
