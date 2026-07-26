@@ -2559,7 +2559,7 @@ def Level3_FirstPath() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 3 First Path",
         children=[
-            BT.AddModelToLootWhitelist(25410),
+
             UseAvailableSummoningStone(),
             BT.MoveAndDialog(
                 L3_ENTRY_BLESSING,
@@ -2616,14 +2616,15 @@ def Level3_Torch() -> BehaviorTree:
 def Level3_Brigant() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 3",
-        children=[                      
+        children=[             
             BT.MoveAndKill(
                 Vec2f(-11147, 2644) ,
                 clear_area_radius=Range.Spirit.value,
                 log=False,
             ),
+            BT.AddModelToLootWhitelist(25410),
             BT.Wait(2000),
-            BT.LootItems(),
+            BT.LootItems(distance=Range.Spirit.value),
             BT.MoveAndInteractWithGadget(
                 Vec2f(-9252.32, 6396.40), pause_on_combat=False, log=True,
             ),
