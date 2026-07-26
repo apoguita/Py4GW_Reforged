@@ -1642,6 +1642,7 @@ def BrazierSequence(
             multi_account=False,
             include_self=True,
             log=True,
+            
         )
     )
 
@@ -2676,8 +2677,8 @@ def Level3_Chest() -> BehaviorTree:
             include_self=True,
             log=True,
             ),
-            _record_run_end_node(),
             _inventory_statistics_node(after_chest=True),
+            _record_run_end_node(),
             BT.Wait(5000),
     
         ])
