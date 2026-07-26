@@ -2648,27 +2648,12 @@ def Level3_Fendi() -> BehaviorTree:
                 radius=Range.Compass.value,
                 allowed_alive_enemies=0,
                 interact_interval_ms=750,
-                stable_clear_ms=10_000,
+                stable_clear_ms=15_000,
                 keep_player_near_center=False,
                 center_tolerance=750.0,
                 log=True,
             ),
             _record_run_end_node(),
-            BT.Move(Vec2f(-15198, 16839), log=False),
-            BT.MoveAndInteractWithGadget(
-            gadget_id=FENDI_CHEST_GADGET_ID,
-            pos=Vec2f(*FENDI_CHEST_POSITION),
-            search_distance=700.0,
-            interaction_distance=Range.Nearby.value,
-            interaction_count=2,
-            interaction_interval_ms=1000,
-            account_settle_ms=3_000,
-            timeout_ms=90_000,
-            multi_account=True,
-            include_self=True,
-            log=True,
-            ),
-            BT.Wait(5000),
     
         ])
 #endregion
@@ -2679,6 +2664,7 @@ def Level3_Chest() -> BehaviorTree:
         name="Open chhest",
         children=[
             BT.Move(Vec2f(-15198, 16839), log=False),
+            BT.Wait(3000),
             BT.MoveAndInteractWithGadget(
             gadget_id=FENDI_CHEST_GADGET_ID,
             pos=Vec2f(*FENDI_CHEST_POSITION),
