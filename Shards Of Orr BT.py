@@ -1438,146 +1438,99 @@ def _draw_statistics() -> None:
 # region Helpers
 
 def PickupTorch() -> BehaviorTree:
-    PICKUP_DEADLINE_MS = 50_000
-    HOLDING_CONFIRMATION_MS = 750
-    MAX_FALSE_SUCCESS_COUNT = 8
+    PICKUP_TIMEOUT_MS = 45_000
+    RETRY_DELAY_MS = 1_000
 
     def _create_pickup_tree() -> BehaviorTree:
         return BT.PickupGroundItemByModelID(
             model_ids=TORCH_MODEL_IDS,
-            max_distance=20_000.0,
-            timeout_ms=45_000,
+            max_distance=200_000.0,
+            timeout_ms=PICKUP_TIMEOUT_MS,
             allow_unassigned=True,
             interaction_interval_ms=1000,
             aftercast_ms=100,
-            log=True,
+            log=False,
         )
 
     pickup_tree = _create_pickup_tree()
 
-    pickup_started_at = 0.0
-    success_confirmation_started_at = 0.0
-    false_success_count = 0
+    started_at = 0.0
+    retry_at = 0.0
+    search_logged = False
 
-    def _is_holding_bundle() -> bool:
+    def _is_holding_torch() -> bool:
         try:
-            player_agent_id = Player.GetAgentID()
-
-            if not player_agent_id:
-                return False
-
             return bool(
                 Agent.IsHoldingItem(
-                    player_agent_id,
+                    Player.GetAgentID(),
                 )
             )
         except Exception:
             return False
 
-    def _reset_local_state() -> None:
-        nonlocal pickup_started_at
-        nonlocal success_confirmation_started_at
-        nonlocal false_success_count
-
-        pickup_started_at = 0.0
-        success_confirmation_started_at = 0.0
-        false_success_count = 0
-
-    def _skip_missing_torch(
-        reason: str,
-    ) -> BehaviorTree.NodeState:
+    def _log(
+        message: str,
+        message_type: PySystem.Console.MessageType,
+    ) -> None:
         PySystem.Console.Log(
-            MODULE_NAME,
-            (
-                f"Torch pickup skipped: {reason}. "
-                "The torch is probably no longer available at this "
-                "location, so the script will continue."
-            ),
-            PySystem.Console.MessageType.Warning,
+            "PickupTorch",
+            message,
+            message_type,
         )
 
-        _reset_local_state()
+    def _reset_state() -> None:
+        nonlocal pickup_tree
+        nonlocal started_at
+        nonlocal retry_at
+        nonlocal search_logged
 
-        return BehaviorTree.NodeState.SUCCESS
+        pickup_tree = _create_pickup_tree()
+        started_at = 0.0
+        retry_at = 0.0
+        search_logged = False
 
     def _pickup_torch_step(
         node: BehaviorTree.Node,
     ) -> BehaviorTree.NodeState:
         nonlocal pickup_tree
-        nonlocal pickup_started_at
-        nonlocal success_confirmation_started_at
-        nonlocal false_success_count
+        nonlocal started_at
+        nonlocal retry_at
+        nonlocal search_logged
 
         now = time.monotonic()
 
-        if pickup_started_at <= 0.0:
-            pickup_started_at = now
+        if started_at <= 0.0:
+            started_at = now
 
-        if _is_holding_bundle():
-            PySystem.Console.Log(
-                MODULE_NAME,
-                "Torch successfully picked up.",
+        if not search_logged:
+            _log(
+                "Looking for a torch...",
                 PySystem.Console.MessageType.Info,
             )
+            search_logged = True
 
-            _reset_local_state()
-
+        # Seule condition autorisant le BT à continuer.
+        if _is_holding_torch():
+            _log(
+                "Torch picked up successfully.",
+                PySystem.Console.MessageType.Success,
+            )
+            _reset_state()
             return BehaviorTree.NodeState.SUCCESS
 
         elapsed_ms = int(
-            (now - pickup_started_at) * 1000.0
+            (now - started_at) * 1000.0
         )
 
-        if elapsed_ms >= PICKUP_DEADLINE_MS:
-            return _skip_missing_torch(
-                (
-                    "the overall pickup deadline was reached "
-                    f"after {elapsed_ms} ms"
-                )
+        if elapsed_ms >= PICKUP_TIMEOUT_MS:
+            _log(
+                "Failed to pick up a torch after 45s.",
+                PySystem.Console.MessageType.Error,
             )
+            _reset_state()
+            return BehaviorTree.NodeState.FAILURE
 
-  
-        if success_confirmation_started_at > 0.0:
-            confirmation_elapsed_ms = int(
-                (
-                    now
-                    - success_confirmation_started_at
-                )
-                * 1000.0
-            )
-
-            if confirmation_elapsed_ms < HOLDING_CONFIRMATION_MS:
-                return BehaviorTree.NodeState.RUNNING
-
-
-            success_confirmation_started_at = 0.0
-            false_success_count += 1
-
-            if false_success_count >= MAX_FALSE_SUCCESS_COUNT:
-                return _skip_missing_torch(
-                    (
-                        "the pickup node repeatedly reported success "
-                        "without the player carrying the torch "
-                        f"({false_success_count} false results)"
-                    )
-                )
-
-            PySystem.Console.Log(
-                MODULE_NAME,
-                (
-                    "PickupGroundItemByModelID reported SUCCESS, but "
-                    "the player is still not carrying the torch after "
-                    "the confirmation delay. Restarting the pickup "
-                    f"search ({false_success_count}/"
-                    f"{MAX_FALSE_SUCCESS_COUNT})."
-                ),
-                PySystem.Console.MessageType.Warning,
-            )
-
-
-            pickup_tree = _create_pickup_tree()
-            pickup_tree.blackboard = node.blackboard
-
+        if now < retry_at:
             return BehaviorTree.NodeState.RUNNING
 
         pickup_tree.blackboard = node.blackboard
@@ -1586,63 +1539,44 @@ def PickupTorch() -> BehaviorTree:
             pickup_tree.tick()
         )
 
-        if pickup_result is None:
-            raise TypeError(
-                "PickupTorch received a non-NodeState result."
-            )
-
         if pickup_result == BehaviorTree.NodeState.RUNNING:
             return BehaviorTree.NodeState.RUNNING
 
+        # Le node interne annonce SUCCESS, mais la torche
+        # n'est réellement pas tenue par le personnage.
         if pickup_result == BehaviorTree.NodeState.SUCCESS:
-
-            if _is_holding_bundle():
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    "Torch successfully picked up.",
-                    PySystem.Console.MessageType.Info,
-                )
-
-                _reset_local_state()
-
-                return BehaviorTree.NodeState.SUCCESS
-
-            success_confirmation_started_at = now
-
-            PySystem.Console.Log(
-                MODULE_NAME,
+            _log(
                 (
-                    "PickupGroundItemByModelID reported SUCCESS, but "
-                    "the player is not carrying the torch yet. Waiting "
-                    "for bundle confirmation."
+                    "Pickup not completed "
+                    "(no torch is held). Retrying..."
                 ),
                 PySystem.Console.MessageType.Warning,
             )
 
+            pickup_tree = _create_pickup_tree()
+            pickup_tree.blackboard = node.blackboard
+            retry_at = now + (
+                RETRY_DELAY_MS / 1000.0
+            )
+
             return BehaviorTree.NodeState.RUNNING
 
-
-        return _skip_missing_torch(
-            "the ground item could not be found or the pickup timed out"
+        # FAILURE avant le délai global :
+        # aucune torche n'est actuellement disponible.
+        _log(
+            "No torch available. Skipping pickup.",
+            PySystem.Console.MessageType.Warning,
         )
+        _reset_state()
+
+        return BehaviorTree.NodeState.SUCCESS
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
-            name="PickupTorchOrContinue",
+            name="PickupTorch",
             action_fn=_pickup_torch_step,
             aftercast_ms=0,
         )
-    )
-
-def ForcePickupKey() -> BehaviorTree:
-    return BT.PickupGroundItemByModelID(
-        model_ids=25410,
-        max_distance=10_000.0,
-        timeout_ms=45_000,
-        allow_unassigned=True,
-        interaction_interval_ms=1000,
-        aftercast_ms=100,
-        log=True,
     )
 
 def UseAvailableSummoningStone() -> BehaviorTree:
@@ -1789,7 +1723,7 @@ def MoveBetweenBraziersWithFlameRecovery(
         tolerance=float(interaction_distance),
         pause_on_combat=False,
         ignore_destination_obstacles=True,
-        log=log,
+        log=False,
     )
 
     move_to_previous = BT.Move(
@@ -1797,7 +1731,7 @@ def MoveBetweenBraziersWithFlameRecovery(
         tolerance=float(interaction_distance),
         pause_on_combat=False,
         ignore_destination_obstacles=True,
-        log=log,
+        log=False,
     )
 
     relight_previous = BT.MoveAndInteractWithGadget(
@@ -2362,9 +2296,9 @@ def TravelToShandra() -> BehaviorTree:
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
             BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
-            BT.Move(ARBOR_TO_SHANDRA_PATH, pause_on_combat=True, log=True),
+            BT.Move(ARBOR_TO_SHANDRA_PATH, pause_on_combat=True, log=False),
             BT.WaitUntilOutOfCombat(timeout_ms=60_000),
-            BT.Move(SHANDRA_APPROACH, pause_on_combat=False, log=True),
+            BT.Move(SHANDRA_APPROACH, pause_on_combat=False, log=False),
         ],
     )
     return BT.Selector(children=[skip_if_already_in_level_1, normal_travel], name="Travel To Shandra")
@@ -2422,7 +2356,7 @@ def EnterShardsOfOrr(
                 SOO_ENTRANCE_PATH,
                 pause_on_combat=False,
                 ignore_destination_obstacles=True,
-                log=True,
+                log=False,
             ),
             BT.WaitForMapLoad(map_id=SOO_LEVEL_1, timeout_ms=60_000),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
@@ -2529,7 +2463,7 @@ def Level2_Part1() -> BehaviorTree:
                 log=True,
             ),
             PickupTorch(),
-            BT.Move(L2_FIRST_TORCH_DROP_POINT_PATH, pause_on_combat=True, log=True),
+            BT.Move(L2_FIRST_TORCH_DROP_POINT_PATH, pause_on_combat=True, log=False),
             BT.DropBundle(log=True),
             BT.VanquishNode(
                 L2_RETURN_TO_FIRST_TORCH_PATH,
@@ -2539,8 +2473,8 @@ def Level2_Part1() -> BehaviorTree:
                 log=False,
             ),
             PickupTorch(),
-            BT.Move(Vec2f(-9404.44, -17963.49), pause_on_combat=True, log=True),
-            BT.Move(Vec2f(-11303.00, -14596.00), pause_on_combat=True, log=True),
+            BT.Move(Vec2f(-9404.44, -17963.49), pause_on_combat=True, log=False),
+            BT.Move(Vec2f(-11303.00, -14596.00), pause_on_combat=True, log=False),
             BrazierSequence("Level 2 Brazier Route 1", L2_BRAZIER_PART1),
             BT.DropBundle(log=True),
         ],
@@ -2564,7 +2498,7 @@ def Level2_Part2() -> BehaviorTree:
                 L2_TO_ROOM2_DROP,
                 clear_area_radius=Range.Area.value,
                 pause_on_combat=True,
-                log=True,
+                log=False,
             ),
             BT.DropBundle(log=True),
             BT.VanquishNode(
@@ -2598,7 +2532,7 @@ def Level2_Part2() -> BehaviorTree:
                 flag_heroes_to_waypoint=False,
                 
                 pause_on_combat=True,
-                log=True,
+                log=False,
             ),
             BT.MoveAndInteractWithGadget(
                 L2_DUNGEON_LOCK,
@@ -2609,7 +2543,7 @@ def Level2_Part2() -> BehaviorTree:
                 L2_EXIT_PATH,
                 pause_on_combat=False,
                 
-                log=True,
+                log=False,
             ),
             BT.WaitForMapLoad(map_id=SOO_LEVEL_3, timeout_ms=60_000),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
@@ -2638,7 +2572,7 @@ def Level3_FirstPath() -> BehaviorTree:
                 L3_MAIN_PATH,
                 name="Level 3 Main Route",
                 flag_heroes_to_waypoint=False,
-                log=True,
+                log=False,
             ),
         ],
     )
@@ -2653,7 +2587,7 @@ def Level3_BrigantRoom() -> BehaviorTree:
             L3_BRIGANT_ROOM,
             name="Level 3 Main Route",
             flag_heroes_to_waypoint=False,
-            log=True,
+            log=False,
                         ),
         ],
     )
@@ -2667,7 +2601,7 @@ def Level3_Torch() -> BehaviorTree:
                 L3_PATH_TO_TORCH,
                 flag_heroes_to_waypoint=False,
                 pause_on_combat=False,
-                log=True,
+                log=False,
             ),
             BT.MoveAndInteractWithGadget(
                 L3_TORCH_CHEST, pause_on_combat=False, log=True,
@@ -2720,7 +2654,7 @@ def Level3_Fendi() -> BehaviorTree:
                 log=True,
             ),
             _record_run_end_node(),
-            BT.Move(Vec2f(-15198, 16839), log=True),
+            BT.Move(Vec2f(-15198, 16839), log=False),
             BT.MoveAndInteractWithGadget(
             gadget_id=FENDI_CHEST_GADGET_ID,
             pos=Vec2f(*FENDI_CHEST_POSITION),
@@ -2744,7 +2678,7 @@ def Level3_Chest() -> BehaviorTree:
     return BT.Sequence(
         name="Open chhest",
         children=[
-            BT.Move(Vec2f(-15198, 16839), log=True),
+            BT.Move(Vec2f(-15198, 16839), log=False),
             BT.MoveAndInteractWithGadget(
             gadget_id=FENDI_CHEST_GADGET_ID,
             pos=Vec2f(*FENDI_CHEST_POSITION),
@@ -2899,7 +2833,7 @@ def PrepareNextDungeonRun() -> BehaviorTree:
             BT.Move(
                 SHANDRA_APPROACH,
                 pause_on_combat=False,
-                log=True,
+                log=False,
             ),
             BT.TargetAgentByName(
                 agent_name="Shandra",
