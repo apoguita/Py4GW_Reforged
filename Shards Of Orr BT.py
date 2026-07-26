@@ -2720,6 +2720,45 @@ def Level3_Fendi() -> BehaviorTree:
                 log=True,
             ),
             _record_run_end_node(),
+            BT.Move(Vec2f(-15198, 16839), log=True),
+            BT.MoveAndInteractWithGadget(
+            gadget_id=FENDI_CHEST_GADGET_ID,
+            pos=Vec2f(*FENDI_CHEST_POSITION),
+            search_distance=700.0,
+            interaction_distance=Range.Nearby.value,
+            interaction_count=2,
+            interaction_interval_ms=1000,
+            account_settle_ms=3_000,
+            timeout_ms=90_000,
+            multi_account=True,
+            include_self=True,
+            log=True,
+            ),
+            BT.Wait(5000),
+    
+        ])
+#endregion
+
+# region Level 3 - Chest
+def Level3_Chest() -> BehaviorTree:
+    return BT.Sequence(
+        name="Open chhest",
+        children=[
+            BT.Move(Vec2f(-15198, 16839), log=True),
+            BT.MoveAndInteractWithGadget(
+            gadget_id=FENDI_CHEST_GADGET_ID,
+            pos=Vec2f(*FENDI_CHEST_POSITION),
+            search_distance=700.0,
+            interaction_distance=Range.Nearby.value,
+            interaction_count=2,
+            interaction_interval_ms=1000,
+            account_settle_ms=3_000,
+            timeout_ms=90_000,
+            multi_account=True,
+            include_self=True,
+            log=True,
+            ),
+            BT.Wait(5000),
     
         ])
 #endregion
@@ -2739,21 +2778,7 @@ def CollectInsideReward() -> BehaviorTree:
     return BT.Sequence(
         name="Collect Inside Reward",
         children=[
-            BT.Move(Vec2f(-15198, 16839), log=True),
-            BT.MoveAndInteractWithGadget(
-            gadget_id=FENDI_CHEST_GADGET_ID,
-            pos=Vec2f(*FENDI_CHEST_POSITION),
-            search_distance=700.0,
-            interaction_distance=Range.Nearby.value,
-            interaction_count=2,
-            interaction_interval_ms=1000,
-            account_settle_ms=3_000,
-            timeout_ms=90_000,
-            multi_account=True,
-            include_self=True,
-            log=True,
-            ),
-            BT.Wait(5000),
+
 
             BT.Selector(
                 name="Find Shandra",
@@ -3092,6 +3117,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Level 3 Torch", Level3_Torch),
         ("Level 3 Brigant", Level3_Brigant),
         ("Level 3 Fendi Boss Fight", Level3_Fendi),
+        ("Level 3 Chest", Level3_Chest ),
 
         ("Collect Reward And Prepare Restart", CollectRewardAndPrepareRestart),
     ]
