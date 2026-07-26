@@ -154,7 +154,7 @@ def ConfigurePacifistEnv(bot: Botting) -> None:
     bot.Templates.Pacifist()
     
 def ConfigureAggressiveEnv(bot: Botting) -> None:
-    bot.Templates.Aggressive()
+    bot.Templates.Aggressive(account_isolation=False)
     bot.Events.OnPartyMemberDeadBehindCallback(lambda: bot.Templates.Routines.OnPartyMemberDeathBehind())
     bot.Properties.Enable("candy_apple")
     bot.Properties.Enable("war_supplies")
@@ -289,6 +289,9 @@ def PrepareForBattle(bot: Botting):
     ConfigureAggressiveEnv(bot)
     bot.States.AddCustomState(EquipSkillBar, "Equip Skill Bar")
     bot.Party.LeaveParty()
+    bot.Multibox.SummonAllAccounts()
+    bot.Wait.ForTime(4000)
+    bot.Multibox.InviteAllAccounts()
     bot.States.AddCustomState(AddHenchmen, "Add Henchmen")
     bot.Items.Restock.CandyApple()
     bot.Items.Restock.WarSupplies()
@@ -857,7 +860,7 @@ def _on_death(bot: "Botting", step_name: str = ""):
             yield
             return
         fsm.ResetAndStartAtStep(step_name)
-    bot.Templates.Aggressive()
+    bot.Templates.Aggressive(account_isolation=False)
     bot.ResetHeroAICombatState(active=True)
     yield
 
@@ -887,7 +890,7 @@ def _on_party_defeated(bot: "Botting", step_name: str):
         yield
         return
     fsm.ResetAndStartAtStep(step_name)
-    bot.Templates.Aggressive()
+    bot.Templates.Aggressive(account_isolation=False)
     bot.ResetHeroAICombatState(active=True)
     yield
 

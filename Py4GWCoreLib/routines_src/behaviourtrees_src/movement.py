@@ -1461,7 +1461,8 @@ class BTMovement:
     ) -> BehaviorTree:
         from .agents import BTAgents
 
-        return BTComposite.Sequence(
+        return BTComposite.Sequence(    
+            # Déplacement normal vers le waypoint.
             BTMovement.Move(
                 x=coords.x,
                 y=coords.y,
@@ -1470,12 +1471,29 @@ class BTMovement:
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
                 log=log,
             ),
+
+            # Nettoyage de la zone autour du waypoint.
             BTAgents.ClearEnemiesInArea(
                 x=coords.x,
                 y=coords.y,
                 radius=clear_area_radius,
                 log=log,
             ),
+
+            # Le combat peut avoir entraîné le joueur loin du waypoint.
+            # On impose ici un retour direct, sans nouveau calcul d'autopath.
+            BTMovement.Move(
+                x=coords.x,
+                y=coords.y,
+                tolerance=400.0,
+                pause_on_combat=False,
+                flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                log=log,
+                path_points_override=[
+                    (float(coords.x), float(coords.y)),
+                ],
+            ),
+
             name="MoveAndKill",
         )
 
