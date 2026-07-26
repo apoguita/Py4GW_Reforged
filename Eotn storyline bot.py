@@ -42,6 +42,7 @@ ICON_PATH = os.path.join(
     "eotn.png"
 )
 MAP_TIMEOUT_MS = 190_000
+KAINENG_CENTER_MAP_ID = 194
 
 botting_tree: BottingTree | None = None
 initialized = False
@@ -75,16 +76,16 @@ def _pacifist(name: str = "Configure Pacifist") -> BehaviorTree:
 
 def _prepare_standard_party() -> BehaviorTree:
     heroes = [
-        HeroType.Gwen.value,
         HeroType.Vekk.value,
         HeroType.Ogden.value,
+        HeroType.Gwen.value,
         HeroType.MOX.value,
         HeroType.Olias.value,
     ]
     templates = [
-        "OQhkAsC8gFKyJM95gpLDDRGcxA",
         "OgljgwMpZO0iwB5Qp5N0h14dMA",
         "OwUTMwmCZaj4upB8ioLKDoHghAA",
+        "OQhkAsC8gFKyJM95gpLDDRGcxA",
         "OgejkqrMLOfb2Luj7Ku72jbzLA",
         "OAhjUwGpYOyhqAVANUVxYezLGA",
     ]
@@ -93,7 +94,7 @@ def _prepare_standard_party() -> BehaviorTree:
         children=[
             BT.CreateParty(
                 hero_ids=heroes,
-                henchman_ids=[3, 6],
+                henchman_ids=[3, 6,1,4,2],
                 multibox_invite=False,
                 log=True,
             ),
@@ -237,26 +238,44 @@ def InitializeBot() -> BehaviorTree:
         ],
     )
 
+path_to_eotn = [
+    (766,-20764),
+    (-4234,-15585),
+    (-6020,-13621),
+    (-4145,-10496),
+    (3266,-14782),
+    (6838,-15585),
+    (6302,-9960),
+    (1391,-3442),
+    (3802,-495),
+    (1128,882),
+]
 
 def UnlockEyeOfTheNorthPool() -> BehaviorTree:
     """Optional one-time Hall of Monuments resurrection-pool unlock."""
     return BT.Sequence(
         name="Unlock Eye of the North Resurrection Pool",
-        map_id_or_name=642,
+        map_id_or_name=675,
         children=[
-            BT.VanquishNode([(-4416.39, 4932.36), (-5198.0, 5595.0)]),
+            _prepare_standard_party(),
+            BT.MoveAndExitMap(Vec2f(4141, -27703), target_map_id=499),
+            BT.Move(Vec2f(3598.97, -22331.73)),
+            BT.Wait(10000),
+            BT.MoveAndDialog(Vec2f(3537.00, -21937.00),0x839104),
+            BT.VanquishNode(path_to_eotn),
+
+            BT.MoveAndExitMap(Vec2f(-5198.0, 5595.0), target_map_id=646),
+            BT.MoveAndDialog(Vec2f(-6572.70, 6588.83),0x800001),
+            BT.Wait(2_000),
+            BT.MoveAndDialog(Vec2f(-6662.00, 6584.00),0x63F),
+            BT.Wait(6_000),
+            BT.MoveAndDialog(Vec2f(-6572.70, 6588.83),0x89),
+            BT.Wait(1_000),
             BT.WaitForMapLoad(map_id=646),
-            BT.MoveAndAutoDialog(Vec2f(-6572.70, 6588.83),0x800001),
-            BT.Wait(1_000),
-            BT.AutoDialog(0x630),
-            BT.Wait(1_000),
-            BT.AutoDialog(0x632),
-            BT.Wait(1_000),
-            BT.WaitForMapLoad(map_id=646),
-            BT.AutoDialog(0x89),
-            BT.AutoDialog(0x831904),
-            BT.MoveAndAutoDialog(Vec2f(-6133.41, 5717.30), 0x838904),
-            BT.MoveAndAutoDialog(Vec2f(-5626.80, 6259.57), 0x839304),
+            BT.SendDialog(0x89),
+            BT.SendDialog(0x831904),
+            BT.MoveAndDialog(Vec2f(-6133.41, 5717.30), 0x838904),
+            BT.MoveAndDialog(Vec2f(-5626.80, 6259.57), 0x839304),
         ],
     )
 
@@ -266,8 +285,8 @@ def ObtainStoryBook() -> BehaviorTree:
         name="Obtain Story Book",
         map_id_or_name="Eye of the North outpost",
         children=[
-            BT.MoveAndAutoDialog(Vec2f(-1998.0, 2797.0), 0x84),
-            BT.AutoDialog(0x1006912),
+            BT.MoveAndDialog(Vec2f(-1998.0, 2797.0), 0x1006912),
+            BT.SendDialog(0x80)
         ],
     )
 
@@ -292,15 +311,9 @@ def TravelToGunnarsHold() -> BehaviorTree:
         name="Run to Gunnar's Hold",
         children=[
             _aggressive(),
-            BT.VanquishNode([
-                (-1814.0, 2917.0),
-                (-964.0, 2270.0),
-                (-115.0, 1677.0),
-                (718.0, 1060.0),
-                (1522.0, 464.0),
-            ]),
-            BT.WaitForMapLoad(map_id=499),
-            BT.MoveAndAutoDialog(Vec2f(2825.0, -481.0), 0x832801),
+            BT.MoveAndExitMap
+                (Vec2f(1522.0, 464.0),target_map_id=499),
+            BT.MoveAndDialog(Vec2f(2825.0, -481.0), 0x832801),
             BT.VanquishNode([
                 (2548.84, 7266.08),
                 (1233.76, 13803.42),
@@ -321,7 +334,7 @@ def TalkToGunnar() -> BehaviorTree:
         name="Talk to Gunnar",
         map_id_or_name="Gunnar's Hold",
         children=[
-            BT.MoveAndAutoDialog(Vec2f(24078.0, -7512.0), 0x832804),
+            BT.MoveAndDialog(Vec2f(24078.0, -7512.0), 0x832804),
         ],
     )
 
@@ -1062,6 +1075,38 @@ def UnlockXandra(
     )
 
 
+
+def _is_kaineng_center_unlocked(log: bool = True) -> BehaviorTree:
+    """Succeed only when Kaineng Center is unlocked for this character."""
+
+    def _check() -> BehaviorTree.NodeState:
+        unlocked = bool(Map.IsMapUnlocked(KAINENG_CENTER_MAP_ID))
+
+        if log:
+            ConsoleLog(
+                MODULE_NAME,
+                (
+                    "Kaineng Center is unlocked; preparing the Xandra tournament."
+                    if unlocked
+                    else "Kaineng Center is not unlocked; skipping the Xandra tournament setup."
+                ),
+                log=True,
+            )
+
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if unlocked
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name="Check Kaineng Center Unlock",
+            condition_fn=_check,
+        )
+    )
+
+
 def PrepareXandraTournament(
     return_outpost_name: str = "Gunnar's Hold",
     log: bool = True,
@@ -1079,7 +1124,50 @@ def PrepareXandraTournament(
 
 
 
-            
+
+def CompleteOptionalXandraTournament(
+    return_outpost_name: str = "Gunnar's Hold",
+    log: bool = True,
+) -> BehaviorTree:
+    """Run every Xandra-tournament preparation step only with Kaineng unlocked."""
+
+    return BT.Selector(
+        name="Optional Xandra Tournament",
+        children=[
+            BT.Sequence(
+                name="Run Xandra Tournament With Kaineng",
+                children=[
+                    _is_kaineng_center_unlocked(log=log),
+                    PrepareXandraTournament(
+                        return_outpost_name=return_outpost_name,
+                        log=log,
+                    ),
+                    UnlockXandra(
+                        return_outpost_name=return_outpost_name,
+                        log=log,
+                    ),
+                ],
+            ),
+            BT.Sequence(
+                name="Skip Xandra Tournament Without Kaineng",
+                children=[
+                    BT.LogMessage(
+                        message=(
+                            "Kaineng Center is unavailable for this character. "
+                            "Ritualist profession setup, skill purchases and the "
+                            "Norn Tournament are skipped."
+                        ),
+                        module_name=MODULE_NAME,
+                    ),
+                    BT.Travel(
+                        target_map_name=return_outpost_name,
+                        log=log,
+                    ),
+                    BT.Succeeder(name="Continue Norn Story Without Xandra"),
+                ],
+            ),
+        ],
+    )
 
 
 def TravelToSifhalla() -> BehaviorTree:
@@ -1133,7 +1221,7 @@ def CompleteTrackingTheNornbear() -> BehaviorTree:
         map_id_or_name="Sifhalla",
         children=[
             _aggressive(),
-            BT.MoveAndAutoDialog(Vec2f(14353.0, 23905.0), 0x84),
+            BT.MoveAndDialog(Vec2f(14353.0, 23905.0), 0x84),
             BT.WaitForMapLoad(map_id=678),
             BT.Wait(2_000),
             BT.Move(Vec2f(10388.0, 23888.0)),
@@ -1141,7 +1229,7 @@ def CompleteTrackingTheNornbear() -> BehaviorTree:
             BT.WaitUntilOnCombat(timeout_ms=60_000),
             BT.Wait(40_000),
             BT.WaitForMapLoad(map_name="Sifhalla"),
-            BT.MoveAndAutoDialog(Vec2f(14353.0, 23905.0), 0x832807),
+            BT.MoveAndDialog(Vec2f(14353.0, 23905.0), 0x832807),
         ],
     )
 
@@ -1152,7 +1240,7 @@ def CompleteCurseOfTheNornbear() -> BehaviorTree:
         map_id_or_name="Sifhalla",
         children=[
             _aggressive(),
-            BT.MoveAndAutoDialog(Vec2f(14353.0, 23905.0), 0x86),
+            BT.MoveAndDialog(Vec2f(14353.0, 23905.0), 0x86),
             BT.WaitForMapLoad(map_id=653),
             BT.Wait(2_000),
             BT.Move(Vec2f(-2638.0, 20433.0)),
@@ -1168,7 +1256,7 @@ def CompleteCurseOfTheNornbear() -> BehaviorTree:
             BT.Wait(2_000),
             BT.Move(Vec2f(14353.0, 23905.0)),
             _pacifist(),
-            BT.MoveAndAutoDialog(Vec2f(14353.0, 23905.0), 0x838904),
+            BT.MoveAndDialog(Vec2f(14353.0, 23905.0), 0x838904),
             BT.AutoDialog(0x89),
             BT.AutoDialog(0x8A),
         ],
@@ -1200,7 +1288,7 @@ def BloodWashesBlood() -> BehaviorTree:
                 (4621.0, 5918.0),
             ]),
             _pacifist(),
-            BT.MoveAndAutoDialog(Vec2f(4621.0, 5918.0), 0x832001),
+            BT.MoveAndDialog(Vec2f(4621.0, 5918.0), 0x832001),
             _aggressive(),
             BT.VanquishNode([
                 (3014.0, 3308.0),
@@ -1213,8 +1301,8 @@ def BloodWashesBlood() -> BehaviorTree:
             BT.Wait(80_000),
             BT.Move(Vec2f(9221.0, -21462.0)),
             _pacifist(),
-            BT.MoveAndAutoDialog(Vec2f(9504.0, -21390.0), 0x832007),
-            BT.MoveAndAutoDialog(Vec2f(9688.0, -21012.0), 0x84),
+            BT.MoveAndDialog(Vec2f(9504.0, -21390.0), 0x832007),
+            BT.MoveAndDialog(Vec2f(9688.0, -21012.0), 0x84),
             BT.MoveAndExitMap(Vec2f(16045.0, -20642.0),target_map_name="Blood Washes Blood"),
             _aggressive(),
             BT.VanquishNode([
@@ -1309,7 +1397,7 @@ def CompleteShrineOfRavenSpirit() -> BehaviorTree:
         name="Shrine of the Raven Spirit",
         map_id_or_name="Olafstead",
         children=[
-            BT.MoveAndAutoDialog(Vec2f(132.0, -684.0), 0x832E01),
+            BT.MoveAndDialog(Vec2f(132.0, -684.0), 0x832E01),
             _aggressive(),
             BT.MoveAndExitMap(Vec2f(-1392.0, 1205.0), target_map_id=553),
             BT.VanquishNode([
@@ -1327,15 +1415,15 @@ def CompleteShrineOfRavenSpirit() -> BehaviorTree:
                 (-15520.0, 8680.0),
             ]),
             _pacifist(),
-            BT.MoveAndAutoDialog(Vec2f(-15696.0, 8732.0), 0x85),
+            BT.MoveAndDialog(Vec2f(-15696.0, 8732.0), 0x85),
             _aggressive(),
             BT.WaitUntilOutOfCombat(timeout_ms=120_000),
             BT.Wait(50_000),
             BT.WaitUntilOutOfCombat(timeout_ms=120_000),
             BT.Wait(15_000),
             BT.Travel(target_map_name="Olafstead"),
-            BT.MoveAndAutoDialog(Vec2f(132.0, -684.0), 0x832E07),
-            BT.MoveAndAutoDialog(Vec2f(132.0, -684.0), 0x86),
+            BT.MoveAndDialog(Vec2f(132.0, -684.0), 0x832E07),
+            BT.MoveAndDialog(Vec2f(132.0, -684.0), 0x86),
         ],
     )
 
@@ -1471,7 +1559,7 @@ def SearchForTheEbonVanguard() -> BehaviorTree:
             ]),
             BT.WaitForMapLoad(map_id=649),
             _pacifist(),
-            BT.MoveAndAutoDialog(Vec2f(19106.0, 413.0), 0x838C01),
+            BT.MoveAndDialog(Vec2f(19106.0, 413.0), 0x838C01),
             _aggressive(),
             BT.VanquishNode([
                 (11484.0, 1898.0),
@@ -1501,7 +1589,7 @@ def WarbandOfBrothers() -> BehaviorTree:
         map_id_or_name=648,
         children=[
             _aggressive(),
-            BT.MoveAndAutoDialog(Vec2f(-19094.0, 17945.0), 0x84),
+            BT.MoveAndDialog(Vec2f(-19094.0, 17945.0), 0x84),
             BT.WaitForMapLoad(map_id=666),
             BT.AddModelToLootWhitelist(24628),
             BT.VanquishNode([
@@ -1602,7 +1690,7 @@ def WhatMustBeDone() -> BehaviorTree:
         map_id_or_name=648,
         children=[
             _aggressive(),
-            BT.MoveAndAutoDialog(Vec2f(-14185.0, 17040.0), 0x838D01),
+            BT.MoveAndDialog(Vec2f(-14185.0, 17040.0), 0x838D01),
             BT.MoveAndExitMap(Vec2f(-15479.0, 13484.0), target_map_id=647),
             BT.VanquishNode([
                 (-12085.0, 8447.0),
@@ -1612,11 +1700,11 @@ def WhatMustBeDone() -> BehaviorTree:
             ]),
             BT.WaitUntilOutOfCombat(timeout_ms=120_000),
             BT.Travel(target_map_id=648),
-            BT.MoveAndAutoDialog(Vec2f(-14185.0, 17040.0), 0x84),
+            BT.MoveAndDialog(Vec2f(-14185.0, 17040.0), 0x84),
             BT.WaitForMapLoad(map_id=674),
             BT.Move(Vec2f(-16946.0, 17319.0)),
             BT.WaitForMapLoad(map_id=648),
-            BT.MoveAndAutoDialog(Vec2f(-14185.0, 17040.0), 0x838D07),
+            BT.MoveAndDialog(Vec2f(-14185.0, 17040.0), 0x838D07),
         ],
     )
 
@@ -1628,11 +1716,11 @@ def AssaultOnTheStrongHold() -> BehaviorTree:
         children=[
             _aggressive(),
             BT.MoveAndExitMap(Vec2f(-15479.0, 13484.0), target_map_id=647),
-            BT.MoveAndAutoDialog(Vec2f(-13849.0, 11217.0), 0x84),
+            BT.MoveAndDialog(Vec2f(-13849.0, 11217.0), 0x84),
             BT.WaitForMapLoad(map_id=669),
             BT.VanquishNode([(5203.0, 12344.0), (5843.0, 9145.0)]),
-            BT.MoveAndAutoDialog(Vec2f(5843.0, 9145.0), 0x84),
-            BT.MoveAndAutoDialog(Vec2f(5203.0, 12344.0), 0x84),
+            BT.MoveAndDialog(Vec2f(5843.0, 9145.0), 0x84),
+            BT.MoveAndDialog(Vec2f(5203.0, 12344.0), 0x84),
             BT.Move(Vec2f(936.0, 10709.0)),
             BT.Wait(30_000),
             BT.VanquishNode([
@@ -1644,7 +1732,7 @@ def AssaultOnTheStrongHold() -> BehaviorTree:
                 (-6895.0, 8102.0),
             ]),
             BT.WaitForMapLoad(map_id=649),
-            BT.MoveAndAutoDialog(Vec2f(-21069.0, 12353.0), 0x831907),
+            BT.MoveAndDialog(Vec2f(-21069.0, 12353.0), 0x831907),
         ],
     )
 
@@ -1654,7 +1742,7 @@ def UnlockBattleHonorStandSkill() -> BehaviorTree:
     return BT.Sequence(
         name="Unlock Battle Honor Stand Skill",
         children=[
-            BT.MoveAndAutoDialog(Vec2f(-21141.81, 12378.68), 0x836001),
+            BT.MoveAndDialog(Vec2f(-21141.81, 12378.68), 0x836001),
             BT.VanquishNode([
                 (-21593.0, 12517.0),
                 (-20064.0, 11212.0),
@@ -1722,7 +1810,7 @@ def UnlockBattleHonorStandSkill() -> BehaviorTree:
             BT.Travel(target_map_id=650),
             BT.Move(Vec2f(-21902.0, 12807.0)),
             BT.WaitForMapLoad(map_id=649),
-            BT.MoveAndAutoDialog(Vec2f(-21141.81, 12378.68), 0x836007),
+            BT.MoveAndDialog(Vec2f(-21141.81, 12378.68), 0x836007),
         ],
     )
 
@@ -1737,11 +1825,11 @@ def FindingGadd() -> BehaviorTree:
         name="Finding Gadd",
         map_id_or_name=624,
         children=[
-            BT.MoveAndAutoDialog(Vec2f(16363.0, 15909.0), 0x833301),
+            BT.MoveAndDialog(Vec2f(16363.0, 15909.0), 0x833301),
             BT.Travel(target_map_id=638),
             _aggressive(),
             BT.Move(Vec2f(-8755.0, -23240.0)),
-            BT.MoveAndAutoDialog(Vec2f(-8295.0, -23572.0), 0x833304),
+            BT.MoveAndDialog(Vec2f(-8295.0, -23572.0), 0x833304),
             BT.VanquishNode([
                 (-8755.0, -23240.0),
                 (-9888.17, -22106.70),
@@ -1752,7 +1840,7 @@ def FindingGadd() -> BehaviorTree:
                 (-6967.77, -19810.06),
                 (11669.0, -23829.0),
             ]),
-            BT.MoveAndAutoDialog(Vec2f(11881.0, -23802.0), 0x833304),
+            BT.MoveAndDialog(Vec2f(11881.0, -23802.0), 0x833304),
             BT.VanquishNode([(8017.92, -20124.24), (11184.85, -14188.88)]),
             BT.WaitUntilOutOfCombat(timeout_ms=120_000),
             BT.Wait(5_000),
@@ -1785,7 +1873,7 @@ def FindingTheBloodstone() -> BehaviorTree:
             BT.Move(Vec2f(-9888.17, -22106.70)),
             BT.MoveAndExitMap(Vec2f(-9690.0, -19524.0), target_map_id=558),
             BT.VanquishNode([(-6967.77, -19810.06), (11669.0, -23829.0)]),
-            BT.MoveAndAutoDialog(Vec2f(11795.0, -24125.0), 0x833307),
+            BT.MoveAndDialog(Vec2f(11795.0, -24125.0), 0x833307),
             BT.AutoDialog(0x84),
             BT.WaitForMapLoad(map_id=661),
             BT.VanquishNode([
@@ -1831,11 +1919,11 @@ def LabSpace() -> BehaviorTree:
         map_id_or_name=624,
         children=[
             _aggressive(),
-            BT.MoveAndAutoDialog(Vec2f(16202.0, 16092.0)),
+            BT.MoveAndDialog(Vec2f(16202.0, 16092.0)),
             BT.Travel(target_map_id=640),
-            BT.MoveAndAutoDialog(Vec2f(16024.0, 18468.0)),
+            BT.MoveAndDialog(Vec2f(16024.0, 18468.0)),
             BT.MoveAndExitMap(Vec2f(-6062.0, -2688.0), target_map_name="Magus Stones"),
-            BT.MoveAndAutoDialog(Vec2f(10228.0, 11488.0)),
+            BT.MoveAndDialog(Vec2f(10228.0, 11488.0)),
             BT.VanquishNode([
                 (8329.03, 9954.58),
                 (7258.69, 10987.36),
@@ -1862,7 +1950,7 @@ def LabSpace() -> BehaviorTree:
             BT.AutoDialog(0x84),
             BT.WaitForMapLoad(map_name="Magus Stones"),
             BT.Move(Vec2f(-18608.72, 16541.34)),
-            BT.MoveAndAutoDialog(Vec2f(-18794.0, 16287.0)),
+            BT.MoveAndDialog(Vec2f(-18794.0, 16287.0)),
             BT.Move(Vec2f(-20599.0, 14444.0)),
             BT.WaitForMapLoad(map_id=658),
         ],
@@ -1875,7 +1963,7 @@ def TheElusiveGolemancer() -> BehaviorTree:
         children=[
             BT.WaitForMapLoad(map_id=658),
             _aggressive(),
-            BT.MoveAndAutoDialog(Vec2f(-14542.0, 12237.0)),
+            BT.MoveAndDialog(Vec2f(-14542.0, 12237.0)),
             BT.Move(Vec2f(-17204.16, 8545.91)),
             BT.MoveAndInteractWithGadget(Vec2f(-17601.0, 8150.0), log=True),
             BT.Wait(20_000),
@@ -1916,8 +2004,8 @@ def TheElusiveGolemancer() -> BehaviorTree:
             ]),
             _aggressive(),
             BT.AutoDialog(0x84),
-            BT.MoveAndAutoDialog(Vec2f(-2639.0, -15247.0)),
-            BT.MoveAndAutoDialog(Vec2f(3833.0, -16855.0)),
+            BT.MoveAndDialog(Vec2f(-2639.0, -15247.0)),
+            BT.MoveAndDialog(Vec2f(3833.0, -16855.0)),
             BT.VanquishNode([(3042.09, -16940.08), (2763.47, -17007.67)]),
             BT.Wait(10_000),
             BT.Move(Vec2f(3348.06, -16214.14)),
@@ -1971,6 +2059,333 @@ def TheElusiveGolemancer() -> BehaviorTree:
     )
 
 
+
+# ---------------------------------------------------------------------------
+# Optional Olias unlock
+# ---------------------------------------------------------------------------
+
+OLIAS_HERO_ID = int(HeroType.Olias.value)
+
+
+MOX_HERO_ID = int(HeroType.MOX.value)
+
+
+def _mox_is_unlocked(log: bool = True) -> BehaviorTree:
+    """Check MOX ownership by temporarily asking the outpost party API to add him."""
+
+    def _request_add() -> BehaviorTree.NodeState:
+        GLOBAL_CACHE.Party.Heroes.AddHero(MOX_HERO_ID)
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _check_added() -> BehaviorTree.NodeState:
+        heroes = GLOBAL_CACHE.Party.GetHeroes() or []
+        player_login = int(Player.GetLoginNumber() or 0)
+        unlocked = any(
+            int(getattr(hero, "hero_id", 0) or 0) == MOX_HERO_ID
+            and int(getattr(hero, "owner_player_id", 0) or 0) == player_login
+            for hero in heroes
+        )
+
+        if log:
+            ConsoleLog(
+                MODULE_NAME,
+                "MOX is already unlocked." if unlocked else "MOX is not unlocked.",
+                log=True,
+            )
+
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if unlocked
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    def _remove_test_hero() -> BehaviorTree.NodeState:
+        GLOBAL_CACHE.Party.Heroes.KickHero(MOX_HERO_ID)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Sequence(
+        name="Check MOX Unlock",
+        children=[
+            BT.LeaveParty(),
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name="Attempt To Add MOX",
+                    action_fn=_request_add,
+                    aftercast_ms=750,
+                )
+            ),
+            BT.Wait(1_000),
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Verify MOX Joined Party",
+                    condition_fn=_check_added,
+                )
+            ),
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name="Remove MOX After Unlock Check",
+                    action_fn=_remove_test_hero,
+                    aftercast_ms=500,
+                )
+            ),
+        ],
+    )
+
+
+def UnlockMOX(log: bool = True) -> BehaviorTree:
+    return BT.Sequence(
+        name="Unlock MOX",
+        children=[
+            BT.Travel(target_map_id=KAINENG_CENTER_MAP_ID, log=log),
+            BT.MoveAndExitMap(
+                Vec2f(3243.0, -4911.0),
+                target_map_name="Bukdek Byway",
+                log=log,
+            ),
+            BT.MoveAndDialog(
+                Vec2f(-5803.48, 18951.70),
+                0x85,
+                log=log,
+            ),
+            BT.Wait(1_000),
+        ],
+    )
+
+
+def EnsureMOXUnlocked(log: bool = True) -> BehaviorTree:
+    """Skip the Bukdek Byway unlock route when MOX is already owned."""
+    return BT.Selector(
+        name="Ensure MOX Is Unlocked",
+        children=[
+            BT.Sequence(
+                name="MOX Already Unlocked",
+                children=[
+                    _mox_is_unlocked(log=log),
+                    BT.LogMessage(
+                        message="MOX is already unlocked; skipping his unlock route.",
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+            BT.Sequence(
+                name="Unlock MOX If Missing",
+                children=[
+                    BT.LogMessage(
+                        message="MOX is missing; starting his unlock route.",
+                        module_name=MODULE_NAME,
+                    ),
+                    UnlockMOX(log=log),
+                    BT.LogMessage(
+                        message="MOX unlock route completed.",
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def _olias_is_unlocked(log: bool = True) -> BehaviorTree:
+    """Check ownership by temporarily asking the outpost party API to add Olias."""
+
+    def _request_add() -> BehaviorTree.NodeState:
+        GLOBAL_CACHE.Party.Heroes.AddHero(OLIAS_HERO_ID)
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _check_added() -> BehaviorTree.NodeState:
+        heroes = GLOBAL_CACHE.Party.GetHeroes() or []
+        player_login = int(Player.GetLoginNumber() or 0)
+        unlocked = any(
+            int(getattr(hero, "hero_id", 0) or 0) == OLIAS_HERO_ID
+            and int(getattr(hero, "owner_player_id", 0) or 0) == player_login
+            for hero in heroes
+        )
+
+        if log:
+            ConsoleLog(
+                MODULE_NAME,
+                "Olias is already unlocked." if unlocked else "Olias is not unlocked.",
+                log=True,
+            )
+
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if unlocked
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    def _remove_test_hero() -> BehaviorTree.NodeState:
+        GLOBAL_CACHE.Party.Heroes.KickHero(OLIAS_HERO_ID)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Sequence(
+        name="Check Olias Unlock",
+        children=[
+            BT.LeaveParty(),
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name="Attempt To Add Olias",
+                    action_fn=_request_add,
+                    aftercast_ms=750,
+                )
+            ),
+            BT.Wait(1_000),
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Verify Olias Joined Party",
+                    condition_fn=_check_added,
+                )
+            ),
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name="Remove Olias After Unlock Check",
+                    action_fn=_remove_test_hero,
+                    aftercast_ms=500,
+                )
+            ),
+        ],
+    )
+
+
+def ToKamadanForOlias(log: bool = True) -> BehaviorTree:
+    return BT.Sequence(
+        name="Sunspears In Cantha - Reach Kamadan",
+        children=[
+            BT.Travel(target_map_id=KAINENG_CENTER_MAP_ID, log=log),
+            _prepare_standard_party(),
+            BT.VanquishNode([
+                (3049.35, -2020.75),
+                (2739.30, -3710.67),
+                (-648.30, -3493.72),
+                (-1661.91, -636.09),
+            ], log=log),
+            BT.MoveAndDialog(Vec2f(-1131.99, 818.35), 0x82D401, log=log),
+            BT.MoveAndExitMap(Vec2f(-2439.0, 1732.0), target_map_id=290, log=log),
+            BT.VanquishNode([
+                (-2995.68, 2077.20),
+                (-6938.10, 4286.61),
+                (-6064.40, 5300.26),
+                (-2396.20, 5260.67),
+                (-5031.77, 6001.52),
+                (-5899.57, 7240.19),
+            ], log=log),
+            BT.TargetAgentByModelIDAndSendDialog(4914, 0x82D404, log=log),
+            BT.Wait(500),
+            BT.SendDialog(0x87, log=log),
+            BT.WaitForMapLoad(map_id=400),
+            _aggressive(),
+            BT.VanquishNode([
+                (-1712.16, -700.23),
+                (-907.97, -2862.29),
+                (742.42, -4167.73),
+                (1352.94, -3694.75),
+                (2547.49, -3667.82),
+                (2541.67, -2582.88),
+                (1990.27, -1636.21),
+                (2651.48, -3750.63),
+                (3355.63, -2151.82),
+                (4565.37, -1630.73),
+                (2951.07, -723.50),
+                (2875.84, 488.42),
+                (1354.73, 583.06),
+            ], pause_on_combat=True, log=log),
+            BT.WaitForMapLoad(map_id=290),
+            BT.Wait(2_000),
+            BT.TargetAgentByModelIDAndSendDialog(4914, 0x84, log=log),
+            BT.WaitForMapLoad(map_id=543),
+            BT.Wait(2_000),
+            BT.TargetAgentByModelIDAndSendDialog(4829, 0x82D407, log=log),
+        ],
+    )
+
+
+def ToConsulateDocksForOlias(log: bool = True) -> BehaviorTree:
+    return BT.Sequence(
+        name="Unlock Consulate Docks",
+        children=[
+            BT.Travel(target_map_id=KAINENG_CENTER_MAP_ID, log=log),
+            BT.LeaveParty(),
+            BT.Travel(target_map_id=449, log=log),
+            BT.Move(Vec2f(-8075.89, 14592.47), log=log),
+            BT.Move(Vec2f(-6743.29, 16663.21), log=log),
+            BT.Move(Vec2f(-5271.00, 16740.00), log=log),
+            BT.WaitForMapLoad(map_id=429),
+            BT.MoveAndDialog(Vec2f(-4631.86, 16711.79), 0x85, log=log),
+            BT.WaitForMapLoad(map_id=493),
+        ],
+    )
+
+
+def CompleteOliasUnlock(log: bool = True) -> BehaviorTree:
+    return BT.Sequence(
+        name="All For One And One For Justice",
+        children=[
+            BT.Travel(target_map_id=493, log=log),
+            BT.MoveAndDialog(Vec2f(-2367.00, 16796.00), 0x830E01, log=log),
+            BT.LeaveParty(),
+            BT.Travel(target_map_id=55, log=log),
+            _prepare_standard_party(),
+            BT.VanquishNode([
+                (1413.11, 9255.51),
+                (242.96, 6130.82),
+                (-1137.00, 2501.00),
+            ], log=log),
+            BT.MoveAndDialog(Vec2f(-1137.00, 2501.00), 0x84, log=log),
+            BT.WaitForMapLoad(map_id=471),
+            BT.Wait(3_000),
+            BT.MoveAndDialog(Vec2f(5117.00, 10515.00), 0x830E04, log=log),
+            _aggressive(),
+            BT.VanquishNode([
+                (8518.10, 9309.66),
+                (8067.40, 5703.23),
+                (5657.20, 4485.55),
+                (4461.65, -710.88),
+                (10750.0, 2100.0),
+            ], pause_on_combat=True, log=log),
+            BT.Wait(20_000),
+            BT.WaitForMapLoad(map_id=55),
+            BT.LeaveParty(),
+            BT.Travel(target_map_id=449, log=log),
+            BT.Move(Vec2f(-8149.02, 14900.65), log=log),
+            BT.MoveAndDialog(Vec2f(-6480.00, 16331.00), 0x830E07, log=log),
+        ],
+    )
+
+
+def EnsureOliasUnlocked(log: bool = True) -> BehaviorTree:
+    """Skip the complete Cantha/Nightfall route when Olias is already owned."""
+    return BT.Selector(
+        name="Ensure Olias Is Unlocked",
+        children=[
+            BT.Sequence(
+                name="Olias Already Unlocked",
+                children=[
+                    _olias_is_unlocked(log=log),
+                    BT.LogMessage(
+                        message="Olias is already unlocked; skipping his unlock route.",
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+            BT.Sequence(
+                name="Unlock Olias If Missing",
+                children=[
+                    BT.LogMessage(
+                        message="Olias is missing; starting the complete unlock route.",
+                        module_name=MODULE_NAME,
+                    ),
+                    ToKamadanForOlias(log=log),
+                    ToConsulateDocksForOlias(log=log),
+                    CompleteOliasUnlock(log=log),
+                    BT.LogMessage(
+                        message="Olias unlock route completed.",
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+        ],
+    )
+
 # ---------------------------------------------------------------------------
 # Planner and entry point
 # ---------------------------------------------------------------------------
@@ -1979,12 +2394,14 @@ def TheElusiveGolemancer() -> BehaviorTree:
 def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     return [
         ("Initialize Bot", InitializeBot),
+        ("UnlockEyeOfTheNorthPool",UnlockEyeOfTheNorthPool),
         ("Obtain Story Book", ObtainStoryBook),
+        ("Ensure MOX Unlocked", EnsureMOXUnlocked),
+        ("Ensure Olias Unlocked", EnsureOliasUnlocked),
         ("Prepare Standard Party", PrepareStandardParty),
         ("Travel To Gunnar's Hold", TravelToGunnarsHold),
         ("Talk To Gunnar", TalkToGunnar),
-        ("Prepare Xandra Tournament", PrepareXandraTournament),
-        ("UnlockXandra", UnlockXandra),
+        ("Optional Xandra Tournament", CompleteOptionalXandraTournament),
         ("Travel To Sifhalla", TravelToSifhalla),
         ("Tracking The Nornbear", CompleteTrackingTheNornbear),
         ("Curse Of The Nornbear", CompleteCurseOfTheNornbear),
@@ -1998,9 +2415,9 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("What Must Be Done", WhatMustBeDone),
         ("Assault On The Stronghold", AssaultOnTheStrongHold),
         ("Finding Gadd", FindingGadd),
-        ("Finding The Bloodstone", FindingTheBloodstone),
-        ("Lab Space", LabSpace),
-        ("The Elusive Golemancer", TheElusiveGolemancer),
+        ("Finding The Bloodstone", FindingTheBloodstone)
+        #("Lab Space", LabSpace),
+        #("The Elusive Golemancer", TheElusiveGolemancer),
     ]
 
 

@@ -83,13 +83,15 @@ BDS_MODEL_ID_MIN = BDS_MODEL_IDS[0]
 BDS_MODEL_ID_MAX = BDS_MODEL_IDS[-1]
 GB_MODEL_ID = 2474
 
-_BDS_ICON_PATH = os.path.join(
+TEXTURE = os.path.join(
     PySystem.Console.get_projects_path(),
     "Textures", 
     "Module_Icons",
     "BDS.png"
 )
 
+
+MODULE_ICON = "Textures\\Module_Icons\\BDS.png"
 
 # endregion
 
@@ -265,15 +267,22 @@ L3_MAIN_PATH = [
     Vec2f(14511, 19206),
     Vec2f(8539, 17072),
     Vec2f(3547, 8795),
-    Vec2f(4813.8,10340.7)
+    Vec2f(4813.8,10340.7),
+    Vec2f(2523,8101),
+    Vec2f(1923,6151),
+    Vec2f(198,8176),
+    Vec2f(-4228,6901),
 ]
-
+    
+    
 L3_BRIGANT_ROOM = [
-    Vec2f(-4967, 5942),
-    Vec2f(-8658, 4070),
-    Vec2f(-11081, 2374),
+    Vec2f(-5803,4426),
+    Vec2f(-7228,6301),
+    Vec2f(-10153,5101),
+    Vec2f(-7828,3150),
+    Vec2f(-11353,3600),
+    Vec2f(-10228,1200),
 ]
-
 
 L3_PATH_TO_TORCH = [
     Vec2f(-4723.0,6703.0), Vec2f(-1280.0,7880.0),
@@ -466,7 +475,6 @@ def _configure_runtime_upkeeps(
         auto_inventory_handler_enabled=True,
         activate_widget_list=(
             "LootManager",
-            "Return to outpost on defeat",
         ),
         consumable_upkeeps=(
             _enabled_consumable_upkeeps()
@@ -1433,51 +1441,95 @@ def _draw_statistics() -> None:
 # region Helpers
 
 def PickupTorch() -> BehaviorTree:
-    pickup_tree = BT.PickupGroundItemByModelID(
-        model_ids=TORCH_MODEL_IDS,
-        max_distance=20_000.0,
-        timeout_ms=45_000,
-        allow_unassigned=True,
-        interaction_interval_ms=1000,
-        aftercast_ms=100,
-        log=True,
-    )
+    def _create_pickup_tree() -> BehaviorTree:
+        return BT.PickupGroundItemByModelID(
+            model_ids=TORCH_MODEL_IDS,
+            max_distance=20_000.0,
+            timeout_ms=45_000,
+            allow_unassigned=True,
+            interaction_interval_ms=1000,
+            aftercast_ms=100,
+            log=True,
+        )
+
+    pickup_tree = _create_pickup_tree()
+    false_success_count = 0
+
+    def _is_holding_bundle() -> bool:
+        try:
+            player_agent_id = Player.GetAgentID()
+            if not player_agent_id:
+                return False
+
+            return bool(
+                Agent.IsHoldingItem(
+                    player_agent_id,
+                )
+            )
+        except Exception:
+            return False
 
     def _pickup_or_restart_step(
         node: BehaviorTree.Node,
     ) -> BehaviorTree.NodeState:
-        try:
-            torch_already_carried = bool(
-                Agent.IsHoldingItem(
-                    Player.GetAgentID(),
-                )
-            )
-        except Exception:
-            torch_already_carried = False
+        nonlocal pickup_tree
+        nonlocal false_success_count
 
-        if torch_already_carried:
+        # La torche est réellement portée : le nœud peut réussir.
+        if _is_holding_bundle():
+            false_success_count = 0
+
             PySystem.Console.Log(
                 MODULE_NAME,
-                (
-                    "Torch pickup skipped: the player is already "
-                    "carrying a bundle."
-                ),
+                "Torch successfully picked up.",
                 PySystem.Console.MessageType.Info,
             )
             return BehaviorTree.NodeState.SUCCESS
 
         pickup_tree.blackboard = node.blackboard
+
         pickup_result = BehaviorTree.Node._normalize_state(
             pickup_tree.tick()
         )
+
         if pickup_result is None:
             raise TypeError(
                 "PickupTorch received a non-NodeState result."
             )
 
-        if pickup_result != BehaviorTree.NodeState.FAILURE:
-            return pickup_result
+        if pickup_result == BehaviorTree.NodeState.RUNNING:
+            return BehaviorTree.NodeState.RUNNING
 
+        if pickup_result == BehaviorTree.NodeState.SUCCESS:
+            # PickupGroundItemByModelID peut considérer que l'objet a été
+            # ramassé dès que son agent disparaît momentanément.
+            #
+            # On ne valide donc jamais le succès avant que le joueur porte
+            # réellement le bundle.
+            if _is_holding_bundle():
+                false_success_count = 0
+                return BehaviorTree.NodeState.SUCCESS
+
+            false_success_count += 1
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    "PickupGroundItemByModelID returned SUCCESS, but the "
+                    "player is not carrying the torch. Restarting the "
+                    f"pickup search (attempt {false_success_count})."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+
+            # Le précédent arbre est probablement resté dans son état
+            # terminal SUCCESS. Il faut donc en créer un nouveau.
+            pickup_tree = _create_pickup_tree()
+            pickup_tree.blackboard = node.blackboard
+
+            return BehaviorTree.NodeState.RUNNING
+
+        # Ici, le sous-arbre a réellement retourné FAILURE.
         step_name = str(
             node.blackboard.get(
                 "current_step_name",
@@ -1485,6 +1537,7 @@ def PickupTorch() -> BehaviorTree:
             )
             or ""
         )
+
         if not step_name:
             PySystem.Console.Log(
                 MODULE_NAME,
@@ -1499,6 +1552,7 @@ def PickupTorch() -> BehaviorTree:
         node.blackboard[
             "restart_step_name_request"
         ] = step_name
+
         PySystem.Console.Log(
             MODULE_NAME,
             (
@@ -1508,8 +1562,6 @@ def PickupTorch() -> BehaviorTree:
             PySystem.Console.MessageType.Warning,
         )
 
-        # Keep the current planner tick alive until BottingTree processes the
-        # restart request at the end of the frame.
         return BehaviorTree.NodeState.RUNNING
 
     return BehaviorTree(
@@ -2297,11 +2349,13 @@ def Level2_Part2() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 2",
         children=[
+            BT.Wait(2000),
+            BT.MoveAndKill(Vec2f(-9011.27, -11536.79)),
             BT.WaitForClearEnemiesInArea(
-               9011.0,-11536.0,radius=Range.Compass.value,
+               9011.0,-11536.0,radius=Range.SafeCompass.value,
                 log=True,
             ),
-            BT.Move(Vec2f(-9011.27, -11536.79)),
+            BT.Wait(2000),
             PickupTorch(),
             BT.VanquishNode(
                 L2_TO_ROOM2_DROP,
@@ -2381,15 +2435,8 @@ def Level3_FirstPath() -> BehaviorTree:
                 L3_MAIN_PATH,
                 name="Level 3 Main Route",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
                 log=True,
             ),
-            BT.ClearEnemiesInArea(
-                Vec2f(1025, 6872),
-                radius=Range.Compass.value,
-                log=True,
-            ),
-            BT.Move(Vec2f(1025, 6872), log=True),
         ],
     )
 #endregion
@@ -2400,13 +2447,11 @@ def Level3_BrigantRoom() -> BehaviorTree:
         name="Run Shards of Orr Level 3 Second Path",
         children=[
             BT.VanquishNode(
-                L3_BRIGANT_ROOM,
-                pause_on_combat=True,
-                clear_area_radius=Range.Compass.value,
-                log=True,
-            ),
-            BT.WaitForClearEnemiesInArea(-11081, 2374),
-            BT.LootItems(),
+            L3_BRIGANT_ROOM,
+            name="Level 3 Main Route",
+            flag_heroes_to_waypoint=False,
+            log=True,
+                        ),
         ],
     )
 #endregion
@@ -2442,6 +2487,7 @@ def Level3_Brigant() -> BehaviorTree:
                 log=True,
             ),
             BT.Wait(2000),
+            BT.LootItems(),
             BT.MoveAndInteractWithGadget(
                 L3_BOSS_DOOR, pause_on_combat=False, log=True,
             ),
@@ -2846,7 +2892,7 @@ def main() -> None:
     tree = ensure_botting_tree()
     tree.tick()
     tree.UI.draw_window(
-        icon_path=_BDS_ICON_PATH,
+        icon_path=TEXTURE,
         iconwidth=96,
         main_child_dimensions=(420, 380),
         extra_tabs=[
