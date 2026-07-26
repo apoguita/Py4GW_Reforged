@@ -297,7 +297,6 @@ L3_BRAZIERS = [
     (-4959.0,7558.0), (-7532.0,4536.0), (-10984.0,486.0),
     (-12621.0,2948.0),
 ]
-L3_BOSS_DOOR = Vec2f(-9252.32, 6396.40)
 L3_FENDI_PATH = [
     Vec2f(-8696, 6323),Vec2f(-9988, 7652), Vec2f(-12712.36, 13502.19),Vec2f(-13893.67, 14349.77),Vec2f(-15606.06, 15287.51),
 ]
@@ -2483,13 +2482,13 @@ def Level3_Brigant() -> BehaviorTree:
         children=[                      
             BT.MoveAndKill(
                 Vec2f(-11147, 2644) ,
-                clear_area_radius=Range.Spellcast.value,
+                clear_area_radius=Range.Spirit.value,
                 log=True,
             ),
             BT.Wait(2000),
             BT.LootItems(),
             BT.MoveAndInteractWithGadget(
-                L3_BOSS_DOOR, pause_on_combat=False, log=True,
+                Vec2f(-9252.32, 6396.40), pause_on_combat=False, log=True,
             ),
         ],
     )
