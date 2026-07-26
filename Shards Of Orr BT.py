@@ -1561,15 +1561,13 @@ def PickupTorch() -> BehaviorTree:
 
             return BehaviorTree.NodeState.RUNNING
 
-        # FAILURE avant le délai global :
-        # aucune torche n'est actuellement disponible.
-        _log(
-            "No torch available. Skipping pickup.",
-            PySystem.Console.MessageType.Warning,
+        pickup_tree = _create_pickup_tree()
+        pickup_tree.blackboard = node.blackboard
+        retry_at = now + (
+            RETRY_DELAY_MS / 1000.0
         )
-        _reset_state()
 
-        return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
