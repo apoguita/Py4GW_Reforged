@@ -1169,16 +1169,40 @@ class BTAgents:
             if not _is_matching_gadget(
                 target_agent_id
             ):
-                interaction_started = (
-                    phase != "find"
-                    and (
-                        state["local_interaction_count"] > 0
-                        or state["account_index"] > 0
-                        or state["account_interaction_count"] > 0
-                    )
+                local_interaction_started = (
+                    state["local_interaction_count"] > 0
                 )
 
-                if interaction_started:
+                remote_processing_started = phase in (
+                    "prepare_accounts",
+                    "remote_dispatch",
+                    "remote_wait",
+                    "remote_interval",
+                    "remote_settle",
+                )
+
+                # A gadget such as a chest may disappear locally as soon as
+                # the local account opens it. In multibox mode, the remote
+                # accounts must still be allowed to process their interaction
+                # commands using the previously resolved agent id.
+                if (
+                    multi_account
+                    and (
+                        local_interaction_started
+                        or remote_processing_started
+                    )
+                ):
+                    if phase in (
+                        "local_move",
+                        "local_interact",
+                    ):
+                        state["phase"] = "prepare_accounts"
+
+                    return BehaviorTree.NodeState.RUNNING
+
+                # In local-only mode, disappearance after at least one
+                # interaction generally confirms that the gadget was used.
+                if local_interaction_started:
                     _log(
                         "MoveAndInteractWithGadgetByID",
                         (
@@ -1570,7 +1594,6 @@ class BTAgents:
                 action_fn=_move_and_interact,
             )
         )
-    
     
     @staticmethod
     def TargetNearestNPC(distance:float = 4500.0, log:bool=False):
