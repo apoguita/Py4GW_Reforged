@@ -329,16 +329,23 @@ class BottingTreePlannerMixin:
     ) -> bool:
         if not self._planner_steps:
             return False
+
         sequence_name = name or self._planner_sequence_name
-        self._set_planner_tree(self._build_named_planner_tree(
-            self._planner_steps,
-            start_from=step_name,
-            name=sequence_name,
-            repeat=self.planner_repeat,
-        ))
-        self.Reset()
+
+        self._set_planner_tree(
+            self._build_named_planner_tree(
+                self._planner_steps,
+                start_from=step_name,
+                name=sequence_name,
+                repeat=self.planner_repeat,
+            )
+        )
+
         if auto_start:
             self.Start()
+        else:
+            self.Reset()
+
         return True
 
     def BuildAllSequences(
