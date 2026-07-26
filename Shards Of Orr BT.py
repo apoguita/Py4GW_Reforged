@@ -276,12 +276,10 @@ L3_MAIN_PATH = [
     
     
 L3_BRIGANT_ROOM = [
-    Vec2f(-5803,4426),
-    Vec2f(-7228,6301),
-    Vec2f(-10153,5101),
-    Vec2f(-7828,3150),
-    Vec2f(-11353,3600),
-    Vec2f(-10228,1200),
+    Vec2f(-4528,6301),
+    Vec2f(-8203,2775),
+    Vec2f(-11428,3600),
+    Vec2f(-7903,6601),
 ]
 
 L3_PATH_TO_TORCH = [
@@ -1440,6 +1438,10 @@ def _draw_statistics() -> None:
 # region Helpers
 
 def PickupTorch() -> BehaviorTree:
+    PICKUP_DEADLINE_MS = 50_000
+    HOLDING_CONFIRMATION_MS = 750
+    MAX_FALSE_SUCCESS_COUNT = 8
+
     def _create_pickup_tree() -> BehaviorTree:
         return BT.PickupGroundItemByModelID(
             model_ids=TORCH_MODEL_IDS,
@@ -1452,11 +1454,15 @@ def PickupTorch() -> BehaviorTree:
         )
 
     pickup_tree = _create_pickup_tree()
+
+    pickup_started_at = 0.0
+    success_confirmation_started_at = 0.0
     false_success_count = 0
 
     def _is_holding_bundle() -> bool:
         try:
             player_agent_id = Player.GetAgentID()
+
             if not player_agent_id:
                 return False
 
@@ -1468,22 +1474,111 @@ def PickupTorch() -> BehaviorTree:
         except Exception:
             return False
 
-    def _pickup_or_restart_step(
+    def _reset_local_state() -> None:
+        nonlocal pickup_started_at
+        nonlocal success_confirmation_started_at
+        nonlocal false_success_count
+
+        pickup_started_at = 0.0
+        success_confirmation_started_at = 0.0
+        false_success_count = 0
+
+    def _skip_missing_torch(
+        reason: str,
+    ) -> BehaviorTree.NodeState:
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"Torch pickup skipped: {reason}. "
+                "The torch is probably no longer available at this "
+                "location, so the script will continue."
+            ),
+            PySystem.Console.MessageType.Warning,
+        )
+
+        _reset_local_state()
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _pickup_torch_step(
         node: BehaviorTree.Node,
     ) -> BehaviorTree.NodeState:
         nonlocal pickup_tree
+        nonlocal pickup_started_at
+        nonlocal success_confirmation_started_at
         nonlocal false_success_count
 
-        # La torche est réellement portée : le nœud peut réussir.
-        if _is_holding_bundle():
-            false_success_count = 0
+        now = time.monotonic()
 
+        if pickup_started_at <= 0.0:
+            pickup_started_at = now
+
+        if _is_holding_bundle():
             PySystem.Console.Log(
                 MODULE_NAME,
                 "Torch successfully picked up.",
                 PySystem.Console.MessageType.Info,
             )
+
+            _reset_local_state()
+
             return BehaviorTree.NodeState.SUCCESS
+
+        elapsed_ms = int(
+            (now - pickup_started_at) * 1000.0
+        )
+
+        if elapsed_ms >= PICKUP_DEADLINE_MS:
+            return _skip_missing_torch(
+                (
+                    "the overall pickup deadline was reached "
+                    f"after {elapsed_ms} ms"
+                )
+            )
+
+  
+        if success_confirmation_started_at > 0.0:
+            confirmation_elapsed_ms = int(
+                (
+                    now
+                    - success_confirmation_started_at
+                )
+                * 1000.0
+            )
+
+            if confirmation_elapsed_ms < HOLDING_CONFIRMATION_MS:
+                return BehaviorTree.NodeState.RUNNING
+
+
+            success_confirmation_started_at = 0.0
+            false_success_count += 1
+
+            if false_success_count >= MAX_FALSE_SUCCESS_COUNT:
+                return _skip_missing_torch(
+                    (
+                        "the pickup node repeatedly reported success "
+                        "without the player carrying the torch "
+                        f"({false_success_count} false results)"
+                    )
+                )
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    "PickupGroundItemByModelID reported SUCCESS, but "
+                    "the player is still not carrying the torch after "
+                    "the confirmation delay. Restarting the pickup "
+                    f"search ({false_success_count}/"
+                    f"{MAX_FALSE_SUCCESS_COUNT})."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+
+
+            pickup_tree = _create_pickup_tree()
+            pickup_tree.blackboard = node.blackboard
+
+            return BehaviorTree.NodeState.RUNNING
 
         pickup_tree.blackboard = node.blackboard
 
@@ -1500,73 +1595,41 @@ def PickupTorch() -> BehaviorTree:
             return BehaviorTree.NodeState.RUNNING
 
         if pickup_result == BehaviorTree.NodeState.SUCCESS:
-            # PickupGroundItemByModelID peut considérer que l'objet a été
-            # ramassé dès que son agent disparaît momentanément.
-            #
-            # On ne valide donc jamais le succès avant que le joueur porte
-            # réellement le bundle.
+
             if _is_holding_bundle():
-                false_success_count = 0
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "Torch successfully picked up.",
+                    PySystem.Console.MessageType.Info,
+                )
+
+                _reset_local_state()
+
                 return BehaviorTree.NodeState.SUCCESS
 
-            false_success_count += 1
+            success_confirmation_started_at = now
 
             PySystem.Console.Log(
                 MODULE_NAME,
                 (
-                    "PickupGroundItemByModelID returned SUCCESS, but the "
-                    "player is not carrying the torch. Restarting the "
-                    f"pickup search (attempt {false_success_count})."
+                    "PickupGroundItemByModelID reported SUCCESS, but "
+                    "the player is not carrying the torch yet. Waiting "
+                    "for bundle confirmation."
                 ),
                 PySystem.Console.MessageType.Warning,
             )
-
-            # Le précédent arbre est probablement resté dans son état
-            # terminal SUCCESS. Il faut donc en créer un nouveau.
-            pickup_tree = _create_pickup_tree()
-            pickup_tree.blackboard = node.blackboard
 
             return BehaviorTree.NodeState.RUNNING
 
-        # Ici, le sous-arbre a réellement retourné FAILURE.
-        step_name = str(
-            node.blackboard.get(
-                "current_step_name",
-                "",
-            )
-            or ""
+
+        return _skip_missing_torch(
+            "the ground item could not be found or the pickup timed out"
         )
-
-        if not step_name:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                (
-                    "Torch pickup failed, but no current named planner "
-                    "step is available for local recovery."
-                ),
-                PySystem.Console.MessageType.Warning,
-            )
-            return BehaviorTree.NodeState.FAILURE
-
-        node.blackboard[
-            "restart_step_name_request"
-        ] = step_name
-
-        PySystem.Console.Log(
-            MODULE_NAME,
-            (
-                "Torch pickup timed out. Restarting the current "
-                f"planner step '{step_name}' instead of the full run."
-            ),
-            PySystem.Console.MessageType.Warning,
-        )
-
-        return BehaviorTree.NodeState.RUNNING
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
-            name="PickupTorchWithStepRecovery",
-            action_fn=_pickup_or_restart_step,
+            name="PickupTorchOrContinue",
+            action_fn=_pickup_torch_step,
             aftercast_ms=0,
         )
     )
@@ -1698,11 +1761,13 @@ def MoveBetweenBraziersWithFlameRecovery(
     """
     Move between two braziers while continuously monitoring the torch flame.
 
-    Movement is delegated entirely to the regular BT Move node. If the flame
-    disappears while moving to the next brazier, that movement subtree is
-    reset, the current movement is cancelled once, and a dedicated BT Move
-    subtree returns the player to the previous brazier. The torch is then
-    relit before the original movement resumes.
+    If the flame disappears, movement fails, or interaction with the next
+    brazier fails, the node returns to the previous brazier, relights the
+    torch, and retries the movement to the next brazier.
+
+    FAILURE is returned only when local recovery is exhausted, the return
+    movement fails, the global timeout is reached, or a user interruption
+    occurs.
     """
     import time
 
@@ -1713,6 +1778,7 @@ def MoveBetweenBraziersWithFlameRecovery(
         float(previous_brazier[0]),
         float(previous_brazier[1]),
     )
+
     next_pos = Vec2f(
         float(next_brazier[0]),
         float(next_brazier[1]),
@@ -1725,6 +1791,7 @@ def MoveBetweenBraziersWithFlameRecovery(
         ignore_destination_obstacles=True,
         log=log,
     )
+
     move_to_previous = BT.Move(
         previous_pos,
         tolerance=float(interaction_distance),
@@ -1732,26 +1799,40 @@ def MoveBetweenBraziersWithFlameRecovery(
         ignore_destination_obstacles=True,
         log=log,
     )
+
     relight_previous = BT.MoveAndInteractWithGadget(
         pos=previous_pos,
         gadget_id=None,
         search_distance=300.0,
         interaction_distance=float(interaction_distance),
-        interaction_count=max(1, int(interaction_count)),
-        interaction_interval_ms=max(0, int(interaction_interval_ms)),
+        interaction_count=max(
+            1,
+            int(interaction_count),
+        ),
+        interaction_interval_ms=max(
+            0,
+            int(interaction_interval_ms),
+        ),
         timeout_ms=15_000,
         pause_on_combat=False,
         multi_account=False,
         include_self=True,
         log=log,
     )
+
     interact_next = BT.MoveAndInteractWithGadget(
         pos=next_pos,
         gadget_id=None,
         search_distance=300.0,
         interaction_distance=float(interaction_distance),
-        interaction_count=max(1, int(interaction_count)),
-        interaction_interval_ms=max(0, int(interaction_interval_ms)),
+        interaction_count=max(
+            1,
+            int(interaction_count),
+        ),
+        interaction_interval_ms=max(
+            0,
+            int(interaction_interval_ms),
+        ),
         timeout_ms=15_000,
         pause_on_combat=False,
         multi_account=False,
@@ -1770,18 +1851,25 @@ def MoveBetweenBraziersWithFlameRecovery(
         message: str,
         message_type=PySystem.Console.MessageType.Info,
     ) -> None:
-        if log:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[{name}] {message}",
-                message_type,
-            )
+        if not log:
+            return
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[{name}] {message}",
+            message_type,
+        )
 
     def _has_active_flame() -> bool:
         try:
+            player_agent_id = Player.GetAgentID()
+
+            if not player_agent_id:
+                return False
+
             return bool(
                 GLOBAL_CACHE.Effects.HasEffect(
-                    Player.GetAgentID(),
+                    player_agent_id,
                     int(effect_id),
                 )
             )
@@ -1791,6 +1879,7 @@ def MoveBetweenBraziersWithFlameRecovery(
     def _cancel_current_movement() -> None:
         try:
             player_x, player_y = Player.GetXY()
+
             Player.Move(
                 float(player_x),
                 float(player_y),
@@ -1798,7 +1887,9 @@ def MoveBetweenBraziersWithFlameRecovery(
         except Exception:
             pass
 
-    def _reset_tree(tree: BehaviorTree) -> None:
+    def _reset_tree(
+        tree: BehaviorTree,
+    ) -> None:
         try:
             tree.reset()
         except Exception:
@@ -1812,14 +1903,21 @@ def MoveBetweenBraziersWithFlameRecovery(
         node: BehaviorTree.Node,
     ) -> BehaviorTree.NodeState:
         tree.root.blackboard = node.blackboard
+
         result = tree.root.tick()
 
-        if isinstance(result, BehaviorTree.NodeState):
+        if isinstance(
+            result,
+            BehaviorTree.NodeState,
+        ):
             return result
+
         if result is True:
             return BehaviorTree.NodeState.SUCCESS
+
         if result is False:
             return BehaviorTree.NodeState.FAILURE
+
         return BehaviorTree.NodeState.RUNNING
 
     def _reset_all() -> None:
@@ -1833,37 +1931,52 @@ def MoveBetweenBraziersWithFlameRecovery(
         state["phase_started_at"] = 0.0
         state["recovery_count"] = 0
 
-    def _begin_recovery(now: float) -> BehaviorTree.NodeState:
+    def _begin_recovery(
+        now: float,
+        reason: str,
+    ) -> BehaviorTree.NodeState:
         state["recovery_count"] += 1
 
-        if state["recovery_count"] > max(1, int(max_recoveries)):
+        recovery_limit = max(
+            1,
+            int(max_recoveries),
+        )
+
+        if state["recovery_count"] > recovery_limit:
             _trace(
                 (
-                    "Torch recovery failed after "
-                    f"{max(1, int(max_recoveries))} attempt(s)."
+                    f"{reason} Local recovery failed after "
+                    f"{recovery_limit} attempt(s)."
                 ),
                 PySystem.Console.MessageType.Warning,
             )
+
+            _cancel_current_movement()
             _reset_all()
+
             return BehaviorTree.NodeState.FAILURE
 
         _trace(
             (
-                "Torch flame extinguished during movement. "
-                "Returning to the previous brazier "
+                f"{reason} Returning to the previous brazier "
                 f"(recovery {state['recovery_count']}/"
-                f"{max(1, int(max_recoveries))})."
+                f"{recovery_limit})."
             ),
             PySystem.Console.MessageType.Warning,
         )
 
+        # Tous les sous-arbres concernés sont remis à zéro avant
+        # d'entamer la récupération locale.
         _reset_tree(move_to_next)
         _reset_tree(move_to_previous)
         _reset_tree(relight_previous)
+        _reset_tree(interact_next)
+
         _cancel_current_movement()
 
         state["phase"] = "move_to_previous"
         state["phase_started_at"] = now
+
         return BehaviorTree.NodeState.RUNNING
 
     def _move_with_recovery(
@@ -1874,6 +1987,7 @@ def MoveBetweenBraziersWithFlameRecovery(
         if state["started_at"] <= 0.0:
             state["started_at"] = now
             state["phase_started_at"] = now
+
             _trace(
                 (
                     "Starting monitored BT movement from "
@@ -1882,16 +1996,22 @@ def MoveBetweenBraziersWithFlameRecovery(
             )
 
         elapsed_ms = (
-            now - float(state["started_at"])
+            now
+            - float(state["started_at"])
         ) * 1000.0
 
-        if elapsed_ms >= max(1, int(timeout_ms)):
+        if elapsed_ms >= max(
+            1,
+            int(timeout_ms),
+        ):
             _trace(
                 "Timed out while moving between braziers.",
                 PySystem.Console.MessageType.Warning,
             )
+
             _cancel_current_movement()
             _reset_all()
+
             return BehaviorTree.NodeState.FAILURE
 
         if bool(
@@ -1902,117 +2022,191 @@ def MoveBetweenBraziersWithFlameRecovery(
         ):
             _cancel_current_movement()
             _reset_all()
+
             return BehaviorTree.NodeState.FAILURE
 
-        phase = str(state["phase"])
+        phase = str(
+            state["phase"]
+        )
 
+        # --------------------------------------------------------------
+        # Déplacement vers le prochain brasero
+        # --------------------------------------------------------------
         if phase == "move_to_next":
             if not _has_active_flame():
-                return _begin_recovery(now)
+                return _begin_recovery(
+                    now,
+                    "Torch flame extinguished during movement.",
+                )
 
-            result = _tick_tree(move_to_next, node)
+            result = _tick_tree(
+                move_to_next,
+                node,
+            )
 
             if result == BehaviorTree.NodeState.RUNNING:
                 return BehaviorTree.NodeState.RUNNING
 
             if result == BehaviorTree.NodeState.FAILURE:
-                _trace(
+                return _begin_recovery(
+                    now,
                     "Movement to the next brazier failed.",
-                    PySystem.Console.MessageType.Warning,
                 )
-                _reset_all()
-                return BehaviorTree.NodeState.FAILURE
 
             _reset_tree(move_to_next)
+
             state["phase"] = "interact_next"
             state["phase_started_at"] = now
+
             _trace(
-                "Reached the next brazier with the torch still active."
+                (
+                    "Reached the next brazier with the torch "
+                    "still active."
+                )
             )
+
             return BehaviorTree.NodeState.RUNNING
 
+        # --------------------------------------------------------------
+        # Interaction avec le prochain brasero
+        # --------------------------------------------------------------
         if phase == "interact_next":
             if not _has_active_flame():
-                return _begin_recovery(now)
+                return _begin_recovery(
+                    now,
+                    (
+                        "Torch flame extinguished before the next "
+                        "brazier interaction."
+                    ),
+                )
 
-            result = _tick_tree(interact_next, node)
+            result = _tick_tree(
+                interact_next,
+                node,
+            )
 
             if result == BehaviorTree.NodeState.RUNNING:
                 return BehaviorTree.NodeState.RUNNING
 
             if result == BehaviorTree.NodeState.FAILURE:
-                _trace(
-                    "Interaction with the next brazier failed.",
-                    PySystem.Console.MessageType.Warning,
+                # Ne pas laisser FAILURE remonter au planner.
+                # On retourne localement au précédent brasero.
+                return _begin_recovery(
+                    now,
+                    (
+                        "Interaction with the next brazier "
+                        "failed."
+                    ),
                 )
-                _reset_all()
-                return BehaviorTree.NodeState.FAILURE
 
             _trace(
                 "Next brazier interaction completed.",
                 PySystem.Console.MessageType.Success,
             )
+
             _reset_all()
+
             return BehaviorTree.NodeState.SUCCESS
 
+        # --------------------------------------------------------------
+        # Retour au précédent brasero
+        # --------------------------------------------------------------
         if phase == "move_to_previous":
-            result = _tick_tree(move_to_previous, node)
+            result = _tick_tree(
+                move_to_previous,
+                node,
+            )
 
             if result == BehaviorTree.NodeState.RUNNING:
                 return BehaviorTree.NodeState.RUNNING
 
             if result == BehaviorTree.NodeState.FAILURE:
                 _trace(
-                    "Movement back to the previous brazier failed.",
+                    (
+                        "Movement back to the previous brazier "
+                        "failed."
+                    ),
                     PySystem.Console.MessageType.Warning,
                 )
+
+                _cancel_current_movement()
                 _reset_all()
+
                 return BehaviorTree.NodeState.FAILURE
 
             _reset_tree(move_to_previous)
+
             state["phase"] = "relight_previous"
             state["phase_started_at"] = now
+
             _trace(
-                "Reached the previous brazier. Relighting the torch."
+                (
+                    "Reached the previous brazier. "
+                    "Relighting the torch."
+                )
             )
+
             return BehaviorTree.NodeState.RUNNING
 
+        # --------------------------------------------------------------
+        # Interaction avec le précédent brasero
+        # --------------------------------------------------------------
         if phase == "relight_previous":
-            result = _tick_tree(relight_previous, node)
+            result = _tick_tree(
+                relight_previous,
+                node,
+            )
 
             if result == BehaviorTree.NodeState.RUNNING:
                 return BehaviorTree.NodeState.RUNNING
 
             if result == BehaviorTree.NodeState.FAILURE:
                 _trace(
-                    "Interaction with the previous brazier failed.",
+                    (
+                        "Interaction with the previous brazier "
+                        "failed. Retrying local recovery."
+                    ),
                     PySystem.Console.MessageType.Warning,
                 )
-                _reset_all()
-                return BehaviorTree.NodeState.FAILURE
+
+                _reset_tree(relight_previous)
+
+                state["phase"] = "move_to_previous"
+                state["phase_started_at"] = now
+
+                return BehaviorTree.NodeState.RUNNING
 
             _reset_tree(relight_previous)
+
             state["phase"] = "wait_for_relight"
             state["phase_started_at"] = now
+
             return BehaviorTree.NodeState.RUNNING
 
+        # --------------------------------------------------------------
+        # Attente de la réapparition de l'effet de flamme
+        # --------------------------------------------------------------
         if phase == "wait_for_relight":
             if _has_active_flame():
                 _trace(
                     (
-                        "Torch relit successfully. "
-                        "Resuming movement to the next brazier."
+                        "Torch relit successfully. Resuming "
+                        "movement to the next brazier."
                     ),
                     PySystem.Console.MessageType.Success,
                 )
+
                 _reset_tree(move_to_next)
                 _reset_tree(interact_next)
+
                 state["phase"] = "move_to_next"
                 state["phase_started_at"] = now
+
                 return BehaviorTree.NodeState.RUNNING
 
             elapsed_phase_ms = (
-                now - float(state["phase_started_at"])
+                now
+                - float(state["phase_started_at"])
             ) * 1000.0
 
             if elapsed_phase_ms < max(
@@ -2023,18 +2217,30 @@ def MoveBetweenBraziersWithFlameRecovery(
 
             _trace(
                 (
-                    "The torch effect did not return after "
-                    "the previous brazier interaction. Retrying."
+                    "The torch effect did not return after the "
+                    "previous brazier interaction. Retrying."
                 ),
                 PySystem.Console.MessageType.Warning,
             )
 
             _reset_tree(relight_previous)
+
             state["phase"] = "relight_previous"
             state["phase_started_at"] = now
+
             return BehaviorTree.NodeState.RUNNING
 
+        _trace(
+            (
+                f"Unknown brazier recovery phase "
+                f"'{phase}'."
+            ),
+            PySystem.Console.MessageType.Warning,
+        )
+
+        _cancel_current_movement()
         _reset_all()
+
         return BehaviorTree.NodeState.FAILURE
 
     return BehaviorTree(
@@ -2044,8 +2250,6 @@ def MoveBetweenBraziersWithFlameRecovery(
             aftercast_ms=0,
         )
     )
-
-
 # endregion
 
 
@@ -2264,8 +2468,8 @@ def Level1_Part1() -> BehaviorTree:
                 L1_PATH,
                 name="Level 1 First Route",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                
+                log=False,
             ),
             
             BT.MoveAndInteractWithGadget(Vec2f(15100.0, 5443.0),
@@ -2287,8 +2491,8 @@ def Level1_Part2() -> BehaviorTree:
                 L1_PATH_AFTER_DOOR,
                 name="Level 1 Route To Level 2",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                
+                log=False,
             ),
             BT.WaitForMapLoad(map_id=SOO_LEVEL_2, timeout_ms=60_000),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
@@ -2331,8 +2535,8 @@ def Level2_Part1() -> BehaviorTree:
                 L2_RETURN_TO_FIRST_TORCH_PATH,
                 name="Clear And Return To First Torch",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                
+                log=False,
             ),
             PickupTorch(),
             BT.Move(Vec2f(-9404.44, -17963.49), pause_on_combat=True, log=True),
@@ -2367,23 +2571,23 @@ def Level2_Part2() -> BehaviorTree:
                 L2_RETURN_TO_ROOM2_TORCH_PATH,
                 name="Clear Route Back To Room 2 Torch",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                
+                log=False,
             ),
             PickupTorch(),
             BT.VanquishNode(
                 L2_ROOM2_PATH,
                 name="Clear Level 2 Room 2",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                
+                log=False,
             ),
             BT.DropBundle(log=True),
             BT.VanquishNode([Vec2f(-4245.2, -2101.0)],
                 name="Clear Level 2 Room 2",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                
+                log=False,
             ),
             PickupTorch(),
             BrazierSequence("Level 2 Brazier Route 2", L2_BRAZIER_PART2),
@@ -2392,7 +2596,7 @@ def Level2_Part2() -> BehaviorTree:
                 L2_PATH_TO_LOCK,
                 name="Level 2 Route To Dungeon Lock",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
+                
                 pause_on_combat=True,
                 log=True,
             ),
@@ -2483,7 +2687,7 @@ def Level3_Brigant() -> BehaviorTree:
             BT.MoveAndKill(
                 Vec2f(-11147, 2644) ,
                 clear_area_radius=Range.Spirit.value,
-                log=True,
+                log=False,
             ),
             BT.Wait(2000),
             BT.LootItems(),
@@ -2503,8 +2707,7 @@ def Level3_Fendi() -> BehaviorTree:
                 L3_FENDI_PATH,
                 name="Route To Fendi",
                 flag_heroes_to_waypoint=False,
-                clear_area_radius=Range.Spellcast.value,
-                log=True,
+                log=False,
             ),
             BT.WaitForClearEnemiesInArea(
                 -15606.06, 15287.51,
@@ -2551,9 +2754,25 @@ def CollectInsideReward() -> BehaviorTree:
             log=True,
             ),
             BT.Wait(5000),
-            BT.TargetAgentByName(
-                agent_name="Shandra",
-                log=True,
+
+            BT.Selector(
+                name="Find Shandra",
+                children=[
+                    BT.TargetAgentByName(
+                        agent_name="Shandra",
+                        log=True,
+                    ),
+                    BT.Sequence(
+                        name="Second Shandra Search",
+                        children=[
+                            BT.Wait(5000),
+                            BT.TargetAgentByName(
+                                agent_name="Shandra",
+                                log=True,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             BT.LogMessage(
                 message=(
@@ -2690,7 +2909,7 @@ def PrepareNextDungeonRun() -> BehaviorTree:
             BT.MoveAndExitMap(
                 LEVEL1_EXIT_TO_ARBOR,
                 target_map_id=ARBOR_BAY,
-                log=True,
+                log=False,
             ),
             BT.WaitUntilOnExplorable(
                 timeout_ms=30_000,
@@ -2704,7 +2923,7 @@ def PrepareNextDungeonRun() -> BehaviorTree:
                     SHANDRA_APPROACH,
                 ],
                 pause_on_combat=False,
-                log=True,
+                log=False,
             ),
             BT.MoveAndDialog(
                 SHANDRA_APPROACH,
@@ -2834,7 +3053,7 @@ def CollectRewardAndPrepareRestart(
             BT.Move(
                 SHANDRA_APPROACH,
                 pause_on_combat=False,
-                log=True,
+                log=False,
             ),
             PrepareNextDungeonRun(),
             BT.LogMessage(
