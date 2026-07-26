@@ -479,7 +479,6 @@ def _configure_runtime_upkeeps(
             else ()
         ),
         heroai_state_logging=False,
-        enable_party_wipe_recovery=True
     )
 
 
@@ -1561,15 +1560,13 @@ def PickupTorch() -> BehaviorTree:
 
             return BehaviorTree.NodeState.RUNNING
 
-        # FAILURE avant le délai global :
-        # aucune torche n'est actuellement disponible.
-        _log(
-            "No torch available. Skipping pickup.",
-            PySystem.Console.MessageType.Warning,
+        pickup_tree = _create_pickup_tree()
+        pickup_tree.blackboard = node.blackboard
+        retry_at = now + (
+            RETRY_DELAY_MS / 1000.0
         )
-        _reset_state()
 
-        return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
@@ -2213,6 +2210,7 @@ def ensure_botting_tree() -> BottingTree:
                     "LootManager",
                 ),
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
+                enable_party_wipe_recovery=True,
                 heroai_state_logging=False,
             ),
         )
@@ -2489,7 +2487,7 @@ def Level2_Part2() -> BehaviorTree:
             BT.Wait(2000),
             BT.MoveAndKill(Vec2f(-9011.27, -11536.79)),
             BT.WaitForClearEnemiesInArea(
-               9011.0,-11536.0,radius=Range.SafeCompass.value,
+               -9011.0,-11536.0,radius=Range.SafeCompass.value,
                 log=True,
             ),
             BT.Wait(2000),
@@ -2648,27 +2646,12 @@ def Level3_Fendi() -> BehaviorTree:
                 radius=Range.Compass.value,
                 allowed_alive_enemies=0,
                 interact_interval_ms=750,
-                stable_clear_ms=10_000,
+                stable_clear_ms=15_000,
                 keep_player_near_center=False,
                 center_tolerance=750.0,
                 log=True,
             ),
-            _record_run_end_node(),
-            BT.Move(Vec2f(-15198, 16839), log=False),
-            BT.MoveAndInteractWithGadget(
-            gadget_id=FENDI_CHEST_GADGET_ID,
-            pos=Vec2f(*FENDI_CHEST_POSITION),
-            search_distance=700.0,
-            interaction_distance=Range.Nearby.value,
-            interaction_count=2,
-            interaction_interval_ms=1000,
-            account_settle_ms=3_000,
-            timeout_ms=90_000,
-            multi_account=True,
-            include_self=True,
-            log=True,
-            ),
-            BT.Wait(5000),
+
     
         ])
 #endregion
@@ -2676,9 +2659,10 @@ def Level3_Fendi() -> BehaviorTree:
 # region Level 3 - Chest
 def Level3_Chest() -> BehaviorTree:
     return BT.Sequence(
-        name="Open chhest",
+        name="Open chest",
         children=[
             BT.Move(Vec2f(-15198, 16839), log=False),
+            BT.Wait(3000),
             BT.MoveAndInteractWithGadget(
             gadget_id=FENDI_CHEST_GADGET_ID,
             pos=Vec2f(*FENDI_CHEST_POSITION),
@@ -2692,6 +2676,8 @@ def Level3_Chest() -> BehaviorTree:
             include_self=True,
             log=True,
             ),
+            _record_run_end_node(),
+            _inventory_statistics_node(after_chest=True),
             BT.Wait(5000),
     
         ])
@@ -2760,7 +2746,7 @@ def CollectInsideReward() -> BehaviorTree:
             ),
             
             
-            _inventory_statistics_node(after_chest=True),
+            
         ],
     )
 

@@ -1169,6 +1169,30 @@ class BTAgents:
             if not _is_matching_gadget(
                 target_agent_id
             ):
+                interaction_started = (
+                    phase != "find"
+                    and (
+                        state["local_interaction_count"] > 0
+                        or state["account_index"] > 0
+                        or state["account_interaction_count"] > 0
+                    )
+                )
+
+                if interaction_started:
+                    _log(
+                        "MoveAndInteractWithGadgetByID",
+                        (
+                            f"Gadget id {gadget_id} disappeared "
+                            "after interaction. Assuming success."
+                        ),
+                        log=log,
+                        message_type=(
+                            Console.MessageType.Success
+                        ),
+                    )
+                    _reset()
+                    return BehaviorTree.NodeState.SUCCESS
+
                 _fail_log(
                     "MoveAndInteractWithGadgetByID",
                     (
@@ -1546,6 +1570,7 @@ class BTAgents:
                 action_fn=_move_and_interact,
             )
         )
+    
     
     @staticmethod
     def TargetNearestNPC(distance:float = 4500.0, log:bool=False):
