@@ -77,13 +77,40 @@ class BottingTreePlannerMixin:
         )
 
     def ProcessRestartRequest(self) -> bool:
-        restart_step_name = str(self.GetBlackboardValue('restart_step_name_request', '') or '')
+        restart_step_name = str(
+            self.GetBlackboardValue(
+                "restart_step_name_request",
+                "",
+            )
+            or ""
+        )
+
         if not restart_step_name:
             return False
 
-        self.ClearBlackboardValue('restart_step_name_request')
-        self.ClearBlackboardValue('current_step_name')
-        return self.RestartFromNamedPlannerStep(restart_step_name, auto_start=True)
+        self.ClearBlackboardValue(
+            "restart_step_name_request"
+        )
+
+        # Ne pas effacer l'étape active avant que le nouveau
+        # Planner ait été construit.
+        restarted = self.RestartFromNamedPlannerStep(
+            restart_step_name,
+            auto_start=True,
+        )
+
+        if restarted:
+            self.SetBlackboardValue(
+                "current_step_name",
+                restart_step_name,
+            )
+
+            self.SetBlackboardValue(
+                "last_active_planner_step_name",
+                restart_step_name,
+            )
+
+        return restarted
 
     def tick(self):
         result = self.tree.tick()
@@ -160,17 +187,31 @@ class BottingTreePlannerMixin:
                 return cast(BehaviorTree, subtree)
             raise TypeError(f'Planner step returned invalid type {type(subtree).__name__}.')
 
-        def _mark_current_step(step_name: str) -> BehaviorTree.Node:
-            def _mark(node: BehaviorTree.Node, step_name: str = step_name) -> BehaviorTree.NodeState:
-                node.blackboard['current_step_name'] = step_name
+        def _mark_current_step(
+            step_name: str,
+        ) -> BehaviorTree.Node:
+            def _mark(
+                node: BehaviorTree.Node,
+                step_name: str = step_name,
+            ) -> BehaviorTree.NodeState:
+                node.blackboard[
+                    "current_step_name"
+                ] = step_name
+
+                node.blackboard[
+                    "last_active_planner_step_name"
+                ] = step_name
+
                 return BehaviorTree.NodeState.SUCCESS
 
             return BehaviorTree.ActionNode(
-                name=f'MarkCurrentStep({step_name})',
+                name=(
+                    f"MarkCurrentStep({step_name})"
+                ),
                 action_fn=_mark,
                 aftercast_ms=0,
             )
-
+        
         children: list[BehaviorTree.Node] = [
             BehaviorTree.SequenceNode(
                 name=f'Step: {step_name}',
@@ -288,16 +329,23 @@ class BottingTreePlannerMixin:
     ) -> bool:
         if not self._planner_steps:
             return False
+
         sequence_name = name or self._planner_sequence_name
-        self._set_planner_tree(self._build_named_planner_tree(
-            self._planner_steps,
-            start_from=step_name,
-            name=sequence_name,
-            repeat=self.planner_repeat,
-        ))
-        self.Reset()
+
+        self._set_planner_tree(
+            self._build_named_planner_tree(
+                self._planner_steps,
+                start_from=step_name,
+                name=sequence_name,
+                repeat=self.planner_repeat,
+            )
+        )
+
         if auto_start:
             self.Start()
+        else:
+            self.Reset()
+
         return True
 
     def BuildAllSequences(

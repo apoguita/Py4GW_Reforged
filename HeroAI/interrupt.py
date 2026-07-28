@@ -11,7 +11,7 @@ Consumed by two evaluators:
 
 from __future__ import annotations
 
-import Py4GW
+import PySystem
 import PyPing
 from Py4GWCoreLib import (
     GLOBAL_CACHE,

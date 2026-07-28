@@ -61,7 +61,7 @@ class BottingTreeServicesMixin:
         def _resolve_recovery_step(
             node: BehaviorTree.Node,
         ) -> str:
-            step_name = str(
+            current_step_name = str(
                 node.blackboard.get(
                     "current_step_name",
                     "",
@@ -69,10 +69,46 @@ class BottingTreeServicesMixin:
                 or ""
             )
 
-            if not step_name:
-                step_name = _resolve_default_step_name()
+            last_active_step_name = str(
+                node.blackboard.get(
+                    "last_active_planner_step_name",
+                    "",
+                )
+                or ""
+            )
 
-            return step_name
+            named_step_names = {
+                str(name)
+                for name in (
+                    node.blackboard.get(
+                        "named_planner_step_names",
+                        [],
+                    )
+                    or []
+                )
+            }
+
+            if (
+                current_step_name
+                and (
+                    not named_step_names
+                    or current_step_name
+                    in named_step_names
+                )
+            ):
+                return current_step_name
+
+            if (
+                last_active_step_name
+                and (
+                    not named_step_names
+                    or last_active_step_name
+                    in named_step_names
+                )
+            ):
+                return last_active_step_name
+
+            return _resolve_default_step_name()
 
         def _reset_state(
             node: BehaviorTree.Node,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Protocol
 
-import Py4GW
+import PySystem
 import PyPing
 from Py4GWCoreLib import Player, GLOBAL_CACHE, SpiritModelID, Timer, Agent, Routines, Range, Allegiance, AgentArray, Utils
 from Py4GWCoreLib import Weapon, Effects
@@ -733,7 +733,123 @@ class CombatClass:
             return self.cached_data.GetActiveScanRange()
         return Range.Spellcast.value if self.in_aggro else Range.Earshot.value
 
+    def GetPlayerPetID(self) -> int:
+        """
+        Return the local player's pet agent ID.
 
+        PyParty.GetPetInfo() may expose a valid owner_agent_id while leaving
+        agent_id at 0. The fallback therefore scans the Spirit/Pet agent array
+        and resolves candidates by runtime owner ID.
+
+        Do not rely on Agent.IsPet() here: its spawned-state classification can
+        reject a valid animal companion in some Reforged runtime states.
+        """
+        try:
+            owner_agent_id = int(Player.GetAgentID() or 0)
+        except (TypeError, ValueError):
+            return 0
+
+        if owner_agent_id <= 0:
+            return 0
+
+        # Preferred native path.
+        try:
+            pet_info = GLOBAL_CACHE.Party.Pets.GetPetInfo(owner_agent_id)
+        except Exception:
+            pet_info = None
+
+        if pet_info is not None:
+            try:
+                pet_agent_id = int(getattr(pet_info, "agent_id", 0) or 0)
+                pet_owner_id = int(getattr(pet_info, "owner_agent_id", 0) or 0)
+            except (TypeError, ValueError):
+                pet_agent_id = 0
+                pet_owner_id = 0
+
+            if (
+                pet_agent_id > 0
+                and (pet_owner_id <= 0 or pet_owner_id == owner_agent_id)
+                and Agent.IsValid(pet_agent_id)
+            ):
+                return pet_agent_id
+
+        # Runtime fallback.
+        #
+        # Reforged currently exposes inconsistent ownership data for animal
+        # companions: PyParty PetInfo.agent_id remains 0 and Agent.GetOwnerID()
+        # does not match either the owner's runtime agent ID or player number.
+        #
+        # The reliable signals observed at runtime are:
+        #   - the agent is present in GetSpiritPetArray()
+        #   - the agent is valid
+        #   - the agent is non-spawned
+        #
+        # Spirits are normally spawned, while an animal companion is normally
+        # the non-spawned member of this array. Therefore, prefer non-spawned
+        # candidates and retain any valid candidate only as a final fallback.
+        owned_candidates: list[int] = []
+        preferred_candidates: list[int] = []
+
+        try:
+            player_number = int(Agent.GetPlayerNumber(owner_agent_id) or 0)
+        except Exception:
+            player_number = 0
+
+        try:
+            spirit_pet_ids = AgentArray.GetSpiritPetArray()
+        except Exception:
+            spirit_pet_ids = []
+
+        for raw_agent_id in spirit_pet_ids:
+            try:
+                agent_id = int(raw_agent_id or 0)
+            except (TypeError, ValueError):
+                continue
+
+            if agent_id <= 0:
+                continue
+
+            try:
+                if not Agent.IsValid(agent_id):
+                    continue
+
+                owned_candidates.append(agent_id)
+
+                try:
+                    if not Agent.IsSpawned(agent_id):
+                        preferred_candidates.append(agent_id)
+                except Exception:
+                    pass
+            except Exception:
+                continue
+
+        resolved_pet_id = (
+            preferred_candidates[0]
+            if preferred_candidates
+            else (owned_candidates[0] if owned_candidates else 0)
+        )
+
+        return resolved_pet_id
+
+    def _get_comfort_animal_id(self) -> int:
+        return int(
+            self.comfort_animal
+            or GLOBAL_CACHE.Skill.GetID("Comfort_Animal")
+            or 0
+        )
+
+    def _is_pet_attack_skill(self, skill_id: int, skill_type: int | None = None) -> bool:
+        return (
+            skill_type == SkillType.PetAttack.value
+            or skill_id in self.pet_attack_list
+        )
+
+    def _is_local_pet_skill(self, skill_id: int, skill_type: int | None = None) -> bool:
+        comfort_animal_id = self._get_comfort_animal_id()
+        return (
+            (comfort_animal_id > 0 and skill_id == comfort_animal_id)
+            or self._is_pet_attack_skill(skill_id, skill_type)
+        )
 
     def GetAppropiateTarget(self, slot: int) -> int:
         from .utils import HasIllusionaryWeaponry
@@ -908,7 +1024,7 @@ class CombatClass:
         elif target_allegiance == Skilltarget.Self:
             v_target = Player.GetAgentID()
         elif target_allegiance == Skilltarget.Pet:
-            v_target = GLOBAL_CACHE.Party.Pets.GetPetID(Player.GetAgentID())
+            v_target = self.GetPlayerPetID()
         elif target_allegiance == Skilltarget.DeadAlly:
             v_target = TargetDeadPartyMember(Range.Spellcast.value)
         elif target_allegiance == Skilltarget.ResurrectionAlly:
@@ -1029,6 +1145,28 @@ class CombatClass:
         feature_count = 0
 
         Conditions = self.skills[slot].custom_skill_data.Conditions
+        skill_id = self.skills[slot].skill_id
+
+        # Comfort Animal must be handled before the generic condition system.
+        #
+        # Its profile can require an alive target, which prevents the generic
+        # checks from accepting a dead pet even though Comfort Animal is able
+        # to revive it. Handle both healing and resurrection explicitly here.
+        comfort_animal_id = self._get_comfort_animal_id()
+
+        if skill_id == comfort_animal_id:
+            pet_id = self.GetPlayerPetID()
+
+            if pet_id <= 0 or not Agent.IsValid(pet_id):
+                return False
+
+            try:
+                pet_is_dead = Routines.Checks.Agents.IsDead(pet_id)
+                pet_health = Routines.Checks.Agents.GetHealth(pet_id)
+            except Exception:
+                return False
+
+            return pet_is_dead or pet_health < Conditions.LessLife
 
         """ Check if the skill is a resurrection skill and the target is dead """
         if self.skills[slot].custom_skill_data.Nature == SkillNature.Resurrection.value:
@@ -1122,20 +1260,33 @@ class CombatClass:
                 ):
                 return True if Routines.Agents.GetNearestSpirit(Range.Spellcast.value) != 0 else False
             
-            if (self.skills[slot].skill_id == self.comfort_animal or
-                self.skills[slot].skill_id == self.heal_as_one
-                ):
-                from Py4GWCoreLib.Party import Party
-                pet_data = Party.Pets.GetPetInfo(Player.GetAgentID())
-                if not pet_data or pet_data.agent_id == 0:
-                    return False
-                LessLife = Routines.Checks.Agents.GetHealth(pet_data.agent_id) < Conditions.LessLife
-                dead = Routines.Checks.Agents.IsDead(pet_data.agent_id)
-                return LessLife or dead
+            if self.skills[slot].skill_id == self.heal_as_one:
+                pet_id = self.GetPlayerPetID()
 
-            if (self.skills[slot].skill_id == self.never_rampage_alone):
-                pet_id = GLOBAL_CACHE.Party.Pets.GetPetID(Player.GetAgentID())
-                return pet_id != 0 and Routines.Checks.Agents.IsAlive(pet_id)
+                if pet_id <= 0:
+                    return False
+
+                try:
+                    pet_health = Routines.Checks.Agents.GetHealth(pet_id)
+                    pet_is_dead = Routines.Checks.Agents.IsDead(pet_id)
+                except Exception:
+                    return False
+
+                return pet_health < Conditions.LessLife and not pet_is_dead
+
+            if self.skills[slot].skill_id == self.never_rampage_alone:
+                pet_id = self.GetPlayerPetID()
+
+                if pet_id <= 0:
+                    return False
+
+                try:
+                    return (
+                        Agent.IsValid(pet_id)
+                        and Routines.Checks.Agents.IsAlive(pet_id)
+                    )
+                except Exception:
+                    return False
 
             if (self.skills[slot].skill_id == self.whirlwind_attack):
                 weapon_type, _ = Agent.GetWeaponType(Player.GetAgentID())
@@ -1461,31 +1612,76 @@ class CombatClass:
             if Routines.Agents.GetNearestSpirit(Range.Earshot.value) != 0:
                 number_of_features += 1
                     
-        player_pet_id = 0
+        player_pet_id: int | None = None
+
         def get_player_pet_id() -> int:
             nonlocal player_pet_id
-            if player_pet_id == 0:
-                player_pet_id = GLOBAL_CACHE.Party.Pets.GetPetID(Player.GetAgentID())
+
+            if player_pet_id is None:
+                player_pet_id = self.GetPlayerPetID()
+
             return player_pet_id
         
-        if self.skills[slot].custom_skill_data.TargetAllegiance == Skilltarget.Pet.value:
+        if (
+            self.skills[slot].custom_skill_data.TargetAllegiance
+            == Skilltarget.Pet.value
+        ):
             pet_id = get_player_pet_id()
-            if pet_id == 0 or Routines.Checks.Agents.IsDead(pet_id):
-                return False
-            
-            if self.skills[slot].custom_skill_data.Nature == SkillNature.Buff.value:
-                if self.HasEffect(pet_id, self.skills[slot].skill_id):
-                    return False
-            
-        if self.skills[slot].custom_skill_data.SkillType == SkillType.PetAttack.value:
-            pet_id = get_player_pet_id()
-            if Routines.Checks.Agents.IsDead(pet_id):
+
+            if pet_id <= 0:
                 return False
 
-            for skill_id in self.pet_attack_list:
-                if self.skills[slot].skill_id == skill_id:
-                    if self.HasEffect(pet_id,self.skills[slot].skill_id ):
-                        return False
+            try:
+                if not Agent.IsValid(pet_id):
+                    return False
+
+                if Routines.Checks.Agents.IsDead(pet_id):
+                    return False
+            except Exception:
+                return False
+
+            if (
+                self.skills[slot].custom_skill_data.Nature
+                == SkillNature.Buff.value
+            ):
+                if self.HasEffect(
+                    pet_id,
+                    self.skills[slot].skill_id,
+                ):
+                    return False
+            
+        if (
+            self.skills[slot].custom_skill_data.SkillType
+            == SkillType.PetAttack.value
+        ):
+            pet_id = get_player_pet_id()
+
+            if pet_id <= 0:
+                return False
+
+            try:
+                if not Agent.IsValid(pet_id):
+                    return False
+
+                if Routines.Checks.Agents.IsDead(pet_id):
+                    return False
+            except Exception:
+                return False
+
+            for pet_attack_skill_id in self.pet_attack_list:
+                if (
+                    self.skills[slot].skill_id
+                    != pet_attack_skill_id
+                ):
+                    continue
+
+                if self.HasEffect(
+                    pet_id,
+                    self.skills[slot].skill_id,
+                ):
+                    return False
+
+                break
             
         if Conditions.EnemyCount != 0:
             player_pos = Player.GetXY()
@@ -1642,6 +1838,87 @@ class CombatClass:
             if min_after_pct > 0 and max_hp > 0 and (hp_after_sacrifice / max_hp) <= min_after_pct:
                 self.in_casting_routine = False
                 return False, 0
+
+        # Comfort Animal requires a hard pet target.
+        #
+        # Do not let its custom TargetAllegiance, generic target selection,
+        # effect-overlap checks, or living-target checks replace/reject the pet.
+        # All universal readiness checks above still apply: recharge, casting
+        # state, adrenaline, energy, health cost, and sacrifice safety.
+        comfort_animal_id = int(self.comfort_animal or GLOBAL_CACHE.Skill.GetID("Comfort_Animal") or 0)
+
+        if skill_id == comfort_animal_id:
+            pet_id = self.GetPlayerPetID()
+
+            if pet_id <= 0 or not Agent.IsValid(pet_id):
+                self.in_casting_routine = False
+                return False, 0
+
+            try:
+                pet_is_dead = Routines.Checks.Agents.IsDead(pet_id)
+                pet_health = Routines.Checks.Agents.GetHealth(pet_id)
+            except Exception:
+                self.in_casting_routine = False
+                return False, 0
+
+            should_cast = pet_is_dead or pet_health < conditions.LessLife
+
+            if not should_cast:
+                self.in_casting_routine = False
+                return False, pet_id
+
+            return True, pet_id
+
+        is_pet_attack = self._is_pet_attack_skill(
+            skill_id,
+            skill.custom_skill_data.SkillType,
+        )
+
+        if is_pet_attack:
+            pet_id = self.GetPlayerPetID()
+
+            if pet_id <= 0 or not Agent.IsValid(pet_id):
+                self.in_casting_routine = False
+                return False, 0
+
+            try:
+                pet_is_dead = Routines.Checks.Agents.IsDead(pet_id)
+            except Exception:
+                self.in_casting_routine = False
+                return False, 0
+
+            if pet_is_dead:
+                self.in_casting_routine = False
+                return False, 0
+
+            v_target = self.GetAppropiateTarget(slot)
+
+            if v_target is None or v_target <= 0 or not Agent.IsValid(v_target):
+                self.in_casting_routine = False
+                return False, 0
+
+            try:
+                target_dead = Routines.Checks.Agents.IsDead(v_target)
+                target_allegiance, _ = Agent.GetAllegiance(v_target)
+            except Exception:
+                self.in_casting_routine = False
+                return False, 0
+
+            if target_dead or target_allegiance != Allegiance.Enemy.value:
+                self.in_casting_routine = False
+                return False, 0
+
+            if self._is_blacklisted_enemy_target(v_target):
+                self.in_casting_routine = False
+                return False, 0
+
+            conditions_met = self.AreCastConditionsMet(slot, v_target)
+
+            if not conditions_met:
+                self.in_casting_routine = False
+                return False, v_target
+
+            return True, v_target
 
         # --- Expensive target resolution (only if all cheap checks passed) ---
         v_target = self.GetAppropiateTarget(slot)
@@ -1842,20 +2119,49 @@ class CombatClass:
         Scan the prioritized skill list and return the first castable skill slot
         together with its resolved target. Returns (-1, 0) if nothing is castable.
         """
+        comfort_animal_id = self._get_comfort_animal_id()
+
         for slot in range(MAX_SKILLS):
-            if not self.IsSkillReady(slot):
+            skill_id = self.skills[slot].skill_id
+            skill_type = self.skills[slot].custom_skill_data.SkillType
+
+            is_comfort_animal = (
+                comfort_animal_id > 0
+                and skill_id == comfort_animal_id
+            )
+            is_local_pet_skill = self._is_local_pet_skill(
+                skill_id,
+                skill_type,
+            )
+
+            # Local pet skills must reach IsReadyToCast even when the shared
+            # coordination layer puts their ID in blocked_skill_ids.
+            if not is_local_pet_skill and not self.IsSkillReady(slot):
                 continue
 
-            skill_id = self.skills[slot].skill_id
+            if is_local_pet_skill:
+                if skill_id == 0:
+                    continue
+                if self.skills[slot].skillbar_data.recharge != 0:
+                    continue
+
+                original_index = self.skill_order[slot]
+                if not self.is_skill_enabled[original_index]:
+                    continue
 
             if ooc and not self.IsOOCSkill(slot):
-                continue
+                # Still evaluate Comfort Animal out of combat: it is both a
+                # pet heal and a pet resurrection skill.
+                if not is_comfort_animal:
+                    continue
 
             is_ready_to_cast, target_agent_id = self.IsReadyToCast(slot)
             if not is_ready_to_cast or target_agent_id == 0:
                 continue
 
-            if not Agent.IsLiving(target_agent_id):
+            # Comfort Animal is explicitly allowed to target a dead pet.
+            # Every other skill keeps the normal living-target requirement.
+            if skill_id != comfort_animal_id and not Agent.IsLiving(target_agent_id):
                 continue
 
             return slot, target_agent_id
@@ -2036,13 +2342,24 @@ class CombatClass:
             self.aftercast = 500
             
 
-        if self._skill_lock_is_blocked(skill):
+        comfort_animal_id = self._get_comfort_animal_id()
+        is_local_pet_skill = self._is_local_pet_skill(
+            skill_id,
+            skill.custom_skill_data.SkillType,
+        )
+
+        # Pet commands are local to this account's own animal. The shared
+        # multibox whiteboard must not suppress them because another account
+        # carries the same skill.
+        if not is_local_pet_skill and self._skill_lock_is_blocked(skill):
             self.ResetSkillPointer()
             return False
 
         self.aftercast_timer.Reset()
         self._apply_spike_lock(skill, target_agent_id)
-        self._skill_lock_post(skill)
+
+        if not is_local_pet_skill:
+            self._skill_lock_post(skill)
 
         if skill_id in self.alcohol_skills:
             drunk_level = self.GetDrunkLevel()
