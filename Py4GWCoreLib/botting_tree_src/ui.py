@@ -314,8 +314,23 @@ class _BottingTreeUI:
 
             if PyImGui.begin_tab_bar(self.parent.bot_name + '_tabs'):
                 if PyImGui.begin_tab_item('Main'):
-                    if PyImGui.begin_child(f'{self.parent.bot_name} - Main', main_child_dimensions, True, PyImGui.WindowFlags.NoFlag):
-                        self._draw_main_child(main_child_dimensions, icon_path, iconwidth)
+                    available_width, _ = PyImGui.get_content_region_avail()
+                    main_child_size = (
+                        max(float(main_child_dimensions[0]), float(available_width)),
+                        float(main_child_dimensions[1]),
+                    )
+
+                    if PyImGui.begin_child(
+                        f'{self.parent.bot_name} - Main',
+                        main_child_size,
+                        True,
+                        PyImGui.WindowFlags.NoFlag,
+                    ):
+                        self._draw_main_child(
+                            main_child_size,
+                            icon_path,
+                            iconwidth,
+                        )
                         if additional_ui is not None:
                             PyImGui.separator()
                             additional_ui()

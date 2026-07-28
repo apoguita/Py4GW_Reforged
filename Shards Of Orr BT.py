@@ -2899,27 +2899,6 @@ def PrepareNextDungeonRun() -> BehaviorTree:
 def CollectRewardAndPrepareRestart(
     end_countdown_timeout_ms: int = 190_000,
 ) -> BehaviorTree:
-    """
-    Attempt to collect the Lost Souls reward from Shandra inside the dungeon,
-    then wait for the end-of-dungeon countdown and prepare the next run.
-
-    Two scenarios are supported:
-
-    1. Shandra is available inside the dungeon:
-       - collect the reward inside;
-       - wait for the automatic return to Arbor Bay;
-       - retake Lost Souls;
-       - enter Shards of Orr for the next run.
-
-    2. Shandra is unavailable inside the dungeon:
-       - log that the reward remains pending;
-       - wait for the automatic return to Arbor Bay;
-       - collect the reward outside;
-       - perform the required dungeon entry/exit sequence;
-       - retake Lost Souls;
-       - enter Shards of Orr for the next run.
-    """
-
     reward_collected_inside = BT.Sequence(
         name="Collect Shandra Reward Inside Dungeon",
         children=[
