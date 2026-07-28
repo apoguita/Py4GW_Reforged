@@ -71,6 +71,8 @@ CATALOG: tuple[CatalogEntry, ...] = (
     CatalogEntry('Champagne Popper', 21810, 'Party', '1 Points'),
     CatalogEntry('Sparkler', 21813, 'Party', '1 Points'),
     CatalogEntry('Snowman Summoner', 6376, 'Party', '1 Points'),
+    CatalogEntry('Frosty Tonic', 30648, 'Party', '2 Points'),
+    CatalogEntry('Mischievous Tonic', 31020, 'Party', '2 Points'),
     CatalogEntry('El Mischievious Tonic', 31021, 'Party', '2 Points'),
     CatalogEntry('El Yuletide Tonic', 29241, 'Party', '2 Points'),
     CatalogEntry('Party Beacon', 36683, 'Party', '50 Points'),
