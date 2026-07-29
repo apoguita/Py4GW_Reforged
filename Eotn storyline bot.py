@@ -372,7 +372,8 @@ NORN_TOURNAMENT_SKILLS = (
     "Destruction",
     "Disenchantment",
 )
-
+from Py4GWCoreLib.Skill import Skill
+Painful_Bond_ID = Skill.GetID("Painful_Bond")
 
 NORN_TOURNAMENT_SPIRIT_CASTS = (
     ("Bloodsong", 3_500),
@@ -414,7 +415,7 @@ def _cast_norn_tournament_skill(
     )
 
 
-def _run_norn_tournament_round(log: bool = True) -> BehaviorTree:
+def _run_norn_tournament_round(log: bool = False) -> BehaviorTree:
     """Run one tournament round with explicit Ritualist skill control."""
 
     return BT.Sequence(
@@ -444,6 +445,7 @@ def _run_norn_tournament_round(log: bool = True) -> BehaviorTree:
                 tolerance=50
             ),
             BT.Wait(2000),
+            BT.CastSkillID(skill_id = Painful_Bond_ID),
             _aggressive(),
             BT.VanquishNode(
                 Tournament_Path,
@@ -452,6 +454,47 @@ def _run_norn_tournament_round(log: bool = True) -> BehaviorTree:
             ),
             _pacifist()
         ],
+    )
+
+
+def _wait_for_xandra(
+    timeout_ms: int = 20_000,
+) -> BehaviorTree:
+    """Wait until Xandra exists in the complete agent array."""
+
+    def _is_xandra_present() -> BehaviorTree.NodeState:
+        xandra_agent_id = int(Agent.GetAgentIDByName("Xandra") or 0)
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if xandra_agent_id > 0
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    probe = BT.Selector(
+        name="Probe Xandra Presence",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Find Xandra In Agent Array",
+                    condition_fn=_is_xandra_present,
+                )
+            ),
+            BT.Sequence(
+                name="Delay Before Next Xandra Probe",
+                children=[
+                    BT.Wait(250),
+                    BT.Failer(name="Xandra Probe Failed"),
+                ],
+            ),
+        ],
+    )
+
+    return BehaviorTree(
+        BehaviorTree.RepeaterUntilSuccessNode(
+            name="Wait For Xandra To Spawn",
+            child=BT.Node(probe),
+            timeout_ms=max(0, int(timeout_ms)),
+        )
     )
 
 
@@ -684,10 +727,11 @@ def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
                 attributes.get(int(Attribute.ChannelingMagic.value), 0) or 0
             )
 
-            # Guild Wars automatically reduces the requested attribute values
-            # when a character does not yet have enough attribute points.
-            # The build is therefore valid when the expected profession and
-            # skills have been loaded, regardless of the final attribute ranks.
+            # Attribute values requested by the template are automatically
+            # reduced by Guild Wars when the character does not yet have
+            # enough attribute points (for example, before level 20).
+            # The build is therefore considered correctly loaded when the
+            # Ritualist secondary and the expected skills are present.
             valid = bool(
                 int(loaded_secondary_id) == secondary_id
                 and loaded_skills == skill_ids
@@ -786,23 +830,18 @@ def Fight_Sequence(
     tournament_attempt = BT.Sequence(
         name="Norn Tournament Attempt",
         children=[
-            # The wipe-recovery service only restarts this planner step after
-            # the outpost has loaded. This travel is therefore normally a
-            # no-op after a wipe, while also making every local retry start
-            # from the same known state as the "Xandra Absent" branch.
             BT.Travel(target_map_name=return_outpost_name, log=log),
             _pacifist(),
             BT.MoveAndDialog(Vec2f(17944.00, -11846.00), 0x84),
             BT.Wait(12_000),
             _run_norn_tournament_round(log=log),
-            BT.Wait(15_000),
             BT.Selector(
                 name="Check Second Round For Xandra",
                 children=[
                     BT.Sequence(
                         name="Xandra Found",
                         children=[
-                            BT.TargetAgentByName(agent_name="Xandra", log=log),
+                            _wait_for_xandra(timeout_ms=20_000),
                             BT.LogMessage(
                                 message=(
                                     "Xandra was detected for the second round; "
@@ -810,6 +849,7 @@ def Fight_Sequence(
                                 ),
                                 module_name=MODULE_NAME,
                             ),
+                            BT.Wait(7000),
                             _run_norn_tournament_round(log=log),
                             BT.Travel(
                                 target_map_name=return_outpost_name,
@@ -918,14 +958,7 @@ def CompleteOptionalXandraTournament(
                 name="Run Xandra Tournament With Kaineng",
                 children=[
                     _is_kaineng_center_unlocked(log=log),
-                    PrepareXandraTournament(
-                        return_outpost_name=return_outpost_name,
-                        log=log,
-                    ),
-                    Fight_Sequence(
-                        return_outpost_name=return_outpost_name,
-                        log=log,
-                    ),
+                    
                 ],
             ),
             BT.Sequence(
@@ -956,7 +989,11 @@ def TravelToSifhalla() -> BehaviorTree:
         map_id_or_name=644,
         children=[
             _aggressive(),
-            BT.MoveAndExitMap(Vec2f(15193.037109, -6387.140625), target_map_name="Norrhart Domains"),
+            BT.VanquishNode([
+                (16003.853515, -6544.087402),
+                (15193.037109, -6387.140625),
+            ]),
+            BT.WaitForMapLoad(map_name="Norrhart Domains"),
             BT.VanquishNode([
                 (13337.167968, -3869.252929),
                 (9826.771484, 416.337768),
@@ -2204,6 +2241,8 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Travel To Gunnar's Hold", TravelToGunnarsHold),
         ("Talk To Gunnar", Unlock_Xandra),
         ("Optional Xandra Tournament", CompleteOptionalXandraTournament),
+        ("PrepareXandraTournament",PrepareXandraTournament),
+        ("Fight Sequence",Fight_Sequence),
         ("Travel To Sifhalla", TravelToSifhalla),
         ("Tracking The Nornbear", CompleteTrackingTheNornbear),
         ("Curse Of The Nornbear", CompleteCurseOfTheNornbear),
