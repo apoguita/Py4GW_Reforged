@@ -1203,5 +1203,6 @@
     "3613855137,0,0,4,0,0": "Collector.ItemContainer",
     "3613855137,0,0,4,0,0,489": "Collector.ItemContainer.Item1",
     "3613855137,0,0,4,0,0,490": "Collector.ItemContainer.Item2",
-    "731118013": "Merchant.CustomizeWeaponButton"
+    "731118013": "Merchant.CustomizeWeaponButton",
+    "3420930487,0": "Learn"
 }

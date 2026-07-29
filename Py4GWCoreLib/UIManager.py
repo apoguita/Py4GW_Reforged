@@ -1434,6 +1434,11 @@ class FrameInfo:
 WindowFrames:dict[str, FrameInfo] = {}
 
 class WindowFrame():
+    LearnSkill = FrameInfo(
+        FrameHash=3420930487,
+        WindowLabel="Learn Elite Skill button"
+    )
+    
     CloseWindowButtonFrame = FrameInfo(
         FrameHash=3738633661,
         WindowLabel="Close Window button"

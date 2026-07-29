@@ -85,7 +85,7 @@ def _prepare_standard_party() -> BehaviorTree:
     templates = [
         "OgljgwMpZO0iwB5Qp5N0h14dMA",
         "OwUTMwmCZaj4upB8ioLKDoHghAA",
-        "OQhkAsC8gFKyJM95gpLDDRGcxA",
+        "OQhkAsC8gFKCNM95gpLDDRGcxA",
         "OgejkqrMLOfb2Luj7Ku72jbzLA",
         "OAhjUwGpYOyhqAVANUVxYezLGA",
     ]
@@ -105,6 +105,34 @@ def _prepare_standard_party() -> BehaviorTree:
         ],
     )
 
+def _prepare_standard_party_olias() -> BehaviorTree:
+    heroes = [
+        HeroType.Vekk.value,
+        HeroType.Ogden.value,
+        HeroType.Gwen.value,
+        HeroType.MOX.value,
+    ]
+    templates = [
+        "OgljgwMpZO0iwB5Qp5N0h14dMA",
+        "OwUTMwmCZaj4upB8ioLKDoHghAA",
+        "OQhkAsC8gFKCNM95gpLDDRGcxA",
+        "OgejkqrMLOfb2Luj7Ku72jbzLA",
+    ]
+    return BT.Sequence(
+        name="Prepare Standard EotN Party",
+        children=[
+            BT.CreateParty(
+                hero_ids=heroes,
+                henchman_ids=[4,6,12],
+                multibox_invite=False,
+                log=True,
+            ),
+            *[
+                BT.LoadHeroSkillbar(index, template, log=True)
+                for index, template in enumerate(templates, start=1)
+            ],
+        ],
+    )
 
 def _use_bear_skill_4() -> BehaviorTree:
     return BT.Selector(
@@ -291,16 +319,6 @@ def ObtainStoryBook() -> BehaviorTree:
     )
 
 
-def PrepareStandardParty() -> BehaviorTree:
-    return BT.Sequence(
-        name="Prepare EotN Party",
-        children=[
-            _aggressive(),
-            _prepare_standard_party(),
-        ],
-    )
-
-
 # ---------------------------------------------------------------------------
 # Norn storyline
 # ---------------------------------------------------------------------------
@@ -309,7 +327,9 @@ def PrepareStandardParty() -> BehaviorTree:
 def TravelToGunnarsHold() -> BehaviorTree:
     return BT.Sequence(
         name="Run to Gunnar's Hold",
+        map_id_or_name="Eye of the North outpost",
         children=[
+            _prepare_standard_party(),
             _aggressive(),
             BT.MoveAndExitMap
                 (Vec2f(1522.0, 464.0),target_map_id=499),
@@ -329,7 +349,7 @@ def TravelToGunnarsHold() -> BehaviorTree:
 
 
 
-def TalkToGunnar() -> BehaviorTree:
+def Unlock_Xandra() -> BehaviorTree:
     return BT.Sequence(
         name="Talk to Gunnar",
         map_id_or_name="Gunnar's Hold",
@@ -353,9 +373,6 @@ NORN_TOURNAMENT_SKILLS = (
     "Disenchantment",
 )
 
-NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL = "Signet_of_Spirits"
-RITUALIST_ELITE_TOME_MODEL_ID = int(ModelID.Ritualist_Elite_Tome.value)
-GOLD_ZAISHEN_COIN_MODEL_ID = int(ModelID.Gold_Zaishen_Coin.value)
 
 NORN_TOURNAMENT_SPIRIT_CASTS = (
     ("Bloodsong", 3_500),
@@ -366,58 +383,8 @@ NORN_TOURNAMENT_SPIRIT_CASTS = (
 )
 
 
-def _skill_state_condition(
-    skill_name: str,
-    *,
-    learned: bool,
-    name: str,
-) -> BehaviorTree:
-    skill_id = int(GLOBAL_CACHE.Skill.GetID(skill_name) or 0)
-
-    def _check() -> BehaviorTree.NodeState:
-        if skill_id <= 0:
-            return BehaviorTree.NodeState.FAILURE
-
-        available = bool(
-            GLOBAL_CACHE.SkillBar.IsSkillLearnt(skill_id)
-            if learned
-            else GLOBAL_CACHE.SkillBar.IsSkillUnlocked(skill_id)
-        )
-        return (
-            BehaviorTree.NodeState.SUCCESS
-            if available
-            else BehaviorTree.NodeState.FAILURE
-        )
-
-    return BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name=name,
-            condition_fn=_check,
-        )
-    )
 
 
-def _storage_has_model(
-    model_id: int,
-    quantity: int,
-    name: str,
-) -> BehaviorTree:
-    def _check() -> BehaviorTree.NodeState:
-        stored_quantity = int(
-            GLOBAL_CACHE.Inventory.GetModelCountInStorage(model_id) or 0
-        )
-        return (
-            BehaviorTree.NodeState.SUCCESS
-            if stored_quantity >= int(quantity)
-            else BehaviorTree.NodeState.FAILURE
-        )
-
-    return BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name=name,
-            condition_fn=_check,
-        )
-    )
 
 
 def _cast_norn_tournament_skill(
@@ -450,28 +417,6 @@ def _cast_norn_tournament_skill(
 def _run_norn_tournament_round(log: bool = True) -> BehaviorTree:
     """Run one tournament round with explicit Ritualist skill control."""
 
-    optional_signet_cast = BT.Selector(
-        name="Cast Signet Of Spirits If Learned",
-        children=[
-            BT.Sequence(
-                name="Signet Of Spirits Is Available",
-                children=[
-                    _skill_state_condition(
-                        NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL,
-                        learned=True,
-                        name="Check Signet Of Spirits Before Cast",
-                    ),
-                    _cast_norn_tournament_skill(
-                        NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL,
-                        aftercast_delay_ms=1_500,
-                        log=log,
-                    ),
-                ],
-            ),
-            BT.Succeeder(name="Continue Round Without Signet Of Spirits"),
-        ],
-    )
-
     return BT.Sequence(
         name="Manual Norn Tournament Round",
         children=[
@@ -481,7 +426,6 @@ def _run_norn_tournament_round(log: bool = True) -> BehaviorTree:
                 log=log,
                 tolerance=50
             ),
-            optional_signet_cast,
             *[
                 _cast_norn_tournament_skill(
                     skill_name,
@@ -652,7 +596,6 @@ def EnsureRitualistSecondaryUnlocked(
         children=[
             unlock_if_needed,
             _activate_ritualist_secondary(log=log),
-            EnsureSignetOfSpirits(log=log),
         ],
     )
 
@@ -687,184 +630,8 @@ def _ensure_skill_learned(skill_name: str, log: bool) -> BehaviorTree:
     )
 
 
-def _learn_signet_of_spirits_from_elite_tome(
-    log: bool = True,
-) -> BehaviorTree:
-    """Withdraw and use an Elite Ritualist Tome for Signet of Spirits."""
-
-    skill_name = NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL
-    skill_id = int(GLOBAL_CACHE.Skill.GetID(skill_name) or 0)
-
-    if skill_id <= 0:
-        return BT.Failer(name="Resolve Signet Of Spirits Failed")
-
-    def _use_elite_tome() -> BehaviorTree.NodeState:
-        item_id = int(
-            GLOBAL_CACHE.Inventory.GetFirstModelID(
-                RITUALIST_ELITE_TOME_MODEL_ID
-            )
-            or 0
-        )
-        if item_id <= 0:
-            ConsoleLog(
-                MODULE_NAME,
-                "No Elite Ritualist Tome was found in the inventory.",
-                log=True,
-            )
-            return BehaviorTree.NodeState.FAILURE
-
-        GLOBAL_CACHE.Inventory.UseItem(item_id)
-        if log:
-            ConsoleLog(
-                MODULE_NAME,
-                "Using an Elite Ritualist Tome for Signet of Spirits.",
-                log=True,
-            )
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BT.Sequence(
-        name="Learn Signet Of Spirits From Elite Ritualist Tome",
-        children=[
-            BT.PressEsc(),
-            BT.RestockItems(
-                model_id=RITUALIST_ELITE_TOME_MODEL_ID,
-                desired_quantity=1,
-                allow_missing=False,
-            ),
-            BehaviorTree(
-                BehaviorTree.ActionNode(
-                    name="Use Elite Ritualist Tome",
-                    action_fn=_use_elite_tome,
-                    aftercast_ms=1_000,
-                )
-            ),
-            BT.Wait(1_500),
-            BT.SendDialog(
-                dialog_id=Utils.SkillIdToDialogId(skill_id),
-                log=log,
-            ),
-            BT.Wait(1_500),
-            _skill_state_condition(
-                skill_name,
-                learned=True,
-                name="Verify Signet Of Spirits Learned",
-            ),
-            BT.LogMessage(
-                message=(
-                    "Signet of Spirits was learned from an "
-                    "Elite Ritualist Tome."
-                ),
-                module_name=MODULE_NAME,
-            ),
-        ],
-    )
 
 
-def EnsureSignetOfSpirits(log: bool = True) -> BehaviorTree:
-    """Learn Signet of Spirits only when the required resources exist."""
-
-    skill_name = NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL
-
-    acquire_tome = BT.Selector(
-        name="Acquire Elite Ritualist Tome If Available",
-        children=[
-            BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
-            BT.Sequence(
-                name="Withdraw Stored Elite Ritualist Tome",
-                children=[
-                    _storage_has_model(
-                        RITUALIST_ELITE_TOME_MODEL_ID,
-                        1,
-                        "Check Stored Elite Ritualist Tome",
-                    ),
-                    BT.RestockItems(
-                        model_id=RITUALIST_ELITE_TOME_MODEL_ID,
-                        desired_quantity=1,
-                        allow_missing=False,
-                    ),
-                ],
-            ),
-            BT.Sequence(
-                name="Buy Elite Ritualist Tome With Zaishen Coin",
-                children=[
-                    BT.Selector(
-                        name="Check Gold Zaishen Coin Availability",
-                        children=[
-                            BT.HasItemQuantity(GOLD_ZAISHEN_COIN_MODEL_ID, 1),
-                            _storage_has_model(
-                                GOLD_ZAISHEN_COIN_MODEL_ID,
-                                1,
-                                "Check Stored Gold Zaishen Coin",
-                            ),
-                        ],
-                    ),
-                    BT.Travel(target_map_id=248, log=log),
-                    BT.RestockItems(
-                        model_id=GOLD_ZAISHEN_COIN_MODEL_ID,
-                        desired_quantity=1,
-                        allow_missing=False,
-                    ),
-                    BT.EqualizeGold(
-                        target_gold=100,
-                        deposit_all=False,
-                        log=log,
-                    ),
-                    BT.TargetAgentByName(
-                        agent_name="Jessie Llam",
-                        log=log,
-                    ),
-                    BT.InteractTarget(log=log),
-                    BT.Wait(1_000),
-                    BT.ExchangeCollectorItem(
-                        output_model_id=RITUALIST_ELITE_TOME_MODEL_ID,
-                        trade_model_ids=[GOLD_ZAISHEN_COIN_MODEL_ID],
-                        quantity_list=[1],
-                        cost=100,
-                        aftercast_ms=500,
-                    ),
-                    BT.Wait(1_000),
-                    BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
-                ],
-            ),
-        ],
-    )
-
-    return BT.Selector(
-        name="Ensure Optional Signet Of Spirits",
-        children=[
-            _skill_state_condition(
-                skill_name,
-                learned=True,
-                name="Check Signet Of Spirits Learned",
-            ),
-            BT.Sequence(
-                name="Learn Signet Of Spirits If Resources Are Available",
-                children=[
-                    _skill_state_condition(
-                        skill_name,
-                        learned=False,
-                        name="Check Signet Of Spirits Account Unlock",
-                    ),
-                    acquire_tome,
-                    _learn_signet_of_spirits_from_elite_tome(log=log),
-                ],
-            ),
-            BT.Sequence(
-                name="Skip Optional Signet Of Spirits",
-                children=[
-                    BT.LogMessage(
-                        message=(
-                            "No usable Elite Ritualist Tome or Gold Zaishen "
-                            "Coin is available. Signet of Spirits is skipped "
-                            "and the tournament setup continues."
-                        ),
-                        module_name=MODULE_NAME,
-                    ),
-                    BT.Succeeder(name="Continue Without Signet Of Spirits"),
-                ],
-            ),
-        ],
-    )
 
 
 def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
@@ -873,15 +640,6 @@ def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
         primary_id, current_secondary_id = Agent.GetProfessionIDs(player_id)
         primary_id = int(primary_id or 0)
         skill_names = list(NORN_TOURNAMENT_SKILLS)
-        optional_elite_id = int(
-            GLOBAL_CACHE.Skill.GetID(NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL)
-            or 0
-        )
-        if (
-            optional_elite_id > 0
-            and GLOBAL_CACHE.SkillBar.IsSkillLearnt(optional_elite_id)
-        ):
-            skill_names.insert(0, NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL)
         skill_ids = [
             int(GLOBAL_CACHE.Skill.GetID(skill_name) or 0)
             for skill_name in skill_names
@@ -919,21 +677,43 @@ def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
                 int(GLOBAL_CACHE.SkillBar.GetSkillIDBySlot(slot) or 0)
                 for slot in range(1, len(skill_ids) + 1)
             ]
+            communing_value = int(
+                attributes.get(int(Attribute.Communing.value), 0) or 0
+            )
+            channeling_value = int(
+                attributes.get(int(Attribute.ChannelingMagic.value), 0) or 0
+            )
+
+            # Guild Wars automatically reduces the requested attribute values
+            # when a character does not yet have enough attribute points.
+            # The build is therefore valid when the expected profession and
+            # skills have been loaded, regardless of the final attribute ranks.
             valid = bool(
                 int(loaded_secondary_id) == secondary_id
-                and attributes.get(int(Attribute.Communing.value), 0) == 12
-                and attributes.get(int(Attribute.ChannelingMagic.value), 0) == 12
                 and loaded_skills == skill_ids
             )
+
             if not valid:
                 ConsoleLog(
                     MODULE_NAME,
                     (
                         "Norn Tournament build verification failed: "
                         f"secondary={loaded_secondary_id}/{secondary_id}, "
-                        f"Communing={attributes.get(int(Attribute.Communing.value), 0)}/12, "
-                        f"Channeling={attributes.get(int(Attribute.ChannelingMagic.value), 0)}/12, "
+                        f"Communing={communing_value}, "
+                        f"Channeling={channeling_value}, "
                         f"skills={loaded_skills}/{skill_ids}."
+                    ),
+                    log=True,
+                )
+            elif log:
+                ConsoleLog(
+                    MODULE_NAME,
+                    (
+                        "Norn Tournament build loaded successfully: "
+                        f"secondary={loaded_secondary_id}, "
+                        f"Communing={communing_value}, "
+                        f"Channeling={channeling_value}, "
+                        f"skills={loaded_skills}."
                     ),
                     log=True,
                 )
@@ -999,7 +779,7 @@ def UnlockNornTournamentSkills(
     )
 
 
-def UnlockXandra(
+def Fight_Sequence(
     return_outpost_name: str = "Gunnar's Hold",
     log: bool = True,
 ) -> BehaviorTree:
@@ -1142,7 +922,7 @@ def CompleteOptionalXandraTournament(
                         return_outpost_name=return_outpost_name,
                         log=log,
                     ),
-                    UnlockXandra(
+                    Fight_Sequence(
                         return_outpost_name=return_outpost_name,
                         log=log,
                     ),
@@ -1176,11 +956,7 @@ def TravelToSifhalla() -> BehaviorTree:
         map_id_or_name=644,
         children=[
             _aggressive(),
-            BT.VanquishNode([
-                (16003.853515, -6544.087402),
-                (15193.037109, -6387.140625),
-            ]),
-            BT.WaitForMapLoad(map_name="Norrhart Domains"),
+            BT.MoveAndExitMap(Vec2f(15193.037109, -6387.140625), target_map_name="Norrhart Domains"),
             BT.VanquishNode([
                 (13337.167968, -3869.252929),
                 (9826.771484, 416.337768),
@@ -1919,11 +1695,11 @@ def LabSpace() -> BehaviorTree:
         map_id_or_name=624,
         children=[
             _aggressive(),
-            BT.MoveAndDialog(Vec2f(16202.0, 16092.0)),
+            #BT.MoveAndDialog(Vec2f(16202.0, 16092.0)),
             BT.Travel(target_map_id=640),
-            BT.MoveAndDialog(Vec2f(16024.0, 18468.0)),
+           # BT.MoveAndDialog(Vec2f(16024.0, 18468.0)),
             BT.MoveAndExitMap(Vec2f(-6062.0, -2688.0), target_map_name="Magus Stones"),
-            BT.MoveAndDialog(Vec2f(10228.0, 11488.0)),
+            #BT.MoveAndDialog(Vec2f(10228.0, 11488.0)),
             BT.VanquishNode([
                 (8329.03, 9954.58),
                 (7258.69, 10987.36),
@@ -1950,7 +1726,7 @@ def LabSpace() -> BehaviorTree:
             BT.AutoDialog(0x84),
             BT.WaitForMapLoad(map_name="Magus Stones"),
             BT.Move(Vec2f(-18608.72, 16541.34)),
-            BT.MoveAndDialog(Vec2f(-18794.0, 16287.0)),
+            #BT.MoveAndDialog(Vec2f(-18794.0, 16287.0)),
             BT.Move(Vec2f(-20599.0, 14444.0)),
             BT.WaitForMapLoad(map_id=658),
         ],
@@ -1963,7 +1739,7 @@ def TheElusiveGolemancer() -> BehaviorTree:
         children=[
             BT.WaitForMapLoad(map_id=658),
             _aggressive(),
-            BT.MoveAndDialog(Vec2f(-14542.0, 12237.0)),
+            #BT.MoveAndDialog(Vec2f(-14542.0, 12237.0)),
             BT.Move(Vec2f(-17204.16, 8545.91)),
             BT.MoveAndInteractWithGadget(Vec2f(-17601.0, 8150.0), log=True),
             BT.Wait(20_000),
@@ -2252,7 +2028,7 @@ def ToKamadanForOlias(log: bool = True) -> BehaviorTree:
         name="Sunspears In Cantha - Reach Kamadan",
         children=[
             BT.Travel(target_map_id=KAINENG_CENTER_MAP_ID, log=log),
-            _prepare_standard_party(),
+            _prepare_standard_party_olias(),
             BT.VanquishNode([
                 (3049.35, -2020.75),
                 (2739.30, -3710.67),
@@ -2278,20 +2054,22 @@ def ToKamadanForOlias(log: bool = True) -> BehaviorTree:
                 (-1712.16, -700.23),
                 (-907.97, -2862.29),
                 (742.42, -4167.73),
-                (1352.94, -3694.75),
-                (2547.49, -3667.82),
-                (2541.67, -2582.88),
-                (1990.27, -1636.21),
+                (1352.94, -3694.75)]),
+            BT.Wait(5000),
+            BT.VanquishNode([    
+                (1786, -1448)]),
+            BT.Wait(5000),
+            BT.VanquishNode([
                 (2651.48, -3750.63),
                 (3355.63, -2151.82),
-                (4565.37, -1630.73),
-                (2951.07, -723.50),
-                (2875.84, 488.42),
-                (1354.73, 583.06),
+                (4347, -1682),]),
+            BT.Wait(5000),
+            BT.VanquishNode([    
+                (279, 811)
             ], pause_on_combat=True, log=log),
-            BT.WaitForMapLoad(map_id=290),
-            BT.Wait(2_000),
+            BT.WaitForMapLoad(map_id=290, timeout_ms=60000),
             BT.TargetAgentByModelIDAndSendDialog(4914, 0x84, log=log),
+            BT.SendDialog(0x85),
             BT.WaitForMapLoad(map_id=543),
             BT.Wait(2_000),
             BT.TargetAgentByModelIDAndSendDialog(4829, 0x82D407, log=log),
@@ -2315,21 +2093,47 @@ def ToConsulateDocksForOlias(log: bool = True) -> BehaviorTree:
         ],
     )
 
+def ToLionsArch() -> BehaviorTree:
+    return BT.Sequence(
+        "To Lion's Arch",
+        children=[
+            BT.Travel(KAINENG_CENTER_MAP_ID),
+
+            BT.VanquishNode([
+                    (3049.35, -2020.75),
+                    (2739.30, -3710.67),
+                    (-648.30, -3493.72),
+                    (-1661.91, -636.09),
+                ]),
+
+            BT.MoveAndDialog(Vec2f(-1006.97,-817.63),0x81DF01),
+            BT.MoveAndExitMap((-2439,1732),target_map_id=290),
+            BT.VanquishNode(
+                [
+                    (-2995.68, 2077.20),
+                    (-6938.10, 4286.61),
+                    (-6064.40, 5300.26),
+                    (-2396.20, 5260.67),
+                    (-5031.77, 6001.52),
+                ],
+            ),
+            BT.MoveAndDialog(Vec2f(-5626.17, 7017.33),0x81DF04),
+            BT.MoveAndDialog(Vec2f(-4661.13, 7479.86),0x84),
+            BT.WaitForMapLoad(map_name="Lion's Gate"),
+            BT.MoveAndDialog(Vec2f(-1181, 1038),0x85),
+            BT.Travel(55),
+            BT.MoveAndDialog(Vec2f(328.00,9594.00),0x81DF07),
+
+        ],
+    )
 
 def CompleteOliasUnlock(log: bool = True) -> BehaviorTree:
     return BT.Sequence(
         name="All For One And One For Justice",
         children=[
-            BT.Travel(target_map_id=493, log=log),
-            BT.MoveAndDialog(Vec2f(-2367.00, 16796.00), 0x830E01, log=log),
+            ToLionsArch(),
             BT.LeaveParty(),
-            BT.Travel(target_map_id=55, log=log),
             _prepare_standard_party(),
-            BT.VanquishNode([
-                (1413.11, 9255.51),
-                (242.96, 6130.82),
-                (-1137.00, 2501.00),
-            ], log=log),
             BT.MoveAndDialog(Vec2f(-1137.00, 2501.00), 0x84, log=log),
             BT.WaitForMapLoad(map_id=471),
             BT.Wait(3_000),
@@ -2342,8 +2146,7 @@ def CompleteOliasUnlock(log: bool = True) -> BehaviorTree:
                 (4461.65, -710.88),
                 (10750.0, 2100.0),
             ], pause_on_combat=True, log=log),
-            BT.Wait(20_000),
-            BT.WaitForMapLoad(map_id=55),
+            BT.WaitForMapLoad(map_id=55, timeout_ms=120000),
             BT.LeaveParty(),
             BT.Travel(target_map_id=449, log=log),
             BT.Move(Vec2f(-8149.02, 14900.65), log=log),
@@ -2398,9 +2201,8 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Obtain Story Book", ObtainStoryBook),
         ("Ensure MOX Unlocked", EnsureMOXUnlocked),
         ("Ensure Olias Unlocked", EnsureOliasUnlocked),
-        ("Prepare Standard Party", PrepareStandardParty),
         ("Travel To Gunnar's Hold", TravelToGunnarsHold),
-        ("Talk To Gunnar", TalkToGunnar),
+        ("Talk To Gunnar", Unlock_Xandra),
         ("Optional Xandra Tournament", CompleteOptionalXandraTournament),
         ("Travel To Sifhalla", TravelToSifhalla),
         ("Tracking The Nornbear", CompleteTrackingTheNornbear),
