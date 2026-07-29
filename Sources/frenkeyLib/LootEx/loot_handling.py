@@ -2,7 +2,8 @@ from Py4GWCoreLib import Agent, AgentArray, Player
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Sources.frenkeyLib.LootEx.cache import Cached_Item
 from Sources.frenkeyLib.LootEx.enum import ItemAction
-from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, LootConfig
+from Py4GWCoreLib.Py4GWcorelib import ConsoleLog
+from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
 from Py4GWCoreLib.enums import Console, ItemType, ModelID, Range, SharedCommandType
 
 LOG_LOOTHANDLING = False
@@ -33,9 +34,10 @@ class LootHandler:
     
     def Stop(self):
         ConsoleLog("LootEx", "Stopping Loot Handler", Console.MessageType.Info)
-        
-        lootconfig = LootConfig()
-        lootconfig.RemoveCustomItemCheck(self.Should_Loot_Item)
+
+        # Nothing to uninstall: LootEx no longer registers a predicate with the loot class.
+        # Whatever it added is live-only, so it is gone on reset or restart anyway.
+        LootFilters().reset_live()
         
         from Sources.frenkeyLib.LootEx.settings import Settings
         settings = Settings()
@@ -46,11 +48,18 @@ class LootHandler:
     def Start(self):
         ConsoleLog("LootEx", "Starting Loot Handler", Console.MessageType.Info)        
     
-        lootconfig = LootConfig()
-        lootconfig.AddCustomItemCheck(self.Should_Loot_Item)
-        
-        lootconfig.AddToBlacklist(6102)  # Spear of Archemorus
-        lootconfig.AddToBlacklist(6104)  # Urn of Saint Viktor
+        # MIGRATED off `AddCustomItemCheck`. Custom item checks were dropped deliberately:
+        # they are an override, and they let a script hand the loot class its own ruling to run.
+        # A script may hand over VALUES -- a model id, an item id -- never something that decides.
+        #
+        # So LootEx keeps its own decision (`Should_Loot_Item`) and simply publishes the RESULT:
+        # `Publish` walks nearby drops, evaluates them itself, and adds the ones it wants as item
+        # ids. Same behaviour, and the loot class stays the only thing that decides.
+        # The two quest bundles LootEx used to blacklist here (6102 Spear of Archemorus,
+        # 6104 Urn of Saint Viktor) are NOT injected any more. Writing hard-coded entries into the
+        # user's live configuration is the library deciding on their behalf; if those should be
+        # skipped, they belong in the user's own blacklist where they can see and change them.
+        LootFilters()
         
         from Sources.frenkeyLib.LootEx.settings import Settings
         settings = Settings()
@@ -82,6 +91,30 @@ class LootHandler:
     def IsEnabled(self) -> bool:
         return self.settings.enable_loot_filters and self.settings.profile is not None
                         
+    def Publish(self, distance: float = Range.SafeCompass.value) -> int:
+        """Evaluate nearby drops and add the wanted ones as item ids. Returns how many.
+
+        This replaces the custom-item-check hook. Call it each pass while LootEx is running --
+        an item id means nothing after a map change, so the entries are naturally short-lived and
+        the loot class clears them itself.
+        """
+        if not self.IsEnabled():
+            return 0
+
+        loot = LootFilters()
+        added = 0
+        for agent_id in AgentArray.Filter.ByDistance(
+                AgentArray.GetItemArray(), Player.GetXY(), distance):
+            if not Agent.IsValid(agent_id):
+                continue
+            item_agent = Agent.GetItemAgentByID(agent_id)
+            if item_agent is None:
+                continue
+            if self.Should_Loot_Item(item_agent.item_id):
+                loot.add_item(agent_id)
+                added += 1
+        return added
+
     def Should_Loot_Item(self, item_id: int) -> bool:
         # ConsoleLog("LootEx", f"Checking if item {item_id} should be looted.", Console.MessageType.Debug)
                 

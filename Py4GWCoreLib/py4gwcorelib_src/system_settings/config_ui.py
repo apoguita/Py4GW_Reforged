@@ -161,6 +161,28 @@ def build_window(controller) -> "ImGui.SidebarWindow":
                 win.add_section(group, "Agent Recolor",
                                 (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
             continue
+        if cat.key == "loot":
+            # Each subcategory is built independently, so a failure in one still leaves the others
+            # usable. Never swallow a build failure silently -- surface it as a visible section.
+            for label, module_path in (
+                ("Loot Filter Factory", "Py4GWCoreLib.py4gwcorelib_src.loot_filter_factory.config_ui"),
+                ("Beacons", "Py4GWCoreLib.py4gwcorelib_src.beacons.config_ui"),
+                ("Loot Filters", "Py4GWCoreLib.py4gwcorelib_src.loot_filters.config_ui"),
+                ("Recolor & Beacons", "Py4GWCoreLib.py4gwcorelib_src.recolor_beacons.config_ui"),
+            ):
+                try:
+                    import importlib
+
+                    importlib.import_module(module_path).add_sections(win, group)
+                except Exception as exc:
+                    import traceback
+
+                    _log("Loot / %s section failed to build: %r" % (label, exc))
+                    _log(traceback.format_exc())
+                    _err = str(exc)
+                    win.add_section(group, label,
+                                    (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
+            continue
         if cat.key == "chat_commands":
             win.add_section(group, "Registered Commands", _draw_chat_commands_monitor)
             continue

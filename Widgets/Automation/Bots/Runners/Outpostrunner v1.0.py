@@ -11,6 +11,12 @@ import os
 import math
 import time
 
+# One long-lived overlay for the path lines. Under Reforged a Draw*3D appends to its
+# overlay's occluded-draw list and registers a world-pass callback to replay it, so
+# building a renderer per line segment -- free under the legacy Py2DRenderer, which drew
+# immediately and owned nothing -- now registers one callback per segment, per frame.
+dx_renderer = DXOverlay()
+
 show_intro = True
 # UI state
 selected_region = None
@@ -807,11 +813,11 @@ def main():
             if points and len(points) >= 2:
                 color = Color(*rgba).to_dx_color()
                 for i in range(len(points) - 1):
-                    x1, y1, z1 = points[i]
-                    x2, y2, z2 = points[i + 1]
+                    x1, y1, _ = points[i]
+                    x2, y2, _ = points[i + 1]
                     z1 = DXOverlay.FindZ(x1, y1) - 125
                     z2 = DXOverlay.FindZ(x2, y2) - 125
-                    DXOverlay().DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
+                    dx_renderer.DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
 
         global result_path, x, y, start_process_time, pathing_object, path_requested, elapsed_time
         global smooth_by_los, smooth_by_chaikin, margin, step_dist, chaikin_iterations

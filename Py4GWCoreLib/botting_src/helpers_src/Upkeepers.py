@@ -136,7 +136,7 @@ class _Upkeepers:
         
     def upkeep_auto_loot(self):
         from ...Routines import Routines
-        from ...Py4GWcorelib import LootConfig
+        from ...py4gwcorelib_src.loot_filters import LootFilters
         from ...enums import Range, SharedCommandType
         from Py4GW_widget_manager import get_widget_handler
         def LootingRoutineActive():
@@ -175,8 +175,7 @@ class _Upkeepers:
                 yield from Routines.Yield.wait(500)
                 continue
             
-            loot_singleton = LootConfig()
-            loot_array = loot_singleton.GetfilteredLootArray(distance=Range.Earshot.value, multibox_loot=True, allow_unasigned_loot=False)
+            loot_array = LootFilters().GetLootArray(Range.Earshot.value)
             if len(loot_array) == 0:
                 yield from Routines.Yield.wait(500)
                 continue

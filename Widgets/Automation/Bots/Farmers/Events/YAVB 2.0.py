@@ -23,6 +23,41 @@ bot.Properties.Set("leave_empty_inventory_slots", value=6)
   
 MODULE_ICON = "Textures\\Module_Icons\\YAVB 2.0 mascot.png"
 
+def _identify_live_inventory_items():
+    """Identify configured rarities using the live inventory item IDs.
+
+    Inventory Plus normally discovers candidates via ItemSnapshot. That can be
+    stale during YAVB's field loop, leaving visible unidentified drops without
+    candidates. Passing live IDs preserves the user's rarity settings while
+    using the normal Inventory Plus identifier.
+    """
+    from Py4GWCoreLib.Item import Item
+    from Py4GWCoreLib.py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
+
+    handler = AutoInventoryHandler()
+    enabled_rarities = set()
+    if handler.id_whites:
+        enabled_rarities.add("White")
+    if handler.id_blues:
+        enabled_rarities.add("Blue")
+    if handler.id_purples:
+        enabled_rarities.add("Purple")
+    if handler.id_golds:
+        enabled_rarities.add("Gold")
+    if handler.id_greens:
+        enabled_rarities.add("Green")
+
+    item_ids = []
+    for item_id in GLOBAL_CACHE.Inventory.GetAllInventoryItemIds():
+        if Item.Usage.IsIdentified(item_id):
+            continue
+        _, rarity = Item.Rarity.GetRarity(item_id)
+        if rarity in enabled_rarities:
+            item_ids.append(item_id)
+
+    if item_ids:
+        yield from handler.IdentifyItems(item_ids=item_ids)
+
 
 def _log_yavb_debug(reason: str, extra: str = "", message_type=PySystem.Console.MessageType.Info) -> None:
     map_id = Map.GetMapID()
@@ -158,7 +193,8 @@ def JagaMoraineFarmRoutine(bot: Botting) -> None:
     bot.States.RemoveManagedCoroutine("HandleStuckJagaMoraine")
     bot.States.AddHeader("Loot Items")
     bot.Items.LootItems()
-    bot.Items.AutoIDAndSalvageItems()
+    bot.States.AddCustomState(_identify_live_inventory_items, "Identify Field Loot")
+    bot.Items.AutoSalvageItems()
     bot.States.AddCustomState(lambda: NeedsInventoryManagement(bot), "Needs Inventory Management")
     bot.Properties.Disable("birthday_cupcake")
     bot.Move.XYAndExitMap(15850,-20550, target_map_id=482) # target_map_name="Bjora Marches")

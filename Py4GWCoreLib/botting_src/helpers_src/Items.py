@@ -21,144 +21,87 @@ class _Items:
     @_yield_step(label="LootItems", counter_key="LOOT_ITEMS")
     def loot(self, pickup_timeout = 5000) -> Generator[Any, Any, None]:
         from ...Routines import Routines
-        from ...Py4GWcorelib import LootConfig
+        from ...py4gwcorelib_src.loot_filters import LootFilters
         from ...enums import Range
-        from ...GlobalCache import GLOBAL_CACHE
         from ...Agent import Agent
-        
+
         if not Routines.Checks.Map.MapValid():
             yield from Routines.Yield.wait(1000)  # Wait for map to be valid
             return
-            
+
         if Agent.IsDead(Player.GetAgentID()):
             yield from Routines.Yield.wait(1000)  # Wait if dead
-            return 
-        
-        loot_singleton = LootConfig()
-        filtered_agent_ids = loot_singleton.GetfilteredLootArray(distance=Range.Earshot.value, multibox_loot=True, allow_unasigned_loot=True)
+            return
+
+        # `multibox_loot` / `allow_unasigned_loot` are gone: the loot lock is ALWAYS consulted,
+        # and unassigned drops are always eligible.
+        filtered_agent_ids = LootFilters().GetLootArray(Range.Earshot.value)
         yield from Routines.Yield.Items.LootItems(filtered_agent_ids, pickup_timeout=pickup_timeout)
-        
+
+    # ------------------------------------------------------------------------------------
+    # The script-facing loot surface. The line is between ENTRIES and STRUCTURE:
+    #
+    #   a script MAY  -- add a model id, add an item id, blacklist, report a failed pickup,
+    #                    switch profile, toggle things off
+    #   a script MAY NOT -- create a profile, create a set of filters, author/rename/delete a
+    #                    filter, or persist ANYTHING
+    #
+    # Everything below lands in the LIVE configuration and never reaches disk, so a reset or a
+    # restart discards it. `reset_loot_config` is the one and only way back.
+    # ------------------------------------------------------------------------------------
+
     @_yield_step(label="AddModelToBlacklist", counter_key="ADD_MODEL_TO_BLACKLIST")
     def add_model_to_blacklist(self, model_id:int) -> Generator[Any, Any, None]:
+        """Never take this kind of item, for this run. The blacklist vetoes every other rule."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.AddToBlacklist(model_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is added
-
-    @_yield_step(label="RemoveModelFromBlacklist", counter_key="REMOVE_MODEL_FROM_BLACKLIST")
-    def remove_model_from_blacklist(self, model_id:int) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.RemoveFromBlacklist(model_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is removed
+        from ...py4gwcorelib_src.loot_filters import LootFilters
+        LootFilters().blacklist_model(model_id)
+        yield from Routines.Yield.wait(100)
 
     @_yield_step(label="AddModelToWhitelist", counter_key="ADD_MODEL_TO_WHITELIST")
     def add_model_to_whitelist(self, model_id:int) -> Generator[Any, Any, None]:
+        """Also want this kind of item, for this run -- how a bot handles its special case."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.AddToWhitelist(model_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is added
-        
-    @_yield_step(label="RemoveModelFromWhitelist", counter_key="REMOVE_MODEL_FROM_WHITELIST")
-    def remove_model_from_whitelist(self, model_id:int) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.RemoveFromWhitelist(model_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is removed
-        
-    @_yield_step(label="ClearWhitelist", counter_key="CLEAR_WHITELIST")
-    def clear_whitelist(self) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.ClearWhitelist()
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the whitelist is cleared
-        
-    @_yield_step(label="ClearBlacklist", counter_key="CLEAR_BLACKLIST") 
-    def clear_blacklist(self) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.ClearBlacklist()
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the blacklist is cleared
-        
+        from ...py4gwcorelib_src.loot_filters import LootFilters
+        LootFilters().add_model(model_id)
+        yield from Routines.Yield.wait(100)
 
     @_yield_step(label="AddItemIDToWhitelist", counter_key="ADD_ITEM_ID_TO_WHITELIST")
     def add_item_id_to_whitelist(self, item_id:int) -> Generator[Any, Any, None]:
+        """Also want this ONE drop. Cleared on a map change -- the id means nothing afterwards."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.item_id_whitelist.add(item_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is added
-        
-    @_yield_step(label="RemoveItemIDFromWhitelist", counter_key="REMOVE_ITEM_ID_FROM_WHITELIST")
-    def remove_item_id_from_whitelist(self, item_id:int) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.item_id_whitelist.discard(item_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is removed
-        
-    @_yield_step(label="ClearItemIDWhitelist", counter_key="CLEAR_ITEM_ID_WHITELIST")
-    def clear_item_id_whitelist(self) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.item_id_whitelist.clear()
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the whitelist is cleared
-        
+        from ...py4gwcorelib_src.loot_filters import LootFilters
+        LootFilters().add_item(item_id)
+        yield from Routines.Yield.wait(100)
+
     @_yield_step(label="AddItemIDToBlacklist", counter_key="ADD_ITEM_ID_TO_BLACKLIST")
     def add_item_id_to_blacklist(self, item_id:int) -> Generator[Any, Any, None]:
+        """"I could not get this one." Suppression is simply a blacklist entry, live-only."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.item_id_blacklist.add(item_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is added
-        
-    @_yield_step(label="RemoveItemIDFromBlacklist", counter_key="REMOVE_ITEM_ID_FROM_BLACKLIST")
-    def remove_item_id_from_blacklist(self, item_id:int) -> Generator[Any, Any, None]:
+        from ...py4gwcorelib_src.loot_filters import LootFilters
+        LootFilters().report_failed(item_id)
+        yield from Routines.Yield.wait(100)
+
+    @_yield_step(label="UseLootProfile", counter_key="USE_LOOT_PROFILE")
+    def use_loot_profile(self, name:str) -> Generator[Any, Any, None]:
+        """Switch the running profile. Live-only: the user's saved choice is untouched."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.item_id_blacklist.discard(item_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the item is removed
-        
-    @_yield_step(label="ClearItemIDBlacklist", counter_key="CLEAR_ITEM_ID_BLACKLIST")
-    def clear_item_id_blacklist(self) -> Generator[Any, Any, None]:
+        from ...py4gwcorelib_src.loot_filters import LootFilters
+        LootFilters().use_profile(name)
+        yield from Routines.Yield.wait(100)
+
+    @_yield_step(label="ResetLootConfig", counter_key="RESET_LOOT_CONFIG")
+    def reset_loot_config(self) -> Generator[Any, Any, None]:
+        """Discard every change this script made and run exactly what the user configured.
+
+        This is the ONLY way to repopulate after a script has narrowed things down, which is
+        why the old wipe-the-whitelist helpers are gone: a script that could empty the user's
+        lists had no way to put them back.
+        """
         from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.item_id_blacklist.clear()
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the blacklist is cleared
-        
-        
-    @_yield_step(label="AddDyeToWhitelist", counter_key="ADD_DYE_TO_WHITELIST")
-    def add_dye_to_whitelist(self, dye_id:int) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.dye_whitelist.add(dye_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the dye is added
-        
-    @_yield_step(label="RemoveDyeFromWhitelist", counter_key="REMOVE_DYE_FROM_WHITELIST")
-    def remove_dye_from_whitelist(self, dye_id:int) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.dye_whitelist.discard(dye_id)
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the dye is removed
-        
-    @_yield_step(label="ClearDyeWhitelist", counter_key="CLEAR_DYE_WHITELIST")
-    def clear_dye_whitelist(self) -> Generator[Any, Any, None]:
-        from ...Routines import Routines
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
-        loot_singleton = LootConfig()
-        loot_singleton.dye_whitelist.clear()
-        yield from Routines.Yield.wait(100)  # Small wait to ensure the whitelist is cleared
+        from ...py4gwcorelib_src.loot_filters import LootFilters
+        LootFilters().reset_live()
+        yield from Routines.Yield.wait(100)
 
     @_yield_step(label="CraftItem", counter_key="CRAFT_ITEM")
     def craft(self, output_model_id: int, cost: int,

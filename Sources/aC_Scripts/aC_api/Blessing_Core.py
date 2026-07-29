@@ -1,4 +1,4 @@
-import math, time, os, tempfile
+import math, time
 from enum import Enum, auto
 from typing import Optional, Tuple, List, Dict
 from Py4GWCoreLib import *
@@ -8,22 +8,6 @@ from .Blessing_dialog_helper import is_npc_dialog_visible, click_dialog_button, 
 from .Verify_Blessing        import has_any_blessing
 
 _widget_handler = get_widget_handler()
-
-# — per-client flag file in a shared temp directory —
-FLAG_DIR = os.path.join(tempfile.gettempdir(), "GuildWarsBlessFlags")
-os.makedirs(FLAG_DIR, exist_ok=True)
-
-def _flag_path() -> str:
-    return os.path.join(FLAG_DIR, f"{Player.GetAgentID()}.flag")
-
-def _write_flag():
-    open(_flag_path(), "w").close()
-
-def _remove_flag():
-    try:
-        os.remove(_flag_path())
-    except OSError:
-        pass
 
 # how long to wait in VERIFY for the buff to register
 _VERIFY_TIMEOUT = 1.0  # seconds
@@ -131,7 +115,6 @@ class BlessingRunner:
         self.success       = False
 
     def start(self):
-        _remove_flag()
         ConsoleLog("BlessingRunner", "Starting blessing sequence", Console.MessageType.Info)
         _widget_handler.disable_widget("HeroAI")
 
@@ -212,7 +195,6 @@ class BlessingRunner:
         if self.state == _BlessState.VERIFY:
             if has_any_blessing(Player.GetAgentID()):
                 self.success = True
-                _write_flag()
                 _widget_handler.enable_widget("HeroAI")
                 self.state = _BlessState.DONE
                 return True, True
@@ -255,7 +237,6 @@ class BlessingRunner:
         if self._norn_stage == 2:
             if has_any_blessing(Player.GetAgentID()):
                 ConsoleLog("BlessingRunner", "Norn: already blessed, exiting", Console.MessageType.Debug)
-                _write_flag()
                 self.success = True
                 return True
             if not self.agent:
@@ -281,8 +262,6 @@ class BlessingRunner:
                 ConsoleLog("BlessingRunner", "Norn: final dialog click", Console.MessageType.Debug)
                 click_dialog_button(1)
                 self.success = has_any_blessing(Player.GetAgentID())
-                if self.success:
-                    _write_flag()
                 return True
             return False
 
@@ -352,8 +331,6 @@ class BlessingRunner:
                     ConsoleLog("BlessingRunner", f"{npc_name}: click 1 (no bribe)", Console.MessageType.Debug)
                     click_dialog_button(1)
                     self.success = has_any_blessing(Player.GetAgentID())
-                    if self.success:
-                        _write_flag()
                     return True
             elif now - self._wait_start > 8.0:
                 ConsoleLog("BlessingRunner", f"{npc_name}: donation menu not found, aborting", Console.MessageType.Warning)
@@ -380,14 +357,10 @@ class BlessingRunner:
                 ConsoleLog("BlessingRunner", f"{npc_name}: click 1 (final close)", Console.MessageType.Debug)
                 click_dialog_button(1)
                 self.success = has_any_blessing(Player.GetAgentID())
-                if self.success:
-                    _write_flag()
                 return True
             if not is_npc_dialog_visible():
                 ConsoleLog("BlessingRunner", f"{npc_name}: dialog closed, verifying blessing", Console.MessageType.Debug)
                 self.success = has_any_blessing(Player.GetAgentID())
-                if self.success:
-                    _write_flag()
                 return True
             return False
 

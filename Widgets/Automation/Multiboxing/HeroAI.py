@@ -29,7 +29,7 @@ from HeroAI.windows import (HeroAI_FloatingWindows ,HeroAI_Windows,)
 from HeroAI.ui_base import HeroAI_BaseUI
 from HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay)
 from HeroAI import team_viewer_broadcast
-from Py4GWCoreLib import (GLOBAL_CACHE, Agent, LootConfig,
+from Py4GWCoreLib import (GLOBAL_CACHE, Agent,
                           Range, Routines, ThrottledTimer, SharedCommandType)
 
 #region GLOBALS
@@ -63,11 +63,9 @@ def LootingNode(cached_data: CacheData)-> BehaviorTree.NodeState:
     if GLOBAL_CACHE.Inventory.GetFreeSlotCount() <= 1:
         return BehaviorTree.NodeState.FAILURE
     
-    loot_array = LootConfig().GetfilteredLootArray(
-        Range.Earshot.value,
-        multibox_loot=True,
-        allow_unasigned_loot=False,
-    )
+    from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+
+    loot_array = LootFilters().GetLootArray(Range.Earshot.value)
 
     if len(loot_array) == 0:
         return BehaviorTree.NodeState.FAILURE

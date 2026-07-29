@@ -59,6 +59,28 @@ def draw() -> None:
                 _ar_get().boot()
             except Exception:
                 pass
+            # Boot the loot system. Each piece registers its own callback, so each is
+            # independently driven and none rides on this widget's frame:
+            #   Loot Filters      -- a data pass (map-change housekeeping)
+            #   the quick access  -- its own DRAW pass, so the window cannot end up with no caller
+            #   Recolor & Beacons -- a data pass (colour push) and a draw pass (beacons)
+            # Booted separately so one failing still leaves the others running.
+            try:
+                from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+                from Py4GWCoreLib.py4gwcorelib_src.loot_filters import quick_access
+
+                LootFilters().register()
+                quick_access.register()
+            except Exception as loot_error:
+                PySystem.Console.Log(MODULE_NAME, "Loot Filters boot failed: %s" % loot_error,
+                                     PySystem.Console.MessageType.Error)
+            try:
+                from Py4GWCoreLib.py4gwcorelib_src.recolor_beacons import RecolorBeacons
+
+                RecolorBeacons().register()
+            except Exception as mark_error:
+                PySystem.Console.Log(MODULE_NAME, "Recolor & Beacons boot failed: %s" % mark_error,
+                                     PySystem.Console.MessageType.Error)
             # Register the chat-command framework built-ins (/help) once, now that native is up.
             try:
                 from Py4GWCoreLib.ChatCommands import ChatCommands

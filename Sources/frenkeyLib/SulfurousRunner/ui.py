@@ -15,6 +15,11 @@ from .settings import Settings
 from .waypoint import Waypoint3D
 
 widget_info : Widget | None = None
+# One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+# occluded-draw list and registers a world-pass callback to replay it, so building one per
+# line segment registers a callback per segment, per frame. The flags below draw through
+# Overlay instead, which is the ImGui draw list and retains nothing.
+path_overlay : DXOverlay = DXOverlay()
 configure_window : WindowModule = WindowModule(
     "Sulfurous Runner",
     "Sulfurous Runner",
@@ -80,7 +85,7 @@ def draw_paths(paths : dict[int, list[Waypoint3D]], path_color : Color, closest_
                 z1 = DXOverlay.FindZ(p1.x, p1.y)
                 z2 = DXOverlay.FindZ(p2.x, p2.y)
                 
-                DXOverlay().DrawLine3D(p1.x, p1.y, z1 - 50, p2.x, p2.y, z2 - 50, path_color.to_dx_color(), collision)
+                path_overlay.DrawLine3D(p1.x, p1.y, z1 - 50, p2.x, p2.y, z2 - 50, path_color.to_dx_color(), collision)
                 
 def color_equal(a: tuple[float, float, float, float],
                 b: tuple[float, float, float, float],

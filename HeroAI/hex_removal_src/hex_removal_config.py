@@ -1,20 +1,25 @@
-"""Per-character JSONC persistence for hex-removal priority overrides.
+"""Per-character persistence for hex-removal priority overrides.
 
-File: <projects>/Settings/<account_email>/HeroAI/Hex removal/<character_name>/hex_removal_config.json
+Backed by the sanctioned :class:`JsonFactory` (account scope). The account is
+already the jail namespace (``json/<email>/...``), so a single per-account
+document holds every character's config keyed by character name:
 
-Each character on the account has an independent config. The GUI at
-HeroAI Control Panel -> Builds -> Hex Removal edits this file; hand
-edits are also supported via JSONC (// line and /* */ block comments).
-Hand-edits are picked up next time HeroAI loads.
+    json/<account_email>/HeroAI/HexRemoval.json
+        characters/<character_name>/schema
+        characters/<character_name>/debug/hex_removal_locks
+        characters/<character_name>/hexes/<hex_name>/{caster,ranged_martial,melee,by_profession}
+
+Each character on the account has an independent subtree. The GUI at
+HeroAI Control Panel -> Builds -> Hex Removal edits the active character's
+subtree; changes autosave through JsonFactory. Serialization is owned entirely
+by JsonFactory - there is no hand-rolled JSON/JSONC handling here.
 """
 
 from __future__ import annotations
 
-import json
-import os
 from dataclasses import dataclass, field
 
-import Py4GW
+import PySystem
 
 from Py4GWCoreLib.enums_src.GameData_enums import Profession, Profession_Names
 from Py4GWCoreLib.GlobalCache.HexRemovalPriority import (
@@ -22,6 +27,7 @@ from Py4GWCoreLib.GlobalCache.HexRemovalPriority import (
     HexRemovalPriority,
     _HEX_DEFAULTS,
 )
+from Py4GWCoreLib.py4gwcorelib_src.JsonFactory import JsonFactory
 
 
 # ============================================================================
@@ -29,9 +35,9 @@ from Py4GWCoreLib.GlobalCache.HexRemovalPriority import (
 # ============================================================================
 
 SCHEMA_ID = "py4gw_hex_removal_v1"
-CONFIG_FILENAME = "hex_removal_config.json"
-# Folder under Settings/<email>/HeroAI/ that holds per-character configs.
-CONFIG_SUBDIR = "Hex removal"
+# One per-account JSON document holds every character's config, keyed by
+# character name under "characters/<name>".
+CONFIG_DOC = "HeroAI/HexRemoval.json"
 
 _PRIORITY_BY_NAME: dict[str, HexRemovalPriority] = {
     "NONE": HexRemovalPriority.NONE,
@@ -82,7 +88,7 @@ _cache_state: ConfigState | None = None
 
 
 # ============================================================================
-# Logging + path helpers
+# Logging + store helpers
 # ============================================================================
 
 def _log(msg: str) -> None:
@@ -93,19 +99,14 @@ def _log(msg: str) -> None:
         pass
 
 
-def _projects_settings_root() -> str:
-    return os.path.join(PySystem.Console.get_projects_path(), "Settings")
+def _config_store() -> JsonFactory:
+    """The per-account hex-removal document (account scope; binds to the email)."""
+    return JsonFactory(CONFIG_DOC)
 
 
-def _path_for(email: str, character_name: str) -> str:
-    return os.path.join(
-        _projects_settings_root(),
-        email,
-        "HeroAI",
-        CONFIG_SUBDIR,
-        character_name,
-        CONFIG_FILENAME,
-    )
+def _char_key(character_name: str) -> str:
+    """JSON path to a character's subtree within the account document."""
+    return f"characters/{character_name}"
 
 
 def _active_account_key() -> tuple[str, str]:
@@ -119,48 +120,8 @@ def _active_account_key() -> tuple[str, str]:
         return "", ""
 
 
-def _desktop_path() -> str:
-    return os.path.join(os.path.expanduser("~"), "Desktop", CONFIG_FILENAME)
-
-
 # ============================================================================
-# JSONC strip
-# ============================================================================
-
-def _strip_jsonc(text: str) -> str:
-    """Remove // and /* */ comments while preserving them inside strings."""
-    out: list[str] = []
-    i, n = 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == '"':
-            j = i + 1
-            while j < n:
-                if text[j] == '\\' and j + 1 < n:
-                    j += 2
-                    continue
-                if text[j] == '"':
-                    j += 1
-                    break
-                j += 1
-            out.append(text[i:j])
-            i = j
-            continue
-        if c == '/' and i + 1 < n and text[i + 1] == '/':
-            nl = text.find('\n', i)
-            i = n if nl == -1 else nl
-            continue
-        if c == '/' and i + 1 < n and text[i + 1] == '*':
-            end = text.find('*/', i + 2)
-            i = n if end == -1 else end + 2
-            continue
-        out.append(c)
-        i += 1
-    return ''.join(out)
-
-
-# ============================================================================
-# Parsing
+# Parsing (dict subtree -> ConfigState)
 # ============================================================================
 
 def _parse_priority(value: object) -> HexRemovalPriority | None:
@@ -209,17 +170,9 @@ def _parse_entry(name: str, blob: object) -> HexEntryState | None:
     )
 
 
-def _parse_file(text: str) -> ConfigState | None:
-    try:
-        stripped = _strip_jsonc(text)
-        if not stripped.strip():
-            return None
-        data = json.loads(stripped)
-    except Exception as exc:
-        _log(f"config: parse error - {exc!r}")
-        return None
+def _state_from_dict(data: object) -> ConfigState | None:
+    """Build a ConfigState from a character subtree dict (or None if unrecognized)."""
     if not isinstance(data, dict) or data.get("schema") != SCHEMA_ID:
-        _log(f"config: unrecognized schema (expected '{SCHEMA_ID}')")
         return None
 
     state = ConfigState()
@@ -240,114 +193,36 @@ def _parse_file(text: str) -> ConfigState | None:
 
 
 # ============================================================================
-# Serialization
+# Serialization (ConfigState -> dict subtree)
 # ============================================================================
 
-def _profession_for_hex(name: str) -> int:
-    try:
-        from Py4GWCoreLib import GLOBAL_CACHE
-        sid = GLOBAL_CACHE.Skill.GetID(name)
-        if sid <= 0:
-            return 0
-        prof_value, _prof_name = GLOBAL_CACHE.Skill.GetProfession(sid)
-        return int(prof_value or 0)
-    except Exception:
-        return 0
-
-
-def _serialize_entry_object(entry: HexRemovalEntry) -> str:
-    parts = [
-        f'"caster": "{_NAME_BY_PRIORITY[entry.caster]}"',
-        f'"ranged_martial": "{_NAME_BY_PRIORITY[entry.ranged_martial]}"',
-        f'"melee": "{_NAME_BY_PRIORITY[entry.melee]}"',
-    ]
-    if entry.by_profession:
-        bp_pairs: list[str] = []
+def _state_to_dict(state: ConfigState) -> dict:
+    """Render a ConfigState to the JSON subtree shape JsonFactory persists."""
+    hexes: dict[str, object] = {}
+    for name, hs in state.hexes.items():
+        entry = hs.entry
+        by_profession: dict[str, str] = {}
         for pid in _PROFESSION_ORDER:
-            if pid in entry.by_profession:
-                pname = _NAME_BY_PROFESSION_ID[pid]
-                vname = _NAME_BY_PRIORITY[entry.by_profession[pid]]
-                bp_pairs.append(f'"{pname}": "{vname}"')
-        parts.append('"by_profession": { ' + ', '.join(bp_pairs) + ' }')
-    else:
-        parts.append('"by_profession": {}')
-    return '{ ' + ', '.join(parts) + ' }'
-
-
-_FILE_HEADER = (
-    "// HeroAI Hex Removal Configuration\n"
-    "//\n"
-    "// Each hex has a removal priority for three target roles:\n"
-    "//   caster         - Mesmer, Necromancer, Elementalist, Monk, Ritualist\n"
-    "//   ranged_martial - Ranger, Paragon\n"
-    "//   melee          - Warrior, Assassin, Dervish\n"
-    "//\n"
-    "// Priorities: NONE | LOW | MED | HIGH\n"
-    "//   NONE = never remove on this role\n"
-    "//   LOW  = remove if nothing better to do\n"
-    "//   MED  = standard cleanup\n"
-    "//   HIGH = urgent removal\n"
-    "//\n"
-    "// by_profession overrides the role priority for a specific\n"
-    "// primary profession (e.g. \"Paragon\": \"HIGH\"). Empty {} = none.\n"
-    "//\n"
-    "// This config is per-character. Each character on the account\n"
-    "// has its own folder under Settings/<email>/HeroAI/Hex removal/.\n"
-    "// Edit via the GUI: HeroAI Control Panel -> Builds -> Hex Removal\n"
-    "// -> Settings tab. Or hand-edit this file; changes take effect\n"
-    "// when HeroAI reloads.\n"
-    "\n"
-)
-
-
-def _serialize_jsonc(state: ConfigState) -> str:
-    grouped: dict[int, list[str]] = {}
-    unknown: list[str] = []
-    known_prof_ids = set(_PROFESSION_BY_NAME.values())
-    for name in state.hexes.keys():
-        pid = _profession_for_hex(name)
-        if pid in known_prof_ids:
-            grouped.setdefault(pid, []).append(name)
-        else:
-            unknown.append(name)
-
-    sections: list[tuple[str, list[str]]] = []
-    for pid in _PROFESSION_ORDER:
-        names = sorted(grouped.get(pid, []))
-        if names:
-            sections.append((_NAME_BY_PROFESSION_ID[pid], names))
-    if unknown:
-        sections.append(("Other / Unresolved", sorted(unknown)))
-
-    total = sum(len(names) for _, names in sections)
-
-    buf: list[str] = [_FILE_HEADER, "{\n"]
-    buf.append(f'  "schema": "{SCHEMA_ID}",\n')
-    buf.append('  "debug": {\n')
-    buf.append(f'    "hex_removal": {str(state.debug_hex_removal).lower()},\n')
-    buf.append(f'    "hex_removal_locks": {str(state.debug_hex_removal_locks).lower()}\n')
-    buf.append('  },\n')
-    buf.append('  "hexes": {\n')
-
-    written = 0
-    for section_idx, (section_name, names) in enumerate(sections):
-        if section_idx > 0:
-            buf.append('\n')
-        buf.append(f'    // --- {section_name} ---\n')
-        for name in names:
-            written += 1
-            hs = state.hexes[name]
-            obj = _serialize_entry_object(hs.entry)
-            sep = '' if written == total else ','
-            buf.append(f'    "{name}": {obj}{sep}\n')
-
-    buf.append('  }\n')
-    buf.append('}\n')
-    return ''.join(buf)
+            if pid in entry.by_profession and pid in _NAME_BY_PROFESSION_ID:
+                by_profession[_NAME_BY_PROFESSION_ID[pid]] = _NAME_BY_PRIORITY[entry.by_profession[pid]]
+        hexes[name] = {
+            "caster": _NAME_BY_PRIORITY[entry.caster],
+            "ranged_martial": _NAME_BY_PRIORITY[entry.ranged_martial],
+            "melee": _NAME_BY_PRIORITY[entry.melee],
+            "by_profession": by_profession,
+        }
+    return {
+        "schema": SCHEMA_ID,
+        "debug": {
+            "hex_removal": state.debug_hex_removal,
+            "hex_removal_locks": state.debug_hex_removal_locks,
+        },
+        "hexes": hexes,
+    }
 
 
 # ============================================================================
-# Load logic - migration only (no auto-detect / propagation)
+# Load / normalize
 # ============================================================================
 
 def _build_initial_state() -> ConfigState:
@@ -382,57 +257,37 @@ def _normalize_loaded(parsed: ConfigState) -> tuple[ConfigState, bool]:
 
 
 # ============================================================================
-# Disk IO
+# Store IO (JsonFactory-backed)
 # ============================================================================
 
-def _load_from_disk(email: str, character_name: str) -> ConfigState:
+def _load_from_store(email: str, character_name: str) -> ConfigState:
     if not email or not character_name:
         return _build_initial_state()
 
-    path = _path_for(email, character_name)
-    if not os.path.exists(path):
-        state = _build_initial_state()
-        _save_to_disk(email, character_name, state)
-        return state
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            text = f.read()
-    except Exception as exc:
-        _log(f"config: read error '{path}' - {exc!r}")
-        return _build_initial_state()
-
-    parsed = _parse_file(text)
+    raw = _config_store().get_json(_char_key(character_name), None)
+    parsed = _state_from_dict(raw)
     if parsed is None:
         state = _build_initial_state()
-        _save_to_disk(email, character_name, state)
+        _save_to_store(character_name, state)
         return state
 
     state, dirty = _normalize_loaded(parsed)
     if dirty:
-        _save_to_disk(email, character_name, state)
+        _save_to_store(character_name, state)
     return state
 
 
-def _save_to_disk(email: str, character_name: str, state: ConfigState) -> bool:
-    if not email or not character_name:
+def _save_to_store(character_name: str, state: ConfigState) -> bool:
+    if not character_name:
         return False
-    path = _path_for(email, character_name)
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        text = _serialize_jsonc(state)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(text)
-        return True
-    except Exception as exc:
-        _log(f"config: write error '{path}' - {exc!r}")
-        return False
+    _config_store().set_json(_char_key(character_name), _state_to_dict(state))
+    return True
 
 
 def _save_active(state: ConfigState) -> bool:
-    """Save state to the active (email, character_name) location."""
-    email, char = _active_account_key()
-    return _save_to_disk(email, char, state)
+    """Save state to the active character's subtree."""
+    _email, char = _active_account_key()
+    return _save_to_store(char, state)
 
 
 # ============================================================================
@@ -477,7 +332,7 @@ def _get_state() -> ConfigState:
     global _cache_key, _cache_state
     key = _active_account_key()
     if key != _cache_key or _cache_state is None:
-        _cache_state = _load_from_disk(*key)
+        _cache_state = _load_from_store(*key)
         _cache_key = key
         _apply_debug_flags_to_runtime(_cache_state)
     return _cache_state
@@ -552,30 +407,29 @@ def set_debug_flags(hex_removal: bool, hex_removal_locks: bool) -> None:
 # ----- Import / Export -------------------------------------------------------
 
 def export_to_desktop() -> tuple[bool, str]:
-    state = _get_state()
-    text = _serialize_jsonc(state)
-    path = _desktop_path()
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(text)
-        return True, path
-    except Exception as exc:
-        return False, str(exc)
+    """Point the user at the on-disk config document for a manual backup.
+
+    The old Desktop/JSONC export was retired with the persistence migration:
+    the config now lives in a self-persisting JsonFactory document under the
+    jail, so there is nothing to hand-serialize or write out-of-jail. Returns
+    the document's on-disk path (or a not-ready message before it binds).
+    """
+    path = _config_store().path()
+    if not path:
+        return False, "Config not ready (account not bound yet)."
+    return True, path
 
 
 def import_from_text(payload: str) -> tuple[bool, str, ConfigState | None]:
-    if not payload or not payload.strip():
-        return False, "Empty payload.", None
-    parsed = _parse_file(payload)
-    if parsed is None:
-        return False, "Failed to parse payload (schema/JSON error).", None
-    if not parsed.hexes:
-        return False, "No hex entries found in payload.", None
-    return True, f"OK - {len(parsed.hexes)} entries.", parsed
+    """Retired: import from pasted text relied on hand-rolled JSONC parsing.
+
+    Kept as a stable no-op so the GUI import button does not crash. Config is
+    now managed exclusively through the jailed JsonFactory document.
+    """
+    return False, "Import from pasted text is no longer supported.", None
 
 
-def commit_imported(parsed: ConfigState) -> bool:
+def commit_imported(parsed: ConfigState | None) -> bool:
     if parsed is None:
         return False
     state, _dirty = _normalize_loaded(parsed)

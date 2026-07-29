@@ -29,6 +29,10 @@ class _UI:
         # cache for 3D path
         self._cached_path_3d: list[tuple[float, float, float]] = []
         self._cached_source_path: list[tuple[float, float]] = []
+        # One long-lived overlay for the 3D path, built on first draw. A Draw*3D appends to
+        # its overlay's occluded-draw list and registers a world-pass callback to replay it,
+        # so building one per line segment registers a callback per segment, per frame.
+        self._path_overlay = None
 
     def CancelSkillRewardWindow(self):
         self._helpers.UI.cancel_skill_reward_window()
@@ -54,10 +58,13 @@ class _UI:
 
         self._update_path_cache()
 
+        if self._path_overlay is None:
+            self._path_overlay = DXOverlay()
+
         for i in range(len(self._cached_path_3d) - 1):
             x1, y1, z1 = self._cached_path_3d[i]
             x2, y2, z2 = self._cached_path_3d[i + 1]
-            DXOverlay().DrawLine3D(
+            self._path_overlay.DrawLine3D(
                 x1, y1, z1,
                 x2, y2, z2,
                 color.to_color(),

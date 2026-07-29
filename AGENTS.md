@@ -6,6 +6,21 @@
 - README explicitly targets Python 3.13.0 32-bit for injected/runtime work. Do not casually switch interpreter versions when debugging launcher or injection issues.
 - `Py4GWCoreLib/__init__.py` is a broad convenience facade, not a minimal import surface: it manually appends system `site-packages`, re-exports most high-level modules, and redirects `sys.stdout`/`sys.stderr` into the Py4GW console. Avoid treating `import Py4GWCoreLib` as a neutral import when debugging startup/import side effects.
 
+## Persistence — HARD RULE (no exceptions)
+
+**Every file that touches disk in this project must go through one of the two sanctioned classes. There are NO bypasses, ever.**
+
+- **All INI / flat config → `Settings`** (`Py4GWCoreLib/py4gwcorelib_src/Settings.py`, wraps native `PySettings`).
+- **All JSON / structured data → `JsonFactory`** (`Py4GWCoreLib/py4gwcorelib_src/JsonFactory.py`, wraps native `PyJson`).
+
+Both are self-throttled, self-persisting singletons keyed by `(name, scope)`; scope is `"account"` or `"global"` (both jailed under `settings/` / `json/`). **There is no `"root"` scope** — it now raises. The single project-root file, `Py4GW.ini`, is reached ONLY via the hardcoded, path-less accessor `Settings.py4gw_ini()`.
+
+**Forbidden anywhere in project code** (not just "discouraged"): `open()` for config/data, `json.load`/`json.dump`, `configparser`, `pickle`, `codecs.open`, `pathlib` `read_text`/`write_text` for persistence, `shutil` copies of config, and hand-rolled atomic-write / lock-file / directory-enumeration machinery (the native side already does atomic writes, cross-process locking on `global` scope, and autosave). No IPC or cross-account comms through files — use the messaging layer (`GLOBAL_CACHE.ShMem`). Never read another account's file directly; put shared data in `global` scope.
+
+**If `Settings` / `JsonFactory` (or their native backends) do NOT provide functionality you need, STOP and notify the user to add it** — propose the missing method/primitive on the class or in `Py4GW_Reforged_Native`. Do NOT work around a gap with a raw handler. (Known open gap: reading bundled read-only catalogs shipped in the source tree needs a Native "read bundled file" primitive or a `json/Defaults/` seed template.)
+
+The only sanctioned non-class disk access: `Py4GWCoreLib/database_src/DBMgr.py` (sqlite, reworked later), and separate non-injected processes that physically cannot load the embedded modules (the external launcher, the bridge/MCP stack). Full audit + rationale in `docs/persistence_jail/`.
+
 ## Backend: legacy GWCA → Reforged Native (active migration)
 
 - The `Py4GW.dll` this Python library loads is built by a **separate sibling C++ project, `Py4GW_Reforged_Native`** (`../Py4GW_Reforged_Native`) — a 32-bit injected DLL that embeds CPython (pybind11), hooks D3D9, and renders ImGui. It is a ground-up rework **replacing the legacy GWCA backend**, itself under parity migration (GWCA managers → `GW/<module>/`). Build there is CMake (`cmake -S . -B build -A Win32` / `vs2022-win32` presets) — no build command from this Python repo applies to it.

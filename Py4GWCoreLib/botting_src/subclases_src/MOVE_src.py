@@ -36,7 +36,7 @@ class _MOVE:
     ) -> Generator[Any, Any, bool]:
         from ...Routines import Routines
         from ...Map import Map
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
+        from ...py4gwcorelib_src.loot_filters import LootFilters
         from ...enums import Range
         from ...GlobalCache import GLOBAL_CACHE
         from ...Py4GWcorelib import ConsoleLog, Console
@@ -87,16 +87,12 @@ class _MOVE:
         )
 
         loot_config_enabled = self._config.upkeep.auto_loot.is_active()
-        loot_singleton = LootConfig()
+        loot_singleton = LootFilters()
 
         def loot_pause() -> bool:
             if not loot_config_enabled:
                 return False
-            loot_array = loot_singleton.GetfilteredLootArray(
-                distance=Range.Earshot.value,
-                multibox_loot=True,
-                allow_unasigned_loot=False,
-            )
+            loot_array = loot_singleton.GetLootArray(Range.Earshot.value)
             return len(loot_array) > 0
 
         def fsm_pause() -> bool:
@@ -267,7 +263,7 @@ class _MOVE:
         import random
         from ...Routines import Routines
         from ...Map import Map
-        from ...py4gwcorelib_src.Lootconfig_src import LootConfig
+        from ...py4gwcorelib_src.loot_filters import LootFilters
         from ...enums import Range
         from ...GlobalCache import GLOBAL_CACHE
         from ...Py4GWcorelib import ConsoleLog, Console, Utils, ActionQueueManager
@@ -318,16 +314,12 @@ class _MOVE:
             else None
         )
         loot_enabled = self._config.upkeep.auto_loot.is_active()
-        loot_cfg = LootConfig()
+        loot_cfg = LootFilters()
 
         def _loot_pause() -> bool:
             if not loot_enabled:
                 return False
-            return len(loot_cfg.GetfilteredLootArray(
-                distance=Range.Earshot.value,
-                multibox_loot=True,
-                allow_unasigned_loot=False,
-            )) > 0
+            return loot_cfg.HasLoot(Range.Earshot.value)
 
         def _pause() -> bool:
             # Death should hard-pause movement so timeout windows do not

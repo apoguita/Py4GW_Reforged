@@ -1,0 +1,40 @@
+[2026-07-27 17:39:07] [Loot Filters] ====================================================================
+[2026-07-27 17:39:07] [Loot Filters] LOOT DIAGNOSTICS  agent=40 item=607 model=949
+[2026-07-27 17:39:07] [Loot Filters] ====================================================================
+[2026-07-27 17:39:07] [Loot Filters] -- what the game reports --
+[2026-07-27 17:39:07] [Loot Filters]   name ready                 False
+[2026-07-27 17:39:07] [Loot Filters]   name                       
+[2026-07-27 17:39:07] [Loot Filters]   model id                   949
+[2026-07-27 17:39:07] [Loot Filters]   item type                  (24, 'Shield')
+[2026-07-27 17:39:07] [Loot Filters]   rarity                     (2, 'Purple')
+[2026-07-27 17:39:07] [Loot Filters]   value                      194
+[2026-07-27 17:39:07] [Loot Filters]   quantity                   1
+[2026-07-27 17:39:07] [Loot Filters]   is weapon / armor          (True, False)
+[2026-07-27 17:39:07] [Loot Filters]   owner                      0
+[2026-07-27 17:39:07] [Loot Filters] -- what the CATALOG says that model is --
+[2026-07-27 17:39:07] [Loot Filters]   Steel Ingot  (Materials / Rare Materials, model 949)
+[2026-07-27 17:39:07] [Loot Filters] -- the live configuration --
+[2026-07-27 17:39:07] [Loot Filters]   master enabled             True
+[2026-07-27 17:39:07] [Loot Filters]   profile                    (none)
+[2026-07-27 17:39:07] [Loot Filters]   rarities                   white=False blue=False purple=False gold=True green=True coins=True
+[2026-07-27 17:39:07] [Loot Filters]   hand list models           382 entries  <-- CONTAINS THIS MODEL
+[2026-07-27 17:39:07] [Loot Filters]   salvage targets            0 entries
+[2026-07-27 17:39:07] [Loot Filters]   dye colours                2 entries
+[2026-07-27 17:39:07] [Loot Filters]   script-added models        0 entries
+[2026-07-27 17:39:07] [Loot Filters]   script-added drops         0 entries
+[2026-07-27 17:39:07] [Loot Filters]   blacklisted models         0 entries
+[2026-07-27 17:39:07] [Loot Filters]   vetoed item types          0 entries
+[2026-07-27 17:39:07] [Loot Filters]   suppressed drops           0 entries
+[2026-07-27 17:39:07] [Loot Filters]   active filters             0
+[2026-07-27 17:39:07] [Loot Filters] -- resolution (HAS-ANY; only the blacklist vetoes) --
+[2026-07-27 17:39:07] [Loot Filters]   [ ] blacklisted (vetoes everything else)
+[2026-07-27 17:39:07] [Loot Filters]   [ ] item type is vetoed
+[2026-07-27 17:39:07] [Loot Filters]   [ ] added by a script, this drop
+[2026-07-27 17:39:07] [Loot Filters]   [ ] added by a script, this model
+[2026-07-27 17:39:07] [Loot Filters]   [x] on a hand list: Steel Ingot  (Materials / Rare Materials, model 949)
+[2026-07-27 17:39:07] [Loot Filters]   [ ] a dye colour you want
+[2026-07-27 17:39:07] [Loot Filters]   [ ] salvages into something you want
+[2026-07-27 17:39:07] [Loot Filters]   [ ] this week's Nicholas item
+[2026-07-27 17:39:07] [Loot Filters]   [ ] gold coins
+[2026-07-27 17:39:07] [Loot Filters]   [ ] rarity: it is purple, and purple are on
+[2026-07-27 17:39:07] [Loot Filters] -- VERDICT: WANTED --

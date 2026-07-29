@@ -332,8 +332,16 @@ class BottingHelpers:
         self.parent.config.dialog_at_succeeded._apply(True)
         return True
     
+    # One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+    # occluded-draw list and registers a world-pass callback to replay it, so building one
+    # per draw_path call registers a fresh callback every frame.
+    _path_overlay: "DXOverlay | None" = None
+
     def draw_path(self, color:Color=Color(255, 255, 0, 255)) -> None:
-        overlay = DXOverlay()
+        overlay = type(self)._path_overlay
+        if overlay is None:
+            overlay = DXOverlay()
+            type(self)._path_overlay = overlay
 
         path = self.parent.config.path_to_draw
 

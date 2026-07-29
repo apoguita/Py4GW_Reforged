@@ -12,6 +12,10 @@ start_process_time = time.time()
 elapsed_time = 0.0
 pathing_object = AutoPathing()
 path_requested = False
+# One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+# occluded-draw list and registers a world-pass callback to replay it, so building one per
+# line segment registers a callback per segment, per frame.
+path_overlay = DXOverlay()
 
 # Config options
 smooth_by_los = True
@@ -29,7 +33,7 @@ def main():
                 x2, y2, z2 = points[i + 1]
                 z1 = DXOverlay.FindZ(x1, y1) - 125
                 z2 = DXOverlay.FindZ(x2, y2) - 125
-                DXOverlay().DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
+                path_overlay.DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
 
     global result_path, x, y, start_process_time, pathing_object, path_requested, elapsed_time
     global smooth_by_los, smooth_by_chaikin, margin, step_dist, chaikin_iterations

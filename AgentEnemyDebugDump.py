@@ -1,16 +1,24 @@
-import json
-import os
 import struct
 import ctypes
 
 from Py4GWCoreLib import *
+from Py4GWCoreLib import JsonFactory
 
 
 MODULE_NAME = "AgentEnemyDebugDump"
-SAMPLE_DB_PATH = os.path.join(
-    os.path.dirname(__file__) if "__file__" in globals() else ".",
-    "AgentEnemyDebugDump_samples.json",
-)
+
+# Persistent RE sample store. This is accumulated model knowledge (fleshy /
+# non-fleshy field signatures keyed by model id), not per-account preference, so
+# it lives in the cross-account json/Global jail and is read back to grow across
+# runs. Bound lazily so importing the module stays passive.
+_SAMPLE_DB: "JsonFactory | None" = None
+
+
+def _sample_db() -> JsonFactory:
+    global _SAMPLE_DB
+    if _SAMPLE_DB is None:
+        _SAMPLE_DB = JsonFactory("AgentEnemyDebugDump/samples.json", "global")
+    return _SAMPLE_DB
 KNOWN_FLESH_LABELS = {
     149: "fleshy",
     152: "fleshy",
@@ -840,33 +848,14 @@ def _format_known_field_comparisons() -> list[str]:
 
 
 def _load_sample_db() -> dict:
-    if not os.path.exists(SAMPLE_DB_PATH):
-        return {"models": {}}
-    try:
-        with open(SAMPLE_DB_PATH, "r", encoding="utf-8") as handle:
-            data = json.load(handle)
-        if not isinstance(data, dict) or not isinstance(data.get("models"), dict):
-            return {"models": {}}
-        return data
-    except Exception as exc:
-        ConsoleLog(
-            MODULE_NAME,
-            f"Failed to load sample DB '{SAMPLE_DB_PATH}': {exc}",
-            Console.MessageType.Warning,
-        )
-        return {"models": {}}
+    models = _sample_db().get_json("models", {})
+    if not isinstance(models, dict):
+        models = {}
+    return {"models": models}
 
 
 def _save_sample_db(db: dict) -> None:
-    try:
-        with open(SAMPLE_DB_PATH, "w", encoding="utf-8") as handle:
-            json.dump(db, handle, indent=2, sort_keys=True)
-    except Exception as exc:
-        ConsoleLog(
-            MODULE_NAME,
-            f"Failed to save sample DB '{SAMPLE_DB_PATH}': {exc}",
-            Console.MessageType.Warning,
-        )
+    _sample_db().set_json("models", db.get("models", {}))
 
 
 def _update_sample_db(summary: dict[int, dict]) -> dict:
@@ -931,12 +920,12 @@ def _format_persistent_known_field_comparisons(db: dict) -> list[str]:
     if len(known_records) < 2:
         return [
             f"KNOWN_FIELD_DB_COMPARE_SKIPPED persisted_known_models={len(known_records)} "
-            f"path='{SAMPLE_DB_PATH}' reason=need both fleshy and non_fleshy observed samples"
+            f"path='{_sample_db().name}' reason=need both fleshy and non_fleshy observed samples"
         ]
 
     lines = [
         f"KNOWN_FIELD_DB_COMPARE_BEGIN persisted_known_models={len(known_records)} "
-        f"path='{SAMPLE_DB_PATH}'"
+        f"path='{_sample_db().name}'"
     ]
     for field in COMPARE_FIELDS:
         fleshy = {}

@@ -5,6 +5,10 @@ import math
 from typing import List, Dict, Tuple, Optional
 
 MODULE_NAME = "A-Star test module"
+# One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+# occluded-draw list and registers a world-pass callback to replay it, so building one per
+# line segment registers a callback per segment, per frame.
+path_overlay = DXOverlay()
 
 class PathingTrapezoid:
     id: int
@@ -240,7 +244,7 @@ def main():
                         from_z = DXOverlay.FindZ(from_x, from_y) - 125
                         to_z = DXOverlay.FindZ(to_x, to_y) - 125
 
-                        DXOverlay().DrawLine3D(
+                        path_overlay.DrawLine3D(
                             from_x, from_y, from_z,
                             to_x, to_y, to_z,
                             Color(255, 255, 0, 255).to_dx_color(),  # yellow

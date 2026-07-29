@@ -20,6 +20,7 @@
 #   "auto_open_locked_chest"     - auto-send use-key / use-lockpick at a locked chest (opt-in)
 #   "faction_donate_skip_name"   - prefill character name when donating faction (opt-in)
 #   "keep_current_quest"         - keep manually-chosen quest when a new one is added (opt-in)
+#   "skip_campaign_prompt"       - auto-confirm the another-campaign mission-entry prompt (opt-in)
 #
 # Every toggle is addressed by name and returns False when the name is unknown.
 # The set_*/get_* config functions below target a specific listener directly; a

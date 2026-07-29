@@ -1,14 +1,16 @@
 """Account-scoped hero team setup model for modular party loading."""
 from __future__ import annotations
 
-import json
 import os
 import re
 from typing import Any
 
+from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib import Player
 
 from .paths import modular_settings_root
+
+HERO_CONFIG_DOC = "ModularBot/hero_config.json"
 
 
 HERO_CATALOG = [
@@ -147,41 +149,17 @@ def normalize_hero_config(raw: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _load_hero_config_file(path: str) -> dict[str, Any] | None:
-    try:
-        with open(path, "r", encoding="utf-8") as handle:
-            loaded = json.load(handle)
-        return normalize_hero_config(loaded if isinstance(loaded, dict) else {})
-    except Exception:
-        return None
-
-
-def _write_hero_config_file(path: str, config: dict[str, Any]) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    normalized = normalize_hero_config(config)
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(normalized, handle, indent=2, sort_keys=True)
-        handle.write("\n")
+def _hero_config_doc() -> JsonFactory:
+    return JsonFactory(HERO_CONFIG_DOC)
 
 
 def load_hero_config() -> dict[str, Any]:
-    path = hero_config_path()
-    default_path = default_hero_config_path()
-
-    config = _load_hero_config_file(path) if os.path.isfile(path) else None
-    if config is not None:
-        return config
-
-    config = _load_hero_config_file(default_path) if os.path.isfile(default_path) else None
-    if config is None:
-        config = default_hero_config()
-
-    _write_hero_config_file(path, config)
-    return config
+    raw = _hero_config_doc().get_json("", None)
+    return normalize_hero_config(raw if isinstance(raw, dict) else None)
 
 
 def save_hero_config(config: dict[str, Any]) -> None:
-    _write_hero_config_file(hero_config_path(), config)
+    _hero_config_doc().set_json("", normalize_hero_config(config))
 
 
 def load_hero_priority() -> list[int]:

@@ -5,6 +5,7 @@ import importlib.util
 import os
 import sys
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.py4gwcorelib_src.JsonFactory import JsonFactory
 from Py4GWCoreLib.ImGui import ImGui
 from Py4GWCoreLib.py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color, ColorPalette
@@ -231,44 +232,35 @@ class ModelPopUp:
 
             PyImGui.end_table()
 
-        exports_dir = os.path.join(PySystem.Console.get_projects_path(), "Settings", "Exports")
-        export_path = os.path.join(exports_dir, f"{self._export_filename}.txt") if self._export_filename else ""
-        if export_path:
+        if self._export_filename:
+            # Shared across accounts (global), routed through the JSON jail — no raw file I/O.
+            _export_doc = JsonFactory(f"Widgets/InventoryPlus/Exports/{self._export_filename}.json", "global")
             if PyImGui.button("Export"):
                 try:
-                    os.makedirs(exports_dir, exist_ok=True)
-                    with open(export_path, "w") as f:
-                        f.write(",".join(str(mid) for mid in self.blacklist))
-                    self._feedback_msg = f"Saved {len(self.blacklist)} item(s) to {self._export_filename}.txt"
+                    _export_doc.set_json("blacklist", [int(mid) for mid in self.blacklist])
+                    self._feedback_msg = f"Saved {len(self.blacklist)} item(s) to {self._export_filename}"
                 except Exception as e:
                     self._feedback_msg = f"Export failed: {e}"
                 self._feedback_frames = 180
             if PyImGui.is_item_hovered():
                 PyImGui.begin_tooltip()
-                PyImGui.text(f"Save blacklist to:\n{export_path}")
+                PyImGui.text(f"Save blacklist to:\n{_export_doc.name}")
                 PyImGui.end_tooltip()
             PyImGui.same_line(0, -1)
             if PyImGui.button("Import"):
                 try:
-                    with open(export_path, "r") as f:
-                        content = f.read()
                     imported = 0
-                    for token in content.split(","):
-                        token = token.strip()
-                        if token.isdigit():
-                            mid = int(token)
-                            if mid not in self.blacklist:
-                                self.blacklist.append(mid)
-                                imported += 1
-                    self._feedback_msg = f"Imported {imported} new item(s) from {self._export_filename}.txt"
-                except FileNotFoundError:
-                    self._feedback_msg = f"File not found: {self._export_filename}.txt"
+                    for mid in _export_doc.get_json("blacklist", []):
+                        if isinstance(mid, int) and mid not in self.blacklist:
+                            self.blacklist.append(mid)
+                            imported += 1
+                    self._feedback_msg = f"Imported {imported} new item(s) from {self._export_filename}"
                 except Exception as e:
                     self._feedback_msg = f"Import failed: {e}"
                 self._feedback_frames = 180
             if PyImGui.is_item_hovered():
                 PyImGui.begin_tooltip()
-                PyImGui.text(f"Load blacklist from:\n{export_path}")
+                PyImGui.text(f"Load blacklist from:\n{_export_doc.name}")
                 PyImGui.end_tooltip()
             PyImGui.same_line(0, -1)
         if PyImGui.button("Close"):

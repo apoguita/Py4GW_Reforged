@@ -1,12 +1,10 @@
-import json
-import os
-
 from Py4GWCoreLib import (
 	Agent,
 	AgentArray,
 	Color,
 	GLOBAL_CACHE,
 	ImGui,
+	JsonFactory,
 	Map,
 	Player,
 	Py4GW,
@@ -31,9 +29,10 @@ _DIALOG_COOLDOWN_TIMER.Reset()
 
 _armor_written_this_map: bool = False
 
-_EQUIPPED_ARMOR_FILE = os.path.join(
-	PySystem.Console.get_projects_path(), "Widgets", "Config", "EquippedArmor.json"
-)
+# Shared, cross-account equipped-armor document (global scope so every multibox
+# client reads/writes the same map keyed by account email). Underworld.py binds
+# this same (name, scope) pair.
+_armor_doc = JsonFactory("Widgets/EquippedArmor.json", "global")
 
 
 def _write_equipped_armor_json() -> None:
@@ -53,16 +52,13 @@ def _write_equipped_armor_json() -> None:
 				continue
 			slots[str(slot)] = model_id
 
-		# Read existing file, merge this account's entry, write back atomically.
-		all_armor: dict = {}
-		if os.path.exists(_EQUIPPED_ARMOR_FILE):
-			with open(_EQUIPPED_ARMOR_FILE, "r") as f:
-				all_armor = json.load(f)
-
-		# Migrate old flat format {"2": 123} -> {"normal": {"2": 123}, "sacrifice": {}}
-		existing = all_armor.get(email, {})
+		# Merge this account's entry into the shared armor document.
+		existing = _armor_doc.get_json(email, {})
 		if not isinstance(existing, dict) or "normal" not in existing:
-			old_slots = {k: v for k, v in existing.items() if isinstance(k, str) and k.isdigit()}
+			old_slots = (
+				{k: v for k, v in existing.items() if isinstance(k, str) and k.isdigit()}
+				if isinstance(existing, dict) else {}
+			)
 			existing = {"normal": old_slots, "sacrifice": {}}
 
 		# Skip writing if sacrifice armor is currently equipped to avoid overwriting
@@ -75,12 +71,7 @@ def _write_equipped_armor_json() -> None:
 			return
 
 		existing["normal"] = slots
-		all_armor[email] = existing
-
-		tmp_path = _EQUIPPED_ARMOR_FILE + ".tmp"
-		with open(tmp_path, "w") as f:
-			json.dump(all_armor, f, indent=2)
-		os.replace(tmp_path, _EQUIPPED_ARMOR_FILE)
+		_armor_doc.set_json(email, existing)
 	except Exception as e:
 		PySystem.Console.Log(MODULE_NAME, f"Armor write error: {e}", PySystem.Console.MessageType.Warning)
 

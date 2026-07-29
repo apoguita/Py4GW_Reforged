@@ -92,6 +92,9 @@ CATALOG: "tuple[Category, ...]" = (
                      help="Return the party to the outpost on a wipe (only when you are the party leader)."),
             Listener(name="keep_current_quest", label="Keep current quest",
                      help="Keep your manually-chosen quest active when the game auto-adds a new one."),
+            Listener(name="skip_campaign_prompt", label="Skip another-campaign prompt",
+                     help="Auto-confirm the prompt shown when entering a mission with a character "
+                          "from another campaign."),
         ),
     ),
     Category(
@@ -131,6 +134,16 @@ CATALOG: "tuple[Category, ...]" = (
         key="agents", title="Agents", icon="ICON_USER_SECRET",
         # Custom category: no listeners. Rendered by the name_obfuscation package's tabbed section
         # (see system_settings.config_ui.build_window). Future agent-facing options go here too.
+        listeners=(),
+    ),
+    Category(
+        key="loot", title="Loot", icon="ICON_BOX_OPEN",
+        # Custom category: no listeners. Holds the loot system's subcategories, each rendering its own
+        # tabbed section: the Loot Filter Factory and Beacons (authoring surfaces, standing on their
+        # own) beside Loot Filters and Recolor & Beacons (the features that consume them).
+        #
+        # NOT folded into `items` -- that key is already "Items & Merchants" and carries native
+        # listeners; reusing it would have skipped them.
         listeners=(),
     ),
     Category(

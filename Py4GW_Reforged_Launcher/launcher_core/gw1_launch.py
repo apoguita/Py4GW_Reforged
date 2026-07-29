@@ -708,7 +708,7 @@ def _apply_gw1_registry_fix(profile: GameProfile, log: list) -> None:
 
 def _prepare_per_profile_gmod_folder(profile: GameProfile) -> str:
     """Builds/refreshes `profile`'s per-profile gMod folder and returns the path
-    to the gMod.dll that should actually be injected -- never
+    to the gMod DLL that should actually be injected -- never
     `profile.gmod_dll_path` directly.
 
     gMod resolves modlist.txt relative to wherever its *injected* DLL module
@@ -719,30 +719,57 @@ def _prepare_per_profile_gmod_folder(profile: GameProfile) -> str:
     together with accounts.json/launcher_settings.json, same "everything
     stays inside the repo" requirement) containing:
 
-    - gMod.dll: a hardlink to profile.gmod_dll_path (os.link), always deleted
-      and recreated on every launch rather than diffed, to guarantee it's
-      never stale. Falls back to a real copy (shutil.copy2) if os.link raises
-      (e.g. gmod_dll_path is on a different volume than %AppData%).
+    - A per-launch DLL named `gMod_<pid>_<ns>.dll` -- hardlinked to
+      profile.gmod_dll_path when possible (os.link), otherwise copied
+      (shutil.copy2 fallback for cross-volume cases). The filename is unique
+      per launch (not the fixed name "gMod.dll") to sidestep a Windows-only
+      lock interaction: every profile's gmod_dll_path auto-defaults to the
+      *same* source file (`<mod_root>/Addons/gMod.dll` -- see
+      mod_root.find_dll_under_mod_root), so once account #1 launches and
+      GW.exe #1 has that file loaded as an executable, the underlying NTFS
+      inode is opened without FILE_SHARE_WRITE. Re-hardlinking the source
+      then fails with ACCESS_DENIED (CreateHardLinkW needs
+      FILE_WRITE_ATTRIBUTES on the source to bump its link count), and even
+      the shutil.copy2 fallback can trip: unlink() of the previous
+      per-profile "gMod.dll" marks it delete-pending while the loaded inode
+      is still referenced, and open(dst, 'wb') at that same path returns
+      ACCESS_DENIED until every handle closes. A fresh unique filename each
+      launch avoids both problems -- the injector uses LoadLibraryA on the
+      full path so the filename doesn't matter, and gMod only cares about
+      its DLL's *folder* for modlist.txt lookup.
     - modlist.txt: one absolute path per line, from profile.gmod_plugin_paths.
       Entries that don't currently exist on disk are pruned from this file but
       never from profile.gmod_plugin_paths itself -- a temporarily missing
       path (an unplugged USB drive, say) shouldn't permanently drop a
       configured mod, just skip it for this one launch.
 
-    Raises on any failure (folder creation, or both the hardlink and the copy
-    fallback failing) rather than swallowing it -- the caller aborts the
-    launch on this, same as any other injection-prep failure in this pipeline.
+    Best-effort deletes any stale `gMod_*.dll` siblings from prior launches,
+    plus any pre-fix legacy `gMod.dll` at the folder root -- expected to
+    succeed for exited processes' files, and to silently fail (leaving the
+    file for a later pass) while a previous launch is still running with its
+    DLL loaded.
+
+    Raises on any failure that actually blocks producing a usable DLL for
+    this launch (folder creation, or both the hardlink and the copy fallback
+    failing) rather than swallowing it -- the caller aborts the launch on
+    this, same as any other injection-prep failure in this pipeline.
     """
     folder = mod_root.resolve_mod_repo_path() / "Settings" / "Py4GW_Reforged_Launcher" / "accounts" / profile.id
     folder.mkdir(parents=True, exist_ok=True)
 
-    dll_dest = folder / "gMod.dll"
-    if dll_dest.exists():
-        dll_dest.unlink()
+    dll_dest = folder / f"gMod_{os.getpid()}_{time.time_ns()}.dll"
     try:
         os.link(profile.gmod_dll_path, dll_dest)
     except OSError:
         shutil.copy2(profile.gmod_dll_path, dll_dest)
+
+    for stale in list(folder.glob("gMod_*.dll")) + [folder / "gMod.dll"]:
+        if stale == dll_dest or not stale.exists():
+            continue
+        try:
+            stale.unlink()
+        except OSError:
+            pass
 
     modlist_path = folder / "modlist.txt"
     existing_paths = [p for p in profile.gmod_plugin_paths if os.path.exists(p)]

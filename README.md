@@ -100,23 +100,4 @@ Contributions are welcome:
 3. Commit your changes and push the branch.
 4. Open a pull request for review.
 
-### Stop tracking local log and config files
-
-To stop tracking local changes to the log and configuration files, remove them
-from the worktree:
-
-    git update-index --skip-worktree Py4GW_injection_log.txt
-    git update-index --skip-worktree Py4GW.ini
-    git update-index --skip-worktree Py4GW_Launcher.ini
-
-Verify they are skipped (each should be prefixed with S):
-
-    git ls-files -v | grep "^S"
-
-Re-enable tracking with:
-
-    git update-index --no-skip-worktree Py4GW_injection_log.txt
-    git update-index --no-skip-worktree Py4GW.ini
-    git update-index --no-skip-worktree Py4GW_Launcher.ini
-
 ------------------------------------------------------------------------------

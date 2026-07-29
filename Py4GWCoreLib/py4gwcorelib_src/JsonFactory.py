@@ -38,8 +38,10 @@ Scopes (where the file lives, and when it binds)
   Binds immediately. Because multiple clients (multibox) share the file, Global saves take a
   **cross-process lock** and merge a per-document write journal onto the current on-disk tree, so
   two accounts writing different paths both survive (only same-path writes race, last-writer-wins).
-- ``"root"``    -> ``<name>`` at the project root. Shared, binds immediately; reserved for core
-  files. Application scripts should prefer ``account`` or ``global``.
+
+There is deliberately **no ``"root"`` scope** for JSON — every document lives strictly under
+``json/``, so no name/scope can write outside the jail. (The only project-root exception in the whole
+system is the INI-only ``Py4GW.ini``; see ``Settings.py4gw_ini``.)
 
 Saving is automatic (do not micro-manage it)
 --------------------------------------------
@@ -89,7 +91,17 @@ class JsonFactory:
 
         Mirrors the native "one document per (name, scope)" guarantee on the Python side: two
         constructions with the same pair yield the *same* ``JsonFactory`` object.
+
+        ``scope`` must be ``"account"`` or ``"global"``; both resolve strictly under ``json/``. There
+        is **no** ``"root"`` scope for JSON — every document lives under ``json/``, so no name/scope
+        can write outside the jail. (The only project-root exception in the whole system is the
+        INI-only ``Py4GW.ini``; see :meth:`Settings.py4gw_ini`.)
         """
+        if str(scope) not in ('account', 'global'):
+            raise ValueError(
+                f"JsonFactory scope must be 'account' or 'global' (got {scope!r}); "
+                "JSON documents always live under json/ — there is no root scope"
+            )
         instance_key = (str(name), str(scope))
         existing = cls._instances.get(instance_key)
         if existing is not None:
@@ -101,8 +113,8 @@ class JsonFactory:
     def __init__(self, name: str, scope: str = 'account') -> None:
         """Bind to the ``(name, scope)`` document (opening it on the native side once).
 
-        ``scope`` is ``"account"`` (per-account, default), ``"global"`` (machine-wide), or
-        ``"root"`` (project root; reserved for core files). Guarded so the shared instance is only
+        ``scope`` is ``"account"`` (per-account, default) or ``"global"`` (machine-wide); both live
+        under ``json/``. There is no ``"root"`` scope for JSON. Guarded so the shared instance is only
         initialized once even though callers may construct it repeatedly.
         """
         if getattr(self, '_initialized', False):
@@ -169,7 +181,7 @@ class JsonFactory:
 
     @property
     def scope(self) -> str:
-        """The document's scope: ``"account"``, ``"global"``, or ``"root"``."""
+        """The document's scope: ``"account"`` or ``"global"`` (JSON has no root scope)."""
         return self._scope
 
     # ------------------------------------------------------------------

@@ -7,6 +7,10 @@ from Py4GWCoreLib import GLOBAL_CACHE
 from typing import List, Tuple
 
 MODULE_NAME = "Factions Profession Leveler"
+# One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+# occluded-draw list and registers a world-pass callback to replay it, so building one per
+# line segment registers a callback per segment, per frame.
+path_overlay = DXOverlay()
 
 class FSM_Config:
     def __init__(self):
@@ -378,7 +382,7 @@ class FSM_Config:
                 x2, y2 = points[i + 1]
                 z1 = DXOverlay.FindZ(x1, y1) - 125
                 z2 = DXOverlay.FindZ(x2, y2) - 125
-                DXOverlay().DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
+                path_overlay.DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
             
     from typing import List, Tuple
 

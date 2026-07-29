@@ -342,7 +342,6 @@ class UI():
         PyImGui.text(f"From: {Map.GetMapName(quest.map_from)}")
         PyImGui.text(f"To: {Map.GetMapName(quest.map_to)}")
         PyImGui.text(f"Marker X,Y: ({quest.quest_marker[0]}, {quest.quest_marker[1]})")
-        PyImGui.end_child()
 
     @staticmethod
     def draw_modal():

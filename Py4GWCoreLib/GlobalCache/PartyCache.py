@@ -351,57 +351,27 @@ class PartyCache:
     class _Pets:
         def __init__(self, parent):
             self._parent = parent
+            
+        def SetPetBehavior(self, behavior, lock_target_id):
+            self._parent._action_queue_manager.AddAction("ACTION", self._parent._party_instance.SetPetBehavior, behavior, lock_target_id)
+            
+        def GetPetInfo(self, owner_id):
+            return self._parent._party_instance.GetPetInfo(owner_id)
 
-        def SetPetBehavior(self, behavior, lock_target_id: int) -> None:
-            self._parent._action_queue_manager.AddAction(
-                "ACTION",
-                self._parent._party_instance.SetPetBehavior,
-                behavior,
-                lock_target_id,
-            )
-
-        def GetPetInfo(self, owner_id: int):
-            try:
-                return self._parent._party_instance.GetPetInfo(int(owner_id or 0))
-            except Exception:
-                return None
-
-        def GetPetBehavior(self, owner_id: int):
-            pet_info = self.GetPetInfo(owner_id)
-            if pet_info is None:
+        def GetPetBehavior(self, owner_id):
+            pet_info =  self.GetPetInfo(owner_id)
+            if not pet_info:
                 return False
-
-            try:
-                return pet_info.behavior
-            except Exception:
-                return False
-
-        def GetPetID(self, owner_id: int) -> int:
-            pet_info = self.GetPetInfo(owner_id)
-            if pet_info is None:
+            return pet_info.behavior
+        
+        def GetPetID(self, owner_id):
+            pet_info =  self.GetPetInfo(owner_id)
+            if not pet_info:
                 return 0
-
-            try:
-                return int(pet_info.agent_id or 0)
-            except Exception:
-                return 0
-
-        def GetPetOwnerID(self, owner_id: int) -> int:
-            pet_info = self.GetPetInfo(owner_id)
-            if pet_info is None:
-                return 0
-
-            try:
-                return int(pet_info.owner_agent_id or 0)
-            except Exception:
-                return 0
-
-        def GetPetLockedTargetID(self, owner_id: int) -> int:
-            pet_info = self.GetPetInfo(owner_id)
-            if pet_info is None:
-                return 0
-
-            try:
-                return int(pet_info.locked_target_id or 0)
-            except Exception:
-                return 0
+            return pet_info.agent_id
+            
+            
+            
+            
+        
+        

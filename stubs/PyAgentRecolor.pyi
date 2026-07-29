@@ -134,6 +134,15 @@ def set_item_agent_color(agent_id: int, argb: int) -> None:
 
 def remove_item_agent_color(agent_id: int) -> bool: ...
 
+def set_item_agent_colors(rules: list[tuple[int, int]]) -> None:
+    """Replace the WHOLE per-item-agent store with `rules` ((agent_id, argb) tuples).
+
+    Ids not present are dropped; the item_id / model / name / type / rarity stores are
+    untouched. The bulk path for marking: Python resolves the full matched set each pass
+    and hands over one already-decided color per agent in a single call.
+    """
+    ...
+
 def set_item_id_color(item_id: int, argb: int) -> None:
     """Recolor by item id."""
     ...

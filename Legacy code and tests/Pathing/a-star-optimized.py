@@ -9,6 +9,10 @@ from typing import List, Tuple, Optional, Dict
 PathingTrapezoid = PathingTrapezoidStruct
 PathingPortal = PortalStruct
 MODULE_NAME = "Portal Pathfinding"
+# One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+# occluded-draw list and registers a world-pass callback to replay it, so building one per
+# line segment registers a callback per segment, per frame.
+path_overlay = DXOverlay()
 
 class AABB:
     def __init__(self, t: PathingTrapezoid):
@@ -680,7 +684,7 @@ def main():
                 x2, y2 = points[i + 1]
                 z1 = DXOverlay.FindZ(x1, y1) - 125
                 z2 = DXOverlay.FindZ(x2, y2) - 125
-                DXOverlay().DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
+                path_overlay.DrawLine3D(x1, y1, z1, x2, y2, z2, color, False)
             
     global navmesh, astar
     global raw_path_points, los_path_points, los_chaikin_path_points, chaikin_only_path_points,x,y

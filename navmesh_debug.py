@@ -15,6 +15,10 @@ from Py4GWCoreLib.Player import Player
 MODULE_NAME = 'NavMesh Debug'
 
 _autopath = AutoPathing()
+# One long-lived overlay for the path lines. A Draw*3D appends to its overlay's
+# occluded-draw list and registers a world-pass callback to replay it, so building one per
+# line segment registers a callback per segment, per frame.
+_path_overlay = DXOverlay()
 _logs: list[str] = []
 _target_x = 0
 _target_y = 0
@@ -522,7 +526,7 @@ def _draw_path_overlay() -> None:
     for idx in range(len(_path_result) - 1):
         x1, y1, z1 = _path_result[idx]
         x2, y2, z2 = _path_result[idx + 1]
-        DXOverlay().DrawLine3D(x1, y1, z1 - 125, x2, y2, z2 - 125, color, False)
+        _path_overlay.DrawLine3D(x1, y1, z1 - 125, x2, y2, z2 - 125, color, False)
 
 
 def main() -> None:

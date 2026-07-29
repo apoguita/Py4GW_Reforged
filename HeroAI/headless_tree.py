@@ -5,7 +5,8 @@ from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 from Py4GWCoreLib.routines_src.BehaviourTrees import BehaviorTree
-from Py4GWCoreLib import ActionQueueManager, LootConfig, Range, SharedCommandType, ThrottledTimer, Utils
+from Py4GWCoreLib import ActionQueueManager, Range, SharedCommandType, ThrottledTimer, Utils
+from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
 
 from .cache_data import CacheData
 from .follow.follower_runtime import (
@@ -114,11 +115,7 @@ class HeroAIHeadlessTree:
             self.cached_data.in_looting_routine = False
             return BehaviorTree.NodeState.FAILURE
 
-        loot_array = LootConfig().GetfilteredLootArray(
-            Range.Earshot.value,
-            multibox_loot=True,
-            allow_unasigned_loot=False,
-        )
+        loot_array = LootFilters().GetLootArray(Range.Earshot.value)
         if len(loot_array) == 0:
             self.cached_data.in_looting_routine = False
             return BehaviorTree.NodeState.FAILURE

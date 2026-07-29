@@ -21,8 +21,10 @@ __widget__ = {
 class WidgetConfig:
     def __init__(self):
         self.action_queue_manager = ActionQueueManager()
-        #LootConfig is kept alive by itself being an instance of LootConfig
-        self.loot_config = LootConfig()
+        # The loot singleton is kept alive by holding it.
+        from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+
+        self.loot_config = LootFilters()
 
         self.overlay = Overlay()
         
@@ -75,7 +77,7 @@ def tooltip():
     PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
     PyImGui.bullet_text("Manages multiple action queues for different activities.")
     PyImGui.bullet_text("Throttles queue processing to optimize performance.")
-    PyImGui.bullet_text("Integrates with LootConfig for item management.")
+    PyImGui.bullet_text("Integrates with Loot Filters for item management.")
     PyImGui.bullet_text("Upkeeps Singletons")
     
     PyImGui.spacing()
@@ -94,7 +96,11 @@ def main():
     if Routines.Checks.Map.MapValid():
         GLOBAL_CACHE._update_cache()
     else:
-        LootConfig().ClearItemIDBlacklist()
+        # A map change makes every agent/item id meaningless, so the loot class clears its own
+        # session ids. Driving it from here as well keeps the old behaviour when the map is invalid.
+        from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+
+        LootFilters().on_map_change()
     
     for routine in GLOBAL_CACHE.Coroutines[:]:
         try:

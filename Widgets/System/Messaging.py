@@ -11,7 +11,7 @@ from Py4GWCoreLib import ActionQueueManager
 from Py4GWCoreLib import CombatPrepSkillsType
 from Py4GWCoreLib import Console
 from Py4GWCoreLib import ConsoleLog
-from Py4GWCoreLib import LootConfig
+from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
 import PyImGui
 import PySystem
 from Py4GWCoreLib import Range, TitleID
@@ -1657,7 +1657,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
 
     GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
 
-    loot_array = LootConfig().GetfilteredLootArray(Range.Earshot.value, multibox_loot=True)
+    loot_array = LootFilters().GetLootArray(Range.Earshot.value)
     if len(loot_array) == 0:
         RestoreHeroAISnapshot(message.ReceiverEmail)  # <-- missing before
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
@@ -1671,7 +1671,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
         DisableHeroAIOptions(message.ReceiverEmail)
         yield from Routines.Yield.wait(100)
         while True:
-            loot_array = LootConfig().GetfilteredLootArray(Range.Earshot.value, multibox_loot=True)
+            loot_array = LootFilters().GetLootArray(Range.Earshot.value)
             if len(loot_array) == 0:
                 break
             item_id = 0
@@ -1689,7 +1689,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
 
             exit_reason = _get_loot_exit_reason()
             if exit_reason:
-                LootConfig().AddItemIDToBlacklist(item_id)
+                LootFilters().report_failed(item_id)
                 if claimed_item_id:
                     clear_loot_lock(claimed_item_id)
                     claimed_item_id = 0
@@ -1710,7 +1710,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
             pos = Agent.GetXY(item_id)
             follow_success = yield from Routines.Yield.Movement.FollowPath([pos], timeout=10000)
             if not follow_success:
-                LootConfig().AddItemIDToBlacklist(item_id)
+                LootFilters().report_failed(item_id)
                 if claimed_item_id:
                     clear_loot_lock(claimed_item_id)
                     claimed_item_id = 0
@@ -1739,7 +1739,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
 
                 delta = current_time - start_time
                 if delta > timeout:
-                    LootConfig().AddItemIDToBlacklist(item_id)
+                    LootFilters().report_failed(item_id)
                     if claimed_item_id:
                         clear_loot_lock(claimed_item_id)
                         claimed_item_id = 0
@@ -1753,7 +1753,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
 
                 exit_reason = _get_loot_exit_reason()
                 if exit_reason:
-                    LootConfig().AddItemIDToBlacklist(item_id)
+                    LootFilters().report_failed(item_id)
                     if claimed_item_id:
                         clear_loot_lock(claimed_item_id)
                         claimed_item_id = 0
@@ -1772,7 +1772,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
                     ActionQueueManager().ResetAllQueues()
                     return
 
-                loot_array = LootConfig().GetfilteredLootArray(Range.Earshot.value, multibox_loot=True)
+                loot_array = LootFilters().GetLootArray(Range.Earshot.value)
                 if item_id not in loot_array or len(loot_array) == 0:
                     if claimed_item_id:
                         clear_loot_lock(claimed_item_id)

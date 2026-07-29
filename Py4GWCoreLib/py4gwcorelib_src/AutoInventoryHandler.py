@@ -3,7 +3,6 @@ from typing import Optional, Callable
 from .Console import ConsoleLog, Console
 from .Timer import ThrottledTimer
 from .ActionQueue import ActionQueueManager
-from .Lootconfig_src import LootConfig
 
 class AutoInventoryHandler():
     _instance = None
@@ -455,15 +454,17 @@ class AutoInventoryHandler():
         }
 
         # Build once per deposit run instead of once per item.
-        for category, subcats in LootConfig().LootGroups.items():
-            if category not in selected_filters:
-                continue
+        #
+        # Read from the item catalog (package data) rather than the old LootConfig's runtime
+        # LootGroups dict. Same taxonomy, settled names: a **category** contains **groups**
+        # (what LootConfig called category / subcategory).
+        from .item_catalog import catalog as catalog_data
 
-            allowed_subcats = selected_filters[category]
-            for subcat, items in subcats.items():
-                if allowed_subcats is not None and subcat not in allowed_subcats:
+        for category, allowed_groups in selected_filters.items():
+            for entry in catalog_data.in_category(category):
+                if allowed_groups is not None and entry.group not in allowed_groups:
                     continue
-                event_items.update(m.value for m in items)
+                event_items.add(entry.model_id)
 
         self._debug_log(
             "Deposit",
