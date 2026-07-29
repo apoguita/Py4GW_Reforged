@@ -314,7 +314,6 @@ def _configure_runtime_upkeeps(enabled: bool | None = None) -> None:
         looting_enabled=True,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
-        activate_widget_list=("LootManager",),
         consumable_upkeeps=_enabled_consumable_upkeeps() if _runtime_consumables_enabled else (),
         enable_party_wipe_recovery=True,
         heroai_state_logging=False,

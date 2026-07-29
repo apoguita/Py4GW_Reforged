@@ -74,7 +74,7 @@ def _pacifist(name: str = "Configure Pacifist") -> BehaviorTree:
     )
 
 
-def _prepare_standard_party() -> BehaviorTree:
+def _prepare_standard_party_olias() -> BehaviorTree:
     heroes = [
         HeroType.Vekk.value,
         HeroType.Ogden.value,
@@ -105,7 +105,69 @@ def _prepare_standard_party() -> BehaviorTree:
         ],
     )
 
-def _prepare_standard_party_olias() -> BehaviorTree:
+def _prepare_standard_party_xandra() -> BehaviorTree:
+    heroes = [
+            HeroType.Vekk.value,
+            HeroType.Ogden.value,
+            HeroType.Gwen.value,
+            HeroType.MOX.value,
+            HeroType.Olias.value,
+            HeroType.Xandra.value
+        ]
+    templates = [
+            "OgljgwMpZO0iwB5Qp5N0h14dMA",
+            "OwUTMwmCZaj4upB8ioLKDoHghAA",
+            "OQhkAsC8gFKCNM95gpLDDRGcxA",
+            "OgejkqrMLOfb2Luj7Ku72jbzLA",
+            "OAhjUwGpYOyhqAVANUVxYezLGA",
+            "OAOjAyhDJPYTnp17xFOhmtkLGA"
+        ]
+    return BT.Sequence(
+            name="Prepare Standard EotN Party",
+            children=[
+                BT.CreateParty(
+                    hero_ids=heroes,
+                    henchman_ids=[3],
+                    multibox_invite=False,
+                    log=True,
+                ),
+                *[
+                    BT.LoadHeroSkillbar(index, template, log=True)
+                    for index, template in enumerate(templates, start=1)
+                ],
+            ],
+        )
+
+def _prepare_standard_party() -> BehaviorTree:
+    heroes = [
+        HeroType.Vekk.value,
+        HeroType.Ogden.value,
+        HeroType.Gwen.value,
+        HeroType.MOX.value,
+    ]
+    templates = [
+        "OgljgwMpZO0iwB5Qp5N0h14dMA",
+        "OwUTMwmCZaj4upB8ioLKDoHghAA",
+        "OQhkAsC8gFKCNM95gpLDDRGcxA",
+        "OgejkqrMLOfb2Luj7Ku72jbzLA",
+    ]
+    return BT.Sequence(
+        name="Prepare Standard EotN Party",
+        children=[
+            BT.CreateParty(
+                hero_ids=heroes,
+                henchman_ids=[1,3,6,9],
+                multibox_invite=False,
+                log=True,
+            ),
+            *[
+                BT.LoadHeroSkillbar(index, template, log=True)
+                for index, template in enumerate(templates, start=1)
+            ],
+        ],
+    )
+
+def _prepare_standard_party2() -> BehaviorTree:
     heroes = [
         HeroType.Vekk.value,
         HeroType.Ogden.value,
@@ -329,7 +391,7 @@ def TravelToGunnarsHold() -> BehaviorTree:
         name="Run to Gunnar's Hold",
         map_id_or_name="Eye of the North outpost",
         children=[
-            _prepare_standard_party(),
+            _prepare_standard_party_olias(),
             _aggressive(),
             BT.MoveAndExitMap
                 (Vec2f(1522.0, 464.0),target_map_id=499),
@@ -988,12 +1050,9 @@ def TravelToSifhalla() -> BehaviorTree:
         name="Run to Sifhalla",
         map_id_or_name=644,
         children=[
+            _prepare_standard_party_xandra(),
             _aggressive(),
-            BT.VanquishNode([
-                (16003.853515, -6544.087402),
-                (15193.037109, -6387.140625),
-            ]),
-            BT.WaitForMapLoad(map_name="Norrhart Domains"),
+            BT.MoveAndExitMap(Vec2f(15193, -6387), target_map_name="Norrhart Domains"),
             BT.VanquishNode([
                 (13337.167968, -3869.252929),
                 (9826.771484, 416.337768),
@@ -1817,8 +1876,8 @@ def TheElusiveGolemancer() -> BehaviorTree:
             ]),
             _aggressive(),
             BT.AutoDialog(0x84),
-            BT.MoveAndDialog(Vec2f(-2639.0, -15247.0)),
-            BT.MoveAndDialog(Vec2f(3833.0, -16855.0)),
+            #BT.MoveAndDialog(Vec2f(-2639.0, -15247.0)),
+            #BT.MoveAndDialog(Vec2f(3833.0, -16855.0)),
             BT.VanquishNode([(3042.09, -16940.08), (2763.47, -17007.67)]),
             BT.Wait(10_000),
             BT.Move(Vec2f(3348.06, -16214.14)),
@@ -2170,7 +2229,7 @@ def CompleteOliasUnlock(log: bool = True) -> BehaviorTree:
         children=[
             ToLionsArch(),
             BT.LeaveParty(),
-            _prepare_standard_party(),
+            _prepare_standard_party2(),
             BT.MoveAndDialog(Vec2f(-1137.00, 2501.00), 0x84, log=log),
             BT.WaitForMapLoad(map_id=471),
             BT.Wait(3_000),
@@ -2277,9 +2336,6 @@ def ensure_botting_tree() -> BottingTree:
                 looting_enabled=True,
                 resurrection_scroll=True,
                 auto_inventory_handler_enabled=True,
-                activate_widget_list=(
-                    "LootManager",
-                ),
                 consumable_upkeeps=tuple(
                     int(model_id)
                     for model_id in CONSUMABLE_UPKEEPS
