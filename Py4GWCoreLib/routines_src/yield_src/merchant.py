@@ -463,7 +463,6 @@ class Merchant:
         from ...Py4GWcorelib import ActionQueueManager, ConsoleLog, Console
 
         if len(item_array) == 0:
-            ActionQueueManager().ResetQueue("MERCHANT")
             return
 
         for item_id in item_array:
@@ -472,65 +471,89 @@ class Merchant:
             cost = quantity * value
             GLOBAL_CACHE.Trading.Merchant.SellItem(item_id, cost)
 
-        while not ActionQueueManager().IsEmpty("MERCHANT"):
+        # Merchant buy/sell land on the shared "ACTION" queue, not "MERCHANT".
+        while not ActionQueueManager().IsEmpty("ACTION"):
             yield from wait(50)
 
         if log:
             ConsoleLog("SellItems", f"Sold {len(item_array)} items.", Console.MessageType.Info)
 
     @staticmethod
-    def BuyIDKits(kits_to_buy: int, log=False):
-        from ...Py4GWcorelib import ActionQueueManager, ConsoleLog, Console
+    def BuyModelFromMerchant(
+        model_id: int,
+        amount: int,
+        log_module: str,
+        log: bool = False,
+        per_item_timeout_ms: int = 3000,
+        poll_ms: int = 50,
+    ):
+        """Buy `amount` copies of a merchant-offered model, verifying each purchase
+        landed in inventory before requesting the next one."""
+        from ...Py4GWcorelib import ConsoleLog, Console
         from ...ItemArray import ItemArray
 
-        if kits_to_buy <= 0:
-            ActionQueueManager().ResetQueue("MERCHANT")
-            return
+        if amount <= 0:
+            return 0
 
-        merchant_item_list = GLOBAL_CACHE.Trading.Merchant.GetOfferedItems()
-        merchant_item_list = ItemArray.Filter.ByCondition(merchant_item_list, lambda item_id: GLOBAL_CACHE.Item.GetModelID(item_id) == 5899)
+        offered_items = GLOBAL_CACHE.Trading.Merchant.GetOfferedItems()
+        offered_items = ItemArray.Filter.ByCondition(offered_items, lambda item_id: GLOBAL_CACHE.Item.GetModelID(item_id) == model_id)
+        if len(offered_items) == 0:
+            ConsoleLog(log_module, f"Merchant is not offering model {model_id}.", Console.MessageType.Warning)
+            return 0
 
-        if len(merchant_item_list) == 0:
-            ActionQueueManager().ResetQueue("MERCHANT")
-            return
+        offered_item_id = offered_items[0]
+        value = GLOBAL_CACHE.Item.Properties.GetValue(offered_item_id) * 2
+        bought = 0
 
-        for i in range(kits_to_buy):
-            item_id = merchant_item_list[0]
-            value = GLOBAL_CACHE.Item.Properties.GetValue(item_id) * 2
-            GLOBAL_CACHE.Trading.Merchant.BuyItem(item_id, value)
+        for _ in range(amount):
+            count_before = Merchant._count_model_in_inventory(model_id)
+            GLOBAL_CACHE.Trading.Merchant.BuyItem(offered_item_id, value)
 
-        while not ActionQueueManager().IsEmpty("MERCHANT"):
-            yield from wait(50)
+            elapsed_ms = 0
+            while elapsed_ms < per_item_timeout_ms:
+                yield from wait(poll_ms)
+                elapsed_ms += poll_ms
+                if Merchant._count_model_in_inventory(model_id) > count_before:
+                    break
+            else:
+                ConsoleLog(
+                    log_module,
+                    f"Purchase of model {model_id} never arrived (bought {bought}/{amount}); stopping.",
+                    Console.MessageType.Warning,
+                )
+                return bought
+
+            bought += 1
 
         if log:
-            ConsoleLog("BuyIDKits", f"Bought {kits_to_buy} ID Kits.", Console.MessageType.Info)
+            ConsoleLog(log_module, f"Bought {bought} of model {model_id}.", Console.MessageType.Info)
+        return bought
+
+    @staticmethod
+    def BuyIDKits(kits_to_buy: int, log=False):
+        bought = yield from Merchant.BuyModelFromMerchant(
+            ModelID.Superior_Identification_Kit.value,
+            kits_to_buy,
+            "BuyIDKits",
+            log=log,
+        )
+        if bought < kits_to_buy:
+            bought += (yield from Merchant.BuyModelFromMerchant(
+                ModelID.Identification_Kit.value,
+                kits_to_buy - bought,
+                "BuyIDKits",
+                log=log,
+            ))
+        return bought
 
     @staticmethod
     def BuySalvageKits(kits_to_buy: int, log=False):
-        from ...ItemArray import ItemArray
-        from ...Py4GWcorelib import ActionQueueManager, ConsoleLog, Console
-
-        if kits_to_buy <= 0:
-            ActionQueueManager().ResetQueue("MERCHANT")
-            return
-
-        merchant_item_list = GLOBAL_CACHE.Trading.Merchant.GetOfferedItems()
-        merchant_item_list = ItemArray.Filter.ByCondition(merchant_item_list, lambda item_id: GLOBAL_CACHE.Item.GetModelID(item_id) == 2992)
-
-        if len(merchant_item_list) == 0:
-            ActionQueueManager().ResetQueue("MERCHANT")
-            return
-
-        for i in range(kits_to_buy):
-            item_id = merchant_item_list[0]
-            value = GLOBAL_CACHE.Item.Properties.GetValue(item_id) * 2
-            GLOBAL_CACHE.Trading.Merchant.BuyItem(item_id, value)
-
-        while not ActionQueueManager().IsEmpty("MERCHANT"):
-            yield from wait(50)
-
-        if log:
-            ConsoleLog("BuySalvageKits", f"Bought {kits_to_buy} Salvage Kits.", Console.MessageType.Info)
+        return (yield from Merchant.BuyModelFromMerchant(
+            ModelID.Salvage_Kit.value,
+            kits_to_buy,
+            "BuySalvageKits",
+            log=log,
+        ))
 
     @staticmethod
     def BuyMaterial(
