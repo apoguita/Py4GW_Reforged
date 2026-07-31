@@ -13,12 +13,16 @@ from Py4GWCoreLib.Player import Player
 
 from HeroAI.cache_data import CacheData
 from HeroAI.constants import NUMBER_OF_SKILLS
-from HeroAI.utils import DrawFlagAll, DrawHeroFlag, IsHeroFlagged
+from HeroAI.utils import FIGHT_ZONE_FLAG_COLOR, DrawFlagAll, DrawHeroFlag, IsHeroFlagged, is_fight_zone_flag
 from HeroAI.windows import HeroAI_FloatingWindows, HeroAI_Windows
 from .constants import MAX_NUM_PLAYERS, NUMBER_OF_SKILLS
 
 from HeroAI.constants import (FOLLOW_DISTANCE_OUT_OF_COMBAT, MAX_NUM_PLAYERS, MELEE_RANGE_VALUE, PARTY_WINDOW_FRAME_EXPLORABLE_OFFSETS,
                               PARTY_WINDOW_FRAME_OUTPOST_OFFSETS, PARTY_WINDOW_HASH, RANGED_RANGE_VALUE)
+
+# Segments per trigger-ring polyline. Each one costs a FindZ, which is the
+# expensive call, so this trades smoothness against overlay cost.
+RING_SEGMENTS = 20
 
 
 _SKILL_NAME_SUFFIXES: dict[str, str] = {
@@ -1470,6 +1474,10 @@ class HeroAI_BaseUI:
                     HeroAI_BaseUI._draw_supported_builds_tab(registry)
                     PyImGui.end_tab_item()
 
+                if PyImGui.begin_tab_item("Fight Lines"):
+                    HeroAI_BaseUI._draw_fight_lines_tab()
+                    PyImGui.end_tab_item()
+
                 if PyImGui.begin_tab_item("Team Viewer"):
                     HeroAI_BaseUI._draw_team_viewer_tab(cached_data)
                     PyImGui.end_tab_item()
@@ -1751,6 +1759,222 @@ class HeroAI_BaseUI:
                 options.FollowMoveThresholdCombat = float(HeroAI_BaseUI.follow_move_threshold_combat)
 
     @staticmethod
+    def _fight_runtime_cfg() -> Settings:
+        return Settings("HeroAI/FightRuntime.ini", "global")
+
+    @staticmethod
+    def _resolved_fight_line(character_name: str):
+        """The line the assigner actually used, or None when it has not run."""
+        try:
+            publisher = getattr(GLOBAL_CACHE.ShMem, "follow_publisher", None)
+            fight_publisher = getattr(publisher, "fight_publisher", None) if publisher else None
+            if fight_publisher is None:
+                return None
+            return fight_publisher.resolved_by_character.get(str(character_name or "").strip())
+        except Exception:
+            return None
+
+    @staticmethod
+    def _draw_fight_lines_tab() -> None:
+        from HeroAI.fight.lines import NAME_BY_LINE
+        from HeroAI.fight.lines import CombatLine
+        from HeroAI.fight.lines import get_manual_line
+        from HeroAI.fight.lines import infer_line_from_profession
+        from HeroAI.fight.lines import set_manual_line
+
+        cfg = HeroAI_BaseUI._fight_runtime_cfg()
+        enabled = bool(cfg.get_bool("FightRuntime", "fight_zone_enabled", False))
+        overlay = bool(cfg.get_bool("FightRuntime", "show_fight_zone_overlay", False))
+
+        new_enabled = PyImGui.checkbox("Enable Fight Zone", enabled)
+        if new_enabled != enabled:
+            cfg.set_bool("FightRuntime", "fight_zone_enabled", new_enabled)
+            cfg.save()
+        new_overlay = PyImGui.checkbox("Draw Fight Zone (3D)", overlay)
+        if new_overlay != overlay:
+            cfg.set_bool("FightRuntime", "show_fight_zone_overlay", new_overlay)
+            cfg.save()
+        if new_overlay:
+            circles_only = bool(cfg.get_bool("FightRuntime", "fight_zone_overlay_circles_only", False))
+            new_circles_only = PyImGui.checkbox("Circles only (no spokes, arrow or labels)", circles_only)
+            if new_circles_only != circles_only:
+                cfg.set_bool("FightRuntime", "fight_zone_overlay_circles_only", new_circles_only)
+                cfg.save()
+        engage_default = 730.0
+        engage_setting = float(cfg.get_float("FightRuntime", "engage_depth_u", engage_default))
+        new_engage = PyImGui.slider_float("Engage reach##fight_engage_depth", engage_setting, 250.0, 900.0)
+        if abs(new_engage - engage_setting) > 0.5:
+            cfg.set_float("FightRuntime", "engage_depth_u", float(new_engage))
+            cfg.save()
+        PyImGui.text_disabled(
+            f"How far the frontline ring looks for a fight. Close only when NOTHING is inside it —"
+            f" reaching {218.0 + new_engage:.0f}u ahead and {218.0 - new_engage:.0f}u behind the pin."
+        )
+        PyImGui.text_disabled("Overlay works with the zone disabled — watch where lines form before switching it on.")
+
+        snapshot = hero_globals.fight_zone_debug_snapshot
+        if snapshot is not None and bool(snapshot.get("released", False)):
+            remaining = int(snapshot.get("remaining", 0))
+            PyImGui.text_colored(
+                f"Zone: MOP-UP — pin released with {remaining} left, party is following the leader",
+                ColorPalette.GetColor("gw_gold").to_tuple_normalized(),
+            )
+        elif snapshot is not None:
+            depth = float(snapshot.get("depth", 0.0))
+            worst_case = float(snapshot.get("worst_case", 0.0))
+            cast_range = float(snapshot.get("cast_range", Range.Spellcast.value))
+            if bool(snapshot.get("depth_clamped", False)):
+                PyImGui.text_colored(
+                    f"Depth {depth:.0f} — CLAMPED (backline would have been outside cast range)",
+                    ColorPalette.GetColor("gw_gold").to_tuple_normalized(),
+                )
+            else:
+                PyImGui.text(f"Zone: {snapshot.get('state', '?')}    depth {depth:.0f}")
+            blob_size = int(snapshot.get("reaim_blob_size", 0))
+            forced = int(snapshot.get("forced_reaims", 0))
+            PyImGui.text_disabled(
+                "Re-aim: no approaching enemies — holding"
+                if blob_size <= 0
+                else f"Re-aim: blob {blob_size} approaching"
+                f" — confirm {float(snapshot.get('reaim_commit_ms', 0.0)) / 1000.0:.1f}s,"
+                f" then at most one per {float(snapshot.get('reaim_floor_ms', 0.0)) / 1000.0:.0f}s"
+                + (f"   (forced {forced}x)" if forced else "")
+            )
+            health = float(snapshot.get("party_health", 1.0))
+            given = float(snapshot.get("given_ground", 0.0))
+            advance = float(snapshot.get("advance", 0.0))
+            if bool(snapshot.get("breached", False)):
+                PyImGui.text_colored(
+                    f"BACKLINE BREACHED — blob centre on the rear rank, withdrawn {given:.0f}u without waiting",
+                    ColorPalette.GetColor("red").to_tuple_normalized(),
+                )
+            elif bool(snapshot.get("giving_ground", False)):
+                PyImGui.text_colored(
+                    f"BACKING OFF — party at {health * 100.0:.0f}%, withdrawn {given:.0f}u along the route",
+                    ColorPalette.GetColor("gw_gold").to_tuple_normalized(),
+                )
+            elif bool(snapshot.get("closing", False)):
+                # A re-aim banks its backwards component as advance rather than
+                # walking it, so advance with the blob inside the band means
+                # the pin is holding won ground, not still closing.
+                if bool(snapshot.get("closing_armed", False)):
+                    PyImGui.text_colored(
+                        f"CLOSING — blob centre outside the frontline ring, pushed {advance:.0f}u forward",
+                        ColorPalette.GetColor("dodger_blue").to_tuple_normalized(),
+                    )
+                else:
+                    PyImGui.text_colored(
+                        f"HOLDING WON GROUND — {advance:.0f}u ahead of the authored line, party {health * 100.0:.0f}%",
+                        ColorPalette.GetColor("dodger_blue").to_tuple_normalized(),
+                    )
+            else:
+                PyImGui.text_disabled(f"Holding position    party {health * 100.0:.0f}%")
+
+            blob_front = snapshot.get("blob_depth")
+            rings = snapshot.get("rings") or {}
+            # Depth is only half the reading now — a blob can sit at a harmless
+            # depth and still be inside a ring, or vice versa — so the tips are
+            # shown as context rather than as the test itself.
+            mid_trip = sum(rings.get("midline", (0.0, 0.0, 0.0))[:2])
+            back_trip = sum(rings.get("backline", (0.0, 0.0, 0.0))[:2])
+            front_reach = sum(rings.get("frontline", (0.0, 0.0, 0.0))[:2])
+            if blob_front is not None:
+                if bool(snapshot.get("breached", False)):
+                    PyImGui.text_colored(
+                        f"Blob centre {float(blob_front):+.0f}u — inside the BACKLINE ring (tip {back_trip:+.0f}u)",
+                        ColorPalette.GetColor("red").to_tuple_normalized(),
+                    )
+                elif bool(snapshot.get("overrun", False)):
+                    PyImGui.text_colored(
+                        f"Blob centre {float(blob_front):+.0f}u — inside the midline ring (tip {mid_trip:+.0f}u), backing armed",
+                        ColorPalette.GetColor("gw_gold").to_tuple_normalized(),
+                    )
+                elif bool(snapshot.get("closing_armed", False)):
+                    PyImGui.text_disabled(
+                        f"Blob centre {float(blob_front):+.0f}u — outside the frontline ring ({front_reach:+.0f}u), closing armed"
+                    )
+                else:
+                    PyImGui.text_disabled(f"Blob centre {float(blob_front):+.0f}u — engaged, no ring tripped")
+
+            escape = snapshot.get("escape")
+            if escape is None:
+                # Three different silences: no terrain to reason about, searched
+                # and found nothing, or not run yet. They need different fixes.
+                if not bool(snapshot.get("escape_terrain_known", False)):
+                    escape_status = "Escape: no navmesh — nothing to plot against"
+                elif bool(snapshot.get("escape_boxed_in", False)):
+                    escape_status = "Escape: NO ROUTE — nothing open far enough to run to"
+                else:
+                    escape_status = "Escape: not plotted yet"
+                PyImGui.text_colored(escape_status, ColorPalette.GetColor("gw_gold").to_tuple_normalized())
+            else:
+                PyImGui.text_disabled(
+                    f"Escape: {float(escape.get('distance', 0.0)):.0f}u"
+                    f" via {str(escape.get('source', '?')).lower()}"
+                )
+            # Worst case is what decides whether a heal lands during a spike:
+            # front and back drifting to opposite edges of their tolerances.
+            PyImGui.text_disabled(
+                f"Front-to-back worst case {worst_case:.0f} / cast range {cast_range:.0f}"
+                f"  ({cast_range - worst_case:.0f} spare)"
+            )
+            # The chain from "zone exists" to "followers actually obey it" has
+            # several links; print each so a failure says which one broke.
+            driving = bool(snapshot.get("driving", False))
+            PyImGui.text_colored(
+                f"Driving followers: {'YES' if driving else 'NO'}"
+                f"   (enabled={bool(snapshot.get('enabled', False))}, slots={int(snapshot.get('slot_count', 0))})",
+                (
+                    ColorPalette.GetColor("dodger_blue").to_tuple_normalized()
+                    if driving
+                    else ColorPalette.GetColor("gw_gold").to_tuple_normalized()
+                ),
+            )
+        else:
+            PyImGui.text_disabled("No fight zone right now (no party aggro, or both toggles off).")
+
+        PyImGui.separator()
+
+        if not HeroAI_BaseUI._build_match_rows:
+            PyImGui.text("No party accounts available.")
+            return
+
+        options = ["Auto", "Front", "Mid", "Back"]
+        for (
+            party_pos,
+            character_name,
+            primary_value,
+            _secondary_value,
+            _profession_label,
+            build_name,
+            _source_label,
+        ) in HeroAI_BaseUI._build_match_rows:
+            manual = get_manual_line(character_name)
+            current_index = int(manual)
+            PyImGui.text(f"{party_pos + 1}. {character_name}")
+            PyImGui.same_line(220, 0)
+            chosen = PyImGui.combo(f"##fight_line_{party_pos}", current_index, options)
+            if chosen != current_index:
+                set_manual_line(character_name, CombatLine(chosen))
+
+            # Show what actually applies, and why — a wrong line is otherwise
+            # indistinguishable from a wrong formation. Read the publisher's own
+            # answer where available: a build-declared line lives only in its
+            # report cache, so recomputing here would silently show the
+            # profession fallback instead.
+            resolved = HeroAI_BaseUI._resolved_fight_line(character_name)
+            if resolved is not None:
+                effective, source = NAME_BY_LINE[resolved.line], resolved.source_label
+            elif manual != CombatLine.AUTO:
+                effective, source = NAME_BY_LINE[manual], "manual"
+            else:
+                effective = NAME_BY_LINE[infer_line_from_profession(primary_value)]
+                source = "inferred"
+            PyImGui.same_line(0, 14)
+            PyImGui.text_disabled(f"{effective} ({source})   {build_name}")
+            PyImGui.separator()
+
+    @staticmethod
     def DrawSmartUnstuck3DOverlay(cached_data: CacheData):
         # Runs on every client (called from DrawFollowFormationsQuickWindow).
         # Gated by the user-toggleable "Draw Followers Unstuck (3D)" checkbox â€”
@@ -1918,10 +2142,213 @@ class HeroAI_BaseUI:
                 hero_globals.capture_mouse_timer.Start()
 
     @staticmethod
+    def DrawFightZone3DOverlay(cached_data: CacheData):
+        # Leader-only: the fight publisher runs there, so it is the only client
+        # holding the whole picture. Renders regardless of whether the zone is
+        # actually driving movement, which is the point — you watch where the
+        # lines would form before switching the feature on.
+        if not hero_globals.show_fight_zone_overlay:
+            return
+        snapshot = hero_globals.fight_zone_debug_snapshot
+        if snapshot is None:
+            return
+        # Mop-up publishes a status-only snapshot: there is no pin left to draw,
+        # and the defaults would put one at the world origin.
+        if bool(snapshot.get("released", False)):
+            return
+
+        line_colors = {
+            "FRONT": Utils.RGBToColor(255, 90, 60, 230),
+            "MID": Utils.RGBToColor(255, 210, 60, 230),
+            "BACK": Utils.RGBToColor(80, 190, 255, 230),
+        }
+
+        # Read from the snapshot rather than hero_globals so the flag the
+        # publisher actually drew this frame is the one honoured — the approach
+        # point and slot list are omitted from the snapshot in this mode, and
+        # reading a different source could ask for points never published.
+        circles_only = bool(snapshot.get("circles_only", False))
+
+        try:
+            Overlay().BeginDraw()
+            anchor = snapshot.get("anchor") or (0.0, 0.0)
+            ax, ay = float(anchor[0]), float(anchor[1])
+            az = Overlay().FindZ(ax, ay, 0)
+
+            Overlay().DrawPoly3D(
+                ax,
+                ay,
+                az,
+                radius=float(snapshot.get("radius", 0.0)),
+                color=Utils.RGBToColor(255, 140, 30, 90),
+                numsegments=32,
+                thickness=1.5,
+            )
+            Overlay().DrawPoly3D(
+                ax, ay, az, radius=40.0, color=Utils.RGBToColor(255, 140, 30, 240), numsegments=12, thickness=3.0
+            )
+
+            # Arrow from the pin toward the enemies, so "the fight is in front of
+            # everyone" is verifiable at a glance rather than inferred.
+            if not circles_only:
+                facing = float(snapshot.get("facing", 0.0))
+                tip_x = ax + (math.cos(facing) * 260.0)
+                tip_y = ay + (math.sin(facing) * 260.0)
+                Overlay().DrawLine3D(
+                    ax,
+                    ay,
+                    az,
+                    tip_x,
+                    tip_y,
+                    Overlay().FindZ(tip_x, tip_y, 0),
+                    Utils.RGBToColor(255, 255, 255, 200),
+                    2.5,
+                )
+
+            # What the ground controller acts on, made visible: where the code
+            # believes the blob's centre is, and the two lines bounding the
+            # hold band. When the formation moves for no visible reason, these
+            # are what to check against the eye.
+            past_midline = bool(snapshot.get("overrun", False))
+            blob = snapshot.get("blob")
+            if blob is not None:
+                bx, by = float(blob[0]), float(blob[1])
+                bz = Overlay().FindZ(bx, by, 0)
+                blob_color = Utils.RGBToColor(255, 60, 60, 240)
+                Overlay().DrawPoly3D(bx, by, bz, radius=50.0, color=blob_color, numsegments=12, thickness=3.0)
+                blob_front = snapshot.get("blob_depth")
+                if not circles_only and blob_front is not None:
+                    Overlay().DrawText3D(bx, by, bz, f"blob {float(blob_front):+.0f}u", blob_color)
+
+            # The three trigger rings, drawn as the ellipses the tests actually
+            # run on. DrawPoly3D takes a scalar radius and so cannot express
+            # them; they go out as closed polylines instead. An armed ring
+            # survives circles-only — a formation moving for no visible reason
+            # is exactly when it must say why.
+            rings = snapshot.get("rings") or {}
+            ring_facing = float(snapshot.get("facing", 0.0))
+            cos_f = math.cos(ring_facing)
+            sin_f = math.sin(ring_facing)
+            armed = {
+                "backline": bool(snapshot.get("breached", False)),
+                "midline": past_midline,
+                "frontline": bool(snapshot.get("closing_armed", False)),
+            }
+            ring_colors = {
+                "backline": Utils.RGBToColor(255, 60, 60, 230),
+                "midline": Utils.RGBToColor(255, 210, 60, 230),
+                "frontline": Utils.RGBToColor(60, 150, 255, 230),
+            }
+            for name, geometry in rings.items():
+                is_armed = armed.get(name, False)
+                if circles_only and not is_armed:
+                    continue
+                centre, ring_fwd, ring_lat = (float(v) for v in geometry)
+                if ring_fwd <= 0.0 or ring_lat <= 0.0:
+                    continue
+                color = ring_colors.get(name) if is_armed else Utils.RGBToColor(255, 255, 255, 90)
+                points = []
+                for step in range(RING_SEGMENTS + 1):
+                    angle = (2.0 * math.pi * step) / RING_SEGMENTS
+                    fwd = centre + (ring_fwd * math.cos(angle))
+                    lat = ring_lat * math.sin(angle)
+                    px = ax + (fwd * cos_f) - (lat * sin_f)
+                    py = ay + (fwd * sin_f) + (lat * cos_f)
+                    points.append((px, py, Overlay().FindZ(px, py, 0)))
+                for start, end in zip(points, points[1:]):
+                    Overlay().DrawLine3D(
+                        start[0], start[1], start[2], end[0], end[1], end[2], color, 3.0 if is_armed else 1.5
+                    )
+                if not circles_only:
+                    tip_fwd = centre + ring_fwd
+                    tx = ax + (tip_fwd * cos_f)
+                    ty = ay + (tip_fwd * sin_f)
+                    Overlay().DrawText3D(tx, ty, Overlay().FindZ(tx, ty, 0), name, color)
+
+            # The last spot the party was safe, and the point the advance axis is
+            # measured from — one and the same now. Without it a wrong formation
+            # angle is impossible to diagnose: you cannot tell a bad axis from a
+            # bad formation.
+            approach = snapshot.get("approach")
+            if approach is not None:
+                apx, apy = float(approach[0]), float(approach[1])
+                apz = Overlay().FindZ(apx, apy, 0)
+                approach_color = Utils.RGBToColor(120, 255, 120, 220)
+                Overlay().DrawPoly3D(apx, apy, apz, radius=60.0, color=approach_color, numsegments=12, thickness=2.0)
+                Overlay().DrawLine3D(apx, apy, apz, ax, ay, az, approach_color, 2.0)
+                Overlay().DrawText3D(apx, apy, apz, "came from", approach_color)
+
+            # The escape route now moves the formation, so it is drawn as the
+            # polyline the retreat actually walks — a backtrack round a corner
+            # would be a lie as a straight line. The waypoint survives
+            # circles-only because "there is no way out" is a warning; the
+            # dogleg to it is diagnosis.
+            escape = snapshot.get("escape")
+            if escape is not None:
+                escape_color = Utils.RGBToColor(210, 120, 255, 220)
+                waypoint = escape.get("waypoint") or (0.0, 0.0)
+                wx, wy = float(waypoint[0]), float(waypoint[1])
+                wz = Overlay().FindZ(wx, wy, 0)
+                Overlay().DrawPoly3D(wx, wy, wz, radius=70.0, color=escape_color, numsegments=12, thickness=2.0)
+                Overlay().DrawText3D(
+                    wx,
+                    wy,
+                    wz,
+                    f"escape {float(escape.get('distance', 0.0)):.0f}u ({str(escape.get('source', '?')).lower()})",
+                    escape_color,
+                )
+                route = escape.get("path") or ()
+                resolved_route = [(float(px), float(py), Overlay().FindZ(float(px), float(py), 0)) for px, py in route]
+                for i in range(1, len(resolved_route)):
+                    x1, y1, z1 = resolved_route[i - 1]
+                    x2, y2, z2 = resolved_route[i]
+                    Overlay().DrawLine3D(x1, y1, z1, x2, y2, z2, escape_color, 2.5)
+
+            clamped = bool(snapshot.get("depth_clamped", False))
+            # A clamped depth still gets its label in circles-only mode: it is a
+            # warning, not decoration, and nothing else on the ground says it.
+            if not circles_only or clamped:
+                depth = float(snapshot.get("depth", 0.0))
+                header = f"{snapshot.get('state', '?')}  depth {depth:.0f}"
+                if clamped:
+                    header += " (CLAMPED)"
+                Overlay().DrawText3D(
+                    ax,
+                    ay,
+                    az,
+                    header,
+                    Utils.RGBToColor(255, 120, 120, 255) if clamped else Utils.RGBToColor(255, 255, 255, 255),
+                )
+
+            for slot in snapshot.get("slots") or ():
+                pos = slot.get("pos") or (0.0, 0.0)
+                sx, sy = float(pos[0]), float(pos[1])
+                sz = Overlay().FindZ(sx, sy, 0)
+                color = line_colors.get(str(slot.get("line", "MID")), line_colors["MID"])
+                Overlay().DrawPoly3D(sx, sy, sz, radius=26.0, color=color, numsegments=10, thickness=3.0)
+                Overlay().DrawPoly3D(
+                    sx,
+                    sy,
+                    sz,
+                    radius=float(slot.get("tolerance", 150.0)),
+                    color=color,
+                    numsegments=16,
+                    thickness=1.0,
+                )
+                if not circles_only:
+                    Overlay().DrawLine3D(ax, ay, az, sx, sy, sz, color, 1.0)
+                    Overlay().DrawText3D(sx, sy, sz, str(slot.get("name", "")), color)
+
+            Overlay().EndDraw()
+        except Exception:
+            pass
+
+    @staticmethod
     def DrawFollowFormationsQuickWindow(cached_data: CacheData):
         # Draw the stuck-avoidance 3D overlay first so it renders on every client
         # (the window itself is leader-side; the overlay must work on the follower).
         HeroAI_BaseUI.DrawSmartUnstuck3DOverlay(cached_data)
+        HeroAI_BaseUI.DrawFightZone3DOverlay(cached_data)
 
         if HeroAI_BaseUI.show_follow_formations_quick_window:
             if ImGui.Begin(ini_key=cached_data.formation_window_ini_key, name="Follow Formations Quick Settings", p_open=True, flags=PyImGui.WindowFlags.AlwaysAutoResize):
