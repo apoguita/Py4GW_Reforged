@@ -1,5 +1,5 @@
 from typing import Optional
-from Py4GWCoreLib import GLOBAL_CACHE, Allegiance, Overlay, Map, Agent
+from Py4GWCoreLib import GLOBAL_CACHE, Allegiance, Overlay, Map, Agent, Range
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
 from .constants import MAX_NUM_PLAYERS
 from .targeting import *
@@ -176,18 +176,65 @@ def IsHeroFlagged(index):
         return acc is not None and acc.IsFlagged 
 
 
-def DrawFlagAll(pos_x, pos_y):
+FIGHT_ZONE_FLAG_COLOR = (255, 140, 30, 255)
+MANUAL_FLAG_COLOR = (0, 255, 0, 255)
+
+
+def is_fight_zone_flag(leader_options, own_options) -> bool:
+    """Tell an auto-dropped fight pin from a hand-placed party flag.
+
+    On the client running the fight publisher this is a fact, not a guess: the
+    zone's own anchor is in the debug snapshot, so a flag standing on it is ours.
+
+    Everywhere else it stays an inference, because HeroAIOptionStruct cannot grow
+    a field without a matching change to the C++-owned shared memory region. The
+    inference leans on a manual all-flag publishing flagged_follow_threshold (0.0
+    by default) while a fight slot publishes its line tolerance, floored at
+    Adjacent. That is weaker than it looks and the fact is always preferred:
+    _resolve_anchor hands out flagged_follow_threshold to every member the zone
+    did NOT give a slot to, so those viewers read their own fight pin as manual
+    and drew it green.
+    """
+    if leader_options is None:
+        return False
+    if not bool(getattr(leader_options, "IsFlagged", False)):
+        return False
+
+    import HeroAI.globals as hero_globals
+
+    snapshot = hero_globals.fight_zone_debug_snapshot
+    anchor = snapshot.get("anchor") if snapshot is not None else None
+    if anchor is not None:
+        all_flag = getattr(leader_options, "AllFlag", None)
+        if all_flag is not None:
+            on_anchor = abs(float(anchor[0]) - float(getattr(all_flag, "x", 0.0))) <= 1.0 and abs(
+                float(anchor[1]) - float(getattr(all_flag, "y", 0.0))
+            ) <= 1.0
+            if on_anchor:
+                return True
+
+    if own_options is None:
+        return False
+    return float(getattr(own_options, "FollowMoveThresholdCombat", -1.0)) >= float(Range.Adjacent.value)
+
+
+def DrawFlagAll(pos_x, pos_y, color=None):
     overlay = Overlay()
     pos_z = overlay.FindZ(pos_x, pos_y)
+    flag_color = Utils.RGBToColor(*(color or MANUAL_FLAG_COLOR))
 
     overlay.BeginDraw()
-    overlay.DrawLine3D(pos_x, pos_y, pos_z, pos_x, pos_y, pos_z - 150, Utils.RGBToColor(0, 255, 0, 255), 3)    
+    overlay.DrawLine3D(pos_x, pos_y, pos_z, pos_x, pos_y, pos_z - 150, flag_color, 3)
     overlay.DrawTriangleFilled3D(
         pos_x, pos_y, pos_z - 150,               # Base point
         pos_x, pos_y, pos_z - 120,               # 30 units up
         pos_x - 50, pos_y, pos_z - 135,          # 50 units left, 15 units up
-        Utils.RGBToColor(0, 255, 0, 255)
+        flag_color
     )
+    if color == FIGHT_ZONE_FLAG_COLOR:
+        # A ring on the ground so the fight pin reads as a zone centre rather
+        # than a waypoint, even with the debug overlay switched off.
+        overlay.DrawPoly3D(pos_x, pos_y, pos_z, radius=90.0, color=flag_color, numsegments=16, thickness=2.0)
 
     overlay.EndDraw()
 
@@ -221,7 +268,12 @@ def DrawSharedMemoryFlags() -> None:
             or abs(float(getattr(leader_options.AllFlag, "y", 0.0))) > 0.001
         )
     ):
-        DrawFlagAll(float(leader_options.AllFlag.x), float(leader_options.AllFlag.y))
+        own_options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(Player.GetAccountEmail())
+        DrawFlagAll(
+            float(leader_options.AllFlag.x),
+            float(leader_options.AllFlag.y),
+            FIGHT_ZONE_FLAG_COLOR if is_fight_zone_flag(leader_options, own_options) else None,
+        )
 
     for i in range(1, MAX_NUM_PLAYERS):
         account = GLOBAL_CACHE.ShMem.GetAccountDataFromPartyNumber(i)

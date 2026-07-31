@@ -51,6 +51,10 @@ show_flagging_window = False
 
 smart_unstuck_debug_snapshot: dict | None = None
 
+show_fight_zone_overlay = False
+fight_zone_overlay_circles_only = False
+fight_zone_debug_snapshot: dict | None = None
+
 capture_flag_all = False
 capture_hero_flag = False
 capture_hero_index = 0
