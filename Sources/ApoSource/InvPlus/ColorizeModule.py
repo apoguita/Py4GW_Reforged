@@ -18,6 +18,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (Frame,
                                         XUNLAI_VAULT_FRAME_HASH
                                         )           
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 class ColorizeModule:
     def __init__(self, inventory_frame: Frame):
@@ -126,12 +127,12 @@ class ColorizeModule:
                 slot = Item.GetSlot(item_id)
                 if not self._can_draw_item(rarity):
                     continue
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(),_get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
-                UIManager().DrawFrame(frame_id, _get_frame_color(rarity))
-                UIManager().DrawFrameOutline(frame_id, _get_frame_outline_color(rarity))
+                frame_id.draw(_get_frame_color(rarity))
+                frame_id.draw_outline(_get_frame_outline_color(rarity))
          
     #endregion
     
@@ -157,11 +158,11 @@ class ColorizeModule:
                 if not self._can_draw_item(rarity):
                         continue
                 
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
-                UIManager().DrawFrame(frame_id, _get_frame_color(rarity))
-                UIManager().DrawFrameOutline(frame_id, _get_frame_outline_color(rarity))
+                frame_id.draw(_get_frame_color(rarity))
+                frame_id.draw_outline(_get_frame_outline_color(rarity))
                 
     #endregion

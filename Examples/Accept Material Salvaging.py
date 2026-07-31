@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 module_name = "Return to Outpost"
 
 class config:
@@ -10,9 +11,6 @@ class config:
         self.frame_id = 0
         self.dialog_accepted = False
         self.map_valid = False
-        self.parent_hash = 140452905
-        self.child_offsets = [6,98]
-        self.yes_button_offsets = [6,98,6]
         self.frame_label = "Salvage Materials Dialog"
         
         self.game_throttle_time = 100
@@ -40,11 +38,9 @@ def main():
     
     if widget_config.game_throttle_timer.HasElapsed(widget_config.game_throttle_time):
         widget_config.game_throttle_timer.Reset()
-        salvage_material_window = UIManager.GetChildFrameID(widget_config.parent_hash,widget_config.yes_button_offsets)
-    
-        frame_exists = UIManager.FrameExists(salvage_material_window)
-        
-        if not frame_exists:
+        yes_button = Frame(FrameId.ScreenFrame.C6.SalvageMaterialsDialog.YesButton)
+
+        if not yes_button.exists:
             widget_config.dialog_accepted = False
             widget_config.material_salvaging_window = False
             return
@@ -52,8 +48,7 @@ def main():
         if widget_config.dialog_accepted:
             return
         
-        clickable_frame = UIManager.GetChildFrameID(widget_config.parent_hash,widget_config.yes_button_offsets)
-        ActionQueueManager().AddAction("ACTION",UIManager.FrameClick,clickable_frame)
+        ActionQueueManager().AddAction("ACTION", yes_button.click)
         widget_config.dialog_accepted = True
         
 

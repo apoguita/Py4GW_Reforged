@@ -27,6 +27,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (TabIcon,
                                             XUNLAI_VAULT_FRAME_HASH
                             )
 from Sources.ApoSource.InvPlus.Coroutines import SalvageCheckedItems
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 class SalvageModule:
     def __init__(self, inventory_frame: Frame):
@@ -206,8 +207,8 @@ class SalvageModule:
                 _,rarity = Item.Rarity.GetRarity(item_id)
                 slot = Item.GetSlot(item_id)
 
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
                 
@@ -223,15 +224,15 @@ class SalvageModule:
                     frame_color = _get_frame_color("Disabled")
                     frame_outline_color = _get_frame_outline_color("Disabled")
                 
-                UIManager().DrawFrame(frame_id, frame_color)
-                UIManager().DrawFrameOutline(frame_id, frame_outline_color) 
+                frame_id.draw(frame_color)
+                frame_id.draw_outline(frame_outline_color) 
                 
                 #--------------- Checkboxes ---------------
                 if (((is_white and is_salvageable) or (is_identified and is_salvageable)) and not is_salvage_kit):
                     if item_id not in self.salvage_checkboxes:
                         self.salvage_checkboxes[item_id] = False
                     
-                    left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
+                    left,top, right, bottom = frame_id.coords()
                     self.salvage_checkboxes[item_id] = ImGui.floating_checkbox(
                         f"{item_id}", 
                         self.salvage_checkboxes[item_id], 

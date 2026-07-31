@@ -5,6 +5,7 @@ from Py4GWCoreLib import JsonFactory
 from Py4GWCoreLib.GlobalCache.ItemCache import Bag_enum
 from Py4GWCoreLib.enums import ServerLanguage
 import os
+from Py4GWCoreLib.FrameTree import Frame
 
 # Sanctioned per-account persistence for LootEx settings (JsonFactory, account scope).
 # The profile registry (list of profile names) also lives in this document so the
@@ -18,10 +19,9 @@ def settings_store() -> JsonFactory:
 
 
 class FrameCoords:
-    def __init__(self, frame_id: int):
-        self.frame_id = frame_id
-        self.left, self.top, self.right, self.bottom = UIManager.GetFrameCoords(
-            self.frame_id)
+    def __init__(self, frame):
+        self.frame = frame
+        self.left, self.top, self.right, self.bottom = frame.coords()
         self.height = self.bottom - self.top
         self.width = self.right - self.left
 

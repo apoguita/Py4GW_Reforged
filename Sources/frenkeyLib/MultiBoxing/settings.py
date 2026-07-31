@@ -176,6 +176,9 @@ class Settings:
             self.layouts.append(name)  # Add to layouts list if not already present
 
         index = _layout_index()
+        # The index is global and each injected client has its own process-local
+        # JsonFactory cache. Refresh before merging a name saved by another client.
+        index.reload()
         names = index.get_json("names", [])
         if name not in names:
             names.append(name)
@@ -210,7 +213,10 @@ class Settings:
     def load_layouts(self):
         self.layouts = ["None"]  # Reset to default
 
-        for name in _layout_index().get_json("names", []):
+        index = _layout_index()
+        # Pick up layout names written by peer clients in the global document.
+        index.reload()
+        for name in index.get_json("names", []):
             if name and name not in self.layouts:
                 self.layouts.append(name)
                 ConsoleLog(MODULE_NAME, f"Adding layout: '{name}'")

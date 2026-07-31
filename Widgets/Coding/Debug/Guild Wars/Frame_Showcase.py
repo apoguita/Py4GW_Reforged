@@ -6,10 +6,13 @@ from Py4GWCoreLib import (UIManager, Color, Utils)
 from Py4GWCoreLib.ImGui import ImGui
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui, PyUIManager, PyCallback, PyOverlay
-import json, ctypes, os, time
+import ctypes, os, time
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Set
+from Py4GWCoreLib.FrameTree import Frame
+# aliased: this module defines its own `FrameTree` explorer class below
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 # ========================================================================
 # Module Constants
@@ -19,8 +22,7 @@ MODULE_ICON = "Textures/Module_Icons/Frame Tester.png"
 
 THROTTLE_TREE_MS = 2000
 LOG_BUFFER_SIZE = 500
-projects_root = PySystem.Console.get_projects_path()
-json_file_name = os.path.join(projects_root, "Py4GWCoreLib", "frame_aliases.json")
+# Frame identity comes from the FrameTree name / registry / alias tables.
 
 
 # ========================================================================
@@ -53,10 +55,10 @@ class FrameNode:
         self.frame_id = frame_id
         self.parent_id = parent_id
         self.tree = tree
-        self._frame_obj = PyUIManager.UIFrame(frame_id)
-        self.frame_hash = self._frame_obj.frame_hash
-        self.child_offset_id = self._frame_obj.child_offset_id
-        self.label = UIManager.GetEntryFromJSON(json_file_name, frame_id) or ""
+        self._frame_obj = Frame.from_id(frame_id)
+        self.frame_hash = self._frame_obj.hash
+        self.child_offset_id = self._frame_obj.code
+        self.label = Frame.from_id(frame_id).describe()
         self.type = self._frame_obj.type
         self.template_type = self._frame_obj.template_type
         self.parent: Optional["FrameNode"] = None
@@ -104,7 +106,7 @@ class FrameNode:
         col = self.choose_frame_color()
         badge = self._get_badge_str()
         label_text = self.label or "(no label)"
-        tree_label = f"Frame:[{self.frame_id}] <{self.frame_hash}> {label_text} {badge}##ftsn_{self.frame_id}"
+        tree_label = f"Frame:[{self}] <{self.frame_hash}> {label_text} {badge}##ftsn_{self}"
 
         has_children = len(self.children) > 0
         expanded = False
@@ -117,10 +119,10 @@ class FrameNode:
             if expanded:
                 PyImGui.same_line(0, -1)
                 self._show_inline_data = ImGui.toggle_button(
-                    f"Data##ftsn_{self.frame_id}", self._show_inline_data, width=60, height=17
+                    f"Data##ftsn_{self}", self._show_inline_data, width=60, height=17
                 )
                 if _config.keep_data_updated:
-                    if PyImGui.collapsing_header(f"Frame#{self.frame_id}Inline##ftsn_{self.frame_id}"):
+                    if PyImGui.collapsing_header(f"Frame#{self}Inline##ftsn_{self}"):
                         headers = ["Property", "Value"]
                         data = [
                             ("Parent:", str(self.parent_id)),
@@ -129,7 +131,7 @@ class FrameNode:
                             ("Type:", str(self.type)),
                             ("Template:", str(self.template_type)),
                         ]
-                        ImGui.table(f"ftsn_inline_{self.frame_id}", headers, data)
+                        ImGui.table(f"ftsn_inline_{self}", headers, data)
                 PyImGui.separator()
                 for child in self.children:
                     if not self.tree._active_filter or child._matches_search():
@@ -139,10 +141,10 @@ class FrameNode:
             PyImGui.text_colored(tree_label, col)
             PyImGui.same_line(0, -1)
             self._show_inline_data = ImGui.toggle_button(
-                f"Data##ftsn_{self.frame_id}", self._show_inline_data, width=60, height=17
+                f"Data##ftsn_{self}", self._show_inline_data, width=60, height=17
             )
             if _config.keep_data_updated:
-                if PyImGui.collapsing_header(f"Frame#{self.frame_id}Inline##ftsn_{self.frame_id}"):
+                if PyImGui.collapsing_header(f"Frame#{self}Inline##ftsn_{self}"):
                     headers = ["Property", "Value"]
                     data = [
                         ("Parent:", str(self.parent_id)),
@@ -151,7 +153,7 @@ class FrameNode:
                         ("Type:", str(self.type)),
                         ("Template:", str(self.template_type)),
                     ]
-                    ImGui.table(f"ftsn_inline_{self.frame_id}", headers, data)
+                    ImGui.table(f"ftsn_inline_{self}", headers, data)
             PyImGui.separator()
 
         # Right-click detection on the label just rendered (works for both tree_node and text_colored)
@@ -159,31 +161,31 @@ class FrameNode:
         item_hovered = PyImGui.is_item_hovered()
 
         # Context menu (rendered after node, regardless of expand/collapse state)
-        popup_id = f"ftsn_ctx_{self.frame_id}"
+        popup_id = f"ftsn_ctx_{self}"
         if right_clicked:
             PyImGui.open_popup(popup_id)
 
         if PyImGui.begin_popup(popup_id):
-            if PyImGui.menu_item(f"Inspect Frame {self.frame_id}"):
+            if PyImGui.menu_item(f"Inspect Frame {self}"):
                 self.tree._inspector_open_requests.append(self.frame_id)
-            if PyImGui.menu_item(f"Copy Frame ID: {self.frame_id}"):
+            if PyImGui.menu_item(f"Copy Frame ID: {self}"):
                 PyImGui.set_clipboard_text(str(self.frame_id))
             if PyImGui.menu_item(f"Copy Frame Hash: {self.frame_hash}"):
                 PyImGui.set_clipboard_text(str(self.frame_hash))
             if PyImGui.menu_item("Draw Outline (Green)"):
-                UIManager().DrawFrameOutline(self.frame_id, Utils.RGBToColor(0, 255, 0, 200))
+                self._frame_obj.draw_outline(Utils.RGBToColor(0, 255, 0, 200))
             PyImGui.separator()
             if PyImGui.menu_item("Copy Label"):
                 PyImGui.set_clipboard_text(self.label)
             if PyImGui.menu_item("Copy Tree Path"):
-                path = UIManager.ConstructFramePath(self.frame_id)
+                path = self._frame_obj.path()
                 PyImGui.set_clipboard_text(path if path else str(self.frame_id))
             PyImGui.end_popup()
 
         # Hover tooltip (uses item_hovered from the label above)
         if item_hovered:
             PyImGui.begin_tooltip()
-            PyImGui.text(f"Frame ID: {self.frame_id}")
+            PyImGui.text(f"Frame ID: {self}")
             PyImGui.text(f"Hash: {self.frame_hash}")
             PyImGui.text(f"Parent ID: {self.parent_id}")
             PyImGui.text(f"Created: {self._frame_obj.is_created}")
@@ -228,7 +230,7 @@ class FrameTree:
 
         # Phase 1: Create nodes (UIFrame for all, but no get_context())
         for frame_id in frame_list:
-            parent_id = UIManager.GetParentFrameID(frame_id)
+            parent_id = Frame.from_id(frame_id).parent_id_native()
             if parent_id < 0:
                 parent_id = 0
             self.nodes[frame_id] = FrameNode(frame_id, parent_id, self)
@@ -259,7 +261,7 @@ class FrameTree:
         if now - self._last_build_time < THROTTLE_TREE_MS / 1000.0:
             return
         self._last_build_time = now
-        frame_array = UIManager.GetFrameArray()
+        frame_array = LiveTree.all_ids()
         self.build_tree(frame_array)
 
     def apply_filter(self):
@@ -304,7 +306,7 @@ class FrameTreeExplorer:
         # Build/Rebuild button
         build_text = "Rebuild Frame Tree" if self.tree._built else "Build Frame Tree"
         if PyImGui.button(build_text):
-            frame_array = UIManager.GetFrameArray()
+            frame_array = LiveTree.all_ids()
             self.tree.build_tree(frame_array)
 
         # Apply filter on button click (deferred search)
@@ -452,110 +454,112 @@ class UIManagerAPITester:
         # --- Section: Navigation ---
         if self._section_header("Navigation (GetFrameByID, GetFrameIDByLabel/Hash, etc.)"):
             PyImGui.text("GetFrameByID(frame_id) -> UIFrame")
-            self._run_button("GetFrameByID", UIManager.GetFrameByID, self._input_frame_id)
+            self._run_button("GetFrameByID", (lambda fid: Frame.from_id(fid)), self._input_frame_id)
             PyImGui.text("GetFrameIDByLabel(label) -> int")
-            self._run_button("GetFrameIDByLabel", UIManager.GetFrameIDByLabel, self._input_label)
+            self._run_button("GetFrameIDByLabel", (lambda lbl: LiveTree.by_label(lbl).frame_id), self._input_label)
             PyImGui.text("GetFrameIDByHash(hash) -> int")
-            self._run_button("GetFrameIDByHash", UIManager.GetFrameIDByHash, self._input_hash)
+            self._run_button("GetFrameIDByHash", (lambda h: LiveTree.by_hash(h).frame_id), self._input_hash)
             PyImGui.text("GetChildFrameByFrameId(parent_id, offset) -> int")
-            self._run_button("GetChildFrameByFrameId", UIManager.GetChildFrameByFrameId, self._input_frame_id, self._input_offset)
+            self._run_button("GetChildFrameByFrameId", (lambda fid, c: Frame.from_id(fid).child_native(c).frame_id), self._input_frame_id, self._input_offset)
             PyImGui.text("GetChildFramePathByFrameId(parent_id, offsets) -> int")
             offs = [int(x.strip()) for x in self._input_offsets.split(",") if x.strip()] if self._input_offsets else []
-            self._run_button("GetChildFramePathByFrameId", UIManager.GetChildFramePathByFrameId, self._input_frame_id, offs)
+            self._run_button("GetChildFramePathByFrameId", (lambda fid, offs: Frame.from_id(fid).child_path_native(offs).frame_id), self._input_frame_id, offs)
             PyImGui.text("GetChildFrameIdFromNameHash(parent_id, name_hash) -> int")
-            self._run_button("GetChildFrameIdFromNameHash", UIManager.GetChildFrameIdFromNameHash, self._input_frame_id, self._input_hash)
+            self._run_button("GetChildFrameIdFromNameHash", (lambda fid, h: Frame.from_id(fid).child_with_hash(h).frame_id), self._input_frame_id, self._input_hash)
             PyImGui.text("GetAllChildFrameIDs(parent_hash, offsets) -> list")
-            self._run_button("GetAllChildFrameIDs", UIManager.GetAllChildFrameIDs, self._input_hash, offs)
+            self._run_button("frames_at_path",
+                             (lambda h, o: [f.frame_id for f in LiveTree.frames_at_path(h, o)]),
+                             self._input_hash, offs)
 
         # --- Section: Tree Walkers ---
         if self._section_header("Tree Walkers (First/Last/Next/Prev Child, Parent)"):
             PyImGui.text("GetFirstChildFrameID(parent_id) -> int")
-            self._run_button("GetFirstChildFrameID", UIManager.GetFirstChildFrameID, self._input_frame_id)
+            self._run_button("GetFirstChildFrameID", (lambda fid: Frame.from_id(fid).first_child().frame_id), self._input_frame_id)
             PyImGui.text("GetLastChildFrameID(parent_id) -> int")
-            self._run_button("GetLastChildFrameID", UIManager.GetLastChildFrameID, self._input_frame_id)
+            self._run_button("GetLastChildFrameID", (lambda fid: Frame.from_id(fid).last_child().frame_id), self._input_frame_id)
             PyImGui.text("GetNextChildFrameID(frame_id) -> int")
-            self._run_button("GetNextChildFrameID", UIManager.GetNextChildFrameID, self._input_frame_id)
+            self._run_button("GetNextChildFrameID", (lambda fid: Frame.from_id(fid).next_sibling().frame_id), self._input_frame_id)
             PyImGui.text("GetPrevChildFrameID(frame_id) -> int")
-            self._run_button("GetPrevChildFrameID", UIManager.GetPrevChildFrameID, self._input_frame_id)
+            self._run_button("GetPrevChildFrameID", (lambda fid: Frame.from_id(fid).prev_sibling().frame_id), self._input_frame_id)
             PyImGui.text("GetParentFrameID(frame_id) -> int")
-            self._run_button("GetParentFrameID", UIManager.GetParentFrameID, self._input_frame_id)
+            self._run_button("GetParentFrameID", (lambda fid: Frame.from_id(fid).parent_id_native()), self._input_frame_id)
             PyImGui.text("GetParentFrameIdDirect(frame_id) -> int")
-            self._run_button("GetParentFrameIdDirect", UIManager.GetParentFrameIdDirect, self._input_frame_id)
+            self._run_button("GetParentFrameIdDirect", (lambda fid: Frame.from_id(fid).parent_direct().frame_id), self._input_frame_id)
             PyImGui.text("GetRelatedFrameID(frame_id, kind, start_after) -> int")
-            self._run_button("GetRelatedFrameID", UIManager.GetRelatedFrameID, self._input_frame_id, self._input_relation_kind, self._input_start_after)
+            self._run_button("GetRelatedFrameID", (lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id), self._input_frame_id, self._input_relation_kind, self._input_start_after)
 
         # --- Section: Properties ---
         if self._section_header("Properties (Layer, Code, Opacity, State, UserParam, Title)"):
             PyImGui.text("GetFrameLayer(frame_id) -> int")
-            self._run_button("GetFrameLayer", UIManager.GetFrameLayer, self._input_frame_id)
+            self._run_button("GetFrameLayer", (lambda fid: Frame.from_id(fid).layer), self._input_frame_id)
             PyImGui.text("SetFrameLayer(frame_id, layer) -> bool")
-            self._run_button("SetFrameLayer", UIManager.SetFrameLayer, self._input_frame_id, self._input_layer)
+            self._run_button("SetFrameLayer", (lambda fid, l: Frame.from_id(fid).set_layer(l)), self._input_frame_id, self._input_layer)
             PyImGui.text("GetFrameCode(frame_id) -> int")
-            self._run_button("GetFrameCode", UIManager.GetFrameCode, self._input_frame_id)
+            self._run_button("GetFrameCode", (lambda fid: Frame.from_id(fid).code), self._input_frame_id)
             PyImGui.text("GetOpacity(frame_id) -> float")
-            self._run_button("GetOpacity", UIManager.GetOpacity, self._input_frame_id)
+            self._run_button("GetOpacity", (lambda fid: Frame.from_id(fid).opacity), self._input_frame_id)
             PyImGui.text("SetOpacity(frame_id, opacity, fade_time) -> bool")
-            self._run_button("SetOpacity", UIManager.SetOpacity, self._input_frame_id, self._input_opacity, self._input_fade)
+            self._run_button("SetOpacity", (lambda fid, o, ft=0.0: Frame.from_id(fid).set_opacity(o, ft)), self._input_frame_id, self._input_opacity, self._input_fade)
             PyImGui.text("GetUserParam(frame_id) -> int")
-            self._run_button("GetUserParam", UIManager.GetUserParam, self._input_frame_id)
+            self._run_button("GetUserParam", (lambda fid: Frame.from_id(fid).user_param), self._input_frame_id)
             PyImGui.text("GetFrameTitleText(frame_id) -> str")
-            self._run_button("GetFrameTitleText", UIManager.GetFrameTitleText, self._input_frame_id)
+            self._run_button("GetFrameTitleText", (lambda fid: Frame.from_id(fid).title()), self._input_frame_id)
             PyImGui.text("GetStateBit(frame_id, bit) -> bool")
-            self._run_button("GetStateBit", UIManager.GetStateBit, self._input_frame_id, self._input_state_bit)
+            self._run_button("GetStateBit", (lambda fid, b: Frame.from_id(fid).state_bit(b)), self._input_frame_id, self._input_state_bit)
 
         # --- Section: Geometry ---
         if self._section_header("Geometry (MinSize, NativeSize, ClientBorder, ClipRect, PositionEx)"):
             PyImGui.text("GetFrameMinSize(frame_id) -> tuple")
-            self._run_button("GetFrameMinSize", UIManager.GetFrameMinSize, self._input_frame_id)
+            self._run_button("GetFrameMinSize", (lambda fid: Frame.from_id(fid).min_size()), self._input_frame_id)
             PyImGui.text("GetFrameNativeSize(frame_id) -> tuple")
-            self._run_button("GetFrameNativeSize", UIManager.GetFrameNativeSize, self._input_frame_id)
+            self._run_button("GetFrameNativeSize", (lambda fid: Frame.from_id(fid).native_size()), self._input_frame_id)
             PyImGui.text("GetFrameClientBorder(frame_id) -> tuple")
-            self._run_button("GetFrameClientBorder", UIManager.GetFrameClientBorder, self._input_frame_id)
+            self._run_button("GetFrameClientBorder", (lambda fid: Frame.from_id(fid).client_border()), self._input_frame_id)
             PyImGui.text("GetFrameClipRect(frame_id) -> tuple")
-            self._run_button("GetFrameClipRect", UIManager.GetFrameClipRect, self._input_frame_id)
+            self._run_button("GetFrameClipRect", (lambda fid: Frame.from_id(fid).clip_rect()), self._input_frame_id)
             PyImGui.text("GetFramePositionEx(frame_id) -> tuple")
-            self._run_button("GetFramePositionEx", UIManager.GetFramePositionEx, self._input_frame_id)
+            self._run_button("GetFramePositionEx", (lambda fid: Frame.from_id(fid).position_ex()), self._input_frame_id)
 
         # --- Section: Visibility/State ---
         if self._section_header("Visibility / State (SetVisible, SetDisabled, ShowFrame, Exists)"):
             PyImGui.text("SetVisible(frame_id, visible) -> bool")
-            self._run_button("SetVisible", UIManager.SetVisible, self._input_frame_id, self._input_visible)
+            self._run_button("SetVisible", (lambda fid, v: Frame.from_id(fid).set_visible(v)), self._input_frame_id, self._input_visible)
             PyImGui.text("SetDisabled(frame_id, disabled) -> bool")
-            self._run_button("SetDisabled", UIManager.SetDisabled, self._input_frame_id, self._input_disabled)
+            self._run_button("SetDisabled", (lambda fid, d: Frame.from_id(fid).set_disabled(d)), self._input_frame_id, self._input_disabled)
             PyImGui.text("ShowFrame(frame_id, show) -> bool")
-            self._run_button("ShowFrame", UIManager.ShowFrame, self._input_frame_id, self._input_show)
+            self._run_button("ShowFrame", (lambda fid, sh: Frame.from_id(fid).show(sh)), self._input_frame_id, self._input_show)
             PyImGui.text("IsVisible(frame_id) -> bool")
-            self._run_button("IsVisible", UIManager.IsVisible, self._input_frame_id)
+            self._run_button("IsVisible", (lambda fid: Frame.from_id(fid).is_visible), self._input_frame_id)
             PyImGui.text("IsFrameCreated(frame_id) -> bool")
-            self._run_button("IsFrameCreated", UIManager.IsFrameCreated, self._input_frame_id)
+            self._run_button("IsFrameCreated", (lambda fid: Frame.from_id(fid).is_created), self._input_frame_id)
             PyImGui.text("FrameExists(frame_id) -> bool")
-            self._run_button("FrameExists", UIManager.FrameExists, self._input_frame_id)
+            self._run_button("FrameExists", (lambda fid: Frame.from_id(fid).is_usable), self._input_frame_id)
             PyImGui.text("IsAncestorOf(frame_id, ancestor_id) -> bool")
-            self._run_button("IsAncestorOf", UIManager.IsAncestorOf, self._input_frame_id, self._input_ancestor_id)
+            self._run_button("IsAncestorOf", (lambda fid, a: Frame.from_id(fid).is_ancestor_of(Frame.from_id(a))), self._input_frame_id, self._input_ancestor_id)
 
         # --- Section: Label / Text ---
         if self._section_header("Label / Text (NameHash, Label, Encoded, Decoded)"):
             PyImGui.text("GetFrameNameHash(frame_id) -> int")
-            self._run_button("GetFrameNameHash", UIManager.GetFrameNameHash, self._input_frame_id)
+            self._run_button("GetFrameNameHash", (lambda fid: Frame.from_id(fid).hash), self._input_frame_id)
             PyImGui.text("GetFrameLabel(frame_id) -> str")
-            self._run_button("GetFrameLabel", UIManager.GetFrameLabel, self._input_frame_id)
+            self._run_button("GetFrameLabel", (lambda fid: Frame.from_id(fid).label), self._input_frame_id)
             PyImGui.text("GetTextLabelEncoded(frame_id) -> str")
-            self._run_button("GetTextLabelEncoded", UIManager.GetTextLabelEncoded, self._input_frame_id)
+            self._run_button("GetTextLabelEncoded", (lambda fid: Frame.from_id(fid).encoded()), self._input_frame_id)
             PyImGui.text("GetTextLabelDecoded(frame_id) -> str")
-            self._run_button("GetTextLabelDecoded", UIManager.GetTextLabelDecoded, self._input_frame_id)
+            self._run_button("GetTextLabelDecoded", (lambda fid: Frame.from_id(fid).text()), self._input_frame_id)
             PyImGui.text("GetHashByLabel(label) -> int")
-            self._run_button("GetHashByLabel", UIManager.GetHashByLabel, self._input_label)
+            self._run_button("GetHashByLabel", (lambda lbl: LiveTree.hash_for_label(lbl)), self._input_label)
             PyImGui.text("ConstructFramePath(frame_id) -> str")
-            self._run_button("ConstructFramePath", UIManager.ConstructFramePath, self._input_frame_id)
+            self._run_button("ConstructFramePath", (lambda fid: Frame.from_id(fid).path()), self._input_frame_id)
 
         # --- Section: Lists ---
         if self._section_header("Lists (Overlay, Popup, FrameArray)"):
             PyImGui.text("GetOverlayFrameIDs() -> list")
-            self._run_button("GetOverlayFrameIDs", UIManager.GetOverlayFrameIDs)
+            self._run_button("GetOverlayFrameIDs", (lambda: [f.frame_id for f in LiveTree.overlay_frames()]))
             PyImGui.text("GetPopupFrameIDs() -> list")
-            self._run_button("GetPopupFrameIDs", UIManager.GetPopupFrameIDs)
+            self._run_button("GetPopupFrameIDs", (lambda: [f.frame_id for f in LiveTree.popup_frames()]))
             PyImGui.text("GetFrameArray() -> list")
-            self._run_button("GetFrameArray", UIManager.GetFrameArray)
+            self._run_button("GetFrameArray", LiveTree.all_ids)
 
         # --- Section: Messages ---
         if self._section_header("Messages (SendUIMessage, SendFrameUIMessage, etc.)"):
@@ -564,9 +568,9 @@ class UIManagerAPITester:
             PyImGui.text("SendUIMessageRaw(msgid, wparam, lparam, skip_hooks) -> bool")
             self._run_button("SendUIMessageRaw", UIManager.SendUIMessageRaw, self._input_msgid, self._input_wparam, self._input_lparam, False)
             PyImGui.text("SendFrameUIMessage(frame_id, msgid, wparam, lparam) -> bool")
-            self._run_button("SendFrameUIMessage", UIManager.SendFrameUIMessage, self._input_frame_id, self._input_msgid, self._input_wparam, self._input_lparam)
+            self._run_button("SendFrameUIMessage", (lambda fid, m, w, l=0: Frame.from_id(fid).send_message(m, w, l)), self._input_frame_id, self._input_msgid, self._input_wparam, self._input_lparam)
             PyImGui.text("SendFrameUIMessageWString(frame_id, msgid, text) -> bool")
-            self._run_button("SendFrameUIMessageWString", UIManager.SendFrameUIMessageWString, self._input_frame_id, self._input_msgid, self._input_str_val or "test")
+            self._run_button("SendFrameUIMessageWString", (lambda fid, m, t: Frame.from_id(fid).send_message_text(m, t)), self._input_frame_id, self._input_msgid, self._input_str_val or "test")
 
         # --- Section: IO Events ---
         if self._section_header("IO Events (Register, Unregister, GetIOEvents, IsMouseOver)"):
@@ -577,7 +581,7 @@ class UIManagerAPITester:
             PyImGui.text("GetIOEventsForFrame(frame_id) -> list")
             self._run_button("GetIOEventsForFrame", UIManager.GetIOEventsForFrame, self._input_frame_id)
             PyImGui.text("IsMouseOver(frame_id) -> bool")
-            self._run_button("IsMouseOver", UIManager.IsMouseOver, self._input_frame_id)
+            self._run_button("IsMouseOver", (lambda fid: Frame.from_id(fid).is_mouse_over()), self._input_frame_id)
 
         # --- Section: Preferences ---
         if self._section_header("Preferences (Get/Set Enum, Int, String, Bool)"):
@@ -624,27 +628,27 @@ class UIManagerAPITester:
         # --- Section: Interaction ---
         if self._section_header("Interaction (FrameClick, TestMouseAction, TestMouseClickAction)"):
             PyImGui.text("FrameClick(frame_id)")
-            self._run_button("FrameClick", UIManager.FrameClick, self._input_frame_id)
+            self._run_button("FrameClick", (lambda fid: Frame.from_id(fid).click()), self._input_frame_id)
             PyImGui.text("TestMouseAction(frame_id, state, wparam, lparam)")
-            self._run_button("TestMouseAction", UIManager.TestMouseAction, self._input_frame_id, 0, self._input_wparam, self._input_lparam)
+            self._run_button("TestMouseAction", (lambda fid, s, w, l=0: Frame.from_id(fid).mouse_action(s, w, l)), self._input_frame_id, 0, self._input_wparam, self._input_lparam)
             PyImGui.text("TestMouseClickAction(frame_id, state, wparam, lparam)")
-            self._run_button("TestMouseClickAction", UIManager.TestMouseClickAction, self._input_frame_id, 0, self._input_wparam, self._input_lparam)
+            self._run_button("TestMouseClickAction", (lambda fid, s, w, l=0: Frame.from_id(fid).mouse_click_action(s, w, l)), self._input_frame_id, 0, self._input_wparam, self._input_lparam)
 
         # --- Section: Coords ---
         if self._section_header("Coordinates (GetFrameCoords, GetContentFrameCoords, GetFrameCoordsByHash)"):
             PyImGui.text("GetFrameCoords(frame_id) -> (l,t,r,b)")
-            self._run_button("GetFrameCoords", UIManager.GetFrameCoords, self._input_frame_id)
+            self._run_button("GetFrameCoords", (lambda fid: Frame.from_id(fid).coords()), self._input_frame_id)
             PyImGui.text("GetContentFrameCoords(frame_id) -> (l,t,r,b)")
-            self._run_button("GetContentFrameCoords", UIManager.GetContentFrameCoords, self._input_frame_id)
+            self._run_button("GetContentFrameCoords", (lambda fid: Frame.from_id(fid).content_coords()), self._input_frame_id)
             PyImGui.text("GetFrameCoordsByHash(hash) -> tuple")
-            self._run_button("GetFrameCoordsByHash", UIManager.GetFrameCoordsByHash, self._input_hash)
+            self._run_button("GetFrameCoordsByHash", LiveTree.coords_for_hash, self._input_hash)
 
         # --- Section: Misc ---
         if self._section_header("Miscellaneous (Root, Hierarchy, UIDrawn, FPS, Settings)"):
             PyImGui.text("GetRootFrameID() -> int")
-            self._run_button("GetRootFrameID", UIManager.GetRootFrameID)
+            self._run_button("GetRootFrameID", (lambda: LiveTree.root().frame_id))
             PyImGui.text("GetFrameHierarchy() -> dict")
-            self._run_button("GetFrameHierarchy", UIManager.GetFrameHierarchy)
+            self._run_button("GetFrameHierarchy", LiveTree.hierarchy)
             PyImGui.text("IsUIDrawn() -> bool")
             self._run_button("IsUIDrawn", UIManager.IsUIDrawn)
             PyImGui.text("GetFPSLimit() -> int")
@@ -814,9 +818,9 @@ class VisualToolkit:
             if self._draw_frame_id > 0:
                 if PyImGui.button("Draw Now##vtk_draw"):
                     if self._fill_enabled:
-                        UIManager().DrawFrame(self._draw_frame_id, abgr_color)
+                        Frame.from_id(self._draw_frame_id).draw(abgr_color)
                     if self._outline_enabled:
-                        UIManager().DrawFrameOutline(self._draw_frame_id, abgr_color, _config.draw_thickness)
+                        Frame.from_id(self._draw_frame_id).draw_outline(abgr_color, _config.draw_thickness)
 
         PyImGui.separator()
 
@@ -826,11 +830,11 @@ class VisualToolkit:
                 self._show_overlays = True
 
             if self._show_overlays:
-                overlay_ids = UIManager.GetOverlayFrameIDs()
+                overlay_ids = [f.frame_id for f in LiveTree.overlay_frames()]
                 PyImGui.text(f"Overlay Frames: {len(overlay_ids)}")
                 if PyImGui.begin_child("VTKOverlayList", size=(0, 150), border=True):
                     for oid in overlay_ids[:200]:
-                        alias = UIManager.GetEntryFromJSON(json_file_name, oid) or ""
+                        alias = Frame.from_id(oid).describe()
                         label = f"Overlay [{oid}]"
                         if alias:
                             label += f' "{alias}"'
@@ -842,7 +846,7 @@ class VisualToolkit:
                             if PyImGui.menu_item("Inspect"):
                                 self._draw_frame_id = oid
                             if PyImGui.menu_item("Draw Outline"):
-                                UIManager().DrawFrameOutline(oid, Utils.RGBToColor(0, 255, 0, 200))
+                                Frame.from_id(oid).draw_outline(Utils.RGBToColor(0, 255, 0, 200))
                             PyImGui.end_popup()
                 PyImGui.end_child()
 
@@ -852,11 +856,11 @@ class VisualToolkit:
                 self._show_popups = True
 
             if self._show_popups:
-                popup_ids = UIManager.GetPopupFrameIDs()
+                popup_ids = [f.frame_id for f in LiveTree.popup_frames()]
                 PyImGui.text(f"Popup Frames: {len(popup_ids)}")
                 if PyImGui.begin_child("VTKPopupList", size=(0, 150), border=True):
                     for pid in popup_ids[:200]:
-                        alias = UIManager.GetEntryFromJSON(json_file_name, pid) or ""
+                        alias = Frame.from_id(pid).describe()
                         label = f"Popup [{pid}]"
                         if alias:
                             label += f' "{alias}"'
@@ -868,7 +872,7 @@ class VisualToolkit:
                             if PyImGui.menu_item("Inspect"):
                                 self._draw_frame_id = pid
                             if PyImGui.menu_item("Draw Outline"):
-                                UIManager().DrawFrameOutline(pid, Utils.RGBToColor(255, 255, 0, 200))
+                                Frame.from_id(pid).draw_outline(Utils.RGBToColor(255, 255, 0, 200))
                             PyImGui.end_popup()
                 PyImGui.end_child()
 
@@ -881,12 +885,11 @@ class FrameInspector:
 
     def __init__(self, frame_id: int):
         self.frame_id = frame_id
-        self._frame_obj = PyUIManager.UIFrame(frame_id)
+        self._frame_obj = Frame.from_id(frame_id)
         self.auto_update: bool = True
         self.draw_frame: bool = False
         self.draw_color: int = Utils.RGBToColor(0, 255, 0, 125)
-        self.frame_alias: str = UIManager.GetEntryFromJSON(json_file_name, frame_id) or ""
-        self.submit_value: str = self.frame_alias
+        self.frame_alias: str = Frame.from_id(frame_id).describe()
         self.current_state: int = 0
         self.wparam: int = 0
         self.lparam: int = 0
@@ -903,69 +906,69 @@ class FrameInspector:
 
     def _is_frame_valid(self) -> bool:
         try:
-            return UIManager.FrameExists(self.frame_id)
+            return self._frame_obj.is_usable
         except Exception:
             return False
 
     def _refresh_context(self):
         """Lazy get_context() — only called when needed."""
         try:
-            self._frame_obj.get_context()
+            self._frame_obj.refresh()
         except Exception:
             pass
 
     def render(self, ini_key: str, title: str):
         """Render the inspector window content."""
         if not self._is_frame_valid():
-            PyImGui.text_colored(f"WARNING: Frame {self.frame_id} no longer exists or is not visible.", (1.0, 0.3, 0.3, 1.0))
+            PyImGui.text_colored(f"WARNING: Frame {self} no longer exists or is not visible.", (1.0, 0.3, 0.3, 1.0))
             return
 
         # Top controls
-        self.auto_update = PyImGui.checkbox(f"Auto Update##finsp_au_{self.frame_id}", self.auto_update)
-        self.draw_frame = PyImGui.checkbox(f"Draw Frame##finsp_df_{self.frame_id}", self.draw_frame)
+        self.auto_update = PyImGui.checkbox(f"Auto Update##finsp_au_{self}", self.auto_update)
+        self.draw_frame = PyImGui.checkbox(f"Draw Frame##finsp_df_{self}", self.draw_frame)
 
         if self.draw_frame:
             PyImGui.same_line(0, -1)
             color_tuple = Utils.ColorToTuple(self.draw_color)
             color_list = list(color_tuple)
-            PyImGui.color_edit4(f"Color##finsp_dfc_{self.frame_id}", color_list)
+            PyImGui.color_edit4(f"Color##finsp_dfc_{self}", color_list)
             self.draw_color = Utils.TupleToColor(tuple(color_list))
-            UIManager().DrawFrame(self.frame_id, self.draw_color)
+            self._frame_obj.draw(self.draw_color)
 
         if self.auto_update:
             self._refresh_context()
 
         PyImGui.separator()
 
-        if PyImGui.begin_child(f"finsp_child_{self.frame_id}", size=(0, 0), border=True, flags=PyImGui.WindowFlags.HorizontalScrollbar):
-            if PyImGui.begin_tab_bar(f"finsp_tabbar_{self.frame_id}"):
+        if PyImGui.begin_child(f"finsp_child_{self}", size=(0, 0), border=True, flags=PyImGui.WindowFlags.HorizontalScrollbar):
+            if PyImGui.begin_tab_bar(f"finsp_tabbar_{self}"):
                 # --- Tab: Overview ---
-                if PyImGui.begin_tab_item(f"Overview##finsp_ov_{self.frame_id}"):
+                if PyImGui.begin_tab_item(f"Overview##finsp_ov_{self}"):
                     self._render_overview()
                     PyImGui.end_tab_item()
 
                 # --- Tab: Position ---
-                if PyImGui.begin_tab_item(f"Position##finsp_pos_{self.frame_id}"):
+                if PyImGui.begin_tab_item(f"Position##finsp_pos_{self}"):
                     self._render_position()
                     PyImGui.end_tab_item()
 
                 # --- Tab: Relations ---
-                if PyImGui.begin_tab_item(f"Relations##finsp_rel_{self.frame_id}"):
+                if PyImGui.begin_tab_item(f"Relations##finsp_rel_{self}"):
                     self._render_relations()
                     PyImGui.end_tab_item()
 
                 # --- Tab: Callbacks ---
-                if PyImGui.begin_tab_item(f"Callbacks##finsp_cb_{self.frame_id}"):
+                if PyImGui.begin_tab_item(f"Callbacks##finsp_cb_{self}"):
                     self._render_callbacks()
                     PyImGui.end_tab_item()
 
                 # --- Tab: Raw Fields ---
-                if PyImGui.begin_tab_item(f"Raw Fields##finsp_rf_{self.frame_id}"):
+                if PyImGui.begin_tab_item(f"Raw Fields##finsp_rf_{self}"):
                     self._render_raw_fields()
                     PyImGui.end_tab_item()
 
                 # --- Tab: Alias ---
-                if PyImGui.begin_tab_item(f"Alias##finsp_al_{self.frame_id}"):
+                if PyImGui.begin_tab_item(f"Alias##finsp_al_{self}"):
                     self._render_alias()
                     PyImGui.end_tab_item()
 
@@ -973,8 +976,8 @@ class FrameInspector:
         PyImGui.end_child()
 
     def _render_overview(self):
-        f = self._frame_obj
-        PyImGui.text(f"Frame ID: {self.frame_id}")
+        frame = self._handle()
+        PyImGui.text(f"Frame ID: {self}")
         PyImGui.text(f"Frame Hash: {f.frame_hash}")
         PyImGui.text(f"Parent ID: {f.parent_id}")
         PyImGui.text(f"Visibility Flags: {f.visibility_flags}")
@@ -987,11 +990,11 @@ class FrameInspector:
         PyImGui.text(f"Alias: {self.frame_alias or '(none)'}")
         PyImGui.separator()
         PyImGui.text("Actions:")
-        if PyImGui.button(f"Click Frame##finsp_clk_{self.frame_id}"):
-            UIManager.FrameClick(self.frame_id)
+        if PyImGui.button(f"Click Frame##finsp_clk_{self}"):
+            self._frame_obj.click()
         PyImGui.same_line(0, -1)
-        if PyImGui.button(f"Draw Outline##finsp_do_{self.frame_id}"):
-            UIManager().DrawFrameOutline(self.frame_id, Utils.RGBToColor(0, 255, 0, 200))
+        if PyImGui.button(f"Draw Outline##finsp_do_{self}"):
+            self._frame_obj.draw_outline(Utils.RGBToColor(0, 255, 0, 200))
 
     def _render_position(self):
         p = self._frame_obj.position
@@ -1010,17 +1013,18 @@ class FrameInspector:
         ]
         headers = ["Field", "Value"]
         data = [(name, str(val)) for name, val in fields]
-        ImGui.table(f"finsp_pos_tbl_{self.frame_id}", headers, data)
+        ImGui.table(f"finsp_pos_tbl_{self}", headers, data)
 
     def _render_relations(self):
-        r = self._frame_obj.relation
-        PyImGui.text(f"Parent ID: {r.parent_id}")
-        PyImGui.text(f"Field67_0x124: {r.field67_0x124}")
-        PyImGui.text(f"Field68_0x128: {r.field68_0x128}")
-        PyImGui.text(f"Frame Hash ID: {r.frame_hash_id}")
+        frame = self._frame_obj
+        slots = frame.fields()
+        PyImGui.text(f"Parent ID: {frame.parent_id}")
+        PyImGui.text("Field67_0x124: " + str(slots.get("relation.field67_0x124", 0)))
+        PyImGui.text("Field68_0x128: " + str(slots.get("relation.field68_0x128", 0)))
+        PyImGui.text(f"Frame Hash ID: {frame.hash}")
         if PyImGui.collapsing_header("Siblings"):
-            for i, sibling in enumerate(r.siblings):
-                PyImGui.text(f"Siblings[{i}]: {sibling}")
+            for i, sibling in enumerate(frame.siblings()):
+                PyImGui.text(f"Siblings[{i}]: {sibling.describe() or sibling}")
 
     def _render_callbacks(self):
         for i, callback in enumerate(self._frame_obj.frame_callbacks):
@@ -1028,15 +1032,16 @@ class FrameInspector:
             PyImGui.text(f"{i}: {addr} - {self._to_hex(addr)}")
 
     def _render_alias(self):
-        self.submit_value = PyImGui.input_text(f"Alias##finsp_ae_{self.frame_id}", self.submit_value)
-        PyImGui.same_line(0, -1)
-        if PyImGui.button(f"Save Alias##finsp_sa_{self.frame_id}"):
-            UIManager.SaveEntryToJSON(json_file_name, self.frame_id, self.submit_value)
-            self.frame_alias = UIManager.GetEntryFromJSON(json_file_name, self.frame_id) or ""
+        """Identity, derived from the FrameTree tables - nothing to hand-name."""
+        handle = self._frame_obj
+        PyImGui.text(f"Engine Name:  {handle.name or '(unnamed)'}")
+        PyImGui.text(f"Registry Key: {handle.registry_key or '(unregistered)'}")
+        PyImGui.text(f"Alias:        {handle.alias or '(none)'}")
+        if PyImGui.button(f"Copy Registry Key##finsp_ck_{self}"):
+            PyImGui.set_clipboard_text(handle.registry_key or handle.path())
 
         PyImGui.separator()
-        PyImGui.text(f"Current Alias: {self.frame_alias or '(none)'}")
-        PyImGui.text(f"Resolved Path: {UIManager.ConstructFramePath(self.frame_id)}")
+        PyImGui.text(f"Resolved Path: {self._frame_obj.path()}")
 
     def _raw_field_row(self, name: str, value: int):
         return (name, str(value), self._to_hex(value), self._to_bin(value), self._to_char(value))
@@ -1044,97 +1049,23 @@ class FrameInspector:
     def _render_raw_fields(self):
         # Performance note: this table renders ~80+ raw fields every frame when auto-update is enabled.
         # Consider throttling if frame times degrade.
-        f = self._frame_obj
+        frame = self._frame_obj
         headers = ["Field", "Dec", "Hex", "Bin", "Char"]
         data = [
-            self._raw_field_row("Field1_0x0", f.field1_0x0),
-            self._raw_field_row("Field2_0x4", f.field2_0x4),
-            self._raw_field_row("Field3_0xC", f.field3_0xc),
-            self._raw_field_row("Field4_0x10", f.field4_0x10),
-            self._raw_field_row("Field5_0x14", f.field5_0x14),
-            self._raw_field_row("Field7_0x1C", f.field7_0x1c),
-            self._raw_field_row("Field10_0x28", f.field10_0x28),
-            self._raw_field_row("Field11_0x2C", f.field11_0x2c),
-            self._raw_field_row("Field12_0x30", f.field12_0x30),
-            self._raw_field_row("Field13_0x34", f.field13_0x34),
-            self._raw_field_row("Field14_0x38", f.field14_0x38),
-            self._raw_field_row("Field15_0x3C", f.field15_0x3c),
-            self._raw_field_row("Field16_0x40", f.field16_0x40),
-            self._raw_field_row("Field17_0x44", f.field17_0x44),
-            self._raw_field_row("Field18_0x48", f.field18_0x48),
-            self._raw_field_row("Field19_0x4C", f.field19_0x4c),
-            self._raw_field_row("Field20_0x50", f.field20_0x50),
-            self._raw_field_row("Field21_0x54", f.field21_0x54),
-            self._raw_field_row("Field22_0x58", f.field22_0x58),
-            self._raw_field_row("Field23_0x5C", f.field23_0x5c),
-            self._raw_field_row("Field24_0x60", f.field24_0x60),
-            self._raw_field_row("Field24a_0x64", f.field24a_0x64),
-            self._raw_field_row("Field24b_0x68", f.field24b_0x68),
-            self._raw_field_row("Field25_0x6C", f.field25_0x6c),
-            self._raw_field_row("Field26_0x70", f.field26_0x70),
-            self._raw_field_row("Field27_0x74", f.field27_0x74),
-            self._raw_field_row("Field28_0x78", f.field28_0x78),
-            self._raw_field_row("Field29_0x7C", f.field29_0x7c),
-            self._raw_field_row("Field30_0x80", f.field30_0x80),
+            self._raw_field_row(name, value)
+            for name, value in frame.fields().items()
         ]
 
         # Field31 parameter list
         try:
-            param_list = f.field31_0x84
+            param_list = frame.parameters
             for i, param in enumerate(param_list):
                 data.append(self._raw_field_row(f"Field31_0x84[{i}]", param))
         except Exception:
             pass
 
-        data.extend([
-            self._raw_field_row("Field32_0x94", f.field32_0x94),
-            self._raw_field_row("Field33_0x98", f.field33_0x98),
-            self._raw_field_row("Field34_0x9C", f.field34_0x9c),
-            self._raw_field_row("Field35_0xA0", f.field35_0xa0),
-            self._raw_field_row("Field36_0xA4", f.field36_0xa4),
-            self._raw_field_row("Field40_0xC0", f.field40_0xc0),
-            self._raw_field_row("Field41_0xC4", f.field41_0xc4),
-            self._raw_field_row("Field42_0xC8", f.field42_0xc8),
-            self._raw_field_row("Field43_0xCC", f.field43_0xcc),
-            self._raw_field_row("Field44_0xD0", f.field44_0xd0),
-            self._raw_field_row("Field45_0xD4", f.field45_0xd4),
-            self._raw_field_row("Field63_0x11C", f.field63_0x11c),
-            self._raw_field_row("Field64_0x120", f.field64_0x120),
-            self._raw_field_row("Field65_0x124", f.field65_0x124),
-            self._raw_field_row("Field73_0x144", f.field73_0x144),
-            self._raw_field_row("Field74_0x148", f.field74_0x148),
-            self._raw_field_row("Field75_0x14C", f.field75_0x14c),
-            self._raw_field_row("Field76_0x150", f.field76_0x150),
-            self._raw_field_row("Field77_0x154", f.field77_0x154),
-            self._raw_field_row("Field78_0x158", f.field78_0x158),
-            self._raw_field_row("Field79_0x15C", f.field79_0x15c),
-            self._raw_field_row("Field80_0x160", f.field80_0x160),
-            self._raw_field_row("Field81_0x164", f.field81_0x164),
-            self._raw_field_row("Field82_0x168", f.field82_0x168),
-            self._raw_field_row("Field83_0x16C", f.field83_0x16c),
-            self._raw_field_row("Field84_0x170", f.field84_0x170),
-            self._raw_field_row("Field85_0x174", f.field85_0x174),
-            self._raw_field_row("Field86_0x178", f.field86_0x178),
-            self._raw_field_row("Field87_0x17C", f.field87_0x17c),
-            self._raw_field_row("Field88_0x180", f.field88_0x180),
-            self._raw_field_row("Field89_0x184", f.field89_0x184),
-            self._raw_field_row("Field90_0x188", f.field90_0x188),
-            self._raw_field_row("Field92_0x190", f.field92_0x190),
-            self._raw_field_row("Field93_0x194", f.field93_0x194),
-            self._raw_field_row("Field94_0x198", f.field94_0x198),
-            self._raw_field_row("Field95_0x19C", f.field95_0x19c),
-            self._raw_field_row("Field96_0x1A0", f.field96_0x1a0),
-            self._raw_field_row("Field97_0x1A4", f.field97_0x1a4),
-            self._raw_field_row("Field98_0x1A8", f.field98_0x1a8),
-            self._raw_field_row("Field100_0x1B0", f.field100_0x1b0),
-            self._raw_field_row("Field101_0x1B4", f.field101_0x1b4),
-            self._raw_field_row("Field102_0x1B8", f.field102_0x1b8),
-            self._raw_field_row("Field103_0x1BC", f.field103_0x1bc),
-            self._raw_field_row("Field104_0x1C0", f.field104_0x1c0),
-            self._raw_field_row("Field105_0x1C4", f.field105_0x1c4),
-        ])
 
-        ImGui.table(f"finsp_rf_tbl_{self.frame_id}", headers, data)
+        ImGui.table(f"finsp_rf_tbl_{self}", headers, data)
 
 
 # ========================================================================
@@ -1177,7 +1108,7 @@ class InspectorManager:
                 closed.append(fid)
                 continue
 
-            alias = UIManager.GetEntryFromJSON(json_file_name, fid) or ""
+            alias = Frame.from_id(fid).describe()
             title = f"Frame Inspector [{fid}]"
             if alias:
                 title += f' "{alias}"'

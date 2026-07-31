@@ -39,7 +39,7 @@ def is_window_active() -> bool:
         # user32 = ctypes.windll.user32
         # foreground_window = user32.GetForegroundWindow()
         # gw_window = PySystem.Console.get_gw_window_handle()
-        return PySystem.Console.is_window_active()
+        return PySystem.window.is_window_active()
     
     except Exception as e:
         ConsoleLog(MODULE_NAME, f"Error checking if window is active: {e}", PySystem.Console.MessageType.Error)
@@ -47,7 +47,7 @@ def is_window_active() -> bool:
 
 def set_window_title(title: str):
     try:
-        PySystem.Console.set_window_title(title)
+        PySystem.window.set_window_title(title)
     except Exception as e:
         ConsoleLog(MODULE_NAME, f"Error setting window title: {e}", message_type=1)
     pass

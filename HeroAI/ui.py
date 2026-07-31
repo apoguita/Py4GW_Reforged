@@ -39,6 +39,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer, Timer
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 class CachedSkillInfo:
     def __init__(self, skill_id: int):
@@ -116,8 +117,7 @@ def is_base_configure_consumables_window_open() -> bool:
     return configure_base_consumables_window_open
 
 def is_party_window_open() -> bool:
-    from Py4GWCoreLib.UIManager import WindowFrames
-    return WindowFrames["PartyWindow"].FrameExists()
+    return Frame(FrameId.PartyFormation).exists
     
           
 def get_frame_texture_for_effect(skill_id: int) -> tuple[(GameTexture), TextureState, int]:
@@ -1900,8 +1900,8 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
         
         match hotbar.docked:
             case Docked.PartyWindow:
-                fid = UIManager.GetFrameIDByHash(PARTY_WINDOW_HASH)
-                party_window = UIManager.GetFrameCoords(fid) if fid != 0 and UIManager.FrameExists(fid) else None
+                party_frame = Frame(FrameId.PartyFormation)
+                party_window = party_frame.coords() if party_frame.exists else None
                 
                 if party_window:
                     left, top, right, bottom = party_window
@@ -1920,8 +1920,8 @@ def draw_hotbar(hotbar: Settings.CommandHotBar, cached_data: CacheData):
                     hotbar.position = (int(x), int(y))
                 
             case Docked.Skillbar:
-                fid = UIManager.GetFrameIDByHash(SKILLBAR_WINDOW_HASH)
-                skillbar_window = UIManager.GetFrameCoords(fid) if fid != 0 and UIManager.FrameExists(fid) else None
+                skillbar_frame = Frame(FrameId.Skillbar)
+                skillbar_window = skillbar_frame.coords() if skillbar_frame.exists else None
                 if skillbar_window:
                     left, top, right, bottom = skillbar_window
                     
@@ -2272,13 +2272,11 @@ def draw_skip_cutscene_overlay():
     if in_cutscene:
         pyimgui_io = PyImGui.get_io()
         mouse = (pyimgui_io.mouse_pos_x, pyimgui_io.mouse_pos_y)
-        skip_cutscene_hash = 140452905
-        button_offsets = [6,1,0]
-        skip_cutscene_id = UIManager.GetChildFrameID(skip_cutscene_hash, button_offsets)
+        skip_cutscene_id = Frame(FrameId.ScreenFrame.C6.ScreenFrame.SkipCutsceneButton)
         
-        frame_exists = UIManager.FrameExists(skip_cutscene_id)
+        frame_exists = skip_cutscene_id.exists
         if frame_exists:          
-            frame = UIManager.GetFrameCoords(skip_cutscene_id)
+            frame = skip_cutscene_id.coords()
             
             if ImGui.is_mouse_in_rect((frame[0], frame[1], frame[2] - frame[0], frame[3] - frame[1]), mouse):                            
                 if is_left_mouse_clicked() and pyimgui_io.key_ctrl:
@@ -2309,21 +2307,16 @@ def draw_party_overlay(cached_data: CacheData, hero_windows : dict[str, WindowMo
     
     if party_throttle.IsExpired():
         party_throttle.Reset()
-        # 3332025202,1,8,0,0,0,0,12,0
-        party_members_hash = 3332025202 if Map.IsOutpost() else 3332025202
-        offsets = [1,8,0,0,0,0] if Map.IsOutpost() else [0,0,0,0]
-        
-        party_member_frames = []    
-        fid = UIManager.GetChildFrameID(party_members_hash, offsets)
-        if fid == 0 or not UIManager.FrameExists(fid):
+        party_member_frames = []
+        if not Frame.party_list().exists:
             return
-                
+
         for i in range(1, MAX_CHILD_FRAMES):
-            fid = UIManager.GetChildFrameID(party_members_hash, [1,8,0,0,0,0,i,0] if Map.IsOutpost() else [0,0,0,0,i,0])
-            if fid == 0 or not UIManager.FrameExists(fid):
+            member = Frame.party_member(i + 1)
+            if not member.exists:
                 continue
-            
-            party_member_frames.append(FramePosition(fid))
+
+            party_member_frames.append(FramePosition(member))
             
         ## sort frames by Y
         party_member_frames.sort(key=lambda x: (x.position.top_on_screen, x.position.left_on_screen))  # Sort by Y, then X
@@ -2427,7 +2420,7 @@ def draw_panel_toggle(i, account : AccountStruct, button_rect : tuple[float, flo
             settings.save_settings()
 
 show_accounts_in_party_search : bool = False
-last_active_tab : int = -1
+last_active_tab = None   # the tab handle last seen active
 selected_account : str = ""
 
 party_search : Optional[FramePosition] = None
@@ -2499,21 +2492,21 @@ def draw_party_search_overlay(cached_data: CacheData):
     if party_search_throttle.IsExpired():
         party_search_throttle.Reset()
             
-        party_search_id = UIManager.GetChildFrameID(3199024334, [14])
-        if party_search_id == 0 or not UIManager.FrameExists(party_search_id):
+        party_search_id = Frame(FrameId.PartySearchWindow.Panel)
+        if not party_search_id.exists:
             party_search = None
             party_search_throttle.SetThrottleTime(500)
             return
         
         party_search = FramePosition(party_search_id)
         
-        players_tab_id = UIManager.GetChildFrameID(3199024334, [14, 4294967295])    
+        players_tab_id = Frame(FrameId.PartySearchWindow.Panel.SlotLast)    
         player_tab = FramePosition(players_tab_id)
             
-        heroes_tab_id = UIManager.GetChildFrameID(3199024334, [14, 4294967294])
+        heroes_tab_id = Frame(FrameId.PartySearchWindow.Panel.SlotPrev)
         hero_tab = FramePosition(heroes_tab_id)
         
-        henchmen_tab_id = UIManager.GetChildFrameID(3199024334, [14, 4294967293])
+        henchmen_tab_id = Frame(FrameId.PartySearchWindow.Panel.SlotPrev2)
         henchmen_tab = FramePosition(henchmen_tab_id)
             
         active_tab = next((tab for tab in [player_tab, hero_tab, henchmen_tab] if tab.position.content_top == max(
@@ -2556,7 +2549,7 @@ def draw_party_search_overlay(cached_data: CacheData):
     )
     
     if active_tab:
-        if last_active_tab != active_tab.frame_id:
+        if last_active_tab != active_tab.frame:
             show_accounts_in_party_search = False
             
         elif not ImGui.is_mouse_in_rect(tab_rect):
@@ -2572,7 +2565,7 @@ def draw_party_search_overlay(cached_data: CacheData):
                         show_accounts_in_party_search = False
                         break
             
-        last_active_tab = active_tab.frame_id
+        last_active_tab = active_tab.frame
     
     tab_open = draw_tab_control(tab_rect)
     

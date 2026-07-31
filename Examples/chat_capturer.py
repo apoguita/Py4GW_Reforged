@@ -1,5 +1,6 @@
 import Py4GW
 from Py4GWCoreLib import *
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "tester for fonts"
 
@@ -47,10 +48,10 @@ def floating_input_text(label, value, x, y, width=120, height=24, color: Color =
 def main():
     global text_input, chat_text_frame_hash, focus_set
     try:
-        chat_text_frame_id = UIManager.GetFrameIDByHash(chat_text_frame_hash)
-        if UIManager.FrameExists(chat_text_frame_id) and Player.IsTyping():
-            #UIManager().DrawFrame(chat_text_frame_id, ColorPalette.GetColor("GW_White").to_color())
-            left,top, right, bottom = UIManager.GetFrameCoords(chat_text_frame_id)
+        chat_text_frame_id = Frame(FrameId.TextArea)
+        if chat_text_frame_id.exists and Player.IsTyping():
+            #Frame.from_id(chat_text_frame_id).draw(ColorPalette.GetColor("GW_White").to_color())
+            left,top, right, bottom = chat_text_frame_id.coords()
             width = right - left
             height = bottom - top
             

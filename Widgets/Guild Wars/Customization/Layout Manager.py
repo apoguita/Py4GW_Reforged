@@ -1,21 +1,26 @@
-from Py4GWCoreLib import ImGui, Color, Player, IconsFontAwesome5, Color, ColorPalette, GLOBAL_CACHE, SharedCommandType, ConsoleLog, Utils
+from Py4GWCoreLib import ImGui, Color, Player, IconsFontAwesome5, ColorPalette, GLOBAL_CACHE, SharedCommandType, ConsoleLog, Utils
 from Py4GWCoreLib import JsonFactory
+from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui
-import Py4GW
 import PyOverlay
+import PySystem
 
 MODULE_NAME = "Layout Manager"
 MODULE_ICON = "Textures/Module_Icons/layout manager.png"
 
 screen_overlay = PyOverlay.ScreenOverlay()
-screen_overlay.create_overlay(ms=100, destroy=False)
+screen_overlay.create_overlay(ms=0, destroy=False)
 
-io = PyImGui.get_io()
 screen_width, screen_height = screen_overlay.get_desktop_size()
+
+
+_LAYOUTS_DOC = JsonFactory("Widgets/LayoutManager/window_layouts.json", "global")
+_TEMPLATES_DOC = JsonFactory("Widgets/LayoutManager/templates.json", "global")
+_LOCAL_SETTINGS = Settings("Widgets/LayoutManager.ini", "account")
 
 def _send_message_to(command: SharedCommandType, receiver_email: str, params=(0.0, 0.0, 0.0, 0.0), ExtraData=("", "", "", "")):
     sender_email = Player.GetAccountEmail()
-    accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
+    accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(include_isolated=True) or []
     if not any(acc.AccountEmail == receiver_email for acc in accounts):
         ConsoleLog("Messaging", f"Account with email {receiver_email} not found. Message not sent.", log=True)
         return
@@ -155,13 +160,13 @@ class LayoutConfig:
 
 
 class WindowLayouts:
-    # Layouts describe window geometry for every client on the machine, so this is
-    # genuinely shared config: one global JSON document, cross-process merged.
-    _layouts_doc = JsonFactory("Widgets/LayoutManager/window_layouts.json", "global")
+    """Own the shared layout catalog and the live shared-memory account roster."""
 
     def __init__(self):
         self.layouts: list[LayoutConfig] = []
         self.all_accounts: list[ClientConfig] = []
+        self.online_emails: set[str] = set()
+        self._template_names: list[str] = []
 
         # existing UI state...
         self._lcw_selected_layout_idx = -1
@@ -170,31 +175,137 @@ class WindowLayouts:
 
         self._edit_layout_name = ""
         self._new_layout_name = ""
+        self._template_name = ""
+        self._template_picker_idx = 0
         # NEW: per-client editor windows state
         self._client_editor_windows: list[dict] = []  # each: {"layout_idx": int, "client_idx": int, "open": bool}
         self.load_layouts()
-        self.get_remaining_accounts_from_shmem()
-
-    @staticmethod
-    def _template_doc(filepath: str) -> JsonFactory:
-        """Map a user-picked path to a jailed template document (by file name only)."""
-        base = filepath.replace("\\", "/").rstrip("/").split("/")[-1] or "template.json"
-        if not base.endswith(".json"):
-            base += ".json"
-        return JsonFactory("Widgets/LayoutManager/Templates/" + base)
+        self._load_accounts()
+        self._merge_layout_clients_into_accounts()
+        self.refresh_accounts_from_shmem()
+        self.refresh_template_names()
 
     def load_layouts(self):
         self.layouts = []
-        for layout_data in self._layouts_doc.get_json("layouts", []):
+        raw_layouts = _LAYOUTS_DOC.get_json("layouts", [])
+        if not isinstance(raw_layouts, list):
+            return
+        for layout_data in raw_layouts:
+            if not isinstance(layout_data, dict):
+                continue
             layout = LayoutConfig()
             layout.from_dict(layout_data)
             self.layouts.append(layout)
 
     def save_layouts(self):
-        self._layouts_doc.set_json("layouts", [layout.to_dict() for layout in self.layouts])
+        _LAYOUTS_DOC.set_json("layouts", [layout.to_dict() for layout in self.layouts])
 
-    def export_template(self, layout: LayoutConfig, filepath: str):
-        """Export layout as a template with placeholder emails (into the JSON jail)."""
+    def _load_accounts(self):
+        """Load the global account roster retained from previously observed clients."""
+        self.all_accounts = []
+        raw_accounts = _LAYOUTS_DOC.get_json("accounts", [])
+        if not isinstance(raw_accounts, list):
+            return
+        for account_data in raw_accounts:
+            if not isinstance(account_data, dict):
+                continue
+            client = ClientConfig()
+            client.from_dict(account_data)
+            if client.email:
+                self.all_accounts.append(client)
+
+    def _save_accounts(self):
+        _LAYOUTS_DOC.set_json("accounts", [account.to_dict() for account in self.all_accounts])
+
+    def _merge_layout_clients_into_accounts(self):
+        """Keep configured offline clients available in the account picker."""
+        known = {account.email for account in self.all_accounts if account.email}
+        for layout in self.layouts:
+            for client in layout.clients:
+                if client.email and client.email not in known:
+                    self.all_accounts.append(client)
+                    known.add(client.email)
+
+    def refresh_accounts_from_shmem(self):
+        """Merge every currently visible client into the persisted global roster."""
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(include_isolated=True) or []
+        self.online_emails = {
+            str(getattr(account, "AccountEmail", "") or "").strip()
+            for account in accounts
+            if str(getattr(account, "AccountEmail", "") or "").strip()
+        }
+        known = {account.email: account for account in self.all_accounts if account.email}
+        changed = False
+        for account in accounts:
+            email = str(getattr(account, "AccountEmail", "") or "").strip()
+            if not email:
+                continue
+            character_name = str(
+                getattr(getattr(account, "AgentData", None), "CharacterName", "") or ""
+            ).strip()
+            client = known.get(email)
+            if client is None:
+                client = ClientConfig(
+                    email=email,
+                    alias=character_name or email,
+                    x=0,
+                    y=0,
+                    width=800,
+                    height=600,
+                    borderless=False,
+                    rename_window=False,
+                    window_title="",
+                )
+                self.all_accounts.append(client)
+                known[email] = client
+                changed = True
+            elif character_name and (not client.alias or client.alias == client.email):
+                client.alias = character_name
+                changed = True
+        if changed:
+            self._save_accounts()
+
+    def refresh_template_names(self):
+        """Refresh the shared template-name cache; templates do not change per frame."""
+        self._template_names = sorted(
+            str(name) for name in _TEMPLATES_DOC.keys("templates") if str(name).strip()
+        )
+
+    @staticmethod
+    def _template_key(name: str) -> str:
+        """Return a stable, jail-safe catalog key from a user-facing template name."""
+        cleaned = " ".join(str(name).strip().split())
+        cleaned = "".join(character if character.isalnum() or character in " _-." else "_" for character in cleaned)
+        return cleaned[:80].strip(" .")
+
+    def template_names(self) -> list[str]:
+        return self._template_names
+
+    def overlay_signature(self) -> tuple:
+        """Return the static overlay content used to avoid redundant native redraws."""
+        entries = []
+        for layout in self.layouts:
+            for client in layout.clients:
+                if not getattr(client, "show_overlay", False):
+                    continue
+                entries.append(
+                    (
+                        str(client.email),
+                        str(client.alias),
+                        int(client.x),
+                        int(client.y),
+                        int(client.width),
+                        int(client.height),
+                        int(client.color.to_argb()),
+                    )
+                )
+        return (int(screen_width), int(screen_height), tuple(entries))
+
+    def export_template(self, layout: LayoutConfig, name: str):
+        """Save a layout template in the shared, jailed JSON template catalog."""
+        key = self._template_key(name)
+        if not key:
+            return
         layout_dict = layout.to_dict()
 
         # Force template flag
@@ -202,11 +313,15 @@ class WindowLayouts:
         for c in layout_dict["clients"]:
             c["email"] = "__TEMPLATE__"
 
-        self._template_doc(filepath).set_json("template", layout_dict)
+        _TEMPLATES_DOC.set_json("templates/%s" % key, layout_dict)
+        self.refresh_template_names()
 
-    def import_template(self, filepath: str) -> LayoutConfig:
-        """Import a template document (from the JSON jail) into a LayoutConfig object."""
-        data = self._template_doc(filepath).get_json("template", {})
+    def import_template(self, name: str) -> LayoutConfig | None:
+        """Load a template from the shared, jailed JSON template catalog."""
+        key = self._template_key(name)
+        data = _TEMPLATES_DOC.get_json("templates/%s" % key, {})
+        if not isinstance(data, dict) or not data:
+            return None
 
         layout = LayoutConfig()
         layout.from_dict(data)
@@ -238,61 +353,8 @@ class WindowLayouts:
         return self.layouts
 
     def get_remaining_accounts_from_shmem(self):
-        """
-        Populate the known accounts from SharedMemory (the sanctioned cross-account
-        data channel). Steam accounts without a launcher UUID are covered here too.
-        """
-        seen = set([acc.email for acc in self.all_accounts])
-        unique_accounts: list[ClientConfig] = []
-
-        for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
-            email = account.AccountEmail
-            if not email or email in seen:
-                continue
-            seen.add(email)
-
-            # Create a ClientConfig using relevant fields
-            client = ClientConfig(
-                email=email,
-                alias=account.AgentData.CharacterName,
-                x=0,
-                y=0,
-                width=800,
-                height=600,
-                borderless=False,
-                rename_window=False,
-                window_title="",
-            )
-            unique_accounts.append(client)
-
-        # Save into layouts
-        self.all_accounts += unique_accounts
-        self.save_layouts()
-        #PySystem.Console.Log("Layout Manager", f"Loaded {len(unique_accounts)} accounts from shmem.")
-
-    def pick_save_path(self,default_name="layout.json"):
-        from tkinter import filedialog
-        import tkinter as tk
-        root = tk.Tk()
-        root.withdraw()  # hide main window
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            initialfile=default_name,
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        root.destroy()
-        return filepath or None
-
-    def pick_open_path(self):
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        filepath = filedialog.askopenfilename(
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        root.destroy()
-        return filepath or None
+        """Compatibility alias for callers from the legacy implementation."""
+        self.refresh_accounts_from_shmem()
 
     def draw_window(self):
         if PyImGui.begin("Layout Management", PyImGui.WindowFlags.AlwaysAutoResize):
@@ -325,18 +387,23 @@ class WindowLayouts:
                     self._lcw_selected_layout_idx = -1
                     self._edit_layout_name = ""
 
-                if PyImGui.button("Export as Template"):
-                    filepath = self.pick_save_path(f"{layout.layout_name}_template.json")
-                    if filepath:
-                        self.export_template(layout, filepath)
+                self._template_name = PyImGui.input_text("Template Name", self._template_name, 0)
+                if PyImGui.button("Export as Template") and self._template_name.strip():
+                    self.export_template(layout, self._template_name)
+                    self._template_name = ""
 
-                PyImGui.same_line(0, -1)
-                if PyImGui.button("Import Template"):
-                    filepath = self.pick_open_path()
-                    if filepath:
-                        imported = self.import_template(filepath)
-                        if imported:
+                template_names = self.template_names()
+                if template_names:
+                    self._template_picker_idx = max(0, min(self._template_picker_idx, len(template_names) - 1))
+                    self._template_picker_idx = PyImGui.combo(
+                        "Template", self._template_picker_idx, template_names
+                    )
+                    if PyImGui.button("Import Template"):
+                        imported = self.import_template(template_names[self._template_picker_idx])
+                        if imported is not None:
                             self.add_layout(imported)
+                else:
+                    PyImGui.text_disabled("No shared templates saved")
 
             PyImGui.separator()
             self._new_layout_name = PyImGui.input_text("New Layout Name", self._new_layout_name, 0)
@@ -409,7 +476,7 @@ class WindowLayouts:
 
                 client.show_overlay = PyImGui.checkbox("Preview Position", getattr(client, "show_overlay", False))
                 color = PyImGui.color_edit4("Color", client.color.to_tuple_normalized())
-                client.color = Color.from_tuple(color)
+                client.color = Color.from_tuple((float(color[0]), float(color[1]), float(color[2]), float(color[3])))
 
                 PyImGui.separator()
 
@@ -428,8 +495,7 @@ class WindowLayouts:
                     self.save_layouts()
                     to_close.append(idx)  # close this editor; client is gone"""
 
-                accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
-                if any(acc.AccountEmail == client.email for acc in accounts):
+                if client.email in self.online_emails:
                     if PyImGui.button("Apply to Client Now"):
                         # send messages to that client
                         if client.rename_window:
@@ -452,7 +518,9 @@ class WindowLayouts:
 
 
 window_manager = WindowLayouts()
-layout_manager_window_open = False
+layout_manager_window_open = _LOCAL_SETTINGS.get_bool("Windows", "layout_editor_open", False)
+_last_account_refresh_ms = 0
+_overlay_signature: tuple | None = None
 
 draw_screen_rect = False
 
@@ -465,7 +533,10 @@ def DrawMainWindow():
 
         if PyImGui.begin_menu_bar():
             if PyImGui.begin_menu("Edit Layouts"):
+                previous_open = layout_manager_window_open
                 layout_manager_window_open = PyImGui.checkbox("Layout Manager", layout_manager_window_open)
+                if layout_manager_window_open != previous_open:
+                    _LOCAL_SETTINGS.set_bool("Windows", "layout_editor_open", layout_manager_window_open)
                 PyImGui.end_menu()
             PyImGui.end_menu_bar()
         
@@ -491,8 +562,7 @@ def DrawMainWindow():
         if 0 <= window_manager._lcw_selected_layout_idx < len(layouts):
             layout = layouts[window_manager._lcw_selected_layout_idx]
 
-            accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
-            online_emails = {acc.AccountEmail for acc in accounts}
+            online_emails = window_manager.online_emails
 
             if PyImGui.begin_table("clients_table", 6, PyImGui.TableFlags.Borders | PyImGui.TableFlags.RowBg | PyImGui.TableFlags.Resizable):
                 # Header row
@@ -505,6 +575,7 @@ def DrawMainWindow():
                 if PyImGui.button(f"{label}##all"):
                     for c in layout.clients:
                         c.show_overlay = not c.show_overlay
+                    window_manager.save_layouts()
                 PyImGui.show_tooltip(tooltip)
                 PyImGui.table_set_column_index(3)
                 if PyImGui.button(f"Apply All##apply_All"):
@@ -539,6 +610,7 @@ def DrawMainWindow():
                     tooltip = "Show Overlay" if not c.show_overlay else "Hide Overlay"
                     if PyImGui.button(f"{label}##{i}show_overlay"):
                         c.show_overlay = not c.show_overlay
+                        window_manager.save_layouts()
                     PyImGui.show_tooltip(tooltip)
 
                     # Col 3: Apply button
@@ -623,7 +695,13 @@ def tooltip():
 
 
 def main():
-    global layout_manager_window_open, draw_screen_rect
+    global layout_manager_window_open, draw_screen_rect, _last_account_refresh_ms, _overlay_signature
+
+    now_ms = int(PySystem.get_tick_count64())
+    if now_ms - _last_account_refresh_ms >= 1000:
+        window_manager.refresh_accounts_from_shmem()
+        window_manager.refresh_template_names()
+        _last_account_refresh_ms = now_ms
 
     DrawMainWindow()
     if layout_manager_window_open:
@@ -631,22 +709,41 @@ def main():
     
     window_manager.draw_client_editors()
 
-    screen_overlay.show(True)
-    screen_overlay.begin()
-    
-    for layout in window_manager.layouts:
-        for c in layout.clients:
-            if getattr(c, "show_overlay", False):
-                argb = c.color.to_argb()
-                white = ColorPalette.GetColor("white").to_argb()
-                faded_argb = c.color.copy()
-                faded_argb.set_a(100)  # low alpha for filled rect
-
-                screen_overlay.draw_rect_filled(int(c.x), int(c.y), int(c.width), int(c.height), faded_argb.to_argb())
-                screen_overlay.draw_rect(int(c.x), int(c.y), int(c.width), int(c.height), argb, 2.0)
-                screen_overlay.draw_text_box(int(c.x), int(c.y), int(c.width), int(c.height), c.alias, white, px_size=48.0, hcenter=True, vcenter=True)
-    
-    screen_overlay.end()
+    overlay_signature = window_manager.overlay_signature()
+    if overlay_signature != _overlay_signature:
+        _overlay_signature = overlay_signature
+        has_overlay = bool(overlay_signature[2])
+        if has_overlay:
+            screen_overlay.show(True)
+            screen_overlay.begin()
+            white = ColorPalette.GetColor("white").to_argb()
+            for layout in window_manager.layouts:
+                for client in layout.clients:
+                    if not getattr(client, "show_overlay", False):
+                        continue
+                    argb = client.color.to_argb()
+                    faded_argb = client.color.copy()
+                    faded_argb.set_a(100)
+                    screen_overlay.draw_rect_filled(
+                        int(client.x), int(client.y), int(client.width), int(client.height), faded_argb.to_argb()
+                    )
+                    screen_overlay.draw_rect(
+                        int(client.x), int(client.y), int(client.width), int(client.height), argb, 2.0
+                    )
+                    screen_overlay.draw_text_box(
+                        int(client.x),
+                        int(client.y),
+                        int(client.width),
+                        int(client.height),
+                        client.alias,
+                        white,
+                        px_size=48.0,
+                        hcenter=True,
+                        vcenter=True,
+                    )
+            screen_overlay.end()
+        else:
+            screen_overlay.show(False)
 
 if __name__ == "__main__":
     main()

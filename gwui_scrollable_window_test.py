@@ -5,6 +5,8 @@ import PyImGui
 
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib.GWUI import GWUI
+from Py4GWCoreLib.FrameTree import Frame
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 
 MODULE_NAME = "GWUI Scrollable Composition Test"
@@ -92,12 +94,12 @@ def _frame_summary(frame_id: int) -> str:
     if frame_id <= 0:
         return "frame_id=0"
     try:
-        frame = UIManager.GetFrameByID(frame_id)
-        left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
+        frame = (lambda fid: Frame.from_id(fid))(frame_id)
+        left, top, right, bottom = Frame.from_id(frame_id).coords()
         return (
             f"frame_id={frame_id} "
             f"parent_id={int(frame.parent_id)} "
-            f"child_offset_id={int(frame.child_offset_id)} "
+            f"child_offset_id={int(frame.code)} "
             f"is_created={bool(frame.is_created)} "
             f"is_visible={bool(frame.is_visible)} "
             f"frame_state=0x{int(frame.frame_state):X} "
@@ -108,7 +110,7 @@ def _frame_summary(frame_id: int) -> str:
 
 
 def _current_window_id() -> int:
-    return int(UIManager.GetFrameIDByLabel(WINDOW_LABEL) or 0)
+    return int((lambda lbl: LiveTree.by_label(lbl).frame_id)(WINDOW_LABEL) or 0)
 
 
 def _window() -> GWUI.Window:
@@ -137,7 +139,7 @@ def _dump_state(prefix: str) -> None:
     if page.exists():
         try:
             page_child_ids = [
-                int(UIManager.GetChildFrameByFrameId(page.frame_id, offset) or 0)
+                int((lambda fid, c: Frame.from_id(fid).child_native(c).frame_id)(page.frame_id, offset) or 0)
                 for offset in range(0x20, 0x40)
             ]
             page_child_ids = [frame_id for frame_id in page_child_ids if frame_id > 0]
@@ -203,7 +205,7 @@ def _create_scrollable() -> None:
 
     PyGameThread.enqueue(_invoke)
     _log(
-        f"create scrollable enqueued window={window.frame_id} content={window.get_content_frame_id()} "
+        f"create scrollable enqueued window={window} content={window.get_content_frame_id()} "
         f"child_index={SCROLLABLE_CHILD_INDEX} flags=0x{SCROLLABLE_FLAGS:X} label='{SCROLLABLE_LABEL}'"
     )
     _schedule_report("state after create scrollable")
@@ -252,7 +254,7 @@ def _insert_text_labels() -> None:
 
     PyGameThread.enqueue(_invoke)
     _log(
-        f"insert text labels enqueued scrollable={scrollable.frame_id} "
+        f"insert text labels enqueued scrollable={scrollable} "
         f"count={TEXT_LABEL_COUNT} flags=0x{TEXT_LABEL_FLAGS:X} prefix='{TEXT_LABEL_PREFIX}'"
     )
     _schedule_report("state after insert text labels")
@@ -268,7 +270,7 @@ def _clear_scrollable_items() -> None:
         scrollable.clear_items()
 
     PyGameThread.enqueue(_invoke)
-    _log(f"clear scrollable items enqueued scrollable={scrollable.frame_id}")
+    _log(f"clear scrollable items enqueued scrollable={scrollable}")
     _schedule_report("state after clear scrollable items")
 
 
@@ -350,10 +352,10 @@ def _draw_window() -> None:
     page = scrollable.get_page()
 
     PyImGui.separator()
-    PyImGui.text(f"current_window={window.frame_id}")
+    PyImGui.text(f"current_window={window}")
     PyImGui.text(f"content_frame={window.get_content_frame_id() if window.exists() else 0}")
-    PyImGui.text(f"scrollable_frame={scrollable.frame_id}")
-    PyImGui.text(f"scrollable_page={page.frame_id}")
+    PyImGui.text(f"scrollable_frame={scrollable}")
+    PyImGui.text(f"scrollable_page={page}")
     PyImGui.text(f"scrollable_item_count={scrollable.get_count() if scrollable.exists() else 0}")
     PyImGui.text(f"last_text_labels={LAST_TEXT_LABEL_IDS}")
 

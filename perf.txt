@@ -1,30 +1,6 @@
-[2026-07-19 18:30:06] [print:] === System Monitor: Deep Profile for Guild Wars\Screen Overlays/Map Overlay.py ===
-[2026-07-19 18:30:06] [print:] FramesCaptured=120 RootCount=1 Zoomed=no
-[2026-07-19 18:30:06] [print:] Top roots by cumulative/frame:
-[2026-07-19 18:30:06] [print:] - Map Overlay.draw: cum=6.563ms/frame
-[2026-07-19 18:30:06] [print:] Top functions by cumulative/frame:
-[2026-07-19 18:30:06] [print:] - Map Overlay.draw: self=0.003ms/frame cum=6.563ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - host.draw: self=0.030ms/frame cum=6.560ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - agents.draw: self=0.438ms/frame cum=5.408ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - agents._marker: self=0.203ms/frame cum=2.182ms/frame calls/frame=51.00
-[2026-07-19 18:30:06] [print:] - agents.living_of: self=0.116ms/frame cum=1.688ms/frame calls/frame=50.00
-[2026-07-19 18:30:06] [print:] - shapes.draw_marker: self=0.320ms/frame cum=1.654ms/frame calls/frame=51.00
-[2026-07-19 18:30:06] [print:] - Agent.GetAgentByID: self=0.197ms/frame cum=1.435ms/frame calls/frame=68.00
-[2026-07-19 18:30:06] [print:] - AgentArray.GetAgentByID: self=0.196ms/frame cum=1.100ms/frame calls/frame=68.00
-[2026-07-19 18:30:06] [print:] - AgentContext.GetAgentByID: self=0.426ms/frame cum=0.780ms/frame calls/frame=68.00
-[2026-07-19 18:30:06] [print:] - shapes._draw_tear: self=0.440ms/frame cum=0.716ms/frame calls/frame=33.00
-[2026-07-19 18:30:06] [print:] - AgentContext.GetAsAgentLiving: self=0.312ms/frame cum=0.484ms/frame calls/frame=66.00
-[2026-07-19 18:30:06] [print:] - Agent.HasQuest: self=0.039ms/frame cum=0.408ms/frame calls/frame=16.00
-[2026-07-19 18:30:06] [print:] - <frozen importlib._bootstrap>.parent: self=0.297ms/frame cum=0.369ms/frame calls/frame=190.00
-[2026-07-19 18:30:06] [print:] - Agent.GetLivingAgentByID: self=0.061ms/frame cum=0.364ms/frame calls/frame=16.00
-[2026-07-19 18:30:06] [print:] - projection.refresh: self=0.016ms/frame cum=0.322ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - FrameCache.wrapper: self=0.045ms/frame cum=0.309ms/frame calls/frame=15.00
-[2026-07-19 18:30:06] [print:] - terrain.draw_mission: self=0.027ms/frame cum=0.272ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - shapes._draw_triangle: self=0.164ms/frame cum=0.272ms/frame calls/frame=14.00
-[2026-07-19 18:30:06] [print:] - FrameCache.get_or_create: self=0.116ms/frame cum=0.260ms/frame calls/frame=15.00
-[2026-07-19 18:30:06] [print:] - projection.game_to_screen: self=0.203ms/frame cum=0.243ms/frame calls/frame=54.00
-[2026-07-19 18:30:06] [print:] - host._mission_strips: self=0.012ms/frame cum=0.196ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - shapes.pack: self=0.143ms/frame cum=0.177ms/frame calls/frame=104.00
-[2026-07-19 18:30:06] [print:] - DXOverlay.render: self=0.003ms/frame cum=0.175ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - pybind11_detail_function_record_v1_msvc_md_mscver19.render: self=0.172ms/frame cum=0.172ms/frame calls/frame=1.00
-[2026-07-19 18:30:06] [print:] - AgentArraySSM.get_agent_by_id: self=0.122ms/frame cum=0.152ms/frame calls/frame=50.00
+[2026-07-30 20:30:50] [print:] [Inventory Slot Tint Test] using captured hovered item id=12177
+[2026-07-30 20:30:58] [print:] [Inventory Slot Tint Test] queued native tint item=12177 bag=1 slot=17 item=12177 frame=482 argb=0x8CFF00FF
+[2026-07-30 20:31:05] [print:] [Inventory Slot Tint Test] native paint diagnostics={'hook_installed': True, 'enabled': True, 'paint_calls': 85, 'tint_matches': 0, 'model_hits': 85, 'color_calls': 0, 'last_frame_id': 528, 'last_item_id': 3654, 'last_model': 1358792048}
+[2026-07-30 20:31:11] [print:] [Inventory Slot Tint Test] using captured hovered item id=21665
+[2026-07-30 20:31:12] [print:] [Inventory Slot Tint Test] queued native tint item=21665 bag=1 slot=12 item=21665 frame=477 argb=0x8CFF00FF
+[2026-07-30 20:31:14] [print:] [Inventory Slot Tint Test] native paint diagnostics={'hook_installed': True, 'enabled': True, 'paint_calls': 85, 'tint_matches': 0, 'model_hits': 85, 'color_calls': 0, 'last_frame_id': 528, 'last_item_id': 3654, 'last_model': 1358792048}

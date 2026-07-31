@@ -1,0 +1,56 @@
+this can be a clickif exists function 
+
+yes = Frame(FrameId.ScreenFrame.C6.SalvageMaterialsDialog.YesButton)
+        if yes.exists:
+            yes.click()
+			
+			
+can be made inline if frame().exists
+
+yes_button = Frame(FrameId.ScreenFrame.C6.SalvageMaterialsDialog.YesButton)
+
+        if not yes_button.exists:
+		
+		
+this seems like a reuseable pattern
+
+fid = Frame(FrameId.NpcDialog)
+    return fid.exists and fid.is_visible
+	
+why shioould be allowed to gather parents is not hanlding frame s manually? 
+
+pid = Frame.from_id(fid).parent_id
+
+thi s looks reuseable
+dialog = Frame(FrameId.NpcDialog)
+            if dialog.exists:
+                widget_config.frame_id = dialog.frame_id
+                widget_config.bounty_window_exists = True
+				
+why should the script have a need to handle this locally? 
+
+try:
+                icon = Frame.from_label("NPC Bounty Dialog.Option1.Icon")
+            except FrameKeyError:
+                icon = None
+            if icon is not None and icon.exists:
+                icon.parent().click()
+                widget_config.bounty_taken = True
+				
+				
+this can be handled in the class also 
+
+party_frame = Frame(FrameId.PartyFormation)
+                party_window = party_frame.coords() if party_frame.exists else None
+				
+all this is ext4ernal handling 
+
+frame_exists = skip_cutscene_id.exists
+        if frame_exists:          
+            frame = skip_cutscene_id.coords()
+			
+why should code have a need to know frame ids? 
+
+parent_frame_id = Frame(FrameId.PartyFormation)
+        outpost_content_frame_id = Frame(FrameId.PartyFormation.Outpost)
+        explorable_content_frame_id = Frame(FrameId.PartyFormation.Explorable)

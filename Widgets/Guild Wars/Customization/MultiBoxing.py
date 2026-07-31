@@ -14,7 +14,6 @@ from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.Py4GWcorelib import ThrottledTimer
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
-from Py4GWCoreLib.py4gwcorelib_src.Console import Console
 
 MODULE_NAME = "Multi Boxing Manager"
 MODULE_ICON = "Textures/Module_Icons/layout manager.png"
@@ -62,14 +61,14 @@ def configure():
         gui.draw_configure_window()
         
     except Exception as e:
-        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}", Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}", PySystem.Console.MessageType.Error)
 
 def draw():    
     try:          
         gui.draw_access_window()
         
     except Exception as e:
-        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}",  Console.MessageType.Error)
+        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}", PySystem.Console.MessageType.Error)
     
 def on_enable():
     settings.load_layouts()
@@ -99,7 +98,7 @@ def set_widget_visibility(visible: bool):
         
 
 def is_client_in_region(region: Region) -> bool:
-    client_rect = Console.get_window_rect()
+    client_rect = PySystem.window.get_window_rect()
     client_rect = (client_rect[0], client_rect[1], client_rect[2]-client_rect[0], client_rect[3]-client_rect[1])
     
     offset_by_x = abs(client_rect[0] - region.x)
@@ -112,23 +111,16 @@ def is_client_in_region(region: Region) -> bool:
 
 def set_client_to_region(region: Region | None):       
     if region:
-        Console.set_window_geometry(region.x, region.y, region.w, region.h)
+        PySystem.window.set_window_geometry(region.x, region.y, region.w, region.h)
 
         time.sleep(0.1)
-        Console.set_window_geometry(region.x, region.y, region.w, region.h)
+        PySystem.window.set_window_geometry(region.x, region.y, region.w, region.h)
             
     pass    
 
 def main():    
     global throttle_timer, last_character_name, last_rename_type, last_append_gw, is_on_main, toggled_widget_ui, screen_size_changed, initial_resized, module_info
-    
-    try:                    
-        if settings.accounts:
-            draw()
-        
-    except Exception as e:
-        PySystem.Console.Log(MODULE_NAME, f"Error in draw(): {e}",  Console.MessageType.Error)
-    
+
     if not Routines.Checks.Map.MapValid():
         return 
     

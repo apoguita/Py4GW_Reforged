@@ -35,6 +35,7 @@ class NoAttribute:
         this check BEFORE the cast in any rotation that holds an item spell
         so we release the heal before recasting."""
         from Py4GWCoreLib import AgentArray, UIManager
+        from Py4GWCoreLib.FrameTree import FrameTree
 
         player_id: int = Player.GetAgentID()
 
@@ -58,14 +59,14 @@ class NoAttribute:
             return False
 
         # Frame 5040781 is the in-game "Drop Bundle Button" (see
-        # Py4GWCoreLib/frame_aliases.json). Clicking it directly is more
+        # the FrameTree alias table). Clicking it directly is more
         # reliable than ControlAction_DropItem - the keybind silently no-ops if
         # the player hasn't bound a drop-item key in GW's controls.
-        drop_button_ids = UIManager.GetAllChildFrameIDs(5040781, [0, 0])
-        if not drop_button_ids or not UIManager.FrameExists(drop_button_ids[0]):
+        drop_buttons = FrameTree.frames_at_path(5040781, [0, 0])
+        if not drop_buttons or not drop_buttons[0].is_usable:
             return False
 
-        UIManager.FrameClick(drop_button_ids[0])
+        drop_buttons[0].click()
         # FrameClick isn't a CastSkillID-style cast, so BuildMgr's per-tick
         # aftercast timer isn't stamped automatically. Mark it manually so the
         # next tick doesn't fire another action while the engine is still

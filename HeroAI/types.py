@@ -1,7 +1,6 @@
 from ctypes import Structure, c_int, c_float, c_bool, c_wchar
 from enum import Enum, IntEnum, auto
 
-from PyUIManager import UIFrame
 from PyUIManager import FramePosition as UIFramePosition
 
 from Py4GWCoreLib.GlobalCache.SharedMemory import SHMEM_MAX_EMAIL_LEN
@@ -219,6 +218,6 @@ class Docked (IntEnum):
     
     
 class FramePosition:
-    def __init__(self, frame_id: int):
-        self.frame_id = frame_id
-        self.position: UIFramePosition = UIFrame(frame_id).position
+    def __init__(self, frame):
+        self.frame = frame
+        self.position: UIFramePosition = frame.position

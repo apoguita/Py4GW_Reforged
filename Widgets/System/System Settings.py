@@ -44,6 +44,22 @@ def draw() -> None:
         if not _applied:
             # Register the persisted options with the native side once (idempotent thereafter).
             _controller.apply_all_to_native()
+            # Skillbar+ is a retired widget. Its complete runtime is booted here as a native,
+            # profiled callback so no Guild Wars widget script is needed anymore.
+            try:
+                from Py4GWCoreLib.py4gwcorelib_src.skillbar_plus import get_controller as _sbp_get
+
+                _sbp_get().register()
+            except Exception as skillbar_error:
+                PySystem.Console.Log(MODULE_NAME, "Skillbar+ boot failed: %s" % skillbar_error,
+                                     PySystem.Console.MessageType.Error)
+            try:
+                from Py4GWCoreLib.py4gwcorelib_src.camera_smoothing import get_controller as _camera_get
+
+                _camera_get().register()
+            except Exception as camera_error:
+                PySystem.Console.Log(MODULE_NAME, "Camera smoothing boot failed: %s" % camera_error,
+                                     PySystem.Console.MessageType.Error)
             # Also register the persisted name-obfuscation alias set (global/multi-account) at boot.
             try:
                 from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation import get_controller as _no_get

@@ -978,6 +978,7 @@ All files in `docs/RE/`:
 | `native_gw_ui_function_catalog.json` | Catalog of native GW UI functions with addresses |
 | `native_gw_window_creation_investigation.md` | Window creation/proc RE investigation |
 | `native_ui_title_and_encoded_string_reference.md` | Native UI title and encoding reference |
+| `inventory_slot_tint_reverse_engineering.md` | Confirmed `CItemImageFrame` background tint path, EXE hook target, and Reforged-Native implementation spec |
 | `rosetta_stone.txt` | GwA2 (AutoIt) to Py4GW function mapping |
 | `title_rendering_research.md` | Title rendering investigation and working solution (11 approaches) |
 | `ui_controls_catalog.md` | Complete UI controls catalog - 39 types, tiers, structs, addresses, and Phase 3 crash documentation (2026-06-05) |

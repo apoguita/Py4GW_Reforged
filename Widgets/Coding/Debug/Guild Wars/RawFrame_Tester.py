@@ -2,13 +2,16 @@
 import PyImGui
 import PyUIManager
 import PyImGui
-import json
 import PyOverlay
 from typing import Dict, List, Tuple
+from Py4GWCoreLib.FrameTree import Frame
+# aliased: this module defines its own `FrameTree` class below
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 MODULE_NAME = "Frame Tester (Basic)"
 MODULE_ICON = "Textures/Module_Icons/Frame Tester.png"
-json_file_name = ".\\Py4GWCoreLib\\frame_aliases.json"
+# Frame identity comes from the FrameTree name / registry / alias tables
+# (Py4GWCoreLib/FrameTree/*.py dict literals), not from a file.
 
 def RGBToNormal(r, g, b, a):
         """return a normalized RGBA tuple from 0-255 values"""
@@ -93,81 +96,14 @@ def table(title:str, headers, data):
 
 
 def ConstructFramePath(frame_id: int) -> str:
-    """
-    Constructs the full path for an offset-based frame by traversing up the parent chain.
+    """Frame path, from the owning handle."""
+    return Frame.from_id(frame_id).path() if frame_id else ""
 
-    :param frame_id: The frame ID to construct the path for.
-    :return: A string path in the format "hashed_parent,offset1,offset2,...", or None if no valid hashed parent is found.
-    """
-    if frame_id == 0:
-        return ""
-    try:
-        current_frame = PyUIManager.UIFrame(frame_id)
-    except Exception as e:
-        print(f"[ERROR] Failed to create UIFrame with frame_id={frame_id}: {e}")
-        return ""  # Return empty string on error
-    
-    # If the frame itself has a hash, return it immediately
-    if current_frame.frame_hash != 0:
-        return str(current_frame.frame_hash)
 
-    path = []
-    parent_hash = None
+def DescribeFrame(frame_id: int) -> str:
+    """Best-known identity: engine name, registry key, then prose alias."""
+    return Frame.from_id(frame_id).describe()
 
-    # Traverse up the parent hierarchy until we find a hashed parent
-    while current_frame.frame_id != 0:
-        parent_frame = PyUIManager.UIFrame(current_frame.parent_id)
-
-        # Store child offset
-        path.append(str(current_frame.child_offset_id))
-
-        # If we found a parent with a hash, stop and use it as the root
-        if parent_frame.frame_hash:
-            parent_hash = parent_frame.frame_hash
-            break
-
-        current_frame = parent_frame  # Move up to the parent
-
-    # If no hashed parent was found, return None (invalid case)
-    if parent_hash == 0:
-        return ""
-
-    # Construct and return the full path
-    return str(parent_hash) + "," + ",".join(reversed(path))
-    
-def SaveEntryToJSON(filename: str, frame_id: int, alias: str):
-    """Writes or updates an entry in a JSON file."""
-    try:
-        with open(filename, "r", encoding="utf-8") as file:
-            data: Dict[str, str] = json.load(file)  # Load existing data
-    except (FileNotFoundError, json.JSONDecodeError):
-        data = {}  # Start fresh if file doesn't exist or is invalid
-
-    frame_path = ConstructFramePath(frame_id)
-
-    if frame_path:  # Ensure the path is valid before saving
-        data[frame_path] = alias
-
-    with open(filename, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=4)  # Save back to file
-
-def GetEntryFromJSON(filename: str, frame_id: int) -> str:
-        """
-        Reads an entry from a JSON file by constructing the frame's path.
-
-        :param filename: The JSON file to read from.
-        :param frame_id: The frame ID to locate.
-        :return: The alias if found, otherwise None.
-        """
-        try:
-            with open(filename, "r", encoding="utf-8") as file:
-                data = json.load(file)  # Load JSON data
-        except (FileNotFoundError, json.JSONDecodeError):
-            return "" # Return empty string if file doesn't exist or is invalid
-
-        frame_path = ConstructFramePath(frame_id)
-        
-        return data.get(frame_path) or ""  # Return the alias if found, otherwise an empty string
 
 #region config options
 
@@ -194,19 +130,19 @@ class FrameNode:
     def __init__(self, frame_id: int, parent_id: int):
         self.frame_id = frame_id
         self.parent_id = parent_id
-        self.frame_obj = PyUIManager.UIFrame(self.frame_id)
+        self.frame_obj = Frame.from_id(self.frame_id)
         self.info_window = InfoWindow(self.frame_obj)
-        self.frame_hash = self.frame_obj.frame_hash
-        self.child_offset_id = self.frame_obj.child_offset_id
-        self.label = GetEntryFromJSON(json_file_name, self.frame_id) or ""
+        self.frame_hash = self.frame_obj.hash
+        self.child_offset_id = self.frame_obj.code
+        self.label = DescribeFrame(self.frame_id)
         self.parent = None  # Will be set when building the tree
         self.children = []  # Stores child nodes
         self.show_frame_data = False
         
     def update(self):
-        self.frame_obj.get_context()
-        self.frame_hash = self.frame_obj.frame_hash
-        self.label = GetEntryFromJSON(json_file_name, self.frame_id) or ""
+        self.frame_obj.refresh()
+        self.frame_hash = self.frame_obj.hash
+        self.label = DescribeFrame(self.frame_id)
 
     def get_parent(self):
         """Returns the parent node of this frame."""
@@ -232,13 +168,13 @@ class FrameNode:
             
         if self.children:
             PyImGui.push_style_color(PyImGui.ImGuiCol.Text, choose_frame_color())
-            if PyImGui.tree_node(f"Frame:[{self.frame_id}] <{self.frame_hash}> ({self.label}) ##{self.frame_id}"):
+            if PyImGui.tree_node(f"Frame:[{self}] <{self.frame_hash}> ({self.label}) ##{self.widget_id}"):
                 PyImGui.pop_style_color(1)
                 PyImGui.same_line(0,-1)
-                self.show_frame_data = toggle_button(f"Show Data##{self.frame_id}", self.show_frame_data, width=70,height=17)
+                self.show_frame_data = toggle_button(f"Show Data##{self.widget_id}", self.show_frame_data, width=70,height=17)
                 if self.frame_id != 0:
                     if config_options.show_frame_data:
-                        if PyImGui.collapsing_header(f"Frame#{self.frame_id}Data##{self.frame_id}"):
+                        if PyImGui.collapsing_header(f"Frame#{self}Data##{self.widget_id}"):
                             headers = ["Value", "Data"]
                             data = [
                                 ("Parent:", self.parent_id),
@@ -254,11 +190,11 @@ class FrameNode:
             else:
                 PyImGui.pop_style_color(1)
         else:
-            PyImGui.text_colored(f"Frame:[{self.frame_id}] <{self.frame_hash}> ({self.label})",choose_frame_color())  # Leaf node
+            PyImGui.text_colored(f"Frame:[{self}] <{self.frame_hash}> ({self.label})",choose_frame_color())  # Leaf node
             PyImGui.same_line(0,-1)
-            self.show_frame_data = toggle_button(f"Show Data##{self.frame_id}", self.show_frame_data, width=70,height=17)
+            self.show_frame_data = toggle_button(f"Show Data##{self.widget_id}", self.show_frame_data, width=70,height=17)
             if config_options.show_frame_data:
-                if PyImGui.collapsing_header(f"Frame#{self.frame_id}Data##{self.frame_id}"):
+                if PyImGui.collapsing_header(f"Frame#{self}Data##{self.widget_id}"):
                     headers = ["Value", "Data"]
                     data = [
                         ("Parent:", self.parent_id),
@@ -289,7 +225,7 @@ class FrameTree:
         """
         # Step 1: Create nodes
         for frame_id in frame_list:
-            frame_obj = PyUIManager.UIFrame(frame_id)  # Create UIFrame instance
+            frame_obj = Frame.from_id(frame_id)
             parent_id = frame_obj.parent_id  # Extract parent ID
             self.nodes[frame_id] = FrameNode(frame_id, parent_id)
 
@@ -322,7 +258,7 @@ def GetFrameArray():
 
     :return: list: The frame array.
     """
-    return PyUIManager.UIManager.get_frame_array()
+    return LiveTree.all_ids()
 
 def IsFrameCreated(frame_id):
     """
@@ -331,7 +267,7 @@ def IsFrameCreated(frame_id):
     :param frame_id: The ID of the frame.
     :return: bool: True if the frame is created, False otherwise.
     """
-    return PyUIManager.UIFrame(frame_id).is_created
+    return Frame.from_id(frame_id).is_created
 
 def IsVisible(frame_id):
     """
@@ -340,7 +276,7 @@ def IsVisible(frame_id):
     :param frame_id: The ID of the frame.
     :return: bool: True if the frame is visible, False otherwise.
     """
-    return PyUIManager.UIFrame(frame_id).is_visible
+    return Frame.from_id(frame_id).is_visible
 
 def FrameExists(frame_id):
     """
@@ -361,7 +297,7 @@ def GetFrameCoords(frame_id):
     :param frame_id: The ID of the frame.
     :return: top, left, bottom, right coordinates of the frame.
     """
-    frame = PyUIManager.UIFrame(frame_id)
+    frame = Frame.from_id(frame_id)
     top = frame.position.top_on_screen
     left = frame.position.left_on_screen
     bottom = frame.position.bottom_on_screen
@@ -395,7 +331,7 @@ def FrameClick(frame_id):
     """
     if not FrameExists(frame_id):
         return
-    PyUIManager.UIManager.button_click(frame_id)
+    (lambda fid: Frame.from_id(fid).click())(frame_id)
     
 def TestMouseAction(frame_id, current_state, wparam_value, lparam_value=0):
     """
@@ -407,7 +343,7 @@ def TestMouseAction(frame_id, current_state, wparam_value, lparam_value=0):
     """
     if not FrameExists(frame_id):
         return
-    PyUIManager.UIManager.test_mouse_action(frame_id, current_state, wparam_value, lparam_value)
+    (lambda fid, s, w=0, l=0: Frame.from_id(fid).mouse_action(s, w, l))(frame_id, current_state, wparam_value, lparam_value)
     
 def TestMouseClickAction(frame_id, current_state, wparam_value, lparam_value=0):
     """
@@ -419,7 +355,7 @@ def TestMouseClickAction(frame_id, current_state, wparam_value, lparam_value=0):
     """
     if not FrameExists(frame_id):
         return
-    PyUIManager.UIManager.test_mouse_click_action(frame_id, current_state, wparam_value, lparam_value)
+    (lambda fid, s, w=0, l=0: Frame.from_id(fid).mouse_click_action(s, w, l))(frame_id, current_state, wparam_value, lparam_value)
 
 #region InfoWindow
 double_action = False
@@ -432,8 +368,7 @@ class InfoWindow:
         self.draw_frame = True
         self.draw_color :int = RGBToColor(0, 255, 0, 125)
         self.monitor_callbacks = False
-        self.frame_alias = GetEntryFromJSON(json_file_name, self.frame.frame_id)  
-        self.submit_value = self.frame_alias or "" 
+        self.frame_alias = DescribeFrame(self.frame.frame_id)
         self.window_name = ""
         self.setWindowName()
         self.current_state = 0
@@ -442,9 +377,9 @@ class InfoWindow:
         
     def setWindowName(self):
         if self.frame_alias:
-            self.window_name = f"Frame[{self.frame.frame_id}] Hash:<{self.frame.frame_hash}> Alias:\"{self.frame_alias}\"##{self.frame.frame_id}"
+            self.window_name = f"Frame[{self.frame}] Hash:<{self.frame.hash}> Alias:\"{self.frame_alias}\"##{self.frame.widget_id}"
         else:
-            self.window_name = f"Frame[{self.frame.frame_id}] Hash:<{self.frame.frame_hash}>##{self.frame.frame_id}"
+            self.window_name = f"Frame[{self.frame}] Hash:<{self.frame.hash}>##{self.frame.widget_id}"
 
           
       
@@ -470,10 +405,10 @@ class InfoWindow:
         global config_options
         global full_tree
         global double_action
-        if PyImGui.begin(f"{self.window_name}##{self.frame.frame_id}", True, PyImGui.WindowFlags.AlwaysAutoResize):
+        if PyImGui.begin(f"{self.window_name}##{self.frame.widget_id}", True, PyImGui.WindowFlags.AlwaysAutoResize):
             if not config_options.keep_data_updated:
-                self.auto_update = PyImGui.checkbox(f"Auto Update##{self.frame.frame_id}", self.auto_update)
-            self.draw_frame = PyImGui.checkbox(f"Draw Frame##{self.frame.frame_id}", self.draw_frame)
+                self.auto_update = PyImGui.checkbox(f"Auto Update##{self.frame.widget_id}", self.auto_update)
+            self.draw_frame = PyImGui.checkbox(f"Draw Frame##{self.frame.widget_id}", self.draw_frame)
             if self.draw_frame:
                 PyImGui.same_line(0,-1)
                 self.draw_color = TupleToColor(PyImGui.color_edit4("Color", ColorToTuple(self.draw_color)))
@@ -481,7 +416,7 @@ class InfoWindow:
             self.monitor_callbacks = PyImGui.checkbox("Monitor Callbacks", self.monitor_callbacks)
             
             if self.auto_update:
-                self.frame.get_context()
+                self.frame.refresh()
             if self.draw_frame:
                 self.DrawFrame()   
             if self.monitor_callbacks:
@@ -489,28 +424,27 @@ class InfoWindow:
                 
             PyImGui.separator()
             if PyImGui.begin_child("FrameTreeChild",size=(1000,800),border=True,flags=PyImGui.WindowFlags.HorizontalScrollbar):
-                if PyImGui.begin_tab_bar(f"FrameDebuggerIndividualTabBar##{self.frame.frame_id}"):
-                    if PyImGui.begin_tab_item(f"Frame Tree##{self.frame.frame_id}"):
-                        PyImGui.text(f"Frame ID: {self.frame.frame_id}")
-                        PyImGui.text(f"Frame Hash: {self.frame.frame_hash}")
-                        PyImGui.text(f"Alias: {self.frame_alias}")
-                        
-                        self.submit_value = PyImGui.input_text(f"Alias##Edit{self.frame.frame_id}", self.submit_value)
-                        PyImGui.same_line(0,-1)
-                        if PyImGui.button(f"Save Alias##{self.frame.frame_id}"):
-                            SaveEntryToJSON(json_file_name, self.frame.frame_id, self.submit_value)
-                            self.frame_alias = GetEntryFromJSON(json_file_name, self.frame.frame_id)  
-                            self.setWindowName()          
+                if PyImGui.begin_tab_bar(f"FrameDebuggerIndividualTabBar##{self.frame.widget_id}"):
+                    if PyImGui.begin_tab_item(f"Frame Tree##{self.frame.widget_id}"):
+                        PyImGui.text(f"Frame ID: {self.frame}")
+                        PyImGui.text(f"Frame Hash: {self.frame.hash}")
+                        _handle = self.frame
+                        PyImGui.text(f"Engine Name: {_handle.name or '(unnamed)'}")
+                        PyImGui.text(f"Registry Key: {_handle.registry_key or '(unregistered)'}")
+                        PyImGui.text(f"Alias: {_handle.alias or '(none)'}")
+                        PyImGui.text(f"Path: {_handle.path() or '(unresolved)'}")
+                        if PyImGui.button(f"Copy Registry Key##{self.frame.widget_id}"):
+                            PyImGui.set_clipboard_text(_handle.registry_key or _handle.path())
 
-                        if PyImGui.button(f"Click on frame{self.frame.frame_id}##click{self.frame.frame_id}"):
+                        if PyImGui.button(f"Click on frame{self.frame}##click{self.frame}"):
                             FrameClick(self.frame.frame_id)
-                            print (f"Clicked on frame {self.frame.frame_id}")
+                            print (f"Clicked on frame {self.frame}")
                             
                         PyImGui.separator()
-                        self.current_state = PyImGui.input_int(f"Current State##{self.frame.frame_id}", self.current_state)
-                        self.wparam = PyImGui.input_int(f"wParam##{self.frame.frame_id}", self.wparam)
-                        self.lparam = PyImGui.input_int(f"lParam##{self.frame.frame_id}", self.lparam)
-                        if PyImGui.button((f"test mouse action##{self.frame.frame_id}")):
+                        self.current_state = PyImGui.input_int(f"Current State##{self.frame.widget_id}", self.current_state)
+                        self.wparam = PyImGui.input_int(f"wParam##{self.frame.widget_id}", self.wparam)
+                        self.lparam = PyImGui.input_int(f"lParam##{self.frame.widget_id}", self.lparam)
+                        if PyImGui.button((f"test mouse action##{self.frame.widget_id}")):
                             TestMouseAction(self.frame.frame_id, self.current_state, self.wparam, self.lparam)
                             self.current_state += 1
                             if self.current_state in (6, 10, 8):
@@ -522,9 +456,9 @@ class InfoWindow:
                                     self.wparam = 0
                                     self.lparam += 1
                                     
-                            print (f"Tested on frame {self.frame.frame_id}")
+                            print (f"Tested on frame {self.frame}")
                             
-                        if PyImGui.button((f"test mouse click action##{self.frame.frame_id}")):
+                        if PyImGui.button((f"test mouse click action##{self.frame.widget_id}")):
                             TestMouseClickAction(self.frame.frame_id, self.current_state, self.wparam, self.lparam)
                             self.current_state += 1
                             #if self.current_state in (6, 10, 8):
@@ -536,7 +470,7 @@ class InfoWindow:
                                     self.wparam = 0
                                     self.lparam += 1
                                     
-                            print (f"Tested on frame {self.frame.frame_id}")
+                            print (f"Tested on frame {self.frame}")
 
 
                         PyImGui.text(f"Parent ID: {self.frame.parent_id}")
@@ -546,9 +480,9 @@ class InfoWindow:
                         PyImGui.text(f"Type: {self.frame.type}")
                         PyImGui.text(f"Template Type: {self.frame.template_type}")
                         PyImGui.text(f"Frame Layout: {self.frame.frame_layout}")
-                        PyImGui.text(f"Child Offset ID: {self.frame.child_offset_id}")
+                        PyImGui.text(f"Child Offset ID: {self.frame.code}")
                         PyImGui.end_tab_item()
-                    if PyImGui.begin_tab_item(f"Position##{self.frame.frame_id}"):
+                    if PyImGui.begin_tab_item(f"Position##{self.frame.widget_id}"):
                         PyImGui.text(f"Top: {self.frame.position.top}")
                         PyImGui.text(f"Left: {self.frame.position.left}")
                         PyImGui.text(f"Bottom: {self.frame.position.bottom}")
@@ -574,23 +508,23 @@ class InfoWindow:
                         PyImGui.text(f"Viewport Scale X: {self.frame.position.viewport_scale_x}")
                         PyImGui.text(f"Viewport Scale Y: {self.frame.position.viewport_scale_y}")
                         PyImGui.end_tab_item()
-                    if PyImGui.begin_tab_item(f"Relation##{self.frame.frame_id}"):
-                        PyImGui.text(f"Parent ID: {self.frame.relation.parent_id}")
-                        PyImGui.text(f"Field67_0x124: {self.frame.relation.field67_0x124}")
-                        PyImGui.text(f"Field68_0x128: {self.frame.relation.field68_0x128}")
-                        PyImGui.text(f"Frame Hash ID: {self.frame.relation.frame_hash_id}")
+                    if PyImGui.begin_tab_item(f"Relation##{self.frame.widget_id}"):
+                        PyImGui.text(f"Parent ID: {self.frame.parent_id}")
+                        PyImGui.text("Field67_0x124: " + str(self.frame.fields().get('relation.field67_0x124', 0)))
+                        PyImGui.text("Field68_0x128: " + str(self.frame.fields().get('relation.field68_0x128', 0)))
+                        PyImGui.text(f"Frame Hash ID: {self.frame.hash}")
                         if PyImGui.collapsing_header("Siblings"):
-                            for i, sibling in enumerate(self.frame.relation.siblings):
-                                PyImGui.text(f"Siblings[{i}]: {sibling}")
+                            for i, sibling in enumerate(self.frame.siblings()):
+                                PyImGui.text(f"Siblings[{i}]: {sibling.describe() or sibling}")
                         PyImGui.end_tab_item()
-                    if PyImGui.begin_tab_item(f"Callbacks##{self.frame.frame_id}"):
+                    if PyImGui.begin_tab_item(f"Callbacks##{self.frame.widget_id}"):
                         for i, callback in enumerate(self.frame.frame_callbacks):
                             PyImGui.text(f"{i}: {callback.get_address()} - Hex({self.to_hex(callback.get_address())})")
 
 
                         PyImGui.end_tab_item()
 
-                    if PyImGui.begin_tab_item(f"Extra Fields##{self.frame.frame_id}"):
+                    if PyImGui.begin_tab_item(f"Extra Fields##{self.frame.widget_id}"):
                         # Prepare data list
                         data = []
                         
@@ -598,43 +532,13 @@ class InfoWindow:
                         headers = ["Field", "Dec", "Hex", "Bin", "Char"]
                         
                         data = [
-                            ("Field1_0x0", str(self.frame.field1_0x0), self.to_hex(self.frame.field1_0x0), self.to_bin(self.frame.field1_0x0), self.to_char(self.frame.field1_0x0)),
-                            ("Field2_0x4", str(self.frame.field2_0x4), self.to_hex(self.frame.field2_0x4), self.to_bin(self.frame.field2_0x4), self.to_char(self.frame.field2_0x4)),
-
-                            ("Field3_0xC", str(self.frame.field3_0xc), self.to_hex(self.frame.field3_0xc), self.to_bin(self.frame.field3_0xc), self.to_char(self.frame.field3_0xc)),
-                            ("Field4_0x10", str(self.frame.field4_0x10), self.to_hex(self.frame.field4_0x10), self.to_bin(self.frame.field4_0x10), self.to_char(self.frame.field4_0x10)),
-                            ("Field5_0x14", str(self.frame.field5_0x14), self.to_hex(self.frame.field5_0x14), self.to_bin(self.frame.field5_0x14), self.to_char(self.frame.field5_0x14)),
-
-                            ("Field7_0x1C", str(self.frame.field7_0x1c), self.to_hex(self.frame.field7_0x1c), self.to_bin(self.frame.field7_0x1c), self.to_char(self.frame.field7_0x1c)),
-
-                            ("Field10_0x28", str(self.frame.field10_0x28), self.to_hex(self.frame.field10_0x28), self.to_bin(self.frame.field10_0x28), self.to_char(self.frame.field10_0x28)),
-                            ("Field11_0x2C", str(self.frame.field11_0x2c), self.to_hex(self.frame.field11_0x2c), self.to_bin(self.frame.field11_0x2c), self.to_char(self.frame.field11_0x2c)),
-                            ("Field12_0x30", str(self.frame.field12_0x30), self.to_hex(self.frame.field12_0x30), self.to_bin(self.frame.field12_0x30), self.to_char(self.frame.field12_0x30)),
-                            ("Field13_0x34", str(self.frame.field13_0x34), self.to_hex(self.frame.field13_0x34), self.to_bin(self.frame.field13_0x34), self.to_char(self.frame.field13_0x34)),
-                            ("Field14_0x38", str(self.frame.field14_0x38), self.to_hex(self.frame.field14_0x38), self.to_bin(self.frame.field14_0x38), self.to_char(self.frame.field14_0x38)),
-                            ("Field15_0x3C", str(self.frame.field15_0x3c), self.to_hex(self.frame.field15_0x3c), self.to_bin(self.frame.field15_0x3c), self.to_char(self.frame.field15_0x3c)),
-                            ("Field16_0x40", str(self.frame.field16_0x40), self.to_hex(self.frame.field16_0x40), self.to_bin(self.frame.field16_0x40), self.to_char(self.frame.field16_0x40)),
-                            ("Field17_0x44", str(self.frame.field17_0x44), self.to_hex(self.frame.field17_0x44), self.to_bin(self.frame.field17_0x44), self.to_char(self.frame.field17_0x44)),
-                            ("Field18_0x48", str(self.frame.field18_0x48), self.to_hex(self.frame.field18_0x48), self.to_bin(self.frame.field18_0x48), self.to_char(self.frame.field18_0x48)),
-                            ("Field19_0x4C", str(self.frame.field19_0x4c), self.to_hex(self.frame.field19_0x4c), self.to_bin(self.frame.field19_0x4c), self.to_char(self.frame.field19_0x4c)),
-                            ("Field20_0x50", str(self.frame.field20_0x50), self.to_hex(self.frame.field20_0x50), self.to_bin(self.frame.field20_0x50), self.to_char(self.frame.field20_0x50)),
-                            ("Field21_0x54", str(self.frame.field21_0x54), self.to_hex(self.frame.field21_0x54), self.to_bin(self.frame.field21_0x54), self.to_char(self.frame.field21_0x54)),
-                            ("Field22_0x58", str(self.frame.field22_0x58), self.to_hex(self.frame.field22_0x58), self.to_bin(self.frame.field22_0x58), self.to_char(self.frame.field22_0x58)),
-                            ("Field23_0x5C", str(self.frame.field23_0x5c), self.to_hex(self.frame.field23_0x5c), self.to_bin(self.frame.field23_0x5c), self.to_char(self.frame.field23_0x5c)),
-                            ("Field24_0x60", str(self.frame.field24_0x60), self.to_hex(self.frame.field24_0x60), self.to_bin(self.frame.field24_0x60), self.to_char(self.frame.field24_0x60)),
-
-                            ("Field24a_0x64", str(self.frame.field24a_0x64), self.to_hex(self.frame.field24a_0x64), self.to_bin(self.frame.field24a_0x64), self.to_char(self.frame.field24a_0x64)),
-                            ("Field24b_0x68", str(self.frame.field24b_0x68), self.to_hex(self.frame.field24b_0x68), self.to_bin(self.frame.field24b_0x68), self.to_char(self.frame.field24b_0x68)),
-
-                            ("Field25_0x6C", str(self.frame.field25_0x6c), self.to_hex(self.frame.field25_0x6c), self.to_bin(self.frame.field25_0x6c), self.to_char(self.frame.field25_0x6c)),
-                            ("Field26_0x70", str(self.frame.field26_0x70), self.to_hex(self.frame.field26_0x70), self.to_bin(self.frame.field26_0x70), self.to_char(self.frame.field26_0x70)),
-                            ("Field27_0x74", str(self.frame.field27_0x74), self.to_hex(self.frame.field27_0x74), self.to_bin(self.frame.field27_0x74), self.to_char(self.frame.field27_0x74)),
-                            ("Field28_0x78", str(self.frame.field28_0x78), self.to_hex(self.frame.field28_0x78), self.to_bin(self.frame.field28_0x78), self.to_char(self.frame.field28_0x78)),
-                            ("Field29_0x7C", str(self.frame.field29_0x7c), self.to_hex(self.frame.field29_0x7c), self.to_bin(self.frame.field29_0x7c), self.to_char(self.frame.field29_0x7c)),
-                            ("Field30_0x80", str(self.frame.field30_0x80), self.to_hex(self.frame.field30_0x80), self.to_bin(self.frame.field30_0x80), self.to_char(self.frame.field30_0x80)),
+                            *[
+                                (name, str(value), self.to_hex(value), self.to_bin(value), self.to_char(value))
+                                for name, value in self.frame.fields().items()
+                            ],
                         ]
 
-                        parameter_list = self.frame.field31_0x84
+                        parameter_list = self.frame.parameters
                         for i, parameter in enumerate(parameter_list):
                             data.append((f"Field31_0x84[{i}]",
                                         str(parameter),
@@ -643,62 +547,16 @@ class InfoWindow:
                                         self.to_char(parameter)))
 
                         data.extend([
-                            ("Field32_0x94", str(self.frame.field32_0x94), self.to_hex(self.frame.field32_0x94), self.to_bin(self.frame.field32_0x94), self.to_char(self.frame.field32_0x94)),
-                            ("Field33_0x98", str(self.frame.field33_0x98), self.to_hex(self.frame.field33_0x98), self.to_bin(self.frame.field33_0x98), self.to_char(self.frame.field33_0x98)),
-                            ("Field34_0x9C", str(self.frame.field34_0x9c), self.to_hex(self.frame.field34_0x9c), self.to_bin(self.frame.field34_0x9c), self.to_char(self.frame.field34_0x9c)),
-                            ("Field35_0xA0", str(self.frame.field35_0xa0), self.to_hex(self.frame.field35_0xa0), self.to_bin(self.frame.field35_0xa0), self.to_char(self.frame.field35_0xa0)),
-                            ("Field36_0xA4", str(self.frame.field36_0xa4), self.to_hex(self.frame.field36_0xa4), self.to_bin(self.frame.field36_0xa4), self.to_char(self.frame.field36_0xa4)),
-
-                            ("Field40_0xC0", str(self.frame.field40_0xc0), self.to_hex(self.frame.field40_0xc0), self.to_bin(self.frame.field40_0xc0), self.to_char(self.frame.field40_0xc0)),
-                            ("Field41_0xC4", str(self.frame.field41_0xc4), self.to_hex(self.frame.field41_0xc4), self.to_bin(self.frame.field41_0xc4), self.to_char(self.frame.field41_0xc4)),
-                            ("Field42_0xC8", str(self.frame.field42_0xc8), self.to_hex(self.frame.field42_0xc8), self.to_bin(self.frame.field42_0xc8), self.to_char(self.frame.field42_0xc8)),
-                            ("Field43_0xCC", str(self.frame.field43_0xcc), self.to_hex(self.frame.field43_0xcc), self.to_bin(self.frame.field43_0xcc), self.to_char(self.frame.field43_0xcc)),
-                            ("Field44_0xD0", str(self.frame.field44_0xd0), self.to_hex(self.frame.field44_0xd0), self.to_bin(self.frame.field44_0xd0), self.to_char(self.frame.field44_0xd0)),
-                            ("Field45_0xD4", str(self.frame.field45_0xd4), self.to_hex(self.frame.field45_0xd4), self.to_bin(self.frame.field45_0xd4), self.to_char(self.frame.field45_0xd4)),
-
-                            ("Field63_0x11C", str(self.frame.field63_0x11c), self.to_hex(self.frame.field63_0x11c), self.to_bin(self.frame.field63_0x11c), self.to_char(self.frame.field63_0x11c)),
-                            ("Field64_0x120", str(self.frame.field64_0x120), self.to_hex(self.frame.field64_0x120), self.to_bin(self.frame.field64_0x120), self.to_char(self.frame.field64_0x120)),
-                            ("Field65_0x124", str(self.frame.field65_0x124), self.to_hex(self.frame.field65_0x124), self.to_bin(self.frame.field65_0x124), self.to_char(self.frame.field65_0x124)),
-
-                            ("Field73_0x144", str(self.frame.field73_0x144), self.to_hex(self.frame.field73_0x144), self.to_bin(self.frame.field73_0x144), self.to_char(self.frame.field73_0x144)),
-                            ("Field74_0x148", str(self.frame.field74_0x148), self.to_hex(self.frame.field74_0x148), self.to_bin(self.frame.field74_0x148), self.to_char(self.frame.field74_0x148)),
-                            ("Field75_0x14C", str(self.frame.field75_0x14c), self.to_hex(self.frame.field75_0x14c), self.to_bin(self.frame.field75_0x14c), self.to_char(self.frame.field75_0x14c)),
-                            ("Field76_0x150", str(self.frame.field76_0x150), self.to_hex(self.frame.field76_0x150), self.to_bin(self.frame.field76_0x150), self.to_char(self.frame.field76_0x150)),
-                            ("Field77_0x154", str(self.frame.field77_0x154), self.to_hex(self.frame.field77_0x154), self.to_bin(self.frame.field77_0x154), self.to_char(self.frame.field77_0x154)),
-                            ("Field78_0x158", str(self.frame.field78_0x158), self.to_hex(self.frame.field78_0x158), self.to_bin(self.frame.field78_0x158), self.to_char(self.frame.field78_0x158)),
-                            ("Field79_0x15C", str(self.frame.field79_0x15c), self.to_hex(self.frame.field79_0x15c), self.to_bin(self.frame.field79_0x15c), self.to_char(self.frame.field79_0x15c)),
-                            ("Field80_0x160", str(self.frame.field80_0x160), self.to_hex(self.frame.field80_0x160), self.to_bin(self.frame.field80_0x160), self.to_char(self.frame.field80_0x160)),
-                            ("Field81_0x164", str(self.frame.field81_0x164), self.to_hex(self.frame.field81_0x164), self.to_bin(self.frame.field81_0x164), self.to_char(self.frame.field81_0x164)),
-                            ("Field82_0x168", str(self.frame.field82_0x168), self.to_hex(self.frame.field82_0x168), self.to_bin(self.frame.field82_0x168), self.to_char(self.frame.field82_0x168)),
-                            ("Field83_0x16C", str(self.frame.field83_0x16c), self.to_hex(self.frame.field83_0x16c), self.to_bin(self.frame.field83_0x16c), self.to_char(self.frame.field83_0x16c)),
-                            ("Field84_0x170", str(self.frame.field84_0x170), self.to_hex(self.frame.field84_0x170), self.to_bin(self.frame.field84_0x170), self.to_char(self.frame.field84_0x170)),
-                            ("Field85_0x174", str(self.frame.field85_0x174), self.to_hex(self.frame.field85_0x174), self.to_bin(self.frame.field85_0x174), self.to_char(self.frame.field85_0x174)),
-                            ("Field86_0x178", str(self.frame.field86_0x178), self.to_hex(self.frame.field86_0x178), self.to_bin(self.frame.field86_0x178), self.to_char(self.frame.field86_0x178)),
-                            ("Field87_0x17C", str(self.frame.field87_0x17c), self.to_hex(self.frame.field87_0x17c), self.to_bin(self.frame.field87_0x17c), self.to_char(self.frame.field87_0x17c)),
-                            ("Field88_0x180", str(self.frame.field88_0x180), self.to_hex(self.frame.field88_0x180), self.to_bin(self.frame.field88_0x180), self.to_char(self.frame.field88_0x180)),
-                            ("Field89_0x184", str(self.frame.field89_0x184), self.to_hex(self.frame.field89_0x184), self.to_bin(self.frame.field89_0x184), self.to_char(self.frame.field89_0x184)),
-                            ("Field90_0x188", str(self.frame.field90_0x188), self.to_hex(self.frame.field90_0x188), self.to_bin(self.frame.field90_0x188), self.to_char(self.frame.field90_0x188)),
-
-                            ("Field92_0x190", str(self.frame.field92_0x190), self.to_hex(self.frame.field92_0x190), self.to_bin(self.frame.field92_0x190), self.to_char(self.frame.field92_0x190)),
-                            ("Field93_0x194", str(self.frame.field93_0x194), self.to_hex(self.frame.field93_0x194), self.to_bin(self.frame.field93_0x194), self.to_char(self.frame.field93_0x194)),
-                            ("Field94_0x198", str(self.frame.field94_0x198), self.to_hex(self.frame.field94_0x198), self.to_bin(self.frame.field94_0x198), self.to_char(self.frame.field94_0x198)),
-                            ("Field95_0x19C", str(self.frame.field95_0x19c), self.to_hex(self.frame.field95_0x19c), self.to_bin(self.frame.field95_0x19c), self.to_char(self.frame.field95_0x19c)),
-                            ("Field96_0x1A0", str(self.frame.field96_0x1a0), self.to_hex(self.frame.field96_0x1a0), self.to_bin(self.frame.field96_0x1a0), self.to_char(self.frame.field96_0x1a0)),
-                            ("Field97_0x1A4", str(self.frame.field97_0x1a4), self.to_hex(self.frame.field97_0x1a4), self.to_bin(self.frame.field97_0x1a4), self.to_char(self.frame.field97_0x1a4)),
-                            ("Field98_0x1A8", str(self.frame.field98_0x1a8), self.to_hex(self.frame.field98_0x1a8), self.to_bin(self.frame.field98_0x1a8), self.to_char(self.frame.field98_0x1a8)),
-
-                            ("Field100_0x1B0", str(self.frame.field100_0x1b0), self.to_hex(self.frame.field100_0x1b0), self.to_bin(self.frame.field100_0x1b0), self.to_char(self.frame.field100_0x1b0)),
-                            ("Field101_0x1B4", str(self.frame.field101_0x1b4), self.to_hex(self.frame.field101_0x1b4), self.to_bin(self.frame.field101_0x1b4), self.to_char(self.frame.field101_0x1b4)),
-                            ("Field102_0x1B8", str(self.frame.field102_0x1b8), self.to_hex(self.frame.field102_0x1b8), self.to_bin(self.frame.field102_0x1b8), self.to_char(self.frame.field102_0x1b8)),
-                            ("Field103_0x1BC", str(self.frame.field103_0x1bc), self.to_hex(self.frame.field103_0x1bc), self.to_bin(self.frame.field103_0x1bc), self.to_char(self.frame.field103_0x1bc)),
-                            ("Field104_0x1C0", str(self.frame.field104_0x1c0), self.to_hex(self.frame.field104_0x1c0), self.to_bin(self.frame.field104_0x1c0), self.to_char(self.frame.field104_0x1c0)),
-                            ("Field105_0x1C4", str(self.frame.field105_0x1c4), self.to_hex(self.frame.field105_0x1c4), self.to_bin(self.frame.field105_0x1c4), self.to_char(self.frame.field105_0x1c4)),
+                            *[
+                                (name, str(value), self.to_hex(value), self.to_bin(value), self.to_char(value))
+                                for name, value in self.frame.fields().items()
+                            ],
                         ])
 
                         
                         
     
-                        table(f"Frame Data##{self.frame.frame_id}", headers, data)
+                        table(f"Frame Data##{self.frame.widget_id}", headers, data)
 
                         PyImGui.end_tab_item()
                     PyImGui.end_tab_bar()
@@ -758,9 +616,11 @@ def DrawMainWindow():
                 if PyImGui.begin_child("FrameTreeChild",size=(900,800),border=True,flags=PyImGui.WindowFlags.HorizontalScrollbar):                                        
                     if frame_array:
                         full_tree.draw()
-                        
+
                     PyImGui.end_child()
 
+                PyImGui.end_tab_item()
+            PyImGui.end_tab_bar()
 
     PyImGui.end()
     

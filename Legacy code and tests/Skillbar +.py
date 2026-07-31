@@ -2,6 +2,7 @@ from Py4GWCoreLib import *
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import ctypes
 import PyImGui
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Skillbar +"
 MODULE_ICON = "Textures/Module_Icons/SkillBar+.png"
@@ -33,10 +34,10 @@ class SkillBarPlus:
 
         def GetSkillFrames(self):
             for i in range(8):
-                frame_id = UIManager.GetChildFrameID(641635682, [i])
-                if not UIManager.FrameExists(frame_id): 
+                frame_id = Frame.skill(i + 1)
+                if not frame_id.exists: 
                     continue
-                coords = UIManager.GetFrameCoords(frame_id)
+                coords = frame_id.coords()
                 self.coords.append(coords)
 
             if len(self.coords) < 8:
@@ -206,8 +207,8 @@ class SkillBarPlus:
             active = []
 
             for effect in GLOBAL_CACHE.Effects.GetEffects(Player.GetAgentID()):
-                frame_id = UIManager.GetChildFrameID(1726357791, [effect.skill_id + 4])
-                if not UIManager.FrameExists(frame_id): 
+                effect_frame = Frame.effect(effect.skill_id)
+                if not effect_frame.exists:
                     continue
 
                 time_remaining = effect.time_remaining/1000
@@ -224,7 +225,7 @@ class SkillBarPlus:
                 newest = max(filtered, key=lambda act: act[2])
                 effect, frame_id, time_remaining = newest
 
-                _, _, right, bottom = UIManager.GetFrameCoords(frame_id)
+                _, _, right, bottom = effect_frame.coords()
 
                 ImGui.push_font("Regular", self.font_size)
                 time_remaining = str(time_remaining)

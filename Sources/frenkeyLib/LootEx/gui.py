@@ -23,6 +23,7 @@ from Sources.frenkeyLib.LootEx.texture_scraping_models import ScrapedItem
 from Sources.frenkeyLib.LootEx.trading import ActionType, TraderAction, add_ingredients_to_buy
 from Sources.frenkeyLib.LootEx.ui_manager_extensions import UIManagerExtensions
 from Py4GWCoreLib import *
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 class SelectableItem:
     """
@@ -800,7 +801,10 @@ class UI:
                 self.inventory_coords = None
             return
         
-        self.inventory_coords = settings.FrameCoords(UIManager.GetFrameIDByHash(291586130))
+        inventory_frame = Frame(FrameId.InventoryBagsWindow)
+        self.inventory_coords = (
+            settings.FrameCoords(inventory_frame) if inventory_frame.exists else None
+        )
 
         if self.inventory_coords is None:
             return
@@ -1007,18 +1011,18 @@ class UI:
     
     def InventoryBagsVisible(self) -> bool:
         # return UIManager.IsWindowVisible(WindowID.WindowID_InventoryBags) 
-        return UIManagerExtensions.IsElementVisible(UIManager.GetFrameIDByHash(291586130))  # "Inventory Bags" frame hash
+        return Frame(FrameId.InventoryBagsWindow).exists  # "Inventory Bags" frame hash
     
     def draw_vault_controls(self):    
         if not GLOBAL_CACHE.Inventory.IsStorageOpen():
             return
         
-        storage_id = UIManager.GetFrameIDByHash(2315448754)  # "Xunlai Storage" frame hash
+        storage_id = Frame(FrameId.XunlaiWindow)  # "Xunlai Storage" frame hash
         
-        if not UIManagerExtensions.IsElementVisible(storage_id):
+        if not storage_id.exists:
             return
         
-        coords = settings.FrameCoords(storage_id)  # "Xunlai Window" frame hash
+        coords = settings.FrameCoords(storage_id)
 
         if coords is None:
             return
@@ -1064,7 +1068,10 @@ class UI:
                 self.inventory_coords = None
             return
         
-        self.inventory_coords = settings.FrameCoords(UIManager.GetFrameIDByHash(291586130))
+        inventory_frame = Frame(FrameId.InventoryBagsWindow)
+        self.inventory_coords = (
+            settings.FrameCoords(inventory_frame) if inventory_frame.exists else None
+        )
 
         if self.inventory_coords is None:
             return

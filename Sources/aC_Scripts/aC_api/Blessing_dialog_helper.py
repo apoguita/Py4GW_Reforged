@@ -2,6 +2,8 @@
 import time
 from Py4GWCoreLib import *
 from collections import deque, defaultdict
+from Py4GWCoreLib.FrameTree import Frame, FrameId
+from Py4GWCoreLib.FrameTree import FrameTree
 
 # —— Constants ——————————————————
 NPC_DIALOG_HASH    = 3856160816
@@ -12,26 +14,18 @@ DIALOG_CHILD_OFFSET = list(DEFAULT_OFFSET)
 
 def is_npc_dialog_visible() -> bool:
     """Return True if the NPC-dialog frame exists and is visible."""
-    fid = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
-    return fid != 0 and UIManager.IsVisible(fid)
+    fid = Frame(FrameId.NpcDialog)
+    return fid.exists and fid.is_visible
 
 
 def find_dialog_offset() -> None:
     """Auto-detects DIALOG_CHILD_OFFSET for the option-container."""
     global DIALOG_CHILD_OFFSET
-    root = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
-    if root == 0 or not UIManager.IsVisible(root):
+    root = Frame(FrameId.NpcDialog)
+    if not root.is_usable:
         return
 
-    # build parent->children map
-    frame_array = UIManager.GetFrameArray()
-    children_map = defaultdict(list)
-    for fid in frame_array:
-        try:
-            pid = PyUIManager.UIFrame(fid).parent_id
-            children_map[pid].append(fid)
-        except:
-            pass
+    children_map = FrameTree.children_map()
 
     # BFS: pick the container with the most template_type==1 children
     queue = deque([root])
@@ -39,107 +33,79 @@ def find_dialog_offset() -> None:
     best_count = 0
     while queue:
         cur = queue.popleft()
-        kids = children_map.get(cur, [])
-        count = sum(
-            1 for c in kids
-            if UIManager.IsVisible(c)
-            and getattr(PyUIManager.UIFrame(c), "template_type", None) == 1
-        )
+        kids = [Frame.from_id(c) for c in children_map.get(cur.frame_id, [])]
+        count = sum(1 for c in kids if c.is_visible and c.template_type == 1)
         if count > best_count and count >= 2:
             best_count, best = count, cur
-        for c in kids:
-            queue.append(c)
+        queue.extend(kids)
 
-    if not best:
+    if best is None:
         return
 
-    # build index-path from root → best
+    # index-path from root -> best
     path = []
     cur = best
     while cur != root:
-        parent = PyUIManager.UIFrame(cur).parent_id
-        siblings = children_map[parent]
-        path.insert(0, siblings.index(cur))
+        parent = cur.parent()
+        siblings = children_map.get(parent.frame_id, [])
+        if cur.frame_id not in siblings:
+            return
+        path.insert(0, siblings.index(cur.frame_id))
         cur = parent
 
     DIALOG_CHILD_OFFSET = path
 
 
-def get_dialog_button_ids(debug: bool = False) -> list[int]:
-    """
-    Returns the list of visible, template_type==1 button frame-IDs,
-    sorted top→bottom. Pass debug=True to log offset detection.
-    """
-    # detect offset once
+def _dialog_buttons() -> list:
+    """Visible option buttons, top to bottom, as handles."""
+    def is_button(frame) -> bool:
+        return frame.is_visible and frame.template_type == 1
+
+    found = [f for f in FrameTree.frames_at_path(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
+             if is_button(f)]
+    if found:
+        return FrameTree.sort_by_vertical(found)
+
+    root = Frame(FrameId.NpcDialog)
+    if not root.exists:
+        return []
+    return FrameTree.sort_by_vertical(
+        [f for f in FrameTree.descendants(root) if is_button(f)])
+
+
+def get_dialog_buttons(debug: bool = False) -> list:
+    """The dialog's option buttons as handles, top to bottom."""
     if DIALOG_CHILD_OFFSET == DEFAULT_OFFSET:
         find_dialog_offset()
 
-    # try the offset first
-    ids = UIManager.GetAllChildFrameIDs(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
-    valid = [
-        fid for fid in ids
-        if UIManager.IsVisible(fid)
-        and getattr(PyUIManager.UIFrame(fid), "template_type", None) == 1
-    ]
-    if valid:
-        sorted_ids = [fid for fid, _ in UIManager.SortFramesByVerticalPosition(valid)]
-        if debug:
-            ConsoleLog("DialogHelper", f"Offset IDs → {sorted_ids}", Console.MessageType.Info)
-        return sorted_ids
-
-    # fallback BFS over entire tree
+    buttons = _dialog_buttons()
     if debug:
-        ConsoleLog("DialogHelper", "Falling back to BFS for dialog buttons", Console.MessageType.Info)
-
-    root = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
-    frame_array = UIManager.GetFrameArray()
-    children_map = defaultdict(list)
-    for fid in frame_array:
-        try:
-            pid = PyUIManager.UIFrame(fid).parent_id
-            children_map[pid].append(fid)
-        except:
-            pass
-
-    descendants = []
-    queue = deque([root])
-    while queue:
-        cur = queue.popleft()
-        for c in children_map.get(cur, []):
-            descendants.append(c)
-            queue.append(c)
-
-    valid = [
-        fid for fid in descendants
-        if UIManager.IsVisible(fid)
-        and getattr(PyUIManager.UIFrame(fid), "template_type", None) == 1
-    ]
-    sorted_ids = [fid for fid, _ in UIManager.SortFramesByVerticalPosition(valid)]
-    if debug:
-        ConsoleLog("DialogHelper", f"BFS IDs → {sorted_ids}", Console.MessageType.Info)
-    return sorted_ids
+        ConsoleLog("DialogHelper",
+                   "Dialog buttons -> %s" % [str(b) for b in buttons],
+                   Console.MessageType.Info)
+    return buttons
 
 
 def click_dialog_button(choice: int, debug: bool = False) -> bool:
-    """
-    Click the Nth dialog option (1-based). Returns True if dispatched.
-    """
-    ids = get_dialog_button_ids(debug)
+    """Click the Nth dialog option (1-based). Returns True if dispatched."""
+    buttons = get_dialog_buttons(debug)
     idx = choice - 1
-    if idx < 0 or idx >= len(ids):
+    if idx < 0 or idx >= len(buttons):
         if debug:
-            ConsoleLog("DialogHelper", f"Choice #{choice} out of range", Console.MessageType.Warning)
+            ConsoleLog("DialogHelper", f"Choice #{choice} out of range",
+                       Console.MessageType.Warning)
         return False
 
-    target = ids[idx]
+    target = buttons[idx]
     if debug:
         ConsoleLog(
             "DialogHelper",
-            f"[{time.time():.2f}] Clicking dialog choice #{choice} → frame {target}",
+            f"[{time.time():.2f}] Clicking dialog choice #{choice} -> {target}",
             Console.MessageType.Info
         )
-    UIManager.FrameClick(target)
+    target.click()
     return True
+
 
 def get_dialog_button_count(debug: bool = False) -> int:
     """
@@ -147,8 +113,7 @@ def get_dialog_button_count(debug: bool = False) -> int:
     and log the count if debug=True.
     Log Example: [DialogHelper|Info] Dialog button count 3
     """
-    ids = get_dialog_button_ids(debug)
-    count = len(ids)
+    count = len(get_dialog_buttons(debug))
 
     if debug:
         # Log the count to the console as an info message

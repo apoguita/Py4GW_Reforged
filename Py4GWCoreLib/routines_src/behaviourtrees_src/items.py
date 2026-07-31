@@ -62,6 +62,7 @@ from ...py4gwcorelib_src.loot_filters import LootFilters
 from ...py4gwcorelib_src.BehaviorTree import BehaviorTree
 from .composite import BTComposite
 from .player import BTPlayer
+from ...FrameTree import Frame, FrameId, FrameKeyError
 
 
 def _log(source: str, message: str, *, log: bool = False, message_type=Console.MessageType.Info) -> None:
@@ -202,11 +203,8 @@ class BTItems:
             target_bag_size = GLOBAL_CACHE.Inventory.GetBagSize(target_bag)
             return target_container_item != 0 or target_bag_size > 0
 
-        def _get_backpack_slot_frame_id() -> int:
-            return UIManager.GetChildFrameID(
-                inventory_frame_hash,
-                [0, 0, 0, Bags.Backpack - 1, 2],
-            )
+        def _get_backpack_slot_frame():
+            return Frame.bag_slot(Bags.Backpack, 0)
 
         def _equip_inventory_bag(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
             now = int(Utils.GetBaseTimestamp())
@@ -290,13 +288,13 @@ class BTItems:
                 if now < int(state["next_check_ms"]):
                     return BehaviorTree.NodeState.RUNNING
 
-                frame_id = _get_backpack_slot_frame_id()
-                if not UIManager.FrameExists(frame_id):
+                slot = _get_backpack_slot_frame()
+                if not slot.is_usable:
                     _fail_log("EquipInventoryBag", "Frame does not exist for backpack slot 0.", Console.MessageType.Error)
                     _reset_state()
                     return BehaviorTree.NodeState.FAILURE
 
-                UIManager.TestMouseAction(frame_id=frame_id, current_state=9, wparam_value=0, lparam_value=0)
+                slot.mouse_action(9)
                 state["stage"] = "fallback_double_click_confirm"
                 state["next_check_ms"] = now + 60
                 return BehaviorTree.NodeState.RUNNING
@@ -305,13 +303,13 @@ class BTItems:
                 if now < int(state["next_check_ms"]):
                     return BehaviorTree.NodeState.RUNNING
 
-                frame_id = _get_backpack_slot_frame_id()
-                if not UIManager.FrameExists(frame_id):
+                slot = _get_backpack_slot_frame()
+                if not slot.is_usable:
                     _fail_log("EquipInventoryBag", "Frame does not exist for backpack slot 0.", Console.MessageType.Error)
                     _reset_state()
                     return BehaviorTree.NodeState.FAILURE
 
-                UIManager.TestMouseClickAction(frame_id=frame_id, current_state=9, wparam_value=0, lparam_value=0)
+                slot.mouse_click_action(9)
                 state["stage"] = "final_wait"
                 state["next_check_ms"] = now + 60
                 return BehaviorTree.NodeState.RUNNING
@@ -604,14 +602,17 @@ class BTItems:
           Display: Customize Weapon
           Purpose: Click the customize-weapon button when the merchant window is open.
           UserDescription: Use this when you want to trigger weapon customization from an open merchant or crafter window.
-          Notes: Resolves the target frame through `frame_aliases.json` using the provided label.
+          Notes: Resolves the target frame through the FrameTree alias table using the provided label.
         """
         def _click_customize_weapon() -> BehaviorTree.NodeState:
-            frame_id = UIManager.GetFrameIDByCustomLabel(frame_label=frame_label)
-            if frame_id == 0 or not UIManager.FrameExists(frame_id):
+            try:
+                frame = Frame.from_label(frame_label)
+            except FrameKeyError:
+                return BehaviorTree.NodeState.FAILURE
+            if not frame.exists:
                 return BehaviorTree.NodeState.FAILURE
 
-            UIManager.FrameClick(frame_id)
+            frame.click()
             return BehaviorTree.NodeState.SUCCESS
 
         return BehaviorTree(

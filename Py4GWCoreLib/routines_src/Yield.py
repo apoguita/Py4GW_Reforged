@@ -6,6 +6,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Timer import Timer, ThrottledTimer
 from Py4GWCoreLib.enums_src.IO_enums import Key
 from Py4GWCoreLib.py4gwcorelib_src.Keystroke import Keystroke
 from Py4GWCoreLib.Agent import Agent
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.routines_src import Checks
 from ..Map import Map
@@ -393,7 +394,6 @@ class Yield:
         @staticmethod
         def DeleteCharacter(character_name_to_delete: str, timeout_ms: int = 10000, log: bool = False) -> Generator[Any, Any, bool]:
             import PyImGui
-            from ..UIManager import WindowFrames
             from ..Context import GWContext
             def _failed() -> bool:
                 return timeout_timer.IsExpired() or not Map.Pregame.InCharacterSelectScreen()
@@ -455,12 +455,12 @@ class Yield:
                 yield from Yield.wait(100)
                 return False"""
             
-            WindowFrames["DeleteCharacterButton"].FrameClick()
+            Frame(FrameId.DeleteButton).click()
             yield from Yield.wait(750)
             PyImGui.set_clipboard_text(character_name_to_delete)
             Keystroke.PressAndReleaseCombo([Key.Ctrl.value, Key.V.value])
             yield from Yield.wait(750)
-            WindowFrames["FinalDeleteCharacterButton"].FrameClick()
+            Frame(FrameId.ScreenFrame.Child.CharacterSelectFrame.DeleteCharacterFrame.DeleteButton).click()
             yield from Yield.wait(750)
             
             return True
@@ -468,7 +468,6 @@ class Yield:
         @staticmethod
         def CreateCharacter(character_name: str,campaign_name: str, profession_name: str, timeout_ms: int = 15000, log: bool = False) -> Generator[Any, Any, None]:
             import PyImGui
-            from ..UIManager import WindowFrames
             def _failed() -> bool:
                 return timeout_timer.IsExpired() or not Map.Pregame.InCharacterSelectScreen()
             
@@ -545,40 +544,40 @@ class Yield:
                 return
                 
             ConsoleLog("Reroll", "Creating new character...", Console.MessageType.Info, log)
-            WindowFrames["CreateCharacterButton1"].FrameClick()
+            Frame(FrameId.CreateButton).click()
             yield from Yield.wait(500)
-            WindowFrames["CreateCharacterButton2"].FrameClick()
+            Frame(FrameId.CreateButtonGreyedOut).click()
             yield from Yield.wait(1000)
             # Select character type
             yield from _select_character_type("PvE")
             yield from Yield.wait(500)
-            WindowFrames["CreateCharacterTypeNextButton"].FrameClick()
+            Frame(FrameId.NextButton).click()
             yield from Yield.wait(1000)
             # Select campaign
             yield from _select_campaign(campaign_name)
             yield from Yield.wait(500)
 
-            WindowFrames["CreateCharacterNextButtonGeneric"].FrameClick()
+            Frame(FrameId.NextButton2).click()
             yield from Yield.wait(1000)
             # Select profession
             yield from _select_profession(profession_name)
             yield from Yield.wait(500)
-            WindowFrames["CreateCharacterNextButtonGeneric"].FrameClick()
+            Frame(FrameId.NextButton2).click()
             yield from Yield.wait(1000)
             #Selct Gender (default)
-            WindowFrames["CreateCharacterNextButtonGeneric"].FrameClick()
+            Frame(FrameId.NextButton2).click()
             yield from Yield.wait(1000)
             #select Appearance (default)
-            WindowFrames["CreateCharacterNextButtonGeneric"].FrameClick()
+            Frame(FrameId.NextButton2).click()
             yield from Yield.wait(1000)
             #sxelect Body (default)
-            WindowFrames["CreateCharacterNextButtonGeneric"].FrameClick()
+            Frame(FrameId.NextButton2).click()
             yield from Yield.wait(1000)
             # Enter name and finalize     
             PyImGui.set_clipboard_text(character_name)
             Keystroke.PressAndReleaseCombo([Key.Ctrl.value, Key.V.value])    
             yield from Yield.wait(1000)
-            WindowFrames["FinalCreateCharacterButton"].FrameClick()
+            Frame(FrameId.CreateButton2).click()
             yield from Yield.wait(3000)
             
         @staticmethod

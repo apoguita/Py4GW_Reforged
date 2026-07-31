@@ -16,6 +16,7 @@ from Py4GWCoreLib import Map
 from Py4GWCoreLib import ProfessionTextureMap
 from Py4GWCoreLib import GWContext
 import traceback
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Switch Character"
 MODULE_ICON = "Textures/Module_Icons/Switch Character.png"
@@ -388,22 +389,15 @@ def is_in_character_select():
     if GLOBAL_CACHE.Party.IsPartyLoaded():
         return False
     
-    cs_base = UIManager.GetFrameIDByHash(2232987037)
-    cs_c0 = UIManager.GetChildFrameID(2232987037, [0])
-    cs_c1 = UIManager.GetChildFrameID(2232987037, [1])
-    ig_menu = UIManager.GetFrameIDByHash(1144678641)
+    cs_base = Frame(FrameId.SortFrame)
+    cs_c0 = Frame(FrameId.SortFrame.Dropdown)
+    cs_c1 = Frame(FrameId.SortFrame.Text)
+    ig_menu = Frame(FrameId.MenuButton)
     
-    frames = {
-        "cs_base": cs_base,
-        "cs_c0": cs_c0,
-        "cs_c1": cs_c1,
-        "ig_menu": ig_menu,
-    }
-    
-    in_load_screen = all(isinstance(f, int) and f == 0 for f in frames.values())
+    in_load_screen = not any(f.exists for f in (cs_base, cs_c0, cs_c1, ig_menu))
     in_char_select = (
         not in_load_screen and
-        any(isinstance(f, int) and f > 0 for f in (cs_base, cs_c0, cs_c1)) and 
+        any(f.exists for f in (cs_base, cs_c0, cs_c1)) and
         not GLOBAL_CACHE.Party.IsPartyLoaded()
     )
     
@@ -419,10 +413,10 @@ def main():
         
         reroll_widget.Update()
         
-        frame_id = UIManager.GetChildFrameID(1144678641, [0])
+        frame_id = Frame(FrameId.MenuButton.Menu)
         left, top, right, bottom = 0, 0, 0, 0
-        if UIManager.FrameExists(frame_id): 
-            left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
+        if frame_id.exists: 
+            left, top, right, bottom = frame_id.coords()
             
         is_visible = ImGui.floating_toggle_button(
             caption="Switch Character",

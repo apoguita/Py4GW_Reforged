@@ -5,8 +5,9 @@ import PyImGui
 from HeroAI import enemy_party
 from HeroAI import resurrection_scroll
 
-from Py4GWCoreLib import GLOBAL_CACHE, Agent, IconsFontAwesome5, ImGui, Map, Overlay, Range, Utils, WindowFrames, Color, ColorPalette, ConsoleLog, SharedCommandType
+from Py4GWCoreLib import GLOBAL_CACHE, Agent, IconsFontAwesome5, ImGui, Map, Overlay, Range, Utils, Color, ColorPalette, ConsoleLog, SharedCommandType
 from Py4GWCoreLib import Key, Keystroke, ThrottledTimer, UIManager
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct, HeroAIOptionStruct
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Player import Player
@@ -2564,17 +2565,17 @@ class HeroAI_BaseUI:
             ImGui.End(ini_key=cached_data.flagging_window_ini_key)
             
     @staticmethod
-    def DrawFramedContent(cached_data: CacheData, content_frame_id):
+    def DrawFramedContent(cached_data: CacheData, content_frame):
         from Py4GWCoreLib import Utils
         
         if  HeroAI_FloatingWindows.selected_tab == HeroAI_FloatingWindows.TabType.party:
             return
 
-        child_left, child_top, child_right, child_bottom = UIManager.GetFrameCoords(content_frame_id)
+        child_left, child_top, child_right, child_bottom = content_frame.coords()
         width = child_right - child_left
         height = child_bottom - child_top
 
-        UIManager().DrawFrame(content_frame_id, Utils.RGBToColor(0, 0, 0, 255))
+        content_frame.draw(Utils.RGBToColor(0, 0, 0, 255))
 
         flags = PyImGui.WindowFlags.NoCollapse | PyImGui.WindowFlags.NoTitleBar | PyImGui.WindowFlags.NoResize
         PyImGui.push_style_var(ImGui.ImGuiStyleVar.WindowRounding, 0.0)
@@ -2631,16 +2632,16 @@ class HeroAI_BaseUI:
         if not HeroAI_FloatingWindows.settings.ShowPartyPanelUI:        
              return
          
-        parent_frame_id = UIManager.GetFrameIDByHash(PARTY_WINDOW_HASH)
-        outpost_content_frame_id = UIManager.GetChildFrameID(PARTY_WINDOW_HASH, PARTY_WINDOW_FRAME_OUTPOST_OFFSETS)
-        explorable_content_frame_id = UIManager.GetChildFrameID(PARTY_WINDOW_HASH, PARTY_WINDOW_FRAME_EXPLORABLE_OFFSETS)
+        parent_frame_id = Frame(FrameId.PartyFormation)
+        outpost_content_frame_id = Frame(FrameId.PartyFormation.Outpost)
+        explorable_content_frame_id = Frame(FrameId.PartyFormation.Explorable)
 
         if Map.IsMapReady() and Map.IsExplorable():
-            content_frame_id = explorable_content_frame_id
+            content_frame = explorable_content_frame_id
         else:
-            content_frame_id = outpost_content_frame_id
+            content_frame = outpost_content_frame_id
 
-        left, top, right, _bottom = UIManager.GetFrameCoords(parent_frame_id)
+        left, top, right, _bottom = parent_frame_id.coords()
         frame_offset = 5
         width = right - left - frame_offset
 
@@ -2681,7 +2682,7 @@ class HeroAI_BaseUI:
 
         ImGui.PopTransparentWindow()
             
-        HeroAI_BaseUI.DrawFramedContent(cached_data, content_frame_id)
+        HeroAI_BaseUI.DrawFramedContent(cached_data, content_frame)
 
     @staticmethod
     def DrawFollowerUI(cached_data: CacheData):
@@ -2689,7 +2690,7 @@ class HeroAI_BaseUI:
         if own_party_number <= 0:
             return
 
-        party_window_frame = WindowFrames["PartyWindow"]
+        party_window_frame = Frame(FrameId.PartyFormation)
 
         def advance_rainbow_color(tick: int) -> tuple[int, Color]:
             tick += 2
@@ -2699,9 +2700,9 @@ class HeroAI_BaseUI:
             return tick, Color(r, g, b, 255).copy()
 
         HeroAI_BaseUI.color_tick, HeroAI_BaseUI.outline_color = advance_rainbow_color(HeroAI_BaseUI.color_tick)
-        party_window_frame.DrawFrameOutline(HeroAI_BaseUI.outline_color.to_color(), 3)
+        party_window_frame.draw_outline(HeroAI_BaseUI.outline_color.to_color(), 3)
 
-        left, top, right, _bottom = party_window_frame.GetCoords()
+        left, top, right, _bottom = party_window_frame.coords()
         width = right - left - 5
 
         flags = ImGui.PushTransparentWindow()
@@ -2716,7 +2717,7 @@ class HeroAI_BaseUI:
         PyImGui.end()
         ImGui.PopTransparentWindow()
 
-        HeroAI_BaseUI.DrawFramedContent(cached_data, party_window_frame.GetFrameID())
+        HeroAI_BaseUI.DrawFramedContent(cached_data, party_window_frame)
 
     @staticmethod
     def DrawControlPanelWindow(cached_data: CacheData):

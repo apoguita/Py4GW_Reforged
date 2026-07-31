@@ -154,11 +154,11 @@ def draw_mission_map_tab():
     else:
         if PyImGui.button("Close Mission Map"):
             Map.MissionMap.CloseWindow()
-        map_vars.MissionMap.frame_info = Map.MissionMap.GetFrameInfo()
+        map_vars.MissionMap.frame_info = Map.MissionMap.GetFrame()
         _FI = map_vars.MissionMap.frame_info
         
         frame_id = Map.MissionMap.GetFrameID()
-        is_mouse_over = Map.MissionMap.IsMouseOver()
+        is_mouse_over = Map.MissionMap.is_mouse_over()
         mm_coords = Map.MissionMap.GetMissionMapWindowCoords()
         mm_contents_coords = Map.MissionMap.GetMissionMapContentsCoords()
         scale = Map.MissionMap.GetScale()
@@ -226,7 +226,7 @@ def draw_mission_map_tab():
                 map_vars.MissionMap.draw_outline.color = Color().from_tuple_normalized(_color)
                 if map_vars.MissionMap.draw_outline.visible:
                     if _FI:
-                        _FI.DrawFrameOutline(map_vars.MissionMap.draw_outline.color.to_color(), map_vars.MissionMap.draw_outline.thickness)
+                        _FI.draw_outline(map_vars.MissionMap.draw_outline.color.to_color(), map_vars.MissionMap.draw_outline.thickness)
                 PyImGui.unindent(20.0)
                 
             #================ Content Outline Options ================
@@ -366,11 +366,11 @@ def draw_mini_map_tab():
     else:
         if PyImGui.button("Close Mini Map"):
             Map.MiniMap.CloseWindow()
-        map_vars.MiniMap.frame_info = Map.MiniMap.GetFrameInfo()
+        map_vars.MiniMap.frame_info = Map.MiniMap.GetFrame()
         _FI = map_vars.MiniMap.frame_info
         
         frame_id = Map.MiniMap.GetFrameID()
-        is_mouse_over = Map.MiniMap.IsMouseOver()
+        is_mouse_over = Map.MiniMap.is_mouse_over()
         mm_coords = Map.MiniMap.GetWindowCoords()
         scale = Map.MiniMap.GetScale()
         zoom = Map.MiniMap.GetZoom()
@@ -430,7 +430,7 @@ def draw_mini_map_tab():
                 map_vars.MissionMap.draw_outline.color = Color().from_tuple_normalized(_color)
                 if map_vars.MissionMap.draw_outline.visible:
                     if _FI:
-                        _FI.DrawFrameOutline(map_vars.MissionMap.draw_outline.color.to_color(), map_vars.MissionMap.draw_outline.thickness)
+                        _FI.draw_outline(map_vars.MissionMap.draw_outline.color.to_color(), map_vars.MissionMap.draw_outline.thickness)
                 PyImGui.unindent(20.0)
                 
             #================ Last Click Position Options ================
@@ -548,7 +548,7 @@ def draw_world_map_tab():
             
         if PyImGui.collapsing_header("World Map Data:"):
             frame_id = Map.WorldMap.GetFrameID()
-            is_mouse_over = Map.WorldMap.IsMouseOver()
+            is_mouse_over = Map.WorldMap.is_mouse_over()
             mm_coords = Map.WorldMap.GetWindowCoords()
             zoom = Map.WorldMap.GetZoom()
 
@@ -664,7 +664,7 @@ def draw_pregame_tab():
                     return
                 
                 rows: list[tuple[str, str | int | float]] = [
-                    ("frame_id", f'{context.frame_id}'),
+                    ("frame_id", f'{context}'),
                     ("scene_type", f'{context.scene_type}'),
                     ("scene_controller_iface", _fmt_ptr(context.scene_controller_iface)),
                     ("camera_pitch_frequency", f'{context.camera_pitch_frequency}'),

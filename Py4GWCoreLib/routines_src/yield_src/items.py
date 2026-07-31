@@ -40,13 +40,11 @@ class Items:
         from ...UIManager import UIManager
         yield from wait(max(0, initial_wait_ms))
 
-        parent_hash = 140452905
-        yes_button_offsets = [6, 110, 6]
+        from ...FrameTree import Frame, FrameId
         waited_ms = 0
 
         while waited_ms < max(0, timeout_ms):
-            salvage_materials_frame = UIManager.GetChildFrameID(parent_hash, yes_button_offsets)
-            if salvage_materials_frame and UIManager.FrameExists(salvage_materials_frame):
+            if Frame(FrameId.ScreenFrame.C6.SalvageMaterialsDialog.YesButton).exists:
                 yield from wait(max(0, poll_ms))
                 return True
 

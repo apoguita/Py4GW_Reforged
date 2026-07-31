@@ -3,6 +3,8 @@ from Py4GWCoreLib import PyImGui, UIManager
 from Py4GWCoreLib.GWUI import GWUI
 
 from native_ui_test_tabs import rect_tab
+from Py4GWCoreLib.FrameTree import Frame, FrameTree
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 
 MODULE_NAME = "Native UI Test"
@@ -17,19 +19,19 @@ def _log(message: str) -> None:
 
 
 def _target_frame_id() -> int:
-    frame_id = int(UIManager.GetFrameIDByLabel(rect_tab.WINDOW_TITLE) or 0)
-    if frame_id > 0 and UIManager.FrameExists(frame_id):
+    frame_id = int((lambda lbl: LiveTree.by_label(lbl).frame_id)(rect_tab.WINDOW_TITLE) or 0)
+    if frame_id > 0 and Frame.from_id(frame_id).is_usable:
         return frame_id
     return 0
 
 
 def _build_parent_map() -> dict[int, list[int]]:
     parent_map: dict[int, list[int]] = {}
-    for frame_id in UIManager.GetFrameArray():
+    for frame_id in FrameTree.all_ids():
         try:
-            if not UIManager.FrameExists(frame_id):
+            if not Frame.from_id(frame_id).is_usable:
                 continue
-            parent_id = int(UIManager.GetParentID(frame_id) or 0)
+            parent_id = int(Frame.from_id(frame_id).parent_id or 0)
         except Exception:
             continue
         parent_map.setdefault(parent_id, []).append(frame_id)
@@ -60,12 +62,12 @@ def _frame_summary(frame_id: int) -> str:
     if frame_id <= 0:
         return "frame_id=0"
     try:
-        frame = UIManager.GetFrameByID(frame_id)
+        frame = (lambda fid: Frame.from_id(fid))(frame_id)
         child_count = len(_get_direct_children(frame_id))
         return (
             f"frame_id={frame_id} "
             f"parent_id={frame.parent_id} "
-            f"child_offset_id={frame.child_offset_id} "
+            f"child_offset_id={frame.code} "
             f"type={frame.type} "
             f"template_type={frame.template_type} "
             f"is_created={frame.is_created} "

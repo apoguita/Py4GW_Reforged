@@ -3,6 +3,7 @@ import PyImGui
 
 from Py4GWCoreLib import GLOBAL_CACHE, Item
 from Py4GWCoreLib.UIManager import UIManager
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 MODULE_NAME = "HelloWorldCollectorTest"
@@ -105,15 +106,15 @@ def _send_exchange() -> None:
 
 
 def _click_customize_weapon() -> None:
-    frame_id = UIManager.GetFrameIDByCustomLabel(frame_label="Merchant.CustomizeWeaponButton")
-    if frame_id <= 0:
+    frame_id = Frame(FrameId.CustomizeWeaponButton)
+    if not frame_id.exists:
         _log("Customize weapon button alias was not resolved.", PySystem.Console.MessageType.Warning)
         return
-    if not UIManager.FrameExists(frame_id):
+    if not frame_id.exists:
         _log(f"Customize weapon button frame {frame_id} is not visible.", PySystem.Console.MessageType.Warning)
         return
 
-    UIManager.FrameClick(frame_id)
+    frame_id.click()
     _log(f"Clicked Merchant.CustomizeWeaponButton (frame_id={frame_id})")
 
 
@@ -145,9 +146,9 @@ def draw_window() -> None:
 
         PyImGui.separator()
         PyImGui.text(f"Transaction complete: {GLOBAL_CACHE.Trading.IsTransactionComplete()}")
-        customize_frame_id = UIManager.GetFrameIDByCustomLabel(frame_label="Merchant.CustomizeWeaponButton")
+        customize_frame_id = Frame(FrameId.CustomizeWeaponButton)
         PyImGui.text(f"Customize button frame id: {customize_frame_id}")
-        PyImGui.text(f"Customize button visible: {customize_frame_id > 0 and UIManager.FrameExists(customize_frame_id)}")
+        PyImGui.text(f"Customize button visible: {customize_frame_id.is_usable}")
 
         offered_items = GLOBAL_CACHE.Trading.Crafter.GetOfferedItems() or []
         PyImGui.text(f"Crafter offers visible: {len(offered_items)}")

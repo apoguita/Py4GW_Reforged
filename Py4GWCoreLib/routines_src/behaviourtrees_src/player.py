@@ -61,7 +61,8 @@ from ...Agent import Agent
 from ...Player import Player
 from ...enums_src.Title_enums import TITLE_NAME
 
-from ...UIManager import UIManager, WindowFrames
+from ...UIManager import UIManager
+from ...FrameTree import Frame, FrameId, WINDOW_FRAME_KEYS
 from ...py4gwcorelib_src.ActionQueue import ActionQueueManager
 from ...py4gwcorelib_src.BehaviorTree import BehaviorTree
 from ...py4gwcorelib_src.Keystroke import Keystroke
@@ -467,10 +468,10 @@ class BTPlayer:
               Notes: Succeeds immediately when the window is not present.
             """
             def _cancel_skill_reward_window() -> BehaviorTree.NodeState:
-                cancel_button_frame_id = UIManager.GetFrameIDByHash(784833442)
-                if not cancel_button_frame_id or not UIManager.FrameExists(cancel_button_frame_id):
+                cancel_button_frame_id = Frame(FrameId.CancelButton)
+                if not cancel_button_frame_id.exists:
                     return BehaviorTree.NodeState.SUCCESS
-                UIManager.FrameClick(cancel_button_frame_id)
+                cancel_button_frame_id.click()
                 return BehaviorTree.NodeState.SUCCESS
 
             return BehaviorTree(
@@ -1315,10 +1316,10 @@ class BTPlayer:
         @staticmethod
         def ClickWindowFrame(frame_name: str, aftercast_ms: int = 250) -> BehaviorTree:
             def _click_window_frame() -> BehaviorTree.NodeState:
-                frame = WindowFrames.get(frame_name)
-                if frame is None:
+                key = WINDOW_FRAME_KEYS.get(frame_name)
+                if key is None:
                     return BehaviorTree.NodeState.FAILURE
-                frame.FrameClick()
+                Frame(key).click()
                 return BehaviorTree.NodeState.SUCCESS
 
             return BehaviorTree(

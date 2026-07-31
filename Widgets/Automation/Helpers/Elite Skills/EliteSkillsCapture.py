@@ -13,6 +13,7 @@ from Py4GWCoreLib.enums_src.Hero_enums import HeroType
 import PyGameThread
 
 from Widgets.Automation.Helpers.Pycons import TEAM_SETTINGS_CACHE_MS
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 BOT_NAME = "Elite Skills Capture"
 MODULE_NAME = BOT_NAME
@@ -3828,28 +3829,25 @@ def ClickSkillFrame(skill_id: int):
     skill_id_offset = [attribute_offset, 1, skill_id, 0]
     
     # Get specific skill frame
-    skill_frame = UIManager.GetChildFrameID(
-        skill_capture_grandparent, 
-        skill_capture_offset + skill_id_offset
-    )
+    skill_frame = Frame.capture_skill(attribute_offset, skill_id)
     
     ConsoleLog("ClickSkillFrame", f"Looking for skill frame {skill_id} with offset {skill_id_offset}, got frame ID: {skill_frame}", log=True)
     
-    if UIManager.FrameExists(skill_frame):
+    if skill_frame.exists:
         ConsoleLog("ClickSkillFrame", f"Skill frame {skill_id} exists, clicking it", log=True)
         # Use PyGameThread.enqueue like the Factions Character Leveler example
-        PyGameThread.enqueue(lambda fid=skill_frame: UIManager.TestMouseClickAction(fid, 0, 0))
+        PyGameThread.enqueue(lambda f=skill_frame: f.mouse_click_action(0, 0))
         yield from Routines.Yield.wait(200)
         
         # Wait 1 second before clicking capture button
         yield from Routines.Yield.wait(1000)
         
         # Click capture button using GetChildFrameID with offset 0
-        capture_frame = UIManager.GetChildFrameID(2374896298, [0])
+        capture_frame = Frame(FrameId.SkillCaptureDialog.Content)
         
-        if UIManager.FrameExists(capture_frame):
+        if capture_frame.exists:
             ConsoleLog("ClickSkillFrame", f"Capture button exists, clicking it", log=True)
-            UIManager.FrameClick(capture_frame)
+            capture_frame.click()
             yield from Routines.Yield.wait(200)
         else:
             ConsoleLog("ClickSkillFrame", f"ERROR: Capture button (frame 0) not found!", log=True)

@@ -17,6 +17,7 @@ import traceback
 
 import PyImGui
 import PyUIManager
+from Py4GWCoreLib.FrameTree import Frame, FrameTree
 
 T = TypeVar('T')
 
@@ -34,8 +35,8 @@ def describe_frame(frame_id: int) -> str:
     if frame_id == 0:
         return '(none)'
     try:
-        frame = PyUIManager.UIFrame(frame_id)
-        frame_hash = f' hash={frame.frame_hash}' if frame.frame_hash else ''
+        frame = Frame.from_id(frame_id)
+        frame_hash = f' hash={frame.hash}' if frame.hash else ''
         state = []
         if frame.is_created:
             state.append('created')
@@ -86,8 +87,8 @@ def sync_frame_state(frame_id: int) -> None:
         g_opacity_value = 1.0
         return
 
-    g_layer_value = safe_call(PyUIManager.UIManager.get_frame_layer_by_frame_id, frame_id, default=0)
-    g_opacity_value = safe_call(PyUIManager.UIManager.get_frame_opacity_by_frame_id, frame_id, default=1.0)
+    g_layer_value = safe_call((lambda fid: Frame.from_id(fid).layer), frame_id, default=0)
+    g_opacity_value = safe_call((lambda fid: Frame.from_id(fid).opacity), frame_id, default=1.0)
 
 
 def quick_test_walk(parent_id: int, max_depth: int = 2) -> list[dict[str, object]]:
@@ -113,15 +114,15 @@ def _walk(
             'id': frame_id,
             'depth': depth,
             'desc': describe_frame(frame_id),
-            'layer': safe_call(PyUIManager.UIManager.get_frame_layer_by_frame_id, frame_id, default=0),
-            'opacity': safe_call(PyUIManager.UIManager.get_frame_opacity_by_frame_id, frame_id, default=0.0),
+            'layer': safe_call((lambda fid: Frame.from_id(fid).layer), frame_id, default=0),
+            'opacity': safe_call((lambda fid: Frame.from_id(fid).opacity), frame_id, default=0.0),
         }
     )
 
-    child = safe_call(PyUIManager.UIManager.get_related_frame_id, frame_id, FRAME_FIRST, 0, default=0)
+    child = safe_call((lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id), frame_id, FRAME_FIRST, 0, default=0)
     while child:
         _walk(child, depth + 1, max_depth, results, visited)
-        child = safe_call(PyUIManager.UIManager.get_related_frame_id, frame_id, FRAME_NEXT, child, default=0)
+        child = safe_call((lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id), frame_id, FRAME_NEXT, child, default=0)
 
 
 def render() -> None:
@@ -139,7 +140,7 @@ def render() -> None:
             return
 
         try:
-            frame = PyUIManager.UIFrame(g_frame_id)
+            frame = Frame.from_id(g_frame_id)
         except Exception as exc:
             PyImGui.text(f'Frame #{g_frame_id} not found: {exc}')
             return
@@ -147,30 +148,30 @@ def render() -> None:
         sync_frame_state(g_frame_id)
 
         if PyImGui.collapsing_header('1. Navigation'):
-            parent_id = safe_call(PyUIManager.UIManager.get_parent_frame_id_direct, g_frame_id, default=0)
+            parent_id = safe_call((lambda fid: Frame.from_id(fid).parent_direct().frame_id), g_frame_id, default=0)
             PyImGui.text(f'  Parent (direct):  {describe_frame(parent_id)}')
 
         
             for kind, name in RELATION_NAMES.items():
-                related_id = safe_call(PyUIManager.UIManager.get_related_frame_id, g_frame_id, kind, 0, default=0)
+                related_id = safe_call((lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id), g_frame_id, kind, 0, default=0)
                 PyImGui.text(f'  {name:<14}: {describe_frame(related_id)}')
                 
             
             PyImGui.spacing()
             if PyImGui.button('Walk Children (First->Next)'):
                 log('--- Walking children via GetRelatedFrameID ---')
-                child = safe_call(PyUIManager.UIManager.get_related_frame_id, g_frame_id, FRAME_FIRST, 0, default=0)
+                child = safe_call((lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id), g_frame_id, FRAME_FIRST, 0, default=0)
                 count = 0
                 while child and count < 50:
                     log(f'  child: {describe_frame(child)}')
-                    child = safe_call(PyUIManager.UIManager.get_related_frame_id, g_frame_id, FRAME_NEXT, child, default=0)
+                    child = safe_call((lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id), g_frame_id, FRAME_NEXT, child, default=0)
                     count += 1
                 log(f'  total: {count} children')
             
             
             if parent_id:
                 is_ancestor = safe_call(
-                    PyUIManager.UIManager.is_ancestor_of_by_frame_id,
+                    (lambda fid, a: Frame.from_id(fid).is_ancestor_of(Frame.from_id(a))),
                     g_frame_id,
                     parent_id,
                     default=False,
@@ -181,10 +182,10 @@ def render() -> None:
             
             PyImGui.spacing()
             PyImGui.text('  NameHash / Label Helpers:')
-            frame_hash = frame.frame_hash
-            frame_label = safe_call(PyUIManager.UIManager.get_frame_label_by_frame_id, g_frame_id, default='')
-            text_enc = "" #safe_call(PyUIManager.UIManager.get_text_label_encoded_by_frame_id, g_frame_id, default='')
-            text_dec = "" #safe_call(PyUIManager.UIManager.get_text_label_decoded_by_frame_id, g_frame_id, default='')
+            frame_hash = frame.hash
+            frame_label = safe_call((lambda fid: Frame.from_id(fid).label), g_frame_id, default='')
+            text_enc = "" #safe_call((lambda fid: Frame.from_id(fid).encoded()), g_frame_id, default='')
+            text_dec = "" #safe_call((lambda fid: Frame.from_id(fid).text()), g_frame_id, default='')
             PyImGui.text(f'    frame_hash={frame_hash}')
             if frame_label:
                 PyImGui.text(f'    frame_label={frame_label}')
@@ -197,7 +198,7 @@ def render() -> None:
             PyImGui.text('  NameHash Lookup (GetChildFromNameHash):')
             if frame_hash and parent_id:
                 found = safe_call(
-                    PyUIManager.UIManager.get_child_frame_id_from_name_hash,
+                    (lambda fid, h: Frame.from_id(fid).child_with_hash(h).frame_id),
                     parent_id,
                     frame_hash,
                     default=0,
@@ -210,7 +211,7 @@ def render() -> None:
             
         if PyImGui.collapsing_header('2. Overlay / Popup Lists'):
             if PyImGui.button('Get Overlay Frames'):
-                overlays = safe_call(PyUIManager.UIManager.get_overlay_frame_ids, default=[])
+                overlays = safe_call((lambda: [f.frame_id for f in FrameTree.overlay_frames()]), default=[])
                 log(f'Overlays: {len(overlays)} frames')
                 for frame_id in overlays[:10]:
                     log(f'  overlay: {describe_frame(frame_id)}')
@@ -219,7 +220,7 @@ def render() -> None:
 
             PyImGui.same_line(0,-1)
             if PyImGui.button('Get Popup Frames'):
-                popups = safe_call(PyUIManager.UIManager.get_popup_frame_ids, default=[])
+                popups = safe_call((lambda: [f.frame_id for f in FrameTree.popup_frames()]), default=[])
                 log(f'Popups: {len(popups)} frames')
                 for frame_id in popups[:10]:
                     log(f'  popup: {describe_frame(frame_id)}')
@@ -227,11 +228,11 @@ def render() -> None:
                     log(f'  ... and {len(popups) - 10} more')
 
         if PyImGui.collapsing_header('3. Properties'):
-            layer = safe_call(PyUIManager.UIManager.get_frame_layer_by_frame_id, g_frame_id, default=0)
-            code = safe_call(PyUIManager.UIManager.get_frame_code_by_frame_id, g_frame_id, default=0)
-            opacity = safe_call(PyUIManager.UIManager.get_frame_opacity_by_frame_id, g_frame_id, default=0.0)
-            user_param = safe_call(PyUIManager.UIManager.get_frame_user_param_by_frame_id, g_frame_id, default=0)
-            title = safe_call(PyUIManager.UIManager.get_frame_title_by_frame_id, g_frame_id, default='(none)')
+            layer = safe_call((lambda fid: Frame.from_id(fid).layer), g_frame_id, default=0)
+            code = safe_call((lambda fid: Frame.from_id(fid).code), g_frame_id, default=0)
+            opacity = safe_call((lambda fid: Frame.from_id(fid).opacity), g_frame_id, default=0.0)
+            user_param = safe_call((lambda fid: Frame.from_id(fid).user_param), g_frame_id, default=0)
+            title = safe_call((lambda fid: Frame.from_id(fid).title()), g_frame_id, default='(none)')
 
             PyImGui.text(f'  Layer:      {layer}')
             PyImGui.text(f'  Code:       {code}')
@@ -245,7 +246,7 @@ def render() -> None:
             PyImGui.same_line(0,-1)
             if PyImGui.button('Apply Layer'):
                 ok = safe_call(
-                    PyUIManager.UIManager.set_frame_layer_by_frame_id,
+                    (lambda fid, l: Frame.from_id(fid).set_layer(l)),
                     g_frame_id,
                     g_layer_value,
                     default=False,
@@ -257,7 +258,7 @@ def render() -> None:
             PyImGui.same_line(0,-1)
             if PyImGui.button('Apply Opacity'):
                 ok = safe_call(
-                    PyUIManager.UIManager.set_frame_opacity_by_frame_id,
+                    (lambda fid, o, ft=0.0: Frame.from_id(fid).set_opacity(o, ft)),
                     g_frame_id,
                     g_opacity_value,
                     0.0,
@@ -266,24 +267,24 @@ def render() -> None:
                 log(f'  SetOpacity({g_opacity_value:.2f}) -> {ok}')
 
         if PyImGui.collapsing_header('4. Geometry'):
-            min_size = safe_call(PyUIManager.UIManager.get_frame_min_size_by_frame_id, g_frame_id, default=(0.0, 0.0))
+            min_size = safe_call((lambda fid: Frame.from_id(fid).min_size()), g_frame_id, default=(0.0, 0.0))
             native_size = safe_call(
-                PyUIManager.UIManager.get_frame_native_size_by_frame_id,
+                (lambda fid: Frame.from_id(fid).native_size()),
                 g_frame_id,
                 default=(0.0, 0.0),
             )
             border = safe_call(
-                PyUIManager.UIManager.get_frame_client_border_by_frame_id,
+                (lambda fid: Frame.from_id(fid).client_border()),
                 g_frame_id,
                 default=(0.0, 0.0, 0.0, 0.0),
             )
             clip_rect = safe_call(
-                PyUIManager.UIManager.get_frame_clip_rect_by_frame_id,
+                (lambda fid: Frame.from_id(fid).clip_rect()),
                 g_frame_id,
                 default=(0.0, 0.0, 0.0, 0.0),
             )
             position_ex = safe_call(
-                PyUIManager.UIManager.get_frame_position_ex_by_frame_id,
+                (lambda fid: Frame.from_id(fid).position_ex()),
                 g_frame_id,
                 default=(0.0, 0.0, 0.0, 0.0, 0),
             )
@@ -302,7 +303,7 @@ def render() -> None:
             )
 
         if PyImGui.collapsing_header('5. State Bits'):
-            state_get = PyUIManager.UIManager.get_frame_state_bit_by_frame_id
+            state_get = (lambda fid, b: Frame.from_id(fid).state_bit(b))
             is_visible = safe_call(state_get, g_frame_id, STATE_VISIBLE, default=False)
             is_created = safe_call(state_get, g_frame_id, STATE_CREATED, default=False)
             is_disabled = safe_call(state_get, g_frame_id, STATE_DISABLED, default=False)
@@ -331,27 +332,27 @@ def render() -> None:
             PyImGui.spacing()
             PyImGui.text('Visibility controls:')
             if PyImGui.button('Toggle Visible'):
-                safe_call(PyUIManager.UIManager.set_frame_visible_by_frame_id, g_frame_id, not is_visible, default=False)
+                safe_call((lambda fid, v: Frame.from_id(fid).set_visible(v)), g_frame_id, not is_visible, default=False)
             PyImGui.same_line(0,-1)
             if PyImGui.button('Toggle Disabled'):
                 safe_call(
-                    PyUIManager.UIManager.set_frame_disabled_by_frame_id,
+                    (lambda fid, d: Frame.from_id(fid).set_disabled(d)),
                     g_frame_id,
                     not is_disabled,
                     default=False,
                 )
             PyImGui.same_line(0,-1)
             if PyImGui.button('ShowFrame'):
-                safe_call(PyUIManager.UIManager.show_frame_by_frame_id, g_frame_id, True, default=False)
+                safe_call((lambda fid, sh: Frame.from_id(fid).show(sh)), g_frame_id, True, default=False)
             PyImGui.same_line(0,-1)
             if PyImGui.button('HideFrame'):
-                safe_call(PyUIManager.UIManager.show_frame_by_frame_id, g_frame_id, False, default=False)
+                safe_call((lambda fid, sh: Frame.from_id(fid).show(sh)), g_frame_id, False, default=False)
 
         if PyImGui.collapsing_header('6. Raw Frame Info'):
-            PyImGui.text(f'  frame_id:         {frame.frame_id}')
+            PyImGui.text(f'  frame_id:         {frame}')
             PyImGui.text(f'  parent_id:        {frame.parent_id}')
-            PyImGui.text(f'  frame_hash:       {frame.frame_hash}')
-            PyImGui.text(f'  child_offset:     {frame.child_offset_id}')
+            PyImGui.text(f'  frame_hash:       {frame.hash}')
+            PyImGui.text(f'  child_offset:     {frame.code}')
             PyImGui.text(f'  type:             {frame.type}')
             PyImGui.text(f'  template_type:    {frame.template_type}')
             PyImGui.text(f'  is_created:       {frame.is_created}')
@@ -380,36 +381,36 @@ def _render_quick_tests() -> None:
     PyImGui.text('Quick Tests (no frame_id needed):')
 
     if PyImGui.button('Test: GetOverlayFrameIDs'):
-        overlays = safe_call(PyUIManager.UIManager.get_overlay_frame_ids, default=[])
+        overlays = safe_call((lambda: [f.frame_id for f in FrameTree.overlay_frames()]), default=[])
         log(f'GetOverlayFrameIDs -> {len(overlays)} overlay frames')
 
     PyImGui.same_line(0,-1)
     if PyImGui.button('Test: GetPopupFrameIDs'):
-        popups = safe_call(PyUIManager.UIManager.get_popup_frame_ids, default=[])
+        popups = safe_call((lambda: [f.frame_id for f in FrameTree.popup_frames()]), default=[])
         log(f'GetPopupFrameIDs -> {len(popups)} popup frames')
 
     PyImGui.spacing()
     g_hash_input = PyImGui.input_text('Label to hash', g_hash_input)
     if PyImGui.button('Test: GetHashByLabel'):
-        hash_value = safe_call(PyUIManager.UIManager.get_hash_by_label, g_hash_input, default=0)
+        hash_value = safe_call(FrameTree.hash_for_label, g_hash_input, default=0)
         log(f'  hash("{g_hash_input}") = {hash_value}')
 
     PyImGui.same_line(0,-1)
     g_label_find = int(PyImGui.input_int('FrameID from hash', g_label_find))
     if PyImGui.button('Test: GetFrameIDByHash'):
-        frame_id = safe_call(PyUIManager.UIManager.get_frame_id_by_hash, g_label_find, default=0)
+        frame_id = safe_call((lambda h: FrameTree.by_hash(h).frame_id), g_label_find, default=0)
         log(f'  GetFrameIDByHash({g_label_find}) -> {describe_frame(frame_id)}')
 
     PyImGui.spacing()
     if PyImGui.button('Test: GetFrameHierarchy'):
-        hierarchy = safe_call(PyUIManager.UIManager.get_frame_hierarchy, default=[])
+        hierarchy = safe_call(FrameTree.hierarchy, default=[])
         log(f'GetFrameHierarchy -> {len(hierarchy)} entries')
         for entry in hierarchy[:5]:
             log(f'  parent_hash={entry[0]} frame_hash={entry[1]} parent_id={entry[2]} frame_id={entry[3]}')
 
     PyImGui.same_line(0,-1)
     if PyImGui.button('Test: GetFrameArray'):
-        frame_array = safe_call(PyUIManager.UIManager.get_frame_array, default=[])
+        frame_array = safe_call(FrameTree.all_ids, default=[])
         log(f'GetFrameArray -> {len(frame_array)} frame IDs')
         log(f'  First 5: {frame_array[:5]}')
 

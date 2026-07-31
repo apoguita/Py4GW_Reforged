@@ -11,6 +11,7 @@ from Py4GWCoreLib import Keystroke
 from Py4GWCoreLib import Key
 from Py4GWCoreLib import Map, Player
 import PyImGui
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Pet Helper"
 MODULE_ICON = "Textures\\Module_Icons\\Pet Helper.png"
@@ -26,7 +27,7 @@ class Global_Vars:
     def __init__(self):
         self.title_frame_parent_hash = 3332025202
         self.title_frame_offsets = [0,0,0,8,1]
-        self.title_frame_id = 0
+        self.title_frame = None
         self.title_frame_coords = frame_coords(0,0,0,0)
         self.title_frame_visible = False
         
@@ -68,13 +69,15 @@ class Global_Vars:
         if not Agent.IsValid(self.pet_id):
             return
 
-        self.title_frame_id =  UIManager.GetChildFrameID(self.title_frame_parent_hash, self.title_frame_offsets)
-        if self.title_frame_id == 0:
+        title_frame = Frame(FrameId.PartyFormation.Explorable.C0.C0.PetsHeader.Title)
+        if not title_frame.exists:
+            self.title_frame = None
             self.title_frame_visible = False
             return
+        self.title_frame = title_frame
         
-        self.title_frame_coords.left, self.title_frame_coords.top, self.title_frame_coords.right, self.title_frame_coords.bottom = UIManager.GetFrameCoords(self.title_frame_id)
-        self.title_frame_visible = UIManager.FrameExists(self.title_frame_id)
+        self.title_frame_coords.left, self.title_frame_coords.top, self.title_frame_coords.right, self.title_frame_coords.bottom = self.title_frame.coords()
+        self.title_frame_visible = self.title_frame.is_usable
         
         if self.pet_id != 0:
             pet_info = GLOBAL_CACHE.Party.Pets.GetPetInfo(self.player_agent_id)

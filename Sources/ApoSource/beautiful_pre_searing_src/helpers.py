@@ -3,6 +3,7 @@ from Sources.ApoSource.beautiful_pre_searing_src.globals import *
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Player import Player
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 def subtree_step(name: str, tree_builder: Callable[[], BehaviorTree]) -> BehaviorTree.Node:
     return BehaviorTree.SubtreeNode(
@@ -206,8 +207,8 @@ def MoveInteractAndSellItems(
     def _is_merchant_window_open() -> bool:
         from Py4GWCoreLib.UIManager import UIManager
 
-        merchant_frame_id = UIManager.GetFrameIDByHash(merchant_frame_hash)
-        return merchant_frame_id != 0 and UIManager.FrameExists(merchant_frame_id)
+        merchant_frame_id = Frame(FrameId.Merchant)
+        return merchant_frame_id.is_usable
 
     def _debug_cleanup_state(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         from Py4GWCoreLib import GLOBAL_CACHE
@@ -331,11 +332,11 @@ def customize_weapon() -> BehaviorTree:
     def _click_customize_weapon_button(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         from Py4GWCoreLib.UIManager import UIManager
 
-        frame_id = UIManager.GetFrameIDByCustomLabel(frame_label="Merchant.CustomizeWeaponButton")
-        if frame_id == 0 or not UIManager.FrameExists(frame_id):
+        frame_id = Frame(FrameId.CustomizeWeaponButton)
+        if not frame_id.exists:
             return BehaviorTree.NodeState.FAILURE
 
-        UIManager.FrameClick(frame_id)
+        frame_id.click()
         return BehaviorTree.NodeState.SUCCESS
 
     return BehaviorTree(

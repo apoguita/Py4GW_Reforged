@@ -1,5 +1,7 @@
 import PyImGui
 import PyUIManager
+from Py4GWCoreLib.FrameTree import Frame
+from Py4GWCoreLib.FrameTree import FrameTree
 
 MODULE_NAME = "Frame Viewer (Basic)"
 
@@ -13,7 +15,7 @@ status_text = "Ready"
 def refresh_frames():
     global frame_ids, selected_frame_id, status_text
     try:
-        frame_ids = list(PyUIManager.UIManager.get_frame_array())
+        frame_ids = list(FrameTree.all_ids())
         frame_ids.sort()
         if selected_frame_id not in frame_ids:
             selected_frame_id = frame_ids[0] if frame_ids else 0
@@ -26,7 +28,7 @@ def get_selected_frame():
     if not selected_frame_id:
         return None
     try:
-        return PyUIManager.UIFrame(selected_frame_id)
+        return Frame.from_id(selected_frame_id)
     except Exception:
         return None
 
@@ -55,12 +57,10 @@ def draw_selected_frame_info():
         PyImGui.text("No valid frame selected")
         return
 
-    PyImGui.text(f"frame_id: {int(getattr(frame, 'frame_id', 0) or 0)}")
-    PyImGui.text(f"parent_id: {int(getattr(frame, 'parent_id', 0) or 0)}")
-    PyImGui.text(f"child_offset_id: {int(getattr(frame, 'child_offset_id', 0) or 0)}")
-    PyImGui.text(f"frame_hash: {int(getattr(frame, 'frame_hash', 0) or 0)}")
-    PyImGui.text(f"is_created: {bool(getattr(frame, 'is_created', False))}")
-    PyImGui.text(f"is_visible: {bool(getattr(frame, 'is_visible', False))}")
+    PyImGui.text(frame.describe() or "(unnamed)")
+    PyImGui.separator()
+    for name, value in frame.fields().items():
+        PyImGui.text(f"{name}: {value}")
 
 
 # Minimal starting point: refresh + select + inspect one frame.

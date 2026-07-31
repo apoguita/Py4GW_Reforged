@@ -1,6 +1,8 @@
 import Py4GW
 from Py4GWCoreLib import PyImGui, UIManager
 from Py4GWCoreLib.GWUI import GWUI
+from Py4GWCoreLib.FrameTree import Frame
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 
 MODULE_NAME = "Native UI Test"
@@ -41,15 +43,15 @@ CREATED_FILL_COLOR = 0x30FFFFFF
 
 
 def _find_managed_clone_frame() -> int:
-    frame_id = int(UIManager.GetFrameIDByLabel(WINDOW_TITLE) or 0)
-    if frame_id > 0 and UIManager.FrameExists(frame_id):
+    frame_id = int((lambda lbl: LiveTree.by_label(lbl).frame_id)(WINDOW_TITLE) or 0)
+    if frame_id > 0 and Frame.from_id(frame_id).is_usable:
         return frame_id
     return 0
 
 
 def _get_viewport_height() -> float:
-    root_frame_id = UIManager.GetRootFrameID()
-    _, viewport_height = UIManager.GetViewportDimensions(root_frame_id)
+    root_frame_id = (lambda: LiveTree.root().frame_id)()
+    _, viewport_height = Frame.from_id(root_frame_id).viewport_dimensions()
     return float(viewport_height)
 
 
@@ -59,8 +61,8 @@ def _to_engine_y_from_top(y_from_top: float, height: float) -> float:
 
 def _safe_frame_coords(frame_id: int):
     try:
-        if frame_id > 0 and UIManager.FrameExists(frame_id):
-            return UIManager.GetFrameCoords(frame_id)
+        if frame_id > 0 and Frame.from_id(frame_id).is_usable:
+            return Frame.from_id(frame_id).coords()
     except Exception:
         pass
     return None
@@ -68,8 +70,8 @@ def _safe_frame_coords(frame_id: int):
 
 def _safe_content_coords(frame_id: int):
     try:
-        if frame_id > 0 and UIManager.FrameExists(frame_id):
-            return UIManager.GetContentFrameCoords(frame_id)
+        if frame_id > 0 and Frame.from_id(frame_id).is_usable:
+            return Frame.from_id(frame_id).content_coords()
     except Exception:
         pass
     return None
@@ -245,11 +247,11 @@ def _refresh_frame_state() -> None:
     global CREATED_FRAME_ID
     global CREATED_FRAME_VISIBLE
 
-    source_id = int(UIManager.GetFrameIDByLabel(DEVTEXT_LABEL) or 0)
-    if source_id > 0 and UIManager.FrameExists(source_id):
+    source_id = int((lambda lbl: LiveTree.by_label(lbl).frame_id)(DEVTEXT_LABEL) or 0)
+    if source_id > 0 and Frame.from_id(source_id).is_usable:
         ORIGINAL_FRAME_ID = source_id
         try:
-            ORIGINAL_FRAME_VISIBLE = bool(UIManager.GetFrameByID(source_id).is_visible)
+            ORIGINAL_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(source_id).is_visible)
         except Exception:
             ORIGINAL_FRAME_VISIBLE = False
     else:
@@ -260,7 +262,7 @@ def _refresh_frame_state() -> None:
     if clone_id > 0:
         CREATED_FRAME_ID = clone_id
         try:
-            CREATED_FRAME_VISIBLE = bool(UIManager.GetFrameByID(clone_id).is_visible)
+            CREATED_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(clone_id).is_visible)
         except Exception:
             CREATED_FRAME_VISIBLE = False
     else:
@@ -276,7 +278,7 @@ def _create_window() -> None:
     if frame_id > 0:
         CREATED_FRAME_ID = frame_id
         try:
-            CREATED_FRAME_VISIBLE = bool(UIManager.GetFrameByID(frame_id).is_visible)
+            CREATED_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(frame_id).is_visible)
         except Exception:
             CREATED_FRAME_VISIBLE = False
         print(f"[{MODULE_NAME}] create skipped existing frame_id={frame_id} title='{WINDOW_TITLE}'")
@@ -325,7 +327,7 @@ def _create_window() -> None:
     ACTIVE_HEIGHT = TARGET_HEIGHT
     CREATED_FRAME_ID = frame_id
     try:
-        CREATED_FRAME_VISIBLE = bool(UIManager.GetFrameByID(frame_id).is_visible)
+        CREATED_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(frame_id).is_visible)
     except Exception:
         CREATED_FRAME_VISIBLE = False
     print(
@@ -377,7 +379,7 @@ def _apply_rect() -> None:
         ACTIVE_HEIGHT = TARGET_HEIGHT
     CREATED_FRAME_ID = frame_id
     try:
-        CREATED_FRAME_VISIBLE = bool(UIManager.GetFrameByID(frame_id).is_visible)
+        CREATED_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(frame_id).is_visible)
     except Exception:
         CREATED_FRAME_VISIBLE = False
     print(
@@ -428,7 +430,7 @@ def _move_rect() -> None:
         ACTIVE_Y = TARGET_Y
     CREATED_FRAME_ID = frame_id
     try:
-        CREATED_FRAME_VISIBLE = bool(UIManager.GetFrameByID(frame_id).is_visible)
+        CREATED_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(frame_id).is_visible)
     except Exception:
         CREATED_FRAME_VISIBLE = False
     print(
@@ -479,7 +481,7 @@ def _resize_rect() -> None:
         ACTIVE_HEIGHT = TARGET_HEIGHT
     CREATED_FRAME_ID = frame_id
     try:
-        CREATED_FRAME_VISIBLE = bool(UIManager.GetFrameByID(frame_id).is_visible)
+        CREATED_FRAME_VISIBLE = bool((lambda fid: Frame.from_id(fid))(frame_id).is_visible)
     except Exception:
         CREATED_FRAME_VISIBLE = False
     print(
@@ -515,17 +517,15 @@ def draw_debug_outlines() -> None:
     _observe_pending_action()
     if not DRAW_OUTLINES:
         return
-
-    ui = UIManager()
-    if ORIGINAL_FRAME_ID > 0 and UIManager.FrameExists(ORIGINAL_FRAME_ID):
-        ui.DrawFrame(ORIGINAL_FRAME_ID, ORIGINAL_FILL_COLOR)
+    if ORIGINAL_FRAME_ID > 0 and Frame.from_id(ORIGINAL_FRAME_ID).is_usable:
+        Frame.from_id(ORIGINAL_FRAME_ID).draw(ORIGINAL_FILL_COLOR)
         outline = ORIGINAL_OUTLINE_COLOR if ORIGINAL_FRAME_VISIBLE else 0xFFAAAAAA
-        ui.DrawFrameOutline(ORIGINAL_FRAME_ID, outline, 4.0)
+        Frame.from_id(ORIGINAL_FRAME_ID).draw_outline(outline, 4.0)
 
-    if CREATED_FRAME_ID > 0 and UIManager.FrameExists(CREATED_FRAME_ID):
-        ui.DrawFrame(CREATED_FRAME_ID, CREATED_FILL_COLOR)
+    if CREATED_FRAME_ID > 0 and Frame.from_id(CREATED_FRAME_ID).is_usable:
+        Frame.from_id(CREATED_FRAME_ID).draw(CREATED_FILL_COLOR)
         outline = CREATED_OUTLINE_COLOR if CREATED_FRAME_VISIBLE else 0xFFAAAAAA
-        ui.DrawFrameOutline(CREATED_FRAME_ID, outline, 6.0)
+        Frame.from_id(CREATED_FRAME_ID).draw_outline(outline, 6.0)
 
 
 def draw() -> None:

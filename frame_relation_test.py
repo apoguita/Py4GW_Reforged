@@ -10,6 +10,7 @@ import traceback
 
 import PyImGui
 import PyUIManager
+from Py4GWCoreLib.FrameTree import Frame
 
 T = TypeVar('T')
 
@@ -74,7 +75,7 @@ def render() -> None:
         if PyImGui.collapsing_header('Navigation (Relation Walker)', DEFAULT_OPEN):
             if PyImGui.button('Get First Child'):
                 child_id = safe_call(
-                    PyUIManager.UIManager.get_related_frame_id,
+                    (lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id),
                     g_frame_id,
                     FrameChild.FirstChild,
                     0,
@@ -84,7 +85,7 @@ def render() -> None:
             PyImGui.same_line()
             if PyImGui.button('Get Last Child'):
                 child_id = safe_call(
-                    PyUIManager.UIManager.get_related_frame_id,
+                    (lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id),
                     g_frame_id,
                     FrameChild.LastChild,
                     0,
@@ -94,7 +95,7 @@ def render() -> None:
             PyImGui.same_line()
             if PyImGui.button('Get Next Sibling'):
                 child_id = safe_call(
-                    PyUIManager.UIManager.get_related_frame_id,
+                    (lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id),
                     g_frame_id,
                     FrameChild.NextSibling,
                     0,
@@ -104,7 +105,7 @@ def render() -> None:
             PyImGui.same_line()
             if PyImGui.button('Get Prev Sibling'):
                 child_id = safe_call(
-                    PyUIManager.UIManager.get_related_frame_id,
+                    (lambda fid, k, sa=0: Frame.from_id(fid).related(k, sa).frame_id),
                     g_frame_id,
                     FrameChild.PrevSibling,
                     0,
@@ -116,27 +117,27 @@ def render() -> None:
                 PyImGui.text(g_output)
 
         if PyImGui.collapsing_header('Frame Properties', DEFAULT_OPEN):
-            layer = safe_call(PyUIManager.UIManager.get_frame_layer_by_frame_id, g_frame_id, default=0)
-            code = safe_call(PyUIManager.UIManager.get_frame_code_by_frame_id, g_frame_id, default=0)
-            title = safe_call(PyUIManager.UIManager.get_frame_title_by_frame_id, g_frame_id, default='(none)')
-            min_size = safe_call(PyUIManager.UIManager.get_frame_min_size_by_frame_id, g_frame_id, default=(0.0, 0.0))
+            layer = safe_call((lambda fid: Frame.from_id(fid).layer), g_frame_id, default=0)
+            code = safe_call((lambda fid: Frame.from_id(fid).code), g_frame_id, default=0)
+            title = safe_call((lambda fid: Frame.from_id(fid).title()), g_frame_id, default='(none)')
+            min_size = safe_call((lambda fid: Frame.from_id(fid).min_size()), g_frame_id, default=(0.0, 0.0))
             native_size = safe_call(
-                PyUIManager.UIManager.get_frame_native_size_by_frame_id,
+                (lambda fid: Frame.from_id(fid).native_size()),
                 g_frame_id,
                 default=(0.0, 0.0),
             )
             border = safe_call(
-                PyUIManager.UIManager.get_frame_client_border_by_frame_id,
+                (lambda fid: Frame.from_id(fid).client_border()),
                 g_frame_id,
                 default=(0.0, 0.0, 0.0, 0.0),
             )
             clip_rect = safe_call(
-                PyUIManager.UIManager.get_frame_clip_rect_by_frame_id,
+                (lambda fid: Frame.from_id(fid).clip_rect()),
                 g_frame_id,
                 default=(0.0, 0.0, 0.0, 0.0),
             )
             position_ex = safe_call(
-                PyUIManager.UIManager.get_frame_position_ex_by_frame_id,
+                (lambda fid: Frame.from_id(fid).position_ex()),
                 g_frame_id,
                 default=(0.0, 0.0, 0.0, 0.0, 0),
             )
@@ -156,7 +157,7 @@ def render() -> None:
             )
 
         if PyImGui.collapsing_header('State Bits', DEFAULT_OPEN):
-            state_get = PyUIManager.UIManager.get_frame_state_bit_by_frame_id
+            state_get = (lambda fid, b: Frame.from_id(fid).state_bit(b))
             visible = safe_call(state_get, g_frame_id, STATE_VISIBLE, default=False)
             created = safe_call(state_get, g_frame_id, STATE_CREATED, default=False)
             disabled = safe_call(state_get, g_frame_id, STATE_DISABLED, default=False)
@@ -169,22 +170,22 @@ def render() -> None:
 
             PyImGui.spacing()
             if PyImGui.button('Toggle Visible'):
-                safe_call(PyUIManager.UIManager.set_frame_visible_by_frame_id, g_frame_id, not visible, default=False)
+                safe_call((lambda fid, v: Frame.from_id(fid).set_visible(v)), g_frame_id, not visible, default=False)
             PyImGui.same_line()
             if PyImGui.button('Toggle Disabled'):
                 safe_call(
-                    PyUIManager.UIManager.set_frame_disabled_by_frame_id,
+                    (lambda fid, d: Frame.from_id(fid).set_disabled(d)),
                     g_frame_id,
                     not disabled,
                     default=False,
                 )
 
         if PyImGui.collapsing_header('Ancestry', DEFAULT_OPEN):
-            parent_id = safe_call(PyUIManager.UIManager.get_parent_frame_id_direct, g_frame_id, default=0)
+            parent_id = safe_call((lambda fid: Frame.from_id(fid).parent_direct().frame_id), g_frame_id, default=0)
             PyImGui.text(f'  Parent: {parent_id}')
             if parent_id:
                 is_ancestor = safe_call(
-                    PyUIManager.UIManager.is_ancestor_of_by_frame_id,
+                    (lambda fid, a: Frame.from_id(fid).is_ancestor_of(Frame.from_id(a))),
                     g_frame_id,
                     parent_id,
                     default=False,
@@ -192,7 +193,7 @@ def render() -> None:
                 PyImGui.text(f'  Is parent ancestor: {is_ancestor}')
 
         if PyImGui.collapsing_header('Raw Frame Info'):
-            PyImGui.text(f'  frame_id:       {frame.frame_id}')
+            PyImGui.text(f'  frame_id:       {frame}')
             PyImGui.text(f'  parent_id:      {frame.parent_id}')
             PyImGui.text(f'  frame_hash:     {frame.frame_hash}')
             PyImGui.text(f'  child_offset:   {frame.child_offset_id}')

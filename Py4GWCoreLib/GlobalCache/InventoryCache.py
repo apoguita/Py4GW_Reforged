@@ -473,12 +473,11 @@ class InventoryCache:
         return True
 
     def AcceptSalvageMaterialsWindow(self):
+        from ..FrameTree import Frame, FrameId
 
-        parent_hash = 140452905
-        yes_button_offsets = [6,98,6]
-        
-        salvage_material_window = UIManager.GetChildFrameID(parent_hash, yes_button_offsets)
-        UIManager.FrameClick(salvage_material_window)
+        yes = Frame(FrameId.ScreenFrame.C6.SalvageMaterialsDialog.YesButton)
+        if yes.exists:
+            yes.click()
 
     def IsStorageOpen(self):
 

@@ -27,6 +27,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (TabIcon,
                                             XUNLAI_VAULT_FRAME_HASH
                             )
 from Sources.ApoSource.InvPlus.Coroutines import IdentifyCheckedItems
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 class IdentifyModule:
     def __init__(self, inventory_frame: Frame):
@@ -180,8 +181,8 @@ class IdentifyModule:
                 _,rarity = Item.Rarity.GetRarity(item_id)
                 slot = Item.GetSlot(item_id)
 
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
                 
@@ -192,15 +193,15 @@ class IdentifyModule:
                     frame_color = _get_frame_color("Disabled")
                     frame_outline_color = _get_frame_outline_color("Disabled")
                 
-                UIManager().DrawFrame(frame_id, frame_color)
-                UIManager().DrawFrameOutline(frame_id, frame_outline_color)
+                frame_id.draw(frame_color)
+                frame_id.draw_outline(frame_outline_color)
                 
                 #--------------- Checkboxes ---------------
                 if not Item.Usage.IsIdentified(item_id) and not Item.Usage.IsIDKit(item_id):
                     if item_id not in self.id_checkboxes:
                         self.id_checkboxes[item_id] = False
                     
-                    left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
+                    left,top, right, bottom = frame_id.coords()
                     self.id_checkboxes[item_id] = ImGui.floating_checkbox(
                         f"{item_id}", 
                         self.id_checkboxes[item_id], 

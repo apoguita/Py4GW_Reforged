@@ -7,6 +7,7 @@ from Py4GWCoreLib import Key, Keystroke, Map, CHAR_MAP, Player
 from Py4GWCoreLib import (GLOBAL_CACHE, Agent, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
                           AutoPathing, ImGui, ActionQueueManager,)
 from Py4GWCoreLib.Context import GWContext
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 LAST_CHARACTER_NAME: str = ""
 LAST_PRIMARY_PROF: str = ""
@@ -267,9 +268,9 @@ def custom_delete_character(character_name: str, timeout_ms: int = 45000):
 
     # Click delete character button
     try:
-        WindowFrames = getattr(Yield, "WindowFrames", None)
-        if WindowFrames and hasattr(WindowFrames, "DeleteCharacterButton"):
-            WindowFrames.DeleteCharacterButton.FrameClick()
+        delete_button = Frame(FrameId.DeleteButton)
+        if delete_button.exists:
+            delete_button.click()
             yield from Routines.Yield.wait(2000)
 
             # Type character name using keystrokes instead of clipboard
@@ -278,8 +279,11 @@ def custom_delete_character(character_name: str, timeout_ms: int = 45000):
             yield from Routines.Yield.wait(2000)
 
             # Click final delete button
-            if hasattr(WindowFrames, "FinalDeleteCharacterButton"):
-                WindowFrames.FinalDeleteCharacterButton.FrameClick()
+            final_delete = Frame(
+                FrameId.ScreenFrame.Child.CharacterSelectFrame.DeleteCharacterFrame.DeleteButton
+            )
+            if final_delete.exists:
+                final_delete.click()
                 yield from Routines.Yield.wait(5000)
 
             return True
@@ -295,14 +299,11 @@ def custom_create_character(character_name: str, campaign_name: str, profession_
     from Py4GWCoreLib.routines_src.Yield import Yield
 
     try:
-        WindowFrames = getattr(Yield, "WindowFrames", None)
-        if not WindowFrames:
-            return False
-
         # Navigate through character creation screens
         # Select body (default)
-        if hasattr(WindowFrames, "CreateCharacterNextButtonGeneric"):
-            WindowFrames.CreateCharacterNextButtonGeneric.FrameClick()
+        next_button = Frame(FrameId.NextButton2)
+        if next_button.exists:
+            next_button.click()
             yield from Routines.Yield.wait(3000)
 
             # Enter name using keystrokes instead of clipboard
@@ -310,8 +311,9 @@ def custom_create_character(character_name: str, campaign_name: str, profession_
             yield from Routines.Yield.wait(2000)
 
             # Click final create button
-            if hasattr(WindowFrames, "FinalCreateCharacterButton"):
-                WindowFrames.FinalCreateCharacterButton.FrameClick()
+            final_create = Frame(FrameId.CreateButton2)
+            if final_create.exists:
+                final_create.click()
                 yield from Routines.Yield.wait(1000)
 
             return True

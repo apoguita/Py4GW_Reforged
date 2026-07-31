@@ -1,6 +1,6 @@
 from operator import index
 from Py4GWCoreLib import GLOBAL_CACHE, Map,IconsFontAwesome5, ImGui, Utils, Overlay, Range, SharedCommandType, ConsoleLog, Color, ColorPalette
-from Py4GWCoreLib import UIManager, ModelID, GLOBAL_CACHE, WindowFrames
+from Py4GWCoreLib import UIManager, ModelID, GLOBAL_CACHE
 from Py4GWCoreLib import Agent, Player
 from Py4GWCoreLib import (Routines, ActionQueueManager,Key, Keystroke, ThrottledTimer)
 from Py4GWCoreLib.ImGui_src.WindowModule import WindowModule

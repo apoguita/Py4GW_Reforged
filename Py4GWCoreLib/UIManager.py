@@ -9,7 +9,6 @@ import PyOverlay
 from collections import deque, defaultdict
 
 from Py4GWCoreLib.py4gwcorelib_src.FrameCache import frame_cache
-from .py4gwcorelib_src.JsonFactory import JsonFactory
 from .Py4GWcorelib import ConsoleLog, Console
 from .enums_src.Item_enums import INVENTORY_BAGS, INVENTORY_WITH_EQUIPMENT_BAGS, STORAGE_BAGS, Bags, SalvageMode
 from .enums_src.UI_enums import WindowID
@@ -17,6 +16,7 @@ from dataclasses import dataclass, field
 from .native_src.internals.types import Vec2f
 from typing import Any, TypedDict
 from .Scanner import Scanner
+from .FrameTree import Frame, FrameId, FrameTree
 
 # —— Constants ——————————————————
 NPC_DIALOG_HASH    = 3856160816
@@ -36,49 +36,31 @@ class UIManager:
         mouse_pos: tuple[float, float]
         details: Dict[str, Any]
      
-    frame_id_callbacks: list[int] = []
-    frame_id_io_events: Dict[int, List[IOEvent]] = defaultdict(list)
+    frame_callbacks: list[int] = []
+    frame_io_events: Dict[int, List[IOEvent]] = defaultdict(list)
     
     @staticmethod
-    def RegisterFrameIOEventCallback(frame_id: int):
+    def RegisterFrameIOEventCallback(frame):
         """
         Register a frame ID to track IO events.
 
-        :param frame_id: The frame ID to register.
+        :param frame: The frame handle to register.
         """
-        if frame_id not in UIManager.frame_id_callbacks:
-            UIManager.frame_id_callbacks.append(frame_id)
+        if frame not in UIManager.frame_callbacks:
+            UIManager.frame_callbacks.append(frame)
             
     @staticmethod
-    def UnregisterFrameIOEventCallback(frame_id: int):
+    def UnregisterFrameIOEventCallback(frame):
         """
         Unregister a frame ID from tracking IO events.
 
-        :param frame_id: The frame ID to unregister.
+        :param frame: The frame handle to unregister.
         """
-        if frame_id in UIManager.frame_id_callbacks:
-            UIManager.frame_id_callbacks.remove(frame_id)
-            if frame_id in UIManager.frame_id_io_events:
-                del UIManager.frame_id_io_events[frame_id]
+        if frame in UIManager.frame_callbacks:
+            UIManager.frame_callbacks.remove(frame)
+            if frame in UIManager.frame_io_events:
+                del UIManager.frame_io_events[frame]
                 
-    @staticmethod
-    def IsMouseOver(frame_id: int) -> bool:
-        """
-        Check if the mouse is over a specific frame.
-
-        :param frame_id: The ID of the frame.
-        :return: bool: True if the mouse is over the frame, False otherwise.
-        """
-        import PyImGui
-        from Py4GWCoreLib.ImGui import ImGui
-        
-        io = PyImGui.get_io()
-        
-        left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
-        width = right - left
-        height = bottom - top
-        
-        return ImGui.is_mouse_in_rect((left, top, width, height),(io.mouse_pos_x, io.mouse_pos_y))
     
     @staticmethod
     def _UpdateFrameIOEvents():
@@ -93,13 +75,13 @@ class UIManager:
         mouse_pos = (io.mouse_pos_x, io.mouse_pos_y)
         timestamp = PySystem.get_tick_count64()
         
-        for frame_id in UIManager.frame_id_callbacks:
-            if not UIManager.FrameExists(frame_id):
+        for frame in UIManager.frame_callbacks:
+            if not frame.is_usable:
                 continue
-            
-            if not UIManager.IsMouseOver(frame_id):
+
+            if not frame.is_mouse_over():
                 continue
-            
+
             is_left_mouse_clicked = PyImGui.is_mouse_clicked(MouseButton.Left.value)
             is_right_mouse_clicked = PyImGui.is_mouse_clicked(MouseButton.Right.value)
             is_middle_mouse_clicked = PyImGui.is_mouse_clicked(MouseButton.Middle.value)
@@ -116,17 +98,17 @@ class UIManager:
                 }
 
                 # ensure list exists for this frame
-                if frame_id not in UIManager.frame_id_io_events:
-                    UIManager.frame_id_io_events[frame_id] = []
+                if frame not in UIManager.frame_io_events:
+                    UIManager.frame_io_events[frame] = []
 
                 # search for existing event and update instead of adding a duplicate
-                for i, existing in enumerate(UIManager.frame_id_io_events[frame_id]):
+                for i, existing in enumerate(UIManager.frame_io_events[frame]):
                     if existing.get("event_type") == event_type:
-                        UIManager.frame_id_io_events[frame_id][i] = event
+                        UIManager.frame_io_events[frame][i] = event
                         break
                 else:
                     # not found -> append new
-                    UIManager.frame_id_io_events[frame_id].append(event)
+                    UIManager.frame_io_events[frame].append(event)
                 
             if is_left_mouse_clicked:
                 _add_event("left_mouse_clicked")
@@ -147,18 +129,18 @@ class UIManager:
                 _add_event("mouse_wheel_scrolled_horizontal", {"scroll_x_delta": scroll_x_delta})
                 
     @staticmethod
-    def GetIOEventsForFrame(frame_id: int) -> List[IOEvent]:
+    def GetIOEventsForFrame(frame) -> List[IOEvent]:
         """
         Get the list of IO events for a specific frame ID.
 
-        :param frame_id: The frame ID to retrieve events for.
+        :param frame: The frame handle to retrieve events for.
         :return: List[IOEvent]: List of IO events for the frame.
         """
         #lazy load the list if it doesn't exist
-        if frame_id not in UIManager.frame_id_callbacks:
-            UIManager.frame_id_callbacks.append(frame_id)
+        if frame not in UIManager.frame_callbacks:
+            UIManager.frame_callbacks.append(frame)
         
-        return UIManager.frame_id_io_events.get(frame_id, [])
+        return UIManager.frame_io_events.get(frame, [])
     
     @staticmethod
     def RegisterFrameIOCallbacks():
@@ -173,102 +155,6 @@ class UIManager:
             priority=2,
             context=PyCallback.Context.Draw
         )
-   
-    @staticmethod
-    def ConstructFramePath(frame_id: int) -> str:
-        """
-        Constructs the full path for an offset-based frame by traversing up the parent chain.
-
-        :param frame_id: The frame ID to construct the path for.
-        :return: A string path in the format "hashed_parent,offset1,offset2,...", or None if no valid hashed parent is found.
-        """
-        if frame_id == 0:
-            return ""
-        try:
-            current_frame = PyUIManager.UIFrame(frame_id)
-        except Exception as e:
-            print(f"[ERROR] Failed to create UIFrame with frame_id={frame_id}: {e}")
-            return ""  # Return empty string on error
-        
-        # If the frame itself has a hash, return it immediately
-        if current_frame.frame_hash != 0:
-            return str(current_frame.frame_hash)
-
-        path = []
-        parent_hash = None
-
-        # Traverse up the parent hierarchy until we find a hashed parent
-        while current_frame.frame_id != 0:
-            parent_frame = PyUIManager.UIFrame(current_frame.parent_id)
-
-            # Store child offset
-            path.append(str(current_frame.child_offset_id))
-
-            # If we found a parent with a hash, stop and use it as the root
-            if parent_frame.frame_hash:
-                parent_hash = parent_frame.frame_hash
-                break
-
-            current_frame = parent_frame  # Move up to the parent
-
-        # If no hashed parent was found, return None (invalid case)
-        if parent_hash == 0:
-            return ""
-
-        # Construct and return the full path
-        return str(parent_hash) + "," + ",".join(reversed(path))
-    
-    @staticmethod
-    def SaveEntryToJSON(filename: str, frame_id: int, alias: str):
-        """Writes or updates an entry in the shared frame-alias document (JsonFactory, global scope)."""
-        frame_path = UIManager.ConstructFramePath(frame_id)
-
-        if frame_path:  # Ensure the path is valid before saving
-            JsonFactory("frame_aliases.json", "global").set(frame_path, alias)
-
-    @staticmethod
-    def GetEntryFromJSON(filename: str, frame_id: int) -> str:
-        """
-        Reads an entry from the shared frame-alias document by constructing the frame's path.
-
-        :param filename: Retained for call compatibility; the alias map is a global JsonFactory document.
-        :param frame_id: The frame ID to locate.
-        :return: The alias if found, otherwise an empty string.
-        """
-        frame_path = UIManager.ConstructFramePath(frame_id)
-        if not frame_path:
-            return ""
-
-        return JsonFactory("frame_aliases.json", "global").get_str(frame_path, "")
-
-    @staticmethod
-    def GetFrameIDByCustomLabel(filename: str = ".\\Py4GWCoreLib\\frame_aliases.json", frame_label: str = "Game") -> int:
-        """
-        Finds the frame_id of a UIFrame by matching its constructed path with a stored alias.
-
-        :param filename: Retained for call compatibility; the alias map is a global JsonFactory document.
-        :param frame_label: The label corresponding to a hashed frame path.
-        :return: The frame_id if found, otherwise 0.
-        """
-        data = JsonFactory("frame_aliases.json", "global").get_json("", {})
-
-        # Find the frame path corresponding to the given label
-        target_path = next((path for path, alias in data.items() if alias == frame_label), None)
-        if not target_path:
-            return 0  # Label not found in JSON
-
-        # Get all frame IDs
-        frame_array = UIManager.GetFrameArray()
-
-        # Search through frames
-        for frame_id in frame_array:
-            frame = PyUIManager.UIFrame(frame_id)  # Create UIFrame object
-            frame_path = UIManager.ConstructFramePath(frame.frame_id)  # Get full path
-
-            if frame_path == target_path:
-                return frame.frame_id  # Found the correct frame_id
-
-        return 0  # No matching frame found
 
 
     @staticmethod
@@ -302,249 +188,13 @@ class UIManager:
         Clear the UI message logs.
         """
         PyUIManager.UIManager.clear_ui_message_logs()
-        
-    @staticmethod
-    def GetFrameByID(frame_id) -> PyUIManager.UIFrame:
-        """
-        Get the frame by its ID.
 
-        :param frame_id: The ID of the frame.
-        :return: PyUIManager.UIFrame: The UIFrame object.
-        """
-        return PyUIManager.UIFrame(frame_id)
-    
-    @staticmethod
-    def GetFrameIDByLabel(label):
-        """
-        Get the frame ID by its label.
-
-        :param label: The label of the frame.
-        :return: int: The frame ID, or -1 if not found.
-        """
-        return PyUIManager.UIManager.get_frame_id_by_label(label)
-    
-    @staticmethod
-    def GetFrameIDByHash(hash):
-        """
-        Get the frame ID by its hash value.
-
-        :param hash: The hash value of the frame.
-        :return: int: The frame ID, or -1 if not found.
-        """
-        return PyUIManager.UIManager.get_frame_id_by_hash(hash)
 
     @staticmethod
     def GetTextLanguage() -> int:
         return PyUIManager.UIManager.get_text_language()
 
-    @staticmethod
-    def GetChildFrameByFrameId(parent_frame_id: int, child_offset: int) -> int:
-        return PyUIManager.UIManager.get_child_frame_by_frame_id(parent_frame_id, child_offset)
 
-    @staticmethod
-    def GetChildFramePathByFrameId(parent_frame_id: int, child_offsets: list[int]) -> int:
-        return PyUIManager.UIManager.get_child_frame_path_by_frame_id(parent_frame_id, child_offsets)
-
-    @staticmethod
-    def GetParentFrameID(frame_id: int) -> int:
-        return PyUIManager.UIManager.get_parent_frame_id(frame_id)
-
-    @staticmethod
-    def GetFrameContext(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_frame_context(frame_id) or 0)
-
-    @staticmethod
-    def GetFrameNameHash(frame_id: int) -> int:
-        """Return the frame hash/name-hash already exposed on UIFrame."""
-        try:
-            return int(PyUIManager.UIFrame(frame_id).frame_hash or 0)
-        except Exception:
-            return 0
-
-    @staticmethod
-    def GetFrameLabel(frame_id: int) -> str:
-        try:
-            return str(PyUIManager.UIManager.get_frame_label_by_frame_id(frame_id) or "")
-        except Exception:
-            return ""
-
-    @staticmethod
-    def GetTextLabelEncoded(frame_id: int) -> str:
-        try:
-            return str(PyUIManager.UIManager.get_text_label_encoded_by_frame_id(frame_id) or "")
-        except Exception:
-            return ""
-
-    @staticmethod
-    def GetTextLabelDecoded(frame_id: int) -> str:
-        try:
-            return str(PyUIManager.UIManager.get_text_label_decoded_by_frame_id(frame_id) or "")
-        except Exception:
-            return ""
-
-    @staticmethod
-    def GetFirstChildFrameID(parent_frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_first_child_frame_id(parent_frame_id) or 0)
-
-    @staticmethod
-    def GetLastChildFrameID(parent_frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_last_child_frame_id(parent_frame_id) or 0)
-
-    @staticmethod
-    def GetNextChildFrameID(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_next_child_frame_id(frame_id) or 0)
-
-    @staticmethod
-    def GetPrevChildFrameID(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_prev_child_frame_id(frame_id) or 0)
-
-    @staticmethod
-    def GetRelatedFrameID(frame_id: int, relation_kind: int, start_after: int = 0) -> int:
-        """
-        Traverses the frame tree using the native sibling/child relation walker.
-
-        relation_kind values:
-            0 = FirstChild  (get first child of frame_id)
-            1 = LastChild   (get last child of frame_id)
-            2 = NextSibling (get next sibling of frame_id)
-            3 = PrevSibling (get previous sibling of frame_id)
-
-        start_after: Optional frame_id for advanced native iteration.
-
-        Returns the related frame_id, or 0 if none.
-        """
-        return int(PyUIManager.UIManager.get_related_frame_id(frame_id, relation_kind, start_after) or 0)
-
-    @staticmethod
-    def GetFrameLayer(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_frame_layer_by_frame_id(frame_id) or 0)
-
-    @staticmethod
-    def SetFrameLayer(frame_id: int, layer: int) -> bool:
-        return bool(PyUIManager.UIManager.set_frame_layer_by_frame_id(frame_id, layer))
-
-    @staticmethod
-    def IsAncestorOf(frame_id: int, ancestor_id: int) -> bool:
-        return bool(PyUIManager.UIManager.is_ancestor_of_by_frame_id(frame_id, ancestor_id))
-
-    @staticmethod
-    def GetFrameCode(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_frame_code_by_frame_id(frame_id) or 0)
-
-    @staticmethod
-    def GetFrameMinSize(frame_id: int) -> tuple:
-        return PyUIManager.UIManager.get_frame_min_size_by_frame_id(frame_id)
-
-    @staticmethod
-    def GetFrameClientBorder(frame_id: int) -> tuple:
-        return PyUIManager.UIManager.get_frame_client_border_by_frame_id(frame_id)
-
-    @staticmethod
-    def GetFrameClipRect(frame_id: int) -> tuple:
-        return PyUIManager.UIManager.get_frame_clip_rect_by_frame_id(frame_id)
-
-    @staticmethod
-    def GetFramePositionEx(frame_id: int) -> tuple:
-        return PyUIManager.UIManager.get_frame_position_ex_by_frame_id(frame_id)
-
-    @staticmethod
-    def GetFrameTitleText(frame_id: int) -> str:
-        return PyUIManager.UIManager.get_frame_title_by_frame_id(frame_id)
-
-    @staticmethod
-    def GetFrameNativeSize(frame_id: int) -> tuple:
-        return PyUIManager.UIManager.get_frame_native_size_by_frame_id(frame_id)
-
-    @staticmethod
-    def SetVisible(frame_id: int, is_visible: bool) -> bool:
-        return bool(PyUIManager.UIManager.set_frame_visible_by_frame_id(frame_id, is_visible))
-
-    @staticmethod
-    def SetDisabled(frame_id: int, is_disabled: bool) -> bool:
-        return bool(PyUIManager.UIManager.set_frame_disabled_by_frame_id(frame_id, is_disabled))
-
-    @staticmethod
-    def GetStateBit(frame_id: int, bit: int) -> bool:
-        return bool(PyUIManager.UIManager.get_frame_state_bit_by_frame_id(frame_id, bit))
-
-    @staticmethod
-    def SetOpacity(frame_id: int, opacity: float, fade_time: float = 0.0) -> bool:
-        return bool(PyUIManager.UIManager.set_frame_opacity_by_frame_id(frame_id, opacity, fade_time))
-
-    @staticmethod
-    def ShowFrame(frame_id: int, show: bool) -> bool:
-        return bool(PyUIManager.UIManager.show_frame_by_frame_id(frame_id, show))
-
-    @staticmethod
-    def GetParentFrameIdDirect(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_parent_frame_id_direct(frame_id) or 0)
-
-    @staticmethod
-    def GetOpacity(frame_id: int) -> float:
-        return float(PyUIManager.UIManager.get_frame_opacity_by_frame_id(frame_id))
-
-    @staticmethod
-    def GetUserParam(frame_id: int) -> int:
-        return int(PyUIManager.UIManager.get_frame_user_param_by_frame_id(frame_id) or 0)
-
-    @staticmethod
-    def GetChildFrameIdFromNameHash(parent_frame_id: int, name_hash: int) -> int:
-        return int(PyUIManager.UIManager.get_child_frame_id_from_name_hash(parent_frame_id, name_hash) or 0)
-
-    @staticmethod
-    def GetOverlayFrameIDs() -> list:
-        return list(PyUIManager.UIManager.get_overlay_frame_ids())
-
-    @staticmethod
-    def GetPopupFrameIDs() -> list:
-        return list(PyUIManager.UIManager.get_popup_frame_ids())
-
-    @staticmethod
-    def GetItemFrameID(parent_frame_id: int, index: int) -> int:
-        return int(PyUIManager.UIManager.get_item_frame_id(parent_frame_id, index) or 0)
-
-    @staticmethod
-    def GetTabFrameID(parent_frame_id: int, index: int) -> int:
-        return int(PyUIManager.UIManager.get_tab_frame_id(parent_frame_id, index) or 0)
-    
-    @staticmethod
-    def GetHashByLabel(label):
-        """
-        Get the hash value of a frame by its label.
-
-        :param label: The label of the frame.
-        :return: int: The hash value of the frame, or -1 if not found.
-        """
-        return PyUIManager.UIManager.get_hash_by_label(label)
-    
-    @staticmethod
-    def GetFrameHierarchy():
-        """
-        Get the frame hierarchy as a dictionary.
-
-        :return: dict: The frame hierarchy.
-        """
-        return PyUIManager.UIManager.get_frame_hierarchy()
-    
-    @staticmethod
-    def GetFrameCoordsByHash(hash):
-        """
-        Get the coordinates of a frame by its hash value.
-
-        :param hash: The hash value of the frame.
-        :return: tuple: The (x, y),(x1,y1) coordinates of the frame, or None if not found.
-        """
-        return PyUIManager.UIManager.get_frame_coords_by_hash(hash)
-    
-    @staticmethod
-    def GetFrameArray():
-        """
-        Get the frame array.
-
-        :return: list: The frame array.
-        """
-        return PyUIManager.UIManager.get_frame_array()
-    
     @staticmethod
     def SendUIMessage(msgid: int, values: list[int],skip_hooks: bool = False ) -> bool:
         return PyUIManager.UIManager.SendUIMessage(msgid, values, skip_hooks)
@@ -553,13 +203,6 @@ class UIManager:
     def SendUIMessageRaw(msgid: int, wparam: int, lparam: int, skip_hooks: bool = False ) -> bool:
         return PyUIManager.UIManager.SendUIMessageRaw(msgid, wparam, lparam, skip_hooks)
 
-    @staticmethod
-    def SendFrameUIMessage(frame_id: int, message_id: int, wparam: int, lparam: int = 0) -> bool:
-        return PyUIManager.UIManager.SendFrameUIMessage(frame_id, message_id, wparam, lparam)
-
-    @staticmethod
-    def SendFrameUIMessageWString(frame_id: int, message_id: int, text: str) -> bool:
-        return PyUIManager.UIManager.SendFrameUIMessageWString(frame_id, message_id, text)
 
     @staticmethod
     def DrawOnCompass(session_id: int, points: list[tuple[int, int]]) -> bool:
@@ -588,132 +231,8 @@ class UIManager:
     # @staticmethod
     # def RemoveCreateUIComponentCallback(handle: int) -> bool:
     #     return bool(PyUIManager.UIManager.remove_create_ui_component_callback(handle))
-    
-    @staticmethod
-    def GetRootFrameID():
-        """
-        Get the root frame ID.
 
-        :return: int: The root frame ID.
-        """
-        return PyUIManager.UIManager.get_root_frame_id()
-    
-    @staticmethod
-    def GetChildFrameID (parent_hash: int, child_offsets: List[int]):
-        """
-        Get the child frame ID.
 
-        :param parent_hash: The parent hash value.
-        :param child_offsets: The list of child offsets.
-        :return: int: The child frame ID.
-        """
-        return PyUIManager.UIManager.get_child_frame_id(parent_hash, child_offsets)
-    
-    @staticmethod
-    def GetAllChildFrameIDs(parent_hash: int, child_offsets: List[int]):
-        """
-        Finds all frame IDs that match the given offset path from the parent hash.
-        Unlike GetChildFrameID, this returns *all* frames that match the offset chain.
-
-        :param parent_hash: The root hash of the UI dialog
-        :param child_offsets: List of offsets to follow
-        :return: List of matching frame IDs
-        """
-        frame_array = UIManager.GetFrameArray()
-        root_frame_id = UIManager.GetFrameIDByHash(parent_hash)
-
-        matching_ids = []
-
-        for fid in frame_array:
-            current = PyUIManager.UIFrame(fid)
-            offsets = []
-            trace = current
-
-            for _ in range(len(child_offsets)):
-                offsets.insert(0, trace.child_offset_id)
-                if trace.parent_id == 0:
-                    break
-                trace = PyUIManager.UIFrame(trace.parent_id)
-
-            if trace.frame_id == root_frame_id and offsets == child_offsets:
-                matching_ids.append(current.frame_id)
-
-        return matching_ids
-    
-    @staticmethod
-    def SortFramesByVerticalPosition(frame_ids: List[int]):
-        positions = []
-        for fid in frame_ids:
-            frame = PyUIManager.UIFrame(fid)
-            y = frame.position.top_on_screen
-            positions.append((fid, y))
-        return sorted(positions, key=lambda x: x[1])  # Lower Y = higher on screen
-    
-    @staticmethod
-    def ColorFrames(parent_hash: int, child_offsets: List[int], debug: bool = False):
-        def RGBToColor(r, g, b, a) -> int:
-            return (a << 24) | (b << 16) | (g << 8) | r
-
-        option_offsets = child_offsets
-        all_ids = UIManager.GetAllChildFrameIDs(parent_hash, option_offsets)
-        
-        sorted_frames = UIManager.SortFramesByVerticalPosition(all_ids)
-
-        if debug:
-            print(f"All matching frame IDs: {all_ids}")
-            for fid, top_y in sorted_frames:
-                print(f"Frame ID: {fid}, Top Y: {top_y}")
-            
-        colors = [
-        RGBToColor(0, 255, 0, 200),     # green
-        RGBToColor(255, 0, 0, 200),     # red
-        RGBToColor(0, 128, 255, 200),   # blue
-        RGBToColor(255, 255, 0, 200),   # yellow
-        RGBToColor(128, 0, 255, 200),   # purple
-        RGBToColor(255, 128, 0, 200),   # orange
-        RGBToColor(0, 255, 255, 200),   # cyan
-        ]
-        for i, (frame_id, _) in enumerate(sorted_frames):
-            if i >= len(colors):
-                break
-            UIManager().DrawFrame(frame_id, colors[i])
-            
-    @staticmethod
-    def FrameClick(frame_id: int) -> None:
-        from Py4GWCoreLib import UIManager
-
-        if not UIManager.FrameExists(frame_id):
-            return
-        
-        PyUIManager.UIManager.button_click(frame_id)    
-        
-    @staticmethod
-    def TestMouseAction(
-        frame_id: int,
-        current_state: int,
-        wparam_value: int,
-        lparam_value: int = 0,
-    ) -> None:
-        from Py4GWCoreLib import UIManager
-
-        if not UIManager.FrameExists(frame_id):
-            return
-        PyUIManager.UIManager.test_mouse_action(frame_id, current_state, wparam_value, lparam_value)
-
-    @staticmethod
-    def TestMouseClickAction(
-        frame_id: int,
-        current_state: int,
-        wparam_value: int,
-        lparam_value: int = 0,
-    ) -> None:
-        from Py4GWCoreLib import UIManager
-
-        if not UIManager.FrameExists(frame_id):
-            return
-        PyUIManager.UIManager.test_mouse_click_action(frame_id, current_state, wparam_value, lparam_value)
-
-            
     @staticmethod
     def IsWorldMapShowing():
         """
@@ -777,146 +296,7 @@ class UIManager:
         :param limit: The frame limit.
         """
         PyUIManager.UIManager.set_frame_limit(limit)
-        
-    @staticmethod
-    def IsFrameCreated(frame_id):
-        """
-        Check if a frame is created.
 
-        :param frame_id: The ID of the frame.
-        :return: bool: True if the frame is created, False otherwise.
-        """
-        return PyUIManager.UIFrame(frame_id).is_created
-    
-    @staticmethod
-    def IsVisible(frame_id):
-        """
-        Check if a frame is visible.
-
-        :param frame_id: The ID of the frame.
-        :return: bool: True if the frame is visible, False otherwise.
-        """
-        return PyUIManager.UIFrame(frame_id).is_visible
-    
-    @staticmethod
-    def FrameExists(frame_id):
-        """
-        Check if a frame exists.
-
-        :param frame_id: The ID of the frame.
-        :return: bool: True if the frame exists, False otherwise.
-        """
-        frame_aray = UIManager.GetFrameArray()
-        if frame_id not in frame_aray:
-            return False
-        return UIManager.IsFrameCreated(frame_id) and UIManager.IsVisible(frame_id)
-    
-    @staticmethod
-    def GetParentID(frame_id):
-        """
-        Get the parent ID of a frame.
-
-        :param frame_id: The ID of the frame.
-        :return: int: The parent ID of the frame. 
-        """
-        return PyUIManager.UIFrame(frame_id).parent_id
-    
-    @staticmethod
-    def GetViewPortScale(frame_id) -> tuple[float, float]:
-        """
-        Get the viewport scale of a frame.
-
-        :param frame_id: The ID of the frame.
-        :return: float: The viewport scale of the frame.
-        """
-        frame = PyUIManager.UIFrame(frame_id)
-        return frame.position.viewport_scale_x, frame.position.viewport_scale_y
-    
-    @staticmethod
-    def GetViewportDimensions(frame_id) -> tuple[float, float]:
-        """
-        Get the viewport dimensions of a frame.
-
-        :param frame_id: The ID of the frame.
-        :return: float: The viewport dimensions of the frame.
-        """
-        frame = PyUIManager.UIFrame(frame_id)
-        return frame.position.viewport_width, frame.position.viewport_height
-    
-    
-    @staticmethod
-    def GetFrameCoords(frame_id) -> tuple[int, int, int, int]:
-        """
-        Get the coordinates of a frame.
-
-        :param frame_id: The ID of the frame.
-        :return: top, left, bottom, right coordinates of the frame.
-        """
-        frame = PyUIManager.UIFrame(frame_id)
-        top = frame.position.top_on_screen
-        left = frame.position.left_on_screen
-        bottom = frame.position.bottom_on_screen
-        right = frame.position.right_on_screen
-        return left,top, right, bottom
-    
-    
-    @staticmethod
-    def GetContentFrameCoords(frame_id) -> tuple[int, int, int, int]:
-        """
-        Return (left, top, right, bottom) screen coords for the *content area*
-        of a mission map frame, with Y correctly flipped into screen space.
-        """
-        frame = PyUIManager.UIFrame(frame_id)
-        viewport_scale = Vec2f(*UIManager.GetViewPortScale(frame_id))
-        root_frame_id = UIManager.GetRootFrameID()
-        viewport_dims  = Vec2f(*UIManager.GetViewportDimensions(root_frame_id))
-        _,height = viewport_dims.to_tuple()
-
-        # Raw content coords (frame-local)
-        left   = frame.position.content_left   * viewport_scale.x
-        top    = (height - frame.position.content_top)   * viewport_scale.y
-        right  = frame.position.content_right  * viewport_scale.x
-        bottom = (height - frame.position.content_bottom) * viewport_scale.y
-
-
-        return int(left), int(top), int(right), int(bottom)
-        
-    def DrawFrame(self,frame_id:int, draw_color:int):
-        """
-        Draw a frame on the UI.
-
-        :param frame_id: The ID of the frame.
-        """
-        if not UIManager.FrameExists(frame_id):
-            return
-        
-        left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
-        p1 = PyOverlay.Vec2f(left, top)
-        p2 = PyOverlay.Vec2f(right, top)
-        p3 = PyOverlay.Vec2f(right, bottom)
-        p4 = PyOverlay.Vec2f(left, bottom)
-        UIManager._overlay.BeginDraw()
-        UIManager._overlay.DrawQuadFilled(p1,p2,p3,p4, draw_color)
-        UIManager._overlay.EndDraw()
-    
-        
-    def DrawFrameOutline(self,frame_id, draw_color:int, thickness: float = 1.0):
-        """
-        Draw an outline of a frame on the UI.
-
-        :param frame_id: The ID of the frame.
-        """
-        if not UIManager.FrameExists(frame_id):
-            return
-        
-        left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
-        p1 = PyOverlay.Vec2f(left, top)
-        p2 = PyOverlay.Vec2f(right, top)
-        p3 = PyOverlay.Vec2f(right, bottom)
-        p4 = PyOverlay.Vec2f(left, bottom)
-        UIManager._overlay.BeginDraw()
-        UIManager._overlay.DrawQuad(p1,p2,p3,p4, draw_color, thickness)
-        UIManager._overlay.EndDraw()
 
     @staticmethod
     def GetPreferenceOptions(pref:int) -> List[int]:
@@ -1021,8 +401,7 @@ class UIManager:
         :return: True if the chest window is visible, False otherwise.
         """
         
-        fid = UIManager.GetChildFrameID(3856160816, [1])
-        return fid != 0 and UIManager.FrameExists(fid)
+        return Frame(FrameId.NpcDialog.UseLockpickButton).is_usable
     
     @staticmethod
     def IsNPCDialogVisible() -> bool:
@@ -1031,26 +410,17 @@ class UIManager:
 
         :return: True if the NPC dialog is visible, False otherwise.
         """
-        fid = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
-        return fid != 0 and UIManager.FrameExists(fid)
+        return Frame(FrameId.NpcDialog).is_usable
 
     @staticmethod
     def FindDialogOffset() -> None:
         """Auto-detects DIALOG_CHILD_OFFSET for the option-container."""
         global DIALOG_CHILD_OFFSET
-        root = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
-        if root == 0 or not UIManager.IsVisible(root):
+        root = Frame(FrameId.NpcDialog)
+        if not root.exists or not root.is_visible:
             return
 
-        # build parent->children map
-        frame_array = UIManager.GetFrameArray()
-        children_map = defaultdict(list)
-        for fid in frame_array:
-            try:
-                pid = PyUIManager.UIFrame(fid).parent_id
-                children_map[pid].append(fid)
-            except:
-                pass
+        children_map = FrameTree.children_map()
 
         # BFS: pick the container with the most template_type==1 children
         queue = deque([root])
@@ -1058,106 +428,88 @@ class UIManager:
         best_count = 0
         while queue:
             cur = queue.popleft()
-            kids = children_map.get(cur, [])
-            count = sum(
-                1 for c in kids
-                if UIManager.IsVisible(c)
-                and getattr(PyUIManager.UIFrame(c), "template_type", None) == 1
-            )
+            kids = [Frame.from_id(c) for c in children_map.get(cur.frame_id, [])]
+            count = sum(1 for c in kids if c.is_visible and c.template_type == 1)
             if count > best_count and count >= 2:
                 best_count, best = count, cur
-            for c in kids:
-                queue.append(c)
+            queue.extend(kids)
 
-        if not best:
+        if best is None:
             return
 
-        # build index-path from root → best
+        # Build the path from root -> best.  NOTE: this records sibling *indices*,
+        # while the matcher below compares child key codes, so the offset fast
+        # path can never hit and GetDialogButtons always falls back to BFS.
+        # Pre-existing behaviour, preserved deliberately - see FrameTree notes.
         path = []
         cur = best
         while cur != root:
-            parent = PyUIManager.UIFrame(cur).parent_id
-            siblings = children_map[parent]
-            path.insert(0, siblings.index(cur))
+            parent = cur.parent()
+            siblings = children_map.get(parent.frame_id, [])
+            if cur.frame_id not in siblings:
+                return
+            path.insert(0, siblings.index(cur.frame_id))
             cur = parent
 
         DIALOG_CHILD_OFFSET = path
     
     @staticmethod
-    def GetDialogButtonIDs(debug: bool = False) -> list[int]:
+    def GetDialogButtons(debug: bool = False) -> list:
         """
-        Returns the list of visible, template_type==1 button frame-IDs,
+        Returns the visible, template_type==1 option buttons as handles,
         sorted top→bottom. Pass debug=True to log offset detection.
         """
         # detect offset once
         if DIALOG_CHILD_OFFSET == DEFAULT_OFFSET:
             UIManager.FindDialogOffset()
 
-        # try the offset first
-        ids = UIManager.GetAllChildFrameIDs(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
-        valid = [
-            fid for fid in ids
-            if UIManager.IsVisible(fid)
-            and getattr(PyUIManager.UIFrame(fid), "template_type", None) == 1
-        ]
-        if valid:
-            sorted_ids = [fid for fid, _ in UIManager.SortFramesByVerticalPosition(valid)]
-            if debug:
-                ConsoleLog("DialogHelper", f"Offset IDs → {sorted_ids}", Console.MessageType.Info)
-            return sorted_ids
+        def _is_button(frame: Frame) -> bool:
+            return frame.is_visible and frame.template_type == 1
 
-        # fallback BFS over entire tree
+        # try the offset first
+        valid = [f for f in FrameTree.frames_at_path(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
+                 if _is_button(f)]
+        if valid:
+            ordered = FrameTree.sort_by_vertical(valid)
+            if debug:
+                ConsoleLog("DialogHelper", f"Offset IDs -> {ordered}", Console.MessageType.Info)
+            return ordered
+
+        # fallback BFS over the whole dialog subtree
         if debug:
             ConsoleLog("DialogHelper", "Falling back to BFS for dialog buttons", Console.MessageType.Info)
 
-        root = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
-        frame_array = UIManager.GetFrameArray()
-        children_map = defaultdict(list)
-        for fid in frame_array:
-            try:
-                pid = PyUIManager.UIFrame(fid).parent_id
-                children_map[pid].append(fid)
-            except:
-                pass
+        root = Frame(FrameId.NpcDialog)
+        if not root.exists:
+            return []
 
-        descendants = []
-        queue = deque([root])
-        while queue:
-            cur = queue.popleft()
-            for c in children_map.get(cur, []):
-                descendants.append(c)
-                queue.append(c)
-
-        valid = [
-            fid for fid in descendants
-            if UIManager.IsVisible(fid)
-            and getattr(PyUIManager.UIFrame(fid), "template_type", None) == 1
-        ]
-        sorted_ids = [fid for fid, _ in UIManager.SortFramesByVerticalPosition(valid)]
+        valid = [f for f in FrameTree.descendants(root)
+                 if _is_button(f)]
+        ordered = FrameTree.sort_by_vertical(valid)
         if debug:
-            ConsoleLog("DialogHelper", f"BFS IDs -> {sorted_ids}", Console.MessageType.Info)
-        return sorted_ids
+            ConsoleLog("DialogHelper", f"BFS IDs -> {ordered}", Console.MessageType.Info)
+        return ordered
     
     @staticmethod
     def ClickDialogButton(choice: int, debug: bool = False) -> bool:
         """
         Click the Nth dialog option (1-based). Returns True if dispatched.
         """
-        ids = UIManager.GetDialogButtonIDs(debug)
+        buttons = UIManager.GetDialogButtons(debug)
         idx = choice - 1
-        if idx < 0 or idx >= len(ids):
+        if idx < 0 or idx >= len(buttons):
             if debug:
                 ConsoleLog("DialogHelper", f"Choice #{choice} out of range", Console.MessageType.Warning)
             return False
 
-        target = ids[idx]
+        target = buttons[idx]
         if debug:
             ConsoleLog(
                 "DialogHelper",
                 f"Clicking dialog choice #{choice} -> frame {target}",
                 Console.MessageType.Info
             )
-        UIManager.FrameClick(target)
+        target.click()
         return True
     
     @staticmethod
@@ -1167,8 +519,8 @@ class UIManager:
         and log the count if debug=True.
         Log Example: [DialogHelper|Info] Dialog button count 3
         """
-        ids = UIManager.GetDialogButtonIDs(debug)
-        count = len(ids)
+        buttons = UIManager.GetDialogButtons(debug)
+        count = len(buttons)
 
         if debug:
             # Log the count to the console as an info message
@@ -1192,35 +544,11 @@ class UIManager:
             UIManager.FindDialogOffset()
 
         # --- Attempt offset lookup first ---
-        ids_from_offset = UIManager.GetAllChildFrameIDs(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
-
-        valid_frames = []
-        for fid in ids_from_offset:
-            if fid < 0:
-                continue
-            
-            fr = PyUIManager.UIFrame(fid)
-            
-            if not fr:
-                continue
-            
-            if not fr.is_visible:
-                continue
-            
-            if fr.template_type != 1:
-                continue
-
-            valid_frames.append(
-                (
-                    fr.frame_id,
-                    (
-                        fr.position.left_on_screen,
-                        fr.position.top_on_screen,
-                        fr.position.right_on_screen,
-                        fr.position.bottom_on_screen
-                    )
-                )
-            )
+        valid_frames = [
+            (f, f.rect)
+            for f in FrameTree.frames_at_path(NPC_DIALOG_HASH, DIALOG_CHILD_OFFSET)
+            if f.is_visible and f.template_type == 1
+        ]
 
         if debug:
             ConsoleLog(
@@ -1243,75 +571,25 @@ class UIManager:
         if valid_frames:
             return valid_frames
 
-        # --- BFS fallback (heavy, so optimized hard) ---
+        # --- BFS fallback ---
+        # The old version hand-rolled a whole-tree UIFrame cache here; the live
+        # model already holds one, so this is now a walk over the snapshot.
         if debug:
             ConsoleLog("DialogHelper", "Falling back to BFS for dialog buttons", Console.MessageType.Info)
 
-        # --- Preload the entire frame array + cache UIFrame objects once ---
-        frame_ids_all = UIManager.GetFrameArray()
-        
-        frame_cache : dict[int, PyUIManager.UIFrame] = {}
-        for fid in frame_ids_all:
-            try:
-                frame_cache[fid] = PyUIManager.UIFrame(fid)
-            except:
-                pass
-            
-        root = UIManager.GetFrameIDByHash(NPC_DIALOG_HASH)
+        root = Frame(FrameId.NpcDialog)
+        if not root.exists:
+            return []
 
-        # Build children map only once
-        children_map = defaultdict(list)
-        for fid, fr in frame_cache.items():
-            pid = fr.parent_id
-            if pid is not None:
-                children_map[pid].append(fid)
+        result = [
+            (f, f.rect)
+            for f in FrameTree.descendants(root)
+            if f.is_visible and f.template_type == 1
+        ]
 
-        # BFS
-        descendants = []
-        dq = deque([root])
-        append_desc = descendants.append
-        extend_dq = dq.extend
-
-        while dq:
-            current = dq.popleft()
-            children = children_map.get(current)
-            if children:
-                extend_dq(children)
-                for c in children:
-                    append_desc(c)
-
-        # Filter valid dialog buttons
-        bfs_valid = []
-        for fid in descendants:
-            if fid < 0:
-                continue
-            
-            fr = frame_cache.get(fid)
-            if not fr:
-                continue
-            
-            if not fr.is_visible:
-                continue
-            
-            if fr.template_type != 1:
-                continue
-            bfs_valid.append(fid)
-
-        # Build final dictionary for BFS mode
-        result = []
-        for fid in bfs_valid:
-            fr = frame_cache[fid]
-            result.append((
-                fid,
-                (
-                    fr.position.left_on_screen,
-                    fr.position.top_on_screen,
-                    fr.position.right_on_screen,
-                    fr.position.bottom_on_screen
-                )
-            ))
-        
-        # Sort by top_on_screen
+        # NOTE: sorts by `left`, not `top`, despite the docstring.  Pre-existing
+        # behaviour, preserved deliberately - changing the order would change
+        # which button a given choice index maps to.
         result.sort(key=lambda x: x[1][0])
 
         return result
@@ -1321,460 +599,16 @@ class UIManager:
         '''
         Confirm the max amount dialog such as those from Trading and Dropping items by clicking the relevant buttons.
         '''
-        max_amount = UIManager.GetFrameIDByHash(4008686776)
-        drop_offer_confirm = UIManager.GetFrameIDByHash(4014954629)
+        max_amount = Frame(FrameId.MaxButton)
+        drop_offer_confirm = Frame(FrameId.OkButton)
         
-        if UIManager.FrameExists(max_amount):
-            UIManager.FrameClick(max_amount)
+        if max_amount.exists:
+            max_amount.click()
             
-        if UIManager.FrameExists(drop_offer_confirm):
-            UIManager.FrameClick(drop_offer_confirm)
+        if drop_offer_confirm.exists:
+            drop_offer_confirm.click()
     
 #region frameInfo
-@dataclass
-class FrameInfo:
-    WindowID: int = 0
-    WindowName: str = ""
-    WindowLabel: str = ""
-    FrameHash: int = 0
-    ParentFrameHash: int = 0
-    ChildOffsets: list = field(default_factory=list)
-    FrameID_source: int = 0
-    FrameID: int = 0
-    BlackBoard : dict = field(default_factory=dict)
-    
-    def update_frame_id(self):
-        if self.FrameID_source != 0:
-            self.FrameID = self.FrameID_source
-            return
-        
-        if self.WindowLabel:
-            _hash = UIManager.GetHashByLabel(self.WindowLabel)
-            self.FrameID = UIManager.GetFrameIDByHash(_hash)
-            #self.FrameID = UIManager.GetFrameIDByLabel(self.WindowLabel)
-            return
-
-        if self.FrameHash != 0:
-            self.FrameID = UIManager.GetFrameIDByHash(self.FrameHash)
-        else:
-            self.FrameID = UIManager.GetChildFrameID(self.ParentFrameHash, self.ChildOffsets)
-            
-    def GetFrameID(self):
-        self.update_frame_id()
-        return self.FrameID
-            
-    def FrameExists(self):
-        self.update_frame_id()
-        return UIManager.FrameExists(self.GetFrameID())
-    
-    def DrawFrame(self, color:int):
-        if self.FrameExists():
-            UIManager().DrawFrame(self.FrameID, color)
-            
-    def DrawFrameOutline(self, color:int , thickness: float = 1.0):
-        if self.FrameExists():
-            UIManager().DrawFrameOutline(self.FrameID, color, thickness)
-            
-    def FrameClick(self, current_state: Optional[int] = None, wparam_value: Optional[int] = None, lparam_value: Optional[int] = None):
-        if self.FrameExists():
-            UIManager.FrameClick(self.GetFrameID())
-    
-            if current_state is not None:
-                UIManager.TestMouseAction(self.FrameID, current_state, wparam_value or 0, lparam_value or 0)
-            
-    def GetCoords(self):
-        if self.FrameExists():
-            return UIManager.GetFrameCoords(self.GetFrameID())
-        return (0,0,0,0)
-    
-    def GetContentCoords(self):
-        if self.FrameExists():
-            return UIManager.GetContentFrameCoords(self.GetFrameID())
-        return (0,0,0,0)
-    
-    def GetViewPortScale(self):
-        if self.FrameExists():
-            return UIManager.GetViewPortScale(self.GetFrameID())
-        return (1.0,1.0)
-    
-    def GetViewportDimensions(self):
-        if self.FrameExists():
-            return UIManager.GetViewportDimensions(self.GetFrameID())
-        return (0,0)
-    
-    def IsMouseOver(self):
-        if self.FrameExists():
-            return UIManager.IsMouseOver(self.GetFrameID())
-        return False
-    
-    def GetIOEvents(self) -> list[UIManager.IOEvent]:
-        if self.FrameExists():
-            return UIManager.GetIOEventsForFrame(self.GetFrameID())
-        return []
-            
-#region WindowFrames
-
-WindowFrames:dict[str, FrameInfo] = {}
-
-class WindowFrame():
-    CloseWindowButtonFrame = FrameInfo(
-        FrameHash=3738633661,
-        WindowLabel="Close Window button"
-    )
-    
-    #region Character Creation
-    CharacterDeleteButtonFrame = FrameInfo(
-        WindowName="DeleteCharacterButton",
-        FrameHash=3379687503
-    )
-
-    CharacterFinalDeleteButtonFrame = FrameInfo(
-        WindowName="FinalDeleteCharacterButton",
-        ParentFrameHash=140452905,
-        ChildOffsets=[5,1,15,2]
-    )
-
-    CreateCharacterButtonFrame1 = FrameInfo(
-        WindowName="CreateCharacterButton1",
-        FrameHash=3372446797
-    )
-
-    CreateCharacterButtonFrame2 = FrameInfo(
-        WindowName="CreateCharacterButton2",
-        FrameHash=3973689736,
-    )
-
-    CreateCharacterTypeNextButtonFrame = FrameInfo(
-        WindowName="CreateCharacterTypeNextButton",
-        FrameHash=3110341991
-    )
-
-    CreateCharacterNextButtonGenericFrame = FrameInfo(
-        WindowName="CreateCharacterNextButtonGeneric",
-        FrameHash=1102119410
-    )
-
-    FinalCreateCharacterButtonFrame = FrameInfo(
-        WindowName="FinalCreateCharacterButton",
-        FrameHash=3856299307
-    )    
-    #endregion Character Creation
-       
-    MiniMapFrame = FrameInfo(
-                    WindowName="MiniMap",
-                    WindowLabel="compass",
-    )
-
-    PartyWindowFrame = FrameInfo(
-        WindowName="PartyWindow",
-        FrameHash=3332025202,
-        ChildOffsets=[1]
-    )
-
-    CancelEnterMissionButton = FrameInfo(
-        WindowName="CancelEnterMissionButton",
-        ParentFrameHash=2209443298,
-        ChildOffsets=[0,1,1]
-    )
-
-    ConfirmEnterMissionButton = FrameInfo(
-        WindowName="ConfirmEnterMissionButton",
-        ParentFrameHash=3617868957,
-        ChildOffsets=[2, 6, 100, 2, 6]
-    )
-
-    #region Inventory
-    InventoryIdentifyAllButton = FrameInfo(
-        WindowName = "Inventory",
-        FrameHash = 3316689063
-    )
-    
-    InventoryBags = FrameInfo(
-        WindowID = WindowID.WindowID_InventoryBags,
-        WindowName = "Inventory Bags",
-        FrameHash = 291586130
-    )
-    
-    InventoryBackpack = FrameInfo(
-        WindowID = WindowID.WindowID_Inventory,
-        WindowName = "Inventory Bags",
-        ParentFrameHash = 2874675009,
-        ChildOffsets = [0]
-    )
-    
-    #endregion Inventory
-    
-    #region Xunlai Storage
-    Xunlai_Window = FrameInfo(
-        WindowName = "Xunlai Storage",
-        FrameHash = 2315448754
-    )
-    
-    Xunlai_Storage = FrameInfo(
-        WindowName = "Xunlai Storage",
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [0]
-    )
-    
-    Xunlai_FundsFrame = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [2]
-    )
-    
-    Xunlai_DepositFundsButton = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [3]
-    )
-    
-    Xunlai_WithdrawFundsButton = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [4]
-    )
-    
-    # "2315448754,5": "Xunlai Window.Deposit All Materials",
-    Xunlai_DepositAllMaterialsButton = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [5]
-    )
-    
-    Xunlai_GoldValue = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [2, 2]
-    )
-    
-    Xunlai_PlatinumValue = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [2, 3]
-    )
-    
-    Xunlai_GoldIcon = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [2, 0]
-    )
-    
-    Xunlai_PlatinumIcon = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [2, 1]
-    )
-    
-    Xunlai_Tab1 = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [0, 4294967295]
-    )
-    
-    Xunlai_Tab1_Content = FrameInfo(
-        ParentFrameHash = 2315448754,
-        ChildOffsets = [0, 0]
-    )
-    
-    #endregion Xunlai Storage
-    
-    #region Salvage
-    SalvageOptionsFrame = FrameInfo(
-        WindowName="SalvageOptionsFrame",
-        FrameHash=684387150
-    )
-    
-    SalvageOptionCancelButton = FrameInfo(
-        WindowName="CancelSalvageOptionsButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[1]
-    )
-    
-    SalvageOptionConfirmButton = FrameInfo(
-        WindowName="ConfirmSalvageOptionsButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[2]
-    )
-    
-    OptionsSalvageOptionsFrame = FrameInfo(
-        WindowName="OptionsSalvageOptionsFrame",
-        ParentFrameHash=684387150,
-        ChildOffsets=[5]
-    )
-
-    SalvageOptionPrefixButton = FrameInfo(
-        WindowName="SalvageOptionPrefixButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[5, 0]
-    )
-
-    SalvageOptionSuffixButton = FrameInfo(
-        WindowName="SalvageOptionSuffixButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[5, 1]
-    )
-
-    SalvageOptionInscriptionButton = FrameInfo(
-        WindowName="SalvageOptionInscriptionButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[5, 2]
-    )
-
-    SalvageOptionMaterialsButton = FrameInfo(
-        WindowName="SalvageOptionMaterialsButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[5, 3]
-    )
-
-    MaterialOptionConfirmationFrame = FrameInfo(
-        WindowName="MaterialOptionConfirmationFrame",
-        ParentFrameHash=684387150,
-        ChildOffsets=[0]
-    )
-
-    MaterialOptionConfirmationCancelButton = FrameInfo(
-        WindowName="MaterialOptionConfirmationCancelButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[0, 4]
-    )
-
-    MaterialOptionConfirmationConfirmButton = FrameInfo(
-        WindowName="MaterialOptionConfirmationConfirmButton",
-        ParentFrameHash=684387150,
-        ChildOffsets=[0, 6]
-    )
-
-    LesserSalvageFrame = FrameInfo(
-        WindowName="LesserSalvageFrame",
-        ParentFrameHash=140452905,
-        ChildOffsets=[6, 111]
-    )
-
-    LesserSalvageCancelButton = FrameInfo(
-        WindowName="LesserSalvageCancelButton",
-        ParentFrameHash=140452905,
-        ChildOffsets=[6, 111, 4]
-    )
-
-    LesserSalvageConfirmButton = FrameInfo(
-        WindowName="LesserSalvageConfirmButton",
-        ParentFrameHash=140452905,
-        ChildOffsets=[6, 111, 6]
-    )
-
-    ExpertSalvageUnidentifiedFrame = FrameInfo(
-        WindowName="ExpertSalvageUnidentifiedFrame",
-        ParentFrameHash=140452905,
-        ChildOffsets=[6, 112]
-    )
-
-    ExpertSalvageUnidentifiedCancelButton = FrameInfo(
-        WindowName="ExpertSalvageUnidentifiedCancelButton",
-        ParentFrameHash=140452905,
-        ChildOffsets=[6, 112, 4]
-    )
-
-    ExpertSalvageUnidentifiedConfirmButton = FrameInfo(
-        WindowName="ExpertSalvageUnidentifiedConfirmButton",
-        ParentFrameHash=140452905,
-        ChildOffsets=[6, 112, 6]
-    )
-
-    #endregion Salvage
-    
-    #region Upgrade
-    UpgradeWindowFrame = FrameInfo(
-        WindowName="UpgradeWindowFrame",
-        FrameHash=2612519688
-    )
-
-    UpgradeWindowCancelButton = FrameInfo(
-        WindowName="UpgradeWindowCancelButton",
-        ParentFrameHash=2612519688,
-        ChildOffsets=[0]
-    )
-
-    UpgradeWindowConfirmButton = FrameInfo(
-        WindowName="UpgradeWindowConfirmButton",
-        ParentFrameHash=2612519688,
-        ChildOffsets=[1]
-    )
-
-    #endregion Upgrade
-    
-    MerchantWindowFrame = FrameInfo(
-        WindowName="MerchantWindowFrame",
-        FrameHash=3613855137
-    )
-    
-    MerchantWindowCloseButton = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 1]
-    )
-    
-    TraderWindowCloseButton = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 2]
-    )
-
-    CollectorExchangeButton = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 6],
-        BlackBoard= {
-            'hash' : 0,
-            'template_type' : 7, 
-            },
-    )
-
-    CollectorGoodbyeButton = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 7]
-    )
-
-    SkillTrainerWindowFrame = FrameInfo(
-        FrameHash=1746895597,
-    )
-
-    SkillTrainerDisplayModeButtonFrame = FrameInfo(
-        ParentFrameHash=1746895597,
-        ChildOffsets=[3]
-    )
-
-    BuyMerchantButtonFrame = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 0],
-        BlackBoard= {
-            'hash' : 1532320307
-            },
-    )
-
-    RequestQuoteButtonFrame = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 14],
-        BlackBoard= {
-            'hash' : 1926171428
-            },
-    )
-    
-    CrafterCraftButtonFrame = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 0, 0],
-        BlackBoard= {
-            'hash' : 1517397806
-            },
-    )
-    
-    CrafterCustomizeButtonFrame = FrameInfo(
-        ParentFrameHash=MerchantWindowFrame.FrameHash,
-        ChildOffsets=[0, 1, 1],
-        BlackBoard= {
-            'hash' : 731118013
-            },
-    )
-       
-WindowFrames["Inventory Bags"] = WindowFrame.InventoryBags
-WindowFrames["MiniMap"] = WindowFrame.MiniMapFrame
-WindowFrames["PartyWindow"] = WindowFrame.PartyWindowFrame
-WindowFrames["CancelEnterMissionButton"] = WindowFrame.CancelEnterMissionButton
-WindowFrames["ConfirmEnterMissionButton"] = WindowFrame.ConfirmEnterMissionButton
-WindowFrames["DeleteCharacterButton"] = WindowFrame.CharacterDeleteButtonFrame
-WindowFrames["FinalDeleteCharacterButton"] = WindowFrame.CharacterFinalDeleteButtonFrame
-WindowFrames["CreateCharacterButton1"] = WindowFrame.CreateCharacterButtonFrame1
-WindowFrames["CreateCharacterButton2"] = WindowFrame.CreateCharacterButtonFrame2
-WindowFrames["CreateCharacterTypeNextButton"] = WindowFrame.CreateCharacterTypeNextButtonFrame
-WindowFrames["CreateCharacterNextButtonGeneric"] = WindowFrame.CreateCharacterNextButtonGenericFrame
-WindowFrames["FinalCreateCharacterButton"] = WindowFrame.FinalCreateCharacterButtonFrame
 
 
 #region Callbacks
@@ -1791,27 +625,22 @@ class InventoryBagWindow:
     @frame_cache(category="InventoryBagWindow", source_lib="IsOpen")
     def IsOpen(bag : Bags) -> bool:
         bag_frame = InventoryBagWindow.GetBagFrame(bag)
-        return bag_frame.FrameExists() if bag_frame else False
+        return bag_frame.exists if bag_frame else False
     
     @staticmethod
     @frame_cache(category="InventoryBagWindow", source_lib="GetBagFrame")
-    def GetBagFrame(bag : Bags) -> Optional[FrameInfo]:
+    def GetBagFrame(bag : Bags) -> Optional[Frame]:
         if not bag in INVENTORY_WITH_EQUIPMENT_BAGS:
             return None
         
-        offset = InventoryBagWindow._get_bag_offset(bag)
-        if offset < 0:
+        if InventoryBagWindow._get_bag_offset(bag) < 0:
             return None
-        
-        return FrameInfo(
-            WindowName=f"{bag.name} Frame",
-            ParentFrameHash=WindowFrame.InventoryBackpack.FrameHash,
-            ChildOffsets=[offset]
-        )
+
+        return Frame.inventory_bag(bag)
         
     @staticmethod
     @frame_cache(category="InventoryBagWindow", source_lib="GetBagSlotFrames")
-    def GetBagSlotFrames(bag : Bags, bag_size: Optional[int] = None) -> list[FrameInfo]:
+    def GetBagSlotFrames(bag : Bags, bag_size: Optional[int] = None) -> list[Frame]:
         if not bag in INVENTORY_WITH_EQUIPMENT_BAGS:
             return []
         
@@ -1826,11 +655,7 @@ class InventoryBagWindow:
             
         frames = []
         for slot in range(bag_size):
-            frames.append(FrameInfo(
-                WindowName=f"{bag.name} Slot {slot}",
-                ParentFrameHash=WindowFrame.InventoryBackpack.FrameHash,
-                ChildOffsets=[offset, 2 + slot]
-            ))
+            frames.append(Frame.inventory_bag_slot(bag, slot))
         
         return frames
     
@@ -1842,11 +667,11 @@ class InventoryBagsWindow:
     @staticmethod
     @frame_cache(category="InventoryBagsWindow", source_lib="IsOpen")
     def IsOpen() -> bool:
-        return WindowFrame.InventoryBags.FrameExists()
+        return Frame(FrameId.InventoryBagsWindow).exists
     
     @staticmethod
     @frame_cache(category="InventoryBagsWindow", source_lib="GetBagFrame")
-    def GetBagSlotFrames(bag : Bags, bag_size: Optional[int] = None) -> list[FrameInfo]:
+    def GetBagSlotFrames(bag : Bags, bag_size: Optional[int] = None) -> list[Frame]:
         if not bag in INVENTORY_BAGS:
             return []
                         
@@ -1857,17 +682,13 @@ class InventoryBagsWindow:
             
         frames = []
         for slot in range(bag_size):
-            frames.append(FrameInfo(
-                WindowName=f"{bag.name} Slot {slot}",
-                ParentFrameHash=WindowFrame.InventoryBags.FrameHash,
-                ChildOffsets=[0, 0, 0, InventoryBagsWindow._get_bag_offset(bag), 2 + slot]
-            ))
+            frames.append(Frame.bag_slot(bag, slot))
                 
         return frames
     
     @staticmethod
     @frame_cache(category="InventoryBagsWindow", source_lib="GetAllInventorySlotFrames")
-    def GetInventorySlotFrames() -> list[FrameInfo]:
+    def GetInventorySlotFrames() -> list[Frame]:
         frames = []
         
         for bag in INVENTORY_BAGS:
@@ -1938,50 +759,34 @@ class XunlaiStorageWindow:
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="IsOpen")
     def IsOpen() -> bool:
-        return WindowFrame.Xunlai_Window.FrameExists()
+        return Frame(FrameId.XunlaiWindow).exists
         
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetTabContentFrame")
-    def GetTabFrame(bag: Bags) -> Optional[FrameInfo]:
+    def GetTabFrame(bag: Bags) -> Optional[Frame]:
         if not bag in STORAGE_BAGS and bag != Bags.MaterialStorage:
             return None
         
-        def get_offset_for_bag(bag: Bags) -> int:
-            base_offset = WindowFrame.Xunlai_Tab1.ChildOffsets[1]
-            return base_offset - XunlaiStorageWindow._get_bag_offset(bag)             
-        
-        return FrameInfo(
-            WindowName=f"{bag.name} Tab",
-            ParentFrameHash=WindowFrame.Xunlai_Window.FrameHash,
-            ChildOffsets=[0, get_offset_for_bag(bag)]
-        )
+        return Frame.storage_tab(bag, reversed_order=True)
         
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetTabContentFrame")
-    def GetTabContentFrame(bag: Bags) -> Optional[FrameInfo]:
+    def GetTabContentFrame(bag: Bags) -> Optional[Frame]:
         if not bag in STORAGE_BAGS and bag != Bags.MaterialStorage:
             return None
         
-        def get_offset_for_bag(bag: Bags) -> int:
-            base_offset = WindowFrame.Xunlai_Tab1_Content.ChildOffsets[1]            
-            return base_offset + XunlaiStorageWindow._get_bag_offset(bag)             
-        
-        return FrameInfo(
-            WindowName=f"{bag.name} Tab Content",
-            ParentFrameHash=WindowFrame.Xunlai_Window.FrameHash,
-            ChildOffsets=[0, get_offset_for_bag(bag)]
-        )
+        return Frame.storage_tab(bag)
     
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetActiveTabFrame")
-    def GetActiveTabFrame() -> Optional[FrameInfo]:
+    def GetActiveTabFrame() -> Optional[Frame]:
         for bag in STORAGE_BAGS:
             tab_frame = XunlaiStorageWindow.GetTabContentFrame(bag)
-            if tab_frame and tab_frame.FrameExists():
+            if tab_frame and tab_frame.exists:
                 return tab_frame
         
         material_tab_frame = XunlaiStorageWindow.GetTabContentFrame(Bags.MaterialStorage)
-        if material_tab_frame and material_tab_frame.FrameExists():
+        if material_tab_frame and material_tab_frame.exists:
             return material_tab_frame
         
         return None
@@ -1991,14 +796,14 @@ class XunlaiStorageWindow:
     def GetActiveTabBag() -> Optional[Bags]:
         for bag in [*STORAGE_BAGS, Bags.MaterialStorage]:
             tab_frame = XunlaiStorageWindow.GetTabContentFrame(bag)
-            if tab_frame and tab_frame.FrameExists():
+            if tab_frame and tab_frame.exists:
                 return bag
         
         return None
     
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetActiveTabSlotFrames")
-    def GetActiveTabSlotFrames() -> list[FrameInfo]:
+    def GetActiveTabSlotFrames() -> list[Frame]:
         active_tab = XunlaiStorageWindow.GetActiveTabBag()
         if not active_tab:
             return []
@@ -2010,7 +815,7 @@ class XunlaiStorageWindow:
     
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetTabSlotFrames")
-    def GetTabSlotFrames(bag : Bags, bag_size: Optional[int] = 25) -> list[FrameInfo]:
+    def GetTabSlotFrames(bag : Bags, bag_size: Optional[int] = 25) -> list[Frame]:
         if not bag in STORAGE_BAGS:
             return []
                 
@@ -2021,43 +826,32 @@ class XunlaiStorageWindow:
         
         frames = []
         for slot in range(bag_size):
-            frames.append(FrameInfo(
-                WindowName=f"{bag.name} Slot {slot}",
-                ParentFrameHash=WindowFrame.Xunlai_Window.FrameHash,
-                ChildOffsets=[0, XunlaiStorageWindow._get_bag_offset(bag), 2 + slot]
-            ))
+            frames.append(Frame.storage_slot(bag, slot))
                 
         return frames
     
     @staticmethod
-    def GetMaterialFrame(material: ModelID) -> Optional[FrameInfo]:
+    def GetMaterialFrame(material: ModelID) -> Optional[Frame]:
         slot = XunlaiStorageWindow.MATERIAL_FRAME_OFFSETS.get(material)
         if slot is None:
             return None
         
-        return FrameInfo(
-            WindowName=f"Xunlai Window.Tab Material Storage.{material.name} Slot",
-            ParentFrameHash=WindowFrame.Xunlai_Window.FrameHash,
-            ChildOffsets=[0, XunlaiStorageWindow.MAX_TABS, 2 + slot]
-        )
+        return Frame.material_slot(slot, max_tabs=XunlaiStorageWindow.MAX_TABS)
 
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetMaterialSlotFrames")
-    def GetMaterialSlotFrames() -> list[FrameInfo]:       
+    def GetMaterialSlotFrames() -> list[Frame]:       
         
         frames = []
         for material, slot in XunlaiStorageWindow.MATERIAL_FRAME_OFFSETS.items():
-            frames.append(FrameInfo(
-                WindowName=f"Xunlai Window.Tab Material Storage.{material.name}",
-                ParentFrameHash=WindowFrame.Xunlai_Window.FrameHash,
-                ChildOffsets=[0, XunlaiStorageWindow.MAX_TABS, slot]
-            ))
+            frames.append(Frame.material_slot(slot, max_tabs=XunlaiStorageWindow.MAX_TABS,
+                                             raw_slot=True))
                 
         return frames
     
     @staticmethod
     @frame_cache(category="XunlaiStorageWindow", source_lib="GetAllStorageSlotFrames")
-    def GetStorageSlotFrames() -> list[FrameInfo]:
+    def GetStorageSlotFrames() -> list[Frame]:
         frames = []
         
         for bag in STORAGE_BAGS:
@@ -2071,56 +865,57 @@ class XunlaiStorageWindow:
         if not XunlaiStorageWindow.IsOpen():
             return False
         
-        frame = WindowFrame.Xunlai_DepositAllMaterialsButton
-        if not frame.FrameExists():
+        frame = Frame(FrameId.XunlaiWindow.DepositAllMaterials)
+        if not frame.exists:
             return False
                 
-        frame.FrameClick(current_state=7)
+        frame.click()
+        frame.mouse_action(7)
         return True
 
 class SkillTrainerWindow:
     @staticmethod
     @frame_cache(category="SkillTrainerWindow", source_lib="IsOpen")
     def IsOpen() -> bool:
-        return WindowFrame.SkillTrainerWindowFrame.FrameExists()
+        return Frame(FrameId.SkillTrainerWindow).exists
 
     @staticmethod
     def Close() -> bool:
         if not SkillTrainerWindow.IsOpen():
             return False
         
-        frame = WindowFrame.MerchantWindowCloseButton  
-        if not frame.FrameExists():
+        frame = Frame(FrameId.Merchant.C0.C0.CloseButton)  
+        if not frame.exists:
             return False
               
-        frame.FrameClick()
+        frame.click()
         return True
 
 class TraderWindow:
     @staticmethod
     @frame_cache(category="TraderWindow", source_lib="IsOpen")
     def IsOpen() -> bool:          
-        return WindowFrame.MerchantWindowFrame.FrameExists() and \
-            UIManager.GetFrameByID(WindowFrame.RequestQuoteButtonFrame.GetFrameID()).frame_hash == WindowFrame.RequestQuoteButtonFrame.BlackBoard.get('hash', -1)
+        button = Frame(FrameId.Merchant.C0.C0.RequestQuoteButton)
+        return Frame(FrameId.Merchant).exists and button.exists and button.name == "BtnRequestQuote"
             
     @staticmethod
     def Close() -> bool:
         if not TraderWindow.IsOpen():
             return False
         
-        frame = WindowFrame.TraderWindowCloseButton
-        if not frame.FrameExists():
+        frame = Frame(FrameId.Merchant.C0.C0.TraderCloseButton)
+        if not frame.exists:
             return False
                 
-        frame.FrameClick()
+        frame.click()
         return True
     
 class MerchantWindow:
     @staticmethod
     @frame_cache(category="MerchantWindow", source_lib="IsOpen")
     def IsOpen() -> bool:        
-        return WindowFrame.MerchantWindowFrame.FrameExists() and \
-            UIManager.GetFrameByID(WindowFrame.BuyMerchantButtonFrame.GetFrameID()).frame_hash == WindowFrame.BuyMerchantButtonFrame.BlackBoard.get('hash', -1)
+        button = Frame(FrameId.Merchant.C0.C0.BuyButton)
+        return Frame(FrameId.Merchant).exists and button.exists and button.name == "BtnBuy"
     
             
     @staticmethod
@@ -2128,19 +923,20 @@ class MerchantWindow:
         if not MerchantWindow.IsOpen():
             return False
         
-        frame = WindowFrame.MerchantWindowCloseButton
-        if not frame.FrameExists():
+        frame = Frame(FrameId.Merchant.C0.C0.CloseButton)
+        if not frame.exists:
             return False
                 
-        frame.FrameClick()
+        frame.click()
         return True
     
 class CollectorWindow:
     @staticmethod
     @frame_cache(category="CollectorWindow", source_lib="IsOpen")
     def IsOpen() -> bool:
-        return WindowFrame.MerchantWindowFrame.FrameExists() \
-            and UIManager.GetFrameByID(WindowFrame.CollectorExchangeButton.GetFrameID()).frame_hash == WindowFrame.CollectorExchangeButton.BlackBoard.get('hash', -1) \
+        button = Frame(FrameId.Merchant.C0.C0.Exchange)
+        return Frame(FrameId.Merchant).exists \
+            and button.exists and button.hash == 0 \
             and SkillTrainerWindow.IsOpen() == False \
             and TraderWindow.IsOpen() == False \
             and CrafterWindow.IsOpen() == False
@@ -2150,11 +946,11 @@ class CollectorWindow:
         if not CollectorWindow.IsOpen():
             return False
         
-        frame = WindowFrame.CollectorExchangeButton
-        if not frame.FrameExists():
+        frame = Frame(FrameId.Merchant.C0.C0.Exchange)
+        if not frame.exists:
             return False
                 
-        frame.FrameClick()
+        frame.click()
         return True
     
     @staticmethod
@@ -2162,30 +958,30 @@ class CollectorWindow:
         if not CollectorWindow.IsOpen():
             return False
         
-        frame = WindowFrame.CollectorGoodbyeButton
-        if not frame.FrameExists():
+        frame = Frame(FrameId.Merchant.C0.C0.Goodbye)
+        if not frame.exists:
             return False
                 
-        frame.FrameClick()
+        frame.click()
         return True
     
 class CrafterWindow:
     @staticmethod
     @frame_cache(category="CrafterWindow", source_lib="IsOpen")
     def IsOpen() -> bool:        
-        return WindowFrame.CrafterCraftButtonFrame.FrameExists() and \
-            UIManager.GetFrameByID(WindowFrame.CrafterCraftButtonFrame.GetFrameID()).frame_hash == WindowFrame.CrafterCraftButtonFrame.BlackBoard.get('hash', -1)
+        button = Frame(FrameId.Merchant.C0.C0.BuyButton)
+        return button.exists and button.name == "BtnCraft"
 
     @staticmethod
     def Close() -> bool:
         if not CrafterWindow.IsOpen():
             return False
         
-        frame = WindowFrame.MerchantWindowCloseButton
-        if not frame.FrameExists():
+        frame = Frame(FrameId.Merchant.C0.C0.CloseButton)
+        if not frame.exists:
             return False
                 
-        frame.FrameClick()
+        frame.click()
         return True
 
     @staticmethod
@@ -2194,16 +990,16 @@ class CrafterWindow:
         if not CrafterWindow.IsOpen():
             return False
         
-        frame = WindowFrame.CrafterCustomizeButtonFrame        
-        return frame.FrameExists() and UIManager.GetFrameByID(frame.GetFrameID()).frame_hash == frame.BlackBoard.get('hash', -1)
+        frame = Frame(FrameId.Merchant.C0.C1.CustomizeButton)
+        return frame.exists and frame.name == "BtnCustomize"
 
     @staticmethod
     def CustomizeWeapon() -> bool:
         if not CrafterWindow.IsCustomizeTabOpen():
             return False
                 
-        frame = WindowFrame.CrafterCustomizeButtonFrame
-        frame.FrameClick()
+        frame = Frame(FrameId.Merchant.C0.C1.CustomizeButton)
+        frame.click()
         return True
     
 class UpgradeWindow:
@@ -2215,7 +1011,7 @@ class UpgradeWindow:
     @frame_cache(category="UpgradeWindow", source_lib="IsOpen")
     def IsOpen() -> bool:
         '''Return True if the Upgrade Window is open.'''
-        return WindowFrame.UpgradeWindowFrame.FrameExists()
+        return Frame(FrameId.UpgradeWindow).exists
     
     @staticmethod
     def Cancel() -> bool:
@@ -2223,8 +1019,8 @@ class UpgradeWindow:
         if not UpgradeWindow.IsOpen():
             return False
         
-        frame = WindowFrame.UpgradeWindowCancelButton
-        frame.FrameClick()
+        frame = Frame(FrameId.UpgradeWindow.Cancel)
+        frame.click()
         return True
     
     @staticmethod
@@ -2233,8 +1029,8 @@ class UpgradeWindow:
         if not UpgradeWindow.IsOpen():
             return False
         
-        frame = WindowFrame.UpgradeWindowConfirmButton
-        frame.FrameClick()
+        frame = Frame(FrameId.UpgradeWindow.Confirm)
+        frame.click()
         return True
 
 class SalvageOptionsWindow:
@@ -2246,7 +1042,7 @@ class SalvageOptionsWindow:
     def IsOpen() -> bool:
         '''Return True if the Salvage Options Window is open.'''
         
-        return WindowFrame.SalvageOptionsFrame.FrameExists()
+        return Frame(FrameId.SalvageWindow).exists
     
     @staticmethod
     def Cancel() -> bool:
@@ -2254,8 +1050,8 @@ class SalvageOptionsWindow:
         if not SalvageOptionsWindow.IsOpen():
             return False
 
-        frame = WindowFrame.SalvageOptionCancelButton
-        frame.FrameClick()
+        frame = Frame(FrameId.SalvageWindow.CancelButton)
+        frame.click()
         return True
     
     @staticmethod
@@ -2264,28 +1060,28 @@ class SalvageOptionsWindow:
         if not SalvageOptionsWindow.IsOpen():
             return False
 
-        frame = WindowFrame.SalvageOptionConfirmButton
-        frame.FrameClick()
+        frame = Frame(FrameId.SalvageWindow.Button)
+        frame.click()
         return True
     
     @staticmethod
-    def GetSalvageOptionFrame(mode: SalvageMode) -> Optional[FrameInfo]:
+    def GetSalvageOptionFrame(mode: SalvageMode) -> Optional[Frame]:
         '''Return the frame corresponding to the given salvage mode.'''
         if not SalvageOptionsWindow.IsOpen():
             return None
         
         match mode:
             case SalvageMode.Prefix:
-                return WindowFrame.SalvageOptionPrefixButton
+                return Frame(FrameId.SalvageWindow.Options.Option1)
             
             case SalvageMode.Suffix:
-                return WindowFrame.SalvageOptionSuffixButton
+                return Frame(FrameId.SalvageWindow.Options.Option2)
             
             case SalvageMode.Inscription:
-                return WindowFrame.SalvageOptionInscriptionButton
+                return Frame(FrameId.SalvageWindow.Options.Option3)
             
             case SalvageMode.RareCraftingMaterials | SalvageMode.LesserCraftingMaterials:
-                return WindowFrame.SalvageOptionMaterialsButton
+                return Frame(FrameId.SalvageWindow.Options.Option4)
             
             case _:
                 return None
@@ -2298,7 +1094,7 @@ class SalvageOptionsWindow:
         if option_frame is None:
             return False
         
-        return option_frame.FrameExists()
+        return option_frame.exists
     
     @staticmethod
     def SelectOption(mode: SalvageMode) -> bool:
@@ -2310,7 +1106,8 @@ class SalvageOptionsWindow:
         if option_frame is None:
             return False
         
-        option_frame.FrameClick(current_state=8)
+        option_frame.click()
+        option_frame.mouse_action(8)
         return True
     
     @staticmethod
@@ -2335,7 +1132,7 @@ class SalvageConfirmationPopup:
         '''
         Return True if the confirmation pop up for salvaging with a salvage kit is open.
         '''
-        return WindowFrame.MaterialOptionConfirmationFrame.FrameExists()
+        return Frame(FrameId.SalvageWindow.OptionsWindowConfirmMaterialsWindow).exists
     
     @staticmethod
     def Cancel() -> bool:
@@ -2345,8 +1142,8 @@ class SalvageConfirmationPopup:
         if not SalvageConfirmationPopup.IsOpen():
             return False
         
-        frame = WindowFrame.MaterialOptionConfirmationCancelButton
-        frame.FrameClick()
+        frame = Frame(FrameId.SalvageWindow.OptionsWindowConfirmMaterialsWindow.Cancel)
+        frame.click()
         return True
     
     @staticmethod
@@ -2357,8 +1154,8 @@ class SalvageConfirmationPopup:
         if not SalvageConfirmationPopup.IsOpen():
             return False
         
-        frame = WindowFrame.MaterialOptionConfirmationConfirmButton
-        frame.FrameClick()
+        frame = Frame(FrameId.SalvageWindow.OptionsWindowConfirmMaterialsWindow.Confirm)
+        frame.click()
         return True
 
 class LesserSalvageWindow:
@@ -2371,7 +1168,7 @@ class LesserSalvageWindow:
         '''
         Return True if the confirmation pop up for salvaging with a normal salvage kit is open.
         '''
-        return WindowFrame.LesserSalvageFrame.FrameExists()
+        return Frame(FrameId.ScreenFrame.C6.LesserSalvageWindow).exists
     
     @staticmethod
     def Cancel() -> bool:
@@ -2381,8 +1178,8 @@ class LesserSalvageWindow:
         if not LesserSalvageWindow.IsOpen():
             return False
         
-        frame = WindowFrame.LesserSalvageCancelButton
-        frame.FrameClick()
+        frame = Frame(FrameId.ScreenFrame.C6.LesserSalvageWindow.SalvageWithLesserKitCancel)
+        frame.click()
         return True
     
     @staticmethod
@@ -2393,8 +1190,8 @@ class LesserSalvageWindow:
         if not LesserSalvageWindow.IsOpen():
             return False
         
-        frame = WindowFrame.LesserSalvageConfirmButton
-        frame.FrameClick()
+        frame = Frame(FrameId.ScreenFrame.C6.LesserSalvageWindow.SalvageWithLesserKitConfirm)
+        frame.click()
         return True
 
 class ExpertSalvageUnidentifiedWindow:
@@ -2409,7 +1206,7 @@ class ExpertSalvageUnidentifiedWindow:
         Return True if the Expert Salvage Unidentified Window is open.
         '''
                 
-        return WindowFrame.ExpertSalvageUnidentifiedFrame.FrameExists()
+        return Frame(FrameId.ScreenFrame.C6.ExpertSalvageUnidentifiedItem).exists
     
     @staticmethod
     def Cancel() -> bool:
@@ -2419,8 +1216,8 @@ class ExpertSalvageUnidentifiedWindow:
         if not ExpertSalvageUnidentifiedWindow.IsOpen():
             return False
         
-        frame = WindowFrame.ExpertSalvageUnidentifiedCancelButton
-        frame.FrameClick()
+        frame = Frame(FrameId.ScreenFrame.C6.ExpertSalvageUnidentifiedItem.Cancel)
+        frame.click()
         return True
     
     @staticmethod
@@ -2431,8 +1228,8 @@ class ExpertSalvageUnidentifiedWindow:
         if not ExpertSalvageUnidentifiedWindow.IsOpen():
             return False
         
-        frame = WindowFrame.ExpertSalvageUnidentifiedConfirmButton
-        frame.FrameClick()
+        frame = Frame(FrameId.ScreenFrame.C6.ExpertSalvageUnidentifiedItem.Confirm)
+        frame.click()
         return True
 
 class AnySalvageWindow:

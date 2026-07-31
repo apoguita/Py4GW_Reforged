@@ -22,6 +22,7 @@ from Py4GWCoreLib.Camera import Camera
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.UIManager import UIManager
+from Py4GWCoreLib.FrameTree import Frame
 from Py4GWCoreLib.enums import Range
 from Py4GWCoreLib.enums import WindowID
 
@@ -82,8 +83,16 @@ class AxisAlignedProjection(Projection):
         self._valid = False
         self._ax = self._bx = self._ay = self._by = 0.0
 
+    # A read either lands or it does not - the engine zeroes the whole position
+    # struct together, so validating fields one at a time just moves the glitch
+    # around.  Instead the last complete good frame is buffered on self, and a
+    # failed read redraws from it rather than committing anything partial.
     def refresh(self) -> bool:
+        # No buffering here.  Frame already serves the last good snapshot for up
+        # to BUFFER_TICKS passes, so by the time a read still fails the frame is
+        # genuinely gone and drawing must stop the same tick.
         if not Map.MissionMap.IsWindowOpen():
+            self._valid = False
             return False
 
         map_id = Map.GetMapID()
@@ -93,28 +102,50 @@ class AxisAlignedProjection(Projection):
             self._world_bounds_by_map.clear()
 
         if map_id in self._boundaries_by_map:
-            self.boundaries = self._boundaries_by_map[map_id]
+            boundaries = self._boundaries_by_map[map_id]
         else:
-            self.boundaries = Map.GetMapBoundaries()
-            self._boundaries_by_map[map_id] = self.boundaries
+            boundaries = Map.GetMapBoundaries()
+            self._boundaries_by_map[map_id] = boundaries
 
         if map_id in self._world_bounds_by_map:
-            self.left_bound, self.top_bound, self.right_bound, self.bottom_bound = self._world_bounds_by_map[map_id]
+            world_bounds = self._world_bounds_by_map[map_id]
         else:
-            self.left_bound, self.top_bound, self.right_bound, self.bottom_bound = Map.GetMapWorldMapBounds()
-            self._world_bounds_by_map[map_id] = (self.left_bound, self.top_bound, self.right_bound, self.bottom_bound)
+            world_bounds = Map.GetMapWorldMapBounds()
+            self._world_bounds_by_map[map_id] = world_bounds
 
+        # --- read the whole struct into locals --------------------------------
         coords = Map.MissionMap.GetMissionMapContentsCoords()
-        self.left, self.top, self.right, self.bottom = float(coords[0]), float(coords[1]), float(coords[2]), float(coords[3])
-        self.width = self.right - self.left
-        self.height = self.bottom - self.top
+        left, top, right, bottom = (float(coords[0]), float(coords[1]),
+                                    float(coords[2]), float(coords[3]))
+        width, height = right - left, bottom - top
+        scale_x, scale_y = Map.MissionMap.GetScale()
+        pan_x, pan_y = Map.MissionMap.GetPanOffset()
+        center_x, center_y = Map.MissionMap.GetCenter()
+        px, py = Player.GetXY()
 
-        self.pan_offset_x, self.pan_offset_y = Map.MissionMap.GetPanOffset()
-        self.scale_x, self.scale_y = Map.MissionMap.GetScale()
-        self.zoom = Map.MissionMap.GetZoom()
-        self.center_x, self.center_y = Map.MissionMap.GetCenter()
-        self.center = (self.center_x, self.center_y)
-        self.player_pos = Player.GetXY()
+        # --- one atomic verdict ----------------------------------------------
+        landed = (width > 0.0 and height > 0.0
+                  and scale_x > 0.0 and scale_y > 0.0
+                  and (center_x or center_y)
+                  and (px or py))
+
+        if not landed:
+            # Frame's buffer has already been given its chance; a read still
+            # failing here means the data really is gone this pass.
+            return self._valid
+
+        # --- commit, all at once ---------------------------------------------
+        self.boundaries = boundaries
+        self.left_bound, self.top_bound, self.right_bound, self.bottom_bound = world_bounds
+        self.left, self.top, self.right, self.bottom = left, top, right, bottom
+        self.width, self.height = width, height
+        self.scale_x, self.scale_y = scale_x, scale_y
+        self.pan_offset_x, self.pan_offset_y = pan_x, pan_y
+        self.zoom = Map.MissionMap.GetZoom() or 1.0
+        self.center_x, self.center_y = center_x, center_y
+        self.center = (center_x, center_y)
+        self.player_pos = (px, py)
+
         self._rebuild_affine()
         return True
 
@@ -173,22 +204,32 @@ class RotatingProjection(Projection):
         self._s = 0.0            # scale / Range.Compass (pixels per gwinch)
 
     def refresh(self) -> bool:
-        self.player_pos = Player.GetXY()
-        frame_id = Map.MiniMap.GetFrameID()
+        # same reasoning as the mission map: player_pos is this projection's
+        # origin, so a missed (0, 0) read would offset everything by the
+        # player's real world position
+        px, py = Player.GetXY()
+        if px or py:
+            self.player_pos = (px, py)
+        mini_map = Map.MiniMap.GetFrame()
         snapped = (
             self.position.snap_to_game
             and not self.position.detached
-            and UIManager.FrameExists(frame_id)
+            and mini_map is not None and mini_map.is_usable
             and UIManager.IsWindowVisible(WindowID.WindowID_Compass)
         )
-        if snapped:
-            coords = UIManager.GetFrameCoords(frame_id)
+        if snapped and mini_map is not None:
+            coords = mini_map.coords()
             cx, cy = Map.MiniMap.GetMapScreenCenter(coords)
             cx, cy = round(cx), round(cy)
             if cx > 100000 or cy > 100000:
                 return False
+            size = float(round(Map.MiniMap.GetScale(coords)))
+            # a zero radius makes _s zero and collapses every projected point
+            # onto the centre; keep the previous compass geometry instead
+            if size <= 0.0:
+                return True
             self.center = (float(cx), float(cy))
-            self.size = float(round(Map.MiniMap.GetScale(coords)))
+            self.size = size
             self.rotation = Map.MiniMap.GetRotation()
         else:
             self.center = (float(self.position.detached_x), float(self.position.detached_y))

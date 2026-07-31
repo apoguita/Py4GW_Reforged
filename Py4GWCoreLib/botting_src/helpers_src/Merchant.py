@@ -9,6 +9,7 @@ from typing import Any, Generator, TYPE_CHECKING,List
 
 from ...Py4GWcorelib import ConsoleLog, Console
 from ...enums_src.Model_enums import ModelID
+from ...FrameTree import Frame, FrameId
 
 #region MERCHANT
 class _Merchant:
@@ -99,8 +100,8 @@ class _Merchant:
     
     def _merchant_frame_exists(self) -> bool:
         from ...UIManager import UIManager
-        merchant_frame_id = UIManager.GetFrameIDByHash(self.MERCHANT_FRAME)
-        merchant_frame_exists = UIManager.FrameExists(merchant_frame_id)
+        merchant_frame_id = Frame(FrameId.Merchant)
+        merchant_frame_exists = merchant_frame_id.exists
         return merchant_frame_exists
     
     def _get_materials_to_sell(self) -> List[int]:

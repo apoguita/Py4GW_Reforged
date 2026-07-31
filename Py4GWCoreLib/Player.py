@@ -198,6 +198,8 @@ class Player:
         from .Agent import Agent
         return Agent.GetNameByID(Player.GetAgentID())
 
+    _last_xy: tuple[float, float] = (0.0, 0.0)
+
     @staticmethod
     @frame_cache(category="Player", source_lib="GetXY")
     def GetXY() -> tuple[float, float]:
@@ -205,9 +207,21 @@ class Player:
         Purpose: Retrieve the player's current X and Y coordinates.
         Args: None
         Returns: tuple (x, y)
+
+        An exactly (0.0, 0.0) reading is treated as a failed read rather than a
+        position.  It comes from the agent id not resolving for a tick, and no
+        player realistically stands on the world origin - but anything anchoring
+        on it (the map overlays project their whole UI relative to this) would
+        jump to wherever world 0,0 lands on screen.  The last real position is
+        returned instead.
         """
         from .Agent import Agent
-        return Agent.GetXY(Player.GetAgentID())
+
+        xy = Agent.GetXY(Player.GetAgentID())
+        if xy and (xy[0] or xy[1]):
+            Player._last_xy = xy
+            return xy
+        return Player._last_xy
 
     
     @staticmethod

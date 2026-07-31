@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.FrameTree import Frame, FrameId, FrameKeyError
 module_name = "Return to Outpost"
 
 class config:
@@ -8,7 +9,7 @@ class config:
         self.is_party_loaded = False
         self.is_explorable = False
         self.bounty_window_exists = False
-        self.frame_id = 0
+        self.frame = None
         self.frame_hash = 3856160816
         self.bounty_taken = False
         self.bounty_taken_timer = Timer()
@@ -45,19 +46,22 @@ def main():
         widget_config.map_valid = widget_config.is_map_ready and widget_config.is_party_loaded and widget_config.is_explorable
         
         if widget_config.map_valid:
-            widget_config.frame_id = UIManager.GetFrameIDByHash(widget_config.frame_hash)
-            if widget_config.frame_id != 0:
-                widget_config.bounty_window_exists = UIManager.FrameExists(widget_config.frame_id)
+            dialog = Frame(FrameId.NpcDialog)
+            if dialog.exists:
+                widget_config.frame = dialog
+                widget_config.bounty_window_exists = True
             else:
                 widget_config.bounty_window_exists = False
         widget_config.game_throttle_timer.Start()
         
         if widget_config.map_valid and widget_config.bounty_window_exists and not widget_config.bounty_taken:
-            frame_id = UIManager.GetFrameIDByCustomLabel(frame_label = "NPC Bounty Dialog.Option1.Icon") or 0
-            clickable_frame = UIManager.GetParentID(frame_id)
-            if UIManager.FrameExists(clickable_frame):
-                UIManager.FrameClick(frame_id = clickable_frame)
-            widget_config.bounty_taken = True
+            try:
+                icon = Frame.from_label("NPC Bounty Dialog.Option1.Icon")
+            except FrameKeyError:
+                icon = None
+            if icon is not None and icon.exists:
+                icon.parent().click()
+                widget_config.bounty_taken = True
             
     if widget_config.bounty_taken and widget_config.bounty_taken_timer.HasElapsed(5000):
         widget_config.bounty_taken = False

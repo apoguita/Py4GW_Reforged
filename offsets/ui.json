@@ -337,6 +337,36 @@
       "mask": "xxxxxxxx",
       "offset": "0x7",
       "section": "text"
+    },
+    "gr_model_set_color_anchor": {
+      "pattern": "\\x8B\\xD8\\x83\\xC4\\x08\\x85\\xDB\\x75\\x14\\x68\\xA4\\x00\\x00\\x00\\xBA\\x00\\x00\\x00\\x00\\xB9\\x00\\x00\\x00\\x00\\xE8\\x00\\x00\\x00\\x00\\x8B\\x43\\x0C\\x83\\xF8\\x05\\x74\\x12\\x50\\x6A\\x05",
+      "mask": "xxxxxxxxxxxxxxx????x????x????xxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "gr_material_constant_get_id_func": {
+      "pattern": "\\x55\\x8B\\xEC\\x6A\\x01\\xFF\\x75\\x08\\xE8\\xF3\\xFD\\xFF\\xFF\\x83\\xC4\\x08\\x5D\\xC3",
+      "mask": "xxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "gr_model_set_material_constant_anchor": {
+      "pattern": "\\xFF\\x75\\x14\\x8B\\xCE\\xFF\\x75\\x10\\xFF\\x75\\x0C\\xE8\\xED\\x21\\x00\\x00\\x5E\\x5D\\xC3",
+      "mask": "xxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "item_image_frame_alpha_callsite": {
+      "pattern": "\\xFF\\x77\\x34\\xE8",
+      "mask": "xxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "item_image_frame_content_add_anchor": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x24\\x56\\x8B\\x75\\x08\\x57\\x8B\\xF9\\xF6\\x06\\x20",
+      "mask": "xxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
     }
   },
   "resolvers": {
@@ -499,6 +529,38 @@
       "steps": [
         { "name": "scan_target", "op": "scan", "pattern": "create_ui_component", "out": "scan" },
         { "name": "to_function_start", "op": "to_function_start", "in": "scan", "out": "final" }
+      ]
+    },
+    "gr_model_set_color_func": {
+      "steps": [
+        { "name": "scan_anchor", "op": "scan", "pattern": "gr_model_set_color_anchor", "out": "anchor" },
+        { "name": "to_set_color_func", "op": "add", "in": "anchor", "value": "-0x14", "out": "candidate" },
+        { "name": "validate_text", "op": "validate_section", "in": "candidate", "section": "text", "out": "final" }
+      ]
+    },
+    "gr_material_constant_get_id_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "gr_material_constant_get_id_func", "out": "final" }
+      ]
+    },
+    "gr_model_set_alpha_func": {
+      "steps": [
+        { "name": "scan_frame_func", "op": "scan", "pattern": "item_image_frame_content_add_anchor", "out": "frame_func" },
+        { "name": "scan_callsite", "op": "scan_in_range", "pattern": "item_image_frame_alpha_callsite", "start": "frame_func", "end": "frame_func", "start_add": "0x0", "end_add": "0x600", "out": "push_site" },
+        { "name": "adjust_callsite", "op": "add", "in": "push_site", "value": "0x3", "out": "callsite" },
+        { "name": "resolve_target", "op": "function_from_near_call", "in": "callsite", "out": "final" }
+      ]
+    },
+    "gr_model_set_material_constant_func": {
+      "steps": [
+        { "name": "scan_tail", "op": "scan", "pattern": "gr_model_set_material_constant_anchor", "out": "tail" },
+        { "name": "to_function_start", "op": "add", "in": "tail", "value": "-0x63", "out": "candidate" },
+        { "name": "validate_text", "op": "validate_section", "in": "candidate", "section": "text", "out": "final" }
+      ]
+    },
+    "item_image_frame_content_add_func": {
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "item_image_frame_content_add_anchor", "out": "final" }
       ]
     },
     "destroy_ui_component_func": {

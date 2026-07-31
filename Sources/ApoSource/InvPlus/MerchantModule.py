@@ -35,6 +35,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (TabIcon,
                             )         
 from Sources.ApoSource.InvPlus.Coroutines import MerchantCheckedItems
 from Sources.ApoSource.InvPlus.Coroutines import BuyMerchantItems
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 class MerchantModule:
     def __init__(self, inventory_frame: Frame):
@@ -81,18 +82,18 @@ class MerchantModule:
         return cached_agent_id == current_agent_id
 
     def _is_collector_open(self):
-        exchange_collector_button = UIManager.GetChildFrameID(3613855137, [0, 0, 6])
-        sell_tab = UIManager.GetChildFrameID(3613855137, [0, 4294967294])
-        return UIManager.FrameExists(exchange_collector_button) and not UIManager.FrameExists(sell_tab)
+        exchange_collector_button = GWFrame(FrameId.Merchant.C0.C0.Exchange)
+        sell_tab = GWFrame(FrameId.Merchant.C0.QuoteField)
+        return exchange_collector_button.exists and not sell_tab.exists
 
     def _is_skill_trainer_open(self):
-        display_type_button_id = UIManager.GetChildFrameID(1746895597, [3])
-        sell_tab = UIManager.GetChildFrameID(3613855137, [0, 4294967294])
-        return UIManager.FrameExists(display_type_button_id) and not UIManager.FrameExists(sell_tab)
+        display_type_button_id = GWFrame(FrameId.SkillTrainerWindow.DisplayModeButton)
+        sell_tab = GWFrame(FrameId.Merchant.C0.QuoteField)
+        return display_type_button_id.exists and not sell_tab.exists
 
     def _is_crafter_open(self):
-        crafter_craft_button_id = UIManager.GetFrameIDByHash(1517397806)
-        return UIManager.FrameExists(crafter_craft_button_id)
+        crafter_craft_button_id = GWFrame(FrameId.CraftButton)
+        return crafter_craft_button_id.exists
     
     def _is_material_trader(self):
         merchant_item_list = Trading.Trader.GetOfferedItems()
@@ -163,16 +164,16 @@ class MerchantModule:
         
         
     def colorize_merchants(self):
-        merchant_frame_id = UIManager.GetFrameIDByHash(MERCHANT_FRAME)
-        merchant_frame_exists = UIManager.FrameExists(merchant_frame_id)
+        merchant_frame_id = GWFrame(FrameId.Merchant)
+        merchant_frame_exists = merchant_frame_id.exists
         if not merchant_frame_exists:
-            content_frame = UIManager.GetChildFrameID(_get_parent_hash(), [0])
-            left, top, right, bottom = UIManager.GetFrameCoords(content_frame)
+            content_frame = GWFrame(FrameId.InventoryBagsWindow.Content)
+            left, top, right, bottom = content_frame.coords()
             y_offset = 2
             x_offset = 0
             height = bottom - top + y_offset
             width = right - left + x_offset
-            UIManager().DrawFrame(content_frame, Utils.RGBToColor(0, 0, 0, 255))
+            content_frame.draw(Utils.RGBToColor(0, 0, 0, 255))
             flags = ( PyImGui.WindowFlags.NoCollapse | 
                     PyImGui.WindowFlags.NoTitleBar |
                     PyImGui.WindowFlags.NoResize
@@ -206,8 +207,8 @@ class MerchantModule:
                 quantity = Item.Properties.GetQuantity(item_id)
                 required_quantity = self._get_merchant_minimum_quantity()
 
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
                 
@@ -225,8 +226,8 @@ class MerchantModule:
                     frame_color = _get_frame_color("Disabled")
                     frame_outline_color = _get_frame_outline_color("Disabled")
                 
-                UIManager().DrawFrame(frame_id, frame_color)
-                UIManager().DrawFrameOutline(frame_id, frame_outline_color)
+                frame_id.draw(frame_color)
+                frame_id.draw_outline(frame_outline_color)
                 
                 #--------------- Checkboxes ---------------
                 
@@ -234,7 +235,7 @@ class MerchantModule:
                     if item_id not in self.merchant_checkboxes:
                         self.merchant_checkboxes[item_id] = False
                     
-                    left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
+                    left,top, right, bottom = frame_id.coords()
                     self.merchant_checkboxes[item_id] = ImGui.floating_checkbox(
                         f"{item_id}", 
                         self.merchant_checkboxes[item_id], 

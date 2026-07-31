@@ -5,6 +5,8 @@ import PyImGui
 
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib.GWUI import GWUI
+from Py4GWCoreLib.FrameTree import Frame
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 
 MODULE_NAME = "GWUI End User Test"
@@ -97,7 +99,7 @@ def _process_pending_reports() -> None:
 
 
 def _current_window_id() -> int:
-    return int(UIManager.GetFrameIDByLabel(WINDOW_LABEL) or 0)
+    return int((lambda lbl: LiveTree.by_label(lbl).frame_id)(WINDOW_LABEL) or 0)
 
 
 def _current_window_summary() -> str:
@@ -109,12 +111,12 @@ def _frame_summary(frame_id: int) -> str:
     if frame_id <= 0:
         return "frame_id=0"
     try:
-        frame = UIManager.GetFrameByID(frame_id)
-        left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
+        frame = (lambda fid: Frame.from_id(fid))(frame_id)
+        left, top, right, bottom = Frame.from_id(frame_id).coords()
         return (
             f"frame_id={frame_id} "
             f"parent_id={int(frame.parent_id)} "
-            f"child_offset_id={int(frame.child_offset_id)} "
+            f"child_offset_id={int(frame.code)} "
             f"is_created={bool(frame.is_created)} "
             f"is_visible={bool(frame.is_visible)} "
             f"frame_state=0x{int(frame.frame_state):X} "
@@ -127,8 +129,8 @@ def _frame_summary(frame_id: int) -> str:
 def _dump_state(prefix: str) -> None:
     window_id = _current_window_id()
     host_id = int(GWUI.ResolveObservedContentHostByFrameId(window_id) or 0) if window_id > 0 else 0
-    first_child = int(UIManager.GetFirstChildFrameID(window_id) or 0) if window_id > 0 else 0
-    last_child = int(UIManager.GetLastChildFrameID(window_id) or 0) if window_id > 0 else 0
+    first_child = int((lambda fid: Frame.from_id(fid).first_child().frame_id)(window_id) or 0) if window_id > 0 else 0
+    last_child = int((lambda fid: Frame.from_id(fid).last_child().frame_id)(window_id) or 0) if window_id > 0 else 0
     label = GWUI.GetFrameLabelByFrameId(window_id) if window_id > 0 else ""
     _log(
         f"{prefix} "

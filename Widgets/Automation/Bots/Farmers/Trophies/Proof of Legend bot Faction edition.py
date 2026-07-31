@@ -9,6 +9,7 @@ from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 MODULE_NAME = "Proof of Legend bot Faction edition by Wick Divinus"
@@ -249,9 +250,9 @@ def QuestDialog(
         return BehaviorTree.NodeState.SUCCESS
 
     def _cancel_skill_reward_window() -> BehaviorTree.NodeState:
-        cancel_button_frame_id = UIManager.GetFrameIDByHash(784833442)
-        if cancel_button_frame_id and UIManager.FrameExists(cancel_button_frame_id):
-            UIManager.FrameClick(cancel_button_frame_id)
+        cancel_button_frame_id = Frame(FrameId.CancelButton)
+        if cancel_button_frame_id.exists:
+            cancel_button_frame_id.click()
         return BehaviorTree.NodeState.SUCCESS
 
     attempt = Sequence(

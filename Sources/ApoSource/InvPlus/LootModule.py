@@ -10,6 +10,7 @@ from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import UIManager
 from Py4GWCoreLib import Utils
 from Sources.ApoSource.InvPlus.GUI_Helpers import (Frame, game_toggle_button, _get_parent_hash)
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 #region LootGroups
 
@@ -22,8 +23,8 @@ class LootModule:
     def DrawLootConfig(self):
         global global_vars
         
-        content_frame = UIManager.GetChildFrameID(_get_parent_hash(), [0])
-        left, top, right, bottom = UIManager.GetFrameCoords(content_frame)
+        content_frame = GWFrame(FrameId.InventoryBagsWindow.Content)
+        left, top, right, bottom = content_frame.coords()
         y_offset = 2
         x_offset = 0
         height = bottom - top + y_offset
@@ -33,7 +34,7 @@ class LootModule:
         if height < 100:
             height = 100
             
-        UIManager().DrawFrame(content_frame, Utils.RGBToColor(0, 0, 0, 255))
+        content_frame.draw(Utils.RGBToColor(0, 0, 0, 255))
         
 
         flags = ( PyImGui.WindowFlags.NoCollapse | 

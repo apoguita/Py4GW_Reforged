@@ -10,6 +10,7 @@ from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.enums_src.UI_enums import UIMessage
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Factions Character Leveler"
 MODULE_ICON = "Textures\\Module_Icons\\Leveler - Factions.png"
@@ -2469,14 +2470,16 @@ def TrainSkills():
     secondary_skills_grandparent = 1746895597
     secondary_skills_offset = [0, 0, 0, 5, 1]
     skills_to_train_frames = [
-        UIManager.GetChildFrameID(secondary_skills_grandparent, secondary_skills_offset + [57, 0]),   # Cry of Pain
-        UIManager.GetChildFrameID(secondary_skills_grandparent, secondary_skills_offset + [25, 0]),   # Power Drain
-        UIManager.GetChildFrameID(secondary_skills_grandparent, secondary_skills_offset + [860, 0]),  # Signet of Disruption
+        Frame.trainer_skill(57),   # Cry of Pain
+        Frame.trainer_skill(25),   # Power Drain
+        Frame.trainer_skill(860),  # Signet of Disruption
     ]
-    for skill_frame_id in skills_to_train_frames:
-        PyGameThread.enqueue(lambda fid=skill_frame_id: UIManager.TestMouseClickAction(fid, 0, 0))
+    for skill_frame in skills_to_train_frames:
+        if not skill_frame.exists:
+            continue
+        PyGameThread.enqueue(lambda f=skill_frame: f.mouse_click_action(0, 0))
         yield from Routines.Yield.wait(200)
-        PyGameThread.enqueue(lambda: UIManager.FrameClick(UIManager.GetFrameIDByHash(4162812990)))
+        PyGameThread.enqueue(lambda: Frame(FrameId.AcceptButton).click())
         yield from Routines.Yield.wait(200)
     return
 

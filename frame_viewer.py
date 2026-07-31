@@ -1,4 +1,3 @@
-import json
 import os
 
 import PyImGui
@@ -6,6 +5,8 @@ import PyUIManager
 
 from Py4GWCoreLib import UIManager, Color, ColorPalette
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
+from Py4GWCoreLib.FrameTree import Frame
+from Py4GWCoreLib.FrameTree import FrameTree
 
 
 MODULE_NAME = "Frame Viewer"
@@ -30,12 +31,11 @@ class ViewerState:
         self.show_runtime_path_in_tree = False
         self.max_nodes_drawn = 3000
 
-        # Alias sources
-        self.alias_source_json = os.path.join("Py4GWCoreLib", "frame_aliases.json")
-        self.alias_index_json = os.path.join(SCRIPT_DIR, "frame_alias_index.json")
-        self.hash_aliases = {}  # int hash -> alias
-        self.path_aliases = {}  # str path -> alias
-        self.alias_generation_info = "Alias index not loaded"
+        # Identity tables, straight from the FrameTree package (no files)
+        self.hash_aliases = {}   # int hash  -> engine frame name
+        self.path_aliases = {}   # str path  -> prose alias
+        self.path_keys = {}      # str path  -> dotted registry key
+        self.alias_generation_info = "Identity tables not loaded"
         # Node colors (debug-focused)
         self.color_identified_hash = ColorPalette.GetColor("gw_green")
         self.color_identified_path = ColorPalette.GetColor("turquoise")
@@ -59,24 +59,14 @@ class ViewerState:
                 return
 
         try:
-            self.frame_ids = list(PyUIManager.UIManager.get_frame_array())
-            new_frames = {}
-            for fid in self.frame_ids:
-                try:
-                    frame = self.frames.get(fid)
-                    if frame is None:
-                        frame = PyUIManager.UIFrame(fid)
-                    else:
-                        frame.get_context()
-                    new_frames[fid] = frame
-                except Exception:
-                    continue
-
-            self.frames = new_frames
+            self.frame_ids = list(FrameTree.all_ids())
+            # handles refresh themselves on the tick boundary, so there is no
+            # cache to maintain and no get_context() to call
+            self.frames = {fid: Frame.from_id(fid) for fid in self.frame_ids}
             self._rebuild_tree()
             self._rebuild_runtime_paths()
             try:
-                self.last_root_id = int(PyUIManager.UIManager.get_root_frame_id())
+                self.last_root_id = int((lambda: FrameTree.root().frame_id)())
             except Exception:
                 self.last_root_id = 0
 
@@ -120,7 +110,7 @@ class ViewerState:
                 cache[fid] = ""
                 return ""
 
-            frame_hash = int(getattr(frame, "frame_hash", 0) or 0)
+            frame_hash = int(getattr(frame, "hash", 0) or 0)
             if frame_hash:
                 cache[fid] = str(frame_hash)
                 return cache[fid]
@@ -144,7 +134,7 @@ class ViewerState:
                 if parent is None:
                     cache[fid] = ""
                     return ""
-                parent_hash = int(getattr(parent, "frame_hash", 0) or 0)
+                parent_hash = int(getattr(parent, "hash", 0) or 0)
                 if parent_hash:
                     cache[fid] = f"{parent_hash}," + ",".join(reversed(offsets))
                     return cache[fid]
@@ -158,7 +148,7 @@ class ViewerState:
         self.runtime_paths = cache
 
     def count_hashed(self):
-        return sum(1 for f in self.frames.values() if int(getattr(f, "frame_hash", 0) or 0) != 0)
+        return sum(1 for f in self.frames.values() if int(getattr(f, "hash", 0) or 0) != 0)
 
     def count_visible(self):
         return sum(1 for f in self.frames.values() if bool(getattr(f, "is_visible", False)))
@@ -185,29 +175,33 @@ class ViewerState:
     def repeated_hashes(self):
         counts = {}
         for f in self.frames.values():
-            h = int(getattr(f, "frame_hash", 0) or 0)
+            h = int(getattr(f, "hash", 0) or 0)
             if h:
                 counts[h] = counts.get(h, 0) + 1
         return {h: c for h, c in counts.items() if c > 1}
 
     def identified_alias(self, frame):
         frame_id = int(getattr(frame, "frame_id", 0) or 0)
-        h = int(getattr(frame, "frame_hash", 0) or 0)
+        h = int(getattr(frame, "hash", 0) or 0)
         if h and h in self.hash_aliases:
             alias = str(self.hash_aliases[h]).strip()
             if alias:
-                return alias, "hash"
+                return alias, "name"
         path = self.runtime_paths.get(frame_id, "")
+        if path and path in self.path_keys:
+            key = str(self.path_keys[path]).strip()
+            if key:
+                return key, "key"
         if path and path in self.path_aliases:
             alias = str(self.path_aliases[path]).strip()
             if alias:
-                return alias, "path"
+                return alias, "alias"
         return "", ""
 
     def node_color(self, frame) -> Color:
         created = bool(getattr(frame, "is_created", False))
         visible = bool(getattr(frame, "is_visible", False))
-        hashed = int(getattr(frame, "frame_hash", 0) or 0) != 0
+        hashed = int(getattr(frame, "hash", 0) or 0) != 0
         alias, source = self.identified_alias(frame)
         identified = bool(alias)
 
@@ -231,7 +225,6 @@ class ViewerState:
         return True
 
     def draw_overlays(self):
-        ui = UIManager()
         for fid, enabled in list(self.draw_enabled.items()):
             if not enabled or fid not in self.frames:
                 continue
@@ -239,101 +232,37 @@ class ViewerState:
             color = self.node_color(self.frames[fid])
             intcolor = color.opacity(90).to_color()
             try:
-                ui.DrawFrame(fid, intcolor)
+                Frame.from_id(fid).draw(intcolor)
             except Exception:
                 pass
 
-    def generate_alias_index(self):
+    def load_identity_tables(self):
+        """Load the identity tables from the FrameTree package.
+
+        These used to be built by scraping frame_aliases.json into a second
+        json index.  Both are gone: the tables are dict literals in
+        Py4GWCoreLib/FrameTree, and the reverse path maps are owned by the
+        Frame class.
+        """
         try:
-            with open(self.alias_source_json, "r", encoding="utf-8") as f:
-                raw = json.load(f)
+            from Py4GWCoreLib.FrameTree import FRAME_NAMES
+            from Py4GWCoreLib.FrameTree import alias_by_path, key_by_path
         except Exception as exc:
-            self.alias_generation_info = f"Source alias read failed: {exc}"
+            self.alias_generation_info = f"Identity tables unavailable: {exc}"
             return False
 
-        if not isinstance(raw, dict):
-            self.alias_generation_info = "Source alias JSON is not a dictionary"
-            return False
-
-        hash_aliases = {}
-        path_aliases = {}
-        skipped = 0
-        for key, value in raw.items():
-            if not isinstance(value, str):
-                skipped += 1
-                continue
-            k = str(key)
-            parts = [p for p in k.split(",") if p]
-            if not parts:
-                skipped += 1
-                continue
-            if len(parts) == 1:
-                try:
-                    hash_aliases[str(int(parts[0]))] = value
-                except ValueError:
-                    skipped += 1
-            else:
-                path_aliases[k] = value
-
-        payload = {
-            "meta": {
-                "generated_from": self.alias_source_json,
-                "hash_count": len(hash_aliases),
-                "path_count": len(path_aliases),
-                "skipped": skipped,
-            },
-            "hash_aliases": hash_aliases,
-            "path_aliases": path_aliases,
-        }
-        try:
-            with open(self.alias_index_json, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=4, sort_keys=True)
-        except Exception as exc:
-            self.alias_generation_info = f"Alias index write failed: {exc}"
-            return False
-
+        self.hash_aliases = dict(FRAME_NAMES)
+        self.path_aliases = dict(alias_by_path())
+        self.path_keys = dict(key_by_path())
         self.alias_generation_info = (
-            f"Generated {os.path.basename(self.alias_index_json)} "
-            f"(hash={len(hash_aliases)} path={len(path_aliases)} skipped={skipped})"
-        )
-        self.load_alias_index()
-        return True
-
-    def load_alias_index(self):
-        self.hash_aliases = {}
-        self.path_aliases = {}
-        try:
-            with open(self.alias_index_json, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-        except FileNotFoundError:
-            self.alias_generation_info = "Alias index not found (click Generate Alias Index)"
-            return False
-        except Exception as exc:
-            self.alias_generation_info = f"Alias index load failed: {exc}"
-            return False
-
-        if not isinstance(raw, dict):
-            self.alias_generation_info = "Alias index JSON malformed"
-            return False
-
-        for k, v in (raw.get("hash_aliases", {}) or {}).items():
-            if isinstance(v, str):
-                try:
-                    self.hash_aliases[int(str(k))] = v
-                except ValueError:
-                    pass
-        for k, v in (raw.get("path_aliases", {}) or {}).items():
-            if isinstance(v, str):
-                self.path_aliases[str(k)] = v
-
-        self.alias_generation_info = (
-            f"Loaded alias index (hash={len(self.hash_aliases)} path={len(self.path_aliases)})"
+            f"Loaded identity tables (names={len(self.hash_aliases)} "
+            f"keys={len(self.path_keys)} aliases={len(self.path_aliases)})"
         )
         return True
 
 
 state = ViewerState()
-state.load_alias_index()
+state.load_identity_tables()
 
 
 def _toggle_draw(fid: int):
@@ -347,7 +276,7 @@ def _toggle_card(fid: int):
 
 
 def _compact_node_label(fid: int, frame):
-    frame_hash = int(getattr(frame, "frame_hash", 0) or 0)
+    frame_hash = int(getattr(frame, "hash", 0) or 0)
     alias, alias_kind = state.identified_alias(frame)
     if alias:
         base = f"{alias}"
@@ -411,7 +340,7 @@ def _draw_frame_card(fid: int):
     f = state.frames[fid]
     alias, alias_kind = state.identified_alias(f)
     runtime_path = state.runtime_paths.get(fid, "")
-    frame_hash = int(getattr(f, "frame_hash", 0) or 0)
+    frame_hash = int(getattr(f, "hash", 0) or 0)
     title = alias if alias else f"Frame {fid}"
     title = f"{title}##frame_card_{fid}"
 
@@ -449,12 +378,8 @@ def _draw_frame_card(fid: int):
     PyImGui.text(f"Type: {int(getattr(f, 'type', 0) or 0)}")
     PyImGui.text(f"Template Type: {int(getattr(f, 'template_type', 0) or 0)}")
     PyImGui.text(f"Visibility Flags: {int(getattr(f, 'visibility_flags', 0) or 0)}")
-    try:
-        rel = f.relation
-        PyImGui.text(f"Relation Parent ID: {int(getattr(rel, 'parent_id', 0) or 0)}")
-        PyImGui.text(f"Relation Hash ID: {int(getattr(rel, 'frame_hash_id', 0) or 0)}")
-    except Exception:
-        pass
+    PyImGui.text(f"Relation Parent: {f.parent_id}")
+    PyImGui.text(f"Relation Hash ID: {f.hash}")
     try:
         pos = f.position
         PyImGui.text(
@@ -510,11 +435,8 @@ def main():
             if PyImGui.button("Close All Cards"):
                 state.open_cards.clear()
             PyImGui.same_line(0, -1)
-            if PyImGui.button("Generate Alias Index"):
-                state.generate_alias_index()
-            PyImGui.same_line(0, -1)
-            if PyImGui.button("Reload Alias Index"):
-                state.load_alias_index()
+            if PyImGui.button("Reload Identity Tables"):
+                state.load_identity_tables()
 
             state.show_only_visible = PyImGui.checkbox("Show Only Visible", state.show_only_visible)
             PyImGui.same_line(0, -1)
@@ -536,7 +458,7 @@ def main():
             PyImGui.text(f"Created: {state.count_created()}  Visible: {state.count_visible()}  Hashed: {state.count_hashed()}")
             PyImGui.text(f"Identified by Hash: {state.count_ident_hash()}  Identified by Path: {state.count_ident_path()}")
             PyImGui.text(f"Draw Enabled: {sum(1 for v in state.draw_enabled.values() if v)}")
-            PyImGui.text_wrapped(f"Alias Index: {state.alias_generation_info}")
+            PyImGui.text_wrapped(f"Identity: {state.alias_generation_info}")
 
             if PyImGui.collapsing_header("Repeated Hashes"):
                 repeats = state.repeated_hashes()

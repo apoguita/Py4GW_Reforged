@@ -2,6 +2,7 @@
 from Py4GWCoreLib import *
 from random import randint
 from datetime import datetime
+from Py4GWCoreLib.FrameTree import Frame, FrameId, FrameKeyError
 
 # endregion
 
@@ -1356,10 +1357,13 @@ class Draw:
         global bot_vars, mods
         Debug('running debug function', msg_type='Info')
         "NPC Bounty Dialog.Option1.Icon"
-        frame_id = UIManager.GetFrameIDByCustomLabel(frame_label="NPC Bounty Dialog.Option2.Icon") or 0
-        if frame_id:
-            Debug(dir(PyUIManager.UIFrame(frame_id)))
-            UIManager.FrameClick(frame_id)
+        try:
+            icon = Frame.from_label("NPC Bounty Dialog.Option2.Icon")
+        except FrameKeyError:
+            icon = None
+        if icon is not None and icon.exists:
+            Debug(dir(icon))
+            icon.click()
         else:
             Debug('none')
 

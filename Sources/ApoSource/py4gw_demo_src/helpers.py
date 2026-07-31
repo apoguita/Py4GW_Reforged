@@ -2,7 +2,8 @@
 import PyImGui
 from dataclasses import dataclass
 from Py4GWCoreLib.py4gwcorelib_src.Color import ColorPalette, Color
-from Py4GWCoreLib.UIManager import FrameInfo, UIManager
+from Py4GWCoreLib.UIManager import UIManager
+from Py4GWCoreLib.FrameTree import Frame
 
 VIEW_LIST: list[tuple[bool, str]] = [
     #is_child, "View Name"
@@ -57,7 +58,7 @@ class MapVars:
         language: int = 0
         
     class MissionMap:
-        frame_info: FrameInfo | None = None
+        frame_info: Frame | None = None
         draw_outline = DisplayNode(True, ColorPalette.GetColor("bright_green"), 3.0)
         draw_content_outline = DisplayNode(True, ColorPalette.GetColor("crimson"), 2.0)
         center_outline = DisplayNode(True, ColorPalette.GetColor("fuchsia"), 4.0)
@@ -66,7 +67,7 @@ class MapVars:
         player_outline = DisplayNode(True, ColorPalette.GetColor("crimson"), 3.0)
         
     class MiniMap:
-        frame_info: FrameInfo | None = None
+        frame_info: Frame | None = None
         draw_outline = DisplayNode(True, ColorPalette.GetColor("bright_green"), 3.0)
         draw_content_outline = DisplayNode(True, ColorPalette.GetColor("crimson"), 2.0)
         center_outline = DisplayNode(True, ColorPalette.GetColor("fuchsia"), 4.0)

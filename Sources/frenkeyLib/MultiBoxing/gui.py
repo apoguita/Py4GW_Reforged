@@ -21,6 +21,8 @@ from Sources.frenkeyLib.MultiBoxing.window_handling import set_window_active
 
 ## Set the MODULE_NAME to the folder
 MODULE_NAME = __file__.split("\\")[-2]
+CONFIGURE_WINDOW_MIN_SIZE = (300.0, 400.0)
+CONFIGURE_WINDOW_MAX_SIZE = (float("inf"), float("inf"))
 
 class GUI:
     _instance = None
@@ -110,6 +112,8 @@ class GUI:
         module_info = self.get_module_info(MODULE_NAME)
         self.configure_window.open = module_info.configuring if module_info else False
 
+        if self.configure_window.open:
+            PyImGui.set_next_window_size_constraints(CONFIGURE_WINDOW_MIN_SIZE, CONFIGURE_WINDOW_MAX_SIZE)
         if self.configure_window.begin(None):
             self.configure_window.window_flags = PyImGui.WindowFlags.NoFlag
             style = ImGui.get_style()
@@ -162,8 +166,8 @@ class GUI:
                     ImGui.end_tab_item()
                     
                 if ImGui.begin_tab_item("Layout"): 
-                    if ImGui.begin_table("layout_table", 2, PyImGui.TableFlags.NoFlag, 0, 0):
-                        PyImGui.table_setup_column("left", PyImGui.TableColumnFlags.NoFlag, 0.5)
+                    if ImGui.begin_table("layout_table", 2, PyImGui.TableFlags.SizingStretchProp, 0, 0):
+                        PyImGui.table_setup_column("left", PyImGui.TableColumnFlags.WidthStretch, 0.5)
                         PyImGui.table_setup_column("right", PyImGui.TableColumnFlags.WidthFixed, regions_width)
                         
                         PyImGui.table_next_row()
@@ -199,10 +203,10 @@ class GUI:
                             style.ItemSpacing.push_style_var(0, 0)
                             style.CellPadding.push_style_var(0, 0)
                                 
-                            if ImGui.begin_table("screen_size_table", 3, PyImGui.TableFlags.NoFlag, avail[0] - 5, 25):
-                                PyImGui.table_setup_column("Width", PyImGui.TableColumnFlags.NoFlag, 0.5)
+                            if ImGui.begin_table("screen_size_table", 3, PyImGui.TableFlags.SizingStretchProp, avail[0] - 5, 25):
+                                PyImGui.table_setup_column("Width", PyImGui.TableColumnFlags.WidthStretch, 0.5)
                                 PyImGui.table_setup_column("x", PyImGui.TableColumnFlags.WidthFixed, 30)
-                                PyImGui.table_setup_column("Height", PyImGui.TableColumnFlags.NoFlag, 0.5)
+                                PyImGui.table_setup_column("Height", PyImGui.TableColumnFlags.WidthStretch, 0.5)
                                     
                                 PyImGui.table_next_row()
                                 PyImGui.table_next_column()
@@ -352,11 +356,16 @@ class GUI:
                                 
                                 new_active = self.settings.active_region
                                 
-                                for region in self.settings.regions:
+                                for region_index, region in enumerate(self.settings.regions):
                                     if region == self.settings.active_region:       
                                         style.ChildBg.push_color(region.color.opacity(0.15).to_tuple())
                                         style.Border.push_color(region.color.to_tuple())
-                                        if ImGui.begin_child("active_region_edit", (0, 285), border=True, flags=PyImGui.WindowFlags.NoScrollbar):
+                                        if ImGui.begin_child(
+                                            f"active_region_edit_{region_index}",
+                                            (0, 285),
+                                            border=True,
+                                            flags=PyImGui.WindowFlags.NoScrollbar,
+                                        ):
                                             style.Border.pop_color()
                                             style.ChildBg.pop_color()
                                             ImGui.text_centered(region.name, PyImGui.get_content_region_avail()[0])
@@ -388,7 +397,9 @@ class GUI:
                                             region.h = ImGui.input_int("Height", region.h, 10, 1, PyImGui.InputTextFlags.AutoSelectAll)           
                                             color = PyImGui.color_edit4("Color", region.color.color_tuple)
                                             if color != region.color.color_tuple:
-                                                region.color = Color.from_tuple(color)                   
+                                                region.color = Color.from_tuple(
+                                                    (float(color[0]), float(color[1]), float(color[2]), float(color[3]))
+                                                )
                                             region.main = ImGui.checkbox("Main Region", region.main)
                                             
                                             if region.main:
@@ -410,7 +421,11 @@ class GUI:
                                         style.ButtonActive.push_color(region.color.saturate(0.4).rgb_tuple)
                                         style.ButtonTextureBackgroundActive.push_color(region.color.saturate(0.4).rgb_tuple)
                                         
-                                        if ImGui.button(f"{region.name} ({region.w}x{region.h} @ {region.x},{region.y})", PyImGui.get_content_region_avail()[0], 20):
+                                        if ImGui.button(
+                                            f"{region.name} ({region.w}x{region.h} @ {region.x},{region.y})##region_editor_{region_index}",
+                                            PyImGui.get_content_region_avail()[0],
+                                            20,
+                                        ):
                                             new_active = region
                                                 
                                         style.Button.pop_color()
@@ -813,7 +828,15 @@ class GUI:
                         
                         if own_region and not ctrl_pressed:
                             ConsoleLog(MODULE_NAME, f"Moving own client to own region {own_region.name}.")
-                            ctypes.windll.user32.SetWindowPos(Console.get_gw_window_handle(), -1, own_region.x, own_region.y, own_region.w, own_region.h, 0)
+                            ctypes.windll.user32.SetWindowPos(
+                                PySystem.Console.get_gw_window_handle(),
+                                -1,
+                                own_region.x,
+                                own_region.y,
+                                own_region.w,
+                                own_region.h,
+                                0,
+                            )
                             # Console.set_window_geometry(own_region.x, own_region.y, own_region.w, own_region.h)
                             # Console.set_borderless(False)
         

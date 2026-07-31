@@ -29,6 +29,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (TabIcon,
                             )         
 from Sources.ApoSource.InvPlus.Coroutines import IdentifyCheckedItems
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 class XunlaiModule:   
     def __init__(self, inventory_frame: Frame):
@@ -81,12 +82,12 @@ class XunlaiModule:
                 _,rarity = Item.Rarity.GetRarity(item_id)
                 slot = Item.GetSlot(item_id)
 
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(),_get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
                 
-                left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
+                left,top, right, bottom = frame_id.coords()
                 if ImGui.floating_button(caption=IconsFontAwesome5.ICON_CARET_SQUARE_RIGHT,
                                         name=f"DepositButton{item_id}",
                                         x=right-25, 
@@ -113,12 +114,12 @@ class XunlaiModule:
                 _,rarity = Item.Rarity.GetRarity(item_id)
                 slot = Item.GetSlot(item_id)
 
-                frame_id = UIManager.GetChildFrameID(_get_parent_hash(),_get_offsets(bag_id, slot))
-                is_visible = UIManager.FrameExists(frame_id)
+                frame_id = GWFrame.bag_slot(bag_id, slot)
+                is_visible = frame_id.exists
                 if not is_visible:
                     continue
                 
-                left,top, right, bottom = UIManager.GetFrameCoords(frame_id)
+                left,top, right, bottom = frame_id.coords()
                 if ImGui.floating_button(caption=IconsFontAwesome5.ICON_CARET_SQUARE_LEFT,
                                         name=f"WithdrawButton{item_id}",
                                         x=right-25, 

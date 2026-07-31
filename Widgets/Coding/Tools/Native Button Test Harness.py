@@ -23,6 +23,8 @@ from Py4GWCoreLib.native_src.methods.ButtonMethods import (
     CtlBtnSetTextLiteral_Func,
 )
 from Py4GWCoreLib.native_src.internals.native_function import NativeFunction
+from Py4GWCoreLib.FrameTree import Frame, FrameTree
+from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 # â”€â”€ Metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 MODULE_NAME = "Native Button Test Harness"
@@ -97,13 +99,13 @@ def _frame_summary(frame_id: int) -> str:
     if frame_id <= 0:
         return "frame_id=0 (INVALID)"
     try:
-        frame = UIManager.GetFrameByID(frame_id)
-        left, top, right, bottom = UIManager.GetFrameCoords(frame_id)
+        frame = (lambda fid: Frame.from_id(fid))(frame_id)
+        left, top, right, bottom = Frame.from_id(frame_id).coords()
         children = _list_children(frame_id)
         return (
             f"frame_id={frame_id} "
             f"parent_id={int(frame.parent_id)} "
-            f"child_offset=0x{int(frame.child_offset_id):X} "
+            f"child_offset=0x{int(frame.code):X} "
             f"created={bool(frame.is_created)} "
             f"visible={bool(frame.is_visible)} "
             f"state=0x{int(frame.frame_state):X} "
@@ -117,9 +119,9 @@ def _frame_summary(frame_id: int) -> str:
 def _list_children(parent_id: int, limit: int = 16) -> list[int]:
     """List child frame IDs for a parent."""
     children = []
-    for candidate_id in UIManager.GetFrameArray():
+    for candidate_id in FrameTree.all_ids():
         try:
-            frame = UIManager.GetFrameByID(candidate_id)
+            frame = (lambda fid: Frame.from_id(fid))(candidate_id)
             if int(frame.parent_id) == parent_id:
                 children.append(int(candidate_id))
         except Exception:
@@ -134,10 +136,10 @@ def _scan_frame_tree(root_id: int, depth: int = 0, max_depth: int = 3) -> None:
         return
     indent = "  " * depth
     try:
-        frame = UIManager.GetFrameByID(root_id)
-        left, top, right, bottom = UIManager.GetFrameCoords(root_id)
+        frame = (lambda fid: Frame.from_id(fid))(root_id)
+        left, top, right, bottom = Frame.from_id(root_id).coords()
         _log(
-            f"{indent}[{root_id}] offset=0x{int(frame.child_offset_id):X} "
+            f"{indent}[{root_id}] offset=0x{int(frame.code):X} "
             f"created={bool(frame.is_created)} visible={bool(frame.is_visible)} "
             f"rect=({int(left)},{int(top)})-({int(right)},{int(bottom)})"
         )
@@ -202,7 +204,7 @@ def _verify_scanners() -> dict:
 # =========================================================================
 
 def _current_window_id() -> int:
-    return int(UIManager.GetFrameIDByLabel(WINDOW_LABEL) or 0)
+    return int((lambda lbl: LiveTree.by_label(lbl).frame_id)(WINDOW_LABEL) or 0)
 
 
 def _dump_state(prefix: str) -> None:
@@ -305,11 +307,11 @@ def _create_button() -> None:
                 _log(f"[call #{call_id}] Button created successfully! frame_id={LAST_BUTTON_ID}")
                 # Verify button exists
                 try:
-                    frame = UIManager.GetFrameByID(LAST_BUTTON_ID)
+                    frame = (lambda fid: Frame.from_id(fid))(LAST_BUTTON_ID)
                     _log(f"[call #{call_id}] Button frame: created={bool(frame.is_created)}, "
                          f"visible={bool(frame.is_visible)}, "
                          f"parent_id={int(frame.parent_id)}, "
-                         f"child_offset=0x{int(frame.child_offset_id):X}")
+                         f"child_offset=0x{int(frame.code):X}")
                 except Exception as exc:
                     _error(f"[call #{call_id}] Button frame_id={LAST_BUTTON_ID} but GetFrameByID failed: {exc}")
 

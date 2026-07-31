@@ -32,6 +32,7 @@ from Sources.marks_sources.mods_parser import MatchedWeaponModInfo
 from Sources.marks_sources.mods_parser import parse_modifiers
 from Py4GWCoreLib.routines_src.behaviourtrees_src.botting_inventory import DEFAULT_NPC_SELECTORS
 from Py4GWCoreLib.routines_src.behaviourtrees_src.botting_inventory import SUPPORTED_MAP_NPC_SELECTORS
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 MODULE_NAME = "Merchant Rules"
@@ -18346,8 +18347,7 @@ class MerchantRulesWidget:
         try:
             from Py4GWCoreLib.UIManager import UIManager
 
-            frame_id = int(UIManager.GetFrameIDByHash(MERCHANT_FRAME_HASH) or 0)
-            return frame_id > 0 and bool(UIManager.FrameExists(frame_id))
+            return Frame(FrameId.Merchant).is_usable
         except Exception:
             return False
 
@@ -20292,11 +20292,11 @@ class MerchantRulesWidget:
         from Py4GWCoreLib.Inventory import Inventory
         from Py4GWCoreLib.UIManager import UIManager
 
-        confirm_frame_id = Inventory._get_salvage_choice_confirm_frame_id()
-        if confirm_frame_id == 0:
+        confirm_frame = Inventory._salvage_confirm()
+        if not confirm_frame.exists:
             return "confirm_missing"
 
-        ActionQueueManager().AddAction("SALVAGE", UIManager.FrameClick, confirm_frame_id)
+        ActionQueueManager().AddAction("SALVAGE", confirm_frame.click)
         queue_drained = yield from self._wait_for_action_queue_empty("SALVAGE", timeout_ms=5000, step_ms=50)
         if not queue_drained:
             return "queue_timeout"
@@ -20336,21 +20336,14 @@ class MerchantRulesWidget:
         except Exception:
             return 0
 
-        candidate_frame_ids = [
-            UIManager.GetChildFrameID(140452905, [6, 98, 6]),
-            UIManager.GetChildFrameID(140452905, [6, 100, 6]),
-            UIManager.GetChildFrameID(140452905, [6, 110, 6]),
-            UIManager.GetChildFrameID(140452905, [6, 111, 6]),
-            UIManager.GetChildFrameID(684387150, [0, 6]),
-        ]
-        for frame_id in candidate_frame_ids:
-            try:
-                safe_frame_id = int(frame_id or 0)
-            except Exception:
-                safe_frame_id = 0
-            if safe_frame_id > 0 and UIManager.FrameExists(safe_frame_id):
-                return safe_frame_id
-        return 0
+        for candidate in (
+            Frame(FrameId.ScreenFrame.C6.LesserSalvageWindow.SalvageWithLesserKitConfirm),
+            Frame(FrameId.ScreenFrame.C6.SalvageMaterialsDialog.YesButton),
+            Frame(FrameId.SalvageWindow.OptionsWindowConfirmMaterialsWindow.Confirm),
+        ):
+            if candidate.exists:
+                return candidate
+        return None
 
     def _wait_and_confirm_materials_popup(self, item_id: int, kit_id: int, *, timeout_ms: int = 2000):
         from Py4GWCoreLib.UIManager import UIManager
@@ -20358,14 +20351,14 @@ class MerchantRulesWidget:
         waited_ms = 0
         yield from Routines.Yield.wait(100)
         while waited_ms <= max(0, int(timeout_ms)):
-            yes_frame_id = self._get_materials_confirm_yes_frame_id()
-            if yes_frame_id > 0:
+            yes_frame = self._get_materials_confirm_yes_frame_id()
+            if yes_frame is not None and yes_frame.exists:
                 self._salvage_flow_log(
                     f"MR Salvage materials confirmation visible for item {int(item_id)} "
                     f"with {self._get_salvage_kit_label(int(kit_id))}; accepting materials confirmation."
                 )
-                ActionQueueManager().AddAction("SALVAGE", UIManager.FrameClick, yes_frame_id)
-                ActionQueueManager().AddAction("SALVAGE", UIManager.TestMouseClickAction, yes_frame_id, 0, 0)
+                ActionQueueManager().AddAction("SALVAGE", yes_frame.click)
+                ActionQueueManager().AddAction("SALVAGE", yes_frame.mouse_click_action, 0, 0)
                 queue_drained = yield from self._wait_for_action_queue_empty("SALVAGE", timeout_ms=5000, step_ms=50)
                 if not queue_drained:
                     return "queue_timeout"

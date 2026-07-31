@@ -12,6 +12,7 @@ from Py4GWCoreLib.py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHand
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from .globals import *
 from .helpers import *
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 def EquipStarterBow() -> BehaviorTree:
@@ -715,8 +716,8 @@ def WarriorMerchantPrepAndCleanup(
     def _is_merchant_window_open() -> bool:
         from Py4GWCoreLib.UIManager import UIManager
 
-        merchant_frame_id = UIManager.GetFrameIDByHash(merchant_frame_hash)
-        return merchant_frame_id != 0 and UIManager.FrameExists(merchant_frame_id)
+        merchant_frame_id = Frame(FrameId.Merchant)
+        return merchant_frame_id.is_usable
 
     return BehaviorTree(
         BehaviorTree.SelectorNode(
@@ -879,8 +880,8 @@ def TryAcquireBonusShield() -> BehaviorTree:
         def _is_merchant_window_open() -> bool:
             from Py4GWCoreLib.UIManager import UIManager
 
-            merchant_frame_id = UIManager.GetFrameIDByHash(merchant_frame_hash)
-            return merchant_frame_id != 0 and UIManager.FrameExists(merchant_frame_id)
+            merchant_frame_id = Frame(FrameId.Merchant)
+            return merchant_frame_id.is_usable
 
         return BehaviorTree(
             BehaviorTree.SequenceNode(

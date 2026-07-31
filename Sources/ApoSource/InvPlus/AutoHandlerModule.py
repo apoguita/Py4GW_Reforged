@@ -34,6 +34,7 @@ from Sources.ApoSource.InvPlus.GUI_Helpers import (TabIcon,
                                             XUNLAI_VAULT_FRAME_HASH
                             )         
 from Sources.ApoSource.InvPlus.Coroutines import IdentifyCheckedItems
+from Py4GWCoreLib.FrameTree import Frame as GWFrame, FrameId
 
 class AutoHandlderModule:
     def __init__(self, inventory_frame: Frame):
@@ -192,8 +193,8 @@ class AutoHandlderModule:
     def DrawAutoHandler(self):
         global global_vars
         
-        content_frame = UIManager.GetChildFrameID(_get_parent_hash(), [0])
-        left, top, right, bottom = UIManager.GetFrameCoords(content_frame)
+        content_frame = GWFrame(FrameId.InventoryBagsWindow.Content)
+        left, top, right, bottom = content_frame.coords()
         y_offset = 2
         x_offset = 0
         height = bottom - top + y_offset
@@ -203,7 +204,7 @@ class AutoHandlderModule:
         if height < 100:
             height = 100
             
-        UIManager().DrawFrame(content_frame, Utils.RGBToColor(0, 0, 0, 255))
+        content_frame.draw(Utils.RGBToColor(0, 0, 0, 255))
         
         #flags= ImGui.PushTransparentWindow()
         
@@ -374,7 +375,7 @@ class AutoHandlderModule:
         auto_handler = self.auto_handler
         if not Routines.Checks.Map.MapValid():
             self.inventory_frame_exists = False
-            self.inventory_frame_id = 0
+            self.inventory_frame = None
             auto_handler.lookup_throttle.Reset()
             auto_handler.outpost_handled = False
             return False
@@ -406,18 +407,19 @@ class AutoHandlderModule:
         
         if not UIManager.IsWindowVisible(WindowID.WindowID_InventoryBags):
             self.inventory_frame_exists = False
-            self.inventory_frame_id = 0
+            self.inventory_frame = None
             return False
         
         if not self.inventory_check_throttle_timer.IsExpired():
             return True
         
-        self.inventory_frame_id = UIManager.GetFrameIDByHash(INVENTORY_FRAME_HASH)
-        self.inventory_frame_exists = UIManager.FrameExists(self.inventory_frame_id)
+        inventory_frame = GWFrame(FrameId.InventoryBagsWindow)
+        self.inventory_frame_exists = inventory_frame.exists
+        self.inventory_frame = inventory_frame if self.inventory_frame_exists else None
         
         return self.inventory_frame_exists  
     
     def get_inventory_frame(self) -> int:
         if not self.inventory_frame_exists:
             return 0
-        return self.inventory_frame_id
+        return self.inventory_frame

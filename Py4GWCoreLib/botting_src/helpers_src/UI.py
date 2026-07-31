@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     
 from .decorators import _yield_step, _fsm_step
 from typing import Any, Generator, TYPE_CHECKING, Tuple, List, Optional, Callable
+from ...FrameTree import Frame, FrameId
 
 
 #region UI
@@ -22,15 +23,15 @@ class _UI:
         from ...UIManager import UIManager
         global bot  
         yield from Routines.Yield.wait(500)
-        cancel_button_frame_id = UIManager.GetFrameIDByHash(784833442)  # Cancel button frame ID
-        if not cancel_button_frame_id:
+        cancel_button_frame_id = Frame(FrameId.CancelButton)  # Cancel button frame ID
+        if not cancel_button_frame_id.exists:
             return  # No skill reward window open, nothing to cancel
         
-        while not UIManager.FrameExists(cancel_button_frame_id):
+        while not cancel_button_frame_id.exists:
             yield from Routines.Yield.wait(1000)
             return
         
-        UIManager.FrameClick(cancel_button_frame_id)
+        cancel_button_frame_id.click()
         yield from Routines.Yield.wait(1000)
         
     def iter_open_all_bags(self):
@@ -52,16 +53,16 @@ class _UI:
         yield from Routines.Yield.Keybinds.ToggleAllBags()
         
         
-    def iter_frame_click(self, frame_id:int):
+    def iter_frame_click(self, frame):
         from ...Routines import Routines
         from ...UIManager import UIManager
         from ...Py4GWcorelib import ConsoleLog, Console
         yield from Routines.Yield.wait(500)
-        if not UIManager.FrameExists(frame_id):
-            ConsoleLog("UI Helper", f"Frame ID {frame_id} does not exist.", Console.MessageType.Error)
+        if not frame.is_usable:
+            ConsoleLog("UI Helper", f"Frame {frame} does not exist.", Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return
-        UIManager.FrameClick(frame_id)
+        frame.click()
         yield from Routines.Yield.wait(500)
         
     def iter_frame_click_on_bag_slot(self, bag_id:int, slot:int):
@@ -77,13 +78,13 @@ class _UI:
         def _get_offsets(bag_id:int, slot:int):
             return [0,0,0,bag_id-1,slot+2]
 
-        frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-        if not UIManager.FrameExists(frame_id):
+        frame_id = Frame.bag_slot(bag_id, slot)
+        if not frame_id.exists:
             ConsoleLog("UI Helper", f"Frame does not exist for bag {bag_id} slot {slot}.", Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return
         
-        UIManager.FrameClick(frame_id)
+        frame_id.click()
         yield from Routines.Yield.wait(125)
         
     def iter_bag_item_click(self, bag_id:int, slot:int):
@@ -99,13 +100,13 @@ class _UI:
         def _get_offsets(bag_id:int, slot:int):
             return [0,0,0,bag_id-1,slot+2]
 
-        frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-        if not UIManager.FrameExists(frame_id):
+        frame_id = Frame.bag_slot(bag_id, slot)
+        if not frame_id.exists:
             ConsoleLog("UI Helper", f"Frame does not exist for bag {bag_id} slot {slot}.", Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return
         
-        UIManager.TestMouseAction(frame_id=frame_id, current_state=4, wparam_value=0, lparam_value=0)
+        frame_id.mouse_action(4)
         yield from Routines.Yield.wait(125)
 
         
@@ -122,15 +123,15 @@ class _UI:
         def _get_offsets(bag_id:int, slot:int):
             return [0,0,0,bag_id-1,slot+2]
 
-        frame_id = UIManager.GetChildFrameID(_get_parent_hash(), _get_offsets(bag_id, slot))
-        if not UIManager.FrameExists(frame_id):
+        frame_id = Frame.bag_slot(bag_id, slot)
+        if not frame_id.exists:
             ConsoleLog("UI Helper", f"Frame does not exist for bag {bag_id} slot {slot}.", Console.MessageType.Error)
             self._Events.on_unmanaged_fail()
             return
 
-        UIManager.TestMouseAction(frame_id=frame_id, current_state=9, wparam_value=0, lparam_value=0)
+        frame_id.mouse_action(9)
         yield from Routines.Yield.wait(60)
-        UIManager.TestMouseClickAction(frame_id=frame_id, current_state=9, wparam_value=0, lparam_value=0)
+        frame_id.mouse_click_action(9)
         yield from Routines.Yield.wait(125)
     
     @_yield_step(label="CancelSkillRewardWindow", counter_key="CANCEL_SKILL_REWARD_WINDOW")
@@ -167,8 +168,8 @@ class _UI:
         yield from self.iter_close_all_bags()
         
     @_yield_step(label="FrameClick", counter_key="FRAME_CLICK")
-    def frame_click(self, frame_id:int):
-        yield from self.iter_frame_click(frame_id)
+    def frame_click(self, frame):
+        yield from self.iter_frame_click(frame)
         
     @_yield_step(label="FrameClickOnBagSlot", counter_key="FRAME_CLICK_ON_BAG_SLOT")
     def frame_click_on_bag_slot(self, bag_id:int, slot:int):

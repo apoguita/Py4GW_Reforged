@@ -13,6 +13,7 @@ from Py4GWCoreLib import Bags
 from Py4GWCoreLib import Trading
 from Py4GWCoreLib import ModelID
 from Py4GWCoreLib import GLOBAL_CACHE
+from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 
@@ -180,8 +181,8 @@ def SalvageCheckedItems(salvage_checkboxes: Dict[int, bool], keep_salvage_kits: 
 
             if keep_salvage_kits > 0:
                 MERCHANT_FRAME = 3613855137
-                merchant_frame_id = UIManager.GetFrameIDByHash(MERCHANT_FRAME)
-                merchant_frame_exists = UIManager.FrameExists(merchant_frame_id)
+                merchant_frame_id = Frame(FrameId.Merchant)
+                merchant_frame_exists = merchant_frame_id.exists
                 if not merchant_frame_exists:
                     break
                 salvage_kit_model = ModelID.Salvage_Kit.value
