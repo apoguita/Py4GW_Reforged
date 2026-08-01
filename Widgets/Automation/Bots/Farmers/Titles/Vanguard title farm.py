@@ -206,6 +206,7 @@ def ConfigureAggressiveEnv(bot: Botting) -> None:
 
 # region Bot Routine
 def Routine(bot: Botting) -> None:
+    _ensure_mode_loaded(bot)
     PrepareForCombat(bot)
     Fight(bot)
 
@@ -684,6 +685,14 @@ def _load_mode_setting(bot: Botting) -> None:
     cfg = Settings(ini_key, "account")
     raw = cfg.get_bool(_SETTINGS_SECTION, _MULTIBOX_ALTS_KEY, False)
     _party_mode = 1 if raw else 0
+
+
+def _ensure_mode_loaded(bot: Botting) -> None:
+    global _mode_loaded
+    if _mode_loaded:
+        return
+    _load_mode_setting(bot)
+    _mode_loaded = True
 
 
 def _save_mode_setting(bot: Botting) -> None:
