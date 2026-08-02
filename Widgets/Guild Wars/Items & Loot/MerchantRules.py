@@ -10,6 +10,7 @@ salvage APIs, storage capacity, or preview consistency cannot be verified.
 """
 
 import json
+import math
 import os
 import re
 import time
@@ -1013,12 +1014,6 @@ DEPOSIT_FILTER_SUMMONING_FRAGMENTS: tuple[str, ...] = (
     "support flare",
 )
 OUTPOST_SERVICE_SEARCH_MAX_DIST = 15_000.0
-MERCHANT_NAME_QUERY = "[Merchant]"
-MATERIAL_TRADER_NAME_QUERY = "[Material Trader]"
-RARE_MATERIAL_TRADER_NAME_QUERY = "[Rare Material Trader]"
-RUNE_TRADER_NAME_QUERY = "Rune Trader"
-SCROLL_TRADER_NAME_QUERY = "Scroll Trader"
-RARE_SCROLL_TRADER_NAME_QUERY = "[Rare Scroll Trader]"
 XUNLAI_AGENT_NAME_QUERY = "Xunlai Agent"
 XUNLAI_CHEST_NAME_QUERY = "Xunlai Chest"
 XUNLAI_AGENT_MODEL_IDS: tuple[int, ...] = (220, 221, 3287)
@@ -3413,6 +3408,7 @@ class PlannedTraderSale:
     item_id: int
     model_id: int
     label: str
+    expected_rune_identifiers: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass
@@ -3456,6 +3452,144 @@ class PlannedConsumableCraft:
     vendor_name: str
     coords: tuple[float, float]
     cleanup: PurchaseTargetCleanup = field(default_factory=PurchaseTargetCleanup)
+
+
+@dataclass(frozen=True)
+class MerchantServiceSelector:
+    """Authoritative map-specific identity and validation data for one service NPC."""
+
+    label: str
+    encoded_identity: tuple[int, ...]
+    model_id: int
+    expected_xy: tuple[float, float]
+    coordinate_tolerance: float = 75.0
+
+
+MERCHANT_RULES_MAP_SERVICE_SELECTORS: dict[
+    int,
+    dict[str, tuple[MerchantServiceSelector, ...]],
+] = {
+    EMBARK_BEACH_MAP_ID: {
+        MERCHANT_TYPE_MERCHANT: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(2, 129, 173, 31, 237, 205, 243, 155, 255, 87, 0, 0),
+                model_id=3330,
+                expected_xy=(-2750.0, 731.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(2, 129, 174, 31, 171, 160, 102, 166, 149, 27, 0, 0),
+                model_id=4775,
+                expected_xy=(2326.0, 3681.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(2, 129, 172, 31, 139, 192, 228, 198, 113, 51, 0, 0),
+                model_id=2090,
+                expected_xy=(2158.0, -2006.0),
+            ),
+        ),
+        MERCHANT_TYPE_MATERIALS: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(254, 109, 30, 235, 107, 191, 42, 41, 0, 0),
+                model_id=3340,
+                expected_xy=(-2561.0, 259.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 88, 32, 99, 210, 77, 201, 205, 48, 0, 0),
+                model_id=4781,
+                expected_xy=(2406.0, 4190.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(92, 45, 80, 202, 145, 215, 194, 67, 0, 0),
+                model_id=2071,
+                expected_xy=(2997.0, -2271.0),
+            ),
+        ),
+        MERCHANT_TYPE_RARE_MATERIALS: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(255, 109, 135, 153, 184, 205, 30, 37, 0, 0),
+                model_id=3343,
+                expected_xy=(-2692.0, 198.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 199, 45, 144, 183, 23, 138, 240, 116, 0, 0),
+                model_id=4784,
+                expected_xy=(2537.0, 4024.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(93, 45, 63, 224, 133, 233, 124, 106, 0, 0),
+                model_id=2033,
+                expected_xy=(2928.0, -2452.0),
+            ),
+        ),
+        MERCHANT_TYPE_RUNE_TRADER: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(2, 129, 124, 114, 238, 158, 123, 209, 57, 127, 0, 0),
+                model_id=5732,
+                expected_xy=(-2755.0, 1110.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 160, 33, 49, 157, 17, 141, 9, 99, 0, 0),
+                model_id=5732,
+                expected_xy=(1755.0, 3822.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(94, 45, 111, 230, 232, 194, 214, 12, 0, 0),
+                model_id=2035,
+                expected_xy=(1598.0, -1572.0),
+            ),
+        ),
+        MERCHANT_TYPE_SCROLL_TRADER: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(1, 110, 147, 146, 148, 160, 13, 98, 0, 0),
+                model_id=3344,
+                expected_xy=(-2970.0, 8.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 219, 63, 48, 212, 52, 142, 112, 113, 0, 0),
+                model_id=5453,
+                expected_xy=(1816.0, 3250.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(137, 45, 47, 165, 126, 187, 122, 40, 0, 0),
+                model_id=2100,
+                expected_xy=(2556.0, -2853.0),
+            ),
+        ),
+    },
+    179: {
+        MERCHANT_TYPE_RUNE_TRADER: (
+            MerchantServiceSelector(
+                label="Isle of the Dead",
+                encoded_identity=(220, 12, 0, 0),
+                model_id=203,
+                expected_xy=(-3654.0, -2400.0),
+            ),
+        ),
+        MERCHANT_TYPE_SCROLL_TRADER: (
+            MerchantServiceSelector(
+                label="Isle of the Dead",
+                encoded_identity=(221, 12, 0, 0),
+                model_id=207,
+                expected_xy=(-4033.0, -3860.0),
+            ),
+        ),
+    },
+}
 
 
 @dataclass
@@ -4362,6 +4496,71 @@ def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
         return False
 
 
+def _coerce_agent_xy(value: object) -> tuple[float, float] | None:
+    if not isinstance(value, (tuple, list)) or len(value) < 2:
+        return None
+    try:
+        x = float(value[0])
+        y = float(value[1])
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(x) or not math.isfinite(y):
+        return None
+    return x, y
+
+
+def _get_agent_search_origin(agent_api: object) -> tuple[tuple[float, float] | None, str]:
+    """Prefer the live player agent and use the legacy position only when that API is absent."""
+
+    get_player_agent_id = getattr(Player, "GetAgentID", None)
+    get_agent_xy = getattr(agent_api, "GetXY", None)
+    if callable(get_player_agent_id) and callable(get_agent_xy):
+        try:
+            player_agent_id = int(get_player_agent_id() or 0)
+            if player_agent_id <= 0:
+                return None, "player agent unavailable"
+            fresh_xy = _coerce_agent_xy(get_agent_xy(player_agent_id))
+            if fresh_xy is None:
+                return None, "player agent coordinates unavailable"
+            return fresh_xy, "player agent"
+        except Exception:
+            # If the live-agent path exists but fails, an older Player.GetXY value may belong
+            # to the previous map instance. Fail closed instead of searching from stale data.
+            return None, "player agent coordinates unavailable"
+
+    try:
+        fallback_xy = _coerce_agent_xy(Player.GetXY())
+    except Exception:
+        fallback_xy = None
+    if fallback_xy is None:
+        return None, "player coordinates unavailable"
+    return fallback_xy, "Player.GetXY fallback"
+
+
+def _normalize_vendor_encoded_identity(raw_identity: object) -> tuple[int, ...] | None:
+    """Return exact encoded bytes without invoking any string decoder."""
+
+    if not isinstance(raw_identity, (bytes, bytearray, list, tuple)):
+        return None
+    try:
+        values = tuple(int(value) for value in raw_identity)
+    except (TypeError, ValueError):
+        return None
+    if any(value < 0 or value > 255 for value in values):
+        return None
+    return values
+
+
+def _named_agent_target_has_authoritative_identity(agent_kind: str, target_key: object) -> bool:
+    target = _get_named_agent_target_definition(agent_kind, target_key)
+    if target is None:
+        return False
+    if getattr(target, "encoded_names", ()):
+        return True
+    model_id = getattr(target, "model_id", None)
+    return model_id is not None and _safe_int(model_id, 0) > 0
+
+
 def _log_agent_selector_failure(recipe_name: object, message: str) -> None:
     try:
         ConsoleLog(f"Recipe:{str(recipe_name or MODULE_NAME)}", message)
@@ -4435,7 +4634,15 @@ def resolve_agent_xy_from_step(
             _log_agent_selector_failure(recipe_name, f"Unsupported agent resolver kind: {safe_agent_kind!r}")
         return None
 
-    px, py = Player.GetXY()
+    player_xy, player_xy_source = _get_agent_search_origin(Agent)
+    if player_xy is None:
+        if log_failures:
+            _log_agent_selector_failure(
+                recipe_name,
+                f"Could not resolve a safe player position at index {step_idx}: {player_xy_source}",
+            )
+        return None
+    px, py = player_xy
     agent_array = AgentArray.Filter.ByDistance(agent_array, (px, py), max_dist)
     agent_array = AgentArray.Sort.ByDistance(agent_array, (px, py))
     nearest = _parse_agent_selector_bool(safe_step.get("nearest", False), False)
@@ -5446,6 +5653,20 @@ def _normalize_after_purchase_action(action: object) -> str:
 
 def _normalize_rune_identifier(identifier: object) -> str:
     return str(identifier or "").strip()
+
+
+def _normalize_rune_identifier_tuple(identifiers: object) -> tuple[str, ...]:
+    if not isinstance(identifiers, (list, tuple, set, frozenset)):
+        return ()
+    return tuple(
+        sorted(
+            {
+                safe_identifier
+                for identifier in identifiers
+                if (safe_identifier := _normalize_rune_identifier(identifier))
+            }
+        )
+    )
 
 
 def _normalize_rune_trader_targets(raw_targets: object) -> list[RuneTraderTarget]:
@@ -13129,12 +13350,46 @@ class MerchantRulesWidget:
             return 0
         return model_id
 
+    def _get_runtime_label_model_ids(self, label: object) -> set[int]:
+        plain_label = _strip_item_display_markup(str(label or "")).strip()
+        if not plain_label:
+            return set()
+        candidate_labels = [plain_label]
+        without_quantity = re.sub(r"^\d+\s+", "", plain_label).strip()
+        if without_quantity and without_quantity != plain_label:
+            candidate_labels.append(without_quantity)
+
+        matching_model_ids: set[int] = set()
+        for candidate_label in candidate_labels:
+            normalized_name = _normalize_catalog_search_text(candidate_label)
+            matching_model_ids.update(
+                max(0, _safe_int(model_id, 0))
+                for model_id in self.catalog_alias_to_model_ids.get(normalized_name, [])
+                if max(0, _safe_int(model_id, 0)) > 0
+            )
+        return matching_model_ids
+
+    def _runtime_item_label_contradicts_model(self, label: object, model_id: int) -> bool:
+        safe_model_id = max(0, _safe_int(model_id, 0))
+        plain_label = _strip_item_display_markup(str(label or "")).strip()
+        if safe_model_id <= 0 or not plain_label:
+            return False
+
+        generic_match = re.fullmatch(r"Model\s+(\d+)", plain_label, flags=re.IGNORECASE)
+        if generic_match is not None:
+            return max(0, _safe_int(generic_match.group(1), 0)) != safe_model_id
+
+        matching_model_ids = self._get_runtime_label_model_ids(plain_label)
+        return bool(matching_model_ids and safe_model_id not in matching_model_ids)
+
     def _format_preview_item_label(self, entry: ExecutionPlanEntry) -> str:
         stored_label = str(getattr(entry, "label", "") or "").strip()
         explicit_model_id = max(0, _safe_int(getattr(entry, "model_id", 0), 0))
         model_id = explicit_model_id if explicit_model_id > 0 else self._extract_preview_label_model_id(stored_label)
         if model_id <= 0:
             return stored_label
+        if self._runtime_item_label_contradicts_model(stored_label, model_id):
+            stored_label = ""
 
         catalog_name = str(self._get_model_name(model_id) or "").strip()
         label_without_model = stored_label
@@ -15575,15 +15830,16 @@ class MerchantRulesWidget:
     def _resolve_rune_trader_coords(self, map_id: int, *, log_failures: bool = True) -> tuple[float, float] | None:
         selector_name = str(SUPPORTED_MAP_RUNE_TRADER_SELECTORS.get(int(map_id), "") or "").strip()
         return self._resolve_service_coords(
+            map_id=map_id,
+            service_type=MERCHANT_TYPE_RUNE_TRADER,
             selector_name=selector_name,
-            name_query=RUNE_TRADER_NAME_QUERY,
             log_failures=log_failures,
         )
 
-    def _get_scroll_trader_lookup(self) -> tuple[str, str]:
+    def _get_scroll_trader_lookup(self) -> str:
         if Map.IsGuildHall():
-            return "scroll_trader", SCROLL_TRADER_NAME_QUERY
-        return "rare_scroll_trader", RARE_SCROLL_TRADER_NAME_QUERY
+            return "scroll_trader"
+        return "rare_scroll_trader"
 
     def _get_scroll_trader_service_label(self) -> str:
         return "Scroll Trader" if Map.IsGuildHall() else "Rare Scroll Trader"
@@ -15595,46 +15851,247 @@ class MerchantRulesWidget:
         *,
         log_failures: bool = True,
     ) -> tuple[float, float] | None:
-        selector_key, name_query = self._get_scroll_trader_lookup()
+        selector_key = self._get_scroll_trader_lookup()
         selector_name = str(SUPPORTED_MAP_SCROLL_TRADER_SELECTORS.get(int(map_id), "") or "").strip()
         if not selector_name and selector_data:
             selector_name = str(selector_data.get(selector_key, "") or "").strip()
         return self._resolve_service_coords(
+            map_id=map_id,
+            service_type=MERCHANT_TYPE_SCROLL_TRADER,
             selector_name=selector_name,
-            name_query=name_query,
             log_failures=log_failures,
         )
+
+    def _resolve_map_specific_service_coords(
+        self,
+        *,
+        map_id: int,
+        service_type: str,
+        selectors: tuple[MerchantServiceSelector, ...],
+        log_failures: bool,
+    ) -> tuple[float, float] | None:
+        safe_map_id = max(0, _safe_int(map_id, 0))
+        service_label = MERCHANT_TYPE_LABELS.get(service_type, service_type)
+        current_map_id = max(0, _safe_int(Map.GetMapID(), 0))
+        if safe_map_id <= 0 or current_map_id != safe_map_id:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector rejected: current map {current_map_id} "
+                    f"does not match required map {safe_map_id}.",
+                )
+            return None
+
+        try:
+            from Py4GWCoreLib import Agent
+            from Py4GWCoreLib import AgentArray
+        except Exception as exc:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector APIs are unavailable: {exc}",
+                )
+            return None
+
+        player_xy, player_xy_source = _get_agent_search_origin(Agent)
+        if player_xy is None:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector rejected: {player_xy_source}.",
+                )
+            return None
+
+        try:
+            npc_agent_ids = tuple(
+                dict.fromkeys(
+                    safe_agent_id
+                    for agent_id in AgentArray.GetNPCMinipetArray()
+                    if (safe_agent_id := max(0, _safe_int(agent_id, 0))) > 0
+                )
+            )
+        except Exception as exc:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector could not read the NPC array: {exc}",
+                )
+            return None
+
+        encoded_identity_by_agent: dict[int, tuple[int, ...] | None] = {}
+        model_id_by_agent: dict[int, int] = {}
+        xy_by_agent: dict[int, tuple[float, float] | None] = {}
+
+        def get_encoded_identity(agent_id: int) -> tuple[int, ...] | None:
+            if agent_id not in encoded_identity_by_agent:
+                try:
+                    raw_identity = Agent.GetEncNameByID(agent_id)
+                except Exception:
+                    raw_identity = None
+                encoded_identity_by_agent[agent_id] = _normalize_vendor_encoded_identity(raw_identity)
+            return encoded_identity_by_agent[agent_id]
+
+        def get_model_id(agent_id: int) -> int:
+            if agent_id not in model_id_by_agent:
+                try:
+                    model_id_by_agent[agent_id] = max(0, _safe_int(Agent.GetModelID(agent_id), 0))
+                except Exception:
+                    model_id_by_agent[agent_id] = 0
+            return model_id_by_agent[agent_id]
+
+        def get_agent_xy(agent_id: int) -> tuple[float, float] | None:
+            if agent_id not in xy_by_agent:
+                try:
+                    xy_by_agent[agent_id] = _coerce_agent_xy(Agent.GetXY(agent_id))
+                except Exception:
+                    xy_by_agent[agent_id] = None
+            return xy_by_agent[agent_id]
+
+        candidates: list[tuple[float, str, tuple[float, float]]] = []
+        failure_details: list[str] = []
+        collision_details: list[str] = []
+        for selector in selectors:
+            expected_identity = _normalize_vendor_encoded_identity(selector.encoded_identity)
+            expected_xy = _coerce_agent_xy(selector.expected_xy)
+            expected_model_id = max(0, _safe_int(selector.model_id, 0))
+            try:
+                coordinate_tolerance = float(selector.coordinate_tolerance)
+            except (TypeError, ValueError):
+                coordinate_tolerance = 0.0
+            if (
+                not expected_identity
+                or expected_xy is None
+                or expected_model_id <= 0
+                or not math.isfinite(coordinate_tolerance)
+                or coordinate_tolerance <= 0.0
+            ):
+                failure_details.append(f"{selector.label}: invalid selector definition")
+                continue
+
+            encoded_matches = [
+                agent_id
+                for agent_id in npc_agent_ids
+                if get_encoded_identity(agent_id) == expected_identity
+            ]
+            if not encoded_matches:
+                failure_details.append(f"{selector.label}: encoded identity mismatch")
+                continue
+
+            model_matches = [
+                agent_id
+                for agent_id in encoded_matches
+                if get_model_id(agent_id) == expected_model_id
+            ]
+            if not model_matches:
+                failure_details.append(f"{selector.label}: model mismatch")
+                continue
+
+            complete_matches: list[tuple[int, tuple[float, float]]] = []
+            for agent_id in model_matches:
+                agent_xy = get_agent_xy(agent_id)
+                if agent_xy is None or math.dist(agent_xy, expected_xy) > coordinate_tolerance:
+                    continue
+                complete_matches.append((agent_id, agent_xy))
+            if not complete_matches:
+                failure_details.append(f"{selector.label}: coordinate mismatch")
+                continue
+            if len(complete_matches) > 1:
+                collision_detail = (
+                    f"{selector.label}: unexpected multiple-match collision "
+                    f"({len(complete_matches)} NPCs)"
+                )
+                failure_details.append(collision_detail)
+                collision_details.append(collision_detail)
+                continue
+
+            _agent_id, agent_xy = complete_matches[0]
+            distance_from_player = math.dist(player_xy, agent_xy)
+            if distance_from_player > OUTPOST_SERVICE_SEARCH_MAX_DIST:
+                failure_details.append(f"{selector.label}: outside the service search range")
+                continue
+            candidates.append((distance_from_player, str(selector.label), agent_xy))
+
+        if candidates:
+            if collision_details:
+                self._debug_log(
+                    f"Map-specific {service_label} selector collision detail: "
+                    f"{'; '.join(collision_details)}"
+                )
+            candidates.sort(key=lambda candidate: (candidate[0], candidate[1].casefold(), candidate[2]))
+            return candidates[0][2]
+
+        if log_failures:
+            detail_text = "; ".join(failure_details) if failure_details else "no selector definitions"
+            _log_agent_selector_failure(
+                MODULE_NAME,
+                f"Map-specific {service_label} selectors did not resolve on map {safe_map_id}: "
+                f"{detail_text}.",
+            )
+        return None
 
     def _resolve_service_coords(
         self,
         *,
+        map_id: int = 0,
+        service_type: str = "",
         selector_name: str = "",
-        name_query: str = "",
         log_failures: bool = True,
     ) -> tuple[float, float] | None:
-        lookup_steps: list[dict[str, object]] = []
-        safe_selector_name = str(selector_name or "").strip()
-        safe_name_query = str(name_query or "").strip()
-        if safe_selector_name:
-            lookup_steps.append({"npc": safe_selector_name})
-        if safe_name_query:
-            lookup_steps.append({"target": safe_name_query})
-        if not lookup_steps:
-            return None
-
-        last_lookup_index = len(lookup_steps) - 1
-        for lookup_index, step in enumerate(lookup_steps):
-            coords = resolve_agent_xy_from_step(
-                step,
-                recipe_name=MODULE_NAME,
-                step_idx=lookup_index,
-                agent_kind="npc",
-                default_max_dist=OUTPOST_SERVICE_SEARCH_MAX_DIST,
-                log_failures=bool(log_failures and lookup_index == last_lookup_index),
+        safe_map_id = max(0, _safe_int(map_id, 0))
+        safe_service_type = str(service_type or "").strip()
+        map_specific_selectors = MERCHANT_RULES_MAP_SERVICE_SELECTORS.get(safe_map_id, {}).get(
+            safe_service_type,
+            (),
+        )
+        if map_specific_selectors:
+            return self._resolve_map_specific_service_coords(
+                map_id=safe_map_id,
+                service_type=safe_service_type,
+                selectors=map_specific_selectors,
+                log_failures=log_failures,
             )
-            if coords is not None:
-                return coords
-        return None
+
+        safe_selector_name = str(selector_name or "").strip()
+        if not safe_selector_name:
+            return None
+        if not _named_agent_target_has_authoritative_identity("npc", safe_selector_name):
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Service selector {safe_selector_name!r} has no encoded name or model ID; resolution was skipped.",
+                )
+            return None
+        return resolve_agent_xy_from_step(
+            {"npc": safe_selector_name},
+            recipe_name=MODULE_NAME,
+            step_idx=0,
+            agent_kind="npc",
+            default_max_dist=OUTPOST_SERVICE_SEARCH_MAX_DIST,
+            log_failures=log_failures,
+        )
+
+    def _get_service_resolution_diagnostics(self) -> str:
+        """Read positional counts without requesting or decoding any NPC names."""
+
+        try:
+            from Py4GWCoreLib import Agent
+            from Py4GWCoreLib import AgentArray
+
+            player_xy, source = _get_agent_search_origin(Agent)
+            npc_ids = list(AgentArray.GetNPCMinipetArray() or [])
+            if player_xy is None:
+                return f"player=unavailable source={source} total_npcs={len(npc_ids)} in_range_npcs=unavailable"
+            in_range_ids = AgentArray.Filter.ByDistance(
+                npc_ids,
+                player_xy,
+                OUTPOST_SERVICE_SEARCH_MAX_DIST,
+            )
+            return (
+                f"player=({player_xy[0]:.1f}, {player_xy[1]:.1f}) source={source} "
+                f"total_npcs={len(npc_ids)} in_range_npcs={len(in_range_ids)}"
+            )
+        except Exception as exc:
+            return f"player/NPC diagnostics unavailable: {type(exc).__name__}"
 
     def _resolve_storage_access_coords(self) -> tuple[float, float] | None:
         if not Map.IsMapReady():
@@ -15875,18 +16332,22 @@ class MerchantRulesWidget:
             selector_data = {}
 
         selector_keys = {
-            MERCHANT_TYPE_MERCHANT: ("merchant", MERCHANT_NAME_QUERY),
-            MERCHANT_TYPE_MATERIALS: ("materials", MATERIAL_TRADER_NAME_QUERY),
-            MERCHANT_TYPE_RARE_MATERIALS: ("rare_materials", RARE_MATERIAL_TRADER_NAME_QUERY),
+            MERCHANT_TYPE_MERCHANT: "merchant",
+            MERCHANT_TYPE_MATERIALS: "materials",
+            MERCHANT_TYPE_RARE_MATERIALS: "rare_materials",
         }
 
-        for merchant_type, (selector_key, name_query) in selector_keys.items():
+        for merchant_type, selector_key in selector_keys.items():
             selector_name = selector_data.get(selector_key) or DEFAULT_NPC_SELECTORS.get(selector_key)
-            if not selector_name and not name_query:
+            has_map_specific_selector = bool(
+                MERCHANT_RULES_MAP_SERVICE_SELECTORS.get(map_id, {}).get(merchant_type)
+            )
+            if not selector_name and not has_map_specific_selector:
                 continue
             coords[merchant_type] = self._resolve_service_coords(
+                map_id=map_id,
+                service_type=merchant_type,
                 selector_name=str(selector_name or ""),
-                name_query=name_query,
                 log_failures=not passive,
             )
 
@@ -15897,33 +16358,54 @@ class MerchantRulesWidget:
             log_failures=bool(not passive and self._has_enabled_scroll_trader_buy_rules()),
         )
 
-        resolved_count = sum(1 for value in coords.values() if value is not None)
+        resolved_services = [
+            MERCHANT_TYPE_LABELS.get(service_type, service_type)
+            for service_type, service_coords in coords.items()
+            if service_coords is not None
+        ]
+        unresolved_services = [
+            MERCHANT_TYPE_LABELS.get(service_type, service_type)
+            for service_type, service_coords in coords.items()
+            if service_coords is None
+        ]
+        resolved_count = len(resolved_services)
         location_label = "Guild Hall" if Map.IsGuildHall() else "Outpost"
-        base_message = (
-            f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). Using specific merchant selectors."
+        has_merchant_rules_map_selectors = bool(MERCHANT_RULES_MAP_SERVICE_SELECTORS.get(map_id))
+        selector_mode_label = (
+            "verified trader locations"
+            if has_merchant_rules_map_selectors
+            else "location-specific trader information"
             if map_id in SUPPORTED_MAP_NPC_SELECTORS
-            else f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). Using generic merchant selectors."
+            else "default trader information"
         )
-        if resolved_count <= 0:
-            supported_map = False
-            reason = f"{base_message} No merchant or trader NPCs were found."
-        elif resolved_count < len(coords):
-            supported_map = True
-            reason = f"{base_message} Partial merchant/trader resolution succeeded."
-        else:
-            supported_map = True
-            reason = f"{base_message} Merchant, material trader, rune trader, scroll trader, and rare material trader resolved."
+        base_message = (
+            f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). "
+            f"Using {selector_mode_label}."
+        )
+        supported_map = resolved_count > 0
+        resolved_text = ", ".join(resolved_services) if resolved_services else "none"
+        unresolved_text = ", ".join(unresolved_services) if unresolved_services else "none"
+        reason = f"{base_message} Resolved services: {resolved_text}. Unresolved services: {unresolved_text}."
 
         self.cached_context_map_id = current_map_id
         self.cached_supported_context = (supported_map, reason, coords)
-        selector_mode = "specific" if map_id in SUPPORTED_MAP_NPC_SELECTORS else "generic"
+        selector_mode = (
+            "merchant_rules_specific"
+            if has_merchant_rules_map_selectors
+            else "specific"
+            if map_id in SUPPORTED_MAP_NPC_SELECTORS
+            else "generic"
+        )
         self._debug_log(
             f"Context resolved: map={Map.GetMapName(map_id)} ({map_id}) selector_mode={selector_mode} "
-            f"supported={supported_map} merchant={self._format_debug_coords(coords[MERCHANT_TYPE_MERCHANT])} "
+            f"supported={supported_map} {self._get_service_resolution_diagnostics()} "
+            f"resolved_services={resolved_text} unresolved_services={unresolved_text} "
+            f"merchant={self._format_debug_coords(coords[MERCHANT_TYPE_MERCHANT])} "
             f"materials={self._format_debug_coords(coords[MERCHANT_TYPE_MATERIALS])} "
             f"rune={self._format_debug_coords(coords[MERCHANT_TYPE_RUNE_TRADER])} "
             f"scroll={self._format_debug_coords(coords[MERCHANT_TYPE_SCROLL_TRADER])} "
-            f"rare={self._format_debug_coords(coords[MERCHANT_TYPE_RARE_MATERIALS])}"
+            f"rare={self._format_debug_coords(coords[MERCHANT_TYPE_RARE_MATERIALS])} "
+            f"consumable={self._format_debug_coords(coords[MERCHANT_TYPE_CONSUMABLE_CRAFTER])}"
         )
         if not supported_map or resolved_count < len(coords):
             self._debug_log(f"Context detail: {reason}")
@@ -16356,7 +16838,12 @@ class MerchantRulesWidget:
         )
         return parsed_state
 
-    def _build_inventory_item_info(self, item_id: int) -> InventoryItemInfo | None:
+    def _build_inventory_item_info(
+        self,
+        item_id: int,
+        *,
+        include_runtime_name: bool = True,
+    ) -> InventoryItemInfo | None:
         """Read and normalize one live inventory item for rule matching.
 
         Missing native data or parsing failures return ``None`` so callers cannot plan from a
@@ -16383,10 +16870,15 @@ class MerchantRulesWidget:
                 is_weapon_like=is_weapon_like,
                 is_armor_piece=is_armor_piece,
             )
+            runtime_name = (
+                str(GLOBAL_CACHE.Item.GetName(safe_item_id) or f"Model {model_id}")
+                if include_runtime_name
+                else f"Model {model_id}"
+            )
             return InventoryItemInfo(
                 item_id=safe_item_id,
                 model_id=model_id,
-                name=str(GLOBAL_CACHE.Item.GetName(safe_item_id) or f"Model {model_id}"),
+                name=runtime_name,
                 quantity=quantity,
                 value=value,
                 item_type_id=int(item_type_id),
@@ -16894,13 +17386,7 @@ class MerchantRulesWidget:
         generic_model_name = f"model {safe_model_id}".casefold() if safe_model_id > 0 else ""
 
         if plain_name and plain_name.casefold() != generic_model_name:
-            normalized_name = _normalize_catalog_search_text(plain_name)
-            matching_model_ids = [
-                int(model_id)
-                for model_id in self.catalog_alias_to_model_ids.get(normalized_name, [])
-                if max(0, _safe_int(model_id, 0)) > 0
-            ]
-            if not matching_model_ids or safe_model_id in matching_model_ids:
+            if not self._runtime_item_label_contradicts_model(plain_name, safe_model_id):
                 return raw_name
 
         if safe_model_id > 0:
@@ -18191,7 +18677,8 @@ class MerchantRulesWidget:
                     PlannedTraderSale(
                         item_id=item.item_id,
                         model_id=item.model_id,
-                        label=item.name,
+                        label=self._format_inventory_item_log_label(item),
+                        expected_rune_identifiers=_normalize_rune_identifier_tuple(item.rune_identifiers),
                     )
                 )
             else:
@@ -18367,14 +18854,15 @@ class MerchantRulesWidget:
                     PlannedTraderSale(
                         item_id=item.item_id,
                         model_id=item.model_id,
-                        label=item.name,
+                        label=target_label,
+                        expected_rune_identifiers=_normalize_rune_identifier_tuple(item.rune_identifiers),
                     )
                 )
                 plan.entries.append(
                     ExecutionPlanEntry(
                         "sell",
                         MERCHANT_TYPE_RUNE_TRADER,
-                        item.name,
+                        target_label,
                         item.quantity,
                         PLAN_STATE_WILL_EXECUTE,
                         f"Matched an exact rune or insignia target in {rule_reference}.",
@@ -19462,7 +19950,7 @@ class MerchantRulesWidget:
                 partial_candidates,
                 key=lambda item: (
                     max(1, int(item.quantity)),
-                    str(item.name or "").lower(),
+                    int(item.model_id),
                     int(item.item_id),
                 ),
             )
@@ -19553,7 +20041,7 @@ class MerchantRulesWidget:
                     merchant_type=merchant_type,
                     item_id=item.item_id,
                     model_id=item.model_id,
-                    label=item.name,
+                    label=self._format_inventory_item_log_label(item),
                     batches_to_sell=batches_to_sell,
                     quantity_to_sell=sell_quantity,
                     batch_size=batch_size,
@@ -21754,7 +22242,8 @@ class MerchantRulesWidget:
                                     PlannedTraderSale(
                                         item_id=item.item_id,
                                         model_id=item.model_id,
-                                        label=item.name,
+                                        label=self._format_inventory_item_log_label(item),
+                                        expected_rune_identifiers=_normalize_rune_identifier_tuple(item.rune_identifiers),
                                     )
                                 )
                                 plan.entries.append(
@@ -23369,6 +23858,164 @@ class MerchantRulesWidget:
         )
         return outcome
 
+    def _reacquire_planned_sale_item(
+        self,
+        planned_item_id: int,
+    ) -> tuple[InventoryItemInfo | None, str]:
+        safe_item_id = max(0, _safe_int(planned_item_id, 0))
+        if safe_item_id <= 0:
+            return None, "the planned item ID is invalid"
+        try:
+            inventory_item_ids = {int(item_id) for item_id in self._get_inventory_item_ids()}
+        except Exception:
+            return None, "the current inventory could not be read"
+        if safe_item_id not in inventory_item_ids:
+            return None, "the planned item is no longer in the inventory"
+
+        item = self._build_inventory_item_info(safe_item_id, include_runtime_name=False)
+        if item is None:
+            return None, "the planned item could not be read"
+        if int(item.item_id) != safe_item_id:
+            return None, "the current item ID no longer matches the planned item"
+        return item, ""
+
+    def _validate_planned_material_sale_identity(
+        self,
+        sale: PlannedMaterialSale,
+        required_quantity: int,
+    ) -> tuple[InventoryItemInfo | None, str]:
+        item, reason = self._reacquire_planned_sale_item(sale.item_id)
+        if item is None:
+            return None, reason
+
+        planned_model_id = max(0, _safe_int(sale.model_id, 0))
+        if planned_model_id <= 0 or int(item.model_id) != planned_model_id:
+            return None, "the current model ID no longer matches the planned material"
+        if int(item.quantity) < max(1, int(required_quantity)):
+            return None, "the current stack quantity is no longer sufficient for the planned sale"
+        if not bool(item.is_material):
+            return None, "the current item is no longer classified as a material"
+        current_merchant_type = self._get_material_merchant_type_by_model(int(item.model_id))
+        if current_merchant_type != str(sale.merchant_type or ""):
+            return None, "the current material trader destination no longer matches the plan"
+        return item, ""
+
+    def _validate_planned_trader_sale_identity(
+        self,
+        sale: PlannedTraderSale,
+    ) -> tuple[InventoryItemInfo | None, str]:
+        item, reason = self._reacquire_planned_sale_item(sale.item_id)
+        if item is None:
+            return None, reason
+
+        planned_model_id = max(0, _safe_int(sale.model_id, 0))
+        if planned_model_id <= 0 or int(item.model_id) != planned_model_id:
+            return None, "the current model ID no longer matches the planned rune or insignia"
+        if int(item.quantity) < 1:
+            return None, "the rune or insignia is no longer available"
+        if str(item.standalone_kind or "") != RUNE_STANDALONE_KIND:
+            return None, "the current item is no longer a standalone rune or insignia"
+
+        expected_identifiers = _normalize_rune_identifier_tuple(sale.expected_rune_identifiers)
+        if not expected_identifiers:
+            return None, "the plan has no exact rune or insignia modifier identity"
+        current_identifiers = _normalize_rune_identifier_tuple(item.rune_identifiers)
+        if current_identifiers != expected_identifiers:
+            return None, "the exact rune or insignia modifier identity changed after Preview"
+        return item, ""
+
+    def _wait_for_planned_sale_completion(
+        self,
+        sale: PlannedMaterialSale | PlannedTraderSale,
+        expected_quantity: int,
+        *,
+        timeout_ms: int = 350,
+        step_ms: int = 10,
+    ):
+        """Confirm one sale from fresh inventory membership, identity, and exact quantity."""
+
+        safe_item_id = max(0, _safe_int(sale.item_id, 0))
+        safe_model_id = max(0, _safe_int(sale.model_id, 0))
+        safe_expected_quantity = max(0, _safe_int(expected_quantity, 0))
+        safe_timeout_ms = max(0, _safe_int(timeout_ms, 0))
+        safe_step_ms = max(1, _safe_int(step_ms, 1))
+        elapsed_ms = 0
+        last_quantity: int | None = None
+        last_reason = "the expected inventory quantity was not observed"
+        if safe_item_id <= 0 or safe_model_id <= 0:
+            return False, True, "the planned sale identity is invalid"
+
+        while True:
+            try:
+                inventory_item_ids = {int(item_id) for item_id in self._get_inventory_item_ids()}
+            except Exception:
+                inventory_item_ids = None
+                last_reason = "the current inventory could not be read"
+
+            if inventory_item_ids is not None:
+                if safe_item_id not in inventory_item_ids:
+                    if safe_expected_quantity == 0:
+                        return True, False, ""
+                    last_reason = (
+                        f"the planned item disappeared while {safe_expected_quantity} unit(s) "
+                        "were expected to remain"
+                    )
+                else:
+                    item = self._build_inventory_item_info(safe_item_id, include_runtime_name=False)
+                    if item is None:
+                        return False, True, "the current item could not be read after the sale"
+                    if int(item.item_id) != safe_item_id:
+                        return False, True, "the current item ID no longer matches the planned item"
+                    if safe_model_id <= 0 or int(item.model_id) != safe_model_id:
+                        return False, True, "the current model ID no longer matches the planned item"
+
+                    if isinstance(sale, PlannedMaterialSale):
+                        if not bool(item.is_material):
+                            return False, True, "the current item is no longer classified as a material"
+                        current_merchant_type = self._get_material_merchant_type_by_model(int(item.model_id))
+                        if current_merchant_type != str(sale.merchant_type or ""):
+                            return False, True, "the current material trader destination no longer matches the plan"
+                    else:
+                        if str(item.standalone_kind or "") != RUNE_STANDALONE_KIND:
+                            return False, True, "the current item is no longer a standalone rune or insignia"
+                        expected_identifiers = _normalize_rune_identifier_tuple(sale.expected_rune_identifiers)
+                        current_identifiers = _normalize_rune_identifier_tuple(item.rune_identifiers)
+                        if not expected_identifiers or current_identifiers != expected_identifiers:
+                            return False, True, "the exact rune or insignia modifier identity changed after the sale"
+
+                    last_quantity = max(0, int(item.quantity))
+                    if last_quantity == safe_expected_quantity:
+                        return True, False, ""
+                    last_reason = (
+                        f"expected {safe_expected_quantity} unit(s) after the sale, "
+                        f"but observed {last_quantity}"
+                    )
+
+            if elapsed_ms >= safe_timeout_ms:
+                return False, False, last_reason
+            wait_ms = min(safe_step_ms, safe_timeout_ms - elapsed_ms)
+            if wait_ms <= 0:
+                return False, False, last_reason
+            yield from Routines.Yield.wait(wait_ms)
+            elapsed_ms += wait_ms
+
+    def _report_sale_identity_abort(
+        self,
+        phase_label: str,
+        item_id: int,
+        model_id: int,
+        reason: str,
+    ) -> None:
+        safe_label = self._format_model_label_short(max(0, _safe_int(model_id, 0)))
+        ConsoleLog(
+            MODULE_NAME,
+            f"{phase_label} skipped {safe_label}: {reason}.",
+            Console.MessageType.Warning,
+        )
+        self._debug_log(
+            f"{phase_label} identity check failed: item_id={int(item_id)} model_id={int(model_id)} reason={reason}."
+        )
+
     def _sell_planned_materials(
         self,
         coords: tuple[float, float],
@@ -23408,10 +24055,22 @@ class MerchantRulesWidget:
             return outcome
 
         for sale in material_sales:
-            for _ in range(max(0, int(sale.batches_to_sell))):
-                previous_quantity = int(GLOBAL_CACHE.Item.Properties.GetQuantity(sale.item_id))
-                if previous_quantity < sale.batch_size:
-                    outcome.depleted += 1
+            planned_batches = max(0, int(sale.batches_to_sell))
+            for batch_index in range(planned_batches):
+                remaining_batches = planned_batches - batch_index
+                required_quantity = remaining_batches * max(1, int(sale.batch_size))
+                live_item, identity_failure = self._validate_planned_material_sale_identity(
+                    sale,
+                    required_quantity,
+                )
+                if live_item is None:
+                    outcome.unavailable += remaining_batches
+                    self._report_sale_identity_abort(
+                        phase_label,
+                        sale.item_id,
+                        sale.model_id,
+                        identity_failure,
+                    )
                     break
 
                 quoted_value = yield from Routines.Yield.Merchant._wait_for_quote(  # pylint: disable=protected-access
@@ -23424,21 +24083,54 @@ class MerchantRulesWidget:
                     outcome.quote_failures += 1
                     break
 
+                live_item, identity_failure = self._validate_planned_material_sale_identity(
+                    sale,
+                    required_quantity,
+                )
+                if live_item is None:
+                    outcome.unavailable += remaining_batches
+                    self._report_sale_identity_abort(
+                        phase_label,
+                        sale.item_id,
+                        sale.model_id,
+                        identity_failure,
+                    )
+                    break
+                previous_quantity = int(live_item.quantity)
                 GLOBAL_CACHE.Trading.Trader.SellItem(sale.item_id, quoted_value)
-                updated_quantity = yield from Routines.Yield.Merchant._wait_for_stack_quantity_drop(  # pylint: disable=protected-access
-                    sale.item_id,
-                    previous_quantity,
+                expected_quantity = max(0, previous_quantity - max(1, int(sale.batch_size)))
+                (
+                    completed,
+                    post_sale_identity_failure,
+                    completion_reason,
+                ) = yield from self._wait_for_planned_sale_completion(
+                    sale,
+                    expected_quantity,
                     timeout_ms=350,
                     step_ms=10,
                 )
-                if updated_quantity >= previous_quantity:
+                if post_sale_identity_failure:
+                    outcome.unavailable += remaining_batches
+                    self._report_sale_identity_abort(
+                        phase_label,
+                        sale.item_id,
+                        sale.model_id,
+                        completion_reason,
+                    )
+                    break
+                if not completed:
                     outcome.timeout_failures += 1
+                    self._debug_log(
+                        f"{phase_label} completion check failed: item_id={sale.item_id} "
+                        f"expected_quantity={expected_quantity} reason={completion_reason}."
+                    )
                     break
                 outcome.completed += 1
                 yield from Routines.Yield.wait(40)
         self._debug_log(
             f"{phase_label}: completed={outcome.completed}/{outcome.attempted} quote_failures={outcome.quote_failures} "
-            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} load_failures={outcome.load_failures}"
+            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} "
+            f"identity_failures={outcome.unavailable} load_failures={outcome.load_failures}"
         )
         return outcome
 
@@ -23478,9 +24170,15 @@ class MerchantRulesWidget:
             return outcome
 
         for sale in trader_sales:
-            previous_quantity = int(GLOBAL_CACHE.Item.Properties.GetQuantity(sale.item_id))
-            if previous_quantity <= 0:
-                outcome.depleted += 1
+            live_item, identity_failure = self._validate_planned_trader_sale_identity(sale)
+            if live_item is None:
+                outcome.unavailable += 1
+                self._report_sale_identity_abort(
+                    phase_label,
+                    sale.item_id,
+                    sale.model_id,
+                    identity_failure,
+                )
                 continue
 
             quoted_value = yield from Routines.Yield.Merchant._wait_for_quote(  # pylint: disable=protected-access
@@ -23493,21 +24191,51 @@ class MerchantRulesWidget:
                 outcome.quote_failures += 1
                 continue
 
+            live_item, identity_failure = self._validate_planned_trader_sale_identity(sale)
+            if live_item is None:
+                outcome.unavailable += 1
+                self._report_sale_identity_abort(
+                    phase_label,
+                    sale.item_id,
+                    sale.model_id,
+                    identity_failure,
+                )
+                continue
+            previous_quantity = int(live_item.quantity)
             GLOBAL_CACHE.Trading.Trader.SellItem(sale.item_id, quoted_value)
-            updated_quantity = yield from Routines.Yield.Merchant._wait_for_stack_quantity_drop(  # pylint: disable=protected-access
-                sale.item_id,
-                previous_quantity,
+            expected_quantity = max(0, previous_quantity - 1)
+            (
+                completed,
+                post_sale_identity_failure,
+                completion_reason,
+            ) = yield from self._wait_for_planned_sale_completion(
+                sale,
+                expected_quantity,
                 timeout_ms=350,
                 step_ms=10,
             )
-            if updated_quantity >= previous_quantity:
+            if post_sale_identity_failure:
+                outcome.unavailable += 1
+                self._report_sale_identity_abort(
+                    phase_label,
+                    sale.item_id,
+                    sale.model_id,
+                    completion_reason,
+                )
+                continue
+            if not completed:
                 outcome.timeout_failures += 1
+                self._debug_log(
+                    f"{phase_label} completion check failed: item_id={sale.item_id} "
+                    f"expected_quantity={expected_quantity} reason={completion_reason}."
+                )
                 continue
             outcome.completed += 1
             yield from Routines.Yield.wait(40)
         self._debug_log(
             f"{phase_label}: completed={outcome.completed}/{outcome.attempted} quote_failures={outcome.quote_failures} "
-            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} load_failures={outcome.load_failures}"
+            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} "
+            f"identity_failures={outcome.unavailable} load_failures={outcome.load_failures}"
         )
         return outcome
 
@@ -37196,13 +37924,6 @@ class MerchantRulesWidget:
             "Current map is not an outpost or Guild Hall.",
             "Cannot use merchant services because the current map is not an outpost or Guild Hall.",
         )
-        display_reason = re.sub(
-            r"^(?:Outpost|Guild Hall) ready: .+?\. Using (?:specific|generic) merchant selectors\. "
-            r"No merchant or trader NPCs were found\.$",
-            "No matching merchant or trader service is available here.",
-            display_reason,
-        )
-
         if action_type == "travel":
             display_reason = re.sub(
                 r"Travel first, then rebuild the merchant plan in (?:specific|generic) selectors\.?",
