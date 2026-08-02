@@ -1,8 +1,10 @@
 import time
 from collections import deque
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
+from typing import cast
 
 import Py4GW
 import ctypes
@@ -1613,6 +1615,27 @@ def MerchantRules(index: int, message: SharedMessageStruct):
             _merchant_busy = False
     finally:
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
+
+
+def _queue_merchant_rules_message(index: int, message: SharedMessageStruct):
+    routine: Generator[object, None, None] = MerchantRules(index, message)
+    widget = _get_merchant_rules_widget()
+    tracker = getattr(widget, "track_merchant_rules_remote_dispatch", None) if widget is not None else None
+    dispatch_lease_acquired = False
+    if callable(tracker):
+        tracked_routine = cast(Generator[object, None, None], tracker(message, routine))
+        dispatch_lease_acquired = tracked_routine is not routine
+        routine = tracked_routine
+    try:
+        GLOBAL_CACHE.Coroutines.append(routine)
+    except Exception:
+        if dispatch_lease_acquired:
+            release = getattr(widget, "_release_merchant_rules_remote_dispatch", None)
+            if callable(release):
+                release()
+        raise
+
+
 # endregion
 
 # region UsePcon
@@ -3177,7 +3200,7 @@ def ProcessMessages():
         case SharedCommandType.MerchantMaterials:
             GLOBAL_CACHE.Coroutines.append(MerchantMaterials(index, message))
         case SharedCommandType.MerchantRules:
-            GLOBAL_CACHE.Coroutines.append(MerchantRules(index, message))
+            _queue_merchant_rules_message(index, message)
         case SharedCommandType.Pycons:
             GLOBAL_CACHE.Coroutines.append(Pycons(index, message))
         case SharedCommandType.DisableHeroAI:
