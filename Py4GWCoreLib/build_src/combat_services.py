@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Callable
 import PySystem
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill import CustomSkillClass
     from HeroAI.custom_skill_src.skill_types import CastConditions, CustomSkill
 
 BuildCoroutine = Generator[None, None, Any]
@@ -27,27 +26,19 @@ class CombatServices:
     vocabulary without inheriting the generator execution engine. The 69 modules
     under Builds/Skills reach all of it through `self.build.<method>`.
 
-    Requires the mixing class to initialise the fields listed in
-    `COMBAT_SERVICES_FIELDS` (see `init_combat_services`).
+    Host contract. Before any service method runs, the mixing class must set
+    these fields: `priority_target`, `current_target_id`, `_was_in_aggro`,
+    `_local_cast_timer`, `_auto_attack_timer`, `_auto_attack_time`,
+    `_party_health_monitor`, `_party_health_monitor_timer`,
+    `_party_health_monitor_window_ms`, `_custom_skill_data_handler`,
+    `_cached_data`; and provide these members: `CanProcess() -> bool`,
+    `SetTickSuccess()`, `build_name: str`, `is_combat_automator_compatible:
+    bool`. BuildMgr satisfies all of it.
     """
 
-    def init_combat_services(self) -> None:
-        from Py4GWCoreLib import ThrottledTimer
-
-        self.priority_target = 0
-        self.current_target_id = 0
-        self._was_in_aggro = False
-        self._local_cast_timer = ThrottledTimer(0)
-        self._local_cast_timer.Stop()
-        self._auto_attack_timer = ThrottledTimer(0)
-        self._auto_attack_timer.Stop()
-        self._auto_attack_time = 0
-        self._party_health_monitor: dict[int, dict[str, float]] = {}
-        self._party_health_monitor_timer = ThrottledTimer(150)
-        self._party_health_monitor_timer.Stop()
-        self._party_health_monitor_window_ms = 1000
-        self._custom_skill_data_handler: CustomSkillClass | None = None
-        self._cached_data: Any = None
+    # TODO(BT 2/12): give this class its own initialiser once the second build base
+    # lands. BuildMgr sets the eleven fields interleaved with unrelated __init__ work,
+    # so hoisting them into one call reorders initialisation and needs its own change.
 
     def GetEffectAndBuffIds(self, agent_id: int) -> list[int]:
         from HeroAI.utils import GetEffectAndBuffIds
