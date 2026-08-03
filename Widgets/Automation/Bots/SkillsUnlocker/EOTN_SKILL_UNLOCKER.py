@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple, Optional, Callable, Generator
+from typing import Any, List, Tuple, Optional, Callable, Generator
 import types
 import Py4GW
 import PyImGui
@@ -8,9 +8,11 @@ from Py4GWCoreLib import ImGui,GLOBAL_CACHE
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Routines import Routines
 from Py4GWCoreLib.ImGui import ImGui
+from Py4GWCoreLib.SessionLogger import get_session_logger
 
 BOT_NAME = "Skills Unlocker"
 MODULE_NAME = BOT_NAME
+SESSION_LOG = get_session_logger(BOT_NAME)
 
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "SkillsUnlocker", "skills_unlocker.png")
 ICONS_PATH = os.path.join(PySystem.Console.get_projects_path(), "Bots", "SkillsUnlocker", "icons")
@@ -101,6 +103,253 @@ def AddHenchies():
         yield from Routines.Yield.wait(250)
 
 
+SIF_SHADOWHUNTER_MODEL_IDS = (6398, 6347, 6348)
+SIF_SHADOWHUNTER_XY = (14380.0, 23968.0)
+OUTRUNNER_REMLOK_XY = (-10926.0, 24732.0)
+JAGA_SOUTH_BLESSING_XY = (-9088.0, -22811.0)
+JAGA_SOUTH_BLESSING_MODEL_ID = 6425
+DRAKKAR_SIFHALLA_BLESSING_XY = (7367.0, 23752.0)
+DRAKKAR_SIFHALLA_BLESSING_MODEL_ID = 6425
+DRAKKAR_SEPULCHRE_BLESSING_XY = (-11603.0, 24975.0)
+DRAKKAR_SEPULCHRE_BLESSING_MODEL_ID = 6431
+SEPULCHRE_LEVEL1_ENTRANCE_BLESSING_XY = (-7571.0, -16263.0)
+SEPULCHRE_LEVEL1_ENTRANCE_BLESSING_MODEL_ID = 5916
+
+
+def _interact_sif_shadowhunter(dialog_id: int) -> Generator[Any, Any, bool]:
+    """Interact with the live Sif variant without relying on NPCMinipetArray."""
+    from Py4GWCoreLib.AgentArray import AgentArray
+    from Py4GWCoreLib.Context import GWContext
+    from Py4GWCoreLib.Py4GWcorelib import Utils
+
+    player_xy = Player.GetXY()
+    shared_agents = AgentArray.GetAgentArray()
+    context = GWContext.AgentArray.GetContext()
+    context_agents = context.GetAgentArray() if context is not None else []
+    all_agents = list(dict.fromkeys([*shared_agents, *context_agents]))
+    resolution = "model_id"
+    candidates = [
+        agent_id
+        for agent_id in all_agents
+        if Agent.GetModelID(agent_id) in SIF_SHADOWHUNTER_MODEL_IDS
+    ]
+
+    if not candidates:
+        resolution = "decoded_name"
+        candidates = [
+            agent_id
+            for agent_id in all_agents
+            if "sif shadowhunter" in Agent.GetNameByID(agent_id).strip().lower()
+        ]
+
+    if not candidates:
+        resolution = "npc_at_known_position"
+        candidates = [
+            agent_id
+            for agent_id in all_agents
+            if Agent.IsLiving(agent_id)
+            and Agent.IsNPC(agent_id)
+            and Utils.Distance(SIF_SHADOWHUNTER_XY, Agent.GetXY(agent_id)) <= 250.0
+        ]
+
+    if not candidates:
+        nearby = []
+        for agent_id in all_agents:
+            if not Agent.IsLiving(agent_id):
+                continue
+            agent_xy = Agent.GetXY(agent_id)
+            distance = Utils.Distance(player_xy, agent_xy)
+            if distance <= 1500.0:
+                nearby.append(
+                    f"id={agent_id},model={Agent.GetModelID(agent_id)},name={Agent.GetNameByID(agent_id)!r},"
+                    f"xy={agent_xy},distance={distance:.1f},npc={Agent.IsNPC(agent_id)}"
+                )
+        message = (
+            f"sif_lookup_failed map={Map.GetMapID()} player_xy={player_xy} "
+            f"models={SIF_SHADOWHUNTER_MODEL_IDS} shared_count={len(shared_agents)} "
+            f"context_count={len(context_agents)} merged_count={len(all_agents)} nearby={nearby}"
+        )
+        SESSION_LOG.write(message)
+        ConsoleLog(MODULE_NAME, "Sif Shadowhunter was not found in the live agent array.", Console.MessageType.Error)
+        bot.config.state_description = "Blocked: Sif Shadowhunter not found"
+        # A self-managed state advances when its generator returns. Keep this
+        # state alive so the route cannot leave Sifhalla after failed dialog.
+        while bot.config.fsm_running:
+            yield from Routines.Yield.wait(1000)
+        return False
+
+    agent_id = min(candidates, key=lambda candidate: Utils.Distance(player_xy, Agent.GetXY(candidate)))
+    model_id = Agent.GetModelID(agent_id)
+    agent_xy = Agent.GetXY(agent_id)
+    SESSION_LOG.write(
+        f"sif_lookup_success map={Map.GetMapID()} agent_id={agent_id} model_id={model_id} "
+        f"agent_name={Agent.GetNameByID(agent_id)!r} agent_xy={agent_xy} player_xy={player_xy} "
+        f"dialog={hex(dialog_id)} resolution={resolution} shared_count={len(shared_agents)} "
+        f"context_count={len(context_agents)}"
+    )
+
+    yield from bot.Dialogs._coro_pause_hero_ai()
+    yield from Routines.Yield.Player.InteractAgent(agent_id)
+    yield from Routines.Yield.wait(500)
+    Player.SendDialog(dialog_id)
+    yield from Routines.Yield.wait(500)
+    yield from bot.Dialogs._coro_restore_hero_ai()
+    SESSION_LOG.write(
+        f"sif_dialog_sent agent_id={agent_id} model_id={model_id} dialog={hex(dialog_id)}"
+    )
+    return True
+
+
+def _interact_outrunner_remlok(dialog_id: int) -> Generator[Any, Any, bool]:
+    """Interact with Remlok from the full live array, not NPCMinipetArray."""
+    from Py4GWCoreLib.AgentArray import AgentArray
+    from Py4GWCoreLib.Context import GWContext
+    from Py4GWCoreLib.Py4GWcorelib import Utils
+
+    player_xy = Player.GetXY()
+    shared_agents = AgentArray.GetAgentArray()
+    context = GWContext.AgentArray.GetContext()
+    context_agents = context.GetAgentArray() if context is not None else []
+    all_agents = list(dict.fromkeys([*shared_agents, *context_agents]))
+
+    resolution = "decoded_name"
+    candidates = [
+        agent_id
+        for agent_id in all_agents
+        if Agent.IsLiving(agent_id)
+        and "outrunner remlok" in Agent.GetNameByID(agent_id).strip().lower()
+    ]
+
+    if not candidates:
+        resolution = "npc_at_known_position"
+        candidates = [
+            agent_id
+            for agent_id in all_agents
+            if Agent.IsLiving(agent_id)
+            and Agent.IsNPC(agent_id)
+            and Utils.Distance(OUTRUNNER_REMLOK_XY, Agent.GetXY(agent_id)) <= 300.0
+        ]
+
+    if not candidates:
+        nearby = []
+        for agent_id in all_agents:
+            if not Agent.IsLiving(agent_id):
+                continue
+            agent_xy = Agent.GetXY(agent_id)
+            distance = Utils.Distance(OUTRUNNER_REMLOK_XY, agent_xy)
+            if distance <= 1500.0:
+                nearby.append(
+                    f"id={agent_id},model={Agent.GetModelID(agent_id)},name={Agent.GetNameByID(agent_id)!r},"
+                    f"xy={agent_xy},distance_to_remlok={distance:.1f},npc={Agent.IsNPC(agent_id)}"
+                )
+        message = (
+            f"remlok_lookup_failed map={Map.GetMapID()} player_xy={player_xy} "
+            f"target_xy={OUTRUNNER_REMLOK_XY} shared_count={len(shared_agents)} "
+            f"context_count={len(context_agents)} merged_count={len(all_agents)} nearby={nearby}"
+        )
+        SESSION_LOG.write(message)
+        ConsoleLog(MODULE_NAME, "Outrunner Remlok was not found in the full live agent array.", Console.MessageType.Error)
+        bot.config.state_description = "Blocked: Outrunner Remlok not found"
+        while bot.config.fsm_running:
+            yield from Routines.Yield.wait(1000)
+        return False
+
+    agent_id = min(
+        candidates,
+        key=lambda candidate: Utils.Distance(OUTRUNNER_REMLOK_XY, Agent.GetXY(candidate)),
+    )
+    model_id = Agent.GetModelID(agent_id)
+    agent_xy = Agent.GetXY(agent_id)
+    SESSION_LOG.write(
+        f"remlok_lookup_success map={Map.GetMapID()} agent_id={agent_id} model_id={model_id} "
+        f"agent_name={Agent.GetNameByID(agent_id)!r} agent_xy={agent_xy} player_xy={player_xy} "
+        f"dialog={hex(dialog_id)} resolution={resolution} shared_count={len(shared_agents)} "
+        f"context_count={len(context_agents)}"
+    )
+
+    yield from bot.Dialogs._coro_pause_hero_ai()
+    yield from Routines.Yield.Player.InteractAgent(agent_id)
+    yield from Routines.Yield.wait(500)
+    Player.SendDialog(dialog_id)
+    yield from Routines.Yield.wait(500)
+    yield from bot.Dialogs._coro_restore_hero_ai()
+    SESSION_LOG.write(
+        f"remlok_dialog_sent agent_id={agent_id} model_id={model_id} dialog={hex(dialog_id)}"
+    )
+    return True
+
+
+def _take_optional_blessing_at_xy(
+    npc_xy: Tuple[float, float],
+    dialog_id: int,
+    preferred_model_id: int = 0,
+    label: str = "blessing",
+) -> Generator[Any, Any, bool]:
+    """Take an optional blessing using the full live-agent array."""
+    from Py4GWCoreLib.AgentArray import AgentArray
+    from Py4GWCoreLib.Context import GWContext
+    from Py4GWCoreLib.Py4GWcorelib import Utils
+
+    shared_agents = AgentArray.GetAgentArray()
+    context = GWContext.AgentArray.GetContext()
+    context_agents = context.GetAgentArray() if context is not None else []
+    all_agents = list(dict.fromkeys([*shared_agents, *context_agents]))
+
+    candidates = []
+    resolution = "preferred_model_at_position"
+    if preferred_model_id:
+        candidates = [
+            agent_id
+            for agent_id in all_agents
+            if Agent.IsLiving(agent_id)
+            and Agent.GetModelID(agent_id) == preferred_model_id
+            and Utils.Distance(npc_xy, Agent.GetXY(agent_id)) <= 350.0
+        ]
+
+    if not candidates:
+        resolution = "nearest_npc_to_captured_position"
+        candidates = [
+            agent_id
+            for agent_id in all_agents
+            if Agent.IsLiving(agent_id)
+            and Agent.IsNPC(agent_id)
+            and Utils.Distance(npc_xy, Agent.GetXY(agent_id)) <= 175.0
+        ]
+
+    if not candidates:
+        SESSION_LOG.write(
+            f"optional_blessing_lookup_failed label={label!r} map={Map.GetMapID()} "
+            f"npc_xy={npc_xy} preferred_model_id={preferred_model_id} "
+            f"shared_count={len(shared_agents)} context_count={len(context_agents)}"
+        )
+        ConsoleLog(
+            MODULE_NAME,
+            f"Optional blessing skipped: {label} NPC was not found.",
+            Console.MessageType.Warning,
+        )
+        return False
+
+    agent_id = min(candidates, key=lambda candidate: Utils.Distance(npc_xy, Agent.GetXY(candidate)))
+    SESSION_LOG.write(
+        f"optional_blessing_lookup_success label={label!r} map={Map.GetMapID()} "
+        f"agent_id={agent_id} model_id={Agent.GetModelID(agent_id)} "
+        f"agent_name={Agent.GetNameByID(agent_id)!r} agent_xy={Agent.GetXY(agent_id)} "
+        f"dialog={hex(dialog_id)} resolution={resolution}"
+    )
+
+    yield from bot.Dialogs._coro_pause_hero_ai()
+    yield from Routines.Yield.Player.InteractAgent(agent_id)
+    yield from Routines.Yield.wait(500)
+    Player.SendDialog(dialog_id)
+    yield from Routines.Yield.wait(500)
+    yield from bot.Dialogs._coro_restore_hero_ai()
+    SESSION_LOG.write(
+        f"optional_blessing_dialog_sent label={label!r} agent_id={agent_id} "
+        f"model_id={Agent.GetModelID(agent_id)} dialog={hex(dialog_id)}"
+    )
+    return True
+
+
 def draw_window_light(
     self,
     main_child_dimensions: Tuple[int, int] = (520, 360),
@@ -111,7 +360,10 @@ def draw_window_light(
 
 
     if not self._config.ini_key_initialized:
-        self._config.ini_key = Settings(f"{f"BottingClass/bot_{self._config.bot_name}"}/{f"bot_{self._config.bot_name}.ini"}", "account").name
+        self._config.ini_key = Settings(
+            f"BottingClass/bot_{self._config.bot_name}/bot_{self._config.bot_name}.ini",
+            "account",
+        ).name
         self._config.ini_key_initialized = True
 
     if not self._config.ini_key:
@@ -123,13 +375,9 @@ def draw_window_light(
         p_open=True,
         flags=PyImGui.WindowFlags.AlwaysAutoResize,
     ):
-                self._draw_main_child(main_child_dimensions, icon_path, iconwidth)
-                if additional_ui:
-                        additional_ui()
-                PyImGui.end_child()
-                PyImGui.end_tab_item()
-
-            
+        self._draw_main_child(main_child_dimensions, icon_path, iconwidth)
+        if additional_ui:
+            additional_ui()
 
     ImGui.End(self._config.ini_key)
 
@@ -626,13 +874,22 @@ def Unlock_winds(bot: Botting) -> None:
 def Unlock_you_move_like_a_dwarf(bot: Botting) -> None:
     bot.States.AddHeader("[Unlock] You Move Like a Dwarf!")
 
+    # The quest giver is in Sifhalla.  Start from a known map so this routine
+    # can be launched from the widget browser's current outpost/map.
+    bot.Map.Travel(target_map_name="Sifhalla")
+    bot.Wait.ForMapLoad(target_map_id=643)
+
     bot.Properties.Enable("pause_on_danger")
     bot.Properties.Disable("halt_on_death")
     bot.Properties.Set("movement_timeout", value=-1)
     bot.Properties.Enable("hero_ai")
 
     # Worthy Deeds (quest for this skill)
-    bot.Move.XYAndDialog(14380, 23968, 0x833A01)  # take quest
+    bot.Move.XY(14380, 23968)
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x833A01),
+        "Talk to Sif: take Worthy Deeds",
+    )
 
     bot.Move.XYAndExitMap(8832, 23870, target_map_id=513)
     bot.Wait.ForMapLoad(target_map_id=513)
@@ -658,12 +915,24 @@ def Unlock_you_move_like_a_dwarf(bot: Botting) -> None:
     bot.Wait.ForTime(3000)
     bot.Wait.ForMapLoad(target_map_id=643)
 
-    bot.Move.XYAndDialog(14380, 23968, 0x833A07)  # Rewards
+    bot.Move.XY(14380, 23968)
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x833A07),
+        "Talk to Sif: claim YMLAD reward",
+    )
     bot.UI.CancelSkillRewardWindow()    
     bot.States.JumpToStepName("MENU_IDLE")
 
 def Unlock_i_am_unstoppable(bot: Botting) -> None:
     bot.States.AddHeader("[Unlock] I Am Unstoppable!")
+    bot.States.AddCustomState(_anchor, "IAU:TAKE_ANYTHING_YOU_CAN_DO")
+
+    # Stop route progression when a hero dies behind the party. The recovery
+    # routine backtracks to the corpse and waits for HeroAI to resurrect every
+    # dead party member before this quest chain can continue.
+    bot.Events.OnPartyMemberDeadBehindCallback(
+        lambda: bot.Templates.Routines.OnPartyMemberDeathBehind()
+    )
 
     bot.Map.Travel(target_map_name="Sifhalla")
     bot.Wait.ForMapLoad(target_map_id=643)
@@ -674,10 +943,29 @@ def Unlock_i_am_unstoppable(bot: Botting) -> None:
     bot.Properties.Enable("hero_ai")
 
     # --- Part 1: Anything you can do ---
-    bot.Move.XYAndDialog(14380, 23874, 0x833E01)  # Anything you can do
+    bot.Move.XY(14380, 23968)
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x833E01),
+        "Talk to Sif: take Anything You Can Do",
+    )
+
+    bot.States.AddCustomState(_anchor, "IAU:HUNT_AVARR_AND_WHITEOUT")
+    bot.Map.Travel(target_map_name="Sifhalla")
+    bot.Wait.ForMapLoad(target_map_id=643)
     bot.Move.XY(14682, 22900)
     bot.Move.XYAndExitMap(17000, 22872, target_map_id=546)
     bot.Wait.ForMapLoad(target_map_id=546)
+
+    bot.Move.XY(*JAGA_SOUTH_BLESSING_XY)
+    bot.States.AddCustomState(
+        lambda: _take_optional_blessing_at_xy(
+            JAGA_SOUTH_BLESSING_XY,
+            0x84,
+            JAGA_SOUTH_BLESSING_MODEL_ID,
+            "Jaga Moraine south shrine bounty",
+        ),
+        "Take Jaga Moraine south shrine blessing",
+    )
 
     bot.Move.XY(-9431, -20124)
     bot.Move.XY(-8441, -13685)
@@ -697,16 +985,56 @@ def Unlock_i_am_unstoppable(bot: Botting) -> None:
     bot.Multibox.ResignParty()
     bot.Wait.ForMapLoad(target_map_id=643)
 
-    # --- Part 2: Fragment of Antiquities ---
+    # --- Part 2: Fragment of Antiquities objective ---
+    bot.States.AddCustomState(_anchor, "IAU:FRAGMENT_OF_ANTIQUITIES")
+    bot.Map.Travel(target_map_name="Sifhalla")
+    bot.Wait.ForMapLoad(target_map_id=643)
     bot.States.AddHeader("[Unlock] Fragment of Antiquities")
     bot.Move.XYAndExitMap(8832, 23870, target_map_id=513)
     bot.Wait.ForMapLoad(target_map_id=513)
 
-    bot.Move.XYAndDialog(-10926, 24732, 0x832901)  # Fragment of Antiquities
+    bot.Move.XY(*DRAKKAR_SIFHALLA_BLESSING_XY)
+    bot.States.AddCustomState(
+        lambda: _take_optional_blessing_at_xy(
+            DRAKKAR_SIFHALLA_BLESSING_XY,
+            0x84,
+            DRAKKAR_SIFHALLA_BLESSING_MODEL_ID,
+            "Drakkar Lake shrine outside Sifhalla",
+        ),
+        "Take Drakkar Lake blessing outside Sifhalla",
+    )
+
+    bot.Move.XY(-10926, 24732)
+    bot.States.AddCustomState(
+        lambda: _interact_outrunner_remlok(0x832901),
+        "Talk to Outrunner Remlok: enter the Sepulchre",
+    )
+
+    bot.Move.XY(*DRAKKAR_SEPULCHRE_BLESSING_XY)
+    bot.States.AddCustomState(
+        lambda: _take_optional_blessing_at_xy(
+            DRAKKAR_SEPULCHRE_BLESSING_XY,
+            0x84,
+            DRAKKAR_SEPULCHRE_BLESSING_MODEL_ID,
+            "Drakkar Lake shrine before Sepulchre",
+        ),
+        "Take Drakkar Lake blessing before Sepulchre",
+    )
     bot.Move.XYAndExitMap(-12138, 26829, target_map_id=628)
     bot.Wait.ForMapLoad(target_map_id=628)
 
-    bot.Move.XY(-5343, -15773)     # proof of strength
+    bot.Move.XY(*SEPULCHRE_LEVEL1_ENTRANCE_BLESSING_XY)
+    bot.States.AddCustomState(
+        lambda: _take_optional_blessing_at_xy(
+            SEPULCHRE_LEVEL1_ENTRANCE_BLESSING_XY,
+            0x84,
+            SEPULCHRE_LEVEL1_ENTRANCE_BLESSING_MODEL_ID,
+            "Sepulchre level 1 entrance blessing",
+        ),
+        "Take Sepulchre level 1 entrance blessing",
+    )
+
+    bot.Move.XY(-5366, -15794)     # walk over Proof of Strength to open matching gates
     bot.Move.XY(-6237, -9310)
     bot.Move.XY(-7512, -8414)
     bot.Move.XY(-12804, 1066)      # Defeat the Fragment of Antiquities
@@ -716,8 +1044,16 @@ def Unlock_i_am_unstoppable(bot: Botting) -> None:
     bot.Wait.ForTime(3000)
     bot.Wait.ForMapLoad(target_map_id=643)
 
-    bot.Move.XYAndDialog(14380, 23968, 0x833E07)   # Rewards
+    bot.States.AddCustomState(_anchor, "IAU:CLAIM_ANYTHING_YOU_CAN_DO")
+    bot.Map.Travel(target_map_name="Sifhalla")
+    bot.Wait.ForMapLoad(target_map_id=643)
+    bot.Move.XY(14380, 23968)
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x833E07),
+        "Talk to Sif: claim Anything You Can Do reward",
+    )
     
+    bot.States.AddCustomState(_anchor, "IAU:COLD_AS_ICE")
     bot.Map.Travel(target_map_name="Sifhalla")
     bot.Wait.ForMapLoad(target_map_id=643)
 
@@ -777,8 +1113,15 @@ def Unlock_i_am_unstoppable(bot: Botting) -> None:
 
     bot.States.AddCustomState(_equip_skill_bar, "Equip Skill Bar")
 
-    bot.Move.XYAndDialog(14380, 23968, 0x834401)  # Cold As Ice (take quest)
-    bot.Dialogs.AtXY(14380, 23968, 0x85)          # I am Ready
+    bot.Move.XY(14380, 23968)
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x834401),
+        "Talk to Sif: take Cold As Ice",
+    )
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x85),
+        "Talk to Sif: I am ready",
+    )
 
     bot.Wait.ForMapLoad(target_map_id=690)        # Special Sifhalla Map
     bot.Wait.ForTime(5000)
@@ -794,7 +1137,14 @@ def Unlock_i_am_unstoppable(bot: Botting) -> None:
     bot.Wait.ForTime(20000)
     bot.Wait.ForMapLoad(target_map_id=643)
 
-    bot.Move.XYAndDialog(14380, 23968, 0x834407)  # Rewards
+    bot.States.AddCustomState(_anchor, "IAU:CLAIM_FINAL_REWARD")
+    bot.Map.Travel(target_map_name="Sifhalla")
+    bot.Wait.ForMapLoad(target_map_id=643)
+    bot.Move.XY(14380, 23968)
+    bot.States.AddCustomState(
+        lambda: _interact_sif_shadowhunter(0x834407),
+        "Talk to Sif: claim I Am Unstoppable reward",
+    )
     bot.States.JumpToStepName("MENU_IDLE")
 
 
@@ -1578,6 +1928,23 @@ SKILLS: List[Skill] = _build_skills() # type: ignore
 
 FACTIONS = ("Asura", "Vanguard", "Norn", "Deldrimor")
 
+ROUTE_CHECKPOINTS = [
+    (
+        '"I Am Unstoppable!"',
+        [
+            ("Start entire chain", "SKILL:Norn:i_am_unstoppable"),
+            ("Take Anything You Can Do", "IAU:TAKE_ANYTHING_YOU_CAN_DO"),
+            ("Hunt Avarr and Whiteout", "IAU:HUNT_AVARR_AND_WHITEOUT"),
+            ("Fragment of Antiquities", "IAU:FRAGMENT_OF_ANTIQUITIES"),
+            ("Claim Anything You Can Do", "IAU:CLAIM_ANYTHING_YOU_CAN_DO"),
+            ("Cold as Ice solo fight", "IAU:COLD_AS_ICE"),
+            ("Claim final reward", "IAU:CLAIM_FINAL_REWARD"),
+        ],
+    ),
+]
+_route_skill_index = 0
+_route_step_index = 0
+
 # -------------------------
 # MAIN ROUTINE: build FSM once (BDS style)
 # -------------------------
@@ -1613,18 +1980,39 @@ try:
     if HIDE_BDS_HEADER:
 
         def _draw_main_child_minimal(self, main_child_dimensions=(350, 275), icon_path="", iconwidth=96):
-            # --- Only keep Start/Stop toggle ---
-            icon = IconsFontAwesome5.ICON_STOP_CIRCLE
-            legend = "  Stop"
+            fsm = self._config.FSM
+            running = bool(self._config.fsm_running)
+            paused = bool(fsm.is_paused()) if running else False
 
-            if PyImGui.button(icon + legend + "##BotToggle"):
+            if running:
+                pause_label = "Resume" if paused else "Pause"
+                if PyImGui.button(f"{pause_label}##BotPauseResume"):
+                    if paused:
+                        fsm.resume()
+                        self._config.state_description = "Running"
+                        ConsoleLog(self._config.bot_name, "Script resumed", Console.MessageType.Info)
+                    else:
+                        fsm.pause()
+                        self._config.state_description = "Paused"
+                        try:
+                            stop_x, stop_y = Player.GetXY()
+                            Player.Move(stop_x, stop_y)
+                        except Exception:
+                            pass
+                        ConsoleLog(self._config.bot_name, "Script paused", Console.MessageType.Info)
+
+                PyImGui.same_line(0.0, 8.0)
+                if PyImGui.button("Stop##BotStop"):
                     self._config.fsm_running = False
                     ConsoleLog(self._config.bot_name, "Script stopped", Console.MessageType.Info)
                     self._config.state_description = "Idle"
-                    self._config.FSM.stop()
+                    fsm.stop()
                     GLOBAL_CACHE.Coroutines.clear()
 
-
+                PyImGui.text(f"Status: {'Paused' if paused else 'Running'}")
+                PyImGui.text_wrapped(f"Step: {fsm.get_current_step_name()}")
+            else:
+                PyImGui.text("Status: Idle - select a skill or checkpoint")
             PyImGui.dummy((0, 6))
 
         bot.UI._draw_main_child = types.MethodType(_draw_main_child_minimal, bot.UI)
@@ -1634,6 +2022,22 @@ except Exception:
 
 
 def draw_portal_ui():
+    global _route_skill_index, _route_step_index
+
+    PyImGui.text("Route Controls:")
+    route_labels = [route_label for route_label, _ in ROUTE_CHECKPOINTS]
+    _route_skill_index = PyImGui.combo("Route##SU_Route", _route_skill_index, route_labels)
+    checkpoints = ROUTE_CHECKPOINTS[_route_skill_index][1]
+    checkpoint_labels = [checkpoint_label for checkpoint_label, _ in checkpoints]
+    _route_step_index = max(0, min(_route_step_index, len(checkpoints) - 1))
+    _route_step_index = PyImGui.combo("Checkpoint##SU_Checkpoint", _route_step_index, checkpoint_labels)
+    if PyImGui.button("Jump to checkpoint##SU_JumpCheckpoint"):
+        _, checkpoint_state = checkpoints[_route_step_index]
+        _stop_clear_start_and_jump(checkpoint_state)
+    if _route_step_index > 0:
+        PyImGui.text_wrapped("Jumping ahead assumes all earlier quest objectives are already complete.")
+    PyImGui.separator()
+
     PyImGui.text("Select Skill:")
     PyImGui.separator()
 

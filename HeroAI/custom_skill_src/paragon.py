@@ -51,7 +51,7 @@ class ParagonSkills:
         skill.SkillType = SkillType.Skill.value
         skill.TargetAllegiance = Skilltarget.OtherAlly.value
         skill.Nature = SkillNature.Buff.value
-        skill.Conditions.LessLife = 0.75
+        skill.Conditions.LessLife = 0.30
         skill.Conditions.TargetingStrict = True
         skill_data[skill.SkillID] = skill
 

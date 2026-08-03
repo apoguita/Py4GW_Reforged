@@ -189,6 +189,7 @@ class CombatClass:
         self.never_rampage_alone = GLOBAL_CACHE.Skill.GetID("Never_Rampage_Alone")
         self.whirlwind_attack = GLOBAL_CACHE.Skill.GetID("Whirlwind_Attack")
         self.heroic_refrain = GLOBAL_CACHE.Skill.GetID("Heroic_Refrain")
+        self.make_your_time = GLOBAL_CACHE.Skill.GetID("Make_Your_Time")
         self.natures_blessing = GLOBAL_CACHE.Skill.GetID("Natures_Blessing")
         self.relentless_assault = GLOBAL_CACHE.Skill.GetID("Relentless_Assault")
         self.great_dwarf_weapon = GLOBAL_CACHE.Skill.GetID("Great_Dwarf_Weapon")
@@ -733,6 +734,20 @@ class CombatClass:
             return self.cached_data.GetActiveScanRange()
         return Range.Spellcast.value if self.in_aggro else Range.Earshot.value
 
+    @staticmethod
+    def _get_attribute_level(attribute_name: str) -> int:
+        """Return the player's live attribute level, including active bonuses."""
+        attributes = Agent.GetAttributes(Player.GetAgentID())
+        attribute = next(
+            (item for item in attributes if item.GetName() == attribute_name),
+            None,
+        )
+        return int(getattr(attribute, "level", 0) or 0)
+
+    def _heroic_refrain_needs_self_bootstrap(self) -> bool:
+        """Heroic Refrain must be reapplied to self until Leadership reaches 20."""
+        return self._get_attribute_level("Leadership") < 20
+
 
 
     def GetAppropiateTarget(self, slot: int) -> int:
@@ -775,8 +790,11 @@ class CombatClass:
             return _lowest_ally
 
         if self.skills[slot].skill_id == self.heroic_refrain:
+            if self._heroic_refrain_needs_self_bootstrap():
+                return Player.GetAgentID()
             if not self.HasEffect(Player.GetAgentID(), self.heroic_refrain):
                 return Player.GetAgentID()
+            return TargetLowestAlly(filter_skill_id=self.heroic_refrain)
 
         if target_allegiance == Skilltarget.Enemy:
             v_target = preferred_enemy_target
@@ -1033,6 +1051,17 @@ class CombatClass:
         """ Check if the skill is a resurrection skill and the target is dead """
         if self.skills[slot].custom_skill_data.Nature == SkillNature.Resurrection.value:
             return bool(IsResurrectablePartyMember(vTarget) and Routines.Checks.Agents.IsDead(vTarget))
+
+        if self.skills[slot].skill_id == self.make_your_time:
+            from .utils import IsPartyMember
+
+            candidates = AgentArray.GetAllyArray() + AgentArray.GetSpiritPetArray()
+            candidates = AgentArray.Filter.ByDistance(candidates, Player.GetXY(), Range.Earshot.value)
+            candidates = AgentArray.Filter.ByCondition(
+                candidates,
+                lambda agent_id: Agent.IsAlive(agent_id) and IsPartyMember(agent_id, self.cached_data),
+            )
+            return len(candidates) >= 3
 
 
         if self.skills[slot].custom_skill_data.Conditions.UniqueProperty:
@@ -1688,8 +1717,14 @@ class CombatClass:
             skill_type == SkillType.WeaponSpell.value
             and conditions.AllowOverlapWeaponSpell
         )
+        heroic_refrain_bootstrap = (
+            skill_id == self.heroic_refrain
+            and v_target == player_id
+            and self._heroic_refrain_needs_self_bootstrap()
+        )
         if (
             target_allegiance != Skilltarget.NonWeaponSpelledAlly.value
+            and not heroic_refrain_bootstrap
             and self.HasEffect(v_target, skill_id, exact_weapon_spell=exact_weapon_spell)
         ):
             self.in_casting_routine = False

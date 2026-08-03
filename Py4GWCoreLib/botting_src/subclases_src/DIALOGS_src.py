@@ -40,12 +40,20 @@ class _DIALOGS:
         
     def _coro_at_xy(self, x: float, y: float, dialog:int):
         yield from self._coro_pause_hero_ai()
-        yield from self.parent.Interact._coro_with_npc_at_xy(x, y, dialog_id=dialog)
+        try:
+            yield from self.parent.Interact._coro_with_npc_at_xy(x, y, dialog_id=dialog)
+        except Exception:
+            yield from self._coro_restore_hero_ai()
+            raise
         yield from self._coro_restore_hero_ai()
         
     def _coro_with_model(self, model_id: int, dialog:int):
         yield from self._coro_pause_hero_ai()
-        yield from self.parent.Interact._coro_with_model(model_id=model_id, dialog_id=dialog)
+        try:
+            yield from self.parent.Interact._coro_with_model(model_id=model_id, dialog_id=dialog)
+        except Exception:
+            yield from self._coro_restore_hero_ai()
+            raise
         yield from self._coro_restore_hero_ai()
     
     #region Yield Steps (ys_)
