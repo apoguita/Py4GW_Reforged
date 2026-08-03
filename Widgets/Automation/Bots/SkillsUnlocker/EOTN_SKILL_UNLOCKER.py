@@ -452,7 +452,7 @@ def UseTome21788AndBuyLichAura(bot, inv_cache) -> "Generator":
     yield from Routines.Yield.wait(300)
     ConsoleLog("Tome", "Done.")
 
-def _stop_clear_start_and_jump(step_name: str):
+def _stop_clear_start_and_jump(step_target: Any, step_name: Optional[str] = None):
     from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 
     cfg = getattr(bot, "config", None)
@@ -489,10 +489,16 @@ def _stop_clear_start_and_jump(step_name: str):
         pass
 
     # ---- JUMP + START (ordering matters) ----
-    jumped = False
+    target_description = step_name or str(step_target)
+
+    def _jump_to_target() -> None:
+        if isinstance(step_target, int):
+            fsm.jump_to_state_by_step_number(step_target)
+        else:
+            fsm.jump_to_state_by_name(step_target)
+
     try:
-        fsm.jump_to_state_by_name(step_name)
-        jumped = True
+        _jump_to_target()
     except Exception as e:
         _log(f"[RUN] jump failed: {e}", PySystem.Console.MessageType.Error)
         return
@@ -516,11 +522,11 @@ def _stop_clear_start_and_jump(step_name: str):
         except Exception:
             pass
         try:
-            fsm.jump_to_state_by_name(step_name)
+            _jump_to_target()
         except Exception:
             pass
 
-    _log(f"[RUN] stop/clear -> jump -> start : {step_name}", PySystem.Console.MessageType.Warning)
+    _log(f"[RUN] stop/clear -> jump -> start : {target_description}", PySystem.Console.MessageType.Warning)
 
 # Anchor step (jumpable)
 _INIT_DONE = False
@@ -1928,22 +1934,64 @@ SKILLS: List[Skill] = _build_skills() # type: ignore
 
 FACTIONS = ("Asura", "Vanguard", "Norn", "Deldrimor")
 
-ROUTE_CHECKPOINTS = [
-    (
-        '"I Am Unstoppable!"',
-        [
-            ("Start entire chain", "SKILL:Norn:i_am_unstoppable"),
-            ("Take Anything You Can Do", "IAU:TAKE_ANYTHING_YOU_CAN_DO"),
-            ("Hunt Avarr and Whiteout", "IAU:HUNT_AVARR_AND_WHITEOUT"),
-            ("Fragment of Antiquities", "IAU:FRAGMENT_OF_ANTIQUITIES"),
-            ("Claim Anything You Can Do", "IAU:CLAIM_ANYTHING_YOU_CAN_DO"),
-            ("Cold as Ice solo fight", "IAU:COLD_AS_ICE"),
-            ("Claim final reward", "IAU:CLAIM_FINAL_REWARD"),
-        ],
-    ),
-]
+CHECKPOINT_LABEL_OVERRIDES = {
+    "IAU:TAKE_ANYTHING_YOU_CAN_DO": "Take Anything You Can Do",
+    "IAU:HUNT_AVARR_AND_WHITEOUT": "Hunt Avarr and Whiteout",
+    "IAU:FRAGMENT_OF_ANTIQUITIES": "Fragment of Antiquities",
+    "IAU:CLAIM_ANYTHING_YOU_CAN_DO": "Claim Anything You Can Do",
+    "IAU:COLD_AS_ICE": "Cold as Ice solo fight",
+    "IAU:CLAIM_FINAL_REWARD": "Claim final reward",
+}
 _route_skill_index = 0
 _route_step_index = 0
+_route_previous_skill_index = -1
+
+
+def _get_route_checkpoints():
+    """Expose every non-header FSM state, grouped by its owning skill route."""
+    cfg = getattr(bot, "config", None)
+    fsm = getattr(cfg, "FSM", None) if cfg else None
+    state_names = fsm.get_state_names() if fsm else []
+    if not state_names:
+        return []
+
+    anchor_positions = {}
+    for _, _, _, step_name, _, _ in SKILLS:
+        try:
+            anchor_positions[step_name] = state_names.index(step_name)
+        except ValueError:
+            continue
+
+    routes = []
+    ordered_anchors = [
+        (skill, anchor_positions[skill[3]])
+        for skill in SKILLS
+        if skill[3] in anchor_positions
+    ]
+    for route_number, (skill, start_index) in enumerate(ordered_anchors):
+        _, label, faction, step_name, _, _ = skill
+        end_index = (
+            ordered_anchors[route_number + 1][1]
+            if route_number + 1 < len(ordered_anchors)
+            else len(state_names)
+        )
+
+        checkpoints = []
+        visible_step = 0
+        for state_index in range(start_index, end_index):
+            state_name = state_names[state_index]
+            if state_name.startswith("[H]"):
+                continue
+            visible_step += 1
+            if state_name == step_name:
+                display_name = "Start entire route"
+            else:
+                display_name = CHECKPOINT_LABEL_OVERRIDES.get(state_name, state_name)
+            checkpoints.append((f"{visible_step}. {display_name}", state_index, state_name))
+
+        if checkpoints:
+            routes.append((f"[{faction}] {label}", checkpoints))
+    return routes
 
 # -------------------------
 # MAIN ROUTINE: build FSM once (BDS style)
@@ -2022,18 +2070,28 @@ except Exception:
 
 
 def draw_portal_ui():
-    global _route_skill_index, _route_step_index
+    global _route_skill_index, _route_step_index, _route_previous_skill_index
 
     PyImGui.text("Route Controls:")
-    route_labels = [route_label for route_label, _ in ROUTE_CHECKPOINTS]
+    route_checkpoints = _get_route_checkpoints()
+    if not route_checkpoints:
+        PyImGui.text_wrapped("Route steps are still being prepared. Please reopen this panel in a moment.")
+        return
+
+    route_labels = [route_label for route_label, _ in route_checkpoints]
+    _route_skill_index = max(0, min(_route_skill_index, len(route_checkpoints) - 1))
     _route_skill_index = PyImGui.combo("Route##SU_Route", _route_skill_index, route_labels)
-    checkpoints = ROUTE_CHECKPOINTS[_route_skill_index][1]
-    checkpoint_labels = [checkpoint_label for checkpoint_label, _ in checkpoints]
+    if _route_skill_index != _route_previous_skill_index:
+        _route_step_index = 0
+        _route_previous_skill_index = _route_skill_index
+
+    checkpoints = route_checkpoints[_route_skill_index][1]
+    checkpoint_labels = [checkpoint_label for checkpoint_label, _, _ in checkpoints]
     _route_step_index = max(0, min(_route_step_index, len(checkpoints) - 1))
     _route_step_index = PyImGui.combo("Checkpoint##SU_Checkpoint", _route_step_index, checkpoint_labels)
     if PyImGui.button("Jump to checkpoint##SU_JumpCheckpoint"):
-        _, checkpoint_state = checkpoints[_route_step_index]
-        _stop_clear_start_and_jump(checkpoint_state)
+        _, checkpoint_index, checkpoint_state = checkpoints[_route_step_index]
+        _stop_clear_start_and_jump(checkpoint_index, checkpoint_state)
     if _route_step_index > 0:
         PyImGui.text_wrapped("Jumping ahead assumes all earlier quest objectives are already complete.")
     PyImGui.separator()
