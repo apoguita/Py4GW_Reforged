@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-
-import Py4GW
+from Py4GWCoreLib.FrameTree import Frame
+import PySystem
 
 from Py4GWCoreLib import (
     ConsoleLog,
@@ -212,10 +212,9 @@ def _use_bear_skill_4() -> BehaviorTree:
 
 def _select_and_equip_reward_skill(slot: int = 8) -> BehaviorTree:
     def _select() -> BehaviorTree.NodeState:
-        import PyUIManager
+        reward_window = Frame.from_hash(792099697)
 
-        reward_window = UIManager.GetFrameIDByHash(792099697)
-        if not reward_window:
+        if not reward_window.is_usable:
             ConsoleLog(
                 MODULE_NAME,
                 "Skill reward window was not found; continuing.",
@@ -223,11 +222,9 @@ def _select_and_equip_reward_skill(slot: int = 8) -> BehaviorTree:
             )
             return BehaviorTree.NodeState.SUCCESS
 
-        skill_frame = UIManager.GetChildFrameByFrameId(
-            reward_window,
-            8 + int(slot),
-        )
-        if not skill_frame:
+        skill_frame = reward_window.find_child(8 + int(slot))
+
+        if skill_frame is None or not skill_frame.is_usable:
             ConsoleLog(
                 MODULE_NAME,
                 f"Skill reward slot {slot} was not found; continuing.",
@@ -235,19 +232,23 @@ def _select_and_equip_reward_skill(slot: int = 8) -> BehaviorTree:
             )
             return BehaviorTree.NodeState.SUCCESS
 
-        PyUIManager.UIManager.button_mouse_action_by_frame_id(skill_frame, 5)
+
+        skill_frame.mouse_action(5)
+
         return BehaviorTree.NodeState.SUCCESS
 
     def _equip() -> BehaviorTree.NodeState:
-        frame_id = UIManager.GetFrameIDByHash(1725534410)
-        if not frame_id:
+        equip_button = Frame.from_hash(1725534410)
+
+        if not equip_button.is_usable:
             ConsoleLog(
                 MODULE_NAME,
                 "Reward skill equip button was not found; continuing.",
                 log=True,
             )
             return BehaviorTree.NodeState.SUCCESS
-        UIManager.FrameClick(frame_id)
+
+        equip_button.click()
         return BehaviorTree.NodeState.SUCCESS
 
     return BT.Sequence(
@@ -269,8 +270,6 @@ def _select_and_equip_reward_skill(slot: int = 8) -> BehaviorTree:
             ),
         ],
     )
-
-
 def _pixel_stack() -> BehaviorTree:
     """Request distant multibox party members to stack on the leader."""
 
