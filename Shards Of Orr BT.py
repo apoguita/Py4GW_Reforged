@@ -3004,7 +3004,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Level 1 Before door", Level1_Part1),
         ("Level 1 After door", Level1_Part2),
 
-        ("Level 2 After First Brazier Sequence", Level2_Part1),
+        ("Level 2 First part", Level2_Part1),
         ("Level 2 After First Room", Level2_Part2),
 
         ("Level 3 First Path", Level3_FirstPath),

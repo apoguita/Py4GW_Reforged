@@ -190,6 +190,13 @@ def _capture_current_target(target_blackboard_key: str = _MULTIBOX_DIALOG_TARGET
     def _capture(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         target_id = int(Player.GetTargetID() or 0)
         if target_id <= 0:
+            # Temporary fallback for the Reforged regression where the game
+            # changes target correctly but PyPlayer.target_id reads back as 0.
+            # BTPlayer keeps only a short-lived, validated target request.
+            from Py4GWCoreLib.routines_src.behaviourtrees_src.player import BTPlayer
+
+            target_id = BTPlayer.get_recent_requested_target_id()
+        if target_id <= 0:
             return BehaviorTree.NodeState.FAILURE
         node.blackboard[target_blackboard_key] = target_id
         return BehaviorTree.NodeState.SUCCESS

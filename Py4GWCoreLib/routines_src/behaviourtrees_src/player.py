@@ -125,6 +125,27 @@ class BTPlayer:
           UserDescription: Built-in BT helper group for player action, messaging, and movement routines.
           Notes: Public `PascalCase` methods in this class are discovery candidates when marked exposed.
         """
+        # Temporary shadow of the most recent target requested by this BT
+        # layer.  The current Reforged DLL changes the in-game target correctly
+        # but PyPlayer.target_id reads back as 0.  Keep the fallback short-lived
+        # so InteractTarget cannot silently reuse an old target much later.
+        _TARGET_FALLBACK_MAX_AGE_SECONDS = 5.0
+        _last_requested_target_id = 0
+        _last_requested_target_at = 0.0
+
+        @classmethod
+        def get_recent_requested_target_id(cls) -> int:
+            """Return the recent BT-requested target while the native getter is unavailable."""
+            fallback_id = int(cls._last_requested_target_id or 0)
+            fallback_age = time.monotonic() - cls._last_requested_target_at
+            if (
+                fallback_id != 0
+                and fallback_age <= cls._TARGET_FALLBACK_MAX_AGE_SECONDS
+                and Agent.IsValid(fallback_id)
+            ):
+                return fallback_id
+            return 0
+
         @staticmethod
         def Move(
             x: float,
@@ -219,8 +240,23 @@ class BTPlayer:
                   UserDescription: Internal support routine.
                   Notes: Stores the value in `blackboard['target_id']` and fails when no target is selected.
                 """
-                node.blackboard["target_id"] = Player.GetTargetID()
-                if node.blackboard["target_id"] == 0:
+                target_id = Player.GetTargetID()
+                if target_id != 0:
+                    BTPlayer._last_requested_target_id = target_id
+                    BTPlayer._last_requested_target_at = time.monotonic()
+                else:
+                    fallback_id = BTPlayer.get_recent_requested_target_id()
+                    if fallback_id != 0:
+                        target_id = fallback_id
+                        _log(
+                            "InteractTarget",
+                            f"Target getter returned 0; using recent requested target {fallback_id}.",
+                            log=log,
+                            message_type=Console.MessageType.Warning,
+                        )
+
+                node.blackboard["target_id"] = target_id
+                if target_id == 0:
                     _fail_log("InteractTarget", "No target selected.", Console.MessageType.Error)
                     return BehaviorTree.NodeState.FAILURE
 
@@ -271,6 +307,8 @@ class BTPlayer:
                 """
                 if agent_id != 0:
                     Player.ChangeTarget(agent_id)
+                    BTPlayer._last_requested_target_id = agent_id
+                    BTPlayer._last_requested_target_at = time.monotonic()
                     _log("ChangeTarget", f"Changed target to agent {agent_id}.", log=log)
                     return BehaviorTree.NodeState.SUCCESS
                 
