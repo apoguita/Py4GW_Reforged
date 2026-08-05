@@ -307,6 +307,8 @@ class SessionStats:
 REGIONS = tuple(MAP_CATALOG)
 region_index = 0
 map_index = 0
+loaded_region_index = 0
+loaded_map_index = 0
 loop_runs = False
 auto_loot = True
 forward_clear_radius = 2500
@@ -360,7 +362,19 @@ def load_selected_definition() -> VanquishDefinition:
     region = _selected_region()
     map_name = _selected_map()
     module_name = f'{MAP_PACKAGE}.{region}.{map_name}'
-    module = importlib.import_module(module_name)
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as error:
+        missing_name = str(error.name or '')
+        if missing_name and (
+            missing_name == module_name
+            or module_name.startswith(f'{missing_name}.')
+        ):
+            raise ValueError(
+                f'Missing PyQuish map module: {region}/{map_name}.py. '
+                f'Copy the NF_Desolation map pack into {MAP_PACKAGE.replace(".", "/")}.'
+            ) from error
+        raise
 
     ids = getattr(module, f'{map_name}_ids', None)
     if not isinstance(ids, Mapping):
@@ -418,7 +432,21 @@ def _action(name: str, action_fn: Callable[[], BehaviorTree.NodeState]) -> Behav
 
 
 def _vanquish_completed() -> bool:
-    return bool(Map.IsExplorable() and Map.IsVanquishable() and Map.IsVanquishCompleted())
+    if not (Map.IsExplorable() and Map.IsVanquishable()):
+        return False
+
+    # The world context briefly reports 0 killed / 0 remaining while some
+    # explorable maps are still initializing.  Map.IsVanquishCompleted()
+    # only checks ``foes_to_kill == 0`` and therefore returns a false positive
+    # during that window, which would skip every named route point instantly.
+    foes_killed = int(Map.GetFoesKilled() or 0)
+    foes_remaining = int(Map.GetFoesToKill() or 0)
+    counter_initialized = (foes_killed + foes_remaining) > 0
+    return bool(
+        counter_initialized
+        and foes_remaining == 0
+        and Map.IsVanquishCompleted()
+    )
 
 
 def _completed_condition(name: str = 'VanquishCompleted') -> BehaviorTree:
@@ -925,6 +953,8 @@ def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Calla
 def ensure_botting_tree() -> BottingTree:
     global botting_tree
     global last_load_error
+    global loaded_region_index
+    global loaded_map_index
 
     if botting_tree is None:
         definition = load_selected_definition()
@@ -946,6 +976,8 @@ def ensure_botting_tree() -> BottingTree:
             ),
         )
         botting_tree.UI.override_draw_help(_draw_help)
+        loaded_region_index = region_index
+        loaded_map_index = map_index
 
     return botting_tree
 
@@ -959,24 +991,37 @@ def _apply_pending_rebuild() -> None:
     global botting_tree
     global pending_rebuild
     global last_load_error
+    global region_index
+    global map_index
 
     if not pending_rebuild:
         return
     if botting_tree is not None and botting_tree.IsStarted():
         return
 
-    if botting_tree is not None:
-        botting_tree.Stop()
+    previous_tree = botting_tree
+    attempted_region = _selected_region()
+    attempted_map = _selected_map()
+    if previous_tree is not None:
+        previous_tree.Stop()
     botting_tree = None
     pending_rebuild = False
 
     try:
         ensure_botting_tree()
     except Exception as error:
-        last_load_error = str(error)
+        botting_tree = previous_tree
+        region_index = loaded_region_index
+        map_index = loaded_map_index
+        last_load_error = (
+            f'{attempted_region}/{attempted_map}: {error}'
+        )
         PySystem.Console.Log(
             MODULE_NAME,
-            f'Failed to rebuild the selected map: {error}',
+            (
+                f'Failed to load {attempted_region}/{attempted_map}: {error}. '
+                'The previous map selection was restored.'
+            ),
             PySystem.Console.MessageType.Error,
         )
 
@@ -1064,8 +1109,11 @@ def _draw_run_status() -> None:
         killed = int(Map.GetFoesKilled() or 0)
         remaining = int(Map.GetFoesToKill() or 0)
         total = killed + remaining
-        progress = (100.0 * killed / total) if total > 0 else 100.0
-        PyImGui.text(f'Vanquish: {killed} / {total} ({progress:.1f}%)')
+        if total > 0:
+            progress = 100.0 * killed / total
+            PyImGui.text(f'Vanquish: {killed} / {total} ({progress:.1f}%)')
+        else:
+            PyImGui.text('Vanquish: initializing foe counter...')
 
     PyImGui.text(f'Current run: {_format_time(stats.current_run_time())}')
     PyImGui.text(f'Session: {_format_time(stats.total_time())}')
