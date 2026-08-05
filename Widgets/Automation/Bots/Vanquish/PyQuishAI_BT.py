@@ -99,7 +99,6 @@ MAP_CATALOG: dict[str, tuple[str, ...]] = {
         'UnwakingWaters',
     ),
     'NF_Desolation': (
-        'CrystalOverlook',
         'JokosDomain',
         'PoisonedOutcrops',
         'TheAlkaliPan',
