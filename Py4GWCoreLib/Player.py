@@ -847,10 +847,8 @@ class Player:
             cleaned = dialog_id.strip().lower().replace("0x", "")
             dialog = int(cleaned, 16)
             
-        # The legacy PyPlayer.SendDialog binding is currently a no-op in the
-        # Reforged DLL.  SendRawDialog uses the working kSendAgentDialog UI
-        # message path and keeps the same public ACTION-queue semantics.
-        Player.SendRawDialog(dialog)
+        ActionQueueManager().AddAction("ACTION",
+        Player.player_instance().SendDialog,dialog)
 
     @staticmethod
     def SendAutomaticDialog(button_number: int):
@@ -899,8 +897,7 @@ class Player:
             return
 
         selected_button = available_buttons[button_number]
-        # Avoid the currently broken legacy PyPlayer.SendDialog binding.
-        Player.SendRawDialog(int(selected_button.dialog_id))
+        Player.SendDialog(selected_button.dialog_id)
          
     @staticmethod
     def RequestChatHistory():
