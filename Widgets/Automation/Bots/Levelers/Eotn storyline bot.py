@@ -10,7 +10,6 @@ from Py4GWCoreLib import (
     HeroType,
     Map,
     Player,
-    UIManager,
 )
 import os
 import PySystem
@@ -33,7 +32,7 @@ from Py4GWCoreLib.enums_src.Model_enums import ModelID
 
 
 
-
+MODULE_ICON = 'Textures\\Module_Icons\\eotn.png'
 MODULE_NAME = "EotN Storyline BT"
 ICON_PATH = os.path.join(
     PySystem.Console.get_projects_path(),
