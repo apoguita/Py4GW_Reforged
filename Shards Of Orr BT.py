@@ -48,6 +48,7 @@ LOST_SOULS_QUEST_ID = 0x324
 DWARVEN_BLESSING_DIALOG = 0x84
 SHANDRA_TAKE_DIALOG = 0x832401
 SHANDRA_REWARD_DIALOG = 0x832407
+ARBOR_BLESSING_DIALOG = 0x84
 
 # Consumables
 # Conset model IDs.
@@ -2288,7 +2289,7 @@ def TravelToShandra() -> BehaviorTree:
             BT.MoveAndExitMap(VLOXS_EXIT, target_map_id=ARBOR_BAY, log=True),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
-            BT.MoveAndAutoDialog(ARBOR_BLESSING_NPC, multi_account=True, log=True),
+            BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=ARBOR_BLESSING_DIALOG, multi_account=True, log=True),
             BT.Move(ARBOR_TO_SHANDRA_PATH, pause_on_combat=True, log=False),
             BT.WaitUntilOutOfCombat(timeout_ms=60_000),
             BT.Move(SHANDRA_APPROACH, pause_on_combat=False, log=False),
