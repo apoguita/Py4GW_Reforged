@@ -2723,10 +2723,9 @@ def CollectInsideReward() -> BehaviorTree:
                 ),
                 module_name=MODULE_NAME,
             ),
-            BT.InteractTargetAndAutoDialog(
-                buttons=0,
+            BT.InteractTargetAndSendDialog(
+                dialog_id=SHANDRA_REWARD_DIALOG,
                 multi_account=True,
-                aftercast_ms=500,
                 log=True,
             ),
             BT.WaitForQuestCleared(
@@ -2821,10 +2820,9 @@ def PrepareNextDungeonRun() -> BehaviorTree:
                 agent_name="Shandra",
                 log=True,
             ),
-            BT.InteractTargetAndAutoDialog(
-                buttons=0,
+            BT.InteractTargetAndSendDialog(
+                dialog_id=SHANDRA_REWARD_DIALOG,
                 multi_account=True,
-                aftercast_ms=500,
                 log=True,
             ),
             BT.WaitForQuestCleared(
