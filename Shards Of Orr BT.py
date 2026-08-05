@@ -2395,7 +2395,7 @@ def Level1_Part1() -> BehaviorTree:
                 L1_PATH,
                 name="Level 1 First Route",
                 flag_heroes_to_waypoint=False,
-                
+                move_tolerance=500,
                 log=False,
             ),
             
@@ -2418,7 +2418,7 @@ def Level1_Part2() -> BehaviorTree:
                 L1_PATH_AFTER_DOOR,
                 name="Level 1 Route To Level 2",
                 flag_heroes_to_waypoint=False,
-                
+                move_tolerance=500,
                 log=False,
             ),
             BT.WaitForMapLoad(map_id=SOO_LEVEL_2, timeout_ms=60_000),
@@ -2462,7 +2462,7 @@ def Level2_Part1() -> BehaviorTree:
                 L2_RETURN_TO_FIRST_TORCH_PATH,
                 name="Clear And Return To First Torch",
                 flag_heroes_to_waypoint=False,
-                
+                move_tolerance=500,
                 log=False,
             ),
             PickupTorch(),
@@ -2491,6 +2491,7 @@ def Level2_Part2() -> BehaviorTree:
                 L2_TO_ROOM2_DROP,
                 clear_area_radius=Range.Area.value,
                 pause_on_combat=True,
+                move_tolerance=500,
                 log=False,
             ),
             BT.DropBundle(log=True),
@@ -2498,7 +2499,7 @@ def Level2_Part2() -> BehaviorTree:
                 L2_RETURN_TO_ROOM2_TORCH_PATH,
                 name="Clear Route Back To Room 2 Torch",
                 flag_heroes_to_waypoint=False,
-                
+                move_tolerance=500,
                 log=False,
             ),
             PickupTorch(),
@@ -2513,7 +2514,7 @@ def Level2_Part2() -> BehaviorTree:
             BT.VanquishNode([Vec2f(-4245.2, -2101.0)],
                 name="Clear Level 2 Room 2",
                 flag_heroes_to_waypoint=False,
-                
+                move_tolerance=500,
                 log=False,
             ),
             PickupTorch(),
@@ -2523,7 +2524,7 @@ def Level2_Part2() -> BehaviorTree:
                 L2_PATH_TO_LOCK,
                 name="Level 2 Route To Dungeon Lock",
                 flag_heroes_to_waypoint=False,
-                
+                move_tolerance=500,
                 pause_on_combat=True,
                 log=False,
             ),
@@ -2566,6 +2567,7 @@ def Level3_FirstPath() -> BehaviorTree:
                 name="Level 3 Main Route",
                 flag_heroes_to_waypoint=False,
                 log=False,
+                move_tolerance=500
             ),
         ],
     )
@@ -2581,6 +2583,7 @@ def Level3_BrigantRoom() -> BehaviorTree:
             name="Level 3 Main Route",
             flag_heroes_to_waypoint=False,
             log=False,
+            move_tolerance=500
                         ),
         ],
     )
@@ -2636,6 +2639,7 @@ def Level3_Fendi() -> BehaviorTree:
                 name="Route To Fendi",
                 flag_heroes_to_waypoint=False,
                 log=False,
+                move_tolerance=500
             ),
             BT.WaitForClearEnemiesInArea(
                 -15606.06, 15287.51,
