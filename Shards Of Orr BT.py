@@ -2686,44 +2686,27 @@ def Level3_Chest() -> BehaviorTree:
 
 # region Reward and restart flow
 
-
 def CollectInsideReward() -> BehaviorTree:
     """
     Collect the Lost Souls reward from Shandra inside the dungeon.
 
-    Shandra is resolved by partial, case-insensitive name matching. The routine
-    then interacts with the current target and selects the first automatic
-    dialogue option locally and across the multibox party.
+    Shandra is resolved as the nearest NPC to the final chest position.
+    The routine interacts with her and sends the known reward dialog
+    locally and across the multibox party.
     """
     return BT.Sequence(
         name="Collect Inside Reward",
         children=[
-
-
-            BT.Selector(
-                name="Find Shandra",
-                children=[
-                    BT.TargetAgentByName(
-                        agent_name="Shandra",
-                        log=True,
-                    ),
-                    BT.Sequence(
-                        name="Second Shandra Search",
-                        children=[
-                            BT.Wait(5000),
-                            BT.TargetAgentByName(
-                                agent_name="Shandra",
-                                log=True,
-                            ),
-                        ],
-                    ),
-                ],
+            BT.TargetNearest(
+                FENDI_CHEST_POSITION[0],
+                FENDI_CHEST_POSITION[1],
+                target_distance=Range.Spirit.value,
+                log=True,
             ),
             BT.LogMessage(
                 message=(
-                    "Shandra was found inside the dungeon. "
-                    "Attempting to collect the Lost Souls reward "
-                    "using automatic dialogue."
+                    "An NPC was found near the final chest. "
+                    "Attempting to collect the Lost Souls reward."
                 ),
                 module_name=MODULE_NAME,
             ),
@@ -2736,16 +2719,6 @@ def CollectInsideReward() -> BehaviorTree:
                 LOST_SOULS_QUEST_ID,
                 timeout_ms=15_000,
             ),
-            BT.LogMessage(
-                message=(
-                    "The Lost Souls reward was successfully "
-                    "collected inside the dungeon."
-                ),
-                module_name=MODULE_NAME,
-            ),
-            
-            
-            
         ],
     )
 
@@ -2815,17 +2788,10 @@ def PrepareNextDungeonRun() -> BehaviorTree:
                 ),
                 module_name=MODULE_NAME,
             ),
-            BT.Move(
+            BT.MoveAndDialog(
                 SHANDRA_APPROACH,
+                SHANDRA_REWARD_DIALOG,
                 pause_on_combat=False,
-                log=False,
-            ),
-            BT.TargetAgentByName(
-                agent_name="Shandra",
-                log=True,
-            ),
-            BT.InteractTargetAndSendDialog(
-                dialog_id=SHANDRA_REWARD_DIALOG,
                 multi_account=True,
                 log=True,
             ),
@@ -3015,7 +2981,6 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Level 3 Brigant", Level3_Brigant),
         ("Level 3 Fendi Boss Fight", Level3_Fendi),
         ("Level 3 Chest", Level3_Chest ),
-
         ("Collect Reward And Prepare Restart", CollectRewardAndPrepareRestart),
     ]
 
