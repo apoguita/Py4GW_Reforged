@@ -297,7 +297,7 @@ L3_BRAZIERS = [
     (-12621.0,2948.0),
 ]
 L3_FENDI_PATH = [
-    Vec2f(-8696, 6323),Vec2f(-9988, 7652), Vec2f(-12712.36, 13502.19),Vec2f(-13893.67, 14349.77),Vec2f(-15606.06, 15287.51),
+    Vec2f(-8696, 6323),Vec2f(-9988, 7652), Vec2f(-12712.36, 13502.19),Vec2f(-13893.67, 14349.77),Vec2f(-14918.72, 15036.97),
 ]
 FENDI_CHEST_POSITION = (-15800.98, 16901.23)
 FENDI_CHEST_GADGET_ID = 8934
@@ -2716,6 +2716,7 @@ def CollectInsideReward() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
+            BT.SendDialog(dialog_id=SHANDRA_REWARD_DIALOG, multi_account=True, log=True),
             BT.WaitForQuestCleared(
                 LOST_SOULS_QUEST_ID,
                 timeout_ms=15_000,

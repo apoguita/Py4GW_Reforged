@@ -512,7 +512,6 @@ def _build_keyword_action(
                 child = BT.VanquishNode(
                     [point],
                     clear_area_radius=clear_radius,
-                    move_tolerance=Range.Spirit.value,
                     flag_heroes_to_waypoint=False,
                     name=f'VanquishPoint:{point_index}',
                     log=False,
