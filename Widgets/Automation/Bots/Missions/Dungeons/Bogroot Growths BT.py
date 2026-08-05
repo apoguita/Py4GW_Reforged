@@ -26,9 +26,9 @@ from Widgets.System.Messaging import get_inventory_count, reset_inventory_count
 
 # region Metadata
 
-MODULE_NAME = "Frog Scepter BT"
-INI_PATH = "Widgets/Automation/Bots/Missions/Dungeons/Frog Scepter BT"
-INI_FILENAME = "Frog_Scepter_BT.ini"
+MODULE_NAME = "Bogroot Growths BT"
+INI_PATH = "Widgets/Automation/Bots/Missions/Dungeons/Bogroot Growths BT"
+INI_FILENAME = "Bogroot_Growths_BT.ini"
 
 TEXTURE = os.path.join(
     PySystem.Console.get_projects_path(),
