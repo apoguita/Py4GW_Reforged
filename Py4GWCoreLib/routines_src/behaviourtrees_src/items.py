@@ -48,6 +48,8 @@ from __future__ import annotations
 import time
 from collections.abc import Sequence
 
+from Py4GWCoreLib import AgentArray
+
 from ...Agent import Agent
 from ...GlobalCache import GLOBAL_CACHE
 from ...GlobalCache.WhiteboardLocks import clear_loot_lock, post_loot_lock
