@@ -566,8 +566,18 @@ def _queue_outcome(target_id: int, enemy_skill_id: int, our_skill_id: int) -> No
         enemy_total_s = GLOBAL_CACHE.Skill.Data.GetActivation(enemy_skill_id) or 0.0
     except Exception:
         enemy_total_s = 0.0
+    enemy_total_ms = int(enemy_total_s * 1000)
+    try:
+        from Py4GWCoreLib.Builds.Skills import ReforgedSupport
+        native_total_ms = int(
+            ReforgedSupport.get_cast_duration_ms(target_id, enemy_skill_id) or 0
+        )
+        if native_total_ms > 0:
+            enemy_total_ms = native_total_ms
+    except Exception:
+        pass
     cast_observer.queue_outcome(
-        target_id, enemy_skill_id, our_skill_id, int(enemy_total_s * 1000)
+        target_id, enemy_skill_id, our_skill_id, enemy_total_ms
     )
 
 
@@ -647,7 +657,28 @@ def is_interrupt_feasible(
 
     # --- Elapsed / remaining (from sampler) ---
     elapsed_ms = cast_observer.elapsed_ms(target_agent_id, enemy_skill_id) or 0
+    try:
+        from Py4GWCoreLib.Builds.Skills import ReforgedSupport
+        native_elapsed_ms = ReforgedSupport.get_observed_cast_elapsed_ms(
+            target_agent_id, enemy_skill_id
+        )
+        if native_elapsed_ms is not None:
+            elapsed_ms = max(0, int(native_elapsed_ms))
+    except Exception:
+        pass
     enemy_total_ms = int(enemy_total_s * 1000)
+    # Reforged CASTTIME packets contain the real duration after Fast Casting
+    # and cast-time modifiers. Prefer that exact value when the event bridge
+    # captured it; skill data remains the safe fallback.
+    try:
+        from Py4GWCoreLib.Builds.Skills import ReforgedSupport
+        native_total_ms = int(
+            ReforgedSupport.get_cast_duration_ms(target_agent_id, enemy_skill_id) or 0
+        )
+        if native_total_ms > 0:
+            enemy_total_ms = native_total_ms
+    except Exception:
+        pass
     remaining_ms = max(0, enemy_total_ms - elapsed_ms)
 
     # --- Our activation: branch on skill type ---

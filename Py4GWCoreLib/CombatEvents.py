@@ -1,18 +1,26 @@
 """
 CombatEventQueue - raw combat event access plus higher-level combat state APIs.
 
-The low-level queue facade stays close to the C++ `PyCombatEvents` binding.
-Higher-level combat-state helpers remain segmented under
-`CombatEventQueue_src.helpers`, while this module serves as the single public
-surface for both layers.
+Reforged Native exposes combat packets through ``PyAgentEvents``.  Older
+builds used ``PyCombatEvents``.  This module presents one stable queue facade
+for both backends and feeds the existing higher-level callback/state layer.
 """
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Tuple
 
 import PySystem
-import PyAgentEvents
+
+try:
+    import PyAgentEvents  # Reforged Native backend
+except ModuleNotFoundError:
+    PyAgentEvents = None  # type: ignore[assignment]
+
+try:
+    import PyCombatEvents  # Legacy backend, retained only for compatibility
+except ModuleNotFoundError:
+    PyCombatEvents = None  # type: ignore[assignment]
 
 from .CombatEventQueue_src import helpers
 from .enums import EventType
@@ -20,26 +28,190 @@ from .enums import EventType
 
 _queue = None
 _initialized = False
+_backend_name = "unavailable"
+_native_event_type_map: dict[int, int] | None = None
+
+
+class _NormalizedAgentEvent:
+    """Small proxy normalizing Reforged event type values to EventType."""
+
+    __slots__ = (
+        "timestamp",
+        "event_type",
+        "agent_id",
+        "value",
+        "target_id",
+        "float_value",
+    )
+
+    def __init__(self, event) -> None:
+        self.timestamp = int(getattr(event, "timestamp", 0) or 0)
+        self.event_type = _normalize_event_type(getattr(event, "event_type", 0))
+        self.agent_id = int(getattr(event, "agent_id", 0) or 0)
+        self.value = int(getattr(event, "value", 0) or 0)
+        self.target_id = int(getattr(event, "target_id", 0) or 0)
+        self.float_value = float(getattr(event, "float_value", 0.0) or 0.0)
+
+    def as_tuple(self) -> Tuple[int, int, int, int, int, float]:
+        return (
+            self.timestamp,
+            self.event_type,
+            self.agent_id,
+            self.value,
+            self.target_id,
+            self.float_value,
+        )
+
+
+def _build_native_event_type_map() -> dict[int, int]:
+    """Map PyAgentEvents.PyEventType constants to the public EventType enum.
+
+    Current Reforged builds use the same integer values, but resolving by name
+    keeps the adapter correct if the native enum layout changes later.
+    """
+    mapping: dict[int, int] = {}
+    native_type = getattr(PyAgentEvents, "PyEventType", None) if PyAgentEvents else None
+    if native_type is None:
+        return mapping
+    for member in EventType:
+        try:
+            native_value = getattr(native_type, member.name)
+            mapping[int(native_value)] = int(member)
+        except Exception:
+            continue
+    return mapping
+
+
+def _normalize_event_type(value) -> int:
+    global _native_event_type_map
+    try:
+        raw = int(value)
+    except Exception:
+        return 0
+    if _native_event_type_map is None:
+        _native_event_type_map = _build_native_event_type_map()
+    return int(_native_event_type_map.get(raw, raw))
+
+
+class _AgentEventsQueueAdapter:
+    """Legacy queue-shaped wrapper around Reforged's module-level API."""
+
+    def Initialize(self) -> None:
+        if PyAgentEvents is None:
+            return
+        try:
+            if not bool(PyAgentEvents.is_enabled()):
+                PyAgentEvents.enable()
+        except Exception:
+            # Some native builds do not expose a reliable pre-enable state.
+            PyAgentEvents.enable()
+
+    def Terminate(self) -> None:
+        if PyAgentEvents is None:
+            return
+        try:
+            if bool(PyAgentEvents.is_enabled()):
+                PyAgentEvents.disable()
+        except Exception:
+            try:
+                PyAgentEvents.disable()
+            except Exception:
+                pass
+
+    def IsInitialized(self) -> bool:
+        if PyAgentEvents is None:
+            return False
+        try:
+            return bool(PyAgentEvents.is_enabled())
+        except Exception:
+            return False
+
+    def GetAndClearEvents(self):
+        if PyAgentEvents is None:
+            return []
+        try:
+            return [_NormalizedAgentEvent(e) for e in (PyAgentEvents.get_and_clear_events() or [])]
+        except Exception:
+            return []
+
+    def PeekEvents(self):
+        if PyAgentEvents is None:
+            return []
+        try:
+            return [_NormalizedAgentEvent(e) for e in (PyAgentEvents.peek_events() or [])]
+        except Exception:
+            return []
+
+    def SetMaxEvents(self, count: int) -> None:
+        # Reforged exposes a fixed native capacity, not a writable max size.
+        return None
+
+    def GetMaxEvents(self) -> int:
+        if PyAgentEvents is None:
+            return 0
+        try:
+            return int(PyAgentEvents.get_capacity() or 0)
+        except Exception:
+            return 0
+
+    def GetQueueSize(self) -> int:
+        if PyAgentEvents is None:
+            return 0
+        try:
+            return int(PyAgentEvents.get_event_count() or 0)
+        except Exception:
+            return 0
 
 
 def _ensure_init():
-    """Initialize the native combat event queue on first use."""
-    global _queue, _initialized
-    if _initialized:
+    """Initialize the available native combat-event backend on first use."""
+    global _queue, _initialized, _backend_name
+    if _initialized and _queue is not None:
         return
-    _queue = PyCombatEvents.GetCombatEventQueue()
-    if not _queue.IsInitialized():
-        _queue.Initialize()
-    _initialized = True
+
+    try:
+        if PyAgentEvents is not None:
+            candidate = _AgentEventsQueueAdapter()
+            candidate.Initialize()
+            if candidate.IsInitialized():
+                _queue = candidate
+                _backend_name = "PyAgentEvents"
+                _initialized = True
+                return
+
+        if PyCombatEvents is not None:
+            candidate = PyCombatEvents.GetCombatEventQueue()
+            if not candidate.IsInitialized():
+                candidate.Initialize()
+            if candidate.IsInitialized():
+                _queue = candidate
+                _backend_name = "PyCombatEvents"
+                _initialized = True
+                return
+
+        _queue = None
+        _backend_name = "unavailable"
+        _initialized = False
+    except Exception as exc:
+        # Keep retrying on later calls; native hooks can become available after
+        # the first module-import frame.
+        _queue = None
+        _initialized = False
+        _backend_name = f"unavailable: {exc!r}"
+
 
 #region CombatEventQueue
 class CombatEventQueue:
-    """
-    Raw combat event queue facade.
+    """Raw combat-event queue facade shared by Reforged and legacy builds."""
 
-    Use this class when you want direct access to the native combat-event
-    stream without any interpreted combat-state logic.
-    """
+    @staticmethod
+    def IsAvailable() -> bool:
+        return PyAgentEvents is not None or PyCombatEvents is not None
+
+    @staticmethod
+    def GetBackendName() -> str:
+        _ensure_init()
+        return str(_backend_name)
 
     @staticmethod
     def GetQueue():
@@ -96,27 +268,21 @@ class CombatEventQueue:
         _ensure_init()
         if not _queue:
             return 0
-        return _queue.GetMaxEvents()
+        return int(_queue.GetMaxEvents() or 0)
 
     @staticmethod
     def GetQueueSize() -> int:
         _ensure_init()
         if not _queue:
             return 0
-        return _queue.GetQueueSize()
-    
+        return int(_queue.GetQueueSize() or 0)
+
+
 #region CombatEvents
 class CombatEvents:
-    """
-    Public combat-events manager API.
-
-    Raw event ingestion, state mining, and callback dispatch helpers live in
-    `CombatEventQueue_src.helpers`. This class intentionally exposes only the
-    external API used by the rest of the codebase.
-    """
+    """Public combat-event manager and callback API."""
 
     _callback_name = "CombatEvents.Update"
-
 
     @staticmethod
     def GetEvents() -> List[Tuple[int, int, int, int, int, float]]:
@@ -153,6 +319,7 @@ class CombatEvents:
         if not helpers._is_callback_active():
             return []
         skill_types = {
+            helpers.EventType.SKILL_ACTIVATE_PACKET,
             helpers.EventType.SKILL_ACTIVATED,
             helpers.EventType.ATTACK_SKILL_ACTIVATED,
             helpers.EventType.SKILL_FINISHED,
@@ -173,12 +340,25 @@ class CombatEvents:
         helpers._callbacks.setdefault("skill_activated", []).append(cb)
 
     @staticmethod
+    def OnSkillActivatedTimed(cb: Callable[[int, int, int, int], None]):
+        """Register a cast-start callback that also receives native timestamp."""
+        helpers._callbacks.setdefault("skill_activated_timed", []).append(cb)
+
+    @staticmethod
     def OnSkillFinished(cb: Callable[[int, int], None]):
         helpers._callbacks.setdefault("skill_finished", []).append(cb)
 
     @staticmethod
+    def OnSkillStopped(cb: Callable[[int, int], None]):
+        helpers._callbacks.setdefault("skill_stopped", []).append(cb)
+
+    @staticmethod
     def OnSkillInterrupted(cb: Callable[[int, int], None]):
         helpers._callbacks.setdefault("skill_interrupted", []).append(cb)
+
+    @staticmethod
+    def OnCastTime(cb: Callable[[int, int, float], None]):
+        helpers._callbacks.setdefault("cast_time", []).append(cb)
 
     @staticmethod
     def OnAttackStarted(cb: Callable[[int, int], None]):
@@ -225,34 +405,68 @@ class CombatEvents:
         helpers._process_pending_events(CombatEventQueue)
 
     @staticmethod
-    def Enable():
-        #deactivated by design
-        helpers._set_callback_active(False)
-        import PyCallback
-        PyCallback.PyCallback.Register(
-             CombatEvents._callback_name,
-             PyCallback.Phase.Data,
-             CombatEvents.Update,
-             priority=7,
-             context=PyCallback.Context.Draw
-         )
+    def Enable() -> bool:
+        if not CombatEventQueue.IsAvailable():
+            helpers._set_callback_active(False)
+            return False
+
+        CombatEventQueue.Initialize()
+        if not CombatEventQueue.IsInitialized():
+            helpers._set_callback_active(False)
+            return False
+
+        try:
+            import PyCallback
+            try:
+                PyCallback.PyCallback.RemoveByName(CombatEvents._callback_name)
+            except Exception:
+                pass
+            helpers._set_callback_active(True)
+            PyCallback.PyCallback.Register(
+                CombatEvents._callback_name,
+                PyCallback.Phase.Data,
+                CombatEvents.Update,
+                priority=7,
+                context=PyCallback.Context.Draw,
+            )
+            return True
+        except Exception:
+            helpers._set_callback_active(False)
+            return False
 
     @staticmethod
     def Disable():
         helpers._set_callback_active(False)
         try:
             import PyCallback
-
             PyCallback.PyCallback.RemoveByName(CombatEvents._callback_name)
         except Exception:
             pass
+        CombatEventQueue.Terminate()
+
 
 COMBAT_EVENTS = CombatEvents()
 
 try:
-    CombatEvents.Enable()
-except Exception as e:
-    PySystem.Console.Log("CombatEvents", f"Module init error: {e}", PySystem.Console.MessageType.Error)
+    enabled = CombatEvents.Enable()
+    if enabled:
+        PySystem.Console.Log(
+            "CombatEvents",
+            f"Native combat events active via {CombatEventQueue.GetBackendName()}",
+            PySystem.Console.MessageType.Info,
+        )
+    else:
+        PySystem.Console.Log(
+            "CombatEvents",
+            "Native event backend unavailable; polling fallback remains active",
+            PySystem.Console.MessageType.Warning,
+        )
+except Exception as exc:
+    PySystem.Console.Log(
+        "CombatEvents",
+        f"Event initialization failed; polling fallback remains active: {exc}",
+        PySystem.Console.MessageType.Warning,
+    )
 
 
 EventTypes = EventType
