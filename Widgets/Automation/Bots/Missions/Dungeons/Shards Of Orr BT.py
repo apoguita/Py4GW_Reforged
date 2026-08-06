@@ -216,8 +216,6 @@ TORCH_BUFF_ID = 2545
 
 L2_BLESSING_NPC = Vec2f(-14076.0, -19457.0)
 
-
-L2_TORCH_CHEST = Vec2f(-14709.0, -16548.0)
 L2_FIRST_TORCH_DROP_POINT_PATH = [
     Vec2f(-11002.0, -17001.0),
 ]
@@ -2432,8 +2430,6 @@ def Level1_Part2() -> BehaviorTree:
 
 
 # region Level 2 - part 1
-
-
 def Level2_Part1() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 2",
@@ -2446,13 +2442,15 @@ def Level2_Part1() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
+            BT.Move(Vec2f(-14600, -16650)),
             BT.ClearEnemiesInArea(
-                L2_TORCH_CHEST,
-                radius=Range.Compass.value,
+                Vec2f(-14600, -16650),
+                radius=Range.Spirit.value,
                 log=True,
             ),
+            BT.Wait(2000),
             BT.MoveAndInteractWithGadget(
-                L2_TORCH_CHEST,
+                Vec2f(-14709.0, -16548.0),
                 pause_on_combat=False,
                 log=True,
             ),
