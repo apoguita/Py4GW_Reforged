@@ -73,6 +73,8 @@ RUN_NAME_MAP = {
         "_5_CampRankor_To_DeldrimorWarCamp": "5 - Camp Rankor -> Deldrimor War Camp",
         "_6_CampRankor_To_DroknarsForge": "6 - Camp Rankor -> Droknars Forge",
         "_7_DroknarsForge_To_CampRankor": "7 - Droknars Forge -> Camp Rankor",
+        "_8_DeldrimorWarCamp_To_TheGraniteCitadel": "8 - Deldrimor War Camp -> The Granite Citadel",
+        "_9_TheGraniteCitadel_To_CopperhammerMines": "9 - The Granite Citadel -> Copperhammer Mines",
     },
     "Tyria - Ascalon - East Outposts": {
         "_1_AscalonCity_To_Sardelac": "1 - Ascalon City -> Sardelac",
