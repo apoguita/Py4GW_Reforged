@@ -372,23 +372,37 @@ def _process_event(event):
     fval = event.float_value
     _events.append((ts, etype, agent, val, target, fval))
 
-    if etype in (EventType.SKILL_ACTIVATED, EventType.ATTACK_SKILL_ACTIVATED):
+    if etype == EventType.SKILL_ACTIVATE_PACKET:
+        # Earliest Reforged skill packet. Consumers still validate live Agent
+        # state before spending an interrupt, so false starts remain harmless.
+        _observed.setdefault(agent, set())
+        if val > 0:
+            _observed[agent].add(val)
+        _fire("skill_activated_timed", agent, val, target, ts)
+        _fire("skill_activated", agent, val, target)
+    elif etype in (EventType.SKILL_ACTIVATED, EventType.ATTACK_SKILL_ACTIVATED):
         _observed.setdefault(agent, set())
         if val > 0:
             _observed[agent].add(val)
         _check_stance(ts, agent, val)
         _create_estimated_recharge(ts, agent, val)
+        _fire("skill_activated_timed", agent, val, target, ts)
         _fire("skill_activated", agent, val, target)
     elif etype == EventType.INSTANT_SKILL_ACTIVATED:
         _observed.setdefault(agent, set())
         if val > 0:
             _observed[agent].add(val)
         _create_estimated_recharge(ts, agent, val)
+        _fire("skill_activated_timed", agent, val, target, ts)
         _fire("skill_activated", agent, val, target)
+    elif etype == EventType.CASTTIME:
+        _fire("cast_time", agent, int(_get_pending_skill(agent)), fval)
     elif etype in (EventType.SKILL_FINISHED, EventType.ATTACK_SKILL_FINISHED):
-        _fire("skill_finished", agent, _get_pending_skill(agent))
+        _fire("skill_finished", agent, int(val or _get_pending_skill(agent)))
+    elif etype in (EventType.SKILL_STOPPED, EventType.ATTACK_SKILL_STOPPED):
+        _fire("skill_stopped", agent, int(val or _get_pending_skill(agent)))
     elif etype == EventType.INTERRUPTED:
-        _fire("skill_interrupted", agent, _get_pending_skill(agent))
+        _fire("skill_interrupted", agent, int(val or _get_pending_skill(agent)))
     elif etype == EventType.ATTACK_STARTED:
         _fire("attack_started", agent, target)
     elif etype == EventType.DISABLED:
@@ -402,9 +416,14 @@ def _process_event(event):
     elif etype == EventType.KNOCKED_DOWN:
         _fire("knockdown", agent, fval)
     elif etype in (EventType.DAMAGE, EventType.CRITICAL, EventType.ARMOR_IGNORING):
-        _fire("damage", agent, target, fval, _get_pending_skill(target))
+        # Native damage packets expose the skill directly in ``value``.
+        # agent=damage target, target=damage source.  Falling back to the
+        # source's pending cast keeps older bindings usable.
+        skill_id = int(val or _get_pending_skill(target))
+        _fire("damage", agent, target, fval, skill_id)
     elif etype == EventType.HEALING:
-        _fire("healing", agent, target, fval, _get_pending_skill(target))
+        skill_id = int(val or _get_pending_skill(target))
+        _fire("healing", agent, target, fval, skill_id)
     elif etype == EventType.EFFECT_RENEWED:
         _fire("effect_renewed", agent, val)
     elif etype == EventType.SKILL_RECHARGE:
