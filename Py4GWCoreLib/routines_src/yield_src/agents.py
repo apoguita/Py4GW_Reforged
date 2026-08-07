@@ -188,10 +188,24 @@ class Agents:
     @staticmethod
     def InteractWithAgentXY(x: float, y: float, timeout_ms: int = 5000, tolerance: float = 200.0):
         from ...Py4GWcorelib import ConsoleLog, Utils
-        yield from Agents.TargetNearestNPCXY(x, y, 100)
+        from ...SessionLogger import get_session_logger
+        from ...Map import Map
+        from ...Player import Player
+
+        log = get_session_logger("AgentInteraction")
+        # NPC positions can drift from route coordinates, especially in
+        # outposts. Keep this lookup consistent with the interaction type.
+        target_distance = max(200.0, float(tolerance))
+        log.write(
+            f"InteractWithAgentXY start map={Map.GetMapID()} player_xy={Player.GetXY()} "
+            f"requested_xy=({x}, {y}) search_radius={target_distance} current_target={Player.GetTargetID()}"
+        )
+        yield from Agents.TargetNearestNPCXY(x, y, target_distance)
         target_id = Player.GetTargetID()
+        log.write(f"InteractWithAgentXY target_result target_id={target_id}")
         if not target_id:
-            ConsoleLog("InteractWithGadgetXY", "No target after targeting.")
+            ConsoleLog("InteractWithAgentXY", "No NPC target after targeting.")
+            log.write("InteractWithAgentXY failure reason=no_npc_target")
             return False
 
         yield from YieldPlayer.InteractTarget()
@@ -207,7 +221,7 @@ class Agents:
                 break
 
             if since_reissue >= reissue_interval:
-                yield from Agents.TargetNearestGadgetXY(x, y, 100)
+                yield from Agents.TargetNearestNPCXY(x, y, target_distance)
                 yield from YieldPlayer.InteractTarget()
                 since_reissue = 0
 
@@ -217,9 +231,11 @@ class Agents:
 
         if elapsed >= timeout_ms:
             ConsoleLog("InteractWithAgentXY", "TIMEOUT waiting to reach target range.")
+            log.write(f"InteractWithAgentXY failure reason=timeout target_id={target_id} elapsed_ms={elapsed}")
             return False
 
         yield from wait(500)
+        log.write(f"InteractWithAgentXY success target_id={target_id}")
         return True
 
     @staticmethod
