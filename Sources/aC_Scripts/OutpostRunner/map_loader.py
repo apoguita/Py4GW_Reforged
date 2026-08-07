@@ -8,6 +8,14 @@ from Py4GWCoreLib import ConsoleLog
 
 MAPS_DIR = os.path.join(os.path.dirname(__file__), "maps")
 
+
+def _get_route_attribute(module, run, suffix, default):
+    expected_name = f"{run}_{suffix}".lower()
+    for name, value in vars(module).items():
+        if name.lower() == expected_name:
+            return value
+    return default
+
 def get_regions():
     """
     Return list of region folder names under maps/.
@@ -80,11 +88,9 @@ def load_map_data(region, run):
     module = util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    # use run as prefix to match variables inside module
-    base = run.lower()
     data = {
-        "outpost_path": getattr(module, f"{base}_outpost_path", []),
-        "segments":     getattr(module, f"{base}_segments", []),
-        "ids":          getattr(module, f"{base}_ids", {}),
+        "outpost_path": _get_route_attribute(module, run, "outpost_path", []),
+        "segments":     _get_route_attribute(module, run, "segments", []),
+        "ids":          _get_route_attribute(module, run, "ids", {}),
     }
     return data
