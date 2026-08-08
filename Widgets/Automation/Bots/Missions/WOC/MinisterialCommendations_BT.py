@@ -1025,7 +1025,7 @@ def _run_point(
         name=label,
         children=[
             BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
-            BT.Move(point, pause_on_combat=False, tolerance=tolerance, log=True),
+            BT.Move(point, pause_on_combat=False, tolerance=tolerance, log=True, avoid_obstacles=False),
         ],
     )
 
