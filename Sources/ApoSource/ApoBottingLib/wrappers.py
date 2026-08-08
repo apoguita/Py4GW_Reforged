@@ -1166,7 +1166,10 @@ def Move(
     flag_heroes_to_waypoint: bool = False,
     log: bool = False,
     ignore_destination_obstacles: bool = False,
-    destination_obstacle_ignore_distance: float = Range.Earshot.value
+    destination_obstacle_ignore_distance: float = Range.Earshot.value,
+    ignore_destination_npcs: bool = True,
+    ignore_destination_gadgets: bool = True,
+    avoid_obstacles: bool = True,
 ) -> BehaviorTree:
     return _movement_with_runtime_pause(
         "Move",
@@ -1177,6 +1180,9 @@ def Move(
             flag_heroes_to_waypoint=flag_heroes_to_waypoint,
             ignore_destination_obstacles=ignore_destination_obstacles,
             destination_obstacle_ignore_distance=destination_obstacle_ignore_distance,
+            ignore_destination_npcs=ignore_destination_npcs,
+            ignore_destination_gadgets=ignore_destination_gadgets,
+            avoid_obstacles=avoid_obstacles,
             log=log,
         ),
         pause_on_combat=pause_on_combat,
@@ -1227,6 +1233,7 @@ def MoveAndKill(
     flag_heroes_to_waypoint: bool = False,
     move_tolerance: float = 150.0,
     log: bool = False,
+    avoid_obstacles: bool = True,
 ) -> BehaviorTree:
     return _movement_with_runtime_pause(
         "MoveAndKill",
@@ -1236,6 +1243,7 @@ def MoveAndKill(
             pause_on_combat=resolved_pause,
             flag_heroes_to_waypoint=flag_heroes_to_waypoint,
             move_tolerance=move_tolerance,
+            avoid_obstacles=avoid_obstacles,
             log=log,
         ),
         pause_on_combat=pause_on_combat,
@@ -1250,6 +1258,7 @@ def VanquishNode(
     name: str = 'VanquishNode',
     move_tolerance: float = 150.0,
     log: bool = False,
+    avoid_obstacles: bool = True,
 ) -> BehaviorTree:
     resolved_children: list[BehaviorTree | BehaviorTree.Node] = []
 
@@ -1268,6 +1277,7 @@ def VanquishNode(
                 pause_on_combat=step_pause_on_combat,
                 flag_heroes_to_waypoint=step_flag_heroes_to_waypoint,
                 move_tolerance=move_tolerance,
+                avoid_obstacles=avoid_obstacles,
                 log=log,
             )
         )
@@ -1339,7 +1349,11 @@ def MoveAndInteractWithGadget(
     multi_account: bool = False,
     include_self: bool = True,
     log: bool = False,
+    ignore_destination_npcs: bool = False,
+    ignore_destination_gadgets: bool = True,
 ) -> BehaviorTree:
+    """Move to a gadget while still avoiding destination-side NPCs by default."""
+
     def _build(resolved_pause: bool) -> BehaviorTree:
         interaction_tree = RoutinesBT.Agents.MoveAndInteractWithGadget(
             pos=pos,
@@ -1365,6 +1379,8 @@ def MoveAndInteractWithGadget(
                 tolerance=move_tolerance,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
                 ignore_destination_obstacles=True,
+                ignore_destination_npcs=ignore_destination_npcs,
+                ignore_destination_gadgets=ignore_destination_gadgets,
                 log=log,
             ),
             _wait_until_player_stops_moving(log=log),

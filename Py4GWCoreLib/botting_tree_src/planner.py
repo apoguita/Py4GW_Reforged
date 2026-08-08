@@ -227,10 +227,37 @@ class BottingTreePlannerMixin:
         ]
         if repeat:
             full_pass = self._build_named_planner_tree(steps, start_from=None, name=f'{name} Full Pass', repeat=False)
+
+            def _tick_repeated_full_pass(
+                node: BehaviorTree.Node,
+            ) -> BehaviorTree.NodeState:
+                """Repeat successful passes while propagating failures to the planner."""
+                full_pass.blackboard = node.blackboard
+                result = BehaviorTree.Node._normalize_state(
+                    full_pass.tick()
+                )
+
+                if result is None:
+                    raise TypeError(
+                        "Repeated planner pass returned a non-NodeState result."
+                    )
+
+                if result == BehaviorTree.NodeState.FAILURE:
+                    # Do not swallow the failure. _tick_planner() must receive it
+                    # so it can restart the current named planner step.
+                    return BehaviorTree.NodeState.FAILURE
+
+                if result == BehaviorTree.NodeState.SUCCESS:
+                    # A complete pass may start again from the first named step.
+                    full_pass.reset()
+
+                return BehaviorTree.NodeState.RUNNING
+
             children.append(
-                BehaviorTree.RepeaterForeverNode(
-                    full_pass.root,
+                BehaviorTree.ActionNode(
                     name='Loop: restart routine',
+                    action_fn=_tick_repeated_full_pass,
+                    aftercast_ms=0,
                 )
             )
         return BehaviorTree(BehaviorTree.SequenceNode(name=name, children=children))

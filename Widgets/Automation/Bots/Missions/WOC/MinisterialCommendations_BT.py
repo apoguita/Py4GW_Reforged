@@ -86,7 +86,7 @@ PLAYER_TRAP_POSITION = (-6332.0, -5251.0)
 
 RUN_TO_KILL_SPOT = [
     (-4199.0, -1475.0),
-    (-4519.88, -336.63),
+    (-4709.0, -609.0),
     (-3116.0, 650.0),
     (-2518.0, 631.0),
     (-2096.0, -1067.0),
@@ -283,9 +283,6 @@ def MissionRestartAnchorService() -> BehaviorTree:
     state = {
         'returning_to_outpost': False,
         'last_return_ms': 0.0,
-        'mission_armed': False,
-        'miku_agent_id': 0,
-        'miku_seen_alive': False,
     }
 
     def _select_mission_restart(node: BehaviorTree.Node) -> None:
@@ -300,18 +297,10 @@ def MissionRestartAnchorService() -> BehaviorTree:
         current_step = str(node.blackboard.get('current_step_name', '') or '')
         requested_step = str(node.blackboard.get('restart_step_name_request', '') or '')
         current_map_id = int(Map.GetMapID() or 0)
-        player_id = int(Player.GetAgentID() or 0)
-        mission_step_active = bool(
-            _is_mission_planner_step(current_step)
-            and current_step != MISSION_RESTART_STEP
+        in_mission_instance = bool(
+            Map.IsMapReady() and current_map_id == A_CHANCE_ENCOUNTER
         )
-
-        # Do not arm recovery during the transition into map 861: the map can
-        # be ready one frame before the player agent is available.
-        if player_id > 0 and mission_step_active and not Map.IsOutpost():
-            state['mission_armed'] = True
-
-        in_mission = bool(state['mission_armed'] or _is_mission_planner_step(current_step))
+        in_mission = in_mission_instance or _is_mission_planner_step(current_step)
 
         if in_mission and requested_step and requested_step != MISSION_RESTART_STEP:
             _log(
@@ -323,42 +312,13 @@ def MissionRestartAnchorService() -> BehaviorTree:
 
         party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
         party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
-        direct_player_dead = bool(
-            player_id > 0 and Routines.Checks.Player.IsDead()
-        )
-        move_player_dead = str(
-            node.blackboard.get('move_current_pause_reason', '') or ''
-        ) == 'player_dead'
-        heroai_player_dead = str(
-            node.blackboard.get('HEROAI_STATUS', '') or ''
-        ) == 'PAUSED: Player dead'
-        player_dead = bool(
-            direct_player_dead or move_player_dead or heroai_player_dead
-        )
-
-        if state['mission_armed'] and not state['miku_seen_alive']:
-            resolved_miku_id = _resolve_miku_agent_id()
-            if resolved_miku_id > 0 and not Agent.IsDead(resolved_miku_id):
-                state['miku_agent_id'] = resolved_miku_id
-                state['miku_seen_alive'] = True
-
-        miku_id = int(state['miku_agent_id'] or 0)
-        miku_dead = bool(
-            state['miku_seen_alive']
-            and miku_id > 0
-            and Agent.IsDead(miku_id)
-        )
-        failure_detected = bool(
-            state['mission_armed']
-            and (player_dead or miku_dead or party_wiped or party_defeated)
-        )
-        if failure_detected:
+        player_dead = bool(Routines.Checks.Player.IsDead())
+        mission_failed = bool(in_mission_instance and (player_dead or _mission_failed()))
+        if in_mission_instance and (party_wiped or party_defeated or mission_failed):
             if not state['returning_to_outpost']:
                 ActionQueueManager().ResetAllQueues()
                 _log(
-                    'Mission failure detected '
-                    f'(player_dead={player_dead}, miku_dead={miku_dead}, '
-                    f'map_id={current_map_id}); '
+                    f'Mission failure detected (player_dead={player_dead}); '
                     'returning to Kaineng Center before '
                     f"restarting '{MISSION_RESTART_STEP}'.",
                     PySystem.Console.MessageType.Warning,
@@ -369,24 +329,19 @@ def MissionRestartAnchorService() -> BehaviorTree:
         if not state['returning_to_outpost']:
             return BehaviorTree.NodeState.RUNNING
 
-        if Map.IsOutpost():
+        if Map.IsMapReady() and Map.IsOutpost():
             _select_mission_restart(node)
             node.blackboard['restart_step_name_request'] = MISSION_RESTART_STEP
             node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {MISSION_RESTART_STEP}'
             state['returning_to_outpost'] = False
             state['last_return_ms'] = 0.0
-            state['mission_armed'] = False
-            state['miku_agent_id'] = 0
-            state['miku_seen_alive'] = False
-            node.blackboard['move_reason'] = ''
-            node.blackboard['move_current_pause_reason'] = ''
             _log(
                 f"Outpost loaded; restarting '{MISSION_RESTART_STEP}'.",
                 PySystem.Console.MessageType.Success,
             )
             return BehaviorTree.NodeState.RUNNING
 
-        if not Map.IsOutpost():
+        if Map.IsMapReady() and current_map_id == A_CHANCE_ENCOUNTER:
             now_ms = time.monotonic() * 1000.0
             if now_ms - state['last_return_ms'] >= 1_000.0:
                 GLOBAL_CACHE.Party.ReturnToOutpost()
@@ -440,13 +395,9 @@ def _hero_agent_id(hero_position: int) -> int:
 
 def _cast_hero_skill(hero_position: int, slot: int, target_id: int = 0) -> bool:
     hero_agent_id = _hero_agent_id(hero_position)
-    if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+    if hero_agent_id == 0:
         return False
-    GLOBAL_CACHE.SkillBar.HeroUseSkill(
-        int(target_id or 0),
-        int(slot),
-        int(hero_position),
-    )
+    GLOBAL_CACHE.Party.Heroes.UseSkill(hero_agent_id, slot, int(target_id or 0))
     return True
 
 
@@ -635,6 +586,22 @@ def _player_skill_node(
         )
 
     return BT.Subtree(node_name, _build)
+
+
+def _optional_commendation_loot(timeout_ms: int = 5_000) -> BehaviorTree:
+    return BT.Selector(
+        [
+            BT.PickupGroundItemByModelID(
+                MINISTERIAL_COMMENDATION,
+                max_distance=Range.Compass.value,
+                timeout_ms=timeout_ms,
+                allow_unassigned=True,
+                log=True,
+            ),
+            BT.Succeeder('No Ministerial Commendation Nearby'),
+        ],
+        name='Optional Ministerial Commendation Loot',
+    )
 
 
 def _current_hero_ids() -> tuple[int, ...]:
@@ -869,8 +836,8 @@ def InitialFight() -> BehaviorTree:
         x=PLAYER_TRAP_POSITION[0],
         y=PLAYER_TRAP_POSITION[1],
         radius=8_000.0,
-        allowed_alive_enemies=1,
-        stable_clear_ms=1_000,
+        allowed_alive_enemies=0,
+        stable_clear_ms=2_000,
         log=True,
     )
     state = {'started_at': 0.0, 'last_action_ms': 0.0}
@@ -949,17 +916,71 @@ def WaitForMikuAreaClear() -> BehaviorTree:
     )
 
 
+def CastOgdenMakeHaste() -> BehaviorTree:
+    """Bring Ogden into cast range, wait for slot 4, then hold for the cast."""
+
+    node_name = 'Ogden: Make Haste'
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        player_x, player_y = Player.GetXY()
+
+        def _ogden_ready() -> BehaviorTree.NodeState:
+            if _mission_failed():
+                return BehaviorTree.NodeState.FAILURE
+
+            hero_agent_id = _hero_agent_id(HERO_SPEED_SUPPORT)
+            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+                return BehaviorTree.NodeState.FAILURE
+
+            in_range = _distance(Agent.GetXY(hero_agent_id), Player.GetXY()) < 1_350.0
+            if in_range and _hero_skill_ready(HERO_SPEED_SUPPORT, 4):
+                return BehaviorTree.NodeState.SUCCESS
+            return BehaviorTree.NodeState.RUNNING
+
+        wait_ready = BehaviorTree(
+            BehaviorTree.WaitUntilNode(
+                name='Wait For Ogden Make Haste',
+                condition_fn=_ogden_ready,
+                throttle_interval_ms=250,
+                timeout_ms=10_000,
+            )
+        )
+        cast = BT.Sequence(
+            name='Position Ogden And Cast Make Haste',
+            children=[
+                BT.FlagHero(HERO_SPEED_SUPPORT, player_x, player_y),
+                wait_ready,
+                BT.LogMessage('Ogden is in range; casting Make Haste.', MODULE_NAME),
+                _hero_skill_node(
+                    HERO_SPEED_SUPPORT,
+                    4,
+                    target=Player.GetAgentID,
+                    aftercast_ms=2_000,
+                    name=node_name,
+                ),
+            ],
+        )
+        return BT.Selector(
+            [
+                cast,
+                _continue_after_wait_timeout(
+                    node_name,
+                    'Ogden could not cast Make Haste within 10 seconds; continuing the run.',
+                ),
+            ],
+            name=node_name,
+        )
+
+    return BT.Subtree(node_name, _build)
+
+
 def FinishInitialFight() -> BehaviorTree:
     return BT.Sequence(
         name='Finish Initial Fight And Start Pull',
         children=[
+            _optional_commendation_loot(),
             BT.UnflagAllHeroes(log=True),
-            _hero_skill_node(
-                                HERO_SPEED_SUPPORT,
-                                4,
-                                target=Player.GetAgentID,
-                                aftercast_ms=2_000,
-                            ),
+            CastOgdenMakeHaste(),
             BT.FlagAllHeroes(-6699.0, -5645.0),
             _hero_skill_node(
                 HERO_SPEED_SUPPORT,
@@ -973,7 +994,7 @@ def FinishInitialFight() -> BehaviorTree:
                 condition=lambda: Agent.IsCrippled(Player.GetAgentID()),
                 name='Player: I Am Unstoppable If Crippled',
             ),
-            BT.Move((-4693.0, -3137.0), pause_on_combat=False, tolerance=150.0, log=True, ignore_destination_obstacles=True),
+            BT.Move((-4693.0, -3137.0), pause_on_combat=False, tolerance=150.0, log=True),
             WaitForMikuAreaClear(),
             _hero_skill_node(
                 HERO_SOS,
@@ -990,7 +1011,21 @@ def FinishInitialFight() -> BehaviorTree:
                 name='BiP: Mend Body And Soul On Crippled Miku',
             ),
             BT.FlagAllHeroes(-7075.0, -5685.0),
-            BT.Move(RUN_TO_KILL_SPOT, ignore_destination_obstacles=True, destination_obstacle_ignore_distance=Range.Spirit.value, pause_on_combat=False, log=True),
+        ],
+    )
+
+
+def _run_point(
+    point: tuple[float, float],
+    label: str,
+    *,
+    tolerance: float = 125.0,
+) -> BehaviorTree:
+    return BT.Sequence(
+        name=label,
+        children=[
+            BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
+            BT.Move(point, pause_on_combat=False, tolerance=tolerance, log=True),
         ],
     )
 
@@ -1027,7 +1062,9 @@ def PrepareStairsDefense() -> BehaviorTree:
             BT.Wait(7_500),
             BT.FlagHeroesFromList(
                 [HERO_VEKK, HERO_NORGU, HERO_RAZAH, HERO_OGDEN, HERO_MASTER_OF_WHISPERS],
-                -6707.0,-5242.0,),
+                -6707.0,
+                -5242.0,
+            ),
             _hero_skill_node(HERO_SOS, 5, name='Livia: Recuperation At Stairs'),
             BT.Wait(2_000),
             BT.FlagHero(HERO_SOS, -4818.0, -7841.0),
@@ -1102,11 +1139,38 @@ def SpikeMinistryOfPurity() -> BehaviorTree:
                 target=lambda: _nearest_enemy(Player.GetXY(), 200.0),
                 name='Whirlwind Attack',
             ),
-            BT.Wait(5_000),
-            BT.Travel(target_map_id=KAINENG_CENTER, log=True),
-            BT.LootItems()
+            BT.Wait(3_000),
         ],
     )
+
+
+def LootAndReturn() -> BehaviorTree:
+    return BT.Sequence(
+        name='Loot Commendations And Return',
+        children=[
+            _optional_commendation_loot(timeout_ms=10_000),
+            BT.LootItems(distance=Range.Compass.value, timeout_ms=15_000),
+            BT.Travel(target_map_id=KAINENG_CENTER, log=True),
+        ],
+    )
+
+
+def _run_point_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
+    for index, point in enumerate(RUN_TO_KILL_SPOT, start=1):
+        name = f'Run To Kill Spot - Point {index:02d}'
+        tolerance = 15.0 if index == len(RUN_TO_KILL_SPOT) else 125.0
+        steps.append(
+            (
+                name,
+                lambda point=point, name=name, tolerance=tolerance: _run_point(
+                    point,
+                    name,
+                    tolerance=tolerance,
+                ),
+            )
+        )
+    return steps
 
 
 def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
@@ -1118,9 +1182,11 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ('Prepare First Fight', PrepareFirstFight),
         ('Fight Initial Group', InitialFight),
         ('Finish Initial Fight', FinishInitialFight),
+        *_run_point_steps(),
         ('Prepare Stairs Defense', PrepareStairsDefense),
         ('Wait For Purity Ball', WaitForPurityBall),
         ('Spike Ministry Of Purity', SpikeMinistryOfPurity),
+        ('Loot And Return', LootAndReturn),
     ]
 
 

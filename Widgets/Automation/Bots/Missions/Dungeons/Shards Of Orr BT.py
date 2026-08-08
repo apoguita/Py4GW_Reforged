@@ -216,6 +216,8 @@ TORCH_BUFF_ID = 2545
 
 L2_BLESSING_NPC = Vec2f(-14076.0, -19457.0)
 
+
+L2_TORCH_CHEST = Vec2f(-14709.0, -16548.0)
 L2_FIRST_TORCH_DROP_POINT_PATH = [
     Vec2f(-11002.0, -17001.0),
 ]
@@ -2430,6 +2432,8 @@ def Level1_Part2() -> BehaviorTree:
 
 
 # region Level 2 - part 1
+
+
 def Level2_Part1() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 2",
@@ -2442,15 +2446,13 @@ def Level2_Part1() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.Move(Vec2f(-14600, -16650)),
             BT.ClearEnemiesInArea(
-                Vec2f(-14600, -16650),
-                radius=Range.Spirit.value,
+                L2_TORCH_CHEST,
+                radius=Range.Compass.value,
                 log=True,
             ),
-            BT.Wait(2000),
             BT.MoveAndInteractWithGadget(
-                Vec2f(-14709.0, -16548.0),
+                L2_TORCH_CHEST,
                 pause_on_combat=False,
                 log=True,
             ),
@@ -2660,20 +2662,27 @@ def Level3_Chest() -> BehaviorTree:
     return BT.Sequence(
         name="Open chest",
         children=[
-            BT.Move(Vec2f(-15198, 16839), log=False),
+            BT.Move(
+                Vec2f(-15198, 16839),
+                tolerance=350.0,
+                pause_on_combat=False,
+                log=True,
+            ),
             BT.Wait(3000),
             BT.MoveAndInteractWithGadget(
-            gadget_id=FENDI_CHEST_GADGET_ID,
-            pos=Vec2f(*FENDI_CHEST_POSITION),
-            search_distance=700.0,
-            interaction_distance=Range.Nearby.value,
-            interaction_count=2,
-            interaction_interval_ms=1000,
-            account_settle_ms=3_000,
-            timeout_ms=90_000,
-            multi_account=True,
-            include_self=True,
-            log=True,
+                gadget_id=FENDI_CHEST_GADGET_ID,
+                pos=Vec2f(*FENDI_CHEST_POSITION),
+                search_distance=700.0,
+                interaction_distance=Range.Nearby.value,
+                interaction_count=2,
+                interaction_interval_ms=1000,
+                account_settle_ms=3_000,
+                timeout_ms=90_000,
+                multi_account=True,
+                include_self=True,
+                log=True,
+                ignore_destination_npcs=False,
+                ignore_destination_gadgets=True,
             ),
             _inventory_statistics_node(after_chest=True),
             _record_run_end_node(),
@@ -2729,19 +2738,43 @@ def PrepareNextDungeonRun() -> BehaviorTree:
     """
     Prepare the next Shards of Orr run after returning to Arbor Bay.
 
-    Two scenarios are supported:
+    Three scenarios are supported:
 
-    1. The reward was collected inside the dungeon:
+    1. Lost Souls is still active:
+       - keep the current quest;
+       - immediately re-enter Shards of Orr.
+
+    2. The reward was collected inside the dungeon:
        - Lost Souls is missing;
        - retake the quest in Arbor Bay;
        - enter Shards of Orr.
 
-    2. The reward remains complete:
+    3. The reward remains complete:
        - collect the reward from Shandra in Arbor Bay;
        - enter and immediately leave Level 1;
        - retake Lost Souls in Arbor Bay;
        - enter Shards of Orr again for the next run.
     """
+
+    quest_already_active = BT.Sequence(
+        name="Restart With Active Quest",
+        children=[
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="active",
+                log=True,
+            ),
+            BT.LogMessage(
+                message=(
+                    "Lost Souls is already active in Arbor Bay. "
+                    "Re-entering Shards of Orr without retaking "
+                    "the quest."
+                ),
+                module_name=MODULE_NAME,
+            ),
+            EnterShardsOfOrr(),
+        ],
+    )
 
     reward_collected_inside = BT.Sequence(
         name="Restart After Inside Reward",
@@ -2852,6 +2885,7 @@ def PrepareNextDungeonRun() -> BehaviorTree:
     return BT.Selector(
         name="Prepare Next Dungeon Run",
         children=[
+            quest_already_active,
             reward_collected_inside,
             reward_not_collected_inside,
         ],
@@ -2861,9 +2895,39 @@ def PrepareNextDungeonRun() -> BehaviorTree:
 def CollectRewardAndPrepareRestart(
     end_countdown_timeout_ms: int = 190_000,
 ) -> BehaviorTree:
+    already_in_arbor = BT.Sequence(
+        name="Skip Inside Reward - Already In Arbor Bay",
+        children=[
+            BT.IsCurrentMap(
+                map_id=ARBOR_BAY,
+                log=True,
+            ),
+            BT.LogMessage(
+                message=(
+                    "The party is already in Arbor Bay. "
+                    "Skipping the inside reward search and "
+                    "resuming the restart preparation."
+                ),
+                module_name=MODULE_NAME,
+            ),
+            BT.Succeeder(
+                "InsideRewardAlreadyReturnedToArbor",
+            ),
+        ],
+    )
+
     reward_collected_inside = BT.Sequence(
         name="Collect Shandra Reward Inside Dungeon",
         children=[
+            BT.IsCurrentMap(
+                map_id=SOO_LEVEL_3,
+                log=True,
+            ),
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="complete",
+                log=True,
+            ),
             BT.LogMessage(
                 message=(
                     "Lost Souls is complete. Looking for "
@@ -2910,6 +2974,7 @@ def CollectRewardAndPrepareRestart(
             BT.Selector(
                 name="Resolve Inside Reward",
                 children=[
+                    already_in_arbor,
                     reward_collected_inside,
                     reward_not_collected_inside,
                 ],

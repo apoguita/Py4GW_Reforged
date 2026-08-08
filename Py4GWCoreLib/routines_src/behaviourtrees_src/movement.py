@@ -53,6 +53,7 @@ from typing import Any, TYPE_CHECKING, Callable, TypedDict, cast
 from ...Agent import Agent
 
 from ...Map import Map
+from ...enums_src.GameData_enums import Allegiance
 from ...enums_src.GameData_enums import Range
 from ...native_src.internals.types import Point2D
 from ...native_src.internals.types import PointPath
@@ -188,6 +189,8 @@ class BTMovement:
         avoidance_update_ms: int = 200,
         destination_obstacle_position: Point2D | None = None,
         destination_obstacle_ignore_distance: float = 1500.0,
+        ignore_destination_npcs: bool = True,
+        ignore_destination_gadgets: bool = True,
     ) -> BehaviorTree:
         """
         Build a tree that moves the player to target coordinates using autopathing, proactive local avoidance, and runtime recovery logic.
@@ -198,7 +201,7 @@ class BTMovement:
             Display: Move
             Purpose: Move the player to target coordinates with waypoint tracking, local obstacle avoidance, pause handling, and timeout protection.
             UserDescription: Use this when you want a robust movement routine that can steer around nearby agents and collidable gadget candidates, pause, recover, and report progress through the blackboard.
-            Notes: Writes movement and avoidance state to the blackboard and uses a parallel runtime with move, timeout, and map-transition watchers. Interaction composites may ignore NPCs and gadgets near the final destination during a bounded approach while retaining avoidance for all other obstacles.
+            Notes: Writes movement and avoidance state to the blackboard and uses a parallel runtime with move, timeout, and map-transition watchers. Interaction composites may independently ignore NPCs or gadgets near the final destination during a bounded approach while retaining avoidance for all other obstacles.
         """
         resolved_destination_obstacle_position: Point2D = (
             (
@@ -358,6 +361,8 @@ class BTMovement:
             node.blackboard["move_avoidance_enabled"] = bool(avoid_obstacles)
             node.blackboard["move_avoidance_gadgets_enabled"] = bool(avoid_gadgets)
             node.blackboard["move_avoidance_ignore_destination_obstacles"] = bool(ignore_destination_obstacles)
+            node.blackboard["move_avoidance_ignore_destination_npcs"] = bool(ignore_destination_npcs)
+            node.blackboard["move_avoidance_ignore_destination_gadgets"] = bool(ignore_destination_gadgets)
             node.blackboard["move_avoidance_destination_obstacle_position"] = resolved_destination_obstacle_position
             node.blackboard["move_avoidance_destination_obstacle_ignore_distance"] = float(destination_obstacle_ignore_distance)
             node.blackboard["move_avoidance_active"] = bool(state["avoidance_active"])
@@ -610,6 +615,7 @@ class BTMovement:
         ) -> list[CircularObstacle]:
             """Collect nearby living and gadget collision candidates on the player's plane."""
             from ...AgentArray import AgentArray
+            from ..Party import Party as PartyRoutines
 
             player_id = int(Player.GetAgentID() or 0)
             player_agent = Agent.GetAgentByID(player_id)
@@ -647,6 +653,11 @@ class BTMovement:
             ) + 200.0
             scan_distance_sq = scan_distance * scan_distance
             safety_gap = max(0.0, float(avoidance_clearance))
+            pass_through_allegiances = {
+                int(Allegiance.Ally.value),
+                int(Allegiance.SpiritPet.value),
+                int(Allegiance.Minion.value),
+            }
 
             obstacles: list[CircularObstacle] = []
             for raw_agent_id in AgentArray.GetAgentArray():
@@ -666,8 +677,19 @@ class BTMovement:
                     if living is None or bool(living.is_dead) or not bool(living.is_alive):
                         continue
 
-                    # Friendly player accounts do not need to steer around one
-                    # another. Each account independently avoids NPCs and foes.
+                    living_allegiance = int(living.allegiance or 0)
+
+                    # Party members, allied summons, spirits, pets and minions
+                    # are traversable in game. Treating them as solid circular
+                    # obstacles can make a narrow corridor appear completely
+                    # blocked even though the player can walk through them.
+                    if PartyRoutines.IsPartyMember(agent_id):
+                        continue
+                    if living_allegiance in pass_through_allegiances:
+                        continue
+
+                    # Retain the legacy friendly-account fallback in case party
+                    # data is temporarily unavailable while an instance loads.
                     if int(living.login_number or 0) != 0 and int(living.allegiance or 0) != 3:
                         continue
                     obstacle_radius = _agent_collision_radius(agent_id)
@@ -691,8 +713,14 @@ class BTMovement:
                     continue
 
                 obstacle_pos = (float(agent.pos.x), float(agent.pos.y))
+                ignore_this_destination_type = (
+                    bool(ignore_destination_npcs)
+                    if agent.is_living_type
+                    else bool(ignore_destination_gadgets)
+                )
                 if (
                     destination_ignore_active
+                    and ignore_this_destination_type
                     and agent_id in destination_interaction_ids
                     and math.dist(obstacle_pos, resolved_destination_obstacle_position)
                     <= intentional_target_distance
@@ -812,6 +840,21 @@ class BTMovement:
                 _clear_avoidance(preserve_side=True)
                 blocker_id = int(blocker.agent_id)
                 blocker_kind = "gadget" if Agent.IsGadget(blocker_id) else "living agent"
+                blocker_details = ""
+                if blocker_kind == "living agent":
+                    blocker_living = Agent.GetLivingAgentByID(blocker_id)
+                    if blocker_living is not None:
+                        blocker_allegiance_value = int(blocker_living.allegiance or 0)
+                        try:
+                            blocker_allegiance_name = Allegiance(blocker_allegiance_value).name
+                        except ValueError:
+                            blocker_allegiance_name = "Unknown"
+                        blocker_details = (
+                            f" (allegiance={blocker_allegiance_name}:"
+                            f"{blocker_allegiance_value}, "
+                            f"login_number={int(blocker_living.login_number or 0)}, "
+                            f"owner_id={int(blocker_living.owner or 0)})"
+                        )
                 node.blackboard["move_avoidance_blocked_without_detour"] = blocker_id
                 node.blackboard["move_avoidance_blocker_kind"] = blocker_kind
 
@@ -826,7 +869,8 @@ class BTMovement:
                     _log(
                         "Move",
                         (
-                            f"{blocker_kind.capitalize()} {blocker_id} intersects the movement corridor, "
+                            f"{blocker_kind.capitalize()} {blocker_id}{blocker_details} "
+                            "intersects the movement corridor, "
                             "but no walkable local detour is currently available."
                         ),
                         message_type=Console.MessageType.Warning,
@@ -1458,6 +1502,7 @@ class BTMovement:
         flag_heroes_to_waypoint: bool = False,
         move_tolerance: float = DEFAULT_MOVE_TOLERANCE,
         log: bool = False,
+        avoid_obstacles: bool = True,
     ) -> BehaviorTree:
         from .agents import BTAgents
 
@@ -1469,6 +1514,7 @@ class BTMovement:
                 tolerance=move_tolerance,
                 pause_on_combat=pause_on_combat,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                avoid_obstacles=avoid_obstacles,
                 log=log,
             ),
 
@@ -1488,6 +1534,7 @@ class BTMovement:
                 tolerance=400.0,
                 pause_on_combat=False,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                avoid_obstacles=avoid_obstacles,
                 log=log,
                 path_points_override=[
                     (float(coords.x), float(coords.y)),
@@ -1609,6 +1656,9 @@ class BTMovement:
         log: bool = False,
         ignore_destination_obstacles: bool = False,
         destination_obstacle_ignore_distance: float = 1500.0,
+        ignore_destination_npcs: bool = True,
+        ignore_destination_gadgets: bool = True,
+        avoid_obstacles: bool = True,
     ) -> BehaviorTree:
         """
         Build a tree that walks a path of one or more points.
@@ -1619,7 +1669,7 @@ class BTMovement:
           Display: Move Path
           Purpose: Move through a path of world coordinates in order.
           UserDescription: Use this when you want to walk through multiple points instead of a single destination.
-          Notes: A single point collapses to one move step; an empty path succeeds immediately. Destination-obstacle exclusion uses the final path point and activates only during the configured final approach distance.
+          Notes: A single point collapses to one move step; an empty path succeeds immediately. Local obstacle avoidance can be disabled for the whole path. Destination-obstacle exclusion uses the final path point, can filter NPCs and gadgets independently, and activates only during the configured final approach distance.
         """
         from .player import BTPlayer
 
@@ -1642,6 +1692,9 @@ class BTMovement:
                 pause_on_combat=pause_on_combat,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
                 ignore_destination_obstacles=ignore_destination_obstacles,
+                ignore_destination_npcs=ignore_destination_npcs,
+                ignore_destination_gadgets=ignore_destination_gadgets,
+                avoid_obstacles=avoid_obstacles,
                 destination_obstacle_position=final_destination,
                 destination_obstacle_ignore_distance=destination_obstacle_ignore_distance,
                 log=log,
@@ -1656,6 +1709,9 @@ class BTMovement:
                     pause_on_combat=pause_on_combat,
                     flag_heroes_to_waypoint=flag_heroes_to_waypoint,
                     ignore_destination_obstacles=ignore_destination_obstacles,
+                    ignore_destination_npcs=ignore_destination_npcs,
+                    ignore_destination_gadgets=ignore_destination_gadgets,
+                    avoid_obstacles=avoid_obstacles,
                     destination_obstacle_position=final_destination,
                     destination_obstacle_ignore_distance=destination_obstacle_ignore_distance,
                     log=log,
@@ -1709,6 +1765,7 @@ class BTMovement:
         flag_heroes_to_waypoint: bool = False,
         move_tolerance: float = DEFAULT_MOVE_TOLERANCE,
         log: bool = False,
+        avoid_obstacles: bool = True,
     ) -> BehaviorTree:
         """
         Build a tree that walks a path and clears enemies around each point.
@@ -1719,7 +1776,7 @@ class BTMovement:
           Display: Move And Kill Path
           Purpose: Walk through path points and clear enemies around each point.
           UserDescription: Use this when a route should advance point by point while clearing nearby enemies.
-          Notes: A single point collapses to the existing move-and-kill routine. Movement diagnostics and clear-area logs use the shared log flag.
+          Notes: A single point collapses to the existing move-and-kill routine. Local obstacle avoidance can be disabled for every movement in the path. Movement diagnostics and clear-area logs use the shared log flag.
         """
         from .player import BTPlayer
 
@@ -1732,6 +1789,7 @@ class BTMovement:
                 pause_on_combat=pause_on_combat,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
                 move_tolerance=move_tolerance,
+                avoid_obstacles=avoid_obstacles,
                 log=log,
             ),
         )
