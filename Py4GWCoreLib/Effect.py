@@ -157,6 +157,11 @@ class Effects:
         Returns: int: The alcohol level of the agent.
         """
         return PyEffects.PyEffects.GetAlcoholLevel()
+
+    @staticmethod
+    def GetAlcoholTimeRemaining() -> int:
+        """Return the tracked alcohol duration remaining in milliseconds."""
+        return PyEffects.PyEffects.GetAlcoholTimeRemaining()
     
     @staticmethod
     def ApplyDrunkEffect(intensity: int, tint: int):

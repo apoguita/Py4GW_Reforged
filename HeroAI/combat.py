@@ -56,10 +56,13 @@ VOW_SPELL_TYPES: tuple[int, ...] = (
 )
 
 SKILL_LOCK_MIN_LEASE_MS = 500
-ALCOHOL_RECHECK_DELAY_MS = 500
+ALCOHOL_USE_CONFIRM_TIMEOUT_MS = 2000
+ALCOHOL_MAX_USE_ATTEMPTS = 3
+ALCOHOL_DURATION_CHECK_INTERVAL_MS = 1000
+ALCOHOL_TOP_OFF_WINDOW_MS = 10000
 
 
-# Level 3 alcohol: each drink gives +3 or more — one drink reaches target level
+# Level 3 alcohol: one drink is enough to satisfy Drunken Master.
 ALCOHOL_L3_MODEL_IDS = [
     ModelID.Aged_Dwarven_Ale.value,
     ModelID.Aged_Hunters_Ale.value,
@@ -69,7 +72,8 @@ ALCOHOL_L3_MODEL_IDS = [
     ModelID.Vial_Of_Absinthe.value,
     ModelID.Witchs_Brew.value,
 ]
-# Level 1 alcohol: each drink gives +1 — needs multiple uses to reach target level
+# Level 1 alcohol: one drink is enough because Drunken Master only requires
+# the player to be drunk; no minimum alcohol level is needed.
 ALCOHOL_L1_MODEL_IDS = [
     ModelID.Dwarven_Ale.value,
     ModelID.Hunters_Ale.value,
@@ -80,9 +84,6 @@ ALCOHOL_L1_MODEL_IDS = [
     ModelID.Hard_Apple_Cider.value,
     ModelID.Eggnog.value,
 ]
-# Combined list: L3 items preferred first for efficiency
-ALCOHOL_MODEL_IDS = ALCOHOL_L3_MODEL_IDS + ALCOHOL_L1_MODEL_IDS
-
 #region CombatClass
 class CombatClass:
     global MAX_SKILLS, custom_skill_data_handler
@@ -229,12 +230,18 @@ class CombatClass:
                                GLOBAL_CACHE.Skill.GetID("Scavenger_Strike")
                                ]
         
+        self.drunken_master = GLOBAL_CACHE.Skill.GetID("Drunken_Master")
         self.alcohol_skills = [
-            GLOBAL_CACHE.Skill.GetID("Drunken_Master"),
+            self.drunken_master,
             GLOBAL_CACHE.Skill.GetID("Dwarven_Stability"),
             GLOBAL_CACHE.Skill.GetID("Feel_No_Pain")
         ]
         self._next_alcohol_recheck_ms: int = 0
+        self._alcohol_drink_pending: bool = False
+        self._alcohol_drink_attempts: int = 0
+        self._alcohol_pending_model_id: int = 0
+        self._alcohol_pending_model_count: int = 0
+        self._next_alcohol_duration_check_ms: int = 0
         
         #junundu
         self.junundu_wail = GLOBAL_CACHE.Skill.GetID("Junundu_Wail")
@@ -1842,6 +1849,24 @@ class CombatClass:
         Scan the prioritized skill list and return the first castable skill slot
         together with its resolved target. Returns (-1, 0) if nothing is castable.
         """
+        if ooc:
+            drunken_master_slot = next(
+                (
+                    slot
+                    for slot in range(MAX_SKILLS)
+                    if self.skills[slot].skill_id == self.drunken_master
+                ),
+                -1,
+            )
+            if (
+                drunken_master_slot >= 0
+                and self.IsSkillReady(drunken_master_slot)
+                and self._should_top_off_alcohol_stance(drunken_master_slot)
+            ):
+                is_ready_to_cast, target_agent_id = self.IsReadyToCast(drunken_master_slot)
+                if is_ready_to_cast and target_agent_id != 0 and Agent.IsLiving(target_agent_id):
+                    return drunken_master_slot, target_agent_id
+
         for slot in range(MAX_SKILLS):
             if not self.IsSkillReady(slot):
                 continue
@@ -1873,63 +1898,108 @@ class CombatClass:
             pass
         return 0
 
+    def GetAlcoholTimeRemaining(self) -> int:
+        """Get Toolbox-style tracked alcohol duration remaining in milliseconds."""
+        try:
+            return max(0, int(Effects.GetAlcoholTimeRemaining()))
+        except Exception:
+            return 0
+
+    def _should_top_off_alcohol_stance(self, slot: int) -> bool:
+        now_ms = int(Utils.GetBaseTimestamp())
+        if now_ms < self._next_alcohol_duration_check_ms:
+            return False
+        self._next_alcohol_duration_check_ms = now_ms + ALCOHOL_DURATION_CHECK_INTERVAL_MS
+
+        remaining_ms = self.GetAlcoholTimeRemaining()
+        if remaining_ms <= 0 or remaining_ms > ALCOHOL_TOP_OFF_WINDOW_MS:
+            return False
+
+        player_id = Player.GetAgentID()
+        skill_id = self.skills[slot].skill_id
+        return not self.HasEffect(player_id, skill_id)
+
     def UseAlcoholIfAvailable(self) -> bool:
         """
-        Checks inventory for alcohol and consumes enough pieces to reach drunk level 2.
-        Returns True if alcohol was used, False otherwise.
+        Request at most one drink at a time when sober.
+        Returns True when a new item-use request was submitted. A pending request
+        is confirmed by either a positive alcohol level or an inventory decrease.
         """
         try:
             now_ms = int(Utils.GetBaseTimestamp())
-            target_drunk_level = 2
             drunk_level = self.GetDrunkLevel()
-            PySystem.Console.Log("HeroAI", f"Drunken Master: drunk level = {drunk_level}", PySystem.Console.MessageType.Debug)
+            PySystem.Console.Log(
+                "HeroAI",
+                f"Drunken Master: drunk level = {drunk_level}",
+                PySystem.Console.MessageType.Debug,
+            )
 
-            if drunk_level >= target_drunk_level:
+            if drunk_level > 0:
+                self._reset_alcohol_drink_state()
+                PySystem.Console.Log(
+                    "HeroAI",
+                    f"Already drunk (level {drunk_level}), skipping alcohol",
+                    PySystem.Console.MessageType.Debug,
+                )
+                return False
+
+            if self._alcohol_drink_pending:
+                current_count = GLOBAL_CACHE.Inventory.GetModelCount(self._alcohol_pending_model_id)
+                if current_count < self._alcohol_pending_model_count:
+                    self._reset_alcohol_drink_state()
+                    return False
+
+                if now_ms < self._next_alcohol_recheck_ms:
+                    return False
+
+                self._alcohol_drink_pending = False
+                self._alcohol_pending_model_id = 0
+                self._alcohol_pending_model_count = 0
                 self._next_alcohol_recheck_ms = 0
-                PySystem.Console.Log("HeroAI", f"Already drunk (level {drunk_level}), skipping alcohol", PySystem.Console.MessageType.Debug)
+
+            if self._alcohol_drink_attempts >= ALCOHOL_MAX_USE_ATTEMPTS:
+                PySystem.Console.Log(
+                    "HeroAI",
+                    f"Alcohol use was not confirmed after {self._alcohol_drink_attempts} attempts; casting sober",
+                    PySystem.Console.MessageType.Warning,
+                )
                 return False
 
-            if now_ms < self._next_alcohol_recheck_ms:
-                return False
-
-            drinks_needed = 2 if drunk_level <= 0 else max(0, target_drunk_level - drunk_level)
-            drinks_used = 0
-
-            while drinks_needed > 0:
-                item_used = False
-                candidate_model_ids = ALCOHOL_L1_MODEL_IDS + ALCOHOL_L3_MODEL_IDS
-
-                for alcohol_model_id in candidate_model_ids:
-                    if GLOBAL_CACHE.Inventory.GetModelCount(alcohol_model_id) <= 0:
-                        continue
-                    item_id = GLOBAL_CACHE.Item.GetItemIdFromModelID(alcohol_model_id)
-                    if not item_id:
-                        continue
-                    PySystem.Console.Log("HeroAI", f"Using alcohol item_id {item_id}", PySystem.Console.MessageType.Info)
-                    GLOBAL_CACHE.Inventory.UseItem(item_id)
-                    drinks_used += 1
-                    drinks_needed -= 1
-                    item_used = True
-                    break
-
-                if not item_used:
-                    break
-
-            if drinks_used > 0:
-                self._next_alcohol_recheck_ms = now_ms + ALCOHOL_RECHECK_DELAY_MS
+            candidate_model_ids = ALCOHOL_L1_MODEL_IDS + ALCOHOL_L3_MODEL_IDS
+            for alcohol_model_id in candidate_model_ids:
+                model_count = GLOBAL_CACHE.Inventory.GetModelCount(alcohol_model_id)
+                if model_count <= 0:
+                    continue
+                item_id = GLOBAL_CACHE.Item.GetItemIdFromModelID(alcohol_model_id)
+                if not item_id:
+                    continue
+                PySystem.Console.Log("HeroAI", f"Using alcohol item_id {item_id}", PySystem.Console.MessageType.Info)
+                GLOBAL_CACHE.Inventory.UseItem(item_id)
+                self._alcohol_drink_attempts += 1
+                self._alcohol_drink_pending = True
+                self._alcohol_pending_model_id = alcohol_model_id
+                self._alcohol_pending_model_count = model_count
+                self._next_alcohol_recheck_ms = now_ms + ALCOHOL_USE_CONFIRM_TIMEOUT_MS
                 return True
 
-            self._next_alcohol_recheck_ms = 0
+            self._reset_alcohol_drink_state()
             PySystem.Console.Log("HeroAI", "No alcohol found in inventory", PySystem.Console.MessageType.Debug)
         except Exception as e:
             PySystem.Console.Log("HeroAI", f"Error in UseAlcoholIfAvailable: {e}", PySystem.Console.MessageType.Warning)
         return False
 
+    def _reset_alcohol_drink_state(self) -> None:
+        self._next_alcohol_recheck_ms = 0
+        self._alcohol_drink_pending = False
+        self._alcohol_drink_attempts = 0
+        self._alcohol_pending_model_id = 0
+        self._alcohol_pending_model_count = 0
+
     def IsAlcoholTopoffPending(self) -> bool:
         try:
-            return int(Utils.GetBaseTimestamp()) < int(self._next_alcohol_recheck_ms)
+            return self._alcohol_drink_pending or int(Utils.GetBaseTimestamp()) < int(self._next_alcohol_recheck_ms)
         except Exception:
-            return False
+            return self._alcohol_drink_pending
 
     def _skill_lock_enabled(self, skill: SkillData) -> bool:
         custom_skill = getattr(skill, "custom_skill_data", None)
@@ -2046,7 +2116,7 @@ class CombatClass:
 
         if skill_id in self.alcohol_skills:
             drunk_level = self.GetDrunkLevel()
-            if drunk_level <= 1:
+            if drunk_level <= 0:
                 if self.UseAlcoholIfAvailable():
                     self.ResetSkillPointer()
                     return False
@@ -2057,12 +2127,14 @@ class CombatClass:
 
                 PySystem.Console.Log(
                     "HeroAI",
-                    f"Skipping alcohol skill {skill_id}: drunk level {drunk_level} is below 2 and no alcohol was consumed",
+                    f"Casting alcohol skill {skill_id} while sober",
                     PySystem.Console.MessageType.Debug,
                 )
-                self.ResetSkillPointer()
-                return False
+            else:
+                self._reset_alcohol_drink_state()
 
         GLOBAL_CACHE.SkillBar.UseSkill(self.skill_order[slot]+1, target_agent_id, aftercast_delay=self.aftercast)
+        if skill_id in self.alcohol_skills:
+            self._reset_alcohol_drink_state()
         self.ResetSkillPointer()
         return True
