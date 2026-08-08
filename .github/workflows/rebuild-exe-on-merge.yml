@@ -1,0 +1,117 @@
+name: Rebuild launcher exe on merge to main
+
+# Auto-commits a freshly-built Py4GW_Reforged_Launcher.exe back to the repo
+# root whenever a real source change lands on main -- replaces the manual
+# "someone remembers to rebuild before/after their PR" process. See
+# Py4GW_Reforged_Launcher/dev_notes/RELAY.md's "[WITHDRAWN] Standing rule
+# (2026-07-22)" for why the manual "rebuild before every PR" version was
+# tried and dropped same day: it puts binary-freshness on each individual
+# contributor and doesn't scale once multiple branches are open
+# concurrently (a rebuild on one branch can't reflect fixes sitting on a
+# different open, unmerged branch).
+#
+# Builds via the same pinned PyInstaller version and unchanged .spec used
+# for every manual rebuild to date (RELAY 093/097), invoked from the repo
+# root exactly the way those manual rebuilds were -- reproducing an
+# already-proven pipeline, not inventing a new one.
+#
+# Loop safety, two independent layers (either alone would be enough):
+#   1. This workflow's own commit only ever touches the root-level
+#      Py4GW_Reforged_Launcher.exe, which does NOT match the
+#      `Py4GW_Reforged_Launcher/**` path filter below (that pattern
+#      requires the trailing folder prefix) -- so the bot's own push
+#      structurally can't satisfy this workflow's own trigger.
+#   2. Belt-and-suspenders: the bot's commit message also carries
+#      `[skip ci]`, which GitHub's runners honor natively regardless of
+#      path filters.
+#   (GitHub also doesn't trigger new workflow runs from a push made with
+#   the default GITHUB_TOKEN in the first place -- a third, built-in
+#   layer this workflow doesn't need to rely on, but gets for free.)
+#
+# Requires this repo's Settings -> Actions -> General -> Workflow
+# permissions set to "Read and write permissions" -- an owner-only repo
+# setting this workflow file cannot set for itself. Without that, the
+# build/test steps will still run and report correctly, but the final
+# commit+push step will fail with a permissions error.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Py4GW_Reforged_Launcher/**'
+      - '.github/workflows/rebuild-exe-on-merge.yml'
+  workflow_dispatch: {}  # manual trigger, for testing without a qualifying push
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          # Full history, not the action's default shallow (fetch-depth: 1)
+          # clone -- this job does its own git pull --rebase + push back to
+          # this same repo later, and a shallow clone's history boundary is
+          # exactly the wrong thing to risk a rebase tripping over.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: 'x86'
+
+      - name: Install the launcher's dependencies
+        run: 'pip install --only-binary=:all: --no-binary=proxy_tools -r Py4GW_Reforged_Launcher/requirements.txt'
+
+      - name: Run the real test suite
+        working-directory: Py4GW_Reforged_Launcher
+        run: python -m unittest discover -s . -p "test_*.py" -v
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller==6.12.0
+
+      - name: Build the launcher .exe
+        run: python -m PyInstaller Py4GW_Reforged_Launcher/Py4GW_Reforged_Launcher.spec --noconfirm
+
+      - name: Verify the .exe was actually produced
+        shell: pwsh
+        run: |
+          $exePath = "dist/Py4GW_Reforged_Launcher.exe"
+          if (-not (Test-Path $exePath)) {
+            Write-Error "Build did not produce $exePath"
+            exit 1
+          }
+          $size = (Get-Item $exePath).Length
+          Write-Host "Built $exePath ($size bytes)"
+          if ($size -lt 1MB) {
+            Write-Error "$exePath is suspiciously small ($size bytes) -- likely a broken/incomplete build"
+            exit 1
+          }
+
+      - name: Copy the rebuilt exe to the repo root
+        shell: pwsh
+        run: |
+          $oldHash = if (Test-Path "Py4GW_Reforged_Launcher.exe") { (Get-FileHash "Py4GW_Reforged_Launcher.exe" -Algorithm SHA256).Hash } else { "(none -- first build)" }
+          Copy-Item "dist/Py4GW_Reforged_Launcher.exe" "Py4GW_Reforged_Launcher.exe" -Force
+          $newHash = (Get-FileHash "Py4GW_Reforged_Launcher.exe" -Algorithm SHA256).Hash
+          Write-Host "Old hash: $oldHash"
+          Write-Host "New hash: $newHash"
+
+      - name: Commit and push the rebuilt exe, if it actually changed
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Py4GW_Reforged_Launcher.exe
+          git diff --staged --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "No changes to the built exe -- nothing to commit."
+            exit 0
+          }
+          $shortSha = $env:GITHUB_SHA.Substring(0, 8)
+          git commit -m "Rebuild launcher exe (CI, synced through $shortSha) [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
