@@ -213,7 +213,12 @@ class DeathMagic:
 
         now_ms = int(Utils.GetBaseTimestamp())
         assumed_targets = getattr(self.build, "_dark_aura_assumed_targets", {})
-        if int(assumed_targets.get(target_agent_id, 0) or 0) > now_ms:
+        # The assumed-active window exists because another ally's enchantments
+        # cannot be read reliably. Our own can, and were already checked above,
+        # so applying the window to ourselves would refuse to reapply the aura
+        # for the rest of it every time an enemy strips it early - which on a
+        # self-sacrifice bar is most of the damage gone for up to 25 seconds.
+        if target_agent_id != Player.GetAgentID() and int(assumed_targets.get(target_agent_id, 0) or 0) > now_ms:
             return False
 
         cast_result = yield from self.build.CastSkillIDAndRestoreTarget(

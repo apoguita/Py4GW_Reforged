@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from Py4GWCoreLib import AgentArray, BuildMgr, Profession, Range, Routines
+from Py4GWCoreLib import BuildMgr, Profession, Range, Routines
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 from Py4GWCoreLib.Builds.Skills import SkillsTemplate
@@ -63,22 +63,13 @@ class Soul_Taker_Daggers_Dark_Aura(BuildMgr):
         # adjacent to the target, so a clustered pick pays out twice.
         self.dagger_target_type = "EnemyClustered"
 
-    def _get_player_contact_count(self) -> int:
-        player_x, player_y = Player.GetXY()
-        enemy_array = Routines.Agents.GetFilteredEnemyArray(player_x, player_y, Range.Adjacent.value)
-        enemy_array = AgentArray.Filter.ByCondition(
-            enemy_array,
-            lambda agent_id: Agent.IsValid(agent_id) and not Agent.IsDead(agent_id),
-        )
-        return len(enemy_array or [])
-
     def _is_in_melee_contact(self, target_agent_id: int) -> bool:
         if not target_agent_id or not Agent.IsValid(target_agent_id) or Agent.IsDead(target_agent_id):
             return False
         return Utils.Distance(Player.GetXY(), Agent.GetXY(target_agent_id)) <= Range.Adjacent.value
 
     def _auto_attack_cluster(self):
-        return (yield from self.AutoAttack(target_type="EnemyClustered"))
+        return (yield from self.AutoAttack(target_type=self.dagger_target_type))
 
     def _should_upkeep(self, skill_id: int, mid_chain: bool) -> bool:
         """Allow upkeep casts freely, but mid-combo only when the buff is gone.
@@ -102,9 +93,12 @@ class Soul_Taker_Daggers_Dark_Aura(BuildMgr):
         # early: while it is off cooldown the helper records that we were
         # knocked down, which is what lets it fire again just after a
         # knockdown rather than only during one.
+        # contact_count is left to the helper: it runs the same adjacency scan
+        # itself, but only once its cheap gates have passed. Computing it here
+        # would pay for a full enemy-array scan on every tick of the skill's
+        # uptime and on every tick we are only close to aggro.
         if self.IsSkillEquipped(I_AM_UNSTOPPABLE_ID) and (
             yield from self.skillbook.Any.NoAttribute.I_Am_Unstoppable(
-                contact_count=self._get_player_contact_count(),
                 min_adjacent_enemies=2,
                 refresh_window_ms=1000,
                 aftercast_delay=150,
