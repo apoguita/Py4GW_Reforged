@@ -623,6 +623,14 @@ class ParagonSkills:
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Vicious_Attack")
+        skill.SkillType = SkillType.Attack.value
+        skill.TargetAllegiance = Skilltarget.Enemy.value
+        skill.Nature = SkillNature.Offensive.value
+        skill.Conditions.RequireWeapon = "Spear"
+        skill_data[skill.SkillID] = skill
+
+        skill = CustomSkill()
         skill.SkillID = GLOBAL_CACHE.Skill.GetID("Wearying_Spear")
         skill.SkillType = SkillType.Attack.value
         skill.TargetAllegiance = Skilltarget.Enemy.value

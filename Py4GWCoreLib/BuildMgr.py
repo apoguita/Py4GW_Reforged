@@ -404,7 +404,13 @@ class BuildMgr:
         from Py4GWCoreLib import Routines
         return Routines.Checks.Agents.IsCloseToAggro()
 
-    def ResolveAllyTarget(self, skill_id: int, custom_skill: CustomSkill | None = None) -> int:
+    def ResolveAllyTarget(
+        self,
+        skill_id: int,
+        custom_skill: CustomSkill | None = None,
+        *,
+        max_range: float | None = None,
+    ) -> int:
         from HeroAI.targeting import (
             TargetAllyByPredicate,
             TargetLowestAlly,
@@ -429,15 +435,26 @@ class BuildMgr:
 
         target_allegiance = custom_skill.TargetAllegiance
         targeting_strict = bool(custom_skill.Conditions.TargetingStrict)
+        # Ally selection defaults to spellcast range. max_range narrows the
+        # candidate pool itself rather than vetting the winner afterwards -
+        # vetting would let a single unreachable ally, who ranks first because
+        # ally sorting is by lowest health, block every other candidate.
+        from Py4GWCoreLib.enums_src.GameData_enums import Range
+
+        ally_distance = Range.Spellcast.value if max_range is None else max_range
+        # These four selectors do not share one default radius - notably
+        # TargetAllyNonWeaponSpelled already defaults to earshot - so only
+        # override when a caller actually asked for a narrower one.
+        range_kwargs = {} if max_range is None else {"distance": max_range}
 
         if target_allegiance == Skilltarget.MinionOrAllyNonEnchanted.value:
-            return TargetMinionOrAllyNonEnchanted(filter_skill_id=skill_id)
+            return TargetMinionOrAllyNonEnchanted(filter_skill_id=skill_id, **range_kwargs)
         if target_allegiance == Skilltarget.MinionNonEnchanted.value:
-            return TargetMinionNonEnchanted()
+            return TargetMinionNonEnchanted(**range_kwargs)
         if target_allegiance == Skilltarget.AllyNonEnchanted.value:
-            return TargetAllyNonEnchanted()
+            return TargetAllyNonEnchanted(**range_kwargs)
         if target_allegiance == Skilltarget.NonWeaponSpelledAlly.value:
-            return Player.GetAgentID() if TargetAllyNonWeaponSpelled() else 0
+            return Player.GetAgentID() if TargetAllyNonWeaponSpelled(**range_kwargs) else 0
 
         if target_allegiance in (
             Skilltarget.Ally.value,
@@ -462,23 +479,23 @@ class BuildMgr:
                 else:
                     weapon_spell_predicate = lambda agent_id: not Routines.Checks.Agents.IsWeaponSpelled(agent_id)
             if target_allegiance == Skilltarget.Ally.value:
-                base_target = TargetLowestAlly(other_ally=other_ally, filter_skill_id=skill_id)
+                base_target = TargetLowestAlly(other_ally=other_ally, filter_skill_id=skill_id, distance=ally_distance)
             elif target_allegiance == Skilltarget.AllyCaster.value:
-                base_target = TargetLowestAllyCaster(other_ally=other_ally, filter_skill_id=skill_id)
+                base_target = TargetLowestAllyCaster(other_ally=other_ally, filter_skill_id=skill_id, distance=ally_distance)
                 base_predicate = lambda agent_id: Routines.Checks.Agents.IsCaster(agent_id)
             elif target_allegiance == Skilltarget.AllyMartial.value:
-                base_target = TargetLowestAllyMartial(other_ally=other_ally, filter_skill_id=skill_id)
+                base_target = TargetLowestAllyMartial(other_ally=other_ally, filter_skill_id=skill_id, distance=ally_distance)
                 base_predicate = lambda agent_id: Routines.Checks.Agents.IsMartial(agent_id)
                 include_spirit_pets = True
             elif target_allegiance == Skilltarget.AllyMartialMelee.value:
-                base_target = TargetLowestAllyMelee(other_ally=other_ally, filter_skill_id=skill_id)
+                base_target = TargetLowestAllyMelee(other_ally=other_ally, filter_skill_id=skill_id, distance=ally_distance)
                 base_predicate = lambda agent_id: Routines.Checks.Agents.IsMelee(agent_id)
                 include_spirit_pets = True
             elif target_allegiance == Skilltarget.AllyMartialRanged.value:
-                base_target = TargetLowestAllyRanged(other_ally=other_ally, filter_skill_id=skill_id)
+                base_target = TargetLowestAllyRanged(other_ally=other_ally, filter_skill_id=skill_id, distance=ally_distance)
                 base_predicate = lambda agent_id: Routines.Checks.Agents.IsRanged(agent_id)
             elif target_allegiance == Skilltarget.OtherAlly.value:
-                base_target = TargetLowestAlly(other_ally=True, filter_skill_id=skill_id)
+                base_target = TargetLowestAlly(other_ally=True, filter_skill_id=skill_id, distance=ally_distance)
 
             if weapon_spell_predicate is not None:
                 if base_predicate is None:
@@ -492,6 +509,7 @@ class BuildMgr:
                     other_ally=other_ally,
                     filter_skill_id=skill_id,
                     less_energy=custom_skill.Conditions.LessEnergy,
+                    distance=ally_distance,
                 )
 
             predicate = self._build_custom_skill_target_predicate(
@@ -506,18 +524,19 @@ class BuildMgr:
                 other_ally=other_ally,
                 filter_skill_id=skill_id,
                 include_spirit_pets=include_spirit_pets,
+                distance=ally_distance,
             )
             if filtered_target:
                 return filtered_target
 
             if not targeting_strict and target_allegiance != Skilltarget.OtherAlly.value:
-                return TargetLowestAlly(other_ally=other_ally, filter_skill_id=skill_id)
+                return TargetLowestAlly(other_ally=other_ally, filter_skill_id=skill_id, distance=ally_distance)
             return 0
+        # Resurrection deliberately keeps full spellcast reach: a corpse cannot
+        # walk into earshot, so narrowing it would just refuse the raise.
         if target_allegiance == Skilltarget.DeadAlly.value:
-            from Py4GWCoreLib.enums_src.GameData_enums import Range
             return Routines.Agents.GetDeadAlly(Range.Spellcast.value)
         if target_allegiance == Skilltarget.ResurrectionAlly.value:
-            from Py4GWCoreLib.enums_src.GameData_enums import Range
             return Routines.Agents.GetResurrectionTarget(
                 Range.Spellcast.value,
                 reserve=True,
@@ -527,6 +546,76 @@ class BuildMgr:
             return Player.GetAgentID()
 
         return 0
+
+    def ResolveAllyTargetInRange(
+        self,
+        skill_id: int,
+        custom_skill: CustomSkill | None = None,
+        *,
+        max_range: float | None = None,
+    ) -> int:
+        """ResolveAllyTarget restricted to allies within max_range (default earshot).
+
+        Ally targeting resolves out to spellcast range. Echoes and refrains are
+        renewed by chants and shouts, which only reach earshot, so an ally
+        buffed from beyond earshot can never have that buff renewed - it simply
+        expires and gets paid for again on the next recharge.
+
+        The restriction applies to the ally-selection allegiances. Resurrection
+        targeting keeps its own reach, for the obvious reason that a corpse
+        cannot close the distance.
+
+        The radius narrows the candidate pool rather than vetting the winner.
+        Vetting afterwards would deadlock: ally selection ranks by lowest health
+        and a straggler out of earshot is usually also the hurt one, so it would
+        be picked first, rejected, and picked again on every tick - blocking the
+        allies standing next to us for as long as it stayed there.
+        """
+        from Py4GWCoreLib import Range
+
+        return self.ResolveAllyTarget(
+            skill_id,
+            custom_skill,
+            max_range=Range.Earshot.value if max_range is None else max_range,
+        )
+
+    def SpreadEchoToAlly(
+        self,
+        skill_id: int,
+        *,
+        max_range: float | None = None,
+        aftercast_delay: int = 250,
+    ):
+        """Put an ally-targeted echo on someone in range who does not carry it.
+
+        Every refrain and finale shares this shape: find an ally still missing
+        the echo (the skill's own id is used as the filter, so anyone who
+        already has it drops out), refuse anyone outside renewal range, cast,
+        and put our own target back. Repeated calls therefore converge on full
+        party coverage and then go quiet.
+        """
+        # Castability first: resolving an ally walks the party several times
+        # over, and callers retry every refrain on the bar every tick, so doing
+        # that work before checking recharge/energy would throw it away on the
+        # overwhelming majority of ticks. CanCastSkillID subsumes the equipped
+        # check and is the same gate the cast below applies anyway.
+        if not self.CanCastSkillID(skill_id):
+            return False
+
+        target_agent_id = self.ResolveAllyTargetInRange(
+            skill_id,
+            self.GetCustomSkill(skill_id),
+            max_range=max_range,
+        )
+        if not target_agent_id:
+            return False
+
+        return (yield from self.CastSkillIDAndRestoreTarget(
+            skill_id=skill_id,
+            target_agent_id=target_agent_id,
+            log=False,
+            aftercast_delay=aftercast_delay,
+        ))
 
     def ResolvePreferredAllyTarget(
         self,

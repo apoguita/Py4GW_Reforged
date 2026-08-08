@@ -95,8 +95,7 @@ def TargetAllyByPredicate(
 
     return Utils.GetFirstFromArray(ally_array)
 
-def TargetLowestAlly(other_ally=False,filter_skill_id=0):
-    distance = Range.Spellcast.value
+def TargetLowestAlly(other_ally=False, filter_skill_id=0, distance=Range.Spellcast.value):
     ally_array = AgentArray.GetAllyArray()
     ally_array = FilterAllyArray(ally_array, distance, other_ally, filter_skill_id) 
      
@@ -160,16 +159,14 @@ def TargetAllyNonWeaponSpelled(distance=Range.Earshot.value):
     return Utils.GetFirstFromArray(ally_array)
 
 
-def TargetLowestAllyEnergy(other_ally=False, filter_skill_id=0, less_energy=1.0):
+def TargetLowestAllyEnergy(other_ally=False, filter_skill_id=0, less_energy=1.0, distance=Range.Spellcast.value):
     global BLOOD_IS_POWER, BLOOD_RITUAL
     from Py4GWCoreLib.GlobalCache.WhiteboardLocks import (
         BLOOD_ENERGY_BUFF_LOCK_KEY,
         filter_unlocked_buff_targets,
     )
     from .utils import (CheckForEffect, GetEnergyValues, IsValidEnergyValue)
-    
-    
-    distance = Range.Spellcast.value
+
     ally_array = AgentArray.GetAllyArray()
     ally_array = FilterAllyArray(ally_array, distance, other_ally, filter_skill_id)
     ally_array = AgentArray.Filter.ByCondition(ally_array, lambda agent_id: not CheckForEffect(agent_id, BLOOD_IS_POWER))
@@ -197,9 +194,8 @@ def TargetLowestAllyEnergy(other_ally=False, filter_skill_id=0, less_energy=1.0)
     return ally
 
 
-def TargetLowestAllyCaster(other_ally=False, filter_skill_id=0):
+def TargetLowestAllyCaster(other_ally=False, filter_skill_id=0, distance=Range.Spellcast.value):
     from Py4GWCoreLib import Routines
-    distance = Range.Spellcast.value
     ally_array = AgentArray.GetAllyArray()
     ally_array = FilterAllyArray(ally_array, distance, other_ally, filter_skill_id)
     ally_array = AgentArray.Filter.ByCondition(ally_array, lambda agent_id: Routines.Checks.Agents.IsCaster(agent_id))
@@ -208,10 +204,9 @@ def TargetLowestAllyCaster(other_ally=False, filter_skill_id=0):
     return Utils.GetFirstFromArray(ally_array)
 
 
-def TargetLowestAllyMartial(other_ally=False, filter_skill_id=0):
+def TargetLowestAllyMartial(other_ally=False, filter_skill_id=0, distance=Range.Spellcast.value):
     from Py4GWCoreLib import Routines
     from .utils import HasIllusionaryWeaponry
-    distance = Range.Spellcast.value
     ally_array = AgentArray.GetAllyArray()
     ally_array = FilterAllyArray(ally_array, distance, other_ally, filter_skill_id)
     ally_array = AgentArray.Filter.ByCondition(ally_array, lambda agent_id: Routines.Checks.Agents.IsMartial(agent_id))
@@ -226,10 +221,9 @@ def TargetLowestAllyMartial(other_ally=False, filter_skill_id=0):
     return Utils.GetFirstFromArray(ally_array)
 
 
-def TargetLowestAllyMelee(other_ally=False, filter_skill_id=0):
+def TargetLowestAllyMelee(other_ally=False, filter_skill_id=0, distance=Range.Spellcast.value):
     from Py4GWCoreLib import Routines
     from .utils import HasIllusionaryWeaponry
-    distance = Range.Spellcast.value
     ally_array = AgentArray.GetAllyArray()
     ally_array = FilterAllyArray(ally_array, distance, other_ally, filter_skill_id)
     ally_array = AgentArray.Filter.ByCondition(ally_array, lambda agent_id: Routines.Checks.Agents.IsMelee(agent_id))
@@ -244,9 +238,8 @@ def TargetLowestAllyMelee(other_ally=False, filter_skill_id=0):
     return Utils.GetFirstFromArray(ally_array)
 
 
-def TargetLowestAllyRanged(other_ally=False, filter_skill_id=0):
+def TargetLowestAllyRanged(other_ally=False, filter_skill_id=0, distance=Range.Spellcast.value):
     from Py4GWCoreLib import Routines
-    distance = Range.Spellcast.value
     ally_array = AgentArray.GetAllyArray()
     ally_array = FilterAllyArray(ally_array, distance, other_ally, filter_skill_id)
     ally_array = AgentArray.Filter.ByCondition(ally_array, lambda agent_id: Routines.Checks.Agents.IsRanged(agent_id))
