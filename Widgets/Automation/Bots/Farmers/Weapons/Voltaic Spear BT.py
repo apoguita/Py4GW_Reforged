@@ -602,13 +602,7 @@ def main() -> None:
     tree = ensure_botting_tree()
     tree.tick()
     tree.UI.draw_window(
-        icon_path=os.path.join(
-            PySystem.Console.get_projects_path(),
-            'Bots',
-            'marks_coding_corner',
-            'textures',
-            'voltaic_spear.png',
-        ),
+        icon_path=TEXTURE,
         iconwidth=96,
         main_child_dimensions=(430, 390),
         extra_tabs=[

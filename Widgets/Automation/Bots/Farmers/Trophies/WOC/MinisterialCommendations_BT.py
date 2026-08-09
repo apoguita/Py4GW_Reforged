@@ -1242,6 +1242,7 @@ def main() -> None:
     tree = ensure_botting_tree()
     tree.tick()
     tree.UI.draw_window(
+        icon_path=TEXTURE,
         main_child_dimensions=(440, 390),
         extra_tabs=[('Config', _draw_config)],
     )
