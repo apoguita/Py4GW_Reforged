@@ -701,7 +701,6 @@ def ensure_botting_tree() -> BottingTree:
                 looting_enabled=True,
                 resurrection_scroll=True,
                 auto_inventory_handler_enabled=True,
-                activate_widget_list=("LootManager",),
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
                 heroai_state_logging=False,

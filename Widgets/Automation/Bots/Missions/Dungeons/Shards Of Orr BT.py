@@ -9,7 +9,7 @@ from Py4GWCoreLib.Listeners import Listeners
 import PySystem
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib import Agent, GLOBAL_CACHE,Player, SharedCommandType
+from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray,Player, SharedCommandType
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.native_src.internals.types import Vec2f
@@ -1436,6 +1436,7 @@ def _draw_statistics() -> None:
 
 def PickupTorch() -> BehaviorTree:
     PICKUP_TIMEOUT_MS = 45_000
+    NOT_FOUND_GRACE_MS = 3_000
     RETRY_DELAY_MS = 1_000
 
     def _create_pickup_tree() -> BehaviorTree:
@@ -1454,6 +1455,7 @@ def PickupTorch() -> BehaviorTree:
     started_at = 0.0
     retry_at = 0.0
     search_logged = False
+    torch_seen = False
 
     def _is_holding_torch() -> bool:
         try:
@@ -1464,6 +1466,46 @@ def PickupTorch() -> BehaviorTree:
             )
         except Exception:
             return False
+
+    def _find_available_torch() -> int | None:
+        """Return a pickup-compatible torch, or None if the scan failed."""
+        try:
+            local_player_id = int(Player.GetAgentID() or 0)
+
+            for candidate in AgentArray.GetItemArray():
+                agent_id = int(candidate or 0)
+                if agent_id <= 0:
+                    continue
+
+                if not Agent.GetItemAgentByID(agent_id):
+                    continue
+
+                owner_id = int(
+                    Agent.GetItemAgentOwnerID(agent_id)
+                    or 0
+                )
+                if owner_id not in (0, local_player_id):
+                    continue
+
+                item_id = int(
+                    Agent.GetItemAgentItemID(agent_id)
+                    or 0
+                )
+                if item_id <= 0:
+                    continue
+
+                model_id = int(
+                    GLOBAL_CACHE.Item.GetModelID(item_id)
+                    or 0
+                )
+                if model_id in TORCH_MODEL_IDS:
+                    return agent_id
+
+            return 0
+        except Exception:
+            # Preserve the existing pickup behavior if the preliminary scan
+            # itself is temporarily unavailable.
+            return None
 
     def _log(
         message: str,
@@ -1480,11 +1522,13 @@ def PickupTorch() -> BehaviorTree:
         nonlocal started_at
         nonlocal retry_at
         nonlocal search_logged
+        nonlocal torch_seen
 
         pickup_tree = _create_pickup_tree()
         started_at = 0.0
         retry_at = 0.0
         search_logged = False
+        torch_seen = False
 
     def _pickup_torch_step(
         node: BehaviorTree.Node,
@@ -1493,6 +1537,7 @@ def PickupTorch() -> BehaviorTree:
         nonlocal started_at
         nonlocal retry_at
         nonlocal search_logged
+        nonlocal torch_seen
 
         now = time.monotonic()
 
@@ -1506,7 +1551,7 @@ def PickupTorch() -> BehaviorTree:
             )
             search_logged = True
 
-        # Seule condition autorisant le BT à continuer.
+        # A carried torch always completes the pickup immediately.
         if _is_holding_torch():
             _log(
                 "Torch picked up successfully.",
@@ -1518,6 +1563,29 @@ def PickupTorch() -> BehaviorTree:
         elapsed_ms = int(
             (now - started_at) * 1000.0
         )
+
+        if not torch_seen:
+            torch_agent_id = _find_available_torch()
+
+            if torch_agent_id is None:
+                # The preliminary scan failed. Let the established pickup
+                # routine perform its own search rather than skipping.
+                torch_seen = True
+            elif torch_agent_id > 0:
+                torch_seen = True
+            elif elapsed_ms >= NOT_FOUND_GRACE_MS:
+                _log(
+                    (
+                        "No torch found on the ground. "
+                        "Assuming this pickup was already completed "
+                        "before the planner resumed the step; skipping."
+                    ),
+                    PySystem.Console.MessageType.Warning,
+                )
+                _reset_state()
+                return BehaviorTree.NodeState.SUCCESS
+            else:
+                return BehaviorTree.NodeState.RUNNING
 
         if elapsed_ms >= PICKUP_TIMEOUT_MS:
             _log(
