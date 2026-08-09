@@ -42,6 +42,18 @@ class _Upkeepers:
                 Settings().set_runtime_combat_range_mode_override(None)
                 self._hero_ai_legacy_range_override_applied = False
 
+        def ensure_botting_combat_options() -> None:
+            """An active bot HeroAI request must not inherit a stale dialog pause."""
+            account_email = Player.GetAccountEmail()
+            current_options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_email) if account_email else None
+            if current_options is None:
+                return
+
+            if not current_options.Targeting or not current_options.Combat:
+                current_options.Targeting = True
+                current_options.Combat = True
+                GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, current_options)
+
         while True:   
             pause_requested = bool(getattr(self._config.upkeep, "hero_ai_paused", None) and self._config.upkeep.hero_ai_paused.is_active())
 
@@ -87,6 +99,7 @@ class _Upkeepers:
                 continue
 
             set_botting_range_mode(True)
+            ensure_botting_combat_options()
               
             if not (self.parent.config.pause_on_danger_fn()):
                 self.cancel_movement_triggered = False

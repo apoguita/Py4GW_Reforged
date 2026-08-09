@@ -146,72 +146,75 @@ class _EVENTS:
         from ...GlobalCache import GLOBAL_CACHE
         from ...Agent import Agent
         from ...Player import Player
+        from ...Pathing import AutoPathing
         from ...Py4GWcorelib import Utils
         from ...enums import Range
-        from ..helpers_src.HeroAICombatRange import hero_ai_combat_detected
         bot = self.parent
-        
-        if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
-                    print("Party wiped, aborting OnPartyMemberBehind")
+
+        try:
+            print("Party member dead behind; pausing route for recovery")
+            recovery_pass = 0
+            while True:
+                if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
+                    print("Party wiped during member recovery; handing off to wipe recovery")
                     return
-                
-        print ("Party Member dead behind")
-        # Find a dead party member
-        dead_player = Routines.Party.GetDeadPartyMemberID()
-        if dead_player == 0:
-            bot.config.FSM.resume()
-            return
-        if not Agent.IsValid(dead_player):
-            bot.config.FSM.resume()
-            return
 
-        # If we're in danger, end combat first (wait until safe)
-        while Routines.Checks.Agents.InDanger():
-            # You can replace with your combat reset routine if you have one
-            #print ("In danger, waiting to be safe before moving to dead party member")
-            if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
-                    print("Party wiped, aborting OnPartyMemberBehind")
+                dead_player = Routines.Party.GetDeadPartyMemberID()
+                if dead_player == 0:
+                    print("All party members revived; resuming route")
                     return
-                
-            yield from Routines.Yield.wait(1000)  
+                if not Agent.IsValid(dead_player):
+                    yield from Routines.Yield.wait(500)
+                    continue
 
-        print ("Safe now, moving to dead party member")
-        # Now safe → move to the dead party member
-        dead_player = Routines.Party.GetDeadPartyMemberID()
-        if dead_player == 0:
-            print("All party members alive!")
+                # Finish nearby combat before backtracking so survivors do not
+                # drag a mob train onto the corpse.
+                while Routines.Checks.Agents.InDanger():
+                    if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
+                        return
+                    yield from Routines.Yield.wait(500)
+
+                dead_player = Routines.Party.GetDeadPartyMemberID()
+                if dead_player == 0:
+                    continue
+                if not Agent.IsValid(dead_player):
+                    yield from Routines.Yield.wait(500)
+                    continue
+
+                dead_pos = Agent.GetXY(dead_player)
+                distance = Utils.Distance(dead_pos, Player.GetXY())
+                if distance > Range.Spellcast.value:
+                    print(
+                        f"Backtracking to dead party member {dead_player} "
+                        f"at ({dead_pos[0]:.0f}, {dead_pos[1]:.0f}), distance={distance:.0f}"
+                    )
+                    path = yield from AutoPathing().get_path_to(dead_pos[0], dead_pos[1])
+                    if not path:
+                        path = [(dead_pos[0], dead_pos[1])]
+                    yield from Routines.Yield.Movement.FollowPath(
+                        path_points=path,
+                        custom_exit_condition=lambda target=dead_player: (
+                            Routines.Checks.Party.IsPartyWiped()
+                            or GLOBAL_CACHE.Party.IsPartyDefeated()
+                            or not Agent.IsValid(target)
+                            or not Agent.IsDead(target)
+                        ),
+                        tolerance=Range.Spellcast.value,
+                        timeout=30000,
+                    )
+
+                if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
+                    return
+
+                # Gather surviving heroes at the corpse and actually wait for
+                # HeroAI to perform resurrection. Repeat for multiple corpses.
+                recovery_pass += 1
+                print(f"Waiting at corpse for HeroAI resurrection (pass {recovery_pass})")
+                yield from bot.helpers.Multibox._pixel_stack()
+                yield from Routines.Yield.wait(2500)
+        finally:
             bot.config.FSM.resume()
-            return
-        if not Agent.IsValid(dead_player):
-            bot.config.FSM.resume()
-            return
-
-        dead_pos = Agent.GetXY(dead_player)
-        if Utils.Distance(dead_pos, Player.GetXY()) <= Range.Spellcast.value:
-            print("Dead party member already within spellcast range")
-            bot.config.FSM.resume()
-            return
-
-        exit_movement_condition = lambda: Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated()
-
-        path = [(dead_pos[0], dead_pos[1])]
-        result = (yield from Routines.Yield.Movement.FollowPath(
-            path,
-            custom_exit_condition=exit_movement_condition,
-            tolerance=Range.Spellcast.value,
-            timeout=30000,
-        ))
-        yield from Routines.Yield.wait(100)
-        if not result:
-            print("Failed to move to dead party member")
-            bot.config.FSM.resume()
-            return
-        else:
-            print("Arrived at dead party member, waiting for revival")
-            
-        yield from bot.helpers.Multibox._pixel_stack()
-
-        bot.config.FSM.resume()
+            yield
             
 
     def OnDeathCallback(self, callback: Callable[[], None]) -> None:
