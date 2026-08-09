@@ -222,6 +222,7 @@ class RangerSkills:
         skill.Nature = SkillNature.Healing.value
         skill.Conditions.UniqueProperty = True
         skill.Conditions.LessLife = 0.50
+        skill.Conditions.CloseToAggro = True
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()

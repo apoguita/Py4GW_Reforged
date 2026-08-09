@@ -297,7 +297,7 @@ L3_BRAZIERS = [
     (-12621.0,2948.0),
 ]
 L3_FENDI_PATH = [
-    Vec2f(-8696, 6323),Vec2f(-9988, 7652), Vec2f(-12712.36, 13502.19),Vec2f(-13893.67, 14349.77),Vec2f(-14918.72, 15036.97),
+    Vec2f(-8696, 6323),Vec2f(-9988, 7652), Vec2f(-12712.36, 13502.19),Vec2f(-13893.67, 14349.77),Vec2f(-14385.14, 14658.19),
 ]
 FENDI_CHEST_POSITION = (-15800.98, 16901.23)
 FENDI_CHEST_GADGET_ID = 8934
@@ -2292,7 +2292,7 @@ def TravelToShandra() -> BehaviorTree:
             BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=ARBOR_BLESSING_DIALOG, multi_account=True, log=True),
             BT.Move(ARBOR_TO_SHANDRA_PATH, pause_on_combat=True, log=False),
             BT.WaitUntilOutOfCombat(timeout_ms=60_000),
-            BT.Move(SHANDRA_APPROACH, pause_on_combat=False, log=False),
+            BT.Move(SHANDRA_APPROACH,avoid_obstacles=False,  pause_on_combat=False, log=False),
         ],
     )
     return BT.Selector(children=[skip_if_already_in_level_1, normal_travel], name="Travel To Shandra")
@@ -2459,13 +2459,7 @@ def Level2_Part1() -> BehaviorTree:
             PickupTorch(),
             BT.Move(L2_FIRST_TORCH_DROP_POINT_PATH, pause_on_combat=True, log=False),
             BT.DropBundle(log=True),
-            BT.VanquishNode(
-                L2_RETURN_TO_FIRST_TORCH_PATH,
-                name="Clear And Return To First Torch",
-                flag_heroes_to_waypoint=False,
-                move_tolerance=500,
-                log=False,
-            ),
+            BT.ClearEnemiesInArea(L2_RETURN_TO_FIRST_TORCH_PATH, radius=Range.SafeCompass.value, log=True),
             PickupTorch(),
             BT.Move(Vec2f(-9404.44, -17963.49), pause_on_combat=True, log=False),
             BT.Move(Vec2f(-11303.00, -14596.00), pause_on_combat=True, log=False),
@@ -2642,6 +2636,8 @@ def Level3_Fendi() -> BehaviorTree:
                 log=False,
                 move_tolerance=500
             ),
+            BT.ClearEnemiesInArea(
+                Vec2f(-15606.06, 15287.51),radius=Range.Compass.value,log=True),
             BT.WaitForClearEnemiesInArea(
                 -15606.06, 15287.51,
                 radius=Range.Compass.value,
