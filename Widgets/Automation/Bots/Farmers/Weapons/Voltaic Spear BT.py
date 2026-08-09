@@ -20,6 +20,13 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSUMA
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
+TEXTURE = os.path.join(
+    PySystem.Console.get_projects_path(),
+    "Textures",
+    "Module_Icons",
+    "Voltaicspear.png",
+)
+MODULE_ICON = "Textures\\Module_Icons\\Voltaicspear.png"
 
 MODULE_NAME = 'Voltaic Spear BT'
 INI_PATH = 'Widgets/Automation/Bots/Farmers/Weapons/Voltaic Spear BT'

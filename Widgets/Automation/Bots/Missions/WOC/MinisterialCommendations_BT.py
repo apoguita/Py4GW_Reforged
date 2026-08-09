@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Callable
 
@@ -23,6 +24,14 @@ from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
+
+TEXTURE = os.path.join(
+    PySystem.Console.get_projects_path(),
+    "Textures",
+    "Module_Icons",
+    "Ministerial Commendations BT.png",
+)
+MODULE_ICON = "Textures\\Module_Icons\\Ministerial Commendations BT.png"
 
 MODULE_NAME = 'Ministerial Commendations BT'
 INI_PATH = 'Widgets/Automation/Bots/Farmers/Trophies/Ministerial Commendations BT'
