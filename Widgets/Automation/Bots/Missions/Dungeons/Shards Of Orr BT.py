@@ -2515,6 +2515,16 @@ def Level2_Part2() -> BehaviorTree:
             PickupTorch(),
             BrazierSequence("Level 2 Brazier Route 2", L2_BRAZIER_PART2),
             BT.DropBundle(log=True),
+
+        ],
+    )
+# endregion
+
+# region Level 2 - part 2
+def Level2_Part3() -> BehaviorTree:
+    return BT.Sequence(
+        name="Run Shards of Orr Level 2",
+        children=[
             BT.VanquishNode(
                 L2_PATH_TO_LOCK,
                 name="Level 2 Route To Dungeon Lock",
@@ -3035,6 +3045,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 
         ("Level 2 First part", Level2_Part1),
         ("Level 2 After First Room", Level2_Part2),
+        ("Level 2 Third part", Level2_Part3),
 
         ("Level 3 First Path", Level3_FirstPath),
         ("Level 3 Brigant Room", Level3_BrigantRoom),
