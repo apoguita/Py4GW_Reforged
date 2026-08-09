@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Sequence
-
+from ...AgentArray import AgentArray
 from Py4GWCoreLib import AgentArray
 
 from ...Agent import Agent
