@@ -270,7 +270,8 @@ L2_FIRST_TORCH_DROP_POINT_PATH = [
 ]
 L2_RETURN_TO_FIRST_TORCH_PATH = [
     Vec2f(-9259.0, -17322.0),
-    Vec2f(-9971.23, -17633.08),
+    Vec2f(-9550,-17258),
+    Vec2f(-10243,-17780)
 
 ]
 L2_BRAZIER_PART1 = [
@@ -3722,7 +3723,7 @@ def Level2_FirstTorchFight() -> BehaviorTree:
         name="Level 2 First Torch Fight",
         children=[
             DropTorchForCombat(log=True),
-            BT.ClearEnemiesInArea(L2_RETURN_TO_FIRST_TORCH_PATH, radius=Range.SafeCompass.value, log=True),
+            BT.VanquishNode([L2_RETURN_TO_FIRST_TORCH_PATH], clear_area_radius=Range.SafeCompass.value, log=True),
             PickupTorch(),
         ],
     )
