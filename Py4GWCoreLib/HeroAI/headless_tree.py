@@ -9,6 +9,7 @@ from Py4GWCoreLib import ActionQueueManager, Range, SharedCommandType, Throttled
 from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 
 from .cache_data import CacheData
+from .build_contract_runner import BuildContractRunner
 from .follow.follower_runtime import (
     FollowExecutionState,
     execute_follower_follow,
@@ -38,6 +39,7 @@ class HeroAIHeadlessTree:
         self._status_selector: BehaviorTree.SelectorNode | None = None
         self._follow_state = FollowExecutionState()
         self._headless_looting_enabled = True
+        self._build_contract_runner = BuildContractRunner()
         self.tree = self._build_tree()
 
     def _has_active_pick_up_loot_message(self) -> bool:
@@ -139,36 +141,47 @@ class HeroAIHeadlessTree:
     def _handle_out_of_combat(self) -> bool:
         options = self.cached_data.account_options
         if not options or not options.Combat:
+            self._build_contract_runner.reset()
             return False
 
         if self.cached_data.IsHeadlessCombatPauseActive():
             return False
 
         if is_follow_recovery_active(self.cached_data, self._follow_state):
+            self._build_contract_runner.reset()
             return False
 
         player_agent_id = Player.GetAgentID()
         if self.cached_data.combat_handler.InCastingRoutine() or Agent.IsCasting(player_agent_id):
             return False
 
-        self.heroai_build.set_cached_data(self.cached_data)
-        next(self.heroai_build.ProcessOOC(), None)
-        return self.heroai_build.DidTickSucceed()
+        return self._run_build_contract(is_in_combat=False)
 
     def _handle_combat(self) -> bool:
         options = self.cached_data.account_options
         if not options or not options.Combat:
+            self._build_contract_runner.reset()
             return False
 
         if is_follow_recovery_active(self.cached_data, self._follow_state):
+            self._build_contract_runner.reset()
             return False
 
         if not self.cached_data.IsHeadlessCombatPauseActive():
             return False
 
+        return self._run_build_contract(is_in_combat=True)
+
+    def _run_build_contract(self, *, is_in_combat: bool) -> bool:
         self.heroai_build.set_cached_data(self.cached_data)
-        next(self.heroai_build.ProcessCombat(), None)
-        return self.heroai_build.DidTickSucceed()
+        contract = self.heroai_build.EnsureBuildContract(self.cached_data)
+        succeeded = self._build_contract_runner.tick(
+            contract,
+            is_in_combat=is_in_combat,
+        )
+        if contract is not None:
+            self.heroai_build.tick_state = contract.tick_state
+        return succeeded
 
     def _distance_to_destination(self) -> float:
         return get_follow_destination_distance(self.cached_data)
@@ -213,19 +226,23 @@ class HeroAIHeadlessTree:
 
     def initialize(self) -> bool:
         if not Routines.Checks.Map.MapValid():
+            self._build_contract_runner.reset()
             self.heroai_build.ClearBuildContract()
             self._build_contract_map_signature = None
             return False
 
         if not GLOBAL_CACHE.Party.IsPartyLoaded():
+            self._build_contract_runner.reset()
             return False
 
         if not Map.IsExplorable():
+            self._build_contract_runner.reset()
             self.heroai_build.ClearBuildContract()
             self._build_contract_map_signature = None
             return False
 
         if Map.IsInCinematic():
+            self._build_contract_runner.reset()
             return False
 
         self.heroai_build.set_cached_data(self.cached_data)
@@ -236,6 +253,7 @@ class HeroAIHeadlessTree:
             int(Map.GetLanguage()[0]),
         )
         if self._build_contract_map_signature != map_signature:
+            self._build_contract_runner.reset()
             self.heroai_build.EnsureBuildContract(self.cached_data)
             self._build_contract_map_signature = map_signature
 
@@ -261,6 +279,7 @@ class HeroAIHeadlessTree:
 
     def reset(self) -> None:
         self.tree.reset()
+        self._build_contract_runner.reset()
         self.heroai_build.ClearBuildContract()
         self._build_contract_map_signature = None
         self._follow_state = FollowExecutionState()
