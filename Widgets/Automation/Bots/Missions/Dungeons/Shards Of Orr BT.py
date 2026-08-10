@@ -4767,18 +4767,46 @@ def tooltip():
     # Title
     title_color = Color(255, 200, 100, 255)
     ImGui.push_font("Regular", 20)
-    PyImGui.text_colored("Shards Of Orr Farm", title_color.to_tuple_normalized())
+    PyImGui.text_colored(
+        "Shards Of Orr Farm",
+        title_color.to_tuple_normalized(),
+    )
     ImGui.pop_font()
+
     PyImGui.spacing()
     PyImGui.separator()
+    PyImGui.spacing()
 
     # Description
-    PyImGui.text("Farm Shards Of Orr (BDS)")
+    PyImGui.text("Fully automated Shards of Orr dungeon farm")
+    PyImGui.text("Designed for BDS farming")
+
+    PyImGui.spacing()
+
+    # Features
+    PyImGui.text_colored(
+        "Features:",
+        title_color.to_tuple_normalized(),
+    )
+    PyImGui.bullet_text("Full 3-level dungeon run")
+    PyImGui.bullet_text("Normal / Hard Mode support")
+    PyImGui.bullet_text("Multi-account support")
+    PyImGui.bullet_text("Automatic inventory maintenance")
+    PyImGui.bullet_text("Conset, PCons & Summoning Stones")
+    PyImGui.bullet_text("Run time & drop statistics")
+    PyImGui.bullet_text("Automatic quest handling")
+
+    PyImGui.spacing()
+    PyImGui.separator()
     PyImGui.spacing()
 
     # Credits
-    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.text_colored(
+        "Credits:",
+        title_color.to_tuple_normalized(),
+    )
     PyImGui.bullet_text("Developed by Sky")
+
     PyImGui.end_tooltip()
 
 
