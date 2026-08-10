@@ -1,8 +1,6 @@
-# region Imports
-
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 import os
 import time
 from Py4GWCoreLib.Listeners import Listeners
@@ -17,8 +15,12 @@ from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_UPKEEPS, CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
+from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count
+
+
+PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
 
 
 # endregion
@@ -84,6 +86,41 @@ BDS_MODEL_ID_MIN = BDS_MODEL_IDS[0]
 BDS_MODEL_ID_MAX = BDS_MODEL_IDS[-1]
 GB_MODEL_ID = 2474
 
+# Inventory maintenance. SharedMemory exposes the four regular inventory bags
+# (Backpack, Belt Pouch, Bag 1, Bag 2) and does not include the Equipment Pack.
+#
+# IMPORTANT: the runtime SharedMemory writer currently reports bag.Size as an
+# occupied/item count on these clients instead of the real bag capacity. Using
+# bag.Size therefore truncates both free-slot checks and item/kit scans. The
+# farming accounts use the fully expanded regular inventory: 55 usable slots.
+INVENTORY_BAG_IDS = frozenset((1, 2, 3, 4))
+INVENTORY_TOTAL_SLOTS = 55
+ID_KIT_MODEL_IDS = (
+    int(ModelID.Identification_Kit.value),
+    int(ModelID.Superior_Identification_Kit.value),
+)
+# The SharedProfiles.json SoO profile maintains Expert Salvage Kits because
+# exact upgrade extraction requires an upgrade-capable salvage kit.
+SALVAGE_KIT_MODEL_IDS = (
+    int(ModelID.Expert_Salvage_Kit.value),
+)
+MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
+INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
+# Vlox's Falls has no explicit Merchant Rules service selectors. Eye of the
+# North does, so maintenance is executed there and the bot then returns to Vlox.
+INVENTORY_MAINTENANCE_OUTPOST = 642
+# SharedCommandType.TravelToMap forwards these values to TravelToRegion.
+# The BT TravelToRegion wrapper expects a 1-based district and subtracts one
+# before calling the low-level Map travel API. District 0 would therefore
+# become -1 and Guild Wars rejects it as a closed/invalid region.
+INVENTORY_TRAVEL_REGION = 2      # Europe
+INVENTORY_TRAVEL_DISTRICT = 1    # Europe English District 1
+INVENTORY_TRAVEL_LANGUAGE = 0    # English
+INVENTORY_MAINTENANCE_RETRY_COUNT = 2
+INVENTORY_SNAPSHOT_SETTLE_MS = 2_000
+INVENTORY_TRAVEL_TIMEOUT_MS = 60_000
+INVENTORY_MERCHANT_TIMEOUT_MS = 240_000
+
 TEXTURE = os.path.join(
     PySystem.Console.get_projects_path(),
     "Textures", 
@@ -126,7 +163,17 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_keep_torch_for_caster = True
+_inventory_maintenance_enabled = True
+_inventory_min_free_slots = 5
+_inventory_min_id_kits = 1
+_inventory_min_salvage_kits = 2
 _runtime_consumables_enabled = True
+
+# Resolved once per run before the first tactical torch drop.  The value is
+# cached because carrying a bundle can temporarily hide the equipped weapon
+# type reported by the game.
+_drop_torch_for_combat: bool | None = None
 
 # Persistent statistics.
 _statistics_loaded = False
@@ -315,6 +362,11 @@ def _load_settings() -> None:
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
+    global _keep_torch_for_caster
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots
+    global _inventory_min_id_kits
+    global _inventory_min_salvage_kits
 
     if _settings_loaded:
         _load_statistics()
@@ -326,6 +378,32 @@ def _load_settings() -> None:
     _restock_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
     _activate_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "ActivatePcons", True)
     _use_summoning_stone = _settings_ini.get_bool(_SETTINGS_SECTION, "UseSummoningStone", True)
+    _keep_torch_for_caster = _settings_ini.get_bool(
+        _SETTINGS_SECTION,
+        "KeepTorchForCaster",
+        True,
+    )
+    _inventory_maintenance_enabled = _settings_ini.get_bool(
+        _SETTINGS_SECTION,
+        "InventoryMaintenanceEnabled",
+        True,
+    )
+    _inventory_min_free_slots = max(
+        0,
+        _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinFreeSlots", 5),
+    )
+    _inventory_min_id_kits = max(
+        0,
+        _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinIdKits", 1),
+    )
+    _inventory_min_salvage_kits = max(
+        0,
+        _settings_ini.get_int(
+            _SETTINGS_SECTION,
+            "InventoryMinSalvageKits",
+            2,
+        ),
+    )
     _settings_loaded = True
     _load_statistics()
 
@@ -337,6 +415,31 @@ def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "UseSummoningStone", _use_summoning_stone)
+    _settings_ini.set(
+        _SETTINGS_SECTION,
+        "KeepTorchForCaster",
+        _keep_torch_for_caster,
+    )
+    _settings_ini.set(
+        _SETTINGS_SECTION,
+        "InventoryMaintenanceEnabled",
+        _inventory_maintenance_enabled,
+    )
+    _settings_ini.set(
+        _SETTINGS_SECTION,
+        "InventoryMinFreeSlots",
+        _inventory_min_free_slots,
+    )
+    _settings_ini.set(
+        _SETTINGS_SECTION,
+        "InventoryMinIdKits",
+        _inventory_min_id_kits,
+    )
+    _settings_ini.set(
+        _SETTINGS_SECTION,
+        "InventoryMinSalvageKits",
+        _inventory_min_salvage_kits,
+    )
 
 
 def _load_statistics() -> None:
@@ -531,6 +634,11 @@ def _draw_run_config() -> None:
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
     global _use_summoning_stone
+    global _keep_torch_for_caster, _drop_torch_for_combat
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots
+    global _inventory_min_id_kits
+    global _inventory_min_salvage_kits
 
     _load_settings()
 
@@ -599,6 +707,65 @@ def _draw_run_config() -> None:
         _use_summoning_stone = value
         changed = True
         upkeep_changed = True
+
+    PyImGui.separator()
+    PyImGui.text("Torch handling")
+
+    value = PyImGui.checkbox(
+        "Keep torch for caster builds",
+        _keep_torch_for_caster,
+    )
+    if value != _keep_torch_for_caster:
+        _keep_torch_for_caster = value
+        _drop_torch_for_combat = None
+        changed = True
+
+    PyImGui.separator()
+    PyImGui.text("Inventory maintenance")
+
+    value = PyImGui.checkbox(
+        "Run MerchantRules when inventory is low",
+        _inventory_maintenance_enabled,
+    )
+    if value != _inventory_maintenance_enabled:
+        _inventory_maintenance_enabled = value
+        changed = True
+
+    if _inventory_maintenance_enabled:
+        value = PyImGui.input_int(
+            "Minimum free slots",
+            _inventory_min_free_slots,
+        )
+        value = max(0, int(value))
+        if value != _inventory_min_free_slots:
+            _inventory_min_free_slots = value
+            changed = True
+
+        value = PyImGui.input_int(
+            "Minimum ID kits (0 = disabled)",
+            _inventory_min_id_kits,
+        )
+        value = max(0, int(value))
+        if value != _inventory_min_id_kits:
+            _inventory_min_id_kits = value
+            changed = True
+
+        value = PyImGui.input_int(
+            "Minimum salvage kits (0 = disabled)",
+            _inventory_min_salvage_kits,
+        )
+        value = max(0, int(value))
+        if value != _inventory_min_salvage_kits:
+            _inventory_min_salvage_kits = value
+            changed = True
+
+        PyImGui.text_wrapped(
+            "MerchantRules executes the currently loaded Shards of Orr profile "
+            "from SharedProfiles.json. Maintenance is performed in Eye of the North "
+            "because Merchant Rules has explicit service selectors there, then all "
+            "accounts return to Vlox's Falls. The four regular inventory bags are "
+            "checked using the confirmed 55-slot capacity; Equipment Pack is excluded."
+        )
 
     if changed:
         _save_settings()
@@ -697,6 +864,762 @@ def _shared_accounts() -> list[object]:
         seen.add(email)
         unique.append(account)
     return unique
+
+
+def _inventory_accounts() -> list[object]:
+    """Return the active accounts targeted by shared BT commands.
+
+    Unlike the statistics view, inventory maintenance respects BottingTree
+    account isolation so unrelated active clients are never moved or checked.
+    """
+    try:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False)
+    except TypeError:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
+    except Exception:
+        accounts = []
+
+    unique: list[object] = []
+    seen: set[str] = set()
+    for account in accounts or []:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        unique.append(account)
+    return unique
+
+
+def _shared_account_label(account: object) -> str:
+    agent_data = getattr(account, "AgentData", None)
+    character_name = str(
+        getattr(agent_data, "CharacterName", "") or ""
+    ).strip()
+    if character_name:
+        return character_name
+    return str(getattr(account, "AccountEmail", "") or "Unknown account")
+
+
+def _shared_account_map_id(account: object) -> int:
+    agent_data = getattr(account, "AgentData", None)
+    map_data = getattr(agent_data, "Map", None)
+    return int(getattr(map_data, "MapID", 0) or 0)
+
+
+def _shared_account_map_instance(account: object) -> tuple[int, int, int, int]:
+    agent_data = getattr(account, "AgentData", None)
+    map_data = getattr(agent_data, "Map", None)
+    return (
+        int(getattr(map_data, "MapID", 0) or 0),
+        int(getattr(map_data, "Region", 0) or 0),
+        int(getattr(map_data, "District", 0) or 0),
+        int(getattr(map_data, "Language", 0) or 0),
+    )
+
+
+def _iter_shared_inventory_slots(account: object):
+    """Yield every shared-memory slot from the four regular inventory bags.
+
+    Do not use bag.Size here. On the current multibox SharedMemory runtime that
+    field behaves like an occupied/item count rather than the real bag capacity,
+    which can hide valid slots and items located after that index.
+    """
+    inventory_bags = getattr(account, "InventoryBags", None)
+    if inventory_bags is None:
+        return
+
+    for bag in inventory_bags.iter_bags():
+        bag_id = int(getattr(bag, "BagID", 0) or 0)
+        if bag_id not in INVENTORY_BAG_IDS:
+            continue
+        for slot in bag.Slots:
+            yield bag_id, slot
+
+
+def _shared_inventory_capacity(account: object) -> int:
+    inventory_bags = getattr(account, "InventoryBags", None)
+    if inventory_bags is None:
+        return 0
+
+    # The four regular inventory bags are mirrored by InventoryBagsStruct; the
+    # Equipment Pack is not part of this snapshot. Capacity is fixed to the
+    # fully expanded 55-slot setup used by the SoO farming accounts.
+    return INVENTORY_TOTAL_SLOTS
+
+
+def _shared_inventory_occupied_slots(account: object) -> int:
+    occupied = 0
+    for _bag_id, slot in _iter_shared_inventory_slots(account):
+        if (
+            int(getattr(slot, "ModelID", 0) or 0) > 0
+            and int(getattr(slot, "Quantity", 0) or 0) > 0
+        ):
+            occupied += 1
+    return occupied
+
+
+def _shared_inventory_free_slots(account: object) -> int:
+    capacity = _shared_inventory_capacity(account)
+    if capacity <= 0:
+        return 0
+    occupied = _shared_inventory_occupied_slots(account)
+    return max(0, capacity - occupied)
+
+
+def _shared_inventory_model_count(
+    account: object,
+    model_ids: Sequence[int],
+) -> int:
+    wanted = {int(model_id) for model_id in model_ids}
+    total = 0
+    for _bag_id, slot in _iter_shared_inventory_slots(account):
+        model_id = int(getattr(slot, "ModelID", 0) or 0)
+        quantity = int(getattr(slot, "Quantity", 0) or 0)
+        if model_id in wanted and quantity > 0:
+            total += quantity
+    return total
+
+def _inventory_maintenance_issues() -> list[str]:
+    issues: list[str] = []
+    accounts = _inventory_accounts()
+    if not accounts:
+        return ["No active account inventory snapshot is available."]
+
+    for account in accounts:
+        label = _shared_account_label(account)
+        capacity = _shared_inventory_capacity(account)
+        if capacity <= 0:
+            issues.append(f"{label}: inventory snapshot unavailable")
+            continue
+
+        free_slots = _shared_inventory_free_slots(account)
+        id_kits = _shared_inventory_model_count(account, ID_KIT_MODEL_IDS)
+        salvage_kits = _shared_inventory_model_count(
+            account,
+            SALVAGE_KIT_MODEL_IDS,
+        )
+
+        account_issues: list[str] = []
+        if (
+            _inventory_min_free_slots > 0
+            and free_slots < _inventory_min_free_slots
+        ):
+            account_issues.append(
+                f"free slots {free_slots}/{_inventory_min_free_slots}"
+            )
+        if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+            account_issues.append(
+                f"ID kits {id_kits}/{_inventory_min_id_kits}"
+            )
+        if (
+            _inventory_min_salvage_kits > 0
+            and salvage_kits < _inventory_min_salvage_kits
+        ):
+            account_issues.append(
+                f"salvage kits {salvage_kits}/{_inventory_min_salvage_kits}"
+            )
+
+        if account_issues:
+            issues.append(f"{label}: {', '.join(account_issues)}")
+
+    return issues
+
+
+def _inventory_model_label(model_id: int) -> str:
+    try:
+        return str(ModelID(int(model_id)).name)
+    except Exception:
+        return f"model_{int(model_id)}"
+
+
+def _log_unhealthy_inventory_contents() -> None:
+    """Log the four regular inventory bags for accounts that still fail maintenance thresholds.
+
+    Shared-memory inventory snapshots expose only bag/slot/model/quantity here,
+    so this diagnostic intentionally avoids any live item-name lookup.  That also
+    keeps it independent from the currently broken Agent name-resolution path.
+    """
+    for account in _inventory_accounts():
+        capacity = _shared_inventory_capacity(account)
+        if capacity <= 0:
+            continue
+
+        free_slots = _shared_inventory_free_slots(account)
+        id_kits = _shared_inventory_model_count(account, ID_KIT_MODEL_IDS)
+        salvage_kits = _shared_inventory_model_count(account, SALVAGE_KIT_MODEL_IDS)
+        unhealthy = (
+            (_inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots)
+            or (_inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits)
+            or (
+                _inventory_min_salvage_kits > 0
+                and salvage_kits < _inventory_min_salvage_kits
+            )
+        )
+        if not unhealthy:
+            continue
+
+        label = _shared_account_label(account)
+        entries: list[str] = []
+        for bag_id, slot in _iter_shared_inventory_slots(account):
+            model_id = int(getattr(slot, "ModelID", 0) or 0)
+            quantity = int(getattr(slot, "Quantity", 0) or 0)
+            if model_id <= 0 or quantity <= 0:
+                continue
+            slot_no = int(getattr(slot, "Slot", 0) or 0)
+            entries.append(
+                f"B{bag_id}:S{slot_no} "
+                f"{_inventory_model_label(model_id)}({model_id}) x{quantity}"
+            )
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"[Inventory diagnostic] {label}: free={free_slots}/{capacity}, "
+                f"ID kits={id_kits}, Expert salvage kits={salvage_kits}, "
+                f"occupied slots={len(entries)}."
+            ),
+            PySystem.Console.MessageType.Warning,
+        )
+        if not entries:
+            continue
+        chunk_size = 8
+        for start in range(0, len(entries), chunk_size):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory diagnostic] {label}: "
+                + " | ".join(entries[start : start + chunk_size]),
+                PySystem.Console.MessageType.Info,
+            )
+
+
+def _inventory_is_healthy_node(
+    name: str,
+    *,
+    log_success: bool = True,
+) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        issues = _inventory_maintenance_issues()
+        if issues:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Inventory maintenance required - " + "; ".join(issues),
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        if log_success:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Inventory check passed on every active account.",
+                PySystem.Console.MessageType.Success,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name=name,
+            condition_fn=_check,
+        )
+    )
+
+
+def _wait_for_inventory_snapshots(
+    *,
+    name: str,
+    timeout_ms: int = 10_000,
+) -> BehaviorTree:
+    state_key = f"__inventory_snapshot_wait_started_{name}"
+
+    def _wait(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        started_at = float(node.blackboard.get(state_key, 0.0) or 0.0)
+        if started_at <= 0.0:
+            started_at = time.monotonic()
+            node.blackboard[state_key] = started_at
+
+        accounts = _inventory_accounts()
+        if accounts and all(
+            _shared_inventory_capacity(account) > 0
+            for account in accounts
+        ):
+            node.blackboard.pop(state_key, None)
+            return BehaviorTree.NodeState.SUCCESS
+
+        elapsed_ms = int((time.monotonic() - started_at) * 1000.0)
+        if elapsed_ms < max(0, int(timeout_ms)):
+            return BehaviorTree.NodeState.RUNNING
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                "Some inventory snapshots are still unavailable after "
+                f"{elapsed_ms} ms. Continuing with the safe maintenance path."
+            ),
+            PySystem.Console.MessageType.Warning,
+        )
+        node.blackboard.pop(state_key, None)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_wait,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _all_accounts_on_map(map_id: int) -> bool:
+    accounts = _inventory_accounts()
+    return bool(accounts) and all(
+        _shared_account_map_id(account) == int(map_id)
+        for account in accounts
+    )
+
+
+def _all_accounts_on_map_instance(
+    map_id: int,
+    region: int,
+    district: int,
+    language: int,
+) -> bool:
+    expected = (int(map_id), int(region), int(district), int(language))
+    accounts = _inventory_accounts()
+    return bool(accounts) and all(
+        _shared_account_map_instance(account) == expected
+        for account in accounts
+    )
+
+
+def _all_accounts_on_map_node(map_id: int, name: str) -> BehaviorTree:
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name=name,
+            condition_fn=lambda _node: _all_accounts_on_map(map_id),
+        )
+    )
+
+
+def _wait_for_all_accounts_on_map(
+    map_id: int,
+    *,
+    name: str,
+    timeout_ms: int = INVENTORY_TRAVEL_TIMEOUT_MS,
+) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _all_accounts_on_map(map_id):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_check,
+            throttle_interval_ms=500,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+
+def _wait_for_all_accounts_on_inventory_instance(
+    map_id: int,
+    *,
+    name: str,
+    timeout_ms: int = INVENTORY_TRAVEL_TIMEOUT_MS,
+) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _all_accounts_on_map_instance(
+            map_id,
+            INVENTORY_TRAVEL_REGION,
+            INVENTORY_TRAVEL_DISTRICT,
+            INVENTORY_TRAVEL_LANGUAGE,
+        ):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_check,
+            throttle_interval_ms=500,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+
+def _send_widget_state(
+    widget_name: str,
+    *,
+    enabled: bool,
+    refs_key: str,
+) -> BehaviorTree:
+    return BTShared.SendAndWait(
+        command=(
+            SharedCommandType.EnableWidget
+            if enabled
+            else SharedCommandType.DisableWidget
+        ),
+        extra_data=(widget_name, "", "", ""),
+        include_self=True,
+        refs_blackboard_key=refs_key,
+        timeout_ms=20_000,
+        poll_interval_ms=100,
+        log=True,
+    )
+
+
+def _set_local_auto_inventory_handler(enabled: bool) -> BehaviorTree:
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        fn = getattr(botting_tree, "SetAutoInventoryHandlerEnabled", None)
+        if fn is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            fn(enabled)
+        except Exception:
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=(
+                "Enable Local Auto Inventory Handler"
+                if enabled
+                else "Disable Local Auto Inventory Handler"
+            ),
+            action_fn=_set,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _travel_all_accounts_to_vlox(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name="Travel Every Account To Vlox's Falls",
+        children=[
+            BTShared.SendAndWait(
+                command=SharedCommandType.TravelToMap,
+                params=(
+                    float(VLOXS_FALL),
+                    float(INVENTORY_TRAVEL_REGION),
+                    float(INVENTORY_TRAVEL_DISTRICT),
+                    float(INVENTORY_TRAVEL_LANGUAGE),
+                ),
+                include_self=True,
+                refs_blackboard_key=f"{attempt_key}_travel_vlox_refs",
+                timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS,
+                poll_interval_ms=250,
+                log=True,
+            ),
+            _wait_for_all_accounts_on_inventory_instance(
+                VLOXS_FALL,
+                name="Wait For Every Account In Vlox's Falls EU-English-1",
+            ),
+        ],
+    )
+
+
+def _travel_all_accounts_to_inventory_outpost(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name="Travel Every Account To Eye Of The North For Inventory Maintenance",
+        children=[
+            BTShared.SendAndWait(
+                command=SharedCommandType.TravelToMap,
+                params=(
+                    float(INVENTORY_MAINTENANCE_OUTPOST),
+                    float(INVENTORY_TRAVEL_REGION),
+                    float(INVENTORY_TRAVEL_DISTRICT),
+                    float(INVENTORY_TRAVEL_LANGUAGE),
+                ),
+                include_self=True,
+                refs_blackboard_key=f"{attempt_key}_travel_inventory_outpost_refs",
+                timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS,
+                poll_interval_ms=250,
+                log=True,
+            ),
+            _wait_for_all_accounts_on_inventory_instance(
+                INVENTORY_MAINTENANCE_OUTPOST,
+                name="Wait For Every Account In Eye Of The North EU-English-1",
+            ),
+            # Let agent arrays / merchant services settle after the outpost load.
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+        ],
+    )
+
+
+def _return_all_accounts_to_vlox(attempt_key: str) -> BehaviorTree:
+    currently_in_an_explorable = BT.Selector(
+        name="Current Map Can Be Resigned",
+        children=[
+            BT.IsCurrentMap(map_id=ARBOR_BAY, log=False),
+            BT.IsCurrentMap(map_id=SOO_LEVEL_1, log=False),
+            BT.IsCurrentMap(map_id=SOO_LEVEL_2, log=False),
+            BT.IsCurrentMap(map_id=SOO_LEVEL_3, log=False),
+        ],
+    )
+
+    resign_from_explorable = BT.Sequence(
+        name="Resign Party To Vlox's Falls",
+        children=[
+            currently_in_an_explorable,
+            BT.Resign(
+                wait_for_map_load=True,
+                target_map_id=VLOXS_FALL,
+                multi_account=True,
+                timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS,
+                log=True,
+            ),
+            _wait_for_all_accounts_on_map(
+                VLOXS_FALL,
+                name="Wait For Party Return To Vlox's Falls",
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name="Ensure Every Account Is In Vlox's Falls",
+        children=[
+            _all_accounts_on_map_node(
+                VLOXS_FALL,
+                "Every Account Already In Vlox's Falls",
+            ),
+            resign_from_explorable,
+            _travel_all_accounts_to_vlox(attempt_key),
+        ],
+    )
+
+
+def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name="Restore InventoryPlus After MerchantRules",
+        children=[
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=True,
+                refs_key=f"{attempt_key}_enable_inventoryplus_refs",
+            ),
+            _set_local_auto_inventory_handler(True),
+        ],
+    )
+
+
+def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
+    request_id = f"soo_inventory_{attempt_key}_{int(time.monotonic() * 1000)}"
+    execute = BTShared.SendAndWait(
+        command=SharedCommandType.MerchantRules,
+        # Opcode 3 = Execute.  The Shards of Orr rules now live entirely in
+        # SharedProfiles.json, so no temporary preset or transient protection
+        # options are sent with the request.
+        params=(3.0, 0.0, 0.0, 0.0),
+        extra_data=(request_id, "", "0", "0"),
+        include_self=True,
+        refs_blackboard_key=f"{attempt_key}_merchant_rules_refs",
+        timeout_ms=INVENTORY_MERCHANT_TIMEOUT_MS,
+        poll_interval_ms=250,
+        log=True,
+    )
+
+    # InventoryPlus must always be restored, including after a MerchantRules
+    # dispatch timeout.  The fallback restores it and then deliberately fails
+    # so the outer retry selector can start a clean second attempt.
+    return BT.Selector(
+        name="Execute MerchantRules And Restore InventoryPlus",
+        children=[
+            BT.Sequence(
+                name="MerchantRules Completed",
+                children=[
+                    execute,
+                    _restore_inventoryplus_after_merchant(attempt_key),
+                ],
+            ),
+            BT.Sequence(
+                name="Restore InventoryPlus After MerchantRules Failure",
+                children=[
+                    _restore_inventoryplus_after_merchant(
+                        f"{attempt_key}_failure"
+                    ),
+                    BehaviorTree(
+                        BehaviorTree.FailerNode(
+                            name="Propagate MerchantRules Failure"
+                        )
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
+    attempt_key = f"inventory_attempt_{attempt_number}"
+    return BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number}",
+        children=[
+            _return_all_accounts_to_vlox(attempt_key),
+            BT.LeaveParty(),
+            _set_local_auto_inventory_handler(False),
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_inventoryplus_refs",
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=True,
+                refs_key=f"{attempt_key}_enable_merchant_rules_refs",
+            ),
+            # Vlox's Falls is not a Merchant Rules selector-supported service hub.
+            # Run the JSON-driven maintenance in Eye of the North instead.
+            _travel_all_accounts_to_inventory_outpost(attempt_key),
+            BT.Wait(1_000),
+            _run_merchant_rules(attempt_key),
+            # Avoid a redundant same-map travel if Merchant Rules or recovery has
+            # already returned every account to Vlox's Falls.
+            _return_all_accounts_to_vlox(f"{attempt_key}_after_merchant"),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            _inventory_is_healthy_node(
+                f"Verify Inventory After Attempt {attempt_number}",
+                log_success=True,
+            ),
+        ],
+    )
+
+
+def _stop_for_inventory_failure_node() -> BehaviorTree:
+    stopped = False
+
+    def _stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        nonlocal stopped
+        if not stopped:
+            stopped = True
+            issues = _inventory_maintenance_issues()
+            issue_text = "; ".join(issues) if issues else "unknown verification error"
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    "Inventory maintenance failed twice. The bot was paused "
+                    f"safely. Remaining issue(s): {issue_text}"
+                ),
+                PySystem.Console.MessageType.Error,
+            )
+            _log_unhealthy_inventory_contents()
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, "SetAutoInventoryHandlerEnabled", None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+            sender_email = str(Player.GetAccountEmail() or "").strip()
+            for account in _inventory_accounts():
+                receiver_email = str(
+                    getattr(account, "AccountEmail", "") or ""
+                ).strip()
+                if not sender_email or not receiver_email:
+                    continue
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender_email,
+                    receiver_email,
+                    SharedCommandType.EnableWidget,
+                    (0.0, 0.0, 0.0, 0.0),
+                    (INVENTORY_PLUS_WIDGET_NAME, "", "", ""),
+                )
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, "Pause", None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Pause Bot After Inventory Maintenance Failure",
+            action_fn=_stop,
+            aftercast_ms=0,
+        )
+    )
+
+
+def InventoryCheckAndMaintenance() -> BehaviorTree:
+    disabled = BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name="Inventory Maintenance Disabled",
+            condition_fn=lambda _node: not _inventory_maintenance_enabled,
+        )
+    )
+
+    maintenance_attempts = [
+        _inventory_maintenance_attempt(attempt_number)
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
+    ]
+    maintenance_attempts.append(_stop_for_inventory_failure_node())
+
+    enabled_flow = BT.Sequence(
+        name="Enabled Inventory Check And Maintenance",
+        children=[
+            _wait_for_inventory_snapshots(
+                name="Wait For Multibox Inventory Snapshots",
+            ),
+            BT.Selector(
+                name="Check Inventory Thresholds",
+                children=[
+                    _inventory_is_healthy_node(
+                        "Inventory Thresholds Already Satisfied",
+                        log_success=True,
+                    ),
+                    BT.Sequence(
+                        name="Run Inventory Maintenance",
+                        children=[
+                            BT.LogMessage(
+                                message=(
+                                    "Inventory thresholds are not satisfied. "
+                                    "Starting multibox MerchantRules maintenance "
+                                    "with the loaded Shards of Orr profile in Eye of the North."
+                                ),
+                                module_name=MODULE_NAME,
+                            ),
+                            BT.Selector(
+                                name="Retry Inventory Maintenance Safely",
+                                children=maintenance_attempts,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name="Inventory Check And Maintenance",
+        children=[
+            disabled,
+            enabled_flow,
+        ],
+    )
+
+
+def StartupInventoryCheck() -> BehaviorTree:
+    return BT.Selector(
+        name="Startup Inventory Check",
+        children=[
+            BT.Sequence(
+                name="Check Inventories Before Leaving Vlox's Falls",
+                children=[
+                    BT.IsCurrentMap(map_id=VLOXS_FALL, log=False),
+                    InventoryCheckAndMaintenance(),
+                ],
+            ),
+            BT.Succeeder("Skip Startup Inventory Check Outside Vlox's Falls"),
+        ],
+    )
 
 
 def _refresh_character_names() -> bool:
@@ -1434,6 +2357,149 @@ def _draw_statistics() -> None:
 
 # region Helpers
 
+_MARTIAL_PRIMARY_PROFESSIONS = {
+    "Warrior",
+    "Ranger",
+    "Assassin",
+    "Dervish",
+    "Paragon",
+}
+
+
+def _is_holding_bundle() -> bool:
+    try:
+        return bool(
+            Agent.IsHoldingItem(
+                Player.GetAgentID(),
+            )
+        )
+    except Exception:
+        return False
+
+
+def _resolve_torch_combat_policy() -> bool:
+    """Return True when the leader must drop the torch before combat."""
+    global _drop_torch_for_combat
+
+    if _drop_torch_for_combat is not None:
+        return _drop_torch_for_combat
+
+    if not _keep_torch_for_caster:
+        _drop_torch_for_combat = True
+        reason = "caster torch retention is disabled in Config"
+    else:
+        player_id = int(Player.GetAgentID() or 0)
+        weapon_name = "Unknown"
+
+        try:
+            _, weapon_name = Agent.GetWeaponType(player_id)
+        except Exception:
+            weapon_name = "Unknown"
+
+        try:
+            is_martial = bool(Agent.IsMartial(player_id))
+        except Exception:
+            is_martial = False
+
+        try:
+            is_caster = bool(Agent.IsCaster(player_id))
+        except Exception:
+            is_caster = False
+
+        if is_martial:
+            _drop_torch_for_combat = True
+            reason = f"martial weapon detected: {weapon_name}"
+        elif is_caster:
+            _drop_torch_for_combat = False
+            reason = f"caster weapon detected: {weapon_name}"
+        else:
+            try:
+                primary_profession, _ = Agent.GetProfessionNames(player_id)
+            except Exception:
+                primary_profession = ""
+
+            if primary_profession in _MARTIAL_PRIMARY_PROFESSIONS:
+                _drop_torch_for_combat = True
+                reason = (
+                    "weapon type unavailable; martial primary profession "
+                    f"detected: {primary_profession}"
+                )
+            elif primary_profession:
+                _drop_torch_for_combat = False
+                reason = (
+                    "weapon type unavailable; caster primary profession "
+                    f"detected: {primary_profession}"
+                )
+            else:
+                # Preserve the previous behavior when no reliable player data
+                # is available instead of risking combat with a martial build
+                # still carrying the bundle.
+                _drop_torch_for_combat = True
+                reason = "weapon and profession are unknown; safe fallback"
+
+    PySystem.Console.Log(
+        MODULE_NAME,
+        (
+            "Torch combat policy: "
+            f"{'DROP' if _drop_torch_for_combat else 'KEEP'} "
+            f"({reason})."
+        ),
+        PySystem.Console.MessageType.Info,
+    )
+    return _drop_torch_for_combat
+
+
+def ResolveTorchCombatPolicy() -> BehaviorTree:
+    def _resolve() -> BehaviorTree.NodeState:
+        _resolve_torch_combat_policy()
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="ResolveTorchCombatPolicy",
+            action_fn=_resolve,
+            aftercast_ms=0,
+        )
+    )
+
+
+def DropTorchForCombat(log: bool = False) -> BehaviorTree:
+    """Drop the torch only when the configured combat policy requires it."""
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _resolve_torch_combat_policy():
+            return BT.Succeeder(
+                "KeepTorchForCasterCombat",
+            )
+
+        if not _is_holding_bundle():
+            return BT.Succeeder(
+                "NoTorchBundleToDrop",
+            )
+
+        return BT.DropBundle(log=log)
+
+    return BT.Subtree(
+        name="Drop Torch For Combat If Required",
+        subtree_fn=_build,
+    )
+
+
+def ResetTorchCombatPolicy() -> BehaviorTree:
+    def _reset() -> BehaviorTree.NodeState:
+        global _drop_torch_for_combat
+        _drop_torch_for_combat = None
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="ResetTorchCombatPolicy",
+            action_fn=_reset,
+            aftercast_ms=0,
+        )
+    )
+
+
 def PickupTorch() -> BehaviorTree:
     PICKUP_TIMEOUT_MS = 45_000
     NOT_FOUND_GRACE_MS = 3_000
@@ -1456,16 +2522,6 @@ def PickupTorch() -> BehaviorTree:
     retry_at = 0.0
     search_logged = False
     torch_seen = False
-
-    def _is_holding_torch() -> bool:
-        try:
-            return bool(
-                Agent.IsHoldingItem(
-                    Player.GetAgentID(),
-                )
-            )
-        except Exception:
-            return False
 
     def _find_available_torch() -> int | None:
         """Return a pickup-compatible torch, or None if the scan failed."""
@@ -1541,6 +2597,13 @@ def PickupTorch() -> BehaviorTree:
 
         now = time.monotonic()
 
+        # Intermediate pickup nodes remain in the route for recovery.  A
+        # caster that kept the torch completes them immediately without
+        # starting a search or producing a misleading lookup log.
+        if _is_holding_bundle():
+            _reset_state()
+            return BehaviorTree.NodeState.SUCCESS
+
         if started_at <= 0.0:
             started_at = now
 
@@ -1550,15 +2613,6 @@ def PickupTorch() -> BehaviorTree:
                 PySystem.Console.MessageType.Info,
             )
             search_logged = True
-
-        # A carried torch always completes the pickup immediately.
-        if _is_holding_torch():
-            _log(
-                "Torch picked up successfully.",
-                PySystem.Console.MessageType.Success,
-            )
-            _reset_state()
-            return BehaviorTree.NodeState.SUCCESS
 
         elapsed_ms = int(
             (now - started_at) * 1000.0
@@ -2287,6 +3341,7 @@ def InitializeBot() -> BehaviorTree:
     return BT.Sequence(
         name="Initialize Shards of Orr BT",
         children=[
+            ResetTorchCombatPolicy(),
             bot.Config.Aggressive(
                 multi_account=True,
                 auto_loot=True,
@@ -2326,6 +3381,9 @@ def PreparePartyAndSupplies() -> BehaviorTree:
         random_travel=True,
         hard_mode=None,
         children=[
+            # Keep inventory maintenance and party formation in the same ordered
+            # subtree so the planner cannot form the party before maintenance.
+            StartupInventoryCheck(),
             BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
             BT.AbandonQuest(
     quest_id=LOST_SOULS_QUEST_ID,
@@ -2443,12 +3501,130 @@ def EnterShardsOfOrr(
 
 
 # endregion
+
+
+# region Planner point steps
+
+
+def _map_guarded_point(
+    name: str,
+    map_id: int,
+    child: BehaviorTree,
+    skip_if_in_maps: Sequence[int] = (),
+) -> BehaviorTree:
+    """Run one point on its map, or accept it when the next level is loaded."""
+    branches: list[BehaviorTree] = [
+        BT.Sequence(
+            name=f"{name} - Active Map",
+            children=[
+                BT.IsCurrentMap(map_id=map_id, log=False),
+                child,
+            ],
+        )
+    ]
+
+    for later_map_id in skip_if_in_maps:
+        branches.append(
+            BT.Sequence(
+                name=f"{name} - Later Map {later_map_id}",
+                children=[
+                    BT.IsCurrentMap(map_id=later_map_id, log=False),
+                    BT.Succeeder(f"{name}AlreadyPassed"),
+                ],
+            )
+        )
+
+    if len(branches) == 1:
+        return branches[0]
+
+    return BT.Selector(
+        name=name,
+        children=branches,
+    )
+
+
+def _movement_point_steps(
+    prefix: str,
+    map_id: int,
+    points: Sequence[PathPoint],
+    *,
+    pause_on_combat: bool,
+    tolerance: float = 200.0,
+    flag_heroes_to_waypoint: bool = False,
+    ignore_destination_obstacles: bool = False,
+    skip_if_in_maps: Sequence[int] = (),
+) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
+
+    for index, point in enumerate(points, start=1):
+        name = f"{prefix} - Point {index:02d}"
+        steps.append(
+            (
+                name,
+                lambda point=point, name=name: _map_guarded_point(
+                    name=name,
+                    map_id=map_id,
+                    child=BT.Move(
+                        point,
+                        pause_on_combat=pause_on_combat,
+                        tolerance=tolerance,
+                        flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                        ignore_destination_obstacles=ignore_destination_obstacles,
+                        log=False,
+                    ),
+                    skip_if_in_maps=skip_if_in_maps,
+                ),
+            )
+        )
+
+    return steps
+
+
+def _vanquish_point_steps(
+    prefix: str,
+    map_id: int,
+    points: Sequence[PathPoint],
+    *,
+    clear_area_radius: float = Range.Spirit.value,
+    pause_on_combat: bool | None = None,
+    flag_heroes_to_waypoint: bool = False,
+    move_tolerance: float = 500.0,
+    skip_if_in_maps: Sequence[int] = (),
+) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
+
+    for index, point in enumerate(points, start=1):
+        name = f"{prefix} - Point {index:02d}"
+        steps.append(
+            (
+                name,
+                lambda point=point, name=name: _map_guarded_point(
+                    name=name,
+                    map_id=map_id,
+                    child=BT.VanquishNode(
+                        [point],
+                        name=name,
+                        clear_area_radius=clear_area_radius,
+                        pause_on_combat=pause_on_combat,
+                        flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                        move_tolerance=move_tolerance,
+                        log=False,
+                    ),
+                    skip_if_in_maps=skip_if_in_maps,
+                ),
+            )
+        )
+
+    return steps
+
+
+# endregion
 # region Level 1
 
 
-def Level1_Part1() -> BehaviorTree:
+def Level1_Start() -> BehaviorTree:
     return BT.Sequence(
-        name="Run Shards of Orr Level 1",
+        name="Start Shards of Orr Level 1",
         children=[
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
@@ -2460,52 +3636,64 @@ def Level1_Part1() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.VanquishNode(
-                L1_PATH,
-                name="Level 1 First Route",
-                flag_heroes_to_waypoint=False,
-                move_tolerance=500,
-                log=False,
-            ),
-            
-            BT.MoveAndInteractWithGadget(Vec2f(15100.0, 5443.0),
-                pause_on_combat=True,
-                log=True,
-            ),
-            
         ],
     )
 
 
-# endregion
-#region Level 1 - part 2
-def Level1_Part2() -> BehaviorTree:
+def Level1_OpenDoor() -> BehaviorTree:
     return BT.Sequence(
-        name="Run Shards of Orr Level 1 - Part 2",
+        name="Open Level 1 Door",
         children=[
-            BT.VanquishNode(
-                L1_PATH_AFTER_DOOR,
-                name="Level 1 Route To Level 2",
-                flag_heroes_to_waypoint=False,
-                move_tolerance=500,
-                log=False,
+            BT.IsCurrentMap(map_id=SOO_LEVEL_1, log=True),
+            BT.MoveAndInteractWithGadget(Vec2f(15100.0, 5443.0),
+                pause_on_combat=True,
+                log=True,
             ),
-            BT.WaitForMapLoad(map_id=SOO_LEVEL_2, timeout_ms=60_000),
+        ],
+    )
+
+
+def Level1_EnterLevel2() -> BehaviorTree:
+    name = f"Level 1 Route To Level 2 - Point {len(L1_PATH_AFTER_DOOR):02d}"
+    return BT.Sequence(
+        name=name,
+        children=[
+            _map_guarded_point(
+                name=name,
+                map_id=SOO_LEVEL_1,
+                child=BT.Sequence(
+                    name=f"{name} And Load Level 2",
+                    children=[
+                        BT.VanquishNode(
+                            [L1_PATH_AFTER_DOOR[-1]],
+                            name=name,
+                            flag_heroes_to_waypoint=False,
+                            move_tolerance=500,
+                            log=False,
+                        ),
+                        BT.WaitForMapLoad(map_id=SOO_LEVEL_2, timeout_ms=60_000),
+                    ],
+                ),
+                skip_if_in_maps=(SOO_LEVEL_2,),
+            ),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             _mark_l2_start_node(),
             BT.Wait(2_000),
         ],
     )
-#endregion
+
+
+# endregion
 
 
 # region Level 2 - part 1
 
 
-def Level2_Part1() -> BehaviorTree:
+def Level2_Start() -> BehaviorTree:
     return BT.Sequence(
-        name="Run Shards of Orr Level 2",
+        name="Start Shards of Orr Level 2",
         children=[
+            ResolveTorchCombatPolicy(),
             UseAvailableSummoningStone(),
             BT.AddModelToLootWhitelist(25410),
             BT.MoveAndDialog(
@@ -2525,23 +3713,40 @@ def Level2_Part1() -> BehaviorTree:
                 log=True,
             ),
             PickupTorch(),
-            BT.Move(L2_FIRST_TORCH_DROP_POINT_PATH, pause_on_combat=True, log=False),
-            BT.DropBundle(log=True),
-            BT.ClearEnemiesInArea(L2_RETURN_TO_FIRST_TORCH_PATH, radius=Range.SafeCompass.value, log=True),
-            PickupTorch(),
-            BT.Move(Vec2f(-9404.44, -17963.49), pause_on_combat=True, log=False),
-            BT.Move(Vec2f(-11303.00, -14596.00), pause_on_combat=True, log=False),
-            BrazierSequence("Level 2 Brazier Route 1", L2_BRAZIER_PART1),
-            BT.DropBundle(log=True),
         ],
     )
-#endregion
+
+
+def Level2_FirstTorchFight() -> BehaviorTree:
+    return BT.Sequence(
+        name="Level 2 First Torch Fight",
+        children=[
+            DropTorchForCombat(log=True),
+            BT.ClearEnemiesInArea(L2_RETURN_TO_FIRST_TORCH_PATH, radius=Range.SafeCompass.value, log=True),
+            PickupTorch(),
+        ],
+    )
+
+
+def Level2_BrazierRoute1() -> BehaviorTree:
+    return BT.Sequence(
+        name="Level 2 Brazier Route 1",
+        children=[
+            BrazierSequence("Level 2 Brazier Route 1", L2_BRAZIER_PART1),
+            DropTorchForCombat(log=True),
+        ],
+    )
+
+
+# endregion
 # region Level 2 - part 2
 
-def Level2_Part2() -> BehaviorTree:
+
+def Level2_PrepareRoom2() -> BehaviorTree:
     return BT.Sequence(
-        name="Run Shards of Orr Level 2",
+        name="Prepare Level 2 Room 2",
         children=[
+            ResolveTorchCombatPolicy(),
             BT.Wait(2000),
             BT.MoveAndKill(Vec2f(-9011.27, -11536.79)),
             BT.WaitForClearEnemiesInArea(
@@ -2550,69 +3755,98 @@ def Level2_Part2() -> BehaviorTree:
             ),
             BT.Wait(2000),
             PickupTorch(),
-            BT.VanquishNode(
-                L2_TO_ROOM2_DROP,
-                clear_area_radius=Range.Area.value,
-                pause_on_combat=True,
-                move_tolerance=500,
-                log=False,
-            ),
-            BT.DropBundle(log=True),
-            BT.VanquishNode(
-                L2_RETURN_TO_ROOM2_TORCH_PATH,
-                name="Clear Route Back To Room 2 Torch",
-                flag_heroes_to_waypoint=False,
-                move_tolerance=500,
-                log=False,
-            ),
-            PickupTorch(),
-            BT.VanquishNode(
-                L2_ROOM2_PATH,
-                name="Clear Level 2 Room 2",
-                flag_heroes_to_waypoint=False,
-                
-                log=False,
-            ),
-            BT.DropBundle(log=True),
-            BT.VanquishNode([Vec2f(-4245.2, -2101.0)],
-                name="Clear Level 2 Room 2",
-                flag_heroes_to_waypoint=False,
-                move_tolerance=500,
-                log=False,
-            ),
-            PickupTorch(),
-            BrazierSequence("Level 2 Brazier Route 2", L2_BRAZIER_PART2),
-            BT.DropBundle(log=True),
-
         ],
     )
+
+
+def Level2_DropTorchBeforeRoom2Return() -> BehaviorTree:
+    return BT.Sequence(
+        name="Drop Torch Before Returning To Room 2",
+        children=[
+            DropTorchForCombat(log=True),
+        ],
+    )
+
+
+def Level2_PickupRoom2Torch() -> BehaviorTree:
+    return BT.Sequence(
+        name="Pick Up Level 2 Room 2 Torch",
+        children=[
+            PickupTorch(),
+        ],
+    )
+
+
+def Level2_DropTorchBeforeFinalRoom2Fight() -> BehaviorTree:
+    return BT.Sequence(
+        name="Drop Torch Before Final Room 2 Fight",
+        children=[
+            DropTorchForCombat(log=True),
+        ],
+    )
+
+
+def Level2_PickupTorchForBrazierRoute2() -> BehaviorTree:
+    return BT.Sequence(
+        name="Pick Up Torch For Level 2 Brazier Route 2",
+        children=[
+            PickupTorch(),
+        ],
+    )
+
+
+def Level2_BrazierRoute2() -> BehaviorTree:
+    return BT.Sequence(
+        name="Level 2 Brazier Route 2",
+        children=[
+            BrazierSequence("Level 2 Brazier Route 2", L2_BRAZIER_PART2),
+            BT.DropBundle(log=True),
+        ],
+    )
+
+
 # endregion
 
-# region Level 2 - part 2
-def Level2_Part3() -> BehaviorTree:
+
+# region Level 2 - part 3
+
+
+def Level2_OpenDungeonLock() -> BehaviorTree:
     return BT.Sequence(
-        name="Run Shards of Orr Level 2",
+        name="Open Level 2 Dungeon Lock",
         children=[
-            BT.VanquishNode(
-                L2_PATH_TO_LOCK,
-                name="Level 2 Route To Dungeon Lock",
-                flag_heroes_to_waypoint=False,
-                move_tolerance=500,
-                pause_on_combat=True,
-                log=False,
-            ),
+            BT.IsCurrentMap(map_id=SOO_LEVEL_2, log=True),
             BT.MoveAndInteractWithGadget(
                 L2_DUNGEON_LOCK,
                 pause_on_combat=False,
                 log=True,
             ),
-            BT.Move(
-                L2_EXIT_PATH,
-                pause_on_combat=False,
-                
-                log=False,
+        ],
+    )
+
+
+def Level2_EnterLevel3() -> BehaviorTree:
+    name = f"Level 2 Exit Route - Point {len(L2_EXIT_PATH):02d}"
+    return BT.Sequence(
+        name=name,
+        children=[
+            _map_guarded_point(
+                name=name,
+                map_id=SOO_LEVEL_2,
+                child=BT.Sequence(
+                    name=f"{name} And Load Level 3",
+                    children=[
+                        BT.Move(
+                            L2_EXIT_PATH[-1],
+                            pause_on_combat=False,
+                            tolerance=200.0,
+                            log=False,
+                        ),
+                        BT.WaitForMapLoad(map_id=SOO_LEVEL_3, timeout_ms=60_000),
+                    ],
+                ),
+                skip_if_in_maps=(SOO_LEVEL_3,),
             ),
-            BT.WaitForMapLoad(map_id=SOO_LEVEL_3, timeout_ms=60_000),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             _mark_l3_start_node(),
             BT.Wait(2_000),
@@ -2623,11 +3857,12 @@ def Level2_Part3() -> BehaviorTree:
 # endregion
 
 # region Level 3 - part 1
-def Level3_FirstPath() -> BehaviorTree:
-    return BT.Sequence(
-        name="Run Shards of Orr Level 3 First Path",
-        children=[
 
+
+def Level3_Start() -> BehaviorTree:
+    return BT.Sequence(
+        name="Start Shards of Orr Level 3",
+        children=[
             UseAvailableSummoningStone(),
             BT.MoveAndDialog(
                 L3_ENTRY_BLESSING,
@@ -2635,43 +3870,14 @@ def Level3_FirstPath() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.VanquishNode(
-                L3_MAIN_PATH,
-                name="Level 3 Main Route",
-                flag_heroes_to_waypoint=False,
-                log=False,
-                move_tolerance=500
-            ),
         ],
     )
-#endregion
 
-# region Level 3 - part 2
-def Level3_BrigantRoom() -> BehaviorTree:
-    return BT.Sequence(
-        name="Run Shards of Orr Level 3 Second Path",
-        children=[
-            BT.VanquishNode(
-            L3_BRIGANT_ROOM,
-            name="Level 3 Main Route",
-            flag_heroes_to_waypoint=False,
-            log=False,
-            move_tolerance=500
-                        ),
-        ],
-    )
-#endregion
 
-def Level3_Torch() -> BehaviorTree:
+def Level3_TorchAndBraziers() -> BehaviorTree:
     return BT.Sequence(
-        name="Run Shards of Orr Level 3 Third Path",
+        name="Open Level 3 Torch Chest And Light Braziers",
         children=[
-            BT.Move(
-                L3_PATH_TO_TORCH,
-                flag_heroes_to_waypoint=False,
-                pause_on_combat=False,
-                log=False,
-            ),
             BT.MoveAndInteractWithGadget(
                 L3_TORCH_CHEST, pause_on_combat=False, log=True,
             ),
@@ -2680,6 +3886,9 @@ def Level3_Torch() -> BehaviorTree:
             BT.DropBundle(log=True),
         ],
     )
+
+
+# endregion
 
 
 # region Level 3 - part 3
@@ -2703,17 +3912,12 @@ def Level3_Brigant() -> BehaviorTree:
 # endregion
 
 # region Level 3 - boss
-def Level3_Fendi() -> BehaviorTree:
+
+
+def Level3_FendiFight() -> BehaviorTree:
     return BT.Sequence(
         name="Run Fendi Boss Fight",
         children=[
-            BT.VanquishNode(
-                L3_FENDI_PATH,
-                name="Route To Fendi",
-                flag_heroes_to_waypoint=False,
-                log=False,
-                move_tolerance=500
-            ),
             BT.ClearEnemiesInArea(
                 Vec2f(-15606.06, 15287.51),radius=Range.Compass.value,log=True),
             BT.WaitForClearEnemiesInArea(
@@ -2808,62 +4012,47 @@ def CollectInsideReward() -> BehaviorTree:
 
 
 
-def PrepareNextDungeonRun() -> BehaviorTree:
-    """
-    Prepare the next Shards of Orr run after returning to Arbor Bay.
-
-    Three scenarios are supported:
-
-    1. Lost Souls is still active:
-       - keep the current quest;
-       - immediately re-enter Shards of Orr.
-
-    2. The reward was collected inside the dungeon:
-       - Lost Souls is missing;
-       - retake the quest in Arbor Bay;
-       - enter Shards of Orr.
-
-    3. The reward remains complete:
-       - collect the reward from Shandra in Arbor Bay;
-       - enter and immediately leave Level 1;
-       - retake Lost Souls in Arbor Bay;
-       - enter Shards of Orr again for the next run.
-    """
-
-    quest_already_active = BT.Sequence(
-        name="Restart With Active Quest",
+def ResolveShandraQuestAfterRun() -> BehaviorTree:
+    """Leave Arbor Bay with Lost Souls active, without starting the next run."""
+    direct_retake = BT.Sequence(
+        name="Retake Lost Souls Directly",
         children=[
-            BT.IsQuestState(
-                quest_id=LOST_SOULS_QUEST_ID,
-                state="active",
+            BT.MoveAndDialog(
+                SHANDRA_APPROACH,
+                SHANDRA_TAKE_DIALOG,
+                pause_on_combat=False,
+                multi_account=True,
                 log=True,
             ),
-            BT.LogMessage(
-                message=(
-                    "Lost Souls is already active in Arbor Bay. "
-                    "Re-entering Shards of Orr without retaking "
-                    "the quest."
-                ),
-                module_name=MODULE_NAME,
+            BT.WaitForActiveQuest(
+                LOST_SOULS_QUEST_ID,
+                timeout_ms=15_000,
             ),
-            EnterShardsOfOrr(),
         ],
     )
 
-    reward_collected_inside = BT.Sequence(
-        name="Restart After Inside Reward",
+    retake_after_reset_entry = BT.Sequence(
+        name="Reset Shandra By Entering Level 1",
         children=[
-            BT.IsQuestState(
-                quest_id=LOST_SOULS_QUEST_ID,
-                state="missing",
-                log=True,
-            ),
             BT.LogMessage(
                 message=(
-                    "The reward was already collected inside "
-                    "the dungeon. Retaking Lost Souls."
+                    "Shandra did not offer Lost Souls directly. "
+                    "Entering and leaving Level 1 once before retrying."
                 ),
                 module_name=MODULE_NAME,
+            ),
+            EnterShardsOfOrr(enable_consumables_on_entry=False),
+            BT.MoveAndExitMap(
+                LEVEL1_EXIT_TO_ARBOR,
+                target_map_id=ARBOR_BAY,
+                log=False,
+            ),
+            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            BT.Wait(2_000),
+            BT.Move(
+                [Vec2f(10218.0, -18864.0), SHANDRA_APPROACH],
+                pause_on_combat=False,
+                log=False,
             ),
             BT.MoveAndDialog(
                 SHANDRA_APPROACH,
@@ -2876,12 +4065,55 @@ def PrepareNextDungeonRun() -> BehaviorTree:
                 LOST_SOULS_QUEST_ID,
                 timeout_ms=15_000,
             ),
-            EnterShardsOfOrr(),
+        ],
+    )
+
+    quest_already_active = BT.Sequence(
+        name="Keep Active Lost Souls Quest",
+        children=[
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="active",
+                log=True,
+            ),
+            BT.LogMessage(
+                message="Lost Souls is already active for the next run.",
+                module_name=MODULE_NAME,
+            ),
+        ],
+    )
+
+    reward_collected_inside = BT.Sequence(
+        name="Retake Lost Souls After Inside Reward",
+        children=[
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="missing",
+                log=True,
+            ),
+            BT.Selector(
+                name="Retake Lost Souls With Reset Fallback",
+                children=[
+                    direct_retake,
+                    BT.Sequence(
+                        name="Retake Completed Despite Wait Failure",
+                        children=[
+                            BT.IsQuestState(
+                                quest_id=LOST_SOULS_QUEST_ID,
+                                state="active",
+                                log=True,
+                            ),
+                            BT.Succeeder("LostSoulsRetakeAlreadyCompleted"),
+                        ],
+                    ),
+                    retake_after_reset_entry,
+                ],
+            ),
         ],
     )
 
     reward_not_collected_inside = BT.Sequence(
-        name="Restart After Outside Reward",
+        name="Collect Outside Reward And Retake Lost Souls",
         children=[
             BT.IsQuestState(
                 quest_id=LOST_SOULS_QUEST_ID,
@@ -2914,30 +4146,18 @@ def PrepareNextDungeonRun() -> BehaviorTree:
                 module_name=MODULE_NAME,
             ),
 
-            # Enter the dungeon once before retaking the quest,
-            # as required by the outside-reward scenario.
-            # Consumables stay suspended because the party immediately
-            # returns to Arbor Bay without starting the next run.
-            EnterShardsOfOrr(
-                enable_consumables_on_entry=False,
-            ),
-
+            # Guild Wars requires one entry into Level 1 after an outside
+            # reward before Shandra offers Lost Souls again.
+            EnterShardsOfOrr(enable_consumables_on_entry=False),
             BT.MoveAndExitMap(
                 LEVEL1_EXIT_TO_ARBOR,
                 target_map_id=ARBOR_BAY,
                 log=False,
             ),
-            BT.WaitUntilOnExplorable(
-                timeout_ms=30_000,
-            ),
-            BT.Wait(
-                2_000,
-            ),
+            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            BT.Wait(2_000),
             BT.Move(
-                [
-                    Vec2f(10218.0, -18864.0),
-                    SHANDRA_APPROACH,
-                ],
+                [Vec2f(10218.0, -18864.0), SHANDRA_APPROACH],
                 pause_on_combat=False,
                 log=False,
             ),
@@ -2952,6 +4172,73 @@ def PrepareNextDungeonRun() -> BehaviorTree:
                 LOST_SOULS_QUEST_ID,
                 timeout_ms=15_000,
             ),
+        ],
+    )
+
+    return BT.Sequence(
+        name="Resolve Shandra Quest After Run",
+        children=[
+            BT.IsCurrentMap(map_id=ARBOR_BAY, log=True),
+            BT.Selector(
+                name="Resolve Lost Souls State In Arbor Bay",
+                children=[
+                    quest_already_active,
+                    reward_collected_inside,
+                    reward_not_collected_inside,
+                ],
+            ),
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="active",
+                log=True,
+            ),
+        ],
+    )
+
+
+def PrepareNextDungeonRun() -> BehaviorTree:
+    already_inside = BT.Sequence(
+        name="Next Run Already Entered",
+        children=[
+            BT.IsCurrentMap(map_id=SOO_LEVEL_1, log=True),
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="active",
+                log=True,
+            ),
+        ],
+    )
+
+    continue_from_arbor = BT.Sequence(
+        name="Enter Next Run From Arbor Bay",
+        children=[
+            BT.IsCurrentMap(map_id=ARBOR_BAY, log=True),
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="active",
+                log=True,
+            ),
+            EnterShardsOfOrr(),
+        ],
+    )
+
+    continue_after_maintenance = BT.Sequence(
+        name="Reform Party And Enter Next Run From Vlox",
+        children=[
+            BT.IsCurrentMap(map_id=VLOXS_FALL, log=True),
+            BT.IsQuestState(
+                quest_id=LOST_SOULS_QUEST_ID,
+                state="active",
+                log=True,
+            ),
+            BT.CreateParty(
+                multibox_invite=True,
+                timeout_ms=30_000,
+                log=True,
+            ),
+            _runtime_difficulty_node(),
+            _runtime_restock_node(),
+            TravelToShandra(),
             EnterShardsOfOrr(),
         ],
     )
@@ -2959,14 +4246,14 @@ def PrepareNextDungeonRun() -> BehaviorTree:
     return BT.Selector(
         name="Prepare Next Dungeon Run",
         children=[
-            quest_already_active,
-            reward_collected_inside,
-            reward_not_collected_inside,
+            already_inside,
+            continue_from_arbor,
+            continue_after_maintenance,
         ],
     )
 
 
-def CollectRewardAndPrepareRestart(
+def CollectRewardAndReturnToArbor(
     end_countdown_timeout_ms: int = 190_000,
 ) -> BehaviorTree:
     already_in_arbor = BT.Sequence(
@@ -3042,7 +4329,7 @@ def CollectRewardAndPrepareRestart(
     )
 
     return BT.Sequence(
-        name="Collect Reward And Prepare Restart",
+        name="Collect Reward And Return To Arbor",
         children=[
             _runtime_consumable_upkeep_node(False),
             BT.Selector(
@@ -3082,14 +4369,6 @@ def CollectRewardAndPrepareRestart(
                 pause_on_combat=False,
                 log=False,
             ),
-            PrepareNextDungeonRun(),
-            BT.LogMessage(
-                message=(
-                    "Lost Souls is active and the party is "
-                    "back inside Shards of Orr Level 1."
-                ),
-                module_name=MODULE_NAME,
-            ),
         ],
     )
 
@@ -3108,20 +4387,149 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Handle Shandra Quest", HandleShandraQuest),
         ("Enter Shards Of Orr", EnterShardsOfOrr),
 
-        ("Level 1 Before door", Level1_Part1),
-        ("Level 1 After door", Level1_Part2),
+        ("Level 1 Start", Level1_Start),
+        *_vanquish_point_steps(
+            "Level 1 First Route",
+            SOO_LEVEL_1,
+            L1_PATH,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+            skip_if_in_maps=(SOO_LEVEL_2, SOO_LEVEL_3),
+        ),
+        ("Level 1 Open Door", Level1_OpenDoor),
+        *_vanquish_point_steps(
+            "Level 1 Route To Level 2",
+            SOO_LEVEL_1,
+            L1_PATH_AFTER_DOOR[:-1],
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+            skip_if_in_maps=(SOO_LEVEL_2, SOO_LEVEL_3),
+        ),
+        (
+            f"Level 1 Route To Level 2 - Point {len(L1_PATH_AFTER_DOOR):02d}",
+            Level1_EnterLevel2,
+        ),
 
-        ("Level 2 First part", Level2_Part1),
-        ("Level 2 After First Room", Level2_Part2),
-        ("Level 2 Third part", Level2_Part3),
+        ("Level 2 Start", Level2_Start),
+        *_movement_point_steps(
+            "Level 2 First Torch Drop Route",
+            SOO_LEVEL_2,
+            L2_FIRST_TORCH_DROP_POINT_PATH,
+            pause_on_combat=True,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 First Torch Fight", Level2_FirstTorchFight),
+        *_movement_point_steps(
+            "Level 2 First Brazier Approach",
+            SOO_LEVEL_2,
+            [
+                Vec2f(-9404.44, -17963.49),
+                Vec2f(-11303.00, -14596.00),
+            ],
+            pause_on_combat=True,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 Brazier Route 1", Level2_BrazierRoute1),
 
-        ("Level 3 First Path", Level3_FirstPath),
-        ("Level 3 Brigant Room", Level3_BrigantRoom),
-        ("Level 3 Torch", Level3_Torch),
+        ("Level 2 Prepare Room 2", Level2_PrepareRoom2),
+        *_vanquish_point_steps(
+            "Level 2 Route To Room 2 Drop",
+            SOO_LEVEL_2,
+            L2_TO_ROOM2_DROP,
+            clear_area_radius=Range.Area.value,
+            pause_on_combat=True,
+            move_tolerance=500.0,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 Drop Torch Before Room 2 Return", Level2_DropTorchBeforeRoom2Return),
+        *_vanquish_point_steps(
+            "Level 2 Route Back To Room 2 Torch",
+            SOO_LEVEL_2,
+            L2_RETURN_TO_ROOM2_TORCH_PATH,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 Pick Up Room 2 Torch", Level2_PickupRoom2Torch),
+        *_vanquish_point_steps(
+            "Level 2 Room 2",
+            SOO_LEVEL_2,
+            L2_ROOM2_PATH,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=150.0,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 Drop Torch Before Final Room 2 Fight", Level2_DropTorchBeforeFinalRoom2Fight),
+        *_vanquish_point_steps(
+            "Level 2 Room 2 Final Fight",
+            SOO_LEVEL_2,
+            [Vec2f(-4245.2, -2101.0)],
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 Pick Up Torch For Brazier Route 2", Level2_PickupTorchForBrazierRoute2),
+        ("Level 2 Brazier Route 2", Level2_BrazierRoute2),
+
+        *_vanquish_point_steps(
+            "Level 2 Route To Dungeon Lock",
+            SOO_LEVEL_2,
+            L2_PATH_TO_LOCK,
+            pause_on_combat=True,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        ("Level 2 Open Dungeon Lock", Level2_OpenDungeonLock),
+        *_movement_point_steps(
+            "Level 2 Exit Route",
+            SOO_LEVEL_2,
+            L2_EXIT_PATH[:-1],
+            pause_on_combat=False,
+            skip_if_in_maps=(SOO_LEVEL_3,),
+        ),
+        (
+            f"Level 2 Exit Route - Point {len(L2_EXIT_PATH):02d}",
+            Level2_EnterLevel3,
+        ),
+
+        ("Level 3 Start", Level3_Start),
+        *_vanquish_point_steps(
+            "Level 3 Main Route",
+            SOO_LEVEL_3,
+            L3_MAIN_PATH,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+        ),
+        *_vanquish_point_steps(
+            "Level 3 Brigant Room Route",
+            SOO_LEVEL_3,
+            L3_BRIGANT_ROOM,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+        ),
+        *_movement_point_steps(
+            "Level 3 Torch Route",
+            SOO_LEVEL_3,
+            L3_PATH_TO_TORCH,
+            pause_on_combat=False,
+            flag_heroes_to_waypoint=False,
+        ),
+        ("Level 3 Torch And Braziers", Level3_TorchAndBraziers),
         ("Level 3 Brigant", Level3_Brigant),
-        ("Level 3 Fendi Boss Fight", Level3_Fendi),
+        *_vanquish_point_steps(
+            "Level 3 Route To Fendi",
+            SOO_LEVEL_3,
+            L3_FENDI_PATH,
+            flag_heroes_to_waypoint=False,
+            move_tolerance=500.0,
+        ),
+        ("Level 3 Fendi Boss Fight", Level3_FendiFight),
         ("Level 3 Chest", Level3_Chest ),
-        ("Collect Reward And Prepare Restart", CollectRewardAndPrepareRestart),
+        ("Collect Reward And Return To Arbor", CollectRewardAndReturnToArbor),
+        ("Resolve Shandra Quest", ResolveShandraQuestAfterRun),
+        ("Inventory Check And Maintenance", InventoryCheckAndMaintenance),
+        ("Prepare Next Dungeon Run", PrepareNextDungeonRun),
     ]
 
 
