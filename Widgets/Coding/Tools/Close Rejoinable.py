@@ -14,7 +14,7 @@ from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 
 project_path = PySystem.Console.get_projects_path()
 MODULE_NAME = "Close Rejoinable"
-MODULE_ICON = os.path.join("Textures", "Module_Icons", "Research Code.png")
+MODULE_ICON = os.path.join("Assets", "Textures", "Module_Icons", "Research Code.png")
 
 widget_manager = get_widget_handler()
 

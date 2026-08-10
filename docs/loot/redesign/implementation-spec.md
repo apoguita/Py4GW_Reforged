@@ -232,7 +232,7 @@ holds: heavy configuration is settings-only, and the quick access carries no con
 plan's earlier wording is superseded by this entry.
 
 **P3 — a missing texture renders the "no texture" texture.** No rendering is ever hidden or disabled
-for lack of textures. The asset already exists — `Textures/Item Models/0-File_Not_found.png`, which
+for lack of textures. The asset already exists — `Assets/Textures/Item Models/0-File_Not_found.png`, which
 `get_texture_for_model` (`enums_src/Texture_enums.py:12-22`) already returns as its fallback for any
 model id it cannot resolve. So the textured grid is offered on every surface, and shows the placeholder
 where there is nothing to show.

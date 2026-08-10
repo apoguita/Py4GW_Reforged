@@ -35,7 +35,7 @@ class Targeting:
         if override is not None:
             return override
         if cls._cached_data is None:
-            from HeroAI.cache_data import CacheData
+            from Py4GWCoreLib.HeroAI.cache_data import CacheData
             cls._cached_data = CacheData()
         cls._cached_data.Update()
         return cls._cached_data

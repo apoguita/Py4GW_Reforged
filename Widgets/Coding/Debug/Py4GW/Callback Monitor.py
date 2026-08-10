@@ -6,7 +6,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 show_disabled = False
 MODULE_NAME = "Callback Monitor"
-MODULE_ICON = "Textures/Module_Icons/Callback Monitor.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Callback Monitor.png"
     
 def draw_window():
     global show_disabled

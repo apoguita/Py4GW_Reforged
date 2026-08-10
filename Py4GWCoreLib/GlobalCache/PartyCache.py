@@ -211,7 +211,7 @@ class PartyCache:
                 self._parent._action_queue_manager.AddAction("ACTION",self._parent._party_instance.InvitePlayer,agent_id_or_name)
             elif isinstance(agent_id_or_name, str):
                 # /invite needs the REAL name; name obfuscation shows aliases. Resolve it back.
-                from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation.resolve import require_real_name
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.name_obfuscation.resolve import require_real_name
                 self._parent._action_queue_manager.AddAction("ACTION",Player.SendChatCommand,"invite " + require_real_name(agent_id_or_name))
                 
         def KickPlayer(self, name:str | int):

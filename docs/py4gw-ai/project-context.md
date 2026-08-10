@@ -10,6 +10,13 @@ most specific current source available; treat historical plans, handovers, and
 legacy trees as evidence with an explicit status rather than as automatic
 runtime truth.
 
+## Project-Specific Reference
+
+For concrete project paths, commands, migration parity, persistence,
+reverse-engineering, bridge, widget, ImGui, and runtime facts, read this
+document when relevant. It supplements the behavioral rules in `AGENTS.md` and
+the other current Py4GW AI guides; it does not replace them.
+
 ## Extraction coverage
 
 This file is the active destination for concrete project facts removed from
@@ -162,7 +169,7 @@ The persistence policy is a project hard rule:
 - `docs/architecture/reference/py4-gw-conceptual-model.md` is the canonical architecture and
   terminology reference.
 - `docs/bridge/mcp/mcp-bridge.md` is the MCP-facing planning summary; use
-  `BridgeRuntime/README.md` for daemon, injected client, CLI, and operator
+  `py4gw_bridge/README.md` for daemon, injected client, CLI, and operator
   usage.
 - `docs/architecture/reference/py4-gw-model-features-detail.txt` is a derived quick-scan export, not a
   separate authority.
@@ -226,8 +233,7 @@ The persistence policy is a project hard rule:
 
 ### Additional RE references
 
-- `docs/ui/research/generated/native-gw-ui-function-catalog.json` catalogs native UI functions;
-  `docs/ui/research/native-gw-window-creation-investigation.md` covers window creation;
+- `docs/ui/research/native-gw-window-creation-investigation.md` covers window creation;
   and `docs/ui/research/native-ui-title-and-encoded-string-reference.md` covers title
   and encoded-string handling.
 - `docs/ui/name-tag-colors/feature-guide.md` is the historical usage guide for
@@ -236,7 +242,7 @@ The persistence policy is a project hard rule:
   pipeline, `GetConsiderColor` resolver detour/ABI, allegiance-to-ARGB table,
   and item-rarity markup. The current Python surface is `AgentRecolor` /
   `PyAgentRecolor` under `Py4GWCoreLib/AgentRecolor.py`,
-  `Py4GWCoreLib/py4gwcorelib_src/agent_recolor/`, and
+  `Py4GWCoreLib/py4gwcorelib_src/system_settings/agent_recolor/`, and
   `stubs/PyAgentRecolor.pyi`; the historical native implementation reference
   is `Py4GW/src/py_agent_tag_color.cpp`. Its in-client test harness is
   `tests/name_tag_color/name_tag_color_test.py`.
@@ -262,8 +268,8 @@ The persistence policy is a project hard rule:
   to the first `widget_path` segment, `MODULE_TAGS` defaults to all path
   segments, and `OPTIONAL` defaults to `False` except for `System` and
   `Py4GW` categories.
-- `HeroAI/follow/__init__.py` intentionally exports nothing; import exact
-  submodules such as `HeroAI.follow.leader_publish`.
+- `Py4GWCoreLib/HeroAI/follow/__init__.py` intentionally exports nothing; import exact
+  submodules such as `Py4GWCoreLib.HeroAI.follow.leader_publish`.
 - `Py4GWCoreLib/GlobalCache/SharedMemory.py` is startup-sensitive and imports
   that exact submodule; do not broaden the package-root import.
 
@@ -273,9 +279,9 @@ The persistence policy is a project hard rule:
   INI key, runs widget discovery, and hands off to
   `Widgets/WidgetCatalog/Py4GW_widget_catalog.py`.
 - `Py4GW_Launcher.py` is the external launcher/injector UI.
-- Bridge flow: `Widgets/Coding/Tools/Bridge Client.py` -> `bridge_daemon.py`
-  -> `bridge_cli.py`.
-- `py4gw_mcp_server.py` is the MCP adapter; it bridges to the daemon over stdio
+- Bridge flow: `Widgets/Coding/Tools/Bridge Client.py` -> `py4gw_bridge/daemon.py`
+  -> `py4gw_bridge/cli.py`.
+- `py4gw_bridge/mcp_server.py` is the MCP adapter; it bridges to the daemon over stdio
   rather than directly to injected clients.
 - The MCP adapter intentionally exposes a narrow safe surface rather than
   arbitrary bridge calls: `list_clients`, `list_namespaces`, `list_commands`,
@@ -285,9 +291,9 @@ The persistence policy is a project hard rule:
 - `Sources/modular_bot/` is authoritative for ModularBot; widget copies are
   mostly wrappers.
 - Focused checks include:
-  - `python "bridge_daemon.py" --help`
-  - `python "bridge_cli.py" --help`
-  - `python "py4gw_mcp_server.py" --help`
+  - `python -m py4gw_bridge.daemon --help`
+  - `python -m py4gw_bridge.cli --help`
+  - `python -m py4gw_bridge.mcp_server --help`
   - `python "Sources/modular_bot/tools/validate_modular_docs.py"`
   - `python "Widgets/Data/test_merchant_rules_regression.py"`
   - applicable standalone root `test_*.py` scripts

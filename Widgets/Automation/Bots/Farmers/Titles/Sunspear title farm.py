@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 
 MODULE_NAME = "Sunspear Title Farm"
-MODULE_ICON = "Textures/Skill_Icons/[1816] - Sunspear Rebirth Signet.jpg"
+MODULE_ICON = "Assets/Textures/Skill_Icons/[1816] - Sunspear Rebirth Signet.jpg"
 
 class BotSettings:
     BOT_NAME = "Sunspear Title Farm"
@@ -29,7 +29,7 @@ class BotSettings:
     ]
     BOUNTY_COORDS = (-17223.00, -12543.00)
     BOUNTY_DIALOG = 0x85
-    TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[1816] - Sunspear Rebirth Signet.jpg")
+    TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Skill_Icons", "[1816] - Sunspear Rebirth Signet.jpg")
 
 LOOP_STEP_NAME = ""
 RESIGN_STEP_NAME = ""

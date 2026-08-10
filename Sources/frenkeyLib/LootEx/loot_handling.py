@@ -3,7 +3,7 @@ from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Sources.frenkeyLib.LootEx.cache import Cached_Item
 from Sources.frenkeyLib.LootEx.enum import ItemAction
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog
-from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 from Py4GWCoreLib.enums import Console, ItemType, ModelID, Range, SharedCommandType
 
 LOG_LOOTHANDLING = False

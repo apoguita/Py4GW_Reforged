@@ -25,7 +25,7 @@ from Sources.aC_Scripts.aC_api import *
 RUNS_DIR = os.path.join(ac_folder_path, "OutpostRunner", "maps")
 
 MODULE_NAME = "Outpost Runner v2"
-MODULE_ICON = "Textures\\Skill_Icons\\[1543] - Pious Haste.jpg"
+MODULE_ICON = "Assets\\Textures\\Skill_Icons\\[1543] - Pious Haste.jpg"
 
 # =============================================================================
 # region BOT SETTINGS
@@ -356,7 +356,7 @@ def _draw_help():
 # =============================================================================
 bot.SetMainRoutine(bot_routine)
 
-TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[1543] - Pious Haste.jpg")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Skill_Icons", "[1543] - Pious Haste.jpg")
 bot.UI.override_draw_config(lambda: _draw_settings())
 bot.UI.override_draw_help(lambda: _draw_help())
 

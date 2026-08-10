@@ -4,5 +4,6 @@ This directory preserves traceable records of documentation-wide maintenance.
 They explain a reviewed move or policy transition; they are not runtime or API
 authority.
 
-- `documentation-path-migration-2026-08-05.json` is the complete source-to-
-  destination manifest for the topic-first naming migration.
+- The 2026-08-05 topic-first path migration is recorded by the affected
+  directory maps. Its one-off machine manifest was intentionally discarded;
+  it was maintenance data, not documentation.

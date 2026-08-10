@@ -9,7 +9,7 @@ module_name = "Py4GW - LDoA"
 window_name = module_name
 
 MODULE_NAME = "LDoA (Presearing Leveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Leveler - Presearing.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Presearing.png"
 
 # Original combat system - no smart combat handler
 

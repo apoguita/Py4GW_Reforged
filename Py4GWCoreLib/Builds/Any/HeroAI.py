@@ -38,7 +38,7 @@ class HeroAI_Build(BuildMgr):
 
     def _get_cached_data(self):
         if self._cached_data is None:
-            from HeroAI.cache_data import CacheData
+            from Py4GWCoreLib.HeroAI.cache_data import CacheData
 
             self._cached_data = CacheData()
             if self._build_registry is not None:

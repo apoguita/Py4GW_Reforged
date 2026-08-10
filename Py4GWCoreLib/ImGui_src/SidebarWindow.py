@@ -21,7 +21,8 @@ Design goals
 * **Stateful but queryable:** selection and group expand/collapse live in the
   window and are readable/settable (``selected``, ``select``, ``selected_tab``,
   ``is_group_open``, ``set_group_open``, ``expand_all``, ``collapse_all``) so a
-  caller can persist them if it wants — without the class depending on any store.
+  caller can persist them if it wants — without the class depending on any store. The optional
+  ``on_group_open`` callback reports user-driven group state changes.
 * **Safe:** a context that raises renders its error inline and never tears down
   the window. Duplicate section/tab names across groups never collide (ids are
   namespaced).
@@ -127,6 +128,7 @@ class SidebarWindow:
                  collapsible_groups: bool = True, default_open: bool = True,
                  indent_width: float = 12.0, show_search: bool = False,
                  on_select: "Optional[Callable[[str], None]]" = None,
+                 on_group_open: "Optional[Callable[[str, bool], None]]" = None,
                  on_close: "Optional[Callable[[], None]]" = None):
         self.title = title
         self.sidebar_width = float(sidebar_width)
@@ -140,6 +142,7 @@ class SidebarWindow:
         self.indent_width = float(indent_width)
         self.show_search = bool(show_search)
         self.on_select = on_select
+        self.on_group_open = on_group_open
         self.on_close = on_close
 
         self._groups: "list[SidebarWindow.Group]" = []
@@ -266,6 +269,13 @@ class SidebarWindow:
                 self.on_select(name)
             except Exception:
                 pass
+
+    def _fire_group_open(self, name: str, is_open: bool) -> None:
+        if self.on_group_open is not None:
+            try:
+                self.on_group_open(name, is_open)
+            except Exception:
+                pass
     # endregion
 
     # ======================================================================
@@ -330,7 +340,10 @@ class SidebarWindow:
             is_open = PyImGui.collapsing_header(f"{header}##g_{self._safe_id}_{group.name}",
                                                 PyImGui.TreeNodeFlags.NoFlag)
             if not searching:
+                was_open = self._group_open.get(group.name, group.default_open)
                 self._group_open[group.name] = is_open
+                if is_open != was_open:
+                    self._fire_group_open(group.name, is_open)
         else:
             PyImGui.text_colored(header, self.MUTED_COLOR)
             PyImGui.separator()

@@ -14,7 +14,7 @@ CAMP_HOJANU = 376
 BARB_SHORE_RUNNER = "Barbarous Shore Chestrun"
 
 MODULE_NAME = "Barbarous Shore (Chestrun)"
-MODULE_ICON = "Textures\\Module_Icons\\Chestrun - Barbarous Shore.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Chestrun - Barbarous Shore.png"
 
 # Danger Tables
 barbarous_cripple_kd_table: DangerTable = (

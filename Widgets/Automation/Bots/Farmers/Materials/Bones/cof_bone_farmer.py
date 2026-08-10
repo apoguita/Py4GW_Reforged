@@ -7,7 +7,7 @@ from Py4GWCoreLib.FrameTree import Frame, FrameId, FrameKeyError
 # endregion
 
 MODULE_NAME = "CoF Bones Farmer"
-MODULE_ICON = "Textures\\Module_Icons\\CoF Bone Farmer.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\CoF Bone Farmer.png"
 
 # region classes
 class Path:

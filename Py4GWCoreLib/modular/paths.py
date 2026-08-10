@@ -1,28 +1,35 @@
 """Path helpers for BT-native modular recipe tooling."""
+
 from __future__ import annotations
 
-import os
+from pathlib import Path
+
+
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 def project_root() -> str:
     try:
-        import Py4GW
+        import PySystem
 
         root = str(PySystem.Console.get_projects_path() or "").strip()
         if root:
-            return os.path.normpath(root)
-    except Exception:
+            return str(Path(root).resolve())
+    except (ImportError, AttributeError, OSError, TypeError, ValueError):
+        # Offline tools do not have the embedded PySystem module. Resolve from
+        # this package instead of the process working directory, which is not
+        # stable in an injected client.
         pass
-    return os.path.normpath(os.getcwd())
+    return str(_REPOSITORY_ROOT)
 
 
 def modular_data_root() -> str:
-    return os.path.join(project_root(), "Sources", "modular_data")
+    return str(Path(project_root()) / "json" / "modular")
 
 
 def modular_settings_root() -> str:
-    return os.path.join(project_root(), "Settings", "ModularBot")
+    return str(Path(project_root()) / "Settings" / "ModularBot")
 
 
 def modular_logs_root() -> str:
-    return os.path.join(project_root(), "Logs", "modular_bot")
+    return str(Path(project_root()) / "Logs" / "modular_bot")

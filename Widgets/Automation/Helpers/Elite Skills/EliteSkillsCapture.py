@@ -17,7 +17,7 @@ from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 BOT_NAME = "Elite Skills Capture"
 MODULE_NAME = BOT_NAME
-MODULE_ICON = "Textures\\Module_Icons\\elite_skills_capture.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\elite_skills_capture.png"
 MODULE_CATEGORY = "Helpers"
 MODULE_TAGS = ["automation", "skills", "elite", "capture", "botting"]
 MODULE_DESCRIPTION = "An advanced automation bot for capturing elite skills from bosses throughout Guild Wars.\n\nFeatures:\n• Automated pathing to elite skill bosses across all campaigns\n• Intelligent boss detection and engagement system\n• Automatic Signet of Capture usage for skill learning\n• Support for all 10 professions with 151+ elite skills\n• Color-coded skill availability (Blue/Available, Green/Captured, Red/Map Locked)\n• Smart map access checking and unlock requirements\n• Progress tracking and capture status monitoring\n• Built-in safety features and stuck detection\n\nCredits:\n• Originally developed by Kendor with help from Wick Divinus and Simfoniya\n• Adapted for Py4GW widget system by Kendor"
@@ -150,7 +150,7 @@ def find_py4gw_root(start_path: str) -> Optional[str]:
 
 def find_textures_directory(script_path: str) -> Optional[str]:
     """
-    Find the directory containing Textures/Skill_Icons.
+    Find the directory containing Assets/Textures/Skill_Icons.
     Tries multiple strategies to locate the Py4GW root directory.
     """
     # Strategy 1: Walk up from script location
@@ -174,7 +174,7 @@ def find_textures_directory(script_path: str) -> Optional[str]:
                     continue
                 sibling_path = os.path.join(parent_dir, sibling)
                 if os.path.isdir(sibling_path):
-                    textures_path = os.path.join(sibling_path, "Textures", "Skill_Icons")
+                    textures_path = os.path.join(sibling_path, "Assets", "Textures", "Skill_Icons")
                     if os.path.isdir(textures_path):
                         return sibling_path
         except (OSError, PermissionError):
@@ -382,7 +382,7 @@ class EliteSkill:
     capture_function: str
     start_map: int = 0
     description: str = ""
-    icon_filename: Optional[str] = None  # Icon filename in Textures/Skill_Icons/
+    icon_filename: Optional[str] = None  # Icon filename in Assets/Textures/Skill_Icons/
 
 #region Define all elite skills
 ELITE_SKILLS = [
@@ -11244,7 +11244,7 @@ class EliteSkillsGUI:
     def get_texture_path(self, skill: EliteSkill):
         """Get the full texture path for a skill's icon"""
         if skill.icon_filename:
-            texture_path = os.path.join(self.base_path, "Textures", "Skill_Icons", skill.icon_filename)
+            texture_path = os.path.join(self.base_path, "Assets", "Textures", "Skill_Icons", skill.icon_filename)
             texture_path = os.path.normpath(texture_path)
             
             if os.path.exists(texture_path):

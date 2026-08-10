@@ -17,7 +17,7 @@ import os
 module_name = "Survival Title Helper"
 
 MODULE_NAME = module_name
-MODULE_ICON = "Textures/Module_Icons/Survival Title Helper.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Survival Title Helper.png"
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 root_directory = PySystem.Console.get_projects_path()

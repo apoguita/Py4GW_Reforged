@@ -1133,7 +1133,7 @@ class WidgetCatalogWindow:
         self._virtual_scope_cache: dict[str, list[str]] = {}
         self._virtual_search_cache: dict[str, list[str]] = {}
         self.floating_button = ImGui.FloatingIcon(
-            icon_path=os.path.join(PySystem.Console.get_projects_path(), "python_icon_round.png"),
+            icon_path=os.path.join(PySystem.Console.get_projects_path(), "Assets", "Branding", "python_icon_round.png"),
             window_id="##widget_catalog_floating_button",
             window_name="Widget Catalog Toggle",
             tooltip_visible="Hide UI",
@@ -1153,11 +1153,11 @@ class WidgetCatalogWindow:
 
     @classmethod
     def _default_floating_icon_path(cls) -> str:
-        return os.path.join(cls._projects_root(), "python_icon_round.png")
+        return os.path.join(cls._projects_root(), "Assets", "Branding", "python_icon_round.png")
 
     @classmethod
     def _default_floating_icon_relpath(cls) -> str:
-        return "python_icon_round.png"
+        return "Assets/Branding/python_icon_round.png"
 
     @classmethod
     def _texture_to_ini_path(cls, path: str) -> str:

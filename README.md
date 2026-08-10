@@ -93,18 +93,18 @@ https://github.com/apoguita/Py4GW_Reforged_Native
     |-- Py4GWCoreLib/        Core library: the single source-of-truth layer
     |                        (Agent, Player, Map, Inventory, Skill, Party, ImGui,
     |                        Pathing, GlobalCache, shared memory, and more)
-    |-- HeroAI/              Hero AI automation and combat logic
+    |-- Py4GWCoreLib/HeroAI/ Hero AI automation and combat logic
     |-- Widgets/             In-game widgets (folder-based discovery)
     |-- Sources/             Larger script projects (ModularBot, tools, libraries)
     |-- Bots/ , bot_factory/ Bot implementations and scaffolding
-    |-- BridgeRuntime/       Bridge stack for external tools and MCP integration
+    |-- py4gw_bridge/       Bridge stack for external tools and MCP integration
     |-- stubs/               Type stubs for the Py* binding modules
-    |-- Textures/ , fonts/ , Styles/   UI assets
+    |-- Assets/                       Shared runtime textures, fonts, styles, and branding
     |-- Examples/            Example scripts demonstrating library usage
     |-- docs/                Architecture notes and subsystem guides
     |-- Py4GW_Launcher.py            External launcher and injector
     |-- Py4GW_widget_manager.py      In-client widget bootstrap
-    |-- bridge_daemon.py , bridge_cli.py , py4gw_mcp_server.py
+    |-- py4gw_bridge/daemon.py , py4gw_bridge/cli.py , py4gw_bridge/mcp_server.py
     |                                Bridge daemon, operator CLI, and MCP adapter
 
 ## Entry points
@@ -113,8 +113,8 @@ https://github.com/apoguita/Py4GW_Reforged_Native
 - Py4GW_widget_manager.py - the in-client widget host. Widgets are discovered by
   folder: any folder under `Widgets/` containing a `.widget` marker is loaded.
 - Bridge stack - lets external tools talk to injected clients: the in-client
-  Bridge Client widget, the `bridge_daemon.py` daemon, the `bridge_cli.py`
-  operator CLI, and the `py4gw_mcp_server.py` MCP adapter.
+  Bridge Client widget, the `py4gw_bridge/daemon.py` daemon, the `py4gw_bridge/cli.py`
+  operator CLI, and the `py4gw_bridge/mcp_server.py` MCP adapter.
 
 ## Documentation
 

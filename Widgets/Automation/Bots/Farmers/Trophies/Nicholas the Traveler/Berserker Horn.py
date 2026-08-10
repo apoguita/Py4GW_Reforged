@@ -4,11 +4,11 @@ import PyImGui
 BOT_NAME = "Berserker Horn Farm"
 MODEL_ID_TO_FARM = ModelID.Berserker_Horn
 MODULE_NAME = "Berserker Horn Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Berserker Horn.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Berserker Horn.png"
 OUTPOST_TO_TRAVEL = 650 #Longeye's Ledge
 COORD_TO_EXIT_MAP = (-26552,16351)
 EXPLORABLE_TO_TRAVEL = 482 #Bjora Marches
-                
+
 KILLING_PATH = [
     (15249.0,-12218.0),
     (12973.0,-7506.0),
@@ -34,7 +34,7 @@ EXPLORABLE_AREA = 108 #the scar
 NICK_COORDS = [(-4510.0, -6737.0),] #Nicholas the Traveler Location
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -61,7 +61,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

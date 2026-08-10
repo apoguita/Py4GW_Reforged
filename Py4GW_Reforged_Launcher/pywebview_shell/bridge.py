@@ -383,6 +383,7 @@ class ShellBridge:
             "multiclient_enabled": settings_store.load_multiclient_enabled(),
             "py4gw_injection_enabled": settings_store.load_py4gw_injection_enabled(),
             "gmod_injection_enabled": settings_store.load_gmod_injection_enabled(),
+            "window_title_rename_enabled": settings_store.load_window_title_rename_enabled(),
             "bulk_launch_pacing_seconds": settings_store.load_bulk_launch_pacing_seconds(),
             "py4gw_injection_delay_seconds": settings_store.load_py4gw_injection_delay_seconds(),
             "card_sort_mode": settings_store.load_card_sort_mode(),
@@ -399,6 +400,9 @@ class ShellBridge:
 
     def save_gmod_injection_enabled(self, enabled: bool) -> None:
         settings_store.save_gmod_injection_enabled(bool(enabled))
+
+    def save_window_title_rename_enabled(self, enabled: bool) -> None:
+        settings_store.save_window_title_rename_enabled(bool(enabled))
 
     def save_bulk_launch_pacing_seconds(self, seconds: int) -> None:
         # No clamp here -- bulk_launch.clamp_pacing_seconds() already
@@ -1025,6 +1029,7 @@ class ShellBridge:
                 # in that path, and the old standalone launcher's 3s post-gMod
                 # delay doesn't apply to this app's different injection model.
                 post_window_settle_delay=settings_store.load_py4gw_injection_delay_seconds(),
+                window_title_rename_enabled=settings_store.load_window_title_rename_enabled(),
                 on_log=on_log,
             )
             success, pid, error = bool(result.success), result.pid, result.error

@@ -4,11 +4,11 @@ import PyImGui
 BOT_NAME = "Maguuma Mane Farmer"
 MODEL_ID_TO_FARM = ModelID.Maguuma_Mane
 MODULE_NAME = "Maguuma Mane Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Maguuma Mane.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Maguuma Mane.png"
 OUTPOST_TO_TRAVEL = 139 #Ventaris Refuge
 COORD_TO_EXIT_MAP = (-15548.0,315.0)
-EXPLORABLE_TO_TRAVEL = 44 #Ettin's Back   
-                
+EXPLORABLE_TO_TRAVEL = 44 #Ettin's Back
+
 KILLING_PATH = [
     (-23141.0,2336.0),
     (-26780.0,-90.0),
@@ -27,7 +27,7 @@ EXPLORABLE_AREA = 566 #verdant cascades
 NICK_COORDS = [(-5367.88, -13457.16),]
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -54,7 +54,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

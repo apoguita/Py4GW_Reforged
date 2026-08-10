@@ -371,7 +371,6 @@ These types use **single self-contained FrameProcs** — they handle all message
 | `Py4GW_python_files\Py4GWCoreLib\GWUI.py` | High-level Python GWUI wrapper |
 | `Py4GW_python_files\docs\ui\research\ui-controls-catalog.md` | This file |
 | `Py4GW_python_files\docs\game-client\research\reverse-engineering-reference.md` | Section 14 — UI Controls |
-| `Py4GW_python_files\.opencode\projects\re\ui-elements\context_pool.md` | Full project history (Phases 0–3) |
 
 ---
 

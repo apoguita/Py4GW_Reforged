@@ -29,7 +29,7 @@ class _Upkeepers:
     def upkeep_hero_ai(self):
         from ...Routines import Routines
         from ...GlobalCache import GLOBAL_CACHE
-        from HeroAI.settings import Settings
+        from Py4GWCoreLib.HeroAI.settings import Settings
         from Py4GW_widget_manager import get_widget_handler
         handler = get_widget_handler()
 
@@ -136,7 +136,7 @@ class _Upkeepers:
         
     def upkeep_auto_loot(self):
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         from ...enums import Range, SharedCommandType
         from Py4GW_widget_manager import get_widget_handler
         def LootingRoutineActive():

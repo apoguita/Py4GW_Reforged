@@ -3,7 +3,7 @@ import PyImGui, Py4GW
 import os
 BOT_NAME = "Killroy Stoneskin"
 MODULE_NAME = "Killroy Stonekin's Punch-Out Extravaganza!"
-MODULE_ICON = "Textures\\Module_Icons\\Leveler - Killroy Stoneskin.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Killroy Stoneskin.png"
 
 bot = Botting(BOT_NAME, config_stop_on_party_wipe=False)
 

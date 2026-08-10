@@ -2,7 +2,7 @@ import os
 import traceback
 
 import Py4GW  # type: ignore
-from HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import PyImGui, Color, ImGui
@@ -27,7 +27,7 @@ save_window_timer.Start()
 
 # String consts
 MODULE_NAME = "Dialog Sender (Nightfall)"  # Change this Module name
-MODULE_ICON = "Textures\\Module_Icons\\Dialogs - Nightfall.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Dialogs - Nightfall.png"
 COLLAPSED = "collapsed"
 X_POS = "x"
 Y_POS = "y"

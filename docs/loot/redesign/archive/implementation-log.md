@@ -22,7 +22,7 @@ Not a source of decisions. The plan is `../class.md`; the how is `../implementat
 
 ### Step 1 -- package data · DONE
 
-`Py4GWCoreLib/py4gwcorelib_src/item_catalog/` — `catalog.py`, `materials.py`, `dyes.py`,
+`Py4GWCoreLib/py4gwcorelib_src/system_settings/loot_filters/` — `catalog.py`, `materials.py`, `dyes.py`,
 `nicholas.py`. Package data, versioned with the code; nothing read from the JSON store or from
 frenkey's library at runtime.
 
@@ -53,7 +53,7 @@ Skull" and "Kuskale Claw"→"Skale Claw".
 So the model id is documentation, **not** the discriminator — matching on 146 would be fragile and
 would also wrongly admit anything else sharing that model. The first implementation used the raw
 modifier scan (`Item.GetDyeColor`) and a model-id test; both were replaced by
-`item_catalog.dyes.is_dye()` / `color_of()`, which route through `Item.Dye`. Verified 5/5 offline,
+`system_settings.loot_filters.dyes.is_dye()` / `color_of()`, which route through `Item.Dye`. Verified 5/5 offline,
 including a guard that fails if the raw scan is called at all.
 
 **Nicholas** ported without the global-mutation bug: the schedule is 140 consecutive Mondays, so any
@@ -88,7 +88,7 @@ and reset restoring stock exactly.
 
 ### Step 4 -- Beacons and Recolor & Beacons · DONE
 
-`Py4GWCoreLib/py4gwcorelib_src/recolor_beacons/` — `beacons.py` (pooled, addressable `BeaconPool`),
+`Py4GWCoreLib/py4gwcorelib_src/system_settings/recolor_beacons/` — `beacons.py` (pooled, addressable `BeaconPool`),
 `model.py` (`MarkingOutcome`, `MarkingConfig`), `store.py`, `controller.py` (the `Marking` singleton),
 `config_ui.py`.
 

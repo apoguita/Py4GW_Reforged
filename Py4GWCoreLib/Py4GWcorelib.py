@@ -10,8 +10,8 @@ from .py4gwcorelib_src.BehaviorTree import BehaviorTree
 from .py4gwcorelib_src.FSM import FSM
 from .py4gwcorelib_src.MultiThreading import MultiThreading
 from .py4gwcorelib_src.Lootconfig_src import LootConfig
-from .py4gwcorelib_src.loot_filters import LootFilters
-from .py4gwcorelib_src.recolor_beacons import RecolorBeacons
+from .py4gwcorelib_src.system_settings.loot_filters import LootFilters
+from .py4gwcorelib_src.system_settings.recolor_beacons import RecolorBeacons
 from .py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
 from .native_src.internals.types import Vec2f, Vec3f, GamePos
 

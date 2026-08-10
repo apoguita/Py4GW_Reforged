@@ -3,7 +3,7 @@ import os
 
 import Py4GW
 from Bots.marks_coding_corner.utils.loot_utils import set_autoloot_options_for_custom_bots
-from HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
 from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import AutoInventoryHandler

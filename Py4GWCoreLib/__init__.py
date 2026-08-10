@@ -117,8 +117,8 @@ from .Overlay import *
 from .DXOverlay import *
 from .UIManager import *
 from .Routines import *
-from .SkillManager import *
 from .GlobalCache import GLOBAL_CACHE
+from .SkillManager import *
 from .Pathing import AutoPathing
 from .BuildMgr import BuildMgr
 from .BTBuildMgr import BTBuildMgr

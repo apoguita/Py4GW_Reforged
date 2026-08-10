@@ -1,7 +1,7 @@
 from Py4GWCoreLib import *
 
 MODULE_NAME = "Color Palette Explorer"
-MODULE_ICON = "Textures/Module_Icons/Color Palette.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Color Palette.png"
 
 def tooltip():
     PyImGui.begin_tooltip()

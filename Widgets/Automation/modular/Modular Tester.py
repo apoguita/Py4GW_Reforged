@@ -1,4 +1,5 @@
 """Run a single modular JSON recipe through the BT-native compiler."""
+
 from __future__ import annotations
 
 import json
@@ -10,15 +11,24 @@ import PyImGui
 
 from Py4GWCoreLib import Console
 from Py4GWCoreLib import ConsoleLog
+from Py4GWCoreLib import ImGui
 from Py4GWCoreLib.botting_tree_src.ui import BottingTreeUIMovePathMixin
 from Py4GWCoreLib.modular import BTRecipeRunner
 from Py4GWCoreLib.modular import RecipeSpec
 from Py4GWCoreLib.modular.paths import modular_data_root
+from Py4GWCoreLib.modular.ui_scope import child_scope
+from Py4GWCoreLib.modular.ui_scope import disabled_scope
+from Py4GWCoreLib.modular.ui_scope import group_scope
+from Py4GWCoreLib.modular.ui_scope import tab_bar_scope
+from Py4GWCoreLib.modular.ui_scope import tab_item_scope
+from Py4GWCoreLib.modular.ui_scope import table_scope
+from Py4GWCoreLib.modular.ui_scope import tooltip_scope
+from Py4GWCoreLib.modular.ui_scope import window_scope
 from Py4GWCoreLib.modular.widget_runtime import guarded_widget_main
 
 
 MODULE_NAME = "Modular Tester"
-MODULE_ICON = "Textures/Module_Icons/Route Planner.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Route Planner.png"
 MODULE_TAGS = ["Automation", "modular_bot"]
 
 ACCENT = (0.30, 0.78, 0.86, 1.0)
@@ -134,9 +144,7 @@ def _visible_recipe_files() -> list[str]:
     if not needle:
         return list(_recipe_files)
     return [
-        path
-        for path in _recipe_files
-        if needle in path.lower() or needle in (_recipe_titles.get(path) or "").lower()
+        path for path in _recipe_files if needle in path.lower() or needle in (_recipe_titles.get(path) or "").lower()
     ]
 
 
@@ -160,7 +168,7 @@ def _browser_node() -> dict[str, object]:
 
 
 def _browser_label() -> str:
-    return "/".join(_browser_path) if _browser_path else "modular_data"
+    return "/".join(_browser_path) if _browser_path else "modular"
 
 
 def _read_recipe(relative_path: str) -> dict[str, Any]:
@@ -251,7 +259,7 @@ def _step_points(step: dict[str, object]) -> list[tuple[float, float]]:
         points.append(point)
     if "x" in step and "y" in step:
         try:
-            points.append((float(step["x"]), float(step["y"])))
+            points.append((float(str(step["x"])), float(str(step["y"]))))
         except (TypeError, ValueError):
             pass
     return points
@@ -310,7 +318,7 @@ def _draw_move_path_overlay() -> None:
 def _spec_from_relative_path(relative_path: str) -> RecipeSpec:
     rel = Path(relative_path)
     if len(rel.parts) < 2:
-        raise ValueError("Recipe must be inside a modular_data subfolder.")
+        raise ValueError("Recipe must be inside json/modular.")
     kind = rel.parts[0]
     key = Path(*rel.parts[1:]).with_suffix("").as_posix()
     title = _recipe_titles.get(relative_path) or Path(relative_path).stem.replace("_", " ").title()
@@ -454,23 +462,26 @@ def _push_tester_theme() -> int:
 
 def _primary_button(label: str, width: float = 0.0) -> bool:
     _draw_button_style((0.10, 0.45, 0.52, 1.0), (0.12, 0.58, 0.66, 1.0), (0.08, 0.36, 0.42, 1.0))
-    clicked = PyImGui.button(label, width, 28)
-    _pop_button_style()
-    return clicked
+    try:
+        return PyImGui.button(label, width, 28)
+    finally:
+        _pop_button_style()
 
 
 def _danger_button(label: str, width: float = 0.0) -> bool:
     _draw_button_style((0.56, 0.18, 0.18, 1.0), (0.70, 0.22, 0.22, 1.0), (0.42, 0.12, 0.12, 1.0))
-    clicked = PyImGui.button(label, width, 28)
-    _pop_button_style()
-    return clicked
+    try:
+        return PyImGui.button(label, width, 28)
+    finally:
+        _pop_button_style()
 
 
 def _quiet_button(label: str, width: float = 0.0) -> bool:
     _draw_button_style((0.18, 0.21, 0.24, 1.0), (0.24, 0.28, 0.32, 1.0), (0.14, 0.16, 0.18, 1.0))
-    clicked = PyImGui.button(label, width, 28)
-    _pop_button_style()
-    return clicked
+    try:
+        return PyImGui.button(label, width, 28)
+    finally:
+        _pop_button_style()
 
 
 def _status_color() -> tuple[float, float, float, float]:
@@ -497,10 +508,9 @@ def _status_text() -> str:
 
 def _draw_top_bar() -> None:
     global _loop, _debug_logging, _draw_move_path, _draw_move_path_labels
-    PyImGui.begin_group()
-    PyImGui.text_scaled("Modular Tester", ACCENT, 1.22)
-    PyImGui.text_colored("Browse Sources/modular_data, choose a JSON recipe, pick a start step, run it.", MUTED)
-    PyImGui.end_group()
+    with group_scope():
+        ImGui.text_scaled("Modular Tester", ACCENT, 1.22)
+        PyImGui.text_colored("Browse json/modular, choose a JSON recipe, pick a start step, run it.", MUTED)
     PyImGui.same_line(max(0.0, PyImGui.get_content_region_avail()[0] - 84.0), 10)
     _draw_text(_status_text(), _status_color())
     PyImGui.separator()
@@ -540,30 +550,25 @@ def _draw_selection_controls() -> None:
     running = _runner_is_running()
     paused = _runner_is_paused()
     can_go_up = bool(_browser_path) and not _filter_text.strip()
-    PyImGui.begin_disabled(not can_go_up)
-    if _quiet_button("Up", 42):
-        _go_up()
-    PyImGui.end_disabled()
+    with disabled_scope(not can_go_up):
+        if _quiet_button("Up", 42):
+            _go_up()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not selected or running)
-    if _primary_button("Run", 58):
-        _start_selected_recipe()
-    PyImGui.end_disabled()
+    with disabled_scope(not selected or running):
+        if _primary_button("Run", 58):
+            _start_selected_recipe()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not running)
-    if _quiet_button("Pause", 58):
-        _pause_runner()
-    PyImGui.end_disabled()
+    with disabled_scope(not running):
+        if _quiet_button("Pause", 58):
+            _pause_runner()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not paused)
-    if _primary_button("Resume", 68):
-        _resume_runner()
-    PyImGui.end_disabled()
+    with disabled_scope(not paused):
+        if _primary_button("Resume", 68):
+            _resume_runner()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not (running or paused))
-    if _danger_button("Stop", 52):
-        _stop_runner()
-    PyImGui.end_disabled()
+    with disabled_scope(not (running or paused)):
+        if _danger_button("Stop", 52):
+            _stop_runner()
 
 
 def _go_up() -> None:
@@ -578,9 +583,13 @@ def _draw_kind_strip() -> None:
     if not counts:
         PyImGui.text_colored("No recipes found.", MUTED)
         return
-    if PyImGui.begin_child("##modular_tester_kind_strip", (0, 118), True, PyImGui.WindowFlags.NoFlag):
+    with child_scope("##modular_tester_kind_strip", (0, 118), True, PyImGui.WindowFlags.NoFlag) as child_visible:
+        if not child_visible:
+            return
         flags = PyImGui.TableFlags.SizingStretchSame | PyImGui.TableFlags.NoSavedSettings
-        if PyImGui.begin_table("##modular_tester_kind_table", 2, flags):
+        with table_scope("##modular_tester_kind_table", 2, flags) as table_visible:
+            if not table_visible:
+                return
             for index, kind in enumerate(sorted(counts)):
                 if index % 2 == 0:
                     PyImGui.table_next_row()
@@ -593,24 +602,27 @@ def _draw_kind_strip() -> None:
                         (0.12, 0.58, 0.66, 1.0),
                         (0.08, 0.36, 0.42, 1.0),
                     )
-                if PyImGui.button(label, max(96.0, PyImGui.get_content_region_avail()[0]), 24):
-                    _browser_path = [kind]
-                    _filter_text = ""
-                if selected:
-                    _pop_button_style()
-            PyImGui.end_table()
-    PyImGui.end_child()
+                try:
+                    if PyImGui.button(label, max(96.0, PyImGui.get_content_region_avail()[0]), 24):
+                        _browser_path = [kind]
+                        _filter_text = ""
+                finally:
+                    if selected:
+                        _pop_button_style()
 
 
 def _draw_filtered_recipes() -> None:
     visible = _visible_recipe_files()
     _draw_section_title("Matches", f"{len(visible)}")
-    if PyImGui.begin_child("##modular_tester_matches", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar):
+    with child_scope(
+        "##modular_tester_matches", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar
+    ) as child_visible:
+        if not child_visible:
+            return
         if not visible:
             PyImGui.text_colored("No matching recipes.", MUTED)
         for relative_path in visible:
             _draw_recipe_row(relative_path)
-    PyImGui.end_child()
 
 
 def _draw_button_browser() -> None:
@@ -618,7 +630,11 @@ def _draw_button_browser() -> None:
     node = _browser_node()
     dirs = node.get("dirs", {})
     files = node.get("files", [])
-    if PyImGui.begin_child("##modular_tester_recipe_browser", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar):
+    with child_scope(
+        "##modular_tester_recipe_browser", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar
+    ) as child_visible:
+        if not child_visible:
+            return
         drew_any = False
         if isinstance(dirs, dict):
             for folder_name in sorted(str(name) for name in dirs):
@@ -630,14 +646,13 @@ def _draw_button_browser() -> None:
                 drew_any = True
         if not drew_any:
             PyImGui.text_colored("No recipes here.", MUTED)
-    PyImGui.end_child()
 
 
 def _draw_breadcrumbs() -> None:
     global _browser_path
     PyImGui.text_colored("Path", MUTED)
     PyImGui.same_line(0, 8)
-    if PyImGui.small_button("modular_data##crumb_root"):
+    if PyImGui.small_button("modular##crumb_root"):
         _browser_path = []
     current: list[str] = []
     for depth, folder in enumerate(_browser_path):
@@ -685,21 +700,25 @@ def _draw_recipe_overview() -> None:
     selected = _selected_recipe_path()
     summary = _recipe_summaries.get(selected)
     if not selected or summary is None:
-        PyImGui.text_colored("Select a JSON recipe from Sources/modular_data.", MUTED)
+        PyImGui.text_colored("Select a JSON recipe from json/modular.", MUTED)
         return
 
     _draw_section_title(summary.title, summary.kind)
     PyImGui.text_wrapped(selected)
     PyImGui.spacing()
-    if PyImGui.begin_table("##modular_tester_metrics", 3, PyImGui.TableFlags.SizingStretchSame | PyImGui.TableFlags.NoSavedSettings):
-        PyImGui.table_next_row()
-        PyImGui.table_set_column_index(0)
-        _draw_metric("Steps", str(summary.steps), ACCENT)
-        PyImGui.table_set_column_index(1)
-        _draw_metric("Anchors", str(summary.anchors), WARN if summary.anchors else MUTED)
-        PyImGui.table_set_column_index(2)
-        _draw_metric("Mode", "Loop" if _loop else "Single", GOOD if _loop else TEXT)
-        PyImGui.end_table()
+    with table_scope(
+        "##modular_tester_metrics",
+        3,
+        PyImGui.TableFlags.SizingStretchSame | PyImGui.TableFlags.NoSavedSettings,
+    ) as table_visible:
+        if table_visible:
+            PyImGui.table_next_row()
+            PyImGui.table_set_column_index(0)
+            _draw_metric("Steps", str(summary.steps), ACCENT)
+            PyImGui.table_set_column_index(1)
+            _draw_metric("Anchors", str(summary.anchors), WARN if summary.anchors else MUTED)
+            PyImGui.table_set_column_index(2)
+            _draw_metric("Mode", "Loop" if _loop else "Single", GOOD if _loop else TEXT)
     start_label = "1"
     steps = _recipe_steps_for_display(selected)
     if steps:
@@ -712,7 +731,7 @@ def _draw_recipe_overview() -> None:
 
 def _draw_metric(label: str, value: str, color: tuple[float, float, float, float]) -> None:
     PyImGui.text_colored(label, MUTED)
-    PyImGui.text_scaled(value, color, 1.12)
+    ImGui.text_scaled(value, color, 1.12)
 
 
 def _draw_progress_panel() -> None:
@@ -745,25 +764,21 @@ def _draw_runtime_controls() -> None:
     selected = _selected_recipe_path()
     running = _runner_is_running()
     paused = _runner_is_paused()
-    PyImGui.begin_disabled(not selected or running)
-    if _primary_button("Run selected", 116):
-        _start_selected_recipe()
-    PyImGui.end_disabled()
+    with disabled_scope(not selected or running):
+        if _primary_button("Run selected", 116):
+            _start_selected_recipe()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not running)
-    if _quiet_button("Pause", 78):
-        _pause_runner()
-    PyImGui.end_disabled()
+    with disabled_scope(not running):
+        if _quiet_button("Pause", 78):
+            _pause_runner()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not paused)
-    if _primary_button("Resume", 82):
-        _resume_runner()
-    PyImGui.end_disabled()
+    with disabled_scope(not paused):
+        if _primary_button("Resume", 82):
+            _resume_runner()
     PyImGui.same_line(0, 6)
-    PyImGui.begin_disabled(not (running or paused))
-    if _danger_button("Stop", 70):
-        _stop_runner()
-    PyImGui.end_disabled()
+    with disabled_scope(not (running or paused)):
+        if _danger_button("Stop", 70):
+            _stop_runner()
 
 
 def _draw_step_timeline() -> None:
@@ -782,7 +797,9 @@ def _draw_step_timeline() -> None:
     if _start_step_index >= len(steps):
         _start_step_index = max(0, len(steps) - 1)
     PyImGui.text_colored("Select a step before running to start from there.", MUTED)
-    if PyImGui.begin_child("##modular_tester_steps", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar):
+    with child_scope("##modular_tester_steps", (0, 0), True, PyImGui.WindowFlags.HorizontalScrollbar) as child_visible:
+        if not child_visible:
+            return
         for index, step in enumerate(steps):
             completed = bool(active_index and index + 1 < active_index)
             active = bool(active_index and index + 1 == active_index)
@@ -798,7 +815,6 @@ def _draw_step_timeline() -> None:
                 if not (_runner_is_running() or _runner_is_paused()):
                     _start_step_index = index
             PyImGui.text_colored(f"  {_step_type_label(step)}", row_color if active else MUTED)
-    PyImGui.end_child()
 
 
 def _draw_step_detail() -> None:
@@ -811,19 +827,23 @@ def _draw_step_detail() -> None:
     index = min(max(0, _preview_step_index), len(steps) - 1)
     step = steps[index]
     _draw_section_title(_step_label(step, index), f"{index + 1}/{len(steps)}")
-    PyImGui.begin_disabled(_runner_is_running() or _runner_is_paused())
-    if _primary_button("Start from this step", 170):
-        _start_step_index = index
-    PyImGui.end_disabled()
+    with disabled_scope(_runner_is_running() or _runner_is_paused()):
+        if _primary_button("Start from this step", 170):
+            _start_step_index = index
     PyImGui.spacing()
-    if PyImGui.begin_table("##modular_tester_step_detail", 2, PyImGui.TableFlags.SizingStretchProp | PyImGui.TableFlags.RowBg):
+    with table_scope(
+        "##modular_tester_step_detail",
+        2,
+        PyImGui.TableFlags.SizingStretchProp | PyImGui.TableFlags.RowBg,
+    ) as table_visible:
+        if not table_visible:
+            return
         _draw_detail_row("Type", str(step.get("type") or ""))
         _draw_detail_row("Action", str(step.get("action") or step.get("mode") or ""))
         _draw_detail_row("Target", str(step.get("target") or step.get("npc") or step.get("gadget") or ""))
         _draw_detail_row("Map", str(step.get("map_id") or step.get("target_map_id") or step.get("map") or ""))
         _draw_detail_row("Points", str(_points_count(step)))
         _draw_detail_row("Anchor", "yes" if bool(step.get("anchor")) else "no")
-        PyImGui.end_table()
 
 
 def _draw_detail_row(label: str, value: str) -> None:
@@ -843,35 +863,36 @@ def _draw_right_panel() -> None:
         PyImGui.spacing()
         PyImGui.text_colored(_status, _status_color())
     PyImGui.separator()
-    if PyImGui.begin_tab_bar("##modular_tester_tabs", PyImGui.TabBarFlags.NoFlag):
-        if PyImGui.begin_tab_item("Timeline"):
-            _draw_step_timeline()
-            PyImGui.end_tab_item()
-        if PyImGui.begin_tab_item("Step Detail"):
-            _draw_step_detail()
-            PyImGui.end_tab_item()
-        PyImGui.end_tab_bar()
+    with tab_bar_scope("##modular_tester_tabs", PyImGui.TabBarFlags.NoFlag) as tab_bar_visible:
+        if not tab_bar_visible:
+            return
+        with tab_item_scope("Timeline") as tab_visible:
+            if tab_visible:
+                _draw_step_timeline()
+        with tab_item_scope("Step Detail") as tab_visible:
+            if tab_visible:
+                _draw_step_detail()
 
 
 def _draw_main_layout() -> None:
     flags = PyImGui.TableFlags.Resizable | PyImGui.TableFlags.SizingStretchProp | PyImGui.TableFlags.BordersInnerV
-    if PyImGui.begin_table("##modular_tester_layout", 2, flags, 0.0, 0.0):
+    with table_scope("##modular_tester_layout", 2, flags, (0.0, 0.0), 0.0) as table_visible:
+        if not table_visible:
+            _draw_recipe_picker()
+            PyImGui.separator()
+            _draw_right_panel()
+            return
         PyImGui.table_setup_column("##recipes", PyImGui.TableColumnFlags.WidthFixed, 320.0)
         PyImGui.table_setup_column("##runner", PyImGui.TableColumnFlags.WidthStretch)
         PyImGui.table_next_row()
         PyImGui.table_set_column_index(0)
-        if PyImGui.begin_child("##modular_tester_left", (0, 0), True, PyImGui.WindowFlags.NoFlag):
-            _draw_recipe_picker()
-        PyImGui.end_child()
+        with child_scope("##modular_tester_left", (0, 0), True, PyImGui.WindowFlags.NoFlag) as child_visible:
+            if child_visible:
+                _draw_recipe_picker()
         PyImGui.table_set_column_index(1)
-        if PyImGui.begin_child("##modular_tester_right", (0, 0), True, PyImGui.WindowFlags.NoFlag):
-            _draw_right_panel()
-        PyImGui.end_child()
-        PyImGui.end_table()
-    else:
-        _draw_recipe_picker()
-        PyImGui.separator()
-        _draw_right_panel()
+        with child_scope("##modular_tester_right", (0, 0), True, PyImGui.WindowFlags.NoFlag) as child_visible:
+            if child_visible:
+                _draw_right_panel()
 
 
 def _main_impl() -> None:
@@ -881,15 +902,15 @@ def _main_impl() -> None:
     PyImGui.set_next_window_size((880, 640), PyImGui.ImGuiCond.FirstUseEver)
     PyImGui.set_next_window_bg_alpha(1.0)
     theme_colors = _push_tester_theme()
-    if not PyImGui.begin(MODULE_NAME):
-        PyImGui.end()
+    try:
+        with window_scope(MODULE_NAME) as window_visible:
+            if not window_visible:
+                return
+            _draw_top_bar()
+            _draw_main_layout()
+        _draw_move_path_overlay()
+    finally:
         PyImGui.pop_style_color(theme_colors)
-        return
-    _draw_top_bar()
-    _draw_main_layout()
-    PyImGui.end()
-    _draw_move_path_overlay()
-    PyImGui.pop_style_color(theme_colors)
 
 
 def main() -> None:
@@ -898,12 +919,11 @@ def main() -> None:
 
 def tooltip() -> None:
     PyImGui.set_next_window_size((430, 0))
-    PyImGui.begin_tooltip()
-    PyImGui.text(MODULE_NAME)
-    PyImGui.separator()
-    PyImGui.text_wrapped("Run one canonical modular JSON recipe through the BT compiler.")
-    PyImGui.text_wrapped("Use this for checking a newly recorded bot before adding it to a campaign.")
-    PyImGui.end_tooltip()
+    with tooltip_scope():
+        PyImGui.text(MODULE_NAME)
+        PyImGui.separator()
+        PyImGui.text_wrapped("Run one canonical modular JSON recipe through the BT compiler.")
+        PyImGui.text_wrapped("Use this for checking a newly recorded bot before adding it to a campaign.")
 
 
 if __name__ == "__main__":

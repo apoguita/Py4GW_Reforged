@@ -5,7 +5,7 @@ name-tag recoloring, the counterpart of how :mod:`Agent` wraps ``PyAgent``. It o
 NO rules and NO scheduling — it only translates clean Python calls into the native
 primitives and normalises colors. The rule engine (filtering the agent array each
 data-phase pass and handing the matched set here) lives in
-``py4gwcorelib_src.agent_recolor``.
+``py4gwcorelib_src.system_settings.agent_recolor``.
 
 Native recap (see ``stubs/PyAgentRecolor.pyi``): three detours recolor living agents,
 gadgets and ground items; Python owns a master hook switch, per-category enable gates,

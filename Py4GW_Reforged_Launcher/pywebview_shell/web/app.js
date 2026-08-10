@@ -1095,6 +1095,7 @@ async function loadAppSettings() {
   document.getElementById("settings-multiclient").checked = !!s.multiclient_enabled;
   document.getElementById("settings-py4gw-injection").checked = !!s.py4gw_injection_enabled;
   document.getElementById("settings-gmod-injection").checked = !!s.gmod_injection_enabled;
+  document.getElementById("settings-window-title-rename").checked = !!s.window_title_rename_enabled;
   document.getElementById("settings-pacing").value = s.bulk_launch_pacing_seconds;
   cachedPy4gwInjectionDelay = s.py4gw_injection_delay_seconds;
   // RELAY 067: General-tab duplicate of the same global value -- both this
@@ -1130,6 +1131,9 @@ function wireAppSettingsControls() {
     window.pywebview.api.save_gmod_injection_enabled(e.target.checked);
     cachedGmodInjectionMasterOn = e.target.checked;
     renderCards();
+  };
+  document.getElementById("settings-window-title-rename").onchange = (e) => {
+    window.pywebview.api.save_window_title_rename_enabled(e.target.checked);
   };
   // RELAY 084: live re-sort on change, same immediate-feedback pattern as
   // the injection master switches above -- no reload needed to see cards

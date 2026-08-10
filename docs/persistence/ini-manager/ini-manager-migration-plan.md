@@ -88,7 +88,7 @@ reloads correctly.
   Pycons' account file). Left on IniManager/IniHandler.
 - **Out of scope (user: cross-account only on Settings if in scope):** cross-account
   features keep direct `IniHandler` path writes — `InventoryPlus` "Copy to All
-  Accounts", `Xunlaimanager` copy-from-account, `HeroAI/settings.py`
+  Accounts", `Xunlaimanager` copy-from-account, `Py4GWCoreLib/HeroAI/settings.py`
   resurrection-scroll. `IniHandler` (the low-level class) therefore stays.
 - **`Py4GW.ini` → new `root` scope.** Hard rule: `Py4GW.ini` lives at the project
   root, shared by all accounts. Added `SettingsScope::Root` in the native project

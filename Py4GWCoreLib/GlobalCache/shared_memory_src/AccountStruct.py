@@ -278,7 +278,7 @@ class AccountStruct(Structure):
                 now = PySystem.get_tick_count64()
                 stay_alert = self.InAggroTick64 > 0 and now - self.InAggroTick64 < IN_AGGRO_STAY_ALERT_TIME
                 try:
-                    from HeroAI.settings import Settings
+                    from Py4GWCoreLib.HeroAI.settings import Settings
 
                     legacy_range = (
                         int(getattr(self.AgentPartyData, "PartyPosition", -1)) == 0

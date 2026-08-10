@@ -8,7 +8,7 @@ from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Skill import Skill
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["ProtectionPrayers"]

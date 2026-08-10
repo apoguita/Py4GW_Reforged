@@ -12,8 +12,9 @@ import os
 import struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CATDIR = os.path.join(HERE, "..", "catalogs")
-RAW = os.path.join(CATDIR, "raw-item-catalogs.json")
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+CATDIR = os.path.join(ROOT, "Widgets", "Coding", "Debug", "Py4GW", "item_catalog_data")
+RAW = os.path.join(CATDIR, "raw_item_catalogs.json")
 
 # Known struct field names (by index) for the catalogs we've reverse-engineered.
 STRUCT_FIELDS = {
@@ -33,7 +34,7 @@ def _f32(hexstr):
 
 def _write_formulas(catdir):
     """Crafting recipes: price (float f00) + ingredients [(element_id, qty)]."""
-    path = os.path.join(catdir, "formulas-recipes.json")
+    path = os.path.join(catdir, "formulas_recipes.json")
     if not os.path.exists(path):
         return False
     recipes = json.load(open(path, encoding="utf-8"))["formulas"]

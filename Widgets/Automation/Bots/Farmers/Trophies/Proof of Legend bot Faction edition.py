@@ -13,7 +13,7 @@ from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 MODULE_NAME = "Proof of Legend bot Faction edition by Wick Divinus"
-MODULE_ICON = "Textures\\Module_Icons\\Leveler - Factions.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Factions.png"
 
 KAINENG_CENTER_MAP_ID = 194
 

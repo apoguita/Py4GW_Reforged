@@ -14,7 +14,7 @@ from Sources.aC_Scripts.aC_api import *
 MAPS_DIR = os.path.join(ac_folder_path,"PyQuishAI_maps")
 
 MODULE_NAME = "Simple Vanquish"
-MODULE_ICON = "Textures\\Module_Icons\\PyQuishAI.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\PyQuishAI.png"
 
 class BotSettings:
     BOT_NAME = "Simple Vanquish"

@@ -438,7 +438,7 @@ class Widget:
             self.category = getattr(self.module, 'MODULE_CATEGORY', "") if hasattr(self.module, 'MODULE_CATEGORY') else (self.widget_path.split('/')[0] if self.widget_path else "") #get first folder after Widgets 
             self.tags = getattr(self.module, 'MODULE_TAGS', []) if hasattr(self.module, 'MODULE_TAGS') else [folder for folder in self.widget_path.split('/') if folder]
             self.aliases = [str(alias).strip() for alias in getattr(self.module, 'MODULE_ALIASES', []) if str(alias).strip()]
-            self.image = os.path.join(base_path, getattr(self.module, 'MODULE_ICON', "") if hasattr(self.module, 'MODULE_ICON') else "Textures\\missing_texture.png")
+            self.image = os.path.join(base_path, getattr(self.module, 'MODULE_ICON', "") if hasattr(self.module, 'MODULE_ICON') else "Assets\\Textures\\missing_texture.png")
             
             self.optional = getattr(self.module, 'OPTIONAL', True) if hasattr(self.module, 'OPTIONAL') else self.category not in ["System", "Py4GW"] # System and Py4GW widgets are non-optional by default, all others are optional by default
               

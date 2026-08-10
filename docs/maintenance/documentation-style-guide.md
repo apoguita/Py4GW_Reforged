@@ -9,8 +9,8 @@ this policy.
 Documentation must be findable by the question a reader has, not by the
 author, the migration batch, or the method used to obtain the evidence. This
 guide defines how new records are named, located, linked, reviewed, and moved.
-It applies to Markdown, text records, generated catalogs, raw captures, and
-the helper scripts stored under `docs/`.
+It applies to Markdown and text records, plus helper scripts that explain or
+reproduce a documented finding. Documentation is not a data store.
 
 Documentation is navigation and evidence. It never replaces the owning Python
 or native source, build configuration, or live injected-client observation.
@@ -63,10 +63,14 @@ Its `README.md` is sufficient until the contents require subdivision.
 
 ## Names and Extensions
 
-### Documentation and data
+### Documentation records
 
 - Use lowercase kebab case: `dialog-state-regression.md`,
-  `item-modifier-catalog.csv`.
+  `item-modifier-catalog.md`.
+- Use Markdown for documentation. Do not store JSON, CSV, or another
+  machine-readable dataset under `docs/`.
+- A data-producing tool owns its inputs and outputs outside `docs/`; document
+  the owner, provenance, and reproduction procedure here instead.
 - Use a name that describes the subject and document role. Do not repeat the
   enclosing topic without need.
 - Do not use ordinal prefixes such as `01_`, `R3_`, or `v2_`. Record a reading
@@ -83,12 +87,9 @@ Its `README.md` is sufficient until the contents require subdivision.
 - Python tools use `snake_case.py`, following the repository Python rules.
 - Generated files are renamed only by changing their generator and every
   consumer in the same change. Never hand-rename generated output.
-- Raw captures may retain an external producer's required filename; their
-  README must identify the producer, refresh command, and status.
-- Do not store transient caches, bytecode, live logs, or private configuration
-  under documentation. If a diagnostic deliberately writes a checked-in
-  evidence file, the producing tool owns its path and the topic README records
-  that contract.
+- Do not store transient caches, bytecode, live logs, private configuration,
+  or machine-readable captures under documentation. The producing tool owns
+  its path; the topic README records that contract.
 
 ## Required Document Metadata
 
@@ -117,7 +118,7 @@ Every non-trivial topic directory has a `README.md`. It must state:
 3. A short map of notable files, their kind, and their status.
 4. The current source, native module, generator, or runtime evidence that owns
    the topic when applicable.
-5. How to refresh generated material or reproduce a runtime finding.
+5. How to reproduce a runtime finding or refresh tool-owned material.
 
 Keep the root `docs/README.md` focused on entry points and this policy. Do not
 turn it into a second documentation index.
@@ -135,8 +136,9 @@ Before adding a substantial record or moving any existing path:
    orphaned partial category behind.
 5. Update every affected README, generator, consumer, and path reference in
    the same change.
-6. Run `python docs/maintenance/generate_documentation_index.py`, verify that old
-   paths no longer resolve, and run `git diff --check`.
+6. Update the nearest README and `documentation-index.md` when a top-level
+   route changes, verify that old paths no longer resolve, and run
+   `git diff --check`.
 
 Preserve historical evidence. Move it into an appropriate `archive` area and
 label it; do not rewrite an old plan to resemble a current implementation.
@@ -150,7 +152,7 @@ label it; do not rewrite an old plan to resemble a current implementation.
   current behavior?
 - Are code, generator, runtime-log, and Markdown path references updated?
 - Does the nearest README remain a useful map?
-- Has the generated documentation index been refreshed and checked?
+- Was `documentation-index.md` updated when a top-level route changed?
 
 If any answer is no, stop the move or addition and fix the documentation
 structure before adding more material to it.

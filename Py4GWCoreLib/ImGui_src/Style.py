@@ -394,7 +394,7 @@ class Style:
 
     @classmethod
     def load_from_json(cls, path: str, theme : StyleTheme) -> "Style":
-        # Bundled read-only theme data (Styles/<name>.default.json shipped with the repo).
+        # Bundled read-only theme data (Assets/Styles/<name>.default.json shipped with the repo).
         style = cls()
         if not os.path.exists(path):
             return style
@@ -410,12 +410,12 @@ class Style:
         if isinstance(style_data, dict) and style_data:
             return cls._apply_json_data(cls(), style_data, theme)
 
-        default_file_path = os.path.join("Styles", f"{theme.name}.default.json")
+        default_file_path = os.path.join("Assets", "Styles", f"{theme.name}.default.json")
         return cls.load_from_json(default_file_path, theme) if os.path.exists(default_file_path) else cls(theme)
 
     @classmethod
     def load_default_theme(cls, theme: StyleTheme) -> "Style":
-        default_file_path = os.path.join("Styles", f"{theme.name}.default.json")
+        default_file_path = os.path.join("Assets", "Styles", f"{theme.name}.default.json")
         return cls.load_from_json(default_file_path, theme) if os.path.exists(default_file_path) else cls(theme)
 
     def preview(self):

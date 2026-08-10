@@ -4,7 +4,7 @@ from Py4GWCoreLib import Botting
 # QUEST TO INCREASE SPAWNS 
 BOT_NAME = "Hanaku's Focus Farm"
 MODULE_NAME = "Hanaku's Focus"
-MODULE_ICON = "Textures\\Module_Icons\\Hanaku's Focus.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Hanaku's Focus.png"
 OUTPOST_TO_TRAVEL = 289
 COORD_TO_EXIT_MAP = (-11133.13, -18248.88)
 EXPLORABLE_TO_TRAVEL = 202
@@ -50,9 +50,9 @@ def _find_shared_textures_folder() -> str:
     weapons = "Weapons Farm"
     for base in _iter_parents(os.getcwd()):
         candidates = [
-            os.path.join(base, "Bots", weapons, "Textures"),
+            os.path.join(base, "Bots", weapons, "Assets", "Textures"),
             os.path.join(base, "Bots", weapons, "textures"),
-            os.path.join(base, weapons, "Textures"),
+            os.path.join(base, weapons, "Assets", "Textures"),
             os.path.join(base, weapons, "textures"),
         ]
         for c in candidates:

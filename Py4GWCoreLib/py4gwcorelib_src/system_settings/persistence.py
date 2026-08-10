@@ -7,11 +7,13 @@ never force a save/load.
 
 Keys: the enable flag lives at ``[<category>] <listener>``; each sub-option at
 ``[<category>] <listener>.<option>`` — so the file stays human-readable.
+Category expand/collapse state lives at ``[Layout] <category-key>``.
 """
 
 from . import model
 
 _DOC = "Widgets/System/System Settings.ini"
+_LAYOUT_SECTION = "Layout"
 
 
 def _settings():
@@ -45,6 +47,16 @@ def load(enabled: "dict[str, bool]", options: "dict[str, object]") -> None:
                     options[okey] = s.get_bool(cat.key, okey, opt.default)
 
 
+def load_group_open(group_open: "dict[str, bool]") -> None:
+    """Fill category expand/collapse state from the account document.
+
+    Missing layout keys default to expanded for backwards compatibility with existing documents.
+    """
+    s = _settings()
+    for cat in model.CATALOG:
+        group_open[cat.key] = True if s is None else s.get_bool(_LAYOUT_SECTION, cat.key, True)
+
+
 def save_enabled(cat_key: str, listener_name: str, value: bool) -> None:
     s = _settings()
     if s is not None:
@@ -55,3 +67,9 @@ def save_option(cat_key: str, listener_name: str, option_key: str, value: object
     s = _settings()
     if s is not None:
         s.set(cat_key, "%s.%s" % (listener_name, option_key), value)
+
+
+def save_group_open(cat_key: str, is_open: bool) -> None:
+    s = _settings()
+    if s is not None:
+        s.set(_LAYOUT_SECTION, cat_key, bool(is_open))

@@ -12,21 +12,21 @@ import PyImGui
 import Py4GW
 
 from Py4GWCoreLib import GLOBAL_CACHE, ImGui, Color, Range, Player
-from HeroAI.custom_skill import CustomSkillClass
-from HeroAI.custom_skill_src.skill_types import CastConditions, SkillNature
-from HeroAI.types import Skilltarget, SkillType
+from Py4GWCoreLib.HeroAI.custom_skill import CustomSkillClass
+from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CastConditions, SkillNature
+from Py4GWCoreLib.HeroAI.types import Skilltarget, SkillType
 
 if TYPE_CHECKING:
-	from HeroAI.custom_skill_src.skill_types import CustomSkill as _CustomSkill
+	from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill as _CustomSkill
 
 # Runtime placeholder; replaced during rebind. Kept to satisfy type checkers without hard import failures.
 CustomSkill: Any = None
 
 if TYPE_CHECKING:
-	from HeroAI.custom_skill_src.skill_types import CustomSkill as _CustomSkill
+	from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill as _CustomSkill
 
 MODULE_NAME = "HeroAI Skill Editor"
-MODULE_ICON = "Textures/Module_Icons/HeroAI Skill Editor.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/HeroAI Skill Editor.png"
 
 window_module = ImGui.WindowModule(
 	MODULE_NAME,

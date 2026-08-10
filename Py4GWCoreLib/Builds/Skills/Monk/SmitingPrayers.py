@@ -11,7 +11,7 @@ from Py4GWCoreLib.GlobalCache.HexRemovalPriority import HexRemovalPriority, cast
 from Py4GWCoreLib.Builds.Skills._whiteboard import coordinates_whiteboard_skill_target
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["SmitingPrayers"]

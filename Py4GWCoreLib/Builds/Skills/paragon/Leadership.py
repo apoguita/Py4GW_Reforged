@@ -106,6 +106,14 @@ class Leadership:
         ))
 
     def Aggressive_Refrain(self) -> BuildCoroutine:
+        """Apply the 25% IAS echo once; the bar's shouts keep it up from there.
+
+        Not gated on aggro. Aggressive Refrain is reapplied every time a chant
+        or shout ends on us, so on any bar carrying shouts it never drops once
+        it lands - which means holding it back until combat buys nothing. The
+        -20 armor is permanent either way, and waiting only costs us the attack
+        speed for the opening of every fight.
+        """
         aggressive_refrain_id: int = Skill.GetID("Aggressive_Refrain")
         player_agent_id = Player.GetAgentID()
 
@@ -162,7 +170,7 @@ class Leadership:
     #region M
     def Make_Your_Time(self) -> BuildCoroutine:
         from Py4GWCoreLib import Agent, AgentArray, Range
-        from HeroAI.utils import IsPartyMember
+        from Py4GWCoreLib.HeroAI.utils import IsPartyMember
 
         make_your_time_id: int = Skill.GetID("Make_Your_Time")
         player_agent_id = Player.GetAgentID()

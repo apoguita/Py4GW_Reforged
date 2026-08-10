@@ -10,7 +10,7 @@ projects_base_path = PySystem.Console.get_projects_path()
 BOUNTIES_DIR = os.path.join(projects_base_path,"Sources","ZaishenBounty")
 
 MODULE_NAME = "Zaishen Bounty"
-MODULE_ICON = "Textures\\Module_Icons\\ZaishenBounty.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\ZaishenBounty.png"
 
 class BotSettings:
     BOT_NAME = "Zaishen Bounty"
@@ -667,7 +667,7 @@ def _draw_help():
 # =============================================================================
 bot.SetMainRoutine(bot_routine)
 
-TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Module_Icons", "ZaishenBounty.png")
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Module_Icons", "ZaishenBounty.png")
 bot.UI.override_draw_config(lambda: _draw_settings())
 bot.UI.override_draw_help(lambda: _draw_help())
 

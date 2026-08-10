@@ -19,7 +19,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 
 MODULE_NAME = "Style Manager"
-MODULE_ICON = "Textures\\Module_Icons\\StyleManager.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\StyleManager.png"
 OPTIONAL = False
 
 class ThemeTexturesDev(Enum):
@@ -148,12 +148,12 @@ class preview_states:
 preview = preview_states()
 
 textures = [
-    ("Textures/Item Models/17081-Battle_Commendation.png",
+    ("Assets/Textures/Item Models/17081-Battle_Commendation.png",
      ControlAppearance.Default, True),
-    ("Textures/Item Models/00514-Molten_Heart.png",
+    ("Assets/Textures/Item Models/00514-Molten_Heart.png",
      ControlAppearance.Primary, True),
-    ("Textures/Item Models/00035-Bag.png", ControlAppearance.Danger, True),
-    ("Textures/Item Models/30855-Bottle_of_Grog.png",
+    ("Assets/Textures/Item Models/00035-Bag.png", ControlAppearance.Danger, True),
+    ("Assets/Textures/Item Models/30855-Bottle_of_Grog.png",
      ControlAppearance.Default, False),
 ]
 

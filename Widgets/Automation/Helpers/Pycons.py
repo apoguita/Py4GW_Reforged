@@ -15,7 +15,7 @@ _INIT_OK = False
 _INIT_ERROR = None
 
 MODULE_NAME = "Pycons"
-MODULE_ICON = "Textures\\Module_Icons\\Pycons.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Pycons.png"
 PYCONS_SYNC_OPCODE_RELOAD_CONFIG = 1
 PYCONS_SYNC_OPCODE_RELOAD_RESULT = 2
 PYCONS_SYNC_OPCODE_SET_SELF_MBDP_TARGET = 3
@@ -384,9 +384,9 @@ try:
     # Consumable icon discovery
     _ICON_SEARCH_ROOT = "."
     _ICON_PREFERRED_ROOTS = (
-        os.path.normpath("Textures\\Consumables\\Trimmed"),
-        os.path.normpath("Textures\\Consumables"),
-        os.path.normpath("Textures\\Item Models"),
+        os.path.normpath("Assets\\Textures\\Consumables\\Trimmed"),
+        os.path.normpath("Assets\\Textures\\Consumables"),
+        os.path.normpath("Assets\\Textures\\Item Models"),
     )
     # Aliases keep matching deterministic for known name variations.
     CONSUMABLE_ICON_NAME_ALIASES = {

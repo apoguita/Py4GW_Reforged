@@ -21,7 +21,7 @@ class _Items:
     @_yield_step(label="LootItems", counter_key="LOOT_ITEMS")
     def loot(self, pickup_timeout = 5000) -> Generator[Any, Any, None]:
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         from ...enums import Range
         from ...Agent import Agent
 
@@ -54,7 +54,7 @@ class _Items:
     def add_model_to_blacklist(self, model_id:int) -> Generator[Any, Any, None]:
         """Never take this kind of item, for this run. The blacklist vetoes every other rule."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         LootFilters().blacklist_model(model_id)
         yield from Routines.Yield.wait(100)
 
@@ -62,7 +62,7 @@ class _Items:
     def add_model_to_whitelist(self, model_id:int) -> Generator[Any, Any, None]:
         """Also want this kind of item, for this run -- how a bot handles its special case."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         LootFilters().add_model(model_id)
         yield from Routines.Yield.wait(100)
 
@@ -70,7 +70,7 @@ class _Items:
     def add_item_id_to_whitelist(self, item_id:int) -> Generator[Any, Any, None]:
         """Also want this ONE drop. Cleared on a map change -- the id means nothing afterwards."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         LootFilters().add_item(item_id)
         yield from Routines.Yield.wait(100)
 
@@ -78,7 +78,7 @@ class _Items:
     def add_item_id_to_blacklist(self, item_id:int) -> Generator[Any, Any, None]:
         """"I could not get this one." Suppression is simply a blacklist entry, live-only."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         LootFilters().report_failed(item_id)
         yield from Routines.Yield.wait(100)
 
@@ -86,7 +86,7 @@ class _Items:
     def use_loot_profile(self, name:str) -> Generator[Any, Any, None]:
         """Switch the running profile. Live-only: the user's saved choice is untouched."""
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         LootFilters().use_profile(name)
         yield from Routines.Yield.wait(100)
 
@@ -99,7 +99,7 @@ class _Items:
         lists had no way to put them back.
         """
         from ...Routines import Routines
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         LootFilters().reset_live()
         yield from Routines.Yield.wait(100)
 

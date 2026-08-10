@@ -16,7 +16,7 @@ class HeroAICombatRangeState:
 
 
 def get_hero_ai_combat_range_state() -> HeroAICombatRangeState:
-    from HeroAI.cache_data import CacheData
+    from Py4GWCoreLib.HeroAI.cache_data import CacheData
     from Py4GWCoreLib import AgentArray
 
     cached_data = CacheData()

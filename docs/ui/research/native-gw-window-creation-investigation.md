@@ -265,7 +265,8 @@ Implication for future work:
 ## Ghidra-to-Runtime Reconciliation Workflow
 Before any new RE pass or hook candidate:
 
-1. Check the seeded catalog in `docs/native-gw-ui-function-catalog.json`.
+1. Start from the current native owner and Ghidra evidence; the old seeded
+   function catalog was discarded because it was an unmaintained data export.
 2. If the target already exists in Ghidra, record its static address and meaning first.
 3. Decide whether the callable target is:
    - static function start

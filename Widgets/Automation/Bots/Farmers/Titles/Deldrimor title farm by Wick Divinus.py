@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 
 MODULE_NAME = "Deldrimor Title Farm"
-MODULE_ICON = "Textures/Skill_Icons/[2424] - Stout-Hearted.jpg"
+MODULE_ICON = "Assets/Textures/Skill_Icons/[2424] - Stout-Hearted.jpg"
 
 bot = Botting("Deldrimor title farm by Wick Divinus",
               upkeep_honeycomb_active=True,

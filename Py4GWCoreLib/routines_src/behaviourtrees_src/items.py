@@ -60,7 +60,7 @@ from ...enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from ...enums_src.Item_enums import Bags
 from ...enums_src.Model_enums import ModelID
 from ...enums_src.UI_enums import ControlAction
-from ...py4gwcorelib_src.loot_filters import LootFilters
+from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
 from ...py4gwcorelib_src.BehaviorTree import BehaviorTree
 from .composite import BTComposite
 from .player import BTPlayer

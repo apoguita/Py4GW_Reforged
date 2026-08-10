@@ -1879,7 +1879,11 @@ class ImGui:
             
     @staticmethod
     def text_scaled(text : str, color: tuple[float, float, float, float], scale: float):
-        PyImGui.text_scaled(text, color, scale)
+        PyImGui.push_font_scaled(ImguiFonts.Regular_14.value, float(scale))
+        try:
+            PyImGui.text_colored(text, color)
+        finally:
+            PyImGui.pop_font_scaled()
 
     @staticmethod
     def begin_popup(id: str, flags: PyImGui.WindowFlags = PyImGui.WindowFlags.NoFlag) -> bool:     
@@ -1959,8 +1963,8 @@ class ImGui:
         PyImGui.end_popup_modal()
 
     @staticmethod
-    def tree_node_ex(label: str, flags: int, fmt: str) -> bool:
-        opened = PyImGui.tree_node_ex(label, flags, fmt)
+    def tree_node_ex(label: str, flags: int = 0) -> bool:
+        opened = PyImGui.tree_node_ex(label, flags)
 
         return opened
 

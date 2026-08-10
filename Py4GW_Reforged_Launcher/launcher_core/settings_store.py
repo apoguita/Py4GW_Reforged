@@ -213,6 +213,23 @@ def save_gmod_injection_enabled(gmod_injection_enabled: bool, path: Path | str |
     _save_one("gmod_injection_enabled", gmod_injection_enabled, resolved)
 
 
+def load_window_title_rename_enabled(path: Path | str | None = None) -> bool:
+    """RELAY 098: default True -- no behavior change for existing installs
+    until a user actually flips this off in App Settings. Global master
+    switch, not a per-profile field -- Apo's own complaint (Discord) was "I
+    want this off entirely," not "off for one profile," same reasoning
+    that makes py4gw_injection_enabled/gmod_injection_enabled global rather
+    than per-profile switches too."""
+    resolved = Path(path) if path is not None else default_settings_path()
+    data = _load_all(resolved)
+    return bool(data.get("window_title_rename_enabled", True))
+
+
+def save_window_title_rename_enabled(window_title_rename_enabled: bool, path: Path | str | None = None) -> None:
+    resolved = Path(path) if path is not None else default_settings_path()
+    _save_one("window_title_rename_enabled", window_title_rename_enabled, resolved)
+
+
 def load_custom_card_order_enabled(path: Path | str | None = None) -> bool:
     """Default False -- fresh installs and anyone who's never dragged a card
     get plain alphabetical order. Flips to True the moment a drag-and-drop

@@ -4,7 +4,7 @@
 > earlier `PyAgentTagColor` implementation. The current embedded module is
 > `PyAgentRecolor`, with Python facade/rule engine under
 > `Py4GWCoreLib/AgentRecolor.py` and
-> `Py4GWCoreLib/py4gwcorelib_src/agent_recolor/`. Preserve the RE evidence,
+> `Py4GWCoreLib/py4gwcorelib_src/system_settings/agent_recolor/`. Preserve the RE evidence,
 > but verify names, hooks, coverage, and tests against current source.
 
 > **Backend note — we are on Reforged.** The current C++ backend is the **`Py4GW_Reforged_Native`** project (`../Py4GW_Reforged_Native`): migrated managers in `src\GW\<module>\` + `include\GW\<module>\`, addresses resolved from `offsets\<module>.json`. It **replaces legacy GWCA**. In this doc, GWCA names and `../Py4GW/vendor/gwca` paths are **legacy cross-references** (canonical nomenclature / pre-Reforged behavior), not the source of truth for current code — the live implementation is in `Py4GW_Reforged_Native`. `Gw.exe`/`Gw.wasm` addresses remain valid.

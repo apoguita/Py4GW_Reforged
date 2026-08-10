@@ -1,60 +1,60 @@
-# 09 — Item Catalogs (the whole universe)
+# Item Catalogs
 
-Every static item-related catalog in the client, dumped from `Gw.wasm` and formatted.
-Regenerate with the Ghidra inline dumper + `tools/format_catalogs.py`.
+Status: research reference
 
-## Files
+The Guild Wars client exposes eight static item catalogs: colors, attributes,
+descriptions, crafting formulas, elements, books, PvP base items, and PvP
+unlocks. This record preserves what they are and how to investigate them; it
+does not store their dump as a documentation database.
 
-- `catalogs/raw-item-catalogs.json` — raw dump of every catalog (fields as hex uint32).
-- `catalogs/<name>.csv` — one clean CSV per catalog (below).
-- `tools/format_catalogs.py` — offline: raw JSON → CSVs (merges real mod codes into `pvp_unlocks`).
+## Known accessors
 
-## The catalogs
+- Colors: `ConstItemGetColorString` at `0x0019c3c0`, 14 text-id entries.
+- Attributes: `ConstItemGetAttributeText` at `0x0019d1b0`, 559 text-id entries.
+- Descriptions: `ConstItemGetDescriptionText` at `0x0019da70`, 360 text-id entries.
+- Formulas: `ConstItemGetFormulaDef` at `0x0019e010`, 1,498 structs of 20 bytes.
+- Elements: `ConstItemGetElementDefClient` at `0x001a5520`, 41 structs of 12 bytes.
+- Books: `ConstItemGetBookDefClient` at `0x001a5710`, 33 structs of 28 bytes.
+- PvP base items: `ConstItemPvpGetItemDef` at `0x001b2950`, 343 structs of 36 bytes.
+- PvP unlocks: `ConstItemPvpGetUnlockDef` at `0x001b5990`, 390 structs of 40 bytes.
 
-| Catalog | CSV | Accessor (Gw.wasm) | Array base | Count | Stride | Kind | Status |
-|---|---|---|---|---|---|---|---|
-| Colors | `colors.csv` | `ConstItemGetColorString` @818b2857 | `0x0019c3c0` | 14 | 4 | text-id | ids ✓, text ✓ (resolved) |
-| Attributes | `attributes.csv` | `ConstItemGetAttributeText` @818b2b19 | `0x0019d1b0` | 559 | 4 | text-id | ids ✓, **text pending** |
-| Descriptions | `descriptions.csv` | `ConstItemGetDescriptionText` @818b2c40 | `0x0019da70` | 360 | 4 | text-id | ids ✓, text ✓ (usable "Use to…" strings) |
-| **Formulas** (crafting recipes) | `formulas.csv` | `ConstItemGetFormulaDef` @818b2d67 | `0x0019e010` | 1498 | 20 | struct | **done** — price (float f00) + ingredients `[element:qty]` (via `formulas-recipes.json`) |
-| Elements (materials) | `elements.csv` | `ConstItemGetElementDefClient` @818b2e8f | `0x001a5520` | 41 | 12 | struct | `name_id` (text) + f04/f08 |
-| Books | `books.csv` | `ConstItemGetBookDefClient` @818b2fb6 | `0x001a5710` | 33 | 28 | struct | raw fields (low priority) |
-| PvP base items | `pvp-items.csv` | `ConstItemPvpGetItemDef` @818b3398 | `0x001b2950` | 343 | 36 | struct | partial fields named |
-| **PvP unlocks (mods)** | `pvp-unlocks.csv` | `ConstItemPvpGetUnlockDef` @818b34bf | `0x001b5990` | 390 | 40 | struct | **fully done** — upgrade_id + real codes + names (see doc 07/08) |
+The text-id fields are resolved only in a running client because `gw.dat`
+supplies the string table. The PvP-unlock names are composed through the
+native item binding; see `game-mod-table.md` and `native-name-binding.md`.
 
-Char-enum label tables (damage types, char-attributes, species, conditions) were dumped
-separately — see `tools/game_mod_tables.py` + `game-mod-tables-resolved.txt` (doc 06).
+## Compact findings from the last extraction
 
-## The two-stage pipeline (why strings need the game)
+- All 14 color labels, all 360 description labels, and all 41 element names
+  resolved successfully. Of the 559 attribute text ids, 259 resolved; the
+  remainder require a targeted string-table pass rather than being treated as
+  missing attributes.
+- The 1,498 crafting formulas cost from 3 to 100,000 and use one ingredient
+  in 417 cases, two in 871, three in 111, and four in 99.
+- Of 343 PvP base-item entries, 339 have a resolved base name. Of 390 PvP
+  unlock entries, 389 have a resolved composed name.
+- The 33 book records remain structurally known but semantically incomplete:
+  their eight raw fields are not yet named. That is a layout-research task,
+  not a documentation-data task.
 
-The `ConstItem*` tables store **string ids** (ETextStr — pointers into `gw.dat`), not words.
-`gw.dat` only loads in the running client, so strings must be fetched in-game. Two stages:
+## Tool ownership
 
-1. **Offline (Ghidra):** dump the structure → `raw-item-catalogs.json` + `formulas-recipes.json`
-   (ids, numbers, codes, struct fields).
-2. **In-game (one widget):** run **`Dump Item Catalogs`** (`Widgets/Coding/Debug/Py4GW/`) — it
-   resolves every ETextStr id to its word via the string table, composes the 390 mod names via the
-   native binding, and writes the **finished, string-filled** CSVs into `catalogs/`. This is the
-   single script that completes the catalogs.
+The structural extraction fixtures belong to
+`Widgets/Coding/Debug/Py4GW/item_catalog_data/`, beside the `Dump Item
+Catalogs` and `Resolve Catalog Text` widgets that read them. Those widgets use
+relative paths and may produce local investigation output there. Do not copy
+that data into `docs/`.
 
-(`tools/format_catalogs.py` is an offline preview that produces the same CSVs *without* strings; the
-in-game widget supersedes it for the final output. Earlier per-purpose resolvers — `Resolve Mod
-Tables`, `Dump Named Mod Table`, `Resolve Catalog Text` — are now folded into `Dump Item Catalogs`.)
+## Refresh procedure
 
-## Status
+1. Reconfirm the accessor and layout in Ghidra after a game patch.
+2. Refresh the widget-owned extraction fixture only when the layout changed.
+3. Run `Dump Item Catalogs` in a loaded client to resolve the runtime text.
+4. Record any durable finding, changed count, or layout conclusion in this
+   document or the more-specific item-mod research record.
 
-- **Done:** discovery; raw dump of all 8 catalogs; CSV formatting; the **mod table** fully
-  interpreted (codes + names); **formulas** fully interpreted (crafting recipes: price +
-  ingredients); **elements** labeled.
-- **One user action left:** run **`Dump Item Catalogs`** in-game → writes the finished,
-  string-filled CSVs (all text resolved, mod names composed).
-- **Optional / low-priority remaining:** name the remaining `books` and `pvp_items` struct fields;
-  locate + dump `ITEM_MODELS` / `ITEM_MATERIALS` / `ITEM_TYPES` (no simple `ConstItemGet*` accessor —
-  reached via other systems).
+## Current state
 
-## Regeneration
-
-1. In Ghidra (Gw.wasm), run the inline dumper (the Java block that writes `raw-item-catalogs.json`;
-   `GHIDRA_MCP_ALLOW_SCRIPTS=1`). Addresses above; re-verify per game patch.
-2. `python docs/items/modifiers/tools/format_catalogs.py` → CSVs.
-3. In-client, run **Resolve Mod Tables** / **Dump Named Mod Table** for the text/name layers.
+The discovery pass, formula layout, element labels, and PvP-unlock decoding
+are established. Remaining low-priority work is naming the unfinished book
+and PvP-item fields and locating the additional model, material, and item-type
+tables that do not have a simple `ConstItemGet*` accessor.

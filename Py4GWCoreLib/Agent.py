@@ -1552,11 +1552,11 @@ class Agent:
         if primary == 0:
             primary_texture = ""
         else:
-            primary_texture = f"\\Textures\\Profession_Icons\\[{primary}] - {primary_name}.png"
+            primary_texture = f"\\Assets\\Textures\\Profession_Icons\\[{primary}] - {primary_name}.png"
         if secondary == 0:
             secondary_texture = ""
         else:
-            secondary_texture = f"\\Textures\\Profession_Icons\\[{secondary}] - {secondary_name}.png"
+            secondary_texture = f"\\Assets\\Textures\\Profession_Icons\\[{secondary}] - {secondary_name}.png"
             
         return projects_base_folder + primary_texture, projects_base_folder + secondary_texture
     

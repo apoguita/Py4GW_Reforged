@@ -6,7 +6,7 @@ from Py4GWCoreLib import Botting, ConsoleLog, Routines, Agent, Player
 
 BOT_NAME = "Icy Dragon Sword Farm"
 MODULE_NAME = "Icy Dragon Sword"
-MODULE_ICON = "Textures\\Module_Icons\\Icy Dragon Sword.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Icy Dragon Sword.png"
 bot = Botting(BOT_NAME)
 
 # Path dans Tasca's Demise (map 92)

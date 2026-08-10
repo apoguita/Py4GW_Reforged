@@ -3,7 +3,7 @@ from typing import List, Tuple
 from Py4GWCoreLib import *
 
 MODULE_NAME = "Confessor's Orders Exchange"
-MODULE_ICON = "Textures\\Module_Icons\\Item Eater.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Item Eater.png"
 
 _CONFESSORS_ORDERS_MODEL_ID = 35123
 _WAR_SUPPLY_MODEL_ID        = 35121

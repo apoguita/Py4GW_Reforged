@@ -12,7 +12,7 @@ from Py4GWCoreLib import Utils
 from Py4GWCoreLib import Map, Agent, Player
 
 BOT_NAME = "Briahn's Shield Farm"
-MODULE_ICON = "Textures\\Module_Icons\\Briahn's Guidance.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Briahn's Guidance.png"
 TEXTURE = os.path.join(
     PySystem.Console.get_projects_path(), "Bots", "marks_coding_corner", "textures", "briahns_guidance.png"
 )

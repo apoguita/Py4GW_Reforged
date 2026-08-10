@@ -8,7 +8,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 
 MODULE_NAME = "Script Runner"
-MODULE_ICON = "Textures/Module_Icons/Template.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Template.png"
 OPTIONAL = True
 
 __widget__ = {

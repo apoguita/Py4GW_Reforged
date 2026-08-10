@@ -32,7 +32,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 REFERENCE_WEEK = date(2013, 5, 13)  # First Monday after update
 ROTATION_START = REFERENCE_WEEK  # baseline for modulo rotation
 MODULE_NAME = "Calendar"
-MODULE_ICON = "Textures\\Module_Icons\\Calendar.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Calendar.png"
 
 # Palette lookup normalizes every enum member on each call. These values are static for the
 # lifetime of the client, so resolve them once instead of once per calendar cell.

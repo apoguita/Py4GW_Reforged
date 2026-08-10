@@ -461,18 +461,19 @@ Search over the item grid is still the biggest single usability add wherever the
 
 ---
 
-## The two data tables (extracted, pending your review)
+## The two data tables (historical proposal)
 
-Both are **drafts extracted from existing data**; neither is final until you clean them, and the cleaned
-versions become the single source (they then ship in the package's `data/` folder).
+Both were draft extracts from existing data. Their review dumps were deliberately
+removed from docs; this historical proposal is retained only to explain the
+decision context.
 
 | table | what it is | source | status |
 |---|---|---|---|
 | **grouping** (item → category) | which item sits in which group (Trophies, Consumables, Tonics, …) — the one hand-maintained piece | the old `LootGroups` dict (`Lootconfig_src.py:9-531`, ~400 items) | not yet extracted |
-| **salvage** (item → materials) | `model_id → { common: [material ModelID], rare: [material ModelID] }` | frenkey's scraped `items.json`, stripped of all name/description/wiki/amount noise | **extracted** → `salvage-mapping.json` (ids only, the real artefact) + `salvage-mapping-review.json` (same data with names, for reading). ~2,000 items, 34 materials. Armor deliberately absent (grabbed by rarity). |
+| **salvage** (item → materials) | `model_id → { common: [material ModelID], rare: [material ModelID] }` | frenkey's scraped `items.json`, stripped of all name/description/wiki/amount noise | Historical extraction only; no review export is retained in docs. Armor was deliberately absent (grabbed by rarity). |
 
-The two `salvage_mapping*.json` files in this folder are **review drafts, not runtime data** — once you
-approve, the id-only one moves into the package and the review copy is deleted.
+The former salvage review exports were never runtime data and are no longer
+retained in docs.
 
 ## Still open (small, not blocking the first steps)
 

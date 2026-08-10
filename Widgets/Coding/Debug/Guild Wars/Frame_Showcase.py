@@ -18,7 +18,7 @@ from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 # Module Constants
 # ========================================================================
 MODULE_NAME = "Frame Showcase"
-MODULE_ICON = "Textures/Module_Icons/Frame Tester.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Frame Tester.png"
 
 THROTTLE_TREE_MS = 2000
 LOG_BUFFER_SIZE = 500

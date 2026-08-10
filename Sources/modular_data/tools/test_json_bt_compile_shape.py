@@ -3,6 +3,7 @@
 This intentionally stubs PyGW runtime modules. It verifies the JSON-to-BT compiler
 can build tree objects for the whole corpus without requiring injected bindings.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -12,11 +13,12 @@ import types
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 COMPILER_PATH = REPO_ROOT / "Py4GWCoreLib" / "modular" / "json_bt_compiler.py"
-MODULAR_DATA_ROOT = REPO_ROOT / "Sources" / "modular_data"
+MODULAR_DATA_ROOT = REPO_ROOT / "json" / "modular"
 
 
 class _NodeState(Enum):
@@ -141,7 +143,7 @@ def _install_stubs() -> None:
     behavior_pkg.__path__ = [str(REPO_ROOT / "Py4GWCoreLib" / "py4gwcorelib_src")]
     sys.modules["Py4GWCoreLib.py4gwcorelib_src"] = behavior_pkg
 
-    behavior_mod = types.ModuleType("Py4GWCoreLib.py4gwcorelib_src.BehaviorTree")
+    behavior_mod: Any = types.ModuleType("Py4GWCoreLib.py4gwcorelib_src.BehaviorTree")
     behavior_mod.BehaviorTree = _BehaviorTree
     sys.modules["Py4GWCoreLib.py4gwcorelib_src.BehaviorTree"] = behavior_mod
 
@@ -149,7 +151,7 @@ def _install_stubs() -> None:
     bt_pkg.__path__ = [str(REPO_ROOT / "Py4GWCoreLib" / "routines_src")]
     sys.modules["Py4GWCoreLib.routines_src"] = bt_pkg
 
-    bt_mod = types.ModuleType("Py4GWCoreLib.routines_src.BehaviourTrees")
+    bt_mod: Any = types.ModuleType("Py4GWCoreLib.routines_src.BehaviourTrees")
     bt = types.SimpleNamespace(
         Agents=_BTNamespace(),
         Composite=_CompositeNamespace(),
@@ -162,7 +164,7 @@ def _install_stubs() -> None:
     bt_mod.BT = bt
     sys.modules["Py4GWCoreLib.routines_src.BehaviourTrees"] = bt_mod
 
-    hero_setup_model = types.ModuleType("Py4GWCoreLib.modular.hero_setup_model")
+    hero_setup_model: Any = types.ModuleType("Py4GWCoreLib.modular.hero_setup_model")
     hero_setup_model.get_team_by_priority = _stub_get_team_by_priority
     hero_setup_model.resolve_hero_ids = _stub_resolve_hero_ids
     sys.modules["Py4GWCoreLib.modular.hero_setup_model"] = hero_setup_model
@@ -171,7 +173,7 @@ def _install_stubs() -> None:
     enum_pkg.__path__ = [str(REPO_ROOT / "Py4GWCoreLib" / "enums_src")]
     sys.modules["Py4GWCoreLib.enums_src"] = enum_pkg
 
-    multibox_mod = types.ModuleType("Py4GWCoreLib.enums_src.Multiboxing_enums")
+    multibox_mod: Any = types.ModuleType("Py4GWCoreLib.enums_src.Multiboxing_enums")
     multibox_mod.SharedCommandType = types.SimpleNamespace(UseSummoningStone="UseSummoningStone")
     sys.modules["Py4GWCoreLib.enums_src.Multiboxing_enums"] = multibox_mod
 
@@ -242,7 +244,7 @@ def _assert_party_load_shape(tree: _BehaviorTree, recipe: dict[str, Any]) -> int
             continue
         child = children[index]
         subtree_fn = getattr(child, "subtree_fn", None)
-        step_tree = subtree_fn(child) if callable(subtree_fn) else None
+        step_tree = cast(_BehaviorTree | None, subtree_fn(child) if callable(subtree_fn) else None)
         node = getattr(step_tree, "root", None)
         if getattr(node, "name", "") != "LoadParty":
             raise AssertionError(f"party load step {index + 1} did not compile to BT.Party.LoadParty")
@@ -269,7 +271,7 @@ def _assert_route_move_shape(tree: _BehaviorTree, recipe: dict[str, Any]) -> int
             continue
         child = children[index]
         subtree_fn = getattr(child, "subtree_fn", None)
-        step_tree = subtree_fn(child) if callable(subtree_fn) else None
+        step_tree = cast(_BehaviorTree | None, subtree_fn(child) if callable(subtree_fn) else None)
         node = _primary_step_node(step_tree)
         kwargs = getattr(node, "kwargs", {})
         if kwargs.get("pause_on_combat") is not False:

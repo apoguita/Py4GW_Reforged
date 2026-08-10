@@ -261,7 +261,7 @@ It exposes selected surfaces from:
 The MCP layer sits above the daemon control API.
 
 Current baseline:
-- `py4gw_mcp_server.py`
+- `py4gw_bridge/mcp_server.py`
 
 Current safe exposed tool subset:
 - `list_clients`

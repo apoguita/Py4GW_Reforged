@@ -5,7 +5,7 @@ import time
 import traceback
 
 import Py4GW
-from HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import CombatPrepSkillsType
 from Py4GWCoreLib import IconsFontAwesome5

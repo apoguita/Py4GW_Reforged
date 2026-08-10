@@ -44,7 +44,7 @@ Ranked by severity, each grounded in the runtime log and/or native code:
    so no account widget ever loaded or saved. *Fixed by native synchronous bind
    + no gate, see §4/§6.*
 3. **The node/`ini_handler` facade was removed.** Callers
-   (`HeroAI/follow/*`, `HeroAI/ui_base.py`, `WidgetCatalog`, `EnemyBlacklist`)
+   (`Py4GWCoreLib/HeroAI/follow/*`, `Py4GWCoreLib/HeroAI/ui_base.py`, `WidgetCatalog`, `EnemyBlacklist`)
    reach into `_get_node(key).ini_handler.write_key(...)`, `.filename`, and poke
    `cached_values`/`pending_writes`/`vars_values`/`needs_flush`/`vars_loaded`.
    Returning a bare `Settings` object threw
@@ -198,7 +198,7 @@ From a full usage scan, two consumption patterns the shell must preserve:
 `save_vars`, window config. Covered by §5 (vars) + §7 (forwarding).
 
 **B. Scripts that reach `_get_node(key).ini_handler`** — 5 files:
-`HeroAI/follow/editor.py`, `HeroAI/follow/leader_publish.py`, `HeroAI/ui_base.py`,
+`Py4GWCoreLib/HeroAI/follow/editor.py`, `Py4GWCoreLib/HeroAI/follow/leader_publish.py`, `Py4GWCoreLib/HeroAI/ui_base.py`,
 `Py4GWCoreLib/EnemyBlacklist.py`, `Widgets/WidgetCatalog/Py4GW_widget_catalog.py`.
 They **get the handle and use or return it** (e.g. `EnemyBlacklist._handler()`
 returns `node.ini_handler`). The shell must keep returning that handle **with the

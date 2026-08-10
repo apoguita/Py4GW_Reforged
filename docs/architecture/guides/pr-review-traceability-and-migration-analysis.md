@@ -55,6 +55,57 @@ The preferred change is additive and traceable:
 
 Runtime equivalence is necessary, but it is not sufficient. A refactor that behaves the same today can still be unacceptable if it destroys source history, hides dependencies, prevents useful review, or makes future regressions difficult to diagnose.
 
+## Scope integrity: one pull request, one purpose
+
+Every pull request must contain one coherent, reviewable purpose: one feature,
+one bug fix, one mechanical migration, one infrastructure change, or one
+explicitly scoped refactor. A pull request must not bundle unrelated features,
+cleanup, relocations, generated data, documentation moves, or opportunistic
+fixes merely because they are available on the author branch.
+
+Review the GitHub base-to-head comparison, not only the latest commit or the
+lines named in the pull-request description. If that comparison contains
+unrelated changes, the pull request is out of scope and must be split or
+rebased onto the intended base before approval. Reviewers must not approve one
+desirable change while silently accepting unrelated changes attached to it.
+
+A related change may remain when it contributes to the same coherent
+user-facing delivery. Do not treat a feature's consumer, shared support code,
+configuration, catalog data, or route data as separate features merely because
+one could be merged independently. The review question is whether the changed
+code works together to deliver one stated outcome, not whether every file is
+individually indispensable.
+
+Request a split only when the comparison contains a second independent outcome:
+for example, an unrelated bug fix, cleanup, refactor, or feature that neither
+contributes to nor changes the behavior promised by the pull request. A broad
+parent branch, a convenient working tree, or an author claim that unrelated
+code is harmless is not a justification.
+
+### Troubleshooting a mixed-scope pull request
+
+1. Establish the GitHub merge base and head commits, then inspect the complete
+   `base..head` file list and commit ancestry.
+2. Classify the comparison by delivered outcome. Confirm that related files
+   together implement one user-facing feature; follow direct imports and call
+   paths only far enough to distinguish that feature from a second independent
+   outcome.
+3. If an unrelated commit or stacked branch is present, request that the author
+   split the work into focused pull requests or rebase the intended feature
+   onto the current target branch. Do not accept a promise to address the extra
+   code later.
+4. Re-review the resulting focused comparison. Verification applies to the
+   scoped pull request after the unrelated diff has been removed, not to a
+   reviewer-selected subset of the original mixed diff.
+
+Treat an unrelated independent outcome in the submitted GitHub comparison as a
+blocker. A large or multi-directory diff is not itself a violation: a coherent
+feature may legitimately include a consumer, shared support code, and the data
+it exposes. Do not manufacture a scope finding merely because the exact reason
+for each related edit is not stated in the description. Review the behavior the
+combined diff delivers; request clarification only when that behavior cannot be
+determined from the code.
+
 ## Proportional scope and review cost
 
 Review the requested change at the smallest scope that can establish correctness.
@@ -84,6 +135,40 @@ Every review should state what was intentionally not inspected or run when that
 omission could otherwise be mistaken for a gap. Unrelated pre-existing issues
 must be recorded as baseline evidence, not converted into findings against the
 reviewed change.
+
+## JSON classification and placement
+
+Never prescribe a JSON path from its extension alone. Before accepting or
+directing a JSON change, identify its owner, whether it is mutable at runtime,
+its scope, its schema, and its consumer. The repository-root `json/` tree is a
+jail with distinct owners; it is not a generic folder for every JSON-shaped
+file.
+
+Classify the file before naming a destination:
+
+1. **Mutable runtime document:** use the concrete `JsonFactory` object. Do not
+   hand-write a feature-local path. `JsonFactory(name)` owns account-scoped
+   storage under `json/<account>/<name>`; `JsonFactory(name, "global")` owns
+   shared storage under `json/Global/<name>`.
+2. **Modular behavior-tree recipe:** use `json/modular/<topic>/` only when the
+   file satisfies the current modular recipe contract and is consumed by the
+   modular JSON compiler. A file that merely contains route notes, captures, or
+   metadata is not a modular recipe.
+3. **Static feature data consumed by Python:** use typed dictionaries, tuples,
+   or a catalog in the owning Python data module. Do not maintain a parallel
+   JSON copy beside that module. For example, a dungeon bot's route metadata,
+   interaction policies, markers, and captures belong in its explicit Python
+   catalog when the bot consumes them as Python data.
+4. **Static source, capture, generated output, or reference data that is not a
+   Python catalog:** identify the existing generator or source owner before
+   choosing a path. If no owner, schema, and consumer exist, do not move the
+   file to a guessed `json/` subdirectory; remove it from the feature PR or
+   establish the owner in a separately scoped change.
+
+Do not place new JSON beside Python modules merely because a feature needs
+data. Older loose placement is not precedent. When relocating an established
+JSON document, keep the move focused and update every consumer in the same
+change.
 
 ## Finding severity and enforcement
 
@@ -141,6 +226,69 @@ JSON/INI handlers, file-backed debuggers, window managers, queues, native
 dispatch wrappers, and utility classes are not acceptable substitutes for
 existing repository mechanisms without an explicit infrastructure decision.
 
+## Canonical enum and catalog ownership
+
+An enum is the canonical owner of a finite set of named domain identities and
+their stable values. Catalogs own metadata about those identities, such as
+display names, categories, salvage outcomes, provenance, and search aliases.
+They must not quietly become a second enum by storing an equivalent set of raw
+integer keys or private name-to-value mappings.
+
+For Py4GW game-domain and CoreLib concepts, add or extend the canonical enum
+under `Py4GWCoreLib/enums_src/` and export it through
+`Py4GWCoreLib/enums.py` when it is part of the supported Python surface. Do
+not define or recreate these identities in a widget, `Sources/` feature
+package, generated catalog, or private loader. A feature-local enum is allowed
+only for implementation state that has no game-domain, persistence, shared
+library, or public-API meaning.
+
+When a catalog needs richer data, it must be keyed by or explicitly reference
+the canonical enum value. The catalog may store `int(ModelID.SomeItem)` at a
+runtime or serialization boundary, but it must not remove the corresponding
+enum member, replace the member with an anonymous integer, or independently
+assign its value.
+
+Deleting, renaming, or relocating members of a public enum is a compatibility
+change. Preserve the original member or an explicit compatibility alias unless
+the pull request documents an approved breaking API migration and updates all
+supported consumers.
+
+### Troubleshooting enum and catalog conflicts
+
+When a pull request appears to add a catalog, data table, or loader for named
+IDs, review it in this order:
+
+1. Identify the domain identity and locate its canonical enum in
+   `Py4GWCoreLib/enums_src/`. Check `Py4GWCoreLib/enums.py`, stubs, and direct
+   callers to establish whether it is public.
+2. Compare the old and new member sets and values. Search the diff for removed
+   enum members, new raw integer keys, duplicate `IntEnum` definitions, and
+   private `name -> id` tables. Do not accept a catalog as equivalent merely
+   because it preserves the integer values.
+3. Decide the owner before proposing a fix:
+   - Existing enum is complete: the catalog references it and owns metadata
+     only.
+   - Existing enum is incomplete: add the missing members to the canonical
+     enum, export them where required, then build the catalog from those
+     members.
+   - The catalog needs extra attributes: add typed catalog records keyed by the
+     enum; do not add a private replacement enum or a parallel raw-ID source.
+   - A public enum must change: preserve aliases and migration compatibility,
+     or stop for explicit maintainer approval of a breaking contract.
+4. Verify the repair with focused searches for the removed/redefined member
+   names and duplicate values, `git diff --check`, and Pyright/Pylance for the
+   changed enum, catalog, and direct consumers.
+
+Treat removal or redefinition of a public, re-exported enum as a blocker. A
+private catalog or loader that owns reusable enum-derived data is at least a
+requested ownership change, and becomes a blocker when it creates a competing
+public contract or leaves the old contract unsupported.
+
+The first observed case was a merchant-rule change that removed wiki
+salvage-source `ModelID` members and retained their values only as raw keys in
+`SALVAGE_MAP`. The correct repair is to retain the named model identities in
+the CoreLib enum and let the item catalog describe their salvage metadata.
+
 ## Decide between extension and extraction
 
 Before moving code into a new class or file, answer the architectural question:
@@ -166,6 +314,48 @@ changes which class owns it. A copy leaves two implementations. The latter is
 forbidden unless explicitly approved; the former is acceptable when the
 ownership change is architecturally required and the implementation remains
 unchanged.
+
+## Do not disguise a rewrite as support or compatibility
+
+A module named `Support`, `ReforgedSupport`, `Compat`, `Bridge`, `Adapter`, or
+`Fallback` is not a fix merely because it sits beside existing code. It is a
+competing rewrite when it reconstructs state, registers its own callbacks or
+hooks, independently interprets the same native data, or chooses between a new
+path and the old implementation at runtime while leaving the owning code
+unchanged.
+
+This pattern is forbidden by default. It bypasses the real defect instead of
+repairing it, leaves two lifecycle and state contracts to drift apart, and
+makes failure look like an ordinary fallback. Dynamic imports and broad
+`except` blocks make the problem worse: they conceal a missing binding,
+incorrect initialization order, or broken owner contract rather than exposing
+it for repair.
+
+Review a purported support layer as a rewrite, not as a harmless helper, when
+any of the following is true:
+
+- it duplicates data or state already owned by an existing CoreLib, native, or
+  feature module;
+- it installs callbacks, listeners, queues, hooks, or polling independently of
+  the existing owner;
+- it imports back into a feature consumer in order to emulate the old path;
+- it uses runtime availability checks to switch between duplicate
+  implementations without an explicit, tested compatibility contract;
+- it includes unrelated facilities merely because they are convenient to place
+  in the new module.
+
+The required repair is to fix the lowest responsible owner. If the native
+binding is absent or wrong, repair and verify that binding first. If the Python
+event/state layer interprets the binding incorrectly, extend that existing
+owner with the required public API. Consumers then call the corrected owner
+directly. Do not add a feature-specific observer, shim, or silent fallback
+around it.
+
+Treat a shadow support layer as a blocker when it bypasses a current owner,
+creates a second state/lifecycle contract, or hides an unsupported runtime
+surface. It may proceed only with a documented, owner-approved compatibility
+boundary, one authoritative implementation, a retirement plan for the old
+path, and focused verification of both transitions.
 
 ## Do not build features around opportunistic attachment points
 
@@ -795,27 +985,190 @@ changes are safe; do not reject a mechanically proven class extension merely
 because GitHub renders it as a large deletion and addition.
 ```
 
-## Feedback template
+## Review output must answer the original request
 
-Use this structure when writing review feedback for the author or for a follow-up AI agent:
+The final review is for the user who requested the change or review. It must
+answer whether the submitted diff delivers that original requested outcome
+within the stated scope and repository contracts. It is not a transcript of a
+reviewerâ€™s tools, guesses, or private decision process.
+
+Lead with the verdict, then present only facts needed for the requester to
+understand the decision:
+
+- **Verified:** directly supported by the submitted diff, current owner,
+  declared public contract, or a check that actually ran.
+- **Inferred:** a reasoned interpretation of verified evidence; label it as
+  such and state the consequence rather than presenting it as proof.
+- **Unresolved:** requires native, runtime, or external evidence that was not
+  available. State the smallest check needed to resolve it.
+
+Do not claim that a native binding, callback, or runtime surface is absent,
+broken, or available merely because a `try` import succeeds or fails, a stub
+exists, a sibling source file exists, or the pull request does not modify it.
+Those facts establish only that the pull request has not proven the relevant
+runtime contract. Phrase the finding accordingly and require the owner-level
+evidence needed by the original request.
+
+Do not write the review as instructions to the reviewer, a list of exploratory
+commands, or a broad architecture lecture. Use file and symbol references to
+explain what the diff does, how that conflicts with the requested outcome, and
+what the author must change before the original user can safely accept it.
+
+Every requested change or blocker must state a complete, concrete causal path:
+
+1. **Changed code:** the exact new or altered symbol and its behavior.
+2. **Existing path affected:** the current symbol, owner, or public contract it
+   replaces, bypasses, duplicates, or leaves incomplete.
+3. **Concrete consequence:** the observable incorrect behavior, incompatible
+   contract, competing state/lifecycle, or review-scope failure caused by that
+   relationship. Do not substitute labels such as "ownership issue," "shim," or
+   "architecture problem" for this explanation.
+4. **Required correction:** the specific owner and smallest change that repairs
+   the path. Do not write generic directions such as "fix the root cause" or
+   "use the proper owner" without naming it.
+5. **Evidence boundary:** the smallest unresolved fact, if any, and the exact
+   check needed to settle it.
+
+If a finding cannot name this path, investigate further or omit it. A review
+must be difficult to misinterpret: the author should be able to point to the
+named code, see the broken connection, and know the first required edit.
+
+## Required direction must explain why
+
+For a request-changes or blocking verdict, finish with a **Required direction**
+section. It is the author's repair plan, not a reviewer checklist. Each item
+must name one concrete action and immediately explain why that action is
+necessary for the original request to be safely accepted.
+
+Order the items by dependency when applicable: first restore a reviewable
+scope, then remove a competing or bypassing path, correct the responsible
+owner, move consumers onto that owner, and finally provide the evidence that
+proves the repaired path. Do not force steps that do not apply; the important
+part is that every required step has a specific purpose.
+
+Do not write unexplained directions such as "split the PR," "fix the native
+layer," or "add tests." State the concrete failure each action removes. For
+example, a scope split is required because unrelated files make it impossible
+to identify which changes implement the requested behavior or to revert only
+that behavior; an owner-layer repair is required because a feature-local
+fallback cannot make an unproven event stream reliable.
+
+## Mandatory verdict-post format
+
+Every pull-request review must be written as the following author-facing
+verdict post. This is the required output, not a suggestion to be replaced by
+a conversational summary, a raw finding dump, or an architecture lecture.
 
 ```text
-Request changes: [short reason].
+Verdict for the original request: [approve / request changes / block] — [one
+sentence saying whether this PR delivers the requested result and why it does
+or does not].
 
-What the diff actually does:
-- [file and approximate change size]
-- [new/deleted classes or inheritance changes]
-- [behavioral or lifecycle changes]
+[Only the findings that decide the verdict.]
 
-Why this conflicts with the requested scope:
-- [traceability problem]
-- [reviewability or rollback problem]
-- [hidden dependency or contract problem]
+[SEVERITY] [a concrete statement of the problem]
+`changed code` now [does this specific thing]. It [bypasses / duplicates /
+replaces / leaves incomplete] `existing code or path`. As a result, [the
+specific wrong result, hidden failure, competing state, or scope problem].
 
 Required direction:
-1. [smallest acceptable first step]
-2. [verification required for that step]
-3. [separate follow-up for architecture or behavior]
+1. [Exact action: name the file, symbol, and change required.]
+   Why: [Explain the exact failure this removes and why it is necessary for
+   the original request.]
+2. [Next exact action.]
+   Why: [Explain its concrete purpose and dependency on the prior action.]
+3. [Focused proof needed before approval.]
+   Why: [State what static inspection cannot establish.]
+
+The current implementation is [the concrete description of what it actually
+does], not [the requested root-cause fix].
+```
+
+The findings establish the verdict; **Required direction** is the binding
+repair plan. Keep both short and dense. Include only a finding that changes
+what the author must do before the PR can be accepted. Do not pad the post
+with generic acceptance criteria, tool transcripts, background theory, or
+possible future improvements.
+
+Use ordinary code-language first. Name the file and symbol, say what it now
+does, name the existing code it affects, and state the resulting failure. Do
+not substitute labels such as "architecture issue," "abstraction leak,"
+"compatibility layer," "binding," or "ownership" for that explanation. A
+technical term is allowed only when the sentence also says plainly what it
+means in this PR.
+
+Do not vary the verdict post because a user prompt happens to be brief or
+because a prior review used a different style. The guide controls the form:
+the review must always deliver the original-request verdict, decisive evidence,
+and an action-plus-why repair sequence.
+
+### Canonical author-facing review text
+
+Use this exact structure for a request-changes or blocking review. Replace the
+bracketed facts with evidence from the PR; do not add a reviewer diary, a
+second summary, generic acceptance criteria, or extra sections that dilute the
+decision.
+
+```text
+Verdict for the original request: request changes — [this PR does not deliver
+the requested result because it does X instead of repairing Y].
+
+[BLOCKER] `[new file or symbol]` [does the specific new thing].
+
+`[existing file or symbol]` already [does or owns the relevant existing work].
+`[new file or symbol]` [duplicates, bypasses, replaces, or silently falls back
+from] that path.
+
+As a result, [state the one concrete bad outcome: two answers for the same
+state, hidden failure, a bypassed implementation, incompatible behavior, or
+an unreviewable mixed scope].
+
+[Repeat only for another blocker that changes the repair direction.]
+
+Required direction:
+
+1. [Exact action: remove, move, repair, or route specific code through a
+   named existing owner.]
+   Why: [the exact bad outcome this removes].
+
+2. [Next exact action, in dependency order.]
+   Why: [why the first action alone cannot deliver the original request].
+
+3. [Focused proof required before approval.]
+   Why: [what the diff and static checks cannot prove].
+
+The current implementation is [what the PR actually does], not [the requested
+root-cause fix].
+```
+
+The author must be able to read this post without knowing the reviewer's
+private terminology. Prefer statements such as "this creates a second cast
+tracker" or "this hides a failed import and uses old data" over labels such as
+"competing state," "fallback topology," or "binding issue." Keep the named
+file and symbol, but explain the connection in normal code language.
+
+### Superseded detailed checklist (do not use as review output)
+
+The following checklist may help an investigator collect evidence, but it is
+not author-facing review output and must not replace the verdict post above:
+
+```text
+Verdict for the original request: [approve / request changes / block] — [short reason].
+
+[SEVERITY] [short, concrete finding title]
+Changed code: `path:line` — [what the changed symbol now does].
+Existing path affected: `path:symbol` — [what it currently owns or guarantees].
+Consequence: [the precise behavior, contract, state, or scope failure created by the change].
+Required correction: [the exact symbol/owner to change and what to remove, preserve, or route through].
+Evidence boundary: [only when unresolved; name the exact missing fact and smallest resolving check].
+
+Required direction:
+1. [Specific required action.]
+   Why: [The exact failure, ambiguity, or competing path that this action removes, and why that matters to the original request.]
+2. [Next specific required action.]
+   Why: [Its concrete purpose and dependency on the previous repair.]
+3. [Focused evidence required to accept the repaired path.]
+   Why: [What the diff or static inspection cannot establish on its own.]
 
 Acceptance criteria:
 - Existing behavior and public contracts are preserved.
@@ -871,3 +1224,29 @@ For future pull requests, add a short record containing:
 - severity rationale for every requested change or blocker.
 
 This record allows later reviews to enrich the guide with project-specific patterns instead of repeating the same analysis from scratch.
+
+## Continuous review feedback loop
+
+This guide is a living review contract. A review that exposes a new,
+repeatable failure pattern is not complete when the verdict is posted: the
+pattern must feed back into this guide so that the next review can identify it
+earlier, explain it more clearly, and require the right repair without
+relearning the same lesson.
+
+When a review finds a pattern that the guide does not already cover:
+
+1. Record the verified code path: what was changed, what existing path it
+   bypassed, duplicated, or left incomplete, and the concrete result.
+2. Add a focused rule at the relevant topic in this guide. State the ownership
+   rule, the symptom a reviewer should look for, and the troubleshooting steps
+   that establish the real owner before a workaround is accepted.
+3. Update the canonical verdict-post language when the new pattern needs a
+   clearer author-facing explanation or a new required-direction step.
+4. On later reviews, check the new rule first. If the pattern returns, tighten
+   the rule or its troubleshooting rather than writing the same vague comment
+   again.
+
+Do not turn a one-off suspicion into permanent policy. Add a rule only when
+the submitted code and current owners establish the causal path, or when the
+rule is explicitly adopted as repository direction. Keep runtime facts marked
+as unresolved until injected-client evidence proves them.

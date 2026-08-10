@@ -6,9 +6,9 @@ import webbrowser
 from fractions import Fraction
 
 MODULE_NAME = "Skill Atlas"
-MODULE_ICON = "Textures/Module_Icons/Skill Atlas.png"
-TEXTURE_FOLDER = "Textures\\Game UI\\Skill Description\\"
-PROFESSION_TEXTURE_FOLDER = "Textures\\Profession_Icons\\"
+MODULE_ICON = "Assets/Textures/Module_Icons/Skill Atlas.png"
+TEXTURE_FOLDER = "Assets\\Textures\\Game UI\\Skill Description\\"
+PROFESSION_TEXTURE_FOLDER = "Assets\\Textures\\Profession_Icons\\"
 
 import re
 from typing import Any

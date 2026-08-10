@@ -2,7 +2,7 @@ import time
 from typing import Callable, Sequence
 
 import PySystem
-from HeroAI.headless_tree import HeroAIHeadlessTree
+from Py4GWCoreLib.HeroAI.headless_tree import HeroAIHeadlessTree
 
 from .botting_tree_src.account_config import BottingTreeAccountConfig
 from .botting_tree_src.account_config import BottingTreeAccountMode

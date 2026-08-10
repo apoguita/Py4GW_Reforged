@@ -289,6 +289,16 @@
             toggle (edit drawer's Mods tab) -- off here means off everywhere,
             regardless of what any individual profile has set.
           </p>
+          <!-- RELAY 098: Apo (Discord) -- "the launcher is forcefully
+               renaming the clients at launch, but i cant find where to
+               disable this." Global only, no per-profile equivalent -- his
+               complaint was wanting it off entirely, not per-account. -->
+          <div class="pal-row"><span>Rename client window title <span style="color:var(--faint,#5f6491);font-weight:400">(global)</span></span><input type="checkbox" id="settings-window-title-rename"></div>
+          <p style="font-size:11px;color:var(--faint,#5f6491);line-height:1.5;margin:0 0 8px">
+            Retitles each client's window/taskbar entry to its profile name
+            on launch, so multiboxed clients are easy to tell apart. Off
+            leaves whatever title GW1 itself sets.
+          </p>
           <label class="field-label">Bulk launch pacing (seconds)</label>
           <input class="field-input" type="number" id="settings-pacing" min="5" max="90" step="1">
           <!-- RELAY 067: deliberate redundancy, Chris's own call -- this

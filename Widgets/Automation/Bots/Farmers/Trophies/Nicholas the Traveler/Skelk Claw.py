@@ -4,7 +4,7 @@ import PyImGui
 BOT_NAME = "Skelk Farmer"
 MODEL_ID_TO_FARM = ModelID.Skelk_Claw
 MODULE_NAME = "Skelk Claw Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Skelk Claw.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Skelk Claw.png"
 OUTPOST_TO_TRAVEL = 639 #Umbral grotto
 COORD_TO_EXIT_MAP = (-22646, 6289)
 EXPLORABLE_TO_TRAVEL = 566 #verdant cascades        

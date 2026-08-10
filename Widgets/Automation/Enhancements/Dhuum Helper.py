@@ -18,7 +18,7 @@ import PyImGui
 import PyInventory
 
 MODULE_NAME = "Dhuum Helper"
-MODULE_ICON = "Textures/Module_Icons/Underworld.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Underworld.png"
 
 # Keep this helper very cheap while idle.
 _CHECK_TIMER = ThrottledTimer(750)

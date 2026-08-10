@@ -5,7 +5,7 @@ from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib import Botting, ConsoleLog, Routines, Agent, Player
 
 BOT_NAME = "Kaolin Wand Farm"
-MODULE_ICON = "Textures\\Module_Icons\\Kaolin Wand.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Kaolin Wand.png"
 bot = Botting(BOT_NAME)
 
 KILLING_PATH = [

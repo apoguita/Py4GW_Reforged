@@ -14,7 +14,7 @@ from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["BloodMagic"]
@@ -108,7 +108,7 @@ class BloodMagic:
         def _can_safely_cast_bip() -> bool:
             # Refuse if the caster's HP after the BiP sacrifice would land at or
             # below the percent-of-max floor or the absolute-HP floor. Mirrors the
-            # post-sacrifice safety check in HeroAI/combat.py so the build path
+            # post-sacrifice safety check in Py4GWCoreLib/HeroAI/combat.py so the build path
             # honors the same floors as the HeroAI fallback.
             player_id = Player.GetAgentID()
             conditions = blood_is_power.Conditions

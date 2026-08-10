@@ -3,7 +3,7 @@ from Py4GWCoreLib import Botting
 
 # QUEST TO INCREASE SPAWNS
 BOT_NAME = "Wingstorm Farm"
-MODULE_ICON = "Textures\\Module_Icons\\Wingstorm.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Wingstorm.png"
 OUTPOST_TO_TRAVEL = 222  # The Eternal Grove
 COORD_TO_EXIT_MAP = (-6268.25, 14450.51)  # The Eternal Grove exit to Drazach Thicket
 EXPLORABLE_TO_TRAVEL = 195  # Drazach Thicket
@@ -55,9 +55,9 @@ def _find_shared_textures_folder() -> str:
     weapons = "Weapons Farm"
     for base in _iter_parents(os.getcwd()):
         candidates = [
-            os.path.join(base, "Bots", weapons, "Textures"),
+            os.path.join(base, "Bots", weapons, "Assets", "Textures"),
             os.path.join(base, "Bots", weapons, "textures"),
-            os.path.join(base, weapons, "Textures"),
+            os.path.join(base, weapons, "Assets", "Textures"),
             os.path.join(base, weapons, "textures"),
         ]
         for c in candidates:

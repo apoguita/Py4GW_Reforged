@@ -1,4 +1,5 @@
 """Validate the BT-native modular compiler architecture."""
+
 from __future__ import annotations
 
 import ast
@@ -6,13 +7,15 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from typing import cast
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MODULAR_DIR = REPO_ROOT / "Py4GWCoreLib" / "modular"
 MODULAR_CORE_DIR = REPO_ROOT / "Py4GWCoreLib" / "routines_src" / "behaviourtrees_src" / "modular_core"
-MODULAR_DATA_DIR = REPO_ROOT / "Sources" / "modular_data"
-MODULAR_WIDGET_DIR = REPO_ROOT / "Widgets" / "Automation" / "modularbot"
+MODULAR_DATA_DIR = REPO_ROOT / "json" / "modular"
+MODULAR_TOOLS_DIR = REPO_ROOT / "Sources" / "modular_data" / "tools"
+MODULAR_WIDGET_DIR = REPO_ROOT / "Widgets" / "Automation" / "modular"
 COMPILER_PATH = MODULAR_DIR / "json_bt_compiler.py"
 RUNNER_PATH = MODULAR_DIR / "runner.py"
 EXPECTED_CANONICAL = {"behavior", "interact", "inventory", "map", "party", "route", "wait"}
@@ -42,8 +45,8 @@ def _check_compiler_contract() -> list[str]:
     failures: list[str] = []
     tree = ast.parse(COMPILER_PATH.read_text(encoding="utf-8"))
     constants = _module_constants(tree)
-    canonical = set(constants.get("CANONICAL_STEP_TYPES", ()))
-    legacy = set(constants.get("LEGACY_STEP_TYPES", ()))
+    canonical = set(cast(tuple[str, ...], constants.get("CANONICAL_STEP_TYPES", ())))
+    legacy = set(cast(tuple[str, ...], constants.get("LEGACY_STEP_TYPES", ())))
     if canonical != EXPECTED_CANONICAL:
         failures.append(f"[COMPILER] canonical types are {sorted(canonical)}, expected {sorted(EXPECTED_CANONICAL)}.")
     overlap = canonical & legacy
@@ -103,7 +106,7 @@ def _check_removed_runtime_paths() -> list[str]:
 
 
 def _check_json_audit() -> list[str]:
-    audit_path = MODULAR_DATA_DIR / "tools" / "audit_json_bt_vocabulary.py"
+    audit_path = MODULAR_TOOLS_DIR / "audit_json_bt_vocabulary.py"
     spec = importlib.util.spec_from_file_location("_audit_json_bt_vocabulary", audit_path)
     if spec is None or spec.loader is None:
         return [f"[AUDIT] Could not load {audit_path.relative_to(REPO_ROOT)}."]
@@ -148,12 +151,16 @@ def _module_constants(tree: ast.Module) -> dict[str, object]:
     for node in tree.body:
         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             name = node.target.id
-            if name in {"CANONICAL_STEP_TYPES", "LEGACY_STEP_TYPES"}:
-                constants[name] = ast.literal_eval(node.value)
+            if name in {"CANONICAL_STEP_TYPES", "LEGACY_STEP_TYPES"} and node.value is not None:
+                value = ast.literal_eval(node.value)
+                if isinstance(value, tuple) and all(isinstance(item, str) for item in value):
+                    constants[name] = value
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             name = node.targets[0].id
             if name in {"CANONICAL_STEP_TYPES", "LEGACY_STEP_TYPES"}:
-                constants[name] = ast.literal_eval(node.value)
+                value = ast.literal_eval(node.value)
+                if isinstance(value, tuple) and all(isinstance(item, str) for item in value):
+                    constants[name] = value
     return constants
 
 

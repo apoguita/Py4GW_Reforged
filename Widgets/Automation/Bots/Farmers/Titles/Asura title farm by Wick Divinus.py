@@ -16,7 +16,7 @@ from typing import List, Dict, Optional
 BOT_NAME = "Asura Title Farm"
 
 MODULE_NAME = BOT_NAME
-MODULE_ICON = "Textures/Skill_Icons/[2372] - Edification.jpg"
+MODULE_ICON = "Assets/Textures/Skill_Icons/[2372] - Edification.jpg"
 
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
 RATASUM = 640

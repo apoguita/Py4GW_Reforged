@@ -7,7 +7,7 @@ import threading
 import traceback
 
 import Py4GW  # type: ignore
-from HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
 from Py4GWCoreLib import GLOBAL_CACHE, Player
 from Py4GWCoreLib import Bags
 from Py4GWCoreLib import Effects

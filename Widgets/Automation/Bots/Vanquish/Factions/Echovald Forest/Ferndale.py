@@ -4,7 +4,7 @@ import PyImGui
 import os
 
 MODULE_NAME = "Ferndale (Vanquish)"
-MODULE_ICON = "Textures\\Module_Icons\\Vanquish - Ferndale.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Vanquish - Ferndale.png"
 
 BOT_NAME = "VQ Ferndale"
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")

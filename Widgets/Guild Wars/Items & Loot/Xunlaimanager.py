@@ -11,7 +11,7 @@ from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 
 MODULE_NAME = "Xunlai Manager"        # Display name shown in the overlay window
-MODULE_ICON = "Textures/Module_Icons/TeamInventoryViewer.png"  # Relative path to the toggle-button icon
+MODULE_ICON = "Assets/Textures/Module_Icons/TeamInventoryViewer.png"  # Relative path to the toggle-button icon
 CHEST_FRAME_ID = 752                  # Fallback frame ID for the Xunlai chest window
 XUNLAI_WINDOW_HASH = 2315448754       # UIManager hash for the Xunlai vault window
 INVENTORY_FRAME_HASH = 291586130      # Fallback: player inventory panel frame hash

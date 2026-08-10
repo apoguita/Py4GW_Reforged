@@ -4,11 +4,11 @@ import PyImGui
 BOT_NAME = "Putrid Cyst Farmer"
 MODEL_ID_TO_FARM = ModelID.Putrid_Cyst
 MODULE_NAME = "Putrid Cyst Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Putrid Cyst.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Putrid Cyst.png"
 OUTPOST_TO_TRAVEL = 194 #Kaineng Center
 COORD_TO_EXIT_MAP = (3725,-5413)
-EXPLORABLE_TO_TRAVEL = 240 #Bukdek Byway     
-                
+EXPLORABLE_TO_TRAVEL = 240 #Bukdek Byway
+
 KILLING_PATH = [
     (-9896.0,16023.0),
     (-9466.0,13492.0),
@@ -21,7 +21,7 @@ EXPLORABLE_AREA = 566 #verdant cascades
 NICK_COORDS = [(-5367.88, -13457.16),]
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -49,7 +49,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

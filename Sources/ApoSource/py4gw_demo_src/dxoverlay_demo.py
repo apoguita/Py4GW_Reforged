@@ -86,7 +86,7 @@ class _State:
     # 2D anchor (screen pixels) + texture params
     anchor_x: float = 700.0
     anchor_y: float = 450.0
-    tex_path: str = "Textures/Maps/example.png"
+    tex_path: str = "Assets/Textures/Maps/example.png"
     tex_w: float = 96.0
     tex_h: float = 96.0
 

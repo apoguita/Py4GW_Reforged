@@ -12,7 +12,7 @@ from Py4GWCoreLib import *
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Hearts of the North - Keiran Missons (War Supplies)"
-MODULE_ICON = "Textures\\Module_Icons\\Keiran Farm.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Keiran Farm.png"
 MODULE_TAGS = ["War","Supply", "Keiran", "AB", "Rise", "EOTN", "HotN"]
 
 _HOTN_DIALOG_BASE_OFFSET = 0xE  # first HotN mission (AB) is always base_id + 0xE; each subsequent mission adds 1

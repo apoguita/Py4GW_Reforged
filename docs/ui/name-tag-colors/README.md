@@ -11,7 +11,7 @@ record for native name-tag recoloring.
   validation record for that earlier surface.
 - The current source/stub/test surface is `AgentRecolor`/`PyAgentRecolor`, with
   Python code under `Py4GWCoreLib/AgentRecolor.py` and
-  `Py4GWCoreLib/py4gwcorelib_src/agent_recolor/`. It extends coverage beyond
+  `Py4GWCoreLib/py4gwcorelib_src/system_settings/agent_recolor/`. It extends coverage beyond
   the old guide, so current API and hook claims require source verification.
 - `tests/name_tag_color/` is the current in-client harness location, but its
   README and logs should be checked for the rebuilt DLL/module actually loaded.

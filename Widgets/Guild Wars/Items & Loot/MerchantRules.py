@@ -68,7 +68,7 @@ from Sources.icefox.MerchantRules.profiles import _normalize_shared_profile_disp
 
 
 MODULE_NAME = "Merchant Rules"
-MODULE_ICON = "Textures\\Module_Icons\\MerchantRules.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\MerchantRules.png"
 FLOATING_UI_INI_PATH = "Widgets/Guild Wars/Items & Loot/MerchantRules"
 FLOATING_UI_INI_FILENAME = "MerchantRulesFloating.ini"
 FLOATING_ICON_WINDOW_ID = "##merchant_rules_floating_icon_button"

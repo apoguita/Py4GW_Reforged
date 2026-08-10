@@ -15,7 +15,7 @@ from Py4GW_widget_manager import get_widget_handler
 # QUEST TO INCREASE SPAWNS
 BOT_NAME = "Pile Of Elemental Dust"
 MODULE_NAME = "Pile Of Elemental Dust Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Pile Of Elemental Dust.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Pile Of Elemental Dust.png"
 MODEL_ID_TO_FARM = ModelID.Pile_Of_Elemental_Dust
 OUTPOST_TO_TRAVEL = 652
 COORD_TO_EXIT_MAP = (-40.81, 4597.28)

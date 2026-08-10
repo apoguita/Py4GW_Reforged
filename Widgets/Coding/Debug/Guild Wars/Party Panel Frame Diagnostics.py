@@ -15,7 +15,7 @@ from Py4GWCoreLib import GLOBAL_CACHE, Map, Player, Utils
 from Py4GWCoreLib.FrameTree import Frame, FrameId, FrameTree
 
 MODULE_NAME = "Party Search Frame Diagnostics"
-MODULE_ICON = "Textures/Module_Icons/Debug.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Debug.png"
 
 PARTY_SEARCH_WINDOW_HASH = 3199024334
 PARTY_SEARCH_PANEL_OFFSETS = [14]
@@ -91,7 +91,7 @@ def _heroai_runtime_summary() -> list[str]:
         if widget is None:
             return ["HeroAI widget: not discovered by WidgetManager"]
 
-        from HeroAI.windows import HeroAI_FloatingWindows
+        from Py4GWCoreLib.HeroAI.windows import HeroAI_FloatingWindows
 
         module = widget.module
         cached_data = getattr(module, "cached_data", None)

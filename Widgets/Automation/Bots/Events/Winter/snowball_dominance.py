@@ -8,7 +8,7 @@ BOT_NAME = "Snowball Dominance"
 bot = Botting(BOT_NAME)
 
 MODULE_NAME = "Snowball Dominance"
-MODULE_ICON = "Textures\\Module_Icons\\Snowball.jpg"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Snowball.jpg"
 
 # --- GLOBAL VARIABLES ---
 oliasInDanger = False

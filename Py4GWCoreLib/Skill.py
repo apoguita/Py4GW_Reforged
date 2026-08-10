@@ -499,7 +499,7 @@ class Skill:
         @staticmethod
         def GetTexturePath(skill_id: int) -> str:
             filename = SkillTextureMap.get(skill_id)
-            full_path = f"Textures\\Skill_Icons\\{filename}" if filename else ""
+            full_path = f"Assets\\Textures\\Skill_Icons\\{filename}" if filename else ""
             return full_path
 
 

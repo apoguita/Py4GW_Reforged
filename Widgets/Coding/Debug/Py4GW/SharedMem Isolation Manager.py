@@ -5,7 +5,7 @@ from Py4GWCoreLib import GLOBAL_CACHE, ImGui, Color, Routines, ThrottledTimer
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Shared Memory Isolation Manager"
-MODULE_ICON = "Textures/Module_Icons/Isolation.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Isolation.png"
 
 # --- Module-level state ---
 _groups: dict[int, str] = {}

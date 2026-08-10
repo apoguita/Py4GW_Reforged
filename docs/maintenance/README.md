@@ -7,11 +7,5 @@ evidence.
 Formatting, provenance, and move rules live in
 `documentation-style-guide.md`.
 
-- `generate_documentation_index.py` rebuilds `../documentation-index.md` and
-  `../documentation-index.json` from the current tree.
-
-Run from the repository root:
-
-```text
-python docs/maintenance/generate_documentation_index.py
-```
+- `../documentation-index.md` is the short human-maintained map of top-level
+  documentation routes. Update it only when a top-level route changes.

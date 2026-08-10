@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from HeroAI.targeting import TargetCasterClusterEnemy, TargetMeleeOrMartialClusterEnemy
+from Py4GWCoreLib.HeroAI.targeting import TargetCasterClusterEnemy, TargetMeleeOrMartialClusterEnemy
 from Py4GWCoreLib import Routines
 from Py4GWCoreLib.BuildMgr import BuildCoroutine
 from Py4GWCoreLib.Skill import Skill

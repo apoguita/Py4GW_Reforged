@@ -1,5 +1,5 @@
 MODULE_NAME = "Active Dialog Viewer"
-MODULE_ICON = "Textures/Module_Icons/Script Runner.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Script Runner.png"
 
 import traceback
 

@@ -32,7 +32,9 @@ class LibrarySettingsController:
     def __init__(self) -> None:
         self.enabled: "dict[str, bool]" = {}
         self.options: "dict[str, object]" = {}
+        self.group_open: "dict[str, bool]" = {}
         persistence.load(self.enabled, self.options)
+        persistence.load_group_open(self.group_open)
         self._window_open: bool = False          # hidden until the launchpad cog toggles it
         self._sidebar = None                     # lazily built SidebarWindow
 
@@ -42,6 +44,16 @@ class LibrarySettingsController:
 
     def option_value(self, lsn: "model.Listener", opt) -> object:
         return self.options.get("%s.%s" % (lsn.name, opt.key), opt.default)
+
+    def is_group_open(self, cat_key: str) -> bool:
+        return bool(self.group_open.get(cat_key, True))
+
+    def set_group_open(self, cat_key: str, is_open: bool) -> None:
+        is_open = bool(is_open)
+        if self.group_open.get(cat_key, True) == is_open:
+            return
+        self.group_open[cat_key] = is_open
+        persistence.save_group_open(cat_key, is_open)
 
     # ── native application (register options with cpp) ───────────────────────────────────
     def apply_all_to_native(self) -> None:

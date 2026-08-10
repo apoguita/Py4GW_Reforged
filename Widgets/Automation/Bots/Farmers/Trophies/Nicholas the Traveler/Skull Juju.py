@@ -4,11 +4,11 @@ import PyImGui
 BOT_NAME = "Skull Juju Farmer"
 MODEL_ID_TO_FARM = ModelID.Skull_Juju
 MODULE_NAME = "Skull Juju Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Skull Juju.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Skull Juju.png"
 OUTPOST_TO_TRAVEL = 286 #Brauer Academy
 COORD_TO_EXIT_MAP = (13095,737)
-EXPLORABLE_TO_TRAVEL = 195 #Drazach Thicket 
-                
+EXPLORABLE_TO_TRAVEL = 195 #Drazach Thicket
+
 KILLING_PATH = [
     (9705.0,406.0),
     (4862.0,723.0),
@@ -19,7 +19,7 @@ EXPLORABLE_AREA = 566 #verdant cascades
 NICK_COORDS = [(-5367.88, -13457.16),]
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -46,7 +46,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

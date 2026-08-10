@@ -19,7 +19,7 @@ import traceback
 from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Switch Character"
-MODULE_ICON = "Textures/Module_Icons/Switch Character.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Switch Character.png"
 
 class RerollCharacter:
     def __init__(self):
@@ -307,8 +307,8 @@ def DrawWindow():
                     name_text = character.player_name + (" (PvP)" if character.is_pvp else "")
                     primary_prof = character.primary
                     secondary_prof = character.secondary
-                    primary_texture = f"Textures\\Profession_Icons\\{ProfessionTextureMap.get(character.primary, 'unknown')}"
-                    secondary_texture = f"Textures\\Profession_Icons\\{ProfessionTextureMap.get(character.secondary, 'unknown')}"
+                    primary_texture = f"Assets\\Textures\\Profession_Icons\\{ProfessionTextureMap.get(character.primary, 'unknown')}"
+                    secondary_texture = f"Assets\\Textures\\Profession_Icons\\{ProfessionTextureMap.get(character.secondary, 'unknown')}"
                     level = 20 if character.is_pvp else character.level
                     current_map = character.map_id
                     campaign_origin = character.campaign

@@ -28,7 +28,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyImGui
 
 BOT_NAME = "Dragon Moss Fiber Farmer"
-MODULE_ICON = "Textures\\Module_Icons\\Dragon_Moss_Fiber_Farm.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Dragon_Moss_Fiber_Farm.png"
 
 ANJEKAS_SHRINE = 349
 DRAZACH_THICKET = 195

@@ -42,7 +42,7 @@ target = target_agent_id
 - `Py4GWCoreLib/GlobalCache/SharedMemory.py` - `GLOBAL_CACHE.ShMem` wrappers and sweep tick.
 - `Py4GWCoreLib/GlobalCache/Whiteboard.py` - opt-in registry for `(kind, key)` consumers.
 - `Py4GWCoreLib/Builds/Skills/_whiteboard.py` - skill-scoped opt-in wrapper.
-- `HeroAI/custom_skill_src/skill_types.py` - per-skill `CoordinatesViaWhiteboard` flag.
+- `Py4GWCoreLib/HeroAI/custom_skill_src/skill_types.py` - per-skill `CoordinatesViaWhiteboard` flag.
 - `Py4GWCoreLib/BuildMgr.py` - current skill-target read gate, post, and owner self-clear.
 
 ## Slot Schema

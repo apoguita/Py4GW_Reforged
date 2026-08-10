@@ -4,7 +4,7 @@ import traceback
 
 import Py4GW  # type: ignore
 import Py4GWCoreLib
-from HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import PyImGui
 from Py4GWCoreLib import Routines
@@ -40,7 +40,7 @@ save_window_timer.Start()
 
 # String consts
 MODULE_NAME = "EZ Cast"  # Change this Module name
-MODULE_ICON = "Textures/Module_Icons/EZ Cast.png"  # Change this to your widget icon (optional)
+MODULE_ICON = "Assets/Textures/Module_Icons/EZ Cast.png"  # Change this to your widget icon (optional)
 COLLAPSED = "collapsed"
 X_POS = "x"
 Y_POS = "y"

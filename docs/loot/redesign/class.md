@@ -520,7 +520,7 @@ authored first.
 - **Rarity.** *All trophies are white*, so rarity cannot tell one trophy from another. Nothing more
   than that — it does **not** mean the rarity toggle covers trophies; see *Two independent
   hand-crafted rules* below.
-- **A model-id based lookup** (e.g. joining `legacy/salvage-mapping.json`, 2021 entries of
+- **A model-id based lookup** over universal salvage metadata:
   `model id -> {common, rare} materials`). **Model ids span the entire item universe, not trophies** —
   that data is universal item metadata, not trophy metadata, so it cannot organise trophies. Raising it
   was a mistake; it is recorded here only so it is not proposed a third time.
@@ -1100,7 +1100,7 @@ filtering system** across the library, not a loot-specific invention.
 
 ### The pattern to mirror *(evidence)*
 
-`Py4GWCoreLib/py4gwcorelib_src/agent_recolor/model.py:64-90`:
+`Py4GWCoreLib/py4gwcorelib_src/system_settings/agent_recolor/model.py:64-90`:
 
 ```python
 @dataclass

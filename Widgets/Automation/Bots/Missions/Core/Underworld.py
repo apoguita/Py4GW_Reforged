@@ -60,7 +60,7 @@ class BehaviorState:
 # ── Module identity ──────────────────────────────────────────────────────────
 # Model ID 3078 = Dhuum ghost buff NPC (informational reference)
 MODULE_NAME = "Underworld"
-MODULE_ICON = "Textures/Module_Icons/Underworld.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Underworld.png"
 BOT_NAME    = "Underworld"
 
 # ── Persistent configuration (INI file) ──────────────────────────────────────

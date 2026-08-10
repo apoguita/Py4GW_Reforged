@@ -10,7 +10,7 @@ from ..py4gwcorelib_src.BehaviorTree import BehaviorTree
 from ..py4gwcorelib_src.WidgetManager import get_widget_handler
 from ..py4gwcorelib_src.WidgetManager import WidgetCatalog
 from .enums import HeroAIStatus
-from HeroAI.settings import Settings
+from Py4GWCoreLib.HeroAI.settings import Settings
 
 
 class _BottingTreeHeroAIHost(Protocol):

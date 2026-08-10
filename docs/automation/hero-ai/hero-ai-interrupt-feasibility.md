@@ -10,10 +10,10 @@ If the answer is no — because the cast is too far along, the target is out of 
 
 The implementation lives in:
 
-- `HeroAI/interrupt.py` — sampler, classifier, decision helper, outcome logger, modifier tables
-- `HeroAI/combat.py` — the data-driven evaluator gate (one of two call sites)
+- `Py4GWCoreLib/HeroAI/interrupt.py` — sampler, classifier, decision helper, outcome logger, modifier tables
+- `Py4GWCoreLib/HeroAI/combat.py` — the data-driven evaluator gate (one of two call sites)
 - `Py4GWCoreLib/BuildMgr.py` `CastSkillID` — the matched-build evaluator gate (the other call site)
-- `HeroAI/custom_skill_src/*.py` — the source-of-truth interrupt classification (`SkillNature.Interrupt` tags)
+- `Py4GWCoreLib/HeroAI/custom_skill_src/*.py` — the source-of-truth interrupt classification (`SkillNature.Interrupt` tags)
 
 ## Two Evaluator Paths
 
@@ -35,13 +35,13 @@ Both gates call the same `is_interrupt_feasible` helper. The verdict is identica
 
 ## Classifier
 
-The single source of truth for "is this skill an interrupt?" is the `Nature` field set in `HeroAI/custom_skill_src/{profession}.py`. Every interrupt skill is tagged:
+The single source of truth for "is this skill an interrupt?" is the `Nature` field set in `Py4GWCoreLib/HeroAI/custom_skill_src/{profession}.py`. Every interrupt skill is tagged:
 
 ```python
 skill.Nature = SkillNature.Interrupt.value
 ```
 
-`HeroAI/interrupt.py` walks `custom_skill_data_handler.skill_data` once on first use and caches the set of interrupt-classified skill_ids in `_INTERRUPT_SKILL_IDS`. The matched-build gate calls `is_classified_as_interrupt(skill_id)` to decide whether to apply the feasibility check. Non-interrupt skills short-circuit with one set lookup of overhead.
+`Py4GWCoreLib/HeroAI/interrupt.py` walks `custom_skill_data_handler.skill_data` once on first use and caches the set of interrupt-classified skill_ids in `_INTERRUPT_SKILL_IDS`. The matched-build gate calls `is_classified_as_interrupt(skill_id)` to decide whether to apply the feasibility check. Non-interrupt skills short-circuit with one set lookup of overhead.
 
 To add a new interrupt skill: tag it `SkillNature.Interrupt.value` in `custom_skill_src/`. The registry picks it up on next process start. No interrupt-side code changes required.
 
@@ -83,7 +83,7 @@ feasible      = remaining_ms >= budget_ms
 
 ## Modifier Tables (Spell / Signet path only)
 
-`HeroAI/interrupt.py` holds four tables that drive the non-FC multiplier. Each entry is `(skill_id_name, multiplier)`. All resolved through `_resolve_skill_id` which caches successful lookups and emits a one-shot warning on unresolved names.
+`Py4GWCoreLib/HeroAI/interrupt.py` holds four tables that drive the non-FC multiplier. Each entry is `(skill_id_name, multiplier)`. All resolved through `_resolve_skill_id` which caches successful lookups and emits a one-shot warning on unresolved names.
 
 | Table | Stack rule | Applies to |
 |---|---|---|
@@ -110,7 +110,7 @@ Resolved by `_max_interrupt_range_gw(our_skill_id)`. Targets past the cap are sk
 
 ## Per-Frame Sampler
 
-`CastObserver` is a singleton sampler in `HeroAI/interrupt.py` that runs every frame via a `PyCallback` registration (mirrors the `CombatEvents.Enable()` pattern in `Py4GWCoreLib/CombatEvents.py`).
+`CastObserver` is a singleton sampler in `Py4GWCoreLib/HeroAI/interrupt.py` that runs every frame via a `PyCallback` registration (mirrors the `CombatEvents.Enable()` pattern in `Py4GWCoreLib/CombatEvents.py`).
 
 Each frame it scans `AgentArray.GetEnemyArray()` filtered to `Range.SafeCompass.value` and tracks observed casts in:
 
@@ -168,7 +168,7 @@ External callers are limited to two files. Both call only:
 
 ## Wiring
 
-### Gate #1 — `HeroAI/combat.py` `AreCastConditionsMet`
+### Gate #1 — `Py4GWCoreLib/HeroAI/combat.py` `AreCastConditionsMet`
 
 Replaces the legacy `>= 0.250s` activation proxy with the feasibility math when `Nature == SkillNature.Interrupt`. Non-interrupt casting features keep the legacy gate. Imports `is_interrupt_feasible`, `_queue_outcome`, `_log_eval_path` at the top of the file.
 

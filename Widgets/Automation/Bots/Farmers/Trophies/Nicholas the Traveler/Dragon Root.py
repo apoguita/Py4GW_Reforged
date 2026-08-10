@@ -4,18 +4,18 @@ import PyImGui
 BOT_NAME = "Dragon Root Farm"
 MODEL_ID_TO_FARM = ModelID.Dragon_Root
 MODULE_NAME = "Dragon Root Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Dragon Root.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Dragon Root.png"
 OUTPOST_TO_TRAVEL = 349 #Saint Anjeka's Shrine
 COORD_TO_EXIT_MAP = (-11282, -23031)
-EXPLORABLE_TO_TRAVEL = 195 #Drazach Thicket   
-                
+EXPLORABLE_TO_TRAVEL = 195 #Drazach Thicket
+
 KILLING_PATH = [
                 (-10531.0,19116.0),
 (-9028.8,18773.3),
 (-7525.7,18280.7),
 (-6079.5,16778.4),
-(-5571.7,15887.2),               
-                
+(-5571.7,15887.2),
+
                 ]
 
 NICK_OUTPOST = 117 #Thirsty River
@@ -24,7 +24,7 @@ EXPLORABLE_AREA = 108 #the scar
 NICK_COORDS = [(-4510.0, -6737.0),] #Nicholas the Traveler Location
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -51,7 +51,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

@@ -31,8 +31,8 @@ language_order = [
     ServerLanguage.BorkBorkBork,
 ]
 
-item_textures_path = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Items")
-missing_texture_path = os.path.join(PySystem.Console.get_projects_path(), "Textures", "missing_texture.png")
+item_textures_path = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Items")
+missing_texture_path = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "missing_texture.png")
 
 class ModsPair:
     def __init__(self, prefix: ModsModels | None, suffix: ModsModels | None):

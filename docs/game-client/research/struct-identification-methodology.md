@@ -50,13 +50,12 @@ Before starting, ensure you have:
 | **C++ context source** | `Py4GW_Reforged_Native\src\GW\context\` (legacy cross-ref: `Py4GW\vendor\gwca\Source\GWCA.cpp`) | Shows how the context pointer is discovered (assertion strings, pattern scans) |
 | **Ghidra WASM** | `/Gw.wasm` (via MCP) | Primary RE target — full debug symbols, all function names |
 | **Ghidra EXE** | `/Gw.exe(Symbols)` (via MCP) | x86 cross-reference — stripped names but cleaner decompiler output |
-| **Assertion string catalog** | `.opencode/skills/gw-bridging/SKILL.md` | Known assertion strings for bridging WASM↔EXE |
 
-### Skills Loaded
+### Workflow
 
-- `gw-layer-arch` — Ghidra MCP conventions, address spaces, pitfalls
-- `gw-bridging` — string-anchoring, callee comparison, three translation directions
-- `gw-data-structs` — known struct patterns (TArray, frame layout, etc.)
+Use `py4gw-re-methodology` for the current evidence and Ghidra procedure. Keep
+assertion anchors with the owning subsystem record rather than in a duplicate
+agent-skill catalog.
 
 ### Context Access Path
 

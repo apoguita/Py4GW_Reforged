@@ -1,10 +1,10 @@
-"""Unit tests for launcher_core/settings_store.py (RELAY 095).
+"""Unit tests for launcher_core/settings_store.py (RELAY 095, RELAY 098).
 
 No committed test file existed for this module before now -- same "no test
-existed, wrote one" situation this repo has hit before. Only covers
-load_window_geometry/save_window_geometry (what this entry actually
-touched) -- not backfilling coverage for the module's other, pre-existing
-settings, which this entry didn't change.
+existed, wrote one" situation this repo has hit before. Only covers what
+each entry actually touched (window_geometry, then
+window_title_rename_enabled) -- not backfilling coverage for the module's
+other, pre-existing settings.
 
 Run: .venv\\Scripts\\python.exe -m unittest launcher_core.test_settings_store -v
 """
@@ -50,6 +50,41 @@ class TestWindowGeometry(unittest.TestCase):
         )
         geometry = settings_store.load_window_geometry(self.path)
         self.assertIs(geometry["maximized"], True)
+
+
+class TestWindowTitleRenameEnabled(unittest.TestCase):
+    """RELAY 098: Apo (Discord) -- "the launcher is forcefully renaming
+    the clients at launch... doesnt seem to be a config option for this."
+    Same default-True, no-behavior-change-on-upgrade shape as
+    py4gw_injection_enabled/gmod_injection_enabled."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmpdir.name) / "launcher_settings.json"
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def test_defaults_true_when_nothing_saved_yet(self):
+        """Opt-out, not a new default-off feature -- an existing install
+        upgrading to this must see zero behavior change until they
+        actually flip it off."""
+        self.assertTrue(settings_store.load_window_title_rename_enabled(self.path))
+
+    def test_round_trip_false(self):
+        settings_store.save_window_title_rename_enabled(False, self.path)
+        self.assertFalse(settings_store.load_window_title_rename_enabled(self.path))
+
+    def test_round_trip_true(self):
+        settings_store.save_window_title_rename_enabled(False, self.path)
+        settings_store.save_window_title_rename_enabled(True, self.path)
+        self.assertTrue(settings_store.load_window_title_rename_enabled(self.path))
+
+    def test_save_preserves_other_settings_in_the_same_file(self):
+        settings_store.save_bulk_launch_pacing_seconds(20, self.path)
+        settings_store.save_window_title_rename_enabled(False, self.path)
+        self.assertEqual(settings_store.load_bulk_launch_pacing_seconds(self.path), 20)
+        self.assertFalse(settings_store.load_window_title_rename_enabled(self.path))
 
 
 if __name__ == "__main__":

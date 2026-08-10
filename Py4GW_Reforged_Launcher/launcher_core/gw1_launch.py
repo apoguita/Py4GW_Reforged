@@ -948,6 +948,7 @@ def _launch_gw1_via_steam(
     py4gw_injection_enabled: bool,
     gmod_injection_enabled: bool,
     steam_attach_timeout: float,
+    window_title_rename_enabled: bool,
     log: list,
 ) -> LaunchResult:
     """RELAY 094: Steam-login launch/attach path, used instead of the direct
@@ -1073,11 +1074,14 @@ def _launch_gw1_via_steam(
         return LaunchResult(False, pid, f"Hit the absolute ceiling ({absolute_ceiling}s) with no window, exit, or hang signal", log)
     # outcome == "window": pid's window is already confirmed, fall straight through.
 
-    if profile.auto_select_character_enabled and profile.character_name:
-        window_title = profile.character_name
+    if window_title_rename_enabled:
+        if profile.auto_select_character_enabled and profile.character_name:
+            window_title = profile.character_name
+        else:
+            window_title = profile.name
+        _set_gw_window_title(pid, window_title, log)
     else:
-        window_title = profile.name
-    _set_gw_window_title(pid, window_title, log)
+        _log(log, "Window title renaming disabled (App Settings) -- leaving the default title")
 
     if profile.py4gw_enabled and py4gw_injection_enabled:
         _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")
@@ -1113,6 +1117,7 @@ def launch_py4gw_profile(
     py4gw_injection_enabled: bool = True,
     gmod_injection_enabled: bool = True,
     steam_attach_timeout: float = 30.0,
+    window_title_rename_enabled: bool = True,
     on_log: Optional[Callable[[str], None]] = None,
 ) -> LaunchResult:
     """Launch `profile`'s executable, optionally auto-logging in, and inject Py4GW
@@ -1164,6 +1169,13 @@ def launch_py4gw_profile(
     profile's own toggle, and a profile with injection off isn't blocked by an
     unrelated missing DLL path when injection is already globally disabled.
 
+    `window_title_rename_enabled` (RELAY 098, default True): global-only,
+    deliberately no per-profile equivalent -- Apo's own complaint (Discord)
+    was "I want this off entirely, and there's no config option for it,"
+    not "off for one profile." Off skips both `_set_gw_window_title` call
+    sites (here and in `_launch_gw1_via_steam`) entirely -- purely cosmetic,
+    the client keeps whatever title GW1 itself set.
+
     `LaunchResult.pid` is whichever process ends up injected into (or, if
     `py4gw_enabled` is off, whichever process the launch ultimately resolves to) --
     if the updater/relaunch handoff (see module docstring) happens, that's the
@@ -1192,6 +1204,7 @@ def launch_py4gw_profile(
             py4gw_injection_enabled=py4gw_injection_enabled,
             gmod_injection_enabled=gmod_injection_enabled,
             steam_attach_timeout=steam_attach_timeout,
+            window_title_rename_enabled=window_title_rename_enabled,
             log=log,
         )
 
@@ -1321,11 +1334,14 @@ def launch_py4gw_profile(
 
     # outcome == "window": pid's window is already confirmed, fall straight through.
 
-    if profile.auto_select_character_enabled and profile.character_name:
-        window_title = profile.character_name
+    if window_title_rename_enabled:
+        if profile.auto_select_character_enabled and profile.character_name:
+            window_title = profile.character_name
+        else:
+            window_title = profile.name
+        _set_gw_window_title(pid, window_title, log)
     else:
-        window_title = profile.name
-    _set_gw_window_title(pid, window_title, log)
+        _log(log, "Window title renaming disabled (App Settings) -- leaving the default title")
 
     if profile.py4gw_enabled and py4gw_injection_enabled:
         _log(log, f"Window found; waiting {post_window_settle_delay}s before injecting Py4GW")

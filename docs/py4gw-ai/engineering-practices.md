@@ -8,6 +8,10 @@ Scope: code quality, architecture, configuration, security, platform, and projec
 
 - Match local style and conventions; keep changes minimal and focused, avoid unrelated fixes, and fix root causes rather than masking symptoms.
 - Prefer existing Py4GW code, abstractions, and approved libraries; adapt them instead of duplicating or replacing functionality in parallel.
+- For script work, search the current Py4GW library, bindings, helpers, and
+  examples before introducing a new abstraction or restructuring an existing
+  area. Prefer composition through the owning surface; restructure only when
+  evidence proves the current owner cannot meet the requested behavior.
 - Apply the applicable Python or C++ formatter and idioms. Python scripts must follow PEP 8 and use explicit meaningful typing for public APIs, parameters, returns, and important state; treat typing errors as real defects.
 - Prefer clear, idiomatic APIs: avoid ambiguous booleans/options, use explicit names or dedicated types, keep public surfaces intentional, and keep implementation details private where practical.
 - Handle supported cases explicitly; avoid wildcard handling that hides unhandled states.

@@ -3,7 +3,7 @@ import PyImGui
 
 BOT_NAME = "Intricate Grawl Necklace Farm"
 MODULE_NAME = "Intricate Grawl Necklace Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Intricate Grawl Necklace.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Intricate Grawl Necklace.png"
 MODEL_ID_TO_FARM = ModelID.Intricate_Grawl_Necklace
 OUTPOST_TO_TRAVEL = 20 #Droknar's Forge
 COORD_TO_EXIT_MAP = (5745.68, 1432.18)

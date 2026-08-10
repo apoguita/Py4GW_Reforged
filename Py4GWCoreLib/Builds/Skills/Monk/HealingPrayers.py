@@ -8,11 +8,11 @@ from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
 from Py4GWCoreLib.GlobalCache.HexRemovalPriority import HexRemovalPriority, cast_hex_removal_and_track, get_hexed_ally_for_removal
-from HeroAI.targeting import GetAllAlliesArray
-from HeroAI.types import Skilltarget
+from Py4GWCoreLib.HeroAI.targeting import GetAllAlliesArray
+from Py4GWCoreLib.HeroAI.types import Skilltarget
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["HealingPrayers"]

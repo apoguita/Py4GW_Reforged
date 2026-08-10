@@ -17,7 +17,7 @@ BOT_NAME = "Norn title farm by Wick Divinus"
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
 
 MODULE_NAME = "Norn Title Farm"
-MODULE_ICON = "Textures/Skill_Icons/[2373] - Heart of the Norn.jpg"
+MODULE_ICON = "Assets/Textures/Skill_Icons/[2373] - Heart of the Norn.jpg"
 
 OLAFSTEAD = 645
 TARNISHED_HAVEN = 641

@@ -13,7 +13,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Factions Character Leveler"
-MODULE_ICON = "Textures\\Module_Icons\\Leveler - Factions.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Factions.png"
 
 KAINENG_CENTER_MAP_ID = 194
 

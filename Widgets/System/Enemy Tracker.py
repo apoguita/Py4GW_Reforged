@@ -22,7 +22,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 
 
 MODULE_NAME = "Enemy Tracker"
-MODULE_ICON = "Textures/Module_Icons/Environment Upkeeper.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Environment Upkeeper.png"
 OPTIONAL = False
 ENEMY_TRACKER_SHARED_VARS_ATTR = "_py4gw_enemy_tracker_shared_vars"
 
@@ -51,7 +51,7 @@ class EnemyTrackerConfig:
     MAIN_INI_KEY: str = ""
     FLOATING_INI_KEY: str = ""
     INI_INIT: bool = False
-    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "crossed swords.png")
+    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Branding", "crossed swords.png")
     DEFAULT_NAME_LANGUAGE: str = "en"
     NAME_LANGUAGE_CODES: ClassVar[dict[int, str]] = {
         0: "en",

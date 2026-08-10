@@ -8,9 +8,9 @@ It is based on:
 
 - `Py4GWCoreLib/GlobalCache/HexRemovalPriority.py`
 - `Py4GWCoreLib/GlobalCache/WhiteboardLocks.py`
-- `HeroAI/hex_removal_src/hex_removal_config.py`
-- `HeroAI/hex_removal_src/hex_removal_ui.py`
-- `HeroAI/ui_base.py` (Hex Removal tab wiring)
+- `Py4GWCoreLib/HeroAI/hex_removal_src/hex_removal_config.py`
+- `Py4GWCoreLib/HeroAI/hex_removal_src/hex_removal_ui.py`
+- `Py4GWCoreLib/HeroAI/ui_base.py` (Hex Removal tab wiring)
 - `Py4GWCoreLib/Builds/Skills/Monk/NoAttribute.py` (`Remove_Hex` reference helper)
 - `Py4GWCoreLib/Builds/Skills/mesmer/DominationMagic.py` (`Shatter_Hex` reference helper)
 - `Py4GWCoreLib/Builds/Ritualist/Rt_Any/Soul Twisting.py` (reference rotation)
@@ -42,13 +42,13 @@ build helpers consume the same merged data.
     (`cast_hex_removal_and_track`).
 - `Py4GWCoreLib/GlobalCache/WhiteboardLocks.py`
   - Cross-hero lock helpers for `WhiteboardLockKind.HEX_REMOVAL_TARGET`.
-- `HeroAI/hex_removal_src/hex_removal_config.py`
+- `Py4GWCoreLib/HeroAI/hex_removal_src/hex_removal_config.py`
   - Per-character JSONC persistence, parser/serializer, runtime debug-flag
     application, hot-reload invalidation.
-- `HeroAI/hex_removal_src/hex_removal_ui.py`
+- `Py4GWCoreLib/HeroAI/hex_removal_src/hex_removal_ui.py`
   - The Hex Removal tab UI. Profession sub-tabs, configure panel,
     Settings sub-tab, Info sub-tab.
-- `HeroAI/ui_base.py`
+- `Py4GWCoreLib/HeroAI/ui_base.py`
   - 4-line lazy import that mounts the tab inside
     `DrawBuildMatchesWindow`.
 
@@ -427,7 +427,7 @@ the Energy Surge and Panic builds.
 
 The GUI is a 4th tab inserted into the `HeroAI Build Matches` window
 (`Hex Removal`). It is wired by a single 4-line lazy import in
-`HeroAI/ui_base.py`:
+`Py4GWCoreLib/HeroAI/ui_base.py`:
 
 ```python
 if PyImGui.begin_tab_item("Hex Removal"):

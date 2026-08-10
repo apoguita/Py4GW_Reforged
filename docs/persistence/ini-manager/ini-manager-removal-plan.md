@@ -71,8 +71,8 @@ it — `Settings(name, scope)` returns the same cached instance anyway.
    `if not INI_KEY: return` deferral shape; it just guards constructing `cfg`
    (`Settings(name, "account")`) until the account is ready, exactly like
    `ensure_key` returning `""` did. Global docs bind immediately. No new pattern.
-4. **The 5 reach-in files** (`HeroAI/follow/editor.py`,
-   `HeroAI/follow/leader_publish.py`, `HeroAI/ui_base.py`,
+4. **The 5 reach-in files** (`Py4GWCoreLib/HeroAI/follow/editor.py`,
+   `Py4GWCoreLib/HeroAI/follow/leader_publish.py`, `Py4GWCoreLib/HeroAI/ui_base.py`,
    `Py4GWCoreLib/EnemyBlacklist.py`, `Widgets/WidgetCatalog/Py4GW_widget_catalog.py`)
    use `_get_node()`, `_handlers`, and vestigial fields — rewrite them to hold a
    `Settings` object and drop the vestigial pokes.

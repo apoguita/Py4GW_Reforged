@@ -6,7 +6,7 @@ import time
 
 module_name = "Farmer Hamnet Bot"
 MODULE_NAME = "Farmer Hamnet (Presearing Leveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Leveler - Presearing.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Presearing.png"
 
 # Create log file with timestamp in current directory
 log_filename = f"farmer_hamnet_bot_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"

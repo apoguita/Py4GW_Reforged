@@ -7,7 +7,7 @@ import Py4GW
 from Py4GWCoreLib import Agent, Color, Console, ConsoleLog, ImGui, Map, Party, Player, PyImGui, Skill
 
 MODULE_NAME = "Balthazar Skill Unlock"
-MODULE_ICON = "Textures/Module_Icons/Skill Learner.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Skill Learner.png"
 
 GREAT_TEMPLE_OF_BALTHAZAR_MAP_ID = 248
 PRIEST_OF_BALTHAZAR_MODEL_ID = 218

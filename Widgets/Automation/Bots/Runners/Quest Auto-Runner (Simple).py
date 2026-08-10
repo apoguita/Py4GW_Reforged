@@ -42,7 +42,7 @@ from Py4GWCoreLib.ImGui_src.IconsFontAwesome5 import IconsFontAwesome5
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Quest Auto-Runner (Simple)"
-MODULE_ICON = "Textures/Module_Icons/Quest Auto Runner.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Quest Auto Runner.png"
 
 BOT_NAME = "Quest Auto-Runner (Simple)"
 MARKER_UPDATE_TIMEOUT_S = 20.0

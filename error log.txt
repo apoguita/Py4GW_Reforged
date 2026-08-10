@@ -1,0 +1,201 @@
+[2026-08-07 20:09:02] [Py4GW] Initializing scanner.
+[2026-08-07 20:09:02] [Py4GW] Initializing patterns.
+[2026-08-07 20:09:02] [Py4GW] Initializing Python runtime.
+[2026-08-07 20:09:02] [Py4GW] [python] Initialize: begin.
+[2026-08-07 20:09:02] [Py4GW] [python] Py_IsInitialized (pre): 0
+[2026-08-07 20:09:02] [Py4GW] [python] Step 1: creating interpreter (Py_InitializeFromConfig).
+[2026-08-07 20:09:02] [Py4GW] [python] Step 1 OK: interpreter created.
+[2026-08-07 20:09:02] [Py4GW] [python] Step 2: importing sys.
+[2026-08-07 20:09:02] [Py4GW] [python] Step 2 OK. sys.prefix: F:\GW\GW1
+[2026-08-07 20:09:02] [Py4GW] [python] Step 3: configuring sys.path.
+[2026-08-07 20:09:02] [Py4GW] [python] module directory: C:\Users\Apo\Py4GW_Reforged
+[2026-08-07 20:09:02] [Py4GW] [python] working directory set to module dir: C:\Users\Apo\Py4GW_Reforged
+[2026-08-07 20:09:02] [Py4GW] [python] Step 3 OK: sys.path configured.
+[2026-08-07 20:09:02] [Py4GW] [python] Step 4: importing embedded modules.
+[2026-08-07 20:09:02] [Py4GW] [python] importing Py4GW
+[2026-08-07 20:09:02] [Py4GW] [python] importing PySystem
+[2026-08-07 20:09:02] [Py4GW] [python] importing PySettings
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyJson
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyProfiler
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyCallback
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyListeners
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyAgent
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyAgentRecolor
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyCamera
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyChat
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyChatCommands
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyCtoS
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyAgentEvents
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyEffects
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyFriendList
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyGameThread
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyGuild
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyItem
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyInventory
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyMap
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyMerchant
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyNameObfuscator
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyPacketSniffer
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyParty
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyPathing
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyPing
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyPlayer
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyQuest
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyRender
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyScanner
+[2026-08-07 20:09:02] [Py4GW] [python] importing PySkill
+[2026-08-07 20:09:02] [Py4GW] [python] importing PySkillbar
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyTrade
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyUIManager
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyTexture
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyDialog
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyOverlay
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyDXOverlay
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyWorldRender
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyParticles
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyKeystroke
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyMouse
+[2026-08-07 20:09:02] [Py4GW] [python] importing PyImGui
+[2026-08-07 20:09:02] [Py4GW] [python] Step 4 OK: all embedded modules imported.
+[2026-08-07 20:09:02] [Py4GW] [python] Step 5: importing __main__.
+[2026-08-07 20:09:02] [Py4GW] [python] Step 5 OK.
+[2026-08-07 20:09:02] [Py4GW] [python] Step 6: releasing GIL (PyEval_SaveThread).
+[2026-08-07 20:09:02] [Py4GW] [python] Step 6 OK: Python runtime initialized.
+[2026-08-07 20:09:02] [Py4GW] Initializing Guild Wars modules.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing game_thread.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing ctos.
+[2026-08-07 20:09:02] [Py4GW] [ctos] CToS sender initialized.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing stoc.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing render.
+[2026-08-07 20:09:02] [Py4GW] STOC_HEADER_COUNT [487]
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing ui.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing camera.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing memory_manager.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing context.
+[2026-08-07 20:09:02] [Py4GW] [gw] Initializing effects.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing events.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing friend_list.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing player.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing agent.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing quest.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing map.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing guild.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing chat.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing chat_commands.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing item.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing trade.
+[2026-08-07 20:09:03] [Py4GW] [trade] Trade module initialized.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing merchant.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing skillbar.
+[2026-08-07 20:09:03] [Py4GW] [SCAN] SkillArray = 00DC8ED0
+[2026-08-07 20:09:03] [Py4GW] [SCAN] AttributeArray = 00E75740
+[2026-08-07 20:09:03] [Py4GW] [SCAN] ChangeSecondary_Func = 00D60800
+[2026-08-07 20:09:03] [Py4GW] [SCAN] LoadAttributes_Func = 00C4D9B0
+[2026-08-07 20:09:03] [Py4GW] [SCAN] LoadSkills_Func = 00C56C90
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing party.
+[2026-08-07 20:09:03] [Py4GW] [SCAN] TickButtonUICallback = 009AC3F0
+[2026-08-07 20:09:03] [Py4GW] [SCAN] SetDifficulty_Func = 00C965F0
+[2026-08-07 20:09:03] [Py4GW] [SCAN] PartySearchSeek_Func = 00C97480
+[2026-08-07 20:09:03] [Py4GW] [SCAN] SetReadyStatus_Func = 00C97670
+[2026-08-07 20:09:03] [Py4GW] [SCAN] FlagHeroAgent_Func = 00C4E030
+[2026-08-07 20:09:03] [Py4GW] [SCAN] FlagAll_Func = 00C4E050
+[2026-08-07 20:09:03] [Py4GW] [SCAN] SetHeroBehavior_Func = 00C4DFA0
+[2026-08-07 20:09:03] [Py4GW] [SCAN] LockPetTarget_Func = 00D5FD00
+[2026-08-07 20:09:03] [Py4GW] [SCAN] CommandHotKeyDisableAi_Func = 00D5FD80
+[2026-08-07 20:09:03] [Py4GW] [SCAN] PartyWindowButtonCallback_Func = 009AE900
+[2026-08-07 20:09:03] [Py4GW] [SCAN] PartySearchButtonCallback_Func = 009A2EB0
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing name_obfuscator.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing agent_recolor.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing textures.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing dialog.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing native_ui.
+[2026-08-07 20:09:03] [Py4GW] [gw] Initializing world_render.
+[2026-08-07 20:09:03] [Py4GW] [gw] Enabling memory patcher hooks.
+[2026-08-07 20:09:03] [Py4GW] [gw] Guild Wars initialization complete.
+[2026-08-07 20:09:03] [Py4GW] Shared memory publisher ready: Py4GW_Runtime_18448_008C0886
+[2026-08-07 20:09:03] [Py4GW] Multibox shared memory ready (creator: yes).
+[2026-08-07 20:09:03] [Py4GW] Initializing crash handler.
+[2026-08-07 20:09:03] [Py4GW] [CrashHandler] Path C attached.
+[2026-08-07 20:09:03] [Py4GW] [CrashHandler] installed.
+[2026-08-07 20:09:03] [Py4GW] Py4GW initialized.
+[2026-08-07 20:09:03] [Py4GW] ImGui initialized on Guild Wars render device.
+[2026-08-07 20:09:04] [Py4GW] Account anchor ready: apoguita@gmail.com
+[2026-08-07 20:09:04] [WidgetManager] Widget manager compiled successfully.
+[2026-08-07 20:09:05] [WidgetManager] draw() function found.
+[2026-08-07 20:09:05] [WidgetManager] update() function found.
+[2026-08-07 20:09:05] [WidgetManager] main() function found.
+[2026-08-07 20:09:05] [WidgetManager] Widget manager started.
+[2026-08-07 20:09:05] [print:] [ButtonMethods] CtlBtnProc resolved via short-prologue fallback @ 0x009A9240
+[2026-08-07 20:09:05] [print:] [ButtonMethods] FrameSetSize resolved @ 0x00A74670
+[2026-08-07 20:09:05] [print:] [ButtonMethods] FrameSetPosition resolved @ 0x00A744C0
+[2026-08-07 20:09:05] [print:] [ButtonMethods] FrameMouseEnable resolved via byte-pattern fallback @ 0x00A73AB0
+[2026-08-07 20:09:05] [print:] [ButtonMethods] FrameNewSubclass resolved via byte-pattern fallback @ 0x00A73E20
+[2026-08-07 20:09:05] [Party Quest Log] Settings file not found. Creating default settings...
+[2026-08-07 20:09:06] [Style Manager] Enabled Style Manager with theme: Py4GW
+[2026-08-07 20:09:07] [HeroAI] Loading HeroAI settings...
+[2026-08-07 20:09:07] [AutoInventoryHandler] Auto Handler Options initialized
+[2026-08-07 20:09:07] [HeroAI] HeroAI initialized successfully.
+[2026-08-07 20:09:22] [Modular Tester] Widget main failed: module 'PyImGui' has no attribute 'text_scaled'
+[2026-08-07 20:09:22] [Modular Tester] Traceback (most recent call last):
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\modular\widget_runtime.py", line 23, in guarded_widget_main
+    run_fn()
+    ~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 909, in _main_impl
+    _draw_top_bar()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 512, in _draw_top_bar
+    ImGui.text_scaled("Modular Tester", ACCENT, 1.22)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\ImGui_src\ImGuisrc.py", line 1882, in text_scaled
+    PyImGui.text_scaled(text, color, scale)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'PyImGui' has no attribute 'text_scaled'
+
+[2026-08-07 20:09:24] [Modular Tester] Widget main failed: module 'PyImGui' has no attribute 'text_scaled'
+[2026-08-07 20:09:24] [Modular Tester] Traceback (most recent call last):
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\modular\widget_runtime.py", line 23, in guarded_widget_main
+    run_fn()
+    ~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 909, in _main_impl
+    _draw_top_bar()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 512, in _draw_top_bar
+    ImGui.text_scaled("Modular Tester", ACCENT, 1.22)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\ImGui_src\ImGuisrc.py", line 1882, in text_scaled
+    PyImGui.text_scaled(text, color, scale)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'PyImGui' has no attribute 'text_scaled'
+
+[2026-08-07 20:09:26] [Modular Tester] Widget main failed: module 'PyImGui' has no attribute 'text_scaled'
+[2026-08-07 20:09:26] [Modular Tester] Traceback (most recent call last):
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\modular\widget_runtime.py", line 23, in guarded_widget_main
+    run_fn()
+    ~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 909, in _main_impl
+    _draw_top_bar()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 512, in _draw_top_bar
+    ImGui.text_scaled("Modular Tester", ACCENT, 1.22)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\ImGui_src\ImGuisrc.py", line 1882, in text_scaled
+    PyImGui.text_scaled(text, color, scale)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'PyImGui' has no attribute 'text_scaled'
+
+[2026-08-07 20:09:28] [Modular Tester] Widget main failed: module 'PyImGui' has no attribute 'text_scaled'
+[2026-08-07 20:09:28] [Modular Tester] Traceback (most recent call last):
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\modular\widget_runtime.py", line 23, in guarded_widget_main
+    run_fn()
+    ~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 909, in _main_impl
+    _draw_top_bar()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\Apo\Py4GW_Reforged\Widgets\Automation\modular\Modular Tester.py", line 512, in _draw_top_bar
+    ImGui.text_scaled("Modular Tester", ACCENT, 1.22)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Apo\Py4GW_Reforged\Py4GWCoreLib\ImGui_src\ImGuisrc.py", line 1882, in text_scaled
+    PyImGui.text_scaled(text, color, scale)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'PyImGui' has no attribute 'text_scaled'
+

@@ -3,7 +3,7 @@ from Py4GWCoreLib import Botting
 
 BOT_NAME = "Darkroot's Daggers Farm"
 MODULE_NAME = "Darkroot's Daggers"
-MODULE_ICON = "Textures\\Module_Icons\\Darkroot's Daggers.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Darkroot's Daggers.png"
 OUTPOST_TO_TRAVEL = 230
 COORD_TO_EXIT_MAP = (-4494.75, 4760.00)
 EXPLORABLE_TO_TRAVEL = 209
@@ -49,9 +49,9 @@ def _find_shared_textures_folder() -> str:
     weapons = "Weapons Farm"
     for base in _iter_parents(os.getcwd()):
         candidates = [
-            os.path.join(base, "Bots", weapons, "Textures"),
+            os.path.join(base, "Bots", weapons, "Assets", "Textures"),
             os.path.join(base, "Bots", weapons, "textures"),
-            os.path.join(base, weapons, "Textures"),
+            os.path.join(base, weapons, "Assets", "Textures"),
             os.path.join(base, weapons, "textures"),
         ]
         for c in candidates:

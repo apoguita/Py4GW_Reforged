@@ -15,7 +15,7 @@ from Py4GWCoreLib import Color, ImGui
 from Py4GWCoreLib.PacketSniffer import SNIFFER as PACKET_SNIFFER
 
 MODULE_NAME = "Packet Sniffer Tester"
-MODULE_ICON = "Textures/Module_Icons/Debug.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Debug.png"
 
 _capturing = False
 _stoc_packets: list[tuple[int, int, bytes]] = []

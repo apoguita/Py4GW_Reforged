@@ -174,7 +174,7 @@ cleanly separate:
   or a `MapOverlay` surface), and how it exposes projection / shapes / agent-pass / config /
   interaction without dragging widget-only concerns into the core layer.
 - **Catalog entry / naming / icon** for the unified widget, and what happens to the two old
-  `.py` files and their `Textures/Module_Icons` assets.
+  `.py` files and their `Assets/Textures/Module_Icons` assets.
 
 ### Resolved by the exclusivity + Py4GWCoreLib decisions
 - ~~Feature applicability when "both" is on~~ — moot; modes are mutually exclusive.

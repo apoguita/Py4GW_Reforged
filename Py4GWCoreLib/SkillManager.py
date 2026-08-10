@@ -1,11 +1,11 @@
-from HeroAI.custom_skill import CustomSkillClass
-from HeroAI.types import SkillType,SkillNature, Skilltarget
+from Py4GWCoreLib.HeroAI.custom_skill import CustomSkillClass
+from Py4GWCoreLib.HeroAI.types import SkillType,SkillNature, Skilltarget
 
-from HeroAI.targeting import TargetLowestAlly, TargetLowestAllyEnergy, TargetClusteredEnemy, TargetLowestAllyCaster, TargetLowestAllyMartial, TargetLowestAllyMelee, TargetLowestAllyRanged, GetAllAlliesArray
-from HeroAI.targeting import TargetMinionOrAllyNonEnchanted, TargetMinionNonEnchanted, TargetAllyNonEnchanted, TargetAllyNonWeaponSpelled
-from HeroAI.targeting import GetEnemyAttacking, GetEnemyCasting, GetEnemyCastingSpell, GetEnemyInjured, GetEnemyConditioned, GetEnemyHealthy
-from HeroAI.targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, GetEnemyMoving, GetEnemyKnockedDown
-from HeroAI.targeting import GetEnemyBleeding, GetEnemyPoisoned, GetEnemyCrippled
+from Py4GWCoreLib.HeroAI.targeting import TargetLowestAlly, TargetLowestAllyEnergy, TargetClusteredEnemy, TargetLowestAllyCaster, TargetLowestAllyMartial, TargetLowestAllyMelee, TargetLowestAllyRanged, GetAllAlliesArray
+from Py4GWCoreLib.HeroAI.targeting import TargetMinionOrAllyNonEnchanted, TargetMinionNonEnchanted, TargetAllyNonEnchanted, TargetAllyNonWeaponSpelled
+from Py4GWCoreLib.HeroAI.targeting import GetEnemyAttacking, GetEnemyCasting, GetEnemyCastingSpell, GetEnemyInjured, GetEnemyConditioned, GetEnemyHealthy
+from Py4GWCoreLib.HeroAI.targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, GetEnemyMoving, GetEnemyKnockedDown
+from Py4GWCoreLib.HeroAI.targeting import GetEnemyBleeding, GetEnemyPoisoned, GetEnemyCrippled
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 
 from .AgentArray import AgentArray
@@ -1408,7 +1408,7 @@ class SkillManager:
         
         def GetActiveScanRange(self):
             try:
-                from HeroAI.cache_data import CacheData
+                from Py4GWCoreLib.HeroAI.cache_data import CacheData
                 cached_data = CacheData()
                 cached_data.Update()
                 return cached_data.GetActiveScanRange()
@@ -1417,7 +1417,7 @@ class SkillManager:
         
         def InAggro(self):
             try:
-                from HeroAI.cache_data import CacheData
+                from Py4GWCoreLib.HeroAI.cache_data import CacheData
                 cached_data = CacheData()
                 cached_data.Update()
                 return bool(cached_data.data.in_aggro)

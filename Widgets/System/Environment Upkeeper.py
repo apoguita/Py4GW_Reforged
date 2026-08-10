@@ -5,7 +5,7 @@ from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER
 
 #do not ever disable this module, it is the main module for everything
 MODULE_NAME = "Environment Upkeeper"
-MODULE_ICON = "Textures/Module_Icons/Environment Upkeeper.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Environment Upkeeper.png"
 OPTIONAL = False
 
 __widget__ = {
@@ -22,7 +22,7 @@ class WidgetConfig:
     def __init__(self):
         self.action_queue_manager = ActionQueueManager()
         # The loot singleton is kept alive by holding it.
-        from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+        from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 
         self.loot_config = LootFilters()
 
@@ -98,7 +98,7 @@ def main():
     else:
         # A map change makes every agent/item id meaningless, so the loot class clears its own
         # session ids. Driving it from here as well keeps the old behaviour when the map is invalid.
-        from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+        from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 
         LootFilters().on_map_change()
     

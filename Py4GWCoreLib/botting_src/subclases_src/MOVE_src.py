@@ -36,7 +36,7 @@ class _MOVE:
     ) -> Generator[Any, Any, bool]:
         from ...Routines import Routines
         from ...Map import Map
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         from ...enums import Range
         from ...GlobalCache import GLOBAL_CACHE
         from ...Py4GWcorelib import ConsoleLog, Console
@@ -263,7 +263,7 @@ class _MOVE:
         import random
         from ...Routines import Routines
         from ...Map import Map
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         from ...enums import Range
         from ...GlobalCache import GLOBAL_CACHE
         from ...Py4GWcorelib import ConsoleLog, Console, Utils, ActionQueueManager

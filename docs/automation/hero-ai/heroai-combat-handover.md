@@ -4,9 +4,9 @@
 
 This document is the working handover for the HeroAI combat pipeline centered on:
 
-- `HeroAI/combat.py`
-- `HeroAI/targeting.py`
-- `HeroAI/utils.py`
+- `Py4GWCoreLib/HeroAI/combat.py`
+- `Py4GWCoreLib/HeroAI/targeting.py`
+- `Py4GWCoreLib/HeroAI/utils.py`
 - `Py4GWCoreLib/routines_src/Agents.py`
 - `Py4GWCoreLib/routines_src/Checks.py`
 - shared-memory and effect cache reads used by combat decisions
@@ -25,7 +25,7 @@ Recent work has been pushing the combat path toward:
 Examples already moved in that direction:
 
 - `Routines.Agents.GetNearestEnemy*` now use single-pass nearest selection helpers
-- `HeroAI/targeting.py` lowest-ally selectors now sort by real values and defer expensive effect checks
+- `Py4GWCoreLib/HeroAI/targeting.py` lowest-ally selectors now sort by real values and defer expensive effect checks
 - shared-memory getters and effect getters now use `frame_cache`
 - `Checks.Skills.GetEnergyCostWithEffects(...)` is frame-cached
 - `Checks.Skills.apply_expertise_reduction(...)` now exits early for non-primary-Rangers, with the `Ranger of Melandru` exception
@@ -52,7 +52,7 @@ The main heavy remaining caller is `AreCastConditionsMet(...)`.
 
 Location:
 
-- `HeroAI/combat.py`
+- `Py4GWCoreLib/HeroAI/combat.py`
 
 Why it is heavy:
 
@@ -162,13 +162,13 @@ The list/count scans should stay near the end, after cheap state checks have alr
 
 ## Suggested Next Refactor Order
 
-1. `HeroAI/combat.py::AreCastConditionsMet`
+1. `Py4GWCoreLib/HeroAI/combat.py::AreCastConditionsMet`
 
 - add lazy locals
 - stop eager condition bundle evaluation
 - keep behavior unchanged
 
-2. `HeroAI/combat.py::GetAppropiateTarget`
+2. `Py4GWCoreLib/HeroAI/combat.py::GetAppropiateTarget`
 
 - continue collapsing repeated target acquisition into lazy locals
 - audit branches that still call multiple targeting helpers per slot
@@ -189,9 +189,9 @@ When optimizing this area:
 
 ## Useful Files
 
-- `HeroAI/combat.py`
-- `HeroAI/targeting.py`
-- `HeroAI/utils.py`
+- `Py4GWCoreLib/HeroAI/combat.py`
+- `Py4GWCoreLib/HeroAI/targeting.py`
+- `Py4GWCoreLib/HeroAI/utils.py`
 - `Py4GWCoreLib/routines_src/Agents.py`
 - `Py4GWCoreLib/routines_src/Checks.py`
 - `Py4GWCoreLib/GlobalCache/SharedMemory.py`

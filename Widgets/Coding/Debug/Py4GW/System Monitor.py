@@ -6,7 +6,7 @@ from Py4GWCoreLib import UIManager, ThrottledTimer, Color, ColorPalette, ImGui
 from Py4GWCoreLib import ProfilingRegistry, SimpleProfiler, WidgetHandler
 
 MODULE_NAME = "System Monitor"
-MODULE_ICON = "Textures/Module_Icons/Monitor Diagnostic.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Monitor Diagnostic.png"
 MODULE_CATEGORY = "Coding"
 MODULE_TAGS = ["performance", "profiler", "fps", "frametime", "flame graph", "monitor", "debug"]
 # Replaces the legacy "System Monitor" and "Widget Profiler" -- keep both as aliases

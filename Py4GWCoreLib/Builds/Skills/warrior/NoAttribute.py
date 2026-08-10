@@ -63,7 +63,7 @@ class NoAttribute:
 
     #region P
     def Protectors_Defense(self) -> BuildCoroutine:
-        from HeroAI.targeting import GetAllAlliesArray
+        from Py4GWCoreLib.HeroAI.targeting import GetAllAlliesArray
         from Py4GWCoreLib import AgentArray
 
         protectors_defense_id: int = Skill.GetID("Protectors_Defense")

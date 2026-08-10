@@ -553,10 +553,6 @@ DevText omits all of these — relies on default scroll stepping.
 
 `UI_RE/window_contents_test.py` (249 lines) — creates a window with scrollable content and multiple text items. Demonstrates the complete pipeline: window creation → frame list insertion → text label stacking → scroll configuration.
 
-### Architecture Investigation
-
-Full RE context: `.opencode/projects/re/window-contents/context_pool.md` (800 lines covering 3 phases of analysis across DevText, InventoryAggregate, PartySearch, and 81 window catalog).
-
 ---
 
 ## Typed Component Architecture — Three Registration Layers (2026-06-05)

@@ -111,7 +111,7 @@ at `:706`.)
 **[was wrong]** The old doc said these "each re-do the same checks". They all end in the same two lines
 (query the filter → send `PickUpLoot` to self) but their **guards differ materially**:
 
-| | `Widgets/Automation/Multiboxing/HeroAI.py:43-87` | `HeroAI/headless_tree.py:83-140` | `botting_src/helpers_src/Upkeepers.py:137-192` |
+| | `Widgets/Automation/Multiboxing/HeroAI.py:43-87` | `Py4GWCoreLib/HeroAI/headless_tree.py:83-140` | `botting_src/helpers_src/Upkeepers.py:137-192` |
 |---|---|---|---|
 | enable | `options.Looting` `:45` | `_headless_looting_enabled` `:84` (message-driven `:47-66`) | `auto_loot.is_active()` `:156` |
 | combat | `in_aggro` `:51` | `IsHeadlessCombatPauseActive()` `:92` | danger block `:162-172` **only if the HeroAI widget is on**, else `pause_on_danger_fn()` `:174` |
@@ -119,8 +119,8 @@ at `:706`.)
 | slots | `<= 1` `:63` | `<= 1` `:113` | **none** |
 | pacing | `ThrottledTimer(250)` `:36` | own `ThrottledTimer(250)` `:35` | **no timer** — fixed `wait(500)` + blocks on the message `:190-192` |
 
-**Manual senders skip all gating.** `HeroAI/ui_base.py:549-553` fans out to **every** account in shared
-memory; `HeroAI/commands.py:173-177` fans out to a **caller-resolved** party/same-map set
+**Manual senders skip all gating.** `Py4GWCoreLib/HeroAI/ui_base.py:549-553` fans out to **every** account in shared
+memory; `Py4GWCoreLib/HeroAI/commands.py:173-177` fans out to a **caller-resolved** party/same-map set
 (`command_api.py:56-70`) — **[was wrong]** "all accounts" is true only of the `ui_base` button.
 **Six senders total** — the old doc missed `Bots/marks_coding_corner/VoltaicSpearTeamFarm.py:239`.
 

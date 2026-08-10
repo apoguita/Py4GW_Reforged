@@ -21,6 +21,7 @@ Py4GW_injection_log.txt
 .opencode
 .codex
 .backups
+/.vs/
 
 # 1. Ignore ALL .ini files in Settings and subfolders
 Settings/**/*.ini
@@ -50,6 +51,14 @@ Widgets/Data/InventoryModelIds/**
 Widgets/Data/InventoryModHash/**
 Widgets/Data/InventoryModelFileIds/**
 json/**
+# Modular recipes are repository-owned distributable content, not per-account
+# JsonFactory state. Keep the rest of the runtime JSON jail ignored.
+!json/modular/
+!json/modular/**
+# Enemy Tracker's global documents are curated repository data, not private
+# per-account runtime state.
+!json/Global/EnemyTracker/
+!json/Global/EnemyTracker/*.json
 
 Bots/marks_coding_corner/alcohol_procs.ini
 Bots/marks_coding_corner/**.json
@@ -228,11 +237,9 @@ cython_debug/
 /Multiboxer
 .isort.cfg
 
-# Ignore all files in Styles
-/Styles
-
-# # But keep the .default.json ones
-!/Styles/*.default.json
+# Ignore user-created style documents while keeping bundled defaults tracked.
+/Assets/Styles
+!/Assets/Styles/*.default.json
 
 # Ignore Visual Studio Code settings folder
 .vscode/

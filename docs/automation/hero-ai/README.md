@@ -7,7 +7,7 @@ categories remain distinct in the documentation index.
 ## Authority and status
 
 - `heroai-combat-handover.md` is a performance and decision-pipeline handover;
-  verify its optimization claims against current `HeroAI/` and routine sources.
+  verify its optimization claims against current `Py4GWCoreLib/HeroAI/` and routine sources.
 - `hero-ai-interrupt-feasibility.md` documents the two evaluator gates, logging,
   and known heuristic limitations. It explicitly records parked inaccuracies;
   do not treat a SUCCESS log as proof of a real interrupt without the stated
@@ -17,7 +17,7 @@ categories remain distinct in the documentation index.
   authority for ImGui, LaunchBar, or native UI behavior.
 - `follower-resolves-unstuck.md` documents the per-follower smart-unstuck
   state machine, detour generation, runtime integration, and diagnostics.
-- Current `HeroAI/`, `Py4GWCoreLib/`, `Sources/`, and injected-client evidence
+- Current `Py4GWCoreLib/HeroAI/`, `Py4GWCoreLib/`, `Sources/`, and injected-client evidence
   outrank these handovers and inventories.
 
 ## Review order

@@ -35,7 +35,7 @@ The previous root `CLAUDE.md` was ignored and untracked, so it is not recoverabl
 ### Companion references
 
 - Use `docs/architecture/reference/py4-gw-conceptual-model.md` for architecture and terminology.
-- Use `docs/bridge/mcp/mcp-bridge.md` and `BridgeRuntime/README.md` for bridge/MCP planning and operator/runtime usage.
+- Use `docs/bridge/mcp/mcp-bridge.md` and `py4gw_bridge/README.md` for bridge/MCP planning and operator/runtime usage.
 - Read relevant handovers such as `FOLLOW_REFACTOR_HANDOVER.md`, `DBMGR_HANDOVER.md`, `docs/ui/widget-manager/widget-manager-and-catalog.md`, `docs/automation/behavior-trees/bottingtree-and-bt-routines-guide.md`, `heroai-combat-handover.md`, and `settings_database_cache_model.md` before changing those subsystems.
 - Use `docs/architecture/records/reforged-migration/` for the ongoing legacy-GWCA to Reforged-Native migration record.
 
@@ -50,9 +50,9 @@ The previous root `CLAUDE.md` was ignored and untracked, so it is not recoverabl
 
 - `Py4GW_Launcher.py` is the external launcher/injector UI.
 - `Py4GW_widget_manager.py` bootstraps in-client widgets.
-- The bridge path is `Widgets/Coding/Tools/Bridge Client.py` -> `bridge_daemon.py` -> `bridge_cli.py`; `py4gw_mcp_server.py` is the MCP adapter.
+- The bridge path is `Widgets/Coding/Tools/Bridge Client.py` -> `py4gw_bridge/daemon.py` -> `py4gw_bridge/cli.py`; `py4gw_bridge/mcp_server.py` is the MCP adapter.
 - `Sources/modular_bot/` is authoritative for ModularBot; widget copies are wrappers.
-- Focused checks include `python "bridge_daemon.py" --help`, `python "bridge_cli.py" --help`, `python "py4gw_mcp_server.py" --help`, `python "Sources/modular_bot/tools/validate_modular_docs.py"`, `python "Widgets/Data/test_merchant_rules_regression.py"`, and applicable standalone root `test_*.py` scripts.
+- Focused checks include `python -m py4gw_bridge.daemon --help`, `python -m py4gw_bridge.cli --help`, `python -m py4gw_bridge.mcp_server --help`, `python "Sources/modular_bot/tools/validate_modular_docs.py"`, `python "Widgets/Data/test_merchant_rules_regression.py"`, and applicable standalone root `test_*.py` scripts.
 
 ### Widget and shared-state gotchas
 
@@ -98,7 +98,7 @@ The only sanctioned non-class disk access: `Py4GWCoreLib/database_src/DBMgr.py` 
 
 - `docs/architecture/reference/py4-gw-conceptual-model.md` is the canonical architecture/source-of-truth document for project layers and terminology.
 - `docs/bridge/mcp/mcp-bridge.md` is the MCP-facing bridge planning summary; use it for bridge/MCP modeling, not as the primary architecture source.
-- `BridgeRuntime/README.md` is the operator/runtime usage reference for daemon + injected bridge client + CLI.
+- `py4gw_bridge/README.md` is the operator/runtime usage reference for daemon + injected bridge client + CLI.
 - `docs/architecture/reference/py4-gw-model-features-detail.txt` is a derived plain-text export for quick scanning, not a separate authority.
 - `docs/ui/widget-manager/widget-manager-and-catalog.md` is the highest-value reference before changing widget discovery, widget metadata defaults, `WidgetHandler`, or `WidgetCatalog` behavior.
 
@@ -110,7 +110,6 @@ The only sanctioned non-class disk access: `Py4GWCoreLib/database_src/DBMgr.py` 
 - `docs/game-client/research/cpp-wasm-mapping.md` — the full CPP↔WASM↔EXE translation procedure with worked examples and pitfall notes.
 - `docs/game-client/research/rosetta-stone.txt` — GwA2 (AutoIt) to Py4GW function mapping reference.
 - `docs/game-client/research/gw-combat-ai-reverse-engineering.md` — combat AI RE analysis.
-- `docs/ui/research/generated/native-gw-ui-function-catalog.json` — catalog of native GW UI functions with addresses.
 - `docs/ui/research/native-gw-window-creation-investigation.md` — window proc creation RE.
 - `docs/ui/research/native-ui-title-and-encoded-string-reference.md` — UI title and encoding reference.
 - `docs/ui/name-tag-colors/feature-guide.md` — historical feature/usage guide for `PyAgentTagColor`; current source uses the expanded `PyAgentRecolor` surface.
@@ -179,19 +178,19 @@ Full catalog with sub-function breakdowns in `docs/game-client/research/reverse-
 - `Py4GW_Launcher.py` is the external launcher/injector UI.
 - Bridge stack wiring is split across:
   - injected widget: `Widgets/Coding/Tools/Bridge Client.py`
-  - daemon: `bridge_daemon.py`
-  - operator CLI: `bridge_cli.py`
-- MCP adapter entrypoint is `py4gw_mcp_server.py`; it talks to the daemon over stdio->daemon bridging rather than directly to injected clients.
+  - daemon: `py4gw_bridge/daemon.py`
+  - operator CLI: `py4gw_bridge/cli.py`
+- MCP adapter entrypoint is `py4gw_bridge/mcp_server.py`; it talks to the daemon over stdio->daemon bridging rather than directly to injected clients.
 - Bridge defaults are verified in code: widget server `127.0.0.1:47811`, control server `127.0.0.1:47812`, and the CLI targets control port `47812` by default.
 - `Sources/modular_bot/` contains the real ModularBot implementation. Files under `Widgets/Automation/modularbot/` are mostly thin wrappers that expose those tools/prebuilts through Widget Manager.
 
 ## Focused Checks
 
 - Bridge help / argument discovery:
-  - `python "bridge_daemon.py" --help`
-  - `python "bridge_cli.py" --help`
+  - `python -m py4gw_bridge.daemon --help`
+  - `python -m py4gw_bridge.cli --help`
 - MCP adapter help / surface discovery:
-  - `python "py4gw_mcp_server.py" --help`
+  - `python -m py4gw_bridge.mcp_server --help`
 - ModularBot docs coverage check:
   - `python "Sources/modular_bot/tools/validate_modular_docs.py"`
 

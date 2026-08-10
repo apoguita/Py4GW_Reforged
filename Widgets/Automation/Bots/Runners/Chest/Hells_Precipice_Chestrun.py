@@ -45,7 +45,7 @@ HELLS_PRECIPICE_OUTPOST = 124
 HELLS_PRECIPICE_MISSION = 124
 
 MODULE_NAME = "Hell's Precipice (Chestrun)"
-MODULE_ICON = "Textures\\Module_Icons\\Chestrun - Hell's Precipice.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Chestrun - Hell's Precipice.png"
 
 # Danger Tables
 barbarous_cripple_kd_table: DangerTable = (

@@ -200,8 +200,8 @@ It:
 The bridge stack is an exposure/remoting layer over the `Py4GWCoreLib` source-of-truth layer and derivative `GLOBAL_CACHE` projections:
 
 - Injected widget client: `Widgets/Coding/Tools/Bridge Client.py`
-- External daemon: `bridge_daemon.py`
-- CLI tester/operator: `bridge_cli.py`
+- External daemon: `py4gw_bridge/daemon.py`
+- CLI tester/operator: `py4gw_bridge/cli.py`
 
 This layer does not define the architecture of the underlying library. It only exposes selected capabilities from the wrapper/base systems over a local TCP protocol.
 
@@ -218,7 +218,7 @@ This means the bridge should currently be modeled as exposing project-facing `Py
 
 What exists today:
 
-- The bridge transport protocol (`BridgeRuntime/protocol.py`)
+- The bridge transport (`py4gw_bridge/transport.py`)
 - The injected bridge client widget
 - The bridge daemon with routing by `HWND` / `PID`
 - The CLI for testing daemon control calls
@@ -233,7 +233,7 @@ What is still missing:
 
 A first MCP stdio adapter now exists:
 
-- `py4gw_mcp_server.py`
+- `py4gw_bridge/mcp_server.py`
 
 This adapter currently exposes a narrow safe tool set over the daemon control API:
 
@@ -257,7 +257,7 @@ The bridge documentation must stay aligned with the real architecture:
 
 - `docs/architecture/reference/py4-gw-conceptual-model.md` is the current source-of-truth for the conceptual architecture.
 - `mcp-bridge.md` is the architecture note for MCP planning.
-- `BridgeRuntime/README.md` is the bridge runtime usage reference.
+- `py4gw_bridge/README.md` is the bridge operator usage reference.
 - The actual bridge widget path in this repo is `Widgets/Coding/Tools/Bridge Client.py`.
 
 ## Design Rule Going Forward

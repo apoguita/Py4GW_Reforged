@@ -9,26 +9,26 @@ import PyImGui
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 
 MODULE_NAME = "HeroAI"
-MODULE_ICON = "Textures/Module_Icons/HeroAI.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/HeroAI.png"
 
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.routines_src.BehaviourTrees import BehaviorTree
 
-from HeroAI.cache_data import CacheData
-from HeroAI.follow.follower_runtime import (
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.follow.follower_runtime import (
     FollowExecutionState,
     execute_follower_follow,
     get_follow_destination_distance,
     is_follow_recovery_active,
 )
-from HeroAI import enemy_party
-from HeroAI import resurrection_scroll
+from Py4GWCoreLib.HeroAI import enemy_party
+from Py4GWCoreLib.HeroAI import resurrection_scroll
 
-from HeroAI.windows import (HeroAI_FloatingWindows ,HeroAI_Windows,)
-from HeroAI.ui_base import HeroAI_BaseUI
-from HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay)
-from HeroAI import team_viewer_broadcast
+from Py4GWCoreLib.HeroAI.windows import (HeroAI_FloatingWindows ,HeroAI_Windows,)
+from Py4GWCoreLib.HeroAI.ui_base import HeroAI_BaseUI
+from Py4GWCoreLib.HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay)
+from Py4GWCoreLib.HeroAI import team_viewer_broadcast
 from Py4GWCoreLib import (GLOBAL_CACHE, Agent,
                           Range, Routines, ThrottledTimer, SharedCommandType)
 
@@ -63,7 +63,7 @@ def LootingNode(cached_data: CacheData)-> BehaviorTree.NodeState:
     if GLOBAL_CACHE.Inventory.GetFreeSlotCount() <= 1:
         return BehaviorTree.NodeState.FAILURE
     
-    from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+    from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 
     loot_array = LootFilters().GetLootArray(Range.Earshot.value)
 
@@ -152,7 +152,7 @@ def EnsureFollowModuleIni() -> None:
         return
 
     try:
-        from HeroAI.follow.editor import _init_once
+        from Py4GWCoreLib.HeroAI.follow.editor import _init_once
         _init_once()
     except Exception as e:
         PySystem.Console.Log(MODULE_NAME, f"Follow formation INI bootstrap failed: {e}", PySystem.Console.MessageType.Error)

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 BOT_NAME = "VQ Mount Qinkai"
 MODULE_NAME = "Mount Qinkai (Vanquish)"
-MODULE_ICON = "Textures\\Module_Icons\\Vanquish - Mount Qinkai.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Vanquish - Mount Qinkai.png"
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Sources", "ApoSource", "textures", "VQ_Helmet.png")
 OUTPOST_TO_TRAVEL = 389 # Mount Qinkai outpost
 CAVALON= 193 # Cavalon for faction donation

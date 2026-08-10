@@ -3,7 +3,7 @@
 Modular JSON now compiles directly into `BehaviorTree` trees. The runtime path is intentionally short:
 
 ```text
-Sources/modular_data JSON
+json/modular JSON
   -> Py4GWCoreLib.modular.compile_recipe_steps_to_bt
   -> BTRecipeRunner facade
   -> Py4GWCoreLib.BottingTree planner/services
@@ -61,7 +61,7 @@ Obsolete orchestration and registry packages were removed:
 
 ## JSON Data
 
-Reusable content lives in `Sources/modular_data`. Recipes use the 7 smart node types only. Historical names such as `quest`, `move`, `dialog`, `auto_path`, `wait_map_load`, and `set_auto_behavior` are migration-only vocabulary and are rejected by the compiler.
+Reusable recipe content lives in `json/modular`; the Python tools remain under `Sources/modular_data/tools`. Recipes use the 7 smart node types only. Historical names such as `quest`, `move`, `dialog`, `auto_path`, `wait_map_load`, and `set_auto_behavior` are migration-only vocabulary and are rejected by the compiler.
 
 ## Validation
 

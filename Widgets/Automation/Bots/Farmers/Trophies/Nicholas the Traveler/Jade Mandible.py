@@ -4,11 +4,11 @@ import PyImGui
 BOT_NAME = "Jade Mandible Farmer"
 MODEL_ID_TO_FARM = ModelID.Jade_Mandible
 MODULE_NAME = "Jade Mandible Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Jade Mandible.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Jade Mandible.png"
 OUTPOST_TO_TRAVEL = 109 #The Amnoon Oasis
 COORD_TO_EXIT_MAP = (6842.0,-6019.0)
-EXPLORABLE_TO_TRAVEL = 113 #Prophet's Path   
-                
+EXPLORABLE_TO_TRAVEL = 113 #Prophet's Path
+
 KILLING_PATH = [
     (-15360.0,18879.0),
     (-17516.0,16326.0),
@@ -29,7 +29,7 @@ EXPLORABLE_AREA = 566 #verdant cascades
 NICK_COORDS = [(-5367.88, -13457.16),]
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -56,7 +56,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

@@ -9,7 +9,7 @@ from Py4GWCoreLib.FrameTree import Frame
 from Py4GWCoreLib.FrameTree import FrameTree as LiveTree
 
 MODULE_NAME = "Frame Tester (Basic)"
-MODULE_ICON = "Textures/Module_Icons/Frame Tester.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Frame Tester.png"
 # Frame identity comes from the FrameTree name / registry / alias tables
 # (Py4GWCoreLib/FrameTree/*.py dict literals), not from a file.
 

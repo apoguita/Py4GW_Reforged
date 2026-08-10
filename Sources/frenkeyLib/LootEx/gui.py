@@ -214,7 +214,7 @@ class UI:
         )
         self.style = ex_style.ExStyle()
         file_directory = os.path.dirname(os.path.abspath(__file__))
-        self.textures_folder = os.path.join(PySystem.Console.get_projects_path(), "Textures")
+        self.textures_folder = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures")
         self.icon_textures_path = os.path.join(file_directory, "textures")
         self.item_textures_path = os.path.join(self.textures_folder, "Items")
         
@@ -1287,7 +1287,7 @@ class UI:
                             image_size[0], image_size[1]
                         )
                     elif cached_item.id > 0:
-                        texture = os.path.join(PySystem.Console.get_projects_path(), "Textures", "missing_texture.png") ##TODO: Replace with wiki texture
+                        texture = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "missing_texture.png") ##TODO: Replace with wiki texture
                         ImGui.DrawTexture(
                             texture,
                             image_size[0], image_size[1]
@@ -1562,8 +1562,8 @@ class UI:
                     ImGui.show_tooltip("Merge all diff files into the data files.")
                                         
                     if False and ImGui.button("Move Textures", 160, 30):
-                        items_folder = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Items")
-                        item_model_files_folder = os.path.join(PySystem.Console.get_projects_path(), "Textures", "ItemModelFiles")
+                        items_folder = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Items")
+                        item_model_files_folder = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "ItemModelFiles")
                         
                         for item in self.data.Items.All:
                             if item.inventory_icon and item.model_file_id:
@@ -5090,7 +5090,7 @@ class UI:
                             # get an item with the correct name as fallback
                             weapon_info = next((item for item in items.values() if item.name == weapon_name), None)
                             
-                        weapon_texture = weapon_info.texture_file if weapon_info and weapon_info.texture_file else os.path.join(PySystem.Console.get_projects_path(), "Textures", "missing_texture.png")
+                        weapon_texture = weapon_info.texture_file if weapon_info and weapon_info.texture_file else os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "missing_texture.png")
                         if weapon_texture:
                             ImGui.image(weapon_texture, (24, 24))
                         else:

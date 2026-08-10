@@ -14,7 +14,7 @@ import PyImGui
 from Py4GWCoreLib.FrameTree import Frame, FrameId
 
 MODULE_NAME = "Pet Helper"
-MODULE_ICON = "Textures\\Module_Icons\\Pet Helper.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Pet Helper.png"
 
 class frame_coords:
     def __init__(self, left,top,right,bottom):

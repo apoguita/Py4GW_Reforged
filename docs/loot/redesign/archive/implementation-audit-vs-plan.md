@@ -17,7 +17,7 @@ differently**.
 
 | decision | where | verified |
 |---|---|---|
-| Catalogs are package data, never JSON | `item_catalog/` | 387 rows + 16 `UNRESOLVED`; nothing read from the JSON store |
+| Catalogs are package data, never JSON | `system_settings/loot_filters/catalog.py` | 387 rows + 16 `UNRESOLVED`; nothing read from the JSON store |
 | Shared core owned by neither feature | `item_filters/` | neither feature imports the other |
 | `Rule` is criteria only, no outcome, no callables | `item_filters/model.py` | no callable fields; outcomes live in each feature |
 | Blacklist = absolute veto, everything else HAS-ANY | `loot/controller.py:201` | 17/17 offline checks |
@@ -30,11 +30,11 @@ differently**.
 | Query cached per frame | `@frame_cache` | applied |
 | Callback registered + declared to the perf monitor | `controller.register` | `ProfilingRegistry().register` |
 | Persistence split (option b) | `loot/store.py`, `recolor_beacons/store.py` | Settings=flat, JsonFactory=structured |
-| Dyes via `ItemType.Dye` + `Item.Dye` | `item_catalog/dyes.py` | 5/5 checks, raw scan guarded against |
+| Dyes via `ItemType.Dye` + `Item.Dye` | `system_settings/loot_filters/dyes.py` | 5/5 checks, raw scan guarded against |
 | Marking: one bulk `(agent_id, colour)` push | `recolor_beacons/controller._apply` | `SetItemColors` |
 | BLANK as a first-class outcome | `model.MarkingOutcome.argb` | 14/14 checks |
 | Beacons pooled, addressable, user-budgeted | `beacons.BeaconPool` | slot reuse verified |
-| Nicholas: relative + pinned, several at once, cached | `item_catalog/nicholas.py` | wrap + cache verified |
+| Nicholas: relative + pinned, several at once, cached | `system_settings/loot_filters/nicholas.py` | wrap + cache verified |
 | Materials **and** "Salvages to" as distinct surfaces | `loot/*` | both present |
 | Migration: bypasses removed, LootManager retired, LootEx migrated | repo-wide | 0 old-name callers, 0 private skip-lists |
 | Filter editor embedded by **both** features | `item_filters/config_ui.py` | both `add_sections` embed it |

@@ -61,7 +61,7 @@ def _get_browser():
 
 
 class _State:
-    file_path: str = "Textures/Maps/example.png"
+    file_path: str = "Assets/Textures/Maps/example.png"
     dat_key: str = "gwdat://0"
     file_id: int = 0
     model_file_id: int = 0
@@ -180,7 +180,7 @@ def _file_browser_row() -> None:
     # show_file_dialog stops being called), the popup can orphan and corrupt popups in OTHER widgets
     # (e.g. the travel widget). A debug tool must never leak global ImGui state, so we use the plain
     # path field below instead. (No open_popup anywhere in the demo now.)
-    ui.text_muted("Type or paste a texture path below (e.g. Textures/Module_Icons/Py4GW.png).")
+    ui.text_muted("Type or paste a texture path below (e.g. Assets/Textures/Module_Icons/Py4GW.png).")
 
 
 # ---------------------------------------------------------------------------

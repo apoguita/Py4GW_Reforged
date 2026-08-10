@@ -4,7 +4,7 @@ import PyImGui
 BOT_NAME = "Behemoth Jaw Farm"
 MODEL_ID_TO_FARM = ModelID.Behemoth_Jaw
 MODULE_NAME = "Behemoth Jaw Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Behemoth Jaw.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Behemoth Jaw.png"
 OUTPOST_TO_TRAVEL = 141 #Maguuma Stade
 COORD_TO_EXIT_MAP = (407,-9748)
 COORD_TO_CHANGE_MAP = (5253.0,-7793.0)
@@ -21,7 +21,7 @@ TRAVEL_PATH = [
     (-23821.0,-3057.0),
     (-21736.0,2485.0),
     (-19004.0,3228.0),
-    
+
 ]
 
 KILLING_PATH = [
@@ -40,7 +40,7 @@ EXPLORABLE_AREA = 108 #the scar
 NICK_COORDS = [(-4510.0, -6737.0),] #Nicholas the Traveler Location
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -68,7 +68,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

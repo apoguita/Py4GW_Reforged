@@ -97,8 +97,7 @@ value-arg table** in the binary.
 | `Py4GWCoreLib/Item.py` (`Item.Mods`) | the public API above |
 | `Py4GWCoreLib/mods_core.py` | the one decoder + `_Def` read-rule table + `Slot`; `decode_item`, `find`, `value_of`, `subtype_of`, `is_better`, `upgrades_on`, `describe_item`, `raw_dump` |
 | `Py4GWCoreLib/mods_types.py` | `ModifierIdentifier` (`ModId`) — the identifier constants (~548 entries) |
-| `docs/items/modifiers/generated/mod-identifiers.csv` | identifier → value-arg + example effects (reference) |
-| `docs/items/modifiers/generated/mod-master-list.csv` | the 310 real mods (293 game-verified + 17 hand-PvE), sourced |
+| `docs/items/modifiers/game-mod-table.md` | provenance and verification record for the game-derived mod list |
 
 ## Validate before building on it
 
@@ -108,6 +107,6 @@ matches the number the game renders; if a row is off, fix that identifier's `_De
 `mods_core.py`.
 
 ## Regenerating
-- The `_Def` read rules + `ModifierIdentifier` derive from `game_mod_table.py` (Ghidra dump) +
-  `game-mod-table-named.txt` (native composer binding, doc 08). Re-run the small generators in
-  `docs/items/modifiers/tools/` / the inline snippets after a game patch.
+- The `_Def` read rules and `ModifierIdentifier` derive from the Ghidra dump
+  and native composer binding. Re-run the owner-approved extraction workflow
+  after a game patch; keep only the resulting conclusion in this record.

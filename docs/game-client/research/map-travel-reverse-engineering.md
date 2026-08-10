@@ -791,7 +791,6 @@ Conclusion:
 | `Py4GW_Reforged_Native\include\GW\map\map.h` (legacy cross-ref: `Py4GW\vendor\gwca\Include\GWCA\Managers\MapMgr.h`) | Public API |
 | `Py4GW\src\Py4GW_UI.cpp` | Python bindings for `map_test_*`, travel debug, and redirect logs |
 | `Py4GW_python_files\GodTools.py` | Bot-tree launcher plus RE probes, packet capture, travel debug UI, redirect-log output |
-| `.opencode/projects/re/map-travel/` | Full project pool + status |
 
 ## 11. Addendum: Current Surface and Binding Names (2026-06-12)
 

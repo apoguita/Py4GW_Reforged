@@ -270,6 +270,50 @@ class RespawnRetryLoopTests(unittest.TestCase):
         self.assertEqual(mock_wait.call_count, 1)
 
 
+class WindowTitleRenameToggleTests(unittest.TestCase):
+    """RELAY 098: Apo (Discord) -- "the launcher is forcefully renaming the
+    clients at launch, but i cant find where to disable this." Confirms
+    window_title_rename_enabled actually gates _set_gw_window_title on the
+    Steam path (reusing RespawnRetryLoopTests's mocking depth to reach that
+    line cleanly). The direct path's identical gating came from the same
+    replace_all edit applied to both call sites, and is otherwise outside
+    this file's established Win32-mocking boundary, same reasoning
+    RespawnRetryLoopTests's own docstring gives for not testing the direct
+    path's retry loop directly."""
+
+    @staticmethod
+    def _steam_profile():
+        return GameProfile(use_steam_login=True, executable_path="")
+
+    def test_disabled_skips_window_title_set(self):
+        with (
+            patch.object(gw1_launch.os, "startfile"),
+            patch.object(gw1_launch, "_attach_to_steam_process", return_value=111),
+            patch.object(gw1_launch, "_wait_for_window_or_exit", return_value="window"),
+            patch.object(gw1_launch, "_apply_multiclient_patch", return_value=True),
+            patch.object(gw1_launch, "_set_gw_window_title") as mock_title,
+        ):
+            result = launch_py4gw_profile(
+                self._steam_profile(), py4gw_injection_enabled=False, window_title_rename_enabled=False
+            )
+        self.assertTrue(result.success)
+        mock_title.assert_not_called()
+
+    def test_enabled_still_sets_window_title(self):
+        with (
+            patch.object(gw1_launch.os, "startfile"),
+            patch.object(gw1_launch, "_attach_to_steam_process", return_value=111),
+            patch.object(gw1_launch, "_wait_for_window_or_exit", return_value="window"),
+            patch.object(gw1_launch, "_apply_multiclient_patch", return_value=True),
+            patch.object(gw1_launch, "_set_gw_window_title") as mock_title,
+        ):
+            result = launch_py4gw_profile(
+                self._steam_profile(), py4gw_injection_enabled=False, window_title_rename_enabled=True
+            )
+        self.assertTrue(result.success)
+        mock_title.assert_called_once()
+
+
 class SteamLoginBypassesExecutablePathGateTests(unittest.TestCase):
     """RELAY 094 follow-up, found via a real live test: a Steam profile with
     no (or a stale/wrong) executable_path used to either hard-fail at

@@ -1,8 +1,8 @@
 import PyImGui
 from enum import IntEnum, Enum
 
-TEXTURE_FOLDER = "Textures\\Game UI\\"
-MINIMALUS_FOLDER = "Textures\\Themes\\Minimalus\\"
+TEXTURE_FOLDER = "Assets\\Textures\\Game UI\\"
+MINIMALUS_FOLDER = "Assets\\Textures\\Themes\\Minimalus\\"
 
 
 class ControlAppearance(Enum):
@@ -14,7 +14,7 @@ class StyleTheme(IntEnum):
     Py4GW = 0
     # Backward-compat alias: settings saved before the rename stored the name
     # "ImGui". StyleTheme["ImGui"] still resolves; .name reads back as "Py4GW",
-    # so load_theme() looks for Styles/Py4GW.default.json.
+    # so load_theme() looks for Assets/Styles/Py4GW.default.json.
     ImGui = 0
     Guild_Wars = 1
     Minimalus = 2

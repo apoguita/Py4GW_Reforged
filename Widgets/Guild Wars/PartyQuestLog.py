@@ -2,7 +2,7 @@ from time import time
 
 import Py4GW
 import PyImGui
-from HeroAI.utils import SameMapAsAccount, SameMapOrPartyAsAccount
+from Py4GWCoreLib.HeroAI.utils import SameMapAsAccount, SameMapOrPartyAsAccount
 from Py4GWCoreLib import ImGui, Quest
 from Py4GWCoreLib import Utils
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
@@ -21,7 +21,7 @@ from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 from Sources.ApoSource.account_data_src.quest_data_src import QuestNode
 
 MODULE_NAME = "Party Quest Log"
-MODULE_ICON = "Textures/Module_Icons/Party Quest Log.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Party Quest Log.png"
 Utils.ClearSubModules(MODULE_NAME.replace(" ", ""), log=False)
 from Sources.frenkeyLib.PartyQuestLog.ui import UI
 from Sources.frenkeyLib.PartyQuestLog.settings import Settings

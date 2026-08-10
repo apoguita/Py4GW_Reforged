@@ -2,11 +2,9 @@
 Resolve Catalog Text
 ===================
 
-In-client pass that resolves every ETextStr id used by the item catalogs
-(docs/items/modifiers/generated/raw-item-catalogs.json) to its game text, and writes a flat
-map catalogs/textid_resolved.json = {"0x<id>": "text"}. The offline formatter
-(format_catalogs.py) joins this to add a readable "text" column to the text-id catalogs
-(colors / attributes / descriptions / elements-name).
+In-client pass that resolves every ETextStr id used by the item-catalog fixture
+to its game text, and writes `item_catalog_data/textid_resolved.json`. The
+catalog dump widget uses the result as local investigation data.
 
 Text ids collected: the single field of every 'textid' catalog, plus field 0 (name_id)
 of the 'elements' and 'pvp_*' catalogs. Decoding is async, so a press captures + warms
@@ -23,8 +21,10 @@ from Py4GWCoreLib.native_src.internals import string_table
 from Py4GWCoreLib.native_src.internals.encoded_strings import GWEncoded
 
 MODULE_NAME = "Resolve Catalog Text"
-RAW_PATH = r"C:\Users\Apo\Py4GW_Reforged\docs\items\modifiers\generated\raw-item-catalogs.json"
-OUT_PATH = r"C:\Users\Apo\Py4GW_Reforged\docs\items\modifiers\generated\textid_resolved.json"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, "item_catalog_data")
+RAW_PATH = os.path.join(DATA_DIR, "raw_item_catalogs.json")
+OUT_PATH = os.path.join(DATA_DIR, "textid_resolved.json")
 
 STATE_IDLE, STATE_WARMING, STATE_WRITING, STATE_DONE = 0, 1, 2, 3
 _WARM_FRAMES = 300

@@ -54,8 +54,8 @@ These are NOT oversights — each needs a Native change or an owner decision:
 5. **Source-code editors** — HeroAi Skill Editor, Bot_Factory, Script Runner read/write `.py` source.
 6. **Module/route discovery** — `os.listdir` of script dirs (Vanquish/Runner/Zaishen route pickers,
    InventoryPlus "Copy to All Accounts"). Not config; should use ShMem for account rosters.
-7. **External tooling** — the launcher, bridge/MCP stack (`bridge_*.py`, `py4gw_mcp_server.py`,
-   `BridgeRuntime/`) are separate non-injected processes; they cannot import the embedded modules.
+7. **External tooling** — the launcher, bridge/MCP stack (`py4gw_bridge/`,
+   `py4gw_bridge/`) are separate non-injected processes; they cannot import the embedded modules.
 8. **Dev/debug dumps & offline tools** — `Widgets/Coding/Debug/*`, root `frame_viewer`/`context_diagnostic`,
    `modular_data/tools`, texture scrapers. Dev-only.
 

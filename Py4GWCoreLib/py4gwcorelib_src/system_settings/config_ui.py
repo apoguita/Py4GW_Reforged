@@ -120,6 +120,13 @@ def _draw_chat_commands_monitor() -> None:
 
 def build_window(controller) -> "ImGui.SidebarWindow":
     """Construct the settings :class:`SidebarWindow` from the catalog (pure construction)."""
+    category_by_title = {cat.title: cat for cat in model.CATALOG}
+
+    def _save_group_state(title: str, is_open: bool) -> None:
+        cat = category_by_title.get(title)
+        if cat is not None:
+            controller.set_group_open(cat.key, is_open)
+
     win = ImGui.SidebarWindow(
         "System Settings",
         sidebar_width=240.0,
@@ -127,13 +134,15 @@ def build_window(controller) -> "ImGui.SidebarWindow":
         height=560.0,
         collapsible_groups=True,
         show_search=True,
+        on_group_open=_save_group_state,
         on_close=controller.close,   # the window's X hides it (same as toggling the cog off)
     )
     for cat in model.CATALOG:
         group = win.add_group(cat.title, icon=_glyph(cat.icon))
+        win.set_group_open(cat.title, controller.is_group_open(cat.key))
         if cat.key == "map":
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.map_utilities import config_ui as map_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.map_utilities import config_ui as map_ui
 
                 map_ui.add_sections(win, group)
             except Exception as exc:
@@ -146,7 +155,7 @@ def build_window(controller) -> "ImGui.SidebarWindow":
                     win.add_section(group, _label,
                                     (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.title_on_map_load import config_ui as title_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.title_on_map_load import config_ui as title_ui
 
                 title_ui.add_sections(win, group)
             except Exception as exc:
@@ -163,7 +172,7 @@ def build_window(controller) -> "ImGui.SidebarWindow":
             # the window is actually built. Never swallow a build failure silently — an empty section
             # with no error is undebuggable; surface it (and add a visible placeholder section).
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.name_obfuscation import config_ui as no_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.name_obfuscation import config_ui as no_ui
 
                 no_ui.add_sections(win, group)
             except Exception as exc:
@@ -175,7 +184,7 @@ def build_window(controller) -> "ImGui.SidebarWindow":
                 win.add_section(group, "Name Obfuscation",
                                 (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.agent_recolor import config_ui as ar_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.agent_recolor import config_ui as ar_ui
 
                 ar_ui.add_sections(win, group)
             except Exception as exc:
@@ -189,7 +198,7 @@ def build_window(controller) -> "ImGui.SidebarWindow":
             continue
         if cat.key == "camera":
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.camera_smoothing import config_ui as camera_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.camera_smoothing import config_ui as camera_ui
 
                 camera_ui.add_sections(win, group)
             except Exception as exc:
@@ -203,7 +212,7 @@ def build_window(controller) -> "ImGui.SidebarWindow":
             continue
         if cat.key == "system":
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.window_renamer import config_ui as renamer_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.window_renamer import config_ui as renamer_ui
 
                 renamer_ui.add_sections(win, group)
             except Exception as exc:
@@ -215,9 +224,26 @@ def build_window(controller) -> "ImGui.SidebarWindow":
                 win.add_section(group, "Window Renamer",
                                 (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
             continue
+        if cat.key == "items":
+            for label, module_path in (
+                ("Inventory Features", "Py4GWCoreLib.py4gwcorelib_src.system_settings.inventory.config_ui"),
+            ):
+                try:
+                    import importlib
+
+                    importlib.import_module(module_path).add_sections(win, group)
+                except Exception as exc:
+                    import traceback
+
+                    _log("Items / %s section failed to build: %r" % (label, exc))
+                    _log(traceback.format_exc())
+                    _err = str(exc)
+                    win.add_section(group, label,
+                                    (lambda e=_err: PyImGui.text_colored("Failed to build: %s" % e, ERR_COLOR)))
+            continue
         if cat.key == "skills":
             try:
-                from Py4GWCoreLib.py4gwcorelib_src.skillbar_plus import config_ui as sbp_ui
+                from Py4GWCoreLib.py4gwcorelib_src.system_settings.skillbar_plus import config_ui as sbp_ui
 
                 sbp_ui.add_sections(win, group)
             except Exception as exc:
@@ -232,10 +258,10 @@ def build_window(controller) -> "ImGui.SidebarWindow":
             # Each subcategory is built independently, so a failure in one still leaves the others
             # usable. Never swallow a build failure silently -- surface it as a visible section.
             for label, module_path in (
-                ("Loot Filter Factory", "Py4GWCoreLib.py4gwcorelib_src.loot_filter_factory.config_ui"),
-                ("Beacons", "Py4GWCoreLib.py4gwcorelib_src.beacons.config_ui"),
-                ("Loot Filters", "Py4GWCoreLib.py4gwcorelib_src.loot_filters.config_ui"),
-                ("Recolor & Beacons", "Py4GWCoreLib.py4gwcorelib_src.recolor_beacons.config_ui"),
+                ("Loot Filter Factory", "Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filter_factory.config_ui"),
+                ("Beacons", "Py4GWCoreLib.py4gwcorelib_src.system_settings.beacons.config_ui"),
+                ("Loot Filters", "Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.config_ui"),
+                ("Recolor & Beacons", "Py4GWCoreLib.py4gwcorelib_src.system_settings.recolor_beacons.config_ui"),
             ):
                 try:
                     import importlib

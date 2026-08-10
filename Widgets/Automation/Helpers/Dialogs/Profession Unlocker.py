@@ -4,7 +4,7 @@ import json
 from Py4GWCoreLib import ImGui
 
 MODULE_NAME = "Profession Unlocker"
-MODULE_ICON = "Textures\\Module_Icons\\Profession Unlocker.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Profession Unlocker.png"
 
 # If you have a BasicWindow class, import it. Otherwise, define a minimal one here.
 try:
@@ -32,16 +32,16 @@ class ProUnlockWindow(BasicWindow):
     ]
 
     PROFESSION_ICON_MAP = {
-        "Warrior": "Textures/Profession_Icons/[1] - Warrior.png",
-        "Ranger": "Textures/Profession_Icons/[2] - Ranger.png",
-        "Monk": "Textures/Profession_Icons/[3] - Monk.png",
-        "Necromancer": "Textures/Profession_Icons/[4] - Necromancer.png",
-        "Mesmer": "Textures/Profession_Icons/[5] - Mesmer.png",
-        "Elementalist": "Textures/Profession_Icons/[6] - Elementalist.png",
-        "Assassin": "Textures/Profession_Icons/[7] - Assassin.png",
-        "Ritualist": "Textures/Profession_Icons/[8] - Ritualist.png",
-        "Paragon": "Textures/Profession_Icons/[9] - Paragon.png",
-        "Dervish": "Textures/Profession_Icons/[10] - Dervish.png",
+        "Warrior": "Assets/Textures/Profession_Icons/[1] - Warrior.png",
+        "Ranger": "Assets/Textures/Profession_Icons/[2] - Ranger.png",
+        "Monk": "Assets/Textures/Profession_Icons/[3] - Monk.png",
+        "Necromancer": "Assets/Textures/Profession_Icons/[4] - Necromancer.png",
+        "Mesmer": "Assets/Textures/Profession_Icons/[5] - Mesmer.png",
+        "Elementalist": "Assets/Textures/Profession_Icons/[6] - Elementalist.png",
+        "Assassin": "Assets/Textures/Profession_Icons/[7] - Assassin.png",
+        "Ritualist": "Assets/Textures/Profession_Icons/[8] - Ritualist.png",
+        "Paragon": "Assets/Textures/Profession_Icons/[9] - Paragon.png",
+        "Dervish": "Assets/Textures/Profession_Icons/[10] - Dervish.png",
     }
 
     def __init__(self):
@@ -144,7 +144,7 @@ class ProUnlockWindow(BasicWindow):
         # Start/Pause section removed
         PyImGui.separator()
         # Powered by Py4GW badge at the bottom
-        badge_path = "Textures/Game UI/powered_by_py4gw.png"
+        badge_path = "Assets/Textures/Game UI/powered_by_py4gw.png"
         badge_width = max(120, min(int(window_width * 0.4), 400))
         badge_height = int(badge_width * (48 / 270))
         x_offset = max((window_width - badge_width) // 2, 0)

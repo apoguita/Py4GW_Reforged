@@ -1352,7 +1352,7 @@ class BTUpkeepers:
                 account_effect_ids: set[int] = set()
                 if filter_effect_ids and agent_id > 0:
                     try:
-                        from HeroAI.utils import GetEffectAndBuffIds
+                        from Py4GWCoreLib.HeroAI.utils import GetEffectAndBuffIds
 
                         account_effect_ids = {int(value) for value in GetEffectAndBuffIds(agent_id, cached_data=headless_cached_data) if int(value) > 0}
                     except Exception:

@@ -21,7 +21,7 @@ bot = Botting(
 )
 bot.Properties.Set("leave_empty_inventory_slots", value=6)
   
-MODULE_ICON = "Textures\\Module_Icons\\YAVB 2.0 mascot.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\YAVB 2.0 mascot.png"
 
 def _identify_live_inventory_items():
     """Identify configured rarities using the live inventory item IDs.

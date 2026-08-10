@@ -294,7 +294,7 @@ def _build_hex_removal_priority() -> None:
     # Lazy import to avoid CoreLib → HeroAI hard dep at module load time.
     overrides: dict[str, HexRemovalEntry] = {}
     try:
-        from HeroAI.hex_removal_src.hex_removal_config import load_active_overrides
+        from Py4GWCoreLib.HeroAI.hex_removal_src.hex_removal_config import load_active_overrides
         overrides = load_active_overrides()
     except Exception:
         pass

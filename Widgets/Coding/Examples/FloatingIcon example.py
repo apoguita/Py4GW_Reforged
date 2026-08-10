@@ -17,7 +17,7 @@ class FloatingIconVars:
     MAIN_INI_KEY: str = ""
     FLOATING_INI_KEY: str = ""
     INI_INIT: bool = False
-    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "python_icon_round.png")
+    ICON_PATH: str = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Branding", "python_icon_round.png")
 
 
 class FloatingButtonExample:

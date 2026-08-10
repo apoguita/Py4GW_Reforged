@@ -458,7 +458,7 @@ class AutoInventoryHandler():
         # Read from the item catalog (package data) rather than the old LootConfig's runtime
         # LootGroups dict. Same taxonomy, settled names: a **category** contains **groups**
         # (what LootConfig called category / subcategory).
-        from .item_catalog import catalog as catalog_data
+        from .system_settings.loot_filters import catalog as catalog_data
 
         for category, allowed_groups in selected_filters.items():
             for entry in catalog_data.in_category(category):

@@ -11,12 +11,12 @@ from multiprocessing import shared_memory
 from ctypes import sizeof
 
 MODULE_NAME = "Shared Memory Monitor"
-MODULE_ICON = "Textures/Module_Icons/Shared Memory.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Shared Memory.png"
   
 SMM = GLOBAL_CACHE.ShMem    
 BASE_PATH = PySystem.Console.get_projects_path()
-FACTIONS_TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Faction_Icons\\"
-GAME_UI_TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Game UI\\"
+FACTIONS_TEXTURE_BASE_PATH = BASE_PATH + "\\Assets\\Textures\\Faction_Icons\\"
+GAME_UI_TEXTURE_BASE_PATH = BASE_PATH + "\\Assets\\Textures\\Game UI\\"
 
 active_players :list[AccountStruct] = []
 

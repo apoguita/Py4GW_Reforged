@@ -8,7 +8,7 @@ into one authoritative master mod list, clearly marking the source of each entry
     a PvE-only / non-PvP-unlockable mod we can't enumerate from the game. Trusted because the
     game *validated* the overlapping ids, but not independently confirmed.
 
-Output: docs/items/modifiers/generated/mod-master-list.csv
+Output: Widgets/Coding/Debug/Py4GW/item_catalog_data/mod-master-list.csv
 Run:    python docs/items/modifiers/tools/build_master_mod_list.py
 """
 import csv
@@ -16,8 +16,8 @@ import os
 import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-OUT = os.path.join(HERE, "..", "catalogs", "mod-master-list.csv")
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
+OUT = os.path.join(ROOT, "Widgets", "Coding", "Debug", "Py4GW", "item_catalog_data", "mod-master-list.csv")
 
 
 def _game_ids():

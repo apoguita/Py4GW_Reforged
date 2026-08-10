@@ -2,7 +2,7 @@ import math
 import time
 import PyImGui
 import PyOverlay
-from HeroAI.ui import get_display_name
+from Py4GWCoreLib.HeroAI.ui import get_display_name
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.GlobalCache.SharedMemory import AccountStruct
 from Py4GWCoreLib.ImGui_src.ImGuisrc import ImGui

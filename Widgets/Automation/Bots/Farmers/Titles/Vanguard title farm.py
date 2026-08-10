@@ -15,7 +15,7 @@ from typing import List, Dict, Optional
 BOT_NAME = "Vanguard Title Farm"
 
 MODULE_NAME = BOT_NAME
-MODULE_ICON = "Textures/Skill_Icons/[2233] - Ebon Battle Standard of Honor.jpg"
+MODULE_ICON = "Assets/Textures/Skill_Icons/[2233] - Ebon Battle Standard of Honor.jpg"
 
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Bots", "Vanquish", "VQ_Helmet.png")
 DALADA_UPLANDS_OUTPOST_ID = 648
@@ -848,7 +848,7 @@ def _draw_title_track():
         PyImGui.text(f"+{gained:,}  ({pts_hr:,}/hr)")
 
 
-REFORGED_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[2233] - Ebon Battle Standard of Honor.jpg")
+REFORGED_TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Skill_Icons", "[2233] - Ebon Battle Standard of Honor.jpg")
 _EXPANDED_TAB_CHILD_SIZE = (500, 620)
 # endregion
 

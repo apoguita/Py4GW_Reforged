@@ -6,7 +6,7 @@ from Py4GWCoreLib import *
 
 
 MODULE_NAME = "Item Eater"
-MODULE_ICON = "Textures\\Module_Icons\\Item Eater.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Item Eater.png"
 MODULE_TAGS = ["Sweets", "Alcohol", "Party", "Spam", "Titles", "Exchange"]
 quantity_to_consume = 250
 

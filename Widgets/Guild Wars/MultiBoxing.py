@@ -16,7 +16,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 
 MODULE_NAME = "Multi Boxing Manager"
-MODULE_ICON = "Textures/Module_Icons/layout manager.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/layout manager.png"
 
 for module_name in list(sys.modules.keys()):
     if module_name not in ("sys", "importlib", "cache_data"):

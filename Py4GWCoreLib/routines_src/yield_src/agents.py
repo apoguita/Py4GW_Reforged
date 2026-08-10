@@ -147,7 +147,7 @@ class Agents:
     def InteractWithNearestChest(max_distance: int = 2500, before_interact_fn=lambda: None, after_interact_fn=lambda: None):
         """Target and interact with chest and items."""
         from ...Py4GWcorelib import Utils
-        from ...py4gwcorelib_src.loot_filters import LootFilters
+        from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
         from ...enums_src.GameData_enums import Range
         from ..Agents import Agents as BaseAgents
 

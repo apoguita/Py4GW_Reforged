@@ -1,7 +1,7 @@
 from Py4GWCoreLib import PyImGui, GLOBAL_CACHE, Timer, ThrottledTimer
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from HeroAI.cache_data import CacheData
-from HeroAI.constants import MAX_NUM_PLAYERS
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.constants import MAX_NUM_PLAYERS
 
 import os
 import sys
@@ -16,7 +16,7 @@ Players/heroes without HR have a clickable blue button to apply HR to them.
 '''
 
 MODULE_NAME = "Heroic Refrain Manager"
-MODULE_ICON = "Textures\\Skill_Icons\\[3431] - Heroic Refrain.jpg"
+MODULE_ICON = "Assets\\Textures\\Skill_Icons\\[3431] - Heroic Refrain.jpg"
 
 # global cached data singleton
 cached_data = CacheData()

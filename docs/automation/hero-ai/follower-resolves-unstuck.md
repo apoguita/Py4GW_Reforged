@@ -15,11 +15,11 @@ The module is per-follower and entirely follower-side. Leader publish, shared me
 
 | File | Role |
 |---|---|
-| `HeroAI/follow/smart_unstuck.py` | Central module: config, state, detection loop, slalom + single-circle path generators, BT.Move integration, INI sync, snapshot publication. |
-| `HeroAI/follow/follower_runtime.py` | Per-tick integration. Owns `FollowExecutionState.stuck`, ticks `update_smart_unstuck`, swaps the follow throttle between idle (250 ms) and detour (0 ms), and skips its own `Player.Move` while the detour state machine owns the wheel. |
+| `Py4GWCoreLib/HeroAI/follow/smart_unstuck.py` | Central module: config, state, detection loop, slalom + single-circle path generators, BT.Move integration, INI sync, snapshot publication. |
+| `Py4GWCoreLib/HeroAI/follow/follower_runtime.py` | Per-tick integration. Owns `FollowExecutionState.stuck`, ticks `update_smart_unstuck`, swaps the follow throttle between idle (250 ms) and detour (0 ms), and skips its own `Player.Move` while the detour state machine owns the wheel. |
 | `Widgets/Automation/Multiboxing/HeroAI.py` | `movement_interrupt()` patch. Returns `FAILURE` while `state.stuck.mode != "idle"` so the Follow branch runs every BT tick during a detour. Without this patch BT.Move can only sample at waypoint-arrival moments and the smoothing tolerance becomes a no-op. |
-| `HeroAI/ui_base.py` | GUI section "Follower Resolves (unstuck)" with 8 live-tunable sliders + 2 checkboxes. Also hosts `DrawSmartUnstuck3DOverlay`, which renders the per-cluster union polylines and waypoint markers. |
-| `HeroAI/globals.py` | `show_followers_unstuck_overlay`, `show_stuck_avoidance_debug`, `smart_unstuck_debug_snapshot` (the dict the overlay reads). |
+| `Py4GWCoreLib/HeroAI/ui_base.py` | GUI section "Follower Resolves (unstuck)" with 8 live-tunable sliders + 2 checkboxes. Also hosts `DrawSmartUnstuck3DOverlay`, which renders the per-cluster union polylines and waypoint markers. |
+| `Py4GWCoreLib/HeroAI/globals.py` | `show_followers_unstuck_overlay`, `show_stuck_avoidance_debug`, `smart_unstuck_debug_snapshot` (the dict the overlay reads). |
 
 ## Module reference: `smart_unstuck.py`
 
@@ -115,7 +115,7 @@ The cross-client sync entry point. Called once per `update_smart_unstuck` tick; 
 
 1. **`_get_enemies_in_range(current_xy, enemy_detection_range)`** — uses the library's existing primitives:
    - `AgentArray.GetEnemyArray()`
-   - `AgentArray.Filter.ByCondition(ids, lambda aid: Agent.IsValid(int(aid)) and not Agent.IsDead(int(aid)))` — project-canonical validity gate (see `HeroAI/targeting.py`)
+   - `AgentArray.Filter.ByCondition(ids, lambda aid: Agent.IsValid(int(aid)) and not Agent.IsDead(int(aid)))` — project-canonical validity gate (see `Py4GWCoreLib/HeroAI/targeting.py`)
    - `AgentArray.Filter.ByDistance(ids, current_xy, range_units)`
    - `AgentArray.Sort.ByDistance(ids, current_xy)`
    - Output loop dereferences each ID to `(x, y)` via `Agent.GetXY` and rejects zero-XY (`abs(x) < 0.001 and abs(y) < 0.001`).
@@ -197,12 +197,12 @@ Clamp bounds are applied at three layers (slider input, INI load, INI reload) so
 
 Upstream's `is_follow_recovery_active` mechanism handles long-distance catch-up. It is **orthogonal** to smart_unstuck — they operate at different distance scales, on different problems, and can both fire in the same tick. Together they cover the full failure spectrum: recovery handles "the party walked away from me," smart_unstuck handles "I can't physically reach the slot."
 
-**Recovery — what it does** (defined in `HeroAI/follow/follower_runtime.py`; the current values reflect upstream commit `dbb39f72` "Adding enemy tracker widget"):
+**Recovery — what it does** (defined in `Py4GWCoreLib/HeroAI/follow/follower_runtime.py`; the current values reflect upstream commit `dbb39f72` "Adding enemy tracker widget"):
 
 - **Activation threshold:** `FOLLOW_RECOVERY_START_DISTANCE = 4000.0` (raised from the pre-`dbb39f72` `max(Range.Spellcast, Range.SafeCompass * 0.85)` ≈ 2125u — recovery now activates at much greater distances).
 - **Release threshold:** `FOLLOW_RECOVERY_RELEASE_DISTANCE = Range.Spellcast.value` ≈ 1248u (was `max(Spellcast, START - 700)` ≈ 1425u — slightly tighter, follower closes further before recovery exits).
 - **On entry:** broadcasts `"Hey, Wait for me!"` via `SharedCommandType.ConsoleMessage` shared-memory to the leader (was party chat in `'#'` pre-`dbb39f72`).
-- **While active (per the BT patches in `HeroAI/follow/headless_tree.py` and `Widgets/Automation/Multiboxing/HeroAI.py`):**
+- **While active (per the BT patches in `Py4GWCoreLib/HeroAI/follow/headless_tree.py` and `Widgets/Automation/Multiboxing/HeroAI.py`):**
   - `LootingNode` returns FAILURE — looting suppressed.
   - `HandleOutOfCombat` returns False — out-of-combat scripts skipped.
   - `GlobalGuardNode.DistanceSafe` forced True — the combat tree keeps ticking even when far from the party.
@@ -326,7 +326,7 @@ Slider INI defaults in `_ensure_follow_window_ini_vars` mirror these.
 
 ## Known issues / cleanup TODOs
 
-- **`Agent.IsCasting` short-circuits smart_unstuck during recovery.** In `execute_follower_follow` ([follower_runtime.py:201-202](../../../dev/Guildwars/sloppynacho-py4gw/Py4GW/HeroAI/follow/follower_runtime.py)), the early-return `if Agent.IsCasting(player_agent_id): return FAILURE` runs *after* `recovery_active = is_follow_recovery_active(...)` is captured but *before* `update_smart_unstuck(...)` is called. Recovery's BT-level `CastingBlockNode` bypass (`HeroAI.py:303-306`) only suppresses `combat_handler.InCastingRoutine()`, not this in-function `Agent.IsCasting` check. **Symptom**: if a healer follower is mid-skill-cast when stuck during recovery, the detour won't start until the cast finishes (typically 1–3 s). **Suggested fix**: `if Agent.IsCasting(player_agent_id) and not recovery_active: return FAILURE` — mirrors the BT-level bypass and matches recovery's "catch up trumps everything" semantics. One-line change. Not yet applied.
+- **`Agent.IsCasting` short-circuits smart_unstuck during recovery.** In `execute_follower_follow` ([follower_runtime.py:201-202](../../../dev/Guildwars/sloppynacho-py4gw/Py4GW/Py4GWCoreLib/HeroAI/follow/follower_runtime.py)), the early-return `if Agent.IsCasting(player_agent_id): return FAILURE` runs *after* `recovery_active = is_follow_recovery_active(...)` is captured but *before* `update_smart_unstuck(...)` is called. Recovery's BT-level `CastingBlockNode` bypass (`HeroAI.py:303-306`) only suppresses `combat_handler.InCastingRoutine()`, not this in-function `Agent.IsCasting` check. **Symptom**: if a healer follower is mid-skill-cast when stuck during recovery, the detour won't start until the cast finishes (typically 1–3 s). **Suggested fix**: `if Agent.IsCasting(player_agent_id) and not recovery_active: return FAILURE` — mirrors the BT-level bypass and matches recovery's "catch up trumps everything" semantics. One-line change. Not yet applied.
 - **Display flags are per-client by design.** `show_broadcast_follow_positions`, `show_broadcast_follow_threshold_rings`, and `show_stuck_avoidance_debug` sync at process startup only (NOT in the cross-client INI poll). This is intentional — they're personal preferences, not party-wide settings. Forcing the leader to override every follower's debug-overlay state would be wrong. Only `show_followers_unstuck_overlay` is party-wide (it's a multibox-debugging aid).
 - **`Enable Combat Avoidance Mix` checkbox is a no-op.** It still toggles `cached_data.global_options.Avoidance` but the underlying `vector_fields.py` module that consumed it was deleted upstream. The `Avoidance` field is left in place because it's deeply wired (shared memory layout, per-player toggle row, Botting API, party headers); only the consuming module is gone. Separate cleanup if/when the field is purged from `HeroAIOptions`.
 
@@ -345,10 +345,10 @@ In-game manual test plan:
 Code-level smoke checks:
 
 ```bash
-python -m py_compile HeroAI/follow/smart_unstuck.py
-python -m py_compile HeroAI/follow/follower_runtime.py
-python -m py_compile HeroAI/ui_base.py
-python -m py_compile HeroAI/globals.py
+python -m py_compile Py4GWCoreLib/HeroAI/follow/smart_unstuck.py
+python -m py_compile Py4GWCoreLib/HeroAI/follow/follower_runtime.py
+python -m py_compile Py4GWCoreLib/HeroAI/ui_base.py
+python -m py_compile Py4GWCoreLib/HeroAI/globals.py
 python -m py_compile Widgets/Automation/Multiboxing/HeroAI.py
 ```
 
@@ -361,13 +361,13 @@ for label in 'Waypoint Smoothing' 'Stuck Circle Radius' 'Enemy Detection Range' 
              'No-Progress Move Units' 'No-Progress Close Units' \
              'Min Dist Early Exit' 'Draw Followers Unstuck (3D)' \
              'Stuck Avoidance Verbose Logs'; do
-  grep -q -F "$label" HeroAI/ui_base.py || echo "MISSING IN ui_base.py: $label"
+  grep -q -F "$label" Py4GWCoreLib/HeroAI/ui_base.py || echo "MISSING IN ui_base.py: $label"
 done
 # Expected: silent (no MISSING lines).
 
 # 2. Renamed symbols must not appear in code anywhere (the rename history note
 #    in this doc deliberately mentions the old module filename; that's OK).
 grep -rnE 'StuckAvoidanceConfig|StuckAvoidanceState|STUCK_AVOIDANCE_CFG|update_stuck_avoidance|reset_stuck_avoidance|reload_stuck_config_from_ini|DrawStuckAvoidance3DOverlay|stuck_avoidance_debug_snapshot' \
-  HeroAI/ Widgets/Automation/Multiboxing/HeroAI.py
+  Py4GWCoreLib/HeroAI/ Widgets/Automation/Multiboxing/HeroAI.py
 # Expected: zero hits.
 ```

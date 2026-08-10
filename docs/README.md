@@ -52,15 +52,15 @@ behavior from an unlabelled plan or a file name.
 
 - Read a directory `README.md` before opening a large record in that directory.
 - Keep subsystem knowledge in its owning topic folder; use the root only for
-  navigation and the machine-readable inventory.
-- Keep generated catalogs, raw captures, and scripts next to the record that
-  explains their provenance and refresh procedure.
+  navigation.
+- Do not store datasets, export tables, or generated catalogs here. Put them
+  with the tool or runtime owner; the document records their provenance and
+  refresh procedure in prose.
 - Preserve superseded findings as historical evidence; do not silently rewrite
   them into current claims.
-- Update the relevant directory map and run
-  `python docs/maintenance/generate_documentation_index.py` whenever a reviewed move
-  changes a documented path.
+- Update the relevant directory map and this index when a reviewed move changes
+  a top-level documentation route.
 
-`documentation-index.md` and `documentation-index.json` are generated
-inventories, not authorities. They help locate material; the folder maps and
-the source documents define its meaning and status.
+`documentation-index.md` is a short human-maintained route map, not an
+authority or machine-readable database. The folder maps and source documents
+define meaning and status.

@@ -4,7 +4,7 @@ from Py4GWCoreLib import *
 
 BOT_NAME = "Survivor Title - Kath Hammers"
 MODULE_NAME = "Survivor Title - Kath Hammers"
-MODULE_ICON = "Textures\\Module_Icons\\Survivor Title - Kath Hammers.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Survivor Title - Kath Hammers.png"
 bot = Botting(BOT_NAME)
 loop = 179
 
@@ -35,7 +35,7 @@ bot.SetMainRoutine(routine)
 
 def main():
     bot.Update()
-    IMAGE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Item Models", "22374-Hammer_of_Kathandrax.png")
+    IMAGE = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Item Models", "22374-Hammer_of_Kathandrax.png")
     bot.UI.draw_window(icon_path=IMAGE)
 
 def tooltip():

@@ -9,15 +9,11 @@ code's job and stays there.
 | **`loot-redesign.md`** | **The design.** What the class does, the four pickup surfaces (rarity / List / Materials / Filters), the filter syntax (mirrors `Item.Mods`), marking, persistence, the menu, the data tables, and what's still open. |
 | **`how-it-works-today.md`** | **The audit.** How looting actually works right now, derived from the code: the list-maker, the three duplicated "is it a good time?" checks, the two grabbers, the two menus, and what's broken/dead. Also how the native item recolour really works. |
 | **`structure-and-build.md`** | **The plan + what was built.** Module layout (mirrors `agent_recolor`), the 10-step build order, and an **As built** section listing every file that landed, what it was wired into, and the three deliberate deviations. |
-| `salvage-mapping.json` | The extracted salvage table (`model_id → {common, rare}`). **Seeded** to `json/Defaults/Widgets/System/LootSalvage.json`; this copy is the review source. |
-| `salvage-mapping-review.json` | The same data with item/material names, for reading during review. |
-| `grouping.json` | The extracted grouping table (11 categories, 395 items). **Seeded** to `json/Defaults/Widgets/System/LootGrouping.json`. |
-| `grouping-review.json` | The same with `{id, name}` per entry, for reading during review. |
 
 **Status: implemented.** The engine, catalog, persistence, the System Settings editor, the
 quick-access window, marking and the cross-account reload are all in; the old Loot Manager widget has
-been retired to `Legacy code and tests/`. The two data tables are seeded and awaiting your cleanup
-pass (they work as-is).
+been retired to `Legacy code and tests/`. The one-off review exports that once
+sat beside this record were removed from docs.
 
 **Read order:** `02` (what exists) → `01` (what we're building) → `03` (how/what order).
 

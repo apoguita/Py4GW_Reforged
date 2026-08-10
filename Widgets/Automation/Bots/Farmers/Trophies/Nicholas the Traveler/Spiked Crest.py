@@ -3,11 +3,11 @@ import PyImGui
 
 BOT_NAME = "Spiked Crest Farm"
 MODULE_NAME = "Spiked Crest Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Spiked Crest.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Spiked Crest.png"
 MODEL_ID_TO_FARM = ModelID.Spiked_Crest
 OUTPOST_TO_TRAVEL = 19 #Sanctum Cay
-EXPLORABLE_TO_TRAVEL = 19 #Sanctum Cay Mission    
-                
+EXPLORABLE_TO_TRAVEL = 19 #Sanctum Cay Mission
+
 KILLING_PATH = [
                 (-11031.4,-5933.8),
 (-11583.0,-7435.2),
@@ -29,7 +29,7 @@ EXPLORABLE_AREA = 108 #the scar
 NICK_COORDS = [(-4510.0, -6737.0),] #Nicholas the Traveler Location
 
 bot = Botting(BOT_NAME)
-                
+
 def bot_routine(bot: Botting) -> None:
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Aggressive()
@@ -56,7 +56,7 @@ def nicks_window():
         PyImGui.text(BOT_NAME)
         PyImGui.separator()
         PyImGui.text("Travel to Nicholas the Traveler location")
-        
+
         if PyImGui.button("Start"):
             bot.StartAtStep("[H]Path_to_Nicholas_4")
 

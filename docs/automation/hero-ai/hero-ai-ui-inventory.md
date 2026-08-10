@@ -13,14 +13,14 @@ Terminology used in this document:
 
 ```mermaid
 flowchart TD
-    A[Runtime UI Router\nHeroAI/windows.py] --> B[Hero Panels\ncombined or per-account]
+    A[Runtime UI Router\nPy4GWCoreLib/HeroAI/windows.py] --> B[Hero Panels\ncombined or per-account]
     A --> C[Party Overlay\nshow/hide panel toggles]
     A --> D[Party Search Overlay\naccount browser / invite-travel]
     A --> E[Global Command Panel\n5 toggles + 8 skill toggles]
     A --> F[Command Hotbars\ncustom command launcher]
     A --> G[Dialog Overlay\nCtrl+click broadcast dialog]
 
-    H[Base UI\nHeroAI/ui_base.py] --> H1[Embedded Party-Window Tabs]
+    H[Base UI\nPy4GWCoreLib/HeroAI/ui_base.py] --> H1[Embedded Party-Window Tabs]
     H --> H2[Standalone Control Panel Window]
     H --> H3[Follower-only embedded status view]
     H --> H4[Multibox Tools Window]
@@ -38,7 +38,7 @@ flowchart TD
 
 ### 1. Base UI
 
-Primary implementation: `HeroAI/ui_base.py`
+Primary implementation: `Py4GWCoreLib/HeroAI/ui_base.py`
 
 - Embedded tab strip above the native party window
 - Embedded content area inside the native party window
@@ -53,7 +53,7 @@ This is the canonical capability surface. It supports the broadest set of workfl
 
 ### 2. Floating windows override layer
 
-Primary router: `HeroAI/windows.py`
+Primary router: `Py4GWCoreLib/HeroAI/windows.py`
 
 - Combined or separate hero panels
 - Party overlay buttons attached to the native party window
@@ -367,7 +367,7 @@ That approach preserves capability while making it possible to converge on one c
 
 ## Source Anchors
 
-- `HeroAI/windows.py`: floating-window override composition and routing
-- `HeroAI/ui.py`: floating hero panels, overlays, command panel, hotbars, configure window
-- `HeroAI/ui_base.py`: base UI flows, flagging, formations, build browser
-- `HeroAI/commands.py`: canonical command catalog for quick actions and hotbars
+- `Py4GWCoreLib/HeroAI/windows.py`: floating-window override composition and routing
+- `Py4GWCoreLib/HeroAI/ui.py`: floating hero panels, overlays, command panel, hotbars, configure window
+- `Py4GWCoreLib/HeroAI/ui_base.py`: base UI flows, flagging, formations, build browser
+- `Py4GWCoreLib/HeroAI/commands.py`: canonical command catalog for quick actions and hotbars

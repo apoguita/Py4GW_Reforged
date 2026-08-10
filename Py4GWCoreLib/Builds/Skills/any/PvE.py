@@ -372,7 +372,7 @@ class PvE:
 
     def _get_spirit_form_agent_ids(self) -> set[int]:
         from Py4GWCoreLib import GLOBAL_CACHE
-        from HeroAI.utils import SameMapOrPartyAsAccount
+        from Py4GWCoreLib.HeroAI.utils import SameMapOrPartyAsAccount
         result: set[int] = set()
         for account in (GLOBAL_CACHE.ShMem.GetAllAccountData() or []):
             if not account.IsSlotActive or account.IsIsolated:
@@ -394,7 +394,7 @@ class PvE:
 
     def _get_morale_by_agent_id(self) -> dict[int, int]:
         from Py4GWCoreLib import GLOBAL_CACHE
-        from HeroAI.utils import SameMapOrPartyAsAccount
+        from Py4GWCoreLib.HeroAI.utils import SameMapOrPartyAsAccount
         morale_by_agent: dict[int, int] = {}
         for account in GLOBAL_CACHE.ShMem.GetAllAccountData():
             if not account.IsSlotActive or account.IsIsolated:

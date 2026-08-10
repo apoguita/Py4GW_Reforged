@@ -8,7 +8,7 @@ from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Skill import Skill
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["NoAttribute"]
@@ -17,8 +17,12 @@ __all__ = ["NoAttribute"]
 class NoAttribute:
     def __init__(self, build: BuildMgr) -> None:
         self.build: BuildMgr = build
-        self._save_yourselves_throttle: ThrottledTimer = ThrottledTimer(4000)
-        self._save_yourselves_throttle.Stop()
+        # Per-skill, not one shared timer: these party shouts are alternatives
+        # to each other, and a single timer meant whichever one the rotation
+        # happened to evaluate first locked out the others for its whole window
+        # - "There's Nothing to Fear!" would shut out a charged "Save
+        # Yourselves!" for roughly the entire 4-6s the +100 armor would have run.
+        self._party_shout_throttles: dict[int, ThrottledTimer] = {}
         self._iau_last_kd_ms: int = 0
         self._iau_recent_kd_window_ms: int = 1500
 
@@ -519,7 +523,12 @@ class NoAttribute:
     ) -> BuildCoroutine:
         player_agent_id = Player.GetAgentID()
 
-        if not (self._save_yourselves_throttle.IsStopped() or self._save_yourselves_throttle.IsExpired()):
+        throttle = self._party_shout_throttles.get(skill_id)
+        if throttle is None:
+            throttle = ThrottledTimer(4000)
+            throttle.Stop()
+            self._party_shout_throttles[skill_id] = throttle
+        if not (throttle.IsStopped() or throttle.IsExpired()):
             return False
         if not self.build.IsSkillEquipped(skill_id):
             return False
@@ -542,7 +551,7 @@ class NoAttribute:
             aftercast_delay=250,
         )
         if cast_result:
-            self._save_yourselves_throttle.Reset()
+            throttle.Reset()
         return cast_result
 
     def _get_owned_core_spirits(

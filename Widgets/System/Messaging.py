@@ -7,13 +7,13 @@ from datetime import timezone
 import Py4GW
 import ctypes
 
-from HeroAI.cache_data import CacheData
+from Py4GWCoreLib.HeroAI.cache_data import CacheData
 from Py4GWCoreLib import GLOBAL_CACHE, Player, Map, Agent, Effects, Inventory, Party
 from Py4GWCoreLib import ActionQueueManager
 from Py4GWCoreLib import CombatPrepSkillsType
 from Py4GWCoreLib import Console
 from Py4GWCoreLib import ConsoleLog
-from Py4GWCoreLib.py4gwcorelib_src.loot_filters import LootFilters
+from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 import PyImGui
 import PySystem
 from Py4GWCoreLib import Range, TitleID
@@ -37,7 +37,7 @@ cached_data = CacheData()
 
 
 MODULE_NAME = "Messaging"
-MODULE_ICON = "Textures/Module_Icons/Messaging.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Messaging.png"
 OPTIONAL = False
 
 SUMMON_SPIRITS_LUXON = "Summon_Spirits_luxon"

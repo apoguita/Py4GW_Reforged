@@ -70,14 +70,14 @@ files are orphaned once (users reset to defaults on first run — accepted).
 - `Widgets/Guild Wars/Items & Loot/InventoryPlus.py` (per-account blacklist / `GetAccountEmail()`)
 - `Widgets/System/Messaging.py` (per-account Pycons opt-ins; **line 869 message-driven cross-account write = special case**)
 - `Widgets/Automation/Helpers/Pycons.py` (per-account pcon config + opt-ins; profile/cache are sub-files of the same store; **5× `save(config)` reworked to `set()`**)
-- `HeroAI/settings.py` → `account_ini_handler` (`Accounts/<email>/HeroAI.ini`)
+- `Py4GWCoreLib/HeroAI/settings.py` → `account_ini_handler` (`Accounts/<email>/HeroAI.ini`)
 
 ### root
 - `Widgets/Guild Wars/Customization/Style Manager.py` → the `IniHandler("Py4GW.ini")` handler only (`[settings] force_theme_override`, theme)
 
 ### global (everything else — shared UI / behavior config)
 All remaining widgets/bots/helpers, plus:
-- `HeroAI/settings.py` main `ini_handler` (`Widgets/Config/HeroAI.ini`) + `HeroAI.ini` factory
+- `Py4GWCoreLib/HeroAI/settings.py` main `ini_handler` (`Widgets/Config/HeroAI.ini`) + `HeroAI.ini` factory
 - `Style Manager.py` own config
 - frenkey `PartyQuestLog/settings.py`, `SulfurousRunner/settings.py`
 - ApoSource `ColorizeModule.py`

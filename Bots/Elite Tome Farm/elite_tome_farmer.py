@@ -8,7 +8,7 @@ from Py4GWCoreLib import Botting, ConsoleLog, Routines, Agent, Player, ImGui, Co
 from tome_targets import ELITE_TOME_TARGETS
 
 BOT_NAME = "Elite Tome Farmer by XLeek"
-MODULE_ICON = "Textures\\Module_Icons\\Ssaresh's Kris Daggers.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Ssaresh's Kris Daggers.png"
 bot = Botting(BOT_NAME)
 
 # =========================

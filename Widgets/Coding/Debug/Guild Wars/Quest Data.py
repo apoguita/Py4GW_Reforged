@@ -10,9 +10,9 @@ import re
 import time
 
 MODULE_NAME = "Quest Data Viewer"
-MODULE_ICON = "Textures\\Module_Icons\\Quest Data Viewer.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Quest Data Viewer.png"
 BASE_PATH = PySystem.Console.get_projects_path()
-TEXTURE_BASE_PATH = BASE_PATH + "\\Textures\\Faction_Icons\\"
+TEXTURE_BASE_PATH = BASE_PATH + "\\Assets\\Textures\\Faction_Icons\\"
 
 # ===============================
 # COLOR MAPS for quest markup tags

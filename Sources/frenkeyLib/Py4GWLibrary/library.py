@@ -421,7 +421,7 @@ class Py4GWLibrary:
         image_size = item_size[1] - 4
         pos_x = item_min[0] + ((item_size[0] - image_size) / 2)
         pos_y = item_min[1] + ((item_size[1] - image_size) / 2)
-        ImGui.DrawTextureInDrawList((pos_x, pos_y), (image_size, image_size), "python_icon_round_20px.png")
+        ImGui.DrawTextureInDrawList((pos_x, pos_y), (image_size, image_size), "Assets/Branding/python_icon_round_20px.png")
         ImGui.show_tooltip("Switch to Single Button View")        
         PyImGui.same_line(0, spacing)
         
@@ -810,7 +810,7 @@ class Py4GWLibrary:
             style = ImGui.get_style()
             
             PyImGui.push_clip_rect(*win_pos, self.win_size[0], self.win_size[1], False)
-            ImGui.DrawTextureInDrawList((win_pos[0] + 4, win_pos[1] + 2), (20, 20), "python_icon_round_20px.png")
+            ImGui.DrawTextureInDrawList((win_pos[0] + 4, win_pos[1] + 2), (20, 20), "Assets/Branding/python_icon_round_20px.png")
             if ImGui.is_mouse_in_rect((win_pos[0] + 4, win_pos[1] + 2, 20, 20)):
                 PyImGui.begin_tooltip()
                 PyImGui.text(f"Collapse to a single button showing only the Python icon.\nOpening the full library view when clicked." )
@@ -1560,7 +1560,7 @@ class Py4GWLibrary:
                 PyImGui.set_cursor_pos(((self.win_size[0] - button_size) / 2, (self.win_size[1] - button_size) / 2))
             
             cx, cy = PyImGui.get_cursor_pos()
-            ImGui.image("python_icon_round.png", (button_size, button_size))              
+            ImGui.image("Assets/Branding/python_icon_round.png", (button_size, button_size))
             PyImGui.set_cursor_pos((cx, cy))
             ImGui.dummy(button_size, button_size)
             if in_radius:       

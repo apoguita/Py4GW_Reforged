@@ -1,4 +1,0 @@
-interface:
-  display_name: "Py4GW Docs Navigation"
-  short_description: "Route Py4GW work to the right evidence"
-  default_prompt: "Use $py4gw-docs-navigation to identify the authoritative Py4GW sources for this task."

@@ -4,6 +4,7 @@ Compile every modular JSON recipe with the canonical JSON-to-BT compiler.
 This imports Py4GWCoreLib runtime modules, so it is expected to run in an
 environment where the Py4GW bindings are importable.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path(__file__).resolve().parents[1],
+        default=REPO_ROOT / "json" / "modular",
         help="Root folder containing modular JSON recipes.",
     )
     args = parser.parse_args(argv)

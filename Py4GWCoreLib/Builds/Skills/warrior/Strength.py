@@ -9,7 +9,7 @@ from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["Strength"]

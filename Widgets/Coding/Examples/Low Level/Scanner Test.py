@@ -14,7 +14,7 @@ import ctypes
 from ctypes import sizeof
 
 MODULE_NAME = "Scanner Test"
-MODULE_ICON = "Textures/Module_Icons/Research Code.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Research Code.png"
 
 SetDifficulty_Func = NativeFunction(
     name="SetDifficulty_Func", #GWCA name

@@ -4,7 +4,7 @@ import PySystem
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 
 #region ItemModelTextures
-ITEM_MODEL_TEXTURE_PATH = "Textures\\Item Models\\"
+ITEM_MODEL_TEXTURE_PATH = "Assets\\Textures\\Item Models\\"
 """
 Get the texture path for a given model_id.
 If not found, returns a fallback image path like '2992 not found.jpg'.

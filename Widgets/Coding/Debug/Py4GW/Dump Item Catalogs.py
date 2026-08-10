@@ -7,13 +7,12 @@ finished, human-readable catalogs — resolving every ETextStr id to its word vi
 game's string table, and composing the 390 mod names via the native binding.
 
 Inputs (produced offline by the Ghidra dumps):
-  docs/items/modifiers/generated/raw-item-catalogs.json   (ids / numbers / struct fields)
-  docs/items/modifiers/generated/formulas-recipes.json    (crafting recipes)
-  docs/items/modifiers/tools/game_mod_table.py           (mod codes / upgrade_id)
+  item_catalog_data/raw_item_catalogs.json  (ids / numbers / struct fields)
+  item_catalog_data/formulas_recipes.json   (crafting recipes)
+  game_mod_table.py                         (mod codes / upgrade_id)
 
 Outputs (final, string-filled CSVs):
-  docs/items/modifiers/generated/*.csv   (colors, attributes, descriptions, elements,
-                                    formulas, pvp_items, pvp_unlocks, books)
+  item_catalog_data/*.csv  (local investigation output)
 
 String decoding is async, so a press captures + warms the string-table cache for a few
 seconds, then writes. Run this in-game (map loaded) so gw.dat text is available.
@@ -33,8 +32,10 @@ from Py4GWCoreLib.native_src.internals import string_table
 from Py4GWCoreLib.native_src.internals.encoded_strings import GWEncoded
 
 MODULE_NAME = "Dump Item Catalogs"
-CATDIR = r"C:\Users\Apo\Py4GW_Reforged\docs\items\modifiers\catalogs"
-TOOLS = r"C:\Users\Apo\Py4GW_Reforged\docs\items\modifiers\tools"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CATDIR = os.path.join(SCRIPT_DIR, "item_catalog_data")
+REPOSITORY_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "..", ".."))
+TOOLS = os.path.join(REPOSITORY_ROOT, "docs", "items", "modifiers", "tools")
 
 STATE_IDLE, STATE_WARMING, STATE_WRITING, STATE_DONE = 0, 1, 2, 3
 _WARM_FRAMES = 500

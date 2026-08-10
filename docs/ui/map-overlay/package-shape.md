@@ -63,7 +63,7 @@ Passive on import, frame-driven (`main`/`draw`/`configure`/`tooltip`) per
 
 ## Naming / migration / cleanup
 
-- **Widget name/icon:** **"Map Overlay"** (locked), `Textures/Module_Icons/Map Overlay.png`
+- **Widget name/icon:** **"Map Overlay"** (locked), `Assets/Textures/Module_Icons/Map Overlay.png`
   (a map icon).
 - **Its own ini, no auto-migration.** The new widget owns and writes a fresh config from
   defaults — it never silently touches the legacy files. A clean install "just works" with
@@ -76,7 +76,7 @@ Passive on import, frame-driven (`main`/`draw`/`configure`/`tooltip`) per
 - **Retire the old widgets by relocation, not deletion.** Move `Compass +.py` and
   `Mission Map +.py` **as-is** into `Legacy code and tests/Deprecated but working/` (alongside
   the other deprecated-but-working widgets). Their legacy `.ini`s stay where users have them
-  so the opt-in import can still find them; their `Textures/Module_Icons` PNGs move with them
+  so the opt-in import can still find them; their `Assets/Textures/Module_Icons` PNGs move with them
   or are left dormant. Do this only once the unified widget is verified in-client.
 
 ## Closed / deferred questions

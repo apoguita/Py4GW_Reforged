@@ -6,7 +6,7 @@ import PyOverlay
 import PySystem
 
 MODULE_NAME = "Layout Manager"
-MODULE_ICON = "Textures/Module_Icons/layout manager.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/layout manager.png"
 
 screen_overlay = PyOverlay.ScreenOverlay()
 screen_overlay.create_overlay(ms=0, destroy=False)

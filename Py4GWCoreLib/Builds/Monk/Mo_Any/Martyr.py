@@ -9,8 +9,8 @@ from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
 from Py4GWCoreLib.Builds.Skills import HexRemovalPriority, SkillsTemplate
-from HeroAI.targeting import GetAllAlliesArray
-from HeroAI.types import Skilltarget
+from Py4GWCoreLib.HeroAI.targeting import GetAllAlliesArray
+from Py4GWCoreLib.HeroAI.types import Skilltarget
 
 
 Martyr_ID = Skill.GetID("Martyr")

@@ -21,7 +21,7 @@ Package `Py4GWCoreLib/py4gwcorelib_src/map_overlay/` (launch_bar-style layering)
 | `config_ui.py` | Editor: mode, import, position, terrain, snap, grouped markers, custom markers, rings |
 
 Widget host: `Widgets/Guild Wars/Screen Overlays/Map Overlay.py` (thin; `draw`/`configure`/`tooltip`).
-Icon: `Textures/Module_Icons/Map Overlay.png` (placeholder copied from Mission Map+; replace with a bespoke map icon when convenient).
+Icon: `Assets/Textures/Module_Icons/Map Overlay.png` (placeholder copied from Mission Map+; replace with a bespoke map icon when convenient).
 
 Retired (moved as-is, reversible): `Legacy code and tests/Deprecated but working/Mission Map +.py` and `Compass +.py`. Their legacy inis stay in place so opt-in import can find them.
 

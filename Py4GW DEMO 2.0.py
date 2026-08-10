@@ -2,7 +2,7 @@ import PyImGui
 from Sources.ApoSource.py4gw_demo_src import registry
 
 MODULE_NAME = "Py4GW DEMO 2.0"
-MODULE_ICON = "Textures/Module_Icons/Py4GW.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Py4GW.png"
 
 
 #region Main Window

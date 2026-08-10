@@ -1,7 +1,7 @@
 from Py4GWCoreLib import *
 
 MODULE_NAME = "ImGui DEMO"
-MODULE_ICON = "Textures/Module_Icons/ImGui.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/ImGui.png"
 
 def tooltip():
     PyImGui.begin_tooltip()

@@ -67,9 +67,9 @@ Python (`Settings` / `JsonFactory`):
   into `Widgets/Data/rarity_filter_data.json`** — stop writing to `Widgets/Data`.
 - `Items & Loot/MerchantRules.py` (5839/6368/6408 + backups 6258/6266/6354) — big hand-rolled
   per-account profile store with atomic temp+fsync+os.replace and `.bak` snapshots.
-- `System/Enemy Tracker.py` — cross-account `EnemyData/EnemyTrackerData.json` +
-  `EnemyTrackerNames.*.json` with a **hand-rolled `O_EXCL` cross-process lock** → **JsonFactory
-  (Global)** — *verify Global-scope cross-process lock parity before removing the lock*.
+- `System/Enemy Tracker.py` - migrated from the legacy `EnemyData/` files to
+  **JsonFactory (Global)**; the retired source and cleaner are preserved under
+  `Legacy code and tests/EnemyData/`.
 - `Automation/Multiboxing/CombatPrep.py:162/174/192` — `formation_hotkey.json`.
 - `Automation/Enhancements/Dhuum Helper.py:59/81` **and** `Bots/Missions/Core/Underworld.py:2623/2640`
   — shared `Widgets/Config/EquippedArmor.json` → one shared JsonFactory doc.
@@ -85,14 +85,14 @@ Python (`Settings` / `JsonFactory`):
 **B — legit bundled reads (no action):** shipped catalogs/tables (Nick_cycles, modelid_drop_data,
 runes, merchant_rules_catalog, skill catalogs), reading `.py` source for AST/exec.
 
-### 3c. `HeroAI/`, `Sources/`, `Bots/`
+### 3c. `Py4GWCoreLib/HeroAI/`, `Sources/`, `Bots/`
 **A — migrate:**
 - `Sources/frenkeyLib/MultiBoxing/settings.py` — **own parallel `Settings` class** → `Widgets/Config/
   MultiBoxing/settings.json` + `Layouts/<name>.json`. Migrate settings→Settings, layouts→JsonFactory;
   delete the parallel class.
 - `Sources/frenkeyLib/LootEx/*` — **own parallel `Settings` class** + profiles + scraped data.
   *See decision D4: LootEx is already slated for replacement by `docs/loot/redesign/`.*
-- `HeroAI/hex_removal_src/hex_removal_config.py` — per email+char JSONC (hand-rolled comment
+- `Py4GWCoreLib/HeroAI/hex_removal_src/hex_removal_config.py` — per email+char JSONC (hand-rolled comment
   stripping) → **JsonFactory** (drop the JSONC serializer).
 - `Sources/frenkeyLib/ItemHandling/{RuleConfig,Rules/profile,Items/ItemData}.py` → JsonFactory.
 - `Bots/marks_coding_corner/AlcoholProc.py` → JsonFactory/Settings.

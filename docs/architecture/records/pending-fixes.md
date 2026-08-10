@@ -274,7 +274,7 @@ not something to slip in from an unrelated survey. Everything past Tier 1 is a p
 ## PF-4 · `agent_recolor` asks the user to type ids as CSV, and keys rules by uuid
 
 **Found:** 2026-07-26, while using `agent_recolor` as the cohesion reference for the loot filter editor.
-**Files:** `Py4GWCoreLib/py4gwcorelib_src/agent_recolor/config_ui.py`, `controller.py`
+**Files:** `Py4GWCoreLib/py4gwcorelib_src/system_settings/agent_recolor/config_ui.py`, `controller.py`
 **Status:** open — **rework**, not a bug fix.
 
 ### What is wrong

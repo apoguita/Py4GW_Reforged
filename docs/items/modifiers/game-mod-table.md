@@ -46,6 +46,20 @@ the remaining code(s) = the **effect** (damage type, attribute, +enchant, etc.).
 The `upgrade_id`s match the existing `ItemUpgradeId` enum values — i.e. the RE **validates** that
 enum against the game. Coverage: **390 unlocks / 294 distinct upgrade_ids**, all categories.
 
+## Compact modifier classification
+
+The former generated summaries reduce to these durable facts:
+
+- 293 upgrade definitions are game-verified from the PvP unlock table.
+- 17 additional definitions are hand-maintained PvE-only cases.
+- 134 enum entries are descriptors, not standalone mods.
+- Therefore the public modifier layer has 310 usable mod definitions.
+- The observed read rules cover 82 modifier identifiers: 27 take their value
+  from `arg1`, 37 from `arg2`, and 18 require both arguments.
+
+These numbers are a research snapshot. The current `mods_types.py`,
+`mods_core.py`, and this client table remain the implementation authority.
+
 ## Dumped output
 
 - `docs/items/modifiers/tools/game_mod_table.py` — `MOD_UNLOCKS`, one dict per unlock:

@@ -1,7 +1,7 @@
 # Raw configparser → Settings Migration Plan
 
 Status: **COMPLETE** (2026-07-10) — **`configparser` is fully removed from the active
-tree** (`grep -rl configparser` over Widgets/Sources/HeroAI/Py4GWCoreLib = 0). Pycons
+tree** (`grep -rl configparser` over Widgets/Sources/Py4GWCoreLib/HeroAI = 0). Pycons
 `IniHandler` class deleted; profiles now go through the `_SettingsBackedIni` adapter at
 **root scope** (same on-disk location); the legacy-config import reads via native Settings
 (root scope); the profile-sync value builder uses a tiny `_DictSection` instead of a

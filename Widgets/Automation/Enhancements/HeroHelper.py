@@ -8,7 +8,7 @@ import time
 import random
 
 MODULE_NAME = "Hero Helper"
-MODULE_ICON = "Textures/Module_Icons/Hero Helper.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Hero Helper.png"
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 root_directory = PySystem.Console.get_projects_path()
@@ -326,7 +326,7 @@ class Helper:
         prof_id = Helper._profession_icon_ids.get(profession_name)
         if not prof_id:
             return ""
-        return os.path.join(root_directory, f"Textures/Profession_Icons/[{prof_id}] - {profession_name}.png")
+        return os.path.join(root_directory, f"Assets/Textures/Profession_Icons/[{prof_id}] - {profession_name}.png")
 
     @staticmethod
     def get_skill_icon_path(skill_name: str) -> str:

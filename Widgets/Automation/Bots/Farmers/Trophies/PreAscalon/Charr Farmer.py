@@ -7,7 +7,7 @@ from Py4GWCoreLib import ConsoleLog
 from Py4GWCoreLib import Routines
 
 MODULE_NAME = "Charr Farmer"
-MODULE_ICON = "Textures\\Module_Icons\\Presearing Charr Farmer.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Presearing Charr Farmer.png"
 BOT_NAME = "Chaar farm 4man"
 bot = Botting(BOT_NAME)
 

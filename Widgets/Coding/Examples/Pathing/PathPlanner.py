@@ -10,7 +10,7 @@ from Py4GWCoreLib.Pathing import AutoPathing
 from typing import Tuple
 
 MODULE_NAME = "Path Planner"
-MODULE_ICON = "Textures/Module_Icons/Pathing.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Pathing.png"
 
 PATH: list[tuple[float, float, int]] = []
 draw_path_in_mission_map = False

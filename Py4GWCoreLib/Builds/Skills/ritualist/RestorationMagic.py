@@ -8,10 +8,10 @@ from Py4GWCoreLib import Range, Routines
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
-from HeroAI.types import Skilltarget
+from Py4GWCoreLib.HeroAI.types import Skilltarget
 
 if TYPE_CHECKING:
-    from HeroAI.custom_skill_src.skill_types import CustomSkill
+    from Py4GWCoreLib.HeroAI.custom_skill_src.skill_types import CustomSkill
     from Py4GWCoreLib.BuildMgr import BuildMgr
 
 __all__ = ["RestorationMagic"]
@@ -67,7 +67,7 @@ class RestorationMagic:
         cleanse_blind_martial: bool = False,
         cleanse_cripple_melee: bool = False,
     ) -> BuildCoroutine:
-        from HeroAI.targeting import GetAllAlliesArray
+        from Py4GWCoreLib.HeroAI.targeting import GetAllAlliesArray
 
         mend_body_and_soul_id: int = Skill.GetID("Mend_Body_and_Soul")
         mend_body_and_soul: CustomSkill = self.build.GetCustomSkill(mend_body_and_soul_id)
@@ -202,7 +202,7 @@ class RestorationMagic:
 
     #region X
     def Xinraes_Weapon(self) -> BuildCoroutine:
-        from HeroAI.targeting import TargetAllyWeaponSpell
+        from Py4GWCoreLib.HeroAI.targeting import TargetAllyWeaponSpell
 
         xinraes_weapon_id: int = Skill.GetID("Xinraes_Weapon")
 

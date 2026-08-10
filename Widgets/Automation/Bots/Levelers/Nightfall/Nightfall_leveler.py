@@ -9,7 +9,7 @@ from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 
 MODULE_NAME = "Nightfall Leveler"
-MODULE_ICON = "Textures\\Module_Icons\\Leveler - Nightfall.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Nightfall.png"
 
 bot = Botting("Nightfall Leveler",
               upkeep_birthday_cupcake_restock=10,

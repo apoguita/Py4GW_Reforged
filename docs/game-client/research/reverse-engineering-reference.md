@@ -737,7 +737,6 @@ All resolved via `FindAssertion("P:\\Code\\Engine\\Frame\\FrApi.cpp", "frameId",
 6. **Without frame_flags=0x20**, click-to-raise silently fails (no popup hash table registration)
 
 ### Full investigation in:
-- `.opencode/projects/re/window-polish/context_pool.md` — all 4 analysis reports + implementation
 - `docs/ui/research/window-creation-architecture.md` — Positioning and Chrome section
 
 ---
@@ -975,7 +974,6 @@ All files in `docs/game-client/research/`:
 | `cpp-wasm-mapping.md` | Full procedure for CPP-to-WASM-to-EXE translation |
 | `gw-combat-ai-reverse-engineering.md` | Combat AI reverse engineering analysis |
 | `name-obfuscation-reverse-engineering.md` | Name-obfuscation subsystem reference: packet rewrite hook, timing behavior, capture workflow, unresolved surfaces, and the current friend/guild/comm split |
-| `native-gw-ui-function-catalog.json` | Catalog of native GW UI functions with addresses |
 | `native-gw-window-creation-investigation.md` | Window creation/proc RE investigation |
 | `native-ui-title-and-encoded-string-reference.md` | Native UI title and encoding reference |
 | `inventory-slot-tint-reverse-engineering.md` | Confirmed `CItemImageFrame` background tint path, EXE hook target, and Reforged-Native implementation spec |
@@ -1165,9 +1163,6 @@ The issue is likely in `CreateUIComponent` / `FrameCreate` (`FUN_0062bfc0` @ `0x
 4. **G5**: Frame cloning — clone an existing game button's frame tree
 5. **G1**: Find actual game `FrameCreate` calls that create buttons — check component_flags used
 
-#### Project
-`.opencode/projects/re/native-window-elements-creation/` — context pool, status, lock files.
-
 ---
 
 ## 15. Context System (2026-06-06)
@@ -1255,7 +1250,9 @@ Each context facade uses a `NativeSymbol` byte-pattern scan to locate the struct
 
 ### Context Completion Pipeline
 
-Active project: `.opencode/projects/re/context-completion/`. One context at a time. See `status.md` for current target and phase.
+Complete contexts one at a time. Record the active target, evidence, and phase
+in the owning source or a current research record; no shared task workspace is
+authoritative.
 
 ### Key Source Paths
 
@@ -1836,7 +1833,6 @@ The first downstream char/map handlers already pinned are:
 This does not yet name the exact caller that emits `0x0088`, but it does eliminate the earlier mission dispatch slice as the source.
 
 ### Project Files
-- `.opencode/projects/re/map-travel-bypass/` — project pool, status, lock
 - `Py4GW\vendor\gwca\Source\MapMgr.cpp` — ObserverJoinTarget implementation (lines 2222-2290)
 - `Py4GW\vendor\gwca\Include\GWCA\Managers\MapMgr.h` — ObserverJoinResult/LogEntry structs (lines 383-404)
 - `Py4GW\src\Py4GW_UI.cpp` — Python bindings (observer_join, get_observer_join_status, etc.)

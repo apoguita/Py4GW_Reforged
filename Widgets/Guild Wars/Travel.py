@@ -32,7 +32,7 @@ game_throttle_timer.Start()
 click_timer = ThrottledTimer(125)
 click_timer.Start()
 
-MODULE_ICON = "Textures\\Module_Icons\\travel_cursor.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\travel_cursor.png"
 class Config:
     global MODULE_NAME
     def __init__(self):

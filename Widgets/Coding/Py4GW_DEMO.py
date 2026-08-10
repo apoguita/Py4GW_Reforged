@@ -8,7 +8,7 @@ import PyPing
 
 module_name = "Py4GW DEMO"
 MODULE_NAME = "Py4GW DEMO"
-MODULE_ICON = "Textures/Module_Icons/Py4GW.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Py4GW.png"
 
 class WindowState:
     def __init__(self):

@@ -31,5 +31,6 @@ So the *what* and the *how* are now deliberately separate, and the how carries o
 - `implementation-log.md` — what the reverted builds contained, kept for the *data* findings
   (catalog defects, placeholder model ids, the dye subsystem), not for design.
 - `how-it-works-today.md` — line-cited audit of the **existing** legacy system. Still accurate.
-- `grouping*.json`, `salvage_mapping*.json`, `dropinfo.json` — extracted data.
+- The former extracted datasets were removed from docs; they were review
+  exports, not design authority.
 - `index.md`, `loot-redesign.md`, `structure-and-build.md` — superseded design drafts.

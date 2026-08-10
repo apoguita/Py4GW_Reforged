@@ -8,6 +8,10 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 CANONICAL_STEP_TYPES: frozenset[str] = frozenset(
@@ -277,7 +281,7 @@ def _audit_step_semantics(
     step: dict[str, object],
     step_type: str,
     semantic_counts: Counter[str],
-    target_registry: object | None,
+    target_registry: Any | None,
 ) -> None:
     allowed_fields = ALLOWED_FIELDS[step_type]
     for key in step:
@@ -307,7 +311,7 @@ def _audit_selector(
     step: dict[str, object],
     step_type: str,
     semantic_counts: Counter[str],
-    target_registry: object | None,
+    target_registry: Any | None,
 ) -> None:
     target = str(step.get("target") or step.get("kind") or ("gadget" if "gadget" in step else "npc")).strip().lower()
     has_point = "point" in step or ("x" in step and "y" in step)
@@ -363,7 +367,9 @@ def _int(value: object, default: int) -> int:
     try:
         if isinstance(value, str):
             return int(value, 0)
-        return int(value)
+        if isinstance(value, (int, float)):
+            return int(value)
+        return default
     except (TypeError, ValueError):
         return default
 
@@ -385,7 +391,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path(__file__).resolve().parents[1],
+        default=REPO_ROOT / "json" / "modular",
         help="Root folder containing modular JSON recipes.",
     )
     parser.add_argument(

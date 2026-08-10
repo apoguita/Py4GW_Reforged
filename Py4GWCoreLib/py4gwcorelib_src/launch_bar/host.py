@@ -45,8 +45,8 @@ _TILE_BORDER_LIGHTEN = 0.18
 _ACCENT = (0.24, 0.48, 0.85, 1.0)  # selection outline / drop-ok
 _ACTION_LABELS = {"browser": "WDG", "system_settings": "CFG"}  # face label fallback (no icon)
 _ACTION_ICONS = {  # textured face per system action
-    "browser": os.path.join(_ROOT, "python_icon.ico"),          # widget-explorer icon
-    "system_settings": os.path.join(_ROOT, "Textures", "Icons", "cogs.png"),  # settings cog
+    "browser": os.path.join(_ROOT, "Assets", "Branding", "python_icon.ico"),  # widget-explorer icon
+    "system_settings": os.path.join(_ROOT, "Assets", "Textures", "Icons", "cogs.png"),  # settings cog
 }
 _ACTION_TOOLTIP = {"browser": "Widget browser", "system_settings": "System settings"}
 

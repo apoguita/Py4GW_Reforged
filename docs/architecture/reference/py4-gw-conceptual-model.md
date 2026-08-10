@@ -1670,8 +1670,8 @@ This is the remoting layer that exposes selected project-facing surfaces over a 
 Current components:
 
 - injected widget client: `Widgets/Coding/Tools/Bridge Client.py`
-- external daemon: `bridge_daemon.py`
-- CLI operator/tester: `bridge_cli.py`
+- external daemon: `py4gw_bridge/daemon.py`
+- CLI operator/tester: `py4gw_bridge/cli.py`
 
 This layer is not the architecture of the library itself. It is a transport/exposure layer over the `Py4GWCoreLib` source-of-truth layer and the `GLOBAL_CACHE` consumer layer.
 
@@ -1681,7 +1681,7 @@ This is the AI/tool-facing layer that sits above the daemon control API.
 
 Current baseline:
 
-- stdio adapter: `py4gw_mcp_server.py`
+- stdio adapter: `py4gw_bridge/mcp_server.py`
 
 Current exposed safe subset:
 

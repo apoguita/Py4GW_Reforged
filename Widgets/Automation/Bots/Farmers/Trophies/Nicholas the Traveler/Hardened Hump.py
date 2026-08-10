@@ -15,7 +15,7 @@ from Py4GW_widget_manager import get_widget_handler
 # QUEST TO INCREASE SPAWNS
 BOT_NAME = "Hardened Hump Farm"
 MODULE_NAME = "Hardened Hump Farm (Nicholas the Traveler)"
-MODULE_ICON = "Textures\\Module_Icons\\Nicholas the Traveler - Hardened Hump.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\Nicholas the Traveler - Hardened Hump.png"
 MODEL_ID_TO_FARM = ModelID.Hardened_Hump
 OUTPOST_TO_TRAVEL = 57
 COORD_TO_EXIT_MAP = (15498.47, -15059.51)

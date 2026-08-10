@@ -3,7 +3,7 @@ from Py4GWCoreLib import Botting
 
 # QUEST TO INCREASE SPAWNS 
 BOT_NAME = "The Mindsquall Farm"
-MODULE_ICON = "Textures\\Module_Icons\\The Mindsquall.png"
+MODULE_ICON = "Assets\\Textures\\Module_Icons\\The Mindsquall.png"
 OUTPOST_TO_TRAVEL = 640  # Rata Sum
 COORD_TO_EXIT_MAP = (16429.57, 13491.29)  # Rata Sum exit to Magus Stones
 EXPLORABLE_TO_TRAVEL = 569  # Magus Stones
@@ -58,9 +58,9 @@ def _find_shared_textures_folder() -> str:
     weapons = "Weapons Farm"
     for base in _iter_parents(os.getcwd()):
         candidates = [
-            os.path.join(base, "Bots", weapons, "Textures"),
+            os.path.join(base, "Bots", weapons, "Assets", "Textures"),
             os.path.join(base, "Bots", weapons, "textures"),
-            os.path.join(base, weapons, "Textures"),
+            os.path.join(base, weapons, "Assets", "Textures"),
             os.path.join(base, weapons, "textures"),
         ]
         for c in candidates:

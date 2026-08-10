@@ -2,7 +2,7 @@ from Py4GWCoreLib import *
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
 MODULE_NAME = "Icon Explorer"
-MODULE_ICON = "Textures/Module_Icons/Explorer Search.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Explorer Search.png"
 INI_PATH = "Widgets/IconExplorer"
 INI_FILENAME = "IconExplorer.ini"
 

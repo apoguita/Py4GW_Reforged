@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 
 MODULE_NAME = "Lightbringer Title Farm (Mirror Of Lyss)"
-MODULE_ICON = "Textures/Skill_Icons/[1813] - Lightbringer.jpg"
+MODULE_ICON = "Assets/Textures/Skill_Icons/[1813] - Lightbringer.jpg"
 
 class BotSettings:
     BOT_NAME = "Lightbringer - MirrorOfLyss"
@@ -34,7 +34,7 @@ class BotSettings:
     ]
     BOUNTY_COORDS = (19505.00, 11209.00)
     BOUNTY_DIALOG = 0x85
-    TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Textures", "Skill_Icons", "[1813] - Lightbringer.jpg")
+    TEXTURE = os.path.join(PySystem.Console.get_projects_path(), "Assets", "Textures", "Skill_Icons", "[1813] - Lightbringer.jpg")
 
 LOOP_STEP_NAME = ""
 RESIGN_STEP_NAME = ""
