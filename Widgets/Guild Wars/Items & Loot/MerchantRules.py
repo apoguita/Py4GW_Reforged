@@ -4247,6 +4247,33 @@ def _get_named_agent_target_definition(agent_kind: object, target_key: object) -
         return None
 
 
+def _agent_resolver_display_names(agent_id: int) -> tuple[str, ...]:
+    """Return every usable display-name source for a live NPC.
+
+    Agent.GetNameByID() currently depends on live encoded-name decoding and can
+    temporarily return an empty/unusable value.  The WorldContext NPC model
+    keeps a canonical model name, so use it as an independent fallback.
+    """
+    names: list[str] = []
+    try:
+        from Py4GWCoreLib import Agent
+
+        live_name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
+        if live_name:
+            names.append(live_name)
+
+        living = Agent.GetLivingAgentByID(int(agent_id))
+        if living is not None and not bool(getattr(living, "is_player", False)):
+            npc_model = Agent.GetNPCModelByID(int(getattr(living, "player_number", 0) or 0))
+            if npc_model is not None:
+                model_name = str(getattr(npc_model, "name_str", "") or "").strip()
+                if model_name and model_name not in names:
+                    names.append(model_name)
+    except Exception:
+        pass
+    return tuple(names)
+
+
 def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
     """Match a live agent name through Reforged's encoded-name facade.
 
@@ -4363,20 +4390,54 @@ def resolve_agent_xy_from_step(
 
     target_name_l = target_name.lower()
     exact_name = _parse_agent_selector_bool(safe_step.get("exact_name", False), False)
+    named_display_name = (
+        str(getattr(named_target, "display_name", "") or "").strip()
+        if named_target is not None
+        else ""
+    )
+    named_display_name_l = named_display_name.lower()
+
+    def _name_matches(candidate_names: tuple[str, ...], query_l: str, *, exact: bool) -> bool:
+        if not query_l:
+            return False
+        for candidate_name in candidate_names:
+            candidate_l = str(candidate_name or "").strip().lower()
+            if not candidate_l:
+                continue
+            if candidate_l == query_l if exact else query_l in candidate_l:
+                return True
+        return False
 
     def matches_agent(agent_id: int) -> bool:
         try:
             if model_id is not None and _safe_int(Agent.GetModelID(agent_id), 0) != model_id:
                 return False
+
+            candidate_names: tuple[str, ...] = ()
+
             if encoded_names and not _agent_encoded_name_matches(agent_id, encoded_names):
-                return False
-            if target_name:
-                agent_name = str(Agent.GetNameByID(agent_id) or "").strip()
-                if not agent_name:
+                # The live encoded-name facade can fail while WorldContext still
+                # exposes the NPC model's canonical name.  A registry selector
+                # may therefore fall back to its own display name.
+                candidate_names = _agent_resolver_display_names(agent_id)
+                if not named_display_name_l or not _name_matches(
+                    candidate_names,
+                    named_display_name_l,
+                    exact=False,
+                ):
                     return False
-                agent_name_l = agent_name.lower()
-                return agent_name_l == target_name_l if exact_name else target_name_l in agent_name_l
-            return model_id is not None or bool(encoded_names)
+
+            if target_name:
+                if not candidate_names:
+                    candidate_names = _agent_resolver_display_names(agent_id)
+                if not _name_matches(candidate_names, target_name_l, exact=exact_name):
+                    return False
+
+            return (
+                model_id is not None
+                or bool(encoded_names)
+                or bool(target_name)
+            )
         except Exception:
             return False
 
@@ -15453,7 +15514,17 @@ class MerchantRulesWidget:
                 log_failures=not passive,
             )
 
-        coords[MERCHANT_TYPE_RUNE_TRADER] = self._resolve_rune_trader_coords(map_id, log_failures=not passive)
+        # Rune Trader is optional. Resolve it only when an enabled rule can
+        # actually route work there. This avoids false resolver errors for
+        # profiles such as Shards of Orr that never use Rune Trader.
+        if self._needs_rune_trader_context():
+            coords[MERCHANT_TYPE_RUNE_TRADER] = self._resolve_rune_trader_coords(
+                map_id,
+                log_failures=not passive,
+            )
+        else:
+            coords[MERCHANT_TYPE_RUNE_TRADER] = None
+
         coords[MERCHANT_TYPE_SCROLL_TRADER] = self._resolve_scroll_trader_coords(
             map_id,
             selector_data,
@@ -18313,6 +18384,30 @@ class MerchantRulesWidget:
                 return True
         return False
 
+    def _has_enabled_rune_sell_rules(self) -> bool:
+        """Return True only when the current profile can actually use Rune Trader."""
+        for raw_rule in self.sell_rules:
+            rule = _normalize_sell_rule(raw_rule)
+            if rule is None or not rule.enabled:
+                continue
+            if rule.kind == SELL_KIND_RUNE_TRADER_TARGET:
+                if _normalize_rune_sell_targets(
+                    getattr(rule, "rune_sell_targets", [])
+                ):
+                    return True
+            elif (
+                rule.kind == SELL_KIND_ARMOR
+                and bool(getattr(rule, "include_standalone_runes", False))
+            ):
+                return True
+        return False
+
+    def _needs_rune_trader_context(self) -> bool:
+        return bool(
+            self._has_enabled_rune_buy_rules()
+            or self._has_enabled_rune_sell_rules()
+        )
+
     def _has_enabled_scroll_trader_buy_rules(self) -> bool:
         for raw_rule in self.buy_rules:
             rule = _normalize_buy_rule(raw_rule)
@@ -20890,7 +20985,9 @@ class MerchantRulesWidget:
         elif supported_context_override is not None:
             supported_map, supported_reason, coords = supported_context_override
         else:
-            supported_map, supported_reason, coords = self._get_supported_context()
+            supported_map, supported_reason, coords = self._get_supported_context(
+                passive=bool(cleanup_only)
+            )
         plan = PlanResult(
             supported_map=supported_map,
             supported_reason=supported_reason,
