@@ -3976,22 +3976,20 @@ def CollectInsideReward() -> BehaviorTree:
     """
     Collect the Lost Souls reward from Shandra inside the dungeon.
 
-    Shandra is resolved as the nearest NPC to the final chest position.
+    Shandra is resolved directly by name using TargetAgentByName.
     The routine interacts with her and sends the known reward dialog
     locally and across the multibox party.
     """
     return BT.Sequence(
         name="Collect Inside Reward",
         children=[
-            BT.TargetNearest(
-                FENDI_CHEST_POSITION[0],
-                FENDI_CHEST_POSITION[1],
-                target_distance=Range.Spirit.value,
+            BT.TargetAgentByName(
+                agent_name="Shandra",
                 log=True,
             ),
             BT.LogMessage(
                 message=(
-                    "An NPC was found near the final chest. "
+                    "Shandra was found near the final chest. "
                     "Attempting to collect the Lost Souls reward."
                 ),
                 module_name=MODULE_NAME,
@@ -4280,19 +4278,19 @@ def CollectRewardAndReturnToArbor(
     reward_collected_inside = BT.Sequence(
         name="Collect Shandra Reward Inside Dungeon",
         children=[
+            # Do not gate the Shandra lookup behind IsQuestState("complete").
+            # TargetAgentByName works independently, while the quest-state mirror
+            # can still report "active" for a short time after Fendi/chest.  If
+            # Shandra is present, try her directly and let WaitForQuestCleared be
+            # the source of truth for whether the reward was actually collected.
             BT.IsCurrentMap(
                 map_id=SOO_LEVEL_3,
                 log=True,
             ),
-            BT.IsQuestState(
-                quest_id=LOST_SOULS_QUEST_ID,
-                state="complete",
-                log=True,
-            ),
             BT.LogMessage(
                 message=(
-                    "Lost Souls is complete. Looking for "
-                    "Shandra inside the dungeon."
+                    "Level 3 confirmed after Fendi. Looking for Shandra "
+                    "by name inside the dungeon."
                 ),
                 module_name=MODULE_NAME,
             ),
