@@ -3914,14 +3914,259 @@ def Level3_Brigant() -> BehaviorTree:
 # region Level 3 - boss
 
 
+FENDI_FIGHT_CENTER = (-15606.06, 15287.51)
+FENDI_FIGHT_RADIUS = float(Range.Compass.value)
+FENDI_TARGET_INTERVAL_MS = 750
+FENDI_STABLE_CLEAR_MS = 15_000
+
+
+def _fendi_distance_sq(agent_id: int, origin: tuple[float, float]) -> float:
+    try:
+        x, y = Agent.GetXY(agent_id)
+    except Exception:
+        return float("inf")
+    dx = float(x) - float(origin[0])
+    dy = float(y) - float(origin[1])
+    return (dx * dx) + (dy * dy)
+
+
+def _fendi_enemy_name(agent_id: int) -> str:
+    try:
+        return str(Agent.GetNameByID(agent_id) or "").strip()
+    except Exception:
+        return ""
+
+
+def _fendi_final_chest_present() -> bool:
+    """Return True once Fendi's final chest gadget has spawned."""
+    origin = FENDI_CHEST_POSITION
+    max_distance_sq = 1_200.0 * 1_200.0
+
+    for agent_id in AgentArray.GetGadgetArray() or []:
+        agent_id = int(agent_id)
+        try:
+            if int(Agent.GetGadgetID(agent_id) or 0) != int(FENDI_CHEST_GADGET_ID):
+                continue
+        except Exception:
+            continue
+
+        if _fendi_distance_sq(agent_id, origin) <= max_distance_sq:
+            return True
+
+    return False
+
+
+def ClearFendiArenaWithBossPriority() -> BehaviorTree:
+    """Clear Fendi's arena while forcing boss targets ahead of normal enemies.
+
+    Priority:
+      1. Any alive enemy with Agent.HasBossGlow().
+      2. Any alive enemy whose decoded name contains "Fendi" (safety fallback).
+      3. Nearest remaining enemy.
+
+    The selected enemy is also called as the party target so HeroAI can follow
+    the same focus. The node deliberately survives every Fendi <-> Soul
+    transition and only hands off once Fendi's final chest appears. The stock
+    final-clear sequence then performs the 15-second respawn verification.
+    """
+    state = {
+        "last_target_id": 0,
+        "last_interact_ms": 0,
+    }
+
+    center = FENDI_FIGHT_CENTER
+    radius_sq = FENDI_FIGHT_RADIUS * FENDI_FIGHT_RADIUS
+
+    def _alive_enemies_in_arena() -> list[int]:
+        result: list[int] = []
+        for agent_id in AgentArray.GetEnemyArray() or []:
+            agent_id = int(agent_id)
+            try:
+                if not Agent.IsAlive(agent_id):
+                    continue
+            except Exception:
+                continue
+            if _fendi_distance_sq(agent_id, center) <= radius_sq:
+                result.append(agent_id)
+        return result
+
+    def _priority_boss_targets(enemies: list[int]) -> list[int]:
+        """Return Fendi / Soul candidates before ordinary enemies."""
+        boss_glow: list[int] = []
+        named_fendi: list[int] = []
+
+        for agent_id in enemies:
+            try:
+                if Agent.HasBossGlow(agent_id):
+                    boss_glow.append(agent_id)
+                    continue
+            except Exception:
+                pass
+
+            if "fendi" in _fendi_enemy_name(agent_id).casefold():
+                named_fendi.append(agent_id)
+
+        # BossGlow is authoritative when available. The name fallback covers
+        # either Fendi form if one of them happens not to expose the glow flag.
+        return boss_glow if boss_glow else named_fendi
+
+    def _choose_target(enemies: list[int]) -> tuple[int, str]:
+        player_xy = Player.GetXY()
+        priority_targets = _priority_boss_targets(enemies)
+
+        if priority_targets:
+            target_id = min(
+                priority_targets,
+                key=lambda aid: _fendi_distance_sq(aid, player_xy),
+            )
+            try:
+                if Agent.HasBossGlow(target_id):
+                    return target_id, "BossGlow"
+            except Exception:
+                pass
+            return target_id, "FendiName"
+
+        return (
+            min(enemies, key=lambda aid: _fendi_distance_sq(aid, player_xy)),
+            "NearestEnemy",
+        )
+
+    def _fight(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        now_ms = int(time.monotonic() * 1000.0)
+
+        # Do not steal the target while the shared loot service is busy.
+        try:
+            account_email = Player.GetAccountEmail()
+            index, message = GLOBAL_CACHE.ShMem.PreviewNextMessage(account_email)
+            if (
+                index != -1
+                and message
+                and message.Command == SharedCommandType.PickUpLoot
+                and bool(getattr(message, "Running", False))
+            ):
+                return BehaviorTree.NodeState.RUNNING
+        except Exception:
+            pass
+
+        if bool(node.blackboard.get("PAUSE_MOVEMENT", False)):
+            return BehaviorTree.NodeState.RUNNING
+
+        try:
+            if Agent.IsDead(Player.GetAgentID()):
+                return BehaviorTree.NodeState.RUNNING
+        except Exception:
+            pass
+
+        enemies = _alive_enemies_in_arena()
+        node.blackboard["fendi_arena_enemy_count"] = len(enemies)
+
+        # The Fendi encounter alternates between Fendi and his Soul, with short
+        # transition windows and fresh trash spawns on each form change. Do NOT
+        # finish the priority phase merely because the enemy array is briefly
+        # empty. The final chest is our definitive encounter-complete signal.
+        chest_present = _fendi_final_chest_present()
+
+        if not enemies:
+            state["last_target_id"] = 0
+            state["last_interact_ms"] = 0
+
+            if chest_present:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "Fendi final chest detected. Boss/Soul cycle is complete; "
+                    "switching to final stock area-clear verification.",
+                    PySystem.Console.MessageType.Success,
+                )
+                return BehaviorTree.NodeState.SUCCESS
+
+            return BehaviorTree.NodeState.RUNNING
+
+        # Extra guard: if the chest has appeared while only normal adds remain,
+        # the boss cycle itself is complete. Hand those remaining enemies to the
+        # stock ClearEnemiesInArea + 15s stable-clear sequence below.
+        if chest_present and not _priority_boss_targets(enemies):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Fendi final chest detected with only normal enemies remaining. "
+                "Handing final cleanup to ClearEnemiesInArea.",
+                PySystem.Console.MessageType.Info,
+            )
+            state["last_target_id"] = 0
+            state["last_interact_ms"] = 0
+            return BehaviorTree.NodeState.SUCCESS
+
+        target_id, priority_label = _choose_target(enemies)
+        target_changed = int(state["last_target_id"]) != int(target_id)
+        interaction_due = now_ms - int(state["last_interact_ms"]) >= FENDI_TARGET_INTERVAL_MS
+
+        if target_changed:
+            Player.ChangeTarget(target_id)
+            try:
+                Player.CallTarget(target_id)
+            except Exception:
+                pass
+            try:
+                Player.Interact(target_id, False)
+            except Exception:
+                pass
+
+            target_name = _fendi_enemy_name(target_id) or f"agent {target_id}"
+            try:
+                boss_glow = bool(Agent.HasBossGlow(target_id))
+            except Exception:
+                boss_glow = False
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"Fendi priority target -> {target_name} "
+                    f"(id={target_id}, priority={priority_label}, "
+                    f"boss_glow={boss_glow}, enemies={len(enemies)})."
+                ),
+                PySystem.Console.MessageType.Info,
+            )
+            state["last_target_id"] = target_id
+            state["last_interact_ms"] = now_ms
+            return BehaviorTree.NodeState.RUNNING
+
+        if interaction_due:
+            Player.ChangeTarget(target_id)
+            try:
+                Player.Interact(target_id, False)
+            except Exception:
+                pass
+            state["last_interact_ms"] = now_ms
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Clear Fendi Arena With Boss Priority",
+            action_fn=_fight,
+            aftercast_ms=0,
+        )
+    )
+
+
 def Level3_FendiFight() -> BehaviorTree:
     return BT.Sequence(
         name="Run Fendi Boss Fight",
         children=[
+            # Main fight: always prefer Fendi / his soul when they expose
+            # BossGlow, with a name fallback before ordinary enemies.
+            ClearFendiArenaWithBossPriority(),
+
+            # Final stock clear is intentionally preserved.  It handles any
+            # delayed enemy appearance and requires the arena to stay clear for
+            # 15 seconds before the bot is allowed to continue to the chest.
             BT.ClearEnemiesInArea(
-                Vec2f(-15606.06, 15287.51),radius=Range.Compass.value,log=True),
+                Vec2f(-15606.06, 15287.51),
+                radius=Range.Compass.value,
+                log=True,
+            ),
             BT.WaitForClearEnemiesInArea(
-                -15606.06, 15287.51,
+                -15606.06,
+                15287.51,
                 radius=Range.Compass.value,
                 allowed_alive_enemies=0,
                 interact_interval_ms=750,
@@ -3930,9 +4175,9 @@ def Level3_FendiFight() -> BehaviorTree:
                 center_tolerance=750.0,
                 log=True,
             ),
-
-    
-        ])
+            _record_run_end_node(),
+        ],
+    )
 #endregion
 
 # region Level 3 - Chest
@@ -3963,7 +4208,6 @@ def Level3_Chest() -> BehaviorTree:
                 ignore_destination_gadgets=True,
             ),
             _inventory_statistics_node(after_chest=True),
-            _record_run_end_node(),
             BT.Wait(5000),
     
         ])
