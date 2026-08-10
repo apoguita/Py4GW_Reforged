@@ -1,6 +1,6 @@
 # PyTrade stub — Reforged Native surface
 # Matches src/GW/trade/trade_bindings.cpp.
-# open_trade_window is game-thread enqueued and returns True immediately.
+# Mutating functions are game-thread enqueued and return True once accepted.
 
 def open_trade_window(agent_id: int) -> bool: ...
 
