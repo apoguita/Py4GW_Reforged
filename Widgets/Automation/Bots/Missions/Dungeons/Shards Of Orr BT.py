@@ -4757,6 +4757,37 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     ]
 
 
+
+def tooltip():
+    import PyImGui
+    from Py4GWCoreLib import ImGui, Color
+
+    PyImGui.begin_tooltip()
+
+    # Title
+    title_color = Color(255, 200, 100, 255)
+    ImGui.push_font("Regular", 20)
+    PyImGui.text_colored("Shards Of Orr Farm", title_color.to_tuple_normalized())
+    ImGui.pop_font()
+    PyImGui.spacing()
+    PyImGui.separator()
+
+    # Description
+    PyImGui.text("Farm Shards Of Orr (BDS)")
+    PyImGui.spacing()
+
+    # Credits
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Developed by Sky")
+    PyImGui.end_tooltip()
+
+
+
+# endregion
+
+
+
+
 def main() -> None:
     global initialized
 
@@ -4778,10 +4809,6 @@ def main() -> None:
             ("Config", _draw_run_config),
         ],
     )
-
-
-# endregion
-
 
 if __name__ == "__main__":
     main()
