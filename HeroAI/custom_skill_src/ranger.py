@@ -1,7 +1,7 @@
 
 from Py4GWCoreLib import GLOBAL_CACHE, Range
-from HeroAI.types import SkillNature, Skilltarget, SkillType
-from HeroAI.custom_skill import CustomSkill
+from ..types import SkillNature, Skilltarget, SkillType
+from ..custom_skill import CustomSkill
 
 class RangerSkills:
     def __init__(self, skill_data):
@@ -222,7 +222,6 @@ class RangerSkills:
         skill.Nature = SkillNature.Healing.value
         skill.Conditions.UniqueProperty = True
         skill.Conditions.LessLife = 0.50
-        skill.Conditions.CloseToAggro = True
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()
