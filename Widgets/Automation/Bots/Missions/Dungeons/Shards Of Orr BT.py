@@ -4227,7 +4227,7 @@ def Level3_Chest() -> BehaviorTree:
                 ignore_destination_gadgets=True,
             ),
             _inventory_statistics_node(after_chest=True),
-            
+            BT.Wait(5000),
     
         ])
 #endregion
@@ -4246,7 +4246,6 @@ def CollectInsideReward() -> BehaviorTree:
     return BT.Sequence(
         name="Collect Inside Reward",
         children=[
-            BT.Wait(5000),
             BT.TargetAgentByName(
                 agent_name="Shandra",
                 log=True,
