@@ -1,7 +1,7 @@
 
 from Py4GWCoreLib import GLOBAL_CACHE, Range
-from HeroAI.types import SkillNature, Skilltarget, SkillType
-from HeroAI.custom_skill import CustomSkill
+from ..types import SkillNature, Skilltarget, SkillType
+from ..custom_skill import CustomSkill
 
 class RangerSkills:
     def __init__(self, skill_data):
@@ -12,6 +12,14 @@ class RangerSkills:
         skill.SkillType = SkillType.Signet.value
         skill.TargetAllegiance = Skilltarget.Self.value
         skill.Nature = SkillNature.Buff.value
+        skill_data[skill.SkillID] = skill
+
+        skill = CustomSkill()
+        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Antidote_Signet")
+        skill.SkillType = SkillType.Signet.value
+        skill.TargetAllegiance = Skilltarget.Self.value
+        skill.Nature = SkillNature.CustomA.value
+        skill.Conditions.HasBlindness = True
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()
