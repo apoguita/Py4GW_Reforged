@@ -1454,12 +1454,24 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
 
 
 def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
+    """Run one MerchantRules attempt while staying in Eye of the North.
+
+    InventoryCheckAndMaintenance() performs the initial Vlox preparation and
+    travel to Eye of the North once. If the first attempt leaves the inventory
+    below threshold, the retry runs in the same outpost instead of bouncing
+    through Vlox's Falls.
+    """
     attempt_key = f"inventory_attempt_{attempt_number}"
     return BT.Sequence(
         name=f"Inventory Maintenance Attempt {attempt_number}",
         children=[
-            _return_all_accounts_to_vlox(attempt_key),
-            BT.LeaveParty(),
+            BT.LogMessage(
+                message=(
+                    f"Inventory maintenance attempt {attempt_number}/"
+                    f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Eye of the North."
+                ),
+                module_name=MODULE_NAME,
+            ),
             _set_local_auto_inventory_handler(False),
             _send_widget_state(
                 INVENTORY_PLUS_WIDGET_NAME,
@@ -1471,14 +1483,8 @@ def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
                 enabled=True,
                 refs_key=f"{attempt_key}_enable_merchant_rules_refs",
             ),
-            # Vlox's Falls is not a Merchant Rules selector-supported service hub.
-            # Run the JSON-driven maintenance in Eye of the North instead.
-            _travel_all_accounts_to_inventory_outpost(attempt_key),
             BT.Wait(1_000),
             _run_merchant_rules(attempt_key),
-            # Avoid a redundant same-map travel if Merchant Rules or recovery has
-            # already returned every account to Vlox's Falls.
-            _return_all_accounts_to_vlox(f"{attempt_key}_after_merchant"),
             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
             _inventory_is_healthy_node(
                 f"Verify Inventory After Attempt {attempt_number}",
@@ -1587,10 +1593,22 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
                                 ),
                                 module_name=MODULE_NAME,
                             ),
+                            # Prepare once, then keep both MerchantRules attempts
+                            # in Eye of the North. Return to Vlox only after a
+                            # successful inventory verification.
+                            _return_all_accounts_to_vlox("inventory_maintenance_setup"),
+                            BT.LeaveParty(),
+                            _travel_all_accounts_to_inventory_outpost(
+                                "inventory_maintenance_setup"
+                            ),
                             BT.Selector(
-                                name="Retry Inventory Maintenance Safely",
+                                name="Retry Inventory Maintenance In Eye Of The North",
                                 children=maintenance_attempts,
                             ),
+                            _return_all_accounts_to_vlox(
+                                "inventory_maintenance_success"
+                            ),
+                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
                         ],
                     ),
                 ],
