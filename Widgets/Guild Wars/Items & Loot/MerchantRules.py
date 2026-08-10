@@ -1027,6 +1027,18 @@ RARITY_OPTION_ORDER: tuple[tuple[str, str], ...] = (
 )
 SUPPORTED_MAP_RUNE_TRADER_SELECTORS: dict[int, str] = {}
 SUPPORTED_MAP_SCROLL_TRADER_SELECTORS: dict[int, str] = {}
+
+# Runtime-confirmed service model IDs used only as a language-independent
+# fallback when a map has no explicit Py4GWCoreLib selector.
+#
+# Vlox's Falls (624): Aink [Merchant]/[Marchande]
+# Probe result: Agent.GetModelID() == 6813.
+SUPPORTED_MAP_SERVICE_MODEL_IDS: dict[int, dict[str, int]] = {
+    624: {
+        MERCHANT_TYPE_MERCHANT: 6813,
+    },
+}
+
 ACTION_TYPE_LABELS = {
     "buy": "Buy",
     "identify": "Identify",
@@ -4247,33 +4259,6 @@ def _get_named_agent_target_definition(agent_kind: object, target_key: object) -
         return None
 
 
-def _agent_resolver_display_names(agent_id: int) -> tuple[str, ...]:
-    """Return every usable display-name source for a live NPC.
-
-    Agent.GetNameByID() currently depends on live encoded-name decoding and can
-    temporarily return an empty/unusable value.  The WorldContext NPC model
-    keeps a canonical model name, so use it as an independent fallback.
-    """
-    names: list[str] = []
-    try:
-        from Py4GWCoreLib import Agent
-
-        live_name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
-        if live_name:
-            names.append(live_name)
-
-        living = Agent.GetLivingAgentByID(int(agent_id))
-        if living is not None and not bool(getattr(living, "is_player", False)):
-            npc_model = Agent.GetNPCModelByID(int(getattr(living, "player_number", 0) or 0))
-            if npc_model is not None:
-                model_name = str(getattr(npc_model, "name_str", "") or "").strip()
-                if model_name and model_name not in names:
-                    names.append(model_name)
-    except Exception:
-        pass
-    return tuple(names)
-
-
 def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
     """Match a live agent name through Reforged's encoded-name facade.
 
@@ -4299,6 +4284,52 @@ def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
         return any(agent_enc_tuple == tuple(int(value) for value in encoded_name) for encoded_name in encoded_names)
     except Exception:
         return False
+
+
+def _agent_named_target_display_matches(agent_id: int, named_target: object) -> bool:
+    """Fallback-match a named selector without depending on its localized role suffix.
+
+    Example: registry display name ``Maryann [Merchant]`` still matches a client
+    exposing ``Maryann [Marchande]``.  Generic role-only selectors are deliberately
+    not guessed here; those keep their encoded/model/name fallback path.
+    """
+
+    if named_target is None:
+        return False
+    display_name = str(getattr(named_target, "display_name", "") or "").strip()
+    if not display_name:
+        return False
+
+    try:
+        from Py4GWCoreLib import Agent
+
+        live_name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
+    except Exception:
+        return False
+    if not live_name:
+        return False
+
+    display_folded = display_name.casefold()
+    live_folded = live_name.casefold()
+    if display_folded == live_folded or display_folded in live_folded:
+        return True
+
+    # Ignore localized service suffixes such as [Merchant] / [Marchande] but
+    # require a real proper-name prefix.  "Merchant" alone is not sufficient.
+    display_base = display_name.split("[", 1)[0].strip()
+    live_base = live_name.split("[", 1)[0].strip()
+    if not display_base or not live_base:
+        return False
+    if display_base.casefold() in {
+        "merchant",
+        "material trader",
+        "rare material trader",
+        "rune trader",
+        "scroll trader",
+        "rare scroll trader",
+    }:
+        return False
+    return display_base.casefold() == live_base.casefold()
 
 
 def _log_agent_selector_failure(recipe_name: object, message: str) -> None:
@@ -4390,54 +4421,27 @@ def resolve_agent_xy_from_step(
 
     target_name_l = target_name.lower()
     exact_name = _parse_agent_selector_bool(safe_step.get("exact_name", False), False)
-    named_display_name = (
-        str(getattr(named_target, "display_name", "") or "").strip()
-        if named_target is not None
-        else ""
-    )
-    named_display_name_l = named_display_name.lower()
-
-    def _name_matches(candidate_names: tuple[str, ...], query_l: str, *, exact: bool) -> bool:
-        if not query_l:
-            return False
-        for candidate_name in candidate_names:
-            candidate_l = str(candidate_name or "").strip().lower()
-            if not candidate_l:
-                continue
-            if candidate_l == query_l if exact else query_l in candidate_l:
-                return True
-        return False
 
     def matches_agent(agent_id: int) -> bool:
         try:
             if model_id is not None and _safe_int(Agent.GetModelID(agent_id), 0) != model_id:
                 return False
 
-            candidate_names: tuple[str, ...] = ()
-
             if encoded_names and not _agent_encoded_name_matches(agent_id, encoded_names):
-                # The live encoded-name facade can fail while WorldContext still
-                # exposes the NPC model's canonical name.  A registry selector
-                # may therefore fall back to its own display name.
-                candidate_names = _agent_resolver_display_names(agent_id)
-                if not named_display_name_l or not _name_matches(
-                    candidate_names,
-                    named_display_name_l,
-                    exact=False,
-                ):
+                # Specific named selectors get a language-independent proper-name
+                # fallback.  This does not turn generic "Merchant" into a guess.
+                if not _agent_named_target_display_matches(agent_id, named_target):
                     return False
 
             if target_name:
-                if not candidate_names:
-                    candidate_names = _agent_resolver_display_names(agent_id)
-                if not _name_matches(candidate_names, target_name_l, exact=exact_name):
+                agent_name = str(Agent.GetNameByID(agent_id) or "").strip()
+                if not agent_name:
                     return False
+                agent_name_l = agent_name.casefold()
+                target_name_cmp = target_name.casefold()
+                return agent_name_l == target_name_cmp if exact_name else target_name_cmp in agent_name_l
 
-            return (
-                model_id is not None
-                or bool(encoded_names)
-                or bool(target_name)
-            )
+            return model_id is not None or bool(encoded_names)
         except Exception:
             return False
 
@@ -15288,11 +15292,18 @@ class MerchantRulesWidget:
         *,
         selector_name: str = "",
         name_query: str = "",
+        model_id: int = 0,
         log_failures: bool = True,
     ) -> tuple[float, float] | None:
         lookup_steps: list[dict[str, object]] = []
         safe_selector_name = str(selector_name or "").strip()
         safe_name_query = str(name_query or "").strip()
+        safe_model_id = max(0, _safe_int(model_id, 0))
+
+        # A runtime-confirmed model ID is the strongest language-independent
+        # lookup, so try it before encoded/name selectors.
+        if safe_model_id > 0:
+            lookup_steps.append({"model_id": safe_model_id})
         if safe_selector_name:
             lookup_steps.append({"npc": safe_selector_name})
         if safe_name_query:
@@ -15470,6 +15481,96 @@ class MerchantRulesWidget:
         if message:
             self.status_message = message
 
+    def _get_required_service_types(self) -> set[str]:
+        """Return only merchant/trader services that enabled rules can actually use."""
+
+        required: set[str] = set()
+
+        for raw_rule in self.buy_rules:
+            rule = _normalize_buy_rule(raw_rule)
+            if rule is None or not rule.enabled:
+                continue
+
+            if rule.kind == BUY_KIND_MATERIAL_TARGET:
+                for target in _normalize_material_targets(rule.material_targets):
+                    model_id = max(0, int(target.model_id))
+                    if model_id > 0:
+                        required.add(self._get_material_merchant_type_by_model(model_id))
+                continue
+
+            if rule.kind == BUY_KIND_RUNE_TRADER_TARGET:
+                if _normalize_rune_trader_targets(rule.rune_targets):
+                    required.add(MERCHANT_TYPE_RUNE_TRADER)
+                continue
+
+            if rule.kind == BUY_KIND_SCROLL_TRADER_TARGET:
+                if any(
+                    _is_scroll_trader_stock_model(target.model_id)
+                    for target in _normalize_merchant_stock_targets(rule.merchant_stock_targets)
+                ):
+                    required.add(MERCHANT_TYPE_SCROLL_TRADER)
+                continue
+
+            if rule.kind == BUY_KIND_CONSUMABLE_CRAFTER_TARGET:
+                if any(
+                    int(target.model_id) in CONSUMABLE_CRAFTER_RECIPES_BY_MODEL
+                    for target in _normalize_merchant_stock_targets(rule.merchant_stock_targets)
+                ):
+                    required.add(MERCHANT_TYPE_CONSUMABLE_CRAFTER)
+                continue
+
+            if rule.kind == BUY_KIND_MERCHANT_STOCK:
+                for target in _normalize_merchant_stock_targets(rule.merchant_stock_targets):
+                    if int(target.model_id) <= 0:
+                        continue
+                    required.add(
+                        MERCHANT_TYPE_SCROLL_TRADER
+                        if _is_scroll_trader_stock_model(target.model_id)
+                        else MERCHANT_TYPE_MERCHANT
+                    )
+
+        for raw_rule in self.sell_rules:
+            rule = _normalize_sell_rule(raw_rule)
+            if rule is None or not rule.enabled:
+                continue
+
+            if rule.kind in (SELL_KIND_WEAPONS, SELL_KIND_ARMOR):
+                if any(bool(value) for value in getattr(rule, "rarities", {}).values()):
+                    required.add(MERCHANT_TYPE_MERCHANT)
+                if (
+                    rule.kind == SELL_KIND_ARMOR
+                    and bool(getattr(rule, "include_standalone_runes", False))
+                ):
+                    required.add(MERCHANT_TYPE_RUNE_TRADER)
+                continue
+
+            if rule.kind == SELL_KIND_RUNE_TRADER_TARGET:
+                if _normalize_rune_sell_targets(getattr(rule, "rune_sell_targets", [])):
+                    required.add(MERCHANT_TYPE_RUNE_TRADER)
+                continue
+
+            if rule.kind == SELL_KIND_COMMON_MATERIALS:
+                # A material rule may contain common and/or rare materials.  Keep
+                # this conservative unless the plan has already narrowed the item set.
+                required.add(MERCHANT_TYPE_MATERIALS)
+                required.add(MERCHANT_TYPE_RARE_MATERIALS)
+                continue
+
+            if rule.kind == SELL_KIND_EXPLICIT_MODELS:
+                if _normalize_whitelist_targets(getattr(rule, "whitelist_targets", [])):
+                    # Explicit items can route to merchant, material traders or the
+                    # rune trader depending on the actual item type.
+                    required.update(
+                        {
+                            MERCHANT_TYPE_MERCHANT,
+                            MERCHANT_TYPE_MATERIALS,
+                            MERCHANT_TYPE_RARE_MATERIALS,
+                            MERCHANT_TYPE_RUNE_TRADER,
+                        }
+                    )
+
+        return required
+
     def _get_supported_context(self, *, passive: bool = False) -> tuple[bool, str, dict[str, tuple[float, float] | None]]:
         current_map_id = int(Map.GetMapID() or 0)
         if self.cached_supported_context is not None and self.cached_context_map_id == current_map_id:
@@ -15494,9 +15595,9 @@ class MerchantRulesWidget:
             return self.cached_supported_context
 
         map_id = current_map_id
-        selector_data = SUPPORTED_MAP_NPC_SELECTORS.get(map_id)
-        if selector_data is None:
-            selector_data = {}
+        selector_data = SUPPORTED_MAP_NPC_SELECTORS.get(map_id) or {}
+        required_services = self._get_required_service_types()
+        model_overrides = SUPPORTED_MAP_SERVICE_MODEL_IDS.get(map_id, {})
 
         selector_keys = {
             MERCHANT_TYPE_MERCHANT: ("merchant", MERCHANT_NAME_QUERY),
@@ -15505,63 +15606,90 @@ class MerchantRulesWidget:
         }
 
         for merchant_type, (selector_key, name_query) in selector_keys.items():
-            selector_name = selector_data.get(selector_key) or DEFAULT_NPC_SELECTORS.get(selector_key)
-            if not selector_name and not name_query:
+            if merchant_type not in required_services:
                 continue
+            selector_name = selector_data.get(selector_key) or DEFAULT_NPC_SELECTORS.get(selector_key)
             coords[merchant_type] = self._resolve_service_coords(
                 selector_name=str(selector_name or ""),
                 name_query=name_query,
+                model_id=max(0, _safe_int(model_overrides.get(merchant_type, 0), 0)),
                 log_failures=not passive,
             )
 
-        # Rune Trader is optional. Resolve it only when an enabled rule can
-        # actually route work there. This avoids false resolver errors for
-        # profiles such as Shards of Orr that never use Rune Trader.
-        if self._needs_rune_trader_context():
+        if MERCHANT_TYPE_RUNE_TRADER in required_services:
             coords[MERCHANT_TYPE_RUNE_TRADER] = self._resolve_rune_trader_coords(
                 map_id,
                 log_failures=not passive,
             )
-        else:
-            coords[MERCHANT_TYPE_RUNE_TRADER] = None
 
-        coords[MERCHANT_TYPE_SCROLL_TRADER] = self._resolve_scroll_trader_coords(
-            map_id,
-            selector_data,
-            log_failures=bool(not passive and self._has_enabled_scroll_trader_buy_rules()),
+        if MERCHANT_TYPE_SCROLL_TRADER in required_services:
+            coords[MERCHANT_TYPE_SCROLL_TRADER] = self._resolve_scroll_trader_coords(
+                map_id,
+                selector_data,
+                log_failures=not passive,
+            )
+
+        required_vendor_services = {
+            service_type
+            for service_type in required_services
+            if service_type != MERCHANT_TYPE_CONSUMABLE_CRAFTER
+        }
+        required_count = len(required_services)
+        resolved_required_count = sum(
+            1
+            for service_type in required_services
+            if coords.get(service_type) is not None
         )
 
-        resolved_count = sum(1 for value in coords.values() if value is not None)
         location_label = "Guild Hall" if Map.IsGuildHall() else "Outpost"
         base_message = (
             f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). Using specific merchant selectors."
             if map_id in SUPPORTED_MAP_NPC_SELECTORS
             else f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). Using generic merchant selectors."
         )
-        if resolved_count <= 0:
-            supported_map = False
-            reason = f"{base_message} No merchant or trader NPCs were found."
-        elif resolved_count < len(coords):
+
+        if required_count <= 0:
             supported_map = True
-            reason = f"{base_message} Partial merchant/trader resolution succeeded."
+            reason = f"{base_message} No merchant/trader service is required by the enabled rules."
+        elif resolved_required_count <= 0:
+            supported_map = False
+            reason = f"{base_message} None of the required merchant/trader services could be resolved."
+        elif resolved_required_count < required_count:
+            supported_map = True
+            reason = (
+                f"{base_message} Partial required-service resolution succeeded "
+                f"({resolved_required_count}/{required_count})."
+            )
         else:
             supported_map = True
-            reason = f"{base_message} Merchant, material trader, rune trader, scroll trader, and rare material trader resolved."
+            reason = f"{base_message} All required merchant/trader services resolved."
 
-        self.cached_context_map_id = current_map_id
-        self.cached_supported_context = (supported_map, reason, coords)
+        resolved_context = (supported_map, reason, coords)
+
+        # Do not permanently cache transient failures.  Agent arrays can be empty
+        # for a short time after an outpost load; caching that state made later
+        # Execute calls reuse stale None coordinates forever.
+        all_required_resolved = resolved_required_count >= required_count
+        if all_required_resolved:
+            self.cached_context_map_id = current_map_id
+            self.cached_supported_context = resolved_context
+        else:
+            self.cached_context_map_id = -1
+            self.cached_supported_context = None
+
         selector_mode = "specific" if map_id in SUPPORTED_MAP_NPC_SELECTORS else "generic"
         self._debug_log(
             f"Context resolved: map={Map.GetMapName(map_id)} ({map_id}) selector_mode={selector_mode} "
-            f"supported={supported_map} merchant={self._format_debug_coords(coords[MERCHANT_TYPE_MERCHANT])} "
+            f"required={sorted(required_services)} supported={supported_map} "
+            f"merchant={self._format_debug_coords(coords[MERCHANT_TYPE_MERCHANT])} "
             f"materials={self._format_debug_coords(coords[MERCHANT_TYPE_MATERIALS])} "
             f"rune={self._format_debug_coords(coords[MERCHANT_TYPE_RUNE_TRADER])} "
             f"scroll={self._format_debug_coords(coords[MERCHANT_TYPE_SCROLL_TRADER])} "
             f"rare={self._format_debug_coords(coords[MERCHANT_TYPE_RARE_MATERIALS])}"
         )
-        if not supported_map or resolved_count < len(coords):
+        if not all_required_resolved:
             self._debug_log(f"Context detail: {reason}")
-        return self.cached_supported_context
+        return resolved_context
 
     def _get_projected_supported_context(self, target_outpost_id: int) -> tuple[bool, str, dict[str, tuple[float, float] | None]]:
         safe_outpost_id = max(0, _safe_int(target_outpost_id, 0))
@@ -18383,30 +18511,6 @@ class MerchantRulesWidget:
             if _normalize_rune_trader_targets(rule.rune_targets):
                 return True
         return False
-
-    def _has_enabled_rune_sell_rules(self) -> bool:
-        """Return True only when the current profile can actually use Rune Trader."""
-        for raw_rule in self.sell_rules:
-            rule = _normalize_sell_rule(raw_rule)
-            if rule is None or not rule.enabled:
-                continue
-            if rule.kind == SELL_KIND_RUNE_TRADER_TARGET:
-                if _normalize_rune_sell_targets(
-                    getattr(rule, "rune_sell_targets", [])
-                ):
-                    return True
-            elif (
-                rule.kind == SELL_KIND_ARMOR
-                and bool(getattr(rule, "include_standalone_runes", False))
-            ):
-                return True
-        return False
-
-    def _needs_rune_trader_context(self) -> bool:
-        return bool(
-            self._has_enabled_rune_buy_rules()
-            or self._has_enabled_rune_sell_rules()
-        )
 
     def _has_enabled_scroll_trader_buy_rules(self) -> bool:
         for raw_rule in self.buy_rules:

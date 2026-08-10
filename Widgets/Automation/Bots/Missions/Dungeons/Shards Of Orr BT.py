@@ -106,9 +106,6 @@ SALVAGE_KIT_MODEL_IDS = (
 )
 MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
 INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
-# Vlox's Falls has no explicit Merchant Rules service selectors. Eye of the
-# North does, so maintenance is executed there and the bot then returns to Vlox.
-INVENTORY_MAINTENANCE_OUTPOST = 642
 # SharedCommandType.TravelToMap forwards these values to TravelToRegion.
 # The BT TravelToRegion wrapper expects a 1-based district and subtracts one
 # before calling the low-level Map travel API. District 0 would therefore
@@ -762,10 +759,10 @@ def _draw_run_config() -> None:
 
         PyImGui.text_wrapped(
             "MerchantRules executes the currently loaded Shards of Orr profile "
-            "from SharedProfiles.json. Maintenance is performed in Eye of the North "
-            "because Merchant Rules has explicit service selectors there, then all "
-            "accounts return to Vlox's Falls. The four regular inventory bags are "
-            "checked using the confirmed 55-slot capacity; Equipment Pack is excluded."
+            "from SharedProfiles.json. Maintenance is performed directly in Vlox's Falls. "
+            "If maintenance is requested from an explorable area, all accounts first return "
+            "to Vlox's Falls. The four regular inventory bags are checked using the confirmed "
+            "55-slot capacity; Equipment Pack is excluded."
         )
 
     if changed:
@@ -1323,34 +1320,6 @@ def _travel_all_accounts_to_vlox(attempt_key: str) -> BehaviorTree:
     )
 
 
-def _travel_all_accounts_to_inventory_outpost(attempt_key: str) -> BehaviorTree:
-    return BT.Sequence(
-        name="Travel Every Account To Eye Of The North For Inventory Maintenance",
-        children=[
-            BTShared.SendAndWait(
-                command=SharedCommandType.TravelToMap,
-                params=(
-                    float(INVENTORY_MAINTENANCE_OUTPOST),
-                    float(INVENTORY_TRAVEL_REGION),
-                    float(INVENTORY_TRAVEL_DISTRICT),
-                    float(INVENTORY_TRAVEL_LANGUAGE),
-                ),
-                include_self=True,
-                refs_blackboard_key=f"{attempt_key}_travel_inventory_outpost_refs",
-                timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS,
-                poll_interval_ms=250,
-                log=True,
-            ),
-            _wait_for_all_accounts_on_inventory_instance(
-                INVENTORY_MAINTENANCE_OUTPOST,
-                name="Wait For Every Account In Eye Of The North EU-English-1",
-            ),
-            # Let agent arrays / merchant services settle after the outpost load.
-            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-        ],
-    )
-
-
 def _return_all_accounts_to_vlox(attempt_key: str) -> BehaviorTree:
     currently_in_an_explorable = BT.Selector(
         name="Current Map Can Be Resigned",
@@ -1454,12 +1423,11 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
 
 
 def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
-    """Run one MerchantRules attempt while staying in Eye of the North.
+    """Run one MerchantRules attempt while staying in Vlox's Falls.
 
-    InventoryCheckAndMaintenance() performs the initial Vlox preparation and
-    travel to Eye of the North once. If the first attempt leaves the inventory
-    below threshold, the retry runs in the same outpost instead of bouncing
-    through Vlox's Falls.
+    InventoryCheckAndMaintenance() ensures every active account is in Vlox's
+    Falls before the first attempt. If the first attempt leaves the inventory
+    below threshold, the retry runs immediately in the same outpost.
     """
     attempt_key = f"inventory_attempt_{attempt_number}"
     return BT.Sequence(
@@ -1468,7 +1436,7 @@ def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
             BT.LogMessage(
                 message=(
                     f"Inventory maintenance attempt {attempt_number}/"
-                    f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Eye of the North."
+                    f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Vlox's Falls."
                 ),
                 module_name=MODULE_NAME,
             ),
@@ -1589,26 +1557,20 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
                                 message=(
                                     "Inventory thresholds are not satisfied. "
                                     "Starting multibox MerchantRules maintenance "
-                                    "with the loaded Shards of Orr profile in Eye of the North."
+                                    "with the loaded Shards of Orr profile in Vlox's Falls."
                                 ),
                                 module_name=MODULE_NAME,
                             ),
-                            # Prepare once, then keep both MerchantRules attempts
-                            # in Eye of the North. Return to Vlox only after a
-                            # successful inventory verification.
+                            # Ensure every account is in Vlox once, then keep both
+                            # MerchantRules attempts there. No maintenance travel is
+                            # needed when the bot already starts in Vlox's Falls.
                             _return_all_accounts_to_vlox("inventory_maintenance_setup"),
                             BT.LeaveParty(),
-                            _travel_all_accounts_to_inventory_outpost(
-                                "inventory_maintenance_setup"
-                            ),
+                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
                             BT.Selector(
-                                name="Retry Inventory Maintenance In Eye Of The North",
+                                name="Retry Inventory Maintenance In Vlox's Falls",
                                 children=maintenance_attempts,
                             ),
-                            _return_all_accounts_to_vlox(
-                                "inventory_maintenance_success"
-                            ),
-                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
                         ],
                     ),
                 ],
@@ -4227,7 +4189,7 @@ def Level3_Chest() -> BehaviorTree:
                 ignore_destination_gadgets=True,
             ),
             _inventory_statistics_node(after_chest=True),
-            BT.Wait(5000),
+            
     
         ])
 #endregion
@@ -4246,6 +4208,7 @@ def CollectInsideReward() -> BehaviorTree:
     return BT.Sequence(
         name="Collect Inside Reward",
         children=[
+            BT.Wait(5000),
             BT.TargetAgentByName(
                 agent_name="Shandra",
                 log=True,
