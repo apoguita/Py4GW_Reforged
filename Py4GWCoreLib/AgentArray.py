@@ -131,57 +131,36 @@ class AgentArray:
     #region Item
     @staticmethod
     def GetItemArray() -> list[int]:
-        """Purpose: Retrieve the agent array pre-filtered by items.
-
-        Reforged 2.0 normally gets this pre-filtered list from system shared memory.
-        If that ItemArray is unexpectedly empty while the global agent array is populated,
-        rebuild the item list from the live agent entries. This keeps loot consumers working
-        when the shared-memory category array is stale/missing without changing normal behavior.
-        """
-        from Py4GWCoreLib.native_src.ShMem.SysShaMem import SystemShaMemMgr
-
+        """Purpose: Retrieve the agent array pre-filtered by items."""
+        
+        from Py4GWCoreLib.native_src.ShMem.SysShaMem import SystemShaMemMgr, SharedMemoryHeader, AgentArraySHMemStruct, AgentArraySHMemWrapper
         AAW = SystemShaMemMgr.get_agent_array_wrapper()
         if AAW is None:
             return []
-
-        item_array = AAW.get_item_array()
-        if item_array:
-            return item_array
-
-        # Fallback: ItemArray can be empty even though item agents are present in AgentArray.
-        # Classify only in that exceptional case; normal calls keep the cheap native sub-array.
-        try:
-            from .Agent import Agent
-            return [agent_id for agent_id in AAW.to_int_list() if Agent.IsItem(agent_id)]
-        except Exception:
+        return AAW.get_item_array()
+    
+        agent_array_ctx = GWContext.AgentArray.GetContext()
+        if not agent_array_ctx:
             return []
+        agent_array = agent_array_ctx.GetItemAgentArray()
+        return agent_array
     
     #region OwnedItem
     @staticmethod
     def GetOwnedItemArray() -> list[int]:
         """Purpose: Retrieve the agent array pre filtered by owned items."""
-        from Py4GWCoreLib.native_src.ShMem.SysShaMem import SystemShaMemMgr
-
+        
+        from Py4GWCoreLib.native_src.ShMem.SysShaMem import SystemShaMemMgr, SharedMemoryHeader, AgentArraySHMemStruct, AgentArraySHMemWrapper
         AAW = SystemShaMemMgr.get_agent_array_wrapper()
         if AAW is None:
             return []
-
-        owned_array = AAW.get_owned_item_array()
-        if owned_array:
-            return owned_array
-
-        # Same defensive recovery as GetItemArray(): derive owned drops if the dedicated
-        # shared-memory category is unexpectedly empty. Legacy semantics define an owned item
-        # as an item agent whose owner field is non-zero.
-        try:
-            from .Agent import Agent
-            return [
-                agent_id
-                for agent_id in AgentArray.GetItemArray()
-                if Agent.GetItemAgentOwnerID(agent_id) != 0
-            ]
-        except Exception:
+        return AAW.get_owned_item_array()
+    
+        agent_array_ctx = GWContext.AgentArray.GetContext()
+        if not agent_array_ctx:
             return []
+        agent_array = agent_array_ctx.GetOwnedItemAgentArray()
+        return agent_array
     
 
     #region Gadget
