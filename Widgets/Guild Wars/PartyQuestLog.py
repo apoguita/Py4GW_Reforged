@@ -50,9 +50,6 @@ def on_enable():
     UI.QuestLogWindow.window_pos = (settings.LogPosX, settings.LogPosY)
     UI.QuestLogWindow.window_size = (settings.LogPosWidth, settings.LogPosHeight)
 
-def on_disable():
-    settings.write_settings()
-
 def configure():    
     UI.ConfigWindow.open = True
     UI.draw_configure(accounts)
@@ -116,8 +113,6 @@ def main():
         if fetch_and_handle_quests:    
             quest_cache.quest_data.update()
         
-    settings.write_settings()  
-    
     UI.draw_overlays(accounts)
     
     if Map.WorldMap.IsWindowOpen():

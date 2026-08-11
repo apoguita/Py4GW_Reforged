@@ -2,7 +2,8 @@
 
 Status: proposed
 Scope: complete migration of legacy FrenkeyLib and Mark modifier consumption
-into Reforged. The deprecated `AutoInventoryHandler` is explicitly excluded.
+into Reforged. Deprecated inventory control, including
+`AutoInventoryHandler`, is explicitly excluded.
 Authority: current Reforged item source, `Item.Mods`, the Item Mods Playground,
 the persistence jail owners, current widget entry points, and legacy FrenkeyLib
 as behavioural reference only.
@@ -25,9 +26,49 @@ Settings and JsonFactory are direct persistence owners.
 PyImGui and the active ImGui helper are direct rendering owners.
 ```
 
-FrenkeyLib may own feature workflow: which already-matched item is displayed,
-kept, sold, queued, or announced. It may not own the answer to a question about
-the item's modifiers, upgrades, rolls, slots, or modifier-derived identity.
+FrenkeyLib may own non-inventory feature workflow and presentation over an
+already supplied item ID. It may not own the answer to a question about the
+item's modifiers, upgrades, rolls, slots, or modifier-derived identity, nor
+may it become the inventory scanner, item executor, or inventory lifecycle
+manager.
+
+## What materially changed from legacy
+
+| Concern | Legacy FrenkeyLib / Mark shape | Reforged migration shape |
+|---|---|---|
+| Mod evidence | Raw modifier triples decoded in feature code. | `Item.Mods` answers from item ID through its public contract. |
+| Names and identities | Local `runes.json` / `weapon_mods.json` catalogues and local model classes. | Reforged exposes named upgrades, slots, values, subtype, and descriptions. |
+| Rule result | Parallel feature-side evaluators can override or bypass item-mod rules. | A consumer calls the existing Reforged operation for the question, then applies only feature workflow. |
+| Numeric input | Legacy lower/upper or exact-shaped records can imply an independent range evaluator. | One direction-aware threshold: that value or better. Requirements are lower-is-better; other supported values are higher-is-better. |
+| Persistence | Custom INI/JSON paths, loaders, save loops, and wrappers. | Direct `Settings` or `JsonFactory` documents with their existing scope and autosave behaviour. |
+| UI | Historical facade/texture assumptions and retained legacy state. | Current PyImGui immediate-mode code with state in the sanctioned persistence owner. |
+| Inventory authority | FrenkeyLib was shaped to scan inventory and drive identify, salvage, and storage actions. | Explicitly excluded. The later native System Settings ID path owns identify, salvage, and storage; FrenkeyLib is only a prepared consumer base for that work. |
+
+This is an ownership migration, not a request to invent a new rule language.
+Where the platform already has the needed `Item.Mods` operation, consumers call
+it. A real uncovered question is an `Item.Mods` owner gap to prove and add;
+consumer-side decoding is never the answer.
+
+## Post-migration inventory boundary
+
+This plan deliberately prepares FrenkeyLib for the next architecture without
+making it that architecture. The later work is a separate native/System
+Settings ID project:
+
+```text
+native System Settings ID support
+    -> owns identify, salvage, and storage orchestration
+        -> supplies an item ID to rule/presentation consumers
+            -> Item.Mods provides item-mod facts and verdicts
+                -> FrenkeyLib provides reusable consumer workflow or UI only
+```
+
+The exact native interface, setting schema, ownership/lifetime rules, and
+identify/salvage/storage execution protocol are unresolved implementation work
+for that follow-on project. This migration must not invent them. Its readiness
+criterion is narrower and firm: a future native owner can use FrenkeyLib
+without inheriting an inventory loop, snapshot cache, behavior-tree executor,
+or a competing item-mod evaluator.
 
 ## Fixed decisions
 
@@ -46,8 +87,13 @@ the item's modifiers, upgrades, rolls, slots, or modifier-derived identity.
   JSON owner. No Frenkey persistence wrapper, raw config handler,
   `configparser`, `open`, or `json.load`/`json.dump` remains in injected feature
   code. Static non-persistence assets retain their actual current owner.
-- `AutoInventoryHandler`, its salvage behaviour, and dependencies retained only
-  for it are not migration targets.
+- Inventory handling is being deprecated. `AutoInventoryHandler`, Frenkey
+  inventory scanning, item snapshots used for control flow, inventory behavior
+  trees, identify/salvage/storage execution, and dependencies retained only for
+  those paths are not migration targets.
+- A later native System Settings ID owner will handle identify, salvage, and
+  storage. This plan neither implements nor assigns a speculative Python
+  compatibility layer for that native interface.
 - No bulk overwrite from legacy. Each cutover is additive, reviewed, and
   verified before its legacy implementation is removed.
 
@@ -60,7 +106,7 @@ the item's modifiers, upgrades, rolls, slots, or modifier-derived identity.
 | Named upgrades, physical slots, and max roll | `Item.Mods` | Consumers call `GetUpgrades`, slot methods, and `IsMaxed`; no rune/weapon-mod catalogue. |
 | Game-style explanation | `Item.Mods.GetDescriptions` | UI may render the returned explanation but does not rebuild it from modifier data. |
 | Generic item facts | Existing public `Item` and `Item.Properties` methods | Use item type, model, name, rarity, requirement, damage, value, and other facts from their current owners. |
-| Feature actions and workflow | FrenkeyLib feature module | Act only on public Reforged answers; do not recalculate a match. |
+| Non-inventory feature workflow and presentation | FrenkeyLib feature module | Act only on public Reforged answers; do not recalculate a match or own an inventory lifecycle. |
 | INI preferences | `Settings` | Construct the required document directly; setters autosave. |
 | Structured profiles, layouts, and snapshots | `JsonFactory` | Construct the required document directly; no persistence wrapper or raw path. |
 | Ephemeral cross-account commands | established shared-memory owner | Do not use account files as IPC. |
@@ -73,8 +119,8 @@ the item's modifiers, upgrades, rolls, slots, or modifier-derived identity.
 | `Sources/marks_sources/mods_parser.py` | Raw triple parser; `Rune`, `WeaponMod`, `ModDatabase`; JSON catalogue loading; roll and slot verdicts. | Refit as an item-ID Reforged consumer if callers still need its result. No raw parser or replacement catalogue. |
 | `frenkeyLib/LootEx/models.py` and `data.py` | Modifier models, identifier tables, roll ranges, names, and `runes.json`/`weapon_mods.json` ownership. | Item-mod facts come from `Item.Mods`. Preserve only non-mod feature data after its own ownership audit. |
 | `frenkeyLib/LootEx/utility.py` | Reads `GetModifierValues` and assigns meaning to `arg1`/`arg2`. | `Item.Properties` for item facts and `Item.Mods` for typed mod facts. |
-| `frenkeyLib/ItemHandling/Rules` and `GlobalConfigs` | Parallel rule hierarchy and upgrade matching over snapshots. | Feature workflow calls public Reforged methods; no parallel modifier evaluator or fallback. |
-| `frenkeyLib/ItemHandling/Items/item_snapshot.py` | Cached raw mods and parsed mod-derived fields for the deprecated inventory path. | Do not migrate for `AutoInventoryHandler`; future features read their required public facts directly. |
+| `frenkeyLib/ItemHandling/Rules` and `GlobalConfigs` | Parallel rule hierarchy and upgrade matching over snapshots. | Refit reusable mod questions to public Reforged calls only if a non-inventory consumer needs them; no parallel evaluator or fallback. |
+| `frenkeyLib/ItemHandling/Items/item_snapshot.py` | Cached raw mods and parsed mod-derived fields for inventory control. | Do not migrate. Future native inventory ownership supplies item IDs and reads required public facts directly. |
 | `frenkeyLib/Core/encoded_names.py` | Parallel encoded-string decode implementation. | Use the current owner only when a feature has a real display requirement; it must not decide mod behaviour. |
 
 ## Item.Mods consumer contract
@@ -109,11 +155,14 @@ of truth.
 
 1. Record the legacy and current relative file inventory, content differences,
    active importers, and entry points.
-2. Create a call-level ledger for every FrenkeyLib and Mark mod-related call:
+2. Create and maintain `frenkeylib-stage-0-cutover-ledger.md`, a call-level
+   ledger for every FrenkeyLib and Mark mod-related call:
    legacy symbol, caller, question asked, public Reforged call, expected result,
    test item, migration stage, and removal condition.
-3. Mark all `AutoInventoryHandler`-only paths as excluded. Do not fix or test
-   them as part of this migration.
+3. Mark all inventory-control paths as excluded: `AutoInventoryHandler`,
+   inventory scanning, snapshots, behavior-tree execution, and identify,
+   salvage, or storage actions. Do not fix or test them as part of this
+   migration.
 4. Baseline current static diagnostics per migration slice. Existing errors are
    recorded separately from new errors.
 
@@ -140,34 +189,43 @@ work rather than assuming the Playground covered every old path.
 5. Where source reveals a genuine gap, change `Item.Mods` first, with type
    annotations, focused checks, Playground evidence, and parity evidence. No
    consumer change is allowed to compensate for a missing owner capability.
+6. Execution decision recorded on 2026-08-10: treat the current decoder as the
+   authority for consumer migration and add only source-proven owner gaps.
+   The Playground and parity scan are diagnostic tools, not per-slice migration
+   gates. Consult their output only when it reports a concrete owner gap.
 
-**Exit gate:** every live consumer request has a verified public call or a
-separately verified `Item.Mods` addition. There is no unreviewed raw-modifier
+**Exit gate:** every consumer request has a source-verified public call or a
+focused-checked `Item.Mods` addition. There is no unreviewed raw-modifier
 fallback.
 
-### Stage 2: Remove Mark parser ownership
+### Stage 2: Remove Mark raw-parser ownership
 
-**Purpose:** eliminate the catalog-backed parser before FrenkeyLib begins using
-the same data by accident.
+**Purpose:** turn Mark's existing module into a Reforged consumer before
+FrenkeyLib can accidentally adopt the same duplicate decoder.
 
-1. Migrate `Widgets/Guild Wars/Items & Loot/TeamInventoryViewer.py`.
-   Replace `ModDatabase`, `parse_modifiers`, `MatchedRuneInfo`, and
-   `MatchedWeaponModInfo` with direct public item-mod reads. Derive displayed
-   prefix, suffix, inherent, slot, and max status from `Item.Mods`.
-2. Migrate the Mark-parser branches of
-   `Widgets/Guild Wars/Items & Loot/MerchantRules.py`. Replace raw modifier
-   tuple extraction and parser-derived upgrade identities with `Item.Mods`
-   reads. Preserve its feature-specific execution policy, but make public
-   Reforged data the only evidence for that policy.
-3. Search all production Python for imports of `mods_parser`, `ModDatabase`,
-   `Rune`, `WeaponMod`, `MatchedRuneInfo`, `MatchedWeaponModInfo`, and
-   `parse_modifiers`. Repoint every remaining consumer in the same conceptual
-   cutover.
-4. Delete or archive Mark's parser and its duplicate catalog inputs only when
-   no production importer or generated-data dependency remains.
+1. Refit `Sources/marks_sources/mods_parser.py` to accept an item ID and read
+   only public `Item.Mods` and item facts. Remove `ModDatabase`, raw triples,
+   `Rune`, `WeaponMod`, and JSON-catalog matching. Retain an existing
+   caller-facing presentation result only where callers genuinely use one.
+2. Migrate `Widgets/Guild Wars/Items & Loot/TeamInventoryViewer.py` to use the
+   converted Mark consumer or direct public reads, whichever preserves the
+   existing presentation without recreating decision logic. Derive prefix,
+   suffix, inherent, slot, and max status from `Item.Mods`.
+3. Migrate only the non-inventory Mark-consumer branches of
+   `Widgets/Guild Wars/Items & Loot/MerchantRules.py`. Replace their raw
+   modifier tuple extraction and parser-derived upgrade identities with the
+   same public Reforged data. Its bag scanning, cached raw modifiers, salvage,
+   storage, and execution paths are excluded for the later native owner.
+4. Search production Python for `ModDatabase`, raw `parse_modifiers`, `Rune`,
+   `WeaponMod`, `MatchedRuneInfo`, and `MatchedWeaponModInfo`. Repoint every
+   remaining raw/catalog path in the same conceptual cutover.
+5. Delete duplicate input catalogs and raw-parser classes only when no
+   dependency remains. Keep the converted Mark consumer module while a caller
+   needs its presentation result.
 
-**Exit gate:** no production code imports the Mark parser or its mod catalogue;
-Team Inventory Viewer and Merchant Rules render/act correctly in a live client.
+**Exit gate:** no production code owns a Mark raw parser or mod catalogue; Team
+Inventory Viewer and Merchant Rules render their current criteria correctly in
+a live client without taking inventory-control ownership.
 
 ### Stage 3: Refit FrenkeyLib's item-mod consumers
 
@@ -180,13 +238,13 @@ item-mod ownership.
 2. Replace `LootEx` catalogue-backed rune and weapon-mod selection with named
    upgrades, slots, and max status from `Item.Mods`. The UI consumes names and
    descriptions returned by Reforged; it does not construct a second mod model.
-3. Refit `ItemHandling` rule and global-config criteria to public calls. Keep
-   action selection as feature workflow, but remove `ModifierInfo`, upgrade
-   parsers, snapshot-derived mod properties, and catalog comparison.
-4. Do not migrate `BTNodes` or snapshot paths merely because
-   `AutoInventoryHandler` uses them. If a non-deprecated Frenkey feature needs
-   one, refit that feature to public item calls without reviving the deprecated
-   inventory path.
+3. Refit an `ItemHandling` rule or global-config criterion only where a
+   non-inventory Frenkey consumer genuinely needs it. It may compose public
+   answers, but cannot carry inventory execution, `ModifierInfo`, upgrade
+   parsers, snapshot-derived mod properties, or catalogue comparison.
+4. Do not migrate `BTNodes`, inventory handler, or snapshot paths. A future
+   native System Settings ID owner supplies the item ID and owns identify,
+   salvage, and storage; no Frenkey compatibility path may stand in for it.
 5. Repoint any remaining `Core` helper that makes a modifier-derived decision.
    Display-only encoded-name work is separate and may use its current owner
    after the item-mod cutover is complete.
@@ -230,6 +288,20 @@ account/global semantics.
 all persisted feature data is reachable only through `Settings`, `JsonFactory`,
 or the approved database owner.
 
+### Stage 4 execution record: PartyQuestLog settings
+
+On 2026-08-10, `Sources/frenkeyLib/PartyQuestLog/settings.py` was reduced to
+an in-memory feature state object over the existing global
+`Settings("Widgets/Config/PartyQuestLog.ini", "global")` document. The legacy
+filesystem existence probe, save-request state, feature throttle, and
+per-frame/disable flush calls were removed. Changed UI state now writes with
+the typed `Settings` setters, whose persistence lifecycle is the owner.
+
+Existing section/key names and global scope were preserved. `python -m
+py_compile` and focused strict Pyright passed for the settings module and its
+widget entry point. No generic injected-client toggle or restart check is a
+migration gate; investigate only a concrete reported feature issue.
+
 ### Stage 5: Migrate live feature slices before dormant UI
 
 **Purpose:** restore reachable functionality in independent, reviewable units.
@@ -244,17 +316,49 @@ Use this order, keeping each slice logic -> persistence -> UI -> live test:
    tuples, then validate path and flag rendering.
 4. `Polymock`: migrate its state/data/UI dependencies after the reusable item
    and persistence work is stable.
-5. `LootEx`: restore domain behaviour in smaller slices (profiles, cached item
-   display, filtering, merchant/trader features, crafting, salvaging, then UI)
-   on the consumed Reforged surfaces. Do not revive its 6,000-line GUI before
-   its model and persistence have passed their gates.
+5. `LootEx`: restore only reusable, non-inventory domain behaviour in smaller
+   slices (profiles, item presentation, filtering, and rule presentation).
+   Merchant/trader views may show Reforged answers but may not execute
+   inventory work. Do not migrate inventory scans, identification, salvage,
+   storage, crafting execution, or its 6,000-line GUI before its consumer
+   model and persistence have passed their gates.
 6. `Py4GWLibrary` and `Drafts`: inventory feature intent against the current
    launchpad/widget system. Port only real supported functionality into its
    current owner; historical prototypes are documented rather than made live.
 
 **Exit gate per slice:** the widget imports without legacy persistence or mod
-ownership, has clean targeted static diagnostics, and passes an injected-client
-smoke test for its main workflow and configuration persistence.
+ownership and has clean targeted static diagnostics. Existing runtime tools are
+diagnostic only when a concrete feature issue is reported.
+
+### Stage 5 source audit: direct feature roots
+
+The 2026-08-10 source audit found the following direct widget roots after the
+item-mod cutovers:
+
+- `MultiBoxing` already uses global `Settings` for scalar preferences, global
+  `JsonFactory` for layouts, and shared memory for inter-client commands.
+- `PartyQuestLog` was migrated in the Stage 4 execution record above.
+- `SulfurousRunner` already uses the global `Settings` document directly; its
+  path and waypoint data are static feature data, not user persistence.
+- `Polymock` has no user-persistence path or item-mod consumer. Its static
+  combat data is feature data and its current UI uses PyImGui.
+- `Py4GWLibrary` is not imported by a current root. Its `Settings.find` calls
+  already consume the sanctioned owner, so it is dormant rather than a
+  persistence migration target.
+- `Drafts` contains historical scripts that still create old INI directories.
+  They have no current importer and remain explicitly out of scope rather than
+  becoming a second UI or storage system.
+
+No direct root imports the retained LootEx raw modifier model. Remaining
+LootEx and Merchant raw-modifier ownership stays confined to the explicitly
+excluded inventory domain until its native System Settings ID replacement is
+authorized and available.
+
+The focused retained-root certification also found no raw modifier/parser,
+inventory-handler/snapshot, or raw persistence dependency. `MerchantRules` is
+the sole production importer of Mark's raw parser and remains wholly deferred
+at the inventory boundary; it is not a reason to recreate a Frenkey-owned
+consumer path.
 
 ### Stage 6: Rebuild UI on the active immediate-mode surface
 
@@ -273,9 +377,9 @@ retired textured/facade architecture.
 5. Make each UI render Reforged descriptions, names, slots, and rule outcomes;
    UI code never decodes modifier content itself.
 
-**Exit gate:** each migrated UI has balanced ImGui stacks, persistent state from
-the sanctioned owner, and a live-client smoke test for its normal and empty
-states.
+**Exit gate:** each migrated UI has balanced ImGui stacks and persistent state
+from the sanctioned owner. A live diagnostic is used only for a concrete
+reported UI issue.
 
 ### Stage 7: Remove severed ownership and certify the migration
 
@@ -292,6 +396,8 @@ states.
    GetModifiers / GetModifierValues used for matching
    runes.json / weapon_mods.json used for item-mod decisions
    raw open/json/configparser persistence in Frenkey feature code
+   Frenkey inventory scan, snapshot, or action-executor dependencies in a
+   migrated consumer
    ```
 
 2. Remove each legacy owner only after its final importer is migrated and its
@@ -302,9 +408,8 @@ states.
 4. Re-run focused Pyright for every changed Python slice, formatter/linter
    checks used by that owner, and the applicable standalone tests. There is no
    repository-wide runner, so report each command and result by slice.
-5. Run injected-client verification for Item Mods parity, each active widget,
-   persistence reload, account/global isolation, and the action workflows that
-   consume the migrated item decisions.
+5. Use existing injected-client diagnostics only to investigate a concrete
+   reported Item.Mods, widget, persistence, or non-inventory workflow issue.
 
 **Exit gate:** no duplicate item-mod authority remains, every live consumer is
 on public Reforged calls, all Frenkey persistence uses the jails, the active UI
@@ -312,12 +417,12 @@ is current-surface only, and verification evidence is recorded per slice.
 
 ## Test and evidence matrix
 
-| Layer | Offline evidence | Live injected-client evidence |
+| Layer | Offline evidence | Existing live diagnostic, when a concrete issue is reported |
 |---|---|---|
-| Item.Mods owner | Typed API usage and focused tests for every changed helper. | Item Mods Playground and Mod Parity Scan against game tooltip text. |
-| Mark cutover | No raw parser/catalog ownership; widget-local tests where available. | Team inventory display and Merchant Rules use correct named upgrades/slots. |
-| Frenkey mod consumers | No raw matching/catalog data; targeted Pyright per module. | Representative item actions and summaries use public Reforged answers. |
-| Persistence | Schema/default/scope/reload checks through concrete owners. | Fresh and existing account behaviour; global sharing where intended. |
+| Item.Mods owner | Typed API usage and focused checks for every changed helper. | Item Mods Playground and Mod Parity Scan. |
+| Mark cutover | No raw parser/catalog ownership; widget-local checks where available. | Team inventory display and Merchant Rules. |
+| Frenkey mod consumers | No raw matching/catalog data; targeted Pyright per module. | Relevant consumer UI and rule outcome. |
+| Persistence | Schema/default/scope/reload checks through concrete owners. | Fresh/existing account behaviour and global sharing. |
 | UI | Targeted static checks and stack-path review. | Draw, interaction, popup/focus, persistence, and empty/error states. |
 
 ## Completion criteria
@@ -329,14 +434,18 @@ current worktree and applicable live runtime:
    and their widgets.
 2. FrenkeyLib and Mark code are consumers only; no raw parser, JSON catalogue,
    duplicate mod class, identifier table, or fallback verdict remains.
-3. Deprecated `AutoInventoryHandler` paths were not revived or made a hidden
-   dependency of the new work.
+3. No deprecated inventory path (`AutoInventoryHandler`, inventory scans,
+   snapshots, BT nodes, identify, salvage, or storage execution) was revived
+   or made a hidden dependency of the new work.
 4. Every Frenkey persistence path uses `Settings`, `JsonFactory`, or the
    explicitly approved database owner, with correct scope.
-5. Each live widget has a current-PyImGui implementation and a recorded smoke
-   test.
-6. Static checks, focused tests, and live verification are reported for each
-   changed slice; no result is inferred from an unrelated green check.
+5. Each retained widget has a current-PyImGui implementation; live diagnostics
+   are consulted only when a concrete issue is reported.
+6. Static checks and focused checks are reported for each changed slice; no
+   result is inferred from an unrelated green check.
+7. FrenkeyLib is ready for the later native System Settings ID project because
+   its retained consumers accept public Reforged item facts without owning any
+   inventory lifecycle or action executor.
 
 ## Immediate next implementation slice
 
@@ -345,4 +454,6 @@ Start Stage 1 and Stage 2 together for the narrowest valuable cutover:
 `TeamInventoryViewer` consumes that result or the same public reads. It already
 has an item ID and persists through `JsonFactory`, so this proves the consumer
 direction without touching deprecated inventory automation, legacy raw
-persistence, or Frenkey's large UI.
+persistence, or Frenkey's large UI. It also establishes the exact boundary the
+later native System Settings ID owner needs: provide an item ID, never hand a
+Frenkey inventory handler control of inventory work.

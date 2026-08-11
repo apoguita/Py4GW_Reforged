@@ -426,14 +426,29 @@ class _FrameTree:
     def anchor_ids(self, anchor) -> list[int]:
         if isinstance(anchor, int):
             h = anchor
+            label = ""
         else:
-            h = NAME_TO_HASH.get(anchor)
+            label = str(anchor)
+            h = NAME_TO_HASH.get(label)
             if h is None:
-                raise FrameKeyError("no known frame named %r" % anchor)
+                raise FrameKeyError("no known frame named %r" % label)
 
         found = self._by_hash.get(h)
         if found:
             return found
+
+        # A name-table hash comes from offline RE and can lag the client.  When
+        # resolving a registry anchor, the client can hash the literal label
+        # itself; prefer that authoritative fallback before treating the frame
+        # as absent.  Dynamic callers that supply a raw hash still use the
+        # hash lookup below.
+        if label:
+            try:
+                fid = int(PyUIManager.UIManager.get_frame_id_by_label(label) or 0)
+            except Exception:
+                fid = 0
+            if fid:
+                return [fid]
 
         # The snapshot has not seen this hash - it may be a tick behind, or the
         # sweep may have missed it.  Ask the engine directly, the way the legacy

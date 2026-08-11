@@ -6,14 +6,16 @@ Shape mirrors ``player_demo.py`` (the canonical template):
   * ``draw_trade_view()`` renders those blocks, exposes every mutator/query binding as an
     explicit trigger button (never auto-fired), and offers the per-section Dump button.
 
-IMPORTANT — the stub ``PyTrading.pyi`` is FICTIONAL (declares a PascalCase class ``PyTrading``
-with methods that are NOT bound). The live module is ``PyTrade``: eight snake_case FREE
-functions. We wire the native surface directly, ignoring the stub.
+The live module is ``PyTrade``: eight snake_case free functions. The current
+``stubs/PyTrade.pyi`` mirrors that native surface.
 
 PyTrade is almost entirely an ACTION surface — none of the eight functions is a no-arg state
 getter (the stub's ``IsTradeInitiated`` / ``IsTradeAccepted`` / ``IsTradeOffered`` are not
 bound). The only readable is ``is_item_offered(item_id)``, a subject-id query; it is surfaced
 both as a live Data row (driven by the query input) and as an explicit Actions button.
+
+Trade calls use the current native client paths. In particular, ``submit_offer``
+sets the editable offered-gold amount; it does not submit or lock the offer.
 
 R2 coverage (PyTrade, 8/8 wired, 0 skipped):
   Actions wired: open_trade_window, accept_trade, cancel_trade, change_offer, submit_offer,
@@ -35,7 +37,7 @@ _SECTION = "Trade"
 class _State:
     open_agent_id: int = 0
     submit_gold: int = 0
-    remove_slot: int = 0
+    remove_item_id: int = 0
     offer_item_id: int = 0
     offer_quantity: int = 0
     query_item_id: int = 0
@@ -78,23 +80,23 @@ def _draw_actions():
     state.open_agent_id = PyImGui.input_int("Partner Agent ID", state.open_agent_id)
     ui.action_button("Open Trade Window", PyTrade.open_trade_window, state.open_agent_id, key="open_trade")
     PyImGui.same_line(0, 8)
-    ui.action_button("Accept Trade", PyTrade.accept_trade, key="accept_trade")
+    ui.action_button("Accept Trade / View Request", PyTrade.accept_trade, key="accept_trade")
     PyImGui.same_line(0, 8)
-    ui.action_button("Cancel Trade", PyTrade.cancel_trade, key="cancel_trade")
+    ui.action_button("Cancel Trade / Decline Request", PyTrade.cancel_trade, key="cancel_trade")
 
     PyImGui.spacing()
     ui.section_header("Offer")
     ui.action_button("Change Offer", PyTrade.change_offer, key="change_offer")
-    state.submit_gold = PyImGui.input_int("Submit Gold", state.submit_gold)
-    ui.action_button("Submit Offer", PyTrade.submit_offer, state.submit_gold, key="submit_offer")
+    state.submit_gold = PyImGui.input_int("Offered Gold Amount", state.submit_gold)
+    ui.action_button("Set Offered Gold", PyTrade.submit_offer, state.submit_gold, key="submit_offer")
 
     PyImGui.spacing()
     ui.section_header("Items")
     state.offer_item_id = PyImGui.input_int("Offer Item ID", state.offer_item_id)
     state.offer_quantity = PyImGui.input_int("Offer Quantity", state.offer_quantity)
     ui.action_button("Offer Item", PyTrade.offer_item, state.offer_item_id, state.offer_quantity, key="offer_item")
-    state.remove_slot = PyImGui.input_int("Remove Slot / Item ID", state.remove_slot)
-    ui.action_button("Remove Item", PyTrade.remove_item, state.remove_slot, key="remove_item")
+    state.remove_item_id = PyImGui.input_int("Remove Offered Item ID", state.remove_item_id)
+    ui.action_button("Remove Item", PyTrade.remove_item, state.remove_item_id, key="remove_item")
 
     PyImGui.spacing()
     ui.section_header("Query")

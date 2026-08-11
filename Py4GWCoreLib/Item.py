@@ -471,6 +471,18 @@ class Item:
                     return 0
                 vals = mods_core.value_of(dm)
                 return vals[0] if vals else 0
+
+            @staticmethod
+            def GetShieldArmor(item_id) -> tuple[int, int]:
+                """Return shield armor at and below its requirement, or (0, 0)."""
+                item_type = ItemType(Item.GetItemType(item_id)[0])
+                if item_type != ItemType.Shield:
+                    return 0, 0
+
+                dm = mods_core.find(item_id, ModId.Armor1)
+                if dm is None:
+                    return 0, 0
+                return dm.arg1, dm.arg2
             
             @staticmethod
             def GetEnergy(item_id) -> int:                

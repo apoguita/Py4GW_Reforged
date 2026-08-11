@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import traceback
 from collections import OrderedDict
@@ -20,19 +19,9 @@ from Py4GWCoreLib import ThrottledTimer
 from Py4GWCoreLib import get_texture_for_model
 from Py4GWCoreLib.enums import Bags
 from Py4GWCoreLib.enums import ModelID
-from Py4GWCoreLib.enums_src.Item_enums import ItemType
 from Py4GWCoreLib.enums_src.Item_enums import Rarity
 from Py4GWCoreLib.Item import Item
 
-from Sources.marks_sources.mods_parser import MatchedRuneInfo
-from Sources.marks_sources.mods_parser import MatchedWeaponModInfo
-from Sources.marks_sources.mods_parser import ModDatabase
-from Sources.marks_sources.mods_parser import parse_modifiers
-
-
-project_root = PySystem.Console.get_projects_path()
-
-MOD_DB = ModDatabase.load(os.path.join(project_root, "Sources/marks_sources/mods_data"))
 
 MODULE_NAME = "TeamInventoryViewer"
 
@@ -349,53 +338,6 @@ class ModelFileIDJSONStore:
         return self.file.get_int(str(model_id), default)
 
 
-class ModHashJSONStore:
-    """Shared {mod_hash: [prefix, suffix]} map, backed by a global-scope JsonFactory doc."""
-
-    FILE = "TeamInventoryViewer/mod_hash.json"
-
-    def __init__(self):
-        self.file = JsonFactory(self.FILE, "global")
-
-    @staticmethod
-    def hash_mods(modifiers):
-        """Stable 64-bit hash of a list of modifier objects (identifier + args + modbits)."""
-
-        def safe_int(v):
-            try:
-                return int(v)
-            except Exception:
-                return 0
-
-        data = []
-        for mod in modifiers:
-            data.append(
-                [
-                    safe_int(mod.GetIdentifier()),
-                    safe_int(mod.GetArg1()),
-                    safe_int(mod.GetArg2()),
-                    safe_int(mod.GetArg()),
-                    safe_int(mod.GetModBits()),
-                ]
-            )
-
-        h = 0
-        for lst in data:
-            for num in lst:
-                h = (h * 1315423911) ^ num ^ (h >> 5)
-                h &= 0xFFFFFFFFFFFFFFFF
-
-        return hex(h)[2:]
-
-    def save_mod_hash(self, mod_hash, prefix=None, suffix=None):
-        if not mod_hash or not (prefix or suffix):
-            return
-        self.file.set_json(str(mod_hash), [prefix, suffix])
-
-    def get(self, mod_hash, default=None):
-        return self.file.get_json(str(mod_hash), default)
-
-
 class AccountJSONStore:
     """Per-account inventory (Characters + Storage) stored as an email-keyed subtree of
     ONE global-scope JsonFactory document shared by every client.
@@ -498,7 +440,6 @@ class MultiAccountInventoryStore:
 
 multi_store = MultiAccountInventoryStore()
 inventory_model_ids_store = ModelIDJSONStore()
-inventory_mod_hash_store = ModHashJSONStore()
 inventory_model_file_ids_store = ModelFileIDJSONStore()
 
 
@@ -589,54 +530,16 @@ def get_storage_bag_items_coroutine(bag, bag_id, email, storage_name):
     store.save_bag(storage_name=storage_name, bag_items=bag_items)
 
 
-def get_mods_from_item(item_id, model_id):
-    """Fetch modifiers via GLOBAL_CACHE — bag.GetItems() returns bag-slot stubs
-    without a `.modifiers` attribute; the real PyItem instance is what carries
-    them (see Py4GWCoreLib/GlobalCache/ItemCache.py:571)."""
-    raw_modifiers = GLOBAL_CACHE.Item.Mods.GetModifiers(item_id) or []
-    item_type_int, _item_type_name = GLOBAL_CACHE.Item.GetItemType(item_id)
-    if not raw_modifiers:
-        return (None, None, None)
-
+def get_mods_from_item(item_id: int) -> tuple[str | None, str | None, str | None]:
+    """Return the Reforged-owned applied upgrade names needed by this display."""
     try:
-        item_type = ItemType(item_type_int)
-    except ValueError:
-        return (None, None, None)
-
-    modifiers = []
-    for mod in raw_modifiers:
-        modifiers.append(
-            [
-                mod.GetIdentifier(),
-                mod.GetArg1(),
-                mod.GetArg2(),
-            ]
+        return (
+            Item.Mods.GetUpgradeInSlot(item_id, Item.Mods.Slot.Prefix),
+            Item.Mods.GetUpgradeInSlot(item_id, Item.Mods.Slot.Suffix),
+            Item.Mods.GetUpgradeInSlot(item_id, Item.Mods.Slot.Inherent),
         )
-    result = parse_modifiers(
-        modifiers=modifiers,
-        item_type=item_type,
-        model_id=model_id,
-        db=MOD_DB,
-    )
-
-    prefix = None
-    suffix = None
-    inherent = None
-
-    if result.prefix and isinstance(result.prefix, MatchedWeaponModInfo):
-        prefix = result.prefix.weapon_mod.name
-    elif result.prefix and isinstance(result.prefix, MatchedRuneInfo):
-        prefix = result.prefix.rune.name
-
-    if result.inherent and isinstance(result.inherent, MatchedWeaponModInfo):
-        inherent = result.inherent.weapon_mod.name
-
-    if result.suffix and isinstance(result.suffix, MatchedWeaponModInfo):
-        suffix = result.suffix.weapon_mod.name
-    elif result.suffix and isinstance(result.suffix, MatchedRuneInfo):
-        suffix = result.suffix.rune.name
-
-    return (prefix, suffix, inherent)
+    except Exception:
+        return (None, None, None)
 
 
 def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
@@ -753,11 +656,6 @@ def _collect_bag_items(bag, bag_id, email, storage_name=None, char_name=None):
                 if final_name:
                     model_name, prefix, suffix = clean_gw_item_name(final_name)
                     inventory_model_ids_store.save_model_id(model_id, model_name)
-                    raw_modifiers = GLOBAL_CACHE.Item.Mods.GetModifiers(item_id) or []
-                    if raw_modifiers:
-                        mod_hash = ModHashJSONStore.hash_mods(raw_modifiers)
-                        inventory_mod_hash_store.save_mod_hash(mod_hash, prefix, suffix)
-
             except Exception as e:
                 print(f"Exception fetching name for {item_id}: {e}")
                 final_name = None
@@ -875,7 +773,7 @@ def get_armor_name_from_modifiers(item):
             return None
 
     # Collect mods
-    prefix, suffix, _inherent = get_mods_from_item(item.item_id, item.model_id)
+    prefix, suffix, _inherent = get_mods_from_item(item.item_id)
 
     # --- Construct name ---
     name_parts = []
@@ -899,7 +797,7 @@ def get_weapon_name_from_modifiers(item):
         except ValueError:
             return None
 
-    prefix, suffix, inherent = get_mods_from_item(item.item_id, item.model_id)
+    prefix, suffix, inherent = get_mods_from_item(item.item_id)
 
     # --- Construct name ---
     name_parts = []

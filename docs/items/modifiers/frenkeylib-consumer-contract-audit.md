@@ -3,15 +3,18 @@
 Status: proposed; source-audited on 2026-08-10
 Scope: item-mod and item-rule consumption by `Sources/frenkeyLib/` and
 `Sources/marks_sources/mods_parser.py`; excludes deprecated
-`AutoInventoryHandler` and action execution.
+inventory control, `AutoInventoryHandler`, and action execution.
 Authority: current `Item.Mods`, current public item source, and current
-consumer source. Live item parity remains required before any public API change.
+consumer source. The current decoder is authoritative; parity output is
+consulted only when it reports a concrete owner gap.
 
 ## Decision
 
 Reforged owns modifier decoding, named upgrades, roll direction, and item-mod
 matching. FrenkeyLib and Mark's former parser are consumers. They must not
 decode raw triples, read modifier catalogs, or supply a competing match result.
+They also do not acquire inventory scanning, item snapshots for control flow,
+or identify/salvage/storage execution while becoming consumers.
 
 The production dependency direction is:
 
@@ -48,26 +51,28 @@ implicit constraint on this migration.
 
 | Legacy owner | Existing behaviour | Required disposition |
 |---|---|---|
-| `Sources/marks_sources/mods_parser.py` | Loads `runes.json` and `weapon_mods.json`, then turns raw triples into its own rune/weapon-mod model and verdict. | Retire as a parser. Replace its two live callers with public `Item.Mods` and item calls. No replacement raw-triple parser. |
+| `Sources/marks_sources/mods_parser.py` | Loads `runes.json` and `weapon_mods.json`, then turns raw triples into its own rune/weapon-mod model and verdict. | Refit as an item-ID Reforged consumer if callers still need its presentation result. Remove raw parsing and catalog ownership; do not replace it with another raw-triple parser. |
 | `frenkeyLib/LootEx/models.py` and `data.py` | Own `Rune`, `WeaponMod`, `ModifierInfo`, roll ranges, names, and matching catalogues. | Do not migrate these as domain authority. Preserve only non-mod feature data after a separate ownership decision. |
 | `frenkeyLib/LootEx/utility.py` | Reads `GetModifierValues` and reinterprets identifier/argument positions. | Repoint each question to `Item.Properties` or a typed `Item.Mods` helper. |
-| `frenkeyLib/ItemHandling/{Rules,GlobalConfigs}` | Defines parallel rule classes and compares snapshots, old item data, and upgrade names. | Refit each criterion to public `Item.Mods` and item calls; retain only feature-specific composition and leave no fallback evaluator. |
-| `frenkeyLib/ItemHandling/Items/item_snapshot.py` | Captures raw modifiers, parsed properties, and upgrades for legacy rules. | Not a migration target while `AutoInventoryHandler` is deprecated. Any future feature reads Reforged surfaces directly. |
+| `frenkeyLib/ItemHandling/{Rules,GlobalConfigs}` | Defines parallel rule classes and compares snapshots, old item data, and upgrade names. | Refit a criterion only for a genuine non-inventory consumer, using public `Item.Mods` and item calls; retain no fallback evaluator. |
+| `frenkeyLib/ItemHandling/Items/item_snapshot.py` | Captures raw modifiers, parsed properties, and upgrades for legacy inventory rules. | Not a migration target. A future native System Settings ID owner supplies item IDs and reads Reforged surfaces directly. |
 
 `mods_parser.py` has two current non-legacy consumers: `TeamInventoryViewer.py`
-and `MerchantRules.py`. Both already have an item ID at the call sites. They
-can therefore consume `Item.Mods` directly; a public "parse arbitrary triples"
-API would reintroduce the bypass and is rejected.
+and `MerchantRules.py`. Both already have an item ID at the call sites. The
+module can therefore consume `Item.Mods` directly; a public "parse arbitrary
+triples" API would reintroduce the bypass and is rejected.
 
 ## Criteria migration matrix
 
 | Legacy question | Reforged owner | Audit result |
 |---|---|---|
 | Is this a selected item type or model ID? | `Item.GetItemType` and `Item.GetModelID` | Direct public-item mapping. |
-| Is this a selected rarity, dye colour, salvage target, or minimum value? | Existing Reforged item/data owner for the specific question | Outside the `Item.Mods` contract; migrate only to the current owner already used by the caller. |
+| Is this a selected rarity, dye colour, or minimum value? | Existing Reforged item/data owner for the specific question | Outside the `Item.Mods` contract; migrate only to the current owner already used by the caller. |
+| Should an item be identified, salvaged, or stored? | Future native System Settings ID owner | Explicitly outside this FrenkeyLib migration; do not create a Python inventory executor. |
 | Does the name contain a selected string? | `Item.GetName` after the existing name-readiness flow | Direct public-item mapping. |
 | Is the requirement at most N, optionally for one attribute? | `Item.Properties.GetRequirement` or `Item.Mods.HasMod` | Direct mapping; Reforged owns the lower-is-better direction. |
 | Is maximum damage at least N or a selected damage type? | `Item.Properties.GetDamage` or `Item.Mods.HasMod` | Direct mapping; range top-end selection is Reforged-owned. |
+| What are a shield's armor values at and below its requirement? | `Item.Properties.GetShieldArmor` | Direct typed mapping; it replaces the legacy raw `ShieldArmor` argument read. |
 | What are the named applied upgrades and their slots? | `Item.Mods.GetUpgrades` | Direct read mapping. This replaces JSON rune/weapon-mod identification. |
 | Is the named upgrade maxed? | `Item.Mods.IsMaxed` | Direct read mapping. |
 | Does an item have a selected named upgrade, slot, or max roll? | `Item.Mods.GetUpgrades`, `GetUpgradeInSlot`, `HasUpgradeInSlot`, and `IsMaxed` | Direct consumption mapping. Use the existing method that expresses the legacy question; do not add a convenience duplicate. |
@@ -81,14 +86,19 @@ API would reintroduce the bypass and is rejected.
 1. Repoint every legacy item/mod question to the existing public `Item.Mods`
    or item method demonstrated by the Playground. Do not introduce a new public
    helper as part of this migration.
-2. Run the Item Mods Playground and Mod Parity Scan against representative
-   prefix, suffix, inscription, rune, and insignia items. Compare the chosen
-   public reads with the game's composed text.
-3. Repoint `TeamInventoryViewer` and `MerchantRules` first, because they are
-   the live consumers of Mark's parser. Remove their `ModDatabase` and
-   `parse_modifiers` imports in the same change.
+2. When a concrete owner concern is reported, inspect the existing Item Mods
+   Playground or Mod Parity Scan output for the affected item and public read.
+   Do not create a generic sample-item or smoke-test requirement for a source
+   cutover.
+3. Refit Mark's parser first, then migrate Team Inventory Viewer and retained
+   non-inventory Merchant Rules consumers to its item-ID Reforged-consumer
+   result or to the same direct public calls. Remove `ModDatabase` and raw
+   triple parsing, not merely the import path.
 4. Repoint FrenkeyLib consumer code. Remove the legacy modifier catalog and
-   match classes only after no production importer remains.
+   match classes only after no production importer remains. The basic utility
+   questions use existing public item calls; a paired shield-armor fact is
+   exposed by `Item.Properties.GetShieldArmor` because no prior public method
+   represented both values.
 5. If, and only if, a concrete migrated call cannot be expressed by the
    existing platform, stop there and record the exact missing public contract.
    Do not work around it in FrenkeyLib or Mark's code.
@@ -110,12 +120,12 @@ API would reintroduce the bypass and is rejected.
 
 ## Verification plan
 
-For every migrated call, capture one item for each relevant physical slot and
-one non-match. The Item Mods Playground must show the same name, slot, and
-max-roll status as the game's composed information. Run Mod Parity Scan over
-inventory, equipment, and storage before replacing a live caller.
+The source cutover is verified by the public call mapping and targeted static
+checks. The Item Mods Playground and Mod Parity Scan remain diagnostic tools:
+use their existing output only if a reported item exposes a concrete mismatch
+or missing public capability.
 
-Static verification for the cutover must show no production imports of
-`Sources.marks_sources.mods_parser`, `ModDatabase`, legacy `Rune`/
-`WeaponMod` matching classes, or raw modifier matching. Run strict Pyright on
-each changed Python owner and its changed consumer.
+Static verification for the cutover must show no production ownership of
+`ModDatabase`, legacy `Rune`/`WeaponMod` matching classes, raw
+`parse_modifiers`, or raw modifier matching. Run strict Pyright on each changed
+Python owner and its changed consumer.

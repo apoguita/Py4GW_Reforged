@@ -24,6 +24,12 @@ from . import ui
 
 _SECTION = "UIManager"
 
+# TradeMgr's current GWCA implementation dispatches offer/remove actions to
+# CartPlayer through the frame-message ID 0x31. Keep these records separate
+# from the generic tail: normal UI animation can produce enough messages to
+# evict a short tail before a diagnostic snapshot is written.
+_TRADE_FRAME_MESSAGE_IDS = {0x2E, 0x31, 0x32}
+
 
 class _State:
     frame_id: int = 0
@@ -151,10 +157,27 @@ def _logs_blocks():
     msg_logs = casts.safe(UIManager.GetUIMessageLogs, default=[]) or []
     frows = [tuple(str(c) for c in entry) for entry in frame_logs[-60:]]
     mrows = [tuple(str(c) for c in entry) for entry in msg_logs[-60:]]
+    trade_rows = [
+        tuple(str(c) for c in entry)
+        for entry in msg_logs
+        if len(entry) >= 4 and bool(entry[3]) and int(entry[1]) in _TRADE_FRAME_MESSAGE_IDS
+    ][-60:]
     return [
-        ui.kv_block("Logs", [("Frame Logs (rows)", len(frows)), ("UI Message Logs (rows)", len(mrows))]),
+        ui.kv_block(
+            "Logs",
+            [
+                ("Frame Logs retained", len(frame_logs)),
+                ("UI Message Logs retained", len(msg_logs)),
+                ("Trade Frame Messages (rows)", len(trade_rows)),
+            ],
+        ),
         ui.multi_block("Frame Logs (last 60)", ["A", "B", "C"], frows),
         ui.multi_block("UI Message Logs (last 60)", ["msgid", "type", "b1", "b2", "n", "wparams", "lparams"], mrows),
+        ui.multi_block(
+            "Trade Frame Messages (0x2E / 0x31 / 0x32, last 60)",
+            ["tick", "msgid", "incoming", "frame", "frame_id", "wparams", "lparams"],
+            trade_rows,
+        ),
     ]
 
 

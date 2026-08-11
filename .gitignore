@@ -22,6 +22,7 @@ Py4GW_injection_log.txt
 .codex
 .backups
 /.vs/
+/demo_diagnostics
 
 # 1. Ignore ALL .ini files in Settings and subfolders
 Settings/**/*.ini

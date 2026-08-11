@@ -17,6 +17,7 @@ import importlib
 
 from Sources.frenkeyLib.LootEx.models import ModifierInfo, Rune, WeaponMod
 from Py4GWCoreLib import Item, UIManager
+from Py4GWCoreLib.mods_types import ModifierIdentifier as CoreModifierIdentifier
 import Py4GWCoreLib
 from Py4GWCoreLib.ItemArray import ItemArray
 from Py4GWCoreLib.Py4GWcorelib import ConsoleLog, Utils
@@ -101,14 +102,7 @@ class Util:
             (as an `Attribute` object) and the requirement level (as an integer) 
             if the item has a requirement. Returns `None` if no requirements are found.
         """
-        _, attribute_id, requirement = GLOBAL_CACHE.Item.Mods.GetModifierValues(
-            item_id, ModifierIdentifier.Requirement)
-
-        if attribute_id == None or requirement == None:
-            return Attribute.None_, 0
-
-        attribute = Attribute(attribute_id)
-        return attribute, requirement
+        return Item.Properties.GetRequirement(item_id)
 
     @staticmethod
     def GetItemDamage(item_id: int) -> tuple[int, int]:
@@ -124,22 +118,12 @@ class Util:
             Optional[tuple[int, int]]: A tuple containing the minimum and maximum damage
             values, or None if no damage values are available.
         """
-        _, max_damage, min_damage = Item.Mods.GetModifierValues(
-            item_id, ModifierIdentifier.Damage)
+        minimum, maximum = Item.Properties.GetDamage(item_id)
+        if minimum or maximum:
+            return minimum, maximum
 
-        if max_damage == None and min_damage == None:
-            _, attribute_id, requirement = GLOBAL_CACHE.Item.Mods.GetModifierValues(
-                item_id, ModifierIdentifier.Requirement)
-
-            if attribute_id == None or requirement == None:
-                _, max_damage, min_damage = Item.Mods.GetModifierValues(
-                    item_id, ModifierIdentifier.Damage_NoReq)
-
-                return min_damage if min_damage else 0, max_damage if max_damage else 0
-
-            return -1, -1
-
-        return min_damage if min_damage else 0, max_damage if max_damage else 0
+        _attribute, requirement = Item.Properties.GetRequirement(item_id)
+        return (-1, -1) if requirement else (0, 0)
 
     @staticmethod
     def GetItemDamageType(item_id: int) -> Optional[DamageType]:
@@ -153,9 +137,8 @@ class Util:
             Optional[DamageType]: The damage type of the item if it exists, 
             otherwise None.
         """
-        _, damage_type_id, _ = Item.Mods.GetModifierValues(
-            item_id, ModifierIdentifier.DamageType)
-        return DamageType(damage_type_id) if damage_type_id else None
+        damage_type = Item.Mods.GetSubtype(item_id, CoreModifierIdentifier.DamageTypeProperty)
+        return damage_type if isinstance(damage_type, DamageType) else None
 
     @staticmethod
     def GetShieldArmor(item_id: int) -> Optional[tuple[int, int]]:
@@ -168,12 +151,9 @@ class Util:
         Returns:
             Optional[int]: The armor value of the shield if it exists, otherwise None.
         """
-        _, armor_at_or_above_requirement, armor_below_requirement = Item.Mods.GetModifierValues(
-            item_id, ModifierIdentifier.ShieldArmor)
-
-        if armor_at_or_above_requirement == None or armor_below_requirement == None:
+        armor_at_or_above_requirement, armor_below_requirement = Item.Properties.GetShieldArmor(item_id)
+        if not armor_at_or_above_requirement and not armor_below_requirement:
             return None
-
         return armor_at_or_above_requirement, armor_below_requirement
 
     @staticmethod
@@ -569,10 +549,8 @@ class Util:
         Returns:
             Optional[ItemType]: The target item type if found, otherwise None.
         """
-        _, value, _ = Item.Mods.GetModifierValues(
-            item_id, ModifierIdentifier.TargetItemType)
-
-        return ItemType(value) if value else None
+        target_item_type = Item.Mods.GetSubtype(item_id, CoreModifierIdentifier.TargetItemType)
+        return target_item_type if isinstance(target_item_type, ItemType) else None
 
     @staticmethod
     def reformat_string(item_name: str) -> str:
