@@ -273,6 +273,11 @@ def upgrades_on(item_id: int) -> list[tuple[str, int]]:
     return out
 
 
+def known_upgrades() -> list[tuple[str, int]]:
+    """Every Reforged-known upgrade as a stable name and its physical slot."""
+    return sorted(mods_upgrades.UPGRADE_SLOT.items())
+
+
 def slot_of_upgrade(name: str) -> Optional[int]:
     """The slot (Slot value) for an upgrade name, or None."""
     return mods_upgrades.UPGRADE_SLOT.get(name)

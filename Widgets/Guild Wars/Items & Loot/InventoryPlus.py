@@ -314,9 +314,10 @@ class ModelPopUp:
         
 #region id_helpers
 def _id_items(rarity: str):
-    from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
-    routine = AutoInventoryHandler().IdentifyItems(rarities=[rarity], log=True)
-    GLOBAL_CACHE.Coroutines.append(routine)
+    from Py4GWCoreLib.py4gwcorelib_src.system_settings.inventory import get_controller
+
+    controller = get_controller()
+    controller.request_identify(controller.unidentified_item_ids([rarity]))
     
 def _id_whites():
     _id_items("White")
@@ -334,7 +335,8 @@ def _id_golds():
     _id_items("Gold")
     
 def _id_all(cfg: IdentificationSettings):
-    from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
+    from Py4GWCoreLib.py4gwcorelib_src.system_settings.inventory import get_controller
+
     rarities = []
     if cfg.identify_all_whites:
         rarities.append("White")
@@ -346,8 +348,8 @@ def _id_all(cfg: IdentificationSettings):
         rarities.append("Purple")
     if cfg.identify_all_golds:
         rarities.append("Gold")
-    routine = AutoInventoryHandler().IdentifyItems(rarities=rarities, log=True)
-    GLOBAL_CACHE.Coroutines.append(routine)
+    controller = get_controller()
+    controller.request_identify(controller.unidentified_item_ids(rarities))
     
 #region salvage_helpers
 def _get_inventory_item_ids() -> list[int]:
@@ -728,66 +730,26 @@ def _salvage_single_item_with_supported_kit(item_id: int, label: str, selected_k
 
 
 
-def _run_salvage_routine(
-    item_ids: list[int],
-    label: str,
-    rarities: list[str] | None = None,
-    selected_kit: ItemSlotData | None = None,
-) -> Generator[object, None, None]:
-    preferred_kit_id = _get_supported_salvage_kit_id(selected_kit)
-    yield from AutoInventoryHandler().SalvageItems(
-        item_ids=list(dict.fromkeys(item_ids)),
-        rarities=rarities,
-        preferred_kit_id=preferred_kit_id if preferred_kit_id > 0 else None,
-        allow_unidentified_nonwhite=_allows_unidentified_nonwhite_salvage(selected_kit),
-        respect_settings=False,
-        log=True,
-    )
-    return None
-
-
-
 def _queue_salvage_routine(item_ids: list[int], label: str, rarities: list[str] | None = None, selected_kit: ItemSlotData | None = None):
-    from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
+    from Py4GWCoreLib.py4gwcorelib_src.system_settings.inventory import get_controller
 
-    routine = _run_salvage_routine(item_ids, label, rarities=rarities, selected_kit=selected_kit)
-    GLOBAL_CACHE.Coroutines.append(routine)
+    selected_kit_id = _get_supported_salvage_kit_id(selected_kit)
+    get_controller().request_salvage_batch(item_ids, salvage_kit_id=selected_kit_id or None)
 
 
 # ---------------------------------------------------------------------------
 # NEW: Stack salvage — repeatedly salvage the same bag+slot until depleted
 # ---------------------------------------------------------------------------
 
-def _run_salvage_stack_routine(
-    bag_id: int,
-    slot: int,
-    label: str,
-    selected_kit: ItemSlotData | None = None,
-) -> Generator[object, None, None]:
-    preferred_kit_id = _get_supported_salvage_kit_id(selected_kit)
-
-    for _ in range(250):
-        item_id = _get_item_id_at_bag_slot(bag_id, slot)
-        if item_id == 0:
-            break
-
-        yield from AutoInventoryHandler().SalvageItems(
-            item_ids=[item_id],
-            preferred_kit_id=preferred_kit_id if preferred_kit_id > 0 else None,
-            allow_unidentified_nonwhite=_allows_unidentified_nonwhite_salvage(selected_kit),
-            respect_settings=False,
-            log=False,
-        )
-
-    return None
-
-
 def _queue_salvage_stack(item: ItemSlotData, selected_kit: ItemSlotData | None = None):
-    """Queue a full-stack salvage coroutine for a single inventory slot."""
-    from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
+    """Queue explicit per-item native salvage requests for the selected stack."""
+    from Py4GWCoreLib.py4gwcorelib_src.system_settings.inventory import get_controller
 
-    routine = _run_salvage_stack_routine(item.BagID, item.Slot, f"Salvage Stack [{item.Rarity}]", selected_kit=selected_kit)
-    GLOBAL_CACHE.Coroutines.append(routine)
+    selected_kit_id = _get_supported_salvage_kit_id(selected_kit)
+    get_controller().request_salvage_batch(
+        [item.ItemID] * max(1, int(item.Quantity)),
+        salvage_kit_id=selected_kit_id or None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -3066,4 +3028,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

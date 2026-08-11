@@ -13,8 +13,9 @@ Self-contained, reads the raw `ItemModifier` words directly, and **does not** de
 ## The API — `Py4GWCoreLib/Item.py`
 
 Identifiers come from `ModifierIdentifier` (aliased `ModId`) in `Py4GWCoreLib/mods_types.py`.
-The value axis is **type-routed**: an `IntEnum` narrows the *subtype*, a number is a *threshold*
-(direction-aware — see below), a callable is a predicate on the value.
+The value axis is **type-routed**: an `IntEnum` narrows the *subtype*, and a
+number is a direction-aware threshold (see below). Callable predicates are not
+accepted.
 
 ```python
 # -- presence / matching --
@@ -32,6 +33,7 @@ Item.Mods.GetName(mod)                    -> str              # the mod's effect
 
 # -- applied upgrades (prefixes/suffixes/inscriptions/runes/insignias) --
 Item.Mods.GetUpgrades(item_id)            -> list[(name, Slot)]
+Item.Mods.GetKnownUpgrades()               -> list[(name, Slot)] # supported configuration choices
 Item.Mods.GetUpgradeInSlot(item_id, slot) -> str | None
 Item.Mods.HasUpgradeInSlot(item_id, slot) -> bool
 Item.Mods.GetSlot(item_id, upgrade_name)  -> Slot | None
@@ -54,7 +56,8 @@ Each extra arg is dispatched by its Python type:
 - **number** → **"that value or better"**, not exact. Direction is the *mod's* metadata
   (`better_low`): requirement is lower-is-better (`9` ⇒ req ≤ 9); damage/armor/health are
   higher-is-better (`15` ⇒ ≥ 15). No per-call parameter, no lambda needed for the common case.
-- **callable** → `predicate(value) -> bool`, for anything the threshold shorthand can't express.
+- **callable** → rejected. `Item.Mods` accepts declarative subtype and numeric
+  threshold values only.
 
 ### Usage
 

@@ -15,7 +15,7 @@ class _ITEMS:
         self.Restock = _ITEMS._RESTOCK(parent)
         
     def AutoIdentifyItems(self):
-        "Uses the AutoLoot Handler to identify items automatically."
+        "Request explicit current-inventory identification through System Settings."
         self._helpers.Items.auto_identify_items()
 
     def AutoSalvageItems(self):

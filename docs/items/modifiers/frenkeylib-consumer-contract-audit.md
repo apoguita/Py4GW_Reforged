@@ -57,10 +57,12 @@ implicit constraint on this migration.
 | `frenkeyLib/ItemHandling/{Rules,GlobalConfigs}` | Defines parallel rule classes and compares snapshots, old item data, and upgrade names. | Refit a criterion only for a genuine non-inventory consumer, using public `Item.Mods` and item calls; retain no fallback evaluator. |
 | `frenkeyLib/ItemHandling/Items/item_snapshot.py` | Captures raw modifiers, parsed properties, and upgrades for legacy inventory rules. | Not a migration target. A future native System Settings ID owner supplies item IDs and reads Reforged surfaces directly. |
 
-`mods_parser.py` has two current non-legacy consumers: `TeamInventoryViewer.py`
-and `MerchantRules.py`. Both already have an item ID at the call sites. The
-module can therefore consume `Item.Mods` directly; a public "parse arbitrary
-triples" API would reintroduce the bypass and is rejected.
+`TeamInventoryViewer.py` was cut over to direct `Item.Mods` reads on
+2026-08-10. `MerchantRules.py` is now the sole production importer of
+`mods_parser.py`; every parser and catalogue use in that file participates in
+its inventory, salvage, storage, or rule-execution owner. There is no retained
+Mark presentation consumer to refit. A public "parse arbitrary triples" API
+would reintroduce the bypass and is rejected.
 
 ## Criteria migration matrix
 
@@ -74,6 +76,7 @@ triples" API would reintroduce the bypass and is rejected.
 | Is maximum damage at least N or a selected damage type? | `Item.Properties.GetDamage` or `Item.Mods.HasMod` | Direct mapping; range top-end selection is Reforged-owned. |
 | What are a shield's armor values at and below its requirement? | `Item.Properties.GetShieldArmor` | Direct typed mapping; it replaces the legacy raw `ShieldArmor` argument read. |
 | What are the named applied upgrades and their slots? | `Item.Mods.GetUpgrades` | Direct read mapping. This replaces JSON rune/weapon-mod identification. |
+| Which supported named upgrades may a rule select? | `Item.Mods.GetKnownUpgrades` | Reforged-owned configuration choices; no consumer catalogue or range table. |
 | Is the named upgrade maxed? | `Item.Mods.IsMaxed` | Direct read mapping. |
 | Does an item have a selected named upgrade, slot, or max roll? | `Item.Mods.GetUpgrades`, `GetUpgradeInSlot`, `HasUpgradeInSlot`, and `IsMaxed` | Direct consumption mapping. Use the existing method that expresses the legacy question; do not add a convenience duplicate. |
 | Does a consumer need selected named upgrades or slots as part of its rule? | Existing `Item.Mods` public upgrade and matching methods | Direct consumption mapping. Identification is item state, not a migration boundary. |
@@ -90,10 +93,11 @@ triples" API would reintroduce the bypass and is rejected.
    Playground or Mod Parity Scan output for the affected item and public read.
    Do not create a generic sample-item or smoke-test requirement for a source
    cutover.
-3. Refit Mark's parser first, then migrate Team Inventory Viewer and retained
-   non-inventory Merchant Rules consumers to its item-ID Reforged-consumer
-   result or to the same direct public calls. Remove `ModDatabase` and raw
-   triple parsing, not merely the import path.
+3. Team Inventory Viewer is already on direct public reads. Do not refit Mark
+   merely to keep a compatibility parser alive: its only remaining importer is
+   the excluded MerchantRules inventory owner. Retire that parser together
+   with the owner, or refit it only if a future retained non-inventory caller
+   genuinely needs a presentation result.
 4. Repoint FrenkeyLib consumer code. Remove the legacy modifier catalog and
    match classes only after no production importer remains. The basic utility
    questions use existing public item calls; a paired shield-armor fact is
@@ -125,7 +129,9 @@ checks. The Item Mods Playground and Mod Parity Scan remain diagnostic tools:
 use their existing output only if a reported item exposes a concrete mismatch
 or missing public capability.
 
-Static verification for the cutover must show no production ownership of
-`ModDatabase`, legacy `Rune`/`WeaponMod` matching classes, raw
-`parse_modifiers`, or raw modifier matching. Run strict Pyright on each changed
-Python owner and its changed consumer.
+Static verification for the cutover must show no retained production ownership
+of `ModDatabase`, legacy `Rune`/`WeaponMod` matching classes, raw
+`parse_modifiers`, or raw modifier matching. The sole excluded
+`MerchantRules.py` importer is recorded rather than treated as proof that a
+new compatibility owner is needed. Run strict Pyright on each changed Python
+owner and its changed consumer.

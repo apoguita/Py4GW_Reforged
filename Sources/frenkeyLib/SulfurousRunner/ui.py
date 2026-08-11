@@ -92,6 +92,12 @@ def color_equal(a: tuple[float, float, float, float],
                 eps: float = 1e-6) -> bool:
     return all(math.isclose(x, y, abs_tol=eps) for x, y in zip(a, b))
 
+
+def color_edit_tuple(value: list[float] | None) -> tuple[float, float, float, float] | None:
+    if value is None or len(value) != 4:
+        return None
+    return float(value[0]), float(value[1]), float(value[2]), float(value[3])
+
 def draw_configure():
     global widget_info
     
@@ -134,12 +140,12 @@ def draw_configure():
             settings.use_path_collision = path_collision        
             settings.save()
 
-        flag_color = ImGui.color_edit4("Flag Color", settings.flag_color.color_tuple)
+        flag_color = color_edit_tuple(ImGui.color_edit4("Flag Color", settings.flag_color.color_tuple))
         if flag_color is not None and not color_equal(flag_color, settings.flag_color.color_tuple):
             settings.flag_color = Color.from_tuple(flag_color)
             settings.save()
         
-        path_color = ImGui.color_edit4("Path Color", settings.path_color.color_tuple)
+        path_color = color_edit_tuple(ImGui.color_edit4("Path Color", settings.path_color.color_tuple))
         if path_color is not None and not color_equal(path_color, settings.path_color.color_tuple):
             settings.path_color = Color.from_tuple(path_color)
             settings.save()

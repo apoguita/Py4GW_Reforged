@@ -330,12 +330,14 @@ class _Items:
         
     @_yield_step(label="AutoIdentifyItems", counter_key="AUTO_IDENTIFY")
     def auto_identify_items(self) -> Generator[Any, Any, None]:
-        from ...py4gwcorelib_src.AutoInventoryHandler import AutoInventoryHandler
-        inventory_handler = AutoInventoryHandler()
-        current_state =  inventory_handler.module_active
-        inventory_handler.module_active = False
-        yield from inventory_handler.IdentifyItems()
-        inventory_handler.module_active = current_state
+        from ...Routines import Routines
+        from ...py4gwcorelib_src.system_settings.inventory import get_controller
+
+        controller = get_controller()
+        if not controller.request_identify(controller.unidentified_item_ids()):
+            return
+        while controller.is_identify_active():
+            yield from Routines.Yield.wait(50)
         
     @_yield_step(label="AutoSalvageItems", counter_key="AUTO_SALVAGE")
     def auto_salvage_items(self) -> Generator[Any, Any, None]:

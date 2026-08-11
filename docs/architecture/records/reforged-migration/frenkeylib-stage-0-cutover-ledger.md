@@ -15,21 +15,31 @@ It may present or compose public Reforged item answers. It must not scan bags,
 construct snapshots for control flow, select inventory actions, or execute
 identify, salvage, or storage work.
 
-The later native System Settings ID project owns those inventory operations.
-Its interface and execution protocol are deliberately not inferred here. The
-only readiness contract recorded by this ledger is that it can supply an item
-ID to a consumer without inheriting any Frenkey inventory handler.
+The native System Settings inventory owner now supplies explicit execution
+requests without inheriting a Frenkey inventory handler. Its current contract
+is deliberately narrow: an identify request accepts item IDs and polls each
+native result; salvage and storage operate only on an explicitly hovered item;
+materials-salvage confirmation requires a separate explicit request. The
+controller uses native `PyInventory` actions and does not create a second raw
+modifier, catalogue, snapshot, or action queue owner.
+
+This is an execution owner, not a new inventory rule engine. Reforged remains
+the source of item facts and rule verdicts, while the System Settings controller
+only receives item IDs. Automatic selection, range interpretation, and legacy
+MerchantRules policy remain outside this first cutover.
 
 ## Source-reachability inventory
 
 | Current root or dependency | Evidence | Stage 0 disposition |
 |---|---|---|
 | `Widgets/Guild Wars/Items & Loot/TeamInventoryViewer.py` | Source cutover on 2026-08-10 removed Mark parser imports, `ModDatabase`, `parse_modifiers`, raw modifier reads, and the unused raw-modifier hash cache. | Retained read-only consumer. It derives its display names from `Item.Mods.GetUpgradeInSlot`. |
-| `Widgets/Guild Wars/Items & Loot/MerchantRules.py` | Imports `ModDatabase` and `parse_modifiers`; contains both public `Item.Mods` reads and raw-parser paths. | Split by role. Preserve only non-inventory rule/display consumption for Stage 2. Inventory planning, raw-carrier parsing, salvage, and storage paths are excluded. |
+| `Widgets/Guild Wars/Items & Loot/MerchantRules.py` | Imports `ModDatabase` and `parse_modifiers`; source audit found every parser/catalogue path belongs to its inventory policy. | Explicitly quarantined inventory graph. There is no retained non-inventory parser consumer to migrate; removal waits for the native System Settings replacement or formal retirement. |
 | `Widgets/Guild Wars/PartyQuestLog.py` | Direct FrenkeyLib widget root. | Retained non-inventory feature slice; no direct modifier-read evidence in this pass. |
 | `Widgets/Guild Wars/MultiBoxing.py` | Direct FrenkeyLib widget root. | Retained non-inventory feature slice; no direct modifier-read evidence in this pass. |
 | `Widgets/Automation/Bots/Runners/Sulfurous Runner.py` | Direct FrenkeyLib widget root. | Retained non-inventory feature slice; no direct modifier-read evidence in this pass. |
 | `Widgets/Automation/Bots/Miscellaneous/Polymock.py` | Direct FrenkeyLib widget root. | Retained non-inventory feature slice; no direct modifier-read evidence in this pass. |
+| `Sources/frenkeyLib/Core/{gui,utility}.py` | Transitive imports from retained Polymock UI. | Active ImGui texture presentation and pure string/path helpers only. They do not read item modifiers, own inventory state, or persist feature data. The texture existence probe concerns bundled static assets, not user persistence. |
+| `Sources/frenkeyLib/Core/encoded_names.py` | Imported only by `ItemHandling/Items/item_collecting.py`. | Excluded with the snapshot collector. Its current missing `PyGameThread` static import is not a retained Polymock/Core failure and must not pull inventory collection back into this migration. |
 | `Sources/frenkeyLib/Py4GWLibrary/library.py` | No current importer outside its own module; its configuration is read and written through `Settings.find`. | Dormant shared UI helper. No persistence migration is needed unless a supported current launchpad adopts it. |
 | `Sources/frenkeyLib/Drafts/` | Historical widget-manager and library scripts create their own old INI directories; no current importer was found. | Not a retained feature. Document as historical code; do not migrate its persistence or UI surface. |
 | `Py4GWCoreLib/py4gwcorelib_src/AutoInventoryHandler.py` | Imports `ItemSnapshot` at line 137 and `BTNodes` at lines 338 and 361. | Explicitly excluded and later deprecated. No migration work may repair this coupling or use it as a compatibility path. |
@@ -71,9 +81,9 @@ The current public `Item.Mods` source exposes the required consumer primitives:
 them as diagnostic/compatibility reads. They are not permitted in a retained
 consumer to decode a modifier or make a rule verdict.
 
-`Item.Mods.HasMod` currently accepts a callable internally. That capability is
-not migration input: FrenkeyLib and Mark use declarative values only, with the
-existing direction-aware "that value or better" semantics.
+`Item.Mods.HasMod` rejects callable predicates. FrenkeyLib and Mark use only
+declarative subtype and numeric values, with the existing direction-aware
+"that value or better" semantics.
 
 ## Retained-boundary static certification
 
@@ -213,7 +223,7 @@ rune/weapon-mod catalog matching, and `get_target_item_type_from_mod` callers
 flow through LootEx collection, filtering, storage/salvage, or Merchant Rules
 inventory planning. They remain explicitly excluded legacy inventory owners.
 
-Removing or deprecating those modules is a later native System Settings ID
+Removing or deprecating those modules is a later System Settings rule-policy
 cutover decision. This migration does not give them a new raw-parser wrapper,
 does not keep them as a compatibility dependency of a retained consumer, and
 does not delete them prematurely.
@@ -226,11 +236,35 @@ The 2026-08-10 retirement scan established these required replacement points:
    and salvage before that handler is deprecated.
 2. LootEx must stop assigning its `LootExAutoInventoryHandler` into the core
    singleton before its inventory module can be detached.
-3. The native System Settings ID owner must provide the identify, salvage, and
-   storage execution interface consumed by these roots; this migration does
-   not invent a Python compatibility interface.
+3. The System Settings inventory controller now provides explicit native
+   identify, salvage, and storage requests. A later rule-policy integration
+   must consume public Reforged verdicts and submit only item IDs; it must not
+   restore a Python compatibility inventory handler.
 4. Only after those roots are cut over may the `ItemHandling` snapshot,
    behavior-tree, handler, and raw-model graph be removed or deprecated.
+
+## System Settings execution cutover
+
+On 2026-08-11, `system_settings/inventory` gained the first native execution
+contract. `InventorySettingsController.request_identify(item_ids)`,
+`request_salvage(item_id)`, and `request_store(item_id)` accept an explicit
+current inventory item ID and route only through native `PyInventory` calls.
+Identify advances after polling the public identified state; a materials-salvage
+confirmation requires a separate explicit request. The System Settings UI adds
+manual controls, but does not make a rule decision or run on inventory change.
+
+The manual identify helpers in `InventoryPlus.py` now submit their selected
+rarity candidates to `request_identify`; the widget no longer calls
+`AutoInventoryHandler().IdentifyItems`. Its automatic salvage, storage, and
+handler configuration remain legacy work until their replacement policy can
+consume public Reforged verdicts without duplicating that authority.
+
+`botting_src/helpers_src/Items.py::auto_identify_items` also now submits the
+current candidates to the System Settings controller and yields until that
+controller observes completion. It no longer disables, invokes, then restores
+the deprecated handler singleton. Salvage, deposit, and combined botting
+commands remain deferred because their legacy behavior carries selection and
+confirmation policy that has not yet been moved to the Reforged owner.
 
 No `Gw` or `Gw64` process was available during this scan, so the migrated
 viewer and feature smoke checks remain deferred.

@@ -128,7 +128,8 @@ Item.Mods.HasAllMods(item, [
 ```
 
 Multi-*number* mods (e.g. weapon damage `min`/`max`, ambiguous by position) use **keyword** args.
-A **lambda** is an escape hatch, rarely needed now (see §5). Lists/dicts add nothing over these.
+Callable predicates are not accepted: a value always means the metadata-owned
+"that value or better" condition. Lists/dicts add nothing over these.
 
 ### Slots (for salvage) — **[surface to define now]**
 ```python

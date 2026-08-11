@@ -100,6 +100,11 @@ class Item:
                 return [(name, mods_core.Slot(slot)) for name, slot in mods_core.upgrades_on(item_id)]
 
             @staticmethod
+            def GetKnownUpgrades() -> list:
+                """Every Reforged-known upgrade as a stable name and physical Slot."""
+                return [(name, mods_core.Slot(slot)) for name, slot in mods_core.known_upgrades()]
+
+            @staticmethod
             def GetSlot(item_id, upgrade_name):
                 """The slot of an applied upgrade (by name), or None."""
                 slot = mods_core.slot_of_upgrade(str(upgrade_name))
@@ -127,7 +132,9 @@ class Item:
             def HasMod(item_id, mod, *values) -> bool:
                 """True if the item has `mod`, optionally filtered by values.
                 An enum arg = a subtype filter; a number = a value threshold ('N or better',
-                direction from the mod's metadata); a callable = predicate(value)."""
+                direction from the mod's metadata)."""
+                if any(callable(value) for value in values):
+                    raise TypeError("Item.Mods.HasMod accepts declarative subtype and numeric threshold values only")
                 modid = int(mod)
                 subtype_filter = None
                 value_filters: list = []
@@ -154,10 +161,7 @@ class Item:
                     if i >= len(vals):
                         return False
                     got = vals[i]
-                    if callable(f):
-                        if not f(got):
-                            return False
-                    elif better_low:
+                    if better_low:
                         if got > f:
                             return False
                     elif got < f:

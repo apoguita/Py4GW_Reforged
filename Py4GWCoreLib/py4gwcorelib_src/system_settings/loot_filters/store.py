@@ -1,7 +1,7 @@
-"""Loot persistence split by lifetime: global policy, local selection, and session-only live state.
+"""Loot persistence split by lifetime: global policy and session-only live state.
 
-The global Loot Policy is shared by every account.  An account persists only which global Factory
-profile it currently uses.  ``LootFilters.live`` remains in memory and is never written here.
+The global Loot Policy, including the selected Factory profile, is shared by every account.
+``LootFilters.live`` remains in memory and is never written here.
 """
 
 from datetime import date
@@ -12,7 +12,6 @@ from .model import LootConfig
 
 _POLICY_INI = "Widgets/System/LootFilters.ini"
 _POLICY_SELECTIONS = "Widgets/System/LootFiltersSelections.json"
-_PROFILE_SELECTION_INI = "Widgets/System/LootFilterProfileSelection.ini"
 
 _QA_SEPARATOR = "|"
 DEFAULT_QUICK_ACCESS: tuple[str, ...] = ("Rarities", "Materials", "Dyes", "Nicholas")
@@ -23,15 +22,6 @@ def _settings(scope: str):
         from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 
         return Settings(_POLICY_INI, scope)
-    except Exception:
-        return None
-
-
-def _selection_settings():
-    try:
-        from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-
-        return Settings(_PROFILE_SELECTION_INI, "account")
     except Exception:
         return None
 
@@ -50,6 +40,7 @@ def _load_policy(settings, doc) -> LootConfig:
     if settings is not None:
         config.enabled = settings.get_bool("general", "enabled", True)
         config.respect_loot_lock = settings.get_bool("general", "respect_loot_lock", True)
+        config.profile = settings.get_str("general", "profile", "")
         for key in ("white", "blue", "purple", "gold", "green", "gold_coins"):
             config.set_rarity(key, settings.get_bool("rarity", key, False))
     if doc is not None:
@@ -76,6 +67,7 @@ def _save_policy(config: LootConfig, settings, doc) -> None:
     if settings is not None:
         settings.set("general", "enabled", bool(config.enabled))
         settings.set("general", "respect_loot_lock", bool(config.respect_loot_lock))
+        settings.set("general", "profile", str(config.profile))
         for key in ("white", "blue", "purple", "gold", "green", "gold_coins"):
             settings.set("rarity", key, bool(config.rarity_enabled(key)))
     if doc is not None:
@@ -88,45 +80,60 @@ def _save_policy(config: LootConfig, settings, doc) -> None:
         doc.set_json("nicholas", ["" if s.week is None else s.week.isoformat() for s in config.nicholas])
 
 
+def _has_configured_policy(config: LootConfig) -> bool:
+    """Whether a policy has an intentional choice beyond the empty enabled defaults."""
+    return bool(
+        not config.enabled
+        or not config.respect_loot_lock
+        or config.profile
+        or config.loot_whites
+        or config.loot_blues
+        or config.loot_purples
+        or config.loot_golds
+        or config.loot_greens
+        or config.loot_gold_coins
+        or config.enabled_model_ids
+        or config.enabled_dye_colors
+        or config.salvage_target_ids
+        or config.added_model_ids
+        or config.blacklist_model_ids
+        or config.blacklist_item_types
+        or config.nicholas
+    )
+
+
+def _load_legacy_account_policy() -> LootConfig:
+    """Read the pre-global account document for a one-way migration only."""
+    return _load_policy(_settings("account"), _json("account"))
+
+
 def _migrate_account_policy(policy_settings, policy_doc) -> None:
-    """The first account to use the new global policy imports the prior account policy once."""
-    if policy_settings is None or policy_settings.get_bool("migration", "from_account", False):
+    """Copy a legacy account policy into an otherwise untouched global policy."""
+    if policy_settings is None:
         return
-    _save_policy(_load_policy(_settings("account"), _json("account")), policy_settings, policy_doc)
+
+    global_policy = _load_policy(policy_settings, policy_doc)
+    if _has_configured_policy(global_policy):
+        return
+
+    account_policy = _load_legacy_account_policy()
+    if not _has_configured_policy(account_policy):
+        return
+
+    _save_policy(account_policy, policy_settings, policy_doc)
     policy_settings.set("migration", "from_account", True)
 
 
-def _load_account_profile() -> str:
-    selection = _selection_settings()
-    if selection is None:
-        return ""
-    if not selection.get_bool("migration", "from_loot_filters", False):
-        legacy = _settings("account")
-        selection.set("general", "profile", legacy.get_str("general", "profile", "") if legacy else "")
-        selection.set("migration", "from_loot_filters", True)
-    return selection.get_str("general", "profile", "")
-
-
-def _save_account_profile(profile: str) -> None:
-    selection = _selection_settings()
-    if selection is not None:
-        selection.set("general", "profile", str(profile))
-        selection.set("migration", "from_loot_filters", True)
-
-
 def load() -> LootConfig:
-    """Load global policy plus this account's selected global Loot Filter Profile."""
+    """Load the global loot policy, copying one legacy account policy when needed."""
     policy_settings, policy_doc = _settings("global"), _json("global")
     _migrate_account_policy(policy_settings, policy_doc)
-    config = _load_policy(policy_settings, policy_doc)
-    config.profile = _load_account_profile()
-    return config
+    return _load_policy(policy_settings, policy_doc)
 
 
 def save(config: LootConfig) -> None:
-    """Persist global policy and only the profile selection locally; never persist live state."""
+    """Persist the global policy; never persist live state."""
     _save_policy(config, _settings("global"), _json("global"))
-    _save_account_profile(config.profile)
 
 
 # ---------------------------------------------------------------- quick access and layouts (global presentation policy)

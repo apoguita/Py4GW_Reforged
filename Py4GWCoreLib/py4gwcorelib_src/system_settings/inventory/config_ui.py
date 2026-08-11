@@ -22,6 +22,7 @@ def _to_color(value) -> tuple[int, int, int, int]:
 def add_sections(win, group) -> None:
     controller = get_controller()
     win.add_section(group, "Open Xunlai Vault", lambda: _draw_xunlai(controller))
+    win.add_section(group, "Item Operations", lambda: _draw_operations(controller))
     win.add_section(group, "Colorize", lambda: _draw_colorize(controller))
 
 
@@ -36,6 +37,41 @@ def _draw_xunlai(controller: InventorySettingsController) -> None:
     if PyImGui.button("Open Xunlai Vault##items_xunlai"):
         controller.open_xunlai()
     status = controller.xunlai_status()
+    if status:
+        PyImGui.text_colored(status, MUTED)
+
+
+def _draw_operations(controller: InventorySettingsController) -> None:
+    PyImGui.text_wrapped(
+        "Explicit native item operations. They never select a rule, run on inventory change, or replace the game dialog."
+    )
+    candidates = controller.unidentified_item_ids()
+    identify_label = "Identify current unidentified items (%d)##items_identify" % len(candidates)
+    if PyImGui.button(identify_label):
+        controller.request_identify(candidates)
+    if controller.is_action_active():
+        PyImGui.text_colored("An identify batch is active; no second batch can be started.", MUTED)
+        if PyImGui.button("Cancel identify batch##items_identify_cancel"):
+            controller.cancel_identify()
+
+    hovered_item_id = controller.hovered_item_id()
+    if hovered_item_id > 0:
+        PyImGui.text("Hovered inventory item: %d" % hovered_item_id)
+    else:
+        PyImGui.text_colored("Hover an item in an open inventory window for salvage or storage.", MUTED)
+    if PyImGui.button("Start native salvage for hovered item##items_salvage"):
+        controller.request_salvage_hovered()
+    if controller.is_salvage_active():
+        PyImGui.same_line()
+        if PyImGui.button("Stop salvage batch##items_salvage_stop"):
+            controller.cancel_salvage()
+    PyImGui.same_line()
+    if PyImGui.button("Confirm materials-salvage dialog##items_salvage_confirm"):
+        controller.request_confirm_salvage()
+    if PyImGui.button("Store hovered item in Xunlai##items_store"):
+        controller.request_store_hovered()
+
+    status = controller.action_status()
     if status:
         PyImGui.text_colored(status, MUTED)
 

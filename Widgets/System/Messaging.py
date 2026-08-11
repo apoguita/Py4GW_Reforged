@@ -2059,9 +2059,6 @@ def OpenChest(index: int, message: SharedMessageStruct):
 def PickUpLoot(index:int , message: SharedMessageStruct):
     def _get_loot_exit_reason() -> str:
         if not Routines.Checks.Map.MapValid():
-            RestoreHeroAISnapshot(message.ReceiverEmail)
-            GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-            ActionQueueManager().ResetAllQueues()
             return "map_invalid"
 
         if GLOBAL_CACHE.Inventory.GetFreeSlotCount() < 1:
@@ -2070,9 +2067,6 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
                 "No free slots in inventory, halting.",
                 Console.MessageType.Error,
             )
-            RestoreHeroAISnapshot(message.ReceiverEmail)
-            GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-            ActionQueueManager().ResetAllQueues()
             return "inventory_full"
 
         return ""
@@ -2082,16 +2076,16 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
         return int((time.time() - SHMEM_ZERO_EPOCH) * 1000)
 
     GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
+    SnapshotHeroAIOptions(message.ReceiverEmail)
 
     loot_array = LootFilters().GetLootArray(Range.Earshot.value)
     if len(loot_array) == 0:
-        RestoreHeroAISnapshot(message.ReceiverEmail)  # <-- missing before
+        RestoreHeroAISnapshot(message.ReceiverEmail)
         GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
         return
 
     ConsoleLog(MODULE_NAME, "Starting PickUpLoot routine", Console.MessageType.Info, False)
 
-    SnapshotHeroAIOptions(message.ReceiverEmail)
     claimed_item_id = 0
     try:
         DisableHeroAIOptions(message.ReceiverEmail)
@@ -2154,7 +2148,7 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
                 if claimed_item_id:
                     clear_loot_lock(claimed_item_id)
                     claimed_item_id = 0
-                RestoreHeroAISnapshot(message.ReceiverEmail)
+                ActionQueueManager().ResetAllQueues()
                 return
             yield from Routines.Yield.Player.InteractAgent(item_id)
             yield from Routines.Yield.wait(100)
