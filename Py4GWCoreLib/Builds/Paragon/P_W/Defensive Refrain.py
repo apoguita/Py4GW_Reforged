@@ -123,7 +123,8 @@ class Paragon_Refrain(BuildMgr):
             return
 
         self.SetFallback("HeroAI", HeroAI_Build(standalone_fallback=True))
-        self.SetSkillCastingFn(self._run_local_skill_logic)
+        self.SetOOCFn(self._run_ooc)
+        self.SetCombatFn(self._run_combat_phase)
         # Named skillbook, not skills: BuildMgr.skills is the list[int] of
         # equipped skill ids that ValidateSkills sorts, and shadowing it with
         # the helper namespace makes that call raise TypeError.
@@ -138,20 +139,21 @@ class Paragon_Refrain(BuildMgr):
         Everything here has to be reachable while travelling: the refrains are
         maintained continuously, not re-established at every pull.
         """
-        # First, and deliberately so. Aggressive Refrain is a single cast that
-        # the bar's shouts then renew forever, so the sooner it lands the sooner
-        # we stop thinking about it - after that its HasEffect guard returns
-        # False instantly and it costs nothing to keep asking. It used to sit
-        # below the in-aggro guard AND below Heroic Refrain, which is why it was
-        # effectively never cast: by the time we were in combat, Heroic Refrain
-        # was spreading across the party one ally per tick and never yielded the
-        # tick to it.
-        if self.IsSkillEquipped(Aggressive_Refrain_ID) and (yield from self.skillbook.Paragon.Leadership.Aggressive_Refrain()):
+        # The elite, and the reason for the bar, must be first. Its helper casts
+        # on self until the Leadership bootstrap reaches 20, then walks the
+        # party. Refrains cast before that bootstrap would use the lower rank.
+        if self.IsSkillEquipped(Heroic_Refrain_ID) and (yield from self.skillbook.Paragon.Leadership.Heroic_Refrain()):
             return True
 
-        # The elite, and the reason for the bar. Self-stacks first, then walks
-        # the party; the helper's own logic decides which.
-        if self.IsSkillEquipped(Heroic_Refrain_ID) and (yield from self.skillbook.Paragon.Leadership.Heroic_Refrain()):
+        # Spread every equipped party refrain immediately after Heroic Refrain,
+        # in or out of combat. Entering combat must not postpone an incomplete
+        # distribution behind the rest of the combat rotation.
+        if (yield from self._run_refrain_spreading()):
+            return True
+
+        # Aggressive Refrain is self-only and is maintained by the same expiring
+        # shouts as the party refrains.
+        if self.IsSkillEquipped(Aggressive_Refrain_ID) and (yield from self.skillbook.Paragon.Leadership.Aggressive_Refrain()):
             return True
 
         if self.IsSkillEquipped(Anthem_of_Flame_ID) and (yield from self.skillbook.Paragon.Leadership.Anthem_of_Flame()):
@@ -163,14 +165,8 @@ class Paragon_Refrain(BuildMgr):
         if self.IsSkillEquipped(Theyre_on_Fire_ID) and (yield from self.skillbook.Paragon.Leadership.Theyre_on_Fire()):
             return True
 
-        # The secondary echoes are worth a tick while travelling, but not ahead
-        # of the defensive shouts once the fight starts - in combat they are
-        # retried at the tail of the rotation instead.
         if self.IsInAggro():
             return False
-
-        if (yield from self._run_refrain_spreading()):
-            return True
 
         # Travel speed. Ends on the holder's next attack, so the helper keeps it
         # to genuine out-of-combat movement.
@@ -349,9 +345,16 @@ class Paragon_Refrain(BuildMgr):
 
         return False
 
-    def _run_local_skill_logic(self):
+    def _run_ooc(self):
+        """Evaluate travelling upkeep from current state on every fresh tick."""
         if not Routines.Checks.Skills.CanCast():
-            yield from Routines.Yield.wait(100)
+            return False
+
+        return (yield from self._run_upkeep())
+
+    def _run_combat_phase(self):
+        """Evaluate upkeep before combat work without a cross-phase continuation."""
+        if not Routines.Checks.Skills.CanCast():
             return False
 
         if (yield from self._run_upkeep()):
