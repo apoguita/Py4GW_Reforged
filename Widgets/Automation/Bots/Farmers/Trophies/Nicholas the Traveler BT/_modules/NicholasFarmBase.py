@@ -133,9 +133,9 @@ def _verify_farm_item_loot_live(farm: FarmDefinition) -> BehaviorTree:
     """
     Verify the leader's LIVE LootFilters state for the selected Nicholas item.
 
-    Stable model additions normally survive map changes.  This check exists so
-    Nicholas does not silently continue farming when another LIVE loot rule
-    prevents the requested trophy from ever being offered to HeroAI.
+    This check verifies the leader's current post-zoning LIVE state so Nicholas
+    does not silently continue farming when the selected trophy is absent or
+    another LIVE loot rule prevents it from being offered to HeroAI.
 
     We deliberately DO NOT override the user's blacklist/veto policy here.
     Instead we fail with an explicit console message.
@@ -272,16 +272,153 @@ def whitelist_farm_item_all_accounts(farm: FarmDefinition) -> BehaviorTree:
     )
 
 
+def _wait_for_farm_party_on_map(
+    farm: FarmDefinition,
+    *,
+    stable_ms: int = 1250,
+    timeout_ms: int = 20_000,
+) -> BehaviorTree:
+    """
+    Wait until every account in the current Nicholas farming party is reported
+    on the actual farm map, then keep that state stable briefly.
+
+    This is intentionally done BEFORE broadcasting the loot whitelist refresh.
+    Live testing showed followers could receive/acknowledge the whitelist command
+    while still zoning. Their subsequent map load then rebuilt/reset their local
+    LootFilters state, leaving the Nicholas model absent on that follower.
+    """
+    state = {
+        "started_at": 0.0,
+        "ready_since": 0.0,
+        "last_waiting": None,
+    }
+
+    def _wait(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        now = time.monotonic()
+
+        if float(state["started_at"] or 0.0) <= 0.0:
+            state["started_at"] = now
+
+        target_map_id = int(farm.farm_map_id)
+        party_accounts = farm_party_accounts()
+
+        if not party_accounts:
+            state["ready_since"] = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        waiting: list[str] = []
+
+        for email, label in party_accounts:
+            try:
+                account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(email)
+            except Exception:
+                account = None
+
+            if account is None:
+                waiting.append(f"{label}:no-shmem")
+                continue
+
+            account_map_id = int(_account_map_tuple(account)[0])
+
+            if account_map_id != target_map_id:
+                waiting.append(f"{label}:map={account_map_id}")
+
+        if waiting:
+            state["ready_since"] = 0.0
+
+            waiting_text = ", ".join(waiting)
+            if waiting_text != state["last_waiting"]:
+                state["last_waiting"] = waiting_text
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"Waiting before loot refresh for all accounts to load "
+                        f"{farm.name} farm map {target_map_id}: {waiting_text}"
+                    ),
+                    PySystem.Console.MessageType.Info,
+                )
+
+            elapsed_ms = int((now - float(state["started_at"])) * 1000.0)
+            if elapsed_ms >= int(timeout_ms):
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"Timed out after {elapsed_ms} ms waiting for all Nicholas "
+                        f"accounts on farm map {target_map_id}. Loot refresh aborted "
+                        "instead of broadcasting during an account map transition."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            return BehaviorTree.NodeState.RUNNING
+
+        # Everyone is now reported on the requested map. Require that state to
+        # remain true briefly so a follower that is still finalizing its zoning
+        # cannot immediately lose the refreshed LootFilters state afterwards.
+        if float(state["ready_since"] or 0.0) <= 0.0:
+            state["ready_since"] = now
+            state["last_waiting"] = None
+
+            labels = ", ".join(label for _email, label in party_accounts)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"All Nicholas accounts reported on farm map {target_map_id}: "
+                    f"{labels}. Waiting {int(stable_ms)} ms for map state to settle "
+                    "before refreshing loot."
+                ),
+                PySystem.Console.MessageType.Info,
+            )
+            return BehaviorTree.NodeState.RUNNING
+
+        stable_elapsed_ms = int(
+            (now - float(state["ready_since"])) * 1000.0
+        )
+        if stable_elapsed_ms < int(stable_ms):
+            return BehaviorTree.NodeState.RUNNING
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"All Nicholas accounts stable on farm map {target_map_id} for "
+                f"{stable_elapsed_ms} ms. Refreshing {farm.name} loot whitelist now."
+            ),
+            PySystem.Console.MessageType.Info,
+        )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Wait All Accounts On Farm Map - {farm.name}",
+            action_fn=_wait,
+            aftercast_ms=0,
+        )
+    )
+
+
 def _refresh_farm_item_whitelist_step(
     farm: FarmDefinition,
     *,
     name: str = "Refresh Farm Loot Whitelist",
 ) -> BehaviorTree:
-    """Reapply the Nicholas model only after the leader is in the farm map."""
+    """
+    Refresh the Nicholas model only after the leader AND all farming followers
+    have finished entering the farm map.
+
+    The map guard protects named-step recovery on the leader. The inner wait
+    protects followers from receiving the shared whitelist command too early.
+    """
     return _map_guarded_node(
         name=name,
         map_id=int(farm.farm_map_id),
-        child=whitelist_farm_item_all_accounts(farm),
+        child=BT.Sequence(
+            name=f"{name} - All Accounts",
+            children=[
+                _wait_for_farm_party_on_map(farm),
+                whitelist_farm_item_all_accounts(farm),
+            ],
+        ),
     )
 
 
