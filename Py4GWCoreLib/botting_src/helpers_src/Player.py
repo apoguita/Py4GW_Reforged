@@ -49,6 +49,24 @@ class _Player:
         from ...Routines import Routines
         yield from Routines.Yield.Player.BuySkill(skill_id, log)
 
+    @_yield_step(label="LearnSkillFromTome", counter_key="LEARN_SKILL_FROM_TOME")
+    def learn_skill_from_tome(
+        self,
+        skill_id: int,
+        log: bool = False,
+        open_timeout_ms: int = 5000,
+        selection_timeout_ms: int = 2500,
+        learn_timeout_ms: int = 5000,
+    ) -> Generator[Any, Any, None]:
+        from ...Routines import Routines
+        yield from Routines.Yield.Player.LearnSkillFromTome(
+            skill_id=skill_id,
+            log=log,
+            open_timeout_ms=open_timeout_ms,
+            selection_timeout_ms=selection_timeout_ms,
+            learn_timeout_ms=learn_timeout_ms,
+        )
+
     @_yield_step(label="UnlockBalthazarSkill", counter_key="UNLOCK_BALTHAZAR_SKILL")
     def unlock_balthazar_skill(self, skill_id: int, use_pvp_remap: bool = True, log: bool = False) -> Generator[Any, Any, None]:
         from ...Routines import Routines

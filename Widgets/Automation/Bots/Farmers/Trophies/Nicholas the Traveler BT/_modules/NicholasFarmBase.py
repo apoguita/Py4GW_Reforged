@@ -73,25 +73,215 @@ def disable_merchant_rules_all_accounts() -> BehaviorTree:
 
 
 
+def _add_farm_item_loot_local(farm: FarmDefinition) -> BehaviorTree:
+    """
+    Add the selected Nicholas model DIRECTLY to the new LIVE LootFilters system.
+
+    Do not use BT.AddModelToLootWhitelist here. Some Py4GW installations still
+    expose an older implementation backed by legacy LootConfig, while the
+    current HeroAI loot filter reads LootFilters(). This direct mutation makes
+    Nicholas use the exact same authority that _verify_farm_item_loot_live()
+    inspects immediately afterwards.
+    """
+    def _add(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
+
+            model_id = int(farm.model_id)
+            loot = LootFilters()
+            loot.add_model(model_id)
+
+            added = model_id in loot.live.added_model_ids
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"Direct LIVE loot add for {farm.name} [{model_id}]: "
+                    f"added_model={added}."
+                ),
+                (
+                    PySystem.Console.MessageType.Info
+                    if added
+                    else PySystem.Console.MessageType.Error
+                ),
+            )
+
+            return (
+                BehaviorTree.NodeState.SUCCESS
+                if added
+                else BehaviorTree.NodeState.FAILURE
+            )
+
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"Direct LIVE loot add failed for {farm.name}: {exc}",
+                PySystem.Console.MessageType.Error,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Direct Live Loot Add - {farm.name}",
+            action_fn=_add,
+            aftercast_ms=50,
+        )
+    )
+
+
+def _verify_farm_item_loot_live(farm: FarmDefinition) -> BehaviorTree:
+    """
+    Verify the leader's LIVE LootFilters state for the selected Nicholas item.
+
+    Stable model additions normally survive map changes.  This check exists so
+    Nicholas does not silently continue farming when another LIVE loot rule
+    prevents the requested trophy from ever being offered to HeroAI.
+
+    We deliberately DO NOT override the user's blacklist/veto policy here.
+    Instead we fail with an explicit console message.
+    """
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
+            from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.expected_types import expected_type
+
+            loot = LootFilters()
+            model_id = int(farm.model_id)
+            item_type = expected_type(model_id)
+
+            enabled = bool(loot.live.enabled)
+            added = model_id in loot.live.added_model_ids
+            model_blacklisted = model_id in loot.live.blacklist_model_ids
+            type_vetoed = (
+                item_type is not None
+                and int(item_type) in loot.live.blacklist_item_types
+            )
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"Loot state for {farm.name} [{model_id}]: "
+                    f"master={enabled}, added_model={added}, "
+                    f"model_blacklisted={model_blacklisted}, "
+                    f"item_type={item_type}, type_vetoed={type_vetoed}."
+                ),
+                PySystem.Console.MessageType.Info,
+            )
+
+            if not enabled:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        "Loot Filters master switch is OFF. "
+                        f"{farm.name} cannot be auto-looted."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            if model_blacklisted:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"{farm.name} [{model_id}] is model-blacklisted. "
+                        "The blacklist vetoes the Nicholas script whitelist."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            if type_vetoed:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"The item type for {farm.name} is vetoed in Loot Filters. "
+                        "Item-type vetoes beat script-added models."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            if not added:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"{farm.name} [{model_id}] is missing from the LIVE "
+                        "script-added model whitelist."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            return BehaviorTree.NodeState.SUCCESS
+
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"Could not verify live loot state for {farm.name}: {exc}",
+                PySystem.Console.MessageType.Error,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Verify Live Loot - {farm.name}",
+            action_fn=_check,
+            aftercast_ms=0,
+        )
+    )
+
+
 def whitelist_farm_item_all_accounts(farm: FarmDefinition) -> BehaviorTree:
     """
-    Add the selected farm trophy model to the LIVE loot whitelist on every
-    active shared-memory account, including the leader.
+    Add the selected Nicholas trophy model to the LIVE loot whitelist.
 
-    This runs inside Initial Farm Setup, so it executes once per MANUAL Start
-    for the selected farm and is not repeated after resign/reset loops or
-    named-step recovery.
+    The leader is updated DIRECTLY with the normal BT loot-filter routine.
+    Followers receive the equivalent shared command.
+
+    Do not route the leader through Messaging here: in live testing the shared
+    command could be acknowledged while the leader's LootFilters state still
+    showed added_model=False.  Applying the leader mutation locally gives us a
+    deterministic state that can be verified immediately.
     """
-    return BTShared.SendAndWait(
-        command=SharedCommandType.AddModelToLootWhitelist,
-        params=(float(farm.model_id), 0.0, 0.0, 0.0),
-        extra_data=(farm.name, "", "", ""),
-        include_self=True,
-        refs_blackboard_key="__nicholas_add_farm_model_whitelist_refs",
-        timeout_ms=10_000,
-        poll_interval_ms=100,
-        log=True,
-        aftercast_ms=100,
+    model_id = int(farm.model_id)
+
+    return BT.Sequence(
+        name=f"Whitelist Farm Item - {farm.name}",
+        children=[
+            # Leader: mutate the NEW LootFilters system directly.
+            # This intentionally bypasses BT.AddModelToLootWhitelist because
+            # older Core versions may still route that helper to legacy LootConfig.
+            _add_farm_item_loot_local(farm),
+
+            # Followers only. The leader has already been handled locally.
+            BTShared.SendAndWait(
+                command=SharedCommandType.AddModelToLootWhitelist,
+                params=(float(model_id), 0.0, 0.0, 0.0),
+                extra_data=(farm.name, "", "", ""),
+                include_self=False,
+                refs_blackboard_key="__nicholas_add_farm_model_whitelist_refs",
+                timeout_ms=10_000,
+                poll_interval_ms=100,
+                log=True,
+                aftercast_ms=100,
+            ),
+
+            # Verify the leader's actual live state before continuing.
+            _verify_farm_item_loot_live(farm),
+        ],
+    )
+
+
+def _refresh_farm_item_whitelist_step(
+    farm: FarmDefinition,
+    *,
+    name: str = "Refresh Farm Loot Whitelist",
+) -> BehaviorTree:
+    """Reapply the Nicholas model only after the leader is in the farm map."""
+    return _map_guarded_node(
+        name=name,
+        map_id=int(farm.farm_map_id),
+        child=whitelist_farm_item_all_accounts(farm),
     )
 
 
@@ -1582,6 +1772,23 @@ def _route_loop_action_steps(
 
         steps.append((name, _build))
 
+        # Route-loop farms (Icy Hump included) can leave and re-enter the farm
+        # map multiple times.  Reapply the selected model whenever an EXIT
+        # action lands back in the actual farm map.  This is intentionally a
+        # separate planner step so named-step recovery still executes it even
+        # when the preceding transition is already complete.
+        if kind == "exit" and target_map_id == int(farm.farm_map_id):
+            refresh_name = f"{prefix} - {index:02d} Refresh Loot"
+            steps.append(
+                (
+                    refresh_name,
+                    lambda refresh_name=refresh_name: _refresh_farm_item_whitelist_step(
+                        farm,
+                        name=refresh_name,
+                    ),
+                )
+            )
+
     return steps
 
 
@@ -2014,6 +2221,12 @@ def build_execution_steps(
                 ),
             )
         )
+        steps.append(
+            (
+                "Refresh Farm Loot Whitelist",
+                lambda: _refresh_farm_item_whitelist_step(farm),
+            )
+        )
 
         steps.extend(
             _vanquish_point_steps(
@@ -2081,6 +2294,12 @@ def build_execution_steps(
                     point=farm.portal_to_farm,
                     timeout_ms=60_000,
                 ),
+            )
+        )
+        steps.append(
+            (
+                "Refresh Farm Loot Whitelist",
+                lambda: _refresh_farm_item_whitelist_step(farm),
             )
         )
 
@@ -2170,6 +2389,12 @@ def build_execution_steps(
                     point=farm.portal_to_farm,
                     timeout_ms=60_000,
                 ),
+            )
+        )
+        steps.append(
+            (
+                "Refresh Farm Loot Whitelist",
+                lambda: _refresh_farm_item_whitelist_step(farm),
             )
         )
 
@@ -2262,6 +2487,12 @@ def build_execution_steps(
                 lambda: refresh_follower_heroai_after_instance_entry(farm),
             )
         )
+        steps.append(
+            (
+                "Refresh Farm Loot Whitelist",
+                lambda: _refresh_farm_item_whitelist_step(farm),
+            )
+        )
 
         steps.extend(
             _vanquish_point_steps(
@@ -2325,6 +2556,12 @@ def build_execution_steps(
             (
                 "Refresh HeroAI After Dialog Entry",
                 lambda: refresh_follower_heroai_after_instance_entry(farm),
+            )
+        )
+        steps.append(
+            (
+                "Refresh Farm Loot Whitelist",
+                lambda: _refresh_farm_item_whitelist_step(farm),
             )
         )
 
@@ -2412,6 +2649,12 @@ def build_execution_steps(
             (
                 "Refresh HeroAI After FoW Entry",
                 lambda: refresh_follower_heroai_after_instance_entry(farm),
+            )
+        )
+        steps.append(
+            (
+                "Refresh Farm Loot Whitelist",
+                lambda: _refresh_farm_item_whitelist_step(farm),
             )
         )
 

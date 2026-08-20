@@ -88,6 +88,33 @@ class Player:
         yield from _run_bt_tree(tree, throttle_ms=300)
 
     @staticmethod
+    def LearnSkillFromTome(
+        skill_id: int,
+        log: bool = False,
+        open_timeout_ms: int = 5000,
+        selection_timeout_ms: int = 2500,
+        learn_timeout_ms: int = 5000,
+    ):
+        """
+        Purpose: Learn an account-unlocked normal or elite skill from the matching profession tome.
+        Args:
+            skill_id (int): The skill ID to learn.
+            log (bool) Optional: Whether to log the routine. Default is False.
+            open_timeout_ms (int) Optional: Time allowed for the SkillTome UI to expose the skill row.
+            selection_timeout_ms (int) Optional: Time allowed for the native mouse click to select the skill.
+            learn_timeout_ms (int) Optional: Time allowed for the skill to become learnt after clicking Learn.
+        Returns: None
+        """
+        tree = BT.Player.LearnSkillFromTome(
+            skill_id=skill_id,
+            log=log,
+            open_timeout_ms=open_timeout_ms,
+            selection_timeout_ms=selection_timeout_ms,
+            learn_timeout_ms=learn_timeout_ms,
+        )
+        yield from _run_bt_tree(tree, throttle_ms=50)
+
+    @staticmethod
     def UnlockBalthazarSkill(skill_id: int, use_pvp_remap: bool = True, log: bool = False):
         """
         Purpose: Unlock a skill from the Priest of Balthazar vendor.

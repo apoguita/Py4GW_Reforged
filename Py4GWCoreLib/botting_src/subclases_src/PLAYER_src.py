@@ -32,6 +32,22 @@ class _PLAYER:
     def BuySkill(self, skill_id: int, log: bool = False):
         self._helpers.Player.buy_skill(skill_id, log)
 
+    def LearnSkillFromTome(
+        self,
+        skill_id: int,
+        log: bool = False,
+        open_timeout_ms: int = 5000,
+        selection_timeout_ms: int = 2500,
+        learn_timeout_ms: int = 5000,
+    ):
+        self._helpers.Player.learn_skill_from_tome(
+            skill_id=skill_id,
+            log=log,
+            open_timeout_ms=open_timeout_ms,
+            selection_timeout_ms=selection_timeout_ms,
+            learn_timeout_ms=learn_timeout_ms,
+        )
+
     def UnlockBalthazarSkill(self, skill_id: int, use_pvp_remap: bool = True, log: bool = False):
         self._helpers.Player.unlock_balthazar_skill(skill_id, use_pvp_remap, log)
 

@@ -63,7 +63,7 @@ from ...Player import Player
 from ...enums_src.Title_enums import TITLE_NAME
 
 from ...UIManager import UIManager
-from ...FrameTree import Frame, FrameId, WINDOW_FRAME_KEYS
+from ...FrameTree import Frame, FrameId, FrameTree, WINDOW_FRAME_KEYS
 from ...py4gwcorelib_src.ActionQueue import ActionQueueManager
 from ...py4gwcorelib_src.BehaviorTree import BehaviorTree
 from ...py4gwcorelib_src.Keystroke import Keystroke
@@ -674,6 +674,507 @@ class BTPlayer:
 
             tree: BehaviorTree.ActionNode = BehaviorTree.ActionNode(name="BuySkill", action_fn=lambda: _buy_skill(skill_id), aftercast_ms=300)
             return BehaviorTree(tree)
+
+        @staticmethod
+        def LearnSkillFromTome(
+            skill_id: int,
+            log: bool = False,
+            open_timeout_ms: int = 5000,
+            selection_timeout_ms: int = 2500,
+            learn_timeout_ms: int = 5000,
+        ) -> BehaviorTree:
+            """
+            Build a tree that learns a skill from the matching normal or elite profession tome.
+
+            Meta:
+              Expose: true
+              Audience: intermediate
+              Display: Learn Skill From Tome
+              Purpose: Learn an account-unlocked skill from the correct profession tome without using dialog packets.
+              UserDescription: Use this to learn a normal or elite skill from an inventory tome when the character has the matching primary or secondary profession.
+              Notes: Uses the native SkillTome UI and real PyMouse window input because synthetic frame clicks do not execute the complete Guild Wars tome flow.
+            """
+            import PyMouse
+
+            from ...GlobalCache import GLOBAL_CACHE
+            from ...Skill import Skill
+            from ...Skillbar import SkillBar
+            from ...enums_src.Model_enums import ModelID
+
+            source = "LearnSkillFromTome"
+            skill_id = int(skill_id)
+            skill_tome_hash = 3420930487
+
+            normal_tomes = {
+                1: int(ModelID.Warrior_Tome.value),
+                2: int(ModelID.Ranger_Tome.value),
+                3: int(ModelID.Monk_Tome.value),
+                4: int(ModelID.Necromancer_Tome.value),
+                5: int(ModelID.Mesmer_Tome.value),
+                6: int(ModelID.Elementalist_Tome.value),
+                7: int(ModelID.Assassin_Tome.value),
+                8: int(ModelID.Ritualist_Tome.value),
+                9: int(ModelID.Paragon_Tome.value),
+                10: int(ModelID.Dervish_Tome.value),
+            }
+            elite_tomes = {
+                1: int(ModelID.Warrior_Elite_Tome.value),
+                2: int(ModelID.Ranger_Elite_Tome.value),
+                3: int(ModelID.Monk_Elite_Tome.value),
+                4: int(ModelID.Necromancer_Elite_Tome.value),
+                5: int(ModelID.Mesmer_Elite_Tome.value),
+                6: int(ModelID.Elementalist_Elite_Tome.value),
+                7: int(ModelID.Assassin_Elite_Tome.value),
+                8: int(ModelID.Ritualist_Elite_Tome.value),
+                9: int(ModelID.Paragon_Elite_Tome.value),
+                10: int(ModelID.Dervish_Elite_Tome.value),
+            }
+
+            mouse = PyMouse.PyMouse()
+            state: dict[str, Any] = {
+                "phase": "start",
+                "phase_started_ms": 0.0,
+                "last_tick_ms": 0.0,
+                "skill_name": "",
+                "profession_id": 0,
+                "profession_name": "",
+                "is_elite": False,
+                "tome_model_id": 0,
+                "tome_item_id": 0,
+                "row_path": "",
+                "row_xy": (0, 0),
+                "learn_xy": (0, 0),
+                "original_mouse_xy": None,
+                "mouse_restored": False,
+            }
+
+            move_settle_ms = 250
+            skill_press_ms = 70
+            selected_settle_ms = 150
+            restore_after_learn_ms = 150
+            stale_execution_ms = 3000
+
+            def _now_ms() -> float:
+                return time.monotonic() * 1000.0
+
+            def _get_tome_root() -> Frame | None:
+                try:
+                    root = Frame.from_hash(skill_tome_hash)
+                    if root.exists and root.is_usable:
+                        return root
+                except Exception:
+                    pass
+                return None
+
+            def _find_skill_row() -> Frame | None:
+                root = _get_tome_root()
+                if root is None:
+                    return None
+                try:
+                    for frame in FrameTree.descendants(root):
+                        try:
+                            if int(frame.code) == skill_id and frame.is_usable:
+                                return frame
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+                return None
+
+            def _row_selected() -> bool:
+                root = _get_tome_root()
+                row_path = str(state["row_path"] or "")
+                if root is None or not row_path:
+                    return False
+                prefix = row_path + ","
+                try:
+                    for frame in FrameTree.descendants(root):
+                        try:
+                            if int(frame.code) != 14:
+                                continue
+                            path = str(frame.path())
+                            if path.startswith(prefix) and frame.is_visible and frame.is_usable:
+                                return True
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+                return False
+
+            def _frame_center(frame: Frame) -> tuple[int, int]:
+                left, top, right, bottom = frame.rect
+                return (
+                    int((int(left) + int(right)) // 2),
+                    int((int(top) + int(bottom)) // 2),
+                )
+
+            def _remember_mouse() -> None:
+                if state["original_mouse_xy"] is not None:
+                    return
+                try:
+                    io = PyImGui.get_io()
+                    state["original_mouse_xy"] = (
+                        int(io.mouse_pos_x),
+                        int(io.mouse_pos_y),
+                    )
+                except Exception:
+                    state["original_mouse_xy"] = None
+
+            def _restore_mouse() -> None:
+                if bool(state["mouse_restored"]):
+                    return
+                original = state["original_mouse_xy"]
+                if original is not None:
+                    try:
+                        mouse.MoveMouse(int(original[0]), int(original[1]))
+                    except Exception:
+                        pass
+                state["mouse_restored"] = True
+
+            def _clear_state() -> None:
+                state.update({
+                    "phase": "start",
+                    "phase_started_ms": 0.0,
+                    "last_tick_ms": 0.0,
+                    "skill_name": "",
+                    "profession_id": 0,
+                    "profession_name": "",
+                    "is_elite": False,
+                    "tome_model_id": 0,
+                    "tome_item_id": 0,
+                    "row_path": "",
+                    "row_xy": (0, 0),
+                    "learn_xy": (0, 0),
+                    "original_mouse_xy": None,
+                    "mouse_restored": False,
+                })
+
+            def _finish(result: BehaviorTree.NodeState, message: str, *, failure: bool = False) -> BehaviorTree.NodeState:
+                _restore_mouse()
+                if failure:
+                    _fail_log(source, message)
+                else:
+                    _log(source, message, log=log)
+                _clear_state()
+                return result
+
+            def _use_tome(now_ms: float) -> BehaviorTree.NodeState:
+                model_id = int(state["tome_model_id"])
+                try:
+                    item_id = int(GLOBAL_CACHE.Inventory.GetFirstModelID(model_id) or 0)
+                except Exception as exc:
+                    return _finish(
+                        BehaviorTree.NodeState.FAILURE,
+                        f"Failed to locate tome model {model_id}: {exc}",
+                        failure=True,
+                    )
+
+                if item_id <= 0:
+                    tome_kind = "elite" if bool(state["is_elite"]) else "normal"
+                    return _finish(
+                        BehaviorTree.NodeState.FAILURE,
+                        f"No {state['profession_name']} {tome_kind} tome found in inventory (model={model_id}).",
+                        failure=True,
+                    )
+
+                state["tome_item_id"] = item_id
+                try:
+                    GLOBAL_CACHE.Inventory.UseItem(item_id)
+                except Exception as exc:
+                    return _finish(
+                        BehaviorTree.NodeState.FAILURE,
+                        f"Failed to use tome item {item_id}: {exc}",
+                        failure=True,
+                    )
+
+                state["phase"] = "wait_open"
+                state["phase_started_ms"] = now_ms
+                _log(
+                    source,
+                    (
+                        f"Using {'elite' if state['is_elite'] else 'normal'} {state['profession_name']} tome "
+                        f"for {state['skill_name']} [{skill_id}]."
+                    ),
+                    log=log,
+                )
+                return BehaviorTree.NodeState.RUNNING
+
+            def _learn_from_tome() -> BehaviorTree.NodeState:
+                now_ms = _now_ms()
+
+                # If the enclosing BT was interrupted/reset while this action was RUNNING,
+                # restart the UI flow cleanly on the next tick instead of resuming stale frames.
+                last_tick_ms = float(state["last_tick_ms"] or 0.0)
+                if (
+                    state["phase"] != "start"
+                    and last_tick_ms > 0.0
+                    and now_ms - last_tick_ms >= stale_execution_ms
+                ):
+                    _restore_mouse()
+                    _clear_state()
+                    _log(source, "Previous tome flow was interrupted; restarting from a clean state.", log=log)
+                state["last_tick_ms"] = now_ms
+
+                if state["phase"] == "start":
+                    if skill_id <= 0:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Invalid skill id: {skill_id}.",
+                            failure=True,
+                        )
+
+                    try:
+                        if SkillBar.IsSkillLearnt(skill_id):
+                            return _finish(
+                                BehaviorTree.NodeState.SUCCESS,
+                                f"Skill {skill_id} is already learnt; no tome needed.",
+                            )
+
+                        if not SkillBar.IsSkillUnlocked(skill_id):
+                            return _finish(
+                                BehaviorTree.NodeState.FAILURE,
+                                f"Skill {skill_id} is not unlocked on the account, so a tome cannot teach it.",
+                                failure=True,
+                            )
+
+                        skill_name = str(Skill.GetName(skill_id) or f"Skill {skill_id}")
+                        profession_id, profession_name = Skill.GetProfession(skill_id)
+                        profession_id = int(profession_id)
+                        is_elite = bool(Skill.Flags.IsElite(skill_id))
+                    except Exception as exc:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Could not validate skill {skill_id}: {exc}",
+                            failure=True,
+                        )
+
+                    if profession_id not in normal_tomes:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Skill {skill_name} [{skill_id}] has unsupported profession id {profession_id}.",
+                            failure=True,
+                        )
+
+                    player_agent_id = int(Player.GetAgentID())
+                    if player_agent_id <= 0:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            "Player agent is unavailable; cannot validate tome profession.",
+                            failure=True,
+                        )
+
+                    primary_profession, secondary_profession = Agent.GetProfessionIDs(player_agent_id)
+                    if profession_id not in (int(primary_profession), int(secondary_profession)):
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            (
+                                f"{skill_name} [{skill_id}] is {profession_name}, but the current character "
+                                f"does not have profession id {profession_id} as primary or secondary."
+                            ),
+                            failure=True,
+                        )
+
+                    state["skill_name"] = skill_name
+                    state["profession_id"] = profession_id
+                    state["profession_name"] = str(profession_name)
+                    state["is_elite"] = is_elite
+                    state["tome_model_id"] = int(
+                        elite_tomes[profession_id] if is_elite else normal_tomes[profession_id]
+                    )
+                    state["mouse_restored"] = False
+                    _remember_mouse()
+
+                    # A previous failed/restarted attempt can leave SkillTome open.
+                    # Close it first so every attempt starts from a fresh native UI state.
+                    if _get_tome_root() is not None:
+                        Keystroke.PressAndRelease(Key.Escape.value)
+                        state["phase"] = "wait_existing_close"
+                        state["phase_started_ms"] = now_ms
+                        _log(source, "Closing an existing SkillTome before retrying.", log=log)
+                        return BehaviorTree.NodeState.RUNNING
+
+                    return _use_tome(now_ms)
+
+                if state["phase"] == "wait_existing_close":
+                    if _get_tome_root() is None:
+                        return _use_tome(now_ms)
+                    if now_ms - float(state["phase_started_ms"]) >= 1500:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            "Existing SkillTome did not close before retry.",
+                            failure=True,
+                        )
+                    return BehaviorTree.NodeState.RUNNING
+
+                if state["phase"] == "wait_open":
+                    row = _find_skill_row()
+                    if row is not None:
+                        try:
+                            state["row_path"] = str(row.path())
+                            state["row_xy"] = _frame_center(row)
+                            x, y = state["row_xy"]
+                            mouse.MoveMouse(int(x), int(y))
+                        except Exception as exc:
+                            return _finish(
+                                BehaviorTree.NodeState.FAILURE,
+                                f"Failed to prepare skill-row click: {exc}",
+                                failure=True,
+                            )
+
+                        state["phase"] = "skill_move_settle"
+                        state["phase_started_ms"] = now_ms
+                        _log(
+                            source,
+                            f"Skill row found at {state['row_path']}; moving native mouse to {state['row_xy']}.",
+                            log=log,
+                        )
+                        return BehaviorTree.NodeState.RUNNING
+
+                    if now_ms - float(state["phase_started_ms"]) >= max(1, int(open_timeout_ms)):
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"SkillTome did not expose skill row {skill_id} within {open_timeout_ms}ms.",
+                            failure=True,
+                        )
+                    return BehaviorTree.NodeState.RUNNING
+
+                if state["phase"] == "skill_move_settle":
+                    if now_ms - float(state["phase_started_ms"]) < move_settle_ms:
+                        return BehaviorTree.NodeState.RUNNING
+                    x, y = state["row_xy"]
+                    try:
+                        mouse.PressButton(0, int(x), int(y))
+                    except Exception as exc:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Failed to press the skill row with PyMouse: {exc}",
+                            failure=True,
+                        )
+                    state["phase"] = "skill_press"
+                    state["phase_started_ms"] = now_ms
+                    return BehaviorTree.NodeState.RUNNING
+
+                if state["phase"] == "skill_press":
+                    if now_ms - float(state["phase_started_ms"]) < skill_press_ms:
+                        return BehaviorTree.NodeState.RUNNING
+                    x, y = state["row_xy"]
+                    try:
+                        mouse.ReleaseButton(0, int(x), int(y))
+                    except Exception as exc:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Failed to release the skill row with PyMouse: {exc}",
+                            failure=True,
+                        )
+                    state["phase"] = "wait_selected"
+                    state["phase_started_ms"] = now_ms
+                    return BehaviorTree.NodeState.RUNNING
+
+                if state["phase"] == "wait_selected":
+                    if _row_selected() and now_ms - float(state["phase_started_ms"]) >= selected_settle_ms:
+                        try:
+                            learn_frame = Frame.from_hash(skill_tome_hash, codes=(0,))
+                            if not learn_frame.exists or not learn_frame.is_usable:
+                                return _finish(
+                                    BehaviorTree.NodeState.FAILURE,
+                                    "Skill row is selected, but the SkillTome Learn button is unavailable.",
+                                    failure=True,
+                                )
+                            state["learn_xy"] = _frame_center(learn_frame)
+                            x, y = state["learn_xy"]
+                            mouse.MoveMouse(int(x), int(y))
+                        except Exception as exc:
+                            return _finish(
+                                BehaviorTree.NodeState.FAILURE,
+                                f"Failed to prepare the Learn button click: {exc}",
+                                failure=True,
+                            )
+
+                        state["phase"] = "learn_move_settle"
+                        state["phase_started_ms"] = now_ms
+                        _log(
+                            source,
+                            f"Skill selection confirmed; moving native mouse to Learn at {state['learn_xy']}.",
+                            log=log,
+                        )
+                        return BehaviorTree.NodeState.RUNNING
+
+                    if now_ms - float(state["phase_started_ms"]) >= max(1, int(selection_timeout_ms)):
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            (
+                                f"Native mouse click did not select {state['skill_name']} [{skill_id}] "
+                                f"within {selection_timeout_ms}ms. A PyImGui window may be covering the SkillTome row."
+                            ),
+                            failure=True,
+                        )
+                    return BehaviorTree.NodeState.RUNNING
+
+                if state["phase"] == "learn_move_settle":
+                    if now_ms - float(state["phase_started_ms"]) < move_settle_ms:
+                        return BehaviorTree.NodeState.RUNNING
+                    x, y = state["learn_xy"]
+                    try:
+                        # PyMouse.Click is intentionally used here. Testing showed that
+                        # PressButton()+ReleaseButton() only produced the visual pressed
+                        # state, while Click() executed the complete Guild Wars Learn action.
+                        mouse.Click(0, int(x), int(y))
+                    except Exception as exc:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Failed to click the Learn button with PyMouse: {exc}",
+                            failure=True,
+                        )
+
+                    state["phase"] = "wait_learnt"
+                    state["phase_started_ms"] = now_ms
+                    _log(source, f"Clicked Learn for {state['skill_name']} [{skill_id}].", log=log)
+                    return BehaviorTree.NodeState.RUNNING
+
+                if state["phase"] == "wait_learnt":
+                    if not bool(state["mouse_restored"]) and (
+                        now_ms - float(state["phase_started_ms"]) >= restore_after_learn_ms
+                    ):
+                        _restore_mouse()
+
+                    try:
+                        if SkillBar.IsSkillLearnt(skill_id):
+                            return _finish(
+                                BehaviorTree.NodeState.SUCCESS,
+                                f"Learnt {state['skill_name']} [{skill_id}] from tome successfully.",
+                            )
+                    except Exception as exc:
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            f"Could not verify learnt state for skill {skill_id}: {exc}",
+                            failure=True,
+                        )
+
+                    if now_ms - float(state["phase_started_ms"]) >= max(1, int(learn_timeout_ms)):
+                        return _finish(
+                            BehaviorTree.NodeState.FAILURE,
+                            (
+                                f"Learn click was sent, but {state['skill_name']} [{skill_id}] "
+                                f"was not learnt within {learn_timeout_ms}ms. "
+                                "A PyImGui window may be covering the Learn button."
+                            ),
+                            failure=True,
+                        )
+                    return BehaviorTree.NodeState.RUNNING
+
+                return _finish(
+                    BehaviorTree.NodeState.FAILURE,
+                    f"Unexpected tome state: {state['phase']!r}.",
+                    failure=True,
+                )
+
+            return BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name=f"LearnSkillFromTome({skill_id})",
+                    action_fn=_learn_from_tome,
+                    aftercast_ms=0,
+                )
+            )
 
         @staticmethod
         def UnlockBalthazarSkill(skill_id: int, use_pvp_remap: bool = True, log: bool = False) -> BehaviorTree:
