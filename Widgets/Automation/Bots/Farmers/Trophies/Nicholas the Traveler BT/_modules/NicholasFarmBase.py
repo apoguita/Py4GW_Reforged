@@ -11,7 +11,12 @@ from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
-from Widgets.System.Messaging import get_inventory_count, reset_inventory_count
+from Widgets.System.Messaging import (
+    get_inventory_count,
+    reset_inventory_count,
+    get_nicholas_loot_state,
+    reset_nicholas_loot_state,
+)
 
 from .NicholasFarms import (
     FLOW_CHALLENGE,
@@ -29,9 +34,12 @@ MODULE_NAME = "Nicholas Farm Base"
 
 _PREPARED_ATTR = "_nicholas_manager_prepared_farm_key"
 _PORTAL_READY_KEY = "__nicholas_manager_portal_ready"
+_TARGET_REACHED_FARM_KEY = ""
 
 _INVENTORY_QUERY_TIMEOUT_MS = 10_000
 _INVENTORY_QUERY_POLL_MS = 100
+_LOOT_STATE_QUERY_TIMEOUT_MS = 5_000
+_LOOT_STATE_QUERY_POLL_MS = 100
 
 
 def configure_tree(tree: BottingTree) -> BottingTree:
@@ -73,73 +81,55 @@ def disable_merchant_rules_all_accounts() -> BehaviorTree:
 
 
 
-def _add_farm_item_loot_local(farm: FarmDefinition) -> BehaviorTree:
-    """
-    Add the selected Nicholas model DIRECTLY to the new LIVE LootFilters system.
-
-    Do not use BT.AddModelToLootWhitelist here. Some Py4GW installations still
-    expose an older implementation backed by legacy LootConfig, while the
-    current HeroAI loot filter reads LootFilters(). This direct mutation makes
-    Nicholas use the exact same authority that _verify_farm_item_loot_live()
-    inspects immediately afterwards.
-    """
-    def _add(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+def _set_farm_nicholas_local(farm: FarmDefinition) -> BehaviorTree:
+    """Select this farm through the leader's native LIVE Nicholas surface."""
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         try:
             from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
 
             model_id = int(farm.model_id)
-            loot = LootFilters()
-            loot.add_model(model_id)
-
-            added = model_id in loot.live.added_model_ids
+            item_name = str(farm.nicholas_item_name or farm.name)
+            selected = LootFilters().set_nicholas_item(
+                item_name,
+                model_id,
+                source="Nicholas Manager",
+            )
 
             PySystem.Console.Log(
                 MODULE_NAME,
                 (
-                    f"Direct LIVE loot add for {farm.name} [{model_id}]: "
-                    f"added_model={added}."
+                    f"Nicholas LIVE selection for {farm.name}: "
+                    f"{item_name} -> model {model_id}; selected={selected}."
                 ),
-                (
-                    PySystem.Console.MessageType.Info
-                    if added
-                    else PySystem.Console.MessageType.Error
-                ),
+                PySystem.Console.MessageType.Info
+                if selected
+                else PySystem.Console.MessageType.Error,
             )
-
             return (
                 BehaviorTree.NodeState.SUCCESS
-                if added
+                if selected
                 else BehaviorTree.NodeState.FAILURE
             )
 
         except Exception as exc:
             PySystem.Console.Log(
                 MODULE_NAME,
-                f"Direct LIVE loot add failed for {farm.name}: {exc}",
+                f"Nicholas LIVE selection failed for {farm.name}: {exc}",
                 PySystem.Console.MessageType.Error,
             )
             return BehaviorTree.NodeState.FAILURE
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
-            name=f"Direct Live Loot Add - {farm.name}",
-            action_fn=_add,
+            name=f"Set Nicholas Live - {farm.name}",
+            action_fn=_set,
             aftercast_ms=50,
         )
     )
 
 
-def _verify_farm_item_loot_live(farm: FarmDefinition) -> BehaviorTree:
-    """
-    Verify the leader's LIVE LootFilters state for the selected Nicholas item.
-
-    This check verifies the leader's current post-zoning LIVE state so Nicholas
-    does not silently continue farming when the selected trophy is absent or
-    another LIVE loot rule prevents it from being offered to HeroAI.
-
-    We deliberately DO NOT override the user's blacklist/veto policy here.
-    Instead we fail with an explicit console message.
-    """
+def _verify_farm_nicholas_live(farm: FarmDefinition) -> BehaviorTree:
+    """Verify the leader's LIVE Nicholas selection is effective."""
     def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         try:
             from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
@@ -150,277 +140,277 @@ def _verify_farm_item_loot_live(farm: FarmDefinition) -> BehaviorTree:
             item_type = expected_type(model_id)
 
             enabled = bool(loot.live.enabled)
-            added = model_id in loot.live.added_model_ids
+            selected = bool(loot.nicholas_model_selected(model_id))
             model_blacklisted = model_id in loot.live.blacklist_model_ids
             type_vetoed = (
                 item_type is not None
                 and int(item_type) in loot.live.blacklist_item_types
             )
+            effective = bool(
+                enabled
+                and selected
+                and not model_blacklisted
+                and not type_vetoed
+            )
 
             PySystem.Console.Log(
                 MODULE_NAME,
                 (
-                    f"Loot state for {farm.name} [{model_id}]: "
-                    f"master={enabled}, added_model={added}, "
+                    f"Nicholas loot state for {farm.name} [{model_id}]: "
+                    f"master={enabled}, selected={selected}, "
                     f"model_blacklisted={model_blacklisted}, "
-                    f"item_type={item_type}, type_vetoed={type_vetoed}."
+                    f"item_type={item_type}, type_vetoed={type_vetoed}, "
+                    f"effective={effective}."
                 ),
-                PySystem.Console.MessageType.Info,
+                PySystem.Console.MessageType.Info
+                if effective
+                else PySystem.Console.MessageType.Error,
             )
 
-            if not enabled:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        "Loot Filters master switch is OFF. "
-                        f"{farm.name} cannot be auto-looted."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            if model_blacklisted:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"{farm.name} [{model_id}] is model-blacklisted. "
-                        "The blacklist vetoes the Nicholas script whitelist."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            if type_vetoed:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"The item type for {farm.name} is vetoed in Loot Filters. "
-                        "Item-type vetoes beat script-added models."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            if not added:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"{farm.name} [{model_id}] is missing from the LIVE "
-                        "script-added model whitelist."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            return BehaviorTree.NodeState.SUCCESS
+            return (
+                BehaviorTree.NodeState.SUCCESS
+                if effective
+                else BehaviorTree.NodeState.FAILURE
+            )
 
         except Exception as exc:
             PySystem.Console.Log(
                 MODULE_NAME,
-                f"Could not verify live loot state for {farm.name}: {exc}",
+                f"Could not verify Nicholas LIVE state for {farm.name}: {exc}",
                 PySystem.Console.MessageType.Error,
             )
             return BehaviorTree.NodeState.FAILURE
 
     return BehaviorTree(
         BehaviorTree.ActionNode(
-            name=f"Verify Live Loot - {farm.name}",
+            name=f"Verify Nicholas Live - {farm.name}",
             action_fn=_check,
             aftercast_ms=0,
         )
     )
 
 
-def whitelist_farm_item_all_accounts(farm: FarmDefinition) -> BehaviorTree:
-    """
-    Add the selected Nicholas trophy model to the LIVE loot whitelist.
+def _verify_farm_nicholas_followers(farm: FarmDefinition) -> BehaviorTree:
+    """Verify every active follower through its own LIVE Nicholas state."""
+    state: dict[str, object] = {
+        "initialized": False,
+        "targets": [],
+        "index": 0,
+        "waiting": False,
+        "request_started_at": 0.0,
+        "retry_wait_until": 0.0,
+        "retry_count": 0,
+    }
 
-    The leader is updated DIRECTLY with the normal BT loot-filter routine.
-    Followers receive the equivalent shared command.
+    def _flag_text(flags: int) -> str:
+        labels: list[str] = []
+        if flags & 1:
+            labels.append("master_off")
+        if flags & 2:
+            labels.append("model_blacklisted")
+        if flags & 4:
+            labels.append("type_vetoed")
+        if flags & 8:
+            labels.append("query_error")
+        return ",".join(labels) if labels else "none"
 
-    Do not route the leader through Messaging here: in live testing the shared
-    command could be acknowledged while the leader's LootFilters state still
-    showed added_model=False.  Applying the leader mutation locally gives us a
-    deterministic state that can be verified immediately.
-    """
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        local_email = str(Player.GetAccountEmail() or "").strip()
+        if not local_email:
+            return BehaviorTree.NodeState.RUNNING
+
+        model_id = int(farm.model_id)
+        item_name = str(farm.nicholas_item_name or farm.name)
+
+        if not bool(state["initialized"]):
+            targets = [
+                (email, label)
+                for email, label in farm_party_accounts()
+                if str(email or "").strip()
+                and str(email or "").strip() != local_email
+            ]
+            state["targets"] = targets
+            state["index"] = 0
+            state["waiting"] = False
+            state["retry_wait_until"] = 0.0
+            state["retry_count"] = 0
+            state["initialized"] = True
+
+            if not targets:
+                return BehaviorTree.NodeState.SUCCESS
+
+        targets = list(state["targets"])
+        index = int(state["index"])
+
+        if index >= len(targets):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"All follower Nicholas LIVE states confirmed for {farm.name} [{model_id}].",
+                PySystem.Console.MessageType.Success,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        email, label = targets[index]
+        email = str(email or "").strip()
+        label = str(label or email)
+
+        wait_until = float(state["retry_wait_until"] or 0.0)
+        if wait_until > 0.0:
+            if time.monotonic() < wait_until:
+                return BehaviorTree.NodeState.RUNNING
+            state["retry_wait_until"] = 0.0
+            state["waiting"] = False
+
+        if not bool(state["waiting"]):
+            reset_nicholas_loot_state(email, model_id)
+            GLOBAL_CACHE.ShMem.SendMessage(
+                local_email,
+                email,
+                SharedCommandType.InventoryQuery,
+                (float(model_id), 0.0, 0.0, 0.0),
+                ("report_nicholas_loot_state", farm.name, "", ""),
+            )
+            state["waiting"] = True
+            state["request_started_at"] = time.monotonic()
+            return BehaviorTree.NodeState.RUNNING
+
+        remote = get_nicholas_loot_state(email, model_id)
+
+        if remote is not None:
+            selected, effective, flags = remote
+            selected = bool(selected)
+            effective = bool(effective)
+            flags = int(flags)
+            reset_nicholas_loot_state(email, model_id)
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"Follower Nicholas state for {label} / {farm.name} [{model_id}]: "
+                    f"selected={selected}, effective={effective}, "
+                    f"flags={_flag_text(flags)}."
+                ),
+                PySystem.Console.MessageType.Info
+                if effective
+                else PySystem.Console.MessageType.Warning,
+            )
+
+            if effective:
+                state["index"] = index + 1
+                state["waiting"] = False
+                state["retry_count"] = 0
+                state["request_started_at"] = 0.0
+                return BehaviorTree.NodeState.RUNNING
+
+            if flags != 0:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"Cannot make {farm.name} effective on {label}: "
+                        f"{_flag_text(flags)}."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            retry_count = int(state["retry_count"])
+            if retry_count >= 2:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"{farm.name} [{model_id}] is still absent from {label}'s "
+                        "LIVE Nicholas selection after two retries."
+                    ),
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"Re-applying Nicholas LIVE selection for {farm.name} "
+                    f"to {label} only (attempt {retry_count + 1}/2)."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+            GLOBAL_CACHE.ShMem.SendMessage(
+                local_email,
+                email,
+                SharedCommandType.AddModelToLootWhitelist,
+                (float(model_id), 0.0, 0.0, 0.0),
+                (item_name, "nicholas", "verify_retry", ""),
+            )
+
+            state["retry_count"] = retry_count + 1
+            state["waiting"] = False
+            state["request_started_at"] = 0.0
+            state["retry_wait_until"] = time.monotonic() + 0.35
+            return BehaviorTree.NodeState.RUNNING
+
+        elapsed_ms = (
+            time.monotonic() - float(state["request_started_at"] or 0.0)
+        ) * 1000.0
+
+        if elapsed_ms >= _LOOT_STATE_QUERY_TIMEOUT_MS:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"Nicholas-state query timed out for {label}; retrying.",
+                PySystem.Console.MessageType.Warning,
+            )
+            reset_nicholas_loot_state(email, model_id)
+            state["waiting"] = False
+            state["request_started_at"] = 0.0
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Verify Follower Nicholas - {farm.name}",
+            action_fn=_tick,
+            aftercast_ms=_LOOT_STATE_QUERY_POLL_MS,
+        )
+    )
+
+
+def configure_farm_nicholas_all_accounts(farm: FarmDefinition) -> BehaviorTree:
+    """Apply the native LIVE Nicholas selection to leader and followers."""
     model_id = int(farm.model_id)
+    item_name = str(farm.nicholas_item_name or farm.name)
 
     return BT.Sequence(
-        name=f"Whitelist Farm Item - {farm.name}",
+        name=f"Configure Nicholas Loot - {farm.name}",
         children=[
-            # Leader: mutate the NEW LootFilters system directly.
-            # This intentionally bypasses BT.AddModelToLootWhitelist because
-            # older Core versions may still route that helper to legacy LootConfig.
-            _add_farm_item_loot_local(farm),
+            _set_farm_nicholas_local(farm),
 
-            # Followers only. The leader has already been handled locally.
             BTShared.SendAndWait(
                 command=SharedCommandType.AddModelToLootWhitelist,
                 params=(float(model_id), 0.0, 0.0, 0.0),
-                extra_data=(farm.name, "", "", ""),
+                extra_data=(item_name, "nicholas", "", ""),
                 include_self=False,
-                refs_blackboard_key="__nicholas_add_farm_model_whitelist_refs",
+                refs_blackboard_key="__nicholas_command71_live_selection_refs",
                 timeout_ms=10_000,
                 poll_interval_ms=100,
                 log=True,
                 aftercast_ms=100,
             ),
 
-            # Verify the leader's actual live state before continuing.
-            _verify_farm_item_loot_live(farm),
+            _verify_farm_nicholas_live(farm),
+            _verify_farm_nicholas_followers(farm),
         ],
     )
 
 
-def _wait_for_farm_party_on_map(
+def _refresh_farm_nicholas_step(
     farm: FarmDefinition,
     *,
-    stable_ms: int = 1250,
-    timeout_ms: int = 20_000,
+    name: str = "Refresh Nicholas Loot",
 ) -> BehaviorTree:
-    """
-    Wait until every account in the current Nicholas farming party is reported
-    on the actual farm map, then keep that state stable briefly.
-
-    This is intentionally done BEFORE broadcasting the loot whitelist refresh.
-    Live testing showed followers could receive/acknowledge the whitelist command
-    while still zoning. Their subsequent map load then rebuilt/reset their local
-    LootFilters state, leaving the Nicholas model absent on that follower.
-    """
-    state = {
-        "started_at": 0.0,
-        "ready_since": 0.0,
-        "last_waiting": None,
-    }
-
-    def _wait(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        now = time.monotonic()
-
-        if float(state["started_at"] or 0.0) <= 0.0:
-            state["started_at"] = now
-
-        target_map_id = int(farm.farm_map_id)
-        party_accounts = farm_party_accounts()
-
-        if not party_accounts:
-            state["ready_since"] = 0.0
-            return BehaviorTree.NodeState.RUNNING
-
-        waiting: list[str] = []
-
-        for email, label in party_accounts:
-            try:
-                account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(email)
-            except Exception:
-                account = None
-
-            if account is None:
-                waiting.append(f"{label}:no-shmem")
-                continue
-
-            account_map_id = int(_account_map_tuple(account)[0])
-
-            if account_map_id != target_map_id:
-                waiting.append(f"{label}:map={account_map_id}")
-
-        if waiting:
-            state["ready_since"] = 0.0
-
-            waiting_text = ", ".join(waiting)
-            if waiting_text != state["last_waiting"]:
-                state["last_waiting"] = waiting_text
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"Waiting before loot refresh for all accounts to load "
-                        f"{farm.name} farm map {target_map_id}: {waiting_text}"
-                    ),
-                    PySystem.Console.MessageType.Info,
-                )
-
-            elapsed_ms = int((now - float(state["started_at"])) * 1000.0)
-            if elapsed_ms >= int(timeout_ms):
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"Timed out after {elapsed_ms} ms waiting for all Nicholas "
-                        f"accounts on farm map {target_map_id}. Loot refresh aborted "
-                        "instead of broadcasting during an account map transition."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            return BehaviorTree.NodeState.RUNNING
-
-        # Everyone is now reported on the requested map. Require that state to
-        # remain true briefly so a follower that is still finalizing its zoning
-        # cannot immediately lose the refreshed LootFilters state afterwards.
-        if float(state["ready_since"] or 0.0) <= 0.0:
-            state["ready_since"] = now
-            state["last_waiting"] = None
-
-            labels = ", ".join(label for _email, label in party_accounts)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                (
-                    f"All Nicholas accounts reported on farm map {target_map_id}: "
-                    f"{labels}. Waiting {int(stable_ms)} ms for map state to settle "
-                    "before refreshing loot."
-                ),
-                PySystem.Console.MessageType.Info,
-            )
-            return BehaviorTree.NodeState.RUNNING
-
-        stable_elapsed_ms = int(
-            (now - float(state["ready_since"])) * 1000.0
-        )
-        if stable_elapsed_ms < int(stable_ms):
-            return BehaviorTree.NodeState.RUNNING
-
-        PySystem.Console.Log(
-            MODULE_NAME,
-            (
-                f"All Nicholas accounts stable on farm map {target_map_id} for "
-                f"{stable_elapsed_ms} ms. Refreshing {farm.name} loot whitelist now."
-            ),
-            PySystem.Console.MessageType.Info,
-        )
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"Wait All Accounts On Farm Map - {farm.name}",
-            action_fn=_wait,
-            aftercast_ms=0,
-        )
-    )
-
-
-def _refresh_farm_item_whitelist_step(
-    farm: FarmDefinition,
-    *,
-    name: str = "Refresh Farm Loot Whitelist",
-) -> BehaviorTree:
-    """
-    Refresh the Nicholas model only after the leader AND all farming followers
-    have finished entering the farm map.
-
-    The map guard protects named-step recovery on the leader. The inner wait
-    protects followers from receiving the shared whitelist command too early.
-    """
+    """Reapply after the leader is confirmed inside the farm map."""
     return _map_guarded_node(
         name=name,
         map_id=int(farm.farm_map_id),
-        child=BT.Sequence(
-            name=f"{name} - All Accounts",
-            children=[
-                _wait_for_farm_party_on_map(farm),
-                whitelist_farm_item_all_accounts(farm),
-            ],
-        ),
+        child=configure_farm_nicholas_all_accounts(farm),
     )
-
 
 
 
@@ -582,7 +572,10 @@ def reset_prepare_session(tree: BottingTree) -> None:
     The tree instance itself survives planner restarts, so this attribute
     remains valid until the user actually stops the bot.
     """
+    global _TARGET_REACHED_FARM_KEY
+
     setattr(tree, _PREPARED_ATTR, "")
+    _TARGET_REACHED_FARM_KEY = ""
 
 
 def _is_prepare_session_ready(
@@ -635,7 +628,7 @@ def prepare_farm(
     One-time setup per MANUAL Start:
 
       MerchantRules OFF on all accounts
-      -> selected trophy model whitelisted on all accounts
+      -> selected trophy configured through native Nicholas LIVE loot on all accounts
       -> aggressive multibox HeroAI
       -> leave current party
       -> RANDOM travel to farm outpost
@@ -662,7 +655,7 @@ def prepare_farm(
                 name="Initial Farm Setup",
                 children=[
                     disable_merchant_rules_all_accounts(),
-                    whitelist_farm_item_all_accounts(farm),
+                    configure_farm_nicholas_all_accounts(farm),
                     tree.Config.Aggressive(
                         multi_account=True,
                         account_isolation=False,
@@ -840,12 +833,17 @@ def check_target_item_count(
         )
 
         if total >= target:
+            global _TARGET_REACHED_FARM_KEY
+
+            _TARGET_REACHED_FARM_KEY = str(farm.key)
             PySystem.Console.Log(
                 MODULE_NAME,
-                f"Target reached for {farm.name}: {total}/{target}. Stopping.",
+                (
+                    f"Target reached for {farm.name}: {total}/{target}. "
+                    "Returning the multibox party to the starting outpost before stopping."
+                ),
                 PySystem.Console.MessageType.Success,
             )
-            stop_callback()
 
         _reset_state()
         return BehaviorTree.NodeState.SUCCESS
@@ -943,6 +941,79 @@ def check_target_item_count(
             action_fn=_tick,
             aftercast_ms=_INVENTORY_QUERY_POLL_MS,
         )
+    )
+
+
+def handle_target_reached(
+    *,
+    tree_getter: Callable[[], BottingTree],
+    farm: FarmDefinition,
+) -> BehaviorTree:
+    """
+    Finish the Nicholas session cleanly after the collective item target is met.
+
+    The count step only marks the target as reached. This step then:
+      - does nothing when the target is not pending;
+      - if already in the configured outpost, stops directly;
+      - otherwise waits for combat to settle, resigns the multibox party,
+        waits for the starting outpost to load, then stops the BottingTree.
+
+    Stopping only after the resign/map-load sequence prevents BottingTree.Stop()
+    from cancelling the cleanup before /resign can be dispatched.
+    """
+
+    def _target_is_pending(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if str(_TARGET_REACHED_FARM_KEY or "") == str(farm.key):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.FAILURE
+
+    def _stop_tree(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _TARGET_REACHED_FARM_KEY
+
+        _TARGET_REACHED_FARM_KEY = ""
+        try:
+            tree = tree_getter()
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"Could not resolve BottingTree after target cleanup: {exc}",
+                PySystem.Console.MessageType.Error,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"{farm.name} target cleanup complete. Stopping Nicholas Manager.",
+            PySystem.Console.MessageType.Success,
+        )
+        tree.Stop()
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Selector(
+        name=f"Handle Target Reached - {farm.name}",
+        children=[
+            BT.Sequence(
+                name=f"Target Reached Cleanup - {farm.name}",
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name=f"Target Reached Check - {farm.name}",
+                            action_fn=_target_is_pending,
+                            aftercast_ms=0,
+                        )
+                    ),
+                    return_to_outpost_if_needed(farm),
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name=f"Stop After Target Cleanup - {farm.name}",
+                            action_fn=_stop_tree,
+                            aftercast_ms=0,
+                        )
+                    ),
+                ],
+            ),
+            BT.Succeeder(f"Target Not Reached - {farm.name}"),
+        ],
     )
 
 
@@ -1919,7 +1990,7 @@ def _route_loop_action_steps(
             steps.append(
                 (
                     refresh_name,
-                    lambda refresh_name=refresh_name: _refresh_farm_item_whitelist_step(
+                    lambda refresh_name=refresh_name: _refresh_farm_nicholas_step(
                         farm,
                         name=refresh_name,
                     ),
@@ -2329,6 +2400,13 @@ def build_execution_steps(
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
         ("Prepare Farm", lambda: prepare_farm(tree_getter, farm)),
         ("Check Target Count", count_node_factory),
+        (
+            "Handle Target Reached",
+            lambda: handle_target_reached(
+                tree_getter=tree_getter,
+                farm=farm,
+            ),
+        ),
     ]
 
     clear_radius = _range_for_farm(farm)
@@ -2361,7 +2439,7 @@ def build_execution_steps(
         steps.append(
             (
                 "Refresh Farm Loot Whitelist",
-                lambda: _refresh_farm_item_whitelist_step(farm),
+                lambda: _refresh_farm_nicholas_step(farm),
             )
         )
 
@@ -2436,7 +2514,7 @@ def build_execution_steps(
         steps.append(
             (
                 "Refresh Farm Loot Whitelist",
-                lambda: _refresh_farm_item_whitelist_step(farm),
+                lambda: _refresh_farm_nicholas_step(farm),
             )
         )
 
@@ -2531,7 +2609,7 @@ def build_execution_steps(
         steps.append(
             (
                 "Refresh Farm Loot Whitelist",
-                lambda: _refresh_farm_item_whitelist_step(farm),
+                lambda: _refresh_farm_nicholas_step(farm),
             )
         )
 
@@ -2627,7 +2705,7 @@ def build_execution_steps(
         steps.append(
             (
                 "Refresh Farm Loot Whitelist",
-                lambda: _refresh_farm_item_whitelist_step(farm),
+                lambda: _refresh_farm_nicholas_step(farm),
             )
         )
 
@@ -2698,7 +2776,7 @@ def build_execution_steps(
         steps.append(
             (
                 "Refresh Farm Loot Whitelist",
-                lambda: _refresh_farm_item_whitelist_step(farm),
+                lambda: _refresh_farm_nicholas_step(farm),
             )
         )
 
@@ -2791,7 +2869,7 @@ def build_execution_steps(
         steps.append(
             (
                 "Refresh Farm Loot Whitelist",
-                lambda: _refresh_farm_item_whitelist_step(farm),
+                lambda: _refresh_farm_nicholas_step(farm),
             )
         )
 

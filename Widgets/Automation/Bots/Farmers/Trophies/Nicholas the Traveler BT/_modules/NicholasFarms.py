@@ -3253,6 +3253,10 @@ FARMS: tuple[FarmDefinition, ...] = (
         outpost_map_id=440,
         farm_map_id=439,
         exit_point=None,
+        outpost_path=(
+            (-411.51, -5821.02),
+            (1294.60, -2071.13),
+        ),
         farm_path=(
             (19776.53, 14918.50),
             (14855.58, 13359.11),
@@ -3267,6 +3271,7 @@ FARMS: tuple[FarmDefinition, ...] = (
             (13746.65, 10869.85),
             (16976.64, 13261.30),
             (20453.46, 18019.07),
+            (2735.0, -240.0),
         ),
         clear_radius='Earshot',
         setup_actions=(
