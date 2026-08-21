@@ -77,35 +77,59 @@ def _selected_nicholas_drop_agents(farm: FarmDefinition) -> list[int]:
 
 def _dispatch_nicholas_pickup_to_followers(
     farm: FarmDefinition,
+    drop_agent_id: int,
     *,
-    min_interval_ms: int = 750,
-) -> None:
+    retry_after_ms: int = 5000,
+) -> bool:
     """
-    Ask every follower currently on the farm map to run Messaging.PickUpLoot.
+    Dispatch follower pickup once per ground drop.
 
-    SendMessage already deduplicates an identical active PickUpLoot command, so
-    this remains safe if a previous follower pickup is still running.
+    The same ``drop_agent_id`` is not re-dispatched on every tree tick. If the
+    item is still present after ``retry_after_ms``, one retry is allowed.
     """
     key = str(farm.key)
     state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
         key,
         {
-            "last_remote_dispatch_ms": 0,
             "local_agent_id": 0,
+            "remote_drops": {},
         },
     )
 
+    remote_drops = state.setdefault("remote_drops", {})
+    if not isinstance(remote_drops, dict):
+        remote_drops = {}
+        state["remote_drops"] = remote_drops
+
+    agent_id = int(drop_agent_id)
     now_ms = int(time.monotonic() * 1000.0)
-    last_ms = int(state.get("last_remote_dispatch_ms", 0) or 0)
-    if now_ms - last_ms < int(min_interval_ms):
-        return
+
+    drop_state = remote_drops.setdefault(
+        agent_id,
+        {
+            "last_dispatch_ms": 0,
+            "dispatch_count": 0,
+        },
+    )
+
+    last_dispatch_ms = int(drop_state.get("last_dispatch_ms", 0) or 0)
+    dispatch_count = int(drop_state.get("dispatch_count", 0) or 0)
+
+    should_dispatch = (
+        dispatch_count == 0
+        or (
+            dispatch_count == 1
+            and now_ms - last_dispatch_ms >= int(retry_after_ms)
+        )
+    )
+    if not should_dispatch:
+        return False
 
     sender_email = str(Player.GetAccountEmail() or "").strip()
     if not sender_email:
-        return
+        return False
 
     recipients: list[str] = []
-    refs: list[int] = []
 
     try:
         accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
@@ -141,13 +165,16 @@ def _dispatch_nicholas_pickup_to_followers(
             )
             if message_index >= 0:
                 recipients.append(receiver_email)
-                refs.append(message_index)
         except Exception:
             continue
 
-    state["last_remote_dispatch_ms"] = now_ms
+    if not recipients:
+        return False
 
-    if recipients:
+    drop_state["last_dispatch_ms"] = now_ms
+    drop_state["dispatch_count"] = dispatch_count + 1
+
+    if dispatch_count == 0:
         PySystem.Console.Log(
             MODULE_NAME,
             (
@@ -156,6 +183,41 @@ def _dispatch_nicholas_pickup_to_followers(
             ),
             PySystem.Console.MessageType.Info,
         )
+    else:
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"Nicholas loot: {farm.name} pickup retry dispatched to "
+                f"{len(recipients)} follower(s) after {int(retry_after_ms / 1000)}s."
+            ),
+            PySystem.Console.MessageType.Info,
+        )
+
+    return True
+
+
+def _cleanup_nicholas_remote_drop_state(
+    farm: FarmDefinition,
+    visible_agent_ids: set[int],
+) -> None:
+    """Forget follower-dispatch state for drops no longer visible."""
+    state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
+        str(farm.key),
+        {
+            "local_agent_id": 0,
+            "remote_drops": {},
+        },
+    )
+
+    remote_drops = state.setdefault("remote_drops", {})
+    if not isinstance(remote_drops, dict):
+        state["remote_drops"] = {}
+        return
+
+    for agent_id in list(remote_drops):
+        if int(agent_id) not in visible_agent_ids:
+            remote_drops.pop(agent_id, None)
+
 
 
 def _priority_local_nicholas_loot_tick(
@@ -199,14 +261,14 @@ def _priority_local_nicholas_loot_tick(
         if selected_agent_id <= 0:
             state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
                 str(farm.key),
-                {"last_remote_dispatch_ms": 0, "local_agent_id": 0},
+                {"local_agent_id": 0, "remote_drops": {}},
             )
             state["local_agent_id"] = 0
             return BehaviorTree.NodeState.FAILURE
 
         state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
             str(farm.key),
-            {"last_remote_dispatch_ms": 0, "local_agent_id": 0},
+            {"local_agent_id": 0, "remote_drops": {}},
         )
 
         if int(state.get("local_agent_id", 0) or 0) != selected_agent_id:
@@ -238,17 +300,30 @@ def _nicholas_remote_loot_monitor_tick(
     _node: BehaviorTree.Node,
 ) -> BehaviorTree.NodeState:
     """
-    Dispatch follower pickup whenever the selected trophy exists on the ground.
+    Dispatch follower pickup once per visible selected trophy.
 
-    This node never controls planner state; it is only the remote side of the
-    direct Nicholas loot orchestrator.
+    A still-visible drop gets at most one retry after five seconds. Removed
+    drops are forgotten so a future drop dispatches immediately.
     """
     try:
         if int(Map.GetMapID()) != int(farm.farm_map_id):
+            _cleanup_nicholas_remote_drop_state(farm, set())
             return BehaviorTree.NodeState.SUCCESS
 
-        if _selected_nicholas_drop_agents(farm):
-            _dispatch_nicholas_pickup_to_followers(farm)
+        visible_agent_ids = {
+            int(agent_id)
+            for agent_id in _selected_nicholas_drop_agents(farm)
+        }
+
+        _cleanup_nicholas_remote_drop_state(farm, visible_agent_ids)
+
+        for agent_id in visible_agent_ids:
+            _dispatch_nicholas_pickup_to_followers(
+                farm,
+                agent_id,
+                retry_after_ms=5000,
+            )
+
     except Exception as exc:
         PySystem.Console.Log(
             MODULE_NAME,
@@ -257,6 +332,7 @@ def _nicholas_remote_loot_monitor_tick(
         )
 
     return BehaviorTree.NodeState.SUCCESS
+
 
 
 def _with_nicholas_loot_orchestrator(
