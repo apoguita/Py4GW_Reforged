@@ -63,7 +63,7 @@ from ...Player import Player
 from ...enums_src.Title_enums import TITLE_NAME
 
 from ...UIManager import UIManager
-from ...FrameTree import Frame, FrameId, FrameTree, WINDOW_FRAME_KEYS
+from ...FrameTree import Frame, FrameId, WINDOW_FRAME_KEYS
 from ...py4gwcorelib_src.ActionQueue import ActionQueueManager
 from ...py4gwcorelib_src.BehaviorTree import BehaviorTree
 from ...py4gwcorelib_src.Keystroke import Keystroke
@@ -692,7 +692,7 @@ class BTPlayer:
               Display: Learn Skill From Tome
               Purpose: Learn an account-unlocked skill from the correct profession tome without using dialog packets.
               UserDescription: Use this to learn a normal or elite skill from an inventory tome when the character has the matching primary or secondary profession.
-              Notes: Uses the native SkillTome UI and real PyMouse window input because synthetic frame clicks do not execute the complete Guild Wars tome flow.
+              Notes: Uses Frame SkillTome primitives for UI addressing and real PyMouse window input because synthetic frame clicks do not execute the complete Guild Wars tome flow.
             """
             import PyMouse
 
@@ -703,7 +703,6 @@ class BTPlayer:
 
             source = "LearnSkillFromTome"
             skill_id = int(skill_id)
-            skill_tome_hash = 3420930487
 
             normal_tomes = {
                 1: int(ModelID.Warrior_Tome.value),
@@ -741,7 +740,6 @@ class BTPlayer:
                 "is_elite": False,
                 "tome_model_id": 0,
                 "tome_item_id": 0,
-                "row_path": "",
                 "row_xy": (0, 0),
                 "learn_xy": (0, 0),
                 "original_mouse_xy": None,
@@ -759,7 +757,7 @@ class BTPlayer:
 
             def _get_tome_root() -> Frame | None:
                 try:
-                    root = Frame.from_hash(skill_tome_hash)
+                    root = Frame.skill_tome()
                     if root.exists and root.is_usable:
                         return root
                 except Exception:
@@ -767,39 +765,16 @@ class BTPlayer:
                 return None
 
             def _find_skill_row() -> Frame | None:
-                root = _get_tome_root()
-                if root is None:
-                    return None
                 try:
-                    for frame in FrameTree.descendants(root):
-                        try:
-                            if int(frame.code) == skill_id and frame.is_usable:
-                                return frame
-                        except Exception:
-                            continue
+                    return Frame.skill_tome_skill(skill_id)
                 except Exception:
-                    pass
-                return None
+                    return None
 
             def _row_selected() -> bool:
-                root = _get_tome_root()
-                row_path = str(state["row_path"] or "")
-                if root is None or not row_path:
-                    return False
-                prefix = row_path + ","
                 try:
-                    for frame in FrameTree.descendants(root):
-                        try:
-                            if int(frame.code) != 14:
-                                continue
-                            path = str(frame.path())
-                            if path.startswith(prefix) and frame.is_visible and frame.is_usable:
-                                return True
-                        except Exception:
-                            continue
+                    return Frame.skill_tome_selection_marker(skill_id) is not None
                 except Exception:
-                    pass
-                return False
+                    return False
 
             def _frame_center(frame: Frame) -> tuple[int, int]:
                 left, top, right, bottom = frame.rect
@@ -842,7 +817,6 @@ class BTPlayer:
                     "is_elite": False,
                     "tome_model_id": 0,
                     "tome_item_id": 0,
-                    "row_path": "",
                     "row_xy": (0, 0),
                     "learn_xy": (0, 0),
                     "original_mouse_xy": None,
@@ -1010,7 +984,6 @@ class BTPlayer:
                     row = _find_skill_row()
                     if row is not None:
                         try:
-                            state["row_path"] = str(row.path())
                             state["row_xy"] = _frame_center(row)
                             x, y = state["row_xy"]
                             mouse.MoveMouse(int(x), int(y))
@@ -1025,7 +998,7 @@ class BTPlayer:
                         state["phase_started_ms"] = now_ms
                         _log(
                             source,
-                            f"Skill row found at {state['row_path']}; moving native mouse to {state['row_xy']}.",
+                            f"Skill row found; moving native mouse to {state['row_xy']}.",
                             log=log,
                         )
                         return BehaviorTree.NodeState.RUNNING
@@ -1073,7 +1046,7 @@ class BTPlayer:
                 if state["phase"] == "wait_selected":
                     if _row_selected() and now_ms - float(state["phase_started_ms"]) >= selected_settle_ms:
                         try:
-                            learn_frame = Frame.from_hash(skill_tome_hash, codes=(0,))
+                            learn_frame = Frame.skill_tome_learn_button()
                             if not learn_frame.exists or not learn_frame.is_usable:
                                 return _finish(
                                     BehaviorTree.NodeState.FAILURE,

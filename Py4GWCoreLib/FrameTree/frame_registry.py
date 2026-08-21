@@ -1334,6 +1334,7 @@ REGISTRY: dict = {
         }),
     }),
     'SkillMonitor': 'SkillMonitor',
+    'SkillTome': 'SkillTome',
     'UpkeepMonitor': 'SkillUpkeep',
     'SkillWarmup': 'SkillWarmup',
     'SkinColorFrame': 'SkinColor',

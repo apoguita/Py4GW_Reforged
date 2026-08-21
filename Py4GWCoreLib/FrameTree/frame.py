@@ -864,6 +864,62 @@ class Frame:
         return cls._under(FrameId.EffectsMonitor, int(skill_id) + 4)
 
     @classmethod
+    def skill_tome(cls) -> "Frame":
+        """Root frame of the native Skill Tome window."""
+        return cls(FrameId.SkillTome)
+
+    @classmethod
+    def skill_tome_skill(cls, skill_id: int) -> Optional["Frame"]:
+        """Usable Skill Tome row for ``skill_id``.
+
+        Tome rows are keyed by skill id but sit below a runtime list/group code,
+        so their complete child-code path is not static. Keep that structural
+        lookup here rather than leaking FrameTree traversal into routines.
+        """
+        wanted = int(skill_id)
+        root = cls.skill_tome()
+        if not root.exists:
+            return None
+
+        try:
+            for frame in FrameTree.descendants(root):
+                try:
+                    if int(frame.code) == wanted and frame.is_usable:
+                        return frame
+                except Exception:
+                    continue
+        except Exception:
+            return None
+        return None
+
+    @classmethod
+    def skill_tome_selection_marker(cls, skill_id: int) -> Optional["Frame"]:
+        """Visible selection marker below the Skill Tome row for ``skill_id``.
+
+        The marker's native child code is intentionally owned by Frame so
+        callers only ask whether a tome skill is selected.
+        """
+        row = cls.skill_tome_skill(skill_id)
+        if row is None:
+            return None
+
+        try:
+            for frame in FrameTree.descendants(row):
+                try:
+                    if int(frame.code) == 14 and frame.is_visible and frame.is_usable:
+                        return frame
+                except Exception:
+                    continue
+        except Exception:
+            return None
+        return None
+
+    @classmethod
+    def skill_tome_learn_button(cls) -> "Frame":
+        """Learn button in the native Skill Tome window."""
+        return cls._under(FrameId.SkillTome, 0)
+
+    @classmethod
     def trainer_skill(cls, skill_id: int) -> "Frame":
         """Skill entry in the skill-trainer list, keyed by skill id."""
         return cls._under(FrameId.SkillTrainerWindow, 0, 0, 0, 5, 1, int(skill_id), 0)
