@@ -618,6 +618,16 @@ def _drop_hero_buff_for_skill_node(
 
 
 def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree:
+    """
+    Wait until every living hero is outside Compass range from the player.
+
+    Party hero agent IDs can remain available after a hero leaves the locally
+    loaded agent range. In that case Agent.GetXY() returns (0.0, 0.0), which
+    can produce a false "inside Compass" result depending on the player's
+    coordinates. Treat an invalid/unloaded hero agent as already outside the
+    effective loot range.
+    """
+
     hero_names = {
         HERO_FIRE_ELE: 'Sousuke',
         HERO_EARTH_ELE: 'Vekk',
@@ -628,20 +638,55 @@ def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree
         HERO_ST: 'Xandra',
     }
 
-    def _visible_heroes() -> list[str]:
+    def _hero_range_state() -> tuple[list[str], list[str]]:
         player_xy = Player.GetXY()
         visible: list[str] = []
+        debug: list[str] = []
+
         for hero_position, hero_name in hero_names.items():
             hero_agent_id = _hero_agent_id(hero_position)
-            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+
+            if hero_agent_id <= 0:
+                debug.append(f'{hero_name}=no-agent')
                 continue
-            if _distance(Agent.GetXY(hero_agent_id), player_xy) <= Range.Compass.value:
+
+            # GetHeroAgentIDByPartyPosition can keep returning an ID after the
+            # actual agent has left the locally loaded range. GetXY() would then
+            # fall back to (0, 0), so validity must be checked first.
+            if not Agent.IsValid(hero_agent_id):
+                debug.append(f'{hero_name}=unloaded')
+                continue
+
+            if Agent.IsDead(hero_agent_id):
+                debug.append(f'{hero_name}=dead')
+                continue
+
+            hero_xy = Agent.GetXY(hero_agent_id)
+
+            # Extra safeguard against invalid coordinates from an unloaded agent.
+            if hero_xy == (0.0, 0.0):
+                debug.append(f'{hero_name}=invalid-xy')
+                continue
+
+            distance = _distance(hero_xy, player_xy)
+            debug.append(
+                f'{hero_name}=id:{hero_agent_id} xy:({hero_xy[0]:.0f},{hero_xy[1]:.0f}) '
+                f'dist:{distance:.0f}'
+            )
+
+            if distance <= Range.Compass.value:
                 visible.append(hero_name)
+
+        return visible, debug
+
+    def _visible_heroes() -> list[str]:
+        visible, _debug = _hero_range_state()
         return visible
 
     def _all_out() -> BehaviorTree.NodeState:
         if _mission_failed():
             return BehaviorTree.NodeState.FAILURE
+
         return (
             BehaviorTree.NodeState.SUCCESS
             if not _visible_heroes()
@@ -658,12 +703,18 @@ def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree
     )
 
     def _timeout_fallback(_node: BehaviorTree.Node) -> BehaviorTree:
-        visible = ', '.join(_visible_heroes()) or 'none'
+        visible, debug = _hero_range_state()
+        visible_text = ', '.join(visible) or 'none'
+        debug_text = '; '.join(debug) or 'no hero data'
+
         return BT.Sequence(
             name='Loot Separation Timeout Fallback',
             children=[
                 BT.LogMessage(
-                    f'Loot separation timed out; heroes still inside Compass: {visible}.',
+                    (
+                        f'Loot separation timed out; heroes still inside Compass: '
+                        f'{visible_text}. Range state: {debug_text}.'
+                    ),
                     MODULE_NAME,
                 ),
                 BT.Succeeder('Loot Separation Timeout Accepted'),
@@ -1354,8 +1405,8 @@ def InitialFight() -> BehaviorTree:
     }
 
     reposition = {
-        HERO_EARTH_ELE: (-6174.0, -5601.0),
-        HERO_PROT_MESMER: (-6071.0, -5237.0),
+        HERO_EARTH_ELE: (-6531, -2888),
+        HERO_PROT_MESMER: (-6531, -2888),
         HERO_SOS: (-6236.0, -5905.0),
         HERO_BIP: (-6309.0, -5021.0),
         HERO_ST: (-5974.0, -4869.0),
@@ -1755,6 +1806,11 @@ def PrepareStairsDefense() -> BehaviorTree:
             # PlaceSpirits case 3.
             BT.FlagHero(HERO_ST, -4950.0, -7955.0),
             _hero_skill_node(HERO_SOS, 7, name='Razah: Recuperation At Farm'),
+            BT.FlagHero(HERO_PROT_MESMER, -7047, -2651),
+            BT.FlagHero(HERO_BIP, -7047, -2651),
+            BT.FlagHero(HERO_TRAPPER, -7047, -2651),
+            BT.FlagHero(HERO_FIRE_ELE, -7047, -2651),
+            BT.FlagHero(HERO_EARTH_ELE, -7047, -2651),
         ],
     )
 
@@ -1892,9 +1948,7 @@ def SpikeMinistryOfPurity() -> BehaviorTree:
     return BT.Sequence(
         name='Spike Ministry Of Purity - AutoIt',
         children=[
-            BT.FlagHero(HERO_PROT_MESMER, -6799, -2849),
-            BT.FlagHero(HERO_BIP, -6799, -2849),
-            _hero_skill_node(HERO_SOS,4,target=Player.GetAgentID,aftercast_ms=1_500,name='Razah: Weapon Support On Player',),
+                        _hero_skill_node(HERO_SOS,4,target=Player.GetAgentID,aftercast_ms=1_500,name='Razah: Weapon Support On Player',),
             BT.FlagHero(HERO_SOS, -4950.0, -7955.0),
             _drop_hero_buff_for_skill_node(HERO_SOS,3,name='Razah: Drop Farm Recall',),
             _wait_for_heroes_out_of_loot_range(timeout_ms=15_000),
