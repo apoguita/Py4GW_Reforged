@@ -5,6 +5,7 @@ import sys
 import traceback
 import Py4GW
 import PyImGui
+import PySystem
 
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 
@@ -45,33 +46,37 @@ def LootingNode(cached_data: CacheData)-> BehaviorTree.NodeState:
     if not options or not options.Looting:
         return BehaviorTree.NodeState.FAILURE
 
-    if is_follow_recovery_active(cached_data, follow_execution_state):
-        return BehaviorTree.NodeState.FAILURE
-    
-    if cached_data.data.in_aggro:
-        return BehaviorTree.NodeState.FAILURE
-    
-    
     account_email = Player.GetAccountEmail()
     index, message = GLOBAL_CACHE.ShMem.PreviewNextMessage(account_email)
 
+    # PickUpLoot is asynchronous. Once started, keep the highest-priority
+    # branch RUNNING until Messaging finishes the command. Follow and combat
+    # must not reclaim movement after an arbitrary throttle interval.
     if index != -1 and message and message.Command == SharedCommandType.PickUpLoot:
-        if LOOT_THROTTLE_CHECK.IsExpired():
-            return BehaviorTree.NodeState.FAILURE
         return BehaviorTree.NodeState.RUNNING
-    
+
     if GLOBAL_CACHE.Inventory.GetFreeSlotCount() <= 1:
         return BehaviorTree.NodeState.FAILURE
-    
+
     from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters import LootFilters
 
+    # Wanted loot inside Earshot is authoritative. Evaluate it before follow
+    # recovery / combat so configured loot gets a chance to start pickup.
     loot_array = LootFilters().GetLootArray(Range.Earshot.value)
-
     if len(loot_array) == 0:
         return BehaviorTree.NodeState.FAILURE
 
     self_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(account_email)
     if self_account:
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"Dispatching PickUpLoot: wanted_items={len(loot_array)}, "
+                f"in_aggro={bool(cached_data.data.in_aggro)}, "
+                f"follow_recovery={bool(is_follow_recovery_active(cached_data, follow_execution_state))}."
+            ),
+            PySystem.Console.MessageType.Info,
+        )
         GLOBAL_CACHE.ShMem.SendMessage(
             self_account.AccountEmail,
             self_account.AccountEmail,
@@ -79,11 +84,9 @@ def LootingNode(cached_data: CacheData)-> BehaviorTree.NodeState:
             (0, 0, 0, 0),
         )
         LOOT_THROTTLE_CHECK.Reset()
-        # Return RUNNING so the tree knows the task started
         return BehaviorTree.NodeState.RUNNING
 
     return BehaviorTree.NodeState.FAILURE
-
 
 
 

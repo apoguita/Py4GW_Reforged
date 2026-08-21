@@ -1,3 +1,4 @@
+import PySystem
 from Py4GWCoreLib.Agent import Agent
 from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 from Py4GWCoreLib.Map import Map
@@ -70,41 +71,28 @@ class HeroAIHeadlessTree:
         if not self._headless_looting_enabled:
             return False
 
-        if self.cached_data.IsHeadlessCombatPauseActive():
-            return False
-
-        if not self._has_active_pick_up_loot_message():
-            return False
-
-        if self._loot_throttle_check.IsExpired():
-            return False
-
-        return True
+        # PickUpLoot owns movement for the full lifetime of the shared-memory
+        # command. Combat pause and the old throttle do not end it early.
+        return self._has_active_pick_up_loot_message()
 
     def _handle_looting(self) -> BehaviorTree.NodeState:
         if not self._headless_looting_enabled:
             self.cached_data.in_looting_routine = False
             return BehaviorTree.NodeState.FAILURE
 
-        if is_follow_recovery_active(self.cached_data, self._follow_state):
-            self.cached_data.in_looting_routine = False
-            return BehaviorTree.NodeState.FAILURE
-
-        if self.cached_data.IsHeadlessCombatPauseActive():
-            self.cached_data.in_looting_routine = False
-            return BehaviorTree.NodeState.FAILURE
-
+        # Once pickup starts, keep this branch authoritative until Messaging
+        # marks PickUpLoot finished.
         if self._has_active_pick_up_loot_message():
             self.cached_data.in_looting_routine = True
+
             if not Routines.Checks.Map.MapValid() or not Map.IsExplorable():
                 self.cached_data.in_looting_routine = False
                 return BehaviorTree.NodeState.FAILURE
+
             if GLOBAL_CACHE.Inventory.GetFreeSlotCount() <= 1:
                 self.cached_data.in_looting_routine = False
                 return BehaviorTree.NodeState.FAILURE
-            if self._loot_throttle_check.IsExpired():
-                self.cached_data.in_looting_routine = False
-                return BehaviorTree.NodeState.FAILURE
+
             return BehaviorTree.NodeState.RUNNING
 
         if not Routines.Checks.Map.MapValid() or not Map.IsExplorable():
@@ -115,6 +103,8 @@ class HeroAIHeadlessTree:
             self.cached_data.in_looting_routine = False
             return BehaviorTree.NodeState.FAILURE
 
+        # LootFilters is the authority. If a configured item exists inside
+        # Earshot, let pickup start before follow recovery or combat pause.
         loot_array = LootFilters().GetLootArray(Range.Earshot.value)
         if len(loot_array) == 0:
             self.cached_data.in_looting_routine = False
@@ -123,6 +113,15 @@ class HeroAIHeadlessTree:
         account_email = Player.GetAccountEmail()
         self_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(account_email)
         if self_account:
+            PySystem.Console.Log(
+                "HeroAI Headless",
+                (
+                    f"Dispatching PickUpLoot: wanted_items={len(loot_array)}, "
+                    f"combat_pause={bool(self.cached_data.IsHeadlessCombatPauseActive())}, "
+                    f"follow_recovery={bool(is_follow_recovery_active(self.cached_data, self._follow_state))}."
+                ),
+                PySystem.Console.MessageType.Info,
+            )
             GLOBAL_CACHE.ShMem.SendMessage(
                 self_account.AccountEmail,
                 self_account.AccountEmail,

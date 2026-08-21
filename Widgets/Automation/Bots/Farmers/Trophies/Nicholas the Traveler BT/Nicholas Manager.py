@@ -745,8 +745,6 @@ def _draw_config_tab() -> None:
     PyImGui.separator()
     PyImGui.text(f"Model ID: {farm.model_id}")
     PyImGui.text(f"Flow: {_flow_label(farm)}")
-    PyImGui.text(f"Farm source: {farm.source_file}")
-
     if busy:
         PyImGui.separator()
         PyImGui.text("Stop the active routine before changing farm.")

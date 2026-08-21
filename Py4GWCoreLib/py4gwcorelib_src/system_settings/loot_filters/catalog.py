@@ -426,8 +426,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
     CatalogEntry('Prismatic Gelatinous Material (Ooze Pit)', 22375, 'Quest Items', 'Dungeon quest items'),
     CatalogEntry('Elemental Crystal Shard', 38302, 'Trophies', ''),
     CatalogEntry('Elemental Keystone', 38301, 'Quest Items', 'Keys'),
-)
-
+    CatalogEntry('Sandblasted Lodestone', 1584, 'Trophies', ''),)
 
 UNRESOLVED: tuple[UnresolvedEntry, ...] = (
     UnresolvedEntry('Animal Hide', 'Trophies'),
