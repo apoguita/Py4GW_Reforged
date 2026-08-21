@@ -66,6 +66,12 @@ class BottingTreeTicksMixin:
             self.SetLootingEnabled(requested_looting_enabled)
         bb['looting_enabled'] = self.IsLootingEnabled()
 
+        requested_combat_enabled = bb.pop('combat_enabled_request', None)
+        if isinstance(requested_combat_enabled, bool):
+            self.SetCombatEnabled(requested_combat_enabled)
+
+        bb['combat_enabled'] = self.IsCombatEnabled()
+
         requested_resurrection_scroll_enabled = bb.pop('resurrection_scroll_enabled_request', None)
         if isinstance(requested_resurrection_scroll_enabled, bool):
             self.SetResurrectionScrollEnabled(requested_resurrection_scroll_enabled)

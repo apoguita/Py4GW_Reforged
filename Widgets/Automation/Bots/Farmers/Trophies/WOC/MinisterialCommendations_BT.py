@@ -8,6 +8,7 @@ import PySystem
 
 from Py4GWCoreLib import Agent
 from Py4GWCoreLib import AgentArray
+from Py4GWCoreLib import Effects
 from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import Player
@@ -42,68 +43,94 @@ KAINENG_CENTER = 194
 A_CHANCE_ENCOUNTER = 861
 MISSION_DIALOG = 0x84
 
-PLAYER_SKILLBAR = 'OgGlQlVp6smsJRg19RTKexTkL2XsDC'
+# Encounter_ReBuilt.au3 reference builds.
+PLAYER_BUILDS_BY_PRIMARY = {
+    'Warrior': 'OQojQhV6KT4k9F8E7gUiEY5iwF',
+    'Ranger': 'OgEUcDqWV8S4k9F8E7gUi+G5iMH',
+    'Monk': 'OwEUAj2S1qS4k9F8E7gUigE5iwF',
+    'Necromancer': 'OAFUYCqWVyS4k9F8E7gUizB5iwF',
+    'Mesmer': 'OQFUAixS1qS4k9F8E7gUioA5iwF',
+    'Elementalist': 'OgFUwi1S1qS4k9F8E7gUitT5iwF',
+    'Assassin': 'OwFkQpV63OG0dZfBPxOYDkLTuIcB',
+    'Ritualist': 'OAGkQGhLlWpEOZfBPxOIlo0UuIcB',
+    'Paragon': 'OQGjgOUcFT4k9F8E7gUiBA5iwF',
+    'Dervish': 'OgGlwWrJlWpqFhT2XwTsDSJSglL29B',
+}
+
 MINISTERIAL_COMMENDATION = int(ModelID.Ministerial_Commendation.value)
 BIRTHDAY_CUPCAKE = int(ModelID.Birthday_Cupcake.value)
 
 MIKU_LEGACY_AGENT_ID = 58
 MIKU_SEARCH_ANCHOR = (-6300.0, -5300.0)
 
-HERO_VEKK = 1
-HERO_NORGU = 2
-HERO_RAZAH = 3
-HERO_OGDEN = 4
-HERO_XANDRA = 5
-HERO_MASTER_OF_WHISPERS = 6
-HERO_LIVIA = 7
-
-HERO_SPEED_SUPPORT = HERO_OGDEN
-HERO_PROT = HERO_XANDRA
-HERO_BIP = HERO_MASTER_OF_WHISPERS
-HERO_SOS = HERO_LIVIA
+# Exact Encounter_ReBuilt.au3 party positions.
+HERO_FIRE_ELE = 1       # Acolyte Sousuke - Starburst
+HERO_EARTH_ELE = 2      # Vekk - Stone Sheath
+HERO_TRAPPER = 3        # Pyre Fierceshot - Trapper
+HERO_PROT_MESMER = 4    # Gwen - Martyr Prot Mesmer
+HERO_SOS = 5            # Razah - SoS Resto + Recall
+HERO_BIP = 6            # Olias - BiP Resto
+HERO_ST = 7             # Xandra - ST Mot
 
 EXPECTED_HERO_IDS = (
+    int(HeroType.AcolyteSousuke.value),
     int(HeroType.Vekk.value),
-    int(HeroType.Norgu.value),
+    int(HeroType.PyreFierceshot.value),
+    int(HeroType.Gwen.value),
     int(HeroType.Razah.value),
-    int(HeroType.Ogden.value),
+    int(HeroType.Olias.value),
     int(HeroType.Xandra.value),
-    int(HeroType.MasterOfWhispers.value),
-    int(HeroType.Livia.value),
 )
 
+# Numeric behavior values are preserved from the AutoIt:
+# 0 Fight, 1 Guard, 2 Avoid.
 HERO_BUILDS = (
-    (HERO_VEKK, 'Vekk', 'OgJTgYWizhWQO+GeDkjyZ5oDBA', (6, 7), 0),
-    (HERO_NORGU, 'Norgu', 'OQpkAsBjwqizJY6lDMdDBZQe++C', (8,), 0),
-    (HERO_RAZAH, 'Razah', 'OQpkAoB8gpa0LAC4KQeGJQGgAw9F', (8,), 0),
-    (HERO_OGDEN, 'Ogden', 'Owkk0wPGkaaEDRNm/wNWGxKxdVDI', (4,), 1),
-    (HERO_XANDRA, 'Xandra', 'OAqjAykqKOYzHX406BNJnCg7LA', (8,), 1),
-    (HERO_MASTER_OF_WHISPERS, 'Master of Whispers', 'OAhjQoGYIP3hqqAYYK8kmTuxJA', (), 1),
-    (HERO_LIVIA, 'Livia', 'OAhkYQgV4Kyz18bix8mVvJ3wUaC', (5,), 1),
+    (HERO_FIRE_ELE, 'Sousuke', 'OgBDgqyMSlVHR3C8CLg4CKDADA', 0),
+    (HERO_EARTH_ELE, 'Vekk', 'OgljkwMopOdVm22oHuK2x14UBA', 0),
+    (HERO_TRAPPER, 'Pyre Fierceshot', 'OggjclYsYSNHLHJHKHchYOIHCAA', 0),
+    (HERO_PROT_MESMER, 'Gwen', 'OQNDAowvOqkcw0z0NEEcaRBA', 0),
+    (HERO_SOS, 'Razah', 'OAejEyiM5QXTYMdOTMSTdiVPciA', 2),
+    (HERO_BIP, 'Olias', 'OAhjQoGYIP3BqdVV4JNncDzxJA', 1),
+    (HERO_ST, 'Xandra', 'OAmjAyk85QYTWPPOhTOTkTQTfiA', 2),
 )
 
+# AutoIt CommandStartingPositions().
 STARTING_POSITIONS = (
-    (HERO_VEKK, -6221.0, -5717.0),
-    (HERO_NORGU, -6143.0, -4724.0),
-    (HERO_RAZAH, -6262.0, -5479.0),
-    (HERO_OGDEN, -5840.0, -4734.0),
-    (HERO_XANDRA, -5748.0, -4284.0),
-    (HERO_MASTER_OF_WHISPERS, -5757.0, -5007.0),
-    (HERO_LIVIA, -6060.0, -5050.0),
+    (HERO_FIRE_ELE, -6362.0, -4967.0),
+    (HERO_EARTH_ELE, -6060.0, -5168.0),
+    (HERO_TRAPPER, -6245.0, -5232.0),
+    (HERO_PROT_MESMER, -6362.0, -4967.0),
+    (HERO_SOS, -5691.0, -5195.0),
+    (HERO_BIP, -5606.0, -4747.0),
+    (HERO_ST, -5452.0, -4380.0),
 )
-PLAYER_HERO_SETUP_POSITION = (-6105.82, -5182.48)
-PLAYER_TRAP_POSITION = (-6332.0, -5251.0)
+PLAYER_HERO_SETUP_POSITION = (-6232.0, -5392.0)
+PLAYER_TRAP_POSITION = (-6306.0, -5260.0)
 
-RUN_TO_KILL_SPOT = [
-    (-4199.0, -1475.0),
-    (-4709.0, -609.0),
-    (-3116.0, 650.0),
-    (-2518.0, 631.0),
-    (-2096.0, -1067.0),
-    (-815.0, -1898.0),
-    (-690.0, -3769.0),
-    (-771.12, -3879.82),
-]
+# Fixed initial foe IDs used by Encounter_ReBuilt.au3.
+INITIAL_FOE_AGENT_IDS = (
+    62, 63,
+    193, 194, 195, 196, 197, 198, 199, 200,
+)
+
+# Journey positions from Encounter_ReBuilt.au3.
+AUTOIT_SAFE_SPOT = (-6080.0, -5020.0)
+AUTOIT_FIGHT_EXIT = (-4800.0, -3700.0)
+AUTOIT_MID_1 = (-4658.0, -757.0)
+
+# Forced stair line between MID_1 and MID_2.
+# These points prevent the autopath from cutting beside the staircase.
+AUTOIT_STAIR_PATH = (
+    (-4761.0, -608.0),
+    (-4464.0, -323.0),
+    (-3869.0, 240.0),
+)
+
+AUTOIT_MID_2 = (-3135.0, 628.0)
+AUTOIT_MID_3 = (-2127.0, -1224.0)
+AUTOIT_MID_4 = (-878.0, -1854.0)
+AUTOIT_STAIRS_APPROACH = (-766.0, -3262.0)
+AUTOIT_FARM_POSITION = (-687.0, -3780.0)
 
 _settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
 _settings_loaded = False
@@ -117,18 +144,6 @@ botting_tree: BottingTree | None = None
 _team_builds_loaded = False
 
 MISSION_RESTART_STEP = 'Enter A Chance Encounter'
-MYSTIC_HEALING_STEPS = {
-    'Prepare Stairs Defense',
-    'Wait For Purity Ball',
-    'Spike Ministry Of Purity',
-    'Loot And Return',
-}
-MYSTIC_HEALING_HEROES = (
-    (HERO_NORGU, 'Norgu'),
-    (HERO_RAZAH, 'Razah'),
-    (HERO_XANDRA, 'Xandra'),
-)
-
 
 def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
     PySystem.Console.Log(MODULE_NAME, message, message_type)
@@ -172,7 +187,7 @@ def _draw_config() -> None:
         _setup_party = value
         changed = True
 
-    value = PyImGui.checkbox('Load the recommended Dervish build', _load_player_build)
+    value = PyImGui.checkbox('Load the Encounter ReBuilt player build', _load_player_build)
     if value != _load_player_build:
         _load_player_build = value
         changed = True
@@ -192,13 +207,13 @@ def _draw_config() -> None:
     )
     PyImGui.text('Loaded hero order:')
     for line in (
-        '1 Vekk - Air / traps (slots 6 and 7 locked)',
-        '2 Norgu - Energy Surge (Mystic Healing manually controlled)',
-        '3 Razah - Ineptitude (Mystic Healing manually controlled)',
-        '4 Ogden - support (slot 4 locked)',
-        '5 Xandra - Soul Twisting protection (Mystic Healing manually controlled)',
-        '6 Master of Whispers - BiP support',
-        '7 Livia - Signet of Spirits (slot 5 locked)',
+        '1 Sousuke - Fire Ele / Starburst',
+        '2 Vekk - Earth Ele / Stone Sheath',
+        '3 Pyre Fierceshot - Trapper',
+        '4 Gwen - Martyr Prot Mesmer',
+        '5 Razah - SoS Resto + Recall',
+        '6 Olias - BiP Resto',
+        '7 Xandra - ST',
     ):
         PyImGui.bullet_text(line)
 
@@ -228,6 +243,82 @@ def _nearest_enemy(position: tuple[float, float], radius: float | None = None) -
     if not enemies:
         return 0
     return min(enemies, key=lambda agent_id: _distance(Agent.GetXY(agent_id), position))
+
+
+def _initial_foes_alive() -> list[int]:
+    """Return the living members of the AutoIt reference initial foe set."""
+    result: list[int] = []
+    for agent_id in INITIAL_FOE_AGENT_IDS:
+        try:
+            if (
+                Agent.IsValid(agent_id)
+                and Agent.IsLiving(agent_id)
+                and not Agent.IsDead(agent_id)
+            ):
+                result.append(int(agent_id))
+        except Exception:
+            continue
+    return result
+
+
+def _wait_for_enemy_presence_or_timeout(
+    name: str,
+    *,
+    radius: float = 2500.0,
+    timeout_ms: int = 7_500,
+) -> BehaviorTree:
+    """AutoIt journey gate: continue on enemy arrival or after its short timeout."""
+
+    def _condition() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+        if _enemy_ids_near(Player.GetXY(), radius):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    wait = BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_condition,
+            throttle_interval_ms=250,
+            timeout_ms=timeout_ms,
+        )
+    )
+    return BT.Selector(
+        name=name,
+        children=[
+            wait,
+            _continue_after_wait_timeout(
+                name,
+                f'{name} timed out after {timeout_ms}ms; continuing like the AutoIt route.',
+            ),
+        ],
+    )
+
+
+def WaitForMikuAtJourneyExit() -> BehaviorTree:
+    """Wait until Miku reaches the AutoIt fight-exit area."""
+
+    def _miku_arrived() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+
+        miku_id = int(_resolve_miku_agent_id() or 0)
+        if miku_id <= 0 or Agent.IsDead(miku_id):
+            return BehaviorTree.NodeState.RUNNING
+
+        if _distance(Agent.GetXY(miku_id), AUTOIT_FIGHT_EXIT) <= 2500.0:
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name='Wait For Miku At Journey Exit',
+            condition_fn=_miku_arrived,
+            throttle_interval_ms=250,
+            timeout_ms=30_000,
+        )
+    )
 
 
 def _party_agent_ids() -> set[int]:
@@ -278,6 +369,7 @@ def _is_mission_planner_step(step_name: str) -> bool:
             'Prepare First Fight',
             'Fight Initial Group',
             'Finish Initial Fight',
+            'Run To Stairs',
             'Prepare Stairs Defense',
             'Wait For Purity Ball',
             'Spike Ministry Of Purity',
@@ -293,6 +385,7 @@ def MissionRestartAnchorService() -> BehaviorTree:
     state = {
         'returning_to_outpost': False,
         'last_return_ms': 0.0,
+        'mission_ready_since_ms': 0.0,
     }
 
     def _select_mission_restart(node: BehaviorTree.Node) -> None:
@@ -320,15 +413,44 @@ def MissionRestartAnchorService() -> BehaviorTree:
             node.blackboard['restart_step_name_request'] = MISSION_RESTART_STEP
             node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {MISSION_RESTART_STEP}'
 
-        party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
-        party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
-        player_dead = bool(Routines.Checks.Player.IsDead())
-        mission_failed = bool(in_mission_instance and (player_dead or _mission_failed()))
-        if in_mission_instance and (party_wiped or party_defeated or mission_failed):
+        # During the map transition into A Chance Encounter, party shared-memory
+        # can briefly report wiped/defeated before the mission party is fully
+        # populated. Do not evaluate death/restart conditions until map 861 has
+        # remained ready for a short stabilization window.
+        now_ms = time.monotonic() * 1000.0
+
+        if in_mission_instance:
+            if state['mission_ready_since_ms'] <= 0.0:
+                state['mission_ready_since_ms'] = now_ms
+        else:
+            state['mission_ready_since_ms'] = 0.0
+
+        mission_stable = bool(
+            in_mission_instance
+            and state['mission_ready_since_ms'] > 0.0
+            and now_ms - state['mission_ready_since_ms'] >= 3_000.0
+        )
+
+        party_wiped = False
+        party_defeated = False
+        player_dead = False
+        mission_failed = False
+
+        if mission_stable:
+            party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
+            party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
+            player_dead = bool(Routines.Checks.Player.IsDead())
+            mission_failed = bool(player_dead or _mission_failed())
+
+        if mission_stable and (party_wiped or party_defeated or mission_failed):
             if not state['returning_to_outpost']:
                 ActionQueueManager().ResetAllQueues()
                 _log(
-                    f'Mission failure detected (player_dead={player_dead}); '
+                    'Mission failure detected '
+                    f'(player_dead={player_dead}, '
+                    f'party_wiped={party_wiped}, '
+                    f'party_defeated={party_defeated}, '
+                    f'mission_failed={mission_failed}); '
                     'returning to Kaineng Center before '
                     f"restarting '{MISSION_RESTART_STEP}'.",
                     PySystem.Console.MessageType.Warning,
@@ -345,6 +467,7 @@ def MissionRestartAnchorService() -> BehaviorTree:
             node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {MISSION_RESTART_STEP}'
             state['returning_to_outpost'] = False
             state['last_return_ms'] = 0.0
+            state['mission_ready_since_ms'] = 0.0
             _log(
                 f"Outpost loaded; restarting '{MISSION_RESTART_STEP}'.",
                 PySystem.Console.MessageType.Success,
@@ -404,11 +527,156 @@ def _hero_agent_id(hero_position: int) -> int:
 
 
 def _cast_hero_skill(hero_position: int, slot: int, target_id: int = 0) -> bool:
+    """
+    Manually trigger one hero skill through the dedicated Skillbar API.
+
+    ``HeroUseSkill`` expects the hero's party position (1-7), not the hero
+    agent id. This script consistently uses the hero party position (1-7).
+    """
     hero_agent_id = _hero_agent_id(hero_position)
-    if hero_agent_id == 0:
+    if hero_agent_id == 0 or Agent.IsDead(hero_agent_id):
         return False
-    GLOBAL_CACHE.Party.Heroes.UseSkill(hero_agent_id, slot, int(target_id or 0))
+    if slot < 1 or slot > 8:
+        return False
+
+    GLOBAL_CACHE.SkillBar.HeroUseSkill(
+        int(target_id or 0),
+        int(slot),
+        int(hero_position),
+    )
     return True
+
+
+def _hero_skill_id(hero_position: int, slot: int) -> int:
+    """Return the skill id currently loaded in one hero slot."""
+    try:
+        skillbar = GLOBAL_CACHE.SkillBar.GetHeroSkillbar(hero_position)
+        if slot < 1 or slot > len(skillbar):
+            return 0
+        skill_data = skillbar[slot - 1]
+        return int(getattr(getattr(skill_data, 'id', None), 'id', 0) or 0)
+    except Exception:
+        return 0
+
+
+def _drop_hero_buff_for_skill_node(
+    hero_position: int,
+    slot: int,
+    *,
+    name: str,
+) -> BehaviorTree:
+    """
+    Drop a maintained enchantment/buff owned by a hero.
+
+    This mirrors AutoIt's Effect_DropBond(...).  DropBuff requires the runtime
+    buff id, not the skill id, so resolve the buff on the hero first.
+    """
+
+    def _drop() -> BehaviorTree.NodeState:
+        hero_agent_id = _hero_agent_id(hero_position)
+        skill_id = _hero_skill_id(hero_position, slot)
+
+        if hero_agent_id <= 0 or skill_id <= 0:
+            _log(
+                f'{name}: hero/skill unavailable; nothing to drop.',
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            for buff in GLOBAL_CACHE.Effects.GetBuffs(hero_agent_id):
+                if int(getattr(buff, 'skill_id', 0) or 0) != skill_id:
+                    continue
+
+                buff_id = int(getattr(buff, 'buff_id', 0) or 0)
+                if buff_id <= 0:
+                    continue
+
+                Effects.get_instance(hero_agent_id).DropBuff(buff_id)
+                _log(
+                    f'{name}: dropped hero {hero_position} buff '
+                    f'(skill_id={skill_id}, buff_id={buff_id}).'
+                )
+                return BehaviorTree.NodeState.SUCCESS
+        except Exception as exc:
+            _log(
+                f'{name}: failed to drop hero buff: {exc}',
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        _log(f'{name}: Recall buff was not active; continuing.')
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_drop,
+            aftercast_ms=250,
+        )
+    )
+
+
+def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree:
+    hero_names = {
+        HERO_FIRE_ELE: 'Sousuke',
+        HERO_EARTH_ELE: 'Vekk',
+        HERO_TRAPPER: 'Pyre',
+        HERO_PROT_MESMER: 'Gwen',
+        HERO_SOS: 'Razah',
+        HERO_BIP: 'Olias',
+        HERO_ST: 'Xandra',
+    }
+
+    def _visible_heroes() -> list[str]:
+        player_xy = Player.GetXY()
+        visible: list[str] = []
+        for hero_position, hero_name in hero_names.items():
+            hero_agent_id = _hero_agent_id(hero_position)
+            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+                continue
+            if _distance(Agent.GetXY(hero_agent_id), player_xy) <= Range.Compass.value:
+                visible.append(hero_name)
+        return visible
+
+    def _all_out() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if not _visible_heroes()
+            else BehaviorTree.NodeState.RUNNING
+        )
+
+    wait = BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name='Wait For Heroes Outside Loot Range',
+            condition_fn=_all_out,
+            throttle_interval_ms=250,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+    def _timeout_fallback(_node: BehaviorTree.Node) -> BehaviorTree:
+        visible = ', '.join(_visible_heroes()) or 'none'
+        return BT.Sequence(
+            name='Loot Separation Timeout Fallback',
+            children=[
+                BT.LogMessage(
+                    f'Loot separation timed out; heroes still inside Compass: {visible}.',
+                    MODULE_NAME,
+                ),
+                BT.Succeeder('Loot Separation Timeout Accepted'),
+            ],
+        )
+
+    return BT.Selector(
+        name='Wait For Loot Separation',
+        children=[
+            wait,
+            BT.Subtree('Loot Separation Timeout Router', _timeout_fallback),
+        ],
+    )
 
 
 def _hero_skill_ready(hero_position: int, slot: int) -> bool:
@@ -431,55 +699,6 @@ def _hero_skill_ready(hero_position: int, slot: int) -> bool:
         return bool(skill_id and recharge <= 0.0)
     except Exception:
         return False
-
-
-def MysticHealingService() -> BehaviorTree:
-    """Manually rotate the three locked Mystic Healing skills at the stairs."""
-
-    state = {'last_cast_ms': 0.0, 'next_hero': 0}
-
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        current_step = str(node.blackboard.get('current_step_name', '') or '')
-        if current_step not in MYSTIC_HEALING_STEPS:
-            state['last_cast_ms'] = 0.0
-            return BehaviorTree.NodeState.RUNNING
-
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or Agent.IsDead(player_id) or Agent.GetHealth(player_id) >= 0.98:
-            return BehaviorTree.NodeState.RUNNING
-
-        now_ms = time.monotonic() * 1000.0
-        if now_ms - state['last_cast_ms'] < 350.0:
-            return BehaviorTree.NodeState.RUNNING
-
-        hero_count = len(MYSTIC_HEALING_HEROES)
-        start_index = int(state['next_hero']) % hero_count
-        for offset in range(hero_count):
-            index = (start_index + offset) % hero_count
-            hero_position, hero_name = MYSTIC_HEALING_HEROES[index]
-            hero_agent_id = _hero_agent_id(hero_position)
-            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
-                continue
-            if not _hero_skill_ready(hero_position, 8):
-                continue
-            if _cast_hero_skill(hero_position, 8):
-                state['last_cast_ms'] = now_ms
-                state['next_hero'] = (index + 1) % hero_count
-                _log(
-                    f'{hero_name}: Mystic Healing manually triggered '
-                    f'at {Agent.GetHealth(player_id):.0%} player health.'
-                )
-                break
-
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name='Mystic Healing Service',
-            action_fn=_tick,
-            aftercast_ms=0,
-        )
-    )
 
 
 def _hero_skill_node(
@@ -547,7 +766,7 @@ def _wait_for_player_resources(
     def _resources_ready() -> BehaviorTree.NodeState:
         if _mission_failed():
             return BehaviorTree.NodeState.FAILURE
-        if _player_energy() > min_energy and _skill_adrenaline(8) >= min_adrenaline:
+        if _player_energy() > min_energy and _skill_adrenaline(4) >= min_adrenaline:
             return BehaviorTree.NodeState.SUCCESS
         return BehaviorTree.NodeState.RUNNING
 
@@ -598,20 +817,140 @@ def _player_skill_node(
     return BT.Subtree(node_name, _build)
 
 
-def _optional_commendation_loot(timeout_ms: int = 5_000) -> BehaviorTree:
-    return BT.Selector(
-        [
-            BT.PickupGroundItemByModelID(
-                MINISTERIAL_COMMENDATION,
-                max_distance=Range.Compass.value,
-                timeout_ms=timeout_ms,
-                allow_unassigned=True,
-                log=True,
-            ),
-            BT.Succeeder('No Ministerial Commendation Nearby'),
-        ],
-        name='Optional Ministerial Commendation Loot',
+def _hero_ai_state_node(
+    name: str,
+    states: dict[int, dict[int, bool]],
+    *,
+    behaviors: dict[int, int] | None = None,
+) -> BehaviorTree:
+    """Apply exact per-slot hero AI states using party positions."""
+
+    def _apply() -> BehaviorTree.NodeState:
+        for hero_position, slot_states in states.items():
+            hero_agent_id = _hero_agent_id(hero_position)
+            if hero_agent_id <= 0:
+                _log(
+                    f'{name}: hero position {hero_position} is unavailable.',
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            for slot, enabled in slot_states.items():
+                GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(
+                    hero_agent_id,
+                    int(slot),
+                    bool(enabled),
+                )
+
+        for hero_position, behavior in (behaviors or {}).items():
+            hero_agent_id = _hero_agent_id(hero_position)
+            if hero_agent_id > 0:
+                GLOBAL_CACHE.Party.Heroes.SetHeroBehavior(
+                    hero_agent_id,
+                    int(behavior),
+                )
+
+        _log(f'{name}: hero AI states applied.')
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_apply,
+            aftercast_ms=250,
+        )
     )
+
+
+def PrepareHeroSkillbarsForQuest() -> BehaviorTree:
+    # Start from all skills enabled, matching AddOns_EnableAllHeroSkillbars().
+    states: dict[int, dict[int, bool]] = {
+        hero_position: {slot: True for slot in range(1, 9)}
+        for hero_position in range(1, 8)
+    }
+
+    # Encounter_ReBuilt.au3 PrepareHeroSkillbarsForQuest().
+    states[HERO_FIRE_ELE].update({6: False, 7: False, 8: False})
+    states[HERO_EARTH_ELE].update({6: False, 7: True, 8: False})
+    states[HERO_TRAPPER].update({slot: False for slot in range(1, 8)})
+    states[HERO_SOS].update({
+        1: False, 2: False, 3: False,
+        4: True, 5: True, 6: True, 7: True, 8: True,
+    })
+    states[HERO_BIP].update({1: False, 2: False, 7: False, 8: False})
+    states[HERO_ST].update({1: True})
+    states[HERO_ST].update({slot: False for slot in range(2, 9)})
+
+    return _hero_ai_state_node(
+        'Prepare Hero Skillbars For Quest - AutoIt',
+        states,
+    )
+
+
+def PrepareHeroSkillbarsForFight() -> BehaviorTree:
+    # Only touch the exact slots changed by the AutoIt.
+    states = {
+        HERO_EARTH_ELE: {7: True},
+        HERO_TRAPPER: {slot: True for slot in range(1, 8)},
+        HERO_PROT_MESMER: {1: True, 6: True},
+        HERO_BIP: {7: True, 8: True},
+        HERO_ST: {slot: True for slot in range(2, 8)},
+    }
+    return _hero_ai_state_node(
+        'Prepare Hero Skillbars For Fight - AutoIt',
+        states,
+    )
+
+
+def PrepareHeroSkillbarsForJourney() -> BehaviorTree:
+    states = {
+        HERO_SOS: {slot: False for slot in range(1, 9)},
+        HERO_ST: {slot: False for slot in range(1, 9)},
+        HERO_BIP: {7: False},
+    }
+    return _hero_ai_state_node(
+        'Prepare Hero Skillbars For Journey - AutoIt',
+        states,
+        behaviors={HERO_SOS: 2},
+    )
+
+
+def _set_hero_behavior_node(
+    hero_position: int,
+    behavior: int,
+    name: str,
+) -> BehaviorTree:
+    return _hero_ai_state_node(
+        name,
+        {},
+        behaviors={int(hero_position): int(behavior)},
+    )
+
+
+def _player_speedboost() -> BehaviorTree:
+    """AutoIt Speedboost() expressed through the profession-independent slots."""
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        primary, _secondary = Agent.GetProfessionNames(Player.GetAgentID())
+        if primary == 'Assassin':
+            return BT.Sequence(
+                name='AutoIt Assassin Speedboost',
+                children=[
+                    _player_skill_node(1, name='Player: Dwarven Stability'),
+                    BT.Wait(100),
+                    _player_skill_node(5, name='Player: Dark Escape'),
+                ],
+            )
+
+        return BT.Sequence(
+            name='AutoIt Generic Speedboost',
+            children=[
+                _player_skill_node(3, name='Player: To The Limit'),
+                _player_skill_node(5, name='Player: Soldiers Speed'),
+            ],
+        )
+
+    return BT.Subtree('AutoIt Player Speedboost', _build)
 
 
 def _current_hero_ids() -> tuple[int, ...]:
@@ -629,23 +968,39 @@ def _setup_party_node() -> BehaviorTree:
         if not _setup_party:
             return BT.Succeeder('Automatic Party Setup Disabled')
         if _team_builds_loaded and _current_hero_ids() == EXPECTED_HERO_IDS:
-            return BT.Succeeder('Expected Party And Builds Already Loaded')
+            return BT.Succeeder('Exact AutoIt Party And Builds Already Loaded')
 
         children: list[BehaviorTree | BehaviorTree.Node] = [
             BT.CreateParty(hero_ids=list(EXPECTED_HERO_IDS), log=True),
         ]
-        for hero_position, hero_name, template, disabled_slots, behavior in HERO_BUILDS:
+
+        for hero_position, hero_name, template, behavior in HERO_BUILDS:
             children.extend(
                 [
                     BT.LoadHeroSkillbar(hero_position, template, log=True),
-                    _configure_hero_node(hero_position, hero_name, disabled_slots, behavior),
-                    BT.Wait(500),
+                    _configure_hero_node(
+                        hero_position,
+                        hero_name,
+                        (),
+                        behavior,
+                    ),
+                    BT.Wait(250),
                 ]
             )
-        children.append(_mark_team_builds_loaded_node())
-        return BT.Sequence(name='Load Ministerial Hero Team And Builds', children=children)
 
-    return BT.Subtree('Set Up Ministerial Hero Team', _build)
+        children.extend(
+            [
+                PrepareHeroSkillbarsForQuest(),
+                _mark_team_builds_loaded_node(),
+            ]
+        )
+
+        return BT.Sequence(
+            name='Load Exact Encounter ReBuilt Hero Team',
+            children=children,
+        )
+
+    return BT.Subtree('Set Up Exact AutoIt Hero Team', _build)
 
 
 def _configure_hero_node(
@@ -667,7 +1022,7 @@ def _configure_hero_node(
             GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(hero_agent_id, slot, False)
         GLOBAL_CACHE.Party.Heroes.SetHeroBehavior(hero_agent_id, behavior)
 
-        mode = 'Fight' if behavior == 0 else 'Guard'
+        mode = {0: 'Fight', 1: 'Guard', 2: 'Avoid'}.get(int(behavior), str(behavior))
         locked = ', '.join(str(slot) for slot in disabled_slots) or 'none'
         _log(f'{hero_name} ready: mode={mode}, locked AI slots={locked}.')
         return BehaviorTree.NodeState.SUCCESS
@@ -701,20 +1056,24 @@ def _load_player_build_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _load_player_build:
             return BT.Succeeder('Automatic Player Build Disabled')
+
         primary, _secondary = Agent.GetProfessionNames(Player.GetAgentID())
-        if primary != 'Dervish':
+        template = PLAYER_BUILDS_BY_PRIMARY.get(str(primary or ''))
+        if not template:
             return BT.Sequence(
-                name='Keep Manually Configured Player Build',
+                name='Unsupported AutoIt Player Profession',
                 children=[
                     BT.LogMessage(
-                        f'Primary profession is {primary or "unknown"}; keeping the current player build.',
+                        f'No Encounter_ReBuilt player template for primary profession {primary or "unknown"}.',
                         MODULE_NAME,
-                    )
+                    ),
+                    BT.Succeeder('Keep Current Player Build'),
                 ],
             )
-        return BT.LoadSkillbar(PLAYER_SKILLBAR, log=True)
 
-    return BT.Subtree('Load Recommended Player Build', _build)
+        return BT.LoadSkillbar(template, log=True)
+
+    return BT.Subtree('Load Encounter ReBuilt Player Build', _build)
 
 
 def InitializeBot() -> BehaviorTree:
@@ -746,25 +1105,68 @@ def PrepareInKaineng() -> BehaviorTree:
     )
 
 
+def _move_to_mission_npc_smooth() -> BehaviorTree:
+    """
+    Kaineng-only movement to the A Chance Encounter NPC.
+
+    The generic Apo wrapper currently fixes stall_threshold_ms at 500ms.
+    Here we call the native movement primitive directly so a short period
+    without measurable progress does not cause repeated jitter/nudge commands.
+    """
+    return BT.Sequence(
+        name='Smooth Kaineng Mission NPC Approach',
+        children=[
+            RoutinesBT.Movement.Move(
+                x=2240.0,
+                y=-1264.0,
+                tolerance=150.0,
+                timeout_ms=45_000,
+                stall_threshold_ms=2_000,
+                pause_on_combat=False,
+                avoid_obstacles=False,
+                ignore_destination_obstacles=True,
+                ignore_destination_npcs=True,
+                ignore_destination_gadgets=True,
+                log=True,
+            ),
+            BT.Wait(125),
+            BT.TargetNearestAndSendDialog(
+                pos=(2240.0, -1264.0),
+                dialog_id=MISSION_DIALOG,
+                target_distance=Range.Nearby.value,
+                log=True,
+                multi_account=False,
+            ),
+        ],
+    )
+
+
 def EnterAChanceEncounter() -> BehaviorTree:
     def _approach_if_needed(_node: BehaviorTree.Node) -> BehaviorTree:
         x, y = Player.GetXY()
         if -1400.0 < x < -550.0 and -2000.0 < y < -1100.0:
-            return BT.Move((1474.0, -1197.0), pause_on_combat=False, log=True)
+            return RoutinesBT.Movement.Move(
+                x=1474.0,
+                y=-1197.0,
+                tolerance=150.0,
+                timeout_ms=45_000,
+                stall_threshold_ms=2_000,
+                pause_on_combat=False,
+                avoid_obstacles=False,
+                ignore_destination_obstacles=True,
+                ignore_destination_npcs=True,
+                ignore_destination_gadgets=True,
+                log=True,
+            )
         return BT.Succeeder('Direct Mission NPC Approach')
 
     return BT.Sequence(
         name='Enter A Chance Encounter',
         map_id_or_name=KAINENG_CENTER,
         children=[
+            PrepareHeroSkillbarsForQuest(),
             BT.Subtree('Optional Kaineng Approach', _approach_if_needed),
-            BT.MoveAndDialog(
-                (2240.0, -1264.0),
-                MISSION_DIALOG,
-                pause_on_combat=False,
-                multi_account=False,
-                log=True,
-            ),
+            _move_to_mission_npc_smooth(),
             BT.WaitForMapLoad(A_CHANCE_ENCOUNTER, timeout_ms=45_000),
         ],
     )
@@ -773,90 +1175,202 @@ def EnterAChanceEncounter() -> BehaviorTree:
 def PlaceParty() -> BehaviorTree:
     children: list[BehaviorTree | BehaviorTree.Node] = [
         BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
-        BT.Move(PLAYER_HERO_SETUP_POSITION, pause_on_combat=False, tolerance=50.0, log=True),
     ]
-    children.extend(BT.FlagHero(position, x, y) for position, x, y in STARTING_POSITIONS)
-    children.append(BT.Wait(4_000))
-    return BT.Sequence(name='Place Player And Heroes', children=children)
+    children.extend(
+        BT.FlagHero(position, x, y)
+        for position, x, y in STARTING_POSITIONS
+    )
+    children.extend(
+        [
+            BT.Move(
+                PLAYER_HERO_SETUP_POSITION,
+                pause_on_combat=False,
+                tolerance=50.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            _set_hero_behavior_node(
+                HERO_SOS,
+                1,
+                'Razah: AutoIt Pre-Fight Behavior 1',
+            ),
+        ]
+    )
+    return BT.Sequence(
+        name='Place Player And Heroes - AutoIt',
+        children=children,
+    )
 
 
 def PrepareFirstFight() -> BehaviorTree:
-    children: list[BehaviorTree | BehaviorTree.Node] = [
-        _hero_skill_node(HERO_VEKK, 5, name='Vekk: Serpents Quickness'),
-        BT.Wait(500),
-        _hero_skill_node(HERO_VEKK, 6, name='Vekk: Barbed Trap - First Setup'),
-        BT.Wait(200),
-        _hero_skill_node(HERO_VEKK, 7, name='Vekk: Flame Trap - First Setup'),
-        BT.Move(PLAYER_TRAP_POSITION, pause_on_combat=False, tolerance=40.0, log=True),
-        BT.Wait(1_500),
-        _hero_skill_node(HERO_SOS, 1, name='SoS: Signet Of Spirits'),
-        _hero_skill_node(HERO_PROT, 2, name='Prot: Union'),
-        BT.FlagHero(HERO_VEKK, -6310.44, -5238.35),
-        BT.FlagHero(HERO_PROT, -5530.0, -5250.0),
-        BT.FlagHero(HERO_SOS, -5152.0, -4556.0),
-        BT.Wait(3_000),
-        BT.FlagHero(HERO_BIP, -5757.0, -5007.0),
-        _hero_skill_node(HERO_SOS, 2, name='SoS: Pain'),
-        _hero_skill_node(HERO_PROT, 3, name='Prot: Displacement'),
-        BT.Wait(2_000),
-        BT.FlagHero(HERO_PROT, -5622.0, -5072.0),
-        BT.FlagHero(HERO_SOS, -5152.0, -4556.0),
-        BT.Wait(2_000),
-        _hero_skill_node(HERO_SOS, 5, name='SoS: Recuperation'),
-        BT.Wait(2_000),
-        _hero_skill_node(HERO_PROT, 4, name='Prot: Shelter'),
-        BT.Wait(2_000),
-        BT.FlagHero(HERO_SOS, -6060.0, -5050.0),
-        _hero_skill_node(
-            HERO_BIP,
-            1,
-            target=lambda: _hero_agent_id(HERO_SOS),
-            name='BiP: Blood Is Power On Livia',
-        ),
-        BT.Wait(4_000),
-        _hero_skill_node(HERO_PROT, 6, name='Prot: Earthbind'),
-        _hero_skill_node(HERO_SOS, 3, target=_miku_or_player, name='SoS: Splinter Weapon On Miku'),
-        BT.Wait(4_000),
-        _hero_skill_node(HERO_PROT, 5, name='Prot: Armor Of Unfeeling'),
-        _hero_skill_node(HERO_VEKK, 7, name='Vekk: Flame Trap - Second Setup'),
-        BT.Wait(200),
-        _hero_skill_node(HERO_VEKK, 6, name='Vekk: Barbed Trap - Second Setup'),
-        BT.Wait(1_000),
-    ]
-    if _use_cupcake:
-        children.append(BTItems.UseConsumable(BIRTHDAY_CUPCAKE, aftercast_ms=100))
-    children.extend(
-        [
-            _player_skill_node(6, name='Player: Ebon Battle Standard Of Honor'),
-            BT.Wait(100),
-            BT.FlagHero(HERO_VEKK, -6342.0, -4941.0),
-            _player_skill_node(7, name='Player: Hundred Blades'),
-            _hero_skill_node(HERO_SOS, 3, target=Player.GetAgentID, name='SoS: Splinter Weapon On Player'),
-            BT.WaitUntilOnCombat(range=500.0, timeout_ms=45_000),
-            _hero_skill_node(HERO_SOS, 4, target=Player.GetAgentID, name='SoS: Ancestors Rage'),
-            BT.Wait(200),
-            _hero_skill_node(HERO_SOS, 3, target=Player.GetAgentID, name='SoS: Refresh Splinter Weapon'),
-        ]
+    """
+    Port of Encounter_ReBuilt.au3 PrepareToFight().
+
+    Hero numbers, skill slots, coordinates and waits intentionally match the
+    AutoIt reference so this BT can be compared directly in game.
+    """
+
+    miku_target = lambda: int(_resolve_miku_agent_id() or MIKU_LEGACY_AGENT_ID)
+
+    return BT.Sequence(
+        name='Prepare First Fight - AutoIt ReBuilt',
+        children=[
+            # Opening movement support and first trap spot.
+            _hero_skill_node(HERO_EARTH_ELE, 6, name='Vekk: Fall Back'),
+            _hero_skill_node(HERO_TRAPPER, 7, name='Pyre: Serpents Quickness'),
+            BT.Wait(500),
+            _hero_skill_node(HERO_TRAPPER, 3, name='Pyre: Dust Trap - Spot 1'),
+            _hero_skill_node(HERO_SOS, 1, name='Razah: Signet Of Spirits'),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_TRAPPER),
+                name='Olias: BiP On Pyre',
+            ),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 1, name='Pyre: Spike Trap - Spot 1'),
+            _hero_skill_node(HERO_SOS, 6, name='Razah: Agony'),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_SOS),
+                name='Olias: BiP On Razah',
+            ),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 2, name='Pyre: Flame Trap - Spot 1'),
+            _hero_skill_node(HERO_BIP, 7, name='Olias: Protective Was Kaolai'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 6, name='Pyre: Destruction'),
+            _hero_skill_node(HERO_SOS, 8, name='Razah: Rejuvenation'),
+            BT.Wait(1_250),
+
+            # Second trap spot.
+            BT.FlagHero(HERO_FIRE_ELE, -6517.0, -5129.0),
+            BT.FlagHero(HERO_TRAPPER, -6311.0, -5635.0),
+            BT.Wait(1_500),
+            _hero_skill_node(HERO_TRAPPER, 4, name='Pyre: Barbed Trap - Spot 2'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 5, name='Pyre: Piercing Trap - Spot 2'),
+            _hero_skill_node(HERO_ST, 5, name='Xandra: Boon Of Creation'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 1, name='Pyre: Spike Trap - Spot 2'),
+            _hero_skill_node(HERO_ST, 4, name='Xandra: Displacement'),
+            BT.Wait(2_500),
+
+            # Third trap spot.
+            BT.FlagHero(HERO_FIRE_ELE, -6480.0, -5258.0),
+            BT.FlagHero(HERO_TRAPPER, -6503.0, -5937.0),
+            _hero_skill_node(HERO_BIP, 2, name='Olias: Recovery'),
+            _hero_skill_node(HERO_ST, 1, name='Xandra: Soul Twisting'),
+            BT.Wait(1_500),
+            _hero_skill_node(HERO_TRAPPER, 2, name='Pyre: Flame Trap - Spot 3'),
+            _hero_skill_node(HERO_BIP, 8, name='Olias: Life'),
+            _hero_skill_node(HERO_ST, 2, name='Xandra: Shelter'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 3, name='Pyre: Dust Trap - Spot 3'),
+            _hero_skill_node(HERO_ST, 3, name='Xandra: Union'),
+            BT.Wait(1_250),
+            _hero_skill_node(
+                HERO_SOS, 2,
+                target=miku_target,
+                name='Razah: Splinter Weapon On Miku',
+            ),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_SOS),
+                name='Olias: BiP On Razah - Second',
+            ),
+            BT.Wait(1_500),
+            _hero_skill_node(HERO_FIRE_ELE, 6, name='Sousuke: Fire Attunement'),
+            _hero_skill_node(HERO_EARTH_ELE, 8, name='Vekk: Earth Attunement'),
+            _hero_skill_node(HERO_ST, 6, name='Xandra: Earthbind'),
+
+            # Return Pyre to second spot and prime the opening burst.
+            BT.FlagHero(HERO_TRAPPER, -6311.0, -5635.0),
+            BT.FlagHero(HERO_BIP, -5795.0, -4942.0),
+            BT.Wait(1_000),
+            _player_skill_node(1, name='Player: Dwarven Stability / Feel No Pain'),
+            _hero_skill_node(HERO_FIRE_ELE, 7, name='Sousuke: Glyph Of Sacrifice'),
+            _hero_skill_node(HERO_TRAPPER, 4, name='Pyre: Barbed Trap - Final'),
+            _hero_skill_node(HERO_SOS, 7, name='Razah: Recuperation'),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_TRAPPER),
+                name='Olias: BiP On Pyre - Final',
+            ),
+            _hero_skill_node(HERO_ST, 7, name='Xandra: Armor Of Unfeeling'),
+            BT.Wait(1_500),
+
+            BT.FlagHero(HERO_SOS, -5984.0, -5524.0),
+            _player_skill_node(7, name='Player: Ebon Battle Standard Of Honor'),
+            BT.Move(
+                PLAYER_TRAP_POSITION,
+                pause_on_combat=False,
+                tolerance=50.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            _hero_skill_node(
+                HERO_FIRE_ELE,
+                8,
+                target=198,
+                name='Sousuke: Meteor Shower On Initial Backline',
+            ),
+            _hero_skill_node(HERO_TRAPPER, 1, name='Pyre: Spike Trap - Opening'),
+            _hero_skill_node(
+                HERO_SOS,
+                2,
+                target=Player.GetAgentID,
+                name='Razah: Splinter Weapon On Player',
+            ),
+            _hero_skill_node(
+                HERO_ST,
+                8,
+                target=Player.GetAgentID,
+                name='Xandra: Inspirational Speech On Player',
+            ),
+
+            PrepareHeroSkillbarsForFight(),
+        ],
     )
-    return BT.Sequence(name='Prepare The First Fight', children=children)
 
 
 def InitialFight() -> BehaviorTree:
-    clear_area = BT.WaitForClearEnemiesInArea(
-        x=PLAYER_TRAP_POSITION[0],
-        y=PLAYER_TRAP_POSITION[1],
-        radius=8_000.0,
-        allowed_alive_enemies=0,
-        stable_clear_ms=2_000,
-        log=True,
-    )
-    state = {'started_at': 0.0, 'last_action_ms': 0.0}
+    """
+    Encounter_ReBuilt.au3 Fight() state machine.
+
+    >5 foes: fight normally.
+    <=5 foes: reposition the AutoIt support heroes and renew SoS.
+    <=2 foes: player disengages to the safe spot.
+    <=1 foe : hand over immediately to the journey.
+    """
+
+    state = {
+        'started_at': 0.0,
+        'last_action_ms': 0.0,
+        'seen': set(),
+        'medium_repositioned': False,
+        'sos_renewed': False,
+        'martyr_disabled': False,
+        'disengaged': False,
+    }
+
+    reposition = {
+        HERO_EARTH_ELE: (-6174.0, -5601.0),
+        HERO_PROT_MESMER: (-6071.0, -5237.0),
+        HERO_SOS: (-6236.0, -5905.0),
+        HERO_BIP: (-6309.0, -5021.0),
+        HERO_ST: (-5974.0, -4869.0),
+    }
 
     def _reset() -> None:
-        state.update(started_at=0.0, last_action_ms=0.0)
-        clear_area.reset()
+        state['started_at'] = 0.0
+        state['last_action_ms'] = 0.0
+        state['seen'] = set()
+        state['medium_repositioned'] = False
+        state['sos_renewed'] = False
+        state['martyr_disabled'] = False
+        state['disengaged'] = False
 
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         now = time.monotonic()
         if state['started_at'] <= 0.0:
             state['started_at'] = now
@@ -865,34 +1379,100 @@ def InitialFight() -> BehaviorTree:
             _reset()
             return BehaviorTree.NodeState.FAILURE
 
-        elapsed = now - state['started_at']
-        clear_area.blackboard = node.blackboard
-        clear_state = clear_area.tick()
-        if clear_state is BehaviorTree.NodeState.SUCCESS:
+        alive = _initial_foes_alive()
+        state['seen'].update(alive)
+        elapsed = now - float(state['started_at'])
+
+        pack_established = len(state['seen']) >= 8 or elapsed >= 20.0
+        remaining = len([
+            agent_id for agent_id in state['seen']
+            if agent_id in alive
+        ])
+
+        if pack_established and remaining <= 1:
+            _log(
+                f'AutoIt fight transition: {remaining} initial foe(s) remain.',
+                PySystem.Console.MessageType.Success,
+            )
             _reset()
             return BehaviorTree.NodeState.SUCCESS
-        if clear_state is BehaviorTree.NodeState.FAILURE:
-            _reset()
-            return BehaviorTree.NodeState.FAILURE
-        if elapsed >= 80.0:
+
+        if pack_established and remaining <= 5:
+            if not state['medium_repositioned']:
+                for hero_position, (x, y) in reposition.items():
+                    hero_agent_id = _hero_agent_id(hero_position)
+                    if hero_agent_id > 0:
+                        GLOBAL_CACHE.Party.Heroes.FlagHero(hero_agent_id, x, y)
+                state['medium_repositioned'] = True
+                _log(f'AutoIt medium fight phase: repositioned heroes; remaining={remaining}.')
+
+            if not state['sos_renewed']:
+                sos_id = _hero_agent_id(HERO_SOS)
+                if sos_id > 0 and _distance(Agent.GetXY(sos_id), reposition[HERO_SOS]) <= 150.0:
+                    if _hero_skill_ready(HERO_SOS, 1):
+                        _cast_hero_skill(HERO_SOS, 1)
+                    state['sos_renewed'] = True
+
+            if not state['martyr_disabled']:
+                gwen_id = _hero_agent_id(HERO_PROT_MESMER)
+                if gwen_id > 0:
+                    GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(gwen_id, 1, False)
+                state['martyr_disabled'] = True
+
+        if pack_established and remaining <= 2:
+            if not state['disengaged']:
+                state['disengaged'] = True
+                # AutoIt MoveToSafeSpot(): speedboost then move to (-6080,-5020).
+                _cast_player_skill(3)
+                _cast_player_skill(5)
+                Player.Move(AUTOIT_SAFE_SPOT[0], AUTOIT_SAFE_SPOT[1])
+                _log(
+                    f'AutoIt fight state: {remaining} foes remain; player disengaging.'
+                )
+            return BehaviorTree.NodeState.RUNNING
+
+        # AutoIt PlayerAssistance(True): maintain slot 1, build adrenaline with
+        # slot 3, use Hundred Blades slot 2 and Whirlwind slot 4.
+        target_id = 0
+        if alive:
+            target_id = min(
+                alive,
+                key=lambda agent_id: _distance(
+                    Agent.GetXY(agent_id),
+                    PLAYER_TRAP_POSITION,
+                ),
+            )
+
+        now_ms = now * 1000.0
+        if target_id and now_ms - float(state['last_action_ms']) >= 750.0:
+            Player.ChangeTarget(target_id)
+            Player.Interact(target_id, False)
+
+            _cast_player_skill(1)
+            if _skill_adrenaline(4) < 130:
+                _cast_player_skill(3)
+            _cast_player_skill(2)
+            _cast_player_skill(4, target_id)
+
+            state['last_action_ms'] = now_ms
+
+        if elapsed >= 120.0:
             _log(
-                'Initial fight timed out while enemies were still alive; restarting the mission.',
+                'AutoIt first fight reached 120s timeout; restarting mission.',
                 PySystem.Console.MessageType.Warning,
             )
             _reset()
             return BehaviorTree.NodeState.FAILURE
 
-        now_ms = now * 1000.0
-        target_id = int(node.blackboard.get('wait_clear_area_target_id', 0) or 0)
-        if target_id and now_ms - state['last_action_ms'] >= 1_300.0:
-            for slot in (3, 7, 5):
-                if _cast_player_skill(slot, target_id):
-                    break
-            state['last_action_ms'] = now_ms
-
         return BehaviorTree.NodeState.RUNNING
 
-    return BehaviorTree(BehaviorTree.ActionNode(name='Fight Initial Group', action_fn=_tick, aftercast_ms=0))
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Fight Initial Group - AutoIt ReBuilt',
+            action_fn=_tick,
+            aftercast_ms=0,
+        )
+    )
 
 
 def WaitForMikuAreaClear() -> BehaviorTree:
@@ -926,229 +1506,403 @@ def WaitForMikuAreaClear() -> BehaviorTree:
     )
 
 
-def CastOgdenMakeHaste() -> BehaviorTree:
-    """Bring Ogden into cast range, wait for slot 4, then hold for the cast."""
-
-    node_name = 'Ogden: Make Haste'
-
-    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        player_x, player_y = Player.GetXY()
-
-        def _ogden_ready() -> BehaviorTree.NodeState:
-            if _mission_failed():
-                return BehaviorTree.NodeState.FAILURE
-
-            hero_agent_id = _hero_agent_id(HERO_SPEED_SUPPORT)
-            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
-                return BehaviorTree.NodeState.FAILURE
-
-            in_range = _distance(Agent.GetXY(hero_agent_id), Player.GetXY()) < 1_350.0
-            if in_range and _hero_skill_ready(HERO_SPEED_SUPPORT, 4):
-                return BehaviorTree.NodeState.SUCCESS
-            return BehaviorTree.NodeState.RUNNING
-
-        wait_ready = BehaviorTree(
-            BehaviorTree.WaitUntilNode(
-                name='Wait For Ogden Make Haste',
-                condition_fn=_ogden_ready,
-                throttle_interval_ms=250,
-                timeout_ms=10_000,
-            )
-        )
-        cast = BT.Sequence(
-            name='Position Ogden And Cast Make Haste',
-            children=[
-                BT.FlagHero(HERO_SPEED_SUPPORT, player_x, player_y),
-                wait_ready,
-                BT.LogMessage('Ogden is in range; casting Make Haste.', MODULE_NAME),
-                _hero_skill_node(
-                    HERO_SPEED_SUPPORT,
-                    4,
-                    target=Player.GetAgentID,
-                    aftercast_ms=2_000,
-                    name=node_name,
-                ),
-            ],
-        )
-        return BT.Selector(
-            [
-                cast,
-                _continue_after_wait_timeout(
-                    node_name,
-                    'Ogden could not cast Make Haste within 10 seconds; continuing the run.',
-                ),
-            ],
-            name=node_name,
-        )
-
-    return BT.Subtree(node_name, _build)
-
-
-def FinishInitialFight() -> BehaviorTree:
-    return BT.Sequence(
-        name='Finish Initial Fight And Start Pull',
+def CastVekkFallBack() -> BehaviorTree:
+    """AutoIt Earth Ele movement support: hero 2 slot 6, never blocking."""
+    return BT.Selector(
+        name='Vekk: Fall Back If Available',
         children=[
-            _optional_commendation_loot(),
-            BT.UnflagAllHeroes(log=True),
-            CastOgdenMakeHaste(),
-            BT.FlagAllHeroes(-6699.0, -5645.0),
             _hero_skill_node(
-                HERO_SPEED_SUPPORT,
-                1,
-                target=Player.GetAgentID,
-                condition=lambda: Agent.IsCrippled(Player.GetAgentID()),
-                name='Ogden: Crippled Player Support',
-            ),
-            _player_skill_node(
-                3,
-                condition=lambda: Agent.IsCrippled(Player.GetAgentID()),
-                name='Player: I Am Unstoppable If Crippled',
-            ),
-            BT.Move((-4693.0, -3137.0), pause_on_combat=False, tolerance=150.0, log=True),
-            WaitForMikuAreaClear(),
-            _hero_skill_node(
-                HERO_SOS,
-                7,
-                target=_miku_or_player,
-                condition=lambda: Agent.IsCrippled(_miku_or_player()),
-                name='Livia: Protective Was Kaolai For Crippled Miku',
-            ),
-            _hero_skill_node(
-                HERO_BIP,
+                HERO_EARTH_ELE,
                 6,
-                target=_miku_or_player,
-                condition=lambda: Agent.IsCrippled(_miku_or_player()),
-                name='BiP: Mend Body And Soul On Crippled Miku',
+                aftercast_ms=100,
+                name='Vekk: Fall Back',
             ),
-            BT.FlagAllHeroes(-7075.0, -5685.0),
+            BT.Succeeder('Vekk Fall Back Unavailable'),
         ],
     )
 
 
-def _run_point(
-    point: tuple[float, float],
-    label: str,
-    *,
-    tolerance: float = 125.0,
-) -> BehaviorTree:
+def FinishInitialFight() -> BehaviorTree:
     return BT.Sequence(
-        name=label,
+        name='Finish Initial Fight - AutoIt Transition',
+        children=[
+            CastVekkFallBack(),
+            _player_speedboost(),
+
+            # AutoIt issues the player move and these hero commands almost
+            # concurrently. BT.Move is blocking, therefore place the hero
+            # commands first so they start travelling while the player leaves.
+            _set_hero_behavior_node(
+                HERO_SOS,
+                2,
+                'Razah: Set Avoid For Journey',
+            ),
+            BT.FlagHero(HERO_SOS, -4770.0, -3330.0),
+            BT.FlagHero(HERO_ST, -4770.0, -3330.0),
+            PrepareHeroSkillbarsForJourney(),
+
+            BT.Move(
+                AUTOIT_FIGHT_EXIT,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+        ],
+    )
+
+
+def RunToStairs() -> BehaviorTree:
+    return BT.Sequence(
+        name='Run To Stairs - Exact AutoIt Roles',
         children=[
             BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
-            BT.Move(point, pause_on_combat=False, tolerance=tolerance, log=True, avoid_obstacles=False),
+
+            BT.FlagAllHeroes(-7047.0, -2651.0),
+
+            _hero_skill_node(
+                HERO_BIP,
+                1,
+                target=lambda: _hero_agent_id(HERO_SOS),
+                condition=lambda: Agent.GetHealth(_hero_agent_id(HERO_BIP)) > 0.5,
+                name='Olias: BiP On Razah Before Journey',
+            ),
+
+            BT.FlagHero(HERO_SOS, -2195.0, 33.0),
+            BT.FlagHero(HERO_ST, -2195.0, 33.0),
+            _hero_skill_node(
+                HERO_SOS,
+                3,
+                target=lambda: _hero_agent_id(HERO_ST),
+                aftercast_ms=2_500,
+                name='Razah: Recall On Xandra',
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                AUTOIT_FIGHT_EXIT,
+                pause_on_combat=False,
+                tolerance=150.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            WaitForMikuAtJourneyExit(),
+
+            _hero_skill_node(
+                HERO_PROT_MESMER,
+                1,
+                name='Gwen: Martyr Before Journey',
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                AUTOIT_MID_1,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            # Force the actual staircase line. MID_1 is close enough to the
+            # staircase edge that a direct autopath to MID_2 can cut around it.
+            *[
+                BT.Move(
+                    point,
+                    pause_on_combat=False,
+                    tolerance=75.0,
+                    log=True,
+                    avoid_obstacles=False,
+                )
+                for point in AUTOIT_STAIR_PATH
+            ],
+
+            BT.Move(
+                AUTOIT_MID_2,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            BT.FlagHero(HERO_SOS, AUTOIT_STAIRS_APPROACH[0], AUTOIT_STAIRS_APPROACH[1]),
+            BT.FlagHero(HERO_ST, AUTOIT_STAIRS_APPROACH[0], AUTOIT_STAIRS_APPROACH[1]),
+
+            _wait_for_enemy_presence_or_timeout(
+                'AutoIt Journey Gate 1',
+                radius=2500.0,
+                timeout_ms=7_500,
+            ),
+
+            # Encounter_ReBuilt.au3 drops Recall here before the second half
+            # of the journey.
+            _drop_hero_buff_for_skill_node(
+                HERO_SOS,
+                3,
+                name='Razah: Drop Journey Recall',
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                AUTOIT_MID_3,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            BT.Move(
+                AUTOIT_MID_4,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            BT.FlagHero(HERO_PROT_MESMER, -5606.0, -2916.0),
+            BT.FlagHero(HERO_BIP, -5606.0, -2916.0),
+            BT.FlagHero(HERO_SOS, -1119.0, -4683.0),
+            BT.FlagHero(HERO_ST, -1665.0, -6015.0),
+
+            _wait_for_enemy_presence_or_timeout(
+                'AutoIt Journey Gate 2',
+                radius=2500.0,
+                timeout_ms=7_500,
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                AUTOIT_STAIRS_APPROACH,
+                pause_on_combat=False,
+                tolerance=100.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            BT.Move(
+                AUTOIT_FARM_POSITION,
+                pause_on_combat=False,
+                tolerance=35.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            _hero_skill_node(HERO_BIP, 7, name='Olias: Protective Was Kaolai At Farm'),
+            _hero_skill_node(
+                HERO_ST,
+                8,
+                target=Player.GetAgentID,
+                name='Xandra: Inspirational Speech On Player At Farm',
+            ),
         ],
     )
 
 
 def _defensive_ball_tick(state: dict[str, float], enemy_count: int) -> None:
+    """Lightweight AutoIt StayAlive-style player support while waves gather."""
     now_ms = time.monotonic() * 1000.0
-    if now_ms - state.get('action_ms', 0.0) < 250.0:
+    if now_ms - state.get('action_ms', 0.0) < 500.0:
         return
 
     player_id = int(Player.GetAgentID() or 0)
     health = Agent.GetHealth(player_id)
-    adrenaline = _skill_adrenaline(8)
     casted = False
 
-    if enemy_count > 3 and adrenaline < 130:
-        casted = _cast_player_skill(5)
-    if not casted and health < 0.90:
+    # AutoIt always tries To the Limit! while holding the ball.
+    if _skill_adrenaline(4) < 130:
         casted = _cast_player_skill(3)
+
     if not casted and not _has_player_effect_for_slot(1):
         casted = _cast_player_skill(1)
-    if not casted and health < 0.60 and not _has_player_effect_for_slot(4):
-        casted = _cast_player_skill(4)
-    if not casted and health < 0.45:
-        casted = _cast_player_skill(2)
+
+    if not casted and health <= 0.70:
+        casted = _cast_player_skill(8)
+
+    if not casted and health <= 0.90:
+        casted = _cast_player_skill(6)
 
     if casted:
         state['action_ms'] = now_ms
 
 
 def PrepareStairsDefense() -> BehaviorTree:
+    """
+    Port Encounter_ReBuilt.au3 PlaceSpirits() states 0 -> 3.
+
+    Exact flag coordinates:
+      Razah  -> (-997, -4976)
+      Xandra -> (-4950, -7955)
+    """
     return BT.Sequence(
-        name='Prepare Stairs Defense',
+        name='Prepare Stairs Defense - AutoIt Spirits',
         children=[
-            BT.Wait(7_500),
-            BT.FlagHeroesFromList(
-                [HERO_VEKK, HERO_NORGU, HERO_RAZAH, HERO_OGDEN, HERO_MASTER_OF_WHISPERS],
-                -6707.0,
-                -5242.0,
+            # PlaceSpirits case 0.
+            _hero_skill_node(HERO_SOS, 8, name='Razah: Rejuvenation At Farm'),
+            _hero_skill_node(HERO_ST, 1, name='Xandra: Soul Twisting At Farm'),
+            _hero_skill_node(HERO_ST, 2, name='Xandra: Shelter'),
+
+            # PlaceSpirits case 1.
+            BT.FlagHero(HERO_SOS, -997.0, -4976.0),
+            _hero_skill_node(
+                HERO_SOS,
+                3,
+                target=lambda: _hero_agent_id(HERO_ST),
+                aftercast_ms=2_500,
+                name='Razah: Recall On Xandra At Farm',
             ),
-            _hero_skill_node(HERO_SOS, 5, name='Livia: Recuperation At Stairs'),
-            BT.Wait(2_000),
-            BT.FlagHero(HERO_SOS, -4818.0, -7841.0),
-            _hero_skill_node(HERO_PROT, 3, name='Xandra: Displacement At Stairs'),
-            BT.Wait(2_000),
-            BT.FlagHero(HERO_PROT, -4818.0, -7841.0),
+            _hero_skill_node(HERO_ST, 3, name='Xandra: Union'),
+
+            # PlaceSpirits case 2.
+            _hero_skill_node(HERO_ST, 7, name='Xandra: Armor Of Unfeeling'),
+
+            # PlaceSpirits case 3.
+            BT.FlagHero(HERO_ST, -4950.0, -7955.0),
+            _hero_skill_node(HERO_SOS, 7, name='Razah: Recuperation At Farm'),
         ],
     )
 
 
 def WaitForPurityBall() -> BehaviorTree:
-    state = {'action_ms': 0.0}
+    """
+    AutoIt-style WaitForFoes wave tracker.
 
-    def _ball_is_ready() -> BehaviorTree.NodeState:
+    1) wait until >=4 foes enter 1000 range (max 30s);
+    2) remember every unique foe seen in 1000;
+    3) mark a foe resolved once it reaches 200, leaves 1000, or dwells
+       outside 200 for 12s;
+    4) after an 18s no-new-arrival gate (or 60 unique seen), continue when
+       >=98% of seen foes are resolved;
+    5) hard-stop the wait after 60s, matching the AutoIt fallback.
+    """
+
+    state = {
+        'phase': 'arrival',
+        'phase_started_ms': 0.0,
+        'last_new_ms': 0.0,
+        'seen': {},
+        'action_ms': 0.0,
+    }
+
+    def _reset() -> None:
+        state['phase'] = 'arrival'
+        state['phase_started_ms'] = 0.0
+        state['last_new_ms'] = 0.0
+        state['seen'] = {}
+        state['action_ms'] = 0.0
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         if _mission_failed():
+            _reset()
             return BehaviorTree.NodeState.FAILURE
 
-        enemies = _enemy_ids_near(Player.GetXY(), 200.0)
-        if len(enemies) > 50 and _skill_adrenaline(8) >= 120:
-            _log('Purity ball is ready.', PySystem.Console.MessageType.Success)
+        now_ms = time.monotonic() * 1000.0
+        if state['phase_started_ms'] <= 0.0:
+            state['phase_started_ms'] = now_ms
+            state['last_new_ms'] = now_ms
+
+        in_1000 = set(_enemy_ids_near(Player.GetXY(), 1000.0))
+        in_200 = set(_enemy_ids_near(Player.GetXY(), 200.0))
+
+        # Keep the current Python defensive behavior active while waiting.
+        _defensive_ball_tick(state, len(in_200))
+
+        if state['phase'] == 'arrival':
+            if len(in_1000) >= 4 or now_ms - state['phase_started_ms'] >= 30_000.0:
+                state['phase'] = 'gather'
+                state['phase_started_ms'] = now_ms
+                state['last_new_ms'] = now_ms
+                state['seen'] = {}
+                _log(
+                    f'AutoIt wave tracker started with {len(in_1000)} foe(s) in 1000 range.'
+                )
+            else:
+                return BehaviorTree.NodeState.RUNNING
+
+        seen: dict[int, dict[str, int | bool]] = state['seen']
+
+        # Add newly seen foes.
+        for agent_id in in_1000:
+            if agent_id not in seen and len(seen) < 60:
+                seen[agent_id] = {
+                    'touched_200': False,
+                    'dwell_ticks': 0,
+                }
+                state['last_new_ms'] = now_ms
+
+        # Update resolution state. AutoIt ticks this every 500ms.
+        for agent_id, foe_state in seen.items():
+            if agent_id in in_200:
+                foe_state['touched_200'] = True
+
+            if agent_id in in_1000 and not bool(foe_state['touched_200']):
+                foe_state['dwell_ticks'] = int(foe_state['dwell_ticks']) + 1
+            else:
+                foe_state['dwell_ticks'] = 0
+
+        resolved = 0
+        for agent_id, foe_state in seen.items():
+            if (
+                bool(foe_state['touched_200'])
+                or agent_id not in in_1000
+                or int(foe_state['dwell_ticks']) >= 24  # 12s / 500ms
+            ):
+                resolved += 1
+
+        count_seen = len(seen)
+        no_arrivals_gate = (
+            count_seen >= 60
+            or now_ms - float(state['last_new_ms']) >= 18_000.0
+        )
+        required_resolved = int(count_seen * 0.98)
+
+        if (
+            count_seen > 0
+            and no_arrivals_gate
+            and resolved >= required_resolved
+        ):
+            _log(
+                f'AutoIt wave tracker complete: seen={count_seen}, resolved={resolved}.',
+                PySystem.Console.MessageType.Success,
+            )
+            _reset()
             return BehaviorTree.NodeState.SUCCESS
 
-        _defensive_ball_tick(state, len(enemies))
+        if now_ms - float(state['phase_started_ms']) >= 60_000.0:
+            _log(
+                f'AutoIt wave tracker reached 60s fallback: seen={count_seen}, resolved={resolved}; continuing.',
+                PySystem.Console.MessageType.Warning,
+            )
+            _reset()
+            return BehaviorTree.NodeState.SUCCESS
+
         return BehaviorTree.NodeState.RUNNING
 
-    wait_node = BehaviorTree(
-        BehaviorTree.WaitUntilNode(
-            name='Wait For Ministry Of Purity Ball',
-            condition_fn=_ball_is_ready,
-            throttle_interval_ms=100,
-            timeout_ms=45_000,
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Wait For Ministry Of Purity Ball - AutoIt Wave Tracker',
+            action_fn=_tick,
+            aftercast_ms=500,
         )
-    )
-    return BT.Selector(
-        [
-            wait_node,
-            _continue_after_wait_timeout(
-                'Wait For Ministry Of Purity Ball',
-                'Purity ball wait timed out; starting the spike.',
-            ),
-        ],
-        name='Wait For Ministry Of Purity Ball',
     )
 
 
 def SpikeMinistryOfPurity() -> BehaviorTree:
+    """
+    Encounter_ReBuilt.au3 Spike() core:
+    move Gwen/Olias away, apply weapon support, prime Honor, Hundred Blades,
+    then Whirlwind Attack the nearest foe inside 200.
+    """
     return BT.Sequence(
-        name='Spike Ministry Of Purity',
+        name='Spike Ministry Of Purity - AutoIt',
         children=[
-            _wait_for_player_resources(
-                'Wait For Banner Resources',
-                min_energy=13.0,
-                min_adrenaline=120,
-                timeout_ms=10_000,
-            ),
-            _player_skill_node(6, name='Ebon Battle Standard Of Honor'),
-            _wait_for_player_resources(
-                'Wait For Hundred Blades Resources',
-                min_energy=5.0,
-                min_adrenaline=120,
-                timeout_ms=5_000,
-            ),
-            _player_skill_node(7, name='Hundred Blades'),
-            _wait_for_player_resources(
-                'Wait For Whirlwind Adrenaline',
-                min_energy=-1.0,
-                min_adrenaline=120,
-                timeout_ms=5_000,
-            ),
-            _player_skill_node(
-                8,
-                target=lambda: _nearest_enemy(Player.GetXY(), 200.0),
-                name='Whirlwind Attack',
-            ),
+            BT.FlagHero(HERO_PROT_MESMER, -6799, -2849),
+            BT.FlagHero(HERO_BIP, -6799, -2849),
+            _hero_skill_node(HERO_SOS,4,target=Player.GetAgentID,aftercast_ms=1_500,name='Razah: Weapon Support On Player',),
+            BT.FlagHero(HERO_SOS, -4950.0, -7955.0),
+            _drop_hero_buff_for_skill_node(HERO_SOS,3,name='Razah: Drop Farm Recall',),
+            _wait_for_heroes_out_of_loot_range(timeout_ms=15_000),
+            _wait_for_player_resources('Wait For AutoIt Spike Resources',min_energy=5.0,min_adrenaline=130,timeout_ms=15_000,),
+            _player_skill_node(7, name='Player: Ebon Battle Standard Of Honor'),
+            _player_skill_node(2, name='Player: Hundred Blades'),
+            BT.Wait(250),
+            _player_skill_node(4,target=lambda: _nearest_enemy(Player.GetXY(), 200.0),name='Player: Whirlwind Attack',),
             BT.Wait(3_000),
         ],
     )
@@ -1158,29 +1912,29 @@ def LootAndReturn() -> BehaviorTree:
     return BT.Sequence(
         name='Loot Commendations And Return',
         children=[
-            _optional_commendation_loot(timeout_ms=10_000),
-            BT.LootItems(distance=Range.Compass.value, timeout_ms=15_000),
-            BT.Travel(target_map_id=KAINENG_CENTER, log=True),
+            # HeroAI is required for looting, but combat must stay disabled.
+            BottingTree.EnableHeroAITree(reset_runtime=True),
+            BottingTree.DisableCombatTree(),
+            BottingTree.EnableLootingTree(),
+
+            BT.Wait(500),
+
+            BT.LootItems(
+                distance=Range.Spirit.value,
+                timeout_ms=15_000,
+            ),
+
+            BottingTree.DisableLootingTree(),
+            BottingTree.DisableHeroAITree(reset_runtime=True),
+
+            BT.Wait(250),
+
+            BT.Travel(
+                target_map_id=KAINENG_CENTER,
+                log=True,
+            ),
         ],
     )
-
-
-def _run_point_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
-    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
-    for index, point in enumerate(RUN_TO_KILL_SPOT, start=1):
-        name = f'Run To Kill Spot - Point {index:02d}'
-        tolerance = 15.0 if index == len(RUN_TO_KILL_SPOT) else 125.0
-        steps.append(
-            (
-                name,
-                lambda point=point, name=name, tolerance=tolerance: _run_point(
-                    point,
-                    name,
-                    tolerance=tolerance,
-                ),
-            )
-        )
-    return steps
 
 
 def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
@@ -1192,7 +1946,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ('Prepare First Fight', PrepareFirstFight),
         ('Fight Initial Group', InitialFight),
         ('Finish Initial Fight', FinishInitialFight),
-        *_run_point_steps(),
+        ('Run To Stairs', RunToStairs),
         ('Prepare Stairs Defense', PrepareStairsDefense),
         ('Wait For Purity Ball', WaitForPurityBall),
         ('Spike Ministry Of Purity', SpikeMinistryOfPurity),
@@ -1220,7 +1974,7 @@ def ensure_botting_tree() -> BottingTree:
 
 def _configure_botting_tree(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
-        looting_enabled=False,
+        looting_enabled=True,
         resurrection_scroll=False,
         auto_inventory_handler_enabled=True,
         enable_party_wipe_recovery=False,
@@ -1229,7 +1983,6 @@ def _configure_botting_tree(tree: BottingTree) -> None:
     # SetMainRoutine adds the native wipe service after this anchor. This order
     # lets the anchor replace the current step before native recovery captures it.
     tree.AddServiceTree('MissionRestartAnchor', MissionRestartAnchorService)
-    tree.AddServiceTree('MysticHealing', MysticHealingService)
 
 
 def main() -> None:

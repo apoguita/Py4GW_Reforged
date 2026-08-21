@@ -173,6 +173,23 @@ class BottingTreeHeroAIMixin:
         except Exception:
             return False
 
+    def SetCombatEnabled(
+        self: _BottingTreeHeroAIHost,
+        enabled: bool,
+    ) -> bool:
+        self.headless_heroai.SetCombatEnabled(enabled)
+        self.blackboard['combat_enabled'] = bool(enabled)
+        return True
+
+    def EnableCombat(self: _BottingTreeHeroAIHost) -> bool:
+        return self.SetCombatEnabled(True)
+
+    def DisableCombat(self: _BottingTreeHeroAIHost) -> bool:
+        return self.SetCombatEnabled(False)
+
+    def IsCombatEnabled(self: _BottingTreeHeroAIHost) -> bool:
+        return self.headless_heroai.IsCombatEnabled()
+
     def SetHeadlessHeroAIEnabled(self: _BottingTreeHeroAIHost, enabled: bool, reset_runtime: bool = True):
         self.headless_heroai_enabled = enabled
         self._last_heroai_state = None
@@ -389,6 +406,41 @@ class BottingTreeHeroAIMixin:
                 action_fn=_request_toggle,
                 aftercast_ms=0,
             )
+        )
+
+    @staticmethod
+    def GetCombatSetEnabledTree(
+        enabled: bool,
+        name: str | None = None,
+    ) -> BehaviorTree:
+        node_name = name or ('EnableCombat' if enabled else 'DisableCombat')
+
+        def _request_toggle(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+            node.blackboard['combat_enabled_request'] = enabled
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree(
+            BehaviorTree.ActionNode(
+                name=node_name,
+                action_fn=_request_toggle,
+                aftercast_ms=0,
+            )
+        )
+
+
+    @staticmethod
+    def EnableCombatTree() -> BehaviorTree:
+        return BottingTreeHeroAIMixin.GetCombatSetEnabledTree(
+            True,
+            name='EnableCombat',
+        )
+
+
+    @staticmethod
+    def DisableCombatTree() -> BehaviorTree:
+        return BottingTreeHeroAIMixin.GetCombatSetEnabledTree(
+            False,
+            name='DisableCombat',
         )
 
     @staticmethod
