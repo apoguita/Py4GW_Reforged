@@ -81,6 +81,23 @@ template_code = ""
 configure_consumables_window_open: bool = False
 configure_base_consumables_window_open: bool = False
 
+
+def _live_hero_options(account_data: AccountStruct) -> HeroAIOptionStruct | None:
+    """Resolve the live shared-memory HeroAI options for an account.
+
+    Shared-memory structs are live views, so mutating them publishes the change
+    to every client. The party-cache options are detached copies (see
+    party_cache.detached_hero_ai_options) and must not be used as a write target.
+    Hero slots share their owner's email, so they resolve by party number first.
+    """
+    if account_data.IsHero:
+        return GLOBAL_CACHE.ShMem.GetHeroAIOptionsByPartyNumber(int(account_data.AgentPartyData.PartyPosition))
+    live = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_data.AccountEmail)
+    if live is not None:
+        return live
+    return GLOBAL_CACHE.ShMem.GetHeroAIOptionsByPartyNumber(int(account_data.AgentPartyData.PartyPosition))
+
+
 widget_handler = get_widget_handler()
 module_info = None
 
@@ -698,6 +715,9 @@ def draw_skill_bar(height: float, account_data: AccountStruct, hero_options: Opt
             if io.key_shift:
                 if hero_options:
                     hero_options.Skills[slot] = not hero_options.Skills[slot]
+                    live_options = _live_hero_options(account_data)
+                    if live_options is not None:
+                        live_options.Skills[slot] = hero_options.Skills[slot]
 
             else:
                 target_id = get_skill_target(account_data, skill)
@@ -1238,16 +1258,22 @@ def draw_buttons(account_data: AccountStruct, cached_data: CacheData, message_qu
             return -1
         
         def clear_hero_flag():
+            live_options = _live_hero_options(account_data)
+            if live_options is not None:
+                live_options.IsFlagged = False
+                live_options.FlagPos.x = 0.0
+                live_options.FlagPos.y = 0.0
+                live_options.AllFlag.x = 0.0
+                live_options.AllFlag.y = 0.0
+                live_options.FlagFacingAngle = 0.0
             options = cached_data.party.options.get(account_data.AgentData.AgentID)
-            if not options:
-                return -1
-            
-            options.IsFlagged = False
-            options.FlagPos.x = 0.0
-            options.FlagPos.y = 0.0
-            options.AllFlag.x = 0.0
-            options.AllFlag.y = 0.0
-            options.FlagFacingAngle = 0.0
+            if options:
+                options.IsFlagged = False
+                options.FlagPos.x = 0.0
+                options.FlagPos.y = 0.0
+                options.AllFlag.x = 0.0
+                options.AllFlag.y = 0.0
+                options.FlagFacingAngle = 0.0
             party_pos = int(account_data.AgentPartyData.PartyPosition)
             if 0 < party_pos <= GLOBAL_CACHE.Party.GetHeroCount():
                 GLOBAL_CACHE.Party.Heroes.UnflagHero(party_pos)
@@ -1520,6 +1546,9 @@ def draw_hero_panel(window: WindowModule, account_data: AccountStruct, cached_da
                 
                 if active != value:
                     ConsoleLog("HeroAI", f"Set {name} to {active} for hero {account_data.AgentData.CharacterName} | Party Position {account_data.AgentPartyData.PartyPosition}")
+                    live_options = _live_hero_options(account_data)
+                    if live_options is not None and hasattr(live_options, name):
+                        setattr(live_options, name, active)
                     setattr(options, name, active)
                 
                 PyImGui.same_line(0, 2)

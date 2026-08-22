@@ -34,6 +34,10 @@ from .IntentStruct import IntentStruct
 #   from Py4GWCoreLib.GlobalCache.shared_memory_src import AllAccounts as _wb_mod
 #   _wb_mod.WHITEBOARD_DEBUG = True
 WHITEBOARD_DEBUG: bool = False
+
+#: How old a RUNNING message may be before SendMessage treats it as wedged (its coroutine died
+#: before cleanup) instead of mid-flight. Must exceed the longest legitimate command runtime.
+_MESSAGE_RUNNING_STALE_MS = 60_000
 _HERO_SUBMIT_RETRY_AFTER: dict[tuple[int, int], int] = {}
 _PET_SUBMIT_RETRY_AFTER: dict[tuple[int, int], int] = {}
 _SLOT_SUBMIT_RETRY_COOLDOWN_MS = 5000
@@ -943,6 +947,17 @@ class AllAccounts(Structure):
 
             if message.ReceiverEmail != receiver_email:
                 continue  # This slot is not for the intended receiver
+
+            if message.SenderEmail != sender_email:
+                continue  # This slot is from a different sender
+
+            if message.Running:
+                # A running message may be mid-flight (its coroutine is alive) or wedged (its
+                # coroutine died before cleanup). Reuse the slot only while it is fresh; a stale
+                # running message counts as dead so a new send can always get through.
+                if int(PySystem.get_tick_count64() - message.Timestamp) < _MESSAGE_RUNNING_STALE_MS:
+                    return i
+                continue
             
             if int(message.Command) != int(command.value):
                 continue  # This slot has a different command (could be from another sender)
@@ -957,7 +972,7 @@ class AllAccounts(Structure):
             if message_extra_data != normalized_extra_data:
                 continue  # This slot has different extra data (could be from another sender or an old message)
             
-            return i  # Matching active message is already queued/running; reuse it instead of duplicating it.
+            return i  # Matching pending message is already queued; reuse it instead of duplicating it.
         
         for i in range(SHMEM_MAX_PLAYERS):
             message = self.GetInbox(i)

@@ -303,6 +303,11 @@ class CacheData:
                     self._shmem_options_valid = True
 
                 self._republish_options_if_slot_changed()
+
+                leader_options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsByPartyNumber(0)
+                if leader_options is not None:
+                    self.global_options = detached_hero_ai_options(leader_options)
+
                 self.data.party_position = int(self.account_data.AgentPartyData.PartyPosition)
                 self.data.is_leader = bool(
                     getattr(self.account_data.AgentPartyData, "IsPartyLeader", False)

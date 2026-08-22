@@ -30,6 +30,18 @@ _SKILL_NAME_SUFFIXES: dict[str, str] = {
 }
 _skill_name_suffix_cache: dict[int, str] | None = None
 
+#: Muted red tints for the control panel's state toggles when they are OFF, so the live
+#: HeroAI option state is visible at a glance (ON keeps the theme colors).
+_OFF_TOGGLE_TINT = (170, 55, 55, 255)
+_OFF_TOGGLE_TINT_HOVERED = (200, 70, 70, 255)
+_OFF_TOGGLE_TINT_ACTIVE = (230, 90, 90, 255)
+
+#: Amber tints for the top-level (toggle-all) row when an option is on for some accounts
+#: but off for others, so a mixed state is never mistaken for "off everywhere".
+_MIXED_TOGGLE_TINT = (190, 140, 40, 255)
+_MIXED_TOGGLE_TINT_HOVERED = (215, 160, 50, 255)
+_MIXED_TOGGLE_TINT_ACTIVE = (240, 185, 60, 255)
+
 
 def _get_skill_name_suffix(skill_id: int) -> str:
     global _skill_name_suffix_cache
@@ -347,6 +359,68 @@ class HeroAI_BaseUI:
     def DrawPanelButtons(identifier: str, source_game_option: HeroAIOptionStruct, set_global: bool = False):
         style = ImGui.get_style()
 
+        def group_option_counts() -> dict[str, tuple[int, int]]:
+            """(accounts with the option ON, total accounts) per option, across the party's player accounts."""
+            option_names = ("Following", "Avoidance", "Looting", "Targeting", "Combat")
+            counts: dict[str, tuple[int, int]] = {name: (0, 0) for name in option_names}
+            party_cache: CacheData = CacheData()
+            for account in party_cache.party.accounts.values():
+                if (
+                    not account
+                    or not account.IsSlotActive
+                    or account.IsHero
+                    or account.AgentPartyData.PartyID != GLOBAL_CACHE.Party.GetPartyID()
+                ):
+                    continue
+                account_options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account.AccountEmail)
+                if not account_options:
+                    continue
+                for name in option_names:
+                    on, total = counts[name]
+                    counts[name] = (on + (1 if bool(getattr(account_options, name)) else 0), total + 1)
+            return counts
+
+        def draw_state_toggle(icon: str, label: str, value: bool, width: float, height: float) -> bool:
+            """A toggle button tinted by its live state: OFF red, mixed amber, ON theme.
+
+            The top-level (toggle-all) row passes party-wide counts via ``group_counts``: all
+            off -> red, mixed -> amber, all on -> theme. Per-account rows only have their own
+            value: off -> red, on -> theme.
+            """
+            counts = group_counts.get(label) if group_counts else None
+            if counts and counts[1] > 0:
+                if counts[0] == 0:
+                    state, base = "all_off", "disabled"
+                elif counts[0] < counts[1]:
+                    state, base = "mixed", "enabled" if value else "disabled"
+                else:
+                    state, base = "all_on", "enabled"
+            else:
+                state, base = ("all_off", "disabled") if not value else ("all_on", "enabled")
+
+            tint = None
+            if state == "all_off":
+                tint = (_OFF_TOGGLE_TINT, _OFF_TOGGLE_TINT_HOVERED, _OFF_TOGGLE_TINT_ACTIVE)
+            elif state == "mixed":
+                tint = (_MIXED_TOGGLE_TINT, _MIXED_TOGGLE_TINT_HOVERED, _MIXED_TOGGLE_TINT_ACTIVE)
+
+            trio = (
+                (style.ToggleButtonEnabled, style.ToggleButtonEnabledHovered, style.ToggleButtonEnabledActive)
+                if base == "enabled"
+                else (style.ToggleButtonDisabled, style.ToggleButtonDisabledHovered, style.ToggleButtonDisabledActive)
+            )
+            if tint:
+                for color, rgba in zip(trio, tint):
+                    color.push_color(rgba)
+            clicked = ImGui.toggle_button(icon + "##" + label + identifier, value, width, height)
+            if tint:
+                for color, _rgba in zip(trio, tint):
+                    color.pop_color()
+            ImGui.show_tooltip(
+                "%s - %d/%d accounts on" % (label, counts[0], counts[1]) if counts and counts[1] > 0 else label
+            )
+            return clicked
+
         def set_global_option(game_option: HeroAIOptionStruct, option_name: str = "", skill_index: int = -1):
             cached_data: CacheData = CacheData()
             accounts = cached_data.party.accounts.values()
@@ -381,48 +455,55 @@ class HeroAI_BaseUI:
         style.ItemSpacing.push_style_var(0, 0)
         style.CellPadding.push_style_var(2, 2)
 
+        group_counts = group_option_counts() if set_global else None
+
         if PyImGui.begin_table(f"GameOptionTable##{identifier}", 5, 0, table_width, btn_size + 2):
             PyImGui.table_next_row()
             PyImGui.table_next_column()
-            following = ImGui.toggle_button(IconsFontAwesome5.ICON_RUNNING + "##Following" + identifier, source_game_option.Following, btn_size, btn_size)
+            following = draw_state_toggle(
+                IconsFontAwesome5.ICON_RUNNING, "Following", source_game_option.Following, btn_size, btn_size
+            )
             if following != source_game_option.Following:
                 source_game_option.Following = following
                 if set_global:
                     set_global_option(source_game_option, "Following")
-            ImGui.show_tooltip("Following")
 
             PyImGui.table_next_column()
-            avoidance = ImGui.toggle_button(IconsFontAwesome5.ICON_PODCAST + "##Avoidance" + identifier, source_game_option.Avoidance, btn_size, btn_size)
+            avoidance = draw_state_toggle(
+                IconsFontAwesome5.ICON_PODCAST, "Avoidance", source_game_option.Avoidance, btn_size, btn_size
+            )
             if avoidance != source_game_option.Avoidance:
                 source_game_option.Avoidance = avoidance
                 if set_global:
                     set_global_option(source_game_option, "Avoidance")
-            ImGui.show_tooltip("Avoidance")
 
             PyImGui.table_next_column()
-            looting = ImGui.toggle_button(IconsFontAwesome5.ICON_COINS + "##Looting" + identifier, source_game_option.Looting, btn_size, btn_size)
+            looting = draw_state_toggle(
+                IconsFontAwesome5.ICON_COINS, "Looting", source_game_option.Looting, btn_size, btn_size
+            )
             if looting != source_game_option.Looting:
                 source_game_option.Looting = looting
                 if set_global:
                     set_global_option(source_game_option, "Looting")
-            ImGui.show_tooltip("Looting")
 
             PyImGui.table_next_column()
-            targeting = ImGui.toggle_button(IconsFontAwesome5.ICON_BULLSEYE + "##Targeting" + identifier, source_game_option.Targeting, btn_size, btn_size)
+            targeting = draw_state_toggle(
+                IconsFontAwesome5.ICON_BULLSEYE, "Targeting", source_game_option.Targeting, btn_size, btn_size
+            )
             if targeting != source_game_option.Targeting:
                 source_game_option.Targeting = targeting
                 if set_global:
                     ConsoleLog("HeroAI", f"Setting Targeting to {targeting} for all heroes in party.")
                     set_global_option(source_game_option, "Targeting")
-            ImGui.show_tooltip("Targeting")
 
             PyImGui.table_next_column()
-            combat = ImGui.toggle_button(IconsFontAwesome5.ICON_SKULL_CROSSBONES + "##Combat" + identifier, source_game_option.Combat, btn_size, btn_size)
+            combat = draw_state_toggle(
+                IconsFontAwesome5.ICON_SKULL_CROSSBONES, "Combat", source_game_option.Combat, btn_size, btn_size
+            )
             if combat != source_game_option.Combat:
                 source_game_option.Combat = combat
                 if set_global:
                     set_global_option(source_game_option, "Combat")
-            ImGui.show_tooltip("Combat")
             PyImGui.end_table()
 
         style.ButtonPadding.push_style_var(5 if style.Theme not in ImGui.Textured_Themes else 0, 3 if style.Theme not in ImGui.Textured_Themes else 2)
@@ -2329,7 +2410,9 @@ class HeroAI_BaseUI:
                 for account in sorted_by_party_position:
                     if account and account.IsSlotActive and not account.IsHero and account.AgentPartyData.PartyID == GLOBAL_CACHE.Party.GetPartyID():
                         index += 1
-                        original_game_option = cached_data.party.options.get(account.AgentData.AgentID)
+                        original_game_option = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account.AccountEmail)
+                        if original_game_option is None:
+                            original_game_option = cached_data.party.options.get(account.AgentData.AgentID)
                         if PyImGui.tree_node(f"{index}. {account.AgentData.CharacterName}##ControlPlayer{index}"):
                             if original_game_option is not None:
                                 HeroAI_BaseUI.DrawPanelButtons(account.AccountEmail, original_game_option)

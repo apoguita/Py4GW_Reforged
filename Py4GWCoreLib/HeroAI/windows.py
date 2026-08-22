@@ -13,8 +13,18 @@ from .globals import capture_mouse_timer, show_area_rings, show_hero_follow_grid
 from .utils import IsHeroFlagged, DrawFlagAll, DrawHeroFlag, DistanceFromWaypoint, SameMapAsAccount
 from .settings import Settings
 
-from .ui import (draw_combined_hero_panel, draw_command_panel, draw_configure_window, draw_dialog_overlay,
-                       draw_hero_panel, draw_party_overlay, draw_party_search_overlay, draw_skip_cutscene_overlay)
+from .ui import (
+    draw_base_consumables_window,
+    draw_combined_hero_panel,
+    draw_command_panel,
+    draw_configure_window,
+    draw_consumables_window,
+    draw_dialog_overlay,
+    draw_hero_panel,
+    draw_party_overlay,
+    draw_party_search_overlay,
+    draw_skip_cutscene_overlay,
+)
 from .call_target import CallTarget
 
 from .cache_data import CacheData
@@ -231,6 +241,11 @@ class HeroAI_FloatingWindows():
             # Command Hotbars are deprecated — their commands now live on the Launch Bar (see
             # Py4GWCoreLib/HeroAI/command_api.py). The saved hotbar data is kept only so the "Import to Launch
             # Bar" button in the Hotbars settings tab can migrate it; it is no longer rendered.
+            # The consumables windows used to be hosted by the hotbar renderer; keep drawing them here
+            # so "Open Consumables" (launch bar / command catalog) and the base-UI candy-cane toggle work.
+
+            draw_consumables_window(cached_data)
+            draw_base_consumables_window(cached_data)
 
             draw_dialog_overlay(cached_data, HeroAI_FloatingWindows.messages)
     

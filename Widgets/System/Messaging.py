@@ -2122,19 +2122,20 @@ def PickUpLoot(index:int , message: SharedMessageStruct):
         SHMEM_ZERO_EPOCH = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
         return int((time.time() - SHMEM_ZERO_EPOCH) * 1000)
 
-    GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
-    SnapshotHeroAIOptions(message.ReceiverEmail)
-
-    loot_array = LootFilters().GetLootArray(Range.Earshot.value)
-    if len(loot_array) == 0:
-        RestoreHeroAISnapshot(message.ReceiverEmail)
-        GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
-        return
-
-    ConsoleLog(MODULE_NAME, "Starting PickUpLoot routine", Console.MessageType.Info, False)
-
     claimed_item_id = 0
     try:
+        # Everything from the running-mark down lives inside the try so the finally below always
+        # restores HeroAI options and finishes the message -- even when a step raises, a wedged
+        # (never-finished) message can no longer be left behind to swallow future PickUpLoot sends.
+        GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
+        SnapshotHeroAIOptions(message.ReceiverEmail)
+
+        loot_array = LootFilters().GetLootArray(Range.Earshot.value)
+        if len(loot_array) == 0:
+            return
+
+        ConsoleLog(MODULE_NAME, "Starting PickUpLoot routine", Console.MessageType.Info, False)
+
         DisableHeroAIOptions(message.ReceiverEmail)
         yield from Routines.Yield.wait(100)
         while True:
