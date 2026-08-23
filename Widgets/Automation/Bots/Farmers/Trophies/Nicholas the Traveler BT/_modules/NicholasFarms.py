@@ -127,9 +127,21 @@ FARMS: tuple[FarmDefinition, ...] = (
         items_for_5_gifts=10,
         collector_item_name='',
         collector_item_model_id=0,
-        exchange_town_map_id=0,
-        exchange_actions=(),
-        nicholas_position=None,
+        exchange_town_map_id=138,
+        exchange_actions=(('exit',(-5220,16035),18),
+                            ('move',(-8563,11415),0),
+                           ('move',(-13478,11068),0), 
+                           ('move',(-17004,10779),0), 
+                           ('move',(-19895,3146),0), 
+                           ('exit',(-20205,2127),837),
+                            ('move',(18595,844),0),
+                            ('move',(11018,8291),0),
+                            ('move',(5898,7838),0),
+                            ('move',(-397,8956),0),
+                            ('move',(-5649,9178),0),
+                            ('move',(-10345,9377),0),
+                            ('move',(-12820,10537),0)),
+        nicholas_position=(-13601.00, 13027.00),
         exchange_source_file='',
     ),
     FarmDefinition(
@@ -158,7 +170,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-9430.23, 10991.82), 0),
  ('move', (-7938.23, 11176.07), 0)),
         nicholas_position=(-7938.23, 11176.07),
-        exchange_source_file='BehemothHideExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='behemoth_jaw',
@@ -223,7 +235,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-2218.03, -7041.58), 0),
  ('move', (-2465.53, -6692.84), 0)),
         nicholas_position=(-2465.53, -6692.84),
-        exchange_source_file='BehemothJawExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='berserker_horn',
@@ -271,7 +283,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('move', (9812.02, 5666.01), 0),
  ('move', (9349.85, 5408.14), 0)),
         nicholas_position=(9349.85, 5408.14),
-        exchange_source_file='BerserkerHornExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='black_pearl',
@@ -368,7 +380,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (6730.03, 8457.76), 0),
  ('move', (7352.07, 8691.96), 0)),
         nicholas_position=(7352.07, 8691.96),
-        exchange_source_file='HerringExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='bone_charm',
@@ -433,7 +445,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-8567.54, 3638.91), 0),
  ('move', (-8586.86, 3638.91), 0)),
         nicholas_position=(-8586.86, 3638.91),
-        exchange_source_file='BoneCharmExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='branches_of_juni_berries',
@@ -512,7 +524,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-8410.19, -1260.24), 0),
  ('move', (-8518.22, -1877.28), 0)),
         nicholas_position=(-8518.22, -1877.28),
-        exchange_source_file='BranchOfJuniBerriesExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='charr_hide',
@@ -550,7 +562,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (21944.48, -9107.48), 0),
  ('move', (22389.42, -9988.51), 0)),
         nicholas_position=(22389.42, -9988.51),
-        exchange_source_file='CharrHideExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='chromatic_scale',
@@ -592,7 +604,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('move', (-6024.72, 1781.09), 0),
  ('move', (-6263.75, 2426.93), 0)),
         nicholas_position=(-6263.75, 2426.93),
-        exchange_source_file='ChromaticScaleExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='chunk_of_drake_flesh',
@@ -627,7 +639,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (17859.78, -4117.22), 0),
  ('move', (17654.28, -4255.79), 0)),
         nicholas_position=(17654.28, -4255.79),
-        exchange_source_file='DrakeKabobExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='cobalt_talon',
@@ -791,7 +803,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-17756.98, 10322.24), 0),
  ('move', (-18298.55, 10083.31), 0)),
         nicholas_position=(-18298.55, 10083.31),
-        exchange_source_file='DemonicRelicExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='dessicated_hydra_claw',
@@ -844,7 +856,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-5096.56, -7097.82), 0),
  ('move', (-5512.0, -6766.01), 0)),
         nicholas_position=(-5512.0, -6766.01),
-        exchange_source_file='DessicatedHydraClawExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='diamond_djinn_essence',
@@ -905,7 +917,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (3246.69, 3110.63), 0),
  ('move', (2836.56, 3382.78), 0)),
         nicholas_position=(2836.56, 3382.78),
-        exchange_source_file='DragonRootExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='enslavement_stones',
@@ -1005,7 +1017,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-8252.36, 20626.65), 0),
  ('move', (-7665.12, 20432.14), 0)),
         nicholas_position=(-7665.12, 20432.14),
-        exchange_source_file='FeatheredCaromiScalpExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='fetid_carapace',
@@ -1056,7 +1068,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-5595.76, -13379.34), 0),
  ('move', (-5672.5, -14176.26), 0)),
         nicholas_position=(-5672.5, -14176.26),
-        exchange_source_file='FetidCarapaceExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='forest_minotaur_horn',
@@ -1152,7 +1164,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-18052.68, 9746.74), 0),
  ('move', (-18482.52, 10390.46), 0)),
         nicholas_position=(-18482.52, 10390.46),
-        exchange_source_file='ForestMinotaurHornExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='forgotten_seal',
@@ -1218,7 +1230,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-6109.76, 4376.41), 0),
  ('move', (-6718.55, 3383.6), 0)),
         nicholas_position=(-6718.55, 3383.6),
-        exchange_source_file='FrigidHeartExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='forgotten_trinket_box',
@@ -1314,7 +1326,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-6593.35, -3308.37), 0),
  ('move', (-7104.38, -2503.05), 0)),
         nicholas_position=(-7104.38, -2503.05),
-        exchange_source_file='FrostedGriffonWingExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='frostfire_fang',
@@ -1359,7 +1371,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-6281.0, -14961.38), 0),
  ('move', (-5926.7, -14853.96), 0)),
         nicholas_position=(-5926.7, -14853.96),
-        exchange_source_file='FrostfireFangExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='gloom_seed',
@@ -1439,7 +1451,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('move', (-16750.98, -14984.51), 0),
  ('move', (-19660.82, -16544.92), 0)),
         nicholas_position=(-19660.82, -16544.92),
-        exchange_source_file='GloomSeedExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='glowing_heart',
@@ -1481,7 +1493,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (1205.54, 9082.69), 0),
  ('move', (1249.0, 9156.0), 0)),
         nicholas_position=(1249.0, 9156.0),
-        exchange_source_file='GlowingHeartExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='gold_crimson_skull_coin',
@@ -1523,7 +1535,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-8612.04, 6116.69), 0),
  ('move', (-9270.93, 4361.1), 0)),
         nicholas_position=(-9270.93, 4361.1),
-        exchange_source_file='GoldCrimsonSkullCoinExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='gold_doubloon',
@@ -1582,7 +1594,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-3309.23, -2950.13), 0),
  ('move', (-5335.6, -2907.05), 0)),
         nicholas_position=(-5335.6, -2907.05),
-        exchange_source_file='GoldDoubloonExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='grawl_necklace',
@@ -1666,7 +1678,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('move', (6944.22, 4756.87), 0),
  ('move', (6881.55, 4178.77), 0)),
         nicholas_position=(6881.55, 4178.77),
-        exchange_source_file='GrawlNecklaceExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='hardened_hump',
@@ -1710,7 +1722,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (13161.71, -3789.87), 0),
  ('move', (12348.99, -3576.61), 0)),
         nicholas_position=(12348.99, -3576.61),
-        exchange_source_file='HardenedHumpExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='icy_lodestone',
@@ -1772,7 +1784,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (1521.15, -2067.39), 0),
  ('move', (2033.53, -2674.17), 0)),
         nicholas_position=(2033.53, -2674.17),
-        exchange_source_file='IcyLodestoneExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='insect_carapace',
@@ -1848,7 +1860,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-4016.22, -6547.97), 0),
  ('move', (-3418.23, -6698.19), 0)),
         nicholas_position=(-3418.23, -6698.19),
-        exchange_source_file='IntricateGrawlNecklaceExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='jade_bracelet',
@@ -1919,7 +1931,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-1658.52, -42.06), 0),
  ('move', (-1820.57, -770.18), 0)),
         nicholas_position=(-1820.57, -770.18),
-        exchange_source_file='JadeBraceletExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='jade_mandible',
@@ -1996,7 +2008,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (25817.08, 8012.46), 0),
  ('move', (24078.99, 10196.81), 0)),
         nicholas_position=(24078.99, 10196.81),
-        exchange_source_file='JungleTrollTuskExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='keen_oni_talon',
@@ -2041,7 +2053,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (10442.77, 12283.12), 0),
  ('move', (10902.29, 12244.11), 0)),
         nicholas_position=(10902.29, 12244.11),
-        exchange_source_file='KeenOniTalonExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='luminous_stone',
@@ -2109,7 +2121,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-10930.89, 9701.38), 0),
  ('move', (-11029.2, 10195.1), 0)),
         nicholas_position=(-11029.2, 10195.1),
-        exchange_source_file='LuminousStoneExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='maguuma_spider_web',
@@ -2240,7 +2252,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (8215.39, -15120.43), 0),
  ('move', (8537.78, -16453.83), 0)),
         nicholas_position=(8537.78, -16453.83),
-        exchange_source_file='MaguumaManeExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='mahgo_claw',
@@ -2267,7 +2279,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-3112.93, -3914.97), 0),
  ('move', (-3125.87, -4360.4), 0)),
         nicholas_position=(-3125.87, -4360.4),
-        exchange_source_file='MahgoClawExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='mandragor_root',
@@ -2329,7 +2341,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (999.42, -10572.45), 0),
  ('move', (999.42, -10572.45), 0)),
         nicholas_position=(999.42, -10572.45),
-        exchange_source_file='MandragorRootCakeExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='mandragor_swamproot',
@@ -2367,7 +2379,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (4920.06, 4593.95), 0),
  ('move', (5313.9, 4479.94), 0)),
         nicholas_position=(5313.9, 4479.94),
-        exchange_source_file='MandragorSwamprootExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='mantid_pincer',
@@ -2402,7 +2414,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-3112.93, -3914.97), 0),
  ('move', (-3125.87, -4360.4), 0)),
         nicholas_position=(-3125.87, -4360.4),
-        exchange_source_file='MantidPincerExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='massive_jawbone',
@@ -2469,7 +2481,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (9130.23, -6784.57), 0),
  ('move', (7633.52, -7703.06), 0)),
         nicholas_position=(7633.52, -7703.06),
-        exchange_source_file='MassiveJawboneExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='minotaur_horn',
@@ -2510,7 +2522,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-4692.7, 6600.67), 0),
  ('move', (-5665.86, 7151.15), 0)),
         nicholas_position=(-5665.86, 7151.15),
-        exchange_source_file='MinotaurHornExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='modniir_mane',
@@ -2584,7 +2596,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-10191.68, 7127.91), 0),
  ('move', (-11577.36, 7328.5), 0)),
         nicholas_position=(-11577.36, 7328.5),
-        exchange_source_file='ModniirManeExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='moon_shell',
@@ -2634,7 +2646,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (4860.8, 7226.77), 0),
  ('move', (5140.17, 7622.96), 0)),
         nicholas_position=(5140.17, 7622.96),
-        exchange_source_file='MoonShellExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='mossy_mandible',
@@ -2760,7 +2772,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-13234.86, -10341.48), 0),
  ('move', (-13778.24, -10568.45), 0)),
         nicholas_position=(-13778.24, -10568.45),
-        exchange_source_file='MursaatTokenExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='naga_hide',
@@ -2830,7 +2842,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-964.74, -6952.76), 0),
  ('move', (-403.02, -6775.6), 0)),
         nicholas_position=(-403.02, -6775.6),
-        exchange_source_file='NagaSkinExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='pile_of_elemental_dust',
@@ -2875,7 +2887,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-2963.93, -5407.76), 0),
  ('move', (-2971.24, -6135.84), 0)),
         nicholas_position=(-2971.24, -6135.84),
-        exchange_source_file='PileOfElementalDustExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='pillaged_goods',
@@ -2938,7 +2950,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (2485.6, 6805.99), 0),
  ('move', (1928.04, 6545.46), 0)),
         nicholas_position=(1928.04, 6545.46),
-        exchange_source_file='PillagedGoodsExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='putrid_cyst',
@@ -2993,7 +3005,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (6446.96, -463.67), 0),
  ('move', (5665.55, -684.66), 0)),
         nicholas_position=(5665.55, -684.66),
-        exchange_source_file='PutridCystExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='roaring_ether_claw',
@@ -3046,7 +3058,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (4066.9, 14033.65), 0),
  ('move', (4528.17, 14799.96), 0)),
         nicholas_position=(4528.17, 14799.96),
-        exchange_source_file='RoaringEtherClawExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='rot_wallow_tusk',
@@ -3091,7 +3103,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (14675.73, 5439.11), 0),
  ('move', (15464.6, 7647.86), 0)),
         nicholas_position=(15464.6, 7647.86),
-        exchange_source_file='RotWallowTuskExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='ruby_djinn_essence',
@@ -3144,7 +3156,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (10266.17, 5678.8), 0),
  ('move', (10158.07, 7126.42), 0)),
         nicholas_position=(10158.07, 7126.42),
-        exchange_source_file='RubyDjinnEssenceExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='sapphire_djinn_essence',
@@ -3198,7 +3210,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-4623.06, -2073.31), 0),
  ('move', (-6952.0, -3584.14), 0)),
         nicholas_position=(-6952.0, -3584.14),
-        exchange_source_file='SapphireDjinnEssenceExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='sandblasted_lodestone',
@@ -3337,7 +3349,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (19929.76, -4901.13), 0),
  ('move', (20991.41, -6017.37), 0)),
         nicholas_position=(20991.41, -6017.37),
-        exchange_source_file='SaurianBoneExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='sentient_lodestone',
@@ -3383,7 +3395,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-5724.46, 8011.3), 0),
  ('move', (-4734.89, 8223.62), 0)),
         nicholas_position=(-4734.89, 8223.62),
-        exchange_source_file='SentientLodestoneExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='sentient_spore',
@@ -3442,7 +3454,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (4237.68, -11121.75), 0),
  ('move', (4508.89, -11557.75), 0)),
         nicholas_position=(4508.89, -11557.75),
-        exchange_source_file='BottleOfVabbianWineExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='sentinent_seed',
@@ -3495,7 +3507,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-4823.32, 5620.77), 0),
  ('move', (-4762.22, 4863.18), 0)),
         nicholas_position=(-4762.22, 4863.18),
-        exchange_source_file='SentinentSeedExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='shiverpeak_mane',
@@ -3569,7 +3581,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('move', (-9563.13, -1105.83), 0),
  ('move', (-9466.59, -876.82), 0)),
         nicholas_position=(-9466.59, -876.82),
-        exchange_source_file='ShiverpeakManeExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='shriveled_eye',
@@ -3626,7 +3638,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (12503.21, -16266.62), 0),
  ('move', (12670.09, -15345.97), 0)),
         nicholas_position=(12670.09, -15345.97),
-        exchange_source_file='ShriveledEyeExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='silver_bullion_coin',
@@ -3685,7 +3697,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (918.86, -3311.89), 0),
  ('move', (641.74, -3464.76), 0)),
         nicholas_position=(641.74, -3464.76),
-        exchange_source_file='SilverBullionCoinExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='skale_fin',
@@ -3734,7 +3746,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-2605.22, 12828.85), 0),
  ('move', (-2941.6, 15188.67), 0)),
         nicholas_position=(-2941.6, 15188.67),
-        exchange_source_file='BowlOfSkalefinSoupExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='skelk_claw',
@@ -3792,7 +3804,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-6094.49, -13218.39), 0),
  ('move', (-5389.75, -13221.19), 0)),
         nicholas_position=(-5389.75, -13221.19),
-        exchange_source_file='SkelkClawExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='skree_wing',
@@ -3854,7 +3866,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-3579.28, -5586.15), 0),
  ('move', (-2338.85, -4831.58), 0)),
         nicholas_position=(-2338.85, -4831.58),
-        exchange_source_file='SkreeWingExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='skull_juju',
@@ -3897,7 +3909,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (6278.61, 13489.73), 0),
  ('move', (6319.7, 13736.5), 0)),
         nicholas_position=(6319.7, 13736.5),
-        exchange_source_file='SkullJujuExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='soul_stone',
@@ -4013,7 +4025,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (5139.46, -2330.37), 0),
  ('move', (5023.71, -1183.87), 0)),
         nicholas_position=(5023.71, -1183.87),
-        exchange_source_file='SoulStoneExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='spiked_crest',
@@ -4063,7 +4075,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-6812.98, -201.65), 0),
  ('move', (-7825.92, -856.77), 0)),
         nicholas_position=(-7825.92, -856.77),
-        exchange_source_file='SpikedCrestExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='stone_carving',
@@ -4131,7 +4143,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-11488.45, -17967.39), 0),
  ('move', (-12369.33, -18142.28), 0)),
         nicholas_position=(-12369.33, -18142.28),
-        exchange_source_file='StoneCarvingExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='stormy_eye',
@@ -4188,7 +4200,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-299.36, -3840.4), 0),
  ('move', (-1573.02, -3873.93), 0)),
         nicholas_position=(-1573.02, -3873.93),
-        exchange_source_file='StormyEyeExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='superb_charr_carving',
@@ -4234,7 +4246,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-11021.14, -17393.22), 0),
  ('move', (-10551.26, -18122.28), 0)),
         nicholas_position=(-10551.26, -18122.28),
-        exchange_source_file='SuperbCharrCarvingExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='thorny_carapace',
@@ -4300,7 +4312,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (7741.76, 7306.38), 0),
  ('move', (7853.6, 7286.71), 0)),
         nicholas_position=(7853.6, 7286.71),
-        exchange_source_file='ThornyCarapaceExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='topaz_crest',
@@ -4360,7 +4372,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (1376.99, 3195.77), 0),
  ('move', (1325.53, 2805.66), 0)),
         nicholas_position=(1325.53, 2805.66),
-        exchange_source_file='TopazCrestExchange.au3',
+        exchange_source_file='',
     ),
     FarmDefinition(
         key='truffle',
@@ -4436,7 +4448,7 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (5591.47, 14241.04), 0),
  ('move', (5477.97, 14971.27), 0)),
         nicholas_position=(5477.97, 14971.27),
-        exchange_source_file='WeaverLegExchange.au3',
+        exchange_source_file='',
     ),
     # -------------------------------------------------------------------------
     # Additional source-derived Nicholas farms (v1.5.0)

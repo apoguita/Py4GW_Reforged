@@ -10,9 +10,11 @@ from Py4GWCoreLib import Agent
 from Py4GWCoreLib import AgentArray
 from Py4GWCoreLib import Effects
 from Py4GWCoreLib import GLOBAL_CACHE
+from Py4GWCoreLib import Inventory
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import Player
 from Py4GWCoreLib import Routines
+from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Hero_enums import HeroType
@@ -23,6 +25,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
+from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -59,6 +62,16 @@ PLAYER_BUILDS_BY_PRIMARY = {
 
 MINISTERIAL_COMMENDATION = int(ModelID.Ministerial_Commendation.value)
 BIRTHDAY_CUPCAKE = int(ModelID.Birthday_Cupcake.value)
+
+# Inventory maintenance mirrors the Shards of Orr thresholds/merchant flow,
+# but this script is intentionally single-account only.
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
+MERCHANT_RULES_WIDGET_NAME = 'MerchantRules'
+INVENTORY_PLUS_WIDGET_NAME = 'InventoryPlus'
+INVENTORY_MAINTENANCE_RETRY_COUNT = 2
+INVENTORY_SNAPSHOT_SETTLE_MS = 2_000
+INVENTORY_MERCHANT_TIMEOUT_MS = 240_000
 
 MIKU_LEGACY_AGENT_ID = 58
 MIKU_SEARCH_ANCHOR = (-6300.0, -5300.0)
@@ -138,11 +151,29 @@ _hard_mode = True
 _setup_party = True
 _load_player_build = True
 _use_cupcake = True
+_inventory_maintenance_enabled = True
+_inventory_min_free_slots = 5
+_inventory_min_id_kits = 1
+_inventory_min_salvage_kits = 2
+_inventory_status_snapshot: dict[str, object] = {}
+
+_STATS_SECTION = 'Statistics'
+_statistics_loaded = False
+_total_runs = 0
+_total_commendations = 0
+_total_drop_runs = 0
+_session_runs = 0
+_session_commendations = 0
+_session_drop_runs = 0
+_last_run_commendations = 0
+_run_start_commendation_count = -1
+_statistics_reset_pending = False
 
 initialized = False
 botting_tree: BottingTree | None = None
 _team_builds_loaded = False
 
+SCRIPT_RESTART_STEP = 'Initialize Bot'
 MISSION_RESTART_STEP = 'Enter A Chance Encounter'
 
 def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
@@ -151,13 +182,23 @@ def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
 
 def _load_settings() -> None:
     global _settings_loaded, _hard_mode, _setup_party, _load_player_build, _use_cupcake
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
+
     if _settings_loaded:
+        _load_statistics()
         return
+
     _hard_mode = _settings.get_bool('Config', 'HardMode', True)
     _setup_party = _settings.get_bool('Config', 'SetupParty', True)
     _load_player_build = _settings.get_bool('Config', 'LoadPlayerBuild', True)
     _use_cupcake = _settings.get_bool('Config', 'UseBirthdayCupcake', True)
+    _inventory_maintenance_enabled = _settings.get_bool('Config', 'InventoryMaintenanceEnabled', True)
+    _inventory_min_free_slots = max(0, _settings.get_int('Config', 'InventoryMinFreeSlots', 5))
+    _inventory_min_id_kits = max(0, _settings.get_int('Config', 'InventoryMinIdKits', 1))
+    _inventory_min_salvage_kits = max(0, _settings.get_int('Config', 'InventoryMinSalvageKits', 2))
     _settings_loaded = True
+    _load_statistics()
 
 
 def _save_settings() -> None:
@@ -165,12 +206,18 @@ def _save_settings() -> None:
     _settings.set('Config', 'SetupParty', _setup_party)
     _settings.set('Config', 'LoadPlayerBuild', _load_player_build)
     _settings.set('Config', 'UseBirthdayCupcake', _use_cupcake)
+    _settings.set('Config', 'InventoryMaintenanceEnabled', _inventory_maintenance_enabled)
+    _settings.set('Config', 'InventoryMinFreeSlots', _inventory_min_free_slots)
+    _settings.set('Config', 'InventoryMinIdKits', _inventory_min_id_kits)
+    _settings.set('Config', 'InventoryMinSalvageKits', _inventory_min_salvage_kits)
 
 
 def _draw_config() -> None:
     import PyImGui
 
     global _hard_mode, _setup_party, _load_player_build, _use_cupcake
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
 
     _load_settings()
     PyImGui.text('Ministerial Commendations Config')
@@ -197,6 +244,37 @@ def _draw_config() -> None:
         _use_cupcake = value
         changed = True
 
+    PyImGui.separator()
+    PyImGui.text('Inventory maintenance')
+
+    value = PyImGui.checkbox('Run MerchantRules when inventory is low', _inventory_maintenance_enabled)
+    if value != _inventory_maintenance_enabled:
+        _inventory_maintenance_enabled = value
+        changed = True
+
+    if _inventory_maintenance_enabled:
+        value = max(0, int(PyImGui.input_int('Minimum free slots', _inventory_min_free_slots)))
+        if value != _inventory_min_free_slots:
+            _inventory_min_free_slots = value
+            changed = True
+
+        value = max(0, int(PyImGui.input_int('Minimum Superior ID kits (0 = disabled)', _inventory_min_id_kits)))
+        if value != _inventory_min_id_kits:
+            _inventory_min_id_kits = value
+            changed = True
+
+        value = max(0, int(PyImGui.input_int('Minimum Superior salvage kits (0 = disabled)', _inventory_min_salvage_kits)))
+        if value != _inventory_min_salvage_kits:
+            _inventory_min_salvage_kits = value
+            changed = True
+
+        PyImGui.text_wrapped(
+            'Single-account inventory maintenance. The Superior ID / Salvage thresholds above '
+            'are sent directly to MerchantRules for this execution; the loaded profile still '
+            'handles sell, salvage, destroy and storage rules. The temporary kit targets are '
+            'not saved in MerchantRules. Equipment Pack is not counted by Inventory.GetInventorySpace().' 
+        )
+
     if changed:
         _save_settings()
 
@@ -217,6 +295,677 @@ def _draw_config() -> None:
     ):
         PyImGui.bullet_text(line)
 
+
+
+# region Inventory maintenance and statistics
+
+
+def _load_statistics() -> None:
+    global _statistics_loaded
+    global _total_runs, _total_commendations, _total_drop_runs
+
+    if _statistics_loaded:
+        return
+
+    _total_runs = max(0, _settings.get_int(_STATS_SECTION, 'total_runs', 0))
+    _total_commendations = max(0, _settings.get_int(_STATS_SECTION, 'total_commendations', 0))
+    _total_drop_runs = max(0, _settings.get_int(_STATS_SECTION, 'total_drop_runs', 0))
+    _statistics_loaded = True
+
+
+def _save_statistics() -> None:
+    _settings.set(_STATS_SECTION, 'total_runs', _total_runs)
+    _settings.set(_STATS_SECTION, 'total_commendations', _total_commendations)
+    _settings.set(_STATS_SECTION, 'total_drop_runs', _total_drop_runs)
+
+
+def _statistics_action_node(name: str, action: Callable[[], None]) -> BehaviorTree:
+    def _run(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            action()
+        except Exception as exc:
+            _log(
+                f'[Statistics] {name} failed: {exc}',
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_run,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _commendation_inventory_count() -> int:
+    return int(GLOBAL_CACHE.Inventory.GetModelCount(MINISTERIAL_COMMENDATION))
+
+
+def _mark_run_statistics_start_node() -> BehaviorTree:
+    def _mark() -> None:
+        global _run_start_commendation_count
+        _load_statistics()
+        _run_start_commendation_count = _commendation_inventory_count()
+        _log(
+            f'[Statistics] Run snapshot: {_run_start_commendation_count} Ministerial Commendation(s) in inventory.'
+        )
+
+    return _statistics_action_node('Snapshot Commendations At Run Start', _mark)
+
+
+def _record_run_statistics_node() -> BehaviorTree:
+    def _record() -> None:
+        global _total_runs, _total_commendations, _total_drop_runs
+        global _session_runs, _session_commendations, _session_drop_runs
+        global _last_run_commendations, _run_start_commendation_count
+
+        _load_statistics()
+        after_count = _commendation_inventory_count()
+        before_count = int(_run_start_commendation_count)
+        gained = max(0, after_count - before_count) if before_count >= 0 else 0
+
+        _last_run_commendations = gained
+        _total_runs += 1
+        _session_runs += 1
+        _total_commendations += gained
+        _session_commendations += gained
+        if gained > 0:
+            _total_drop_runs += 1
+            _session_drop_runs += 1
+
+        _run_start_commendation_count = -1
+        _save_statistics()
+
+        drop_rate = (_total_drop_runs / _total_runs * 100.0) if _total_runs > 0 else 0.0
+        _log(
+            f'[Statistics] Run complete - commendations={gained} | '
+            f'total={_total_commendations} | drop rate={drop_rate:.1f}%',
+            PySystem.Console.MessageType.Success,
+        )
+
+    return _statistics_action_node('Record Ministerial Commendation Run', _record)
+
+
+def _reset_all_time_statistics() -> None:
+    global _total_runs, _total_commendations, _total_drop_runs
+    _total_runs = 0
+    _total_commendations = 0
+    _total_drop_runs = 0
+    _save_statistics()
+    _log('[Statistics] All-time commendation statistics reset.', PySystem.Console.MessageType.Success)
+
+
+def _draw_statistics() -> None:
+    import PyImGui
+    from Py4GWCoreLib import Color
+
+    global _statistics_reset_pending
+
+    _load_statistics()
+
+    gold = Color(255, 210, 80, 255).to_tuple_normalized()
+    cyan = Color(80, 210, 255, 255).to_tuple_normalized()
+
+    def _drop_rate(runs: int, successful_runs: int) -> str:
+        return f'{successful_runs / runs * 100.0:.1f}%' if runs > 0 else '-'
+
+    def _average(runs: int, commendations: int) -> str:
+        return f'{commendations / runs:.2f}' if runs > 0 else '-'
+
+    table_flags = (
+        PyImGui.TableFlags.Borders
+        | PyImGui.TableFlags.RowBg
+        | PyImGui.TableFlags.SizingFixedFit
+        | PyImGui.TableFlags.NoHostExtendX
+    )
+    header_color = 26 | (38 << 8) | (51 << 16) | (255 << 24)
+    column_width = 82.0
+    row_height = 22.0
+
+    def _header_row(labels: tuple[str, ...]) -> None:
+        PyImGui.table_next_row(0, row_height)
+        PyImGui.table_set_bg_color(2, header_color, -1)
+        for index, label in enumerate(labels):
+            PyImGui.table_set_column_index(index)
+            PyImGui.text(label)
+
+    PyImGui.text_colored('Ministerial Commendations Statistics', gold)
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_colored('Session Overview', cyan)
+    if PyImGui.begin_table('##ministerial_session_stats', 5, table_flags):
+        labels = ('Runs', 'Last Run', 'Citations', 'Avg / Run', 'Drop Rate')
+        for label in labels:
+            PyImGui.table_setup_column(label, PyImGui.TableColumnFlags.WidthFixed, column_width)
+        _header_row(labels)
+        values = (
+            _session_runs,
+            _last_run_commendations,
+            _session_commendations,
+            _average(_session_runs, _session_commendations),
+            _drop_rate(_session_runs, _session_drop_runs),
+        )
+        PyImGui.table_next_row(0, row_height)
+        for index, value in enumerate(values):
+            PyImGui.table_set_column_index(index)
+            PyImGui.text(str(value))
+        PyImGui.end_table()
+
+    PyImGui.spacing()
+    PyImGui.text_colored('All-Time Overview', cyan)
+    if PyImGui.begin_table('##ministerial_total_stats', 5, table_flags):
+        labels = ('Runs', 'Citations', 'Drop Runs', 'Avg / Run', 'Drop Rate')
+        for label in labels:
+            PyImGui.table_setup_column(label, PyImGui.TableColumnFlags.WidthFixed, column_width)
+        _header_row(labels)
+        values = (
+            _total_runs,
+            _total_commendations,
+            _total_drop_runs,
+            _average(_total_runs, _total_commendations),
+            _drop_rate(_total_runs, _total_drop_runs),
+        )
+        PyImGui.table_next_row(0, row_height)
+        for index, value in enumerate(values):
+            PyImGui.table_set_column_index(index)
+            PyImGui.text(str(value))
+        PyImGui.end_table()
+
+    PyImGui.spacing()
+    PyImGui.text_wrapped('Drop Rate = percentage of completed runs that produced at least one Ministerial Commendation.')
+    PyImGui.spacing()
+
+    if not _statistics_reset_pending:
+        if PyImGui.button('Reset All-Time Statistics'):
+            _statistics_reset_pending = True
+    else:
+        PyImGui.text_colored('Reset all-time commendation statistics?', gold)
+        if PyImGui.button('Confirm Reset'):
+            _reset_all_time_statistics()
+            _statistics_reset_pending = False
+        PyImGui.same_line(0.0, 8.0)
+        if PyImGui.button('Cancel'):
+            _statistics_reset_pending = False
+
+
+def _local_inventory_state() -> tuple[int, int, int, int]:
+    occupied, capacity = Inventory.GetInventorySpace()
+    id_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in ID_KIT_MODEL_IDS
+    )
+    salvage_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in SALVAGE_KIT_MODEL_IDS
+    )
+    return int(occupied), int(capacity), int(id_kits), int(salvage_kits)
+
+
+def _refresh_local_inventory_status_node(name: str) -> BehaviorTree:
+    def _refresh(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _inventory_status_snapshot
+        label = str(Player.GetName() or '').strip() or 'Local account'
+        try:
+            occupied, capacity, id_kits, salvage_kits = _local_inventory_state()
+            available = capacity > 0 and 0 <= occupied <= capacity
+        except Exception as exc:
+            _log(f'[Inventory] Local inventory query failed: {exc}', PySystem.Console.MessageType.Error)
+            occupied = capacity = id_kits = salvage_kits = -1
+            available = False
+
+        free_slots = max(0, capacity - occupied) if available else 0
+        issues: list[str] = []
+        if not available:
+            issues.append('inventory query unavailable')
+        else:
+            if _inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots:
+                issues.append(f'free slots {free_slots}/{_inventory_min_free_slots}')
+            if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+                issues.append(f'Superior ID kits {id_kits}/{_inventory_min_id_kits}')
+            if _inventory_min_salvage_kits > 0 and salvage_kits < _inventory_min_salvage_kits:
+                issues.append(f'Superior salvage kits {salvage_kits}/{_inventory_min_salvage_kits}')
+
+        _inventory_status_snapshot = {
+            'label': label,
+            'available': available,
+            'occupied': occupied,
+            'capacity': capacity,
+            'free_slots': free_slots,
+            'id_kits': id_kits,
+            'salvage_kits': salvage_kits,
+            'issues': issues,
+        }
+
+        result = 'MAINTENANCE' if issues else 'OK'
+        if available:
+            _log(
+                f'[Inventory] {label}: free={free_slots}/{capacity}, occupied={occupied}, '
+                f'Superior ID kits={id_kits}, Superior salvage kits={salvage_kits} -> {result}',
+                PySystem.Console.MessageType.Warning if issues else PySystem.Console.MessageType.Info,
+            )
+        else:
+            _log(
+                f'[Inventory] {label}: local inventory query unavailable -> {result}',
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_refresh,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _inventory_maintenance_issues() -> list[str]:
+    return list(_inventory_status_snapshot.get('issues', []))
+
+
+def _inventory_is_healthy_node(name: str, *, log_success: bool = True) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _inventory_status_snapshot:
+            _log(
+                'Inventory maintenance required - no local inventory snapshot is available.',
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        issues = _inventory_maintenance_issues()
+        if issues:
+            _log(
+                'Inventory maintenance required - ' + ', '.join(issues),
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        if log_success:
+            _log('Inventory check passed on the local account.', PySystem.Console.MessageType.Success)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=_check))
+
+
+def _inventory_maintenance_trigger_node() -> BehaviorTree:
+    def _log_trigger(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        issues = _inventory_maintenance_issues()
+        trigger_text = ', '.join(issues) if issues else 'inventory verification'
+        _log(
+            f'[Inventory] Maintenance triggered by: {trigger_text}. MerchantRules will run on the local account only.',
+            PySystem.Console.MessageType.Warning,
+        )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Log Local Inventory Maintenance Trigger',
+            action_fn=_log_trigger,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _local_recipient_emails() -> list[str]:
+    email = str(Player.GetAccountEmail() or '').strip()
+    return [email] if email else []
+
+
+def _send_widget_state(widget_name: str, *, enabled: bool, refs_key: str) -> BehaviorTree:
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        recipients = _local_recipient_emails()
+        if not recipients:
+            return BehaviorTree(
+                BehaviorTree.FailerNode(name=f'No Local Recipient For {widget_name}')
+            )
+
+        return BTShared.SendAndWait(
+            command=SharedCommandType.EnableWidget if enabled else SharedCommandType.DisableWidget,
+            extra_data=(widget_name, '', '', ''),
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=refs_key,
+            timeout_ms=20_000,
+            poll_interval_ms=100,
+            log=True,
+        )
+
+    return BT.Subtree(
+        name=('Enable ' if enabled else 'Disable ') + widget_name + ' On Local Account',
+        subtree_fn=_build,
+    )
+
+
+def _set_local_auto_inventory_handler(enabled: bool) -> BehaviorTree:
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        fn = getattr(botting_tree, 'SetAutoInventoryHandlerEnabled', None)
+        if not callable(fn):
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            fn(enabled)
+        except Exception:
+            pass
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Enable Local Auto Inventory Handler' if enabled else 'Disable Local Auto Inventory Handler',
+            action_fn=_set,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _wait_for_local_inventory_health_after_merchant(
+    name: str,
+    *,
+    timeout_ms: int = INVENTORY_MERCHANT_TIMEOUT_MS,
+) -> BehaviorTree:
+    """Wait for MerchantRules' asynchronous execution to satisfy the real local thresholds."""
+
+    state = {'last_log': 0.0, 'success_logged': False}
+
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _inventory_status_snapshot
+
+        try:
+            occupied, capacity, id_kits, salvage_kits = _local_inventory_state()
+            available = capacity > 0 and 0 <= occupied <= capacity
+        except Exception:
+            occupied = capacity = id_kits = salvage_kits = -1
+            available = False
+
+        free_slots = max(0, capacity - occupied) if available else 0
+        issues: list[str] = []
+        if not available:
+            issues.append('inventory query unavailable')
+        else:
+            if _inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots:
+                issues.append(f'free slots {free_slots}/{_inventory_min_free_slots}')
+            if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+                issues.append(f'Superior ID kits {id_kits}/{_inventory_min_id_kits}')
+            if _inventory_min_salvage_kits > 0 and salvage_kits < _inventory_min_salvage_kits:
+                issues.append(f'Superior salvage kits {salvage_kits}/{_inventory_min_salvage_kits}')
+
+        _inventory_status_snapshot = {
+            'label': str(Player.GetName() or '').strip() or 'Local account',
+            'available': available,
+            'occupied': occupied,
+            'capacity': capacity,
+            'free_slots': free_slots,
+            'id_kits': id_kits,
+            'salvage_kits': salvage_kits,
+            'issues': issues,
+        }
+
+        if not issues:
+            if not bool(state['success_logged']):
+                state['success_logged'] = True
+                _log(
+                    f'[Inventory] MerchantRules thresholds reached: free={free_slots}/{capacity}, '
+                    f'Superior ID kits={id_kits}, Superior salvage kits={salvage_kits}.',
+                    PySystem.Console.MessageType.Success,
+                )
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = time.monotonic()
+        if now - float(state['last_log']) >= 5.0:
+            state['last_log'] = now
+            _log(
+                '[Inventory] Waiting for MerchantRules to finish: ' + ', '.join(issues),
+                PySystem.Console.MessageType.Info,
+            )
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_check,
+            throttle_interval_ms=500,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+
+def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name='Restore InventoryPlus After MerchantRules',
+        children=[
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=True,
+                refs_key=f'{attempt_key}_enable_inventoryplus_refs',
+            ),
+            _set_local_auto_inventory_handler(True),
+        ],
+    )
+
+
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets)
+
+
+def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        recipients = _local_recipient_emails()
+        if not recipients:
+            _log(
+                '[Inventory] MerchantRules aborted: local account email is unavailable.',
+                PySystem.Console.MessageType.Error,
+            )
+            return BehaviorTree(BehaviorTree.FailerNode(name='No Local MerchantRules Recipient'))
+
+        request_id = f'ministerial_inventory_{attempt_key}_{int(time.monotonic() * 1000)}'
+        _log('[Inventory] Dispatching MerchantRules to the local account.')
+        execute = BTShared.SendAndWait(
+            command=SharedCommandType.MerchantRules,
+            params=(3.0, 0.0, 0.0, 0.0),
+            extra_data=(request_id, _merchant_stock_request_spec(), '0', '0'),
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f'{attempt_key}_merchant_rules_refs',
+            timeout_ms=INVENTORY_MERCHANT_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+        return BT.Selector(
+            name='Execute MerchantRules And Restore InventoryPlus',
+            children=[
+                BT.Sequence(
+                    name='MerchantRules Completed',
+                    children=[
+                        execute,
+                        _wait_for_local_inventory_health_after_merchant(
+                            name='Wait For MerchantRules Inventory Result',
+                        ),
+                        _restore_inventoryplus_after_merchant(attempt_key),
+                    ],
+                ),
+                BT.Sequence(
+                    name='Restore InventoryPlus After MerchantRules Failure',
+                    children=[
+                        _restore_inventoryplus_after_merchant(f'{attempt_key}_failure'),
+                        BehaviorTree(BehaviorTree.FailerNode(name='Propagate MerchantRules Failure')),
+                    ],
+                ),
+            ],
+        )
+
+    return BT.Subtree(name='Run MerchantRules On Local Account', subtree_fn=_build)
+
+
+def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
+    attempt_key = f'inventory_attempt_{attempt_number}'
+    return BT.Sequence(
+        name=f'Inventory Maintenance Attempt {attempt_number}',
+        children=[
+            BT.LogMessage(
+                message=(
+                    f'Inventory maintenance attempt {attempt_number}/'
+                    f'{INVENTORY_MAINTENANCE_RETRY_COUNT} in Kaineng Center.'
+                ),
+                module_name=MODULE_NAME,
+            ),
+            _set_local_auto_inventory_handler(False),
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=False,
+                refs_key=f'{attempt_key}_disable_inventoryplus_refs',
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=True,
+                refs_key=f'{attempt_key}_enable_merchant_rules_refs',
+            ),
+            BT.Wait(1_000),
+            _run_merchant_rules(attempt_key),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            _refresh_local_inventory_status_node(
+                name=f'Refresh Local Inventory After Attempt {attempt_number}'
+            ),
+            _inventory_is_healthy_node(
+                f'Verify Inventory After Attempt {attempt_number}',
+                log_success=True,
+            ),
+        ],
+    )
+
+
+def _stop_for_inventory_failure_node() -> BehaviorTree:
+    stopped = False
+
+    def _stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        nonlocal stopped
+        if not stopped:
+            stopped = True
+            issues = _inventory_maintenance_issues()
+            issue_text = ', '.join(issues) if issues else 'unknown verification error'
+            _log(
+                'Inventory maintenance failed twice. The bot was paused safely. '
+                f'Remaining issue(s): {issue_text}',
+                PySystem.Console.MessageType.Error,
+            )
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, 'SetAutoInventoryHandlerEnabled', None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+            sender_email = str(Player.GetAccountEmail() or '').strip()
+            if sender_email:
+                try:
+                    GLOBAL_CACHE.ShMem.SendMessage(
+                        sender_email,
+                        sender_email,
+                        SharedCommandType.EnableWidget,
+                        (0.0, 0.0, 0.0, 0.0),
+                        (INVENTORY_PLUS_WIDGET_NAME, '', '', ''),
+                    )
+                except Exception:
+                    pass
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, 'Pause', None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Pause Bot After Inventory Maintenance Failure',
+            action_fn=_stop,
+            aftercast_ms=0,
+        )
+    )
+
+
+def InventoryCheckAndMaintenance() -> BehaviorTree:
+    disabled = BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name='Inventory Maintenance Disabled',
+            condition_fn=lambda _node: not _inventory_maintenance_enabled,
+        )
+    )
+
+    maintenance_attempts = [
+        _inventory_maintenance_attempt(attempt_number)
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
+    ]
+    maintenance_attempts.append(_stop_for_inventory_failure_node())
+
+    enabled_flow = BT.Sequence(
+        name='Enabled Inventory Check And Maintenance',
+        children=[
+            _refresh_local_inventory_status_node('Query Local Inventory State'),
+            BT.Selector(
+                name='Check Inventory Thresholds',
+                children=[
+                    _inventory_is_healthy_node(
+                        'Inventory Thresholds Already Satisfied',
+                        log_success=True,
+                    ),
+                    BT.Sequence(
+                        name='Run Local Inventory Maintenance',
+                        children=[
+                            _inventory_maintenance_trigger_node(),
+                            BT.IsCurrentMap(map_id=KAINENG_CENTER, log=True),
+                            BT.LeaveParty(),
+                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+                            BT.Selector(
+                                name='Retry Inventory Maintenance In Kaineng Center',
+                                children=maintenance_attempts,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name='Inventory Check And Maintenance',
+        children=[disabled, enabled_flow],
+    )
+
+
+def StartupInventoryCheck() -> BehaviorTree:
+    return BT.Selector(
+        name='Startup Inventory Check',
+        children=[
+            BT.Sequence(
+                name='Check Inventory Before Leaving Kaineng Center',
+                children=[
+                    BT.IsCurrentMap(map_id=KAINENG_CENTER, log=False),
+                    InventoryCheckAndMaintenance(),
+                ],
+            ),
+            BT.Succeeder('Skip Startup Inventory Check Outside Kaineng Center'),
+        ],
+    )
+
+
+# endregion
 
 def _distance(a: tuple[float, float], b: tuple[float, float]) -> float:
     return float(Utils.Distance(a, b))
@@ -316,7 +1065,7 @@ def WaitForMikuAtJourneyExit() -> BehaviorTree:
             name='Wait For Miku At Journey Exit',
             condition_fn=_miku_arrived,
             throttle_interval_ms=250,
-            timeout_ms=30_000,
+            timeout_ms=40_000,
         )
     )
 
@@ -380,17 +1129,18 @@ def _is_mission_planner_step(step_name: str) -> bool:
 
 
 def MissionRestartAnchorService() -> BehaviorTree:
-    """Leave a failed mission and restart it from Kaineng Center."""
+    """Leave a failed mission and choose the correct restart anchor in Kaineng."""
 
     state = {
         'returning_to_outpost': False,
         'last_return_ms': 0.0,
         'mission_ready_since_ms': 0.0,
+        'restart_step': MISSION_RESTART_STEP,
     }
 
-    def _select_mission_restart(node: BehaviorTree.Node) -> None:
-        node.blackboard['current_step_name'] = MISSION_RESTART_STEP
-        node.blackboard['last_active_planner_step_name'] = MISSION_RESTART_STEP
+    def _select_restart(node: BehaviorTree.Node, step_name: str) -> None:
+        node.blackboard['current_step_name'] = step_name
+        node.blackboard['last_active_planner_step_name'] = step_name
 
     def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         # A Chance Encounter has no shrine revival. The generic BT service
@@ -405,7 +1155,13 @@ def MissionRestartAnchorService() -> BehaviorTree:
         )
         in_mission = in_mission_instance or _is_mission_planner_step(current_step)
 
-        if in_mission and requested_step and requested_step != MISSION_RESTART_STEP:
+        # Normal planner failures inside the mission restart from the mission entry.
+        # A player death is handled separately below and restarts the whole script.
+        if (
+            in_mission
+            and requested_step
+            and requested_step not in (MISSION_RESTART_STEP, SCRIPT_RESTART_STEP)
+        ):
             _log(
                 f"Mission step '{requested_step}' failed; restarting from '{MISSION_RESTART_STEP}'.",
                 PySystem.Console.MessageType.Warning,
@@ -440,36 +1196,51 @@ def MissionRestartAnchorService() -> BehaviorTree:
             party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
             party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
             player_dead = bool(Routines.Checks.Player.IsDead())
-            mission_failed = bool(player_dead or _mission_failed())
+            mission_failed = bool(_mission_failed())
 
         if mission_stable and (party_wiped or party_defeated or mission_failed):
+            # Player death is special: restart from the very first planner step.
+            restart_step = SCRIPT_RESTART_STEP if player_dead else MISSION_RESTART_STEP
+
             if not state['returning_to_outpost']:
                 ActionQueueManager().ResetAllQueues()
-                _log(
-                    'Mission failure detected '
-                    f'(player_dead={player_dead}, '
-                    f'party_wiped={party_wiped}, '
-                    f'party_defeated={party_defeated}, '
-                    f'mission_failed={mission_failed}); '
-                    'returning to Kaineng Center before '
-                    f"restarting '{MISSION_RESTART_STEP}'.",
-                    PySystem.Console.MessageType.Warning,
-                )
+                if player_dead:
+                    _log(
+                        'Player death detected; returning to Kaineng Center and '
+                        f"restarting the script from '{SCRIPT_RESTART_STEP}'.",
+                        PySystem.Console.MessageType.Warning,
+                    )
+                else:
+                    _log(
+                        'Mission failure detected '
+                        f'(party_wiped={party_wiped}, '
+                        f'party_defeated={party_defeated}, '
+                        f'mission_failed={mission_failed}); '
+                        'returning to Kaineng Center before '
+                        f"restarting '{MISSION_RESTART_STEP}'.",
+                        PySystem.Console.MessageType.Warning,
+                    )
+
             state['returning_to_outpost'] = True
-            _select_mission_restart(node)
+            state['restart_step'] = restart_step
+            _select_restart(node, restart_step)
 
         if not state['returning_to_outpost']:
             return BehaviorTree.NodeState.RUNNING
 
         if Map.IsMapReady() and Map.IsOutpost():
-            _select_mission_restart(node)
-            node.blackboard['restart_step_name_request'] = MISSION_RESTART_STEP
-            node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {MISSION_RESTART_STEP}'
+            restart_step = str(state['restart_step'] or MISSION_RESTART_STEP)
+            _select_restart(node, restart_step)
+            node.blackboard['restart_step_name_request'] = restart_step
+            node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {restart_step}'
+
             state['returning_to_outpost'] = False
             state['last_return_ms'] = 0.0
             state['mission_ready_since_ms'] = 0.0
+            state['restart_step'] = MISSION_RESTART_STEP
+
             _log(
-                f"Outpost loaded; restarting '{MISSION_RESTART_STEP}'.",
+                f"Outpost loaded; restarting '{restart_step}'.",
                 PySystem.Console.MessageType.Success,
             )
             return BehaviorTree.NodeState.RUNNING
@@ -618,16 +1389,6 @@ def _drop_hero_buff_for_skill_node(
 
 
 def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree:
-    """
-    Wait until every living hero is outside Compass range from the player.
-
-    Party hero agent IDs can remain available after a hero leaves the locally
-    loaded agent range. In that case Agent.GetXY() returns (0.0, 0.0), which
-    can produce a false "inside Compass" result depending on the player's
-    coordinates. Treat an invalid/unloaded hero agent as already outside the
-    effective loot range.
-    """
-
     hero_names = {
         HERO_FIRE_ELE: 'Sousuke',
         HERO_EARTH_ELE: 'Vekk',
@@ -638,55 +1399,20 @@ def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree
         HERO_ST: 'Xandra',
     }
 
-    def _hero_range_state() -> tuple[list[str], list[str]]:
+    def _visible_heroes() -> list[str]:
         player_xy = Player.GetXY()
         visible: list[str] = []
-        debug: list[str] = []
-
         for hero_position, hero_name in hero_names.items():
             hero_agent_id = _hero_agent_id(hero_position)
-
-            if hero_agent_id <= 0:
-                debug.append(f'{hero_name}=no-agent')
+            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
                 continue
-
-            # GetHeroAgentIDByPartyPosition can keep returning an ID after the
-            # actual agent has left the locally loaded range. GetXY() would then
-            # fall back to (0, 0), so validity must be checked first.
-            if not Agent.IsValid(hero_agent_id):
-                debug.append(f'{hero_name}=unloaded')
-                continue
-
-            if Agent.IsDead(hero_agent_id):
-                debug.append(f'{hero_name}=dead')
-                continue
-
-            hero_xy = Agent.GetXY(hero_agent_id)
-
-            # Extra safeguard against invalid coordinates from an unloaded agent.
-            if hero_xy == (0.0, 0.0):
-                debug.append(f'{hero_name}=invalid-xy')
-                continue
-
-            distance = _distance(hero_xy, player_xy)
-            debug.append(
-                f'{hero_name}=id:{hero_agent_id} xy:({hero_xy[0]:.0f},{hero_xy[1]:.0f}) '
-                f'dist:{distance:.0f}'
-            )
-
-            if distance <= Range.Compass.value:
+            if _distance(Agent.GetXY(hero_agent_id), player_xy) <= Range.Compass.value:
                 visible.append(hero_name)
-
-        return visible, debug
-
-    def _visible_heroes() -> list[str]:
-        visible, _debug = _hero_range_state()
         return visible
 
     def _all_out() -> BehaviorTree.NodeState:
         if _mission_failed():
             return BehaviorTree.NodeState.FAILURE
-
         return (
             BehaviorTree.NodeState.SUCCESS
             if not _visible_heroes()
@@ -703,18 +1429,12 @@ def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree
     )
 
     def _timeout_fallback(_node: BehaviorTree.Node) -> BehaviorTree:
-        visible, debug = _hero_range_state()
-        visible_text = ', '.join(visible) or 'none'
-        debug_text = '; '.join(debug) or 'no hero data'
-
+        visible = ', '.join(_visible_heroes()) or 'none'
         return BT.Sequence(
             name='Loot Separation Timeout Fallback',
             children=[
                 BT.LogMessage(
-                    (
-                        f'Loot separation timed out; heroes still inside Compass: '
-                        f'{visible_text}. Range state: {debug_text}.'
-                    ),
+                    f'Loot separation timed out; heroes still inside Compass: {visible}.',
                     MODULE_NAME,
                 ),
                 BT.Succeeder('Loot Separation Timeout Accepted'),
@@ -1149,6 +1869,7 @@ def PrepareInKaineng() -> BehaviorTree:
         name='Prepare In Kaineng Center',
         map_id_or_name=KAINENG_CENTER,
         children=[
+            StartupInventoryCheck(),
             _setup_party_node(),
             _load_player_build_node(),
             BT.SetHardMode(_hard_mode, log=True),
@@ -1216,6 +1937,7 @@ def EnterAChanceEncounter() -> BehaviorTree:
         map_id_or_name=KAINENG_CENTER,
         children=[
             PrepareHeroSkillbarsForQuest(),
+            _mark_run_statistics_start_node(),
             BT.Subtree('Optional Kaineng Approach', _approach_if_needed),
             _move_to_mission_npc_smooth(),
             BT.WaitForMapLoad(A_CHANCE_ENCOUNTER, timeout_ms=45_000),
@@ -1533,7 +2255,7 @@ def WaitForMikuAreaClear() -> BehaviorTree:
 
         center_id = _miku_or_player()
         center = Agent.GetXY(center_id)
-        if not _enemy_ids_near(center, Range.Spellcast.value):
+        if not _enemy_ids_near(center, Range.Spirit.value):
             return BehaviorTree.NodeState.SUCCESS
         return BehaviorTree.NodeState.RUNNING
 
@@ -1987,6 +2709,8 @@ def LootAndReturn() -> BehaviorTree:
                 target_map_id=KAINENG_CENTER,
                 log=True,
             ),
+            BT.WaitForMapLoad(KAINENG_CENTER, timeout_ms=45_000),
+            _record_run_statistics_node(),
         ],
     )
 
@@ -2005,6 +2729,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ('Wait For Purity Ball', WaitForPurityBall),
         ('Spike Ministry Of Purity', SpikeMinistryOfPurity),
         ('Loot And Return', LootAndReturn),
+        ('Inventory Check And Maintenance', InventoryCheckAndMaintenance),
     ]
 
 
@@ -2052,7 +2777,7 @@ def main() -> None:
     tree.UI.draw_window(
         icon_path=TEXTURE,
         main_child_dimensions=(440, 390),
-        extra_tabs=[('Config', _draw_config)],
+        extra_tabs=[('Statistics', _draw_statistics), ('Config', _draw_config)],
     )
 
 

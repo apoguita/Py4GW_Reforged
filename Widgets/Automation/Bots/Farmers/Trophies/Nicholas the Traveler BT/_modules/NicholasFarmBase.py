@@ -1718,7 +1718,7 @@ def build_collector_conversion(
         return BT.LogMessage(
             message=(
                 f"{farm.name} requires {farm.collector_item_name}, but the "
-                "BubbleTea AutoIt source does not provide a reliable automated "
+                "legacy source does not provide a reliable automated "
                 "route to this collector. Convert the items manually first."
             ),
             module_name=MODULE_NAME,
@@ -2147,7 +2147,7 @@ def _route_loop_action_steps(
     """
     Expand a complex source route into one planner step per action.
 
-    Supports old AutoIt farms that cross several maps, revisit maps through
+    Supports legacy farm routes that cross several maps, revisit maps through
     portals, or require an NPC dialog during setup.
     """
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
@@ -2304,7 +2304,7 @@ def build_nicholas_exchange(farm: FarmDefinition) -> BehaviorTree:
     """
     Travel to Nicholas and exchange the selected weekly item on all accounts.
 
-    The route is migrated from the legacy AutoIt Exchange script. Movement is
+    The route is migrated from the legacy Exchange route. Movement is
     kept data-driven in NicholasFarms.py; this function is shared by every farm.
 
     Collector conversions are not silently invented here. For farms whose

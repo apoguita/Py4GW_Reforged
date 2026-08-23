@@ -14,6 +14,7 @@ import os
 import re
 import time
 import traceback
+import unicodedata
 from collections import Counter
 from collections.abc import Callable
 from collections.abc import Iterable
@@ -1006,6 +1007,50 @@ RARE_MATERIAL_TRADER_NAME_QUERY = "[Rare Material Trader]"
 RUNE_TRADER_NAME_QUERY = "Rune Trader"
 SCROLL_TRADER_NAME_QUERY = "Scroll Trader"
 RARE_SCROLL_TRADER_NAME_QUERY = "[Rare Scroll Trader]"
+
+# Localized service-role aliases used only as a safe final fallback when a
+# language-independent model/encoded selector is unavailable.  Matching is
+# performed against the bracketed role suffix (for example ``[Marchande]``),
+# never against an arbitrary substring of an NPC proper name.
+SERVICE_ROLE_ALIASES: dict[str, tuple[str, ...]] = {
+    MERCHANT_TYPE_MERCHANT: (
+        "Merchant", "Marchand", "Marchande", "Händler", "Haendler",
+        "Kaufmann", "Kauffrau", "Mercante", "Mercader", "Comerciante",
+        "Handlarz", "Торговец", "상인", "商人",
+    ),
+    MERCHANT_TYPE_MATERIALS: (
+        "Material Trader", "Marchand de matériaux", "Marchande de matériaux",
+        "Materialienhändler", "Materialienhaendler", "Mercante di materiali",
+        "Mercader de materiales", "Comerciante de materiales",
+        "Handlarz materiałów", "Торговец материалами", "재료 상인", "材料商人",
+    ),
+    MERCHANT_TYPE_RARE_MATERIALS: (
+        "Rare Material Trader", "Marchand de matériaux rares", "Marchande de matériaux rares",
+        "Händler für seltene Materialien", "Haendler fuer seltene Materialien",
+        "Mercante di materiali rari", "Mercader de materiales raros",
+        "Comerciante de materiales raros", "Handlarz rzadkich materiałów",
+        "Торговец редкими материалами", "희귀 재료 상인", "稀有材料商人",
+    ),
+    MERCHANT_TYPE_RUNE_TRADER: (
+        "Rune Trader", "Marchand de runes", "Marchande de runes",
+        "Runenhändler", "Runenhaendler", "Mercante di rune", "Mercader de runas",
+        "Comerciante de runas", "Handlarz run", "Торговец рунами",
+        "룬 상인", "符文商人",
+    ),
+    MERCHANT_TYPE_SCROLL_TRADER: (
+        "Scroll Trader", "Marchand de parchemins", "Marchande de parchemins",
+        "Schriftrollenhändler", "Schriftrollenhaendler", "Mercante di pergamene",
+        "Mercader de pergaminos", "Comerciante de pergaminos",
+        "Handlarz zwojów", "Торговец свитками", "두루마리 상인", "卷轴商人",
+    ),
+    "rare_scroll_trader": (
+        "Rare Scroll Trader", "Marchand de parchemins rares", "Marchande de parchemins rares",
+        "Händler für seltene Schriftrollen", "Haendler fuer seltene Schriftrollen",
+        "Mercante di pergamene rare", "Mercader de pergaminos raros",
+        "Comerciante de pergaminos raros", "Handlarz rzadkich zwojów",
+        "Торговец редкими свитками", "희귀 두루마리 상인", "稀有卷轴商人",
+    ),
+}
 XUNLAI_AGENT_NAME_QUERY = "Xunlai Agent"
 XUNLAI_CHEST_NAME_QUERY = "Xunlai Chest"
 XUNLAI_AGENT_MODEL_IDS: tuple[int, ...] = (220, 221, 3287)
@@ -1039,6 +1084,7 @@ SUPPORTED_MAP_SERVICE_MODEL_IDS: dict[int, dict[str, int]] = {
     },
 }
 
+
 ACTION_TYPE_LABELS = {
     "buy": "Buy",
     "identify": "Identify",
@@ -1059,6 +1105,11 @@ STOCK_KEY_IDENTIFIER_PREFIX = "identifier:"
 MERCHANT_RULES_OPCODE_RELOAD_PROFILE = 1
 MERCHANT_RULES_OPCODE_PREVIEW = 2
 MERCHANT_RULES_OPCODE_EXECUTE = 3
+# Optional EXECUTE request parameters used by automation bots:
+# Params[1] = minimum carried ID kits (normal + superior combined)
+# Params[2] = minimum carried Expert Salvage Kits
+# Zero keeps the legacy profile-only behaviour. These request-scoped targets
+# are never written back to the active Merchant Rules profile.
 MERCHANT_RULES_OPCODE_STATUS_RESULT = 100
 MERCHANT_RULES_OPCODE_PREVIEW_RESULT = 101
 MERCHANT_RULES_OPCODE_EXECUTE_RESULT = 102
@@ -4259,6 +4310,53 @@ def _get_named_agent_target_definition(agent_kind: object, target_key: object) -
         return None
 
 
+def _normalize_service_role_text(value: object) -> str:
+    """Normalize a localized service-role label for conservative comparisons."""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.casefold()
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" []\t\r\n")
+
+
+def _extract_agent_role_suffix(value: object) -> str:
+    """Return the final ``[role]`` suffix, or the whole value when role-only."""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    matches = re.findall(r"\[([^\]]+)\]", text)
+    if matches:
+        return str(matches[-1] or "").strip()
+    return text
+
+
+def _canonical_service_role(value: object) -> str:
+    """Map a localized service label to Merchant Rules' canonical service key."""
+
+    normalized = _normalize_service_role_text(_extract_agent_role_suffix(value))
+    if not normalized:
+        return ""
+    for service_key, aliases in SERVICE_ROLE_ALIASES.items():
+        if any(normalized == _normalize_service_role_text(alias) for alias in aliases):
+            return str(service_key)
+    return ""
+
+
+def _agent_name_matches_service_role(agent_name: object, expected_role: object) -> bool:
+    """Safely match only the localized bracketed service suffix of an NPC name."""
+
+    canonical_expected = _canonical_service_role(expected_role)
+    if not canonical_expected:
+        return False
+    canonical_live = _canonical_service_role(_extract_agent_role_suffix(agent_name))
+    return bool(canonical_live and canonical_live == canonical_expected)
+
+
 def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
     """Match a live agent name through Reforged's encoded-name facade.
 
@@ -4314,20 +4412,18 @@ def _agent_named_target_display_matches(agent_id: int, named_target: object) -> 
     if display_folded == live_folded or display_folded in live_folded:
         return True
 
-    # Ignore localized service suffixes such as [Merchant] / [Marchande] but
-    # require a real proper-name prefix.  "Merchant" alone is not sufficient.
+    # Generic service selectors are allowed to fall back to the localized
+    # bracketed service suffix.  This is conservative: only a known complete
+    # role alias is accepted, never a partial substring of the NPC name.
+    display_role = _canonical_service_role(display_name)
+    if display_role:
+        return _agent_name_matches_service_role(live_name, display_role)
+
+    # Specific named selectors remain language-independent by comparing only
+    # the proper-name prefix and ignoring a localized role suffix.
     display_base = display_name.split("[", 1)[0].strip()
     live_base = live_name.split("[", 1)[0].strip()
     if not display_base or not live_base:
-        return False
-    if display_base.casefold() in {
-        "merchant",
-        "material trader",
-        "rare material trader",
-        "rune trader",
-        "scroll trader",
-        "rare scroll trader",
-    }:
         return False
     return display_base.casefold() == live_base.casefold()
 
@@ -4437,6 +4533,14 @@ def resolve_agent_xy_from_step(
                 agent_name = str(Agent.GetNameByID(agent_id) or "").strip()
                 if not agent_name:
                     return False
+
+                # Queries such as ``[Merchant]`` are semantic service-role
+                # fallbacks, not English-only text searches.  Resolve their
+                # localized bracket suffix before using ordinary name matching.
+                target_service_role = _canonical_service_role(target_name)
+                if target_service_role:
+                    return _agent_name_matches_service_role(agent_name, target_service_role)
+
                 agent_name_l = agent_name.casefold()
                 target_name_cmp = target_name.casefold()
                 return agent_name_l == target_name_cmp if exact_name else target_name_cmp in agent_name_l
@@ -15608,6 +15712,7 @@ class MerchantRulesWidget:
         for merchant_type, (selector_key, name_query) in selector_keys.items():
             if merchant_type not in required_services:
                 continue
+
             selector_name = selector_data.get(selector_key) or DEFAULT_NPC_SELECTORS.get(selector_key)
             coords[merchant_type] = self._resolve_service_coords(
                 selector_name=str(selector_name or ""),
@@ -30135,6 +30240,63 @@ class MerchantRulesWidget:
         )
         return True
 
+    def _parse_request_scoped_merchant_stock_targets(self, raw_spec: object) -> list[MerchantStockTarget]:
+        """Parse generic request-scoped Merchant Stock targets from a shared command.
+
+        Wire format (ExtraData[1]): ``stock:<model_id>:<target_count>,...``.
+        The transport is deliberately generic: Merchant Rules does not know or care
+        whether a requested model is a kit, dye, scroll, or another merchant-stock item.
+        Invalid entries are ignored and duplicate model IDs keep the highest target.
+        """
+
+        text = str(raw_spec or "").strip()
+        prefix = "stock:"
+        if not text.casefold().startswith(prefix):
+            return []
+
+        payload = text[len(prefix):].strip()
+        if not payload:
+            return []
+
+        targets_by_model: dict[int, int] = {}
+        for raw_entry in payload.split(","):
+            entry = str(raw_entry or "").strip()
+            if not entry:
+                continue
+            parts = entry.split(":", 1)
+            if len(parts) != 2:
+                continue
+            model_id = max(0, _safe_int(parts[0], 0))
+            target_count = max(0, _safe_int(parts[1], 0))
+            if model_id <= 0 or target_count <= 0:
+                continue
+            targets_by_model[model_id] = max(target_count, targets_by_model.get(model_id, 0))
+
+        return [
+            MerchantStockTarget(
+                model_id=model_id,
+                target_count=target_count,
+                max_per_run=0,
+                after_purchase=AFTER_PURCHASE_KEEP,
+            )
+            for model_id, target_count in sorted(targets_by_model.items())
+        ]
+
+    def _build_request_scoped_merchant_stock_rule(self, raw_spec: object) -> BuyRule | None:
+        """Build one transient generic Merchant Stock rule for this remote execution only."""
+
+        targets = self._parse_request_scoped_merchant_stock_targets(raw_spec)
+        if not targets:
+            return None
+
+        return BuyRule(
+            enabled=True,
+            kind=BUY_KIND_MERCHANT_STOCK,
+            merchant_type=MERCHANT_TYPE_MERCHANT,
+            merchant_stock_targets=targets,
+            name="Automation request - Merchant Stock",
+        )
+
     def handle_shared_multibox_message(self, message):
         """Handle a follower command while restoring temporary destructive and HeroAI state.
 
@@ -30233,7 +30395,31 @@ class MerchantRulesWidget:
                     status_label="Starting",
                     summary="Remote execute is starting.",
                 )
-                yield from self._execute_now()
+
+                # Automation bots may supply generic request-scoped Merchant Stock
+                # targets in ExtraData[1]. They are appended only for this execution;
+                # the active profile and SharedProfiles.json remain untouched.
+                request_stock_rule = self._build_request_scoped_merchant_stock_rule(extra1)
+                if request_stock_rule is not None:
+                    self.buy_rules.append(request_stock_rule)
+                    target_summary = ", ".join(
+                        f"{int(target.model_id)}=>{int(target.target_count)}"
+                        for target in request_stock_rule.merchant_stock_targets
+                    )
+                    ConsoleLog(
+                        MODULE_NAME,
+                        f"Automation merchant-stock request: {target_summary}.",
+                        Console.MessageType.Info,
+                    )
+                try:
+                    yield from self._execute_now()
+                finally:
+                    if request_stock_rule is not None:
+                        try:
+                            self.buy_rules.remove(request_stock_rule)
+                        except ValueError:
+                            pass
+
                 if str(self.last_error or "").strip():
                     self._send_multibox_result_message(
                         sender_email,
