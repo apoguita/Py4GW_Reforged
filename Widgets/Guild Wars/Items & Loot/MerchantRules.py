@@ -1105,11 +1105,12 @@ STOCK_KEY_IDENTIFIER_PREFIX = "identifier:"
 MERCHANT_RULES_OPCODE_RELOAD_PROFILE = 1
 MERCHANT_RULES_OPCODE_PREVIEW = 2
 MERCHANT_RULES_OPCODE_EXECUTE = 3
-# Optional EXECUTE request parameters used by automation bots:
-# Params[1] = minimum carried ID kits (normal + superior combined)
-# Params[2] = minimum carried Expert Salvage Kits
-# Zero keeps the legacy profile-only behaviour. These request-scoped targets
-# are never written back to the active Merchant Rules profile.
+# Automation bots may attach generic request-scoped Merchant Stock targets to
+# EXECUTE through ExtraData[1] using: ``stock:<model_id>:<target_count>,...``.
+# These targets are converted to transient MerchantStockTarget entries for the
+# current execution only; the active Merchant Rules profile is never modified.
+# Params[1]/Params[2] keep their existing multibox result/count semantics and are
+# not used to encode bot-specific stock requirements.
 MERCHANT_RULES_OPCODE_STATUS_RESULT = 100
 MERCHANT_RULES_OPCODE_PREVIEW_RESULT = 101
 MERCHANT_RULES_OPCODE_EXECUTE_RESULT = 102

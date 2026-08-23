@@ -270,9 +270,10 @@ def _draw_config() -> None:
 
         PyImGui.text_wrapped(
             'Single-account inventory maintenance. The Superior ID / Salvage thresholds above '
-            'are sent directly to MerchantRules for this execution; the loaded profile still '
-            'handles sell, salvage, destroy and storage rules. The temporary kit targets are '
-            'not saved in MerchantRules. Equipment Pack is not counted by Inventory.GetInventorySpace().' 
+            'are encoded as generic request-scoped Merchant Stock targets for MerchantRules; '
+            'the loaded profile still handles sell, salvage, destroy and storage rules. These '
+            'temporary stock targets are never saved in MerchantRules. Equipment Pack is not '
+            'counted by Inventory.GetInventorySpace().'
         )
 
     if changed:
@@ -770,6 +771,8 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
 
         request_id = f'ministerial_inventory_{attempt_key}_{int(time.monotonic() * 1000)}'
         _log('[Inventory] Dispatching MerchantRules to the local account.')
+        # MerchantRules remains generic: the bot sends only model_id + target_count
+        # through ExtraData[1]. No ID/salvage-specific purchase logic lives in MerchantRules.
         execute = BTShared.SendAndWait(
             command=SharedCommandType.MerchantRules,
             params=(3.0, 0.0, 0.0, 0.0),
