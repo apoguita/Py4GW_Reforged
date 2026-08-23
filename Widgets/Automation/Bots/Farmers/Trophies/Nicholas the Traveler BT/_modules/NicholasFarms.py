@@ -38,6 +38,20 @@ FarmRouteAction = tuple[str, int, tuple[float, float], int, int]
 
 @dataclass(frozen=True)
 class FarmDefinition:
+    # Route semantics for coordinate-only path fields:
+    #   farm_path          = AGGRO (VanquishNode / combat-aware movement)
+    #   transit_path       = AGGRO (VanquishNode / combat-aware movement)
+    #   outpost_path       = MOVE  (plain movement, no combat clearing)
+    #   collector_route    = MOVE  (plain movement to the collector)
+    #   balthazar_approach = MOVE  (plain movement before /kneel)
+    #
+    # Action-based routes are different: every point MUST carry its own mode.
+    #   exchange_actions = ('move' | 'aggro' | 'exit', point, target_map_id)
+    #   setup/reset      = ('move' | 'aggro' | 'exit' | 'dialog', ...)
+    #
+    # Single coordinates such as exit_point, portal_to_farm, portal_back,
+    # entry_position, collector_position and nicholas_position are consumed by
+    # dedicated nodes and therefore do not need a 'move'/'aggro' prefix.
     key: str
     name: str
     model_id: int
@@ -5678,6 +5692,47 @@ FARMS: tuple[FarmDefinition, ...] = (
 
 # Keep the Config dropdown alphabetical even when farms are migrated in batches.
 FARMS = tuple(sorted(FARMS, key=lambda farm: farm.name.casefold()))
+
+
+def _validate_route_action_modes() -> None:
+    """Fail fast if an action-based Nicholas route contains an untyped point."""
+    allowed_exchange = {"move", "aggro", "exit"}
+    allowed_farm_route = {"move", "aggro", "exit", "dialog"}
+
+    for farm in FARMS:
+        for index, action in enumerate(farm.exchange_actions, start=1):
+            if not isinstance(action, tuple) or len(action) != 3:
+                raise ValueError(
+                    f"{farm.name}: exchange action {index} must be "
+                    "(kind, point, target_map_id)."
+                )
+            kind = str(action[0]).strip().lower()
+            if kind not in allowed_exchange:
+                raise ValueError(
+                    f"{farm.name}: exchange action {index} has invalid/missing "
+                    f"mode {action[0]!r}; expected move, aggro or exit."
+                )
+
+        for field_name, actions in (
+            ("setup_actions", farm.setup_actions),
+            ("reset_actions", farm.reset_actions),
+        ):
+            for index, action in enumerate(actions, start=1):
+                if not isinstance(action, tuple) or len(action) != 5:
+                    raise ValueError(
+                        f"{farm.name}: {field_name} action {index} must be "
+                        "(kind, expected_map_id, point, target_map_id, dialog_id)."
+                    )
+                kind = str(action[0]).strip().lower()
+                if kind not in allowed_farm_route:
+                    raise ValueError(
+                        f"{farm.name}: {field_name} action {index} has "
+                        f"invalid/missing mode {action[0]!r}."
+                    )
+
+
+_validate_route_action_modes()
+
 
 FARMS_BY_KEY: dict[str, FarmDefinition] = {
     farm.key: farm

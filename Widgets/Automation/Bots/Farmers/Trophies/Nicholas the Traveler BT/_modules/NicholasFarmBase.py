@@ -2447,9 +2447,11 @@ def build_nicholas_exchange(farm: FarmDefinition) -> BehaviorTree:
                 log=True,
                 multi_account=True,
             ),
-            BT.Wait(1_000),
-            BT.SendDialog(
+            BT.Wait(1_500),
+            BT.TargetNearestAndSendDialog(
+                farm.nicholas_position,
                 dialog_id=0x86,
+                target_distance=Range.Nearby.value,
                 log=True,
                 multi_account=True,
             ),
@@ -2665,9 +2667,11 @@ def build_exchange_steps(
                             log=True,
                             multi_account=True,
                         ),
-                        BT.Wait(1_000),
-                        BT.SendDialog(
+                        BT.Wait(1_500),
+                        BT.TargetNearestAndSendDialog(
+                            farm.nicholas_position,
                             dialog_id=0x86,
+                            target_distance=Range.Nearby.value,
                             log=True,
                             multi_account=True,
                         ),
