@@ -756,7 +756,7 @@ def _merchant_stock_request_spec() -> str:
         targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
     if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
         targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
-    return "stock:" + ",".join(targets)
+    return "stock:" + ",".join(targets) if targets else ""
 
 
 def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
