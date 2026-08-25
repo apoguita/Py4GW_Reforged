@@ -81,7 +81,7 @@ GRAIL_OF_MIGHT = 24860
 ARMOR_OF_SALVATION = 24861
 
 
-SUMMON_MODEL_IDS = (30209, 37810, 31155)
+SUMMON_MODEL_IDS = (37810,30209,31155)
 PCON_UPKEEPS = tuple((int(model_id) for model_id in ALL_CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS))
 
 CONSET_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(((model_id, 10) for model_id in CONSET_UPKEEPS))
@@ -96,8 +96,8 @@ BDS_MODEL_ID_MAX = BDS_MODEL_IDS[-1]
 GB_MODEL_ID = 2474
 
 INVENTORY_BAG_IDS = frozenset((1, 2, 3, 4))
-ID_KIT_MODEL_IDS = (int(ModelID.Identification_Kit.value), int(ModelID.Superior_Identification_Kit.value))
-SALVAGE_KIT_MODEL_IDS = (int(ModelID.Expert_Salvage_Kit.value),)
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
 MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
 INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
 
@@ -551,19 +551,19 @@ def _draw_run_config() -> None:
             _inventory_min_free_slots = value
             changed = True
 
-        value = PyImGui.input_int('Minimum ID kits (0 = disabled)', _inventory_min_id_kits)
+        value = PyImGui.input_int('Minimum Superior ID kits (0 = disabled)', _inventory_min_id_kits)
         value = max(0, int(value))
         if value != _inventory_min_id_kits:
             _inventory_min_id_kits = value
             changed = True
 
-        value = PyImGui.input_int('Minimum salvage kits (0 = disabled)', _inventory_min_salvage_kits)
+        value = PyImGui.input_int('Minimum Superior salvage kits (0 = disabled)', _inventory_min_salvage_kits)
         value = max(0, int(value))
         if value != _inventory_min_salvage_kits:
             _inventory_min_salvage_kits = value
             changed = True
 
-        PyImGui.text_wrapped("MerchantRules executes the currently loaded Shards of Orr profile from SharedProfiles.json. If any active account falls below a configured threshold, all active accounts are processed together. Inventory space, ID kits and Expert Salvage Kits are queried locally on every active client, so each account uses its own real bag capacity. Equipment Pack is excluded.")
+        PyImGui.text_wrapped("MerchantRules executes the currently loaded Shards of Orr profile from SharedProfiles.json. The Superior ID / Salvage thresholds above are also sent directly with the execute request and are applied temporarily without changing the profile. If any active account falls below a configured threshold, all active accounts are processed together. Inventory space, Superior ID Kits and Superior Salvage Kits are queried locally on every active client, so each account uses its own real bag capacity. Equipment Pack is excluded.")
 
     if changed:
         _save_settings()
@@ -821,8 +821,8 @@ def _log_inventory_statuses(statuses: list[dict[str, object]]) -> None:
         if bool(status.get("available", False)):
             message = (
                 f"[Inventory] {status['label']}: free={status['free_slots']}/{status['capacity']}, "
-                f"occupied={status['occupied']}, ID kits={status['id_kits']}, "
-                f"Expert salvage kits={status['salvage_kits']} -> {result}"
+                f"occupied={status['occupied']}, Superior ID kits={status['id_kits']}, "
+                f"Superior salvage kits={status['salvage_kits']} -> {result}"
             )
         else:
             message = f"[Inventory] {status['label']}: local inventory query unavailable -> {result}"
@@ -1048,8 +1048,8 @@ def _log_unhealthy_inventory_contents() -> None:
                 (
                     f"[Inventory diagnostic] {label}: "
                     f"free={status['free_slots']}/{status['capacity']}, "
-                    f"ID kits={status['id_kits']}, "
-                    f"Expert salvage kits={status['salvage_kits']}, "
+                    f"Superior ID kits={status['id_kits']}, "
+                    f"Superior salvage kits={status['salvage_kits']}, "
                     f"mirrored occupied items={len(entries)}."
                 ),
                 PySystem.Console.MessageType.Warning,
@@ -1191,6 +1191,16 @@ def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
     return BT.Sequence(name='Restore InventoryPlus After MerchantRules', children=[_send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_inventoryplus_refs'), _set_local_auto_inventory_handler(True)])
 
 
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets) if targets else ""
+
+
 def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         recipients = _inventory_recipient_emails()
@@ -1207,7 +1217,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
         execute = BTShared.SendAndWait(
             command=SharedCommandType.MerchantRules,
             params=(3.0, 0.0, 0.0, 0.0),
-            extra_data=(request_id, "", "0", "0"),
+            extra_data=(request_id, _merchant_stock_request_spec(), "0", "0"),
             recipients=recipients,
             include_self=True,
             refs_blackboard_key=f"{attempt_key}_merchant_rules_refs",
