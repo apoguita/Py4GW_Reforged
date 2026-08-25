@@ -240,9 +240,7 @@ L2_ROUTE = [
 
 # Former point 16 from the old Level 2 route.  Keep this as a pure movement
 # step with combat disabled immediately before the Flux Golem mechanic.
-L2_PRE_FLUX_PATH = [
-    Vec2f(-10237.0, -7304.0),
-]
+L2_PRE_FLUX_PATH = [Vec2f(-10237.0, -7304.0)]
 
 FLUX_APPROACH_PATH = [
     Vec2f(-10786.0, -8935.0),
@@ -442,12 +440,7 @@ def _guard_run_step(
 
     def _build() -> BehaviorTree:
         child = factory()
-        return BehaviorTree(
-            _PauseWhilePartyNotAliveNode(
-                child,
-                name=f"Party Alive Guard - {step_name}",
-            )
-        )
+        return BehaviorTree(_PauseWhilePartyNotAliveNode(child, name=f"Party Alive Guard - {step_name}"))
 
     return step_name, _build
 
@@ -550,12 +543,7 @@ def _movement_point_steps(
             point: PathPoint = point,
             name: str = name,
         ) -> BehaviorTree:
-            movement = BT.Move(
-                point,
-                pause_on_combat=pause_on_combat,
-                tolerance=move_tolerance,
-                log=False,
-            )
+            movement = BT.Move(point, pause_on_combat=pause_on_combat, tolerance=move_tolerance, log=False)
 
             if not disable_combat:
                 return _map_guarded_point(
@@ -606,32 +594,6 @@ def UseAvailableSummoningStone() -> BehaviorTree:
         name="Use Available Summoning Stone",
         children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
         + [BT.Succeeder("NoSummoningStoneAvailable")],
-    )
-
-
-def _optional_pickup_dungeon_key(
-    name: str,
-    timeout_ms: int = 1_500,
-) -> BehaviorTree:
-    """Best-effort Dungeon Key pickup.
-
-    Dungeon Keys never enter inventory, so this node must never be used as a
-    possession check. If HeroAI/LootFilter already collected the key, the
-    targeted pickup simply times out quickly and the fallback succeeds.
-    """
-    return BT.Selector(
-        name=name,
-        children=[
-            BT.PickupGroundItemByModelID(
-                DUNGEON_KEY_MODEL_ID,
-                max_distance=10_000.0,
-                timeout_ms=timeout_ms,
-                allow_unassigned=True,
-                interaction_interval_ms=250,
-                log=True,
-            ),
-            BT.Succeeder("DungeonKeyAlreadyCollectedOrUnavailable"),
-        ],
     )
 
 
@@ -766,11 +728,7 @@ def _flux_log_once(
         return
 
     state["last_log_key"] = key
-    PySystem.Console.Log(
-        MODULE_NAME,
-        f"[Flux] {message}",
-        message_type,
-    )
+    PySystem.Console.Log(MODULE_NAME, f"[Flux] {message}", message_type)
 
 
 def _flux_golem_is_alive(
@@ -813,10 +771,7 @@ def _flux_golem_is_alive(
         return False
 
     return BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name=f"Flux Golem {FLUX_GOLEM_MODEL_ID} Is Alive",
-            condition_fn=_check,
-        )
+        BehaviorTree.ConditionNode(name=f"Flux Golem {FLUX_GOLEM_MODEL_ID} Is Alive", condition_fn=_check)
     )
 
 
@@ -1112,12 +1067,7 @@ def TravelToMagusStones() -> BehaviorTree:
         name="Leave Rata Sum",
         children=[
             BT.IsCurrentMap(RATA_SUM, log=True),
-            BT.MoveAndExitMap(
-                RATA_EXIT_PATH,
-                target_map_id=MAGUS_STONES,
-                timeout_ms=60_000,
-                log=True,
-            ),
+            BT.MoveAndExitMap(RATA_EXIT_PATH, target_map_id=MAGUS_STONES, timeout_ms=60_000, log=True),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
         ],
@@ -1152,12 +1102,7 @@ def EnterOolasLab() -> BehaviorTree:
                     move_tolerance=500.0,
                     log=False,
                 ),
-                BT.MoveAndExitMap(
-                    OOLA_ENTRANCE_TRIGGER,
-                    target_map_id=OOLA_LEVEL_1,
-                    timeout_ms=60_000,
-                    log=True,
-                ),
+                BT.MoveAndExitMap(OOLA_ENTRANCE_TRIGGER, target_map_id=OOLA_LEVEL_1, timeout_ms=60_000, log=True),
                 BT.WaitUntilOnExplorable(timeout_ms=30_000),
                 BT.Wait(2_000),
             ],
@@ -1175,13 +1120,9 @@ def Level1_KeyLoot() -> BehaviorTree:
         map_id=OOLA_LEVEL_1,
         child=BT.Sequence(
             name="Optional Dungeon Key Pickup And Open Level 1 Lock",
-            children=[
-                BT.Move(Vec2f(-14968.0, 1540.0),),
-                BT.Wait(5000),
-                _optional_pickup_dungeon_key(
-                                "Optional Level 1 Dungeon Key Pickup",
-                                timeout_ms=5_000,
-                            ),]))
+            children=[BT.Move(Vec2f(-14968.0, 1540.0)), BT.Wait(5_000)],
+        ),
+    )
 
 
 def Level1_OpenLock() -> BehaviorTree:
@@ -1231,12 +1172,7 @@ def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
             BT.Wait(2_000),
 
             # Rejoindre le chargeur de Flux.
-            BT.Move(
-                FLUX_APPROACH_PATH,
-                pause_on_combat=False,
-                tolerance=250.0,
-                log=False,
-            ),
+            BT.Move(FLUX_APPROACH_PATH, pause_on_combat=False, tolerance=250.0, log=False),
 
             BT.MoveAndInteractWithGadget(
                 pos=FLUX_LOADER,
@@ -1250,12 +1186,7 @@ def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
                 log=True,
             ),
 
-            BT.Move(
-                Vec2f(-10421.80, -9864.97),
-                pause_on_combat=False,
-                tolerance=250.0,
-                log=False,
-            ),
+            BT.Move(Vec2f(-10421.80, -9864.97), pause_on_combat=False, tolerance=250.0, log=False),
             _approach_flux_golem(
                 state,
                 timeout_ms=60_000,
@@ -1266,7 +1197,6 @@ def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
             BT.Wait(3_000),
         ],
     )
-
 
 
 def Level2_FluxGolem() -> BehaviorTree:
@@ -1314,19 +1244,9 @@ def Level2_FluxGolem() -> BehaviorTree:
                 clear_or_kill,
 
                 # Once the golem is dead, move onto the Dungeon Key drop.
-                BT.Move(
-                    L2_GOLEM_KEY_PICKUP,
-                    pause_on_combat=False,
-                    tolerance=150.0,
-                    log=False,
-                ),
+                BT.Move(L2_GOLEM_KEY_PICKUP, pause_on_combat=False, tolerance=150.0, log=False),
 
                 BT.Wait(1_000),
-
-                _optional_pickup_dungeon_key(
-                    "Optional Level 2 Dungeon Key Pickup",
-                    timeout_ms=1_500,
-                ),
 
                 # Combat resumes only once the Flux mechanic is finished.
                 BottingTree.EnableCombatTree(),
@@ -1403,9 +1323,10 @@ def _load_statistics() -> None:
         return
     _total_runs = _settings_ini.get_int(_STATS_SECTION, "total_runs", 0)
     _total_run_time = _settings_ini.get_float(_STATS_SECTION, "total_run_time", 0.0)
-    v = _settings_ini.get_float(_STATS_SECTION, "fastest_run", 0.0); _fastest_run = float("inf") if v <= 0 else v
+    v = _settings_ini.get_float(_STATS_SECTION, "fastest_run", 0.0)
+    _fastest_run = float("inf") if v <= 0 else v
     _slowest_run = _settings_ini.get_float(_STATS_SECTION, "slowest_run", 0.0)
-    for floor in (1,2,3):
+    for floor in (1, 2, 3):
         total = _settings_ini.get_float(_STATS_SECTION, f"l{floor}_total_time", 0.0)
         fastest = _settings_ini.get_float(_STATS_SECTION, f"l{floor}_fastest", 0.0)
         slowest = _settings_ini.get_float(_STATS_SECTION, f"l{floor}_slowest", 0.0)
@@ -1429,14 +1350,14 @@ def _save_statistics() -> None:
     _settings_ini.set(_STATS_SECTION, "total_run_time", _total_run_time)
     _settings_ini.set(_STATS_SECTION, "fastest_run", 0.0 if _fastest_run == float("inf") else _fastest_run)
     _settings_ini.set(_STATS_SECTION, "slowest_run", _slowest_run)
-    for floor in (1,2,3):
+    for floor in (1, 2, 3):
         _settings_ini.set(_STATS_SECTION, f"l{floor}_total_time", globals()[f"_l{floor}_total_time"])
         fast = globals()[f"_l{floor}_fastest"]
         _settings_ini.set(_STATS_SECTION, f"l{floor}_fastest", 0.0 if fast == float("inf") else fast)
         _settings_ini.set(_STATS_SECTION, f"l{floor}_slowest", globals()[f"_l{floor}_slowest"])
-    for key,total in _storm_drops.items():
+    for key, total in _storm_drops.items():
         if key != "local": _settings_ini.set(_STORM_DROPS_SECTION, key, total)
-    for key,name in _char_names.items():
+    for key, name in _char_names.items():
         if key != "local": _settings_ini.set(_CHAR_NAMES_SECTION, key, name)
 
 
@@ -1497,7 +1418,7 @@ def _runtime_difficulty_node() -> BehaviorTree:
 
 def _runtime_restock_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        items: list[tuple[int,int]] = []
+        items: list[tuple[int, int]] = []
         if _restock_conset: items.extend(CONSET_RESTOCK_ITEMS)
         if _restock_pcons: items.extend(PCON_RESTOCK_ITEMS)
         if _use_summoning_stone: items.extend(SUMMON_RESTOCK_ITEMS)
@@ -1858,13 +1779,7 @@ def _query_all_inventory_states_node(
             )
             return _finish()
 
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=name,
-            action_fn=_tick,
-            aftercast_ms=_INVENTORY_QUERY_POLL_MS,
-        )
-    )
+    return BehaviorTree(BehaviorTree.ActionNode(name=name, action_fn=_tick, aftercast_ms=_INVENTORY_QUERY_POLL_MS))
 
 
 def _inventory_recipient_emails() -> list[str]:
@@ -1903,7 +1818,6 @@ def _inventory_maintenance_trigger_node() -> BehaviorTree:
     )
 
 
-
 def _inventory_model_label(model_id: int) -> str:
     try:
         return str(ModelID(int(model_id)).name)
@@ -1933,9 +1847,7 @@ def _log_unhealthy_inventory_contents() -> None:
             if model_id <= 0 or quantity <= 0:
                 continue
             slot_no = int(getattr(slot, "Slot", 0) or 0)
-            entries.append(
-                f"B{bag_id}:S{slot_no} {_inventory_model_label(model_id)}({model_id}) x{quantity}"
-            )
+            entries.append(f"B{bag_id}:S{slot_no} {_inventory_model_label(model_id)}({model_id}) x{quantity}")
 
         if bool(status.get("available", False)):
             PySystem.Console.Log(
@@ -1964,7 +1876,6 @@ def _log_unhealthy_inventory_contents() -> None:
                 + " | ".join(entries[start_index:start_index + chunk_size]),
                 PySystem.Console.MessageType.Info,
             )
-
 
 
 def _inventory_is_healthy_node(
@@ -2010,12 +1921,7 @@ def _inventory_is_healthy_node(
 
         return BehaviorTree.NodeState.SUCCESS
 
-    return BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name=name,
-            condition_fn=_check,
-        )
-    )
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=_check))
 
 
 def _all_accounts_on_map(map_id: int) -> bool:
@@ -2233,11 +2139,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
                 "[Inventory] MerchantRules aborted: no active account recipients.",
                 PySystem.Console.MessageType.Error,
             )
-            return BehaviorTree(
-                BehaviorTree.FailerNode(
-                    name="No Active MerchantRules Recipients",
-                )
-            )
+            return BehaviorTree(BehaviorTree.FailerNode(name="No Active MerchantRules Recipients"))
 
         request_id = (
             f"oola_inventory_{attempt_key}_"
@@ -2284,11 +2186,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
                 _restore_inventoryplus_after_merchant(
                     f"{attempt_key}_failure"
                 ),
-                BehaviorTree(
-                    BehaviorTree.FailerNode(
-                        name="Propagate MerchantRules Failure",
-                    )
-                ),
+                BehaviorTree(BehaviorTree.FailerNode(name="Propagate MerchantRules Failure")),
             ],
         )
 
@@ -2300,10 +2198,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
             ],
         )
 
-    return BT.Subtree(
-        name="Run MerchantRules On All Active Accounts",
-        subtree_fn=_build,
-    )
+    return BT.Subtree(name="Run MerchantRules On All Active Accounts", subtree_fn=_build)
 
 
 def _inventory_maintenance_attempt(
@@ -2490,9 +2385,7 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
             INVENTORY_MAINTENANCE_RETRY_COUNT + 1,
         )
     ]
-    maintenance_attempts.append(
-        _stop_for_inventory_failure_node()
-    )
+    maintenance_attempts.append(_stop_for_inventory_failure_node())
 
     enabled_flow = BT.Sequence(
         name="Enabled Inventory Check And Maintenance",
@@ -2548,10 +2441,7 @@ def StartupInventoryCheck() -> BehaviorTree:
             BT.Sequence(
                 name="Check Inventories Before Leaving Rata Sum",
                 children=[
-                    BT.IsCurrentMap(
-                        map_id=RATA_SUM,
-                        log=False,
-                    ),
+                    BT.IsCurrentMap(map_id=RATA_SUM, log=False),
                     InventoryCheckAndMaintenance(),
                 ],
             ),
@@ -2610,13 +2500,7 @@ def _statistics_action_node(
 
         return BehaviorTree.NodeState.SUCCESS
 
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=name,
-            action_fn=_run,
-            aftercast_ms=0,
-        )
-    )
+    return BehaviorTree(BehaviorTree.ActionNode(name=name, action_fn=_run, aftercast_ms=0))
 
 
 def _mark_run_start_node() -> BehaviorTree:
@@ -2634,10 +2518,7 @@ def _mark_run_start_node() -> BehaviorTree:
         _current_l2_time = 0.0
         _current_l3_time = 0.0
 
-    return _statistics_action_node(
-        "Mark Run Start",
-        _mark,
-    )
+    return _statistics_action_node("Mark Run Start", _mark)
 
 
 def _mark_l2_start_node() -> BehaviorTree:
@@ -2652,10 +2533,7 @@ def _mark_l2_start_node() -> BehaviorTree:
             else 0.0
         )
 
-    return _statistics_action_node(
-        "Mark Level 2 Start",
-        _mark,
-    )
+    return _statistics_action_node("Mark Level 2 Start", _mark)
 
 
 def _mark_l3_start_node() -> BehaviorTree:
@@ -2670,10 +2548,7 @@ def _mark_l3_start_node() -> BehaviorTree:
             else 0.0
         )
 
-    return _statistics_action_node(
-        "Mark Level 3 Start",
-        _mark,
-    )
+    return _statistics_action_node("Mark Level 3 Start", _mark)
 
 
 def _record_run_end_node() -> BehaviorTree:
@@ -2742,10 +2617,7 @@ def _record_run_end_node() -> BehaviorTree:
 
         _save_statistics()
 
-    return _statistics_action_node(
-        "Record Successful Run",
-        _record,
-    )
+    return _statistics_action_node("Record Successful Run", _record)
 
 
 def _inventory_count(model_min: int, model_max: int) -> int:
@@ -2792,12 +2664,7 @@ def _inventory_statistics_node(
         ).strip()
 
         if not local_email:
-            state.update(
-                started=True,
-                local_email="",
-                account_keys=[],
-                requests=[],
-            )
+            state.update(started=True, local_email="", account_keys=[], requests=[])
             return
 
         local_key = _account_key(local_email)
@@ -2832,13 +2699,7 @@ def _inventory_statistics_node(
             if key not in account_keys:
                 account_keys.append(key)
 
-            requests.append(
-                {
-                    "email": email,
-                    "key": key,
-                    "section": section,
-                }
-            )
+            requests.append({"email": email, "key": key, "section": section,})
 
         for key in account_keys:
             _storm_drops.setdefault(key, 0)
@@ -3014,11 +2875,7 @@ def _inventory_statistics_node(
             return BehaviorTree.NodeState.SUCCESS
 
     return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=node_name,
-            action_fn=_tick,
-            aftercast_ms=_INVENTORY_QUERY_POLL_MS,
-        )
+        BehaviorTree.ActionNode(name=node_name, action_fn=_tick, aftercast_ms=_INVENTORY_QUERY_POLL_MS)
     )
 
 
@@ -3062,14 +2919,8 @@ def InitializeBot() -> BehaviorTree:
                 resurrection_scroll=True,
                 account_isolation=False,
             ),
-            BT.SetPlayerStatus(
-                PlayerStatus.Offline,
-                log=True,
-            ),
-            BT.LogMessage(
-                message="Oola's Lab BT initialized in multibox mode.",
-                module_name=MODULE_NAME,
-            ),
+            BT.SetPlayerStatus(PlayerStatus.Offline, log=True),
+            BT.LogMessage(message="Oola's Lab BT initialized in multibox mode.", module_name=MODULE_NAME),
         ],
     )
 
@@ -3094,15 +2945,8 @@ def PreparePartyAndSupplies() -> BehaviorTree:
     already_magus = BT.Sequence(
         name="Skip Outpost Preparation - Already In Magus Stones",
         children=[
-            BT.IsCurrentMap(
-                MAGUS_STONES,
-                log=False,
-            ),
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="active",
-                log=True,
-            ),
+            BT.IsCurrentMap(MAGUS_STONES, log=False),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="active", log=True),
             BT.Succeeder("OolaPreparationAlreadyDoneInMagus"),
         ],
     )
@@ -3133,10 +2977,7 @@ def PreparePartyAndSupplies() -> BehaviorTree:
             _runtime_difficulty_node(),
             _runtime_restock_node(),
 
-            BT.LogMessage(
-                message="Party formed and Oola settings applied.",
-                module_name=MODULE_NAME,
-            ),
+            BT.LogMessage(message="Party formed and Oola settings applied.", module_name=MODULE_NAME),
         ],
     )
 
@@ -3162,15 +3003,8 @@ def HandleOolaQuest() -> BehaviorTree:
     already_magus = BT.Sequence(
         name="Skip Oola Quest Handler - Already In Magus",
         children=[
-            BT.IsCurrentMap(
-                MAGUS_STONES,
-                log=False,
-            ),
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="active",
-                log=True,
-            ),
+            BT.IsCurrentMap(MAGUS_STONES, log=False),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="active", log=True),
             BT.Succeeder("OolaQuestAlreadyActiveInMagus"),
         ],
     )
@@ -3178,15 +3012,8 @@ def HandleOolaQuest() -> BehaviorTree:
     active = BT.Sequence(
         name="Little Workshop Already Active",
         children=[
-            BT.IsCurrentMap(
-                RATA_SUM,
-                log=False,
-            ),
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="active",
-                log=True,
-            ),
+            BT.IsCurrentMap(RATA_SUM, log=False),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="active", log=True),
             BT.Succeeder("ContinueWithActiveOolaQuest"),
         ],
     )
@@ -3194,15 +3021,8 @@ def HandleOolaQuest() -> BehaviorTree:
     completed = BT.Sequence(
         name="Collect And Retake Little Workshop",
         children=[
-            BT.IsCurrentMap(
-                RATA_SUM,
-                log=True,
-            ),
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="complete",
-                log=True,
-            ),
+            BT.IsCurrentMap(RATA_SUM, log=True),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="complete", log=True),
 
             BT.Move(
                 OOLA_QUEST_NPC,
@@ -3232,10 +3052,7 @@ def HandleOolaQuest() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.WaitForQuestCleared(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                timeout_ms=15_000,
-            ),
+            BT.WaitForQuestCleared(LITTLE_WORKSHOP_OF_HORRORS, timeout_ms=15_000),
 
             BT.MoveAndAutoDialog(
                 OOLA_QUEST_NPC,
@@ -3244,25 +3061,15 @@ def HandleOolaQuest() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.WaitForActiveQuest(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                timeout_ms=15_000,
-            ),
+            BT.WaitForActiveQuest(LITTLE_WORKSHOP_OF_HORRORS, timeout_ms=15_000),
         ],
     )
 
     missing = BT.Sequence(
         name="Take Little Workshop Of Horrors",
         children=[
-            BT.IsCurrentMap(
-                RATA_SUM,
-                log=True,
-            ),
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="missing",
-                log=True,
-            ),
+            BT.IsCurrentMap(RATA_SUM, log=True),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="missing", log=True),
 
             BT.Move(
                 OOLA_QUEST_NPC,
@@ -3292,10 +3099,7 @@ def HandleOolaQuest() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.WaitForActiveQuest(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                timeout_ms=15_000,
-            ),
+            BT.WaitForActiveQuest(LITTLE_WORKSHOP_OF_HORRORS, timeout_ms=15_000),
         ],
     )
 
@@ -3357,10 +3161,7 @@ def Level1_EnterLevel2() -> BehaviorTree:
                             ignore_destination_obstacles=True,
                             log=False,
                         ),
-                        BT.WaitForMapLoad(
-                            OOLA_LEVEL_2,
-                            timeout_ms=60_000,
-                        ),
+                        BT.WaitForMapLoad(OOLA_LEVEL_2, timeout_ms=60_000),
                     ],
                 ),
                 skip_if_in_maps=(
@@ -3416,10 +3217,7 @@ def Level2_EnterLevel3() -> BehaviorTree:
                             ignore_destination_obstacles=True,
                             log=False,
                         ),
-                        BT.WaitForMapLoad(
-                            OOLA_LEVEL_3,
-                            timeout_ms=60_000,
-                        ),
+                        BT.WaitForMapLoad(OOLA_LEVEL_3, timeout_ms=60_000),
                     ],
                 ),
                 skip_if_in_maps=(OOLA_LEVEL_3,),
@@ -3435,10 +3233,7 @@ def Level3_Start() -> BehaviorTree:
     return BT.Sequence(
         name="Start Oola Level 3",
         children=[
-            BT.IsCurrentMap(
-                OOLA_LEVEL_3,
-                log=True,
-            ),
+            BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
             UseAvailableSummoningStone(),
             BT.MoveAndAutoDialog(
                 L3_BLESSING,
@@ -3455,10 +3250,7 @@ def Level3_FinalClear() -> BehaviorTree:
     return BT.Sequence(
         name="Oola Level 3 Final Clear",
         children=[
-            BT.IsCurrentMap(
-                OOLA_LEVEL_3,
-                log=True,
-            ),
+            BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
             BT.WaitForClearEnemiesInArea(
                 L3_FINAL_FIGHT_CENTER.x,
                 L3_FINAL_FIGHT_CENTER.y,
@@ -3479,10 +3271,7 @@ def OpenFinalChest() -> BehaviorTree:
     return BT.Sequence(
         name="Open Oola's Chest",
         children=[
-            BT.IsCurrentMap(
-                OOLA_LEVEL_3,
-                log=True,
-            ),
+            BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
             BT.MoveAndInteractWithGadget(
                 pos=OOLA_FINAL_CHEST,
                 search_distance=1_000.0,
@@ -3527,11 +3316,7 @@ def ResolveOolaQuestAfterRun() -> BehaviorTree:
     active = BT.Sequence(
         name="Keep Active Oola Quest",
         children=[
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="active",
-                log=True,
-            ),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="active", log=True),
             BT.Succeeder("OolaQuestReady"),
         ],
     )
@@ -3543,11 +3328,7 @@ def ResolveOolaQuestAfterRun() -> BehaviorTree:
     completed = BT.Sequence(
         name="Collect Oola Reward",
         children=[
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="complete",
-                log=True,
-            ),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="complete", log=True),
 
             BT.Move(
                 OOLA_QUEST_NPC,
@@ -3591,81 +3372,10 @@ def ResolveOolaQuestAfterRun() -> BehaviorTree:
     # MISSING -> change Rata Sum region, regroup and retake the quest.
     # -------------------------------------------------------------------------
     missing = BT.Sequence(
-        name="Refresh Rata And Retake Oola Quest",
+        name="Oola Quest Reward Cleared",
         children=[
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="missing",
-                log=True,
-            ),
-
-            # Change Rata Sum region to force a fresh instance.
-            BT.Subtree(
-                name="Travel Leader To Alternate Rata Region",
-                subtree_fn=lambda _node: BT.TravelToRegion(
-                    outpost_id=RATA_SUM,
-                    region=(
-                        QUEST_REFRESH_US_REGION
-                        if int(Map.GetRegion()[0]) == QUEST_REFRESH_EU_REGION
-                        else QUEST_REFRESH_EU_REGION
-                    ),
-                    district=QUEST_REFRESH_DISTRICT,
-                    language=QUEST_REFRESH_LANGUAGE,
-                    log=True,
-                    timeout_ms=30_000,
-                ),
-            ),
-
-            BT.WaitUntilOnOutpost(timeout_ms=30_000),
-            BT.Wait(2_000),
-
-            # Recall the other accounts and configured heroes.
-            BT.CreateParty(
-                hero_ids=OOLA_PARTY_HERO_IDS,
-                multibox_invite=True,
-                timeout_ms=30_000,
-                log=True,
-            ),
-
-            BT.Wait(2_000),
-
-            # Return to Oola.
-            BT.Move(
-                OOLA_QUEST_NPC,
-                tolerance=150.0,
-                pause_on_combat=False,
-                flag_heroes_to_waypoint=False,
-                ignore_destination_npcs=True,
-                avoid_obstacles=False,
-                log=True,
-            ),
-
-            BehaviorTree(
-                BehaviorTree.ActionNode(
-                    name="Pixel Stack Followers",
-                    action_fn=lambda: (
-                        HeroAICommandAPI().pixel_stack()
-                        or BehaviorTree.NodeState.SUCCESS
-                    ),
-                    aftercast_ms=0,
-                )
-            ),
-
-            BT.Wait(5_000),
-
-            # Retake the quest on every account.
-            BT.MoveAndAutoDialog(
-                OOLA_QUEST_NPC,
-                buttons=0,
-                pause_on_combat=False,
-                multi_account=True,
-                log=True,
-            ),
-
-            BT.WaitForActiveQuest(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                timeout_ms=15_000,
-            ),
+            BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="missing", log=True),
+            BT.Succeeder("OolaQuestReadyForNextCycle"),
         ],
     )
     resolve_not_active = BT.Sequence(
@@ -3677,11 +3387,7 @@ def ResolveOolaQuestAfterRun() -> BehaviorTree:
                     completed,
 
                     # If already missing, there is no reward to collect.
-                    BT.IsQuestState(
-                        LITTLE_WORKSHOP_OF_HORRORS,
-                        state="missing",
-                        log=False,
-                    ),
+                    BT.IsQuestState(LITTLE_WORKSHOP_OF_HORRORS, state="missing", log=False),
                 ],
             ),
 
@@ -3696,37 +3402,6 @@ def ResolveOolaQuestAfterRun() -> BehaviorTree:
             resolve_not_active,
         ],
     )
-
-def PrepareNextDungeonRun() -> BehaviorTree:
-    return BT.Sequence(
-        name="Prepare Next Oola Run",
-        children=[
-            BT.IsCurrentMap(
-                RATA_SUM,
-                log=True,
-            ),
-            BT.IsQuestState(
-                LITTLE_WORKSHOP_OF_HORRORS,
-                state="active",
-                log=True,
-            ),
-            BT.CreateParty(
-                hero_ids=OOLA_PARTY_HERO_IDS,
-                multibox_invite=True,
-                timeout_ms=30_000,
-                log=True,
-            ),
-
-            _runtime_difficulty_node(),
-            _runtime_restock_node(),
-            _runtime_consumable_upkeep_node(True),
-
-            TravelToMagusStones(),
-            MagusStonesStart(),
-            EnterOolasLab(),
-        ],
-    )
-
 
 def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     # The party-alive guard is active from the Rata Sum exit through the final
@@ -3821,10 +3496,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Prepare Party And Supplies", PreparePartyAndSupplies),
         ("Handle Oola Quest", HandleOolaQuest),
 
-        *(
-            _guard_run_step(step_name, factory)
-            for step_name, factory in guarded_run_steps
-        ),
+        *(_guard_run_step(step_name, factory)for step_name, factory in guarded_run_steps),
 
         # ---------------------------------------------------------------------
         # End of run / next run - the guard ends after the chest.
@@ -3832,7 +3504,6 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Return To Rata Sum", CollectRewardAndReturnToRata),
         ("Resolve Oola Quest", ResolveOolaQuestAfterRun),
         ("Inventory Check And Maintenance", InventoryCheckAndMaintenance),
-        ("Prepare Next Dungeon Run", PrepareNextDungeonRun),
     ]
 
 
@@ -3849,7 +3520,6 @@ def _avg_time(total: float) -> str:
         return "-"
 
     return _fmt_time(total / _total_runs)
-
 
 
 def _reset_statistics() -> None:
@@ -3910,11 +3580,7 @@ def _reset_statistics() -> None:
 
     _save_statistics()
 
-    PySystem.Console.Log(
-        MODULE_NAME,
-        "Oola statistics reset.",
-        PySystem.Console.MessageType.Success,
-    )
+    PySystem.Console.Log(MODULE_NAME, "Oola statistics reset.", PySystem.Console.MessageType.Success)
 
 
 def _draw_statistics() -> None:
@@ -3928,17 +3594,11 @@ def _draw_statistics() -> None:
     gold = Color(255, 210, 80, 255).to_tuple_normalized()
     cyan = Color(80, 210, 255, 255).to_tuple_normalized()
 
-    PyImGui.text_colored(
-        "Oola's Lab Statistics",
-        gold,
-    )
+    PyImGui.text_colored("Oola's Lab Statistics", gold)
     PyImGui.separator()
     PyImGui.spacing()
 
-    _scramble_accounts = PyImGui.checkbox(
-        "Hide account names",
-        _scramble_accounts,
-    )
+    _scramble_accounts = PyImGui.checkbox("Hide account names", _scramble_accounts)
 
     PyImGui.same_line()
 
@@ -3982,10 +3642,7 @@ def _draw_statistics() -> None:
 
         PyImGui.end_table()
 
-    PyImGui.text(
-        f"Session: {_session_runs} run(s) | "
-        f"{session_total} Storm Daggers"
-    )
+    PyImGui.text(f"Session: {_session_runs} run(s) | " f"{session_total} Storm Daggers")
 
     # Timings ----------------------------------------------------------------
     PyImGui.spacing()
@@ -4205,22 +3862,11 @@ def tooltip() -> None:
     PyImGui.set_next_window_size((600, 0))
     PyImGui.begin_tooltip()
 
-    ImGui.image(
-        MODULE_ICON,
-        (32, 32),
-    )
+    ImGui.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
 
-    ImGui.push_font(
-        "Regular",
-        20,
-    )
-    ImGui.text_aligned(
-        MODULE_NAME,
-        alignment=Alignment.MidLeft,
-        color=title.color_tuple,
-        height=32,
-    )
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title.color_tuple, height=32)
     ImGui.pop_font()
 
     PyImGui.spacing()
@@ -4231,18 +3877,10 @@ def tooltip() -> None:
         "for party control, inventory maintenance and persistent statistics."
     )
 
-    PyImGui.bullet_text(
-        "Complete Oola route with keys and Flux Matrix mechanic."
-    )
-    PyImGui.bullet_text(
-        "Multibox quest dialogs and final chest interaction."
-    )
-    PyImGui.bullet_text(
-        "Tracks Storm Daggers (model 1986) per account."
-    )
-    PyImGui.bullet_text(
-        "MerchantRules inventory maintenance via Eye of the North."
-    )
+    PyImGui.bullet_text("Complete Oola route with keys and Flux Matrix mechanic.")
+    PyImGui.bullet_text("Multibox quest dialogs and final chest interaction.")
+    PyImGui.bullet_text("Tracks Storm Daggers (model 1986) per account.")
+    PyImGui.bullet_text("MerchantRules inventory maintenance via Eye of the North.")
 
     PyImGui.end_tooltip()
 
