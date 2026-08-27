@@ -42,6 +42,14 @@ class SkillbarCache:
         return hero_skillbar
     
     def UseSkill(self, skill_slot, target_agent_id=0, aftercast_delay=0):
+        # RoJ-only Mimicry firewall. Check BEFORE the action is queued so an
+        # unsafe HR/Para Mimicry cast never reaches PySkillbar.
+        try:
+            from Py4GWCoreLib.Builds.Skills.RoJMimicryFirewall import allow_skillbar_use
+            if not allow_skillbar_use(skill_slot, target_agent_id):
+                return
+        except Exception:
+            pass
         self._action_queue_manager.AddActionWithDelay("ACTION",aftercast_delay, self._skillbar_instance.UseSkill, skill_slot, target_agent_id)
      
     def UseSkillTargetless(self, skill_slot, aftercast_delay=0):

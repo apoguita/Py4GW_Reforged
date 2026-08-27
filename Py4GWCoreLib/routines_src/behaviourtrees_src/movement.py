@@ -1060,7 +1060,7 @@ class BTMovement:
             if Checks.Player.IsDead():
                 _stop_strafe()
                 _clear_avoidance()
-                if log:
+                if log and state["current_pause_reason"] != "player_dead":
                     _log("Move", "Player is dead; movement remains active and waiting.", message_type=Console.MessageType.Warning, log=log)
                 state["was_paused"] = True
                 state["current_pause_reason"] = "player_dead"

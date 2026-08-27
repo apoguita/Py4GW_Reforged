@@ -38,7 +38,14 @@ class HeroAIHeadlessTree:
         self._status_selector: BehaviorTree.SelectorNode | None = None
         self._follow_state = FollowExecutionState()
         self._headless_looting_enabled = True
+        self._headless_combat_enabled = True
         self.tree = self._build_tree()
+
+    def SetCombatEnabled(self, enabled: bool) -> None:
+        self._headless_combat_enabled = bool(enabled)
+
+    def IsCombatEnabled(self) -> bool:
+        return bool(self._headless_combat_enabled)
 
     def _has_active_pick_up_loot_message(self) -> bool:
         account_email = Player.GetAccountEmail()
@@ -137,6 +144,9 @@ class HeroAIHeadlessTree:
         return BehaviorTree.NodeState.FAILURE
 
     def _handle_out_of_combat(self) -> bool:
+        if not self._headless_combat_enabled:
+            return False
+
         options = self.cached_data.account_options
         if not options or not options.Combat:
             return False
@@ -156,6 +166,9 @@ class HeroAIHeadlessTree:
         return self.heroai_build.DidTickSucceed()
 
     def _handle_combat(self) -> bool:
+        if not self._headless_combat_enabled:
+            return False
+
         options = self.cached_data.account_options
         if not options or not options.Combat:
             return False
@@ -264,6 +277,7 @@ class HeroAIHeadlessTree:
         self.heroai_build.ClearBuildContract()
         self._build_contract_map_signature = None
         self._follow_state = FollowExecutionState()
+        self._headless_combat_enabled = True
 
     def _build_tree(self):
         self._looting_node = BehaviorTree.ActionNode(

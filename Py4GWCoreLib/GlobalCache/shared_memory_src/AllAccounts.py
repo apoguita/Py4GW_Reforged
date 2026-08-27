@@ -34,10 +34,6 @@ from .IntentStruct import IntentStruct
 #   from Py4GWCoreLib.GlobalCache.shared_memory_src import AllAccounts as _wb_mod
 #   _wb_mod.WHITEBOARD_DEBUG = True
 WHITEBOARD_DEBUG: bool = False
-
-#: How old a RUNNING message may be before SendMessage treats it as wedged (its coroutine died
-#: before cleanup) instead of mid-flight. Must exceed the longest legitimate command runtime.
-_MESSAGE_RUNNING_STALE_MS = 60_000
 _HERO_SUBMIT_RETRY_AFTER: dict[tuple[int, int], int] = {}
 _PET_SUBMIT_RETRY_AFTER: dict[tuple[int, int], int] = {}
 _SLOT_SUBMIT_RETRY_COOLDOWN_MS = 5000
@@ -321,16 +317,6 @@ class AllAccounts(Structure):
             return False  # one grouped, one not
         # both ungrouped: legacy
         return not self.AccountData[s_idx].IsIsolated and not self.AccountData[r_idx].IsIsolated
-
-    @staticmethod
-    def _is_system_control_command(command: SharedCommandType | int) -> bool:
-        """Only explicit local-control commands may cross gameplay isolation groups."""
-
-        value = int(command)
-        return value in (
-            int(SharedCommandType.AccountSettingsSync),
-            int(SharedCommandType.AccountSettingsSyncResult),
-        )
 
     def _is_slot_expired(self, index: int) -> bool:
         slot_data = self.AccountData[index]
@@ -946,7 +932,7 @@ class AllAccounts(Structure):
             ConsoleLog(SHMEM_MODULE_NAME, "Sender email is empty.", PySystem.Console.MessageType.Error)
             return -1
 
-        if not self._is_system_control_command(command) and not self._can_communicate(sender_email, receiver_email):
+        if not self._can_communicate(sender_email, receiver_email):
             ConsoleLog(SHMEM_MODULE_NAME, f"Cannot communicate between {sender_email} and {receiver_email} (isolated or different groups).", PySystem.Console.MessageType.Warning)
             return -1
         
@@ -957,17 +943,6 @@ class AllAccounts(Structure):
 
             if message.ReceiverEmail != receiver_email:
                 continue  # This slot is not for the intended receiver
-
-            if message.SenderEmail != sender_email:
-                continue  # This slot is from a different sender
-
-            if message.Running:
-                # A running message may be mid-flight (its coroutine is alive) or wedged (its
-                # coroutine died before cleanup). Reuse the slot only while it is fresh; a stale
-                # running message counts as dead so a new send can always get through.
-                if int(PySystem.get_tick_count64() - message.Timestamp) < _MESSAGE_RUNNING_STALE_MS:
-                    return i
-                continue
             
             if int(message.Command) != int(command.value):
                 continue  # This slot has a different command (could be from another sender)
@@ -982,7 +957,7 @@ class AllAccounts(Structure):
             if message_extra_data != normalized_extra_data:
                 continue  # This slot has different extra data (could be from another sender or an old message)
             
-            return i  # Matching pending message is already queued; reuse it instead of duplicating it.
+            return i  # Matching active message is already queued/running; reuse it instead of duplicating it.
         
         for i in range(SHMEM_MAX_PLAYERS):
             message = self.GetInbox(i)
@@ -1015,8 +990,7 @@ class AllAccounts(Structure):
         for index in range(SHMEM_MAX_PLAYERS):
             message = self.Inbox[index]
             if (message.ReceiverEmail == account_email and message.Active and not message.Running
-                and (self._is_system_control_command(message.Command)
-                     or self._can_communicate(message.SenderEmail, account_email))):
+                and self._can_communicate(message.SenderEmail, account_email)):
                 return index, message
         return -1, None
 
@@ -1029,8 +1003,7 @@ class AllAccounts(Structure):
             message = self.Inbox[index]
             if message.ReceiverEmail != account_email or not message.Active:
                 continue
-            if (not self._is_system_control_command(message.Command)
-                and not self._can_communicate(message.SenderEmail, account_email)):
+            if not self._can_communicate(message.SenderEmail, account_email):
                 continue
             if not message.Running or include_running:
                 return index, message
@@ -1104,15 +1077,24 @@ class AllAccounts(Structure):
     def _wb_key_display(self, kind_id: int, key_id: int) -> str:
         if int(kind_id) != int(WhiteboardLockKind.SKILL_TARGET):
             return f"key={int(key_id)}"
+        key_id = int(key_id)
+        # Generic whiteboard users intentionally store FourCC-style keys such
+        # as 0x524F4A4C ("ROJL") in the legacy SkillID field.  Passing one of
+        # those synthetic keys to the native Skill.GetName lookup treats it as
+        # a real Guild Wars skill id and can dereference outside the skill
+        # table.  The unlocked-skill bitmap defines the complete valid id
+        # address space; anything outside it must stay a numeric key.
+        if key_id <= 0 or key_id >= int(SKILL_BITMAP_ENTRIES * 32):
+            return f"key=0x{key_id & 0xFFFFFFFF:08X}"
         try:
             from Py4GWCoreLib import GLOBAL_CACHE
-            name = GLOBAL_CACHE.Skill.GetName(int(key_id)) or ""
+            name = GLOBAL_CACHE.Skill.GetName(key_id) or ""
             name = str(name).strip()
             if name:
-                return f"'{name}'(id={int(key_id)})"
+                return f"'{name}'(id={key_id})"
         except Exception:
             pass
-        return f"skill={int(key_id)}"
+        return f"skill={key_id}"
 
     def _wb_lock_display(self, intent: IntentStruct) -> str:
         return (
@@ -1139,11 +1121,12 @@ class AllAccounts(Structure):
         intent = self.Intents[index]
         if intent.Active:
             lifetime = int(PySystem.get_tick_count64()) - int(intent.PostedAtTick)
-            self._wb_log(
-                int(intent.KindID),
-                f"CLEAR slot={index} email='{intent.OwnerEmail}' "
-                f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=explicit",
-            )
+            if WHITEBOARD_DEBUG:
+                self._wb_log(
+                    int(intent.KindID),
+                    f"CLEAR slot={index} email='{intent.OwnerEmail}' "
+                    f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=explicit",
+                )
         intent.reset()
 
     def ClearIntentsByOwner(self, owner_email: str) -> int:
@@ -1156,11 +1139,12 @@ class AllAccounts(Structure):
             intent = self.Intents[i]
             if intent.Active and intent.OwnerEmail == owner_email:
                 lifetime = now - int(intent.PostedAtTick)
-                self._wb_log(
-                    int(intent.KindID),
-                    f"CLEAR slot={i} email='{owner_email}' "
-                    f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=owner_clear",
-                )
+                if WHITEBOARD_DEBUG:
+                    self._wb_log(
+                        int(intent.KindID),
+                        f"CLEAR slot={i} email='{owner_email}' "
+                        f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=owner_clear",
+                    )
                 intent.reset()
                 count += 1
         return count
@@ -1195,11 +1179,12 @@ class AllAccounts(Structure):
             if int(intent.IsolationGroupID) != int(group_id):
                 continue
             lifetime = now - int(intent.PostedAtTick)
-            self._wb_log(
-                int(intent.KindID),
-                f"CLEAR slot={i} email='{owner_email}' "
-                f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=owner_clear",
-            )
+            if WHITEBOARD_DEBUG:
+                self._wb_log(
+                    int(intent.KindID),
+                    f"CLEAR slot={i} email='{owner_email}' "
+                    f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=owner_clear",
+                )
             intent.reset()
             count += 1
         return count
@@ -1252,18 +1237,20 @@ class AllAccounts(Structure):
             intent.ExpiresAtTick = int(expires_at_tick)
             intent.Active = True
             budget = int(expires_at_tick) - now
-            self._wb_log(
-                int(intent.KindID),
-                f"POST  slot={i} email='{owner_email}' "
-                f"{self._wb_lock_display(intent)} holders={int(max_holders)} "
-                f"expires_in={budget}ms",
-            )
+            if WHITEBOARD_DEBUG:
+                self._wb_log(
+                    int(intent.KindID),
+                    f"POST  slot={i} email='{owner_email}' "
+                    f"{self._wb_lock_display(intent)} holders={int(max_holders)} "
+                    f"expires_in={budget}ms",
+                )
             return i
-        self._wb_log(
-            int(kind_id),
-            f"POST-FAIL email='{owner_email}' kind={self._wb_kind_display(kind_id)} "
-            f"key={int(key_id)} target={int(target_id)} reason=full"
-        )
+        if WHITEBOARD_DEBUG:
+            self._wb_log(
+                int(kind_id),
+                f"POST-FAIL email='{owner_email}' kind={self._wb_kind_display(kind_id)} "
+                f"key={int(key_id)} target={int(target_id)} reason=full"
+            )
         return -1
 
     def CountLocks(
@@ -1422,11 +1409,12 @@ class AllAccounts(Structure):
             intent = self.Intents[i]
             if intent.Active and now_tick >= int(intent.ExpiresAtTick):
                 lifetime = int(now_tick) - int(intent.PostedAtTick)
-                self._wb_log(
-                    int(intent.KindID),
-                    f"SWEEP slot={i} email='{intent.OwnerEmail}' "
-                    f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=expired",
-                )
+                if WHITEBOARD_DEBUG:
+                    self._wb_log(
+                        int(intent.KindID),
+                        f"SWEEP slot={i} email='{intent.OwnerEmail}' "
+                        f"{self._wb_lock_display(intent)} lifetime={lifetime}ms reason=expired",
+                    )
                 intent.reset()
                 count += 1
         return count
