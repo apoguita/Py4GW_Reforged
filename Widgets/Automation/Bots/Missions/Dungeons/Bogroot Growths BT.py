@@ -8,7 +8,7 @@ import math
 import PySystem
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib import GLOBAL_CACHE, Map, Player, SharedCommandType
+from Py4GWCoreLib import GLOBAL_CACHE, Agent, Map, Player, SharedCommandType, Inventory, ImGui
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -20,8 +20,9 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS,
 )
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
+from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
-from Widgets.System.Messaging import get_inventory_count, reset_inventory_count
+from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
 
 
 PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
@@ -61,6 +62,19 @@ BOSS_KEY_MODEL_ID = 25416
 SUMMON_MODEL_IDS = (30209, 37810, 31155)
 FROGGY_MODEL_IDS = tuple(range(1953, 1975))
 GB_MODEL_ID = 2474
+
+INVENTORY_BAG_IDS = frozenset((1, 2, 3, 4))
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
+MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
+INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
+INVENTORY_TRAVEL_REGION = 2
+INVENTORY_TRAVEL_DISTRICT = 1
+INVENTORY_TRAVEL_LANGUAGE = 0
+INVENTORY_MAINTENANCE_RETRY_COUNT = 2
+INVENTORY_SNAPSHOT_SETTLE_MS = 2_000
+INVENTORY_TRAVEL_TIMEOUT_MS = 60_000
+INVENTORY_MERCHANT_TIMEOUT_MS = 240_000
 
 PCON_UPKEEPS = tuple(
     int(model_id)
@@ -180,6 +194,12 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_auto_loot = True
+_inventory_maintenance_enabled = True
+_inventory_min_free_slots = 5
+_inventory_min_id_kits = 1
+_inventory_min_salvage_kits = 2
+_inventory_status_snapshot: dict[str, dict[str, object]] = {}
 _runtime_consumables_enabled = True
 _configured_consumable_upkeeps: tuple[int, ...] | None = None
 
@@ -216,6 +236,8 @@ def _load_settings() -> None:
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
+    global _auto_loot, _inventory_maintenance_enabled
+    global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
 
     if _settings_loaded:
         _load_statistics()
@@ -227,6 +249,11 @@ def _load_settings() -> None:
     _restock_pcons = _settings.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
     _activate_pcons = _settings.get_bool(_SETTINGS_SECTION, "ActivatePcons", True)
     _use_summoning_stone = _settings.get_bool(_SETTINGS_SECTION, "UseSummoningStone", True)
+    _auto_loot = _settings.get_bool(_SETTINGS_SECTION, "AutoLoot", True)
+    _inventory_maintenance_enabled = _settings.get_bool(_SETTINGS_SECTION, "InventoryMaintenanceEnabled", True)
+    _inventory_min_free_slots = max(0, _settings.get_int(_SETTINGS_SECTION, "InventoryMinFreeSlots", 5))
+    _inventory_min_id_kits = max(0, _settings.get_int(_SETTINGS_SECTION, "InventoryMinIdKits", 1))
+    _inventory_min_salvage_kits = max(0, _settings.get_int(_SETTINGS_SECTION, "InventoryMinSalvageKits", 2))
     _settings_loaded = True
     _load_statistics()
 
@@ -238,6 +265,11 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
     _settings.set(_SETTINGS_SECTION, "UseSummoningStone", _use_summoning_stone)
+    _settings.set(_SETTINGS_SECTION, "AutoLoot", _auto_loot)
+    _settings.set(_SETTINGS_SECTION, "InventoryMaintenanceEnabled", _inventory_maintenance_enabled)
+    _settings.set(_SETTINGS_SECTION, "InventoryMinFreeSlots", _inventory_min_free_slots)
+    _settings.set(_SETTINGS_SECTION, "InventoryMinIdKits", _inventory_min_id_kits)
+    _settings.set(_SETTINGS_SECTION, "InventoryMinSalvageKits", _inventory_min_salvage_kits)
 
 
 def _load_statistics() -> None:
@@ -328,7 +360,7 @@ def _configure_runtime_upkeeps(enabled: bool | None = None) -> None:
         return
     enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
-        looting_enabled=True,
+        looting_enabled=_auto_loot,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
@@ -374,51 +406,88 @@ def _runtime_restock_node() -> BehaviorTree:
     return BT.Subtree(name="Restock Selected Supplies", subtree_fn=_build)
 
 
-def UseAvailableSummoningStone() -> BehaviorTree:
-    """
-    Use the first available summoning stone once.
-
-    Summoning stones are handled as one-shot consumables and are therefore
-    kept outside the continuous consumable upkeep service.
-    """
-
+def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
+    """Use one summoning stone on every active account for the current dungeon level."""
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _use_summoning_stone or not _consumables_allowed():
             return BT.Succeeder("SummoningStoneDisabled")
-        return BT.Selector(
-            name="Use Available Summoning Stone",
-            children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
-            + [BT.Succeeder("NoSummoningStoneAvailable")],
+        recipients = _inventory_recipient_emails()
+        if not recipients:
+            return BT.Succeeder("NoSummoningStoneRecipients")
+        return BTShared.SendAndWait(
+            command=SharedCommandType.UseSummoningStone,
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f"bogroot_summoning_stone_{level_key}_refs",
+            timeout_ms=10_000,
+            poll_interval_ms=100,
+            log=True,
         )
-
-    return BT.Subtree(name="Use Summoning Stone In Dungeon", subtree_fn=_build)
+    return BT.Subtree(name="Use Summoning Stone On All Accounts", subtree_fn=_build)
 
 
 
 def _draw_run_config() -> None:
     import PyImGui
     global _use_hard_mode, _restock_conset, _activate_conset
-    global _restock_pcons, _activate_pcons, _use_summoning_stone
+    global _restock_pcons, _activate_pcons, _use_summoning_stone, _auto_loot
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
+
     _load_settings()
+    changed = False
+    upkeep_changed = False
+
     PyImGui.text("Frog Scepter Run Config")
     PyImGui.separator()
-    changed = False
-    for label, variable_name in (
-        ("Hard Mode (HM)", "_use_hard_mode"),
-        ("Restock conset from storage", "_restock_conset"),
-        ("Activate / maintain conset", "_activate_conset"),
-        ("Restock pcons from storage", "_restock_pcons"),
-        ("Activate / maintain pcons", "_activate_pcons"),
-        ("Use summoning stones", "_use_summoning_stone"),
-    ):
+
+    toggles = (
+        ("Hard Mode (HM)", "_use_hard_mode", False),
+        ("Restock conset from storage", "_restock_conset", False),
+        ("Activate / maintain conset", "_activate_conset", True),
+        ("Restock pcons from storage", "_restock_pcons", False),
+        ("Activate / maintain pcons", "_activate_pcons", True),
+        ("Use summoning stones", "_use_summoning_stone", False),
+    )
+    for label, variable_name, affects_upkeep in toggles:
         old_value = bool(globals()[variable_name])
         new_value = PyImGui.checkbox(label, old_value)
         if new_value != old_value:
             globals()[variable_name] = new_value
             changed = True
+            upkeep_changed = upkeep_changed or affects_upkeep
+
+    PyImGui.separator()
+    PyImGui.text("Loot")
+    value = PyImGui.checkbox("Auto loot", _auto_loot)
+    if value != _auto_loot:
+        _auto_loot = value
+        changed = True
+        upkeep_changed = True
+
+    PyImGui.separator()
+    PyImGui.text("Inventory maintenance")
+    value = PyImGui.checkbox("Run MerchantRules when inventory is low", _inventory_maintenance_enabled)
+    if value != _inventory_maintenance_enabled:
+        _inventory_maintenance_enabled = value
+        changed = True
+    if _inventory_maintenance_enabled:
+        for label, variable_name in (
+            ("Minimum free slots", "_inventory_min_free_slots"),
+            ("Minimum Superior ID kits (0 = disabled)", "_inventory_min_id_kits"),
+            ("Minimum Superior salvage kits (0 = disabled)", "_inventory_min_salvage_kits"),
+        ):
+            old_value = int(globals()[variable_name])
+            new_value = max(0, int(PyImGui.input_int(label, old_value)))
+            if new_value != old_value:
+                globals()[variable_name] = new_value
+                changed = True
+
     if changed:
         _save_settings()
+    if upkeep_changed:
         _configure_runtime_upkeeps()
+
 
 # endregion
 
@@ -462,6 +531,702 @@ def _shared_accounts() -> list[object]:
         seen.add(email)
         unique.append(account)
     return unique
+
+
+def _inventory_accounts() -> list[object]:
+    """Return the active accounts targeted by shared BT commands.
+
+    Unlike the statistics view, inventory maintenance respects BottingTree
+    account isolation so unrelated active clients are never moved or checked.
+    """
+    try:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False)
+    except TypeError:
+        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData()
+    except Exception:
+        accounts = []
+
+    unique: list[object] = []
+    seen: set[str] = set()
+    for account in accounts or []:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        unique.append(account)
+    return unique
+
+
+def _shared_account_label(account: object) -> str:
+    agent_data = getattr(account, "AgentData", None)
+    character_name = str(getattr(agent_data, 'CharacterName', '') or '').strip()
+    if character_name:
+        return character_name
+    return str(getattr(account, "AccountEmail", "") or "Unknown account")
+
+
+def _shared_account_map_id(account: object) -> int:
+    agent_data = getattr(account, "AgentData", None)
+    map_data = getattr(agent_data, "Map", None)
+    return int(getattr(map_data, "MapID", 0) or 0)
+
+
+def _shared_account_map_instance(account: object) -> tuple[int, int, int, int]:
+    agent_data = getattr(account, "AgentData", None)
+    map_data = getattr(agent_data, "Map", None)
+    return (int(getattr(map_data, 'MapID', 0) or 0), int(getattr(map_data, 'Region', 0) or 0), int(getattr(map_data, 'District', 0) or 0), int(getattr(map_data, 'Language', 0) or 0))
+
+
+def _iter_shared_inventory_slots(account: object):
+    """Yield mirrored slots only for diagnostic item listing.
+
+    Threshold decisions do NOT use this SharedMemory snapshot. Capacity and
+    free-slot counts are queried locally on each client through InventoryQuery.
+    """
+    inventory_bags = getattr(account, "InventoryBags", None)
+    if inventory_bags is None:
+        return
+
+    for bag in inventory_bags.iter_bags():
+        bag_id = int(getattr(bag, "BagID", 0) or 0)
+        if bag_id not in INVENTORY_BAG_IDS:
+            continue
+        for slot in bag.Slots:
+            yield bag_id, slot
+
+
+def _local_inventory_state() -> tuple[int, int, int, int]:
+    occupied, capacity = Inventory.GetInventorySpace()
+    id_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in ID_KIT_MODEL_IDS
+    )
+    salvage_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in SALVAGE_KIT_MODEL_IDS
+    )
+    return int(occupied), int(capacity), int(id_kits), int(salvage_kits)
+
+
+def _inventory_target_accounts() -> list[tuple[str, str]]:
+    """Return every active account as (email, display label), including self."""
+    targets: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    for account in _inventory_accounts():
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        targets.append((email, _shared_account_label(account)))
+
+    local_email = str(Player.GetAccountEmail() or "").strip()
+    if local_email and local_email not in seen:
+        local_name = str(Player.GetName() or "").strip()
+        targets.append((local_email, local_name or local_email))
+
+    return targets
+
+
+def _build_inventory_status(
+    email: str,
+    label: str,
+    state: tuple[int, int, int, int] | None,
+) -> dict[str, object]:
+    if state is None:
+        occupied = capacity = id_kits = salvage_kits = -1
+    else:
+        occupied, capacity, id_kits, salvage_kits = (int(value) for value in state)
+
+    available = capacity > 0 and occupied >= 0 and occupied <= capacity
+    free_slots = max(0, capacity - occupied) if available else 0
+
+    return {
+        "email": str(email),
+        "label": str(label),
+        "available": available,
+        "capacity": capacity,
+        "occupied": occupied,
+        "free_slots": free_slots,
+        "id_kits": id_kits,
+        "salvage_kits": salvage_kits,
+    }
+
+
+def _inventory_account_statuses() -> list[dict[str, object]]:
+    statuses: list[dict[str, object]] = []
+
+    for raw_status in _inventory_status_snapshot.values():
+        status = dict(raw_status)
+        account_issues: list[str] = []
+
+        if not bool(status.get("available", False)):
+            account_issues.append("inventory query unavailable")
+        else:
+            free_slots = int(status.get("free_slots", 0) or 0)
+            id_kits = int(status.get("id_kits", 0) or 0)
+            salvage_kits = int(status.get("salvage_kits", 0) or 0)
+
+            if _inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots:
+                account_issues.append(f"free slots {free_slots}/{_inventory_min_free_slots}")
+            if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+                account_issues.append(f"ID kits {id_kits}/{_inventory_min_id_kits}")
+            if _inventory_min_salvage_kits > 0 and salvage_kits < _inventory_min_salvage_kits:
+                account_issues.append(f"salvage kits {salvage_kits}/{_inventory_min_salvage_kits}")
+
+        status["issues"] = account_issues
+        statuses.append(status)
+
+    return statuses
+
+
+def _inventory_maintenance_issues() -> list[str]:
+    statuses = _inventory_account_statuses()
+    if not statuses:
+        return ["No active account inventory query result is available."]
+
+    return [
+        f"{status['label']}: {', '.join(status['issues'])}"
+        for status in statuses
+        if status["issues"]
+    ]
+
+
+def _log_inventory_statuses(statuses: list[dict[str, object]]) -> None:
+    if not statuses:
+        PySystem.Console.Log(
+            MODULE_NAME,
+            "[Inventory] No active account inventory query result is available.",
+            PySystem.Console.MessageType.Warning,
+        )
+        return
+
+    for status in statuses:
+        issues = list(status["issues"])
+        result = "MAINTENANCE" if issues else "OK"
+        if bool(status.get("available", False)):
+            message = (
+                f"[Inventory] {status['label']}: free={status['free_slots']}/{status['capacity']}, "
+                f"occupied={status['occupied']}, Superior ID kits={status['id_kits']}, "
+                f"Superior salvage kits={status['salvage_kits']} -> {result}"
+            )
+        else:
+            message = f"[Inventory] {status['label']}: local inventory query unavailable -> {result}"
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            message,
+            PySystem.Console.MessageType.Warning if issues else PySystem.Console.MessageType.Info,
+        )
+
+
+def _query_all_inventory_states_node(
+    name: str,
+    *,
+    timeout_ms: int=_INVENTORY_QUERY_TIMEOUT_MS,
+) -> BehaviorTree:
+    """Query real inventory state locally on every active Guild Wars client."""
+    state: dict[str, object] = {
+        "started": False,
+        "request_id": "",
+        "sender_email": "",
+        "pending": {},
+        "results": {},
+        "started_at": 0.0,
+    }
+
+    def _reset() -> None:
+        state["started"] = False
+        state["request_id"] = ""
+        state["sender_email"] = ""
+        state["pending"] = {}
+        state["results"] = {}
+        state["started_at"] = 0.0
+
+    def _finish() -> BehaviorTree.NodeState:
+        global _inventory_status_snapshot
+        _inventory_status_snapshot = dict(state["results"])
+        _reset()
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _start() -> None:
+        request_id = f"bogroot_inventory_state_{int(time.monotonic() * 1000)}"
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        targets = _inventory_target_accounts()
+
+        results: dict[str, dict[str, object]] = {}
+        pending: dict[str, str] = {}
+
+        for email, label in targets:
+            if email == sender_email:
+                try:
+                    local_state = _local_inventory_state()
+                except Exception as exc:
+                    PySystem.Console.Log(
+                        MODULE_NAME,
+                        f"[Inventory] Local inventory query failed on {label}: {exc}",
+                        PySystem.Console.MessageType.Error,
+                    )
+                    local_state = None
+                results[email] = _build_inventory_status(email, label, local_state)
+                continue
+
+            if not sender_email:
+                results[email] = _build_inventory_status(email, label, None)
+                continue
+
+            reset_inventory_state(email, request_id)
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                email,
+                SharedCommandType.InventoryQuery,
+                (
+                    float(ID_KIT_MODEL_IDS[0] if len(ID_KIT_MODEL_IDS) > 0 else 0),
+                    float(ID_KIT_MODEL_IDS[1] if len(ID_KIT_MODEL_IDS) > 1 else 0),
+                    float(SALVAGE_KIT_MODEL_IDS[0] if SALVAGE_KIT_MODEL_IDS else 0),
+                    0.0,
+                ),
+                ("report_inventory_state", request_id, "", ""),
+            )
+            pending[email] = label
+
+        state["started"] = True
+        state["request_id"] = request_id
+        state["sender_email"] = sender_email
+        state["pending"] = pending
+        state["results"] = results
+        state["started_at"] = time.monotonic()
+
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[Inventory] Requested real inventory state from {len(targets)} active account(s).",
+            PySystem.Console.MessageType.Info,
+        )
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            if bool(node.blackboard.get("USER_INTERRUPT_ACTIVE", False)):
+                _reset()
+                return BehaviorTree.NodeState.FAILURE
+
+            if not bool(state["started"]):
+                _start()
+
+            pending: dict[str, str] = state["pending"]
+            request_id = str(state["request_id"])
+
+            for email in list(pending):
+                reply = get_inventory_state(email, request_id)
+                if reply is None:
+                    continue
+                label = pending.pop(email)
+                state["results"][email] = _build_inventory_status(email, label, reply)
+
+            if not pending:
+                return _finish()
+
+            elapsed_ms = int(
+                (time.monotonic() - float(state["started_at"])) * 1000.0
+            )
+            if elapsed_ms < max(0, int(timeout_ms)):
+                return BehaviorTree.NodeState.RUNNING
+
+            for email, label in list(pending.items()):
+                state["results"][email] = _build_inventory_status(email, label, None)
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[Inventory] Real inventory query timed out for {label}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            pending.clear()
+            return _finish()
+
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory] Multibox inventory-state query failed: {exc}",
+                PySystem.Console.MessageType.Error,
+            )
+            return _finish()
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_tick,
+            aftercast_ms=_INVENTORY_QUERY_POLL_MS,
+        )
+    )
+
+
+def _inventory_recipient_emails() -> list[str]:
+    """Return every currently active account that must receive maintenance."""
+    return [email for email, _label in _inventory_target_accounts()]
+
+
+def _inventory_maintenance_trigger_node() -> BehaviorTree:
+    def _log(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        statuses = _inventory_account_statuses()
+        trigger_labels = [str(status["label"]) for status in statuses if status["issues"]]
+        recipients = _inventory_recipient_emails()
+        trigger_text = ", ".join(trigger_labels) if trigger_labels else "inventory verification"
+        recipient_text = ", ".join(
+            str(status["label"])
+            for status in statuses
+            if str(status["email"]) in recipients
+        )
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"[Inventory] Maintenance triggered by: {trigger_text}. "
+                f"MerchantRules will run on ALL {len(recipients)} active account(s)"
+                + (f": {recipient_text}." if recipient_text else ".")
+            ),
+            PySystem.Console.MessageType.Warning,
+        )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Log Collective Inventory Maintenance Trigger",
+            action_fn=_log,
+            aftercast_ms=0,
+        )
+    )
+
+
+
+def _inventory_model_label(model_id: int) -> str:
+    try:
+        return str(ModelID(int(model_id)).name)
+    except Exception:
+        return f"model_{int(model_id)}"
+
+
+def _log_unhealthy_inventory_contents() -> None:
+    """Log mirrored item contents for accounts that still fail local-query thresholds."""
+    status_by_email = {
+        str(status["email"]): status
+        for status in _inventory_account_statuses()
+        if status["issues"]
+    }
+
+    for account in _inventory_accounts():
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        status = status_by_email.get(email)
+        if status is None:
+            continue
+
+        label = str(status["label"])
+        entries: list[str] = []
+        for bag_id, slot in _iter_shared_inventory_slots(account):
+            model_id = int(getattr(slot, "ModelID", 0) or 0)
+            quantity = int(getattr(slot, "Quantity", 0) or 0)
+            if model_id <= 0 or quantity <= 0:
+                continue
+            slot_no = int(getattr(slot, "Slot", 0) or 0)
+            entries.append(
+                f"B{bag_id}:S{slot_no} {_inventory_model_label(model_id)}({model_id}) x{quantity}"
+            )
+
+        if bool(status.get("available", False)):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"[Inventory diagnostic] {label}: "
+                    f"free={status['free_slots']}/{status['capacity']}, "
+                    f"Superior ID kits={status['id_kits']}, "
+                    f"Superior salvage kits={status['salvage_kits']}, "
+                    f"mirrored occupied items={len(entries)}."
+                ),
+                PySystem.Console.MessageType.Warning,
+            )
+        else:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory diagnostic] {label}: local inventory query unavailable; mirrored occupied items={len(entries)}.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        chunk_size = 8
+        for start_index in range(0, len(entries), chunk_size):
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Inventory diagnostic] {label}: "
+                + " | ".join(entries[start_index:start_index + chunk_size]),
+                PySystem.Console.MessageType.Info,
+            )
+
+
+
+def _inventory_is_healthy_node(name: str, *, log_success: bool=True) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        statuses = _inventory_account_statuses()
+        _log_inventory_statuses(statuses)
+
+        if not statuses:
+            PySystem.Console.Log(MODULE_NAME, "Inventory maintenance required - no active account inventory snapshot is available.", PySystem.Console.MessageType.Warning)
+            return BehaviorTree.NodeState.FAILURE
+
+        issues = [
+            f"{status['label']}: {', '.join(status['issues'])}"
+            for status in statuses
+            if status["issues"]
+        ]
+        if issues:
+            PySystem.Console.Log(MODULE_NAME, "Inventory maintenance required - " + "; ".join(issues), PySystem.Console.MessageType.Warning)
+            return BehaviorTree.NodeState.FAILURE
+
+        if log_success:
+            PySystem.Console.Log(MODULE_NAME, "Inventory check passed on every active account.", PySystem.Console.MessageType.Success)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=_check))
+
+
+
+def _all_accounts_on_map(map_id: int) -> bool:
+    accounts = _inventory_accounts()
+    return bool(accounts) and all((_shared_account_map_id(account) == int(map_id) for account in accounts))
+
+
+def _all_accounts_on_map_instance(map_id: int, region: int, district: int, language: int) -> bool:
+    expected = (int(map_id), int(region), int(district), int(language))
+    accounts = _inventory_accounts()
+    return bool(accounts) and all((_shared_account_map_instance(account) == expected for account in accounts))
+
+
+def _all_accounts_on_map_node(map_id: int, name: str) -> BehaviorTree:
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=lambda _node: _all_accounts_on_map(map_id)))
+
+
+def _wait_for_all_accounts_on_map(map_id: int, *, name: str, timeout_ms: int=INVENTORY_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _all_accounts_on_map(map_id):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.WaitUntilNode(name=name, condition_fn=_check, throttle_interval_ms=500, timeout_ms=timeout_ms))
+
+
+def _wait_for_all_accounts_on_inventory_instance(map_id: int, *, name: str, timeout_ms: int=INVENTORY_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _all_accounts_on_map_instance(map_id, INVENTORY_TRAVEL_REGION, INVENTORY_TRAVEL_DISTRICT, INVENTORY_TRAVEL_LANGUAGE):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.WaitUntilNode(name=name, condition_fn=_check, throttle_interval_ms=500, timeout_ms=timeout_ms))
+
+
+def _send_widget_state(widget_name: str, *, enabled: bool, refs_key: str) -> BehaviorTree:
+    return BTShared.SendAndWait(command=SharedCommandType.EnableWidget if enabled else SharedCommandType.DisableWidget, extra_data=(widget_name, '', '', ''), include_self=True, refs_blackboard_key=refs_key, timeout_ms=20000, poll_interval_ms=100, log=True)
+
+
+def _set_local_auto_inventory_handler(enabled: bool) -> BehaviorTree:
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        fn = getattr(botting_tree, "SetAutoInventoryHandlerEnabled", None)
+        if fn is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            fn(enabled)
+        except Exception:
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ActionNode(name='Enable Local Auto Inventory Handler' if enabled else 'Disable Local Auto Inventory Handler', action_fn=_set, aftercast_ms=0))
+
+
+def _travel_all_accounts_to_gadds(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name="Travel Every Account To Gadd's Encampment",
+        children=[
+            BTShared.SendAndWait(command=SharedCommandType.TravelToMap, params=(float(GADDS_ENCAMPMENT), float(INVENTORY_TRAVEL_REGION), float(INVENTORY_TRAVEL_DISTRICT), float(INVENTORY_TRAVEL_LANGUAGE)), include_self=True, refs_blackboard_key=f'{attempt_key}_travel_vlox_refs', timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS, poll_interval_ms=250, log=True),
+            _wait_for_all_accounts_on_inventory_instance(GADDS_ENCAMPMENT, name="Wait For Every Account In Gadd's Encampment EU-English-1"),
+        ],
+    )
+
+
+def _return_all_accounts_to_gadds(attempt_key: str) -> BehaviorTree:
+    currently_in_an_explorable = BT.Selector(
+        name="Current Map Can Be Resigned",
+        children=[
+            BT.IsCurrentMap(map_id=SPARKFLY_SWAMP, log=False),
+            BT.IsCurrentMap(map_id=BOGROOT_LEVEL_1, log=False),
+            BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=False),
+        ],
+    )
+
+    resign_from_explorable = BT.Sequence(
+        name="Resign Party To Gadd's Encampment",
+        children=[
+            currently_in_an_explorable,
+            BT.Resign(wait_for_map_load=True, target_map_id=GADDS_ENCAMPMENT, multi_account=True, timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS, log=True),
+            _wait_for_all_accounts_on_map(GADDS_ENCAMPMENT, name="Wait For Party Return To Gadd's Encampment"),
+        ],
+    )
+
+    return BT.Selector(name="Ensure Every Account Is In Gadd's Encampment", children=[_all_accounts_on_map_node(GADDS_ENCAMPMENT, "Every Account Already In Gadd's Encampment"), resign_from_explorable, _travel_all_accounts_to_gadds(attempt_key)])
+
+
+def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(name='Restore InventoryPlus After MerchantRules', children=[_send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_inventoryplus_refs'), _set_local_auto_inventory_handler(True)])
+
+
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets) if targets else ""
+
+
+def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        recipients = _inventory_recipient_emails()
+        if not recipients:
+            PySystem.Console.Log(MODULE_NAME, "[Inventory] MerchantRules aborted: no active account recipients.", PySystem.Console.MessageType.Error)
+            return BehaviorTree(BehaviorTree.FailerNode(name="No Active MerchantRules Recipients"))
+
+        request_id = f"bogroot_inventory_{attempt_key}_{int(time.monotonic() * 1000)}"
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[Inventory] Dispatching MerchantRules to all {len(recipients)} active account(s).",
+            PySystem.Console.MessageType.Info,
+        )
+        execute = BTShared.SendAndWait(
+            command=SharedCommandType.MerchantRules,
+            params=(3.0, 0.0, 0.0, 0.0),
+            extra_data=(request_id, _merchant_stock_request_spec(), "0", "0"),
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f"{attempt_key}_merchant_rules_refs",
+            timeout_ms=INVENTORY_MERCHANT_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+        return BT.Selector(
+            name="Execute MerchantRules And Restore InventoryPlus",
+            children=[
+                BT.Sequence(name="MerchantRules Completed", children=[execute, _restore_inventoryplus_after_merchant(attempt_key)]),
+                BT.Sequence(name="Restore InventoryPlus After MerchantRules Failure", children=[_restore_inventoryplus_after_merchant(f"{attempt_key}_failure"), BehaviorTree(BehaviorTree.FailerNode(name="Propagate MerchantRules Failure"))]),
+            ],
+        )
+
+    return BT.Subtree(name="Run MerchantRules On All Active Accounts", subtree_fn=_build)
+
+
+
+def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
+    """Run one MerchantRules attempt while staying in Gadd's Encampment.
+
+    InventoryCheckAndMaintenance() ensures every active account is in Vlox's
+    Falls before the first attempt. If the first attempt leaves the inventory
+    below threshold, the retry runs immediately in the same outpost.
+    """
+    attempt_key = f"inventory_attempt_{attempt_number}"
+    return BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number}",
+        children=[
+            BT.LogMessage(message=f"Inventory maintenance attempt {attempt_number}/{INVENTORY_MAINTENANCE_RETRY_COUNT} in Gadd's Encampment.", module_name=MODULE_NAME),
+            _set_local_auto_inventory_handler(False),
+            _send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=False, refs_key=f'{attempt_key}_disable_inventoryplus_refs'),
+            _send_widget_state(MERCHANT_RULES_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_merchant_rules_refs'),
+            BT.Wait(1_000),
+            _run_merchant_rules(attempt_key),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            _query_all_inventory_states_node(name=f"Refresh Real Inventories After Attempt {attempt_number}"),
+            _inventory_is_healthy_node(f'Verify Inventory After Attempt {attempt_number}', log_success=True),
+        ],
+    )
+
+
+def _stop_for_inventory_failure_node() -> BehaviorTree:
+    stopped = False
+
+    def _stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        nonlocal stopped
+        if not stopped:
+            stopped = True
+            issues = _inventory_maintenance_issues()
+            issue_text = "; ".join(issues) if issues else "unknown verification error"
+            PySystem.Console.Log(MODULE_NAME, f'Inventory maintenance failed twice. The bot was paused safely. Remaining issue(s): {issue_text}', PySystem.Console.MessageType.Error)
+            _log_unhealthy_inventory_contents()
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, "SetAutoInventoryHandlerEnabled", None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+            sender_email = str(Player.GetAccountEmail() or "").strip()
+            for account in _inventory_accounts():
+                receiver_email = str(getattr(account, 'AccountEmail', '') or '').strip()
+                if not sender_email or not receiver_email:
+                    continue
+                GLOBAL_CACHE.ShMem.SendMessage(sender_email, receiver_email, SharedCommandType.EnableWidget, (0.0, 0.0, 0.0, 0.0), (INVENTORY_PLUS_WIDGET_NAME, '', '', ''))
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, "Pause", None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(BehaviorTree.ActionNode(name='Pause Bot After Inventory Maintenance Failure', action_fn=_stop, aftercast_ms=0))
+
+
+def InventoryCheckAndMaintenance() -> BehaviorTree:
+    disabled = BehaviorTree(BehaviorTree.ConditionNode(name='Inventory Maintenance Disabled', condition_fn=lambda _node: not _inventory_maintenance_enabled))
+
+    maintenance_attempts = [_inventory_maintenance_attempt(attempt_number) for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)]
+    maintenance_attempts.append(_stop_for_inventory_failure_node())
+
+    enabled_flow = BT.Sequence(
+        name="Enabled Inventory Check And Maintenance",
+        children=[
+            _query_all_inventory_states_node(name='Query Real Inventory State On Every Active Account'),
+            BT.Selector(
+                name="Check Inventory Thresholds",
+                children=[
+                    _inventory_is_healthy_node('Inventory Thresholds Already Satisfied', log_success=True),
+                    BT.Sequence(
+                        name="Run Inventory Maintenance",
+                        children=[
+                            _inventory_maintenance_trigger_node(),
+                            _return_all_accounts_to_gadds("inventory_maintenance_setup"),
+                            BT.LeaveParty(),
+                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+                            BT.Selector(name="Retry Inventory Maintenance In Gadd's Encampment", children=maintenance_attempts),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(name='Inventory Check And Maintenance', children=[disabled, enabled_flow])
+
+
+def StartupInventoryCheck() -> BehaviorTree:
+    return BT.Selector(
+        name="Startup Inventory Check",
+        children=[
+            BT.Sequence(name="Check Inventories Before Leaving Gadd's Encampment", children=[BT.IsCurrentMap(map_id=GADDS_ENCAMPMENT, log=False), InventoryCheckAndMaintenance()]),
+            BT.Succeeder("Skip Startup Inventory Check Outside Gadd's Encampment"),
+        ],
+    )
 
 
 def _refresh_character_names() -> bool:
@@ -712,9 +1477,9 @@ def ensure_botting_tree() -> BottingTree:
             routine_name="MultiAccountSequence",
             repeat=True,
             multi_account=True,
-            isolation_enabled=True,
+            isolation_enabled=False,
             configure_fn=lambda tree: tree.Config.ConfigureUpkeep(
-                looting_enabled=True,
+                looting_enabled=_auto_loot,
                 resurrection_scroll=True,
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
@@ -732,8 +1497,9 @@ def InitializeBot() -> BehaviorTree:
         children=[
             bot.Config.Aggressive(
                 multi_account=True,
-                auto_loot=True,
+                auto_loot=_auto_loot,
                 resurrection_scroll=True,
+                account_isolation=False,
             ),
             BT.SetPlayerStatus(PlayerStatus.Offline, log=True),
             BT.LogMessage(
@@ -764,6 +1530,7 @@ def PreparePartyAndSupplies() -> BehaviorTree:
         map_id_or_name=GADDS_ENCAMPMENT,
         random_travel=True,
         children=[
+            StartupInventoryCheck(),
             BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
             BT.AbandonQuest(
                 quest_id=TEKKS_QUEST_ID,
@@ -800,6 +1567,7 @@ def TravelToTekksStart() -> BehaviorTree:
     normal = BT.Sequence(
         name="Start Travel From Gadd's Encampment To Tekks",
         children=[
+            _runtime_consumable_node(False),
             BT.MoveAndExitMap(GADDS_EXIT, target_map_id=SPARKFLY_SWAMP, log=True),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
@@ -835,72 +1603,36 @@ def TravelToTekksFinish() -> BehaviorTree:
 
 def HandleTekksQuest() -> BehaviorTree:
     already_inside = BT.Sequence(
-        name="Skip Tekks Handler - Already In Bogroot",
+        name="Skip Tekks Handler - Already In Level 1",
         children=[
-            BT.Selector(
-                name="Check Bogroot Floor",
-                children=[
-                    BT.IsCurrentMap(map_id=BOGROOT_LEVEL_1, log=True),
-                    BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=True),
-                ],
-            ),
-            BT.Succeeder("Tekks Handler Already Done"),
-        ],
-    )
-
-    active = BT.Sequence(
-        name="Tekks' War Already Active",
-        children=[
+            BT.IsCurrentMap(map_id=BOGROOT_LEVEL_1, log=True),
             BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
-            BT.Succeeder("Continue With Active Tekks Quest"),
+            BT.Succeeder("TekksHandlerAlreadyDone"),
         ],
     )
-
+    active = BT.Sequence(name="Tekks' War Already Active", children=[BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state='active', log=True), BT.Succeeder('ContinueWithActiveQuest')])
     completed = BT.Sequence(
         name="Collect And Retake Tekks' War",
         children=[
             BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="complete", log=True),
-            BT.MoveAndDialog(
-                TEKKS_POSITION,
-                TEKKS_REWARD_DIALOG,
-                pause_on_combat=False,
-                multi_account=True,
-                log=True,
-            ),
+            BT.MoveAndDialog(TEKKS_POSITION, TEKKS_REWARD_DIALOG, pause_on_combat=False, multi_account=True, log=True),
             BT.WaitForQuestCleared(TEKKS_QUEST_ID, timeout_ms=15_000),
-            BT.MoveAndDialog(
-                TEKKS_POSITION,
-                TEKKS_TAKE_DIALOG,
-                pause_on_combat=False,
-                multi_account=True,
-                log=True,
-            ),
+            BT.MoveAndDialog(TEKKS_POSITION, TEKKS_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
             BT.WaitForActiveQuest(TEKKS_QUEST_ID, timeout_ms=15_000),
         ],
     )
-
     missing = BT.Sequence(
         name="Take Tekks' War",
         children=[
             BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="missing", log=True),
-            BT.MoveAndDialog(
-                TEKKS_POSITION,
-                TEKKS_TAKE_DIALOG,
-                pause_on_combat=False,
-                multi_account=True,
-                log=True,
-            ),
+            BT.MoveAndDialog(TEKKS_POSITION, TEKKS_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
             BT.WaitForActiveQuest(TEKKS_QUEST_ID, timeout_ms=15_000),
         ],
     )
-
-    return BT.Selector(
-        name="Handle Tekks Quest",
-        children=[already_inside, active, completed, missing],
-    )
+    return BT.Selector(children=[already_inside, active, completed, missing], name="Handle Tekks Quest")
 
 
-def EnterBogroot() -> BehaviorTree:
+def EnterBogroot(enable_consumables_on_entry: bool = True) -> BehaviorTree:
     already_inside = BT.Sequence(
         name="Skip Bogroot Entry - Already Inside",
         children=[
@@ -931,6 +1663,10 @@ def EnterBogroot() -> BehaviorTree:
     )
 
     entry = BT.Selector(name="Enter Bogroot Growths", children=[already_inside, normal])
+
+    if not enable_consumables_on_entry:
+        return entry
+
     return BT.Sequence(
         name="Enter Bogroot Growths And Resume Consumables",
         children=[entry, _runtime_consumable_node(True)],
@@ -1026,7 +1762,7 @@ def Level1_Start() -> BehaviorTree:
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
-            UseAvailableSummoningStone(),
+            UseAvailableSummoningStone("l1"),
             BT.MoveAndDialog(
                 L1_BLESSING,
                 dialog_id=DWARVEN_BLESSING_DIALOG,
@@ -1062,8 +1798,8 @@ def Level2_Start() -> BehaviorTree:
     return BT.Sequence(
         name="Bogroot Level 2 - Start",
         children=[
-            UseAvailableSummoningStone(),
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
+            UseAvailableSummoningStone("l2"),
             BT.MoveAndDialog(
                 L2_ENTRY_BLESSING,
                 dialog_id=DWARVEN_BLESSING_DIALOG,
@@ -1135,8 +1871,6 @@ def OpenFinalChest() -> BehaviorTree:
     return BT.Sequence(
         name="Open Bogroot Final Chest",
         children=[
-            BT.Move(BOGROOT_CHEST_POSITION, pause_on_combat=False, log=False),
-            BT.Wait(2_000),
             BT.MoveAndInteractWithGadget(
                 pos=BOGROOT_CHEST_POSITION,
                 search_distance=700.0,
@@ -1149,49 +1883,71 @@ def OpenFinalChest() -> BehaviorTree:
                 include_self=True,
                 log=True,
             ),
-            BT.LootItems(distance=Range.Spirit.value),
             _inventory_statistics_node(after_chest=True),
             _record_run_end_node(),
-            BT.Wait(5_000),
         ],
     )
 
-def CollectTekksRewardAndRestart() -> BehaviorTree:
-    reward_collected_inside = BT.Sequence(
-        name="Collect Tekks Reward Inside Dungeon",
+def ExitBogrootLevel1ToSparkfly() -> BehaviorTree:
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        player_x, player_y = Player.GetXY()
+        dx = float(player_x) - float(L1_BLESSING.x)
+        dy = float(player_y) - float(L1_BLESSING.y)
+        length = math.hypot(dx, dy)
+
+        if length <= 1.0:
+            return BT.Failer("Cannot Resolve Bogroot Entry Exit Direction")
+
+        # Walk well beyond the spawn in the opposite direction from the first
+        # blessing; MoveAndExitMap completes as soon as Sparkfly loads.
+        extension = 2_500.0
+        exit_point = Vec2f(
+            float(player_x) + (dx / length) * extension,
+            float(player_y) + (dy / length) * extension,
+        )
+        return BT.MoveAndExitMap(
+            exit_point,
+            target_map_id=SPARKFLY_SWAMP,
+            log=False,
+        )
+
+    return BT.Subtree(
+        name="Exit Bogroot Level 1 To Sparkfly",
+        subtree_fn=_build,
+    )
+
+
+def CollectRewardAndReturnToSparkfly(end_countdown_timeout_ms: int = 190_000) -> BehaviorTree:
+    """Try the inside Tekks reward, then wait for the automatic return to Sparkfly."""
+    already_in_sparkfly = BT.Sequence(
+        name="Skip Inside Tekks Reward - Already In Sparkfly Swamp",
         children=[
-            BT.IsQuestState(
-                quest_id=TEKKS_QUEST_ID,
-                state="complete",
-                log=True,
-            ),
-
-            BT.Move(
-                Vec2f(14079.80, -17776.0),
-                pause_on_combat=False,
-                log=False,
-            ),
-
+            BT.IsCurrentMap(map_id=SPARKFLY_SWAMP, log=True),
             BT.LogMessage(
                 message=(
-                    "Tekks' War is complete. Looking for Tekks "
-                    "inside Bogroot Growths."
+                    "The party is already in Sparkfly Swamp. Skipping the inside "
+                    "Tekks search and resuming the restart preparation."
                 ),
                 module_name=MODULE_NAME,
             ),
+            BT.Succeeder("InsideTekksRewardAlreadyReturnedToSparkfly"),
+        ],
+    )
 
-            CollectTekksRewardInsideDungeon(),
-
-            BT.WaitForQuestCleared(
-                TEKKS_QUEST_ID,
-                timeout_ms=15_000,
-            ),
-
+    reward_collected_inside = BT.Sequence(
+        name="Collect Tekks Reward Inside Dungeon",
+        children=[
+            BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=True),
+            BT.Move(Vec2f(14079.80, -17776.0), pause_on_combat=False, log=False),
             BT.LogMessage(
-                message=(
-                    "Tekks was found inside the dungeon and "
-                    "the Tekks' War reward was collected."
-                ),
+                message="Level 2 confirmed after Z'him. Looking for Tekks by name inside the dungeon.",
+                module_name=MODULE_NAME,
+            ),
+            CollectTekksRewardInsideDungeon(),
+            BT.WaitForQuestCleared(TEKKS_QUEST_ID, timeout_ms=15_000),
+            BT.LogMessage(
+                message="Tekks was found inside the dungeon and the Tekks' War reward was collected.",
                 module_name=MODULE_NAME,
             ),
         ],
@@ -1202,131 +1958,261 @@ def CollectTekksRewardAndRestart() -> BehaviorTree:
         children=[
             BT.LogMessage(
                 message=(
-                    "Tekks was not found inside the dungeon or "
-                    "the reward could not be collected. The quest "
-                    "state will be resolved after returning to "
-                    "Sparkfly Swamp."
+                    "Tekks was not found inside the dungeon or the inside reward could not be "
+                    "collected. The reward will be handled in Sparkfly Swamp."
                 ),
                 module_name=MODULE_NAME,
             ),
-            BT.Succeeder(
-                "Inside Tekks Reward Unavailable",
-            ),
+            BT.Succeeder("InsideTekksRewardUnavailable"),
         ],
     )
 
     return BT.Sequence(
-        name="Collect Tekks Reward And Restart",
+        name="Collect Reward And Return To Sparkfly",
         children=[
             _runtime_consumable_node(False),
-
             BT.Selector(
                 name="Resolve Inside Tekks Reward",
+                children=[already_in_sparkfly, reward_collected_inside, reward_not_collected_inside],
+            ),
+            BT.LogMessage(
+                message="Waiting for the end-of-dungeon countdown and the return to Sparkfly Swamp.",
+                module_name=MODULE_NAME,
+            ),
+            BT.WaitForMapLoad(map_id=SPARKFLY_SWAMP, timeout_ms=end_countdown_timeout_ms),
+            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            BT.Wait(2_000),
+            BT.LogMessage(
+                message="The party has returned to Sparkfly Swamp. Resolving Tekks' War for the next run.",
+                module_name=MODULE_NAME,
+            ),
+            BT.Move(TEKKS_POSITION, pause_on_combat=False, log=False),
+        ],
+    )
+
+
+def WaitForTekksInside(timeout_ms: int = 30_000) -> BehaviorTree:
+    """Wait until Tekks is resolvable by name inside Bogroot Growths."""
+
+    def _check(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        agent_id = Agent.GetAgentIDByName("Tekks")
+
+        if agent_id != 0:
+            node.blackboard["tekks_agent_id"] = agent_id
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name="Wait For Tekks Inside Dungeon",
+            condition_fn=_check,
+            throttle_interval_ms=500,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+
+def CollectTekksRewardInsideDungeon() -> BehaviorTree:
+    """Collect Tekks' War from Tekks at the final chest when he is present."""
+    return BT.Sequence(
+        name="Collect Tekks Reward Inside Dungeon",
+        children=[
+            WaitForTekksInside(timeout_ms=30_000),
+            BT.TargetAgentByName(agent_name="Tekks", log=True),
+            BT.LogMessage(
+                message="Tekks was found near the final chest. Attempting to collect the Tekks' War reward.",
+                module_name=MODULE_NAME,
+            ),
+            BT.InteractTargetAndSendDialog(
+                dialog_id=TEKKS_REWARD_DIALOG,
+                multi_account=True,
+                log=True,
+            ),
+            BT.SendDialog(
+                dialog_id=TEKKS_REWARD_DIALOG,
+                multi_account=True,
+                log=True,
+            ),
+            BT.WaitForQuestCleared(TEKKS_QUEST_ID, timeout_ms=15_000),
+        ],
+    )
+
+
+def ResolveTekksQuestAfterRun() -> BehaviorTree:
+    """Leave Sparkfly with Tekks' War active, mirroring the Shards restart flow."""
+
+    direct_retake = BT.Sequence(
+        name="Retake Tekks' War Directly",
+        children=[
+            BT.MoveAndDialog(
+                TEKKS_POSITION,
+                TEKKS_TAKE_DIALOG,
+                pause_on_combat=False,
+                multi_account=True,
+                log=True,
+            ),
+            BT.WaitForActiveQuest(TEKKS_QUEST_ID, timeout_ms=15_000),
+        ],
+    )
+
+    retake_after_reset_entry = BT.Sequence(
+        name="Reset Tekks By Entering Bogroot Level 1",
+        children=[
+            BT.LogMessage(
+                message=(
+                    "Tekks did not offer Tekks' War directly. Entering and leaving "
+                    "Bogroot Level 1 once before retrying."
+                ),
+                module_name=MODULE_NAME,
+            ),
+            EnterBogroot(enable_consumables_on_entry=False),
+            ExitBogrootLevel1ToSparkfly(),
+            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            BT.Wait(2_000),
+            BT.Move(TEKKS_POSITION, pause_on_combat=False, log=False),
+            BT.MoveAndDialog(
+                TEKKS_POSITION,
+                TEKKS_TAKE_DIALOG,
+                pause_on_combat=False,
+                multi_account=True,
+                log=True,
+            ),
+            BT.WaitForActiveQuest(TEKKS_QUEST_ID, timeout_ms=15_000),
+        ],
+    )
+
+    quest_already_active = BT.Sequence(
+        name="Keep Active Tekks' War Quest",
+        children=[
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
+            BT.LogMessage(
+                message="Tekks' War is already active for the next run.",
+                module_name=MODULE_NAME,
+            ),
+        ],
+    )
+
+    reward_collected_inside = BT.Sequence(
+        name="Retake Tekks' War After Inside Reward",
+        children=[
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="missing", log=True),
+            BT.Selector(
+                name="Retake Tekks' War With Reset Fallback",
                 children=[
-                    reward_collected_inside,
-                    reward_not_collected_inside,
+                    direct_retake,
+                    BT.Sequence(
+                        name="Retake Completed Despite Wait Failure",
+                        children=[
+                            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
+                            BT.Succeeder("TekksWarRetakeAlreadyCompleted"),
+                        ],
+                    ),
+                    retake_after_reset_entry,
                 ],
             ),
+        ],
+    )
 
+    reward_not_collected_inside = BT.Sequence(
+        name="Collect Outside Reward And Retake Tekks' War",
+        children=[
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="complete", log=True),
             BT.LogMessage(
-                message=(
-                    "Waiting for the end-of-dungeon countdown "
-                    "and the return to Sparkfly Swamp."
-                ),
+                message="The Tekks' War reward is still pending. Collecting it from Tekks in Sparkfly Swamp.",
                 module_name=MODULE_NAME,
             ),
-
-            BT.WaitForMapLoad(
-                map_id=SPARKFLY_SWAMP,
-                timeout_ms=190_000,
-            ),
-
-            BT.WaitUntilOnExplorable(
-                timeout_ms=30_000,
-            ),
-
-            BT.Wait(2_000),
-
-            BT.LogMessage(
-                message=(
-                    "The party has returned to Sparkfly Swamp. "
-                    "Preparing the next Bogroot run."
-                ),
-                module_name=MODULE_NAME,
-            ),
-
-            BT.Move(
+            BT.MoveAndDialog(
                 TEKKS_POSITION,
+                TEKKS_REWARD_DIALOG,
                 pause_on_combat=False,
-                log=False,
+                multi_account=True,
+                log=True,
+            ),
+            BT.WaitForQuestCleared(TEKKS_QUEST_ID, timeout_ms=15_000),
+            BT.LogMessage(
+                message="The Tekks' War reward was collected successfully in Sparkfly Swamp.",
+                module_name=MODULE_NAME,
             ),
 
-            HandleTekksQuest(),
+            # If the reward is collected only after the automatic return, Tekks
+            # needs one zone reset before offering the repeatable quest again.
+            EnterBogroot(enable_consumables_on_entry=False),
+            ExitBogrootLevel1ToSparkfly(),
+            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            BT.Wait(2_000),
+            BT.Move(TEKKS_POSITION, pause_on_combat=False, log=False),
+            BT.MoveAndDialog(
+                TEKKS_POSITION,
+                TEKKS_TAKE_DIALOG,
+                pause_on_combat=False,
+                multi_account=True,
+                log=True,
+            ),
+            BT.WaitForActiveQuest(TEKKS_QUEST_ID, timeout_ms=15_000),
+        ],
+    )
 
+    return BT.Sequence(
+        name="Resolve Tekks Quest After Run",
+        children=[
+            BT.IsCurrentMap(map_id=SPARKFLY_SWAMP, log=True),
+            BT.Selector(
+                name="Resolve Tekks' War State In Sparkfly Swamp",
+                children=[quest_already_active, reward_collected_inside, reward_not_collected_inside],
+            ),
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
+        ],
+    )
+
+
+def PrepareNextBogrootRun() -> BehaviorTree:
+    already_inside = BT.Sequence(
+        name="Next Bogroot Run Already Entered",
+        children=[
+            BT.IsCurrentMap(map_id=BOGROOT_LEVEL_1, log=True),
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
+        ],
+    )
+
+    continue_from_sparkfly = BT.Sequence(
+        name="Enter Next Bogroot Run From Sparkfly Swamp",
+        children=[
+            BT.IsCurrentMap(map_id=SPARKFLY_SWAMP, log=True),
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
             EnterBogroot(),
         ],
     )
 
-def CollectTekksRewardInsideDungeon() -> BehaviorTree:
-    """
-    Collect Tekks' War reward from Tekks inside Bogroot Growths.
-
-    Tekks is searched twice if necessary. The routine then interacts with the
-    current target and selects the first available dialogue option for every
-    account in the multibox party.
-    """
-
-    return BT.Sequence(
-        name="Collect Tekks Reward Inside Dungeon",
+    continue_after_maintenance = BT.Sequence(
+        name="Reform Party And Enter Next Bogroot Run From Gadd's Encampment",
         children=[
-            BT.Selector(
-                name="Find Tekks Inside Dungeon",
-                children=[
-                    BT.TargetAgentByName(
-                        agent_name="Tekks",
-                        log=True,
-                    ),
-                    BT.Sequence(
-                        name="Second Tekks Search",
-                        children=[
-                            BT.Wait(5_000),
-                            BT.TargetAgentByName(
-                                agent_name="Tekks",
-                                log=True,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
+            BT.IsCurrentMap(map_id=GADDS_ENCAMPMENT, log=True),
+            BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
+            BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
+            _runtime_difficulty_node(),
+            _runtime_restock_node(),
+            TravelToTekksStart(),
+            BT.Move(SPARKFLY_TO_TEKKS, pause_on_combat=True, log=False),
+            TravelToTekksFinish(),
+            EnterBogroot(),
+        ],
+    )
 
-            BT.LogMessage(
-                message=(
-                    "Tekks was found inside the dungeon. "
-                    "Attempting to collect the Tekks' War reward "
-                    "using automatic dialogue."
-                ),
-                module_name=MODULE_NAME,
-            ),
+    return BT.Selector(
+        name="Prepare Next Bogroot Run",
+        children=[already_inside, continue_from_sparkfly, continue_after_maintenance],
+    )
 
-            BT.InteractTargetAndAutoDialog(
-                buttons=0,
-                multi_account=True,
-                aftercast_ms=500,
-                log=True,
-            ),
 
-            BT.WaitForQuestCleared(
-                TEKKS_QUEST_ID,
-                timeout_ms=15_000,
-            ),
-
-            BT.LogMessage(
-                message=(
-                    "The Tekks' War reward was successfully "
-                    "collected inside the dungeon."
-                ),
-                module_name=MODULE_NAME,
-            ),
+# Backward-compatible wrapper for any external reference to the old step name.
+def CollectTekksRewardAndRestart() -> BehaviorTree:
+    return BT.Sequence(
+        name="Collect Tekks Reward And Restart",
+        children=[
+            CollectRewardAndReturnToSparkfly(),
+            ResolveTekksQuestAfterRun(),
+            PrepareNextBogrootRun(),
         ],
     )
 
@@ -1390,7 +2276,10 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Z'him Fight", Level2_ZhimFight),
 
         ("Open Final Chest", OpenFinalChest),
-        ("Collect Reward And Prepare Restart", CollectTekksRewardAndRestart),
+        ("Collect Reward And Return To Sparkfly", CollectRewardAndReturnToSparkfly),
+        ("Resolve Tekks Quest", ResolveTekksQuestAfterRun),
+        ("Inventory Check And Maintenance", InventoryCheckAndMaintenance),
+        ("Prepare Next Bogroot Run", PrepareNextBogrootRun),
     ]
 
 def main() -> None:

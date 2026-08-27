@@ -106,6 +106,7 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_auto_loot = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
 _inventory_min_id_kits = 1
@@ -586,16 +587,24 @@ def _repeat_until_success(
     )
 
 
-def UseAvailableSummoningStone() -> BehaviorTree:
-    if not _use_summoning_stone:
-        return BT.Succeeder("SummoningStoneDisabled")
-
-    return BT.Selector(
-        name="Use Available Summoning Stone",
-        children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
-        + [BT.Succeeder("NoSummoningStoneAvailable")],
-    )
-
+def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
+    """Use one summoning stone on every active account for the current dungeon level."""
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BT.Succeeder("SummoningStoneDisabled")
+        recipients = _inventory_recipient_emails()
+        if not recipients:
+            return BT.Succeeder("NoSummoningStoneRecipients")
+        return BTShared.SendAndWait(
+            command=SharedCommandType.UseSummoningStone,
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f"oola_summoning_stone_{level_key}_refs",
+            timeout_ms=10_000,
+            poll_interval_ms=100,
+            log=True,
+        )
+    return BT.Subtree(name="Use Summoning Stone On All Accounts", subtree_fn=_build)
 
 def _agent_player_number_or_model_id(agent_id: int) -> int:
     """Return the living agent PlayerNumber/ModelID used by Guild Wars NPCs."""
@@ -1067,6 +1076,7 @@ def TravelToMagusStones() -> BehaviorTree:
         name="Leave Rata Sum",
         children=[
             BT.IsCurrentMap(RATA_SUM, log=True),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndExitMap(RATA_EXIT_PATH, target_map_id=MAGUS_STONES, timeout_ms=60_000, log=True),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
@@ -1082,15 +1092,15 @@ def MagusStonesStart() -> BehaviorTree:
         map_id=MAGUS_STONES,
         child=BT.Sequence(
             name="Prepare Magus Stones Run",
-            children=[UseAvailableSummoningStone()],
+            children=[BT.Succeeder("Consumables Stay Disabled Until Oola Level 1")],
         ),
         skip_if_in_maps=(OOLA_LEVEL_1, OOLA_LEVEL_2, OOLA_LEVEL_3),
     )
 
 
-def EnterOolasLab() -> BehaviorTree:
+def EnterOolasLab(enable_consumables_on_entry: bool = True) -> BehaviorTree:
     name = "Enter Oola's Lab"
-    return _map_guarded_point(
+    entry = _map_guarded_point(
         name=name,
         map_id=MAGUS_STONES,
         child=BT.Sequence(
@@ -1108,6 +1118,12 @@ def EnterOolasLab() -> BehaviorTree:
             ],
         ),
         skip_if_in_maps=(OOLA_LEVEL_1, OOLA_LEVEL_2, OOLA_LEVEL_3),
+    )
+    if not enable_consumables_on_entry:
+        return entry
+    return BT.Sequence(
+        name="Enter Oola's Lab And Resume Consumables",
+        children=[entry, _runtime_consumable_upkeep_node(True)],
     )
 
 
@@ -1283,6 +1299,7 @@ def _load_settings() -> None:
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
+    global _auto_loot, _runtime_looting_enabled
     global _inventory_maintenance_enabled, _inventory_min_free_slots
     global _inventory_min_id_kits, _inventory_min_salvage_kits
     if _settings_loaded:
@@ -1294,6 +1311,8 @@ def _load_settings() -> None:
     _restock_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
     _activate_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "ActivatePcons", True)
     _use_summoning_stone = _settings_ini.get_bool(_SETTINGS_SECTION, "UseSummoningStone", True)
+    _auto_loot = _settings_ini.get_bool(_SETTINGS_SECTION, "AutoLoot", True)
+    _runtime_looting_enabled = _auto_loot
     _inventory_maintenance_enabled = _settings_ini.get_bool(_SETTINGS_SECTION, "InventoryMaintenanceEnabled", True)
     _inventory_min_free_slots = max(0, _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinFreeSlots", 5))
     _inventory_min_id_kits = max(0, _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinIdKits", 1))
@@ -1309,6 +1328,7 @@ def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "UseSummoningStone", _use_summoning_stone)
+    _settings_ini.set(_SETTINGS_SECTION, "AutoLoot", _auto_loot)
     _settings_ini.set(_SETTINGS_SECTION, "InventoryMaintenanceEnabled", _inventory_maintenance_enabled)
     _settings_ini.set(_SETTINGS_SECTION, "InventoryMinFreeSlots", _inventory_min_free_slots)
     _settings_ini.set(_SETTINGS_SECTION, "InventoryMinIdKits", _inventory_min_id_kits)
@@ -1361,10 +1381,23 @@ def _save_statistics() -> None:
         if key != "local": _settings_ini.set(_CHAR_NAMES_SECTION, key, name)
 
 
+def _consumables_allowed() -> bool:
+    return (
+        _runtime_consumables_enabled
+        and Map.IsMapReady()
+        and not Map.IsMapLoading()
+        and Map.GetMapID() in (OOLA_LEVEL_1, OOLA_LEVEL_2, OOLA_LEVEL_3)
+    )
+
+
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
+    if not _consumables_allowed():
+        return ()
     enabled: list[int] = []
-    if _activate_conset: enabled.extend(int(x) for x in CONSET_UPKEEPS)
-    if _activate_pcons: enabled.extend(PCON_UPKEEPS)
+    if _activate_conset:
+        enabled.extend(int(x) for x in CONSET_UPKEEPS)
+    if _activate_pcons:
+        enabled.extend(PCON_UPKEEPS)
     return tuple(dict.fromkeys(enabled))
 
 
@@ -1387,7 +1420,7 @@ def _configure_runtime_upkeeps(
         looting_enabled=_runtime_looting_enabled,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
-        consumable_upkeeps=_enabled_consumable_upkeeps() if _runtime_consumables_enabled else (),
+        consumable_upkeeps=_enabled_consumable_upkeeps(),
         enable_party_wipe_recovery=True,
         heroai_state_logging=False,
     )
@@ -2895,7 +2928,7 @@ def ensure_botting_tree() -> BottingTree:
             multi_account=True,
             isolation_enabled=False,
             configure_fn=lambda tree: tree.Config.ConfigureUpkeep(
-                looting_enabled=True,
+                looting_enabled=_auto_loot,
                 resurrection_scroll=True,
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
@@ -2915,7 +2948,7 @@ def InitializeBot() -> BehaviorTree:
         children=[
             bot.Config.Aggressive(
                 multi_account=True,
-                auto_loot=True,
+                auto_loot=_auto_loot,
                 resurrection_scroll=True,
                 account_isolation=False,
             ),
@@ -3125,7 +3158,7 @@ def Level1_Start() -> BehaviorTree:
                 _mark_run_start_node(),
                 _inventory_statistics_node(after_chest=False),
                 BT.AddModelToLootWhitelist(DUNGEON_KEY_MODEL_ID),
-                UseAvailableSummoningStone(),
+                UseAvailableSummoningStone("l1"),
                 BT.MoveAndAutoDialog(
                     L1_BLESSING,
                     buttons=0,
@@ -3184,7 +3217,7 @@ def Level2_Start() -> BehaviorTree:
             name="Start Oola Level 2",
             children=[
                 BT.AddModelToLootWhitelist(DUNGEON_KEY_MODEL_ID),
-                UseAvailableSummoningStone(),
+                UseAvailableSummoningStone("l2"),
                 BT.MoveAndAutoDialog(
                     L2_BLESSING,
                     buttons=0,
@@ -3234,7 +3267,7 @@ def Level3_Start() -> BehaviorTree:
         name="Start Oola Level 3",
         children=[
             BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
-            UseAvailableSummoningStone(),
+            UseAvailableSummoningStone("l3"),
             BT.MoveAndAutoDialog(
                 L3_BLESSING,
                 buttons=0,
@@ -3768,7 +3801,7 @@ def _draw_run_config() -> None:
     global _use_hard_mode
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
-    global _use_summoning_stone
+    global _use_summoning_stone, _auto_loot
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
     global _inventory_min_id_kits
@@ -3801,6 +3834,14 @@ def _draw_run_config() -> None:
         globals()[variable_name] = new_value
         settings_changed = True
         upkeep_changed = upkeep_changed or affects_upkeep
+
+    PyImGui.separator()
+    PyImGui.text("Loot")
+    auto_loot = PyImGui.checkbox("Auto loot", _auto_loot)
+    if auto_loot != _auto_loot:
+        _auto_loot = auto_loot
+        _configure_runtime_upkeeps(looting_enabled=_auto_loot)
+        settings_changed = True
 
     PyImGui.separator()
     PyImGui.text("Inventory maintenance")

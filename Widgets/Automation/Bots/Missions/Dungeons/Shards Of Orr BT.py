@@ -143,6 +143,7 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_auto_loot = True
 _keep_torch_for_caster = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
@@ -265,6 +266,7 @@ def _load_settings() -> None:
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
+    global _auto_loot, _runtime_looting_enabled
     global _keep_torch_for_caster
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
@@ -281,6 +283,8 @@ def _load_settings() -> None:
     _restock_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
     _activate_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "ActivatePcons", True)
     _use_summoning_stone = _settings_ini.get_bool(_SETTINGS_SECTION, "UseSummoningStone", True)
+    _auto_loot = _settings_ini.get_bool(_SETTINGS_SECTION, "AutoLoot", True)
+    _runtime_looting_enabled = _auto_loot
     _keep_torch_for_caster = _settings_ini.get_bool(_SETTINGS_SECTION, 'KeepTorchForCaster', True)
     _inventory_maintenance_enabled = _settings_ini.get_bool(_SETTINGS_SECTION, 'InventoryMaintenanceEnabled', True)
     _inventory_min_free_slots = max(0, _settings_ini.get_int(_SETTINGS_SECTION, 'InventoryMinFreeSlots', 5))
@@ -297,6 +301,7 @@ def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "UseSummoningStone", _use_summoning_stone)
+    _settings_ini.set(_SETTINGS_SECTION, "AutoLoot", _auto_loot)
     _settings_ini.set(_SETTINGS_SECTION, 'KeepTorchForCaster', _keep_torch_for_caster)
     _settings_ini.set(_SETTINGS_SECTION, 'InventoryMaintenanceEnabled', _inventory_maintenance_enabled)
     _settings_ini.set(_SETTINGS_SECTION, 'InventoryMinFreeSlots', _inventory_min_free_slots)
@@ -452,6 +457,7 @@ def _configure_runtime_upkeeps(*, consumables_enabled: bool | None = None, looti
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
+        enable_party_wipe_recovery=True,
         heroai_state_logging=False,
     )
     _configured_consumable_upkeeps = enabled_consumables
@@ -486,7 +492,7 @@ def _draw_run_config() -> None:
     global _use_hard_mode
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
-    global _use_summoning_stone
+    global _use_summoning_stone, _auto_loot
     global _keep_torch_for_caster, _drop_torch_for_combat
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
@@ -541,6 +547,14 @@ def _draw_run_config() -> None:
     if value != _use_summoning_stone:
         _use_summoning_stone = value
         changed = True
+
+    PyImGui.separator()
+    PyImGui.text("Loot")
+
+    value = PyImGui.checkbox('Auto loot', _auto_loot)
+    if value != _auto_loot:
+        _auto_loot = value
+        changed = True
         upkeep_changed = True
 
     PyImGui.separator()
@@ -585,7 +599,7 @@ def _draw_run_config() -> None:
         _save_settings()
 
     if upkeep_changed:
-        _configure_runtime_upkeeps()
+        _configure_runtime_upkeeps(looting_enabled=_auto_loot)
 
 
 def _runtime_difficulty_node() -> BehaviorTree:
@@ -2151,25 +2165,28 @@ def PickupTorch() -> BehaviorTree:
 
     return BehaviorTree(BehaviorTree.ActionNode(name='PickupTorch', action_fn=_pickup_torch_step, aftercast_ms=0))
 
-def UseAvailableSummoningStone() -> BehaviorTree:
-    """
-    Use the first available summoning stone once.
-
-    Summoning stones are handled as one-shot consumables and are therefore
-    kept outside the continuous consumable upkeep service.
-    """
+def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
+    """Use one summoning stone on every active account for the current dungeon level."""
 
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _use_summoning_stone or not _consumables_allowed():
             return BT.Succeeder('SummoningStoneDisabled')
-        return BT.Selector(
-            name='Use Available Summoning Stone',
-            children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
-            + [BT.Succeeder('NoSummoningStoneAvailable')],
+
+        recipients = _inventory_recipient_emails()
+        if not recipients:
+            return BT.Succeeder('NoSummoningStoneRecipients')
+
+        return BTShared.SendAndWait(
+            command=SharedCommandType.UseSummoningStone,
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f'soo_summoning_stone_{level_key}_refs',
+            timeout_ms=10_000,
+            poll_interval_ms=100,
+            log=True,
         )
 
-    return BT.Subtree(name='Use Summoning Stone In Dungeon', subtree_fn=_build)
-
+    return BT.Subtree(name='Use Summoning Stone On All Accounts', subtree_fn=_build)
 
 def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTree:
     """
@@ -2550,7 +2567,7 @@ def ensure_botting_tree() -> BottingTree:
             multi_account=True,
             isolation_enabled=False,
             configure_fn=lambda tree: tree.Config.ConfigureUpkeep(
-                looting_enabled=True,
+                looting_enabled=_auto_loot,
                 resurrection_scroll=True,
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
@@ -2570,7 +2587,7 @@ def InitializeBot() -> BehaviorTree:
             ResetTorchCombatPolicy(),
             bot.Config.Aggressive(
                 multi_account=True,
-                auto_loot=True,
+                auto_loot=_auto_loot,
                 resurrection_scroll=True,
                 account_isolation=False,
             ),
@@ -2626,6 +2643,7 @@ def TravelToShandra() -> BehaviorTree:
     normal_travel = BT.Sequence(
         name="Travel To Shandra From Vlox",
         children=[
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndExitMap(VLOXS_EXIT, target_map_id=ARBOR_BAY, log=True),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
@@ -2774,7 +2792,7 @@ def Level1_Start() -> BehaviorTree:
         children=[
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
-            UseAvailableSummoningStone(),
+            UseAvailableSummoningStone("l1"),
             BT.AddModelToLootWhitelist(25410),
             BT.MoveAndDialog(Vec2f(-11686.0, 10427.0), dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
         ],
@@ -2809,7 +2827,7 @@ def Level2_Start() -> BehaviorTree:
         name="Start Shards of Orr Level 2",
         children=[
             ResolveTorchCombatPolicy(),
-            UseAvailableSummoningStone(),
+            UseAvailableSummoningStone("l2"),
             BT.AddModelToLootWhitelist(25410),
             BT.MoveAndDialog(L2_BLESSING_NPC, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
             BT.Move(Vec2f(-15243.0, -17230.0)),
@@ -2895,7 +2913,7 @@ def Level2_EnterLevel3() -> BehaviorTree:
 
 
 def Level3_Start() -> BehaviorTree:
-    return BT.Sequence(name='Start Shards of Orr Level 3', children=[UseAvailableSummoningStone(), BT.MoveAndDialog(L3_ENTRY_BLESSING, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True)])
+    return BT.Sequence(name='Start Shards of Orr Level 3', children=[UseAvailableSummoningStone("l3"), BT.MoveAndDialog(L3_ENTRY_BLESSING, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True)])
 
 
 def Level3_TorchAndBraziers() -> BehaviorTree:

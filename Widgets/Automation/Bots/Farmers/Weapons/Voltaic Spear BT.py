@@ -10,6 +10,7 @@ import PySystem
 PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
 from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import GadgetModelID
 from Py4GWCoreLib.enums_src.Model_enums import ModelID, SpiritModelID
@@ -153,14 +154,14 @@ THOMMIS_PATH_2 = [
 
 CHEST_POSITION = (-17461.0, -14258.0)
 
-_settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
+_settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'global')
 _settings_loaded = False
 
-_hard_mode = False
+_hard_mode = True
 _restock_conset = True
-_use_conset = False
+_use_conset = True
 _restock_pcons = True
-_use_pcons = False
+_use_pcons = True
 _use_summoning_stone = True
 _auto_loot = True
 _inventory_maintenance_enabled = True
@@ -168,7 +169,8 @@ _inventory_min_free_slots = 5
 _inventory_min_id_kits = 1
 _inventory_min_salvage_kits = 2
 _inventory_status_snapshot: dict[str, dict[str, object]] = {}
-_configured_pcon_upkeeps: tuple[int, ...] | None = None
+_runtime_consumables_enabled = False
+_configured_consumable_upkeeps: tuple[int, ...] | None = None
 
 _total_runs = 0
 _total_seconds = 0.0
@@ -214,11 +216,11 @@ def _load_settings() -> None:
     if _settings_loaded:
         return
 
-    _hard_mode = _settings.get_bool('Config', 'HardMode', False)
+    _hard_mode = _settings.get_bool('Config', 'HardMode', True)
     _restock_conset = _settings.get_bool('Config', 'RestockConset', True)
-    _use_conset = _settings.get_bool('Config', 'UseConset', False)
+    _use_conset = _settings.get_bool('Config', 'UseConset', True)
     _restock_pcons = _settings.get_bool('Config', 'RestockPcons', True)
-    _use_pcons = _settings.get_bool('Config', 'UsePcons', False)
+    _use_pcons = _settings.get_bool('Config', 'UsePcons', True)
     _use_summoning_stone = _settings.get_bool('Config', 'UseSummoningStone', True)
     _auto_loot = _settings.get_bool('Config', 'AutoLoot', True)
     _inventory_maintenance_enabled = _settings.get_bool(
@@ -368,35 +370,57 @@ def _reset_statistics() -> None:
 
 
 def _consumables_allowed() -> bool:
-    return Map.IsMapReady() and not Map.IsMapLoading() and Map.GetMapID() == JUSTICIAR_THOMMIS_ROOM
+    return (
+        _runtime_consumables_enabled
+        and Map.IsMapReady()
+        and not Map.IsMapLoading()
+        and Map.GetMapID() == JUSTICIAR_THOMMIS_ROOM
+    )
 
 
-def _enabled_pcons() -> tuple[int, ...]:
-    return PCON_UPKEEPS if _use_pcons and _consumables_allowed() else ()
+def _enabled_consumable_upkeeps() -> tuple[int, ...]:
+    if not _consumables_allowed():
+        return ()
+    enabled: list[int] = []
+    if _use_conset:
+        enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
+    if _use_pcons:
+        enabled.extend(PCON_UPKEEPS)
+    return tuple(dict.fromkeys(enabled))
 
 
-def _configure_upkeep() -> None:
-    global _configured_pcon_upkeeps
+def _configure_runtime_upkeeps(*, consumables_enabled: bool | None = None) -> None:
+    global _runtime_consumables_enabled, _configured_consumable_upkeeps
+    if consumables_enabled is not None:
+        _runtime_consumables_enabled = bool(consumables_enabled)
     if botting_tree is None:
         return
-    enabled_pcons = _enabled_pcons()
+    enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
         looting_enabled=_auto_loot,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
-        consumable_upkeeps=enabled_pcons,
+        consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
         heroai_state_logging=False,
     )
-    _configured_pcon_upkeeps = enabled_pcons
+    _configured_consumable_upkeeps = enabled_consumables
 
 
-def _sync_consumable_upkeep() -> None:
-    # Refresh before the BT tick, including loading screens and forced returns.
-    # Removing these services also stops their multibox PCon broadcasts.
-    if _enabled_pcons() != _configured_pcon_upkeeps:
-        _configure_upkeep()
+def _sync_consumable_upkeeps() -> None:
+    if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
+        _configure_runtime_upkeeps()
 
+
+def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
+    def _apply(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        _configure_runtime_upkeeps(consumables_enabled=enabled)
+        return BehaviorTree.NodeState.SUCCESS
+    return BehaviorTree(BehaviorTree.ActionNode(
+        name='Resume Consumable Upkeep' if enabled else 'Suspend Consumable Upkeep',
+        action_fn=_apply,
+        aftercast_ms=0,
+    ))
 
 def _runtime_restock_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
@@ -432,7 +456,7 @@ def _draw_config() -> None:
     PyImGui.text('Voltaic Spear Config')
     PyImGui.separator()
 
-    value = PyImGui.checkbox('Hard Mode', _hard_mode)
+    value = PyImGui.checkbox('Hard Mode (HM)', _hard_mode)
     if value != _hard_mode:
         _hard_mode = value
         changed = True
@@ -445,7 +469,7 @@ def _draw_config() -> None:
         _restock_conset = value
         changed = True
 
-    value = PyImGui.checkbox('Use conset in Thommis room', _use_conset)
+    value = PyImGui.checkbox('Activate / maintain conset', _use_conset)
     if value != _use_conset:
         _use_conset = value
         changed = True
@@ -459,13 +483,13 @@ def _draw_config() -> None:
         _restock_pcons = value
         changed = True
 
-    value = PyImGui.checkbox('Maintain personal consumables', _use_pcons)
+    value = PyImGui.checkbox('Activate / maintain pcons', _use_pcons)
     if value != _use_pcons:
         _use_pcons = value
         changed = True
         upkeep_changed = True
 
-    value = PyImGui.checkbox('Use summoning stone (all accounts)', _use_summoning_stone)
+    value = PyImGui.checkbox('Use summoning stones', _use_summoning_stone)
     if value != _use_summoning_stone:
         _use_summoning_stone = value
         changed = True
@@ -535,7 +559,7 @@ def _draw_config() -> None:
     if changed:
         _save_config()
     if upkeep_changed:
-        _configure_upkeep()
+        _configure_runtime_upkeeps()
 
 
 def _format_time(seconds: float) -> str:
@@ -2037,9 +2061,11 @@ def PrepareRun() -> BehaviorTree:
         random_travel=True,
         hard_mode=None,
         children=[
-            BT.CreateParty(hero_ids=[1,14,25,4], multibox_invite=True, timeout_ms=30_000, log=True),
             StartupInventoryCheck(),
+            BT.CreateParty(hero_ids=[1,14,25,4], multibox_invite=True, timeout_ms=30_000, log=True),
             BT.SetHardMode(_hard_mode, log=True),
+            _runtime_restock_node(),
+            _runtime_consumable_upkeep_node(False),
             RoutinesBT.Party.SetTitle(int(TitleID.Asuran.value), log=True),
             BT.LogMessage(
                 'Party formed and selected supplies prepared.',
@@ -2368,11 +2394,19 @@ def _movement_point(
 
 
 def EnterThommisRoom() -> BehaviorTree:
-    return BT.MoveAndExitMap(
+    entry = BT.MoveAndExitMap(
         THOMMIS_ROOM_PORTAL,
         target_map_id=JUSTICIAR_THOMMIS_ROOM,
         timeout_ms=45_000,
         log=True,
+    )
+    return BT.Sequence(
+        name='Enter Thommis Room And Resume Consumables',
+        children=[
+            entry,
+            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            _runtime_consumable_upkeep_node(True),
+        ],
     )
 
 
@@ -2390,7 +2424,6 @@ def StartThommisFight() -> BehaviorTree:
                 log=True,
             ),
             BT.Wait(1_000),
-            _conset(),
             _summoning_stone(),
         ],
     )
@@ -2446,6 +2479,7 @@ def ReturnToUmbralGrotto() -> BehaviorTree:
     return BT.Sequence(
         name="Return To Umbral Grotto",
         children=[
+            _runtime_consumable_upkeep_node(False),
             BT.Resign(
                 wait_for_map_load=True,
                 target_map_name="Umbral Grotto",
@@ -2502,6 +2536,7 @@ def ensure_botting_tree() -> BottingTree:
 
     _load_settings()
     if botting_tree is None:
+        Listeners.AutoReturnOnDefeat.Enable()
         botting_tree = BottingTree.Create(
             MODULE_NAME,
             main_routine=get_execution_steps(),
@@ -2514,7 +2549,7 @@ def ensure_botting_tree() -> BottingTree:
                 looting_enabled=_auto_loot,
                 resurrection_scroll=True,
                 auto_inventory_handler_enabled=True,
-                consumable_upkeeps=_enabled_pcons(),
+                consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
                 heroai_state_logging=False,
             ),
@@ -2531,7 +2566,7 @@ def main() -> None:
         initialized = True
 
     tree = ensure_botting_tree()
-    _sync_consumable_upkeep()
+    _sync_consumable_upkeeps()
     tree.tick()
     tree.UI.draw_window(
         icon_path=TEXTURE,
