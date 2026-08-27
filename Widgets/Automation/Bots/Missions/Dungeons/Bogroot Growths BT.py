@@ -1115,7 +1115,7 @@ def Level2_Blessing4() -> BehaviorTree:
     )
 
 
-def Level2_PrismaticOozeFight() -> BehaviorTree:
+def Level2_ZhimFight() -> BehaviorTree:
     return BT.WaitForClearEnemiesInArea(
         16017.74,
         -19040.79,
@@ -1383,11 +1383,11 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_vanquish_point_steps("Level 2 Route 4", BOGROOT_LEVEL_2, L2_PATH_4),
         ("Level 2 Blessing 4", Level2_Blessing4),
         *_vanquish_point_steps(
-            "Route To Prismatic Ooze",
+            "Route To Z'him",
             BOGROOT_LEVEL_2,
             FROGGY_BOSS_PATH,
         ),
-        ("Prismatic Ooze Boss Fight", Level2_PrismaticOozeFight),
+        ("Z'him Fight", Level2_ZhimFight),
 
         ("Open Final Chest", OpenFinalChest),
         ("Collect Reward And Prepare Restart", CollectTekksRewardAndRestart),
