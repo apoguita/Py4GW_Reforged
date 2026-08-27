@@ -9,7 +9,7 @@ from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray, Player, SharedCommandType, Inventory, ImGui
+from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray, Map, Player, SharedCommandType, Inventory, ImGui
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.native_src.internals.types import Vec2f
@@ -81,7 +81,7 @@ GRAIL_OF_MIGHT = 24860
 ARMOR_OF_SALVATION = 24861
 
 
-SUMMON_MODEL_IDS = (30209, 37810, 31155)
+SUMMON_MODEL_IDS = (37810,30209,31155)
 PCON_UPKEEPS = tuple((int(model_id) for model_id in ALL_CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS))
 
 CONSET_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(((model_id, 10) for model_id in CONSET_UPKEEPS))
@@ -96,8 +96,8 @@ BDS_MODEL_ID_MAX = BDS_MODEL_IDS[-1]
 GB_MODEL_ID = 2474
 
 INVENTORY_BAG_IDS = frozenset((1, 2, 3, 4))
-ID_KIT_MODEL_IDS = (int(ModelID.Identification_Kit.value), int(ModelID.Superior_Identification_Kit.value))
-SALVAGE_KIT_MODEL_IDS = (int(ModelID.Expert_Salvage_Kit.value),)
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
 MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
 INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
 
@@ -149,6 +149,7 @@ _inventory_min_free_slots = 5
 _inventory_min_id_kits = 1
 _inventory_min_salvage_kits = 2
 _runtime_consumables_enabled = True
+_configured_consumable_upkeeps: tuple[int, ...] | None = None
 _runtime_looting_enabled = True
 _inventory_status_snapshot: dict[str, dict[str, object]] = {}
 
@@ -405,6 +406,15 @@ def _save_statistics() -> None:
             _settings_ini.set(_CHAR_NAMES_SECTION, key, name)
 
 
+def _consumables_allowed() -> bool:
+    return (
+        _runtime_consumables_enabled
+        and Map.IsMapReady()
+        and not Map.IsMapLoading()
+        and Map.GetMapID() in (SOO_LEVEL_1, SOO_LEVEL_2, SOO_LEVEL_3)
+    )
+
+
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
     """
     Return the consumables that must be continuously maintained.
@@ -412,6 +422,8 @@ def _enabled_consumable_upkeeps() -> tuple[int, ...]:
     Summoning stones are excluded because they are one-shot items and must not
     be handled by ConsumableService.
     """
+    if not _consumables_allowed():
+        return ()
     enabled: list[int] = []
 
     if _activate_conset:
@@ -423,8 +435,8 @@ def _enabled_consumable_upkeeps() -> tuple[int, ...]:
     return tuple(dict.fromkeys((int(model_id) for model_id in enabled)))
 
 
-def _configure_runtime_upkeeps(*, consumables_enabled: bool | None=None, looting_enabled: bool | None=None) -> None:
-    global _runtime_consumables_enabled, _runtime_looting_enabled
+def _configure_runtime_upkeeps(*, consumables_enabled: bool | None = None, looting_enabled: bool | None = None) -> None:
+    global _runtime_consumables_enabled, _runtime_looting_enabled, _configured_consumable_upkeeps
 
     if consumables_enabled is not None:
         _runtime_consumables_enabled = bool(consumables_enabled)
@@ -434,17 +446,21 @@ def _configure_runtime_upkeeps(*, consumables_enabled: bool | None=None, looting
     if botting_tree is None:
         return
 
+    enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
         looting_enabled=_runtime_looting_enabled,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
-        consumable_upkeeps=(
-            _enabled_consumable_upkeeps()
-            if _runtime_consumables_enabled
-            else ()
-        ),
+        consumable_upkeeps=enabled_consumables,
         heroai_state_logging=False,
     )
+    _configured_consumable_upkeeps = enabled_consumables
+
+
+def _sync_consumable_upkeeps() -> None:
+    # Stop local upkeep and its multibox broadcasts before any tick outside the dungeon.
+    if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
+        _configure_runtime_upkeeps()
 
 
 def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
@@ -551,19 +567,19 @@ def _draw_run_config() -> None:
             _inventory_min_free_slots = value
             changed = True
 
-        value = PyImGui.input_int('Minimum ID kits (0 = disabled)', _inventory_min_id_kits)
+        value = PyImGui.input_int('Minimum Superior ID kits (0 = disabled)', _inventory_min_id_kits)
         value = max(0, int(value))
         if value != _inventory_min_id_kits:
             _inventory_min_id_kits = value
             changed = True
 
-        value = PyImGui.input_int('Minimum salvage kits (0 = disabled)', _inventory_min_salvage_kits)
+        value = PyImGui.input_int('Minimum Superior salvage kits (0 = disabled)', _inventory_min_salvage_kits)
         value = max(0, int(value))
         if value != _inventory_min_salvage_kits:
             _inventory_min_salvage_kits = value
             changed = True
 
-        PyImGui.text_wrapped("MerchantRules executes the currently loaded Shards of Orr profile from SharedProfiles.json. If any active account falls below a configured threshold, all active accounts are processed together. Inventory space, ID kits and Expert Salvage Kits are queried locally on every active client, so each account uses its own real bag capacity. Equipment Pack is excluded.")
+        PyImGui.text_wrapped("MerchantRules executes the currently loaded Shards of Orr profile from SharedProfiles.json. The Superior ID / Salvage thresholds above are also sent directly with the execute request and are applied temporarily without changing the profile. If any active account falls below a configured threshold, all active accounts are processed together. Inventory space, Superior ID Kits and Superior Salvage Kits are queried locally on every active client, so each account uses its own real bag capacity. Equipment Pack is excluded.")
 
     if changed:
         _save_settings()
@@ -821,8 +837,8 @@ def _log_inventory_statuses(statuses: list[dict[str, object]]) -> None:
         if bool(status.get("available", False)):
             message = (
                 f"[Inventory] {status['label']}: free={status['free_slots']}/{status['capacity']}, "
-                f"occupied={status['occupied']}, ID kits={status['id_kits']}, "
-                f"Expert salvage kits={status['salvage_kits']} -> {result}"
+                f"occupied={status['occupied']}, Superior ID kits={status['id_kits']}, "
+                f"Superior salvage kits={status['salvage_kits']} -> {result}"
             )
         else:
             message = f"[Inventory] {status['label']}: local inventory query unavailable -> {result}"
@@ -1048,8 +1064,8 @@ def _log_unhealthy_inventory_contents() -> None:
                 (
                     f"[Inventory diagnostic] {label}: "
                     f"free={status['free_slots']}/{status['capacity']}, "
-                    f"ID kits={status['id_kits']}, "
-                    f"Expert salvage kits={status['salvage_kits']}, "
+                    f"Superior ID kits={status['id_kits']}, "
+                    f"Superior salvage kits={status['salvage_kits']}, "
                     f"mirrored occupied items={len(entries)}."
                 ),
                 PySystem.Console.MessageType.Warning,
@@ -1191,6 +1207,16 @@ def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
     return BT.Sequence(name='Restore InventoryPlus After MerchantRules', children=[_send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_inventoryplus_refs'), _set_local_auto_inventory_handler(True)])
 
 
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets) if targets else ""
+
+
 def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         recipients = _inventory_recipient_emails()
@@ -1207,7 +1233,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
         execute = BTShared.SendAndWait(
             command=SharedCommandType.MerchantRules,
             params=(3.0, 0.0, 0.0, 0.0),
-            extra_data=(request_id, "", "0", "0"),
+            extra_data=(request_id, _merchant_stock_request_spec(), "0", "0"),
             recipients=recipients,
             include_self=True,
             refs_blackboard_key=f"{attempt_key}_merchant_rules_refs",
@@ -2132,10 +2158,17 @@ def UseAvailableSummoningStone() -> BehaviorTree:
     Summoning stones are handled as one-shot consumables and are therefore
     kept outside the continuous consumable upkeep service.
     """
-    if not _use_summoning_stone:
-        return BT.Succeeder('SummoningStoneDisabled')
 
-    return BT.Selector(name='Use Available Summoning Stone', children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS] + [BT.Succeeder('NoSummoningStoneAvailable')])
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BT.Succeeder('SummoningStoneDisabled')
+        return BT.Selector(
+            name='Use Available Summoning Stone',
+            children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
+            + [BT.Succeeder('NoSummoningStoneAvailable')],
+        )
+
+    return BT.Subtree(name='Use Summoning Stone In Dungeon', subtree_fn=_build)
 
 
 def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTree:
@@ -3456,6 +3489,7 @@ def main() -> None:
         initialized = True
 
     tree = ensure_botting_tree()
+    _sync_consumable_upkeeps()
     tree.tick()
     tree.UI.draw_window(icon_path=TEXTURE, iconwidth=96, main_child_dimensions=(420, 380), extra_tabs=[('Statistics', _draw_statistics), ('Config', _draw_run_config)])
 

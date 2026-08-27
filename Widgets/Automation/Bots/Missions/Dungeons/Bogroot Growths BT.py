@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 import os
 import time
 import math
@@ -8,7 +8,7 @@ import math
 import PySystem
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib import GLOBAL_CACHE, Player, SharedCommandType
+from Py4GWCoreLib import GLOBAL_CACHE, Map, Player, SharedCommandType
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -22,6 +22,9 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count
+
+
+PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
 
 
 # region Metadata
@@ -178,6 +181,7 @@ _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
 _runtime_consumables_enabled = True
+_configured_consumable_upkeeps: tuple[int, ...] | None = None
 
 # Persistent statistics.
 _total_runs = 0
@@ -296,7 +300,18 @@ def _save_statistics() -> None:
         _settings.set(_CHAR_NAMES_SECTION, key, name)
 
 
+def _consumables_allowed() -> bool:
+    return (
+        _runtime_consumables_enabled
+        and Map.IsMapReady()
+        and not Map.IsMapLoading()
+        and Map.GetMapID() in (BOGROOT_LEVEL_1, BOGROOT_LEVEL_2)
+    )
+
+
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
+    if not _consumables_allowed():
+        return ()
     enabled: list[int] = []
     if _activate_conset:
         enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
@@ -306,19 +321,27 @@ def _enabled_consumable_upkeeps() -> tuple[int, ...]:
 
 
 def _configure_runtime_upkeeps(enabled: bool | None = None) -> None:
-    global _runtime_consumables_enabled
+    global _runtime_consumables_enabled, _configured_consumable_upkeeps
     if enabled is not None:
         _runtime_consumables_enabled = bool(enabled)
     if botting_tree is None:
         return
+    enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
         looting_enabled=True,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
-        consumable_upkeeps=_enabled_consumable_upkeeps() if _runtime_consumables_enabled else (),
+        consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
         heroai_state_logging=False,
     )
+    _configured_consumable_upkeeps = enabled_consumables
+
+
+def _sync_consumable_upkeeps() -> None:
+    # Stop local upkeep and its multibox broadcasts before any tick outside the dungeon.
+    if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
+        _configure_runtime_upkeeps()
 
 
 def _runtime_consumable_node(enabled: bool) -> BehaviorTree:
@@ -358,25 +381,17 @@ def UseAvailableSummoningStone() -> BehaviorTree:
     Summoning stones are handled as one-shot consumables and are therefore
     kept outside the continuous consumable upkeep service.
     """
-    if not _use_summoning_stone:
-        return BT.Succeeder(
-            "SummoningStoneDisabled",
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BT.Succeeder("SummoningStoneDisabled")
+        return BT.Selector(
+            name="Use Available Summoning Stone",
+            children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
+            + [BT.Succeeder("NoSummoningStoneAvailable")],
         )
 
-    return BT.Selector(
-        name="Use Available Summoning Stone",
-        children=[
-            BTItems.UseConsumable(
-                int(model_id),
-            )
-            for model_id in SUMMON_MODEL_IDS
-        ]
-        + [
-            BT.Succeeder(
-                "NoSummoningStoneAvailable",
-            ),
-        ],
-    )
+    return BT.Subtree(name="Use Summoning Stone In Dungeon", subtree_fn=_build)
 
 
 
@@ -767,9 +782,9 @@ def PreparePartyAndSupplies() -> BehaviorTree:
     )
 
 
-def TravelToTekks() -> BehaviorTree:
+def TravelToTekksStart() -> BehaviorTree:
     already_inside = BT.Sequence(
-        name="Skip Tekks Travel - Already In Bogroot",
+        name="Skip Tekks Travel Start - Already In Bogroot",
         children=[
             BT.Selector(
                 name="Check Bogroot Floor",
@@ -778,12 +793,12 @@ def TravelToTekks() -> BehaviorTree:
                     BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=True),
                 ],
             ),
-            BT.Succeeder("Tekks Travel Already Done"),
+            BT.Succeeder("Tekks Travel Start Already Done"),
         ],
     )
 
     normal = BT.Sequence(
-        name="Travel From Gadd's Encampment To Tekks",
+        name="Start Travel From Gadd's Encampment To Tekks",
         children=[
             BT.MoveAndExitMap(GADDS_EXIT, target_map_id=SPARKFLY_SWAMP, log=True),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
@@ -794,24 +809,29 @@ def TravelToTekks() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            _runtime_consumable_node(True),
-            BT.VanquishNode(
-                SPARKFLY_TO_TEKKS,
-                name="Sparkfly Route To Tekks",
-                flag_heroes_to_waypoint=False,
-                log=False,
-                move_tolerance=500
-            ),
-            BT.WaitUntilOutOfCombat(timeout_ms=90_000),
-            BT.Move(TEKKS_POSITION, pause_on_combat=False, log=False),
         ],
     )
 
     return BT.Selector(
-        name="Travel To Tekks",
+        name="Start Travel To Tekks",
         children=[already_inside, normal],
     )
 
+
+def TravelToTekksFinish() -> BehaviorTree:
+    name = "Finish Sparkfly Route To Tekks"
+    return _map_guarded_point(
+        name=name,
+        map_id=SPARKFLY_SWAMP,
+        child=BT.Sequence(
+            name=name,
+            children=[
+                BT.WaitUntilOutOfCombat(timeout_ms=90_000),
+                BT.Move(TEKKS_POSITION, pause_on_combat=False, log=False),
+            ],
+        ),
+        skip_if_in_maps=(BOGROOT_LEVEL_1, BOGROOT_LEVEL_2),
+    )
 
 def HandleTekksQuest() -> BehaviorTree:
     already_inside = BT.Sequence(
@@ -910,12 +930,98 @@ def EnterBogroot() -> BehaviorTree:
         ],
     )
 
-    return BT.Selector(name="Enter Bogroot Growths", children=[already_inside, normal])
-
-
-def Level1_FirstRoute() -> BehaviorTree:
+    entry = BT.Selector(name="Enter Bogroot Growths", children=[already_inside, normal])
     return BT.Sequence(
-        name="Bogroot Level 1 - First Route",
+        name="Enter Bogroot Growths And Resume Consumables",
+        children=[entry, _runtime_consumable_node(True)],
+    )
+
+
+# region Planner point steps
+
+
+def _map_guarded_point(
+    name: str,
+    map_id: int,
+    child: BehaviorTree,
+    skip_if_in_maps: Sequence[int] = (),
+) -> BehaviorTree:
+    """Run one planner point on its expected map, or accept it if a later map is already loaded."""
+    branches: list[BehaviorTree] = [
+        BT.Sequence(
+            name=f"{name} - Active Map",
+            children=[
+                BT.IsCurrentMap(map_id=map_id, log=False),
+                child,
+            ],
+        )
+    ]
+
+    for later_map_id in skip_if_in_maps:
+        branches.append(
+            BT.Sequence(
+                name=f"{name} - Later Map {later_map_id}",
+                children=[
+                    BT.IsCurrentMap(map_id=later_map_id, log=False),
+                    BT.Succeeder(f"{name}AlreadyPassed"),
+                ],
+            )
+        )
+
+    if len(branches) == 1:
+        return branches[0]
+
+    return BT.Selector(name=name, children=branches)
+
+
+def _vanquish_point_steps(
+    prefix: str,
+    map_id: int,
+    points: Sequence[PathPoint],
+    *,
+    clear_area_radius: float = Range.Spirit.value,
+    pause_on_combat: bool | None = None,
+    flag_heroes_to_waypoint: bool = False,
+    move_tolerance: float = 500.0,
+    skip_if_in_maps: Sequence[int] = (),
+) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    """Expose every Vanquish path point as its own MultiAccountSequence planner step."""
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
+
+    for index, point in enumerate(points, start=1):
+        name = f"{prefix} - Point {index:02d}"
+        steps.append(
+            (
+                name,
+                lambda point=point, name=name: _map_guarded_point(
+                    name=name,
+                    map_id=map_id,
+                    child=BT.VanquishNode(
+                        [point],
+                        name=name,
+                        clear_area_radius=clear_area_radius,
+                        pause_on_combat=pause_on_combat,
+                        flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                        move_tolerance=move_tolerance,
+                        log=False,
+                    ),
+                    skip_if_in_maps=skip_if_in_maps,
+                ),
+            )
+        )
+
+    return steps
+
+
+# endregion
+
+
+# region Dungeon route actions
+
+
+def Level1_Start() -> BehaviorTree:
+    return BT.Sequence(
+        name="Bogroot Level 1 - Start",
         children=[
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
@@ -927,41 +1033,24 @@ def Level1_FirstRoute() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.VanquishNode(
-                L1_PATH_1,
-                name="Level 1 Route 1",
-                flag_heroes_to_waypoint=False,
-                log=False,
-            ),
         ],
     )
 
 
-def Level1_SecondRoute() -> BehaviorTree:
+def Level1_EnterLevel2() -> BehaviorTree:
+    name = "Bogroot Level 1 - Enter Level 2"
     return BT.Sequence(
-        name="Bogroot Level 1 - Second Route",
+        name=name,
         children=[
-            BT.VanquishNode(
-                L1_PATH_2,
-                name="Level 1 Route 2",
-                flag_heroes_to_waypoint=False,
-                log=False,
+            _map_guarded_point(
+                name=name,
+                map_id=BOGROOT_LEVEL_1,
+                child=BT.MoveAndExitMap(
+                    Vec2f(7731, -19298),
+                    target_map_id=BOGROOT_LEVEL_2,
+                ),
+                skip_if_in_maps=(BOGROOT_LEVEL_2,),
             ),
-        ],
-    )
-
-
-def Level1_ToLevel2() -> BehaviorTree:
-    return BT.Sequence(
-        name="Bogroot Level 1 - Route To Level 2",
-        children=[
-            BT.VanquishNode(
-                L1_PATH_3,
-                name="Level 1 Route 3",
-                flag_heroes_to_waypoint=False,
-                log=True,
-            ),
-            BT.MoveAndExitMap(Vec2f(7731,-19298), target_map_id=BOGROOT_LEVEL_2),
             _mark_l2_start_node(),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
@@ -969,9 +1058,9 @@ def Level1_ToLevel2() -> BehaviorTree:
     )
 
 
-def Level2_FirstRoute() -> BehaviorTree:
+def Level2_Start() -> BehaviorTree:
     return BT.Sequence(
-        name="Bogroot Level 2 - First Route",
+        name="Bogroot Level 2 - Start",
         children=[
             UseAvailableSummoningStone(),
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
@@ -981,39 +1070,25 @@ def Level2_FirstRoute() -> BehaviorTree:
                 multi_account=True,
                 log=True,
             ),
-            BT.VanquishNode(
-                L2_PATH_1,
-                name="Level 2 Route 1",
-                flag_heroes_to_waypoint=False,
-                log=False,
-            ),
-            BT.MoveAndDialog(
-                L2_BLESSING_2,
-                dialog_id=DWARVEN_BLESSING_DIALOG,
-                multi_account=True,
-                log=True,
-            ),
         ],
     )
 
 
-def Level2_SecondRoute() -> BehaviorTree:
-    return BT.Sequence(
-        name="Bogroot Level 2 - Second Route",
-        children=[
-            BT.VanquishNode(
-                L2_PATH_2,
-                name="Level 2 Route 2",
-                flag_heroes_to_waypoint=False,
-                log=False,
-            ),
-            BT.MoveAndDialog(
-                L2_BLESSING_3,
-                dialog_id=DWARVEN_BLESSING_DIALOG,
-                multi_account=True,
-                log=True,
-            ),
-        ],
+def Level2_Blessing2() -> BehaviorTree:
+    return BT.MoveAndDialog(
+        L2_BLESSING_2,
+        dialog_id=DWARVEN_BLESSING_DIALOG,
+        multi_account=True,
+        log=True,
+    )
+
+
+def Level2_Blessing3() -> BehaviorTree:
+    return BT.MoveAndDialog(
+        L2_BLESSING_3,
+        dialog_id=DWARVEN_BLESSING_DIALOG,
+        multi_account=True,
+        log=True,
     )
 
 
@@ -1021,12 +1096,7 @@ def Level2_OpenDoor() -> BehaviorTree:
     return BT.Sequence(
         name="Bogroot Level 2 - Open Boss Door",
         children=[
-            BT.VanquishNode(
-                L2_PATH_3,
-                name="Level 2 Route 3",
-                flag_heroes_to_waypoint=False,
-                log=False,
-            ),
+            BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=False),
             BT.MoveAndInteractWithGadget(
                 pos=L2_DOOR,
                 pause_on_combat=True,
@@ -1036,42 +1106,30 @@ def Level2_OpenDoor() -> BehaviorTree:
     )
 
 
-def Level2_ToBoss() -> BehaviorTree:
-    return BT.Sequence(
-        name="Bogroot Level 2 - Route To Boss",
-        children=[
-            BT.VanquishNode(
-                L2_PATH_4,
-                name="Level 2 Route 4",
-                flag_heroes_to_waypoint=False,
-                log=False,
-            ),
-            BT.MoveAndDialog(
-                L2_BLESSING_4,
-                dialog_id=DWARVEN_BLESSING_DIALOG,
-                multi_account=True,
-                log=True,
-            ),
-            BT.VanquishNode(
-                FROGGY_BOSS_PATH,
-                name="Route To Prismatic Ooze",
-                flag_heroes_to_waypoint=False,
-                log=False,
-            ),
-            BT.WaitForClearEnemiesInArea(
-                16017.74,
-                -19040.79,
-                radius=Range.Compass.value,
-                allowed_alive_enemies=0,
-                interact_interval_ms=750,
-                stable_clear_ms=10_000,
-                keep_player_near_center=False,
-                center_tolerance=750.0,
-                log=True,
-            ),
-        ],
+def Level2_Blessing4() -> BehaviorTree:
+    return BT.MoveAndDialog(
+        L2_BLESSING_4,
+        dialog_id=DWARVEN_BLESSING_DIALOG,
+        multi_account=True,
+        log=True,
     )
 
+
+def Level2_PrismaticOozeFight() -> BehaviorTree:
+    return BT.WaitForClearEnemiesInArea(
+        16017.74,
+        -19040.79,
+        radius=Range.Compass.value,
+        allowed_alive_enemies=0,
+        interact_interval_ms=750,
+        stable_clear_ms=10_000,
+        keep_player_near_center=False,
+        center_tolerance=750.0,
+        log=True,
+    )
+
+
+# endregion
 
 def OpenFinalChest() -> BehaviorTree:
     return BT.Sequence(
@@ -1206,8 +1264,6 @@ def CollectTekksRewardAndRestart() -> BehaviorTree:
             HandleTekksQuest(),
 
             EnterBogroot(),
-
-            _runtime_consumable_node(True),
         ],
     )
 
@@ -1284,20 +1340,58 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     return [
         ("Initialize Bot", InitializeBot),
         ("Prepare Party And Supplies", PreparePartyAndSupplies),
-        ("Travel To Tekks", TravelToTekks),
+
+        ("Travel To Tekks - Start", TravelToTekksStart),
+        *_vanquish_point_steps(
+            "Sparkfly Route To Tekks",
+            SPARKFLY_SWAMP,
+            SPARKFLY_TO_TEKKS,
+            skip_if_in_maps=(BOGROOT_LEVEL_1, BOGROOT_LEVEL_2),
+        ),
+        ("Travel To Tekks - Finish", TravelToTekksFinish),
         ("Handle Tekks Quest", HandleTekksQuest),
         ("Enter Bogroot Growths", EnterBogroot),
-        ("Level 1 First Route", Level1_FirstRoute),
-        ("Level 1 Second Route", Level1_SecondRoute),
-        ("Level 1 Route To Level 2", Level1_ToLevel2),
-        ("Level 2 First Route", Level2_FirstRoute),
-        ("Level 2 Second Route", Level2_SecondRoute),
+
+        ("Level 1 Start", Level1_Start),
+        *_vanquish_point_steps(
+            "Level 1 Route 1",
+            BOGROOT_LEVEL_1,
+            L1_PATH_1,
+            skip_if_in_maps=(BOGROOT_LEVEL_2,),
+        ),
+        *_vanquish_point_steps(
+            "Level 1 Route 2",
+            BOGROOT_LEVEL_1,
+            L1_PATH_2,
+            skip_if_in_maps=(BOGROOT_LEVEL_2,),
+        ),
+        *_vanquish_point_steps(
+            "Level 1 Route 3",
+            BOGROOT_LEVEL_1,
+            L1_PATH_3,
+            skip_if_in_maps=(BOGROOT_LEVEL_2,),
+        ),
+        ("Level 1 Enter Level 2", Level1_EnterLevel2),
+
+        ("Level 2 Start", Level2_Start),
+        *_vanquish_point_steps("Level 2 Route 1", BOGROOT_LEVEL_2, L2_PATH_1),
+        ("Level 2 Blessing 2", Level2_Blessing2),
+        *_vanquish_point_steps("Level 2 Route 2", BOGROOT_LEVEL_2, L2_PATH_2),
+        ("Level 2 Blessing 3", Level2_Blessing3),
+        *_vanquish_point_steps("Level 2 Route 3", BOGROOT_LEVEL_2, L2_PATH_3),
         ("Level 2 Open Boss Door", Level2_OpenDoor),
-        ("Level 2 Route To Boss", Level2_ToBoss),
+        *_vanquish_point_steps("Level 2 Route 4", BOGROOT_LEVEL_2, L2_PATH_4),
+        ("Level 2 Blessing 4", Level2_Blessing4),
+        *_vanquish_point_steps(
+            "Route To Prismatic Ooze",
+            BOGROOT_LEVEL_2,
+            FROGGY_BOSS_PATH,
+        ),
+        ("Prismatic Ooze Boss Fight", Level2_PrismaticOozeFight),
+
         ("Open Final Chest", OpenFinalChest),
         ("Collect Reward And Prepare Restart", CollectTekksRewardAndRestart),
     ]
-
 
 def main() -> None:
     global initialized
@@ -1308,6 +1402,7 @@ def main() -> None:
         initialized = True
 
     tree = ensure_botting_tree()
+    _sync_consumable_upkeeps()
     tree.tick()
     tree.UI.draw_window(
         icon_path=TEXTURE,
