@@ -15,6 +15,46 @@ class InspirationMagic:
     def __init__(self, build: BuildMgr) -> None:
         self.build: BuildMgr = build
 
+    def Mantra_of_Inscriptions(self) -> BuildCoroutine:
+        from Py4GWCoreLib import Player, Routines
+
+        mantra_id: int = Skill.GetID("Mantra_of_Inscriptions")
+        if not self.build.IsSkillEquipped(mantra_id):
+            return False
+
+        cast_condition = lambda: not Routines.Checks.Effects.HasBuff(
+            Player.GetAgentID(), mantra_id
+        )
+        if not cast_condition():
+            return False
+
+        return (yield from self.build.CastSkillID(
+            skill_id=mantra_id,
+            extra_condition=cast_condition,
+            log=False,
+            aftercast_delay=250,
+        ))
+
+    def Mantra_of_Signets(self) -> BuildCoroutine:
+        from Py4GWCoreLib import Player, Routines
+
+        mantra_id: int = Skill.GetID("Mantra_of_Signets")
+        if not self.build.IsSkillEquipped(mantra_id):
+            return False
+
+        cast_condition = lambda: not Routines.Checks.Effects.HasBuff(
+            Player.GetAgentID(), mantra_id
+        )
+        if not cast_condition():
+            return False
+
+        return (yield from self.build.CastSkillID(
+            skill_id=mantra_id,
+            extra_condition=cast_condition,
+            log=False,
+            aftercast_delay=250,
+        ))
+
     def Hex_Eater_Signet(self) -> BuildCoroutine:
         hex_eater_signet_id: int = Skill.GetID("Hex_Eater_Signet")
 

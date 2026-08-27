@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "Word_of_Healing": {
+      "categories": [
+        "heal"
+      ],
+      "threat": 100,
+      "interrupt_priority": 100
+    },
+    "Heal_Party": {
+      "categories": [
+        "heal",
+        "party_heal"
+      ],
+      "threat": 95,
+      "interrupt_priority": 98
+    },
+    "Healing_Burst": {
+      "categories": [
+        "heal"
+      ],
+      "threat": 92,
+      "interrupt_priority": 95
+    },
+    "Patient_Spirit": {
+      "categories": [
+        "heal"
+      ],
+      "threat": 76,
+      "interrupt_priority": 75
+    },
+    "Spirit_Light": {
+      "categories": [
+        "heal"
+      ],
+      "threat": 92,
+      "interrupt_priority": 96
+    },
+    "Mend_Body_and_Soul": {
+      "categories": [
+        "heal",
+        "condition_removal"
+      ],
+      "threat": 82,
+      "interrupt_priority": 84
+    },
+    "Protective_Spirit": {
+      "categories": [
+        "protection"
+      ],
+      "threat": 96,
+      "interrupt_priority": 99
+    },
+    "Spirit_Bond": {
+      "categories": [
+        "protection"
+      ],
+      "threat": 96,
+      "interrupt_priority": 99
+    },
+    "Aegis": {
+      "categories": [
+        "protection",
+        "party_protection"
+      ],
+      "threat": 94,
+      "interrupt_priority": 98
+    },
+    "Life_Sheath": {
+      "categories": [
+        "protection"
+      ],
+      "threat": 91,
+      "interrupt_priority": 95
+    },
+    "Shelter": {
+      "categories": [
+        "protection",
+        "spirit"
+      ],
+      "threat": 97,
+      "interrupt_priority": 100
+    },
+    "Union": {
+      "categories": [
+        "protection",
+        "spirit"
+      ],
+      "threat": 90,
+      "interrupt_priority": 94
+    },
+    "Displacement": {
+      "categories": [
+        "protection",
+        "spirit"
+      ],
+      "threat": 88,
+      "interrupt_priority": 92
+    },
+    "Recuperation": {
+      "categories": [
+        "heal",
+        "spirit"
+      ],
+      "threat": 87,
+      "interrupt_priority": 90
+    },
+    "Resurrection_Chant": {
+      "categories": [
+        "resurrection"
+      ],
+      "threat": 120,
+      "interrupt_priority": 120
+    },
+    "Restore_Life": {
+      "categories": [
+        "resurrection"
+      ],
+      "threat": 120,
+      "interrupt_priority": 120
+    },
+    "Rebirth": {
+      "categories": [
+        "resurrection"
+      ],
+      "threat": 120,
+      "interrupt_priority": 120
+    },
+    "Flesh_of_My_Flesh": {
+      "categories": [
+        "resurrection"
+      ],
+      "threat": 120,
+      "interrupt_priority": 120
+    },
+    "Death_Pact_Signet": {
+      "categories": [
+        "resurrection"
+      ],
+      "threat": 120,
+      "interrupt_priority": 120
+    },
+    "Renew_Life": {
+      "categories": [
+        "resurrection"
+      ],
+      "threat": 120,
+      "interrupt_priority": 120
+    },
+    "Meteor_Shower": {
+      "categories": [
+        "dangerous_offense",
+        "aoe",
+        "knockdown"
+      ],
+      "threat": 115,
+      "interrupt_priority": 118,
+      "requires_escape": true
+    },
+    "Savannah_Heat": {
+      "categories": [
+        "dangerous_offense",
+        "aoe"
+      ],
+      "threat": 108,
+      "interrupt_priority": 110,
+      "requires_escape": true
+    },
+    "Searing_Heat": {
+      "categories": [
+        "dangerous_offense",
+        "aoe"
+      ],
+      "threat": 104,
+      "interrupt_priority": 106,
+      "requires_escape": true
+    },
+    "Ray_of_Judgment": {
+      "categories": [
+        "dangerous_offense",
+        "aoe"
+      ],
+      "threat": 110,
+      "interrupt_priority": 114,
+      "requires_escape": true
+    },
+    "Panic": {
+      "categories": [
+        "shutdown",
+        "dangerous_offense"
+      ],
+      "threat": 112,
+      "interrupt_priority": 116
+    },
+    "Energy_Surge": {
+      "categories": [
+        "dangerous_offense",
+        "aoe"
+      ],
+      "threat": 104,
+      "interrupt_priority": 108
+    },
+    "Cry_of_Frustration": {
+      "categories": [
+        "shutdown",
+        "dangerous_offense"
+      ],
+      "threat": 105,
+      "interrupt_priority": 110
+    },
+    "Mistrust": {
+      "categories": [
+        "shutdown",
+        "dangerous_offense"
+      ],
+      "threat": 96,
+      "interrupt_priority": 98
+    },
+    "Spiteful_Spirit": {
+      "categories": [
+        "dangerous_offense",
+        "hex"
+      ],
+      "threat": 102,
+      "interrupt_priority": 104
+    },
+    "Mark_of_Pain": {
+      "categories": [
+        "dangerous_offense",
+        "hex",
+        "aoe"
+      ],
+      "threat": 110,
+      "interrupt_priority": 112
+    },
+    "Barbs": {
+      "categories": [
+        "dangerous_offense",
+        "hex"
+      ],
+      "threat": 94,
+      "interrupt_priority": 96
+    }
+  }
+}

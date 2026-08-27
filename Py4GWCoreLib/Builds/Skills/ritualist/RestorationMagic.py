@@ -24,6 +24,41 @@ class RestorationMagic:
     def _has_spirit_in_earshot(self) -> bool:
         return bool(Routines.Agents.GetNearestSpirit(Range.Earshot.value))
 
+    @staticmethod
+    def _actual_party_agent_ids() -> set[int]:
+        """Return real party members only (players/heroes/henchmen).
+
+        Allied NPCs, pets, spirits and especially minions are intentionally
+        excluded. Restoration heals in this project are party resources and
+        must never be spent keeping disposable minions alive.
+        """
+        try:
+            from Py4GWCoreLib import Party
+        except Exception:
+            return set()
+
+        result: set[int] = set()
+        try:
+            for player in Party.GetPlayers() or []:
+                login_number = int(getattr(player, "login_number", 0) or 0)
+                agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
+                if agent_id > 0:
+                    result.add(agent_id)
+        except Exception:
+            pass
+
+        for getter_name in ("GetHeroes", "GetHenchmen"):
+            try:
+                getter = getattr(Party, getter_name)
+                for member in getter() or []:
+                    agent_id = int(getattr(member, "agent_id", 0) or 0)
+                    if agent_id > 0:
+                        result.add(agent_id)
+            except Exception:
+                continue
+
+        return result
+
     #region B
     def Breath_of_the_Great_Dwarf(self) -> BuildCoroutine:
         if False:
@@ -75,6 +110,12 @@ class RestorationMagic:
         if not self.build.IsSkillEquipped(mend_body_and_soul_id):
             return False
 
+        party_agent_ids = self._actual_party_agent_ids()
+        if not party_agent_ids:
+            # Fail closed: never fall back to the broad ally array here because
+            # that array also contains minions/pets/NPCs.
+            return False
+
         # Cleanse-oriented tiers: MBaS removes one condition per cast only when a
         # spirit is in earshot, so gate the tier on the spirit + profession-specific
         # carriers of the targeted condition.
@@ -93,8 +134,10 @@ class RestorationMagic:
             ally_array = GetAllAlliesArray(Range.Spellcast.value) or []
             candidates = [
                 agent_id for agent_id in ally_array
-                if Agent.IsValid(agent_id)
+                if int(agent_id) in party_agent_ids
+                and Agent.IsValid(agent_id)
                 and Agent.IsAlive(agent_id)
+                and not Agent.IsMinion(agent_id)
                 and profession_predicate(agent_id)
                 and condition_predicate(agent_id)
             ]
@@ -126,7 +169,12 @@ class RestorationMagic:
                     mend_body_and_soul_id,
                     mend_body_and_soul,
                     variants=variants,
-                    validator=lambda aid: Agent.IsAlive(aid) and Agent.GetHealth(aid) < threshold,
+                    validator=lambda aid: (
+                        int(aid) in party_agent_ids
+                        and Agent.IsAlive(aid)
+                        and not Agent.IsMinion(aid)
+                        and Agent.GetHealth(aid) < threshold
+                    ),
                 )
 
             target_agent_id = _resolve_mend_body_and_soul_target()

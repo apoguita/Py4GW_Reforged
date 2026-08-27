@@ -18,6 +18,7 @@ from Py4GWCoreLib.Builds.Skills.AoEDangerPrediction import (
 )
 
 Blood_is_Power_ID = Skill.GetID("Blood_is_Power")
+Blood_Ritual_ID = Skill.GetID("Blood_Ritual")
 Spirit_Siphon_ID = Skill.GetID("Spirit_Siphon")
 Signet_of_Lost_Souls_ID = Skill.GetID("Signet_of_Lost_Souls")
 Mend_Body_and_Soul_ID = Skill.GetID("Mend_Body_and_Soul")
@@ -39,18 +40,20 @@ Air_of_Superiority_ID = Skill.GetID("Air_of_Superiority")
 Great_Dwarf_Weapon_ID = Skill.GetID("Great_Dwarf_Weapon")
 
 
-class Blood_is_Power_Healer(BuildMgr):
+class Blood_Ritual_Healer(BuildMgr):
     def __init__(self, match_only: bool = False):
         super().__init__(
-            name="Blood is Power Healer",
+            name="Blood Ritual Healer",
             required_primary=Profession.Necromancer,
             required_secondary=Profession.Ritualist,
             template_code="OAhjQkGZIP3hqq0EAAAAAAAAAA",
             required_skills=[
-                Blood_is_Power_ID,
+                Blood_Ritual_ID,
                 Mend_Body_and_Soul_ID,
             ],
             optional_skills=[
+                Blood_is_Power_ID,
+                Blood_Ritual_ID,
                 Spirit_Siphon_ID,
                 Signet_of_Lost_Souls_ID,
                 Spirit_Light_ID,
@@ -85,6 +88,13 @@ class Blood_is_Power_Healer(BuildMgr):
         blood_is_power = self.GetCustomSkill(Blood_is_Power_ID)
         if blood_is_power is not None:
             blood_is_power.Conditions.LessEnergy = 0.70
+
+        blood_ritual = self.GetCustomSkill(Blood_Ritual_ID)
+        if blood_ritual is not None:
+            # Test-mode replacement for BiP on the existing N/Rt.
+            # Same early-support threshold; the normal ally resolver chooses
+            # the energy-needy valid caster.
+            blood_ritual.Conditions.LessEnergy = 0.70
 
         if match_only:
             return
@@ -304,6 +314,11 @@ class Blood_is_Power_Healer(BuildMgr):
             primary_id, secondary_id = self._telemetry_professions(ally_id)
             name = self._telemetry_agent_name(ally_id)
 
+            is_self = bool(int(ally_id) == int(self_id))
+            try:
+                max_energy = int(Agent.GetMaxEnergy(ally_id) or 0)
+            except Exception:
+                max_energy = 0
             CombatDebug.log_event(
                 "TEAM_ENERGY_SAMPLE",
                 agent_id=int(ally_id),
@@ -311,6 +326,9 @@ class Blood_is_Power_Healer(BuildMgr):
                 primary_profession=int(primary_id),
                 secondary_profession=int(secondary_id),
                 energy_pct=f"{float(energy_pct):.4f}",
+                max_energy=int(max_energy),
+                is_self=bool(is_self),
+                locally_reliable=bool(is_self or max_energy > 0),
                 enemy_count=int(enemy_count),
                 team_anchor=int(team_anchor),
             )
@@ -343,6 +361,58 @@ class Blood_is_Power_Healer(BuildMgr):
                         energy_pct=f"{float(energy_pct):.4f}",
                     )
                 self._energy_telemetry_low_state[ally_id] = int(current_state)
+
+    def _resolve_blood_ritual_target_for_telemetry(self) -> tuple[int, float]:
+        try:
+            custom = self.GetCustomSkill(Blood_Ritual_ID)
+            target_id = int(self.ResolveAllyTarget(Blood_Ritual_ID, custom) or 0)
+        except Exception:
+            target_id = 0
+        energy_pct = -1.0
+        if target_id > 0:
+            try:
+                energy_pct = float(Agent.GetEnergy(target_id))
+            except Exception:
+                pass
+        return target_id, energy_pct
+
+    def _log_successful_blood_ritual_cast(self, target_id: int, target_energy_before: float) -> None:
+        # Keep Blood Ritual logs focused on the energy consumers we are
+        # evaluating: Keystone Mesmers, HR Paragon, ST Ritualist and the real
+        # SoJ Monk account. Do not log RoJ Monk hero, Fire Ele hero or MM hero.
+        try:
+            primary_id, _secondary_id = self._telemetry_professions(target_id)
+            mesmer_id = int(getattr(Profession.Mesmer, "value", Profession.Mesmer))
+            paragon_id = int(getattr(Profession.Paragon, "value", Profession.Paragon))
+            ritualist_id = int(getattr(Profession.Ritualist, "value", Profession.Ritualist))
+            monk_id = int(getattr(Profession.Monk, "value", Profession.Monk))
+            keep_log = primary_id in (mesmer_id, paragon_id, ritualist_id)
+            if primary_id == monk_id:
+                keep_log = bool(Agent.IsPlayer(int(target_id)))
+            if not keep_log:
+                return
+        except Exception:
+            return
+
+        try:
+            from Py4GWCoreLib.Builds.Skills import CombatDebug
+            in_combat, enemy_count, team_anchor = self._telemetry_combat_state()
+            self_energy = float(Agent.GetEnergy(Player.GetAgentID()))
+            primary_id, secondary_id = self._telemetry_professions(target_id)
+            CombatDebug.log_event(
+                "BLOOD_RITUAL_CAST_PROFILE",
+                target_id=int(target_id or 0),
+                target_name=str(self._telemetry_agent_name(target_id)),
+                target_primary_profession=int(primary_id),
+                target_secondary_profession=int(secondary_id),
+                target_energy_before=f"{float(target_energy_before):.4f}",
+                support_self_energy=f"{float(self_energy):.4f}",
+                in_combat=bool(in_combat),
+                enemy_count=int(enemy_count),
+                team_anchor=int(team_anchor),
+            )
+        except Exception:
+            pass
 
     def _resolve_bip_target_for_telemetry(self) -> tuple[int, float]:
         """Mirror the existing BiP resolver for logging only."""
@@ -466,7 +536,7 @@ class Blood_is_Power_Healer(BuildMgr):
         if not combat_active:
             return False
 
-        # BiP priority is preserved because Blood is Power is evaluated before
+        # Blood Ritual priority is preserved because Blood is Power is evaluated before
         # this function.  If Recuperation cannot be paid for, CanCastSkillID
         # fails cleanly and the rest of the BiP rotation continues.
         if not self.CanCastSkillID(Recuperation_ID):
@@ -537,11 +607,14 @@ class Blood_is_Power_Healer(BuildMgr):
         if close_pressure and self.IsSkillEquipped(Air_of_Superiority_ID) and (yield from self.skills.Any.PvE.Air_of_Superiority()):
             return True
 
-        bip_target_id, bip_target_energy_before = self._resolve_bip_target_for_telemetry()
-        if (yield from self.skills.Necromancer.BloodMagic.Blood_is_Power()):
-            self._log_successful_bip_cast(
-                bip_target_id,
-                bip_target_energy_before,
+        # Energy-support slot for the separate Blood Ritual Healer build.
+        # Blood Ritual is the defining support skill here and uses the same
+        # energy-needs resolver/70% threshold as the proven Blood Ritual controller.
+        br_target_id, br_target_energy_before = self._resolve_blood_ritual_target_for_telemetry()
+        if (yield from self.skills.Necromancer.BloodMagic.Blood_Ritual()):
+            self._log_successful_blood_ritual_cast(
+                br_target_id,
+                br_target_energy_before,
             )
             return True
 

@@ -1,0 +1,4983 @@
+{
+  "schema_version": 1,
+  "generated_from": "Py4GW Map_enums.py",
+  "profiles": {
+    "7": {
+      "category": "level20_explorable",
+      "name": "Warrior's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "8": {
+      "category": "level20_explorable",
+      "name": "Hunter's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "9": {
+      "category": "level20_explorable",
+      "name": "Wizard's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "13": {
+      "category": "level20_explorable",
+      "name": "Diessa Lowlands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "17": {
+      "category": "level20_explorable",
+      "name": "Talmark Wilderness",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "18": {
+      "category": "level20_explorable",
+      "name": "The Black Curtain",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "26": {
+      "category": "level20_explorable",
+      "name": "Talus Chute",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "27": {
+      "category": "level20_explorable",
+      "name": "Griffon's Mouth",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "31": {
+      "category": "level20_explorable",
+      "name": "Xaquang Skyway",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "33": {
+      "category": "level20_explorable",
+      "name": "Old Ascalon",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "34": {
+      "category": "elite_area",
+      "name": "The Fissure of Woe",
+      "party_size": 8,
+      "threat_multiplier": 1.18,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "god_realm",
+        "long_area",
+        "mixed_damage"
+      ]
+    },
+    "41": {
+      "category": "level20_explorable",
+      "name": "Sage Lands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "42": {
+      "category": "level20_explorable",
+      "name": "Mamnoon Lagoon",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "43": {
+      "category": "level20_explorable",
+      "name": "Silverwood",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "44": {
+      "category": "level20_explorable",
+      "name": "Ettin's Back",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "45": {
+      "category": "level20_explorable",
+      "name": "Reed Bog",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "46": {
+      "category": "level20_explorable",
+      "name": "The Falls",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "47": {
+      "category": "level20_explorable",
+      "name": "Dry Top",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "48": {
+      "category": "level20_explorable",
+      "name": "Tangle Root",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "53": {
+      "category": "level20_explorable",
+      "name": "Tears of the Fallen",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "54": {
+      "category": "level20_explorable",
+      "name": "Scoundrel's Rise",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "56": {
+      "category": "level20_explorable",
+      "name": "Cursed Lands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "58": {
+      "category": "level20_explorable",
+      "name": "North Kryta Province",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "59": {
+      "category": "level20_explorable",
+      "name": "Nebo Terrace",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "60": {
+      "category": "level20_explorable",
+      "name": "Majesty's Rest",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "61": {
+      "category": "level20_explorable",
+      "name": "Twin Serpent Lakes",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "62": {
+      "category": "level20_explorable",
+      "name": "Watchtower Coast",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "63": {
+      "category": "level20_explorable",
+      "name": "Stingray Strand",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "64": {
+      "category": "level20_explorable",
+      "name": "Kessex Peak",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "67": {
+      "category": "level20_explorable",
+      "name": "Burning Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "68": {
+      "category": "level20_explorable",
+      "name": "Frozen Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "69": {
+      "category": "level20_explorable",
+      "name": "Nomad's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "70": {
+      "category": "level20_explorable",
+      "name": "Druid's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "71": {
+      "category": "level20_explorable",
+      "name": "Isle of the Dead (guild hall)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "72": {
+      "category": "elite_area",
+      "name": "The Underworld",
+      "party_size": 8,
+      "threat_multiplier": 1.22,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "god_realm",
+        "quest_failure_risk",
+        "high_spike"
+      ]
+    },
+    "87": {
+      "category": "level20_explorable",
+      "name": "Icedome",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "88": {
+      "category": "level20_explorable",
+      "name": "Iron Horse Mine",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "89": {
+      "category": "level20_explorable",
+      "name": "Anvil Rock",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "90": {
+      "category": "level20_explorable",
+      "name": "Lornar's Pass",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "91": {
+      "category": "level20_explorable",
+      "name": "Snake Dance",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "92": {
+      "category": "level20_explorable",
+      "name": "Tasca's Demise",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "93": {
+      "category": "level20_explorable",
+      "name": "Spearhead Peak",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "94": {
+      "category": "level20_explorable",
+      "name": "Ice Floe",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "95": {
+      "category": "level20_explorable",
+      "name": "Witman's Folly",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "96": {
+      "category": "level20_explorable",
+      "name": "Mineral Springs",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "97": {
+      "category": "level20_explorable",
+      "name": "Dreadnought's Drift",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "98": {
+      "category": "level20_explorable",
+      "name": "Frozen Forest",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "99": {
+      "category": "level20_explorable",
+      "name": "Traveler's Vale",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "100": {
+      "category": "level20_explorable",
+      "name": "Deldrimor Bowl",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "101": {
+      "category": "level20_explorable",
+      "name": "Regent Valley",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "102": {
+      "category": "level20_explorable",
+      "name": "The Breach",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "103": {
+      "category": "level20_explorable",
+      "name": "Ascalon Foothills",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "104": {
+      "category": "level20_explorable",
+      "name": "Pockmark Flats",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "105": {
+      "category": "level20_explorable",
+      "name": "Dragon's Gullet",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "106": {
+      "category": "level20_explorable",
+      "name": "Flame Temple Corridor",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "107": {
+      "category": "level20_explorable",
+      "name": "Eastern Frontier",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "108": {
+      "category": "level20_explorable",
+      "name": "The Scar",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "110": {
+      "category": "level20_explorable",
+      "name": "Diviner's Ascent",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "111": {
+      "category": "level20_explorable",
+      "name": "Vulture Drifts",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "112": {
+      "category": "level20_explorable",
+      "name": "The Arid Sea",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "113": {
+      "category": "level20_explorable",
+      "name": "Prophet's Path",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "114": {
+      "category": "level20_explorable",
+      "name": "Salt Flats",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "115": {
+      "category": "level20_explorable",
+      "name": "Skyward Reach",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "119": {
+      "category": "mission",
+      "name": "Augury Rock mission",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "121": {
+      "category": "level20_explorable",
+      "name": "Perdition Rock",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "127": {
+      "category": "level20_explorable",
+      "name": "Scarred Earth",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "128": {
+      "category": "level20_explorable",
+      "name": "The Eternal Grove (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "144": {
+      "category": "level20_explorable",
+      "name": "Gyala Hatchery (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "145": {
+      "category": "dungeon_or_instance",
+      "name": "The Catacombs",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "146": {
+      "category": "level20_explorable",
+      "name": "Lakeside County",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "147": {
+      "category": "level20_explorable",
+      "name": "The Northlands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "148": {
+      "category": "level20_explorable",
+      "name": "Ascalon City (pre-Searing)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "149": {
+      "category": "level20_explorable",
+      "name": "Ascalon Academy",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "151": {
+      "category": "level20_explorable",
+      "name": "Ascalon Academy",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "160": {
+      "category": "level20_explorable",
+      "name": "Green Hills County",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "161": {
+      "category": "level20_explorable",
+      "name": "Wizard's Folly",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "162": {
+      "category": "level20_explorable",
+      "name": "Regent Valley (pre-Searing)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "167": {
+      "category": "level20_explorable",
+      "name": "Burning Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "168": {
+      "category": "level20_explorable",
+      "name": "Druid's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "170": {
+      "category": "level20_explorable",
+      "name": "Frozen Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "171": {
+      "category": "level20_explorable",
+      "name": "Warrior's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "172": {
+      "category": "level20_explorable",
+      "name": "Hunter's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "173": {
+      "category": "level20_explorable",
+      "name": "Wizard's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "174": {
+      "category": "level20_explorable",
+      "name": "Nomad's Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "175": {
+      "category": "level20_explorable",
+      "name": "Isle of the Dead",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "190": {
+      "category": "dungeon_or_instance",
+      "name": "Sorrow's Furnace",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "191": {
+      "category": "level20_explorable",
+      "name": "Grenth's Footprint",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "195": {
+      "category": "level20_explorable",
+      "name": "Drazach Thicket",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "196": {
+      "category": "level20_explorable",
+      "name": "Jaya Bluffs",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "197": {
+      "category": "level20_explorable",
+      "name": "Shenzun Tunnels",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "198": {
+      "category": "level20_explorable",
+      "name": "Archipelagos",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "199": {
+      "category": "level20_explorable",
+      "name": "Maishang Hills",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "200": {
+      "category": "level20_explorable",
+      "name": "Mount Qinkai",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "201": {
+      "category": "level20_explorable",
+      "name": "Melandru's Hope",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "202": {
+      "category": "level20_explorable",
+      "name": "Rhea's Crater",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "203": {
+      "category": "level20_explorable",
+      "name": "Silent Surf",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "205": {
+      "category": "level20_explorable",
+      "name": "Morostav Trail",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "209": {
+      "category": "level20_explorable",
+      "name": "Mourning Veil Falls",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "210": {
+      "category": "level20_explorable",
+      "name": "Ferndale",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "211": {
+      "category": "level20_explorable",
+      "name": "Pongmei Valley",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "212": {
+      "category": "level20_explorable",
+      "name": "Monastery Overlook",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "227": {
+      "category": "level20_explorable",
+      "name": "Unwaking Waters (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "232": {
+      "category": "level20_explorable",
+      "name": "Shadow's Passage",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "233": {
+      "category": "level20_explorable",
+      "name": "Raisu Palace (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "235": {
+      "category": "level20_explorable",
+      "name": "Panjiang Peninsula",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "236": {
+      "category": "level20_explorable",
+      "name": "Kinya Province",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "237": {
+      "category": "level20_explorable",
+      "name": "Haiju Lagoon",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "238": {
+      "category": "level20_explorable",
+      "name": "Sunqua Vale",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "239": {
+      "category": "level20_explorable",
+      "name": "Wajjun Bazaar",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "240": {
+      "category": "level20_explorable",
+      "name": "Bukdek Byway",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "241": {
+      "category": "level20_explorable",
+      "name": "The Undercity",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "244": {
+      "category": "level20_explorable",
+      "name": "Arborstone (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "245": {
+      "category": "level20_explorable",
+      "name": "Minister Chos Estate (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "246": {
+      "category": "level20_explorable",
+      "name": "Zen Daijun (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "247": {
+      "category": "level20_explorable",
+      "name": "Boreas Seabed (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "252": {
+      "category": "level20_explorable",
+      "name": "Linnok Courtyard",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "256": {
+      "category": "level20_explorable",
+      "name": "Sunjiang District (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "265": {
+      "category": "level20_explorable",
+      "name": "Nahpui Quarter (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "269": {
+      "category": "level20_explorable",
+      "name": "Tahnnakai Temple (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "280": {
+      "category": "level20_explorable",
+      "name": "Isle of the Nameless",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "285": {
+      "category": "level20_explorable",
+      "name": "Monastery Overlook",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "290": {
+      "category": "level20_explorable",
+      "name": "Bejunkan Pier",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "301": {
+      "category": "level20_explorable",
+      "name": "Raisu Pavilion",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "302": {
+      "category": "level20_explorable",
+      "name": "Kaineng Docks",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "313": {
+      "category": "level20_explorable",
+      "name": "Saoshang Trail",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "344": {
+      "category": "level20_explorable",
+      "name": "The Hall of Heroes",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "345": {
+      "category": "level20_explorable",
+      "name": "The Courtyard",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "346": {
+      "category": "level20_explorable",
+      "name": "Scarred Earth",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "347": {
+      "category": "elite_area",
+      "name": "The Underworld (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.22,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "god_realm",
+        "quest_failure_risk",
+        "high_spike"
+      ]
+    },
+    "351": {
+      "category": "level20_explorable",
+      "name": "Divine Path",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "361": {
+      "category": "level20_explorable",
+      "name": "Isle of Weeping Stone",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "362": {
+      "category": "level20_explorable",
+      "name": "Isle of Jade",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "363": {
+      "category": "level20_explorable",
+      "name": "Imperial Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "364": {
+      "category": "level20_explorable",
+      "name": "Isle of Meditation",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "369": {
+      "category": "level20_explorable",
+      "name": "Jahai Bluffs",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "371": {
+      "category": "level20_explorable",
+      "name": "Marga Coast",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "373": {
+      "category": "level20_explorable",
+      "name": "Sunward Marches",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "375": {
+      "category": "level20_explorable",
+      "name": "Barbarous Shore",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "377": {
+      "category": "dungeon_or_instance",
+      "name": "Bahdok Caverns",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "379": {
+      "category": "level20_explorable",
+      "name": "Dejarin Estate",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "380": {
+      "category": "level20_explorable",
+      "name": "Arkjok Ward",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "382": {
+      "category": "level20_explorable",
+      "name": "Gandara, the Moon Fortress",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "384": {
+      "category": "level20_explorable",
+      "name": "The Floodplain of Mahnkelon",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "385": {
+      "category": "level20_explorable",
+      "name": "Lion's Arch (Sunspears in Kryta)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "386": {
+      "category": "level20_explorable",
+      "name": "Turai's Procession",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "392": {
+      "category": "level20_explorable",
+      "name": "Yatendi Canyons",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "394": {
+      "category": "level20_explorable",
+      "name": "Garden of Seborhin",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "395": {
+      "category": "level20_explorable",
+      "name": "Holdings of Chokhin",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "397": {
+      "category": "level20_explorable",
+      "name": "Vehjin Mines",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "399": {
+      "category": "level20_explorable",
+      "name": "Forum Highlands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "400": {
+      "category": "level20_explorable",
+      "name": "Kaineng Center (Sunspears in Cantha)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "402": {
+      "category": "level20_explorable",
+      "name": "Resplendent Makuun",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "404": {
+      "category": "level20_explorable",
+      "name": "Wilderness of Bahdza",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "406": {
+      "category": "level20_explorable",
+      "name": "Vehtendi Valley",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "413": {
+      "category": "level20_explorable",
+      "name": "The Hidden City of Ahdashim",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "415": {
+      "category": "level20_explorable",
+      "name": "Lion's Gate",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "419": {
+      "category": "level20_explorable",
+      "name": "The Mirror of Lyss",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "420": {
+      "category": "level20_explorable",
+      "name": "Secure the Refuge",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "422": {
+      "category": "level20_explorable",
+      "name": "Bad Tide Rising#NPCs - Kamadan, Jewel of Istan (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "423": {
+      "category": "level20_explorable",
+      "name": "The Tribunal",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "429": {
+      "category": "level20_explorable",
+      "name": "Consulate",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "430": {
+      "category": "level20_explorable",
+      "name": "Plains of Jarin",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "432": {
+      "category": "level20_explorable",
+      "name": "Cliffs of Dohjok",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "436": {
+      "category": "level20_explorable",
+      "name": "Command Post",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "437": {
+      "category": "level20_explorable",
+      "name": "Joko's Domain",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "439": {
+      "category": "level20_explorable",
+      "name": "The Ruptured Heart",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "441": {
+      "category": "level20_explorable",
+      "name": "The Shattered Ravines",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "443": {
+      "category": "level20_explorable",
+      "name": "Poisoned Outcrops",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "444": {
+      "category": "level20_explorable",
+      "name": "The Sulfurous Wastes",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "446": {
+      "category": "level20_explorable",
+      "name": "The Alkali Pan",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "447": {
+      "category": "level20_explorable",
+      "name": "A Land of Heroes",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "448": {
+      "category": "level20_explorable",
+      "name": "Crystal Overlook",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "455": {
+      "category": "level20_explorable",
+      "name": "Nightfallen Garden",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "456": {
+      "category": "level20_explorable",
+      "name": "Churrhir Fields",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "461": {
+      "category": "elite_area",
+      "name": "The Underworld",
+      "party_size": 8,
+      "threat_multiplier": 1.22,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "god_realm",
+        "quest_failure_risk",
+        "high_spike"
+      ]
+    },
+    "462": {
+      "category": "level20_explorable",
+      "name": "Heart of Abaddon",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "463": {
+      "category": "elite_area",
+      "name": "The Underworld",
+      "party_size": 8,
+      "threat_multiplier": 1.22,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "god_realm",
+        "quest_failure_risk",
+        "high_spike"
+      ]
+    },
+    "465": {
+      "category": "level20_explorable",
+      "name": "Nightfallen Jahai",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "466": {
+      "category": "dungeon_or_instance",
+      "name": "Depths of Madness",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "468": {
+      "category": "level20_explorable",
+      "name": "Domain of Fear",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "470": {
+      "category": "level20_explorable",
+      "name": "Domain of Pain",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "471": {
+      "category": "level20_explorable",
+      "name": "Bloodstone Fen (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "472": {
+      "category": "level20_explorable",
+      "name": "Domain of Secrets",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "474": {
+      "category": "elite_area",
+      "name": "Domain of Anguish",
+      "party_size": 8,
+      "threat_multiplier": 1.28,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "torment",
+        "environmental_pressure",
+        "high_shutdown"
+      ]
+    },
+    "481": {
+      "category": "level20_explorable",
+      "name": "Fahranur, The First City",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "482": {
+      "category": "level20_explorable",
+      "name": "Bjora Marches",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "483": {
+      "category": "level20_explorable",
+      "name": "Zehlon Reach",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "484": {
+      "category": "level20_explorable",
+      "name": "Lahtenda Bog",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "485": {
+      "category": "level20_explorable",
+      "name": "Arbor Bay",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "486": {
+      "category": "level20_explorable",
+      "name": "Issnur Isles",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "488": {
+      "category": "level20_explorable",
+      "name": "Mehtani Keys",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "490": {
+      "category": "level20_explorable",
+      "name": "Island of Shehkah",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "499": {
+      "category": "level20_explorable",
+      "name": "Ice Cliff Chasms",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "500": {
+      "category": "level20_explorable",
+      "name": "Bokka Amphitheatre",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "501": {
+      "category": "level20_explorable",
+      "name": "Riven Earth",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "503": {
+      "category": "level20_explorable",
+      "name": "Throne of Secrets",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "505": {
+      "category": "mission",
+      "name": "Shing Jea Monastery (mission)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "506": {
+      "category": "mission",
+      "name": "Haiju Lagoon (mission)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "507": {
+      "category": "mission",
+      "name": "Jaya Bluffs (mission)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "508": {
+      "category": "mission",
+      "name": "Seitung Harbor (mission)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "509": {
+      "category": "mission",
+      "name": "Tsumei Village (mission)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "510": {
+      "category": "mission",
+      "name": "Seitung Harbor (mission 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "511": {
+      "category": "mission",
+      "name": "Tsumei Village (mission 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "513": {
+      "category": "level20_explorable",
+      "name": "Drakkar Lake",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "531": {
+      "category": "level20_explorable",
+      "name": "Uncharted Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "532": {
+      "category": "level20_explorable",
+      "name": "Isle of Wurms",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "539": {
+      "category": "level20_explorable",
+      "name": "Corrupted Isle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "540": {
+      "category": "level20_explorable",
+      "name": "Isle of Solitude",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "543": {
+      "category": "level20_explorable",
+      "name": "Sun Docks",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "546": {
+      "category": "level20_explorable",
+      "name": "Jaga Moraine",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "547": {
+      "category": "level20_explorable",
+      "name": "Bombardment",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "548": {
+      "category": "level20_explorable",
+      "name": "Norrhart Domains",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "550": {
+      "category": "level20_explorable",
+      "name": "The Beachhead",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "551": {
+      "category": "level20_explorable",
+      "name": "The Crossing",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "552": {
+      "category": "level20_explorable",
+      "name": "Desert Sands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "553": {
+      "category": "level20_explorable",
+      "name": "Varajar Fells",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "558": {
+      "category": "level20_explorable",
+      "name": "Sparkfly Swamp",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "560": {
+      "category": "level20_explorable",
+      "name": "Cathedral of Flames (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "561": {
+      "category": "level20_explorable",
+      "name": "The Troubled Keeper",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "566": {
+      "category": "level20_explorable",
+      "name": "Verdant Cascades",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "567": {
+      "category": "level20_explorable",
+      "name": "Cathedral of Flames (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "568": {
+      "category": "level20_explorable",
+      "name": "Cathedral of Flames (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "569": {
+      "category": "level20_explorable",
+      "name": "Magus Stones",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "570": {
+      "category": "dungeon_or_instance",
+      "name": "Catacombs of Kathandrax (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "571": {
+      "category": "dungeon_or_instance",
+      "name": "Catacombs of Kathandrax (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "572": {
+      "category": "level20_explorable",
+      "name": "Alcazia Tangle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "573": {
+      "category": "level20_explorable",
+      "name": "Rragar's Menagerie (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "574": {
+      "category": "level20_explorable",
+      "name": "Rragar's Menagerie (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "575": {
+      "category": "level20_explorable",
+      "name": "Rragar's Menagerie (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "576": {
+      "category": "level20_explorable",
+      "name": "Ooza Pit",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "577": {
+      "category": "level20_explorable",
+      "name": "Slaver's Exile",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "578": {
+      "category": "level20_explorable",
+      "name": "Oola's Lab (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "579": {
+      "category": "level20_explorable",
+      "name": "Oola's Lab (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "580": {
+      "category": "level20_explorable",
+      "name": "Oola's Lab (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "581": {
+      "category": "level20_explorable",
+      "name": "Shards of Oor (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "582": {
+      "category": "level20_explorable",
+      "name": "Shards of Oor (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "583": {
+      "category": "level20_explorable",
+      "name": "Shards of Oor (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "584": {
+      "category": "level20_explorable",
+      "name": "Arachni's Haunt",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "585": {
+      "category": "level20_explorable",
+      "name": "Arachni's Haunt",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "593": {
+      "category": "level20_explorable",
+      "name": "Fetid River",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "596": {
+      "category": "level20_explorable",
+      "name": "Forgotten Shrines",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "598": {
+      "category": "level20_explorable",
+      "name": "Antechamber",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "604": {
+      "category": "level20_explorable",
+      "name": "Vloxen Excavations (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "605": {
+      "category": "level20_explorable",
+      "name": "Vloxen Excavations (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "606": {
+      "category": "level20_explorable",
+      "name": "Vloxen Excavations (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "607": {
+      "category": "level20_explorable",
+      "name": "Heart of the Shiverpeaks (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "608": {
+      "category": "level20_explorable",
+      "name": "Heart of the Shiverpeaks (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "609": {
+      "category": "level20_explorable",
+      "name": "Heart of the Shiverpeaks (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "612": {
+      "category": "level20_explorable",
+      "name": "Bloodstone Caves (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "613": {
+      "category": "level20_explorable",
+      "name": "Bloodstone Caves (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "614": {
+      "category": "level20_explorable",
+      "name": "Bloodstone Caves (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "615": {
+      "category": "level20_explorable",
+      "name": "Bogroot Growths (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "616": {
+      "category": "level20_explorable",
+      "name": "Bogroot Growths (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "617": {
+      "category": "level20_explorable",
+      "name": "Raven's Point (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "618": {
+      "category": "level20_explorable",
+      "name": "Raven's Point (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "619": {
+      "category": "level20_explorable",
+      "name": "Raven's Point (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "620": {
+      "category": "level20_explorable",
+      "name": "Slaver's Exile (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "621": {
+      "category": "level20_explorable",
+      "name": "Slaver's Exile (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "622": {
+      "category": "level20_explorable",
+      "name": "Slaver's Exile (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "623": {
+      "category": "level20_explorable",
+      "name": "Slaver's Exile (level 4)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "625": {
+      "category": "dungeon_or_instance",
+      "name": "Battledepths",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "628": {
+      "category": "level20_explorable",
+      "name": "Sepulchre of Dragrimmar (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "629": {
+      "category": "level20_explorable",
+      "name": "Sepulchre of Dragrimmar (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "630": {
+      "category": "level20_explorable",
+      "name": "Frostmaw's Burrows (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "631": {
+      "category": "level20_explorable",
+      "name": "Frostmaw's Burrows (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "632": {
+      "category": "level20_explorable",
+      "name": "Frostmaw's Burrows (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "633": {
+      "category": "level20_explorable",
+      "name": "Frostmaw's Burrows (level 4)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "634": {
+      "category": "level20_explorable",
+      "name": "Frostmaw's Burrows (level 5)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "635": {
+      "category": "level20_explorable",
+      "name": "Darkrime Delves (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "636": {
+      "category": "level20_explorable",
+      "name": "Darkrime Delves (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "637": {
+      "category": "level20_explorable",
+      "name": "Darkrime Delves (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "646": {
+      "category": "level20_explorable",
+      "name": "Hall of Monuments",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "647": {
+      "category": "level20_explorable",
+      "name": "Dalada Uplands",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "649": {
+      "category": "level20_explorable",
+      "name": "Grothmar Wardowns",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "651": {
+      "category": "level20_explorable",
+      "name": "Sacnoth Valley",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "653": {
+      "category": "level20_explorable",
+      "name": "Curse of the Nornbear",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "654": {
+      "category": "level20_explorable",
+      "name": "Blood Washes Blood",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "655": {
+      "category": "level20_explorable",
+      "name": "A Gate Too Far (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "656": {
+      "category": "level20_explorable",
+      "name": "A Gate Too Far (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "657": {
+      "category": "level20_explorable",
+      "name": "A Gate Too Far (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "658": {
+      "category": "level20_explorable",
+      "name": "The Elusive Golemancer (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "659": {
+      "category": "level20_explorable",
+      "name": "The Elusive Golemancer (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "660": {
+      "category": "level20_explorable",
+      "name": "The Elusive Golemancer (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "661": {
+      "category": "level20_explorable",
+      "name": "Finding the Bloodstone (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "662": {
+      "category": "level20_explorable",
+      "name": "Finding the Bloodstone (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "663": {
+      "category": "level20_explorable",
+      "name": "Finding the Bloodstone (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "664": {
+      "category": "level20_explorable",
+      "name": "Genius Operated Living Enchanted Manifestation",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "665": {
+      "category": "level20_explorable",
+      "name": "Against the Charr",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "666": {
+      "category": "level20_explorable",
+      "name": "Warband of Brothers (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "667": {
+      "category": "level20_explorable",
+      "name": "Warband of Brothers (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "668": {
+      "category": "level20_explorable",
+      "name": "Warband of Brothers (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "669": {
+      "category": "level20_explorable",
+      "name": "Assault on the Stronghold",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "670": {
+      "category": "dungeon_or_instance",
+      "name": "Destruction's Depths (level 1)",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "671": {
+      "category": "dungeon_or_instance",
+      "name": "Destruction's Depths (level 2)",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "672": {
+      "category": "dungeon_or_instance",
+      "name": "Destruction's Depths (level 3)",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "673": {
+      "category": "level20_explorable",
+      "name": "A Time for Heroes",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "674": {
+      "category": "level20_explorable",
+      "name": "Warband Training",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "676": {
+      "category": "dungeon_or_instance",
+      "name": "Catacombs of Kathandrax",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "678": {
+      "category": "level20_explorable",
+      "name": "Attack of the Nornbear",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "686": {
+      "category": "level20_explorable",
+      "name": "Polymock Coliseum",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "687": {
+      "category": "level20_explorable",
+      "name": "Polymock Glacier",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "688": {
+      "category": "level20_explorable",
+      "name": "Polymock Crossing",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "690": {
+      "category": "level20_explorable",
+      "name": "Cold as Ice",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "691": {
+      "category": "level20_explorable",
+      "name": "Beneath Lion's Arch",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "692": {
+      "category": "level20_explorable",
+      "name": "Tunnels Below Cantha",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "693": {
+      "category": "dungeon_or_instance",
+      "name": "Caverns Below Kamadan",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "695": {
+      "category": "level20_explorable",
+      "name": "Service: In Defense of the Eye",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "696": {
+      "category": "level20_explorable",
+      "name": "Mano a Norn-o",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "697": {
+      "category": "level20_explorable",
+      "name": "Service: Practice, Dummy",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "698": {
+      "category": "level20_explorable",
+      "name": "Hero Tutorial",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "700": {
+      "category": "level20_explorable",
+      "name": "The Norn Fighting Tournament",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "701": {
+      "category": "level20_explorable",
+      "name": "Secret Lair of the Snowmen",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "702": {
+      "category": "level20_explorable",
+      "name": "Norn Brawling Championship",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "703": {
+      "category": "level20_explorable",
+      "name": "Kilroy's Punchout Training",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "704": {
+      "category": "level20_explorable",
+      "name": "Fronis Irontoe's Lair",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "705": {
+      "category": "level20_explorable",
+      "name": "The Justiciar's End",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "707": {
+      "category": "level20_explorable",
+      "name": "The Great Norn Alemoot",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "708": {
+      "category": "level20_explorable",
+      "name": "Varajar Fells(unknow)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "710": {
+      "category": "level20_explorable",
+      "name": "Epilogue",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "711": {
+      "category": "level20_explorable",
+      "name": "Insidious Remnants",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "717": {
+      "category": "level20_explorable",
+      "name": "Attack on Jalis's Camp",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "722": {
+      "category": "level20_explorable",
+      "name": "Whitefury Rapids",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "723": {
+      "category": "level20_explorable",
+      "name": "Kysten Shore",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "724": {
+      "category": "dungeon_or_instance",
+      "name": "Deepway Ruins",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "725": {
+      "category": "level20_explorable",
+      "name": "Plikkup Works",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "726": {
+      "category": "level20_explorable",
+      "name": "Kilroy's Punchout Tournament",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "727": {
+      "category": "level20_explorable",
+      "name": "Special Ops: Flame Temple Corridor",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "728": {
+      "category": "level20_explorable",
+      "name": "Special Ops: Dragon's Gullet",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "729": {
+      "category": "level20_explorable",
+      "name": "Special Ops: Grendich Courthouse",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "770": {
+      "category": "level20_explorable",
+      "name": "The Tengu Accords",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "771": {
+      "category": "level20_explorable",
+      "name": "The Battle of Jahai",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "772": {
+      "category": "level20_explorable",
+      "name": "The Flight North",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "773": {
+      "category": "level20_explorable",
+      "name": "The Rise of the White Mantle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "781": {
+      "category": "level20_explorable",
+      "name": "Secret Lair of the Snowmen",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "782": {
+      "category": "level20_explorable",
+      "name": "Secret Lair of the Snowmen",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "783": {
+      "category": "level20_explorable",
+      "name": "Droknar's Forge (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "788": {
+      "category": "level20_explorable",
+      "name": "Deactivating R.O.X.#NPCs",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "789": {
+      "category": "level20_explorable",
+      "name": "Deactivating P.O.X.",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "790": {
+      "category": "level20_explorable",
+      "name": "Deactivating N.O.X.",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "791": {
+      "category": "level20_explorable",
+      "name": "Secret Underground Lair",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "792": {
+      "category": "level20_explorable",
+      "name": "Golem Tutorial Simulation",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "793": {
+      "category": "level20_explorable",
+      "name": "Snowball Dominance",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "794": {
+      "category": "level20_explorable",
+      "name": "Zaishen Menagerie Grounds",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "806": {
+      "category": "level20_explorable",
+      "name": "The Underworld (Something Wicked This Way Comes)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "807": {
+      "category": "level20_explorable",
+      "name": "The Underworld (Don't Fear the Reapers)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "837": {
+      "category": "level20_explorable",
+      "name": "Talmark Wilderness (War in Kryta)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "838": {
+      "category": "level20_explorable",
+      "name": "Trial of Zinn",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "839": {
+      "category": "level20_explorable",
+      "name": "Divinity Coast (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "840": {
+      "category": "level20_explorable",
+      "name": "Lion's Arch Keep",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "841": {
+      "category": "level20_explorable",
+      "name": "D'Alessio Seaboard (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "842": {
+      "category": "level20_explorable",
+      "name": "The Battle for Lion's Arch (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "843": {
+      "category": "level20_explorable",
+      "name": "Riverside Province (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "844": {
+      "category": "level20_explorable",
+      "name": "Lion's Arch (War in Kryta)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "845": {
+      "category": "level20_explorable",
+      "name": "The Mausoleum",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "846": {
+      "category": "level20_explorable",
+      "name": "Rise",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "847": {
+      "category": "level20_explorable",
+      "name": "Shadows in the Jungle",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "848": {
+      "category": "level20_explorable",
+      "name": "A Vengeance of Blades",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "849": {
+      "category": "level20_explorable",
+      "name": "Auspicious Beginnings",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "854": {
+      "category": "level20_explorable",
+      "name": "Olafstead (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "855": {
+      "category": "level20_explorable",
+      "name": "The Great Snowball Fight of the Gods (Operation: Crush Spirits)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "856": {
+      "category": "level20_explorable",
+      "name": "The Great Snowball Fight of the Gods (Fighting in a Winter Wonderland)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "860": {
+      "category": "level20_explorable",
+      "name": "What Waits in Shadow#NPCs - Dragon's Throat (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "861": {
+      "category": "level20_explorable",
+      "name": "A Chance Encounter#NPCs - Kaineng Center (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "862": {
+      "category": "level20_explorable",
+      "name": "Tracking the Corruption#NPCs - The Marketplace (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "863": {
+      "category": "level20_explorable",
+      "name": "Cantha Courier Crisis#NPCs - Bukdek Byway (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "864": {
+      "category": "level20_explorable",
+      "name": "A Treaty's a Treaty#NPCs - Tsumei Village (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "865": {
+      "category": "level20_explorable",
+      "name": "Deadly Cargo#NPCs - Seitung Harbor (explorable area)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "866": {
+      "category": "level20_explorable",
+      "name": "The Rescue Attempt#NPCs - Tahnnakai Temple (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "867": {
+      "category": "level20_explorable",
+      "name": "Violence in the Streets#NPCs - Wajjun Bazaar (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "868": {
+      "category": "level20_explorable",
+      "name": "Scarred Psyche",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "869": {
+      "category": "level20_explorable",
+      "name": "Calling All Thugs#NPCs - Shadow's Passage (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "870": {
+      "category": "dungeon_or_instance",
+      "name": "Finding Jinnai#NPCs - Altrumm Ruins",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "871": {
+      "category": "level20_explorable",
+      "name": "Raid on Shing Jea Monastery#NPCs - Shing Jea Monastery",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "872": {
+      "category": "level20_explorable",
+      "name": "Raid on Kaineng Center#NPCs - Kaineng Center (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "873": {
+      "category": "level20_explorable",
+      "name": "Ministry of Oppression#NPCs - Wajjun Bazaar (Winds of Change)",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "874": {
+      "category": "level20_explorable",
+      "name": "The Final Confrontation#NPCs - The Final Confrontation",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "875": {
+      "category": "level20_explorable",
+      "name": "Lakeside County: 1070 AE",
+      "party_size": 8,
+      "threat_multiplier": 1.0,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    },
+    "876": {
+      "category": "dungeon_or_instance",
+      "name": "Ashford Catacombs: 1070 AE",
+      "party_size": 8,
+      "threat_multiplier": 1.06,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": []
+    }
+  },
+  "aliases": {
+    "urgozs_warren": {
+      "category": "elite_area",
+      "party_size": 12,
+      "threat_multiplier": 1.22,
+      "priority_roles": [
+        "room_object",
+        "resurrector",
+        "healer",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "twisted_bark_priority",
+        "large_packets"
+      ]
+    },
+    "the_deep": {
+      "category": "elite_area",
+      "party_size": 12,
+      "threat_multiplier": 1.22,
+      "priority_roles": [
+        "resurrector",
+        "healer",
+        "support",
+        "dangerous_caster"
+      ],
+      "notes": [
+        "room_mechanics",
+        "large_packets"
+      ]
+    },
+    "gate_of_anguish": {
+      "category": "outpost",
+      "party_size": 8,
+      "notes": [
+        "entry_to_domain_of_anguish"
+      ]
+    }
+  }
+}

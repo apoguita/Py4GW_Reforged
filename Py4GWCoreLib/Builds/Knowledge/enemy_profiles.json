@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "named_tokens": {
+    "twisted bark": {
+      "roles": [
+        "room_object"
+      ],
+      "priority_bonus": 220
+    },
+    "krummrinde": {
+      "roles": [
+        "room_object"
+      ],
+      "priority_bonus": 220
+    },
+    "priest": {
+      "roles": [
+        "healer",
+        "support"
+      ],
+      "priority_bonus": 65
+    },
+    "healer": {
+      "roles": [
+        "healer"
+      ],
+      "priority_bonus": 70
+    },
+    "ritualist": {
+      "roles": [
+        "support",
+        "caster"
+      ],
+      "priority_bonus": 45
+    }
+  },
+  "models": {}
+}

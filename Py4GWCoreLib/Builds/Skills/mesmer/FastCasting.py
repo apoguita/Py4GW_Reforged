@@ -18,13 +18,27 @@ class FastCasting:
         self.build: BuildMgr = build
 
     #region K
-    def Keystone_Signet(self) -> BuildCoroutine:
+    def Symbolic_Posture(self) -> BuildCoroutine:
+        symbolic_posture_id: int = Skill.GetID("Symbolic_Posture")
+        cast_condition = lambda: not Routines.Checks.Effects.HasBuff(Player.GetAgentID(), symbolic_posture_id)
+
+        if not cast_condition():
+            return False
+
+        return (yield from self.build.CastSkillID(
+            skill_id=symbolic_posture_id,
+            extra_condition=cast_condition,
+            log=False,
+            aftercast_delay=250,
+        ))
+
+    def Keystone_Signet(self, allow_existing_effect: bool = False) -> BuildCoroutine:
         keystone_signet_id: int = Skill.GetID("Keystone_Signet")
         symbolic_celerity_id: int = Skill.GetID("Symbolic_Celerity")
 
         has_symbolic_celerity = lambda: Routines.Checks.Effects.HasBuff(Player.GetAgentID(), symbolic_celerity_id)
         has_keystone_signet = lambda: Routines.Checks.Effects.HasBuff(Player.GetAgentID(), keystone_signet_id)
-        cast_condition = lambda: has_symbolic_celerity() and not has_keystone_signet()
+        cast_condition = lambda: has_symbolic_celerity() and (allow_existing_effect or not has_keystone_signet())
 
         if not cast_condition():
             return False

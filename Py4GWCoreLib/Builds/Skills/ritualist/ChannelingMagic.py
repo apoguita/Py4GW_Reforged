@@ -138,6 +138,8 @@ class ChannelingMagic:
         *,
         max_self_energy_pct: float | None = None,
         drain_cooldown_s: float = 16.0,
+        spirit_partition: int | None = None,
+        spirit_partition_count: int = 1,
     ) -> BuildCoroutine:
         """Drain the nearest spirit's energy, gaining a percentage of it.
 
@@ -181,13 +183,24 @@ class ChannelingMagic:
         if not owned_spirits:
             return False
 
-        # Spirit Siphon auto-targets the nearest spirit at the engine
-        # level. Pre-compute the nearest owned spirit client-side so we
-        # can gate against recent drains.
-        nearest_spirit_id = min(
+        # Coordinate multiple Spirit Siphon users deterministically.
+        # Partition the sorted spirit list by caller role. ST uses partition 0,
+        # Necro partition 1. This prevents both controllers from intentionally
+        # selecting the same candidate when multiple spirits are available.
+        owned_spirits = sorted(
             owned_spirits,
-            key=lambda s: Utils.Distance(player_xy, Agent.GetXY(s)),
+            key=lambda s: (Utils.Distance(player_xy, Agent.GetXY(s)), int(s)),
         )
+        if spirit_partition is not None and int(spirit_partition_count) > 1:
+            part = int(spirit_partition) % int(spirit_partition_count)
+            partitioned = [
+                sid for idx, sid in enumerate(owned_spirits)
+                if idx % int(spirit_partition_count) == part
+            ]
+            if partitioned:
+                owned_spirits = partitioned
+
+        nearest_spirit_id = owned_spirits[0]
         now = time.monotonic()
         last_drained_at = self._recent_drains.get(nearest_spirit_id, 0.0)
         if now - last_drained_at < drain_cooldown_s:

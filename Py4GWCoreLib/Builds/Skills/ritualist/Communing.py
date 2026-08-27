@@ -187,6 +187,10 @@ class Communing:
     #endregion
 
     #region S
+    def Earthbind(self) -> BuildCoroutine:
+        earthbind_id: int = Skill.GetID("Earthbind")
+        return (yield from self._cast_protective_spirit(earthbind_id))
+
     def Shelter(self) -> BuildCoroutine:
         shelter_id: int = Skill.GetID("Shelter")
         return (yield from self._cast_protective_spirit(shelter_id))
