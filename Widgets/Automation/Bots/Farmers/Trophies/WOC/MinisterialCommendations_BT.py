@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import time
 from collections.abc import Callable
@@ -8,10 +9,13 @@ import PySystem
 
 from Py4GWCoreLib import Agent
 from Py4GWCoreLib import AgentArray
+from Py4GWCoreLib import Effects
 from Py4GWCoreLib import GLOBAL_CACHE
+from Py4GWCoreLib import Inventory
 from Py4GWCoreLib import Map
 from Py4GWCoreLib import Player
 from Py4GWCoreLib import Routines
+from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Hero_enums import HeroType
@@ -20,8 +24,10 @@ from Py4GWCoreLib.py4gwcorelib_src.ActionQueue import ActionQueueManager
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
+from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
+from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -42,68 +48,107 @@ KAINENG_CENTER = 194
 A_CHANCE_ENCOUNTER = 861
 MISSION_DIALOG = 0x84
 
-PLAYER_SKILLBAR = 'OgGlQlVp6smsJRg19RTKexTkL2XsDC'
+# Encounter ReBuilt reference builds.
+PLAYER_BUILDS_BY_PRIMARY = {
+    'Warrior': 'OQojQhV6KT4k9F8E7gUiEY5iwF',
+    'Ranger': 'OgEUcDqWV8S4k9F8E7gUi+G5iMH',
+    'Monk': 'OwEUAj2S1qS4k9F8E7gUigE5iwF',
+    'Necromancer': 'OAFUYCqWVyS4k9F8E7gUizB5iwF',
+    'Mesmer': 'OQFUAixS1qS4k9F8E7gUioA5iwF',
+    'Elementalist': 'OgFUwi1S1qS4k9F8E7gUitT5iwF',
+    'Assassin': 'OwFkQpV63OG0dZfBPxOYDkLTuIcB',
+    'Ritualist': 'OAGkQGhLlWpEOZfBPxOIlo0UuIcB',
+    'Paragon': 'OQGjgOUcFT4k9F8E7gUiBA5iwF',
+    'Dervish': 'OgGlwWrJlWpqFhT2XwTsDSJSglL29B',
+}
+
 MINISTERIAL_COMMENDATION = int(ModelID.Ministerial_Commendation.value)
 BIRTHDAY_CUPCAKE = int(ModelID.Birthday_Cupcake.value)
 
+# Inventory maintenance mirrors the Shards of Orr thresholds/merchant flow,
+# but this script is intentionally single-account only.
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
+MERCHANT_RULES_WIDGET_NAME = 'MerchantRules'
+INVENTORY_PLUS_WIDGET_NAME = 'InventoryPlus'
+INVENTORY_MAINTENANCE_RETRY_COUNT = 2
+INVENTORY_SNAPSHOT_SETTLE_MS = 2_000
+INVENTORY_MERCHANT_TIMEOUT_MS = 240_000
+
 MIKU_LEGACY_AGENT_ID = 58
 MIKU_SEARCH_ANCHOR = (-6300.0, -5300.0)
+INITIAL_FOE_CAPTURE_RADIUS = 4_800.0
+INITIAL_FOE_CAPTURE_WINDOW_MS = 3_000
+INITIAL_FOE_EXPECTED_COUNT = 10
+MINIMUM_NEARBY_FOES_FOR_SPIKE = 48
+LOOT_APPEARANCE_GRACE_MS = 3_000
+LOOT_STABLE_CLEAR_MS = 1_500
+LOOT_WAIT_WARNING_INTERVAL_MS = 15_000
 
-HERO_VEKK = 1
-HERO_NORGU = 2
-HERO_RAZAH = 3
-HERO_OGDEN = 4
-HERO_XANDRA = 5
-HERO_MASTER_OF_WHISPERS = 6
-HERO_LIVIA = 7
-
-HERO_SPEED_SUPPORT = HERO_OGDEN
-HERO_PROT = HERO_XANDRA
-HERO_BIP = HERO_MASTER_OF_WHISPERS
-HERO_SOS = HERO_LIVIA
+# Exact Encounter ReBuilt party positions.
+HERO_FIRE_ELE = 1       # Acolyte Sousuke - Starburst
+HERO_EARTH_ELE = 2      # Vekk - Stone Sheath
+HERO_TRAPPER = 3        # Pyre Fierceshot - Trapper
+HERO_PROT_MESMER = 4    # Gwen - Martyr Prot Mesmer
+HERO_SOS = 5            # Razah - SoS Resto + Recall
+HERO_BIP = 6            # Olias - BiP Resto
+HERO_ST = 7             # Xandra - ST Mot
 
 EXPECTED_HERO_IDS = (
+    int(HeroType.AcolyteSousuke.value),
     int(HeroType.Vekk.value),
-    int(HeroType.Norgu.value),
+    int(HeroType.PyreFierceshot.value),
+    int(HeroType.Gwen.value),
     int(HeroType.Razah.value),
-    int(HeroType.Ogden.value),
+    int(HeroType.Olias.value),
     int(HeroType.Xandra.value),
-    int(HeroType.MasterOfWhispers.value),
-    int(HeroType.Livia.value),
 )
 
+# Numeric behavior values used by the reference setup:
+# 0 Fight, 1 Guard, 2 Avoid.
 HERO_BUILDS = (
-    (HERO_VEKK, 'Vekk', 'OgJTgYWizhWQO+GeDkjyZ5oDBA', (6, 7), 0),
-    (HERO_NORGU, 'Norgu', 'OQpkAsBjwqizJY6lDMdDBZQe++C', (8,), 0),
-    (HERO_RAZAH, 'Razah', 'OQpkAoB8gpa0LAC4KQeGJQGgAw9F', (8,), 0),
-    (HERO_OGDEN, 'Ogden', 'Owkk0wPGkaaEDRNm/wNWGxKxdVDI', (4,), 1),
-    (HERO_XANDRA, 'Xandra', 'OAqjAykqKOYzHX406BNJnCg7LA', (8,), 1),
-    (HERO_MASTER_OF_WHISPERS, 'Master of Whispers', 'OAhjQoGYIP3hqqAYYK8kmTuxJA', (), 1),
-    (HERO_LIVIA, 'Livia', 'OAhkYQgV4Kyz18bix8mVvJ3wUaC', (5,), 1),
+    (HERO_FIRE_ELE, 'Sousuke', 'OgBDgqyMSlVHR3C8CLg4CKDADA', 0),
+    (HERO_EARTH_ELE, 'Vekk', 'OgljkwMopOdVm22oHuK2x14UBA', 0),
+    (HERO_TRAPPER, 'Pyre Fierceshot', 'OggjclYsYSNHLHJHKHchYOIHCAA', 0),
+    (HERO_PROT_MESMER, 'Gwen', 'OQNDAowvOqkcw0z0NEEcaRBA', 0),
+    (HERO_SOS, 'Razah', 'OAejEyiM5QXTYMdOTMSTdiVPciA', 2),
+    (HERO_BIP, 'Olias', 'OAhjQoGYIP3BqdVV4JNncDzxJA', 1),
+    (HERO_ST, 'Xandra', 'OAmjAyk85QYTWPPOhTOTkTQTfiA', 2),
 )
 
+# Reference starting positions.
 STARTING_POSITIONS = (
-    (HERO_VEKK, -6221.0, -5717.0),
-    (HERO_NORGU, -6143.0, -4724.0),
-    (HERO_RAZAH, -6262.0, -5479.0),
-    (HERO_OGDEN, -5840.0, -4734.0),
-    (HERO_XANDRA, -5748.0, -4284.0),
-    (HERO_MASTER_OF_WHISPERS, -5757.0, -5007.0),
-    (HERO_LIVIA, -6060.0, -5050.0),
+    (HERO_FIRE_ELE, -6362.0, -4967.0),
+    (HERO_EARTH_ELE, -6060.0, -5168.0),
+    (HERO_TRAPPER, -6245.0, -5232.0),
+    (HERO_PROT_MESMER, -6362.0, -4967.0),
+    (HERO_SOS, -5691.0, -5195.0),
+    (HERO_BIP, -5606.0, -4747.0),
+    (HERO_ST, -5452.0, -4380.0),
 )
-PLAYER_HERO_SETUP_POSITION = (-6105.82, -5182.48)
-PLAYER_TRAP_POSITION = (-6332.0, -5251.0)
+PLAYER_HERO_SETUP_POSITION = (-6232.0, -5392.0)
+PLAYER_TRAP_POSITION = (-6306.0, -5260.0)
 
-RUN_TO_KILL_SPOT = [
-    (-4199.0, -1475.0),
-    (-4709.0, -609.0),
-    (-3116.0, 650.0),
-    (-2518.0, 631.0),
-    (-2096.0, -1067.0),
-    (-815.0, -1898.0),
-    (-690.0, -3769.0),
-    (-771.12, -3879.82),
-]
+# Journey positions from the reference route.
+SAFE_SPOT = (-6080.0, -5020.0)
+FIGHT_EXIT = (-4800.0, -3700.0)
+JOURNEY_MID_1 = (-4658.0, -757.0)
+
+# Forced stair line between MID_1 and MID_2.
+# These points prevent the autopath from cutting beside the staircase.
+STAIR_PATH = (
+    (-4761.0, -608.0),
+    (-4464.0, -323.0),
+    (-3869.0, 240.0),
+)
+
+JOURNEY_MID_2 = (-3135.0, 628.0)
+JOURNEY_MID_3 = (-2127.0, -1224.0)
+JOURNEY_MID_4 = (-878.0, -1854.0)
+STAIRS_APPROACH = (-766.0, -3262.0)
+FARM_POSITION = (-687.0, -3780.0)
+XANDRA_SPIKE_SETUP_POSITION = (-1665.0, -6015.0)
+XANDRA_RETREAT_POSITION = (-4950.0, -7955.0)
 
 _settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
 _settings_loaded = False
@@ -111,24 +156,34 @@ _hard_mode = True
 _setup_party = True
 _load_player_build = True
 _use_cupcake = True
+_inventory_maintenance_enabled = True
+_inventory_min_free_slots = 5
+_inventory_min_id_kits = 1
+_inventory_min_salvage_kits = 2
+_inventory_status_snapshot: dict[str, object] = {}
+
+_STATS_SECTION = 'Statistics'
+_statistics_loaded = False
+_total_runs = 0
+_total_commendations = 0
+_total_drop_runs = 0
+_session_runs = 0
+_session_commendations = 0
+_session_drop_runs = 0
+_last_run_commendations = 0
+_run_start_commendation_count = -1
+_statistics_reset_pending = False
 
 initialized = False
 botting_tree: BottingTree | None = None
 _team_builds_loaded = False
 
+SCRIPT_RESTART_STEP = 'Initialize Bot'
 MISSION_RESTART_STEP = 'Enter A Chance Encounter'
-MYSTIC_HEALING_STEPS = {
-    'Prepare Stairs Defense',
-    'Wait For Purity Ball',
-    'Spike Ministry Of Purity',
-    'Loot And Return',
-}
-MYSTIC_HEALING_HEROES = (
-    (HERO_NORGU, 'Norgu'),
-    (HERO_RAZAH, 'Razah'),
-    (HERO_XANDRA, 'Xandra'),
-)
 
+# Preserve enough energy for the final spike while still allowing survival casts.
+SPIKE_MIN_ENERGY = 15.0
+SURVIVAL_CAST_MIN_ENERGY = 25.0
 
 def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
     PySystem.Console.Log(MODULE_NAME, message, message_type)
@@ -136,13 +191,23 @@ def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
 
 def _load_settings() -> None:
     global _settings_loaded, _hard_mode, _setup_party, _load_player_build, _use_cupcake
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
+
     if _settings_loaded:
+        _load_statistics()
         return
+
     _hard_mode = _settings.get_bool('Config', 'HardMode', True)
     _setup_party = _settings.get_bool('Config', 'SetupParty', True)
     _load_player_build = _settings.get_bool('Config', 'LoadPlayerBuild', True)
     _use_cupcake = _settings.get_bool('Config', 'UseBirthdayCupcake', True)
+    _inventory_maintenance_enabled = _settings.get_bool('Config', 'InventoryMaintenanceEnabled', True)
+    _inventory_min_free_slots = max(0, _settings.get_int('Config', 'InventoryMinFreeSlots', 5))
+    _inventory_min_id_kits = max(0, _settings.get_int('Config', 'InventoryMinIdKits', 1))
+    _inventory_min_salvage_kits = max(0, _settings.get_int('Config', 'InventoryMinSalvageKits', 2))
     _settings_loaded = True
+    _load_statistics()
 
 
 def _save_settings() -> None:
@@ -150,12 +215,18 @@ def _save_settings() -> None:
     _settings.set('Config', 'SetupParty', _setup_party)
     _settings.set('Config', 'LoadPlayerBuild', _load_player_build)
     _settings.set('Config', 'UseBirthdayCupcake', _use_cupcake)
+    _settings.set('Config', 'InventoryMaintenanceEnabled', _inventory_maintenance_enabled)
+    _settings.set('Config', 'InventoryMinFreeSlots', _inventory_min_free_slots)
+    _settings.set('Config', 'InventoryMinIdKits', _inventory_min_id_kits)
+    _settings.set('Config', 'InventoryMinSalvageKits', _inventory_min_salvage_kits)
 
 
 def _draw_config() -> None:
     import PyImGui
 
     global _hard_mode, _setup_party, _load_player_build, _use_cupcake
+    global _inventory_maintenance_enabled
+    global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
 
     _load_settings()
     PyImGui.text('Ministerial Commendations Config')
@@ -172,7 +243,7 @@ def _draw_config() -> None:
         _setup_party = value
         changed = True
 
-    value = PyImGui.checkbox('Load the recommended Dervish build', _load_player_build)
+    value = PyImGui.checkbox('Load the Encounter ReBuilt player build', _load_player_build)
     if value != _load_player_build:
         _load_player_build = value
         changed = True
@@ -181,6 +252,38 @@ def _draw_config() -> None:
     if value != _use_cupcake:
         _use_cupcake = value
         changed = True
+
+    PyImGui.separator()
+    PyImGui.text('Inventory maintenance')
+
+    value = PyImGui.checkbox('Run MerchantRules when inventory is low', _inventory_maintenance_enabled)
+    if value != _inventory_maintenance_enabled:
+        _inventory_maintenance_enabled = value
+        changed = True
+
+    if _inventory_maintenance_enabled:
+        value = max(0, int(PyImGui.input_int('Minimum free slots', _inventory_min_free_slots)))
+        if value != _inventory_min_free_slots:
+            _inventory_min_free_slots = value
+            changed = True
+
+        value = max(0, int(PyImGui.input_int('Minimum Superior ID kits (0 = disabled)', _inventory_min_id_kits)))
+        if value != _inventory_min_id_kits:
+            _inventory_min_id_kits = value
+            changed = True
+
+        value = max(0, int(PyImGui.input_int('Minimum Superior salvage kits (0 = disabled)', _inventory_min_salvage_kits)))
+        if value != _inventory_min_salvage_kits:
+            _inventory_min_salvage_kits = value
+            changed = True
+
+        PyImGui.text_wrapped(
+            'Single-account inventory maintenance. The Superior ID / Salvage thresholds above '
+            'are encoded as generic request-scoped Merchant Stock targets for MerchantRules; '
+            'the loaded profile still handles sell, salvage, destroy and storage rules. These '
+            'temporary stock targets are never saved in MerchantRules. Equipment Pack is not '
+            'counted by Inventory.GetInventorySpace().'
+        )
 
     if changed:
         _save_settings()
@@ -192,16 +295,689 @@ def _draw_config() -> None:
     )
     PyImGui.text('Loaded hero order:')
     for line in (
-        '1 Vekk - Air / traps (slots 6 and 7 locked)',
-        '2 Norgu - Energy Surge (Mystic Healing manually controlled)',
-        '3 Razah - Ineptitude (Mystic Healing manually controlled)',
-        '4 Ogden - support (slot 4 locked)',
-        '5 Xandra - Soul Twisting protection (Mystic Healing manually controlled)',
-        '6 Master of Whispers - BiP support',
-        '7 Livia - Signet of Spirits (slot 5 locked)',
+        '1 Sousuke - Fire Ele / Starburst',
+        '2 Vekk - Earth Ele / Stone Sheath',
+        '3 Pyre Fierceshot - Trapper',
+        '4 Gwen - Martyr Prot Mesmer',
+        '5 Razah - SoS Resto + Recall',
+        '6 Olias - BiP Resto',
+        '7 Xandra - ST',
     ):
         PyImGui.bullet_text(line)
 
+
+
+# region Inventory maintenance and statistics
+
+
+def _load_statistics() -> None:
+    global _statistics_loaded
+    global _total_runs, _total_commendations, _total_drop_runs
+
+    if _statistics_loaded:
+        return
+
+    _total_runs = max(0, _settings.get_int(_STATS_SECTION, 'total_runs', 0))
+    _total_commendations = max(0, _settings.get_int(_STATS_SECTION, 'total_commendations', 0))
+    _total_drop_runs = max(0, _settings.get_int(_STATS_SECTION, 'total_drop_runs', 0))
+    _statistics_loaded = True
+
+
+def _save_statistics() -> None:
+    _settings.set(_STATS_SECTION, 'total_runs', _total_runs)
+    _settings.set(_STATS_SECTION, 'total_commendations', _total_commendations)
+    _settings.set(_STATS_SECTION, 'total_drop_runs', _total_drop_runs)
+
+
+def _statistics_action_node(name: str, action: Callable[[], None]) -> BehaviorTree:
+    def _run(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            action()
+        except Exception as exc:
+            _log(
+                f'[Statistics] {name} failed: {exc}',
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_run,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _commendation_inventory_count() -> int:
+    return int(GLOBAL_CACHE.Inventory.GetModelCount(MINISTERIAL_COMMENDATION))
+
+
+def _mark_run_statistics_start_node() -> BehaviorTree:
+    def _mark() -> None:
+        global _run_start_commendation_count
+        _load_statistics()
+        _run_start_commendation_count = _commendation_inventory_count()
+        _log(
+            f'[Statistics] Run snapshot: {_run_start_commendation_count} Ministerial Commendation(s) in inventory.'
+        )
+
+    return _statistics_action_node('Snapshot Commendations At Run Start', _mark)
+
+
+def _record_run_statistics_node() -> BehaviorTree:
+    def _record() -> None:
+        global _total_runs, _total_commendations, _total_drop_runs
+        global _session_runs, _session_commendations, _session_drop_runs
+        global _last_run_commendations, _run_start_commendation_count
+
+        _load_statistics()
+        after_count = _commendation_inventory_count()
+        before_count = int(_run_start_commendation_count)
+        gained = max(0, after_count - before_count) if before_count >= 0 else 0
+
+        _last_run_commendations = gained
+        _total_runs += 1
+        _session_runs += 1
+        _total_commendations += gained
+        _session_commendations += gained
+        if gained > 0:
+            _total_drop_runs += 1
+            _session_drop_runs += 1
+
+        _run_start_commendation_count = -1
+        _save_statistics()
+
+        drop_rate = (_total_drop_runs / _total_runs * 100.0) if _total_runs > 0 else 0.0
+        _log(
+            f'[Statistics] Run complete - commendations={gained} | '
+            f'total={_total_commendations} | drop rate={drop_rate:.1f}%',
+            PySystem.Console.MessageType.Success,
+        )
+
+    return _statistics_action_node('Record Ministerial Commendation Run', _record)
+
+
+def _reset_all_time_statistics() -> None:
+    global _total_runs, _total_commendations, _total_drop_runs
+    _total_runs = 0
+    _total_commendations = 0
+    _total_drop_runs = 0
+    _save_statistics()
+    _log('[Statistics] All-time commendation statistics reset.', PySystem.Console.MessageType.Success)
+
+
+def _draw_statistics() -> None:
+    import PyImGui
+    from Py4GWCoreLib import Color
+
+    global _statistics_reset_pending
+
+    _load_statistics()
+
+    gold = Color(255, 210, 80, 255).to_tuple_normalized()
+    cyan = Color(80, 210, 255, 255).to_tuple_normalized()
+
+    def _drop_rate(runs: int, successful_runs: int) -> str:
+        return f'{successful_runs / runs * 100.0:.1f}%' if runs > 0 else '-'
+
+    def _average(runs: int, commendations: int) -> str:
+        return f'{commendations / runs:.2f}' if runs > 0 else '-'
+
+    table_flags = (
+        PyImGui.TableFlags.Borders
+        | PyImGui.TableFlags.RowBg
+        | PyImGui.TableFlags.SizingFixedFit
+        | PyImGui.TableFlags.NoHostExtendX
+    )
+    header_color = 26 | (38 << 8) | (51 << 16) | (255 << 24)
+    column_width = 82.0
+    row_height = 22.0
+
+    def _header_row(labels: tuple[str, ...]) -> None:
+        PyImGui.table_next_row(0, row_height)
+        PyImGui.table_set_bg_color(2, header_color, -1)
+        for index, label in enumerate(labels):
+            PyImGui.table_set_column_index(index)
+            PyImGui.text(label)
+
+    PyImGui.text_colored('Ministerial Commendations Statistics', gold)
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_colored('Session Overview', cyan)
+    if PyImGui.begin_table('##ministerial_session_stats', 5, table_flags):
+        labels = ('Runs', 'Last Run', 'Citations', 'Avg / Run', 'Drop Rate')
+        for label in labels:
+            PyImGui.table_setup_column(label, PyImGui.TableColumnFlags.WidthFixed, column_width)
+        _header_row(labels)
+        values = (
+            _session_runs,
+            _last_run_commendations,
+            _session_commendations,
+            _average(_session_runs, _session_commendations),
+            _drop_rate(_session_runs, _session_drop_runs),
+        )
+        PyImGui.table_next_row(0, row_height)
+        for index, value in enumerate(values):
+            PyImGui.table_set_column_index(index)
+            PyImGui.text(str(value))
+        PyImGui.end_table()
+
+    PyImGui.spacing()
+    PyImGui.text_colored('All-Time Overview', cyan)
+    if PyImGui.begin_table('##ministerial_total_stats', 5, table_flags):
+        labels = ('Runs', 'Citations', 'Drop Runs', 'Avg / Run', 'Drop Rate')
+        for label in labels:
+            PyImGui.table_setup_column(label, PyImGui.TableColumnFlags.WidthFixed, column_width)
+        _header_row(labels)
+        values = (
+            _total_runs,
+            _total_commendations,
+            _total_drop_runs,
+            _average(_total_runs, _total_commendations),
+            _drop_rate(_total_runs, _total_drop_runs),
+        )
+        PyImGui.table_next_row(0, row_height)
+        for index, value in enumerate(values):
+            PyImGui.table_set_column_index(index)
+            PyImGui.text(str(value))
+        PyImGui.end_table()
+
+    PyImGui.spacing()
+    PyImGui.text_wrapped('Drop Rate = percentage of completed runs that produced at least one Ministerial Commendation.')
+    PyImGui.spacing()
+
+    if not _statistics_reset_pending:
+        if PyImGui.button('Reset All-Time Statistics'):
+            _statistics_reset_pending = True
+    else:
+        PyImGui.text_colored('Reset all-time commendation statistics?', gold)
+        if PyImGui.button('Confirm Reset'):
+            _reset_all_time_statistics()
+            _statistics_reset_pending = False
+        PyImGui.same_line(0.0, 8.0)
+        if PyImGui.button('Cancel'):
+            _statistics_reset_pending = False
+
+
+def _local_inventory_state() -> tuple[int, int, int, int]:
+    occupied, capacity = Inventory.GetInventorySpace()
+    id_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in ID_KIT_MODEL_IDS
+    )
+    salvage_kits = sum(
+        int(GLOBAL_CACHE.Inventory.GetModelCount(model_id))
+        for model_id in SALVAGE_KIT_MODEL_IDS
+    )
+    return int(occupied), int(capacity), int(id_kits), int(salvage_kits)
+
+
+def _refresh_local_inventory_status_node(name: str) -> BehaviorTree:
+    def _refresh(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _inventory_status_snapshot
+        label = str(Player.GetName() or '').strip() or 'Local account'
+        try:
+            occupied, capacity, id_kits, salvage_kits = _local_inventory_state()
+            available = capacity > 0 and 0 <= occupied <= capacity
+        except Exception as exc:
+            _log(f'[Inventory] Local inventory query failed: {exc}', PySystem.Console.MessageType.Error)
+            occupied = capacity = id_kits = salvage_kits = -1
+            available = False
+
+        free_slots = max(0, capacity - occupied) if available else 0
+        issues: list[str] = []
+        if not available:
+            issues.append('inventory query unavailable')
+        else:
+            if _inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots:
+                issues.append(f'free slots {free_slots}/{_inventory_min_free_slots}')
+            if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+                issues.append(f'Superior ID kits {id_kits}/{_inventory_min_id_kits}')
+            if _inventory_min_salvage_kits > 0 and salvage_kits < _inventory_min_salvage_kits:
+                issues.append(f'Superior salvage kits {salvage_kits}/{_inventory_min_salvage_kits}')
+
+        _inventory_status_snapshot = {
+            'label': label,
+            'available': available,
+            'occupied': occupied,
+            'capacity': capacity,
+            'free_slots': free_slots,
+            'id_kits': id_kits,
+            'salvage_kits': salvage_kits,
+            'issues': issues,
+        }
+
+        result = 'MAINTENANCE' if issues else 'OK'
+        if available:
+            _log(
+                f'[Inventory] {label}: free={free_slots}/{capacity}, occupied={occupied}, '
+                f'Superior ID kits={id_kits}, Superior salvage kits={salvage_kits} -> {result}',
+                PySystem.Console.MessageType.Warning if issues else PySystem.Console.MessageType.Info,
+            )
+        else:
+            _log(
+                f'[Inventory] {label}: local inventory query unavailable -> {result}',
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_refresh,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _inventory_maintenance_issues() -> list[str]:
+    return list(_inventory_status_snapshot.get('issues', []))
+
+
+def _inventory_is_healthy_node(name: str, *, log_success: bool = True) -> BehaviorTree:
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _inventory_status_snapshot:
+            _log(
+                'Inventory maintenance required - no local inventory snapshot is available.',
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        issues = _inventory_maintenance_issues()
+        if issues:
+            _log(
+                'Inventory maintenance required - ' + ', '.join(issues),
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        if log_success:
+            _log('Inventory check passed on the local account.', PySystem.Console.MessageType.Success)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=_check))
+
+
+def _inventory_maintenance_trigger_node() -> BehaviorTree:
+    def _log_trigger(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        issues = _inventory_maintenance_issues()
+        trigger_text = ', '.join(issues) if issues else 'inventory verification'
+        _log(
+            f'[Inventory] Maintenance triggered by: {trigger_text}. MerchantRules will run on the local account only.',
+            PySystem.Console.MessageType.Warning,
+        )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Log Local Inventory Maintenance Trigger',
+            action_fn=_log_trigger,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _local_recipient_emails() -> list[str]:
+    email = str(Player.GetAccountEmail() or '').strip()
+    return [email] if email else []
+
+
+def _send_widget_state(widget_name: str, *, enabled: bool, refs_key: str) -> BehaviorTree:
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        recipients = _local_recipient_emails()
+        if not recipients:
+            return BehaviorTree(
+                BehaviorTree.FailerNode(name=f'No Local Recipient For {widget_name}')
+            )
+
+        return BTShared.SendAndWait(
+            command=SharedCommandType.EnableWidget if enabled else SharedCommandType.DisableWidget,
+            extra_data=(widget_name, '', '', ''),
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=refs_key,
+            timeout_ms=20_000,
+            poll_interval_ms=100,
+            log=True,
+        )
+
+    return BT.Subtree(
+        name=('Enable ' if enabled else 'Disable ') + widget_name + ' On Local Account',
+        subtree_fn=_build,
+    )
+
+
+def _set_local_auto_inventory_handler(enabled: bool) -> BehaviorTree:
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.SUCCESS
+
+        fn = getattr(botting_tree, 'SetAutoInventoryHandlerEnabled', None)
+        if not callable(fn):
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            fn(enabled)
+        except Exception:
+            pass
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Enable Local Auto Inventory Handler' if enabled else 'Disable Local Auto Inventory Handler',
+            action_fn=_set,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _wait_for_local_inventory_health_after_merchant(
+    name: str,
+    *,
+    timeout_ms: int = INVENTORY_MERCHANT_TIMEOUT_MS,
+) -> BehaviorTree:
+    """Wait for MerchantRules' asynchronous execution to satisfy the real local thresholds."""
+
+    state = {'last_log': 0.0, 'success_logged': False}
+
+    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _inventory_status_snapshot
+
+        try:
+            occupied, capacity, id_kits, salvage_kits = _local_inventory_state()
+            available = capacity > 0 and 0 <= occupied <= capacity
+        except Exception:
+            occupied = capacity = id_kits = salvage_kits = -1
+            available = False
+
+        free_slots = max(0, capacity - occupied) if available else 0
+        issues: list[str] = []
+        if not available:
+            issues.append('inventory query unavailable')
+        else:
+            if _inventory_min_free_slots > 0 and free_slots < _inventory_min_free_slots:
+                issues.append(f'free slots {free_slots}/{_inventory_min_free_slots}')
+            if _inventory_min_id_kits > 0 and id_kits < _inventory_min_id_kits:
+                issues.append(f'Superior ID kits {id_kits}/{_inventory_min_id_kits}')
+            if _inventory_min_salvage_kits > 0 and salvage_kits < _inventory_min_salvage_kits:
+                issues.append(f'Superior salvage kits {salvage_kits}/{_inventory_min_salvage_kits}')
+
+        _inventory_status_snapshot = {
+            'label': str(Player.GetName() or '').strip() or 'Local account',
+            'available': available,
+            'occupied': occupied,
+            'capacity': capacity,
+            'free_slots': free_slots,
+            'id_kits': id_kits,
+            'salvage_kits': salvage_kits,
+            'issues': issues,
+        }
+
+        if not issues:
+            if not bool(state['success_logged']):
+                state['success_logged'] = True
+                _log(
+                    f'[Inventory] MerchantRules thresholds reached: free={free_slots}/{capacity}, '
+                    f'Superior ID kits={id_kits}, Superior salvage kits={salvage_kits}.',
+                    PySystem.Console.MessageType.Success,
+                )
+            return BehaviorTree.NodeState.SUCCESS
+
+        now = time.monotonic()
+        if now - float(state['last_log']) >= 5.0:
+            state['last_log'] = now
+            _log(
+                '[Inventory] Waiting for MerchantRules to finish: ' + ', '.join(issues),
+                PySystem.Console.MessageType.Info,
+            )
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_check,
+            throttle_interval_ms=500,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+
+def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
+    return BT.Sequence(
+        name='Restore InventoryPlus After MerchantRules',
+        children=[
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=True,
+                refs_key=f'{attempt_key}_enable_inventoryplus_refs',
+            ),
+            _set_local_auto_inventory_handler(True),
+        ],
+    )
+
+
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets) if targets else ""
+
+
+def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        recipients = _local_recipient_emails()
+        if not recipients:
+            _log(
+                '[Inventory] MerchantRules aborted: local account email is unavailable.',
+                PySystem.Console.MessageType.Error,
+            )
+            return BehaviorTree(BehaviorTree.FailerNode(name='No Local MerchantRules Recipient'))
+
+        request_id = f'ministerial_inventory_{attempt_key}_{int(time.monotonic() * 1000)}'
+        _log('[Inventory] Dispatching MerchantRules to the local account.')
+        # MerchantRules remains generic: the bot sends only model_id + target_count
+        # through ExtraData[1]. No ID/salvage-specific purchase logic lives in MerchantRules.
+        execute = BTShared.SendAndWait(
+            command=SharedCommandType.MerchantRules,
+            params=(3.0, 0.0, 0.0, 0.0),
+            extra_data=(request_id, _merchant_stock_request_spec(), '0', '0'),
+            recipients=recipients,
+            include_self=True,
+            refs_blackboard_key=f'{attempt_key}_merchant_rules_refs',
+            timeout_ms=INVENTORY_MERCHANT_TIMEOUT_MS,
+            poll_interval_ms=250,
+            log=True,
+        )
+
+        return BT.Selector(
+            name='Execute MerchantRules And Restore InventoryPlus',
+            children=[
+                BT.Sequence(
+                    name='MerchantRules Completed',
+                    children=[
+                        execute,
+                        _wait_for_local_inventory_health_after_merchant(
+                            name='Wait For MerchantRules Inventory Result',
+                        ),
+                        _restore_inventoryplus_after_merchant(attempt_key),
+                    ],
+                ),
+                BT.Sequence(
+                    name='Restore InventoryPlus After MerchantRules Failure',
+                    children=[
+                        _restore_inventoryplus_after_merchant(f'{attempt_key}_failure'),
+                        BehaviorTree(BehaviorTree.FailerNode(name='Propagate MerchantRules Failure')),
+                    ],
+                ),
+            ],
+        )
+
+    return BT.Subtree(name='Run MerchantRules On Local Account', subtree_fn=_build)
+
+
+def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
+    attempt_key = f'inventory_attempt_{attempt_number}'
+    return BT.Sequence(
+        name=f'Inventory Maintenance Attempt {attempt_number}',
+        children=[
+            BT.LogMessage(
+                message=(
+                    f'Inventory maintenance attempt {attempt_number}/'
+                    f'{INVENTORY_MAINTENANCE_RETRY_COUNT} in Kaineng Center.'
+                ),
+                module_name=MODULE_NAME,
+            ),
+            _set_local_auto_inventory_handler(False),
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=False,
+                refs_key=f'{attempt_key}_disable_inventoryplus_refs',
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=True,
+                refs_key=f'{attempt_key}_enable_merchant_rules_refs',
+            ),
+            BT.Wait(1_000),
+            _run_merchant_rules(attempt_key),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            _refresh_local_inventory_status_node(
+                name=f'Refresh Local Inventory After Attempt {attempt_number}'
+            ),
+            _inventory_is_healthy_node(
+                f'Verify Inventory After Attempt {attempt_number}',
+                log_success=True,
+            ),
+        ],
+    )
+
+
+def _stop_for_inventory_failure_node() -> BehaviorTree:
+    stopped = False
+
+    def _stop(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        nonlocal stopped
+        if not stopped:
+            stopped = True
+            issues = _inventory_maintenance_issues()
+            issue_text = ', '.join(issues) if issues else 'unknown verification error'
+            _log(
+                'Inventory maintenance failed twice. The bot was paused safely. '
+                f'Remaining issue(s): {issue_text}',
+                PySystem.Console.MessageType.Error,
+            )
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, 'SetAutoInventoryHandlerEnabled', None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+            sender_email = str(Player.GetAccountEmail() or '').strip()
+            if sender_email:
+                try:
+                    GLOBAL_CACHE.ShMem.SendMessage(
+                        sender_email,
+                        sender_email,
+                        SharedCommandType.EnableWidget,
+                        (0.0, 0.0, 0.0, 0.0),
+                        (INVENTORY_PLUS_WIDGET_NAME, '', '', ''),
+                    )
+                except Exception:
+                    pass
+
+            if botting_tree is not None:
+                fn = getattr(botting_tree, 'Pause', None)
+                if callable(fn):
+                    try:
+                        fn(True)
+                    except Exception:
+                        pass
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Pause Bot After Inventory Maintenance Failure',
+            action_fn=_stop,
+            aftercast_ms=0,
+        )
+    )
+
+
+def InventoryCheckAndMaintenance() -> BehaviorTree:
+    disabled = BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name='Inventory Maintenance Disabled',
+            condition_fn=lambda _node: not _inventory_maintenance_enabled,
+        )
+    )
+
+    maintenance_attempts = [
+        _inventory_maintenance_attempt(attempt_number)
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
+    ]
+    maintenance_attempts.append(_stop_for_inventory_failure_node())
+
+    enabled_flow = BT.Sequence(
+        name='Enabled Inventory Check And Maintenance',
+        children=[
+            _refresh_local_inventory_status_node('Query Local Inventory State'),
+            BT.Selector(
+                name='Check Inventory Thresholds',
+                children=[
+                    _inventory_is_healthy_node(
+                        'Inventory Thresholds Already Satisfied',
+                        log_success=True,
+                    ),
+                    BT.Sequence(
+                        name='Run Local Inventory Maintenance',
+                        children=[
+                            _inventory_maintenance_trigger_node(),
+                            BT.IsCurrentMap(map_id=KAINENG_CENTER, log=True),
+                            BT.LeaveParty(),
+                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+                            BT.Selector(
+                                name='Retry Inventory Maintenance In Kaineng Center',
+                                children=maintenance_attempts,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name='Inventory Check And Maintenance',
+        children=[disabled, enabled_flow],
+    )
+
+
+def StartupInventoryCheck() -> BehaviorTree:
+    return BT.Selector(
+        name='Startup Inventory Check',
+        children=[
+            BT.Sequence(
+                name='Check Inventory Before Leaving Kaineng Center',
+                children=[
+                    BT.IsCurrentMap(map_id=KAINENG_CENTER, log=False),
+                    InventoryCheckAndMaintenance(),
+                ],
+            ),
+            BT.Succeeder('Skip Startup Inventory Check Outside Kaineng Center'),
+        ],
+    )
+
+
+# endregion
 
 def _distance(a: tuple[float, float], b: tuple[float, float]) -> float:
     return float(Utils.Distance(a, b))
@@ -230,6 +1006,75 @@ def _nearest_enemy(position: tuple[float, float], radius: float | None = None) -
     return min(enemies, key=lambda agent_id: _distance(Agent.GetXY(agent_id), position))
 
 
+def _initial_foes_near_fight() -> list[int]:
+    """Discover the first enemy group from its fight area, without fixed IDs."""
+    candidates = _enemy_ids_near(PLAYER_TRAP_POSITION, INITIAL_FOE_CAPTURE_RADIUS)
+    candidates.sort(
+        key=lambda agent_id: _distance(Agent.GetXY(agent_id), PLAYER_TRAP_POSITION)
+    )
+    return candidates[:INITIAL_FOE_EXPECTED_COUNT]
+
+
+def _wait_for_enemy_presence_or_timeout(
+    name: str,
+    *,
+    radius: float = 2500.0,
+    timeout_ms: int = 7_500,
+) -> BehaviorTree:
+    """Journey gate: continue on enemy arrival or after its short timeout."""
+
+    def _condition() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+        if _enemy_ids_near(Player.GetXY(), radius):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    wait = BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_condition,
+            throttle_interval_ms=250,
+            timeout_ms=timeout_ms,
+        )
+    )
+    return BT.Selector(
+        name=name,
+        children=[
+            wait,
+            _continue_after_wait_timeout(
+                name,
+                f'{name} timed out after {timeout_ms}ms; continuing along the route.',
+            ),
+        ],
+    )
+
+
+def WaitForMikuAtJourneyExit() -> BehaviorTree:
+    """Wait until Miku reaches the fight-exit area."""
+
+    def _miku_arrived() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+
+        miku_id = int(_resolve_miku_agent_id() or 0)
+        if miku_id <= 0 or Agent.IsDead(miku_id):
+            return BehaviorTree.NodeState.RUNNING
+
+        if _distance(Agent.GetXY(miku_id), FIGHT_EXIT) <= 2500.0:
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name='Wait For Miku At Journey Exit',
+            condition_fn=_miku_arrived,
+            throttle_interval_ms=250,
+            timeout_ms=40_000,
+        )
+    )
+
+
 def _party_agent_ids() -> set[int]:
     agent_ids = {int(Player.GetAgentID() or 0)}
     hero_count = int(GLOBAL_CACHE.Party.GetHeroCount() or 0)
@@ -255,7 +1100,10 @@ def _resolve_miku_agent_id() -> int:
     ]
     if not candidates:
         return 0
-    return min(candidates, key=lambda agent_id: _distance(Agent.GetXY(agent_id), MIKU_SEARCH_ANCHOR))
+    return min(
+        candidates,
+        key=lambda agent_id: _distance(Agent.GetXY(agent_id), MIKU_SEARCH_ANCHOR),
+    )
 
 
 def _miku_or_player() -> int:
@@ -278,6 +1126,7 @@ def _is_mission_planner_step(step_name: str) -> bool:
             'Prepare First Fight',
             'Fight Initial Group',
             'Finish Initial Fight',
+            'Run To Stairs',
             'Prepare Stairs Defense',
             'Wait For Purity Ball',
             'Spike Ministry Of Purity',
@@ -288,16 +1137,18 @@ def _is_mission_planner_step(step_name: str) -> bool:
 
 
 def MissionRestartAnchorService() -> BehaviorTree:
-    """Leave a failed mission and restart it from Kaineng Center."""
+    """Leave a failed mission and choose the correct restart anchor in Kaineng."""
 
     state = {
         'returning_to_outpost': False,
         'last_return_ms': 0.0,
+        'mission_ready_since_ms': 0.0,
+        'restart_step': MISSION_RESTART_STEP,
     }
 
-    def _select_mission_restart(node: BehaviorTree.Node) -> None:
-        node.blackboard['current_step_name'] = MISSION_RESTART_STEP
-        node.blackboard['last_active_planner_step_name'] = MISSION_RESTART_STEP
+    def _select_restart(node: BehaviorTree.Node, step_name: str) -> None:
+        node.blackboard['current_step_name'] = step_name
+        node.blackboard['last_active_planner_step_name'] = step_name
 
     def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         # A Chance Encounter has no shrine revival. The generic BT service
@@ -312,7 +1163,13 @@ def MissionRestartAnchorService() -> BehaviorTree:
         )
         in_mission = in_mission_instance or _is_mission_planner_step(current_step)
 
-        if in_mission and requested_step and requested_step != MISSION_RESTART_STEP:
+        # Normal planner failures inside the mission restart from the mission entry.
+        # A player death is handled separately below and restarts the whole script.
+        if (
+            in_mission
+            and requested_step
+            and requested_step not in (MISSION_RESTART_STEP, SCRIPT_RESTART_STEP)
+        ):
             _log(
                 f"Mission step '{requested_step}' failed; restarting from '{MISSION_RESTART_STEP}'.",
                 PySystem.Console.MessageType.Warning,
@@ -320,33 +1177,78 @@ def MissionRestartAnchorService() -> BehaviorTree:
             node.blackboard['restart_step_name_request'] = MISSION_RESTART_STEP
             node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {MISSION_RESTART_STEP}'
 
-        party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
-        party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
-        player_dead = bool(Routines.Checks.Player.IsDead())
-        mission_failed = bool(in_mission_instance and (player_dead or _mission_failed()))
-        if in_mission_instance and (party_wiped or party_defeated or mission_failed):
+        # During the map transition into A Chance Encounter, party shared-memory
+        # can briefly report wiped/defeated before the mission party is fully
+        # populated. Do not evaluate death/restart conditions until map 861 has
+        # remained ready for a short stabilization window.
+        now_ms = time.monotonic() * 1000.0
+
+        if in_mission_instance:
+            if state['mission_ready_since_ms'] <= 0.0:
+                state['mission_ready_since_ms'] = now_ms
+        else:
+            state['mission_ready_since_ms'] = 0.0
+
+        mission_stable = bool(
+            in_mission_instance
+            and state['mission_ready_since_ms'] > 0.0
+            and now_ms - state['mission_ready_since_ms'] >= 3_000.0
+        )
+
+        party_wiped = False
+        party_defeated = False
+        player_dead = False
+        mission_failed = False
+
+        if mission_stable:
+            party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
+            party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
+            player_dead = bool(Routines.Checks.Player.IsDead())
+            mission_failed = bool(_mission_failed())
+
+        if mission_stable and (party_wiped or party_defeated or mission_failed):
+            # Player death is special: restart from the very first planner step.
+            restart_step = SCRIPT_RESTART_STEP if player_dead else MISSION_RESTART_STEP
+
             if not state['returning_to_outpost']:
                 ActionQueueManager().ResetAllQueues()
-                _log(
-                    f'Mission failure detected (player_dead={player_dead}); '
-                    'returning to Kaineng Center before '
-                    f"restarting '{MISSION_RESTART_STEP}'.",
-                    PySystem.Console.MessageType.Warning,
-                )
+                if player_dead:
+                    _log(
+                        'Player death detected; returning to Kaineng Center and '
+                        f"restarting the script from '{SCRIPT_RESTART_STEP}'.",
+                        PySystem.Console.MessageType.Warning,
+                    )
+                else:
+                    _log(
+                        'Mission failure detected '
+                        f'(party_wiped={party_wiped}, '
+                        f'party_defeated={party_defeated}, '
+                        f'mission_failed={mission_failed}); '
+                        'returning to Kaineng Center before '
+                        f"restarting '{MISSION_RESTART_STEP}'.",
+                        PySystem.Console.MessageType.Warning,
+                    )
+
             state['returning_to_outpost'] = True
-            _select_mission_restart(node)
+            state['restart_step'] = restart_step
+            _select_restart(node, restart_step)
 
         if not state['returning_to_outpost']:
             return BehaviorTree.NodeState.RUNNING
 
         if Map.IsMapReady() and Map.IsOutpost():
-            _select_mission_restart(node)
-            node.blackboard['restart_step_name_request'] = MISSION_RESTART_STEP
-            node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {MISSION_RESTART_STEP}'
+            restart_step = str(state['restart_step'] or MISSION_RESTART_STEP)
+            _select_restart(node, restart_step)
+            node.blackboard['restart_step_name_request'] = restart_step
+            node.blackboard['PLANNER_STATUS'] = f'PLANNER: Restarting {restart_step}'
+
             state['returning_to_outpost'] = False
             state['last_return_ms'] = 0.0
+            state['mission_ready_since_ms'] = 0.0
+            state['restart_step'] = MISSION_RESTART_STEP
+
             _log(
-                f"Outpost loaded; restarting '{MISSION_RESTART_STEP}'.",
+                f"Outpost loaded; restarting '{restart_step}'.",
                 PySystem.Console.MessageType.Success,
             )
             return BehaviorTree.NodeState.RUNNING
@@ -403,12 +1305,201 @@ def _hero_agent_id(hero_position: int) -> int:
     return int(GLOBAL_CACHE.Party.Heroes.GetHeroAgentIDByPartyPosition(hero_position) or 0)
 
 
+def _wait_for_hero_at_position(
+    hero_position: int,
+    position: tuple[float, float],
+    *,
+    tolerance: float = 150.0,
+    timeout_ms: int = 15_000,
+    name: str,
+) -> BehaviorTree:
+    """Wait until a living hero has actually reached the requested position."""
+
+    def _arrived() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+
+        hero_agent_id = _hero_agent_id(hero_position)
+        if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+            return BehaviorTree.NodeState.FAILURE
+
+        if _distance(Agent.GetXY(hero_agent_id), position) <= tolerance:
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=name,
+            condition_fn=_arrived,
+            throttle_interval_ms=250,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+
 def _cast_hero_skill(hero_position: int, slot: int, target_id: int = 0) -> bool:
+    """
+    Manually trigger one hero skill through the dedicated Skillbar API.
+
+    ``HeroUseSkill`` expects the hero's party position (1-7), not the hero
+    agent id. This script consistently uses the hero party position (1-7).
+    """
     hero_agent_id = _hero_agent_id(hero_position)
-    if hero_agent_id == 0:
+    if hero_agent_id == 0 or Agent.IsDead(hero_agent_id):
         return False
-    GLOBAL_CACHE.Party.Heroes.UseSkill(hero_agent_id, slot, int(target_id or 0))
+    if slot < 1 or slot > 8:
+        return False
+
+    GLOBAL_CACHE.SkillBar.HeroUseSkill(
+        int(target_id or 0),
+        int(slot),
+        int(hero_position),
+    )
     return True
+
+
+def _hero_skill_id(hero_position: int, slot: int) -> int:
+    """Return the skill id currently loaded in one hero slot."""
+    try:
+        skillbar = GLOBAL_CACHE.SkillBar.GetHeroSkillbar(hero_position)
+        if slot < 1 or slot > len(skillbar):
+            return 0
+        skill_data = skillbar[slot - 1]
+        return int(getattr(getattr(skill_data, 'id', None), 'id', 0) or 0)
+    except Exception:
+        return 0
+
+
+def _drop_hero_buff_for_skill_node(
+    hero_position: int,
+    slot: int,
+    *,
+    name: str,
+) -> BehaviorTree:
+    """
+    Drop a maintained enchantment/buff owned by a hero.
+
+    DropBuff requires the runtime buff id, not the skill id, so resolve the
+    buff on the hero first.
+    """
+
+    def _drop() -> BehaviorTree.NodeState:
+        hero_agent_id = _hero_agent_id(hero_position)
+        skill_id = _hero_skill_id(hero_position, slot)
+
+        if hero_agent_id <= 0 or skill_id <= 0:
+            _log(
+                f'{name}: hero/skill unavailable; nothing to drop.',
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            for buff in GLOBAL_CACHE.Effects.GetBuffs(hero_agent_id):
+                if int(getattr(buff, 'skill_id', 0) or 0) != skill_id:
+                    continue
+
+                buff_id = int(getattr(buff, 'buff_id', 0) or 0)
+                if buff_id <= 0:
+                    continue
+
+                Effects.get_instance(hero_agent_id).DropBuff(buff_id)
+                _log(
+                    f'{name}: dropped hero {hero_position} buff '
+                    f'(skill_id={skill_id}, buff_id={buff_id}).'
+                )
+                return BehaviorTree.NodeState.SUCCESS
+        except Exception as exc:
+            _log(
+                f'{name}: failed to drop hero buff: {exc}',
+                PySystem.Console.MessageType.Warning,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        _log(f'{name}: Recall buff was not active; continuing.')
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_drop,
+            aftercast_ms=250,
+        )
+    )
+
+
+def _wait_for_heroes_out_of_loot_range(timeout_ms: int = 20_000) -> BehaviorTree:
+    survival_state = {'action_ms': 0.0}
+    last_visible: set[str] = set()
+
+    def _allies_in_compass() -> list[str]:
+        player_id = Player.GetAgentID()
+        player_xy = Player.GetXY()
+        visible: list[str] = []
+
+        for agent_id in AgentArray.GetAllyArray():
+            if agent_id == player_id or Agent.IsDead(agent_id):
+                continue
+
+            if _distance(Agent.GetXY(agent_id), player_xy) <= Range.Compass.value:
+                visible.append(Agent.GetNameByID(agent_id) or f'Agent {agent_id}')
+
+        return visible
+
+    def _all_out() -> BehaviorTree.NodeState:
+        if _mission_failed():
+            return BehaviorTree.NodeState.FAILURE
+
+        _defensive_ball_tick(survival_state)
+
+        visible = _allies_in_compass()
+        current = set(visible)
+        entered = current - last_visible
+        left = last_visible - current
+
+        if entered:
+            _log(f'Allies entered Compass: {", ".join(sorted(entered))}.')
+        if left:
+            _log(f'Allies left Compass: {", ".join(sorted(left))}.')
+
+        last_visible.clear()
+        last_visible.update(current)
+
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if not visible
+            else BehaviorTree.NodeState.RUNNING
+        )
+
+    wait = BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name='Wait For Allies Outside Loot Range',
+            condition_fn=_all_out,
+            throttle_interval_ms=250,
+            timeout_ms=timeout_ms,
+        )
+    )
+
+    def _timeout_fallback(_node: BehaviorTree.Node) -> BehaviorTree:
+        visible = ', '.join(_allies_in_compass()) or 'none'
+        return BT.Sequence(
+            name='Loot Separation Timeout Fallback',
+            children=[
+                BT.LogMessage(
+                    f'Loot separation timed out; allies still inside Compass: {visible}.',
+                    MODULE_NAME,
+                ),
+                BT.Succeeder('Loot Separation Timeout Accepted'),
+            ],
+        )
+
+    return BT.Selector(
+        name='Wait For Loot Separation',
+        children=[
+            wait,
+            BT.Subtree('Loot Separation Timeout Router', _timeout_fallback),
+        ],
+    )
 
 
 def _hero_skill_ready(hero_position: int, slot: int) -> bool:
@@ -431,55 +1522,6 @@ def _hero_skill_ready(hero_position: int, slot: int) -> bool:
         return bool(skill_id and recharge <= 0.0)
     except Exception:
         return False
-
-
-def MysticHealingService() -> BehaviorTree:
-    """Manually rotate the three locked Mystic Healing skills at the stairs."""
-
-    state = {'last_cast_ms': 0.0, 'next_hero': 0}
-
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        current_step = str(node.blackboard.get('current_step_name', '') or '')
-        if current_step not in MYSTIC_HEALING_STEPS:
-            state['last_cast_ms'] = 0.0
-            return BehaviorTree.NodeState.RUNNING
-
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or Agent.IsDead(player_id) or Agent.GetHealth(player_id) >= 0.98:
-            return BehaviorTree.NodeState.RUNNING
-
-        now_ms = time.monotonic() * 1000.0
-        if now_ms - state['last_cast_ms'] < 350.0:
-            return BehaviorTree.NodeState.RUNNING
-
-        hero_count = len(MYSTIC_HEALING_HEROES)
-        start_index = int(state['next_hero']) % hero_count
-        for offset in range(hero_count):
-            index = (start_index + offset) % hero_count
-            hero_position, hero_name = MYSTIC_HEALING_HEROES[index]
-            hero_agent_id = _hero_agent_id(hero_position)
-            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
-                continue
-            if not _hero_skill_ready(hero_position, 8):
-                continue
-            if _cast_hero_skill(hero_position, 8):
-                state['last_cast_ms'] = now_ms
-                state['next_hero'] = (index + 1) % hero_count
-                _log(
-                    f'{hero_name}: Mystic Healing manually triggered '
-                    f'at {Agent.GetHealth(player_id):.0%} player health.'
-                )
-                break
-
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name='Mystic Healing Service',
-            action_fn=_tick,
-            aftercast_ms=0,
-        )
-    )
 
 
 def _hero_skill_node(
@@ -544,11 +1586,17 @@ def _wait_for_player_resources(
     min_adrenaline: int,
     timeout_ms: int,
 ) -> BehaviorTree:
+    survival_state = {'action_ms': 0.0}
+
     def _resources_ready() -> BehaviorTree.NodeState:
         if _mission_failed():
             return BehaviorTree.NodeState.FAILURE
-        if _player_energy() > min_energy and _skill_adrenaline(8) >= min_adrenaline:
+
+        _defensive_ball_tick(survival_state)
+
+        if _player_energy() > min_energy and _skill_adrenaline(4) >= min_adrenaline:
             return BehaviorTree.NodeState.SUCCESS
+
         return BehaviorTree.NodeState.RUNNING
 
     wait_node = BehaviorTree(
@@ -559,14 +1607,17 @@ def _wait_for_player_resources(
             timeout_ms=timeout_ms,
         )
     )
+
     return BT.Selector(
         [
             wait_node,
-            _continue_after_wait_timeout(name, f'{name} timed out; continuing the spike.'),
+            _continue_after_wait_timeout(
+                name,
+                f'{name} timed out; continuing the spike.',
+            ),
         ],
         name=name,
     )
-
 
 def _player_skill_node(
     slot: int,
@@ -598,20 +1649,140 @@ def _player_skill_node(
     return BT.Subtree(node_name, _build)
 
 
-def _optional_commendation_loot(timeout_ms: int = 5_000) -> BehaviorTree:
-    return BT.Selector(
-        [
-            BT.PickupGroundItemByModelID(
-                MINISTERIAL_COMMENDATION,
-                max_distance=Range.Compass.value,
-                timeout_ms=timeout_ms,
-                allow_unassigned=True,
-                log=True,
-            ),
-            BT.Succeeder('No Ministerial Commendation Nearby'),
-        ],
-        name='Optional Ministerial Commendation Loot',
+def _hero_ai_state_node(
+    name: str,
+    states: dict[int, dict[int, bool]],
+    *,
+    behaviors: dict[int, int] | None = None,
+) -> BehaviorTree:
+    """Apply exact per-slot hero AI states using party positions."""
+
+    def _apply() -> BehaviorTree.NodeState:
+        for hero_position, slot_states in states.items():
+            hero_agent_id = _hero_agent_id(hero_position)
+            if hero_agent_id <= 0:
+                _log(
+                    f'{name}: hero position {hero_position} is unavailable.',
+                    PySystem.Console.MessageType.Error,
+                )
+                return BehaviorTree.NodeState.FAILURE
+
+            for slot, enabled in slot_states.items():
+                GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(
+                    hero_agent_id,
+                    int(slot),
+                    bool(enabled),
+                )
+
+        for hero_position, behavior in (behaviors or {}).items():
+            hero_agent_id = _hero_agent_id(hero_position)
+            if hero_agent_id > 0:
+                GLOBAL_CACHE.Party.Heroes.SetHeroBehavior(
+                    hero_agent_id,
+                    int(behavior),
+                )
+
+        _log(f'{name}: hero AI states applied.')
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=name,
+            action_fn=_apply,
+            aftercast_ms=250,
+        )
     )
+
+
+def PrepareHeroSkillbarsForQuest() -> BehaviorTree:
+    # Start from all skills enabled, matching AddOns_EnableAllHeroSkillbars().
+    states: dict[int, dict[int, bool]] = {
+        hero_position: {slot: True for slot in range(1, 9)}
+        for hero_position in range(1, 8)
+    }
+
+    # Reference quest skillbar configuration.
+    states[HERO_FIRE_ELE].update({6: False, 7: False, 8: False})
+    states[HERO_EARTH_ELE].update({6: False, 7: True, 8: False})
+    states[HERO_TRAPPER].update({slot: False for slot in range(1, 8)})
+    states[HERO_SOS].update({
+        1: False, 2: False, 3: False,
+        4: True, 5: True, 6: True, 7: True, 8: True,
+    })
+    states[HERO_BIP].update({1: False, 2: False, 7: False, 8: False})
+    states[HERO_ST].update({1: True})
+    states[HERO_ST].update({slot: False for slot in range(2, 9)})
+
+    return _hero_ai_state_node(
+        'Prepare Hero Skillbars For Quest',
+        states,
+    )
+
+
+def PrepareHeroSkillbarsForFight() -> BehaviorTree:
+    # Only touch the exact slots changed by the reference setup.
+    states = {
+        HERO_EARTH_ELE: {7: True},
+        HERO_TRAPPER: {slot: True for slot in range(1, 8)},
+        HERO_PROT_MESMER: {1: True, 6: True},
+        HERO_BIP: {7: True, 8: True},
+        HERO_ST: {slot: True for slot in range(2, 8)},
+    }
+    return _hero_ai_state_node(
+        'Prepare Hero Skillbars For Fight',
+        states,
+    )
+
+
+def PrepareHeroSkillbarsForJourney() -> BehaviorTree:
+    states = {
+        HERO_SOS: {slot: False for slot in range(1, 9)},
+        HERO_ST: {slot: False for slot in range(1, 9)},
+        HERO_BIP: {7: False},
+    }
+    return _hero_ai_state_node(
+        'Prepare Hero Skillbars For Journey',
+        states,
+        behaviors={HERO_SOS: 2},
+    )
+
+
+def _set_hero_behavior_node(
+    hero_position: int,
+    behavior: int,
+    name: str,
+) -> BehaviorTree:
+    return _hero_ai_state_node(
+        name,
+        {},
+        behaviors={int(hero_position): int(behavior)},
+    )
+
+
+def _player_speedboost() -> BehaviorTree:
+    """Apply the profession-appropriate movement skill sequence."""
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        primary, _secondary = Agent.GetProfessionNames(Player.GetAgentID())
+        if primary == 'Assassin':
+            return BT.Sequence(
+                name='Assassin Speedboost',
+                children=[
+                    _player_skill_node(1, name='Player: Dwarven Stability'),
+                    BT.Wait(100),
+                    _player_skill_node(5, name='Player: Dark Escape'),
+                ],
+            )
+
+        return BT.Sequence(
+            name='Generic Speedboost',
+            children=[
+                _player_skill_node(3, name='Player: To The Limit'),
+                _player_skill_node(5, name='Player: Soldiers Speed'),
+            ],
+        )
+
+    return BT.Subtree('Player Speedboost', _build)
 
 
 def _current_hero_ids() -> tuple[int, ...]:
@@ -629,23 +1800,39 @@ def _setup_party_node() -> BehaviorTree:
         if not _setup_party:
             return BT.Succeeder('Automatic Party Setup Disabled')
         if _team_builds_loaded and _current_hero_ids() == EXPECTED_HERO_IDS:
-            return BT.Succeeder('Expected Party And Builds Already Loaded')
+            return BT.Succeeder('Exact Party And Builds Already Loaded')
 
         children: list[BehaviorTree | BehaviorTree.Node] = [
             BT.CreateParty(hero_ids=list(EXPECTED_HERO_IDS), log=True),
         ]
-        for hero_position, hero_name, template, disabled_slots, behavior in HERO_BUILDS:
+
+        for hero_position, hero_name, template, behavior in HERO_BUILDS:
             children.extend(
                 [
                     BT.LoadHeroSkillbar(hero_position, template, log=True),
-                    _configure_hero_node(hero_position, hero_name, disabled_slots, behavior),
-                    BT.Wait(500),
+                    _configure_hero_node(
+                        hero_position,
+                        hero_name,
+                        (),
+                        behavior,
+                    ),
+                    BT.Wait(250),
                 ]
             )
-        children.append(_mark_team_builds_loaded_node())
-        return BT.Sequence(name='Load Ministerial Hero Team And Builds', children=children)
 
-    return BT.Subtree('Set Up Ministerial Hero Team', _build)
+        children.extend(
+            [
+                PrepareHeroSkillbarsForQuest(),
+                _mark_team_builds_loaded_node(),
+            ]
+        )
+
+        return BT.Sequence(
+            name='Load Exact Encounter ReBuilt Hero Team',
+            children=children,
+        )
+
+    return BT.Subtree('Set Up Exact Hero Team', _build)
 
 
 def _configure_hero_node(
@@ -667,7 +1854,7 @@ def _configure_hero_node(
             GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(hero_agent_id, slot, False)
         GLOBAL_CACHE.Party.Heroes.SetHeroBehavior(hero_agent_id, behavior)
 
-        mode = 'Fight' if behavior == 0 else 'Guard'
+        mode = {0: 'Fight', 1: 'Guard', 2: 'Avoid'}.get(int(behavior), str(behavior))
         locked = ', '.join(str(slot) for slot in disabled_slots) or 'none'
         _log(f'{hero_name} ready: mode={mode}, locked AI slots={locked}.')
         return BehaviorTree.NodeState.SUCCESS
@@ -701,20 +1888,24 @@ def _load_player_build_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _load_player_build:
             return BT.Succeeder('Automatic Player Build Disabled')
+
         primary, _secondary = Agent.GetProfessionNames(Player.GetAgentID())
-        if primary != 'Dervish':
+        template = PLAYER_BUILDS_BY_PRIMARY.get(str(primary or ''))
+        if not template:
             return BT.Sequence(
-                name='Keep Manually Configured Player Build',
+                name='Unsupported Player Profession',
                 children=[
                     BT.LogMessage(
-                        f'Primary profession is {primary or "unknown"}; keeping the current player build.',
+                        f'No Encounter_ReBuilt player template for primary profession {primary or "unknown"}.',
                         MODULE_NAME,
-                    )
+                    ),
+                    BT.Succeeder('Keep Current Player Build'),
                 ],
             )
-        return BT.LoadSkillbar(PLAYER_SKILLBAR, log=True)
 
-    return BT.Subtree('Load Recommended Player Build', _build)
+        return BT.LoadSkillbar(template, log=True)
+
+    return BT.Subtree('Load Encounter ReBuilt Player Build', _build)
 
 
 def InitializeBot() -> BehaviorTree:
@@ -739,9 +1930,46 @@ def PrepareInKaineng() -> BehaviorTree:
         name='Prepare In Kaineng Center',
         map_id_or_name=KAINENG_CENTER,
         children=[
+            StartupInventoryCheck(),
             _setup_party_node(),
             _load_player_build_node(),
             BT.SetHardMode(_hard_mode, log=True),
+        ],
+    )
+
+
+def _move_to_mission_npc_smooth() -> BehaviorTree:
+    """
+    Kaineng-only movement to the A Chance Encounter NPC.
+
+    The generic Apo wrapper currently fixes stall_threshold_ms at 500ms.
+    Here we call the native movement primitive directly so a short period
+    without measurable progress does not cause repeated jitter/nudge commands.
+    """
+    return BT.Sequence(
+        name='Smooth Kaineng Mission NPC Approach',
+        children=[
+            RoutinesBT.Movement.Move(
+                x=2240.0,
+                y=-1264.0,
+                tolerance=150.0,
+                timeout_ms=45_000,
+                stall_threshold_ms=2_000,
+                pause_on_combat=False,
+                avoid_obstacles=False,
+                ignore_destination_obstacles=True,
+                ignore_destination_npcs=True,
+                ignore_destination_gadgets=True,
+                log=True,
+            ),
+            BT.Wait(125),
+            BT.TargetNearestAndSendDialog(
+                pos=(2240.0, -1264.0),
+                dialog_id=MISSION_DIALOG,
+                target_distance=Range.Nearby.value,
+                log=True,
+                multi_account=False,
+            ),
         ],
     )
 
@@ -750,21 +1978,29 @@ def EnterAChanceEncounter() -> BehaviorTree:
     def _approach_if_needed(_node: BehaviorTree.Node) -> BehaviorTree:
         x, y = Player.GetXY()
         if -1400.0 < x < -550.0 and -2000.0 < y < -1100.0:
-            return BT.Move((1474.0, -1197.0), pause_on_combat=False, log=True)
+            return RoutinesBT.Movement.Move(
+                x=1474.0,
+                y=-1197.0,
+                tolerance=150.0,
+                timeout_ms=45_000,
+                stall_threshold_ms=2_000,
+                pause_on_combat=False,
+                avoid_obstacles=False,
+                ignore_destination_obstacles=True,
+                ignore_destination_npcs=True,
+                ignore_destination_gadgets=True,
+                log=True,
+            )
         return BT.Succeeder('Direct Mission NPC Approach')
 
     return BT.Sequence(
         name='Enter A Chance Encounter',
         map_id_or_name=KAINENG_CENTER,
         children=[
+            PrepareHeroSkillbarsForQuest(),
+            _mark_run_statistics_start_node(),
             BT.Subtree('Optional Kaineng Approach', _approach_if_needed),
-            BT.MoveAndDialog(
-                (2240.0, -1264.0),
-                MISSION_DIALOG,
-                pause_on_combat=False,
-                multi_account=False,
-                log=True,
-            ),
+            _move_to_mission_npc_smooth(),
             BT.WaitForMapLoad(A_CHANCE_ENCOUNTER, timeout_ms=45_000),
         ],
     )
@@ -773,90 +2009,205 @@ def EnterAChanceEncounter() -> BehaviorTree:
 def PlaceParty() -> BehaviorTree:
     children: list[BehaviorTree | BehaviorTree.Node] = [
         BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
-        BT.Move(PLAYER_HERO_SETUP_POSITION, pause_on_combat=False, tolerance=50.0, log=True),
     ]
-    children.extend(BT.FlagHero(position, x, y) for position, x, y in STARTING_POSITIONS)
-    children.append(BT.Wait(4_000))
-    return BT.Sequence(name='Place Player And Heroes', children=children)
+    children.extend(
+        BT.FlagHero(position, x, y)
+        for position, x, y in STARTING_POSITIONS
+    )
+    children.extend(
+        [
+            BT.Move(
+                PLAYER_HERO_SETUP_POSITION,
+                pause_on_combat=False,
+                tolerance=50.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            _set_hero_behavior_node(
+                HERO_SOS,
+                1,
+                'Razah: Pre-Fight Behavior 1',
+            ),
+        ]
+    )
+    return BT.Sequence(
+        name='Place Player And Heroes',
+        children=children,
+    )
 
 
 def PrepareFirstFight() -> BehaviorTree:
-    children: list[BehaviorTree | BehaviorTree.Node] = [
-        _hero_skill_node(HERO_VEKK, 5, name='Vekk: Serpents Quickness'),
-        BT.Wait(500),
-        _hero_skill_node(HERO_VEKK, 6, name='Vekk: Barbed Trap - First Setup'),
-        BT.Wait(200),
-        _hero_skill_node(HERO_VEKK, 7, name='Vekk: Flame Trap - First Setup'),
-        BT.Move(PLAYER_TRAP_POSITION, pause_on_combat=False, tolerance=40.0, log=True),
-        BT.Wait(1_500),
-        _hero_skill_node(HERO_SOS, 1, name='SoS: Signet Of Spirits'),
-        _hero_skill_node(HERO_PROT, 2, name='Prot: Union'),
-        BT.FlagHero(HERO_VEKK, -6310.44, -5238.35),
-        BT.FlagHero(HERO_PROT, -5530.0, -5250.0),
-        BT.FlagHero(HERO_SOS, -5152.0, -4556.0),
-        BT.Wait(3_000),
-        BT.FlagHero(HERO_BIP, -5757.0, -5007.0),
-        _hero_skill_node(HERO_SOS, 2, name='SoS: Pain'),
-        _hero_skill_node(HERO_PROT, 3, name='Prot: Displacement'),
-        BT.Wait(2_000),
-        BT.FlagHero(HERO_PROT, -5622.0, -5072.0),
-        BT.FlagHero(HERO_SOS, -5152.0, -4556.0),
-        BT.Wait(2_000),
-        _hero_skill_node(HERO_SOS, 5, name='SoS: Recuperation'),
-        BT.Wait(2_000),
-        _hero_skill_node(HERO_PROT, 4, name='Prot: Shelter'),
-        BT.Wait(2_000),
-        BT.FlagHero(HERO_SOS, -6060.0, -5050.0),
-        _hero_skill_node(
-            HERO_BIP,
-            1,
-            target=lambda: _hero_agent_id(HERO_SOS),
-            name='BiP: Blood Is Power On Livia',
-        ),
-        BT.Wait(4_000),
-        _hero_skill_node(HERO_PROT, 6, name='Prot: Earthbind'),
-        _hero_skill_node(HERO_SOS, 3, target=_miku_or_player, name='SoS: Splinter Weapon On Miku'),
-        BT.Wait(4_000),
-        _hero_skill_node(HERO_PROT, 5, name='Prot: Armor Of Unfeeling'),
-        _hero_skill_node(HERO_VEKK, 7, name='Vekk: Flame Trap - Second Setup'),
-        BT.Wait(200),
-        _hero_skill_node(HERO_VEKK, 6, name='Vekk: Barbed Trap - Second Setup'),
-        BT.Wait(1_000),
-    ]
-    if _use_cupcake:
-        children.append(BTItems.UseConsumable(BIRTHDAY_CUPCAKE, aftercast_ms=100))
-    children.extend(
-        [
-            _player_skill_node(6, name='Player: Ebon Battle Standard Of Honor'),
-            BT.Wait(100),
-            BT.FlagHero(HERO_VEKK, -6342.0, -4941.0),
-            _player_skill_node(7, name='Player: Hundred Blades'),
-            _hero_skill_node(HERO_SOS, 3, target=Player.GetAgentID, name='SoS: Splinter Weapon On Player'),
-            BT.WaitUntilOnCombat(range=500.0, timeout_ms=45_000),
-            _hero_skill_node(HERO_SOS, 4, target=Player.GetAgentID, name='SoS: Ancestors Rage'),
-            BT.Wait(200),
-            _hero_skill_node(HERO_SOS, 3, target=Player.GetAgentID, name='SoS: Refresh Splinter Weapon'),
-        ]
+    """
+    Prepare the first fight using the reference sequence.
+
+    Hero numbers, skill slots, coordinates and waits intentionally match the
+    established route so this BT remains directly comparable in game.
+    """
+
+    miku_target = lambda: int(_resolve_miku_agent_id() or MIKU_LEGACY_AGENT_ID)
+
+    return BT.Sequence(
+        name='Prepare First Fight - ReBuilt',
+        children=[
+            # Opening movement support and first trap spot.
+            _hero_skill_node(HERO_EARTH_ELE, 6, name='Vekk: Fall Back'),
+            _hero_skill_node(HERO_TRAPPER, 7, name='Pyre: Serpents Quickness'),
+            BT.Wait(500),
+            _hero_skill_node(HERO_TRAPPER, 3, name='Pyre: Dust Trap - Spot 1'),
+            _hero_skill_node(HERO_SOS, 1, name='Razah: Signet Of Spirits'),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_TRAPPER),
+                name='Olias: BiP On Pyre',
+            ),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 1, name='Pyre: Spike Trap - Spot 1'),
+            _hero_skill_node(HERO_SOS, 6, name='Razah: Agony'),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_SOS),
+                name='Olias: BiP On Razah',
+            ),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 2, name='Pyre: Flame Trap - Spot 1'),
+            _hero_skill_node(HERO_BIP, 7, name='Olias: Protective Was Kaolai'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 6, name='Pyre: Destruction'),
+            _hero_skill_node(HERO_SOS, 8, name='Razah: Rejuvenation'),
+            BT.Wait(1_250),
+
+            # Second trap spot.
+            BT.FlagHero(HERO_FIRE_ELE, -6517.0, -5129.0),
+            BT.FlagHero(HERO_TRAPPER, -6311.0, -5635.0),
+            BT.Wait(1_500),
+            _hero_skill_node(HERO_TRAPPER, 4, name='Pyre: Barbed Trap - Spot 2'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 5, name='Pyre: Piercing Trap - Spot 2'),
+            _hero_skill_node(HERO_ST, 5, name='Xandra: Boon Of Creation'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 1, name='Pyre: Spike Trap - Spot 2'),
+            _hero_skill_node(HERO_ST, 4, name='Xandra: Displacement'),
+            BT.Wait(2_500),
+
+            # Third trap spot.
+            BT.FlagHero(HERO_FIRE_ELE, -6480.0, -5258.0),
+            BT.FlagHero(HERO_TRAPPER, -6503.0, -5937.0),
+            _hero_skill_node(HERO_BIP, 2, name='Olias: Recovery'),
+            _hero_skill_node(HERO_ST, 1, name='Xandra: Soul Twisting'),
+            BT.Wait(1_500),
+            _hero_skill_node(HERO_TRAPPER, 2, name='Pyre: Flame Trap - Spot 3'),
+            _hero_skill_node(HERO_BIP, 8, name='Olias: Life'),
+            _hero_skill_node(HERO_ST, 2, name='Xandra: Shelter'),
+            BT.Wait(2_500),
+            _hero_skill_node(HERO_TRAPPER, 3, name='Pyre: Dust Trap - Spot 3'),
+            _hero_skill_node(HERO_ST, 3, name='Xandra: Union'),
+            BT.Wait(1_250),
+            _hero_skill_node(
+                HERO_SOS, 2,
+                target=miku_target,
+                name='Razah: Splinter Weapon On Miku',
+            ),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_SOS),
+                name='Olias: BiP On Razah - Second',
+            ),
+            BT.Wait(1_500),
+            _hero_skill_node(HERO_FIRE_ELE, 6, name='Sousuke: Fire Attunement'),
+            _hero_skill_node(HERO_EARTH_ELE, 8, name='Vekk: Earth Attunement'),
+            _hero_skill_node(HERO_ST, 6, name='Xandra: Earthbind'),
+
+            # Return Pyre to second spot and prime the opening burst.
+            BT.FlagHero(HERO_TRAPPER, -6311.0, -5635.0),
+            BT.FlagHero(HERO_BIP, -5795.0, -4942.0),
+            BT.Wait(1_000),
+            _player_skill_node(1, name='Player: Dwarven Stability / Feel No Pain'),
+            _hero_skill_node(HERO_FIRE_ELE, 7, name='Sousuke: Glyph Of Sacrifice'),
+            _hero_skill_node(HERO_TRAPPER, 4, name='Pyre: Barbed Trap - Final'),
+            _hero_skill_node(HERO_SOS, 7, name='Razah: Recuperation'),
+            _hero_skill_node(
+                HERO_BIP, 1,
+                target=lambda: _hero_agent_id(HERO_TRAPPER),
+                name='Olias: BiP On Pyre - Final',
+            ),
+            _hero_skill_node(HERO_ST, 7, name='Xandra: Armor Of Unfeeling'),
+            BT.Wait(1_500),
+
+            BT.FlagHero(HERO_SOS, -5984.0, -5524.0),
+            _player_skill_node(7, name='Player: Ebon Battle Standard Of Honor'),
+            BT.Move(
+                PLAYER_TRAP_POSITION,
+                pause_on_combat=False,
+                tolerance=50.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            _hero_skill_node(
+                HERO_FIRE_ELE,
+                8,
+                target=lambda: _nearest_enemy(
+                    PLAYER_TRAP_POSITION,
+                    INITIAL_FOE_CAPTURE_RADIUS,
+                ),
+                name='Sousuke: Meteor Shower On Initial Group',
+            ),
+            _hero_skill_node(HERO_TRAPPER, 1, name='Pyre: Spike Trap - Opening'),
+            _hero_skill_node(
+                HERO_SOS,
+                2,
+                target=Player.GetAgentID,
+                name='Razah: Splinter Weapon On Player',
+            ),
+            _hero_skill_node(
+                HERO_ST,
+                8,
+                target=Player.GetAgentID,
+                name='Xandra: Inspirational Speech On Player',
+            ),
+
+            PrepareHeroSkillbarsForFight(),
+        ],
     )
-    return BT.Sequence(name='Prepare The First Fight', children=children)
 
 
 def InitialFight() -> BehaviorTree:
-    clear_area = BT.WaitForClearEnemiesInArea(
-        x=PLAYER_TRAP_POSITION[0],
-        y=PLAYER_TRAP_POSITION[1],
-        radius=8_000.0,
-        allowed_alive_enemies=0,
-        stable_clear_ms=2_000,
-        log=True,
-    )
-    state = {'started_at': 0.0, 'last_action_ms': 0.0}
+    """
+    Reference first-fight state machine.
+
+    >5 foes: fight normally.
+    <=5 foes: reposition the support heroes and renew SoS.
+    <=2 foes: player disengages to the safe spot.
+    <=1 foe : hand over immediately to the journey.
+    """
+
+    state = {
+        'started_at': 0.0,
+        'last_action_ms': 0.0,
+        'seen': set(),
+        'medium_repositioned': False,
+        'sos_renewed': False,
+        'martyr_disabled': False,
+        'disengaged': False,
+    }
+
+    reposition = {
+        HERO_EARTH_ELE: (-6531, -2888),
+        HERO_PROT_MESMER: (-6531, -2888),
+        HERO_SOS: (-6236.0, -5905.0),
+        HERO_BIP: (-6309.0, -5021.0),
+        HERO_ST: (-5974.0, -4869.0),
+    }
 
     def _reset() -> None:
-        state.update(started_at=0.0, last_action_ms=0.0)
-        clear_area.reset()
+        state['started_at'] = 0.0
+        state['last_action_ms'] = 0.0
+        state['seen'] = set()
+        state['medium_repositioned'] = False
+        state['sos_renewed'] = False
+        state['martyr_disabled'] = False
+        state['disengaged'] = False
 
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         now = time.monotonic()
         if state['started_at'] <= 0.0:
             state['started_at'] = now
@@ -865,34 +2216,110 @@ def InitialFight() -> BehaviorTree:
             _reset()
             return BehaviorTree.NodeState.FAILURE
 
-        elapsed = now - state['started_at']
-        clear_area.blackboard = node.blackboard
-        clear_state = clear_area.tick()
-        if clear_state is BehaviorTree.NodeState.SUCCESS:
+        elapsed = now - float(state['started_at'])
+        if elapsed * 1000.0 <= INITIAL_FOE_CAPTURE_WINDOW_MS or not state['seen']:
+            for agent_id in _initial_foes_near_fight():
+                if len(state['seen']) >= INITIAL_FOE_EXPECTED_COUNT:
+                    break
+                state['seen'].add(agent_id)
+
+        alive = [
+            agent_id
+            for agent_id in state['seen']
+            if Agent.IsValid(agent_id)
+            and Agent.IsLiving(agent_id)
+            and not Agent.IsDead(agent_id)
+        ]
+        pack_established = len(state['seen']) >= 8 or elapsed >= 20.0
+        remaining = len([
+            agent_id for agent_id in state['seen']
+            if agent_id in alive
+        ])
+
+        if pack_established and remaining <= 1:
+            _log(
+                f'Fight transition: {remaining} initial foe(s) remain.',
+                PySystem.Console.MessageType.Success,
+            )
             _reset()
             return BehaviorTree.NodeState.SUCCESS
-        if clear_state is BehaviorTree.NodeState.FAILURE:
-            _reset()
-            return BehaviorTree.NodeState.FAILURE
-        if elapsed >= 80.0:
+
+        if pack_established and remaining <= 5:
+            if not state['medium_repositioned']:
+                for hero_position, (x, y) in reposition.items():
+                    hero_agent_id = _hero_agent_id(hero_position)
+                    if hero_agent_id > 0:
+                        GLOBAL_CACHE.Party.Heroes.FlagHero(hero_agent_id, x, y)
+                state['medium_repositioned'] = True
+                _log(f'Medium fight phase: repositioned heroes; remaining={remaining}.')
+
+            if not state['sos_renewed']:
+                sos_id = _hero_agent_id(HERO_SOS)
+                if sos_id > 0 and _distance(Agent.GetXY(sos_id), reposition[HERO_SOS]) <= 150.0:
+                    if _hero_skill_ready(HERO_SOS, 1):
+                        _cast_hero_skill(HERO_SOS, 1)
+                    state['sos_renewed'] = True
+
+            if not state['martyr_disabled']:
+                gwen_id = _hero_agent_id(HERO_PROT_MESMER)
+                if gwen_id > 0:
+                    GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(gwen_id, 1, False)
+                state['martyr_disabled'] = True
+
+        if pack_established and remaining <= 2:
+            if not state['disengaged']:
+                state['disengaged'] = True
+                # Use the movement skills, then disengage to the safe spot.
+                _cast_player_skill(3)
+                _cast_player_skill(5)
+                Player.Move(SAFE_SPOT[0], SAFE_SPOT[1])
+                _log(
+                    f'Fight state: {remaining} foes remain; player disengaging.'
+                )
+            return BehaviorTree.NodeState.RUNNING
+
+        # Maintain slot 1, build adrenaline with slot 3, then use Hundred
+        # Blades in slot 2 and Whirlwind Attack in slot 4.
+        target_id = 0
+        if alive:
+            target_id = min(
+                alive,
+                key=lambda agent_id: _distance(
+                    Agent.GetXY(agent_id),
+                    PLAYER_TRAP_POSITION,
+                ),
+            )
+
+        now_ms = now * 1000.0
+        if target_id and now_ms - float(state['last_action_ms']) >= 750.0:
+            Player.ChangeTarget(target_id)
+            Player.Interact(target_id, False)
+
+            _cast_player_skill(1)
+            if _skill_adrenaline(4) < 130:
+                _cast_player_skill(3)
+            _cast_player_skill(2)
+            _cast_player_skill(4, target_id)
+
+            state['last_action_ms'] = now_ms
+
+        if elapsed >= 120.0:
             _log(
-                'Initial fight timed out while enemies were still alive; restarting the mission.',
+                'First fight reached the 120s timeout; restarting mission.',
                 PySystem.Console.MessageType.Warning,
             )
             _reset()
             return BehaviorTree.NodeState.FAILURE
 
-        now_ms = now * 1000.0
-        target_id = int(node.blackboard.get('wait_clear_area_target_id', 0) or 0)
-        if target_id and now_ms - state['last_action_ms'] >= 1_300.0:
-            for slot in (3, 7, 5):
-                if _cast_player_skill(slot, target_id):
-                    break
-            state['last_action_ms'] = now_ms
-
         return BehaviorTree.NodeState.RUNNING
 
-    return BehaviorTree(BehaviorTree.ActionNode(name='Fight Initial Group', action_fn=_tick, aftercast_ms=0))
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Fight Initial Group - ReBuilt',
+            action_fn=_tick,
+            aftercast_ms=0,
+        )
+    )
 
 
 def WaitForMikuAreaClear() -> BehaviorTree:
@@ -902,7 +2329,7 @@ def WaitForMikuAreaClear() -> BehaviorTree:
 
         center_id = _miku_or_player()
         center = Agent.GetXY(center_id)
-        if not _enemy_ids_near(center, Range.Spellcast.value):
+        if not _enemy_ids_near(center, Range.SafeCompass.value):
             return BehaviorTree.NodeState.SUCCESS
         return BehaviorTree.NodeState.RUNNING
 
@@ -926,231 +2353,584 @@ def WaitForMikuAreaClear() -> BehaviorTree:
     )
 
 
-def CastOgdenMakeHaste() -> BehaviorTree:
-    """Bring Ogden into cast range, wait for slot 4, then hold for the cast."""
-
-    node_name = 'Ogden: Make Haste'
-
-    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        player_x, player_y = Player.GetXY()
-
-        def _ogden_ready() -> BehaviorTree.NodeState:
-            if _mission_failed():
-                return BehaviorTree.NodeState.FAILURE
-
-            hero_agent_id = _hero_agent_id(HERO_SPEED_SUPPORT)
-            if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
-                return BehaviorTree.NodeState.FAILURE
-
-            in_range = _distance(Agent.GetXY(hero_agent_id), Player.GetXY()) < 1_350.0
-            if in_range and _hero_skill_ready(HERO_SPEED_SUPPORT, 4):
-                return BehaviorTree.NodeState.SUCCESS
-            return BehaviorTree.NodeState.RUNNING
-
-        wait_ready = BehaviorTree(
-            BehaviorTree.WaitUntilNode(
-                name='Wait For Ogden Make Haste',
-                condition_fn=_ogden_ready,
-                throttle_interval_ms=250,
-                timeout_ms=10_000,
-            )
-        )
-        cast = BT.Sequence(
-            name='Position Ogden And Cast Make Haste',
-            children=[
-                BT.FlagHero(HERO_SPEED_SUPPORT, player_x, player_y),
-                wait_ready,
-                BT.LogMessage('Ogden is in range; casting Make Haste.', MODULE_NAME),
-                _hero_skill_node(
-                    HERO_SPEED_SUPPORT,
-                    4,
-                    target=Player.GetAgentID,
-                    aftercast_ms=2_000,
-                    name=node_name,
-                ),
-            ],
-        )
-        return BT.Selector(
-            [
-                cast,
-                _continue_after_wait_timeout(
-                    node_name,
-                    'Ogden could not cast Make Haste within 10 seconds; continuing the run.',
-                ),
-            ],
-            name=node_name,
-        )
-
-    return BT.Subtree(node_name, _build)
+def CastVekkFallBack() -> BehaviorTree:
+    """Earth Elementalist movement support: hero 2 slot 6, never blocking."""
+    return BT.Selector(
+        name='Vekk: Fall Back If Available',
+        children=[
+            _hero_skill_node(
+                HERO_EARTH_ELE,
+                6,
+                aftercast_ms=100,
+                name='Vekk: Fall Back',
+            ),
+            BT.Succeeder('Vekk Fall Back Unavailable'),
+        ],
+    )
 
 
 def FinishInitialFight() -> BehaviorTree:
     return BT.Sequence(
-        name='Finish Initial Fight And Start Pull',
+        name='Finish Initial Fight - Transition',
         children=[
-            _optional_commendation_loot(),
-            BT.UnflagAllHeroes(log=True),
-            CastOgdenMakeHaste(),
-            BT.FlagAllHeroes(-6699.0, -5645.0),
-            _hero_skill_node(
-                HERO_SPEED_SUPPORT,
-                1,
-                target=Player.GetAgentID,
-                condition=lambda: Agent.IsCrippled(Player.GetAgentID()),
-                name='Ogden: Crippled Player Support',
+            BT.WaitForClearEnemiesInArea(
+                x=PLAYER_TRAP_POSITION[0],
+                y=PLAYER_TRAP_POSITION[1],
+                radius=8_000.0,
+                allowed_alive_enemies=1,
+                stable_clear_ms=500,
+                log=True,
             ),
-            _player_skill_node(
-                3,
-                condition=lambda: Agent.IsCrippled(Player.GetAgentID()),
-                name='Player: I Am Unstoppable If Crippled',
-            ),
-            BT.Move((-4693.0, -3137.0), pause_on_combat=False, tolerance=150.0, log=True),
-            WaitForMikuAreaClear(),
-            _hero_skill_node(
+            CastVekkFallBack(),
+            _player_speedboost(),
+            _set_hero_behavior_node(
                 HERO_SOS,
-                7,
-                target=_miku_or_player,
-                condition=lambda: Agent.IsCrippled(_miku_or_player()),
-                name='Livia: Protective Was Kaolai For Crippled Miku',
+                2,
+                'Razah: Set Avoid For Journey',
             ),
-            _hero_skill_node(
-                HERO_BIP,
-                6,
-                target=_miku_or_player,
-                condition=lambda: Agent.IsCrippled(_miku_or_player()),
-                name='BiP: Mend Body And Soul On Crippled Miku',
+            BT.FlagHero(HERO_SOS, -4770.0, -3330.0),
+            BT.FlagHero(HERO_ST, -4770.0, -3330.0),
+            PrepareHeroSkillbarsForJourney(),
+
+            BT.Move(
+                FIGHT_EXIT,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
             ),
-            BT.FlagAllHeroes(-7075.0, -5685.0),
         ],
     )
 
 
-def _run_point(
-    point: tuple[float, float],
-    label: str,
-    *,
-    tolerance: float = 125.0,
-) -> BehaviorTree:
+def RunToStairs() -> BehaviorTree:
     return BT.Sequence(
-        name=label,
+        name='Run To Stairs - Exact Hero Roles',
         children=[
             BT.IsCurrentMap(A_CHANCE_ENCOUNTER, log=True),
-            BT.Move(point, pause_on_combat=False, tolerance=tolerance, log=True, avoid_obstacles=False),
+
+            BT.FlagAllHeroes(-7047.0, -2651.0),
+
+            _hero_skill_node(
+                HERO_BIP,
+                1,
+                target=lambda: _hero_agent_id(HERO_SOS),
+                condition=lambda: Agent.GetHealth(_hero_agent_id(HERO_BIP)) > 0.5,
+                name='Olias: BiP On Razah Before Journey',
+            ),
+
+            BT.FlagHero(HERO_SOS, -2195.0, 33.0),
+            BT.FlagHero(HERO_ST, -2195.0, 33.0),
+            _hero_skill_node(
+                HERO_SOS,
+                3,
+                target=lambda: _hero_agent_id(HERO_ST),
+                aftercast_ms=2_500,
+                name='Razah: Recall On Xandra',
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                FIGHT_EXIT,
+                pause_on_combat=False,
+                tolerance=150.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            WaitForMikuAtJourneyExit(),
+
+            _hero_skill_node(
+                HERO_PROT_MESMER,
+                1,
+                name='Gwen: Martyr Before Journey',
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                JOURNEY_MID_1,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            # Force the actual staircase line. MID_1 is close enough to the
+            # staircase edge that a direct autopath to MID_2 can cut around it.
+            *[
+                BT.Move(
+                    point,
+                    pause_on_combat=False,
+                    tolerance=75.0,
+                    log=True,
+                    avoid_obstacles=False,
+                )
+                for point in STAIR_PATH
+            ],
+
+            BT.Move(
+                JOURNEY_MID_2,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            BT.FlagHero(HERO_SOS, STAIRS_APPROACH[0], STAIRS_APPROACH[1]),
+            BT.FlagHero(HERO_ST, STAIRS_APPROACH[0], STAIRS_APPROACH[1]),
+
+            _wait_for_enemy_presence_or_timeout(
+                'Journey Gate 1',
+                radius=2500.0,
+                timeout_ms=7_500,
+            ),
+
+            # Drop Recall here before the second half of the journey.
+            _drop_hero_buff_for_skill_node(
+                HERO_SOS,
+                3,
+                name='Razah: Drop Journey Recall',
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                JOURNEY_MID_3,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            BT.Move(
+                JOURNEY_MID_4,
+                pause_on_combat=False,
+                tolerance=125.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            BT.FlagHero(HERO_PROT_MESMER, -5606.0, -2916.0),
+            BT.FlagHero(HERO_BIP, -5606.0, -2916.0),
+            BT.FlagHero(HERO_SOS, -1119.0, -4683.0),
+            BT.FlagHero(
+                HERO_ST,
+                XANDRA_SPIKE_SETUP_POSITION[0],
+                XANDRA_SPIKE_SETUP_POSITION[1],
+            ),
+
+            _wait_for_enemy_presence_or_timeout(
+                'Journey Gate 2',
+                radius=2500.0,
+                timeout_ms=7_500,
+            ),
+
+            _player_speedboost(),
+            BT.Move(
+                STAIRS_APPROACH,
+                pause_on_combat=False,
+                tolerance=100.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+            BT.Move(
+                FARM_POSITION,
+                pause_on_combat=False,
+                tolerance=35.0,
+                log=True,
+                avoid_obstacles=False,
+            ),
+
+            _hero_skill_node(HERO_BIP, 7, name='Olias: Protective Was Kaolai At Farm'),
+            _hero_skill_node(
+                HERO_ST,
+                8,
+                target=Player.GetAgentID,
+                name='Xandra: Inspirational Speech On Player At Farm',
+            ),
         ],
     )
 
 
-def _defensive_ball_tick(state: dict[str, float], enemy_count: int) -> None:
+def _defensive_ball_tick(state: dict[str, float]) -> None:
+    """Keep the player alive while preserving enough energy for the final spike."""
     now_ms = time.monotonic() * 1000.0
-    if now_ms - state.get('action_ms', 0.0) < 250.0:
+    if now_ms - state.get('action_ms', 0.0) < 500.0:
         return
 
-    player_id = int(Player.GetAgentID() or 0)
-    health = Agent.GetHealth(player_id)
-    adrenaline = _skill_adrenaline(8)
     casted = False
+    energy = _player_energy()
 
-    if enemy_count > 3 and adrenaline < 130:
-        casted = _cast_player_skill(5)
-    if not casted and health < 0.90:
+    # Slots 8/6 remain the survival priority, but stop spending once energy
+    # reaches the reserve zone needed for the final spike.
+    if energy >= SURVIVAL_CAST_MIN_ENERGY:
+        casted = _cast_player_skill(8)
+
+    if not casted and energy >= SURVIVAL_CAST_MIN_ENERGY:
+        casted = _cast_player_skill(6)
+
+    # Build adrenaline for Whirlwind Attack.
+    if not casted and _skill_adrenaline(4) < 130:
         casted = _cast_player_skill(3)
+
+    # Maintain slot 1 effect.
     if not casted and not _has_player_effect_for_slot(1):
         casted = _cast_player_skill(1)
-    if not casted and health < 0.60 and not _has_player_effect_for_slot(4):
-        casted = _cast_player_skill(4)
-    if not casted and health < 0.45:
-        casted = _cast_player_skill(2)
 
     if casted:
         state['action_ms'] = now_ms
 
 
 def PrepareStairsDefense() -> BehaviorTree:
+    """
+    Prepare the defensive spirit placement states 0 -> 3.
+
+    Exact flag coordinates:
+      Razah  -> (-997, -4976)
+      Xandra setup   -> (-1665, -6015)
+      Xandra retreat -> (-4950, -7955)
+    """
     return BT.Sequence(
-        name='Prepare Stairs Defense',
+        name='Prepare Stairs Defense - Spirits',
         children=[
-            BT.Wait(7_500),
-            BT.FlagHeroesFromList(
-                [HERO_VEKK, HERO_NORGU, HERO_RAZAH, HERO_OGDEN, HERO_MASTER_OF_WHISPERS],
-                -6707.0,
-                -5242.0,
+            # Re-issue the flag and confirm Xandra is physically at the setup
+            # spot before sending the manual spirit sequence.
+            BT.FlagHero(
+                HERO_ST,
+                XANDRA_SPIKE_SETUP_POSITION[0],
+                XANDRA_SPIKE_SETUP_POSITION[1],
             ),
-            _hero_skill_node(HERO_SOS, 5, name='Livia: Recuperation At Stairs'),
-            BT.Wait(2_000),
-            BT.FlagHero(HERO_SOS, -4818.0, -7841.0),
-            _hero_skill_node(HERO_PROT, 3, name='Xandra: Displacement At Stairs'),
-            BT.Wait(2_000),
-            BT.FlagHero(HERO_PROT, -4818.0, -7841.0),
+            _wait_for_hero_at_position(
+                HERO_ST,
+                XANDRA_SPIKE_SETUP_POSITION,
+                tolerance=175.0,
+                timeout_ms=15_000,
+                name='Wait For Xandra At Spike Setup Position',
+            ),
+
+            # PlaceSpirits case 0.
+            _hero_skill_node(HERO_SOS, 8, name='Razah: Rejuvenation At Farm'),
+            _hero_skill_node(
+                HERO_ST,
+                1,
+                name='Xandra: Soul Twisting At Farm',
+            ),
+            _hero_skill_node(
+                HERO_ST,
+                2,
+                aftercast_ms=1_000,
+                name='Xandra: Shelter',
+            ),
+
+            # PlaceSpirits case 1.
+            BT.FlagHero(HERO_SOS, -997.0, -4976.0),
+            _hero_skill_node(
+                HERO_SOS,
+                3,
+                target=lambda: _hero_agent_id(HERO_ST),
+                aftercast_ms=2_500,
+                name='Razah: Recall On Xandra At Farm',
+            ),
+            _hero_skill_node(
+                HERO_ST,
+                3,
+                aftercast_ms=750,
+                name='Xandra: Union',
+            ),
+            _hero_skill_node(
+                HERO_ST,
+                4,
+                aftercast_ms=750,
+                name='Xandra: Displacement',
+            ),
+
+            # PlaceSpirits case 2.
+            _hero_skill_node(
+                HERO_ST,
+                7,
+                name='Xandra: Armor Of Unfeeling',
+            ),
+
+            # PlaceSpirits case 3.
+            BT.FlagHero(
+                HERO_ST,
+                XANDRA_RETREAT_POSITION[0],
+                XANDRA_RETREAT_POSITION[1],
+            ),
+            _hero_skill_node(HERO_SOS, 7, name='Razah: Recuperation At Farm'),
+            BT.FlagHero(HERO_PROT_MESMER, -7047, -2651),
+            BT.FlagHero(HERO_BIP, -7047, -2651),
+            BT.FlagHero(HERO_TRAPPER, -7047, -2651),
+            BT.FlagHero(HERO_FIRE_ELE, -7047, -2651),
+            BT.FlagHero(HERO_EARTH_ELE, -7047, -2651),
         ],
     )
 
 
 def WaitForPurityBall() -> BehaviorTree:
-    state = {'action_ms': 0.0}
+    """
+    Ministry of Purity wave tracker.
 
-    def _ball_is_ready() -> BehaviorTree.NodeState:
+    1) wait until >=4 foes enter 1000 range (max 30s);
+    2) remember every unique foe seen in 1000;
+    3) mark a foe resolved once it reaches 200, leaves 1000, or dwells
+       outside 200 for 12s;
+    4) never allow the spike before at least 48 foes are simultaneously in 1000;
+    5) after an 18s no-new-arrival gate (or 60 unique seen), continue when
+       >=98% of seen foes are resolved;
+    6) return FAILURE when the wave has stabilized or timed out with fewer
+       than 48 foes inside 1000, so the mission restart path can take over.
+    """
+
+    state = {
+        'phase': 'arrival',
+        'phase_started_ms': 0.0,
+        'last_new_ms': 0.0,
+        'seen': {},
+        'action_ms': 0.0,
+    }
+
+    def _reset() -> None:
+        state['phase'] = 'arrival'
+        state['phase_started_ms'] = 0.0
+        state['last_new_ms'] = 0.0
+        state['seen'] = {}
+        state['action_ms'] = 0.0
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         if _mission_failed():
+            _reset()
             return BehaviorTree.NodeState.FAILURE
 
-        enemies = _enemy_ids_near(Player.GetXY(), 200.0)
-        if len(enemies) > 50 and _skill_adrenaline(8) >= 120:
-            _log('Purity ball is ready.', PySystem.Console.MessageType.Success)
-            return BehaviorTree.NodeState.SUCCESS
+        now_ms = time.monotonic() * 1000.0
+        if state['phase_started_ms'] <= 0.0:
+            state['phase_started_ms'] = now_ms
+            state['last_new_ms'] = now_ms
 
-        _defensive_ball_tick(state, len(enemies))
+        in_1000 = set(_enemy_ids_near(Player.GetXY(), 1000.0))
+        in_200 = set(_enemy_ids_near(Player.GetXY(), 200.0))
+
+        # Keep the current Python defensive behavior active while waiting.
+        _defensive_ball_tick(state)
+
+        if state['phase'] == 'arrival':
+            if len(in_1000) >= 4 or now_ms - state['phase_started_ms'] >= 30_000.0:
+                state['phase'] = 'gather'
+                state['phase_started_ms'] = now_ms
+                state['last_new_ms'] = now_ms
+                state['seen'] = {}
+                _log(
+                    f'Wave tracker started with {len(in_1000)} foe(s) in 1000 range.'
+                )
+            else:
+                return BehaviorTree.NodeState.RUNNING
+
+        seen: dict[int, dict[str, int | bool]] = state['seen']
+
+        # Add newly seen foes.
+        for agent_id in in_1000:
+            if agent_id not in seen and len(seen) < 60:
+                seen[agent_id] = {
+                    'touched_200': False,
+                    'dwell_ticks': 0,
+                }
+                state['last_new_ms'] = now_ms
+
+        # Update resolution state every 500ms.
+        for agent_id, foe_state in seen.items():
+            if agent_id in in_200:
+                foe_state['touched_200'] = True
+
+            if agent_id in in_1000 and not bool(foe_state['touched_200']):
+                foe_state['dwell_ticks'] = int(foe_state['dwell_ticks']) + 1
+            else:
+                foe_state['dwell_ticks'] = 0
+
+        resolved = 0
+        for agent_id, foe_state in seen.items():
+            if (
+                bool(foe_state['touched_200'])
+                or agent_id not in in_1000
+                or int(foe_state['dwell_ticks']) >= 24  # 12s / 500ms
+            ):
+                resolved += 1
+
+        count_seen = len(seen)
+        no_arrivals_gate = (
+            count_seen >= 60
+            or now_ms - float(state['last_new_ms']) >= 18_000.0
+        )
+        required_resolved = math.ceil(count_seen * 0.98)
+        nearby_foes = len(in_1000)
+        minimum_foes_reached = nearby_foes >= MINIMUM_NEARBY_FOES_FOR_SPIKE
+
+        wave_stabilized = no_arrivals_gate and resolved >= required_resolved
+        if wave_stabilized:
+            if minimum_foes_reached:
+                _log(
+                    f'Wave tracker complete: nearby={nearby_foes}, '
+                    f'seen={count_seen}, resolved={resolved}.',
+                    PySystem.Console.MessageType.Success,
+                )
+                _reset()
+                return BehaviorTree.NodeState.SUCCESS
+
+            _log(
+                f'Wave tracker incomplete: only {nearby_foes}/'
+                f'{MINIMUM_NEARBY_FOES_FOR_SPIKE} required nearby foes '
+                f'(seen={count_seen}, resolved={resolved}); '
+                'returning FAILURE to restart the mission.',
+                PySystem.Console.MessageType.Warning,
+            )
+            _reset()
+            return BehaviorTree.NodeState.FAILURE
+
+        if now_ms - float(state['phase_started_ms']) >= 60_000.0:
+            if minimum_foes_reached:
+                _log(
+                    f'Wave tracker reached the 60s fallback: '
+                    f'seen={count_seen}, resolved={resolved}; continuing.',
+                    PySystem.Console.MessageType.Warning,
+                )
+                _reset()
+                return BehaviorTree.NodeState.SUCCESS
+
+            _log(
+                f'Wave tracker timed out with only {nearby_foes}/'
+                f'{MINIMUM_NEARBY_FOES_FOR_SPIKE} required nearby foes '
+                f'(seen={count_seen}); '
+                'returning FAILURE to restart the mission.',
+                PySystem.Console.MessageType.Warning,
+            )
+            _reset()
+            return BehaviorTree.NodeState.FAILURE
+
         return BehaviorTree.NodeState.RUNNING
 
-    wait_node = BehaviorTree(
-        BehaviorTree.WaitUntilNode(
-            name='Wait For Ministry Of Purity Ball',
-            condition_fn=_ball_is_ready,
-            throttle_interval_ms=100,
-            timeout_ms=45_000,
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Wait For Ministry Of Purity Ball - Wave Tracker',
+            action_fn=_tick,
+            aftercast_ms=500,
         )
-    )
-    return BT.Selector(
-        [
-            wait_node,
-            _continue_after_wait_timeout(
-                'Wait For Ministry Of Purity Ball',
-                'Purity ball wait timed out; starting the spike.',
-            ),
-        ],
-        name='Wait For Ministry Of Purity Ball',
     )
 
 
 def SpikeMinistryOfPurity() -> BehaviorTree:
+    """
+    Reference spike sequence:
+    move Gwen/Olias away, apply weapon support, prime Honor, Hundred Blades,
+    then Whirlwind Attack the nearest foe inside 200.
+    """
     return BT.Sequence(
         name='Spike Ministry Of Purity',
         children=[
-            _wait_for_player_resources(
-                'Wait For Banner Resources',
-                min_energy=13.0,
-                min_adrenaline=120,
-                timeout_ms=10_000,
-            ),
-            _player_skill_node(6, name='Ebon Battle Standard Of Honor'),
-            _wait_for_player_resources(
-                'Wait For Hundred Blades Resources',
-                min_energy=5.0,
-                min_adrenaline=120,
-                timeout_ms=5_000,
-            ),
-            _player_skill_node(7, name='Hundred Blades'),
-            _wait_for_player_resources(
-                'Wait For Whirlwind Adrenaline',
-                min_energy=-1.0,
-                min_adrenaline=120,
-                timeout_ms=5_000,
-            ),
-            _player_skill_node(
-                8,
-                target=lambda: _nearest_enemy(Player.GetXY(), 200.0),
-                name='Whirlwind Attack',
-            ),
+                        _hero_skill_node(HERO_SOS,4,target=Player.GetAgentID,aftercast_ms=1_500,name='Razah: Weapon Support On Player',),
+            BT.FlagHero(HERO_SOS, -4950.0, -7955.0),
+            _drop_hero_buff_for_skill_node(HERO_SOS,3,name='Razah: Drop Farm Recall',),
+            _wait_for_heroes_out_of_loot_range(timeout_ms=15_000),
+            _wait_for_player_resources('Wait For Spike Resources',min_energy=SPIKE_MIN_ENERGY,min_adrenaline=130,timeout_ms=15_000,),
+            _player_skill_node(7, name='Player: Ebon Battle Standard Of Honor'),
+            _player_skill_node(2, name='Player: Hundred Blades'),
+            BT.Wait(250),
+            _player_skill_node(4,target=lambda: _nearest_enemy(Player.GetXY(), 200.0),name='Player: Whirlwind Attack',),
             BT.Wait(3_000),
         ],
+    )
+
+
+def _wanted_ground_loot_agent_ids() -> list[int]:
+    """Return every nearby drop currently requested by the active LootFilter.
+
+    GetLootArray applies the complete live filter and already excludes drops
+    assigned to another player or reserved by another account's loot lock.
+    """
+    return [
+        int(agent_id)
+        for agent_id in LootFilters().GetLootArray(Range.Earshot.value)
+        if int(agent_id or 0) > 0
+    ]
+
+
+def WaitForRequestedLoot() -> BehaviorTree:
+    """Wait until every LootFilter-requested drop has been cleared."""
+    state = {
+        'started_ms': 0.0,
+        'clear_since_ms': 0.0,
+        'seen': False,
+        'last_warning_ms': 0.0,
+    }
+
+    def _reset() -> None:
+        state['started_ms'] = 0.0
+        state['clear_since_ms'] = 0.0
+        state['seen'] = False
+        state['last_warning_ms'] = 0.0
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        now_ms = time.monotonic() * 1000.0
+        if state['started_ms'] <= 0.0:
+            state['started_ms'] = now_ms
+            state['last_warning_ms'] = now_ms
+
+        try:
+            visible = _wanted_ground_loot_agent_ids()
+        except Exception as exc:
+            state['clear_since_ms'] = 0.0
+            if (
+                now_ms - float(state['last_warning_ms'])
+                >= LOOT_WAIT_WARNING_INTERVAL_MS
+            ):
+                _log(
+                    f'Unable to query the active LootFilter; continuing to wait: {exc}',
+                    PySystem.Console.MessageType.Warning,
+                )
+                state['last_warning_ms'] = now_ms
+            return BehaviorTree.NodeState.RUNNING
+
+        if visible:
+            if not bool(state['seen']):
+                _log(
+                    f'LootFilter requested {len(visible)} eligible ground item(s).'
+                )
+            state['seen'] = True
+            state['clear_since_ms'] = 0.0
+
+            if (
+                now_ms - float(state['last_warning_ms'])
+                >= LOOT_WAIT_WARNING_INTERVAL_MS
+            ):
+                _log(
+                    f'Waiting for HeroAI to clear {len(visible)} remaining '
+                    'LootFilter-requested item(s).',
+                    PySystem.Console.MessageType.Warning,
+                )
+                state['last_warning_ms'] = now_ms
+        else:
+            if state['clear_since_ms'] <= 0.0:
+                state['clear_since_ms'] = now_ms
+
+            appearance_grace_complete = bool(state['seen']) or (
+                now_ms - float(state['started_ms']) >= LOOT_APPEARANCE_GRACE_MS
+            )
+            stable_clear = (
+                now_ms - float(state['clear_since_ms']) >= LOOT_STABLE_CLEAR_MS
+            )
+            if appearance_grace_complete and stable_clear:
+                if bool(state['seen']):
+                    _log(
+                        'All LootFilter-requested loot has been cleared; '
+                        'returning to Kaineng Center.',
+                        PySystem.Console.MessageType.Success,
+                    )
+                _reset()
+                return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Wait For LootFilter Requested Loot',
+            action_fn=_tick,
+            aftercast_ms=250,
+        )
     )
 
 
@@ -1158,29 +2938,29 @@ def LootAndReturn() -> BehaviorTree:
     return BT.Sequence(
         name='Loot Commendations And Return',
         children=[
-            _optional_commendation_loot(timeout_ms=10_000),
-            BT.LootItems(distance=Range.Compass.value, timeout_ms=15_000),
-            BT.Travel(target_map_id=KAINENG_CENTER, log=True),
+            # Headless HeroAI remains the sole loot owner.
+            BottingTree.EnableHeroAITree(reset_runtime=True),
+            BottingTree.DisableCombatTree(),
+            BottingTree.EnableLootingTree(),
+
+            WaitForRequestedLoot(),
+
+            BottingTree.DisableLootingTree(),
+
+            # Explicitly restore the scoped combat state.
+            BottingTree.EnableCombatTree(),
+            BottingTree.DisableHeroAITree(reset_runtime=True),
+
+            BT.Wait(250),
+
+            BT.Travel(
+                target_map_id=KAINENG_CENTER,
+                log=True,
+            ),
+            BT.WaitForMapLoad(KAINENG_CENTER, timeout_ms=45_000),
+            _record_run_statistics_node(),
         ],
     )
-
-
-def _run_point_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
-    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
-    for index, point in enumerate(RUN_TO_KILL_SPOT, start=1):
-        name = f'Run To Kill Spot - Point {index:02d}'
-        tolerance = 15.0 if index == len(RUN_TO_KILL_SPOT) else 125.0
-        steps.append(
-            (
-                name,
-                lambda point=point, name=name, tolerance=tolerance: _run_point(
-                    point,
-                    name,
-                    tolerance=tolerance,
-                ),
-            )
-        )
-    return steps
 
 
 def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
@@ -1192,11 +2972,12 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ('Prepare First Fight', PrepareFirstFight),
         ('Fight Initial Group', InitialFight),
         ('Finish Initial Fight', FinishInitialFight),
-        *_run_point_steps(),
+        ('Run To Stairs', RunToStairs),
         ('Prepare Stairs Defense', PrepareStairsDefense),
         ('Wait For Purity Ball', WaitForPurityBall),
         ('Spike Ministry Of Purity', SpikeMinistryOfPurity),
         ('Loot And Return', LootAndReturn),
+        ('Inventory Check And Maintenance', InventoryCheckAndMaintenance),
     ]
 
 
@@ -1220,7 +3001,7 @@ def ensure_botting_tree() -> BottingTree:
 
 def _configure_botting_tree(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
-        looting_enabled=False,
+        looting_enabled=True,
         resurrection_scroll=False,
         auto_inventory_handler_enabled=True,
         enable_party_wipe_recovery=False,
@@ -1229,7 +3010,6 @@ def _configure_botting_tree(tree: BottingTree) -> None:
     # SetMainRoutine adds the native wipe service after this anchor. This order
     # lets the anchor replace the current step before native recovery captures it.
     tree.AddServiceTree('MissionRestartAnchor', MissionRestartAnchorService)
-    tree.AddServiceTree('MysticHealing', MysticHealingService)
 
 
 def main() -> None:
@@ -1245,7 +3025,7 @@ def main() -> None:
     tree.UI.draw_window(
         icon_path=TEXTURE,
         main_child_dimensions=(440, 390),
-        extra_tabs=[('Config', _draw_config)],
+        extra_tabs=[('Statistics', _draw_statistics), ('Config', _draw_config)],
     )
 
 
