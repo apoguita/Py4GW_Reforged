@@ -9,7 +9,8 @@ from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray, Player, SharedCommandType, Inventory, ImGui
+from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray, Map, Party, Player, SharedCommandType, Inventory, ImGui
+from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.native_src.internals.types import Vec2f
@@ -81,7 +82,7 @@ GRAIL_OF_MIGHT = 24860
 ARMOR_OF_SALVATION = 24861
 
 
-SUMMON_MODEL_IDS = (30209, 37810, 31155)
+SUMMON_MODEL_IDS = (37810,30209,31155)
 PCON_UPKEEPS = tuple((int(model_id) for model_id in ALL_CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS))
 
 CONSET_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(((model_id, 10) for model_id in CONSET_UPKEEPS))
@@ -96,8 +97,8 @@ BDS_MODEL_ID_MAX = BDS_MODEL_IDS[-1]
 GB_MODEL_ID = 2474
 
 INVENTORY_BAG_IDS = frozenset((1, 2, 3, 4))
-ID_KIT_MODEL_IDS = (int(ModelID.Identification_Kit.value), int(ModelID.Superior_Identification_Kit.value))
-SALVAGE_KIT_MODEL_IDS = (int(ModelID.Expert_Salvage_Kit.value),)
+ID_KIT_MODEL_IDS = (int(ModelID.Superior_Identification_Kit.value),)
+SALVAGE_KIT_MODEL_IDS = (int(ModelID.Superior_Salvage_Kit.value),)
 MERCHANT_RULES_WIDGET_NAME = "MerchantRules"
 INVENTORY_PLUS_WIDGET_NAME = "InventoryPlus"
 
@@ -110,8 +111,6 @@ INVENTORY_TRAVEL_TIMEOUT_MS = 60_000
 INVENTORY_MERCHANT_TIMEOUT_MS = 240_000
 
 TEXTURE = os.path.join(PySystem.Console.get_projects_path(), 'Assets', 'Textures', 'Module_Icons', 'BDS.png')
-
-
 MODULE_ICON = "Assets\\Textures\\Module_Icons\\BDS.png"
 
 # endregion
@@ -149,6 +148,21 @@ _inventory_min_free_slots = 5
 _inventory_min_id_kits = 1
 _inventory_min_salvage_kits = 2
 _runtime_consumables_enabled = True
+_configured_consumable_upkeeps: tuple[int, ...] | None = None
+
+# Personal consumables are maintained directly across the real multibox party.
+# Consets keep using the normal ConfigureUpkeep service.
+_PCON_DIRECT_DISPATCH_INTERVAL_MS = 650
+_pcon_direct_index = 0
+_pcon_direct_last_dispatch_ms = 0
+_pcon_direct_runtime_logged = False
+_pcon_direct_last_recipient_signature: tuple[str, ...] = ()
+_pcon_direct_morale_remote_index = 0
+_PCON_PARTY_MORALE_TARGET_BY_MODEL = {
+    int(ModelID.Four_Leaf_Clover.value): 100,
+    int(ModelID.Honeycomb.value): 110,
+}
+
 _runtime_looting_enabled = True
 _inventory_status_snapshot: dict[str, dict[str, object]] = {}
 
@@ -405,63 +419,356 @@ def _save_statistics() -> None:
             _settings_ini.set(_CHAR_NAMES_SECTION, key, name)
 
 
+def _consumables_allowed() -> bool:
+    return (
+        _runtime_consumables_enabled
+        and Map.IsMapReady()
+        and not Map.IsMapLoading()
+        and Map.GetMapID() in (SOO_LEVEL_1, SOO_LEVEL_2, SOO_LEVEL_3)
+    )
+
+
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
-    """
-    Return the consumables that must be continuously maintained.
-
-    Summoning stones are excluded because they are one-shot items and must not
-    be handled by ConsumableService.
-    """
+    """Generic Core upkeep services. PCons use the direct dispatcher."""
+    if not _runtime_consumables_enabled:
+        return ()
     enabled: list[int] = []
-
     if _activate_conset:
-        enabled.extend(CONSET_UPKEEPS)
-
-    if _activate_pcons:
-        enabled.extend(PCON_UPKEEPS)
-
-    return tuple(dict.fromkeys((int(model_id) for model_id in enabled)))
+        enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
+    return tuple(dict.fromkeys(enabled))
 
 
-def _configure_runtime_upkeeps(*, consumables_enabled: bool | None=None, looting_enabled: bool | None=None) -> None:
-    global _runtime_consumables_enabled, _runtime_looting_enabled
+def _pcon_effect_name(model_id: int) -> str:
+    """Resolve the persistent effect used by SharedCommandType.PCon."""
+    model_id = int(model_id)
+    overrides = {
+        int(ModelID.Blue_Rock_Candy.value): "Blue_Rock_Candy_Rush",
+        int(ModelID.Green_Rock_Candy.value): "Green_Rock_Candy_Rush",
+        int(ModelID.Red_Rock_Candy.value): "Red_Rock_Candy_Rush",
+        int(ModelID.Birthday_Cupcake.value): "Birthday_Cupcake_skill",
+        int(ModelID.Bowl_Of_Skalefin_Soup.value): "Skale_Vigor",
+        int(ModelID.Candy_Apple.value): "Candy_Apple_skill",
+        int(ModelID.Candy_Corn.value): "Candy_Corn_skill",
+        int(ModelID.Drake_Kabob.value): "Drake_Skin",
+        int(ModelID.Golden_Egg.value): "Golden_Egg_skill",
+        int(ModelID.Pahnai_Salad.value): "Pahnai_Salad_item_effect",
+        int(ModelID.Slice_Of_Pumpkin_Pie.value): "Pie_Induced_Ecstasy",
+        int(ModelID.War_Supplies.value): "Well_Supplied",
+    }
+    if model_id in overrides:
+        return overrides[model_id]
+    return str(CONSUMABLE_MODELID_TO_EFFECT_NAME.get(model_id, "") or "")
 
+
+def _pcon_account_map_tuple(account: object) -> tuple[int, int, int, int]:
+    map_obj = getattr(getattr(account, "AgentData", None), "Map", None)
+    return (
+        int(getattr(account, "MapID", 0) or getattr(map_obj, "MapID", 0) or 0),
+        int(getattr(account, "MapRegion", 0) or getattr(map_obj, "Region", 0) or 0),
+        int(getattr(account, "MapDistrict", 0) or getattr(map_obj, "District", 0) or 0),
+        int(getattr(account, "MapLanguage", 0) or getattr(map_obj, "Language", 0) or 0),
+    )
+
+
+def _pcon_account_party_id(account: object) -> int:
+    return int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+
+
+def _direct_pcon_party_emails() -> list[str]:
+    local_email = str(Player.GetAccountEmail() or "").strip()
+    if not local_email:
+        return []
+
+    try:
+        local_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(local_email)
+    except Exception:
+        local_account = None
+
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False) or [])
+    except TypeError:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData() or [])
+    except Exception:
+        accounts = []
+
+    local_party_id = _pcon_account_party_id(local_account) if local_account is not None else 0
+    local_map = _pcon_account_map_tuple(local_account) if local_account is not None else None
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for account in accounts:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+            continue
+
+        account_party_id = _pcon_account_party_id(account)
+        same_party = local_party_id > 0 and account_party_id == local_party_id
+        same_map_fallback = (
+            local_party_id <= 0
+            and local_map is not None
+            and _pcon_account_map_tuple(account) == local_map
+        )
+        if not same_party and not same_map_fallback:
+            continue
+
+        seen.add(email)
+        result.append(email)
+
+    if local_email not in seen:
+        result.append(local_email)
+    return result
+
+
+def _reset_direct_pcon_runtime() -> None:
+    global _pcon_direct_index, _pcon_direct_last_dispatch_ms
+    global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
+    global _pcon_direct_morale_remote_index
+    _pcon_direct_index = 0
+    _pcon_direct_last_dispatch_ms = 0
+    _pcon_direct_runtime_logged = False
+    _pcon_direct_last_recipient_signature = ()
+    _pcon_direct_morale_remote_index = 0
+
+
+def _bot_is_started() -> bool:
+    if botting_tree is None:
+        return False
+    try:
+        fn = getattr(botting_tree, "IsStarted", None)
+        if callable(fn):
+            return bool(fn())
+    except Exception:
+        pass
+    return bool(getattr(botting_tree, "started", False))
+
+
+def _shared_party_min_morale_for_direct_pcons() -> int | None:
+    """Return the lowest valid shared party morale, or None while unavailable."""
+    try:
+        entries = GLOBAL_CACHE.ShMem.GetSharedPartyMorale() or []
+    except Exception:
+        return None
+
+    values: list[int] = []
+    for entry in entries:
+        try:
+            morale = int(entry[1] or 0)
+        except (TypeError, ValueError, IndexError):
+            continue
+        if morale > 0:
+            values.append(morale)
+    return min(values) if values else None
+
+
+def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_email: str) -> None:
+    """Use one party-wide morale PCon when the shared morale is below its target.
+
+    Only one account is allowed to attempt the party-wide item per service pass;
+    this prevents Four-Leaf Clover / Honeycomb from being consumed by several
+    multibox clients at the same time before SharedMemory reflects the new morale.
+    """
+    global _pcon_direct_morale_remote_index
+
+    target_morale = _PCON_PARTY_MORALE_TARGET_BY_MODEL.get(int(model_id))
+    if target_morale is None:
+        return
+
+    party_min_morale = _shared_party_min_morale_for_direct_pcons()
+    if party_min_morale is None or party_min_morale >= int(target_morale):
+        return
+
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    if (
+        not local_is_dead
+        and GLOBAL_CACHE.Inventory.GetModelCount(int(model_id)) > 0
+    ):
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f"[PCons] Party morale use: model={int(model_id)}, "
+                    f"morale={party_min_morale} -> target={int(target_morale)}."
+                ),
+                PySystem.Console.MessageType.Info,
+            )
+            return
+
+    remote_recipients = [
+        email for email in recipients
+        if email and email != sender_email
+    ]
+    if not remote_recipients:
+        return
+
+    # If the leader cannot consume it (dead/missing item), rotate the single
+    # remote attempt so another account gets a chance on the next service pass.
+    receiver_email = remote_recipients[
+        _pcon_direct_morale_remote_index % len(remote_recipients)
+    ]
+    _pcon_direct_morale_remote_index = (
+        _pcon_direct_morale_remote_index + 1
+    ) % max(1, len(remote_recipients))
+
+    try:
+        GLOBAL_CACHE.ShMem.SendMessage(
+            sender_email,
+            receiver_email,
+            SharedCommandType.PCon,
+            (int(model_id), 0, 0, 0),
+        )
+    except Exception:
+        return
+
+
+def _tick_direct_pcon_upkeep() -> None:
+    """Maintain persistent PCons plus party-wide morale consumables directly."""
+    global _pcon_direct_index, _pcon_direct_last_dispatch_ms
+    global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
+
+    if not _bot_is_started() or not _runtime_consumables_enabled or not _activate_pcons:
+        if _pcon_direct_runtime_logged or _pcon_direct_last_dispatch_ms:
+            _reset_direct_pcon_runtime()
+        return
+
+    try:
+        if not Map.IsMapReady() or not Map.IsExplorable():
+            return
+        if int(Map.GetMapID() or 0) not in (SOO_LEVEL_1, SOO_LEVEL_2, SOO_LEVEL_3):
+            return
+    except Exception:
+        return
+
+    if not PCON_UPKEEPS:
+        return
+
+    now_ms = int(time.monotonic() * 1000.0)
+    if now_ms - int(_pcon_direct_last_dispatch_ms) < _PCON_DIRECT_DISPATCH_INTERVAL_MS:
+        return
+    _pcon_direct_last_dispatch_ms = now_ms
+
+    recipients = _direct_pcon_party_emails()
+    if not recipients:
+        return
+
+    recipient_signature = tuple(sorted(recipients))
+    if not _pcon_direct_runtime_logged or recipient_signature != _pcon_direct_last_recipient_signature:
+        _pcon_direct_runtime_logged = True
+        _pcon_direct_last_recipient_signature = recipient_signature
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[PCons] Direct multibox upkeep active: models={len(PCON_UPKEEPS)}, accounts={len(recipients)}.",
+            PySystem.Console.MessageType.Info,
+        )
+
+    model_id = int(PCON_UPKEEPS[_pcon_direct_index % len(PCON_UPKEEPS)])
+    _pcon_direct_index = (_pcon_direct_index + 1) % len(PCON_UPKEEPS)
+
+    sender_email = str(Player.GetAccountEmail() or "").strip()
+    if not sender_email:
+        return
+
+    # Four-Leaf Clover and Honeycomb are morale consumables, not persistent
+    # effects.  They are driven by the same party-morale thresholds used by
+    # Messaging.UsePcon: Clover <100, Honeycomb <110.
+    if model_id in _PCON_PARTY_MORALE_TARGET_BY_MODEL:
+        _dispatch_party_morale_pcon(model_id, recipients, sender_email)
+        return
+
+    effect_name = _pcon_effect_name(model_id)
+    effect_id = int(GLOBAL_CACHE.Skill.GetID(effect_name) or 0) if effect_name else 0
+    if effect_id <= 0:
+        return
+
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    local_has_effect = bool(
+        local_agent_id and GLOBAL_CACHE.Effects.HasEffect(local_agent_id, effect_id)
+    )
+    if (
+        not local_is_dead
+        and not local_has_effect
+        and GLOBAL_CACHE.Inventory.GetModelCount(model_id) > 0
+    ):
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
+                PySystem.Console.MessageType.Info,
+            )
+
+    # Persistent effects are personal: every remote client receives the same
+    # request and Messaging.UsePcon checks its own effect/inventory before use.
+    params = (model_id, effect_id, 0, 0)
+    for receiver_email in recipients:
+        if not receiver_email or receiver_email == sender_email:
+            continue
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.PCon,
+                params,
+            )
+        except Exception:
+            continue
+
+def _configure_runtime_upkeeps(*, consumables_enabled: bool | None = None, looting_enabled: bool | None = None) -> None:
+    global _runtime_consumables_enabled, _runtime_looting_enabled, _configured_consumable_upkeeps
+
+    previous_runtime_enabled = _runtime_consumables_enabled
     if consumables_enabled is not None:
         _runtime_consumables_enabled = bool(consumables_enabled)
     if looting_enabled is not None:
         _runtime_looting_enabled = bool(looting_enabled)
 
+    if previous_runtime_enabled != _runtime_consumables_enabled:
+        _reset_direct_pcon_runtime()
+
     if botting_tree is None:
         return
 
+    enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
         looting_enabled=_runtime_looting_enabled,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
-        consumable_upkeeps=(
-            _enabled_consumable_upkeeps()
-            if _runtime_consumables_enabled
-            else ()
-        ),
+        consumable_upkeeps=enabled_consumables,
         heroai_state_logging=False,
     )
+    _configured_consumable_upkeeps = enabled_consumables
+
+
+def _sync_consumable_upkeeps() -> None:
+    # Floor loading no longer tears down PCons; only conset services are synced.
+    if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
+        _configure_runtime_upkeeps()
 
 
 def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
-    """Enable or suspend conset and pcon upkeep at runtime."""
-
+    """Enable or suspend conset + direct PCon upkeep at runtime."""
     def _apply(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         if botting_tree is None:
             return BehaviorTree.NodeState.FAILURE
-
         if _runtime_consumables_enabled != bool(enabled):
             _configure_runtime_upkeeps(consumables_enabled=enabled)
-            PySystem.Console.Log(MODULE_NAME, 'Consumable upkeep resumed for the dungeon run.' if enabled else 'Consumable upkeep suspended during the end-of-dungeon return sequence.', PySystem.Console.MessageType.Info)
-
+            PySystem.Console.Log(
+                MODULE_NAME,
+                'Consumable upkeep resumed for the dungeon run.' if enabled else 'Consumable upkeep suspended during the end-of-dungeon return sequence.',
+                PySystem.Console.MessageType.Info,
+            )
         return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(BehaviorTree.ActionNode(name='Resume Consumable Upkeep' if enabled else 'Suspend Consumable Upkeep', action_fn=_apply, aftercast_ms=0))
-
+    return BehaviorTree(BehaviorTree.ActionNode(
+        name='Resume Consumable Upkeep' if enabled else 'Suspend Consumable Upkeep',
+        action_fn=_apply,
+        aftercast_ms=0,
+    ))
 
 
 def _draw_run_config() -> None:
@@ -551,19 +858,19 @@ def _draw_run_config() -> None:
             _inventory_min_free_slots = value
             changed = True
 
-        value = PyImGui.input_int('Minimum ID kits (0 = disabled)', _inventory_min_id_kits)
+        value = PyImGui.input_int('Minimum Superior ID kits (0 = disabled)', _inventory_min_id_kits)
         value = max(0, int(value))
         if value != _inventory_min_id_kits:
             _inventory_min_id_kits = value
             changed = True
 
-        value = PyImGui.input_int('Minimum salvage kits (0 = disabled)', _inventory_min_salvage_kits)
+        value = PyImGui.input_int('Minimum Superior salvage kits (0 = disabled)', _inventory_min_salvage_kits)
         value = max(0, int(value))
         if value != _inventory_min_salvage_kits:
             _inventory_min_salvage_kits = value
             changed = True
 
-        PyImGui.text_wrapped("MerchantRules executes the currently loaded Shards of Orr profile from SharedProfiles.json. If any active account falls below a configured threshold, all active accounts are processed together. Inventory space, ID kits and Expert Salvage Kits are queried locally on every active client, so each account uses its own real bag capacity. Equipment Pack is excluded.")
+        PyImGui.text_wrapped("MerchantRules executes the currently loaded Shards of Orr profile from SharedProfiles.json. The Superior ID / Salvage thresholds above are also sent directly with the execute request and are applied temporarily without changing the profile. If any active account falls below a configured threshold, all active accounts are processed together. Inventory space, Superior ID Kits and Superior Salvage Kits are queried locally on every active client, so each account uses its own real bag capacity. Equipment Pack is excluded.")
 
     if changed:
         _save_settings()
@@ -821,8 +1128,8 @@ def _log_inventory_statuses(statuses: list[dict[str, object]]) -> None:
         if bool(status.get("available", False)):
             message = (
                 f"[Inventory] {status['label']}: free={status['free_slots']}/{status['capacity']}, "
-                f"occupied={status['occupied']}, ID kits={status['id_kits']}, "
-                f"Expert salvage kits={status['salvage_kits']} -> {result}"
+                f"occupied={status['occupied']}, Superior ID kits={status['id_kits']}, "
+                f"Superior salvage kits={status['salvage_kits']} -> {result}"
             )
         else:
             message = f"[Inventory] {status['label']}: local inventory query unavailable -> {result}"
@@ -1048,8 +1355,8 @@ def _log_unhealthy_inventory_contents() -> None:
                 (
                     f"[Inventory diagnostic] {label}: "
                     f"free={status['free_slots']}/{status['capacity']}, "
-                    f"ID kits={status['id_kits']}, "
-                    f"Expert salvage kits={status['salvage_kits']}, "
+                    f"Superior ID kits={status['id_kits']}, "
+                    f"Superior salvage kits={status['salvage_kits']}, "
                     f"mirrored occupied items={len(entries)}."
                 ),
                 PySystem.Console.MessageType.Warning,
@@ -1191,6 +1498,16 @@ def _restore_inventoryplus_after_merchant(attempt_key: str) -> BehaviorTree:
     return BT.Sequence(name='Restore InventoryPlus After MerchantRules', children=[_send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_inventoryplus_refs'), _set_local_auto_inventory_handler(True)])
 
 
+def _merchant_stock_request_spec() -> str:
+    """Encode this bot's desired carried Merchant Stock targets for MerchantRules."""
+    targets: list[str] = []
+    if _inventory_min_id_kits > 0 and ID_KIT_MODEL_IDS:
+        targets.append(f"{int(ID_KIT_MODEL_IDS[0])}:{int(_inventory_min_id_kits)}")
+    if _inventory_min_salvage_kits > 0 and SALVAGE_KIT_MODEL_IDS:
+        targets.append(f"{int(SALVAGE_KIT_MODEL_IDS[0])}:{int(_inventory_min_salvage_kits)}")
+    return "stock:" + ",".join(targets) if targets else ""
+
+
 def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         recipients = _inventory_recipient_emails()
@@ -1207,7 +1524,7 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
         execute = BTShared.SendAndWait(
             command=SharedCommandType.MerchantRules,
             params=(3.0, 0.0, 0.0, 0.0),
-            extra_data=(request_id, "", "0", "0"),
+            extra_data=(request_id, _merchant_stock_request_spec(), "0", "0"),
             recipients=recipients,
             include_self=True,
             refs_blackboard_key=f"{attempt_key}_merchant_rules_refs",
@@ -2132,10 +2449,17 @@ def UseAvailableSummoningStone() -> BehaviorTree:
     Summoning stones are handled as one-shot consumables and are therefore
     kept outside the continuous consumable upkeep service.
     """
-    if not _use_summoning_stone:
-        return BT.Succeeder('SummoningStoneDisabled')
 
-    return BT.Selector(name='Use Available Summoning Stone', children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS] + [BT.Succeeder('NoSummoningStoneAvailable')])
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BT.Succeeder('SummoningStoneDisabled')
+        return BT.Selector(
+            name='Use Available Summoning Stone',
+            children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
+            + [BT.Succeeder('NoSummoningStoneAvailable')],
+        )
+
+    return BT.Subtree(name='Use Summoning Stone In Dungeon', subtree_fn=_build)
 
 
 def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTree:
@@ -2666,6 +2990,156 @@ def EnterShardsOfOrr(enable_consumables_on_entry: bool=True) -> BehaviorTree:
 
 
 # region Planner point steps
+
+
+class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
+    """Freeze the current run step while any party member is dead.
+
+    The child is not reset while blocked. HeroAI and BottingTree background
+    services keep running, so resurrection/recovery can happen independently;
+    once every party member is alive, the exact current child resumes.
+    """
+
+    def __init__(self, child: BehaviorTree | BehaviorTree.Node, *, name: str) -> None:
+        super().__init__(name=name, node_type="PartyAliveGate", node_category="decorator")
+        self.child = self._coerce_node(child)
+        self._blocked = False
+        self._last_block_key = ""
+
+    def get_children(self) -> list[BehaviorTree.Node]:
+        return [self.child]
+
+    def reset(self) -> None:
+        super().reset()
+        self.child.reset()
+        self._blocked = False
+        self._last_block_key = ""
+
+    @staticmethod
+    def _party_member_agent_ids() -> tuple[list[int], int]:
+        try:
+            if not Map.IsMapReady() or not Party.IsPartyLoaded():
+                return [], 0
+
+            expected_size = max(0, int(Party.GetPartySize() or 0))
+            agent_ids: list[int] = []
+            seen: set[int] = set()
+
+            for player in Party.GetPlayers() or []:
+                login_number = int(getattr(player, "login_number", 0) or 0)
+                if login_number <= 0:
+                    continue
+                agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
+                if agent_id > 0 and agent_id not in seen:
+                    seen.add(agent_id)
+                    agent_ids.append(agent_id)
+
+            for member in Party.GetHeroes() or []:
+                agent_id = int(getattr(member, "agent_id", 0) or 0)
+                if agent_id > 0 and agent_id not in seen:
+                    seen.add(agent_id)
+                    agent_ids.append(agent_id)
+
+            for member in Party.GetHenchmen() or []:
+                agent_id = int(getattr(member, "agent_id", 0) or 0)
+                if agent_id > 0 and agent_id not in seen:
+                    seen.add(agent_id)
+                    agent_ids.append(agent_id)
+
+            return agent_ids, expected_size
+        except Exception:
+            return [], 0
+
+    @staticmethod
+    def _member_label(agent_id: int) -> str:
+        try:
+            name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
+            if name:
+                return name
+        except Exception:
+            pass
+        return f"agent {int(agent_id)}"
+
+    def _tick_impl(self) -> BehaviorTree.NodeState:
+        # Let the wrapped transition handle map loading normally.
+        try:
+            map_ready = bool(Map.IsMapReady())
+            party_loaded = bool(Party.IsPartyLoaded()) if map_ready else False
+        except Exception:
+            map_ready = False
+            party_loaded = False
+
+        if not map_ready or not party_loaded:
+            if self.blackboard is not None:
+                self.child.blackboard = self.blackboard
+            return self.child.tick()
+
+        member_ids, expected_size = self._party_member_agent_ids()
+
+        # Do not advance if the party mirror is temporarily incomplete.
+        if expected_size > 0 and len(member_ids) < expected_size:
+            block_key = f"unresolved:{len(member_ids)}/{expected_size}"
+            if self._last_block_key != block_key:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PartyAlive] Pausing run progression: party state incomplete ({len(member_ids)}/{expected_size} members resolved).",
+                    PySystem.Console.MessageType.Warning,
+                )
+                self._last_block_key = block_key
+            self._blocked = True
+            return BehaviorTree.NodeState.RUNNING
+
+        dead_ids: list[int] = []
+        for agent_id in member_ids:
+            try:
+                if Agent.IsDead(int(agent_id)):
+                    dead_ids.append(int(agent_id))
+            except Exception:
+                continue
+
+        if dead_ids:
+            dead_labels = tuple(self._member_label(agent_id) for agent_id in dead_ids)
+            block_key = "dead:" + "|".join(dead_labels)
+            if self._last_block_key != block_key:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PartyAlive] Pausing current run step until every party member is alive. Dead: {', '.join(dead_labels)}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+                self._last_block_key = block_key
+            self._blocked = True
+            return BehaviorTree.NodeState.RUNNING
+
+        if self._blocked:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "[PartyAlive] Every party member is alive. Resuming current run step.",
+                PySystem.Console.MessageType.Success,
+            )
+            self._blocked = False
+            self._last_block_key = ""
+
+        if self.blackboard is not None:
+            self.child.blackboard = self.blackboard
+        return self.child.tick()
+
+
+def _guard_run_step(
+    step_name: str,
+    factory: Callable[[], BehaviorTree],
+) -> tuple[str, Callable[[], BehaviorTree]]:
+    """Wrap one planner step with the per-tick party-alive gate."""
+
+    def _build() -> BehaviorTree:
+        child = factory()
+        return BehaviorTree(
+            _PauseWhilePartyNotAliveNode(
+                child,
+                name=f"Party Alive Guard - {step_name}",
+            )
+        )
+
+    return step_name, _build
 
 
 def _map_guarded_point(name: str, map_id: int, child: BehaviorTree, skip_if_in_maps: Sequence[int]=()) -> BehaviorTree:
@@ -3329,9 +3803,7 @@ def CollectRewardAndReturnToArbor(end_countdown_timeout_ms: int=190000) -> Behav
 # region Execution
 
 def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
-    return [
-        ("Initialize Bot", InitializeBot),
-        ("Prepare Party And Supplies", PreparePartyAndSupplies),
+    guarded_run_steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
         ("Travel To Shandra", TravelToShandra),
         ("Handle Shandra Quest", HandleShandraQuest),
         ("Enter Shards Of Orr", EnterShardsOfOrr),
@@ -3372,6 +3844,14 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_vanquish_point_steps("Level 3 Route To Fendi", SOO_LEVEL_3, L3_FENDI_PATH),
         ("Level 3 Fendi Boss Fight", Level3_FendiFight),
         ("Level 3 Chest", Level3_Chest),
+    ]
+
+    return [
+        ("Initialize Bot", InitializeBot),
+        ("Prepare Party And Supplies", PreparePartyAndSupplies),
+
+        *(_guard_run_step(step_name, factory) for step_name, factory in guarded_run_steps),
+
         ("Collect Reward And Return To Arbor", CollectRewardAndReturnToArbor),
         ("Resolve Shandra Quest", ResolveShandraQuestAfterRun),
         ("Inventory Check And Maintenance", InventoryCheckAndMaintenance),
@@ -3456,7 +3936,9 @@ def main() -> None:
         initialized = True
 
     tree = ensure_botting_tree()
+    _sync_consumable_upkeeps()
     tree.tick()
+    _tick_direct_pcon_upkeep()
     tree.UI.draw_window(icon_path=TEXTURE, iconwidth=96, main_child_dimensions=(420, 380), extra_tabs=[('Statistics', _draw_statistics), ('Config', _draw_run_config)])
 
 
