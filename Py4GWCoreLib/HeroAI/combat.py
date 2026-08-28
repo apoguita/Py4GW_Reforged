@@ -10,7 +10,7 @@ from Py4GWCoreLib.enums import SPIRIT_BUFF_MAP, ModelID
 from Py4GWCoreLib.GlobalCache.HexRemovalPriority import get_hexed_ally_for_removal
 from Py4GWCoreLib.EnemyBlacklist import EnemyBlacklist
 from .custom_skill import CustomSkillClass
-from .targeting import TargetLowestAlly, TargetLowestAllyEnergy, TargetClusteredEnemy, TargetLowestAllyCaster, TargetLowestAllyMartial, TargetLowestAllyMelee, TargetLowestAllyRanged, GetAllAlliesArray, TargetAllyWeaponSpell, TargetMinionOrAllyNonEnchanted, TargetMinionNonEnchanted, TargetAllyNonEnchanted, TargetAllyNonWeaponSpelled, TargetDeadPartyMember, IsResurrectablePartyMember
+from .targeting import TargetLowestAlly, TargetLowestAllyEnergy, TargetClusteredEnemy, TargetLowestAllyCaster, TargetLowestAllyMartial, TargetLowestAllyMelee, TargetLowestAllyRanged, TargetAllyWithMostAdjacentEnemies, GetAllAlliesArray, TargetAllyWeaponSpell, TargetMinionOrAllyNonEnchanted, TargetMinionNonEnchanted, TargetAllyNonEnchanted, TargetAllyNonWeaponSpelled, TargetDeadPartyMember, IsResurrectablePartyMember
 from .targeting import GetEnemyAttacking, GetEnemyCasting, GetEnemyCastingSpell, GetEnemyCastingSpellOrChant, GetEnemyInjured, GetEnemyConditioned, GetEnemyHealthy
 from .targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, GetEnemyMoving, GetEnemyKnockedDown
 from .targeting import GetEnemyBleeding, GetEnemyPoisoned, GetEnemyCrippled
@@ -899,6 +899,8 @@ class CombatClass:
             v_target = TargetLowestAllyRanged(filter_skill_id=self.skills[slot].skill_id)
             if v_target == 0 and not targeting_strict:
                 v_target = get_lowest_ally()
+        elif target_allegiance == Skilltarget.AllyWithAdjacentEnemies:
+            v_target = TargetAllyWithMostAdjacentEnemies()
         elif target_allegiance == Skilltarget.OtherAlly:
             if self.skills[slot].custom_skill_data.Nature == SkillNature.EnergyBuff.value:
                 v_target = TargetLowestAllyEnergy(other_ally=True, filter_skill_id=self.skills[slot].skill_id, less_energy=self.skills[slot].custom_skill_data.Conditions.LessEnergy)
