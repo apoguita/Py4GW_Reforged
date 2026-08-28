@@ -165,7 +165,7 @@ Features:
 • Displays the required starting outpost and Map ID for the selected farm
 • Uses a random district when travelling to the selected farm outpost on initial setup
 • Automatic farming target calculated from the number of accounts that should receive all 5 Gifts
-• Optional travel and exchange route to Nicholas when legacy route data is available
+• Optional travel and exchange route to Nicholas when route data is available
 • Automatic multibox collector conversion for supported indirect Nicholas items
 • MerchantRules is disabled on all active accounts during the current crash-isolation workflow
 • One planner step per route waypoint for precise movement-failure recovery
@@ -173,7 +173,7 @@ Features:
 • Shared setup, resign/reset safety and inventory-query logic instead of duplicated code in every farm
 
 Credits:
-• Farm paths and Nicholas exchange paths: BubbleTea — migrated/adapted from his original AutoIt Nicholas the Traveler scripts
+• Farm paths and Nicholas exchange paths: BubbleTea — migrated/adapted from his original Nicholas the Traveler scripts
 • Py4GW BottingTree manager architecture and multibox integration: Nicholas Farm Manager project
 """
 
@@ -705,7 +705,7 @@ def _draw_config_tab() -> None:
                 "Manual collector conversion required before the Nicholas exchange."
             )
             PyImGui.text(
-                "BubbleTea's AutoIt source does not provide a reliable Yajide route."
+                "No reliable Yajide route is currently available."
             )
 
         PyImGui.text(
@@ -720,11 +720,7 @@ def _draw_config_tab() -> None:
     PyImGui.text("Nicholas exchange")
 
     if farm.exchange_available:
-        PyImGui.text(
-            f"Legacy route: {farm.exchange_source_file}"
-        )
-
-        if farming:
+        if farming or exchanging:
             PyImGui.begin_disabled(True)
 
         if PyImGui.button("Exchange with Nicholas"):
@@ -732,21 +728,22 @@ def _draw_config_tab() -> None:
             if not ex_tree.IsStarted():
                 ex_tree.Start()
 
-        if farming:
+        if farming or exchanging:
             PyImGui.end_disabled()
 
         if exchanging:
+            PyImGui.same_line()
+            if PyImGui.button("Stop Exchange"):
+                ex_tree.Stop()
             PyImGui.text("Exchange route running...")
     else:
         PyImGui.text(
-            "Exchange route unavailable in the legacy AutoIt source."
+            "Exchange route unavailable for this farm."
         )
 
     PyImGui.separator()
     PyImGui.text(f"Model ID: {farm.model_id}")
     PyImGui.text(f"Flow: {_flow_label(farm)}")
-    PyImGui.text(f"Farm source: {farm.source_file}")
-
     if busy:
         PyImGui.separator()
         PyImGui.text("Stop the active routine before changing farm.")
@@ -855,7 +852,7 @@ def tooltip():
     PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
     PyImGui.bullet_text(
         "Farm and Nicholas exchange paths: BubbleTea - migrated/adapted "
-        "from his original AutoIt Nicholas the Traveler scripts."
+        "from his original Nicholas the Traveler scripts."
     )
     PyImGui.bullet_text(
         "BottingTree manager and multibox integration: Sky."
