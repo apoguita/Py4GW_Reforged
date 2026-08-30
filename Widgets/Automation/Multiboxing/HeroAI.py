@@ -38,7 +38,6 @@ LOOT_THROTTLE_CHECK = ThrottledTimer(250)
 cached_data = CacheData()
 heroai_build = HeroAI_Build(cached_data)
 map_quads : list[Map.Pathing.Quad] = []
-build_contract_map_signature: tuple[int, int, int, int] | None = None
 #region Looting
 def LootingNode(cached_data: CacheData)-> BehaviorTree.NodeState:
     options = cached_data.account_options
@@ -92,12 +91,14 @@ def HandleOutOfCombat(cached_data: CacheData):
     options = cached_data.account_options
     
     if not options or not options.Combat:  # halt operation if combat is disabled
+        heroai_build.ResetTickExecution()
         return False
     
     if cached_data.data.in_aggro:
         return False
 
     if is_follow_recovery_active(cached_data, follow_execution_state):
+        heroai_build.ResetTickExecution()
         return False
 
     player_agent_id = Player.GetAgentID()
@@ -105,23 +106,25 @@ def HandleOutOfCombat(cached_data: CacheData):
         return False
 
     heroai_build.set_cached_data(cached_data)
-    next(heroai_build.ProcessOOC(), None)
+    next(heroai_build.Tick(is_in_combat=False), None)
     return heroai_build.DidTickSucceed()
 
 def HandleCombat(cached_data: CacheData):
     options = cached_data.account_options
     
     if not options or not options.Combat:  # halt operation if combat is disabled
+        heroai_build.ResetTickExecution()
         return False
 
     if is_follow_recovery_active(cached_data, follow_execution_state):
+        heroai_build.ResetTickExecution()
         return False
     
     if not cached_data.data.in_aggro:
         return False
 
     heroai_build.set_cached_data(cached_data)
-    next(heroai_build.ProcessCombat(), None)
+    next(heroai_build.Tick(is_in_combat=True), None)
     return heroai_build.DidTickSucceed()
 
 
@@ -182,37 +185,29 @@ def handle_UI (cached_data: CacheData):
     HeroAI_BaseUI.DrawBuildMatchesWindow(cached_data)
     HeroAI_BaseUI.DrawFollowFormationsQuickWindow(cached_data)
    
-def initialize(cached_data: CacheData) -> bool:  
-    global build_contract_map_signature
-
+def initialize(cached_data: CacheData) -> bool:
     if not Routines.Checks.Map.MapValid():
         heroai_build.ClearBuildContract()
-        build_contract_map_signature = None
         return False
     
     if not GLOBAL_CACHE.Party.IsPartyLoaded():
+        heroai_build.ResetTickExecution()
         return False
         
     if not Map.IsExplorable():  # halt operation if not in explorable area
         heroai_build.ClearBuildContract()
-        build_contract_map_signature = None
         return False
 
     if Map.IsInCinematic():  # halt operation during cinematic
+        heroai_build.ResetTickExecution()
         return False
     
     HeroAI_BaseUI._process_flagging_runtime(cached_data)
     #HeroAI_FloatingWindows.draw_Targeting_floating_buttons(cached_data)     
     heroai_build.set_cached_data(cached_data)
-    map_signature = (
-        int(Map.GetMapID()),
-        int(Map.GetRegion()[0]),
-        int(Map.GetDistrict()),
-        int(Map.GetLanguage()[0]),
-    )
-    if build_contract_map_signature != map_signature:
-        heroai_build.EnsureBuildContract(cached_data)
-        build_contract_map_signature = map_signature
+    player_agent_id = Player.GetAgentID()
+    if not Agent.IsAlive(player_agent_id) or Agent.IsKnockedDown(player_agent_id):
+        heroai_build.ResetTickExecution()
     cached_data.UpdateCombat()
     return True
 
@@ -482,6 +477,7 @@ def minimal():
     draw_skip_cutscene_overlay()
 
 def on_enable():
+    heroai_build.ClearBuildContract()
     HeroAI_FloatingWindows.settings.reset()
     HeroAI_FloatingWindows.SETTINGS_THROTTLE.SetThrottleTime(50)
 
