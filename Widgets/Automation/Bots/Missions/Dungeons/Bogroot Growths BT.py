@@ -6,7 +6,10 @@ import time
 import math
 
 import PySystem
+import PyImGui
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import GLOBAL_CACHE, Agent, Map, Player, SharedCommandType, Inventory, ImGui
 from Py4GWCoreLib.Listeners import Listeners
@@ -207,6 +210,7 @@ _configured_consumable_upkeeps: tuple[int, ...] | None = None
 # Personal consumables are maintained directly across the real multibox party.
 # Consets keep using the normal ConfigureUpkeep service.
 _PCON_DIRECT_DISPATCH_INTERVAL_MS = 650
+PCON_USAGE_LOG = False  # Set True only for PCon consumption diagnostics.
 _pcon_direct_index = 0
 _pcon_direct_last_dispatch_ms = 0
 _pcon_direct_runtime_logged = False
@@ -516,14 +520,15 @@ def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_ema
         item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
         if item_id > 0:
             GLOBAL_CACHE.Inventory.UseItem(item_id)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                (
-                    f"[PCons] Party morale use: model={int(model_id)}, "
-                    f"morale={party_min_morale} -> target={int(target_morale)}."
-                ),
-                PySystem.Console.MessageType.Info,
-            )
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"[PCons] Party morale use: model={int(model_id)}, "
+                        f"morale={party_min_morale} -> target={int(target_morale)}."
+                    ),
+                    PySystem.Console.MessageType.Info,
+                )
             return
 
     remote_recipients = [
@@ -625,11 +630,12 @@ def _tick_direct_pcon_upkeep() -> None:
         item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id) or 0)
         if item_id > 0:
             GLOBAL_CACHE.Inventory.UseItem(item_id)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
-                PySystem.Console.MessageType.Info,
-            )
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
+                    PySystem.Console.MessageType.Info,
+                )
 
     # Persistent effects are personal: every remote client receives the same
     # request and Messaging.UsePcon checks its own effect/inventory before use.
@@ -1444,26 +1450,71 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
 def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
     """Run one MerchantRules attempt while staying in Gadd's Encampment.
 
-    InventoryCheckAndMaintenance() ensures every active account is in Vlox's
-    Falls before the first attempt. If the first attempt leaves the inventory
-    below threshold, the retry runs immediately in the same outpost.
+    MerchantRules stays disabled outside the actual maintenance window. Any
+    failure restores InventoryPlus and disables MerchantRules before retrying.
     """
     attempt_key = f"inventory_attempt_{attempt_number}"
-    return BT.Sequence(
-        name=f"Inventory Maintenance Attempt {attempt_number}",
+
+    normal_attempt = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Run",
         children=[
-            BT.LogMessage(message=f"Inventory maintenance attempt {attempt_number}/{INVENTORY_MAINTENANCE_RETRY_COUNT} in Gadd's Encampment.", module_name=MODULE_NAME),
+            BT.LogMessage(
+                message=(
+                    f"Inventory maintenance attempt {attempt_number}/"
+                    f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Gadd's Encampment."
+                ),
+                module_name=MODULE_NAME,
+            ),
             _set_local_auto_inventory_handler(False),
-            _send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=False, refs_key=f'{attempt_key}_disable_inventoryplus_refs'),
-            _send_widget_state(MERCHANT_RULES_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_merchant_rules_refs'),
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_inventoryplus_refs",
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=True,
+                refs_key=f"{attempt_key}_enable_merchant_rules_refs",
+            ),
             BT.Wait(1_000),
             _run_merchant_rules(attempt_key),
             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-            _query_all_inventory_states_node(name=f"Refresh Real Inventories After Attempt {attempt_number}"),
-            _inventory_is_healthy_node(f'Verify Inventory After Attempt {attempt_number}', log_success=True),
+            _query_all_inventory_states_node(
+                name=f"Refresh Real Inventories After Attempt {attempt_number}"
+            ),
+            _inventory_is_healthy_node(
+                f"Verify Inventory After Attempt {attempt_number}",
+                log_success=True,
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_success_refs",
+            ),
         ],
     )
 
+    cleanup_failure = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Cleanup Failure",
+        children=[
+            _restore_inventoryplus_after_merchant(f"{attempt_key}_cleanup"),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_failure_refs",
+            ),
+            BehaviorTree(
+                BehaviorTree.FailerNode(
+                    name=f"Inventory Maintenance Attempt {attempt_number} Failed"
+                )
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name=f"Inventory Maintenance Attempt {attempt_number}",
+        children=[normal_attempt, cleanup_failure],
+    )
 
 def _stop_for_inventory_failure_node() -> BehaviorTree:
     stopped = False
@@ -1506,27 +1557,66 @@ def _stop_for_inventory_failure_node() -> BehaviorTree:
 
 
 def InventoryCheckAndMaintenance() -> BehaviorTree:
-    disabled = BehaviorTree(BehaviorTree.ConditionNode(name='Inventory Maintenance Disabled', condition_fn=lambda _node: not _inventory_maintenance_enabled))
+    # MerchantRules is OFF during normal gameplay and inventory inspection. It is
+    # enabled only inside a real maintenance attempt, then disabled again on both
+    # success and failure paths.
+    disabled = BT.Sequence(
+        name="Inventory Maintenance Disabled",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Inventory Maintenance Disabled Check",
+                    condition_fn=lambda _node: not _inventory_maintenance_enabled,
+                )
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_disabled_merchant_off_refs",
+            ),
+        ],
+    )
 
-    maintenance_attempts = [_inventory_maintenance_attempt(attempt_number) for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)]
+    maintenance_attempts = [
+        _inventory_maintenance_attempt(attempt_number)
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
+    ]
     maintenance_attempts.append(_stop_for_inventory_failure_node())
 
     enabled_flow = BT.Sequence(
         name="Enabled Inventory Check And Maintenance",
         children=[
-            _query_all_inventory_states_node(name='Query Real Inventory State On Every Active Account'),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_check_merchant_off_refs",
+            ),
+            _query_all_inventory_states_node(
+                name="Query Real Inventory State On Every Active Account"
+            ),
             BT.Selector(
                 name="Check Inventory Thresholds",
                 children=[
-                    _inventory_is_healthy_node('Inventory Thresholds Already Satisfied', log_success=True),
+                    _inventory_is_healthy_node(
+                        "Inventory Thresholds Already Satisfied",
+                        log_success=True,
+                    ),
                     BT.Sequence(
                         name="Run Inventory Maintenance",
                         children=[
                             _inventory_maintenance_trigger_node(),
+                            _send_widget_state(
+                                MERCHANT_RULES_WIDGET_NAME,
+                                enabled=False,
+                                refs_key="inventory_before_travel_merchant_off_refs",
+                            ),
                             _return_all_accounts_to_gadds("inventory_maintenance_setup"),
                             BT.LeaveParty(),
                             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-                            BT.Selector(name="Retry Inventory Maintenance In Gadd's Encampment", children=maintenance_attempts),
+                            BT.Selector(
+                                name="Retry Inventory Maintenance In Gadd's Encampment",
+                                children=maintenance_attempts,
+                            ),
                         ],
                     ),
                 ],
@@ -1534,8 +1624,10 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
         ],
     )
 
-    return BT.Selector(name='Inventory Check And Maintenance', children=[disabled, enabled_flow])
-
+    return BT.Selector(
+        name="Inventory Check And Maintenance",
+        children=[disabled, enabled_flow],
+    )
 
 def StartupInventoryCheck() -> BehaviorTree:
     return BT.Selector(
@@ -2614,6 +2706,56 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Inventory Check And Maintenance", InventoryCheckAndMaintenance),
         ("Prepare Next Bogroot Run", PrepareNextBogrootRun),
     ]
+
+
+def tooltip() -> None:
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped(
+        "A complete multibox BottingTree automation for Bogroot Growths / Frog Scepter farming. "
+        "The run starts from Gadd's Encampment, handles Tekks' War and progresses through both "
+        "dungeon levels before opening the final chest and preparing the next run."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Automates Sparkfly Swamp and the complete Level 1 and Level 2 Bogroot route.")
+    PyImGui.bullet_text("Handles Tekks' War, dungeon blessings, boss keys, doors, bosses and the final chest.")
+    PyImGui.bullet_text("Uses point-by-point dungeon clearing while preserving the current step during party recovery.")
+    PyImGui.bullet_text(
+        "Supports multibox party control, configurable Hard Mode, consets, personal consumables "
+        "and summoning stones with dungeon-only upkeep."
+    )
+    PyImGui.bullet_text(
+        "Multibox inventory maintenance can trigger MerchantRules when an active account falls "
+        "below the configured thresholds."
+    )
+    PyImGui.bullet_text("Tracks Level 1/Level 2 times plus Frog Scepter and Glacial Blades drops across accounts.")
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Bogroot Growths / Frog Scepter BottingTree implementation: Sky.")
+    PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
+
+    PyImGui.end_tooltip()
 
 def main() -> None:
     global initialized

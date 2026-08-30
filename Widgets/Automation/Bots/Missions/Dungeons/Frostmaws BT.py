@@ -4,14 +4,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+import os
 import time
 
 import PySystem
 import PyImGui
 
-from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Party, Player, SharedCommandType
+from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Party, Player, SharedCommandType, ImGui
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
@@ -31,7 +35,8 @@ from Widgets.System.Messaging import (
     reset_inventory_state,
 )
 
-
+TEXTURE = os.path.join(PySystem.Console.get_projects_path(), 'Assets', 'Textures', 'Module_Icons', 'Frostmaws2.png')
+MODULE_ICON = 'Assets\\Textures\\Module_Icons\\Frostmaws2.png'
 MODULE_NAME = "Frostmaw's Burrows BT"
 INI_PATH = 'Widgets/Automation/Bots/Missions/Dungeons/Frostmaws Burrows BT'
 INI_FILENAME = 'Frostmaws_Burrows_BT.ini'
@@ -41,6 +46,15 @@ SURFACE_MAPS = (546,)
 DUNGEON_MAPS = (630, 631, 632, 633, 634)
 QUEST_ID = 0x32A
 GREAT_TEMPLE_OF_BALTHAZAR = 248
+
+# Frozen Soil / Terre gelee. Verified in Frostmaw runtime:
+# effect/skill ID 471, hostile spirit model ID 2933.
+FROZEN_SOIL_EFFECT_ID = 471
+FROZEN_SOIL_SPIRIT_MODEL_ID = 2933
+FROZEN_SOIL_CALL_TARGET_RESEND_MS = 1_000
+FROZEN_SOIL_ATTACK_RESEND_MS = 2_500
+FROZEN_SOIL_LOCAL_ATTACK_RESEND_MS = 1_000
+FROZEN_SOIL_CORPSE_MOVE_TOLERANCE = Range.Nearby.value
 
 SUMMON_MODEL_IDS = (37810, 30209, 31155)
 PCON_UPKEEPS = tuple(
@@ -124,6 +138,23 @@ _runtime_consumables_enabled = True
 _runtime_looting_enabled = True
 _configured_consumable_upkeeps: tuple[int, ...] | None = None
 _inventory_status_snapshot: dict[str, dict[str, object]] = {}
+
+# Personal consumables are dispatched directly instead of relying on the generic
+# ConsumableService recipient resolver.  This keeps PCons reliable with Headless
+# HeroAI and across named-planner restarts / dungeon floor transitions.
+_PCON_DIRECT_DISPATCH_INTERVAL_MS = 650
+PCON_USAGE_LOG = False  # Set True only for PCon consumption diagnostics.
+_pcon_direct_index = 0
+_pcon_direct_last_dispatch_ms = 0
+_pcon_direct_runtime_logged = False
+_pcon_direct_unresolved_effects_logged: set[int] = set()
+_pcon_direct_last_recipient_signature: tuple[str, ...] = ()
+_pcon_direct_morale_remote_index = 0
+_PCON_PARTY_MORALE_TARGET_BY_MODEL = {
+    int(ModelID.Four_Leaf_Clover.value): 100,
+    int(ModelID.Honeycomb.value): 110,
+}
+
 
 # Persistent statistics.
 _total_runs = 0
@@ -681,15 +712,320 @@ def _consumables_allowed() -> bool:
 
 
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
-    if not _consumables_allowed():
+    """Return generic BottingTree consumable services for the current phase.
+
+    PCons are intentionally NOT returned here.  They are maintained by
+    _tick_direct_pcon_upkeep(), which resolves the real multibox party from
+    SharedMemory instead of the Headless HeroAI party cache.
+    """
+    if not _runtime_consumables_enabled:
         return ()
+
     enabled: list[int] = []
     if _activate_conset:
         enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
-    if _activate_pcons:
-        enabled.extend(int(model_id) for model_id in PCON_UPKEEPS)
     return tuple(dict.fromkeys(enabled))
 
+
+def _pcon_effect_name(model_id: int) -> str:
+    """Resolve the effect name sent with SharedCommandType.PCon."""
+    model_id = int(model_id)
+
+    # Current ConsumableService presets use these names for rock candy and they
+    # are important because UsePcon must receive a non-zero effect id to avoid
+    # repeatedly consuming the same candy while its effect is already active.
+    overrides = {
+        int(ModelID.Blue_Rock_Candy.value): "Blue_Rock_Candy_Rush",
+        int(ModelID.Green_Rock_Candy.value): "Green_Rock_Candy_Rush",
+        int(ModelID.Red_Rock_Candy.value): "Red_Rock_Candy_Rush",
+        int(ModelID.Birthday_Cupcake.value): "Birthday_Cupcake_skill",
+        int(ModelID.Bowl_Of_Skalefin_Soup.value): "Skale_Vigor",
+        int(ModelID.Candy_Apple.value): "Candy_Apple_skill",
+        int(ModelID.Candy_Corn.value): "Candy_Corn_skill",
+        int(ModelID.Drake_Kabob.value): "Drake_Skin",
+        int(ModelID.Golden_Egg.value): "Golden_Egg_skill",
+        int(ModelID.Pahnai_Salad.value): "Pahnai_Salad_item_effect",
+        int(ModelID.Slice_Of_Pumpkin_Pie.value): "Pie_Induced_Ecstasy",
+        int(ModelID.War_Supplies.value): "Well_Supplied",
+    }
+    if model_id in overrides:
+        return overrides[model_id]
+    return str(CONSUMABLE_MODELID_TO_EFFECT_NAME.get(model_id, "") or "")
+
+
+def _pcon_account_map_tuple(account: object) -> tuple[int, int, int, int]:
+    map_obj = getattr(getattr(account, "AgentData", None), "Map", None)
+    return (
+        int(getattr(account, "MapID", 0) or getattr(map_obj, "MapID", 0) or 0),
+        int(getattr(account, "MapRegion", 0) or getattr(map_obj, "Region", 0) or 0),
+        int(getattr(account, "MapDistrict", 0) or getattr(map_obj, "District", 0) or 0),
+        int(getattr(account, "MapLanguage", 0) or getattr(map_obj, "Language", 0) or 0),
+    )
+
+
+def _pcon_account_party_id(account: object) -> int:
+    return int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+
+
+def _direct_pcon_party_emails() -> list[str]:
+    """Resolve the real account clients belonging to the leader's current party."""
+    local_email = str(Player.GetAccountEmail() or "").strip()
+    if not local_email:
+        return []
+
+    try:
+        local_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(local_email)
+    except Exception:
+        local_account = None
+
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False) or [])
+    except TypeError:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData() or [])
+    except Exception:
+        accounts = []
+
+    local_party_id = _pcon_account_party_id(local_account) if local_account is not None else 0
+    local_map = _pcon_account_map_tuple(local_account) if local_account is not None else None
+
+    # Shared memory can briefly lag during transitions.  PartyID is the primary
+    # contract; map identity is only the fallback when PartyID is unavailable.
+    result: list[str] = []
+    seen: set[str] = set()
+    for account in accounts:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+            continue
+
+        account_party_id = _pcon_account_party_id(account)
+        same_party = local_party_id > 0 and account_party_id == local_party_id
+        same_map_fallback = (
+            local_party_id <= 0
+            and local_map is not None
+            and _pcon_account_map_tuple(account) == local_map
+        )
+        if not same_party and not same_map_fallback:
+            continue
+
+        seen.add(email)
+        result.append(email)
+
+    if local_email not in seen:
+        result.append(local_email)
+    return result
+
+
+def _reset_direct_pcon_runtime(*, clear_unresolved: bool = False) -> None:
+    global _pcon_direct_index, _pcon_direct_last_dispatch_ms
+    global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
+    global _pcon_direct_morale_remote_index
+
+    _pcon_direct_index = 0
+    _pcon_direct_last_dispatch_ms = 0
+    _pcon_direct_runtime_logged = False
+    _pcon_direct_last_recipient_signature = ()
+    _pcon_direct_morale_remote_index = 0
+    if clear_unresolved:
+        _pcon_direct_unresolved_effects_logged.clear()
+
+
+def _bot_is_started() -> bool:
+    if botting_tree is None:
+        return False
+    try:
+        fn = getattr(botting_tree, "IsStarted", None)
+        if callable(fn):
+            return bool(fn())
+    except Exception:
+        pass
+    return bool(getattr(botting_tree, "started", False))
+
+
+def _shared_party_min_morale_for_direct_pcons() -> int | None:
+    """Return the lowest valid shared party morale, or None while unavailable."""
+    try:
+        entries = GLOBAL_CACHE.ShMem.GetSharedPartyMorale() or []
+    except Exception:
+        return None
+
+    values: list[int] = []
+    for entry in entries:
+        try:
+            morale = int(entry[1] or 0)
+        except (TypeError, ValueError, IndexError):
+            continue
+        if morale > 0:
+            values.append(morale)
+    return min(values) if values else None
+
+
+def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_email: str) -> None:
+    """Use one party-wide morale PCon when the shared morale is below its target.
+
+    Only one account is allowed to attempt the party-wide item per service pass;
+    this prevents Four-Leaf Clover / Honeycomb from being consumed by several
+    multibox clients at the same time before SharedMemory reflects the new morale.
+    """
+    global _pcon_direct_morale_remote_index
+
+    target_morale = _PCON_PARTY_MORALE_TARGET_BY_MODEL.get(int(model_id))
+    if target_morale is None:
+        return
+
+    party_min_morale = _shared_party_min_morale_for_direct_pcons()
+    if party_min_morale is None or party_min_morale >= int(target_morale):
+        return
+
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    if (
+        not local_is_dead
+        and GLOBAL_CACHE.Inventory.GetModelCount(int(model_id)) > 0
+    ):
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"[PCons] Party morale use: model={int(model_id)}, "
+                        f"morale={party_min_morale} -> target={int(target_morale)}."
+                    ),
+                    PySystem.Console.MessageType.Info,
+                )
+            return
+
+    remote_recipients = [
+        email for email in recipients
+        if email and email != sender_email
+    ]
+    if not remote_recipients:
+        return
+
+    # If the leader cannot consume it (dead/missing item), rotate the single
+    # remote attempt so another account gets a chance on the next service pass.
+    receiver_email = remote_recipients[
+        _pcon_direct_morale_remote_index % len(remote_recipients)
+    ]
+    _pcon_direct_morale_remote_index = (
+        _pcon_direct_morale_remote_index + 1
+    ) % max(1, len(remote_recipients))
+
+    try:
+        GLOBAL_CACHE.ShMem.SendMessage(
+            sender_email,
+            receiver_email,
+            SharedCommandType.PCon,
+            (int(model_id), 0, 0, 0),
+        )
+    except Exception:
+        return
+
+
+def _tick_direct_pcon_upkeep() -> None:
+    """Maintain persistent PCons plus party-wide morale consumables directly."""
+    global _pcon_direct_index, _pcon_direct_last_dispatch_ms
+    global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
+
+    if not _bot_is_started() or not _runtime_consumables_enabled or not _activate_pcons:
+        if _pcon_direct_runtime_logged or _pcon_direct_last_dispatch_ms:
+            _reset_direct_pcon_runtime()
+        return
+
+    try:
+        if not Map.IsMapReady() or not Map.IsExplorable():
+            return
+        if int(Map.GetMapID() or 0) not in DUNGEON_MAPS:
+            return
+    except Exception:
+        return
+
+    if not PCON_UPKEEPS:
+        return
+
+    now_ms = int(time.monotonic() * 1000.0)
+    if now_ms - int(_pcon_direct_last_dispatch_ms) < _PCON_DIRECT_DISPATCH_INTERVAL_MS:
+        return
+    _pcon_direct_last_dispatch_ms = now_ms
+
+    recipients = _direct_pcon_party_emails()
+    if not recipients:
+        return
+
+    recipient_signature = tuple(sorted(recipients))
+    if not _pcon_direct_runtime_logged or recipient_signature != _pcon_direct_last_recipient_signature:
+        _pcon_direct_runtime_logged = True
+        _pcon_direct_last_recipient_signature = recipient_signature
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[PCons] Direct multibox upkeep active: models={len(PCON_UPKEEPS)}, accounts={len(recipients)}.",
+            PySystem.Console.MessageType.Info,
+        )
+
+    model_id = int(PCON_UPKEEPS[_pcon_direct_index % len(PCON_UPKEEPS)])
+    _pcon_direct_index = (_pcon_direct_index + 1) % len(PCON_UPKEEPS)
+
+    sender_email = str(Player.GetAccountEmail() or "").strip()
+    if not sender_email:
+        return
+
+    # Four-Leaf Clover and Honeycomb are morale consumables, not persistent
+    # effects.  They are driven by the same party-morale thresholds used by
+    # Messaging.UsePcon: Clover <100, Honeycomb <110.
+    if model_id in _PCON_PARTY_MORALE_TARGET_BY_MODEL:
+        _dispatch_party_morale_pcon(model_id, recipients, sender_email)
+        return
+
+    effect_name = _pcon_effect_name(model_id)
+    effect_id = int(GLOBAL_CACHE.Skill.GetID(effect_name) or 0) if effect_name else 0
+    if effect_id <= 0:
+        if model_id not in _pcon_direct_unresolved_effects_logged:
+            _pcon_direct_unresolved_effects_logged.add(model_id)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[PCons] Skipping model {model_id}: could not resolve effect '{effect_name or '<none>'}.'",
+                PySystem.Console.MessageType.Warning,
+            )
+        return
+
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    local_has_effect = bool(
+        local_agent_id and GLOBAL_CACHE.Effects.HasEffect(local_agent_id, effect_id)
+    )
+    if (
+        not local_is_dead
+        and not local_has_effect
+        and GLOBAL_CACHE.Inventory.GetModelCount(model_id) > 0
+    ):
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
+                    PySystem.Console.MessageType.Info,
+                )
+
+    # Persistent effects are personal: every remote client receives the same
+    # request and Messaging.UsePcon checks its own effect/inventory before use.
+    params = (model_id, effect_id, 0, 0)
+    for receiver_email in recipients:
+        if not receiver_email or receiver_email == sender_email:
+            continue
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.PCon,
+                params,
+            )
+        except Exception:
+            continue
 
 def _configure_runtime_upkeeps(
     *,
@@ -699,14 +1035,19 @@ def _configure_runtime_upkeeps(
     global _runtime_consumables_enabled, _runtime_looting_enabled
     global _configured_consumable_upkeeps
 
+    previous_runtime_enabled = _runtime_consumables_enabled
     if consumables_enabled is not None:
         _runtime_consumables_enabled = bool(consumables_enabled)
     if looting_enabled is not None:
         _runtime_looting_enabled = bool(looting_enabled)
 
+    if previous_runtime_enabled != _runtime_consumables_enabled:
+        _reset_direct_pcon_runtime(clear_unresolved=False)
+
     if botting_tree is None:
         return
 
+    previous_consumables = _configured_consumable_upkeeps
     enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
         looting_enabled=_runtime_looting_enabled,
@@ -718,8 +1059,21 @@ def _configure_runtime_upkeeps(
     )
     _configured_consumable_upkeeps = enabled_consumables
 
+    pcon_count = len(PCON_UPKEEPS) if _runtime_consumables_enabled and _activate_pcons else 0
+    if previous_consumables != enabled_consumables or previous_runtime_enabled != _runtime_consumables_enabled:
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"[Consumables] Runtime {'ON' if _runtime_consumables_enabled else 'OFF'}: "
+                f"conset_services={len(enabled_consumables)}, direct_pcons={pcon_count}."
+            ),
+            PySystem.Console.MessageType.Info,
+        )
+
 
 def _sync_runtime_upkeeps() -> None:
+    # Only generic services (currently consets) participate in ConfigureUpkeep.
+    # Direct PCons read the live checkbox/runtime flags every frame.
     if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
         _configure_runtime_upkeeps()
 
@@ -1056,52 +1410,166 @@ def _return_all_accounts_to_sifhalla(attempt_key: str) -> BehaviorTree:
 
 
 def InventoryCheckAndMaintenance() -> BehaviorTree:
-    disabled = BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name="Inventory Maintenance Disabled",
-            condition_fn=lambda _node: not _inventory_maintenance_enabled,
-        )
-    )
-    attempts: list[BehaviorTree] = []
-    for attempt in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1):
-        key = f"inventory_attempt_{attempt}"
-        attempts.append(
-            BT.Sequence(
-                name=f"Inventory Maintenance Attempt {attempt}",
-                children=[
-                    _send_widget_state(INVENTORY_PLUS_WIDGET_NAME, False, f"{key}_inventoryplus_off"),
-                    _send_widget_state(MERCHANT_RULES_WIDGET_NAME, True, f"{key}_merchant_on"),
-                    _run_merchant_rules(key),
-                    _send_widget_state(INVENTORY_PLUS_WIDGET_NAME, True, f"{key}_inventoryplus_on"),
-                    BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-                    _query_all_inventory_states_node(f"Refresh Inventory Attempt {attempt}"),
-                    _inventory_is_healthy_node(f"Inventory Healthy After Attempt {attempt}"),
-                ],
-            )
-        )
-
-    enabled = BT.Sequence(
-        name="Inventory Check And Maintenance",
+    # MerchantRules is intentionally scoped to inventory verification/maintenance.
+    # Keeping the widget enabled during normal Frostmaw gameplay has caused client
+    # instability, so every path explicitly disables it again before returning.
+    disabled = BT.Sequence(
+        name="Inventory Maintenance Disabled",
         children=[
-            _query_all_inventory_states_node("Query Inventory On All Accounts"),
-            BT.Selector(
-                name="Inventory Threshold Decision",
-                children=[
-                    _inventory_is_healthy_node("Inventory Already Healthy"),
-                    BT.Sequence(
-                        name="Run MerchantRules Maintenance",
-                        children=[
-                            _return_all_accounts_to_sifhalla("inventory_maintenance_setup"),
-                            BT.LeaveParty(),
-                            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-                            BT.Selector(name="MerchantRules Attempts", children=attempts),
-                        ],
-                    ),
-                ],
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Inventory Maintenance Disabled Check",
+                    condition_fn=lambda _node: not _inventory_maintenance_enabled,
+                )
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                False,
+                "inventory_disabled_merchant_off",
             ),
         ],
     )
-    return BT.Selector(name="Optional Inventory Maintenance", children=[disabled, enabled])
+
+    attempts: list[BehaviorTree] = []
+    for attempt in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1):
+        key = f"inventory_attempt_{attempt}"
+
+        # The first branch is the normal attempt. If anything in it fails
+        # (MerchantRules, refresh query, or threshold validation), the fallback
+        # branch restores both widgets and returns FAILURE so the selector can
+        # try the next maintenance attempt.
+        normal_attempt = BT.Sequence(
+            name=f"Inventory Maintenance Attempt {attempt} - Run",
+            children=[
+                _send_widget_state(
+                    INVENTORY_PLUS_WIDGET_NAME,
+                    False,
+                    f"{key}_inventoryplus_off",
+                ),
+                _send_widget_state(
+                    MERCHANT_RULES_WIDGET_NAME,
+                    True,
+                    f"{key}_merchant_on",
+                ),
+                _run_merchant_rules(key),
+                _send_widget_state(
+                    INVENTORY_PLUS_WIDGET_NAME,
+                    True,
+                    f"{key}_inventoryplus_on",
+                ),
+                BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+                _query_all_inventory_states_node(
+                    f"Refresh Inventory Attempt {attempt}"
+                ),
+                _inventory_is_healthy_node(
+                    f"Inventory Healthy After Attempt {attempt}"
+                ),
+                _send_widget_state(
+                    MERCHANT_RULES_WIDGET_NAME,
+                    False,
+                    f"{key}_merchant_off_success",
+                ),
+            ],
+        )
+
+        cleanup_failure = BT.Sequence(
+            name=f"Inventory Maintenance Attempt {attempt} - Cleanup Failure",
+            children=[
+                _send_widget_state(
+                    INVENTORY_PLUS_WIDGET_NAME,
+                    True,
+                    f"{key}_inventoryplus_restore",
+                ),
+                _send_widget_state(
+                    MERCHANT_RULES_WIDGET_NAME,
+                    False,
+                    f"{key}_merchant_off_failure",
+                ),
+                BT.Failer(name=f"Inventory Maintenance Attempt {attempt} Failed"),
+            ],
+        )
+
+        attempts.append(
+            BT.Selector(
+                name=f"Inventory Maintenance Attempt {attempt}",
+                children=[normal_attempt, cleanup_failure],
+            )
+        )
+
+    # MerchantRules is enabled before the initial inventory verification, then
+    # disabled immediately after the threshold decision. If maintenance is
+    # required, it stays OFF during resign/travel/party teardown and is only
+    # re-enabled inside an actual MerchantRules maintenance attempt.
+    healthy_without_maintenance = BT.Sequence(
+        name="Inventory Already Healthy",
+        children=[
+            _inventory_is_healthy_node("Inventory Already Healthy Check"),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                False,
+                "inventory_check_merchant_off_healthy",
+            ),
+        ],
+    )
+
+    maintenance_required = BT.Sequence(
+        name="Run MerchantRules Maintenance",
+        children=[
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                False,
+                "inventory_check_merchant_off_before_maintenance",
+            ),
+            _return_all_accounts_to_sifhalla("inventory_maintenance_setup"),
+            BT.LeaveParty(),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            BT.Selector(name="MerchantRules Attempts", children=attempts),
+        ],
+    )
+
+    enabled_normal = BT.Sequence(
+        name="Inventory Check And Maintenance - Run",
+        children=[
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                True,
+                "inventory_check_merchant_on",
+            ),
+            _query_all_inventory_states_node("Query Inventory On All Accounts"),
+            BT.Selector(
+                name="Inventory Threshold Decision",
+                children=[healthy_without_maintenance, maintenance_required],
+            ),
+        ],
+    )
+
+    # Last-resort cleanup: even if a query or maintenance branch fails, do not
+    # leave MerchantRules enabled while the bot continues/restarts.
+    enabled_cleanup_failure = BT.Sequence(
+        name="Inventory Check Failure Cleanup",
+        children=[
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                True,
+                "inventory_check_inventoryplus_restore",
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                False,
+                "inventory_check_merchant_off_failure",
+            ),
+            BT.Failer(name="Inventory Check And Maintenance Failed"),
+        ],
+    )
+
+    enabled = BT.Selector(
+        name="Inventory Check And Maintenance",
+        children=[enabled_normal, enabled_cleanup_failure],
+    )
+    return BT.Selector(
+        name="Optional Inventory Maintenance",
+        children=[disabled, enabled],
+    )
 
 
 def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
@@ -1143,12 +1611,349 @@ def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
     )
 
 
+def _frozen_soil_affected_alive_members(member_ids: Sequence[int]) -> list[int]:
+    """Return living party members currently under the Frozen Soil effect."""
+    affected: list[int] = []
+    for agent_id in member_ids:
+        try:
+            if not Agent.IsAlive(int(agent_id)):
+                continue
+            if GLOBAL_CACHE.Effects.HasEffect(int(agent_id), FROZEN_SOIL_EFFECT_ID):
+                affected.append(int(agent_id))
+        except Exception:
+            continue
+    return affected
+
+
+def _find_frozen_soil_spirit(reference_ids: Sequence[int]) -> int:
+    """Resolve only the verified Frostmaw Frozen Soil spirit (model 2933).
+
+    Do not fall back to another nearby spirit.  Runtime evidence from Frostmaw
+    confirmed model 2933 for Esprit de Terre gelee; the previous generic
+    fallback could incorrectly select spirits such as Spirit of Life while the
+    Frozen Soil effect was still fading from the party.
+    """
+    reference_positions: list[tuple[float, float]] = []
+    for agent_id in reference_ids:
+        try:
+            x, y = Agent.GetXY(int(agent_id))
+            reference_positions.append((float(x), float(y)))
+        except Exception:
+            continue
+
+    try:
+        spirit_pet_ids = [int(agent_id) for agent_id in (AgentArray.GetSpiritPetArray() or [])]
+    except Exception:
+        spirit_pet_ids = []
+    try:
+        enemy_ids = [int(agent_id) for agent_id in (AgentArray.GetEnemyArray() or [])]
+    except Exception:
+        enemy_ids = []
+
+    ordered_ids: list[int] = []
+    seen: set[int] = set()
+    for agent_id in (*spirit_pet_ids, *enemy_ids):
+        if agent_id <= 0 or agent_id in seen:
+            continue
+        seen.add(agent_id)
+        ordered_ids.append(agent_id)
+
+    candidates: list[tuple[float, int]] = []
+    for agent_id in ordered_ids:
+        try:
+            if not Agent.IsAlive(agent_id):
+                continue
+            if int(Agent.GetModelID(agent_id) or 0) != FROZEN_SOIL_SPIRIT_MODEL_ID:
+                continue
+            if reference_positions:
+                x, y = Agent.GetXY(agent_id)
+                distance_sq = min(
+                    (float(x) - rx) ** 2 + (float(y) - ry) ** 2
+                    for rx, ry in reference_positions
+                )
+            else:
+                distance_sq = 0.0
+            candidates.append((distance_sq, agent_id))
+        except Exception:
+            continue
+
+    if not candidates:
+        return 0
+    candidates.sort()
+    return int(candidates[0][1])
+
+
+def _frozen_soil_spirit_scan_summary(reference_ids: Sequence[int]) -> str:
+    """Compact one-shot diagnostics when the spirit still cannot be resolved."""
+    try:
+        ids = [int(agent_id) for agent_id in (AgentArray.GetSpiritPetArray() or [])]
+    except Exception:
+        ids = []
+
+    reference_positions: list[tuple[float, float]] = []
+    for reference_id in reference_ids:
+        try:
+            x, y = Agent.GetXY(int(reference_id))
+            reference_positions.append((float(x), float(y)))
+        except Exception:
+            continue
+
+    details: list[str] = []
+    for agent_id in ids[:8]:
+        try:
+            name = str(Agent.GetNameByID(agent_id) or "?").strip() or "?"
+            model_id = int(Agent.GetModelID(agent_id) or 0)
+            is_spirit = bool(Agent.IsSpirit(agent_id))
+            alive = bool(Agent.IsAlive(agent_id))
+            x, y = Agent.GetXY(agent_id)
+            distance = 0.0
+            if reference_positions:
+                distance = min(
+                    ((float(x) - rx) ** 2 + (float(y) - ry) ** 2) ** 0.5
+                    for rx, ry in reference_positions
+                )
+            details.append(
+                f"id={agent_id} model={model_id} spirit={int(is_spirit)} alive={int(alive)} d={distance:.0f} name={name}"
+            )
+        except Exception:
+            continue
+    return f"SpiritPetArray={len(ids)}" + (" | " + " ; ".join(details) if details else "")
+
+
+def _send_frozen_soil_call_target(target_id: int) -> tuple[bool, str]:
+    """Call the verified Frozen Soil spirit as the party target.
+
+    HeroAI in the current Reforged tree has a dedicated call-target subsystem,
+    while the runtime exposed no HeroAICommandAPI.focus method.  Calling the
+    target is therefore the next live test: the leader script can still select
+    and call an agent while its character is dead, and the other clients can
+    react to the party target call.
+    """
+    target_id = int(target_id)
+    if target_id <= 0:
+        return False, "invalid target"
+
+    try:
+        if int(Player.GetTargetID() or 0) != target_id:
+            Player.ChangeTarget(target_id)
+    except Exception as exc:
+        return False, f"ChangeTarget failed: {exc}"
+
+    try:
+        Player.CallTarget(target_id)
+        return True, f"CallTarget({target_id})"
+    except Exception as exc:
+        return False, f"CallTarget failed: {exc}"
+
+
+def _frozen_soil_account_clients_alive() -> list[tuple[str, int, str]]:
+    """Return living real player clients in the leader's current party/map.
+
+    Heroes and NPC slots are intentionally excluded: remote commands are sent to
+    actual game clients only.  The local player is included when alive so the
+    caller can decide whether to execute locally or through SharedMemory.
+    """
+    local_email = str(Player.GetAccountEmail() or "").strip()
+    if not local_email:
+        return []
+
+    try:
+        local_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(local_email)
+    except Exception:
+        local_account = None
+
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False) or [])
+    except TypeError:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData() or [])
+    except Exception:
+        accounts = []
+
+    local_party_id = _pcon_account_party_id(local_account) if local_account is not None else 0
+    local_map = _pcon_account_map_tuple(local_account) if local_account is not None else None
+
+    # Fall back to the live map signature if the local shared slot has not
+    # published its map yet.
+    if not local_map or int(local_map[0] or 0) <= 0:
+        try:
+            local_map = (
+                int(Map.GetMapID() or 0),
+                int(Map.GetRegion()[0] or 0),
+                int(Map.GetDistrict() or 0),
+                int(Map.GetLanguage()[0] or 0),
+            )
+        except Exception:
+            local_map = None
+
+    result: list[tuple[str, int, str]] = []
+    seen: set[str] = set()
+    for account in accounts:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+            continue
+
+        account_party_id = _pcon_account_party_id(account)
+        account_map = _pcon_account_map_tuple(account)
+        same_party = local_party_id > 0 and account_party_id == local_party_id
+        same_map_fallback = local_party_id <= 0 and local_map is not None and account_map == local_map
+        if not same_party and not same_map_fallback:
+            continue
+
+        # A stale same-party slot from a loading/outpost transition must not be
+        # ordered to interact with an agent from another instance.
+        if local_map is not None and int(account_map[0] or 0) > 0 and account_map != local_map:
+            continue
+
+        agent_data = getattr(account, "AgentData", None)
+        agent_id = int(getattr(agent_data, "AgentID", 0) or 0)
+        if agent_id <= 0:
+            continue
+        try:
+            if not Agent.IsAlive(agent_id):
+                continue
+        except Exception:
+            continue
+
+        label = str(getattr(agent_data, "CharacterName", "") or "").strip() or "player client"
+        seen.add(email)
+        result.append((email, agent_id, label))
+
+    # Shared memory can briefly omit the local slot even though the local
+    # character is usable. Add it explicitly when alive.
+    if local_email not in seen:
+        local_agent_id = int(Player.GetAgentID() or 0)
+        try:
+            local_alive = local_agent_id > 0 and Agent.IsAlive(local_agent_id)
+        except Exception:
+            local_alive = False
+        if local_alive:
+            try:
+                local_label = str(Player.GetName() or "").strip() or "local player"
+            except Exception:
+                local_label = "local player"
+            result.append((local_email, local_agent_id, local_label))
+
+    return result
+
+
+def _shared_command_ref_is_active(
+    sender_email: str,
+    receiver_email: str,
+    message_index: int,
+    command: SharedCommandType,
+) -> bool:
+    """Return True while one previously dispatched SharedMemory command is active."""
+    if int(message_index) < 0:
+        return False
+    try:
+        message = GLOBAL_CACHE.ShMem.GetInbox(int(message_index))
+    except Exception:
+        return False
+    if message is None:
+        return False
+    try:
+        return bool(
+            getattr(message, "Active", False)
+            and str(getattr(message, "SenderEmail", "") or "") == str(sender_email or "")
+            and str(getattr(message, "ReceiverEmail", "") or "") == str(receiver_email or "")
+            and int(getattr(message, "Command", -1)) == int(command)
+        )
+    except Exception:
+        return False
+
+
+def _dispatch_frozen_soil_attack(
+    target_id: int,
+    *,
+    remote_refs: dict[str, tuple[int, int]],
+    now_ms: int,
+    last_local_attack_ms: int,
+) -> tuple[int, int, int]:
+    """Force living player clients to start attacking Frozen Soil.
+
+    CallTarget is only a party ping.  The actual attack trigger is Interact on
+    the local living client and SharedCommandType.InteractWithTarget on each
+    living remote client. Messaging then changes/moves to the supplied agent and
+    executes InteractAgent on that client.
+
+    Returns (new_last_local_attack_ms, remote_sent_count, living_client_count).
+    """
+    target_id = int(target_id)
+    if target_id <= 0:
+        return int(last_local_attack_ms), 0, 0
+
+    sender_email = str(Player.GetAccountEmail() or "").strip()
+    if not sender_email:
+        return int(last_local_attack_ms), 0, 0
+
+    clients = _frozen_soil_account_clients_alive()
+    remote_sent = 0
+
+    for receiver_email, _agent_id, _label in clients:
+        if receiver_email == sender_email:
+            if now_ms - int(last_local_attack_ms) < FROZEN_SOIL_LOCAL_ATTACK_RESEND_MS:
+                continue
+            try:
+                if int(Player.GetTargetID() or 0) != target_id:
+                    Player.ChangeTarget(target_id)
+                Player.Interact(target_id, False)
+                last_local_attack_ms = now_ms
+            except Exception as exc:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[FrozenSoil] Local attack trigger failed for agent {target_id}: {exc}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            continue
+
+        previous = remote_refs.get(receiver_email)
+        if previous is not None:
+            previous_index, previous_sent_ms = previous
+            if _shared_command_ref_is_active(
+                sender_email,
+                receiver_email,
+                previous_index,
+                SharedCommandType.InteractWithTarget,
+            ):
+                continue
+            if now_ms - int(previous_sent_ms) < FROZEN_SOIL_ATTACK_RESEND_MS:
+                continue
+
+        try:
+            message_index = int(
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender_email,
+                    receiver_email,
+                    SharedCommandType.InteractWithTarget,
+                    (float(target_id), 0.0, 0.0, 0.0),
+                    ("Frozen Soil emergency attack", "", "", ""),
+                )
+            )
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[FrozenSoil] Remote attack dispatch failed for {_label}: {exc}.",
+                PySystem.Console.MessageType.Warning,
+            )
+            continue
+
+        if message_index >= 0:
+            remote_refs[receiver_email] = (message_index, now_ms)
+            remote_sent += 1
+
+    return int(last_local_attack_ms), int(remote_sent), len(clients)
+
+
 class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
     """Freeze the current run step while any party member is dead.
 
-    The child is not reset while blocked. HeroAI and BottingTree background
-    services keep running, so resurrection/recovery can happen independently;
-    once every party member is alive, the exact current child resumes.
+    Frostmaw special case: if a living party member is under Frozen Soil while
+    somebody is dead, call the verified Frozen Soil spirit and explicitly force
+    every living player client to interact/attack it. Once model 2933 is gone,
+    regroup heroes/accounts at the closest corpse so HeroAI can resurrect, clear
+    the temporary flags, then resume the exact wrapped planner child.
     """
 
     def __init__(self, child: BehaviorTree | BehaviorTree.Node, *, name: str) -> None:
@@ -1156,6 +1961,21 @@ class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
         self.child = self._coerce_node(child)
         self._blocked = False
         self._last_block_key = ""
+        self._last_call_target_id = 0
+        self._last_call_target_send_ms = 0
+        self._call_target_failure_key = ""
+        self._frozen_soil_was_blocking = False
+        self._frozen_soil_attack_refs: dict[str, tuple[int, int]] = {}
+        self._last_local_frozen_soil_attack_ms = 0
+        self._last_attack_dispatch_log_ms = 0
+        self._frozen_soil_spirit_gone = False
+        self._tracked_frozen_soil_id = 0
+        self._corpse_recovery_active = False
+        self._corpse_recovery_target_id = 0
+        self._corpse_recovery_move_node: BehaviorTree.Node | None = None
+        self._corpse_recovery_flag_node: BehaviorTree.Node | None = None
+        self._corpse_recovery_unflag_node: BehaviorTree.Node | None = None
+        self._corpse_recovery_flagged = False
 
     def get_children(self) -> list[BehaviorTree.Node]:
         return [self.child]
@@ -1165,6 +1985,21 @@ class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
         self.child.reset()
         self._blocked = False
         self._last_block_key = ""
+        self._last_call_target_id = 0
+        self._last_call_target_send_ms = 0
+        self._call_target_failure_key = ""
+        self._frozen_soil_was_blocking = False
+        self._frozen_soil_attack_refs: dict[str, tuple[int, int]] = {}
+        self._last_local_frozen_soil_attack_ms = 0
+        self._last_attack_dispatch_log_ms = 0
+        self._frozen_soil_spirit_gone = False
+        self._tracked_frozen_soil_id = 0
+        self._corpse_recovery_active = False
+        self._corpse_recovery_target_id = 0
+        self._corpse_recovery_move_node = None
+        self._corpse_recovery_flag_node = None
+        self._corpse_recovery_unflag_node = None
+        self._corpse_recovery_flagged = False
 
     @staticmethod
     def _party_member_agent_ids() -> tuple[list[int], int]:
@@ -1211,6 +2046,271 @@ class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
             pass
         return f"agent {int(agent_id)}"
 
+    @staticmethod
+    def _select_recovery_corpse(dead_ids: Sequence[int]) -> int:
+        """Choose the dead member closest to any living real player client."""
+        corpse_ids = [int(agent_id) for agent_id in dead_ids if int(agent_id) > 0]
+        if not corpse_ids:
+            return 0
+
+        reference_positions: list[tuple[float, float]] = []
+        for _email, agent_id, _label in _frozen_soil_account_clients_alive():
+            try:
+                x, y = Agent.GetXY(int(agent_id))
+                reference_positions.append((float(x), float(y)))
+            except Exception:
+                continue
+
+        if not reference_positions:
+            try:
+                local_agent_id = int(Player.GetAgentID() or 0)
+                if local_agent_id > 0:
+                    x, y = Agent.GetXY(local_agent_id)
+                    reference_positions.append((float(x), float(y)))
+            except Exception:
+                pass
+
+        candidates: list[tuple[float, int]] = []
+        for corpse_id in corpse_ids:
+            try:
+                x, y = Agent.GetXY(corpse_id)
+                if reference_positions:
+                    distance_sq = min(
+                        (float(x) - rx) ** 2 + (float(y) - ry) ** 2
+                        for rx, ry in reference_positions
+                    )
+                else:
+                    distance_sq = 0.0
+                candidates.append((distance_sq, corpse_id))
+            except Exception:
+                continue
+
+        if not candidates:
+            return int(corpse_ids[0])
+        candidates.sort()
+        return int(candidates[0][1])
+
+    @classmethod
+    def _living_party_grouped_at_corpse(cls, corpse_x: float, corpse_y: float) -> bool:
+        """Return True once every living party member is close enough to the recovery corpse."""
+        member_ids, expected_size = cls._party_member_agent_ids()
+        if not member_ids:
+            return False
+        if expected_size > 0 and len(member_ids) < expected_size:
+            return False
+
+        tolerance_sq = float(FROZEN_SOIL_CORPSE_MOVE_TOLERANCE) ** 2
+        living_count = 0
+        for agent_id in member_ids:
+            try:
+                if not Agent.IsAlive(int(agent_id)):
+                    continue
+                living_count += 1
+                member_x, member_y = Agent.GetXY(int(agent_id))
+                distance_sq = (float(member_x) - corpse_x) ** 2 + (float(member_y) - corpse_y) ** 2
+                if distance_sq > tolerance_sq:
+                    return False
+            except Exception:
+                return False
+
+        return living_count > 0
+
+    def _reset_corpse_recovery_nodes(self, *, keep_active: bool = False) -> None:
+        for node in (
+            self._corpse_recovery_move_node,
+            self._corpse_recovery_flag_node,
+        ):
+            if node is None:
+                continue
+            try:
+                node.reset()
+            except Exception:
+                pass
+        self._corpse_recovery_move_node = None
+        self._corpse_recovery_flag_node = None
+        self._corpse_recovery_target_id = 0
+        if not keep_active:
+            self._corpse_recovery_active = False
+
+    def _request_corpse_recovery_unflag(self) -> bool:
+        """Clear local + multibox recovery flags before normal planner movement resumes."""
+        if not self._corpse_recovery_flagged:
+            self._corpse_recovery_unflag_node = None
+            return True
+
+        if self._corpse_recovery_unflag_node is None:
+            try:
+                self._corpse_recovery_unflag_node = self._coerce_node(BT.UnflagAllHeroes())
+            except Exception as exc:
+                try:
+                    Party.Heroes.UnflagAllHeroes()
+                except Exception:
+                    pass
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[FrozenSoil] Could not build recovery unflag tree: {exc}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+                self._corpse_recovery_flagged = False
+                return True
+
+        try:
+            if self.blackboard is not None:
+                self._corpse_recovery_unflag_node.blackboard = self.blackboard
+            state = self._corpse_recovery_unflag_node.tick()
+        except Exception as exc:
+            try:
+                Party.Heroes.UnflagAllHeroes()
+            except Exception:
+                pass
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[FrozenSoil] Recovery unflag failed: {exc}.",
+                PySystem.Console.MessageType.Warning,
+            )
+            self._corpse_recovery_flagged = False
+            self._corpse_recovery_unflag_node = None
+            return True
+
+        if state == BehaviorTree.NodeState.RUNNING:
+            return False
+
+        self._corpse_recovery_flagged = False
+        self._corpse_recovery_unflag_node = None
+        return True
+
+    def _cancel_corpse_recovery_for_new_spirit(self) -> None:
+        """Stop corpse regrouping if a new Frozen Soil spirit appears."""
+        self._reset_corpse_recovery_nodes()
+        if self._corpse_recovery_flagged:
+            # Best effort immediately; attack dispatch must not be delayed by flags
+            # that still point to the previous corpse position.
+            try:
+                Party.Heroes.UnflagAllHeroes()
+            except Exception:
+                pass
+            try:
+                unflag_node = self._coerce_node(BT.UnflagAllHeroes())
+                if self.blackboard is not None:
+                    unflag_node.blackboard = self.blackboard
+                unflag_node.tick()
+            except Exception:
+                pass
+            self._corpse_recovery_flagged = False
+            self._corpse_recovery_unflag_node = None
+
+    def _tick_corpse_recovery(self, dead_ids: Sequence[int]) -> None:
+        """Move/flag the surviving party back to a corpse so HeroAI can resurrect."""
+        if not self._corpse_recovery_active:
+            return
+
+        corpse_id = self._select_recovery_corpse(dead_ids)
+        if corpse_id <= 0:
+            return
+
+        try:
+            corpse_x, corpse_y = Agent.GetXY(corpse_id)
+            corpse_x = float(corpse_x)
+            corpse_y = float(corpse_y)
+        except Exception:
+            return
+
+        if corpse_id != self._corpse_recovery_target_id:
+            self._reset_corpse_recovery_nodes(keep_active=True)
+            self._corpse_recovery_target_id = int(corpse_id)
+
+            # Flag heroes and HeroAI-controlled accounts directly on the corpse.
+            # This also works when the local party leader is the dead member and
+            # therefore cannot walk there himself.
+            try:
+                self._corpse_recovery_flag_node = self._coerce_node(
+                    BT.FlagAllHeroes(corpse_x, corpse_y)
+                )
+                self._corpse_recovery_flagged = True
+            except Exception as exc:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[FrozenSoil] Could not flag party to corpse {corpse_id}: {exc}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[FrozenSoil] Spirit down; regrouping at {self._member_label(corpse_id)} "
+                f"(agent={corpse_id}) so HeroAI can resurrect.",
+                PySystem.Console.MessageType.Info,
+            )
+
+        if self._corpse_recovery_flag_node is not None:
+            try:
+                if self.blackboard is not None:
+                    self._corpse_recovery_flag_node.blackboard = self.blackboard
+                flag_state = self._corpse_recovery_flag_node.tick()
+                if flag_state != BehaviorTree.NodeState.RUNNING:
+                    self._corpse_recovery_flag_node = None
+            except Exception:
+                self._corpse_recovery_flag_node = None
+
+        # Once all living players/heroes have reached the corpse, release the
+        # recovery flag immediately. Keeping the party flagged until the dead
+        # member is resurrected can prevent HeroAI-controlled characters from
+        # moving freely enough to cast resurrection skills. If several members
+        # are dead, the next corpse selection will create a new regroup flag.
+        if self._corpse_recovery_flagged and self._living_party_grouped_at_corpse(corpse_x, corpse_y):
+            if self._request_corpse_recovery_unflag():
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[FrozenSoil] Regroup complete at {self._member_label(corpse_id)}; recovery flags cleared for HeroAI resurrection.",
+                    PySystem.Console.MessageType.Success,
+                )
+            return
+
+        local_agent_id = int(Player.GetAgentID() or 0)
+        try:
+            local_alive = local_agent_id > 0 and Agent.IsAlive(local_agent_id)
+        except Exception:
+            local_alive = False
+
+        if not local_alive:
+            return
+
+        try:
+            local_x, local_y = Agent.GetXY(local_agent_id)
+            distance_sq = (float(local_x) - corpse_x) ** 2 + (float(local_y) - corpse_y) ** 2
+            if distance_sq <= float(FROZEN_SOIL_CORPSE_MOVE_TOLERANCE) ** 2:
+                return
+        except Exception:
+            pass
+
+        if self._corpse_recovery_move_node is None:
+            try:
+                self._corpse_recovery_move_node = self._coerce_node(
+                    BT.Move(
+                        Vec2f(corpse_x, corpse_y),
+                        pause_on_combat=False,
+                        tolerance=FROZEN_SOIL_CORPSE_MOVE_TOLERANCE,
+                        flag_heroes_to_waypoint=False,
+                        log=False,
+                        ignore_destination_obstacles=True,
+                    )
+                )
+            except Exception as exc:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[FrozenSoil] Could not build corpse recovery move: {exc}.",
+                    PySystem.Console.MessageType.Warning,
+                )
+                return
+
+        try:
+            if self.blackboard is not None:
+                self._corpse_recovery_move_node.blackboard = self.blackboard
+            move_state = self._corpse_recovery_move_node.tick()
+            if move_state == BehaviorTree.NodeState.FAILURE:
+                self._corpse_recovery_move_node = None
+        except Exception:
+            self._corpse_recovery_move_node = None
+
     def _tick_impl(self) -> BehaviorTree.NodeState:
         # Let the wrapped transition handle map loading normally.
         try:
@@ -1250,6 +2350,147 @@ class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
 
         if dead_ids:
             dead_labels = tuple(self._member_label(agent_id) for agent_id in dead_ids)
+            affected_alive_ids = _frozen_soil_affected_alive_members(member_ids)
+
+            if affected_alive_ids:
+                frozen_soil_id = _find_frozen_soil_spirit(affected_alive_ids)
+                if frozen_soil_id > 0:
+                    # A verified Frozen Soil spirit is present again. If a previous
+                    # one had disappeared while effect 471 was lingering, stop any
+                    # corpse regroup flags and resume the emergency attack flow.
+                    if self._corpse_recovery_active or self._corpse_recovery_flagged:
+                        self._cancel_corpse_recovery_for_new_spirit()
+                    self._frozen_soil_spirit_gone = False
+                    self._tracked_frozen_soil_id = int(frozen_soil_id)
+                    spirit_name = self._member_label(frozen_soil_id)
+                    try:
+                        spirit_model = int(Agent.GetModelID(frozen_soil_id) or 0)
+                    except Exception:
+                        spirit_model = 0
+                    block_key = f"frozen_soil:{frozen_soil_id}:dead:" + "|".join(dead_labels)
+                    if self._last_block_key != block_key:
+                        PySystem.Console.Log(
+                            MODULE_NAME,
+                            f"[FrozenSoil] Resurrection blocked. Calling target {spirit_name} "
+                            f"(agent={frozen_soil_id}, model={spirit_model}) while dead: {', '.join(dead_labels)}.",
+                            PySystem.Console.MessageType.Warning,
+                        )
+                        self._last_block_key = block_key
+
+                    now_ms = int(time.monotonic() * 1000.0)
+                    if (
+                        frozen_soil_id != self._last_call_target_id
+                        or now_ms - self._last_call_target_send_ms >= FROZEN_SOIL_CALL_TARGET_RESEND_MS
+                    ):
+                        sent, detail = _send_frozen_soil_call_target(frozen_soil_id)
+                        if sent:
+                            self._last_call_target_id = frozen_soil_id
+                            self._last_call_target_send_ms = now_ms
+                            self._call_target_failure_key = ""
+                            PySystem.Console.Log(
+                                MODULE_NAME,
+                                f"[FrozenSoil] Party target call sent for agent {frozen_soil_id}: {detail}.",
+                                PySystem.Console.MessageType.Info,
+                            )
+                        else:
+                            failure_key = f"{frozen_soil_id}:{detail}"
+                            if failure_key != self._call_target_failure_key:
+                                PySystem.Console.Log(
+                                    MODULE_NAME,
+                                    f"[FrozenSoil] Party target call failed: {detail}.",
+                                    PySystem.Console.MessageType.Error,
+                                )
+                                self._call_target_failure_key = failure_key
+                            self._last_call_target_send_ms = now_ms
+
+                    (
+                        self._last_local_frozen_soil_attack_ms,
+                        remote_attack_sent,
+                        living_client_count,
+                    ) = _dispatch_frozen_soil_attack(
+                        frozen_soil_id,
+                        remote_refs=self._frozen_soil_attack_refs,
+                        now_ms=now_ms,
+                        last_local_attack_ms=self._last_local_frozen_soil_attack_ms,
+                    )
+                    if (
+                        remote_attack_sent > 0
+                        or now_ms - self._last_attack_dispatch_log_ms >= 5_000
+                    ):
+                        PySystem.Console.Log(
+                            MODULE_NAME,
+                            f"[FrozenSoil] Attack dispatch active for agent {frozen_soil_id}: "
+                            f"living_clients={living_client_count}, remote_commands={remote_attack_sent}.",
+                            PySystem.Console.MessageType.Info,
+                        )
+                        self._last_attack_dispatch_log_ms = now_ms
+
+                    self._frozen_soil_was_blocking = True
+                    self._blocked = True
+                    return BehaviorTree.NodeState.RUNNING
+
+                # Effect 471 can linger very briefly after Frozen Soil dies. Once
+                # we had a verified model 2933 and it disappears from SpiritPetArray,
+                # stop issuing CallTarget / attack commands immediately instead of
+                # waiting for the effect cache to refresh.
+                if self._tracked_frozen_soil_id > 0 and not self._frozen_soil_spirit_gone:
+                    previous_target_id = int(self._tracked_frozen_soil_id)
+                    self._frozen_soil_spirit_gone = True
+                    self._last_call_target_id = 0
+                    self._last_call_target_send_ms = 0
+                    self._call_target_failure_key = ""
+                    self._frozen_soil_attack_refs.clear()
+                    self._last_local_frozen_soil_attack_ms = 0
+                    self._last_attack_dispatch_log_ms = 0
+                    self._corpse_recovery_active = True
+                    self._last_block_key = "frozen_soil:spirit_gone:dead:" + "|".join(dead_labels)
+                    PySystem.Console.Log(
+                        MODULE_NAME,
+                        f"[FrozenSoil] Spirit model {FROZEN_SOIL_SPIRIT_MODEL_ID} "
+                        f"(agent={previous_target_id}) is gone; stopping CallTarget/attack dispatch immediately.",
+                        PySystem.Console.MessageType.Success,
+                    )
+                elif self._tracked_frozen_soil_id <= 0:
+                    # We see effect 471 but have not yet resolved a verified model
+                    # 2933 in this recovery episode. Keep one diagnostic only.
+                    block_key = "frozen_soil:no_hostile_spirit:dead:" + "|".join(dead_labels)
+                    if self._last_block_key != block_key:
+                        scan_summary = _frozen_soil_spirit_scan_summary(affected_alive_ids)
+                        PySystem.Console.Log(
+                            MODULE_NAME,
+                            "[FrozenSoil] Effect 471 is active, but the spirit was not resolved yet. " + scan_summary,
+                            PySystem.Console.MessageType.Warning,
+                        )
+                        self._last_block_key = block_key
+
+                if self._frozen_soil_spirit_gone and self._corpse_recovery_active:
+                    self._tick_corpse_recovery(dead_ids)
+
+                self._frozen_soil_was_blocking = True
+                self._blocked = True
+                return BehaviorTree.NodeState.RUNNING
+
+            if self._frozen_soil_was_blocking:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "[FrozenSoil] Blocking effect is gone from living party members; regrouping for HeroAI resurrection.",
+                    PySystem.Console.MessageType.Success,
+                )
+                if self._tracked_frozen_soil_id > 0 or self._frozen_soil_spirit_gone:
+                    self._corpse_recovery_active = True
+                self._frozen_soil_was_blocking = False
+                self._frozen_soil_spirit_gone = False
+                self._tracked_frozen_soil_id = 0
+                self._last_call_target_id = 0
+                self._last_call_target_send_ms = 0
+                self._call_target_failure_key = ""
+                self._frozen_soil_attack_refs.clear()
+                self._last_local_frozen_soil_attack_ms = 0
+                self._last_attack_dispatch_log_ms = 0
+
+            if self._corpse_recovery_active:
+                self._tick_corpse_recovery(dead_ids)
+
             block_key = "dead:" + "|".join(dead_labels)
             if self._last_block_key != block_key:
                 PySystem.Console.Log(
@@ -1261,14 +2502,29 @@ class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
             self._blocked = True
             return BehaviorTree.NodeState.RUNNING
 
+        if self._corpse_recovery_flagged:
+            if not self._request_corpse_recovery_unflag():
+                self._blocked = True
+                return BehaviorTree.NodeState.RUNNING
+
         if self._blocked:
             PySystem.Console.Log(
                 MODULE_NAME,
-                "[PartyAlive] Every party member is alive. Resuming current run step.",
+                "[PartyAlive] Every party member is alive. Recovery flags cleared; resuming current run step.",
                 PySystem.Console.MessageType.Success,
             )
             self._blocked = False
             self._last_block_key = ""
+            self._last_call_target_id = 0
+            self._last_call_target_send_ms = 0
+            self._call_target_failure_key = ""
+            self._frozen_soil_was_blocking = False
+            self._frozen_soil_attack_refs.clear()
+            self._last_local_frozen_soil_attack_ms = 0
+            self._last_attack_dispatch_log_ms = 0
+            self._reset_corpse_recovery_nodes()
+            self._corpse_recovery_flagged = False
+            self._corpse_recovery_unflag_node = None
 
         if self.blackboard is not None:
             self.child.blackboard = self.blackboard
@@ -1345,6 +2601,7 @@ def _vanquish_point_steps(
                         clear_area_radius=clear_area_radius,
                         pause_on_combat=True,
                         log=False,
+                        move_tolerance=800
                     ),
                     skip_if_in_maps=skip_if_in_maps,
                 ),
@@ -1644,7 +2901,81 @@ BURROWS_CHEST_GADGET_ID = 8926
 BURROWS_CHEST_POSITION = Vec2f(15514.00, -16373.00)
 
 JAGA_ROUTE = [Vec2f(-9202.36, -21590.34), Vec2f(-8010.68, -18935.76), Vec2f(-8116.08, -14579.48), Vec2f(-8425.41, -12548.05), Vec2f(-8450.02, -10128.42), Vec2f(-8887.21, -7362.70), Vec2f(-6935.84, -5517.69), Vec2f(-4784.04, -3020.46), Vec2f(-4081.30, 174.96), Vec2f(-1113.24, 2075.98), Vec2f(602.50, 4852.32), Vec2f(605.76, 810.73), Vec2f(15.75, 10129.33), Vec2f(887.83, 13275.95), Vec2f(2001.30, 16280.64), Vec2f(2807.11, 18958.18), Vec2f(1972.66, 21732.93), Vec2f(1278.18, 24506.75)]
-L1_ROUTE = [Vec2f(-15326.62, 17240.07), Vec2f(-14654.82, 16460.37), Vec2f(-13949.08, 15526.11), Vec2f(-13290.34, 15118.21), Vec2f(-12589.15, 16123.14), Vec2f(-12942.74, 14284.69), Vec2f(-12534.54, 13983.46), Vec2f(-12130.02, 13416.32), Vec2f(-10692.78, 11887.72), Vec2f(-11035.61, 12018.64), Vec2f(-10552.88, 12086.03), Vec2f(-10692.78, 11887.72), Vec2f(-11035.61, 12018.64), Vec2f(-10552.88, 12086.03)]
+
+
+def _remaining_jaga_route_from_current_position() -> list[Vec2f]:
+    """Resume Jaga from the nearest route point instead of replaying passed points."""
+    try:
+        if int(Map.GetMapID() or 0) != JAGA_MORAINE:
+            return list(JAGA_ROUTE)
+        current_x, current_y = Player.GetXY()
+    except Exception:
+        return list(JAGA_ROUTE)
+
+    nearest_index = 0
+    nearest_distance_sq = float("inf")
+    for index, point in enumerate(JAGA_ROUTE):
+        dx = float(point.x) - float(current_x)
+        dy = float(point.y) - float(current_y)
+        distance_sq = dx * dx + dy * dy
+        if distance_sq < nearest_distance_sq:
+            nearest_distance_sq = distance_sq
+            nearest_index = index
+
+    # Re-run the nearest point itself.  This preserves the MoveAndKill post-combat
+    # return/clear guarantee, but never sends the party back through the whole Jaga route.
+    return list(JAGA_ROUTE[nearest_index:])
+
+
+def _build_jaga_vanquish_from_current_position() -> BehaviorTree:
+    route = _remaining_jaga_route_from_current_position()
+    try:
+        current_x, current_y = Player.GetXY()
+        start_index = len(JAGA_ROUTE) - len(route) + 1
+        PySystem.Console.Log(
+            MODULE_NAME,
+            (
+                f"[JagaResume] Building Jaga route from point {start_index:02d}/"
+                f"{len(JAGA_ROUTE)} at current=({current_x:.0f}, {current_y:.0f})."
+            ),
+            PySystem.Console.MessageType.Info,
+        )
+    except Exception:
+        pass
+    return BT.VanquishNode(
+        route,
+        name="Jaga Moraine Route",
+        clear_area_radius=Range.Spirit.value,
+        pause_on_combat=True,
+        log=False,
+    )
+
+
+def _jaga_route_and_quest_tail() -> BehaviorTree:
+    return BT.Sequence(
+        name="Jaga Route And Cold Vengeance",
+        children=[
+            BT.Subtree(
+                name="Resume Jaga Route From Current Position",
+                subtree_fn=lambda _node: _build_jaga_vanquish_from_current_position(),
+            ),
+            BT.Move(Vec2f(646.48, 24899.17), pause_on_combat=False, log=False),
+            BT.MoveAndDialog(
+                Vec2f(1025.91, 25481.72),
+                dialog_id=0x832A01,
+                pause_on_combat=False,
+                multi_account=True,
+                log=True,
+            ),
+            BT.WaitForActiveQuest(QUEST_ID, timeout_ms=15_000),
+            BT.Move(
+                [Vec2f(1556.26, 24963.88), Vec2f(1723.61, 25814.54)],
+                pause_on_combat=False,
+                log=False,
+            ),
+        ],
+    )
+L1_ROUTE = [Vec2f(-15326.62, 17240.07), Vec2f(-14654.82, 16460.37), Vec2f(-13949.08, 15526.11), Vec2f(-13290.34, 15118.21), Vec2f(-12589.15, 16123.14), Vec2f(-12942.74, 14284.69), Vec2f(-12534.54, 13983.46), Vec2f(-12130.02, 13416.32), Vec2f(-10692.78, 11887.72), Vec2f(-11035.61, 12018.64), Vec2f(-10552.88, 12086.03), Vec2f(-10692.78, 11887.72), Vec2f(-11035.61, 12018.64)]
 L2_ROUTE_A = [Vec2f(18851.07, -3966.53), Vec2f(17812.88, -4577.16), Vec2f(16836.19, -5152.30), Vec2f(16511.35, -6024.33), Vec2f(14824.19, -7040.45), Vec2f(13579.67, -7094.05), Vec2f(12395.61, -6901.50), Vec2f(11993.82, -7825.46), Vec2f(12066.84, -8798.73), Vec2f(12204.84, -9669.14), Vec2f(11179, -10788)]
 L2_ROUTE_B = [Vec2f(12148.27, -10747.60), Vec2f(13428.25, -11445.93), Vec2f(13927.18, -12038.94), Vec2f(13997.46, -12528.07), Vec2f(14364.43, -14158.62), Vec2f(14034.07, -14417.76), Vec2f(14057.38, -15872.44), Vec2f(13841.90, -16372.93), Vec2f(13766.07, -17628.01), Vec2f(13953.39, -18542.89), Vec2f(13839.18, -18765.72)]
 L3_ROUTE_A = [Vec2f(-17459.51, 10531.91), Vec2f(-16190.60, 11567.74), Vec2f(-15289.93, 11778.42), Vec2f(-14153.34, 12479.54), Vec2f(-12732.61, 13419.55), Vec2f(-10719.29, 14748.05), Vec2f(-10265.08, 15693.50), Vec2f(-8828.57, 15625.13), Vec2f(-8027.84, 14726.56), Vec2f(-7173.30, 14729.47), Vec2f(-6570.46, 14762.64), Vec2f(-5327.02, 14781.65), Vec2f(-4519.06, 14765.36), Vec2f(-3534.68, 15449.94), Vec2f(-1744.74, 17095.78),]
@@ -1681,6 +3012,18 @@ def TravelFrostmaw() -> BehaviorTree:
         children=[BT.IsCurrentMap(map_id=map_id, log=False) for map_id in DUNGEON_MAPS],
     )
 
+    # If this planner step is restarted while already in Jaga Moraine, never run
+    # the Sifhalla coordinates again and never replay the whole Jaga path.  Resume
+    # from the nearest known route point instead.
+    resume_in_jaga = BT.Sequence(
+        name="Resume Frostmaw Travel In Jaga",
+        children=[
+            BT.IsCurrentMap(map_id=JAGA_MORAINE, log=False),
+            _runtime_consumable_upkeep_node(False),
+            _jaga_route_and_quest_tail(),
+        ],
+    )
+
     normal_entry = BT.Sequence(
         name="Sifhalla To Frostmaw",
         children=[
@@ -1690,34 +3033,25 @@ def TravelFrostmaw() -> BehaviorTree:
                 pause_on_combat=False,
                 log=False,
             ),
-            BT.MoveAndExitMap(Vec2f(16900, 22830), target_map_id=JAGA_MORAINE, log=True),
-            BT.MoveAndDialog(Vec2f(-9153.42, -22776.35),dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True),
-            BT.VanquishNode(
-                JAGA_ROUTE,
-                name="Jaga Moraine Route",
-                clear_area_radius=Range.Spirit.value,
-                pause_on_combat=True,
-                log=False,
-            ),
-            BT.Move(Vec2f(646.48, 24899.17), pause_on_combat=False, log=False),
-            BT.MoveAndDialog(
-                Vec2f(1025.91, 25481.72),
-                dialog_id=0x832A01,
-                pause_on_combat=False,
-                multi_account=True,
+            BT.MoveAndExitMap(
+                Vec2f(16900, 22830),
+                target_map_id=JAGA_MORAINE,
                 log=True,
+                timeout_ms=10_000,
             ),
-            BT.WaitForActiveQuest(QUEST_ID, timeout_ms=15_000),
-            BT.Move(
-                [Vec2f(1556.26, 24963.88), Vec2f(1723.61, 25814.54)],
-                pause_on_combat=False,
-                log=False,
+            BT.MoveAndDialog(
+                Vec2f(-9153.42, -22776.35),
+                dialog_id=DWARVEN_BLESSING_DIALOG,
+                multi_account=True,
             ),
-            
-            _runtime_consumable_upkeep_node(True),
+            _jaga_route_and_quest_tail(),
         ],
     )
-    return BT.Selector(name="Enter Frostmaw", children=[already_inside, normal_entry])
+
+    return BT.Selector(
+        name="Travel To Frostmaw",
+        children=[already_inside, resume_in_jaga, normal_entry],
+    )
 
 
 def EnterFrostmaw(enable_consumables_on_entry: bool=True) -> BehaviorTree:
@@ -1769,9 +3103,8 @@ def Level1_EnterLevel2() -> BehaviorTree:
         child=BT.Sequence(
             name="Enter Frostmaw Level 2",
             children=[
-                BT.MoveAndExitMap(Vec2f(-10800, 11050), target_map_id=FROSTMAW_L2, log=True),
-                BT.WaitForMapLoad(map_id=FROSTMAW_L2, timeout_ms=60_000),
-                BT.WaitUntilOnExplorable(timeout_ms=30_000),
+                BT.ClearEnemiesInArea(Vec2f(-11035.61, 12018.64)),
+                BT.MoveAndExitMap(Vec2f(-10900, 10850), target_map_id=FROSTMAW_L2, log=True,timeout_ms=10_000)
             ],
         ),
         skip_if_in_maps=(FROSTMAW_L2, FROSTMAW_L3, FROSTMAW_L4, FROSTMAW_L5),
@@ -1810,9 +3143,8 @@ def Level2_EnterLevel3() -> BehaviorTree:
         child=BT.Sequence(
             name="Enter Frostmaw Level 3",
             children=[
-                BT.MoveAndExitMap(Vec2f(13950, -19400), target_map_id=FROSTMAW_L3, log=True),
-                BT.WaitForMapLoad(map_id=FROSTMAW_L3, timeout_ms=60_000),
-                BT.WaitUntilOnExplorable(timeout_ms=30_000),
+                BT.ClearEnemiesInArea(Vec2f(13839.18, -18765.72)),
+                BT.MoveAndExitMap(Vec2f(13950, -19400), target_map_id=FROSTMAW_L3, log=True,timeout_ms=10_000)
             ],
         ),
         skip_if_in_maps=(FROSTMAW_L3, FROSTMAW_L4, FROSTMAW_L5),
@@ -1851,9 +3183,8 @@ def Level3_EnterLevel4() -> BehaviorTree:
         child=BT.Sequence(
             name="Enter Frostmaw Level 4",
             children=[
-                BT.MoveAndExitMap(Vec2f(18400, 15800), target_map_id=FROSTMAW_L4, log=True),
-                BT.WaitForMapLoad(map_id=FROSTMAW_L4, timeout_ms=60_000),
-                BT.WaitUntilOnExplorable(timeout_ms=30_000),
+                BT.ClearEnemiesInArea(Vec2f(15827.45, 16530.45)),
+                BT.MoveAndExitMap(Vec2f(18400, 15800), target_map_id=FROSTMAW_L4, log=True,timeout_ms=10000),
             ],
         ),
         skip_if_in_maps=(FROSTMAW_L4, FROSTMAW_L5),
@@ -1892,9 +3223,8 @@ def Level4_EnterLevel5() -> BehaviorTree:
         child=BT.Sequence(
             name="Enter Frostmaw Level 5",
             children=[
-                BT.MoveAndExitMap(Vec2f(-16500, -12600), target_map_id=FROSTMAW_L5, log=True),
-                BT.WaitForMapLoad(map_id=FROSTMAW_L5, timeout_ms=60_000),
-                BT.WaitUntilOnExplorable(timeout_ms=30_000),
+                BT.ClearEnemiesInArea(Vec2f(-15666.06, -12007.23)),
+                BT.MoveAndExitMap(Vec2f(-16500, -12600), target_map_id=FROSTMAW_L5, log=True,timeout_ms=10_000),
             ],
         ),
         skip_if_in_maps=(FROSTMAW_L5,),
@@ -2111,9 +3441,9 @@ def ResolveLathamQuestAfterRun() -> BehaviorTree:
                 Vec2f(-17505, 18508),
                 target_map_id=JAGA_MORAINE,
                 log=False,
+                timeout_ms=10_000
             ),
-            BT.WaitForMapLoad(map_id=JAGA_MORAINE, timeout_ms=60_000),
-            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+
             BT.Wait(2_000),
 
             BT.MoveAndDialog(
@@ -2260,6 +3590,65 @@ def ensure_botting_tree() -> BottingTree:
     return botting_tree
 
 
+
+def tooltip() -> None:
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped(
+        "A complete multibox BottingTree automation for Frostmaw's Burrows. "
+        "The run handles the Jaga Moraine approach and all five dungeon levels, "
+        "including quest progression, boss encounters, the final Burrows chest "
+        "and preparation for the next run."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text(
+        "Automates the complete Level 1 through Level 5 Frostmaw route."
+    )
+    PyImGui.bullet_text(
+        "Supports multibox party control, synchronized dialogs and floor progression."
+    )
+    PyImGui.bullet_text(
+        "Handles Frozen Soil recovery: living clients kill the spirit, regroup on "
+        "fallen party members and wait for HeroAI resurrection before resuming the paused step."
+    )
+    PyImGui.bullet_text(
+        "Configurable Normal/Hard Mode, consets, direct personal consumables, morale items and summoning stones."
+    )
+    PyImGui.bullet_text(
+        "MerchantRules is enabled only for inventory verification/maintenance and disabled again before gameplay."
+    )
+    PyImGui.bullet_text(
+        "Tracks run/floor times plus Silverwing, Bonecage Scythe and Icicle Staff drops across accounts."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Original Frostmaw AutoIt script and route: BubbleTea.")
+    PyImGui.bullet_text("BottingTree / multibox conversion and adaptations: Sky.")
+    PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
+
+    PyImGui.end_tooltip()
+
 def main() -> None:
     global initialized
     if not initialized:
@@ -2269,7 +3658,8 @@ def main() -> None:
     tree = ensure_botting_tree()
     _sync_runtime_upkeeps()
     tree.tick()
-    tree.UI.draw_window(
+    _tick_direct_pcon_upkeep()
+    tree.UI.draw_window(icon_path=TEXTURE,
         main_child_dimensions=(430, 390),
         extra_tabs=[("Statistics", _draw_statistics), ("Config", _draw_run_config)],
     )

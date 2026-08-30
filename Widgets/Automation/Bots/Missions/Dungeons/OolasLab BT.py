@@ -119,6 +119,7 @@ _configured_consumable_upkeeps: tuple[int, ...] | None = None
 # Personal consumables are maintained directly across the real multibox party.
 # Consets keep using the normal ConfigureUpkeep service.
 _PCON_DIRECT_DISPATCH_INTERVAL_MS = 650
+PCON_USAGE_LOG = False  # Set True only for PCon consumption diagnostics.
 _pcon_direct_index = 0
 _pcon_direct_last_dispatch_ms = 0
 _pcon_direct_runtime_logged = False
@@ -1588,14 +1589,15 @@ def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_ema
         item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
         if item_id > 0:
             GLOBAL_CACHE.Inventory.UseItem(item_id)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                (
-                    f"[PCons] Party morale use: model={int(model_id)}, "
-                    f"morale={party_min_morale} -> target={int(target_morale)}."
-                ),
-                PySystem.Console.MessageType.Info,
-            )
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"[PCons] Party morale use: model={int(model_id)}, "
+                        f"morale={party_min_morale} -> target={int(target_morale)}."
+                    ),
+                    PySystem.Console.MessageType.Info,
+                )
             return
 
     remote_recipients = [
@@ -1697,11 +1699,12 @@ def _tick_direct_pcon_upkeep() -> None:
         item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id) or 0)
         if item_id > 0:
             GLOBAL_CACHE.Inventory.UseItem(item_id)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
-                PySystem.Console.MessageType.Info,
-            )
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
+                    PySystem.Console.MessageType.Info,
+                )
 
     # Persistent effects are personal: every remote client receives the same
     # request and Messaging.UsePcon checks its own effect/inventory before use.
@@ -2560,40 +2563,37 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
 def _inventory_maintenance_attempt(
     attempt_number: int,
 ) -> BehaviorTree:
-    """Run one MerchantRules attempt in Eye of the North, then return to Rata Sum."""
+    """Run one MerchantRules attempt in Eye of the North, then return to Rata Sum.
+
+    MerchantRules remains disabled during travel/map loading and is enabled only
+    after the existing post-load stability wait. Both success and failure paths
+    explicitly disable it again before the planner can continue or retry.
+    """
 
     attempt_key = f"inventory_attempt_{attempt_number}"
 
-    return BT.Sequence(
-        name=f"Inventory Maintenance Attempt {attempt_number}",
+    normal_attempt = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Run",
         children=[
             BT.LogMessage(
                 message=(
-                    f"Inventory maintenance attempt "
-                    f"{attempt_number}/"
+                    f"Inventory maintenance attempt {attempt_number}/"
                     f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Eye of the North."
                 ),
                 module_name=MODULE_NAME,
             ),
-
             _set_local_auto_inventory_handler(False),
-
             _send_widget_state(
                 INVENTORY_PLUS_WIDGET_NAME,
                 enabled=False,
-                refs_key=(
-                    f"{attempt_key}_disable_inventoryplus_refs"
-                ),
+                refs_key=f"{attempt_key}_disable_inventoryplus_refs",
             ),
-
-            # Rata Sum's merchant can be outside the loaded compass/agent range at
-            # spawn. Eye of the North has explicit MerchantRules service selectors,
-            # so perform the actual maintenance there.
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_merchant_off_before_travel_refs",
+            ),
             _travel_all_accounts_to_inventory_outpost(attempt_key),
-
-            # Do not let MerchantRules initialize/execute during the map load.
-            # With a nearly/full inventory, give Guild Wars and the shared-memory
-            # inventory/agent snapshots a full 10 seconds to stabilize first.
             BT.LogMessage(
                 message=(
                     "Eye of the North loaded on every account. "
@@ -2602,32 +2602,23 @@ def _inventory_maintenance_attempt(
                 module_name=MODULE_NAME,
             ),
             BT.Wait(INVENTORY_MERCHANT_POST_TRAVEL_DELAY_MS),
-
             _send_widget_state(
                 MERCHANT_RULES_WIDGET_NAME,
                 enabled=True,
-                refs_key=(
-                    f"{attempt_key}_enable_merchant_rules_refs"
-                ),
+                refs_key=f"{attempt_key}_enable_merchant_rules_refs",
             ),
-
             BT.Wait(1_000),
-
             _run_merchant_rules(attempt_key),
-
-            # Oola's quest flow starts from Rata Sum, so always come back after
-            # MerchantRules before inventory verification / party reconstruction.
-            _return_all_accounts_to_rata(f"{attempt_key}_after_merchant"),
-
-            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-
-            _query_all_inventory_states_node(
-                name=(
-                    "Refresh Real Inventories After Attempt "
-                    f"{attempt_number}"
-                )
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_after_run_refs",
             ),
-
+            _return_all_accounts_to_rata(f"{attempt_key}_after_merchant"),
+            BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
+            _query_all_inventory_states_node(
+                name=f"Refresh Real Inventories After Attempt {attempt_number}"
+            ),
             _inventory_is_healthy_node(
                 f"Verify Inventory After Attempt {attempt_number}",
                 log_success=True,
@@ -2635,6 +2626,27 @@ def _inventory_maintenance_attempt(
         ],
     )
 
+    cleanup_failure = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Cleanup Failure",
+        children=[
+            _restore_inventoryplus_after_merchant(f"{attempt_key}_cleanup"),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_failure_refs",
+            ),
+            BehaviorTree(
+                BehaviorTree.FailerNode(
+                    name=f"Inventory Maintenance Attempt {attempt_number} Failed"
+                )
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name=f"Inventory Maintenance Attempt {attempt_number}",
+        children=[normal_attempt, cleanup_failure],
+    )
 
 def _stop_for_inventory_failure_node() -> BehaviorTree:
     stopped = False
@@ -2727,29 +2739,43 @@ def _stop_for_inventory_failure_node() -> BehaviorTree:
 
 
 def InventoryCheckAndMaintenance() -> BehaviorTree:
-    disabled = BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name="Inventory Maintenance Disabled",
-            condition_fn=lambda _node: not _inventory_maintenance_enabled,
-        )
+    # MerchantRules stays OFF during normal Rata Sum gameplay and inventory
+    # inspection. It is only enabled inside the Eye of the North maintenance
+    # attempt after the map-stability delay.
+    disabled = BT.Sequence(
+        name="Inventory Maintenance Disabled",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Inventory Maintenance Disabled Check",
+                    condition_fn=lambda _node: not _inventory_maintenance_enabled,
+                )
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_disabled_merchant_off_refs",
+            ),
+        ],
     )
 
     maintenance_attempts = [
         _inventory_maintenance_attempt(attempt_number)
-        for attempt_number in range(
-            1,
-            INVENTORY_MAINTENANCE_RETRY_COUNT + 1,
-        )
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
     ]
     maintenance_attempts.append(_stop_for_inventory_failure_node())
 
     enabled_flow = BT.Sequence(
         name="Enabled Inventory Check And Maintenance",
         children=[
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_check_merchant_off_refs",
+            ),
             _query_all_inventory_states_node(
                 name="Query Real Inventory State On Every Active Account"
             ),
-
             BT.Selector(
                 name="Check Inventory Thresholds",
                 children=[
@@ -2757,19 +2783,18 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
                         "Inventory Thresholds Already Satisfied",
                         log_success=True,
                     ),
-
                     BT.Sequence(
                         name="Run Inventory Maintenance",
                         children=[
                             _inventory_maintenance_trigger_node(),
-
-                            _return_all_accounts_to_rata(
-                                "inventory_maintenance_setup"
+                            _send_widget_state(
+                                MERCHANT_RULES_WIDGET_NAME,
+                                enabled=False,
+                                refs_key="inventory_before_travel_merchant_off_refs",
                             ),
-
+                            _return_all_accounts_to_rata("inventory_maintenance_setup"),
                             BT.LeaveParty(),
                             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-
                             BT.Selector(
                                 name="Retry Inventory Maintenance In Rata Sum",
                                 children=maintenance_attempts,
@@ -2783,12 +2808,8 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
 
     return BT.Selector(
         name="Inventory Check And Maintenance",
-        children=[
-            disabled,
-            enabled_flow,
-        ],
+        children=[disabled, enabled_flow],
     )
-
 
 def StartupInventoryCheck() -> BehaviorTree:
     return BT.Selector(
@@ -4221,33 +4242,52 @@ def _draw_run_config() -> None:
 
 
 def tooltip() -> None:
-    title = Color(255, 200, 100, 255)
-
     PyImGui.set_next_window_size((600, 0))
     PyImGui.begin_tooltip()
 
+    title_color = Color(255, 200, 100, 255)
     ImGui.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
-
     ImGui.push_font("Regular", 20)
-    ImGui.text_aligned(MODULE_NAME, alignment=Alignment.MidLeft, color=title.color_tuple, height=32)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
     ImGui.pop_font()
 
     PyImGui.spacing()
+    PyImGui.spacing()
     PyImGui.separator()
+    PyImGui.spacing()
 
     PyImGui.text_wrapped(
-        "Multibox Oola's Lab farm using the Shards of Orr BT framework "
-        "for party control, inventory maintenance and persistent statistics."
+        "A complete multibox BottingTree automation for Oola's Lab. The run starts from Rata Sum, "
+        "handles A Little Workshop of Horrors and progresses through all three dungeon levels "
+        "before opening Oola's Chest and preparing the party for the next run."
     )
+    PyImGui.spacing()
 
-    PyImGui.bullet_text("Complete Oola route with keys and Flux Matrix mechanic.")
-    PyImGui.bullet_text("Multibox quest dialogs and final chest interaction.")
-    PyImGui.bullet_text("Tracks Storm Daggers (model 1986) per account.")
-    PyImGui.bullet_text("MerchantRules inventory maintenance via Eye of the North.")
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Automates the complete Magus Stones and Level 1, Level 2 and Level 3 dungeon route.")
+    PyImGui.bullet_text("Handles the dungeon quest, keys, doors, Flux Matrix mechanic, golems and final chest.")
+    PyImGui.bullet_text("Supports multibox party control, shared dialogs and synchronized dungeon progression.")
+    PyImGui.bullet_text(
+        "Configurable Hard Mode, consets, personal consumables and summoning stones with dungeon-only upkeep."
+    )
+    PyImGui.bullet_text(
+        "Multibox inventory maintenance can trigger MerchantRules when an active account falls "
+        "below the configured thresholds."
+    )
+    PyImGui.bullet_text("Tracks run/floor times and Storm Daggers drops across accounts.")
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Oola's Lab BottingTree implementation: Sky.")
+    PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
 
     PyImGui.end_tooltip()
-
 
 def main() -> None:
     global initialized

@@ -7,10 +7,13 @@ from collections.abc import Callable, Sequence
 from typing import Protocol, cast
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 import PySystem
+import PyImGui
 PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
-from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, SharedCommandType
+from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, SharedCommandType, ImGui
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.ImGui_src.types import Alignment
+from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import GadgetModelID
@@ -2887,6 +2890,59 @@ def ensure_botting_tree() -> BottingTree:
         )
     return botting_tree
 
+
+
+def tooltip() -> None:
+    PyImGui.set_next_window_size((600, 0))
+    PyImGui.begin_tooltip()
+
+    title_color = Color(255, 200, 100, 255)
+    ImGui.image(MODULE_ICON, (32, 32))
+    PyImGui.same_line(0, 10)
+    ImGui.push_font("Regular", 20)
+    ImGui.text_aligned(
+        MODULE_NAME,
+        alignment=Alignment.MidLeft,
+        color=title_color.color_tuple,
+        height=32,
+    )
+    ImGui.pop_font()
+
+    PyImGui.spacing()
+    PyImGui.spacing()
+    PyImGui.separator()
+    PyImGui.spacing()
+
+    PyImGui.text_wrapped(
+        "A complete multibox BottingTree farm for the Voltaic Spear. The run starts from "
+        "Umbral Grotto, crosses Verdant Cascades to Slaver's Exile and clears Justiciar "
+        "Thommis' room before opening the final chest and returning for the next run."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Automates the complete Umbral Grotto, Verdant Cascades and Thommis route.")
+    PyImGui.bullet_text("Uses point-based dungeon clearing with priority handling for key enemy roles.")
+    PyImGui.bullet_text(
+        "Consets, personal consumables and summoning stones remain disabled during travel and "
+        "are enabled only inside the Thommis room."
+    )
+    PyImGui.bullet_text("Supports multibox party control, synchronized chest handling and configurable Hard Mode.")
+    PyImGui.bullet_text(
+        "Multibox inventory maintenance can trigger MerchantRules when an active account falls "
+        "below the configured thresholds."
+    )
+    PyImGui.bullet_text(
+        "Tracks total, Verdant and Thommis split times plus Voltaic Spear drops for each account."
+    )
+    PyImGui.spacing()
+
+    PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
+    PyImGui.bullet_text("Original Voltaic Spear AutoIt script and route: BubbleTea.")
+    PyImGui.bullet_text("BottingTree conversion, multibox integration and adaptations: Sky.")
+    PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
+
+    PyImGui.end_tooltip()
 
 def main() -> None:
     global initialized

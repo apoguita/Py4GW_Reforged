@@ -1248,6 +1248,7 @@ def MoveAndExitMap(
             flag_heroes_to_waypoint=flag_heroes_to_waypoint,
             ignore_destination_obstacles=True,
             destination_obstacle_ignore_distance=destination_obstacle_ignore_distance,
+            avoid_obstacles=False,
             log=log,
         ),
         WaitForMapLoad(

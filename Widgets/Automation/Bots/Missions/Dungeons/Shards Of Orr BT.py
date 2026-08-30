@@ -9,7 +9,7 @@ from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray, Map, Party, Player, SharedCommandType, Inventory, ImGui
+from Py4GWCoreLib import Agent, GLOBAL_CACHE, AgentArray, Map, Party, Player, Routines, SharedCommandType, Inventory, ImGui
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -142,7 +142,6 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
-_keep_torch_for_caster = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
 _inventory_min_id_kits = 1
@@ -153,6 +152,7 @@ _configured_consumable_upkeeps: tuple[int, ...] | None = None
 # Personal consumables are maintained directly across the real multibox party.
 # Consets keep using the normal ConfigureUpkeep service.
 _PCON_DIRECT_DISPATCH_INTERVAL_MS = 650
+PCON_USAGE_LOG = False  # Set True only for PCon consumption diagnostics.
 _pcon_direct_index = 0
 _pcon_direct_last_dispatch_ms = 0
 _pcon_direct_runtime_logged = False
@@ -166,10 +166,15 @@ _PCON_PARTY_MORALE_TARGET_BY_MODEL = {
 _runtime_looting_enabled = True
 _inventory_status_snapshot: dict[str, dict[str, object]] = {}
 
-# Resolved once per run before the first tactical torch drop.  The value is
-# cached because carrying a bundle can temporarily hide the equipped weapon
-# type reported by the game.
+# Resolved before a torch is picked up because carrying a bundle can hide the
+# equipped weapon type reported by the game.  Martial builds automatically
+# drop the torch for combat; caster builds keep it.
 _drop_torch_for_combat: bool | None = None
+_torch_dropped_for_combat = False
+# Set by the custom shrine wipe recovery. While active, torch pickup may be
+# abandoned after a short grace period so a torch left behind at the death
+# location cannot trap the resumed planner step.
+_shrine_recovery_torch_skip_active = False
 
 # Persistent statistics.
 _statistics_loaded = False
@@ -231,6 +236,10 @@ L1_PATH_AFTER_DOOR = [Vec2f(17442.4, 2577.83), Vec2f(20181.6, 1203.7), Vec2f(204
 # Level 2 routes / torch mechanics
 TORCH_MODEL_IDS = (22341, 22342)
 TORCH_BUFF_ID = 2545
+# Martial leaders keep carrying the torch until enemies are genuinely close.
+# This only controls the automatic torch DROP trigger; Vanquish clear radii
+# remain unchanged.
+TORCH_COMBAT_TRIGGER_RADIUS = Range.Spellcast.value
 
 L2_BLESSING_NPC = Vec2f(-14076.0, -19457.0)
 
@@ -270,6 +279,345 @@ FENDI_CHEST_SAFE_POSITION = Vec2f(-15885.85, 17100.0)
 initialized = False
 botting_tree: BottingTree | None = None
 
+
+def _resume_vec(point: PathPoint) -> Vec2f:
+    """Normalize a route point for shrine-distance calculations."""
+    try:
+        return Vec2f(float(point.x), float(point.y))
+    except Exception:
+        return Vec2f(float(point[0]), float(point[1]))
+
+
+def _shrine_resume_candidates(map_id: int) -> list[tuple[str, Vec2f]]:
+    """Return safe named planner anchors for shrine recovery on each dungeon floor."""
+    if map_id == SOO_LEVEL_1:
+        return [
+            ("Level 1 Start", _resume_vec(L1_PATH[0])),
+            *[(f"Level 1 First Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L1_PATH, start=1)],
+            *[(f"Level 1 Route To Level 2 - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L1_PATH_AFTER_DOOR, start=1)],
+        ]
+
+    if map_id == SOO_LEVEL_2:
+        first_brazier_approach = [Vec2f(-9404.44, -17963.49), Vec2f(-11303.00, -14596.00)]
+        room2_final_fight = [Vec2f(-4245.2, -2101.0)]
+        return [
+            # Level 2 Start can reopen the torch chest if recovery happens very early.
+            ("Level 2 Start", _resume_vec(L2_TORCH_CHEST)),
+            *[(f"Level 2 First Torch Drop Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_FIRST_TORCH_DROP_POINT_PATH, start=1)],
+            *[(f"Level 2 First Brazier Approach - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(first_brazier_approach, start=1)],
+            *[(f"Level 2 Route To Room 2 Drop - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_TO_ROOM2_DROP, start=1)],
+            *[(f"Level 2 Route Back To Room 2 Torch - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_RETURN_TO_ROOM2_TORCH_PATH, start=1)],
+            *[(f"Level 2 Room 2 - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_ROOM2_PATH, start=1)],
+            *[(f"Level 2 Room 2 Final Fight - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(room2_final_fight, start=1)],
+            *[(f"Level 2 Route To Dungeon Lock - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_PATH_TO_LOCK, start=1)],
+            *[(f"Level 2 Exit Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_EXIT_PATH, start=1)],
+        ]
+
+    if map_id == SOO_LEVEL_3:
+        return [
+            ("Level 3 Start", _resume_vec(L3_ENTRY_BLESSING)),
+            *[(f"Level 3 Main Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_MAIN_PATH, start=1)],
+            *[(f"Level 3 Brigant Room Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_BRIGANT_ROOM, start=1)],
+            *[(f"Level 3 Torch Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_PATH_TO_TORCH, start=1)],
+            *[(f"Level 3 Route To Fendi - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_FENDI_PATH, start=1)],
+        ]
+
+    return []
+
+
+def _nearest_shrine_resume_step(
+    map_id: int,
+    position: tuple[float, float],
+    failed_step_name: str,
+) -> tuple[str, float]:
+    """Pick the closest already-reached planner waypoint to the current shrine."""
+    candidates = _shrine_resume_candidates(map_id)
+    if not candidates:
+        return "", float("inf")
+
+    # Never jump forward past the planner step where the wipe happened. This also
+    # prevents a geometrically-close waypoint behind a locked door from being used.
+    planner_names: list[str] = []
+    if botting_tree is not None:
+        try:
+            planner_names = list(botting_tree.GetNamedPlannerStepNames() or [])
+        except Exception:
+            planner_names = []
+
+    if planner_names and failed_step_name in planner_names:
+        failed_index = planner_names.index(failed_step_name)
+        eligible: list[tuple[str, Vec2f]] = []
+        for step_name, point in candidates:
+            try:
+                if planner_names.index(step_name) <= failed_index:
+                    eligible.append((step_name, point))
+            except ValueError:
+                continue
+        if eligible:
+            candidates = eligible
+        else:
+            # No safe coordinate anchor exists before this step; use the failed
+            # planner step itself rather than ever jumping forward.
+            return "", float("inf")
+
+    px, py = float(position[0]), float(position[1])
+
+    def _distance_sq(candidate: tuple[str, Vec2f]) -> float:
+        point = candidate[1]
+        dx = float(point.x) - px
+        dy = float(point.y) - py
+        return dx * dx + dy * dy
+
+    step_name, point = min(candidates, key=_distance_sq)
+    distance = _distance_sq((step_name, point)) ** 0.5
+    return step_name, distance
+
+
+def ShardsPartyWipeRecoveryService() -> BehaviorTree:
+    """Resume a shrine wipe from the route step nearest to the resurrection shrine."""
+    state: dict[str, object] = {
+        "active": False,
+        "mode": "",
+        "failed_step_name": "",
+        "restart_step_name": "",
+        "last_return_ms": 0.0,
+        "player_was_dead": False,
+        "player_dead_pos": None,
+    }
+
+    def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
+        PySystem.Console.Log("ShardsWipeRecovery", message, message_type)
+
+    def _resolve_current_step(node: BehaviorTree.Node) -> str:
+        step_name = str(node.blackboard.get("current_step_name", "") or "")
+        if step_name:
+            return step_name
+        return str(node.blackboard.get("last_active_planner_step_name", "") or "")
+
+    def _reset_state(node: BehaviorTree.Node) -> None:
+        state["active"] = False
+        state["mode"] = ""
+        state["failed_step_name"] = ""
+        state["restart_step_name"] = ""
+        state["last_return_ms"] = 0.0
+        state["player_was_dead"] = False
+        state["player_dead_pos"] = None
+        node.blackboard["party_wipe_recovery_active"] = False
+        node.blackboard["party_wipe_recovery_mode"] = ""
+        node.blackboard["party_wipe_recovery_step_name"] = ""
+
+    def _player_is_alive() -> bool:
+        player_id = int(Player.GetAgentID() or 0)
+        return bool(player_id > 0 and Agent.IsValid(player_id) and not Agent.IsDead(player_id))
+
+    def _can_resume_in_explorable() -> bool:
+        return bool(
+            Map.IsMapReady()
+            and Map.IsExplorable()
+            and GLOBAL_CACHE.Party.IsPartyLoaded()
+            and _player_is_alive()
+        )
+
+    def _can_resume_from_outpost() -> bool:
+        return bool(
+            Map.IsMapReady()
+            and Map.IsOutpost()
+            and GLOBAL_CACHE.Party.IsPartyLoaded()
+        )
+
+    def _detect_revive_teleport() -> bool:
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id):
+            return False
+
+        current_pos = Agent.GetXY(player_id)
+        is_dead = bool(Agent.IsDead(player_id))
+
+        if is_dead:
+            if not bool(state["player_was_dead"]):
+                state["player_was_dead"] = True
+                state["player_dead_pos"] = current_pos
+                return False
+
+            death_pos = state["player_dead_pos"]
+            if death_pos:
+                dx = float(current_pos[0]) - float(death_pos[0])
+                dy = float(current_pos[1]) - float(death_pos[1])
+                if dx * dx + dy * dy > float(Range.Spellcast.value) ** 2:
+                    # Some revive flows move the dead agent to the shrine one frame
+                    # before it becomes alive. Preserve that actual shrine position.
+                    state["player_dead_pos"] = current_pos
+                    return True
+            return False
+
+        if not bool(state["player_was_dead"]):
+            return False
+
+        state["player_was_dead"] = False
+        death_pos = state["player_dead_pos"]
+        state["player_dead_pos"] = None
+        if not death_pos:
+            return False
+
+        dx = float(current_pos[0]) - float(death_pos[0])
+        dy = float(current_pos[1]) - float(death_pos[1])
+        return dx * dx + dy * dy > float(Range.Spellcast.value) ** 2
+
+    def _begin_recovery(node: BehaviorTree.Node, mode: str) -> None:
+        from Py4GWCoreLib.py4gwcorelib_src.ActionQueue import ActionQueueManager
+
+        failed_step_name = _resolve_current_step(node)
+        state["active"] = True
+        state["mode"] = mode
+        state["failed_step_name"] = failed_step_name
+        state["restart_step_name"] = failed_step_name
+        state["last_return_ms"] = 0.0
+
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = mode
+        node.blackboard["party_wipe_recovery_step_name"] = failed_step_name
+
+        ActionQueueManager().ResetAllQueues()
+
+        if mode == "defeated":
+            _log(
+                f"Party defeated. Waiting for outpost before restarting '{failed_step_name}'.",
+                PySystem.Console.MessageType.Warning,
+            )
+        else:
+            _log(
+                f"Recoverable wipe on '{failed_step_name}'. Waiting for shrine revival.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+    def _resolve_shrine_restart(node: BehaviorTree.Node) -> str:
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id):
+            return str(state["failed_step_name"] or "")
+
+        map_id = int(Map.GetMapID() or 0)
+        shrine_pos = Agent.GetXY(player_id)
+        failed_step_name = str(state["failed_step_name"] or "")
+        step_name, distance = _nearest_shrine_resume_step(
+            map_id,
+            shrine_pos,
+            failed_step_name,
+        )
+
+        if step_name:
+            _log(
+                f"Shrine at ({shrine_pos[0]:.0f}, {shrine_pos[1]:.0f}) -> "
+                f"nearest safe resume '{step_name}' ({distance:.0f} units).",
+                PySystem.Console.MessageType.Success,
+            )
+            return step_name
+
+        _log(
+            f"No shrine resume waypoint resolved on map {map_id}; falling back to '{failed_step_name}'.",
+            PySystem.Console.MessageType.Warning,
+        )
+        return failed_step_name
+
+    def _request_restart(node: BehaviorTree.Node, *, shrine: bool) -> bool:
+        global _shrine_recovery_torch_skip_active
+
+        if shrine:
+            step_name = _resolve_shrine_restart(node)
+        else:
+            step_name = str(state["restart_step_name"] or state["failed_step_name"] or "")
+
+        if not step_name:
+            _log("Recovery completed but no planner step could be resolved.", PySystem.Console.MessageType.Warning)
+            return False
+
+        state["restart_step_name"] = step_name
+        _shrine_recovery_torch_skip_active = bool(shrine)
+        node.blackboard["party_wipe_recovery_step_name"] = step_name
+        node.blackboard["current_step_name"] = step_name
+        node.blackboard["last_active_planner_step_name"] = step_name
+        node.blackboard["restart_step_name_request"] = step_name
+        node.blackboard["combat_enabled_request"] = True
+        return True
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        # MultiAccountSequence installs the Core recovery service internally. Keep
+        # it suppressed: this Shards-specific service owns shrine/outpost recovery.
+        node.blackboard["party_wipe_recovery_suppressed"] = True
+
+        now = time.monotonic() * 1000.0
+        revived_at_shrine = _detect_revive_teleport()
+        party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
+        party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
+
+        if not bool(state["active"]):
+            if not (party_wiped or party_defeated or revived_at_shrine):
+                node.blackboard["party_wipe_recovery_active"] = False
+                return BehaviorTree.NodeState.RUNNING
+
+            recovery_mode = "defeated" if party_defeated else "shrine"
+            _begin_recovery(node, recovery_mode)
+
+            if recovery_mode == "shrine" and revived_at_shrine and _can_resume_in_explorable():
+                restarted = _request_restart(node, shrine=True)
+                _reset_state(node)
+                return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+
+            return BehaviorTree.NodeState.RUNNING
+
+        if party_defeated and state["mode"] != "defeated":
+            state["mode"] = "defeated"
+            _log(
+                "Recoverable wipe became a party defeat; switching to outpost recovery.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        node.blackboard["party_wipe_recovery_active"] = True
+        node.blackboard["party_wipe_recovery_mode"] = str(state["mode"] or "")
+        node.blackboard["party_wipe_recovery_step_name"] = str(
+            state["restart_step_name"] or state["failed_step_name"] or ""
+        )
+
+        if state["mode"] == "shrine":
+            if _can_resume_from_outpost():
+                state["mode"] = "defeated"
+                node.blackboard["party_wipe_recovery_mode"] = "defeated"
+                _log(
+                    "Party returned to an outpost during shrine recovery; switching to outpost recovery.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            else:
+                shrine_recovery_complete = bool(
+                    revived_at_shrine
+                    or (not party_wiped and _can_resume_in_explorable())
+                )
+                if shrine_recovery_complete:
+                    restarted = _request_restart(node, shrine=True)
+                    _reset_state(node)
+                    return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+
+                return BehaviorTree.NodeState.RUNNING
+
+        if _can_resume_from_outpost():
+            restarted = _request_restart(node, shrine=False)
+            _reset_state(node)
+            return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
+
+        if now - float(state["last_return_ms"] or 0.0) >= 1000.0:
+            GLOBAL_CACHE.Party.ReturnToOutpost()
+            state["last_return_ms"] = now
+            _log("Requesting return to outpost after party defeat.")
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Shards Party Wipe Recovery",
+            action_fn=_tick,
+            aftercast_ms=0,
+        )
+    )
+
+
 # endregion
 
 # region Run config
@@ -278,7 +626,6 @@ def _load_settings() -> None:
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
-    global _keep_torch_for_caster
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
     global _inventory_min_id_kits
@@ -294,7 +641,6 @@ def _load_settings() -> None:
     _restock_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
     _activate_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "ActivatePcons", True)
     _use_summoning_stone = _settings_ini.get_bool(_SETTINGS_SECTION, "UseSummoningStone", True)
-    _keep_torch_for_caster = _settings_ini.get_bool(_SETTINGS_SECTION, 'KeepTorchForCaster', True)
     _inventory_maintenance_enabled = _settings_ini.get_bool(_SETTINGS_SECTION, 'InventoryMaintenanceEnabled', True)
     _inventory_min_free_slots = max(0, _settings_ini.get_int(_SETTINGS_SECTION, 'InventoryMinFreeSlots', 5))
     _inventory_min_id_kits = max(0, _settings_ini.get_int(_SETTINGS_SECTION, 'InventoryMinIdKits', 1))
@@ -310,7 +656,6 @@ def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "ActivatePcons", _activate_pcons)
     _settings_ini.set(_SETTINGS_SECTION, "UseSummoningStone", _use_summoning_stone)
-    _settings_ini.set(_SETTINGS_SECTION, 'KeepTorchForCaster', _keep_torch_for_caster)
     _settings_ini.set(_SETTINGS_SECTION, 'InventoryMaintenanceEnabled', _inventory_maintenance_enabled)
     _settings_ini.set(_SETTINGS_SECTION, 'InventoryMinFreeSlots', _inventory_min_free_slots)
     _settings_ini.set(_SETTINGS_SECTION, 'InventoryMinIdKits', _inventory_min_id_kits)
@@ -588,14 +933,15 @@ def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_ema
         item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
         if item_id > 0:
             GLOBAL_CACHE.Inventory.UseItem(item_id)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                (
-                    f"[PCons] Party morale use: model={int(model_id)}, "
-                    f"morale={party_min_morale} -> target={int(target_morale)}."
-                ),
-                PySystem.Console.MessageType.Info,
-            )
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    (
+                        f"[PCons] Party morale use: model={int(model_id)}, "
+                        f"morale={party_min_morale} -> target={int(target_morale)}."
+                    ),
+                    PySystem.Console.MessageType.Info,
+                )
             return
 
     remote_recipients = [
@@ -697,11 +1043,12 @@ def _tick_direct_pcon_upkeep() -> None:
         item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id) or 0)
         if item_id > 0:
             GLOBAL_CACHE.Inventory.UseItem(item_id)
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
-                PySystem.Console.MessageType.Info,
-            )
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
+                    PySystem.Console.MessageType.Info,
+                )
 
     # Persistent effects are personal: every remote client receives the same
     # request and Messaging.UsePcon checks its own effect/inventory before use.
@@ -740,6 +1087,7 @@ def _configure_runtime_upkeeps(*, consumables_enabled: bool | None = None, looti
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
+        enable_party_wipe_recovery=False,
         heroai_state_logging=False,
     )
     _configured_consumable_upkeeps = enabled_consumables
@@ -778,7 +1126,6 @@ def _draw_run_config() -> None:
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
     global _use_summoning_stone
-    global _keep_torch_for_caster, _drop_torch_for_combat
     global _inventory_maintenance_enabled
     global _inventory_min_free_slots
     global _inventory_min_id_kits
@@ -836,12 +1183,10 @@ def _draw_run_config() -> None:
 
     PyImGui.separator()
     PyImGui.text("Torch handling")
-
-    value = PyImGui.checkbox('Keep torch for caster builds', _keep_torch_for_caster)
-    if value != _keep_torch_for_caster:
-        _keep_torch_for_caster = value
-        _drop_torch_for_combat = None
-        changed = True
+    PyImGui.text_wrapped(
+        "Automatic: martial builds drop the torch only when combat reaches them, "
+        "then recover it after the combat step. Caster builds keep carrying it."
+    )
 
     PyImGui.separator()
     PyImGui.text("Inventory maintenance")
@@ -1487,7 +1832,7 @@ def _return_all_accounts_to_vlox(attempt_key: str) -> BehaviorTree:
         children=[
             currently_in_an_explorable,
             BT.Resign(wait_for_map_load=True, target_map_id=VLOXS_FALL, multi_account=True, timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS, log=True),
-            _wait_for_all_accounts_on_map(VLOXS_FALL, name="Wait For Party Return To Vlox's Falls"),
+            #_wait_for_all_accounts_on_map(VLOXS_FALL, name="Wait For Party Return To Vlox's Falls"),
         ],
     )
 
@@ -1548,26 +1893,71 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
 def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
     """Run one MerchantRules attempt while staying in Vlox's Falls.
 
-    InventoryCheckAndMaintenance() ensures every active account is in Vlox's
-    Falls before the first attempt. If the first attempt leaves the inventory
-    below threshold, the retry runs immediately in the same outpost.
+    MerchantRules stays disabled outside the actual maintenance window. Any
+    failure restores InventoryPlus and disables MerchantRules before retrying.
     """
     attempt_key = f"inventory_attempt_{attempt_number}"
-    return BT.Sequence(
-        name=f"Inventory Maintenance Attempt {attempt_number}",
+
+    normal_attempt = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Run",
         children=[
-            BT.LogMessage(message=f"Inventory maintenance attempt {attempt_number}/{INVENTORY_MAINTENANCE_RETRY_COUNT} in Vlox's Falls.", module_name=MODULE_NAME),
+            BT.LogMessage(
+                message=(
+                    f"Inventory maintenance attempt {attempt_number}/"
+                    f"{INVENTORY_MAINTENANCE_RETRY_COUNT} in Vlox's Falls."
+                ),
+                module_name=MODULE_NAME,
+            ),
             _set_local_auto_inventory_handler(False),
-            _send_widget_state(INVENTORY_PLUS_WIDGET_NAME, enabled=False, refs_key=f'{attempt_key}_disable_inventoryplus_refs'),
-            _send_widget_state(MERCHANT_RULES_WIDGET_NAME, enabled=True, refs_key=f'{attempt_key}_enable_merchant_rules_refs'),
+            _send_widget_state(
+                INVENTORY_PLUS_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_inventoryplus_refs",
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=True,
+                refs_key=f"{attempt_key}_enable_merchant_rules_refs",
+            ),
             BT.Wait(1_000),
             _run_merchant_rules(attempt_key),
             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-            _query_all_inventory_states_node(name=f"Refresh Real Inventories After Attempt {attempt_number}"),
-            _inventory_is_healthy_node(f'Verify Inventory After Attempt {attempt_number}', log_success=True),
+            _query_all_inventory_states_node(
+                name=f"Refresh Real Inventories After Attempt {attempt_number}"
+            ),
+            _inventory_is_healthy_node(
+                f"Verify Inventory After Attempt {attempt_number}",
+                log_success=True,
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_success_refs",
+            ),
         ],
     )
 
+    cleanup_failure = BT.Sequence(
+        name=f"Inventory Maintenance Attempt {attempt_number} - Cleanup Failure",
+        children=[
+            _restore_inventoryplus_after_merchant(f"{attempt_key}_cleanup"),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key=f"{attempt_key}_disable_merchant_rules_failure_refs",
+            ),
+            BehaviorTree(
+                BehaviorTree.FailerNode(
+                    name=f"Inventory Maintenance Attempt {attempt_number} Failed"
+                )
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name=f"Inventory Maintenance Attempt {attempt_number}",
+        children=[normal_attempt, cleanup_failure],
+    )
 
 def _stop_for_inventory_failure_node() -> BehaviorTree:
     stopped = False
@@ -1610,27 +2000,65 @@ def _stop_for_inventory_failure_node() -> BehaviorTree:
 
 
 def InventoryCheckAndMaintenance() -> BehaviorTree:
-    disabled = BehaviorTree(BehaviorTree.ConditionNode(name='Inventory Maintenance Disabled', condition_fn=lambda _node: not _inventory_maintenance_enabled))
+    # MerchantRules is OFF during normal gameplay and inventory inspection. It is
+    # enabled only inside a real maintenance attempt, then disabled again on both
+    # success and failure paths.
+    disabled = BT.Sequence(
+        name="Inventory Maintenance Disabled",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ConditionNode(
+                    name="Inventory Maintenance Disabled Check",
+                    condition_fn=lambda _node: not _inventory_maintenance_enabled,
+                )
+            ),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_disabled_merchant_off_refs",
+            ),
+        ],
+    )
 
-    maintenance_attempts = [_inventory_maintenance_attempt(attempt_number) for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)]
+    maintenance_attempts = [
+        _inventory_maintenance_attempt(attempt_number)
+        for attempt_number in range(1, INVENTORY_MAINTENANCE_RETRY_COUNT + 1)
+    ]
     maintenance_attempts.append(_stop_for_inventory_failure_node())
 
     enabled_flow = BT.Sequence(
         name="Enabled Inventory Check And Maintenance",
         children=[
-            _query_all_inventory_states_node(name='Query Real Inventory State On Every Active Account'),
+            _send_widget_state(
+                MERCHANT_RULES_WIDGET_NAME,
+                enabled=False,
+                refs_key="inventory_check_merchant_off_refs",
+            ),
+            _query_all_inventory_states_node(
+                name="Query Real Inventory State On Every Active Account"
+            ),
             BT.Selector(
                 name="Check Inventory Thresholds",
                 children=[
-                    _inventory_is_healthy_node('Inventory Thresholds Already Satisfied', log_success=True),
+                    _inventory_is_healthy_node(
+                        "Inventory Thresholds Already Satisfied",
+                        log_success=True,
+                    ),
                     BT.Sequence(
                         name="Run Inventory Maintenance",
                         children=[
                             _inventory_maintenance_trigger_node(),
+                            _send_widget_state(
+                                MERCHANT_RULES_WIDGET_NAME,
+                                enabled=False,
+                                refs_key="inventory_before_travel_merchant_off_refs",
+                            ),
                             _return_all_accounts_to_vlox("inventory_maintenance_setup"),
-                            BT.LeaveParty(),
                             BT.Wait(INVENTORY_SNAPSHOT_SETTLE_MS),
-                            BT.Selector(name="Retry Inventory Maintenance In Vlox's Falls", children=maintenance_attempts),
+                            BT.Selector(
+                                name="Retry Inventory Maintenance In Vlox's Falls",
+                                children=maintenance_attempts,
+                            ),
                         ],
                     ),
                 ],
@@ -1638,8 +2066,10 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
         ],
     )
 
-    return BT.Selector(name='Inventory Check And Maintenance', children=[disabled, enabled_flow])
-
+    return BT.Selector(
+        name="Inventory Check And Maintenance",
+        children=[disabled, enabled_flow],
+    )
 
 def StartupInventoryCheck() -> BehaviorTree:
     return BT.Selector(
@@ -2216,170 +2646,339 @@ def _resolve_torch_combat_policy() -> bool:
     if _drop_torch_for_combat is not None:
         return _drop_torch_for_combat
 
-    if not _keep_torch_for_caster:
-        _drop_torch_for_combat = True
-        reason = "caster torch retention is disabled in Config"
-    else:
-        player_id = int(Player.GetAgentID() or 0)
+    player_id = int(Player.GetAgentID() or 0)
+    weapon_name = "Unknown"
+
+    try:
+        _, weapon_name = Agent.GetWeaponType(player_id)
+    except Exception:
         weapon_name = "Unknown"
 
-        try:
-            _, weapon_name = Agent.GetWeaponType(player_id)
-        except Exception:
-            weapon_name = "Unknown"
+    try:
+        is_martial = bool(Agent.IsMartial(player_id))
+    except Exception:
+        is_martial = False
 
-        try:
-            is_martial = bool(Agent.IsMartial(player_id))
-        except Exception:
-            is_martial = False
+    try:
+        is_caster = bool(Agent.IsCaster(player_id))
+    except Exception:
+        is_caster = False
 
+    if is_martial:
+        _drop_torch_for_combat = True
+        reason = f"martial weapon detected: {weapon_name}"
+    elif is_caster:
+        _drop_torch_for_combat = False
+        reason = f"caster weapon detected: {weapon_name}"
+    else:
         try:
-            is_caster = bool(Agent.IsCaster(player_id))
+            primary_profession, _ = Agent.GetProfessionNames(player_id)
         except Exception:
-            is_caster = False
+            primary_profession = ""
 
-        if is_martial:
+        if primary_profession in _MARTIAL_PRIMARY_PROFESSIONS:
             _drop_torch_for_combat = True
-            reason = f"martial weapon detected: {weapon_name}"
-        elif is_caster:
+            reason = f"martial primary profession detected: {primary_profession}"
+        elif primary_profession:
             _drop_torch_for_combat = False
-            reason = f"caster weapon detected: {weapon_name}"
+            reason = f"caster primary profession detected: {primary_profession}"
         else:
-            try:
-                primary_profession, _ = Agent.GetProfessionNames(player_id)
-            except Exception:
-                primary_profession = ""
+            # Safe fallback: an unknown build must not be forced to fight while
+            # the torch occupies its weapon slot.
+            _drop_torch_for_combat = True
+            reason = "weapon and profession are unknown; safe fallback"
 
-            if primary_profession in _MARTIAL_PRIMARY_PROFESSIONS:
-                _drop_torch_for_combat = True
-                reason = (
-                    "weapon type unavailable; martial primary profession "
-                    f"detected: {primary_profession}"
-                )
-            elif primary_profession:
-                _drop_torch_for_combat = False
-                reason = (
-                    "weapon type unavailable; caster primary profession "
-                    f"detected: {primary_profession}"
-                )
-            else:
-                # Preserve the previous behavior when no reliable player data
-                # is available instead of risking combat with a martial build
-                # still carrying the bundle.
-                _drop_torch_for_combat = True
-                reason = "weapon and profession are unknown; safe fallback"
-
-    PySystem.Console.Log(MODULE_NAME, f"Torch combat policy: {('DROP' if _drop_torch_for_combat else 'KEEP')} ({reason}).", PySystem.Console.MessageType.Info)
+    PySystem.Console.Log(
+        MODULE_NAME,
+        f"Torch combat policy: {('DROP' if _drop_torch_for_combat else 'KEEP')} ({reason}).",
+        PySystem.Console.MessageType.Info,
+    )
     return _drop_torch_for_combat
 
 
 def ResolveTorchCombatPolicy() -> BehaviorTree:
-    def _resolve() -> BehaviorTree.NodeState:
+    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         _resolve_torch_combat_policy()
         return BehaviorTree.NodeState.SUCCESS
 
-    return BehaviorTree(BehaviorTree.ActionNode(name='ResolveTorchCombatPolicy', action_fn=_resolve, aftercast_ms=0))
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Resolve Torch Combat Policy',
+            action_fn=_resolve,
+            aftercast_ms=0,
+        )
+    )
+
+
+def ResetTorchCombatPolicy() -> BehaviorTree:
+    def _reset(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _drop_torch_for_combat, _torch_dropped_for_combat, _shrine_recovery_torch_skip_active
+        _drop_torch_for_combat = None
+        _torch_dropped_for_combat = False
+        _shrine_recovery_torch_skip_active = False
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Reset Torch Combat Policy',
+            action_fn=_reset,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _set_torch_dropped_node(value: bool) -> BehaviorTree:
+    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _torch_dropped_for_combat
+        _torch_dropped_for_combat = bool(value)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Mark Torch Dropped For Combat' if value else 'Clear Torch Dropped For Combat',
+            action_fn=_set,
+            aftercast_ms=0,
+        )
+    )
 
 
 def DropTorchForCombat(log: bool = False) -> BehaviorTree:
-    """Drop the torch only when the configured combat policy requires it."""
+    """Drop the torch only for martial combat and remember that it must be recovered."""
 
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _resolve_torch_combat_policy():
-            return BT.Succeeder('KeepTorchForCasterCombat')
+            return BT.Succeeder('Keep Torch For Caster Combat')
 
         if not _is_holding_bundle():
-            return BT.Succeeder('NoTorchBundleToDrop')
+            return BT.Succeeder('No Torch Bundle To Drop')
 
-        return BT.DropBundle(log=log)
+        return BT.Sequence(
+            name='Drop Torch For Combat',
+            children=[
+                BT.DropBundle(log=log),
+                _set_torch_dropped_node(True),
+            ],
+        )
 
     return BT.Subtree(name='Drop Torch For Combat If Required', subtree_fn=_build)
 
 
-def ResetTorchCombatPolicy() -> BehaviorTree:
-    def _reset() -> BehaviorTree.NodeState:
-        global _drop_torch_for_combat
-        _drop_torch_for_combat = None
-        return BehaviorTree.NodeState.SUCCESS
+def DiscardTorch(log: bool = True) -> BehaviorTree:
+    """Drop the torch when the current floor no longer needs it; no recovery follows."""
 
-    return BehaviorTree(BehaviorTree.ActionNode(name='ResetTorchCombatPolicy', action_fn=_reset, aftercast_ms=0))
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        if not _is_holding_bundle():
+            return _set_torch_dropped_node(False)
+        return BT.Sequence(
+            name='Discard Finished Torch',
+            children=[
+                BT.DropBundle(log=log),
+                _set_torch_dropped_node(False),
+            ],
+        )
+
+    return BT.Subtree(name='Discard Torch After Mechanic', subtree_fn=_build)
+
+
+def _enemy_in_torch_combat_range(radius: float = TORCH_COMBAT_TRIGGER_RADIUS) -> bool:
+    """Return True when a living enemy is close enough to start torch combat handling."""
+    try:
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0:
+            return False
+
+        px, py = Agent.GetXY(player_id)
+        radius_sq = float(radius) * float(radius)
+
+        for candidate in AgentArray.GetEnemyArray() or []:
+            agent_id = int(candidate or 0)
+            if agent_id <= 0:
+                continue
+            try:
+                if Agent.IsDead(agent_id):
+                    continue
+                x, y = Agent.GetXY(agent_id)
+            except Exception:
+                continue
+
+            dx = float(x) - float(px)
+            dy = float(y) - float(py)
+            if dx * dx + dy * dy <= radius_sq:
+                return True
+
+        return False
+    except Exception:
+        return False
+
+
+def _torch_aware_combat_node(
+    name: str,
+    combat_factory: Callable[[], BehaviorTree],
+    *,
+    trigger_radius: float = TORCH_COMBAT_TRIGGER_RADIUS,
+) -> BehaviorTree:
+    """Tick combat while dropping a martial torch only when enemies enter the dedicated close trigger radius."""
+    combat_tree = combat_factory()
+    drop_tree: BehaviorTree | None = None
+
+    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        nonlocal combat_tree, drop_tree
+
+        # Keep carrying the torch while travelling.  A martial leader releases
+        # it only once a living enemy reaches the combat trigger radius.
+        if (
+            _resolve_torch_combat_policy()
+            and _is_holding_bundle()
+            and _enemy_in_torch_combat_range(trigger_radius)
+        ):
+            if drop_tree is None:
+                drop_tree = DropTorchForCombat(log=True)
+
+            drop_tree.blackboard = node.blackboard
+            drop_result = BehaviorTree.Node._normalize_state(drop_tree.tick())
+            if drop_result == BehaviorTree.NodeState.RUNNING:
+                return BehaviorTree.NodeState.RUNNING
+            if drop_result == BehaviorTree.NodeState.FAILURE:
+                drop_tree = None
+                return BehaviorTree.NodeState.FAILURE
+            drop_tree = None
+
+        combat_tree.blackboard = node.blackboard
+        result = BehaviorTree.Node._normalize_state(combat_tree.tick())
+
+        if result != BehaviorTree.NodeState.RUNNING:
+            # Rebuild the internal combat child.  If the planner/wipe recovery
+            # reconstructs or replays this step, it receives a fresh subtree.
+            combat_tree = combat_factory()
+            drop_tree = None
+
+        return result
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f'{name} - Torch Aware',
+            action_fn=_tick,
+            aftercast_ms=100,
+        )
+    )
+
+
+def TorchAwareVanquish(
+    points: Sequence[PathPoint],
+    name: str,
+    *,
+    clear_area_radius: float = Range.Spirit.value,
+    pause_on_combat: bool | None = None,
+    flag_heroes_to_waypoint: bool = False,
+    move_tolerance: float = 500.0,
+) -> BehaviorTree:
+    """Vanquish a path while martial builds automatically drop the torch for combat."""
+
+    def _create() -> BehaviorTree:
+        return BT.VanquishNode(
+            list(points),
+            name=name,
+            clear_area_radius=clear_area_radius,
+            pause_on_combat=pause_on_combat,
+            flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+            move_tolerance=move_tolerance,
+            log=False,
+        )
+
+    return _torch_aware_combat_node(name, _create)
+
+
+def TorchAwareMoveAndKill(
+    pos: PathPoint,
+    name: str,
+    *,
+    clear_area_radius: float = Range.Spirit.value,
+) -> BehaviorTree:
+    """Preserve MoveAndKill semantics while applying the automatic torch combat policy."""
+
+    def _create() -> BehaviorTree:
+        return BT.MoveAndKill(pos, clear_area_radius=clear_area_radius, log=False)
+
+    return _torch_aware_combat_node(name, _create)
+
+
+def _find_ground_torch() -> int | None:
+    """Return a nearby pickup-compatible torch agent, 0 if absent, None if the scan failed."""
+    try:
+        local_player_id = int(Player.GetAgentID() or 0)
+        if local_player_id <= 0:
+            return 0
+        px, py = Agent.GetXY(local_player_id)
+        search_radius = 7500.0
+        search_radius_sq = search_radius * search_radius
+
+        for candidate in AgentArray.GetItemArray() or []:
+            agent_id = int(candidate or 0)
+            if agent_id <= 0 or not Agent.GetItemAgentByID(agent_id):
+                continue
+
+            owner_id = int(Agent.GetItemAgentOwnerID(agent_id) or 0)
+            if owner_id not in (0, local_player_id):
+                continue
+
+            item_id = int(Agent.GetItemAgentItemID(agent_id) or 0)
+            if item_id <= 0:
+                continue
+
+            model_id = int(GLOBAL_CACHE.Item.GetModelID(item_id) or 0)
+            if model_id not in TORCH_MODEL_IDS:
+                continue
+
+            x, y = Agent.GetXY(agent_id)
+            dx = float(x) - float(px)
+            dy = float(y) - float(py)
+            if dx * dx + dy * dy <= search_radius_sq:
+                return agent_id
+
+        return 0
+    except Exception:
+        return None
 
 
 def PickupTorch() -> BehaviorTree:
+    """Require the active Shards torch, except for a short post-shrine recovery grace."""
     PICKUP_TIMEOUT_MS = 45_000
-    NOT_FOUND_GRACE_MS = 3_000
+    SHRINE_RECOVERY_PICKUP_TIMEOUT_MS = 5_000
     RETRY_DELAY_MS = 1_000
+    PICKUP_SEARCH_RADIUS = 7500.0
 
     def _create_pickup_tree() -> BehaviorTree:
-        return BT.PickupGroundItemByModelID(model_ids=TORCH_MODEL_IDS, max_distance=200000.0, timeout_ms=PICKUP_TIMEOUT_MS, allow_unassigned=True, interaction_interval_ms=1000, aftercast_ms=100, log=False)
+        return BT.PickupGroundItemByModelID(
+            model_ids=TORCH_MODEL_IDS,
+            max_distance=PICKUP_SEARCH_RADIUS,
+            timeout_ms=PICKUP_TIMEOUT_MS,
+            allow_unassigned=True,
+            interaction_interval_ms=1_000,
+            aftercast_ms=100,
+            log=False,
+        )
 
     pickup_tree = _create_pickup_tree()
-
     started_at = 0.0
     retry_at = 0.0
     search_logged = False
-    torch_seen = False
-
-    def _find_available_torch() -> int | None:
-        """Return a pickup-compatible torch, or None if the scan failed."""
-        try:
-            local_player_id = int(Player.GetAgentID() or 0)
-
-            for candidate in AgentArray.GetItemArray():
-                agent_id = int(candidate or 0)
-                if agent_id <= 0:
-                    continue
-
-                if not Agent.GetItemAgentByID(agent_id):
-                    continue
-
-                owner_id = int(Agent.GetItemAgentOwnerID(agent_id) or 0)
-                if owner_id not in (0, local_player_id):
-                    continue
-
-                item_id = int(Agent.GetItemAgentItemID(agent_id) or 0)
-                if item_id <= 0:
-                    continue
-
-                model_id = int(GLOBAL_CACHE.Item.GetModelID(item_id) or 0)
-                if model_id in TORCH_MODEL_IDS:
-                    return agent_id
-
-            return 0
-        except Exception:
-            # Preserve the existing pickup behavior if the preliminary scan
-            # itself is temporarily unavailable.
-            return None
-
-    def _log(message: str, message_type: PySystem.Console.MessageType) -> None:
-        PySystem.Console.Log('PickupTorch', message, message_type)
 
     def _reset_state() -> None:
-        nonlocal pickup_tree
-        nonlocal started_at
-        nonlocal retry_at
-        nonlocal search_logged
-        nonlocal torch_seen
-
+        nonlocal pickup_tree, started_at, retry_at, search_logged
         pickup_tree = _create_pickup_tree()
         started_at = 0.0
         retry_at = 0.0
         search_logged = False
-        torch_seen = False
 
     def _pickup_torch_step(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        nonlocal pickup_tree
-        nonlocal started_at
-        nonlocal retry_at
-        nonlocal search_logged
-        nonlocal torch_seen
+        nonlocal pickup_tree, started_at, retry_at, search_logged
+        global _torch_dropped_for_combat, _shrine_recovery_torch_skip_active
 
         now = time.monotonic()
 
-        # Intermediate pickup nodes remain in the route for recovery.  A
-        # caster that kept the torch completes them immediately without
-        # starting a search or producing a misleading lookup log.
         if _is_holding_bundle():
+            _torch_dropped_for_combat = False
+            _shrine_recovery_torch_skip_active = False
             _reset_state()
             return BehaviorTree.NodeState.SUCCESS
 
@@ -2387,80 +2986,113 @@ def PickupTorch() -> BehaviorTree:
             started_at = now
 
         if not search_logged:
-            _log('Looking for a torch...', PySystem.Console.MessageType.Info)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                'Torch is required for the active mechanic. Looking for it on the ground...',
+                PySystem.Console.MessageType.Info,
+            )
             search_logged = True
 
         elapsed_ms = int((now - started_at) * 1000.0)
 
-        if not torch_seen:
-            torch_agent_id = _find_available_torch()
-
-            if torch_agent_id is None:
-                # The preliminary scan failed. Let the established pickup
-                # routine perform its own search rather than skipping.
-                torch_seen = True
-            elif torch_agent_id > 0:
-                torch_seen = True
-            elif elapsed_ms >= NOT_FOUND_GRACE_MS:
-                _log('No torch found on the ground. Assuming this pickup was already completed before the planner resumed the step; skipping.', PySystem.Console.MessageType.Warning)
-                _reset_state()
-                return BehaviorTree.NodeState.SUCCESS
-            else:
-                return BehaviorTree.NodeState.RUNNING
+        if (
+            _shrine_recovery_torch_skip_active
+            and elapsed_ms >= SHRINE_RECOVERY_PICKUP_TIMEOUT_MS
+        ):
+            # After a shrine wipe the dropped torch can be far behind the selected
+            # resume waypoint. Do not fail/restart the resumed planner point forever.
+            # Keep the recovery bypass active for later torch-managed points until
+            # a torch is actually recovered or the torch policy is explicitly reset.
+            _torch_dropped_for_combat = False
+            PySystem.Console.Log(
+                MODULE_NAME,
+                'Torch not recovered after 5s following shrine recovery; continuing to the next route point.',
+                PySystem.Console.MessageType.Warning,
+            )
+            _reset_state()
+            return BehaviorTree.NodeState.SUCCESS
 
         if elapsed_ms >= PICKUP_TIMEOUT_MS:
-            _log('Failed to pick up a torch after 45s.', PySystem.Console.MessageType.Error)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                'Failed to recover the required torch after 45s.',
+                PySystem.Console.MessageType.Error,
+            )
             _reset_state()
             return BehaviorTree.NodeState.FAILURE
+
+        ground_torch = _find_ground_torch()
+        if ground_torch == 0:
+            # Unlike the Forsaken Keystone door case, a Shards torch is never
+            # intentionally consumed while the torch-managed section is active.
+            # Absence therefore remains blocking instead of being skipped.
+            return BehaviorTree.NodeState.RUNNING
 
         if now < retry_at:
             return BehaviorTree.NodeState.RUNNING
 
         pickup_tree.blackboard = node.blackboard
-
         pickup_result = BehaviorTree.Node._normalize_state(pickup_tree.tick())
 
         if pickup_result == BehaviorTree.NodeState.RUNNING:
             return BehaviorTree.NodeState.RUNNING
 
-        # Le node interne annonce SUCCESS, mais la torche
-        # n'est réellement pas tenue par le personnage.
-        if pickup_result == BehaviorTree.NodeState.SUCCESS:
-            _log('Pickup not completed (no torch is held). Retrying...', PySystem.Console.MessageType.Warning)
-
-            pickup_tree = _create_pickup_tree()
-            pickup_tree.blackboard = node.blackboard
-            retry_at = now + RETRY_DELAY_MS / 1000.0
-
-            return BehaviorTree.NodeState.RUNNING
+        if pickup_result == BehaviorTree.NodeState.SUCCESS and _is_holding_bundle():
+            _torch_dropped_for_combat = False
+            _shrine_recovery_torch_skip_active = False
+            _reset_state()
+            return BehaviorTree.NodeState.SUCCESS
 
         pickup_tree = _create_pickup_tree()
         pickup_tree.blackboard = node.blackboard
         retry_at = now + RETRY_DELAY_MS / 1000.0
-
         return BehaviorTree.NodeState.RUNNING
 
-    return BehaviorTree(BehaviorTree.ActionNode(name='PickupTorch', action_fn=_pickup_torch_step, aftercast_ms=0))
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name='Pickup Required Torch',
+            action_fn=_pickup_torch_step,
+            aftercast_ms=100,
+        )
+    )
 
 def UseAvailableSummoningStone() -> BehaviorTree:
-    """
-    Use the first available summoning stone once.
+    """Broadcast a best-effort summoning-stone request to every active account.
 
-    Summoning stones are handled as one-shot consumables and are therefore
-    kept outside the continuous consumable upkeep service.
+    The request is fire-and-forget: a client with no usable stone, an existing
+    summon, or summoning sickness cannot block dungeon progression.
     """
 
-    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+    def _dispatch(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         if not _use_summoning_stone or not _consumables_allowed():
-            return BT.Succeeder('SummoningStoneDisabled')
-        return BT.Selector(
-            name='Use Available Summoning Stone',
-            children=[BTItems.UseConsumable(int(model_id)) for model_id in SUMMON_MODEL_IDS]
-            + [BT.Succeeder('NoSummoningStoneAvailable')],
+            return BehaviorTree.NodeState.SUCCESS
+
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        recipients = _inventory_recipient_emails()
+        if not sender_email or not recipients:
+            return BehaviorTree.NodeState.SUCCESS
+
+        for receiver_email in recipients:
+            try:
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender_email,
+                    receiver_email,
+                    SharedCommandType.UseSummoningStone,
+                    (0.0, 0.0, 0.0, 0.0),
+                    ("", "", "", ""),
+                )
+            except Exception:
+                continue
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Use Summoning Stone In Dungeon (Multibox Non Blocking)",
+            action_fn=_dispatch,
+            aftercast_ms=0,
         )
-
-    return BT.Subtree(name='Use Summoning Stone In Dungeon', subtree_fn=_build)
-
+    )
 
 def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTree:
     """
@@ -2825,6 +3457,21 @@ def MoveBetweenBraziersWithFlameRecovery(
 # region Bot initialization
 
 
+def _configure_botting_tree(tree: BottingTree) -> None:
+    tree.Config.ConfigureUpkeep(
+        looting_enabled=True,
+        resurrection_scroll=True,
+        auto_inventory_handler_enabled=True,
+        consumable_upkeeps=_enabled_consumable_upkeeps(),
+        enable_party_wipe_recovery=False,
+        heroai_state_logging=False,
+    )
+    tree.AddServiceTree(
+        "ShardsPartyWipeRecoveryService",
+        ShardsPartyWipeRecoveryService,
+    )
+
+
 def ensure_botting_tree() -> BottingTree:
     global botting_tree
 
@@ -2840,14 +3487,7 @@ def ensure_botting_tree() -> BottingTree:
             repeat=True,
             multi_account=True,
             isolation_enabled=False,
-            configure_fn=lambda tree: tree.Config.ConfigureUpkeep(
-                looting_enabled=True,
-                resurrection_scroll=True,
-                auto_inventory_handler_enabled=True,
-                consumable_upkeeps=_enabled_consumable_upkeeps(),
-                enable_party_wipe_recovery=True,
-                heroai_state_logging=False,
-            ),
+            configure_fn=_configure_botting_tree,
         )
 
     return botting_tree
@@ -3205,6 +3845,52 @@ def _vanquish_point_steps(
     return steps
 
 
+def _torch_vanquish_point_steps(
+    prefix: str,
+    map_id: int,
+    points: Sequence[PathPoint],
+    *,
+    clear_area_radius: float = Range.Spirit.value,
+    pause_on_combat: bool | None = None,
+    flag_heroes_to_waypoint: bool = False,
+    move_tolerance: float = 500.0,
+    skip_if_in_maps: Sequence[int] = (),
+) -> list[tuple[str, Callable[[], BehaviorTree]]]:
+    """Expose torch-managed Vanquish points as planner steps with recovery inside each step."""
+    steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
+
+    for index, point in enumerate(points, start=1):
+        name = f"{prefix} - Point {index:02d}"
+
+        def _build(point: PathPoint = point, name: str = name) -> BehaviorTree:
+            managed = BT.Sequence(
+                name=f'{name} - Torch Managed',
+                children=[
+                    TorchAwareVanquish(
+                        [point],
+                        name,
+                        clear_area_radius=clear_area_radius,
+                        pause_on_combat=pause_on_combat,
+                        flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                        move_tolerance=move_tolerance,
+                    ),
+                    # Recovery is part of the same planner step.  A wipe can
+                    # pause/replay the combat without ever skipping this pickup.
+                    PickupTorch(),
+                ],
+            )
+            return _map_guarded_point(
+                name=name,
+                map_id=map_id,
+                child=managed,
+                skip_if_in_maps=skip_if_in_maps,
+            )
+
+        steps.append((name, _build))
+
+    return steps
+
+
 # endregion
 # region Level 1
 
@@ -3249,6 +3935,7 @@ def Level2_Start() -> BehaviorTree:
     return BT.Sequence(
         name="Start Shards of Orr Level 2",
         children=[
+            ResetTorchCombatPolicy(),
             ResolveTorchCombatPolicy(),
             UseAvailableSummoningStone(),
             BT.AddModelToLootWhitelist(25410),
@@ -3262,11 +3949,25 @@ def Level2_Start() -> BehaviorTree:
 
 
 def Level2_FirstTorchFight() -> BehaviorTree:
-    return BT.Sequence(name='Level 2 First Torch Fight', children=[DropTorchForCombat(log=True), BT.VanquishNode([L2_RETURN_TO_FIRST_TORCH_PATH], clear_area_radius=Range.SafeCompass.value, log=True), PickupTorch()])
+    return BT.Sequence(
+        name='Level 2 First Torch Fight',
+        children=[
+            TorchAwareVanquish(
+                L2_RETURN_TO_FIRST_TORCH_PATH,
+                'Level 2 First Torch Fight',
+                clear_area_radius=Range.SafeCompass.value,
+                pause_on_combat=True,
+            ),
+            PickupTorch(),
+        ],
+    )
 
 
 def Level2_BrazierRoute1() -> BehaviorTree:
-    return BT.Sequence(name='Level 2 Brazier Route 1', children=[BrazierSequence('Level 2 Brazier Route 1', L2_BRAZIER_PART1), DropTorchForCombat(log=True)])
+    return BT.Sequence(
+        name='Level 2 Brazier Route 1',
+        children=[BrazierSequence('Level 2 Brazier Route 1', L2_BRAZIER_PART1)],
+    )
 
 
 # endregion
@@ -3277,34 +3978,26 @@ def Level2_PrepareRoom2() -> BehaviorTree:
     return BT.Sequence(
         name="Prepare Level 2 Room 2",
         children=[
-            ResolveTorchCombatPolicy(),
             BT.Wait(2000),
-            BT.MoveAndKill(Vec2f(-9011.27, -11536.79)),
-            BT.WaitForClearEnemiesInArea(-9011.0, -11536.0, radius=Range.SafeCompass.value, log=True),
-            BT.Wait(2000),
+            TorchAwareMoveAndKill(
+                Vec2f(-9011.27, -11536.79),
+                'Level 2 Prepare Room 2 Combat',
+                clear_area_radius=Range.SafeCompass.value,
+            ),
             PickupTorch(),
+            BT.Wait(2000),
         ],
     )
 
 
-def Level2_DropTorchBeforeRoom2Return() -> BehaviorTree:
-    return BT.Sequence(name='Drop Torch Before Returning To Room 2', children=[DropTorchForCombat(log=True)])
-
-
-def Level2_PickupRoom2Torch() -> BehaviorTree:
-    return BT.Sequence(name='Pick Up Level 2 Room 2 Torch', children=[PickupTorch()])
-
-
-def Level2_DropTorchBeforeFinalRoom2Fight() -> BehaviorTree:
-    return BT.Sequence(name='Drop Torch Before Final Room 2 Fight', children=[DropTorchForCombat(log=True)])
-
-
-def Level2_PickupTorchForBrazierRoute2() -> BehaviorTree:
-    return BT.Sequence(name='Pick Up Torch For Level 2 Brazier Route 2', children=[PickupTorch()])
-
-
 def Level2_BrazierRoute2() -> BehaviorTree:
-    return BT.Sequence(name='Level 2 Brazier Route 2', children=[BrazierSequence('Level 2 Brazier Route 2', L2_BRAZIER_PART2), BT.DropBundle(log=True)])
+    return BT.Sequence(
+        name='Level 2 Brazier Route 2',
+        children=[
+            BrazierSequence('Level 2 Brazier Route 2', L2_BRAZIER_PART2),
+            DiscardTorch(log=True),
+        ],
+    )
 
 
 # endregion
@@ -3336,17 +4029,26 @@ def Level2_EnterLevel3() -> BehaviorTree:
 
 
 def Level3_Start() -> BehaviorTree:
-    return BT.Sequence(name='Start Shards of Orr Level 3', children=[UseAvailableSummoningStone(), BT.MoveAndDialog(L3_ENTRY_BLESSING, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True)])
+    return BT.Sequence(
+        name='Start Shards of Orr Level 3',
+        children=[
+            UseAvailableSummoningStone(),
+            BT.MoveAndDialog(L3_ENTRY_BLESSING, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
+        ],
+    )
 
 
 def Level3_TorchAndBraziers() -> BehaviorTree:
     return BT.Sequence(
         name="Open Level 3 Torch Chest And Light Braziers",
         children=[
+            # Resolve again while no bundle is held.  Carrying a torch can hide
+            # weapon information, so detection must happen before the pickup.
+            ResetTorchCombatPolicy(),
+            ResolveTorchCombatPolicy(),
             BT.MoveAndInteractWithGadget(L3_TORCH_CHEST, pause_on_combat=False, log=True),
             PickupTorch(),
             BrazierSequence("Level 3 Brazier Route", L3_BRAZIERS),
-            BT.DropBundle(log=True),
         ],
     )
 
@@ -3358,14 +4060,21 @@ def Level3_TorchAndBraziers() -> BehaviorTree:
 def Level3_Brigant() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 3",
-        children=[             
-            BT.MoveAndKill(Vec2f(-11147, 2644), clear_area_radius=Range.Spirit.value, log=False),
+        children=[
+            TorchAwareMoveAndKill(
+                Vec2f(-11147, 2644),
+                'Level 3 Brigant Combat',
+                clear_area_radius=Range.Spirit.value,
+            ),
+            PickupTorch(),
             BT.AddModelToLootWhitelist(25410),
             BT.Move(Vec2f(-9888.47, 2892.00)),
             BT.LootItems(distance=Range.SafeCompass.value),
-            
+            # The key fight is complete; the torch is no longer required.
+            DiscardTorch(log=True),
         ],
     )
+
 
 def Level3_BrigantDoor() -> BehaviorTree:
     return BT.Sequence(name='Open Level 3 Brigant Door', children=[BT.MoveAndInteractWithGadget(Vec2f(-9252.32, 6396.4), pause_on_combat=False, log=True)])
@@ -3815,19 +4524,15 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         (f"Level 1 Route To Level 2 - Point {len(L1_PATH_AFTER_DOOR):02d}", Level1_EnterLevel2),
 
         ("Level 2 Start", Level2_Start),
-        *_movement_point_steps("Level 2 First Torch Drop Route", SOO_LEVEL_2, L2_FIRST_TORCH_DROP_POINT_PATH, pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
+        *_torch_vanquish_point_steps("Level 2 First Torch Drop Route", SOO_LEVEL_2, L2_FIRST_TORCH_DROP_POINT_PATH, pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
         ("Level 2 First Torch Fight", Level2_FirstTorchFight),
-        *_movement_point_steps("Level 2 First Brazier Approach", SOO_LEVEL_2, [Vec2f(-9404.44, -17963.49), Vec2f(-11303.00, -14596.00)], pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
+        *_torch_vanquish_point_steps("Level 2 First Brazier Approach", SOO_LEVEL_2, [Vec2f(-9404.44, -17963.49), Vec2f(-11303.00, -14596.00)], pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
         ("Level 2 Brazier Route 1", Level2_BrazierRoute1),
         ("Level 2 Prepare Room 2", Level2_PrepareRoom2),
-        *_vanquish_point_steps("Level 2 Route To Room 2 Drop", SOO_LEVEL_2, L2_TO_ROOM2_DROP, clear_area_radius=Range.Area.value, pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
-        ("Level 2 Drop Torch Before Room 2 Return", Level2_DropTorchBeforeRoom2Return),
-        *_vanquish_point_steps("Level 2 Route Back To Room 2 Torch", SOO_LEVEL_2, L2_RETURN_TO_ROOM2_TORCH_PATH, skip_if_in_maps=(SOO_LEVEL_3,)),
-        ("Level 2 Pick Up Room 2 Torch", Level2_PickupRoom2Torch),
-        *_vanquish_point_steps("Level 2 Room 2", SOO_LEVEL_2, L2_ROOM2_PATH, move_tolerance=150.0, skip_if_in_maps=(SOO_LEVEL_3,)),
-        ("Level 2 Drop Torch Before Final Room 2 Fight", Level2_DropTorchBeforeFinalRoom2Fight),
-        *_vanquish_point_steps("Level 2 Room 2 Final Fight", SOO_LEVEL_2, [Vec2f(-4245.2, -2101.0)], skip_if_in_maps=(SOO_LEVEL_3,)),
-        ("Level 2 Pick Up Torch For Brazier Route 2", Level2_PickupTorchForBrazierRoute2),
+        *_torch_vanquish_point_steps("Level 2 Route To Room 2 Drop", SOO_LEVEL_2, L2_TO_ROOM2_DROP, clear_area_radius=Range.Area.value, pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
+        *_torch_vanquish_point_steps("Level 2 Route Back To Room 2 Torch", SOO_LEVEL_2, L2_RETURN_TO_ROOM2_TORCH_PATH, skip_if_in_maps=(SOO_LEVEL_3,)),
+        *_torch_vanquish_point_steps("Level 2 Room 2", SOO_LEVEL_2, L2_ROOM2_PATH, move_tolerance=150.0, skip_if_in_maps=(SOO_LEVEL_3,)),
+        *_torch_vanquish_point_steps("Level 2 Room 2 Final Fight", SOO_LEVEL_2, [Vec2f(-4245.2, -2101.0)], skip_if_in_maps=(SOO_LEVEL_3,)),
         ("Level 2 Brazier Route 2", Level2_BrazierRoute2),
         *_vanquish_point_steps("Level 2 Route To Dungeon Lock", SOO_LEVEL_2, L2_PATH_TO_LOCK, pause_on_combat=True, skip_if_in_maps=(SOO_LEVEL_3,)),
         ("Level 2 Open Dungeon Lock", Level2_OpenDungeonLock),
