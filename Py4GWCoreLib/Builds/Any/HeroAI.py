@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from typing import Any
+
 from Py4GWCoreLib import Agent, Map, Player, Profession, Routines
 from Py4GWCoreLib import BuildMgr
 from Py4GWCoreLib.BuildMgr import BuildRegistry
@@ -13,6 +16,9 @@ class HeroAI_Build(BuildMgr):
         )
         self._cached_data = cached_data
         self._standalone_fallback = standalone_fallback
+        self._tick_coroutine: Iterator[Any] | None = None
+        self._tick_phase: bool | None = None
+        self._tick_contract_signature: tuple[int, ...] | None = None
         if match_only:
             self._build_registry = None
             self._contract_map_signature = None
@@ -62,7 +68,23 @@ class HeroAI_Build(BuildMgr):
         self._contract_signature = None
         self._contract_build = None
 
+    def ResetTickExecution(self) -> None:
+        coroutine = self._tick_coroutine
+        self._tick_coroutine = None
+        self._tick_phase = None
+        self._tick_contract_signature = None
+        if coroutine is None:
+            return
+
+        close = getattr(coroutine, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception:
+                pass
+
     def ClearBuildContract(self) -> None:
+        self.ResetTickExecution()
         self._reset_contract()
 
     def EnsureBuildContract(self, cached_data=None):
@@ -211,6 +233,30 @@ class HeroAI_Build(BuildMgr):
             yield from self.ProcessCombat()
         else:
             yield from self.ProcessOOC()
+
+    def Tick(self, is_in_combat: bool):
+        """Advance the selected contract once while preserving its coroutine."""
+        resolved_phase = bool(is_in_combat)
+        contract_signature = self._get_contract_signature() if Map.IsExplorable() else None
+
+        if self._tick_coroutine is not None and (
+            self._tick_phase != resolved_phase
+            or self._tick_contract_signature != contract_signature
+        ):
+            self.ResetTickExecution()
+
+        if self._tick_coroutine is None:
+            self._tick_phase = resolved_phase
+            self._tick_contract_signature = contract_signature
+            self._tick_coroutine = super().Tick(resolved_phase)
+
+        try:
+            next(self._tick_coroutine)
+        except StopIteration:
+            self._tick_coroutine = None
+            self._tick_phase = None
+            self._tick_contract_signature = None
+        yield
 
 
 HeroAI = HeroAI_Build
