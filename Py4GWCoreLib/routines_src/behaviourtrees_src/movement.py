@@ -166,6 +166,8 @@ class BTMovement:
         avoidance_no_detour_blocker_id: int
         avoidance_no_detour_last_log_ms: int | None
         avoidance_logged_ignored_target_ids: set[int]
+        combat_release_pending: bool
+        combat_release_started_ms: int | None
         
     #region Move
     @staticmethod
@@ -191,6 +193,8 @@ class BTMovement:
         destination_obstacle_ignore_distance: float = 1500.0,
         ignore_destination_npcs: bool = True,
         ignore_destination_gadgets: bool = True,
+        combat_release_delay_ms: int = 0,
+        pause_on_nearby_enemy_range: float = 0.0,
     ) -> BehaviorTree:
         """
         Build a tree that moves the player to target coordinates using autopathing, proactive local avoidance, and runtime recovery logic.
@@ -250,6 +254,8 @@ class BTMovement:
             "avoidance_no_detour_blocker_id": 0,
             "avoidance_no_detour_last_log_ms": None,
             "avoidance_logged_ignored_target_ids": set(),
+            "combat_release_pending": bool(pause_on_combat and int(combat_release_delay_ms) > 0),
+            "combat_release_started_ms": None,
         }
 
         def _reset_runtime() -> None:
@@ -299,6 +305,8 @@ class BTMovement:
             state["avoidance_no_detour_blocker_id"] = 0
             state["avoidance_no_detour_last_log_ms"] = None
             state["avoidance_logged_ignored_target_ids"] = set()
+            state["combat_release_pending"] = bool(pause_on_combat and int(combat_release_delay_ms) > 0)
+            state["combat_release_started_ms"] = None
 
         def _reset_result() -> None:
             """
@@ -459,6 +467,24 @@ class BTMovement:
                 return "loot_message_active"
             if Checks.Player.IsDead():
                 return "player_dead"
+
+            # Some HeroAI combat states can briefly drop while an already-engaged
+            # enemy is still alive near the player (for example after being pulled
+            # outside the Vanquish waypoint radius).  Sensitive moves may opt into
+            # a player-centered enemy gate so no route movement command competes
+            # with that ongoing fight.
+            nearby_enemy_range = max(0.0, float(pause_on_nearby_enemy_range))
+            if nearby_enemy_range > 0.0:
+                try:
+                    from ..Agents import Agents as RoutinesAgents
+                    nearby_enemy_id = int(RoutinesAgents.GetNearestEnemy(nearby_enemy_range) or 0)
+                except Exception:
+                    nearby_enemy_id = 0
+                if nearby_enemy_id > 0 and Agent.IsAlive(nearby_enemy_id):
+                    node.blackboard["move_pause_nearby_enemy_id"] = nearby_enemy_id
+                    return "nearby_enemy"
+                node.blackboard.pop("move_pause_nearby_enemy_id", None)
+
             if pause_on_combat and bool(node.blackboard.get("COMBAT_ACTIVE", False)):
                 return "combat"
             if bool(node.blackboard.get(pause_flag_key, False)):
@@ -1060,7 +1086,7 @@ class BTMovement:
             if Checks.Player.IsDead():
                 _stop_strafe()
                 _clear_avoidance()
-                if log:
+                if log and state["current_pause_reason"] != "player_dead":
                     _log("Move", "Player is dead; movement remains active and waiting.", message_type=Console.MessageType.Warning, log=log)
                 state["was_paused"] = True
                 state["current_pause_reason"] = "player_dead"
@@ -1080,6 +1106,13 @@ class BTMovement:
             if pause_reason:
                 _stop_strafe()
                 _clear_avoidance()
+                if pause_on_combat and int(combat_release_delay_ms) > 0:
+                    # Any active pause breaks the quiet window. Combat explicitly
+                    # arms the release delay so a short COMBAT_ACTIVE drop cannot
+                    # immediately send a new movement order toward the waypoint.
+                    if pause_reason in ("combat", "nearby_enemy") or state["combat_release_pending"]:
+                        state["combat_release_pending"] = True
+                        state["combat_release_started_ms"] = None
                 if not state["pause_logged"] and log:
                         _log("Move", f"Movement paused due to {pause_reason}.", message_type=Console.MessageType.Info, log=log)
                 if pause_reason == "combat" and not state["pause_logged"]:
@@ -1098,7 +1131,25 @@ class BTMovement:
                 state["strafe_phase"] = 0
                 _set_blackboard(node, "paused", pause_reason)
                 return BehaviorTree.NodeState.RUNNING
-            elif state["pause_logged"]:
+
+            # For sensitive moves (notably MoveAndKill's return to the waypoint),
+            # require a continuous combat-free window before issuing/resuming movement.
+            # This absorbs HeroAI COMBAT_ACTIVE flicker while an enemy is still being
+            # chased or is temporarily outside the active scan range.
+            release_delay_ms = max(0, int(combat_release_delay_ms))
+            if pause_on_combat and release_delay_ms > 0 and state["combat_release_pending"]:
+                release_started_ms = state["combat_release_started_ms"]
+                if release_started_ms is None:
+                    state["combat_release_started_ms"] = now
+                    _set_blackboard(node, "paused", "combat_release_grace")
+                    return BehaviorTree.NodeState.RUNNING
+                if now - release_started_ms < release_delay_ms:
+                    _set_blackboard(node, "paused", "combat_release_grace")
+                    return BehaviorTree.NodeState.RUNNING
+                state["combat_release_pending"] = False
+                state["combat_release_started_ms"] = None
+
+            if state["pause_logged"]:
                 if log:
                     _log("Move", "Movement resumed.", message_type=Console.MessageType.Info, log=log)
                 state["pause_logged"] = False
@@ -1527,15 +1578,19 @@ class BTMovement:
             ),
 
             # Le combat peut avoir entraîné le joueur loin du waypoint.
-            # On impose ici un retour direct, sans nouveau calcul d'autopath.
+            # Revenir au waypoint après 500 ms continues sans combat.
+            # Si HeroAI réengage pendant le retour, la même fenêtre de stabilité est
+            # réarmée avant toute nouvelle commande de mouvement.
             BTMovement.Move(
                 x=coords.x,
                 y=coords.y,
                 tolerance=400.0,
-                pause_on_combat=False,
+                pause_on_combat=pause_on_combat,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
                 avoid_obstacles=avoid_obstacles,
                 log=log,
+                combat_release_delay_ms=500,
+                pause_on_nearby_enemy_range=min(float(clear_area_radius), float(Range.Spellcast.value)),
                 path_points_override=[
                     (float(coords.x), float(coords.y)),
                 ],

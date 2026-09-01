@@ -1,5 +1,5 @@
 from Py4GWCoreLib import Agent, Botting, ConsoleLog, GLOBAL_CACHE, Map, ModelID, Player, Routines, SharedCommandType
-import Py4GW
+import PySystem
 import PyImGui
 import os
 

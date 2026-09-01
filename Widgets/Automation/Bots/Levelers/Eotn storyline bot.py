@@ -433,6 +433,14 @@ NORN_TOURNAMENT_SKILLS = (
     "Destruction",
     "Disenchantment",
 )
+
+# Optional elite used for the Norn Tournament setup.
+# The account must already have the elite unlocked; the character learns it
+# from an Elite Ritualist Tome through RoutinesBT.Player.LearnSkillFromTome.
+NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL = "Signet_of_Spirits"
+RITUALIST_ELITE_TOME_MODEL_ID = int(ModelID.Ritualist_Elite_Tome.value)
+GOLD_ZAISHEN_COIN_MODEL_ID = int(ModelID.Gold_Zaishen_Coin.value)
+
 from Py4GWCoreLib.Skill import Skill
 Painful_Bond_ID = Skill.GetID("Painful_Bond")
 
@@ -445,8 +453,61 @@ NORN_TOURNAMENT_SPIRIT_CASTS = (
 )
 
 
+def _skill_state_condition(
+    skill_name: str,
+    *,
+    learned: bool,
+    name: str,
+) -> BehaviorTree:
+    """Check either the character-learned or account-unlocked skill state."""
+    skill_id = int(GLOBAL_CACHE.Skill.GetID(skill_name) or 0)
+
+    def _check() -> BehaviorTree.NodeState:
+        if skill_id <= 0:
+            return BehaviorTree.NodeState.FAILURE
+
+        available = bool(
+            GLOBAL_CACHE.SkillBar.IsSkillLearnt(skill_id)
+            if learned
+            else GLOBAL_CACHE.SkillBar.IsSkillUnlocked(skill_id)
+        )
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if available
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name=name,
+            condition_fn=_check,
+        )
+    )
 
 
+def _storage_has_model(
+    model_id: int,
+    quantity: int,
+    name: str,
+) -> BehaviorTree:
+    """Succeed when storage contains at least the requested model quantity."""
+
+    def _check() -> BehaviorTree.NodeState:
+        stored_quantity = int(
+            GLOBAL_CACHE.Inventory.GetModelCountInStorage(model_id) or 0
+        )
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if stored_quantity >= int(quantity)
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name=name,
+            condition_fn=_check,
+        )
+    )
 
 
 def _cast_norn_tournament_skill(
@@ -479,6 +540,28 @@ def _cast_norn_tournament_skill(
 def _run_norn_tournament_round(log: bool = False) -> BehaviorTree:
     """Run one tournament round with explicit Ritualist skill control."""
 
+    optional_signet_cast = BT.Selector(
+        name="Cast Signet Of Spirits If Learned",
+        children=[
+            BT.Sequence(
+                name="Signet Of Spirits Is Available",
+                children=[
+                    _skill_state_condition(
+                        NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL,
+                        learned=True,
+                        name="Check Signet Of Spirits Before Cast",
+                    ),
+                    _cast_norn_tournament_skill(
+                        NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL,
+                        aftercast_delay_ms=1_500,
+                        log=log,
+                    ),
+                ],
+            ),
+            BT.Succeeder(name="Continue Round Without Signet Of Spirits"),
+        ],
+    )
+
     return BT.Sequence(
         name="Manual Norn Tournament Round",
         children=[
@@ -488,6 +571,7 @@ def _run_norn_tournament_round(log: bool = False) -> BehaviorTree:
                 log=log,
                 tolerance=50
             ),
+            optional_signet_cast,
             *[
                 _cast_norn_tournament_skill(
                     skill_name,
@@ -734,8 +818,144 @@ def _ensure_skill_learned(skill_name: str, log: bool) -> BehaviorTree:
     )
 
 
+def _learn_signet_of_spirits_from_elite_tome(
+    log: bool = True,
+) -> BehaviorTree:
+    """Learn Signet of Spirits with the validated native SkillTome routine."""
+
+    skill_id = int(
+        GLOBAL_CACHE.Skill.GetID(NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL) or 0
+    )
+    if skill_id <= 0:
+        return BT.Failer(name="Resolve Signet Of Spirits Failed")
+
+    # LearnSkillFromTome performs the complete native GW flow:
+    # UseItem -> select the SkillTome row with real PyMouse input ->
+    # click Learn -> verify IsSkillLearnt. No SendDialog is used.
+    return RoutinesBT.Player.LearnSkillFromTome(
+        skill_id=skill_id,
+        log=log,
+    )
 
 
+def EnsureSignetOfSpirits(log: bool = True) -> BehaviorTree:
+    """Learn Signet of Spirits when unlocked and a tome can be obtained."""
+
+    skill_name = NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL
+
+    acquire_tome = BT.Selector(
+        name="Acquire Elite Ritualist Tome If Available",
+        children=[
+            BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
+            BT.Sequence(
+                name="Withdraw Stored Elite Ritualist Tome",
+                children=[
+                    _storage_has_model(
+                        RITUALIST_ELITE_TOME_MODEL_ID,
+                        1,
+                        "Check Stored Elite Ritualist Tome",
+                    ),
+                    BT.RestockItems(
+                        model_id=RITUALIST_ELITE_TOME_MODEL_ID,
+                        desired_quantity=1,
+                        allow_missing=False,
+                    ),
+                    BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
+                ],
+            ),
+            BT.Sequence(
+                name="Buy Elite Ritualist Tome With Zaishen Coin",
+                children=[
+                    BT.Selector(
+                        name="Check Gold Zaishen Coin Availability",
+                        children=[
+                            BT.HasItemQuantity(GOLD_ZAISHEN_COIN_MODEL_ID, 1),
+                            _storage_has_model(
+                                GOLD_ZAISHEN_COIN_MODEL_ID,
+                                1,
+                                "Check Stored Gold Zaishen Coin",
+                            ),
+                        ],
+                    ),
+                    BT.Travel(target_map_id=248, log=log),
+                    BT.RestockItems(
+                        model_id=GOLD_ZAISHEN_COIN_MODEL_ID,
+                        desired_quantity=1,
+                        allow_missing=False,
+                    ),
+                    BT.EqualizeGold(
+                        target_gold=100,
+                        deposit_all=False,
+                        log=log,
+                    ),
+                    BT.TargetAgentByName(
+                        agent_name="Jessie Llam",
+                        log=log,
+                    ),
+                    BT.InteractTarget(log=log),
+                    BT.Wait(1_000),
+                    BT.ExchangeCollectorItem(
+                        output_model_id=RITUALIST_ELITE_TOME_MODEL_ID,
+                        trade_model_ids=[GOLD_ZAISHEN_COIN_MODEL_ID],
+                        quantity_list=[1],
+                        cost=100,
+                        aftercast_ms=500,
+                    ),
+                    BT.Wait(1_000),
+                    BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name="Ensure Optional Signet Of Spirits",
+        children=[
+            _skill_state_condition(
+                skill_name,
+                learned=True,
+                name="Check Signet Of Spirits Learned",
+            ),
+            BT.Sequence(
+                name="Learn Signet Of Spirits If Resources Are Available",
+                children=[
+                    _skill_state_condition(
+                        skill_name,
+                        learned=False,
+                        name="Check Signet Of Spirits Account Unlock",
+                    ),
+                    acquire_tome,
+                    _learn_signet_of_spirits_from_elite_tome(log=log),
+                    _skill_state_condition(
+                        skill_name,
+                        learned=True,
+                        name="Verify Signet Of Spirits Learned",
+                    ),
+                    BT.LogMessage(
+                        message=(
+                            "Signet of Spirits was learned from an "
+                            "Elite Ritualist Tome."
+                        ),
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+            BT.Sequence(
+                name="Skip Optional Signet Of Spirits",
+                children=[
+                    BT.LogMessage(
+                        message=(
+                            "Signet of Spirits is unavailable or no usable Elite "
+                            "Ritualist Tome / Gold Zaishen Coin could be obtained; "
+                            "the tournament setup continues without it."
+                        ),
+                        module_name=MODULE_NAME,
+                    ),
+                    BT.Succeeder(name="Continue Without Signet Of Spirits"),
+                ],
+            ),
+        ],
+    )
 
 
 def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
@@ -744,6 +964,20 @@ def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
         primary_id, current_secondary_id = Agent.GetProfessionIDs(player_id)
         primary_id = int(primary_id or 0)
         skill_names = list(NORN_TOURNAMENT_SKILLS)
+
+        optional_elite_id = int(
+            GLOBAL_CACHE.Skill.GetID(NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL)
+            or 0
+        )
+        if (
+            optional_elite_id > 0
+            and GLOBAL_CACHE.SkillBar.IsSkillLearnt(optional_elite_id)
+        ):
+            # Keep Signet of Spirits in slot 1 when available. Existing
+            # explicit casts use skill IDs, so the current round logic remains
+            # valid even though the other skills shift one slot to the right.
+            skill_names.insert(0, NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL)
+
         skill_ids = [
             int(GLOBAL_CACHE.Skill.GetID(skill_name) or 0)
             for skill_name in skill_names
@@ -860,6 +1094,7 @@ def UnlockNornTournamentSkills(
                 skill_budget_gold=skill_budget_gold,
                 log=log,
             ),
+            EnsureSignetOfSpirits(log=log),
             BT.Travel(target_map_name="Kaineng Center", log=log),
             BT.EqualizeGold(
                 target_gold=max(0, int(skill_budget_gold)),

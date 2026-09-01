@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
 from typing import Dict, List, Optional
 import os
 import time
@@ -203,10 +202,12 @@ _HERO_ICONS_BASE = os.path.normpath(
 _HERO_SLOTS_COUNT = 7
 
 
-@dataclass
 class _PartyHeroSlot:
-    hero_id: int = 0
-    template: str = ""
+    __slots__ = ("hero_id", "template")
+
+    def __init__(self, hero_id: int = 0, template: str = "") -> None:
+        self.hero_id = hero_id
+        self.template = template
 
 
 def _humanize_hero_name(enum_name: str) -> str:
@@ -812,31 +813,13 @@ def _take_vanguard_blessing(
         BT.Sequence(
             name=name,
             children=[
-                BT.Move(
-                    bless_xy,
-                    pause_on_combat=True,
-                    tolerance=250.0,
-                    flag_heroes_to_waypoint=False,
-                    log=False,
-                ),
                 BT.Wait(1_500),
-                BT.TargetNearest(
-                    x,
-                    y,
-                    target_distance=Range.Spirit.value,
-                    log=True,
-                ),
-                BT.InteractTargetAndSendDialog(
+                BT.MoveAndDialog(bless_xy,
                     dialog_id=0x84,
                     multi_account=_is_multibox(),
                     log=True,
                 ),
                 BT.Wait(250),
-                BT.InteractTargetAndSendDialog(
-                    dialog_id=0x85,
-                    multi_account=_is_multibox(),
-                    log=True,
-                ),
             ],
         ),
     )
@@ -924,6 +907,9 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 
 
 # region GUI - Heroes
+
+
+_EXPANDED_TAB_CHILD_SIZE = (500, 620)
 
 
 def _get_hero_icon_path(hero_id: int) -> Optional[str]:
@@ -1053,7 +1039,7 @@ def _draw_hero_slot_editor(slot_index: int) -> None:
         _hero_config_dirty = True
 
 
-def _draw_heroes_tab() -> None:
+def _draw_heroes_contents() -> None:
     import PyImGui
 
     PyImGui.text("Configure up to 7 heroes for Single Account mode.")
@@ -1093,6 +1079,18 @@ def _draw_heroes_tab() -> None:
             _draw_hero_slot_editor(index)
             if index < _HERO_SLOTS_COUNT - 1:
                 PyImGui.separator()
+    PyImGui.end_child()
+
+
+def _draw_heroes_tab() -> None:
+    import PyImGui
+
+    if PyImGui.begin_child(
+        "VanguardHeroesTabChild",
+        _EXPANDED_TAB_CHILD_SIZE,
+        False,
+    ):
+        _draw_heroes_contents()
     PyImGui.end_child()
 
 
@@ -1244,7 +1242,7 @@ def _get_title_track_accounts():
     return accounts[:1] if len(accounts) == 1 else []
 
 
-def _draw_statistics_tab() -> None:
+def _draw_statistics_contents() -> None:
     global _session_baselines, _session_start_times
     import PyImGui
 
@@ -1353,6 +1351,18 @@ def _draw_statistics_tab() -> None:
         PyImGui.text(
             f"+{gained:,}  ({pts_hr:,}/hr)"
         )
+
+
+def _draw_statistics_tab() -> None:
+    import PyImGui
+
+    if PyImGui.begin_child(
+        "VanguardStatisticsTabChild",
+        _EXPANDED_TAB_CHILD_SIZE,
+        False,
+    ):
+        _draw_statistics_contents()
+    PyImGui.end_child()
 
 
 # endregion
