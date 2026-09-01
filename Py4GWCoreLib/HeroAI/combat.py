@@ -184,11 +184,13 @@ class CombatClass:
         self.disease = GLOBAL_CACHE.Skill.GetID("Disease")
         self.poison = GLOBAL_CACHE.Skill.GetID("Poison")
         self.weakness = GLOBAL_CACHE.Skill.GetID("Weakness")
+        self.charm_animal = GLOBAL_CACHE.Skill.GetID("Charm_Animal")
         self.comfort_animal = GLOBAL_CACHE.Skill.GetID("Comfort_Animal")
         self.heal_as_one = GLOBAL_CACHE.Skill.GetID("Heal_as_One")
         self.never_rampage_alone = GLOBAL_CACHE.Skill.GetID("Never_Rampage_Alone")
         self.whirlwind_attack = GLOBAL_CACHE.Skill.GetID("Whirlwind_Attack")
         self.heroic_refrain = GLOBAL_CACHE.Skill.GetID("Heroic_Refrain")
+        self.double_dragon = GLOBAL_CACHE.Skill.GetID("Double_Dragon")
         self.natures_blessing = GLOBAL_CACHE.Skill.GetID("Natures_Blessing")
         self.relentless_assault = GLOBAL_CACHE.Skill.GetID("Relentless_Assault")
         self.great_dwarf_weapon = GLOBAL_CACHE.Skill.GetID("Great_Dwarf_Weapon")
@@ -733,6 +735,31 @@ class CombatClass:
             return self.cached_data.GetActiveScanRange()
         return Range.Spellcast.value if self.in_aggro else Range.Earshot.value
 
+    def _resolve_double_dragon_pet_target(self, skill_id: int) -> int | None:
+        """Keep Double Dragon on the pet for pet bars, never a backline ally."""
+        if skill_id != self.double_dragon:
+            return None
+
+        pet_id = int(GLOBAL_CACHE.Party.Pets.GetPetID(Player.GetAgentID()) or 0)
+        if pet_id == 0:
+            pet_skill_ids = {
+                self.charm_animal,
+                self.comfort_animal,
+                self.heal_as_one,
+                *self.pet_attack_list,
+            }
+            pet_build = any(
+                int(getattr(skill, "skill_id", 0) or 0) in pet_skill_ids
+                for skill in self.skills
+            )
+            return 0 if pet_build else None
+
+        if not Agent.IsValid(pet_id) or not Agent.IsAlive(pet_id):
+            return 0
+
+        in_range = AgentArray.Filter.ByDistance([pet_id], Player.GetXY(), Range.Spellcast.value)
+        return pet_id if pet_id in in_range else 0
+
 
 
     def GetAppropiateTarget(self, slot: int) -> int:
@@ -773,6 +800,10 @@ class CombatClass:
             if _lowest_ally is None:
                 _lowest_ally = TargetLowestAlly(filter_skill_id=self.skills[slot].skill_id)
             return _lowest_ally
+
+        double_dragon_target = self._resolve_double_dragon_pet_target(self.skills[slot].skill_id)
+        if double_dragon_target is not None:
+            return double_dragon_target
 
         if self.skills[slot].skill_id == self.heroic_refrain:
             if not self.HasEffect(Player.GetAgentID(), self.heroic_refrain):
