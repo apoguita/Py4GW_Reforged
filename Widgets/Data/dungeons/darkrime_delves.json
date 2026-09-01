@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "name": "Darkrime Delves",
+  "source_route_id": "ROUTE-20260806-211625-835",
+  "approach_source_route_id": "ROUTE-20260806-221011-047",
+  "source_capture": "Logs/Route_Waypoint_Captures.jsonl",
+  "route_module": "darkrime_delves_data.py",
+  "maps": [482, 635, 636, 637],
+  "status": "live_route_validated",
+  "approach": {
+    "outpost_map_id": 650,
+    "outpost_map_name": "Longeyes Ledge",
+    "explorable_map_id": 482,
+    "explorable_map_name": "Bjora Marches",
+    "quest_id": 810,
+    "quest_name": "Cold Vengeance",
+    "quest_npc": "Einarr Frostcleft",
+    "quest_npc_model_id": 6428,
+    "quest_npc_target_xy": [-15915.0, 13669.0],
+    "quest_npc_capture_id": "NPC-20260807-115226-136",
+    "outpost_exit_xy": [-26375.0, 16180.0],
+    "blessing_xy": [17838.55, -18278.86],
+    "blessing_model_id": 6425,
+    "yavb_splice_finish_xy": [388.0, -1491.0],
+    "capture_join_xy": [464.49, -1019.08],
+    "level_1_lever_safe_wait": {
+      "xy": [-13256.14, -2042.54],
+      "wait_ms": 15000,
+      "capture_id": "NPC-20260806-224917-468"
+    },
+    "level_2_grelk_checkpoint": {
+      "xy": [-11323.99, -18605.6],
+      "capture_id": "NPC-20260806-231153-892"
+    },
+    "level_3_entrance_beacon": {
+      "xy": [-16402.23, 17848.92],
+      "model_id": 5916,
+      "capture_id": "NPC-20260806-231723-937"
+    },
+    "quest_interaction_xy": [-15864.09, 13716.09],
+    "dungeon_entry_xy": [-6343.24, 19591.38],
+    "einarr_conversation_wait_ms": 30000,
+    "normalization": "Discard captured points 8-67 after the blessing. Use the YAVB 2.0 Bjora route from the blessing through (388,-1491), join the captured route, then retain captured points 69-126 to Einarr."
+  },
+  "segments": [
+    {
+      "map_id": 635,
+      "map_name": "Darkrime Delves (level 1)",
+      "source_point_range": [27, 280],
+      "normalized_point_count": 258,
+      "snowball_dodge_source_route_id": "ROUTE-20260807-120413-664",
+      "snowball_dodge_replaces_source_points": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42],
+      "snowball_dodge_resume_point": 43,
+      "snowball_dodge_checkpoint": "DD:L1_AFTER_SNOWBALL",
+      "havok_key_kill_checkpoint": {
+        "after_source_point": 112,
+        "before_second_powder_keg_point": 127,
+        "xy": [-1493.77, -3060.69],
+        "capture_id": "NPC-20260807-141426-562",
+        "required_inventory_model_id": 25410,
+        "failure_behavior": "hold before the powder keg and never attempt the boss lock without a verified Dungeon Key"
+      },
+      "random_bridge_choice": {
+        "primary_probe_source_points": [161, 162],
+        "primary_route_tail_source_points": [163, 187],
+        "alternate_source_route_id": "ROUTE-20260807-142003-458",
+        "alternate_point_count": 44,
+        "alternate_blessing_point": 12,
+        "alternate_blessing_xy": [-9178.22, 14943.58],
+        "alternate_blessing_capture_id": "NPC-20260807-142035-173",
+        "shared_resume_source_point": 188,
+        "behavior": "probe the first bridge with a finite direct crossing; if unreachable, take the captured other bridge route, interact with its Beacon, and rejoin the original route"
+      },
+      "hero_regroup_after_bridge": {
+        "xy": [-8250.15, -2386.21],
+        "radius": 350.0,
+        "timeout_ms": 20000,
+        "capture_id": "NPC-20260807-122219-412"
+      },
+      "key_hero_flag": {
+        "xy": [-5488.69, -2881.93],
+        "capture_id": "NPC-20260807-142434-178",
+        "purpose": "keep heroes outside the frost trap but close enough to resurrect the player during the solo dungeon-key pickup"
+      },
+      "key_location": {
+        "xy": [-5032.16, -2603.14],
+        "capture_id": "NPC-20260807-122128-904"
+      },
+      "exit_transition_xy": [-18979.55, 11133.68],
+      "exit_to_map_id": 636
+    },
+    {
+      "map_id": 636,
+      "map_name": "Darkrime Delves (level 2)",
+      "source_point_range": [282, 520],
+      "normalized_point_count": 234,
+      "removed_source_points": [313, 314, 315, 316, 317],
+      "removed_reason": "Party-resurrection detour explicitly marked to ignore.",
+      "boss_lock_point": 519,
+      "boss_lock_to_door_source_route_id": "ROUTE-20260807-124835-082",
+      "boss_lock_to_door_points": [[-19273.02, -1004.83], [-19692.08, -728.73], [-19777.63, -763.18]],
+      "replaced_source_exit_point": 520,
+      "exit_transition_xy": [-20250.0, -953.0],
+      "exit_to_map_id": 637
+    },
+    {
+      "map_id": 637,
+      "map_name": "Darkrime Delves (level 3)",
+      "source_point_ranges": [[522, 524], [538, 593]],
+      "normalized_point_count": 59,
+      "removed_source_points": [525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537],
+      "removed_reason": "Death path and teleport back to the level entrance; splice joins at the entrance beacon.",
+      "final_chest_point": 593,
+      "final_chest_name": "Havok's Chest"
+    }
+  ],
+  "marker_corrections": [
+    {"point_index": 94, "kind": "drop_bundle", "name": "Drop first Powder Keg"},
+    {"point_index": 112, "kind": "objective", "name": "Defeat Havok-kin and collect the key"},
+    {"point_index": 130, "kind": "drop_bundle", "name": "Drop second Powder Keg"},
+    {"point_index": 134, "kind": "objective", "name": "Defeat Havok-kin"},
+    {"point_index": 136, "kind": "gadget", "name": "Level 1 boss lock"},
+    {"point_index": 160, "kind": "bridge", "name": "First possible bridge"},
+    {"point_index": 177, "kind": "bridge", "name": "Alternate bridge"},
+    {"point_index": 207, "kind": "gadget", "name": "Lever"},
+    {"point_index": 227, "kind": "objective", "name": "Collect the dungeon key"},
+    {"point_index": 258, "kind": "gadget", "name": "Level 1 dungeon lock"},
+    {"point_index": 465, "kind": "objective", "name": "Defeat Grelk Icelash and collect the key"},
+    {"point_index": 519, "kind": "gadget", "name": "Level 2 boss lock"},
+    {"point_index": 593, "kind": "reward_chest", "name": "Havok's Chest"}
+  ],
+  "interaction_automation": {
+    "implementation": "Py4GWCoreLib.routines_src.reliable_interaction",
+    "opt_in": true,
+    "quest_npc": "after the 30-second Einarr conversation wait, use the visible quest choice and quest-810 accept context 0x832A01; verify quest 810 when the quest-log binding updates, otherwise accept the confirmed visible-button click plus dialog closure as the immediate game handoff",
+    "beacons": "live model-5916 resolution, asynchronous dialog handling, and effect/dialog verification; post-blessing popups close naturally without CloseAllPanels",
+    "keg_stations": "nearest live gadget plus held-bundle verification",
+    "locks_and_lever": "nearest live gadget plus gadget-state transition verification",
+    "final_chest": "nearest live gadget plus gadget-state or new-drop verification",
+    "runtime_ids": "reacquired immediately before every interaction",
+    "hero_ai": "paused and restored to its prior state on every exit path"
+  }
+}
