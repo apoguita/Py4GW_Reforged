@@ -49,15 +49,15 @@ Blind_ID = Skill.GetID("Blind")
 
 
 class Paragon_Refrain(BuildMgr):
-    """P/W Heroic Refrain support Paragon.
+    """P/any Heroic Refrain support Paragon.
 
-    Ports PvX "Build:P/any Heroic Refrain Spear" and its two P/W variants
-    (Mighty Throw and Motivation Support) on top of the original Defensive
-    Refrain bar. The engine is Heroic Refrain: it is stacked on ourselves first
-    so every copy we hand out is cast at the highest Leadership we can reach,
-    then spread across the party. The echoes are renewed either when "They're
-    on Fire!" expires normally or through the documented special case where
-    reapplying "Can't Touch This!" ends its existing copy on affected allies.
+    Ports PvX "Build:P/any Heroic Refrain Spear" and its variants on top of the
+    original Defensive Refrain bar. The engine is Heroic Refrain: it is stacked
+    on ourselves first so every copy we hand out is cast at the highest
+    Leadership we can reach, then spread across the party. The echoes are
+    renewed either when "They're on Fire!" expires normally or through the
+    documented special case where reapplying "Can't Touch This!" ends its
+    existing copy on affected allies.
 
     The spear attacks are clamped to spear range - which is the same
     1012 units as earshot, so staying in range to attack is the same thing as
@@ -68,14 +68,15 @@ class Paragon_Refrain(BuildMgr):
         super().__init__(
             name="Defensive Refrain",
             required_primary=Profession.Paragon,
-            required_secondary=Profession.Warrior,
+            # BuildMgr uses enum value zero as the wildcard profession.
+            # Warrior-only helpers below remain guarded by IsSkillEquipped.
+            required_secondary=Profession(0),
             template_code="OQGkUNlnpiy0ZNQYPWNm72G4VhoH",
-            # Both supported refrain engines share Heroic Refrain and the core
-            # defensive shout. ScoreMatch below additionally requires either
-            # the traditional ToF heartbeat or the CTT reapplication heartbeat.
+            # The elite is the complete archetype fingerprint. Other bar slots
+            # determine available behavior, not whether this controller owns
+            # the build.
             required_skills=[
                 Heroic_Refrain_ID,
-                Theres_Nothing_to_Fear_ID,
             ],
             # Everything here is driven below. That is not optional: declaring a
             # skill masks it out of the HeroAI fallback, so a declared skill the
@@ -83,6 +84,7 @@ class Paragon_Refrain(BuildMgr):
             optional_skills=[
                 Save_Yourselves_luxon_ID,
                 Save_Yourselves_kurzick_ID,
+                Theres_Nothing_to_Fear_ID,
                 Theyre_on_Fire_ID,
                 Anthem_of_Flame_ID,
                 Hasty_Refrain_ID,
@@ -131,18 +133,6 @@ class Paragon_Refrain(BuildMgr):
         # Spear attacks are ranged, so there is no reason to prefer whatever is
         # closest - pick the target that dies soonest.
         self.spear_target_type = "EnemyInjured"
-
-    def ScoreMatch(self, current_primary=None, current_secondary=None, current_skills=None):
-        score = super().ScoreMatch(current_primary, current_secondary, current_skills)
-        if score < 0:
-            return score
-
-        if current_skills is None:
-            current_skills = self._get_current_skills()
-        heartbeat_skills = {Theyre_on_Fire_ID, Cant_Touch_This_ID}
-        if not heartbeat_skills.intersection(current_skills):
-            return -1
-        return score
 
     def _run_upkeep(self):
         """Refrain maintenance. Runs in and out of combat.
