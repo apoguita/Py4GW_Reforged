@@ -123,6 +123,14 @@ def CheckForEffect(agent_id, skill_id, cached_data : Optional[CacheData] = None)
         # Self-upkeep should use live local effects rather than shared-memory party
         # state, which can lag and suppress recasts of expired buffs.
         return GLOBAL_CACHE.Effects.HasEffect(agent_id, skill_id)
+
+    # Heroes are locally observable party members. Their synthetic shared-memory
+    # slots can lag, disappear, or retain an expired buff for a few frames; using
+    # that copy can permanently remove a hero from buff targeting. Read the live
+    # effect table for party heroes just as we do for the local player.
+    for hero in GLOBAL_CACHE.Party.GetHeroes() or []:
+        if int(getattr(hero, "agent_id", 0) or 0) == int(agent_id):
+            return GLOBAL_CACHE.Effects.HasEffect(agent_id, skill_id)
     
     for acc in cached_data.party:
         if acc.IsSlotActive and acc.AgentData.AgentID == agent_id and SameMapOrPartyAsAccount(acc) and acc.AgentPartyData.PartyID == cached_data.party.party_id:
