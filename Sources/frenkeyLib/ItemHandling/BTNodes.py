@@ -709,6 +709,11 @@ class BTNodes:
               UserDescription: Use this when you want a BT step that manages salvage UI and progress automatically for one item.
               Notes: Stores runtime state in the blackboard, supports expert or lesser kits, and returns running while the salvage flow is in progress.
             """
+            lesser_kit_model_ids = (
+                ModelID.Salvage_Kit,
+                ModelID.Salvage_Kit_preSearing,
+            )
+
             def _reset_state(node: BehaviorTree.Node):
                 node.blackboard.pop(state_key, None)
 
@@ -746,12 +751,20 @@ class BTNodes:
                 return min(expert_kits, key=lambda k: k.uses).id
             
             def _get_lesser_salvage_kit() -> int:
-                preferred = _resolve_preferred_kit((ModelID.Salvage_Kit,))
+                preferred = _resolve_preferred_kit(lesser_kit_model_ids)
                 if preferred > 0:
                     return preferred
 
                 inventory_snapshot = ItemSnapshot.get_inventory_snapshot(Bag.Backpack, Bag.Bag_2)
-                lesser_kits = [i for bag in inventory_snapshot.values() for i in bag.values() if i is not None and i.is_valid and i.is_salvage_kit and i.model_id == ModelID.Salvage_Kit]
+                lesser_kits = [
+                    item
+                    for bag in inventory_snapshot.values()
+                    for item in bag.values()
+                    if item is not None
+                    and item.is_valid
+                    and item.is_salvage_kit
+                    and item.model_id in lesser_kit_model_ids
+                ]
                 
                 if not lesser_kits:
                     return 0
@@ -859,7 +872,11 @@ class BTNodes:
                         kit_id = _get_upgrade_salvage_kit()
 
                     kit = ItemSnapshot.from_item_id(kit_id)
-                    if kit_id <= 0 or (kit is None or kit.model_id == ModelID.Salvage_Kit and (item.rarity > Rarity.White and not item.is_identified)):
+                    if kit_id <= 0 or (
+                        kit is None
+                        or kit.model_id in lesser_kit_model_ids
+                        and (item.rarity > Rarity.White and not item.is_identified)
+                    ):
                         _debug(
                             f"Failed to resolve valid salvage kit for item={item.id} mode={mode.name}. "
                             f"kit_id={kit_id} kit_model={(kit.model_id if kit else 'None')} "

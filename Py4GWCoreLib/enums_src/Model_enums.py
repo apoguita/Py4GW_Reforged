@@ -1607,7 +1607,7 @@ class ModelID(IntEnum):
     Rune_Of_Holding = 2988
     Rune_Of_Superior_Vigor = 5551
     Sack_Of_Random_Junk = 34213
-    Salvage_Kit = 2993
+    Salvage_Kit = 2992
     Salvage_Kit_preSearing = 2993
     Sandblasted_Lodestone = 1584
     Sapphire = 938
