@@ -3,6 +3,7 @@ from typing import List, Tuple, Generator, Any
 import os
 
 import PyImGui
+import PySystem
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Map, Player, Py4GW, ConsoleLog, ModelID, Bags, Botting,
                           Agent, ImGui, ActionQueueManager, HeroType)
 from Py4GWCoreLib.ImGui_src.types import Alignment

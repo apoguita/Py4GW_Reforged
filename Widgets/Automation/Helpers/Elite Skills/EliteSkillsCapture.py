@@ -344,7 +344,7 @@ SECONDARY_BUILDS = {
         Profession.ELEMENTALIST: "OQaksElrpiqUNGAQ62CGAAQo72AA",   # P/E
         Profession.ASSASSIN:     "OQek8FlrpiqUNGAQ62CGAAQo72AA",   # P/A
         Profession.RITUALIST:    "OQikAGlrpiqUNGAQ62CGAAQo72AA",   # P/Rt
-        Profession.PARAGON:      "OQCjUimKKT1YAh7YWYDA9Yubn1A",   # P
+        Profession.PARAGON:      "OQGkUdlqpimUN2VR62CGXBQo72AA",   # P
         Profession.DERVISH:      "OQqkUumKqmGUNGAQ62CGAAQo72AA",   # P/D
     },
     Profession.DERVISH: { 
@@ -571,17 +571,6 @@ ELITE_SKILLS = [
         type=EliteSkillType.ELITE_SKILL,
         step_name="[H]Shadow Form",
         capture_function="Shadow_Form",
-        start_map=284,
-        icon_filename="[826] - Shadow Form.jpg",
-    ),
-    EliteSkill(
-        id="skill_826_1",
-        display_name="Shadow Form - WoC",
-        skill_id=826,
-        profession=Profession.ASSASSIN,
-        type=EliteSkillType.ELITE_SKILL,
-        step_name="[H]Shadow Form - WoC",
-        capture_function="Shadow_Form_WoC",
         start_map=284,
         icon_filename="[826] - Shadow Form.jpg",
     ),
@@ -4208,35 +4197,6 @@ def Shadow_Form():
     bot.States.AddCustomState(lambda: ReturnToStartingMap(), "Return to Outpost")
     bot.States.AddCustomState(lambda: RestoreSavedBuild(), "Restore Build")
     yield
-
-def Shadow_Form_WoC():
-    bot.States.AddHeader("Shadow Form - WoC")
-    target_prof = Profession.ASSASSIN
-    start_map = 284
-    bot.States.AddCustomState(lambda: RecordStartingMap(start_map), "Record Start")
-    bot.States.AddCustomState(lambda: SaveCurrentBuild(), "Save Build")
-    bot.States.AddCustomState(lambda: BuySignetOfCapture(), "Buy Signet of Capture")
-    bot.States.AddCustomState(lambda: LoadSecondaryBuild(target_prof), "Load Sin Build")
-    bot.Party.LeaveParty()
-    bot.Travel_To_Random_District(target_map_id=start_map)
-    bot.States.AddCustomState(AdvancedHeroTeam, "Advanced Hero Team")
-    bot.Move.XY(11664.37, -18732.13)
-    bot.Move.XYAndExitMap(11637, -20480, 256)
-    #bot.Items.UseAllConsumables() #uncomment for harder areas
-    ConfigureAggressiveEnv(bot)
-    bot.Move.XY(12054, 10092)
-    bot.Move.XY(12438.57, -2243.74)
-    bot.Move.XY(12385.90, -5115.57)
-    bot.Move.XY(9502.17, -7110.23)
-    bot.Move.XY(6698.81, -7094.89)
-    bot.Wait.UntilOutOfCombat()
-    ConfigurePacifistEnv(bot)
-    bot.SkillBar.UseSkill(3)
-    bot.Wait.ForTime(5000)
-    bot.States.AddCustomState(lambda: ClickSkillFrame(826), "Click Skill Frame")
-    bot.States.AddCustomState(lambda: ReturnToStartingMap(), "Return to Outpost")
-    bot.States.AddCustomState(lambda: RestoreSavedBuild(), "Restore Build")
-    yield  
 
 def BroadHeadArrow():
     bot.States.AddHeader("Broadhead Arrow")
@@ -12300,7 +12260,6 @@ bot.States.AddCustomState(Mist_Form, "[H]Mist Form")
 bot.States.AddCustomState(Signet_of_Judgement, "[H]Signet of Judgement")
 bot.States.AddCustomState(Illusionary_Weaponry, "[H]Illusionary Weaponry")
 bot.States.AddCustomState(Shadow_Form, "[H]Shadow Form")
-bot.States.AddCustomState(Shadow_Form_WoC, "[H]Shadow Form - WoC")
 bot.States.AddCustomState(BroadHeadArrow, "[H]Broad Head Arrow")
 bot.States.AddCustomState(SoulTwisting, "[H]Soul Twisting")
 bot.States.AddCustomState(PrimalRage, "[H]Primal Rage")

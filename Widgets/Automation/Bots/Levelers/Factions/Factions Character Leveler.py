@@ -4,7 +4,7 @@ import os, time
 import PyImGui
 import PyGameThread
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Bags, Botting,
-                          AutoPathing, ImGui, ActionQueueManager, Map, Agent, Player, UIManager, GWUI, HeroType, Skill, AgentArray)
+                          AutoPathing, ImGui, ActionQueueManager, Map, Agent, Player, Inventory, UIManager, GWUI, HeroType, Skill, AgentArray, PySystem)
 from Py4GWCoreLib.Builds.Any.KeiranThackerayEOTN import KeiranThackerayEOTN
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 from Py4GWCoreLib.ImGui_src.types import Alignment
@@ -445,12 +445,72 @@ def _get_early_armor_data() -> dict:
     return _EARLY_ARMOR_DATA.get(primary, _EARLY_ARMOR_DATA["Warrior"])
 
 def BuyMaterials():
+    """Buy materials for early armor, checking storage first to avoid overbuying."""
     for mat, count in _get_early_armor_data()["buy"]:
-        for _ in range(count):
+        current_inv = GLOBAL_CACHE.Inventory.GetModelCount(mat)
+        current_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(mat)
+        total_have = current_inv + current_storage
+        
+        shortfall = max(0, count - total_have)
+        
+        if shortfall == 0:
+            ConsoleLog("CraftArmor", f"Already have sufficient {mat} (inv: {current_inv}, storage: {current_storage}), skipping purchase.", PySystem.Console.MessageType.Info)
+            continue
+        
+        ConsoleLog("CraftArmor", f"Buying {shortfall}x {mat} (need {count}, have inv: {current_inv}, storage: {current_storage})", PySystem.Console.MessageType.Info)
+        
+        for _ in range(shortfall):
             yield from Routines.Yield.Merchant.BuyMaterial(mat)
         yield from Routines.Yield.wait(500)
 
 def _craft_armor_set(bot: Botting, armor_key: str, gold_cost: int):
+    """Craft armor set, withdrawing materials from storage if needed."""
+    # Calculate total materials needed for all pieces
+    total_mats: dict[int, int] = {}
+    for item_id, mats, qtys in _get_early_armor_data()[armor_key]:
+        for mat, qty in zip(mats, qtys):
+            total_mats[mat] = total_mats.get(mat, 0) + qty
+    
+    # Withdraw materials from storage if needed
+    for mat, total_needed in total_mats.items():
+        current_inv = GLOBAL_CACHE.Inventory.GetModelCount(mat)
+        current_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(mat)
+        # InventoryCache has no material-storage counter; the owning static Inventory API does.
+        current_material_storage = Inventory.GetModelCountInMaterialStorage(mat)
+        total_have = current_inv + current_storage + current_material_storage
+        
+        if current_inv < total_needed:
+            needed = total_needed - current_inv
+            ConsoleLog("CraftArmor", f"Need {needed}x {mat} (inv: {current_inv}, storage: {current_storage}, material: {current_material_storage})", PySystem.Console.MessageType.Info)
+            
+            # Try regular storage first (by model ID - item IDs in storage can differ)
+            if current_storage > 0:
+                withdraw_from_storage = min(needed, current_storage)
+                result = GLOBAL_CACHE.Inventory.WithdrawItemFromStorageByModelID(mat, withdraw_from_storage)
+                if result:
+                    ConsoleLog("CraftArmor", f"Withdrew {withdraw_from_storage}x {mat} from regular storage", PySystem.Console.MessageType.Info)
+                    needed -= withdraw_from_storage
+                    yield from Routines.Yield.wait(500)
+            
+            # If still needed, try material storage (materials may not have withdrawal API)
+            if needed > 0 and current_material_storage > 0:
+                ConsoleLog("CraftArmor", f"WARNING: {needed}x {mat} available in material storage but no direct withdrawal API - may need manual deposit", PySystem.Console.MessageType.Warning)
+                # Note: Material storage materials need to be deposited to regular storage first for withdrawal
+                # This is a limitation - user may need to manually move materials from material to regular storage
+                bot.helpers.Events.on_unmanaged_fail()
+                return False
+            
+            if needed > 0:
+                ConsoleLog("CraftArmor", f"Still missing {needed}x {mat} after storage withdrawal attempts", PySystem.Console.MessageType.Error)
+                bot.helpers.Events.on_unmanaged_fail()
+                return False
+    
+    # Craft the armor pieces — but only once the mats actually arrived in
+    # inventory (merchant purchases are asynchronous).
+    if not (yield from _wait_for_materials_in_inventory(list(total_mats.items()))):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+
     for item_id, mats, qtys in _get_early_armor_data()[armor_key]:
         result = yield from Routines.Yield.Items.CraftItem(item_id, gold_cost, mats, qtys)
         yield from Routines.Yield.wait(500)
@@ -576,7 +636,14 @@ _MAX_ARMOR_DATA = {
 
 def _get_max_armor_data() -> dict:
     primary, _ = Agent.GetProfessionNames(Player.GetAgentID())
-    return _MAX_ARMOR_DATA.get(primary, _MAX_ARMOR_DATA["Elementalist"])
+    data = _MAX_ARMOR_DATA.get(primary)
+    if data is None:
+        # GetProfessionNames returns ("", "") when the player agent is not
+        # resolvable yet; guessing a profession here silently sends the bot
+        # to the wrong armor crafter, so fail loudly instead.
+        ConsoleLog("CraftMaxArmor", f"Unrecognized primary profession {primary!r} (player not loaded yet?). Cannot resolve armor data.", PySystem.Console.MessageType.Error)
+        raise ValueError(f"Unrecognized primary profession: {primary!r}")
+    return data
 
 def GetArmorCrafterCoords() -> tuple[float, float]:
     return _get_max_armor_data()["crafter"]
@@ -595,43 +662,148 @@ def _get_max_armor_material_groups() -> tuple[set[int], set[int]]:
     return common, rare
 
 def VerifyMaxArmorMaterials(bot: Botting) -> bool:
+    # Move storage stock into inventory up front: the crafter can only use
+    # inventory bags, so verification must reflect inventory, not storage.
+    _withdraw_materials_for_crafting(_get_max_armor_requirements())
+
     missing: list[tuple[int, int, int]] = []
     for model_id, needed in _get_max_armor_requirements():
-        current = GLOBAL_CACHE.Inventory.GetModelCount(model_id)
+        current = GLOBAL_CACHE.Inventory.GetModelCount(model_id) + GLOBAL_CACHE.Inventory.GetModelCountInStorage(model_id)
         if current < needed:
             missing.append((model_id, current, needed))
 
     if missing:
         for model_id, current, needed in missing:
-            ConsoleLog("CraftMaxArmor", f"Missing material {model_id}: have {current}, need {needed}.", PySystem.Console.MessageType.Error)
+            ConsoleLog("CraftMaxArmor", f"Missing material {model_id}: have {current} (inventory + storage), need {needed}.", PySystem.Console.MessageType.Error)
         bot.helpers.Events.on_unmanaged_fail()
         return False
     return True
 
 def VerifyMaxArmorMaterialsState(bot: Botting) -> Generator[Any, Any, bool]:
-    if False:
-        yield
-    return VerifyMaxArmorMaterials(bot)
+    """Verify we have enough materials, and retry buying if missing."""
+    max_retries = 3
+    for attempt in range(max_retries):
+        if VerifyMaxArmorMaterials(bot):
+            return True
+        
+        ConsoleLog("CraftMaxArmor", f"Material verification failed (attempt {attempt + 1}/{max_retries}), retrying buy cycle.", PySystem.Console.MessageType.Warning)
+        
+        # Retry buying materials
+        bot.Map.Travel(KAINENG_CENTER_MAP_ID)
+        bot.Move.XY(1592.00, -796.00)
+        bot.Items.WithdrawGold(20000)
+        bot.Move.XYAndInteractNPC(1592.00, -796.00)
+        exec_fn_common = lambda: BuyMaxArmorMaterials("common")
+        bot.States.AddCustomState(exec_fn_common, "Retry Buy Common Materials")
+        bot.Wait.ForTime(1500)
+        
+        if _get_max_armor_data()["buy_rare"]:
+            bot.Move.XYAndInteractNPC(1495.00, -1315.00)
+            exec_fn_rare = lambda: BuyMaxArmorMaterials("rare")
+            bot.States.AddCustomState(exec_fn_rare, "Retry Buy Rare Materials")
+            bot.Wait.ForTime(2000)
+        
+        yield from Routines.Yield.wait(1000)
+    
+    ConsoleLog("CraftMaxArmor", "Failed to acquire sufficient materials after retries.", PySystem.Console.MessageType.Error)
+    bot.helpers.Events.on_unmanaged_fail()
+    return False
 
 def BuyMaxArmorMaterials(material_type: str = "common"):
-    common_mats, rare_mats = _get_max_armor_material_groups()
-    for mat, needed in _get_max_armor_requirements():
-        if material_type == "common" and mat not in common_mats:
-            continue
-        if material_type == "rare" and mat not in rare_mats:
-            continue
-
-        current = GLOBAL_CACHE.Inventory.GetModelCount(mat)
-        shortfall = max(0, needed - current)
+    """Buy only materials that are in the appropriate buy list (common or rare merchant)."""
+    data = _get_max_armor_data()
+    buy_list = data["buy_common"] if material_type == "common" else data["buy_rare"]
+    
+    for mat, buy_qty in buy_list:
+        current = GLOBAL_CACHE.Inventory.GetModelCount(mat) + GLOBAL_CACHE.Inventory.GetModelCountInStorage(mat)
+        shortfall = max(0, buy_qty - current)
         buy_count = (shortfall + 9) // 10 if material_type == "common" else shortfall
 
+        if buy_count == 0:
+            ConsoleLog("CraftMaxArmor", f"Already have sufficient {mat} (including storage), skipping purchase.", PySystem.Console.MessageType.Info)
+            continue
+
+        ConsoleLog("CraftMaxArmor", f"Buying {buy_count}x {mat} (need {buy_qty}, have {current})", PySystem.Console.MessageType.Info)
+        
         for _ in range(buy_count):
             if not (yield from Routines.Yield.Merchant.BuyMaterial(mat)):
                 yield from Routines.Yield.wait(500)
                 yield from Routines.Yield.Merchant.BuyMaterial(mat)
         yield from Routines.Yield.wait(500)
 
+def _wait_for_materials_in_inventory(requirements: list[tuple[int, int]], timeout_ms: int = 20000) -> Generator[Any, Any, bool]:
+    """Poll until every (model_id, needed) requirement is in inventory bags.
+
+    Merchant purchases land asynchronously through the action queue, so the
+    crafter must not fire until the mats physically arrived in inventory.
+    Returns True once everything is present, False on timeout.
+    """
+    deadline = time.time() * 1000 + timeout_ms
+    while True:
+        missing = []
+        for mat, needed in requirements:
+            have = GLOBAL_CACHE.Inventory.GetModelCount(mat)
+            if have < needed:
+                missing.append((mat, have, needed))
+
+        if not missing:
+            return True
+
+        if time.time() * 1000 >= deadline:
+            for mat, have, needed in missing:
+                ConsoleLog("CraftPrep", f"Timed out waiting for {needed}x {mat} in inventory (have {have}).", PySystem.Console.MessageType.Error)
+            return False
+
+        yield from Routines.Yield.wait(500)
+
+
+def _withdraw_materials_for_crafting(requirements: list[tuple[int, int]]) -> bool:
+    """Withdraw crafting materials from storage into inventory.
+
+    CraftItem can only consume materials in inventory bags; storage stock
+    must be moved, not just counted. Returns True when inventory (after
+    withdrawal) covers every requirement, or the material-storage panel
+    holds the remainder (no direct withdrawal API exists for it yet).
+    """
+    ok = True
+    for mat, needed in requirements:
+        current_inv = GLOBAL_CACHE.Inventory.GetModelCount(mat)
+        if current_inv >= needed:
+            continue
+
+        current_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(mat)
+        if current_storage > 0:
+            withdraw = min(needed - current_inv, current_storage)
+            if GLOBAL_CACHE.Inventory.WithdrawItemFromStorageByModelID(mat, withdraw):
+                ConsoleLog("CraftPrep", f"Withdrew {withdraw}x {mat} from storage into inventory.", PySystem.Console.MessageType.Info)
+                # The inventory cache can lag the move by a tick; account for
+                # the withdrawal arithmetically instead of re-reading a stale
+                # count (which falsely reported "still short").
+                current_inv += withdraw
+
+        if current_inv < needed:
+            # Material storage (anniversary panel) has no withdrawal API;
+            # surface it instead of failing silently at the crafter.
+            material_storage = Inventory.GetModelCountInMaterialStorage(mat)
+            if material_storage >= needed - current_inv:
+                ConsoleLog("CraftPrep", f"{needed - current_inv}x {mat} sit in material storage; move them to regular storage manually.", PySystem.Console.MessageType.Warning)
+            else:
+                ConsoleLog("CraftPrep", f"Still short {needed - current_inv}x {mat} after storage withdrawal.", PySystem.Console.MessageType.Error)
+                ok = False
+    return ok
+
+
 def DoCraftMaxArmor(bot: Botting):
+    if not _withdraw_materials_for_crafting(_get_max_armor_requirements()):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+
+    # Purchases land asynchronously; wait until the mats are physically in
+    # inventory before opening the crafter window.
+    if not (yield from _wait_for_materials_in_inventory(_get_max_armor_requirements())):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+
     if any(item_id == 0 for item_id, _, _ in _get_max_armor_data()["pieces"]):
         ConsoleLog("CraftMaxArmor", "Missing armor piece mapping for current profession.", PySystem.Console.MessageType.Error)
         bot.helpers.Events.on_unmanaged_fail()
@@ -655,16 +827,55 @@ def DoCraftMaxArmor(bot: Botting):
     return True
 
 _WEAPON_DATA = {
-    "buy":    [(ModelID.Wood_Plank.value, 1)],
-    "pieces": [(11641, [ModelID.Wood_Plank.value], [10])],  # Longbow, 10 wood planks
+    "buy":    [(ModelID.Wood_Plank.value, 4), (ModelID.Pile_Of_Glittering_Dust.value, 1)],
+    "pieces": [(11647, [ModelID.Wood_Plank.value, ModelID.Pile_Of_Glittering_Dust.value], [4, 1])],  # Clairvoyant Staff
 }
 
 def BuyWeaponMaterials():
+    """Buy staff materials, checking inventory + storage first to avoid overbuying.
+
+    Storage counts toward the purchase decision, but CraftItem can only use
+    materials in inventory bags, so storage stock is withdrawn into inventory
+    before the shortfall is computed.
+    """
     for mat, count in _WEAPON_DATA["buy"]:
-        for _ in range(count):
+        current_inv = GLOBAL_CACHE.Inventory.GetModelCount(mat)
+        current_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(mat)
+
+        # Pull storage stock into inventory first: the crafter only sees
+        # inventory bags, so storage mats must be moved, not just counted.
+        if current_inv < count and current_storage > 0:
+            withdraw = min(count - current_inv, current_storage)
+            if GLOBAL_CACHE.Inventory.WithdrawItemFromStorageByModelID(mat, withdraw):
+                ConsoleLog("CraftWeapon", f"Withdrew {withdraw}x {mat} from storage into inventory.", PySystem.Console.MessageType.Info)
+                yield from Routines.Yield.wait(500)
+                current_inv = GLOBAL_CACHE.Inventory.GetModelCount(mat)
+                current_storage = GLOBAL_CACHE.Inventory.GetModelCountInStorage(mat)
+
+        total_have = current_inv + current_storage
+        shortfall = max(0, count - total_have)
+
+        if shortfall == 0:
+            ConsoleLog("CraftWeapon", f"Already have sufficient {mat} (inv: {current_inv}, storage: {current_storage}), skipping purchase.", PySystem.Console.MessageType.Info)
+            continue
+
+        ConsoleLog("CraftWeapon", f"Buying {shortfall}x {mat} (need {count}, have inv: {current_inv}, storage: {current_storage})", PySystem.Console.MessageType.Info)
+        for _ in range(shortfall):
             yield from Routines.Yield.Merchant.BuyMaterial(mat)
+        yield from Routines.Yield.wait(500)
 
 def DoCraftWeapon(bot: Botting):
+    craft_requirements: dict[int, int] = {}
+    for _, mats, qtys in _WEAPON_DATA["pieces"]:
+        for mat, qty in zip(mats, qtys):
+            craft_requirements[mat] = craft_requirements.get(mat, 0) + qty
+    if not _withdraw_materials_for_crafting(list(craft_requirements.items())):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+    if not (yield from _wait_for_materials_in_inventory(list(craft_requirements.items()))):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+
     for weapon_id, mats, qtys in _WEAPON_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 100, mats, qtys)
         if not result:
@@ -691,6 +902,17 @@ def BuyShortbowMaterials():
             yield from Routines.Yield.Merchant.BuyMaterial(mat)
 
 def DoCraftShortbow(bot: Botting):
+    craft_requirements: dict[int, int] = {}
+    for _, mats, qtys in _SHORTBOW_DATA["pieces"]:
+        for mat, qty in zip(mats, qtys):
+            craft_requirements[mat] = craft_requirements.get(mat, 0) + qty
+    if not _withdraw_materials_for_crafting(list(craft_requirements.items())):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+    if not (yield from _wait_for_materials_in_inventory(list(craft_requirements.items()))):
+        bot.helpers.Events.on_unmanaged_fail()
+        return False
+
     for weapon_id, mats, qtys in _SHORTBOW_DATA["pieces"]:
         result = yield from Routines.Yield.Items.CraftItem(weapon_id, 5000, mats, qtys)
         if not result:
@@ -792,6 +1014,8 @@ def destroy_starter_armor_and_useless_items() -> Generator[Any, Any, None]:
                         8864,  # Pants
                         8860   # Boots
                         ]
+    else:
+        starter_armor = []  # Default for unsupported professions
     
     useless_items = [5819,  # Monastery Credit
                      6387,  # A Starter Daggers
@@ -1325,6 +1549,16 @@ def To_Kaineng_Center(bot: Botting):
     path_to_kc = [(-8601.28, 17419.64),(-6857.17, 19098.28),(-6706,20388)]
     bot.Move.FollowPathAndExitMap(path_to_kc, target_map_id=KAINENG_CENTER_MAP_ID) #Kaineng Center
 
+def _goto_armor_crafter(bot: Botting):
+    """Resolve the crafter coords at runtime so the profession lookup sees
+    the loaded player (build-time resolution raced the player cache and
+    could bake the wrong crafter into the plan)."""
+    crafter_x, crafter_y = GetArmorCrafterCoords()
+    ConsoleLog("CraftMaxArmor", f"Heading to armor crafter at ({crafter_x}, {crafter_y}).", PySystem.Console.MessageType.Info)
+    yield from bot.Move._coro_xy(crafter_x, crafter_y)
+    yield from bot.Move._coro_xy_and_interact_npc(crafter_x, crafter_y)  # Armor crafter in Kaineng Center
+
+
 def Craft_Max_Armor(bot: Botting):
     bot.States.AddHeader("Craft max armor")
     # Buy common materials (cloth or hide)
@@ -1342,9 +1576,7 @@ def Craft_Max_Armor(bot: Botting):
         bot.States.AddCustomState(exec_fn_rare, "Buy Rare Materials")
         bot.Wait.ForTime(2000)  # Wait for rare material purchases to complete
     bot.States.AddCustomState(lambda: VerifyMaxArmorMaterialsState(bot), "Verify Max Armor Materials")
-    crafter_x, crafter_y = GetArmorCrafterCoords()
-    bot.Move.XY(crafter_x, crafter_y)
-    bot.Move.XYAndInteractNPC(crafter_x, crafter_y)  # Armor crafter in Kaineng Center
+    bot.States.AddCustomState(lambda: _goto_armor_crafter(bot), "Go To Armor Crafter")
     bot.Wait.ForTime(1000)  # Small delay to let the window open
     exec_fn = lambda: DoCraftMaxArmor(bot)
     bot.States.AddCustomState(exec_fn, "Craft Max Armor")
@@ -1717,7 +1949,7 @@ def Attribute_Points_Quest_2(bot: Botting):
     bot.Wait.ForMapLoad(target_map_id=246)  #Zen Daijun
     bot.States.AddCustomState(EquipSkillBar, "Equip Skill Bar")
     ConfigureAggressiveEnv(bot)
-    auto_path_list:List[Tuple[float, float]] = [
+    auto_path_list = [
     (-13959.50, 6375.26), #Half the temple
     (-14567.47, 1775.31), #Side of road
     (-12310.05, 2417.60), #Across road
@@ -1754,7 +1986,7 @@ def Attribute_Points_Quest_2(bot: Botting):
     bot.Move.FollowPath(path)
     enable_combat_and_wait(5000)
     bot.Properties.Enable("hero_ai")
-    auto_path_list:List[Tuple[float, float]] = [
+    return_path:List[Tuple[float, float]] = [
     (-5016.76, -8800.93), #Half the map
     (3268.68, -6118.96), #Passtrough miasma
     (3808.16, -830.31), #Back of bell
@@ -1768,7 +2000,7 @@ def Attribute_Points_Quest_2(bot: Botting):
     (15029.96, 10187.60), #Enemies on the loop
     (14062.33, 13088.72), #Corner
     (11775.22, 11310.60)] #Zunraa
-    bot.Move.FollowAutoPath(auto_path_list)
+    bot.Move.FollowAutoPath(return_path)
     bot.Interact.WithGadgetAtXY(11665, 11386)
     bot.Properties.Disable("hero_ai")
     path = [(12954.96, 9288.47)] #Miasma
@@ -2515,9 +2747,11 @@ def Locate_Sujun(bot: Botting) -> Generator[Any, Any, None]:
     if primary != "Ranger": return
     yield from bot.Move._coro_get_path_to(-7782.00, 6687.00)
     yield from bot.Move._coro_follow_path_to()
+    yield from bot.Move._coro_get_path_to(-7782.00, 6687.00)
+    yield from bot.Move._coro_follow_path_to()
     yield from bot.Interact._coro_with_agent((-7782.00, 6687.00), 0x810403) #Locate Sujun
     yield from bot.Interact._coro_with_agent((-7782.00, 6687.00), 0x810401)
-    yield from bot.helpers.UI._cancel_skill_reward_window()
+    bot.UI.CancelSkillRewardWindow()
 
 def RangerGetSkills(bot: Botting) -> Generator[Any, Any, None]:
     primary, _ = Agent.GetProfessionNames(Player.GetAgentID())
