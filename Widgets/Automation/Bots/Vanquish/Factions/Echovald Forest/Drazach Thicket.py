@@ -2,6 +2,7 @@ from Py4GWCoreLib import Agent, Botting, ConsoleLog, GLOBAL_CACHE, Map, ModelID,
 import Py4GW
 import PyImGui
 import os
+import time
 
 BOT_NAME = "VQ Drazach Thicket"
 MODULE_NAME = "Drazach Thicket (Vanquish)"
@@ -22,14 +23,29 @@ watch_vanquish_completion = True
 
 Vanquish_Path: list[tuple[float, float]] = [
     (-9878.31, -14870.55),
-    (-6024.71, -10824.51),
-    (-4546.84, -9157.54),
-    (-6683.80, -8867.51),
-    (-7756.96, -9672.30),
+    (-7874.59, -12949.60),
+    (-7379.29, -12844.72),
+    (-6942.61, -12597.86),
+    (-6440.81, -12602.38),
+    (-5951.63, -12475.38),
+    (-5626.20, -12093.91),
+    (-5227.94, -11786.53),
+    (-4916.42, -11392.90),
+    (-4986.59, -10894.21),
+    (-4931.71, -10391.40),
+    (-4907.02, -10195.30),
+    (-4993.83, -9123.04),
+    (-5464.51, -8944.35),
+    (-5967.93, -8966.51),
+    (-6467.51, -9020.68),
+    (-6972.30, -9044.26),
+    (-7445.42, -9222.97),
+    (-7914.38, -9414.95),
+    (-7893.66, -9408.40),
     (-5651.87, -6857.37),
     (-6603.41, -5635.55),
-    (-11036.84, -8096.66),
-    (-12024.07, -8840.55),
+    (-11049.86, -6165.82),
+    (-11573.19, -8327.89),
     (-10875.07, -5594.80),
     (-10516.25, -2471.60),
     (-9792.65, -536.86),
@@ -50,29 +66,44 @@ Vanquish_Path: list[tuple[float, float]] = [
     (2366.87, -9547.91),
     (5625.59, -1360.20),
     (4755.49, 821.61),
-    (7347.70, 311.06),
-    (9152.04, 4514.65),
-    (13031.58, 7149.48),
-    (9152.04, 4514.65),
-    (7016.99, 6483.00),
-    (3104.65, 10852.02),
-    (8982.88, 10737.52),
-    (7201.44, 13909.25),
-    (7109.79, 12134.53),
-    (3154.82, 11441.71),
-    (1574.23, 15445.42),
-    (-1110.71, 15221.18),
-    (-5693.68, 15871.91),
-    (-6212.60, 13582.10),
-    (-4150.74, 12059.19),
-    (-5363.25, 10258.17),
-    (-2856.84, 10372.21),
-    (1247.34, 9651.55),
-    (2498.04, 11076.82),
-    (-2488.08, 8399.15),
-    (-2095.59, 7311.56),
-    (-3500.78, 6488.78),
-    (-6663.06, 4662.32),
+    (7637.67, 565.40),
+    (11031.07, 283.33),
+    (10185.84, 2583.37),
+    (10202.87, 4548.36),
+    (13189.10, 7118.12),
+    (10702.87, 5053.48),
+    (6305.87, 6799.13),
+    (4122.42, 9260.20),
+    (3198.79, 10451.46),
+    (899.70, 9569.84),
+    (2022.75, 10394.34),
+    (3396.14, 12257.46),
+    (4639.69, 14749.79),
+    (6719.38, 15829.74),
+    (6489.15, 13063.95),
+    (6832.31, 13080.34),
+    (8752.42, 11218.01),
+    (8246.33, 10203.75),
+    (5060.11, 13990.69),
+    (3068.08, 14908.65),
+    (1663.85, 15372.74),
+    (-421.20, 14979.13),
+    (-1663.88, 15761.81),
+    (-5233.40, 16057.40),
+    (-5659.13, 14103.66),
+    (-4495.78, 11975.85),
+    (-6285.88, 10078.19),
+    (-6744.33, 10162.74),
+    (-5599.93, 7608.96),
+    (-4347.67, 10302.46),
+    (-3198.28, 8701.55),
+    (-2725.50, 10116.74),
+    (-1241.02, 10314.69),
+    (-339.24, 8950.46),
+    (-2500.23, 7782.04),
+    (-4301.04, 5627.14),
+    (-6121.91, 4770.20),
+    (-5411.09, 6461.05),
     (-5713.13, 8684.84),
     (-7201.17, 9957.66),
     (-7640.64, 12424.33),
@@ -80,6 +111,45 @@ Vanquish_Path: list[tuple[float, float]] = [
     (-12227.19, 7684.96),
     (-12730.60, 5712.96),
     (-10030.67, 4909.71),
+]
+
+# A recurring Mantis/Warden patrol can survive its ambient fight and remain
+# outside the main route.  Check its three observed positions once, and only
+# when the game still reports that the vanquish is incomplete.
+MISSING_PATROL_PATH: list[tuple[float, float]] = [
+    (-10030.67, 4909.71),
+    (-10849.57, 5369.38),
+    (-11057.16, 5829.86),
+    (-11286.33, 6279.81),
+    (-11514.69, 6731.75),
+    (-11686.50, 7205.40),
+    (-11807.85, 7694.65),
+    (-11956.89, 8178.29),
+    (-11867.57, 8673.13),
+    (-11606.11, 9099.63),
+    (-11287.66, 9497.10),
+    (-10965.09, 9887.44),
+    (-10626.26, 10258.10),
+    (-10151.50, 10434.89),
+    (-9660.21, 10557.10),
+    (-9160.87, 10592.38),
+    (-8669.52, 10491.09),
+    (-8173.67, 10381.79),
+    (-7676.08, 10311.79),
+    (-7206.60, 10124.95),
+    (-6780.98, 9851.54),
+    (-6303.30, 9681.65),
+    (-5842.00, 9875.66),
+    (-5415.83, 10138.90),
+    (-5010.40, 10439.26),
+    (-5180.60, 9967.77),
+    (-5424.18, 9524.41),
+    (-5475.63, 9021.24),
+    (-5547.90, 8521.96),
+    (-5500.79, 8013.02),
+    (-5420.45, 7516.59),
+    (-5351.81, 7087.68),
+    (-6178.83, 7446.46),
 ]
 
 FOLLOWER_CONSUMABLES: tuple[tuple[str, int, str], ...] = (
@@ -281,6 +351,41 @@ def _vanquish_watchdog(bot: "Botting"):
             return
 
 
+def _targeted_missing_patrol_cleanup(bot: "Botting"):
+    """Check the recurring skipped patrol once before allowing the run to end."""
+    if Map.IsVanquishCompleted():
+        return True
+    if Map.GetMapID() != EXPLORABLE_TO_VANQUISH or not Map.IsVanquishable():
+        raise RuntimeError("Drazach Thicket cleanup requires the active vanquishable instance")
+
+    bot.UI.PrintMessageToConsole(
+        BOT_NAME,
+        "Main route ended incomplete; checking the recurring missing patrol.",
+    )
+    yield from bot.Move._coro_set_path_to(MISSING_PATROL_PATH)
+    movement_succeeded = yield from bot.Move._coro_follow_path_to(autopath=False)
+    if not movement_succeeded:
+        raise RuntimeError("Drazach Thicket missing-patrol route could not be completed")
+
+    combat_deadline = time.monotonic() + 120.0
+    while Routines.Checks.Agents.InDanger():
+        if Map.GetMapID() != EXPLORABLE_TO_VANQUISH:
+            raise RuntimeError("Drazach Thicket changed maps during missing-patrol cleanup")
+        if time.monotonic() >= combat_deadline:
+            raise RuntimeError("Drazach Thicket missing-patrol combat exceeded two minutes")
+        yield from Routines.Yield.wait(500, break_on_map_transition=True)
+
+    if not Map.IsVanquishCompleted():
+        foes_remaining = int(Map.GetFoesToKill() or 0)
+        raise RuntimeError(
+            "Drazach Thicket route and missing-patrol check ended without vanquish "
+            f"confirmation ({foes_remaining} foes remaining)"
+        )
+
+    bot.UI.PrintMessageToConsole(BOT_NAME, "Vanquish confirmed after missing-patrol cleanup.")
+    return True
+
+
 def bot_routine(bot: Botting) -> None:
     bot.Events.OnPartyWipeCallback(lambda: OnPartyWipe(bot))
 
@@ -307,6 +412,10 @@ def bot_routine(bot: Botting) -> None:
     bot.States.AddManagedCoroutine("DrazachVanquishWatchdog", lambda: _vanquish_watchdog(bot))
     bot.Move.FollowAutoPath(Vanquish_Path, "Kill Route")
     bot.Wait.UntilOutOfCombat()
+    bot.States.AddCustomState(
+        lambda: _targeted_missing_patrol_cleanup(bot),
+        "Confirm Vanquish or Check Missing Patrol",
+    )
 
     bot.States.AddHeader("Return to Outpost")
     bot.Multibox.ResignParty()
