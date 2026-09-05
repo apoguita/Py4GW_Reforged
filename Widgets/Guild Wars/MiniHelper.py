@@ -7,7 +7,7 @@ from Py4GWCoreLib import Routines
 from Py4GWCoreLib import ThrottledTimer
 
 MODULE_NAME = "Pop mini on map load"
-MODULE_ICON = "Textures/Module_Icons/Set title on map load.png"
+MODULE_ICON = "Assets/Textures/Module_Icons/Pet Helper.png"
 
 module_name = "Pop mini on map load"
 
@@ -26,7 +26,7 @@ def tooltip():
     # Title
     title_color = Color(255, 200, 100, 255)
     ImGui.push_font("Regular", 20)
-    PyImGui.text_colored("Set title on map load", title_color.to_tuple_normalized())
+    PyImGui.text_colored(MODULE_NAME, title_color.to_tuple_normalized())
     ImGui.pop_font()
 
     PyImGui.spacing()
@@ -34,7 +34,7 @@ def tooltip():
     PyImGui.spacing()
 
     # Description
-    PyImGui.text("Automatically eats an everlasting tonic as you load the map you enter.")
+    PyImGui.text("Automatically pops a miniature pet from your inventory as you load a new map.")
 
     PyImGui.spacing()
     PyImGui.separator()
@@ -42,7 +42,7 @@ def tooltip():
 
     # Features
     PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
-    PyImGui.bullet_text("Tonics!")
+    PyImGui.bullet_text("Mini pets!")
 
     PyImGui.spacing()
     PyImGui.separator()
