@@ -28,6 +28,16 @@ class SystemInfo:
 #tells if the widget has been initialized or not, so we can avoid reinitializing it every frame
 initialized = False
 
+# UIManager.GetFPSLimit() reaches the D3D9 renderer (vsync + monitor refresh),
+# which Guild Wars asserts is render-thread only: calling it from update() kills
+# the client with "Assertion: s_threadId == threadId" (Dx9Ddi.cpp:276). It is
+# therefore read in draw(), which runs on the render thread, and only once. The
+# old test ("retry while it reads 0") re-queried the renderer every single tick
+# when the limiter was unlimited, since 0 is that setting's real value. Reading
+# once keeps the original intent; the cost is that changing the frame limiter in
+# the game options mid-session is not picked up until the widget reloads.
+_fps_limit_read = False
+
 system_info = SystemInfo()
 
 # Which metric the view focuses on: 0 = whole frame, 1 = scripts only.
@@ -213,8 +223,8 @@ def update() -> None:
         if _prof_frames_left <= 0:
             _finish_profile()
 
-    if system_info.target_fps == 0:
-        system_info.target_fps = UIManager.GetFPSLimit()
+    # The frame-limit read used to live here. It must not: this callback runs on
+    # the update thread, and the read touches the renderer. It is in draw() now.
 
     if _usage_timer.IsExpired() or not initialized:
         io = PyImGui.get_io()
@@ -746,7 +756,12 @@ def tooltip() -> None:
 
 
 def draw() -> None:
-    global selected_view, selected_widget
+    global selected_view, selected_widget, _fps_limit_read
+
+    # Render-thread only, once per session. See the _fps_limit_read comment.
+    if not _fps_limit_read:
+        system_info.target_fps = UIManager.GetFPSLimit()
+        _fps_limit_read = True
 
     if not PyImGui.begin("System Monitor", PyImGui.WindowFlags.AlwaysAutoResize):
         PyImGui.end()
