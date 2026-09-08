@@ -92,24 +92,6 @@
             "sub_category": null,
             "wiki_url": "https://wiki.guildwars.com/wiki/Birthday_Present"
         },
-        "31148": {
-            "acquisition": "No data added yet",
-            "attributes": [],
-            "category": null,
-            "common_salvage": null,
-            "description": "",
-            "item_type": "Present",
-            "model_file_id": -1,
-            "model_id": 31148,
-            "name": "Gift of the Traveler",
-            "name_encoded": "",
-            "nick_index": null,
-            "profession": null,
-            "rare_salvage": null,
-            "skin": "Gift of the Traveler.png",
-            "sub_category": null,
-            "wiki_url": "https://wiki.guildwars.com/wiki/Gift_of_the_Traveler"
-        },
         "36667": {
             "acquisition": "No data added yet",
             "attributes": [],
@@ -415,42 +397,6 @@
             "skin": "Zaishen Strongbox.png",
             "sub_category": null,
             "wiki_url": "https://wiki.guildwars.com/wiki/Strategist%27s_Zaishen_Strongbox"
-        },
-        "28434": {
-            "acquisition": "No data added yet",
-            "attributes": [],
-            "category": null,
-            "common_salvage": null,
-            "description": "",
-            "item_type": "Present",
-            "model_file_id": -1,
-            "model_id": 28434,
-            "name": "Trick-or-Treat Bag",
-            "name_encoded": "",
-            "nick_index": null,
-            "profession": null,
-            "rare_salvage": null,
-            "skin": "Trick-or-Treat Bag.png",
-            "sub_category": null,
-            "wiki_url": "https://wiki.guildwars.com/wiki/Trick-or-Treat_Bag"
-        },
-        "21491": {
-            "acquisition": "No data added yet",
-            "attributes": [],
-            "category": null,
-            "common_salvage": null,
-            "description": "",
-            "item_type": "Present",
-            "model_file_id": -1,
-            "model_id": 21491,
-            "name": "Wintersday Gift",
-            "name_encoded": "",
-            "nick_index": null,
-            "profession": null,
-            "rare_salvage": null,
-            "skin": "Wintersday Gift.png",
-            "sub_category": null,
-            "wiki_url": "https://wiki.guildwars.com/wiki/Wintersday_Gift"
         }
     },
     "Salvage": {
