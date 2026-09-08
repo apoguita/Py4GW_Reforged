@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 import os
 import time
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib.Item import has_active_party_summon
 import PySystem
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.ImGui_src.types import Alignment
@@ -17,7 +18,6 @@ from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_UPKEEPS, CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
@@ -25,9 +25,6 @@ import PyImGui
 
 
 PathPoint = Vec2f | tuple[float, float] | tuple[int, int]
-
-
-# endregion
 
 
 # region Script metadata
@@ -76,12 +73,6 @@ SHANDRA_REWARD_DIALOG = 0x832407
 ARBOR_BLESSING_DIALOG = 0x84
 
 # Consumables
-# Conset model IDs.
-ESSENCE_OF_CELERITY = 24859
-GRAIL_OF_MIGHT = 24860
-ARMOR_OF_SALVATION = 24861
-
-
 SUMMON_MODEL_IDS = (37810,30209,31155)
 PCON_UPKEEPS = tuple((int(model_id) for model_id in ALL_CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS))
 
@@ -170,11 +161,18 @@ _inventory_status_snapshot: dict[str, dict[str, object]] = {}
 # equipped weapon type reported by the game.  Martial builds automatically
 # drop the torch for combat; caster builds keep it.
 _drop_torch_for_combat: bool | None = None
-_torch_dropped_for_combat = False
-# Set by the custom shrine wipe recovery. While active, torch pickup may be
-# abandoned after a short grace period so a torch left behind at the death
-# location cannot trap the resumed planner step.
+# Set from the Core planner restart metadata after a shrine recovery. While
+# active, a missing torch may be skipped briefly while the route is retraced
+# toward the death location where the dropped torch can still be recovered.
 _shrine_recovery_torch_skip_active = False
+
+# Run-local one-shot mechanic state. These flags survive the BottingTree
+# Reset()/Start() performed by a shrine restart, but are cleared on a genuinely
+# fresh dungeon pass. They make already-completed chest/door/brazier actions
+# restart-safe when the Core intentionally resumes from an earlier route anchor.
+_restart_safe_completed_mechanics: set[str] = set()
+_restart_safe_opened_torch_chests: set[str] = set()
+_LEVEL3_BOSS_ROUTE_UNLOCKED_KEY = "level3_boss_route_unlocked"
 
 # Persistent statistics.
 _statistics_loaded = False
@@ -248,13 +246,11 @@ L2_TORCH_CHEST = Vec2f(-14709.0, -16548.0)
 L2_FIRST_TORCH_DROP_POINT_PATH = [Vec2f(-11002.0, -17001.0)]
 L2_RETURN_TO_FIRST_TORCH_PATH = [Vec2f(-9259.0, -17322.0), Vec2f(-9550, -17258), Vec2f(-10243, -17780)]
 L2_BRAZIER_PART1 = [(-11303.0, -14596.0), (-11019.0, -11550.0), (-9028.0, -9021.0), (-6805.0, -11511.0), (-8984.0, -13842.0)]
-L2_CLEANING_PATH = [Vec2f(-9011.27, -11536.79)]
 L2_TO_ROOM2_DROP = (Vec2f(-10514.69, -9542.61), Vec2f(-11061.1, -7578.5))
 L2_RETURN_TO_ROOM2_TORCH_PATH = [Vec2f(-10958.2, -4529.5), Vec2f(-11690.64, -3802.55)]
 L2_ROOM2_PATH = [Vec2f(-8066.1, -4222.4), Vec2f(-7058.8, -4191.0)]
 
 L2_BRAZIER_PART2 = [(-3717.0, -4254.0), (-8251.0, -3240.0), (-8278.0, -1670.0)]
-L2_AFTER_PART2_POSITION = Vec2f(-5009.49, -2542.30)
 L2_PATH_TO_LOCK = [Vec2f(-6798.8, -2436.4), Vec2f(-7063, -2017), Vec2f(-16335.1, -9004.5), (-18700.0, -9171.0)]
 L2_DUNGEON_LOCK = Vec2f(-18725.0, -9171.0)
 L2_EXIT_PATH = [Vec2f(-18610.0, -8636.0), Vec2f(-19254, -8256)]
@@ -273,349 +269,14 @@ L3_FENDI_PATH = [Vec2f(-8696, 6323), Vec2f(-9988, 7652), Vec2f(-12712.36, 13502.
 FENDI_CHEST_POSITION = (-15800.98, 16901.23)
 FENDI_CHEST_GADGET_ID = 8934
 
-# Safe regroup point used immediately after the final chest multibox interaction.
+# Stable position used to stage the leader before the final chest interaction.
 FENDI_CHEST_SAFE_POSITION = Vec2f(-15885.85, 17100.0)
 
 initialized = False
 botting_tree: BottingTree | None = None
 
 
-def _resume_vec(point: PathPoint) -> Vec2f:
-    """Normalize a route point for shrine-distance calculations."""
-    try:
-        return Vec2f(float(point.x), float(point.y))
-    except Exception:
-        return Vec2f(float(point[0]), float(point[1]))
-
-
-def _shrine_resume_candidates(map_id: int) -> list[tuple[str, Vec2f]]:
-    """Return safe named planner anchors for shrine recovery on each dungeon floor."""
-    if map_id == SOO_LEVEL_1:
-        return [
-            ("Level 1 Start", _resume_vec(L1_PATH[0])),
-            *[(f"Level 1 First Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L1_PATH, start=1)],
-            *[(f"Level 1 Route To Level 2 - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L1_PATH_AFTER_DOOR, start=1)],
-        ]
-
-    if map_id == SOO_LEVEL_2:
-        first_brazier_approach = [Vec2f(-9404.44, -17963.49), Vec2f(-11303.00, -14596.00)]
-        room2_final_fight = [Vec2f(-4245.2, -2101.0)]
-        return [
-            # Level 2 Start can reopen the torch chest if recovery happens very early.
-            ("Level 2 Start", _resume_vec(L2_TORCH_CHEST)),
-            *[(f"Level 2 First Torch Drop Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_FIRST_TORCH_DROP_POINT_PATH, start=1)],
-            *[(f"Level 2 First Brazier Approach - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(first_brazier_approach, start=1)],
-            *[(f"Level 2 Route To Room 2 Drop - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_TO_ROOM2_DROP, start=1)],
-            *[(f"Level 2 Route Back To Room 2 Torch - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_RETURN_TO_ROOM2_TORCH_PATH, start=1)],
-            *[(f"Level 2 Room 2 - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_ROOM2_PATH, start=1)],
-            *[(f"Level 2 Room 2 Final Fight - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(room2_final_fight, start=1)],
-            *[(f"Level 2 Route To Dungeon Lock - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_PATH_TO_LOCK, start=1)],
-            *[(f"Level 2 Exit Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L2_EXIT_PATH, start=1)],
-        ]
-
-    if map_id == SOO_LEVEL_3:
-        return [
-            ("Level 3 Start", _resume_vec(L3_ENTRY_BLESSING)),
-            *[(f"Level 3 Main Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_MAIN_PATH, start=1)],
-            *[(f"Level 3 Brigant Room Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_BRIGANT_ROOM, start=1)],
-            *[(f"Level 3 Torch Route - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_PATH_TO_TORCH, start=1)],
-            *[(f"Level 3 Route To Fendi - Point {index:02d}", _resume_vec(point)) for index, point in enumerate(L3_FENDI_PATH, start=1)],
-        ]
-
-    return []
-
-
-def _nearest_shrine_resume_step(
-    map_id: int,
-    position: tuple[float, float],
-    failed_step_name: str,
-) -> tuple[str, float]:
-    """Pick the closest already-reached planner waypoint to the current shrine."""
-    candidates = _shrine_resume_candidates(map_id)
-    if not candidates:
-        return "", float("inf")
-
-    # Never jump forward past the planner step where the wipe happened. This also
-    # prevents a geometrically-close waypoint behind a locked door from being used.
-    planner_names: list[str] = []
-    if botting_tree is not None:
-        try:
-            planner_names = list(botting_tree.GetNamedPlannerStepNames() or [])
-        except Exception:
-            planner_names = []
-
-    if planner_names and failed_step_name in planner_names:
-        failed_index = planner_names.index(failed_step_name)
-        eligible: list[tuple[str, Vec2f]] = []
-        for step_name, point in candidates:
-            try:
-                if planner_names.index(step_name) <= failed_index:
-                    eligible.append((step_name, point))
-            except ValueError:
-                continue
-        if eligible:
-            candidates = eligible
-        else:
-            # No safe coordinate anchor exists before this step; use the failed
-            # planner step itself rather than ever jumping forward.
-            return "", float("inf")
-
-    px, py = float(position[0]), float(position[1])
-
-    def _distance_sq(candidate: tuple[str, Vec2f]) -> float:
-        point = candidate[1]
-        dx = float(point.x) - px
-        dy = float(point.y) - py
-        return dx * dx + dy * dy
-
-    step_name, point = min(candidates, key=_distance_sq)
-    distance = _distance_sq((step_name, point)) ** 0.5
-    return step_name, distance
-
-
-def ShardsPartyWipeRecoveryService() -> BehaviorTree:
-    """Resume a shrine wipe from the route step nearest to the resurrection shrine."""
-    state: dict[str, object] = {
-        "active": False,
-        "mode": "",
-        "failed_step_name": "",
-        "restart_step_name": "",
-        "last_return_ms": 0.0,
-        "player_was_dead": False,
-        "player_dead_pos": None,
-    }
-
-    def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
-        PySystem.Console.Log("ShardsWipeRecovery", message, message_type)
-
-    def _resolve_current_step(node: BehaviorTree.Node) -> str:
-        step_name = str(node.blackboard.get("current_step_name", "") or "")
-        if step_name:
-            return step_name
-        return str(node.blackboard.get("last_active_planner_step_name", "") or "")
-
-    def _reset_state(node: BehaviorTree.Node) -> None:
-        state["active"] = False
-        state["mode"] = ""
-        state["failed_step_name"] = ""
-        state["restart_step_name"] = ""
-        state["last_return_ms"] = 0.0
-        state["player_was_dead"] = False
-        state["player_dead_pos"] = None
-        node.blackboard["party_wipe_recovery_active"] = False
-        node.blackboard["party_wipe_recovery_mode"] = ""
-        node.blackboard["party_wipe_recovery_step_name"] = ""
-
-    def _player_is_alive() -> bool:
-        player_id = int(Player.GetAgentID() or 0)
-        return bool(player_id > 0 and Agent.IsValid(player_id) and not Agent.IsDead(player_id))
-
-    def _can_resume_in_explorable() -> bool:
-        return bool(
-            Map.IsMapReady()
-            and Map.IsExplorable()
-            and GLOBAL_CACHE.Party.IsPartyLoaded()
-            and _player_is_alive()
-        )
-
-    def _can_resume_from_outpost() -> bool:
-        return bool(
-            Map.IsMapReady()
-            and Map.IsOutpost()
-            and GLOBAL_CACHE.Party.IsPartyLoaded()
-        )
-
-    def _detect_revive_teleport() -> bool:
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or not Agent.IsValid(player_id):
-            return False
-
-        current_pos = Agent.GetXY(player_id)
-        is_dead = bool(Agent.IsDead(player_id))
-
-        if is_dead:
-            if not bool(state["player_was_dead"]):
-                state["player_was_dead"] = True
-                state["player_dead_pos"] = current_pos
-                return False
-
-            death_pos = state["player_dead_pos"]
-            if death_pos:
-                dx = float(current_pos[0]) - float(death_pos[0])
-                dy = float(current_pos[1]) - float(death_pos[1])
-                if dx * dx + dy * dy > float(Range.Spellcast.value) ** 2:
-                    # Some revive flows move the dead agent to the shrine one frame
-                    # before it becomes alive. Preserve that actual shrine position.
-                    state["player_dead_pos"] = current_pos
-                    return True
-            return False
-
-        if not bool(state["player_was_dead"]):
-            return False
-
-        state["player_was_dead"] = False
-        death_pos = state["player_dead_pos"]
-        state["player_dead_pos"] = None
-        if not death_pos:
-            return False
-
-        dx = float(current_pos[0]) - float(death_pos[0])
-        dy = float(current_pos[1]) - float(death_pos[1])
-        return dx * dx + dy * dy > float(Range.Spellcast.value) ** 2
-
-    def _begin_recovery(node: BehaviorTree.Node, mode: str) -> None:
-        from Py4GWCoreLib.py4gwcorelib_src.ActionQueue import ActionQueueManager
-
-        failed_step_name = _resolve_current_step(node)
-        state["active"] = True
-        state["mode"] = mode
-        state["failed_step_name"] = failed_step_name
-        state["restart_step_name"] = failed_step_name
-        state["last_return_ms"] = 0.0
-
-        node.blackboard["party_wipe_recovery_active"] = True
-        node.blackboard["party_wipe_recovery_mode"] = mode
-        node.blackboard["party_wipe_recovery_step_name"] = failed_step_name
-
-        ActionQueueManager().ResetAllQueues()
-
-        if mode == "defeated":
-            _log(
-                f"Party defeated. Waiting for outpost before restarting '{failed_step_name}'.",
-                PySystem.Console.MessageType.Warning,
-            )
-        else:
-            _log(
-                f"Recoverable wipe on '{failed_step_name}'. Waiting for shrine revival.",
-                PySystem.Console.MessageType.Warning,
-            )
-
-    def _resolve_shrine_restart(node: BehaviorTree.Node) -> str:
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or not Agent.IsValid(player_id):
-            return str(state["failed_step_name"] or "")
-
-        map_id = int(Map.GetMapID() or 0)
-        shrine_pos = Agent.GetXY(player_id)
-        failed_step_name = str(state["failed_step_name"] or "")
-        step_name, distance = _nearest_shrine_resume_step(
-            map_id,
-            shrine_pos,
-            failed_step_name,
-        )
-
-        if step_name:
-            _log(
-                f"Shrine at ({shrine_pos[0]:.0f}, {shrine_pos[1]:.0f}) -> "
-                f"nearest safe resume '{step_name}' ({distance:.0f} units).",
-                PySystem.Console.MessageType.Success,
-            )
-            return step_name
-
-        _log(
-            f"No shrine resume waypoint resolved on map {map_id}; falling back to '{failed_step_name}'.",
-            PySystem.Console.MessageType.Warning,
-        )
-        return failed_step_name
-
-    def _request_restart(node: BehaviorTree.Node, *, shrine: bool) -> bool:
-        global _shrine_recovery_torch_skip_active
-
-        if shrine:
-            step_name = _resolve_shrine_restart(node)
-        else:
-            step_name = str(state["restart_step_name"] or state["failed_step_name"] or "")
-
-        if not step_name:
-            _log("Recovery completed but no planner step could be resolved.", PySystem.Console.MessageType.Warning)
-            return False
-
-        state["restart_step_name"] = step_name
-        _shrine_recovery_torch_skip_active = bool(shrine)
-        node.blackboard["party_wipe_recovery_step_name"] = step_name
-        node.blackboard["current_step_name"] = step_name
-        node.blackboard["last_active_planner_step_name"] = step_name
-        node.blackboard["restart_step_name_request"] = step_name
-        node.blackboard["combat_enabled_request"] = True
-        return True
-
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        # MultiAccountSequence installs the Core recovery service internally. Keep
-        # it suppressed: this Shards-specific service owns shrine/outpost recovery.
-        node.blackboard["party_wipe_recovery_suppressed"] = True
-
-        now = time.monotonic() * 1000.0
-        revived_at_shrine = _detect_revive_teleport()
-        party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
-        party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
-
-        if not bool(state["active"]):
-            if not (party_wiped or party_defeated or revived_at_shrine):
-                node.blackboard["party_wipe_recovery_active"] = False
-                return BehaviorTree.NodeState.RUNNING
-
-            recovery_mode = "defeated" if party_defeated else "shrine"
-            _begin_recovery(node, recovery_mode)
-
-            if recovery_mode == "shrine" and revived_at_shrine and _can_resume_in_explorable():
-                restarted = _request_restart(node, shrine=True)
-                _reset_state(node)
-                return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
-
-            return BehaviorTree.NodeState.RUNNING
-
-        if party_defeated and state["mode"] != "defeated":
-            state["mode"] = "defeated"
-            _log(
-                "Recoverable wipe became a party defeat; switching to outpost recovery.",
-                PySystem.Console.MessageType.Warning,
-            )
-
-        node.blackboard["party_wipe_recovery_active"] = True
-        node.blackboard["party_wipe_recovery_mode"] = str(state["mode"] or "")
-        node.blackboard["party_wipe_recovery_step_name"] = str(
-            state["restart_step_name"] or state["failed_step_name"] or ""
-        )
-
-        if state["mode"] == "shrine":
-            if _can_resume_from_outpost():
-                state["mode"] = "defeated"
-                node.blackboard["party_wipe_recovery_mode"] = "defeated"
-                _log(
-                    "Party returned to an outpost during shrine recovery; switching to outpost recovery.",
-                    PySystem.Console.MessageType.Warning,
-                )
-            else:
-                shrine_recovery_complete = bool(
-                    revived_at_shrine
-                    or (not party_wiped and _can_resume_in_explorable())
-                )
-                if shrine_recovery_complete:
-                    restarted = _request_restart(node, shrine=True)
-                    _reset_state(node)
-                    return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
-
-                return BehaviorTree.NodeState.RUNNING
-
-        if _can_resume_from_outpost():
-            restarted = _request_restart(node, shrine=False)
-            _reset_state(node)
-            return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
-
-        if now - float(state["last_return_ms"] or 0.0) >= 1000.0:
-            GLOBAL_CACHE.Party.ReturnToOutpost()
-            state["last_return_ms"] = now
-            _log("Requesting return to outpost after party defeat.")
-
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name="Shards Party Wipe Recovery",
-            action_fn=_tick,
-            aftercast_ms=0,
-        )
-    )
+# Shrine wipe recovery is provided by Py4GWCoreLib.
 
 
 # endregion
@@ -695,8 +356,7 @@ def _load_statistics() -> None:
     _l3_fastest = float("inf") if fastest <= 0.0 else fastest
     _l3_slowest = _settings_ini.get_float(section, "l3_slowest", 0.0)
 
-    # "local" was an old fallback key created when Player.GetAccountEmail()
-    # temporarily returned an empty string. It is not a real account.
+    # Ignore the synthetic "local" key because it is not an account identifier.
     _bds_drops.pop("local", None)
     _gb_drops.pop("local", None)
     _session_bds.pop("local", None)
@@ -1087,14 +747,21 @@ def _configure_runtime_upkeeps(*, consumables_enabled: bool | None = None, looti
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
-        enable_party_wipe_recovery=False,
+        enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
+    )
+    # ConfigureUpkeep rebuilds the service list. Reinstall the dungeon-level
+    # summoning-stone recovery service so the UI toggle remains live at runtime.
+    botting_tree.AddServiceTree(
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
 
 def _sync_consumable_upkeeps() -> None:
-    # Floor loading no longer tears down PCons; only conset services are synced.
+    # Direct PCons are tick-driven; only Core conset services need resyncing.
     if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
         _configure_runtime_upkeeps()
 
@@ -1170,7 +837,8 @@ def _draw_run_config() -> None:
     if value != _activate_pcons:
         _activate_pcons = value
         changed = True
-        upkeep_changed = True
+        # Direct PCon upkeep reads this flag every tick, so the change is live
+        # and does not require rebuilding Core upkeep services.
 
     PyImGui.separator()
     PyImGui.text("Summoning stones")
@@ -1179,7 +847,8 @@ def _draw_run_config() -> None:
     if value != _use_summoning_stone:
         _use_summoning_stone = value
         changed = True
-        upkeep_changed = True
+        # The level-start action and SummoningStoneRecoveryService both read
+        # this flag live, so no ConfigureUpkeep rebuild is required here.
 
     PyImGui.separator()
     PyImGui.text("Torch handling")
@@ -1660,7 +1329,6 @@ def _inventory_maintenance_trigger_node() -> BehaviorTree:
     )
 
 
-
 def _inventory_model_label(model_id: int) -> str:
     try:
         return str(ModelID(int(model_id)).name)
@@ -1723,7 +1391,6 @@ def _log_unhealthy_inventory_contents() -> None:
             )
 
 
-
 def _inventory_is_healthy_node(name: str, *, log_success: bool=True) -> BehaviorTree:
     def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         statuses = _inventory_account_statuses()
@@ -1749,7 +1416,6 @@ def _inventory_is_healthy_node(name: str, *, log_success: bool=True) -> Behavior
     return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=_check))
 
 
-
 def _all_accounts_on_map(map_id: int) -> bool:
     accounts = _inventory_accounts()
     return bool(accounts) and all((_shared_account_map_id(account) == int(map_id) for account in accounts))
@@ -1763,15 +1429,6 @@ def _all_accounts_on_map_instance(map_id: int, region: int, district: int, langu
 
 def _all_accounts_on_map_node(map_id: int, name: str) -> BehaviorTree:
     return BehaviorTree(BehaviorTree.ConditionNode(name=name, condition_fn=lambda _node: _all_accounts_on_map(map_id)))
-
-
-def _wait_for_all_accounts_on_map(map_id: int, *, name: str, timeout_ms: int=INVENTORY_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
-    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if _all_accounts_on_map(map_id):
-            return BehaviorTree.NodeState.SUCCESS
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(BehaviorTree.WaitUntilNode(name=name, condition_fn=_check, throttle_interval_ms=500, timeout_ms=timeout_ms))
 
 
 def _wait_for_all_accounts_on_inventory_instance(map_id: int, *, name: str, timeout_ms: int=INVENTORY_TRAVEL_TIMEOUT_MS) -> BehaviorTree:
@@ -1832,7 +1489,6 @@ def _return_all_accounts_to_vlox(attempt_key: str) -> BehaviorTree:
         children=[
             currently_in_an_explorable,
             BT.Resign(wait_for_map_load=True, target_map_id=VLOXS_FALL, multi_account=True, timeout_ms=INVENTORY_TRAVEL_TIMEOUT_MS, log=True),
-            #_wait_for_all_accounts_on_map(VLOXS_FALL, name="Wait For Party Return To Vlox's Falls"),
         ],
     )
 
@@ -1887,7 +1543,6 @@ def _run_merchant_rules(attempt_key: str) -> BehaviorTree:
         )
 
     return BT.Subtree(name="Run MerchantRules On All Active Accounts", subtree_fn=_build)
-
 
 
 def _inventory_maintenance_attempt(attempt_number: int) -> BehaviorTree:
@@ -2222,25 +1877,76 @@ def _inventory_count(model_id_min: int, model_id_max: int) -> int:
     return sum((int(GLOBAL_CACHE.Inventory.GetModelCount(model_id)) for model_id in range(int(model_id_min), int(model_id_max) + 1)))
 
 
+def _shared_inventory_count(
+    account: object,
+    model_id_min: int,
+    model_id_max: int,
+) -> int | None:
+    """Read an item count from the shared-memory inventory mirror.
+
+    InventoryQuery remains the fallback until the mirror becomes available.
+    """
+    inventory_bags = getattr(account, "InventoryBags", None)
+    if inventory_bags is None:
+        return None
+
+    try:
+        bags = list(inventory_bags.iter_bags())
+    except Exception:
+        return None
+
+    # No published bag structures means the mirror is not ready. Once bag
+    # structures exist, an empty count is a valid zero.
+    if not bags:
+        return None
+
+    minimum = int(model_id_min)
+    maximum = int(model_id_max)
+    total = 0
+    saw_slots_container = False
+
+    try:
+        for bag in bags:
+            slots = getattr(bag, "Slots", None)
+            if slots is None:
+                continue
+            saw_slots_container = True
+            for slot in slots:
+                model_id = int(getattr(slot, "ModelID", 0) or 0)
+                if minimum <= model_id <= maximum:
+                    total += max(0, int(getattr(slot, "Quantity", 0) or 0))
+    except Exception:
+        return None
+
+    return total if saw_slots_container else None
+
+
 def _inventory_statistics_node(*, after_chest: bool) -> BehaviorTree:
     node_name = 'Record Drops After Final Chest' if after_chest else 'Snapshot Inventories At Dungeon Entry'
-    state: dict[str, object] = {'started': False, 'local_email': '', 'account_keys': [], 'requests': [], 'request_index': 0, 'waiting': False, 'request_started_at': 0.0, 'local_email_wait_started_at': 0.0}
+    state: dict[str, object] = {
+        'started': False,
+        'local_email': '',
+        'account_keys': [],
+        'pending': {},
+        'request_started_at': 0.0,
+        'local_email_wait_started_at': 0.0,
+        'mirror_count': 0,
+    }
 
     def _reset() -> None:
-        state["started"] = False
-        state["local_email"] = ""
-        state["account_keys"] = []
-        state["requests"] = []
-        state["request_index"] = 0
-        state["waiting"] = False
-        state["request_started_at"] = 0.0
-        state["local_email_wait_started_at"] = 0.0
+        state['started'] = False
+        state['local_email'] = ''
+        state['account_keys'] = []
+        state['pending'] = {}
+        state['request_started_at'] = 0.0
+        state['local_email_wait_started_at'] = 0.0
+        state['mirror_count'] = 0
 
     def _start() -> bool:
         _load_statistics()
         _refresh_character_names()
 
-        local_email = str(Player.GetAccountEmail() or "").strip()
+        local_email = str(Player.GetAccountEmail() or '').strip()
         if not local_email:
             return False
 
@@ -2248,13 +1954,21 @@ def _inventory_statistics_node(*, after_chest: bool) -> BehaviorTree:
         bds_section = _BDS_RUN_SECTION if after_chest else _BDS_SNAPSHOT_SECTION
         gb_section = _GB_RUN_SECTION if after_chest else _GB_SNAPSHOT_SECTION
 
-        bds_count = _inventory_count(BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX)
-        gb_count = _inventory_count(GB_MODEL_ID, GB_MODEL_ID)
-        _settings_ini.set(bds_section, local_key, bds_count)
-        _settings_ini.set(gb_section, local_key, gb_count)
+        _settings_ini.set(
+            bds_section,
+            local_key,
+            _inventory_count(BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX),
+        )
+        _settings_ini.set(
+            gb_section,
+            local_key,
+            _inventory_count(GB_MODEL_ID, GB_MODEL_ID),
+        )
 
         account_keys = [local_key]
-        requests: list[dict[str, object]] = []
+        pending: dict[str, dict[str, object]] = {}
+        mirror_count = 0
+
         for account in _shared_accounts():
             email = str(getattr(account, 'AccountEmail', '') or '').strip()
             if not email or email == local_email:
@@ -2264,48 +1978,82 @@ def _inventory_statistics_node(*, after_chest: bool) -> BehaviorTree:
             if key not in account_keys:
                 account_keys.append(key)
 
-            requests.extend(
-                [
-                    {
-                        "email": email,
-                        "key": key,
-                        "model_min": BDS_MODEL_ID_MIN,
-                        "model_max": BDS_MODEL_ID_MAX,
-                        "section": bds_section,
-                        "label": "BDS",
-                    },
-                    {
-                        "email": email,
-                        "key": key,
-                        "model_min": GB_MODEL_ID,
-                        "model_max": GB_MODEL_ID,
-                        "section": gb_section,
-                        "label": "Glacial Blades",
-                    },
-                ]
+            requests = (
+                ('BDS', BDS_MODEL_ID_MIN, BDS_MODEL_ID_MAX, bds_section),
+                ('Glacial Blades', GB_MODEL_ID, GB_MODEL_ID, gb_section),
             )
+
+            for label, model_min, model_max, section in requests:
+                mirrored_count = _shared_inventory_count(
+                    account, int(model_min), int(model_max)
+                )
+
+                if mirrored_count is not None:
+                    _settings_ini.set(section, key, int(mirrored_count))
+                    mirror_count += 1
+                    continue
+
+                # Mirror unavailable: dispatch the fallback immediately. Every
+                # missing BDS/GB request is sent together and shares one timeout.
+                reset_inventory_count(email, int(model_min), int(model_max))
+                _settings_ini.set(section, key, -1)
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    local_email,
+                    email,
+                    SharedCommandType.InventoryQuery,
+                    (float(model_min), float(model_max), 0.0, 0.0),
+                    ('report_inventory_count',),
+                )
+
+                pending_key = f'{email}|{int(model_min)}|{int(model_max)}'
+                pending[pending_key] = {
+                    'email': email,
+                    'key': key,
+                    'model_min': int(model_min),
+                    'model_max': int(model_max),
+                    'section': section,
+                    'label': label,
+                }
 
         for key in account_keys:
             _bds_drops.setdefault(key, 0)
             _gb_drops.setdefault(key, 0)
 
-        state["started"] = True
-        state["local_email"] = local_email
-        state["account_keys"] = account_keys
-        state["requests"] = requests
-        state["local_email_wait_started_at"] = 0.0
+        state['started'] = True
+        state['local_email'] = local_email
+        state['account_keys'] = account_keys
+        state['pending'] = pending
+        state['mirror_count'] = mirror_count
+        state['request_started_at'] = time.monotonic() if pending else 0.0
+        state['local_email_wait_started_at'] = 0.0
+
+        if pending:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                (
+                    f'[Statistics] Inventory snapshot: {mirror_count} mirrored value(s) read directly; '
+                    f'{len(pending)} InventoryQuery fallback request(s) sent in parallel.'
+                ),
+                PySystem.Console.MessageType.Info,
+            )
+
         return True
 
     def _finish() -> None:
         if not after_chest:
-            PySystem.Console.Log(MODULE_NAME, f"[Statistics] Dungeon-entry inventory snapshot completed for {len(state['account_keys'])} account(s).", PySystem.Console.MessageType.Info)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Statistics] Dungeon-entry inventory snapshot completed for {len(state['account_keys'])} account(s).",
+                PySystem.Console.MessageType.Info,
+            )
             _save_statistics()
             return
 
         total_bds = 0
         total_gb = 0
-        for key in state["account_keys"]:
+        for key in state['account_keys']:
             account_key = str(key)
+
             bds_before = _settings_ini.get_int(_BDS_SNAPSHOT_SECTION, account_key, -1)
             bds_after = _settings_ini.get_int(_BDS_RUN_SECTION, account_key, -1)
             bds_delta = max(0, bds_after - bds_before) if bds_before >= 0 and bds_after >= 0 else 0
@@ -2319,29 +2067,26 @@ def _inventory_statistics_node(*, after_chest: bool) -> BehaviorTree:
             total_gb += gb_delta
 
         _save_statistics()
-        PySystem.Console.Log(MODULE_NAME, f'[Statistics] Final chest recorded - BDS {total_bds} | Glacial Blades {total_gb}', PySystem.Console.MessageType.Success)
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f'[Statistics] Final chest recorded - BDS {total_bds} | Glacial Blades {total_gb}',
+            PySystem.Console.MessageType.Success,
+        )
 
     def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         try:
-            if bool(
-                node.blackboard.get(
-                    "USER_INTERRUPT_ACTIVE",
-                    False,
-                )
-            ):
+            if bool(node.blackboard.get('USER_INTERRUPT_ACTIVE', False)):
                 _reset()
                 return BehaviorTree.NodeState.FAILURE
 
-            if not bool(state["started"]):
+            if not bool(state['started']):
                 if not _start():
                     now = time.monotonic()
-                    wait_started = float(state["local_email_wait_started_at"] or 0.0)
+                    wait_started = float(state['local_email_wait_started_at'] or 0.0)
                     if wait_started <= 0.0:
-                        state["local_email_wait_started_at"] = now
+                        state['local_email_wait_started_at'] = now
                         return BehaviorTree.NodeState.RUNNING
-
-                    elapsed_ms = (now - wait_started) * 1000.0
-                    if elapsed_ms < _INVENTORY_QUERY_TIMEOUT_MS:
+                    if (now - wait_started) * 1000.0 < _INVENTORY_QUERY_TIMEOUT_MS:
                         return BehaviorTree.NodeState.RUNNING
 
                     PySystem.Console.Log(
@@ -2352,49 +2097,63 @@ def _inventory_statistics_node(*, after_chest: bool) -> BehaviorTree:
                     _reset()
                     return BehaviorTree.NodeState.SUCCESS
 
-            requests = state["requests"]
-            while int(state["request_index"]) < len(requests):
-                request_index = int(state["request_index"])
-                request = requests[request_index]
-                email = str(request["email"])
-                model_min = int(request["model_min"])
-                model_max = int(request["model_max"])
+            pending: dict[str, dict[str, object]] = state['pending']
 
-                if not bool(state["waiting"]):
-                    reset_inventory_count(email, model_min, model_max)
-                    _settings_ini.set(str(request['section']), str(request['key']), -1)
-                    GLOBAL_CACHE.ShMem.SendMessage(str(state['local_email']), email, SharedCommandType.InventoryQuery, (float(model_min), float(model_max), 0.0, 0.0), ('report_inventory_count',))
-                    state["waiting"] = True
-                    state["request_started_at"] = time.monotonic()
+            for pending_key in list(pending):
+                request = pending[pending_key]
+                email = str(request['email'])
+                model_min = int(request['model_min'])
+                model_max = int(request['model_max'])
+                count = int(get_inventory_count(email, model_min, model_max))
+
+                if count < 0:
+                    continue
+
+                _settings_ini.set(
+                    str(request['section']),
+                    str(request['key']),
+                    count,
+                )
+                pending.pop(pending_key, None)
+
+            if pending:
+                elapsed_ms = (
+                    time.monotonic() - float(state['request_started_at'] or 0.0)
+                ) * 1000.0
+                if elapsed_ms < _INVENTORY_QUERY_TIMEOUT_MS:
                     return BehaviorTree.NodeState.RUNNING
 
-                count = int(get_inventory_count(email, model_min, model_max))
-                if count >= 0:
-                    _settings_ini.set(str(request['section']), str(request['key']), count)
-                    state["request_index"] = request_index + 1
-                    state["waiting"] = False
-                    continue
-
-                elapsed_ms = (time.monotonic() - float(state['request_started_at'])) * 1000.0
-                if elapsed_ms >= _INVENTORY_QUERY_TIMEOUT_MS:
-                    PySystem.Console.Log(MODULE_NAME, f"[Statistics] Inventory query timed out for {request['label']} on {_account_label(str(request['key']))}.", PySystem.Console.MessageType.Warning)
-                    state["request_index"] = request_index + 1
-                    state["waiting"] = False
-                    continue
-
-                return BehaviorTree.NodeState.RUNNING
+                for pending_key, request in list(pending.items()):
+                    PySystem.Console.Log(
+                        MODULE_NAME,
+                        (
+                            f"[Statistics] {request['label']} inventory fallback timed out on "
+                            f"{_account_label(str(request['key']))}."
+                        ),
+                        PySystem.Console.MessageType.Warning,
+                    )
+                    pending.pop(pending_key, None)
 
             _finish()
             _reset()
             return BehaviorTree.NodeState.SUCCESS
+
         except Exception as exc:
-            PySystem.Console.Log(MODULE_NAME, f'[Statistics] {node_name} failed: {exc}', PySystem.Console.MessageType.Warning)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f'[Statistics] {node_name} failed: {exc}',
+                PySystem.Console.MessageType.Warning,
+            )
             _reset()
             return BehaviorTree.NodeState.SUCCESS
 
-    return BehaviorTree(BehaviorTree.ActionNode(name=node_name, action_fn=_tick, aftercast_ms=_INVENTORY_QUERY_POLL_MS))
-
-
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=node_name,
+            action_fn=_tick,
+            aftercast_ms=_INVENTORY_QUERY_POLL_MS,
+        )
+    )
 
 def _reset_total_overview_and_timings() -> None:
     """Reset persistent all-time overview/drop counters and timing statistics."""
@@ -2639,6 +2398,183 @@ def _is_holding_bundle() -> bool:
         return False
 
 
+def _is_core_shrine_resume(node: BehaviorTree.Node) -> bool:
+    return str(node.blackboard.get("planner_restart_reason", "") or "") == "shrine"
+
+
+def _reset_restart_safe_run_state_node() -> BehaviorTree:
+    """Clear one-shot mechanic state only for a genuinely fresh dungeon pass."""
+    def _reset(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        global _shrine_recovery_torch_skip_active
+
+        if _is_core_shrine_resume(node):
+            return BehaviorTree.NodeState.SUCCESS
+
+        _restart_safe_completed_mechanics.clear()
+        _restart_safe_opened_torch_chests.clear()
+        _shrine_recovery_torch_skip_active = False
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Reset Restart-Safe Run State",
+            action_fn=_reset,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _mark_restart_safe_mechanic_node(key: str) -> BehaviorTree:
+    def _mark(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        _restart_safe_completed_mechanics.add(str(key))
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Mark Restart-Safe Mechanic Complete ({key})",
+            action_fn=_mark,
+            aftercast_ms=0,
+        )
+    )
+
+
+def _skip_if_level3_boss_route_unlocked(
+    step_name: str,
+    factory: Callable[[], BehaviorTree],
+) -> tuple[str, Callable[[], BehaviorTree]]:
+    """Skip obsolete pre-boss Level 3 steps after a shrine restart.
+
+    Level 3 passes the same shrine during the torch phase and again on the boss
+    route. Once Brigant and its loot are complete, an old nearby shrine anchor
+    may still be selected by the generic Core resolver. Those earlier steps are
+    no longer valid for this run, so they complete immediately until the planner
+    reaches the Brigant door / Fendi route again.
+    """
+
+    def _build(node: BehaviorTree.Node) -> BehaviorTree:
+        if (
+            _is_core_shrine_resume(node)
+            and _LEVEL3_BOSS_ROUTE_UNLOCKED_KEY in _restart_safe_completed_mechanics
+        ):
+            return BT.Succeeder(f"{step_name} Skipped - Level 3 Boss Route Already Unlocked")
+        return factory()
+
+    def _factory() -> BehaviorTree:
+        return BT.Subtree(
+            name=f"Restart Safe Level 3 Phase ({step_name})",
+            subtree_fn=_build,
+        )
+
+    return step_name, _factory
+
+
+def _mark_torch_chest_opened_node(key: str) -> BehaviorTree:
+    def _mark(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        _restart_safe_opened_torch_chests.add(str(key))
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Mark Torch Chest Opened ({key})",
+            action_fn=_mark,
+            aftercast_ms=0,
+        )
+    )
+
+
+def RestartSafeGadgetInteraction(
+    key: str,
+    pos: Vec2f,
+    *,
+    pause_on_combat: bool = False,
+    log: bool = True,
+) -> BehaviorTree:
+    """Replay a one-shot gadget interaction safely after shrine recovery."""
+    def _build(node: BehaviorTree.Node) -> BehaviorTree:
+        if _is_core_shrine_resume(node) and key in _restart_safe_completed_mechanics:
+            return BT.Succeeder(f"{key} Already Completed Before Shrine Wipe")
+
+        return BT.Sequence(
+            name=f"Ensure {key}",
+            children=[
+                BT.MoveAndInteractWithGadget(
+                    pos,
+                    pause_on_combat=pause_on_combat,
+                    log=log,
+                ),
+                _mark_restart_safe_mechanic_node(key),
+            ],
+        )
+
+    return BT.Subtree(name=f"Restart Safe Gadget ({key})", subtree_fn=_build)
+
+
+def RestartSafeBrazierSequence(
+    key: str,
+    name: str,
+    points: list[tuple[float, float]],
+) -> BehaviorTree:
+    """Skip a brazier route already completed before the shrine wipe."""
+    def _build(node: BehaviorTree.Node) -> BehaviorTree:
+        if _is_core_shrine_resume(node) and key in _restart_safe_completed_mechanics:
+            return BT.Succeeder(f"{name} Already Completed Before Shrine Wipe")
+
+        return BT.Sequence(
+            name=f"{name} - Restart Safe",
+            children=[
+                BrazierSequence(name, points),
+                _mark_restart_safe_mechanic_node(key),
+            ],
+        )
+
+    return BT.Subtree(name=f"Restart Safe {name}", subtree_fn=_build)
+
+
+def EnsureTorchFromChest(
+    key: str,
+    chest_pos: Vec2f,
+) -> BehaviorTree:
+    """Open a torch chest once and make a replay safe after shrine recovery.
+
+    If the chest was already consumed before the wipe and the torch is no longer
+    nearby, the resumed route is allowed to continue toward the death location.
+    The torch-aware route points keep trying to recover the dropped torch.
+    """
+    def _build(node: BehaviorTree.Node) -> BehaviorTree:
+        global _shrine_recovery_torch_skip_active
+
+        if _is_holding_bundle():
+            _restart_safe_opened_torch_chests.add(key)
+            return BT.Succeeder(f"{key} Torch Already Held")
+
+        ground_torch = _find_ground_torch()
+        if ground_torch and ground_torch > 0:
+            _restart_safe_opened_torch_chests.add(key)
+            return PickupTorch()
+
+        if (
+            _is_core_shrine_resume(node)
+            and key in _restart_safe_opened_torch_chests
+        ):
+            _shrine_recovery_torch_skip_active = True
+            return BT.Succeeder(f"{key} Already Opened - Retrace To Dropped Torch")
+
+        return BT.Sequence(
+            name=f"Open {key} And Recover Torch",
+            children=[
+                BT.MoveAndInteractWithGadget(
+                    chest_pos,
+                    pause_on_combat=False,
+                    log=True,
+                ),
+                _mark_torch_chest_opened_node(key),
+                PickupTorch(),
+            ],
+        )
+
+    return BT.Subtree(name=f"Ensure Torch Source ({key})", subtree_fn=_build)
+
+
 def _resolve_torch_combat_policy() -> bool:
     """Return True when the leader must drop the torch before combat."""
     global _drop_torch_for_combat
@@ -2712,9 +2648,8 @@ def ResolveTorchCombatPolicy() -> BehaviorTree:
 
 def ResetTorchCombatPolicy() -> BehaviorTree:
     def _reset(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        global _drop_torch_for_combat, _torch_dropped_for_combat, _shrine_recovery_torch_skip_active
+        global _drop_torch_for_combat, _shrine_recovery_torch_skip_active
         _drop_torch_for_combat = None
-        _torch_dropped_for_combat = False
         _shrine_recovery_torch_skip_active = False
         return BehaviorTree.NodeState.SUCCESS
 
@@ -2727,55 +2662,26 @@ def ResetTorchCombatPolicy() -> BehaviorTree:
     )
 
 
-def _set_torch_dropped_node(value: bool) -> BehaviorTree:
-    def _set(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        global _torch_dropped_for_combat
-        _torch_dropped_for_combat = bool(value)
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name='Mark Torch Dropped For Combat' if value else 'Clear Torch Dropped For Combat',
-            action_fn=_set,
-            aftercast_ms=0,
-        )
-    )
-
-
 def DropTorchForCombat(log: bool = False) -> BehaviorTree:
-    """Drop the torch only for martial combat and remember that it must be recovered."""
+    """Drop the torch for martial combat; the current step recovers it afterward."""
 
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _resolve_torch_combat_policy():
             return BT.Succeeder('Keep Torch For Caster Combat')
-
         if not _is_holding_bundle():
             return BT.Succeeder('No Torch Bundle To Drop')
-
-        return BT.Sequence(
-            name='Drop Torch For Combat',
-            children=[
-                BT.DropBundle(log=log),
-                _set_torch_dropped_node(True),
-            ],
-        )
+        return BT.DropBundle(log=log)
 
     return BT.Subtree(name='Drop Torch For Combat If Required', subtree_fn=_build)
 
 
 def DiscardTorch(log: bool = True) -> BehaviorTree:
-    """Drop the torch when the current floor no longer needs it; no recovery follows."""
+    """Drop the torch once the active mechanic no longer needs it."""
 
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         if not _is_holding_bundle():
-            return _set_torch_dropped_node(False)
-        return BT.Sequence(
-            name='Discard Finished Torch',
-            children=[
-                BT.DropBundle(log=log),
-                _set_torch_dropped_node(False),
-            ],
-        )
+            return BT.Succeeder('No Torch Bundle To Discard')
+        return BT.DropBundle(log=log)
 
     return BT.Subtree(name='Discard Torch After Mechanic', subtree_fn=_build)
 
@@ -2941,7 +2847,7 @@ def _find_ground_torch() -> int | None:
 
 
 def PickupTorch() -> BehaviorTree:
-    """Require the active Shards torch, except for a short post-shrine recovery grace."""
+    """Require the active torch, with a Core-shrine-resume retrace grace."""
     PICKUP_TIMEOUT_MS = 45_000
     SHRINE_RECOVERY_PICKUP_TIMEOUT_MS = 5_000
     RETRY_DELAY_MS = 1_000
@@ -2972,12 +2878,14 @@ def PickupTorch() -> BehaviorTree:
 
     def _pickup_torch_step(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         nonlocal pickup_tree, started_at, retry_at, search_logged
-        global _torch_dropped_for_combat, _shrine_recovery_torch_skip_active
+        global _shrine_recovery_torch_skip_active
 
         now = time.monotonic()
 
+        if _is_core_shrine_resume(node):
+            _shrine_recovery_torch_skip_active = True
+
         if _is_holding_bundle():
-            _torch_dropped_for_combat = False
             _shrine_recovery_torch_skip_active = False
             _reset_state()
             return BehaviorTree.NodeState.SUCCESS
@@ -3003,7 +2911,6 @@ def PickupTorch() -> BehaviorTree:
             # resume waypoint. Do not fail/restart the resumed planner point forever.
             # Keep the recovery bypass active for later torch-managed points until
             # a torch is actually recovered or the torch policy is explicitly reset.
-            _torch_dropped_for_combat = False
             PySystem.Console.Log(
                 MODULE_NAME,
                 'Torch not recovered after 5s following shrine recovery; continuing to the next route point.',
@@ -3023,9 +2930,8 @@ def PickupTorch() -> BehaviorTree:
 
         ground_torch = _find_ground_torch()
         if ground_torch == 0:
-            # Unlike the Forsaken Keystone door case, a Shards torch is never
-            # intentionally consumed while the torch-managed section is active.
-            # Absence therefore remains blocking instead of being skipped.
+            # The torch remains required throughout a torch-managed section, so
+            # its absence stays blocking until it is recovered.
             return BehaviorTree.NodeState.RUNNING
 
         if now < retry_at:
@@ -3038,7 +2944,6 @@ def PickupTorch() -> BehaviorTree:
             return BehaviorTree.NodeState.RUNNING
 
         if pickup_result == BehaviorTree.NodeState.SUCCESS and _is_holding_bundle():
-            _torch_dropped_for_combat = False
             _shrine_recovery_torch_skip_active = False
             _reset_state()
             return BehaviorTree.NodeState.SUCCESS
@@ -3093,6 +2998,160 @@ def UseAvailableSummoningStone() -> BehaviorTree:
             aftercast_ms=0,
         )
     )
+
+
+def SummoningStoneRecoveryService() -> BehaviorTree:
+    """Best-effort replacement summon when the active party summon dies mid-floor.
+
+    The normal Level 1/2/3 start calls remain authoritative.  This service is
+    armed only after a living summoning-stone ally has actually been observed
+    on the current floor.  Runtime config and the UI flag are checked every tick,
+    so disabling stones stops replacement attempts immediately.
+    """
+    ATTEMPT_INTERVAL_MS = 3_000.0
+    RETRY_CYCLE_DELAY_MS = 15_000.0
+
+    state: dict[str, object] = {
+        "map_id": 0,
+        "saw_active_summon": False,
+        "recovering": False,
+        "targets": [],
+        "target_index": 0,
+        "next_attempt_ms": 0.0,
+    }
+
+    def _reset_for_map(map_id: int) -> None:
+        state["map_id"] = int(map_id)
+        state["saw_active_summon"] = False
+        state["recovering"] = False
+        state["targets"] = []
+        state["target_index"] = 0
+        state["next_attempt_ms"] = 0.0
+
+    def _refresh_targets() -> list[tuple[str, str]]:
+        targets: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for email, label in _inventory_target_accounts():
+            email = str(email or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            targets.append((email, str(label or email)))
+        state["targets"] = targets
+        return targets
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BehaviorTree.NodeState.RUNNING
+        if not Map.IsMapReady() or Map.IsMapLoading() or not Map.IsExplorable():
+            return BehaviorTree.NodeState.RUNNING
+
+        map_id = int(Map.GetMapID() or 0)
+        if map_id not in (SOO_LEVEL_1, SOO_LEVEL_2, SOO_LEVEL_3):
+            return BehaviorTree.NodeState.RUNNING
+        if map_id != int(state["map_id"] or 0):
+            # Floor transitions intentionally remove the old summon. The regular
+            # LevelX_Start action owns the initial summon on each new floor.
+            _reset_for_map(map_id)
+            return BehaviorTree.NodeState.RUNNING
+
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+            return BehaviorTree.NodeState.RUNNING
+        if Routines.Checks.Party.IsPartyWiped():
+            return BehaviorTree.NodeState.RUNNING
+
+        try:
+            summon_alive = bool(has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()))
+        except Exception:
+            summon_alive = False
+
+        if summon_alive:
+            if bool(state["recovering"]):
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "[Summoning] Replacement summon detected; recovery stopped.",
+                    PySystem.Console.MessageType.Success,
+                )
+            state["saw_active_summon"] = True
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        # Do not replace the explicit level-start summon. Recovery starts only
+        # after a real summon was observed alive on this same floor.
+        if not bool(state["saw_active_summon"]):
+            return BehaviorTree.NodeState.RUNNING
+
+        now_ms = time.monotonic() * 1000.0
+        if not bool(state["recovering"]):
+            state["recovering"] = True
+            state["target_index"] = 0
+            state["next_attempt_ms"] = now_ms
+            _refresh_targets()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "[Summoning] Active party summon was lost; trying replacement stones account by account.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        if now_ms < float(state["next_attempt_ms"] or 0.0):
+            return BehaviorTree.NodeState.RUNNING
+
+        targets: list[tuple[str, str]] = list(state["targets"] or [])
+        if not targets:
+            targets = _refresh_targets()
+            if not targets:
+                state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+                return BehaviorTree.NodeState.RUNNING
+
+        target_index = int(state["target_index"] or 0)
+        if target_index >= len(targets):
+            state["target_index"] = 0
+            state["targets"] = _refresh_targets()
+            state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        if not sender_email:
+            state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        receiver_email, label = targets[target_index]
+        state["target_index"] = target_index + 1
+        state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.UseSummoningStone,
+                (0.0, 0.0, 0.0, 0.0),
+            )
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Asking {label} to try a replacement summoning stone.",
+                PySystem.Console.MessageType.Info,
+            )
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Replacement request failed for {label}: {exc}",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Summoning Stone Recovery Service",
+            action_fn=_tick,
+            aftercast_ms=500,
+        )
+    )
+
 
 def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTree:
     """
@@ -3263,8 +3322,7 @@ def MoveBetweenBraziersWithFlameRecovery(
 
         _trace(f"{reason} Returning to the previous brazier (recovery {state['recovery_count']}/{recovery_limit}).", PySystem.Console.MessageType.Warning)
 
-        # Tous les sous-arbres concernés sont remis à zéro avant
-        # d'entamer la récupération locale.
+        # Reset every phase subtree before starting local recovery.
         _reset_tree(move_to_next)
         _reset_tree(move_to_previous)
         _reset_tree(relight_previous)
@@ -3312,9 +3370,6 @@ def MoveBetweenBraziersWithFlameRecovery(
 
         phase = str(state['phase'])
 
-        # --------------------------------------------------------------
-        # Déplacement vers le prochain brasero
-        # --------------------------------------------------------------
         if phase == "move_to_next":
             if not _has_active_flame():
                 return _begin_recovery(now, 'Torch flame extinguished during movement.')
@@ -3337,7 +3392,6 @@ def MoveBetweenBraziersWithFlameRecovery(
             return BehaviorTree.NodeState.RUNNING
 
         # --------------------------------------------------------------
-        # Interaction avec le prochain brasero
         # --------------------------------------------------------------
         if phase == "interact_next":
             if not _has_active_flame():
@@ -3350,7 +3404,7 @@ def MoveBetweenBraziersWithFlameRecovery(
 
             if result == BehaviorTree.NodeState.FAILURE:
                 # Ne pas laisser FAILURE remonter au planner.
-                # On retourne localement au précédent brasero.
+                # Recover locally from the previous brazier.
                 return _begin_recovery(now, 'Interaction with the next brazier failed.')
 
             _trace('Next brazier interaction completed.', PySystem.Console.MessageType.Success)
@@ -3359,9 +3413,6 @@ def MoveBetweenBraziersWithFlameRecovery(
 
             return BehaviorTree.NodeState.SUCCESS
 
-        # --------------------------------------------------------------
-        # Retour au précédent brasero
-        # --------------------------------------------------------------
         if phase == "move_to_previous":
             result = _tick_tree(move_to_previous, node)
 
@@ -3385,9 +3436,6 @@ def MoveBetweenBraziersWithFlameRecovery(
 
             return BehaviorTree.NodeState.RUNNING
 
-        # --------------------------------------------------------------
-        # Interaction avec le précédent brasero
-        # --------------------------------------------------------------
         if phase == "relight_previous":
             result = _tick_tree(relight_previous, node)
 
@@ -3411,9 +3459,6 @@ def MoveBetweenBraziersWithFlameRecovery(
 
             return BehaviorTree.NodeState.RUNNING
 
-        # --------------------------------------------------------------
-        # Attente de la réapparition de l'effet de flamme
-        # --------------------------------------------------------------
         if phase == "wait_for_relight":
             if _has_active_flame():
                 _trace('Torch relit successfully. Resuming movement to the next brazier.', PySystem.Console.MessageType.Success)
@@ -3463,12 +3508,13 @@ def _configure_botting_tree(tree: BottingTree) -> None:
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=_enabled_consumable_upkeeps(),
-        enable_party_wipe_recovery=False,
+        enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
     )
     tree.AddServiceTree(
-        "ShardsPartyWipeRecoveryService",
-        ShardsPartyWipeRecoveryService,
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
 
 
@@ -3600,7 +3646,7 @@ def HandleShandraQuest() -> BehaviorTree:
     return BT.Selector(children=[already_inside, active, completed, missing], name="Handle Shandra Quest")
 
 
-def EnterShardsOfOrr(enable_consumables_on_entry: bool=True) -> BehaviorTree:
+def EnterShardsOfOrr(enable_consumables_on_entry: bool=False) -> BehaviorTree:
     already_inside = BT.Sequence(
         name="Skip Dungeon Entry - Already In Level 1",
         children=[
@@ -3899,6 +3945,8 @@ def Level1_Start() -> BehaviorTree:
     return BT.Sequence(
         name="Start Shards of Orr Level 1",
         children=[
+            _runtime_consumable_upkeep_node(True),
+            _reset_restart_safe_run_state_node(),
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
             UseAvailableSummoningStone(),
@@ -3909,7 +3957,18 @@ def Level1_Start() -> BehaviorTree:
 
 
 def Level1_OpenDoor() -> BehaviorTree:
-    return BT.Sequence(name='Open Level 1 Door', children=[BT.IsCurrentMap(map_id=SOO_LEVEL_1, log=True), BT.MoveAndInteractWithGadget(Vec2f(15100.0, 5443.0), pause_on_combat=True, log=True)])
+    return BT.Sequence(
+        name='Open Level 1 Door',
+        children=[
+            BT.IsCurrentMap(map_id=SOO_LEVEL_1, log=True),
+            RestartSafeGadgetInteraction(
+                'level1_main_door',
+                Vec2f(15100.0, 5443.0),
+                pause_on_combat=True,
+                log=True,
+            ),
+        ],
+    )
 
 
 def Level1_EnterLevel2() -> BehaviorTree:
@@ -3917,8 +3976,10 @@ def Level1_EnterLevel2() -> BehaviorTree:
     return BT.Sequence(
         name=name,
         children=[
-            _map_guarded_point(name=name, map_id=SOO_LEVEL_1, child=BT.Sequence(name=f'{name} And Load Level 2', children=[BT.VanquishNode([L1_PATH_AFTER_DOOR[-1]], name=name, flag_heroes_to_waypoint=False, move_tolerance=500, log=False), BT.WaitForMapLoad(map_id=SOO_LEVEL_2, timeout_ms=60000)]), skip_if_in_maps=(SOO_LEVEL_2,)),
-            BT.WaitUntilOnExplorable(timeout_ms=30_000),
+            _map_guarded_point(name=name, map_id=SOO_LEVEL_1, child=BT.Sequence(name=f'{name} And Load Level 2',
+            children=[
+            BT.MoveAndExitMap(Vec2f(20400.5, 1300.0), target_map_id=SOO_LEVEL_2, log=False),
+            BT.WaitForMapLoad(map_id=SOO_LEVEL_2, timeout_ms=60000)]), skip_if_in_maps=(SOO_LEVEL_2,)),
             _mark_l2_start_node(),
             BT.Wait(2_000),
         ],
@@ -3942,8 +4003,7 @@ def Level2_Start() -> BehaviorTree:
             BT.MoveAndDialog(L2_BLESSING_NPC, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
             BT.Move(Vec2f(-15243.0, -17230.0)),
             BT.ClearEnemiesInArea(Vec2f(-15243.0, -17230.0), radius=Range.Compass.value, log=True),
-            BT.MoveAndInteractWithGadget(L2_TORCH_CHEST, pause_on_combat=False, log=True),
-            PickupTorch(),
+            EnsureTorchFromChest('level2_torch_chest', L2_TORCH_CHEST),
         ],
     )
 
@@ -3966,7 +4026,13 @@ def Level2_FirstTorchFight() -> BehaviorTree:
 def Level2_BrazierRoute1() -> BehaviorTree:
     return BT.Sequence(
         name='Level 2 Brazier Route 1',
-        children=[BrazierSequence('Level 2 Brazier Route 1', L2_BRAZIER_PART1)],
+        children=[
+            RestartSafeBrazierSequence(
+                'level2_brazier_route_1',
+                'Level 2 Brazier Route 1',
+                L2_BRAZIER_PART1,
+            )
+        ],
     )
 
 
@@ -3991,13 +4057,23 @@ def Level2_PrepareRoom2() -> BehaviorTree:
 
 
 def Level2_BrazierRoute2() -> BehaviorTree:
-    return BT.Sequence(
-        name='Level 2 Brazier Route 2',
-        children=[
-            BrazierSequence('Level 2 Brazier Route 2', L2_BRAZIER_PART2),
-            DiscardTorch(log=True),
-        ],
-    )
+    def _build(node: BehaviorTree.Node) -> BehaviorTree:
+        if (
+            _is_core_shrine_resume(node)
+            and 'level2_brazier_route_2' in _restart_safe_completed_mechanics
+        ):
+            return DiscardTorch(log=False)
+
+        return BT.Sequence(
+            name='Level 2 Brazier Route 2 - Restart Safe',
+            children=[
+                BrazierSequence('Level 2 Brazier Route 2', L2_BRAZIER_PART2),
+                _mark_restart_safe_mechanic_node('level2_brazier_route_2'),
+                DiscardTorch(log=True),
+            ],
+        )
+
+    return BT.Subtree(name='Level 2 Brazier Route 2', subtree_fn=_build)
 
 
 # endregion
@@ -4007,7 +4083,18 @@ def Level2_BrazierRoute2() -> BehaviorTree:
 
 
 def Level2_OpenDungeonLock() -> BehaviorTree:
-    return BT.Sequence(name='Open Level 2 Dungeon Lock', children=[BT.IsCurrentMap(map_id=SOO_LEVEL_2, log=True), BT.MoveAndInteractWithGadget(L2_DUNGEON_LOCK, pause_on_combat=False, log=True)])
+    return BT.Sequence(
+        name='Open Level 2 Dungeon Lock',
+        children=[
+            BT.IsCurrentMap(map_id=SOO_LEVEL_2, log=True),
+            RestartSafeGadgetInteraction(
+                'level2_dungeon_lock',
+                L2_DUNGEON_LOCK,
+                pause_on_combat=False,
+                log=True,
+            ),
+        ],
+    )
 
 
 def Level2_EnterLevel3() -> BehaviorTree:
@@ -4025,7 +4112,7 @@ def Level2_EnterLevel3() -> BehaviorTree:
 
 # endregion
 
-# region Level 3 - part 1
+# region Level 3 - entry and torch
 
 
 def Level3_Start() -> BehaviorTree:
@@ -4039,50 +4126,59 @@ def Level3_Start() -> BehaviorTree:
 
 
 def Level3_TorchAndBraziers() -> BehaviorTree:
-    return BT.Sequence(
-        name="Open Level 3 Torch Chest And Light Braziers",
-        children=[
-            # Resolve again while no bundle is held.  Carrying a torch can hide
-            # weapon information, so detection must happen before the pickup.
-            ResetTorchCombatPolicy(),
-            ResolveTorchCombatPolicy(),
-            BT.MoveAndInteractWithGadget(L3_TORCH_CHEST, pause_on_combat=False, log=True),
-            PickupTorch(),
-            BrazierSequence("Level 3 Brazier Route", L3_BRAZIERS),
-        ],
-    )
+    def _build(node: BehaviorTree.Node) -> BehaviorTree:
+        if (
+            _is_core_shrine_resume(node)
+            and 'level3_brazier_route' in _restart_safe_completed_mechanics
+        ):
+            return DiscardTorch(log=False)
+
+        return BT.Sequence(
+            name="Open Level 3 Torch Chest And Light Braziers",
+            children=[
+                # Resolve the combat policy before pickup because a held bundle can
+                # hide the equipped weapon type reported by the game.
+                ResetTorchCombatPolicy(),
+                ResolveTorchCombatPolicy(),
+                EnsureTorchFromChest('level3_torch_chest', L3_TORCH_CHEST),
+                BrazierSequence("Level 3 Brazier Route", L3_BRAZIERS),
+                _mark_restart_safe_mechanic_node('level3_brazier_route'),
+                DiscardTorch(log=True),
+            ],
+        )
+
+    return BT.Subtree(name='Level 3 Torch And Braziers', subtree_fn=_build)
 
 
 # endregion
 
 
-# region Level 3 - part 3
+# region Level 3 - Brigant
 def Level3_Brigant() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 3",
         children=[
-            TorchAwareMoveAndKill(
-                Vec2f(-11147, 2644),
-                'Level 3 Brigant Combat',
-                clear_area_radius=Range.Spirit.value,
-            ),
-            PickupTorch(),
+            BT.MoveAndKill(Vec2f(-11147, 2644), clear_area_radius=Range.Spirit.value, log=False),
             BT.AddModelToLootWhitelist(25410),
             BT.Move(Vec2f(-9888.47, 2892.00)),
             BT.LootItems(distance=Range.SafeCompass.value),
-            # The key fight is complete; the torch is no longer required.
-            DiscardTorch(log=True),
+            _mark_restart_safe_mechanic_node(_LEVEL3_BOSS_ROUTE_UNLOCKED_KEY),
         ],
     )
 
 
 def Level3_BrigantDoor() -> BehaviorTree:
-    return BT.Sequence(name='Open Level 3 Brigant Door', children=[BT.MoveAndInteractWithGadget(Vec2f(-9252.32, 6396.4), pause_on_combat=False, log=True)])
+    return RestartSafeGadgetInteraction(
+        'level3_brigant_door',
+        Vec2f(-9252.32, 6396.4),
+        pause_on_combat=False,
+        log=True,
+    )
 
 
 # endregion
 
-# region Level 3 - boss
+# region Level 3 - Fendi
 
 
 FENDI_FIGHT_CENTER = (-15606.06, 15287.51)
@@ -4284,20 +4380,17 @@ def Level3_FendiFight() -> BehaviorTree:
         children=[
             BT.Move(Vec2f(-13198.79, 13789.36),log=True),
             ClearFendiArenaWithBossPriority(),
-            BT.ClearEnemiesInArea(Vec2f(-15606.06, 15287.51), radius=Range.Compass.value, log=True),
-            BT.WaitForClearEnemiesInArea(-15606.06, 15287.51, radius=Range.Compass.value, allowed_alive_enemies=0, interact_interval_ms=750, stable_clear_ms=15000, keep_player_near_center=False, center_tolerance=750.0, log=True),
-            _record_run_end_node(),
+            BT.ClearEnemiesInArea(Vec2f(*FENDI_FIGHT_CENTER), radius=FENDI_FIGHT_RADIUS, log=True),
+            BT.WaitForClearEnemiesInArea(*FENDI_FIGHT_CENTER, radius=FENDI_FIGHT_RADIUS, allowed_alive_enemies=0, interact_interval_ms=750, stable_clear_ms=FENDI_STABLE_CLEAR_MS, keep_player_near_center=False, center_tolerance=750.0, log=True),
         ],
     )
-#endregion
+# endregion
 
-# region Level 3 - Chest
+# region Level 3 - chest
 
 def Level3_Chest() -> BehaviorTree:
-    """Open the final chest in multibox, let normal auto-loot do its job,
-    then move the leader back to the safe regroup position.
-
-    Followers remain on follow, so they naturally regroup on the leader.
+    """Stage the party at the chest, stop the timer, suspend consumables,
+    then open the final chest in multibox while normal auto-loot remains active.
     """
 
     return BT.Sequence(
@@ -4305,13 +4398,17 @@ def Level3_Chest() -> BehaviorTree:
         children=[
             BT.Move(Vec2f(-15198.0, 16839.0), pause_on_combat=False, log=False),
             BT.Move(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
+            # The timed run ends at the chest, immediately before interaction.
+            _record_run_end_node(),
+            # From this point until the next Level 1 start, consets, direct PCons
+            # and summoning-stone usage/recovery are all suspended. Auto-loot stays on.
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(gadget_id=FENDI_CHEST_GADGET_ID, pos=Vec2f(*FENDI_CHEST_POSITION), search_distance=700.0, interaction_distance=Range.Nearby.value, interaction_count=2, interaction_interval_ms=1000, account_settle_ms=3000, timeout_ms=90000, multi_account=True, include_self=True, log=True),
-            
             _inventory_statistics_node(after_chest=True),
         ],
     )
 
-#endregion
+# endregion
 
 
 # region Reward and restart flow
@@ -4353,8 +4450,6 @@ def CollectInsideReward() -> BehaviorTree:
             BT.Move(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
         ],
     )
-
-
 
 
 def ResolveShandraQuestAfterRun() -> BehaviorTree:
@@ -4494,7 +4589,6 @@ def CollectRewardAndReturnToArbor(end_countdown_timeout_ms: int=190000) -> Behav
     return BT.Sequence(
         name="Collect Reward And Return To Arbor",
         children=[
-            _runtime_consumable_upkeep_node(False),
             BT.Selector(name='Resolve Inside Reward', children=[already_in_arbor, reward_collected_inside, reward_not_collected_inside]),
             BT.LogMessage(message='Waiting for the end-of-dungeon countdown and the return to Arbor Bay.', module_name=MODULE_NAME),
             BT.WaitForMapLoad(map_id=ARBOR_BAY, timeout_ms=end_countdown_timeout_ms),
@@ -4539,12 +4633,17 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_movement_point_steps("Level 2 Exit Route", SOO_LEVEL_2, L2_EXIT_PATH[:-1], pause_on_combat=False, skip_if_in_maps=(SOO_LEVEL_3,)),
         (f"Level 2 Exit Route - Point {len(L2_EXIT_PATH):02d}", Level2_EnterLevel3),
 
-        ("Level 3 Start", Level3_Start),
-        *_vanquish_point_steps("Level 3 Main Route", SOO_LEVEL_3, L3_MAIN_PATH),
-        *_vanquish_point_steps("Level 3 Brigant Room Route", SOO_LEVEL_3, L3_BRIGANT_ROOM),
-        *_movement_point_steps("Level 3 Torch Route", SOO_LEVEL_3, L3_PATH_TO_TORCH, pause_on_combat=False),
-        ("Level 3 Torch And Braziers", Level3_TorchAndBraziers),
-        ("Level 3 Brigant", Level3_Brigant),
+        *[
+            _skip_if_level3_boss_route_unlocked(step_name, factory)
+            for step_name, factory in [
+                ("Level 3 Start", Level3_Start),
+                *_vanquish_point_steps("Level 3 Main Route", SOO_LEVEL_3, L3_MAIN_PATH),
+                *_vanquish_point_steps("Level 3 Brigant Room Route", SOO_LEVEL_3, L3_BRIGANT_ROOM),
+                *_movement_point_steps("Level 3 Torch Route", SOO_LEVEL_3, L3_PATH_TO_TORCH, pause_on_combat=False),
+                ("Level 3 Torch And Braziers", Level3_TorchAndBraziers),
+                ("Level 3 Brigant", Level3_Brigant),
+            ]
+        ],
         ("Level 3 Brigant Door", Level3_BrigantDoor),
         *_vanquish_point_steps("Level 3 Route To Fendi", SOO_LEVEL_3, L3_FENDI_PATH),
         ("Level 3 Fendi Boss Fight", Level3_FendiFight),
@@ -4566,12 +4665,10 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 # endregion
 
 
-
 def tooltip():
     PyImGui.set_next_window_size((600, 0))
     PyImGui.begin_tooltip()
 
-    # Title
     title_color = Color(255, 200, 100, 255)
     ImGui.image(MODULE_ICON, (32, 32))
     PyImGui.same_line(0, 10)
@@ -4589,7 +4686,6 @@ def tooltip():
     PyImGui.separator()
     PyImGui.spacing()
 
-    # Description
     PyImGui.text_wrapped(
         "A complete multibox BottingTree automation for Shards of Orr. "
         "The run starts from Vlox's Falls, handles the Lost Souls quest and "
@@ -4598,7 +4694,6 @@ def tooltip():
     )
     PyImGui.spacing()
 
-    # Features
     PyImGui.text_colored("Features:", title_color.to_tuple_normalized())
     PyImGui.bullet_text(
         "Automates the complete Level 1, Level 2 and Level 3 dungeon route."
@@ -4621,7 +4716,6 @@ def tooltip():
     )
     PyImGui.spacing()
 
-    # Credits
     PyImGui.text_colored("Credits:", title_color.to_tuple_normalized())
     PyImGui.bullet_text("Shards of Orr BottingTree implementation: Sky.")
     PyImGui.bullet_text("Built on Py4GW and the BottingTree framework by Apo and contributors.")
@@ -4629,13 +4723,10 @@ def tooltip():
     PyImGui.end_tooltip()
 
 
-
 def main() -> None:
     global initialized
 
     if not initialized:
-        # Settings binds and loads automatically; no ensure/load lifecycle is
-        # required with the new persistence system.
         _load_settings()
         ensure_botting_tree()
         initialized = True
@@ -4644,7 +4735,7 @@ def main() -> None:
     _sync_consumable_upkeeps()
     tree.tick()
     _tick_direct_pcon_upkeep()
-    tree.UI.draw_window(icon_path=TEXTURE, iconwidth=96, main_child_dimensions=(420, 380), extra_tabs=[('Statistics', _draw_statistics), ('Config', _draw_run_config)])
+    tree.UI.draw_window(icon_path=TEXTURE, iconwidth=96, main_child_dimensions=(550, 380), extra_tabs=[('Statistics', _draw_statistics), ('Config', _draw_run_config)])
 
 
 # endregion
