@@ -13,6 +13,8 @@ from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import GLOBAL_CACHE, Agent, Map, Player, SharedCommandType, Inventory, ImGui
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib import Routines
+from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -23,7 +25,6 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS,
 )
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
@@ -669,15 +670,43 @@ def _configure_runtime_upkeeps(enabled: bool | None = None) -> None:
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
+    )
+    botting_tree.AddServiceTree(
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
 
 def _sync_consumable_upkeeps() -> None:
-    # Floor loading no longer tears down PCons; only conset services are synced.
+    # Only conset services require synchronization; PCons use the direct dispatcher.
     if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
         _configure_runtime_upkeeps()
+
+def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
+    """Enable or suspend conset and direct PCon upkeep at runtime."""
+    def _apply(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.FAILURE
+        if _runtime_consumables_enabled != bool(enabled):
+            _configure_runtime_upkeeps(enabled=enabled)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Consumable upkeep resumed for the dungeon run." if enabled else "Consumable upkeep suspended during the end-of-dungeon sequence.",
+                PySystem.Console.MessageType.Info,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Resume Consumable Upkeep" if enabled else "Suspend Consumable Upkeep",
+            action_fn=_apply,
+            aftercast_ms=0,
+        )
+    )
+
 
 
 def _runtime_consumable_node(enabled: bool) -> BehaviorTree:
@@ -749,6 +778,149 @@ def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
             aftercast_ms=0,
         )
     )
+
+def SummoningStoneRecoveryService() -> BehaviorTree:
+    """Replace a summoning-stone ally that dies during the current floor.
+
+    Level-start summon actions remain authoritative. The service arms only after
+    a living summon has been observed on the current floor and respects the live
+    runtime toggle on every tick.
+    """
+    ATTEMPT_INTERVAL_MS = 3_000.0
+    RETRY_CYCLE_DELAY_MS = 15_000.0
+    state: dict[str, object] = {
+        "map_id": 0,
+        "saw_active_summon": False,
+        "recovering": False,
+        "targets": [],
+        "target_index": 0,
+        "next_attempt_ms": 0.0,
+    }
+
+    def _reset_for_map(map_id: int) -> None:
+        state["map_id"] = int(map_id)
+        state["saw_active_summon"] = False
+        state["recovering"] = False
+        state["targets"] = []
+        state["target_index"] = 0
+        state["next_attempt_ms"] = 0.0
+
+    def _refresh_targets() -> list[tuple[str, str]]:
+        targets: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for email, label in _inventory_target_accounts():
+            email = str(email or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            targets.append((email, str(label or email)))
+        state["targets"] = targets
+        return targets
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BehaviorTree.NodeState.RUNNING
+        if not Map.IsMapReady() or Map.IsMapLoading() or not Map.IsExplorable():
+            return BehaviorTree.NodeState.RUNNING
+
+        map_id = int(Map.GetMapID() or 0)
+        if map_id != int(state["map_id"] or 0):
+            _reset_for_map(map_id)
+            return BehaviorTree.NodeState.RUNNING
+
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+            return BehaviorTree.NodeState.RUNNING
+        if Routines.Checks.Party.IsPartyWiped():
+            return BehaviorTree.NodeState.RUNNING
+
+        try:
+            summon_alive = bool(has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()))
+        except Exception:
+            summon_alive = False
+
+        if summon_alive:
+            if bool(state["recovering"]):
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "[Summoning] Replacement summon detected; recovery stopped.",
+                    PySystem.Console.MessageType.Success,
+                )
+            state["saw_active_summon"] = True
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        if not bool(state["saw_active_summon"]):
+            return BehaviorTree.NodeState.RUNNING
+
+        now_ms = time.monotonic() * 1000.0
+        if not bool(state["recovering"]):
+            state["recovering"] = True
+            state["target_index"] = 0
+            state["next_attempt_ms"] = now_ms
+            _refresh_targets()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "[Summoning] Active party summon was lost; trying replacement stones account by account.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        if now_ms < float(state["next_attempt_ms"] or 0.0):
+            return BehaviorTree.NodeState.RUNNING
+
+        targets: list[tuple[str, str]] = list(state["targets"] or [])
+        if not targets:
+            targets = _refresh_targets()
+            if not targets:
+                state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+                return BehaviorTree.NodeState.RUNNING
+
+        target_index = int(state["target_index"] or 0)
+        if target_index >= len(targets):
+            state["target_index"] = 0
+            state["targets"] = _refresh_targets()
+            state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        if not sender_email:
+            state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        receiver_email, label = targets[target_index]
+        state["target_index"] = target_index + 1
+        state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.UseSummoningStone,
+                (0.0, 0.0, 0.0, 0.0),
+            )
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Asking {label} to try a replacement summoning stone.",
+                PySystem.Console.MessageType.Info,
+            )
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Replacement request failed for {label}: {exc}",
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Summoning Stone Recovery Service",
+            action_fn=_tick,
+            aftercast_ms=500,
+        )
+    )
+
 
 
 def _draw_run_config() -> None:
@@ -1894,8 +2066,13 @@ def ensure_botting_tree() -> BottingTree:
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
+                enable_nearest_shrine_recovery=True,
                 heroai_state_logging=False,
             ),
+        )
+        botting_tree.AddServiceTree(
+            "SummoningStoneRecoveryService",
+            SummoningStoneRecoveryService,
         )
     return botting_tree
 
@@ -2169,6 +2346,7 @@ def Level1_Start() -> BehaviorTree:
     return BT.Sequence(
         name="Bogroot Level 1 - Start",
         children=[
+            _runtime_consumable_upkeep_node(True),
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
@@ -2283,6 +2461,8 @@ def OpenFinalChest() -> BehaviorTree:
         children=[
             BT.Move(BOGROOT_CHEST_POSITION, pause_on_combat=False, log=False),
             BT.Wait(2_000),
+            _record_run_end_node(),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(
                 pos=BOGROOT_CHEST_POSITION,
                 search_distance=700.0,
@@ -2297,7 +2477,6 @@ def OpenFinalChest() -> BehaviorTree:
             ),
             BT.LootItems(distance=Range.Spirit.value),
             _inventory_statistics_node(after_chest=True),
-            _record_run_end_node(),
             BT.Wait(5_000),
         ],
     )
@@ -2360,7 +2539,7 @@ def CollectRewardAndReturnToSparkfly(end_countdown_timeout_ms: int = 190_000) ->
         name="Collect Tekks Reward Inside Dungeon",
         children=[
             # Do not gate the lookup behind IsQuestState('complete').  As in
-            # Shards of Orr, the mirrored quest state can lag immediately after
+            # The mirrored quest state can lag immediately after
             # the boss/chest.  Tekks presence + WaitForQuestCleared is the source
             # of truth for a successful inside reward.
             BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=True),
@@ -2465,7 +2644,7 @@ def CollectTekksRewardInsideDungeon() -> BehaviorTree:
 
 
 def ResolveTekksQuestAfterRun() -> BehaviorTree:
-    """Leave Sparkfly with Tekks' War active, mirroring the Shards restart flow."""
+    """Leave Sparkfly with Tekks' War active for the next dungeon run."""
 
     direct_retake = BT.Sequence(
         name="Retake Tekks' War Directly",
@@ -2772,7 +2951,7 @@ def main() -> None:
     tree.UI.draw_window(
         icon_path=TEXTURE,
         iconwidth=96,
-        main_child_dimensions=(440, 400),
+        main_child_dimensions=(550, 400),
         extra_tabs=[
             ("Statistics", _draw_statistics),
             ("Run Config", _draw_run_config),
