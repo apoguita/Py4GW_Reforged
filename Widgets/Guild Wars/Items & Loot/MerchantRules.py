@@ -9,18 +9,19 @@ Safety-sensitive operations fail closed when protections, required services, det
 salvage APIs, storage capacity, or preview consistency cannot be verified.
 """
 
-import json
+import math
 import os
 import re
 import time
 import traceback
+import unicodedata
 from collections import Counter
 from collections.abc import Callable
+from collections.abc import Generator
 from collections.abc import Iterable
 from hashlib import md5
 from dataclasses import asdict, dataclass, field, replace
-from urllib.parse import unquote
-from uuid import uuid4
+from typing import cast
 
 import PyImGui
 import PySystem
@@ -38,6 +39,8 @@ from Py4GWCoreLib import SharedCommandType
 from Py4GWCoreLib import ThrottledTimer
 from Py4GWCoreLib.FrameTree import Frame
 from Py4GWCoreLib.FrameTree import FrameId
+from Py4GWCoreLib.UIManager import MerchantWindow
+from Py4GWCoreLib.UIManager import TraderWindow
 from Py4GWCoreLib.enums_src.Item_enums import ItemType
 from Py4GWCoreLib.enums_src.Title_enums import TITLE_TIERS
 from Py4GWCoreLib.enums_src.Title_enums import TitleID
@@ -59,12 +62,48 @@ from Sources.icefox.MerchantRules.profiles import LOADED_PROFILE_STATE_SCHEMA_VE
 from Sources.icefox.MerchantRules.profiles import PROFILE_SCOPES
 from Sources.icefox.MerchantRules.profiles import PROFILE_SCOPE_ACCOUNT
 from Sources.icefox.MerchantRules.profiles import PROFILE_SCOPE_SHARED
+from Sources.icefox.MerchantRules.profiles import PROFILE_DOCUMENT_DIR
+from Sources.icefox.MerchantRules.profiles import PROFILE_MIGRATION_SCHEMA
+from Sources.icefox.MerchantRules.profiles import PROFILE_MIGRATION_SCHEMA_VERSION
+from Sources.icefox.MerchantRules.profiles import PROFILE_MIGRATION_STATE_DOC_NAME
 from Sources.icefox.MerchantRules.profiles import ProfileIdentity
 from Sources.icefox.MerchantRules.profiles import ProfileStore
 from Sources.icefox.MerchantRules.profiles import ProfileSummary
 from Sources.icefox.MerchantRules.profiles import LoadedProfileProvenance
 from Sources.icefox.MerchantRules.profiles import SHARED_PROFILES_DOC_NAME
+from Sources.icefox.MerchantRules.profiles import is_valid_profile_id
+from Sources.icefox.MerchantRules.profiles import new_profile_id
 from Sources.icefox.MerchantRules.profiles import _normalize_shared_profile_display_name
+
+from Sources.icefox.MerchantRules.catalog import CatalogLoadResult
+from Sources.icefox.MerchantRules.catalog import CatalogLoader
+from Sources.icefox.MerchantRules.catalog import WEAPON_MOD_CHOICE_KIND_GENERIC
+from Sources.icefox.MerchantRules.catalog import WEAPON_MOD_CHOICE_KIND_VARIANT
+from Sources.icefox.MerchantRules.catalog import WEAPON_MOD_CHOICE_SEPARATOR
+from Sources.icefox.MerchantRules.catalog import WEAPON_MOD_GENERIC_KEY_PREFIX
+from Sources.icefox.MerchantRules.catalog import WEAPON_MOD_VARIANT_KEY_PREFIX
+from Sources.icefox.MerchantRules.catalog import build_catalog_alias_labels as _catalog_build_catalog_alias_labels
+from Sources.icefox.MerchantRules.catalog import get_catalog_entry_priority as _catalog_get_catalog_entry_priority
+from Sources.icefox.MerchantRules.catalog import humanize_model_id_enum_name as _humanize_model_id_enum_name
+from Sources.icefox.MerchantRules.catalog import get_rune_profession_label as _get_rune_profession_label
+from Sources.icefox.MerchantRules.catalog import get_weapon_mod_type_name as _get_weapon_mod_type_name
+from Sources.icefox.MerchantRules.catalog import humanize_weapon_mod_component_kind as _humanize_weapon_mod_component_kind
+from Sources.icefox.MerchantRules.catalog import is_expandable_weapon_mod_type as _is_expandable_weapon_mod_type
+from Sources.icefox.MerchantRules.catalog import make_weapon_mod_identifier_choice_key as _make_weapon_mod_identifier_choice_key
+from Sources.icefox.MerchantRules.catalog import make_weapon_mod_variant_choice_key as _make_weapon_mod_variant_choice_key
+from Sources.icefox.MerchantRules.catalog import iter_item_handling_catalog_entries as _catalog_iter_item_handling_catalog_entries
+from Sources.icefox.MerchantRules.catalog import iter_model_id_members as _iter_model_id_enum_members
+from Sources.icefox.MerchantRules.catalog import normalize_catalog_search_text as _normalize_catalog_search_text
+from Sources.icefox.MerchantRules.catalog import normalize_weapon_mod_component_kind as _normalize_weapon_mod_component_kind
+from Sources.icefox.MerchantRules.catalog import normalize_weapon_mod_target_item_type as _normalize_weapon_mod_target_item_type
+from Sources.icefox.MerchantRules.catalog import normalize_weapon_mod_variant_parts as _normalize_weapon_mod_variant_parts
+from Sources.icefox.MerchantRules.catalog import resolve_rune_description_template as _catalog_resolve_rune_description_template
+from Sources.icefox.MerchantRules.catalog import format_weapon_mod_variant_label as _format_weapon_mod_variant_label
+
+
+_build_catalog_alias_labels = _catalog_build_catalog_alias_labels
+_iter_item_handling_catalog_entries = _catalog_iter_item_handling_catalog_entries
+_resolve_rune_description_template = _catalog_resolve_rune_description_template
 
 
 MODULE_NAME = "Merchant Rules"
@@ -93,9 +132,10 @@ INVENTORY_SHORTCUT_LIVE_ACTION_REFRESH_MATERIAL_STORAGE_COUNT = "refresh_materia
 INVENTORY_SHORTCUT_LIVE_ACTION_OPEN_XUNLAI = "open_xunlai_storage"
 INVENTORY_SHORTCUT_LIVE_ACTION_SALVAGE_KIT_PREFIX = "salvage_kit"
 
-PROFILE_VERSION = 36
-# Live and private rule profiles remain account-scoped. Shared profiles use one
-# global document whose per-key journal writes merge safely across multibox clients.
+PROFILE_VERSION = 39
+MERCHANT_RULES_OWNED_ACTION_QUEUES = frozenset({"ACTION", "IDENTIFY", "SALVAGE"})
+# Live configuration remains account-scoped. Saved profiles use one standalone
+# JsonFactory document per filename, while the legacy documents remain migration input.
 DATA_DIR = os.path.join(PySystem.Console.get_projects_path(), "Widgets", "Data")
 CATALOG_PATH = os.path.join(DATA_DIR, "merchant_rules_catalog.json")
 DROP_DATA_PATH = os.path.join(DATA_DIR, "modelid_drop_data.json")
@@ -110,6 +150,18 @@ ITEM_HANDLING_ITEMS_CATALOG_PATH = os.path.join(
 MODS_DATA_DIR = os.path.join(PySystem.Console.get_projects_path(), "Sources", "marks_sources", "mods_data")
 RUNES_CATALOG_PATH = os.path.join(MODS_DATA_DIR, "runes.json")
 SEARCH_RESULT_LIMIT = 12
+PROFILE_FILENAME_MAX_STEM_LENGTH = 180
+PROFILE_FILENAME_INVALID_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+PROFILE_FILENAME_RESERVED_NAMES = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{index}" for index in range(1, 10)),
+        *(f"LPT{index}" for index in range(1, 10)),
+    }
+)
 TRAVEL_TIMEOUT_MS = 20000
 SHARED_PROFILE_REFRESH_INTERVAL_MS = 4000
 DESTRUCTIVE_BUTTON_CONFIRM_TIMEOUT_MS = 5000
@@ -366,18 +418,27 @@ SALVAGE_OPTION_AUTO_UPGRADE = "auto_upgrade"
 SALVAGE_OPTION_PREFIX = "prefix"
 SALVAGE_OPTION_SUFFIX = "suffix"
 SALVAGE_OPTION_INSCRIPTION = "inscription"
-SALVAGE_OPTION_ORDER: tuple[tuple[str, str], ...] = (
-    (SALVAGE_OPTION_DEFAULT, "Default (legacy behavior)"),
+# Rule modes are the only values accepted from persisted SalvageRule records.
+# Prefix/suffix/inscription remain internal extraction-operation tokens used by
+# the current Specific upgrade resolver and execution path.
+SALVAGE_RULE_MODE_ORDER: tuple[tuple[str, str], ...] = (
+    (SALVAGE_OPTION_MATERIALS, "Materials"),
+    (SALVAGE_OPTION_AUTO_UPGRADE, "Specific upgrade"),
+)
+SALVAGE_RULE_MODE_VALUES: frozenset[str] = frozenset(
+    option for option, _label in SALVAGE_RULE_MODE_ORDER
+)
+SALVAGE_OPERATION_ORDER: tuple[tuple[str, str], ...] = (
     (SALVAGE_OPTION_MATERIALS, "Salvage materials"),
     (SALVAGE_OPTION_AUTO_UPGRADE, "Specific upgrade"),
     (SALVAGE_OPTION_PREFIX, "Salvage prefix"),
     (SALVAGE_OPTION_SUFFIX, "Salvage suffix"),
     (SALVAGE_OPTION_INSCRIPTION, "Salvage inscription"),
 )
-SALVAGE_OPTION_DROPDOWN_ORDER: tuple[tuple[str, str], ...] = (
-    (SALVAGE_OPTION_MATERIALS, "Materials"),
-    (SALVAGE_OPTION_AUTO_UPGRADE, "Specific upgrade"),
+SALVAGE_OPERATION_VALUES: frozenset[str] = frozenset(
+    option for option, _label in SALVAGE_OPERATION_ORDER
 )
+SALVAGE_OPTION_DROPDOWN_ORDER: tuple[tuple[str, str], ...] = SALVAGE_RULE_MODE_ORDER
 SALVAGE_UPGRADE_OPTIONS: frozenset[str] = frozenset({
     SALVAGE_OPTION_PREFIX,
     SALVAGE_OPTION_SUFFIX,
@@ -411,7 +472,7 @@ PROTECTION_FILTER_REQUIREMENTS = "requirements"
 PROTECTION_FILTER_WEAPON_MODS = "weapon_mods"
 PROTECTION_FILTER_RUNES = "runes"
 PROTECTION_OWNER_FILTER_OPTIONS: tuple[tuple[str, str], ...] = (
-    (PROTECTION_FILTER_ALL, "All Owners"),
+    (PROTECTION_FILTER_ALL, "All Equipment"),
     (SELL_KIND_WEAPONS, "Weapons"),
     (SELL_KIND_ARMOR, "Armor"),
 )
@@ -498,8 +559,34 @@ MATERIAL_STORAGE_BAG_ID = 6
 MATERIAL_STORAGE_BAG_NAME = "MaterialStorage"
 MATERIAL_STORAGE_MAX_STACK_SIZE = 250
 MAX_CHARACTER_GOLD = 100_000
+DEFAULT_TARGET_CARRIED_GOLD = 20_000
 GOLD_TOP_UP_TIMEOUT_MS = 2000
 GOLD_TOP_UP_STEP_MS = 50
+GOLD_BALANCE_SERVICE_TIMEOUT_MS = 3000
+GOLD_BALANCE_VERIFY_TIMEOUT_MS = 2000
+GOLD_BALANCE_STEP_MS = 50
+GOLD_SESSION_SETTLE_MS = 150
+GOLD_BALANCE_STATUS_DISABLED = "disabled"
+GOLD_BALANCE_STATUS_BLOCKED = "blocked"
+GOLD_BALANCE_STATUS_TARGET_MET = "target_met"
+GOLD_BALANCE_STATUS_EXACT = "exact"
+GOLD_BALANCE_STATUS_PARTIAL = "partial"
+GOLD_BALANCE_STATUS_NO_PROGRESS = "no_progress"
+GOLD_BALANCE_STATUS_UNAVAILABLE = "unavailable"
+GOLD_BALANCE_STATUS_INVALID = "invalid"
+GOLD_BALANCE_INVENTORY_PLUS_MESSAGE = (
+    "Turn off Inventory+ before using gold balancing. If it was already working, your final gold may differ from your target."
+)
+GOLD_BALANCE_UNAVAILABLE_MESSAGE = "Gold balancing is unavailable right now."
+GOLD_BALANCE_XUNLAI_UNAVAILABLE_MESSAGE = "Gold balancing is unavailable because Xunlai could not be found nearby."
+GOLD_BALANCE_NO_PROGRESS_MESSAGE = "Gold could not be moved."
+GOLD_BALANCE_STORAGE_EMPTY_MESSAGE = "Gold could not be moved because there is not enough gold in storage."
+GOLD_BALANCE_DEPOSIT_FAILURE_MESSAGE = "Gold could not be deposited right now."
+GOLD_BALANCE_WITHDRAW_FAILURE_MESSAGE = "Gold could not be withdrawn right now."
+GOLD_BALANCE_INVALID_MESSAGE = "Gold balancing stopped because the current gold amount changed."
+GOLD_BALANCE_QUEUE_FAILURE_MESSAGE = "Manual gold balancing could not start."
+GOLD_BALANCE_MANUAL_START_MESSAGE = "Balancing carried gold..."
+GOLD_BALANCE_DISABLED_ACTION_MESSAGE = "Enable Maintain carried gold before balancing."
 MAX_WEAPON_REQUIREMENT = 13
 MODIFIER_IDENTIFIER_ATTRIBUTE_REQUIREMENT = 0x279
 MODIFIER_IDENTIFIER_DAMAGE = 0x27A
@@ -508,7 +595,6 @@ MODIFIER_IDENTIFIER_ARMOR1 = 0x27B
 MODIFIER_IDENTIFIER_ARMOR2 = 0x23C
 MODIFIER_IDENTIFIER_ENERGY = 0x27C
 MODIFIER_IDENTIFIER_ENERGY2 = 0x22C
-MODIFIER_IDENTIFIER_RUNE_ATTRIBUTE = 8680
 MODIFIER_IDENTIFIER_RUNE_HEALTH_LOSS = 8408
 MODIFIER_IDENTIFIER_TOOLTIP_DESCRIPTION = int(ModifierIdentifier.TooltipDescription)
 MODIFIER_IDENTIFIER_UPGRADE = int(ModifierIdentifier.Upgrade)
@@ -528,6 +614,182 @@ ARMOR_UPGRADE_HOLDING_NAMES = frozenset({
 ARMOR_UPGRADE_SOURCE_KIND = "armor"
 WEAPON_UPGRADE_SOURCE_KIND = "weapon"
 ATTRIBUTE_NONE_REAL_VALUE = 45
+
+
+class _MerchantRulesOwnedQueueCallback:
+    """Track one Merchant Rules callback until it runs or is discarded."""
+
+    __slots__ = ("_callback", "_pending", "_release", "_generation", "_is_generation_current", "__name__")
+
+    def __init__(
+        self,
+        callback: Callable,
+        release: Callable[[], None],
+        *,
+        generation: int | None = None,
+        is_generation_current: Callable[[int], bool] | None = None,
+    ):
+        self._callback = callback
+        self._release = release
+        self._pending = True
+        self._generation = generation
+        self._is_generation_current = is_generation_current
+        self.__name__ = str(getattr(callback, "__name__", callback.__class__.__name__))
+
+    def release(self) -> None:
+        if not self._pending:
+            return
+        self._pending = False
+        release = self._release
+        self._release = None
+        if callable(release):
+            release()
+
+    def __call__(self, *args, **kwargs):
+        if (
+            self._generation is not None
+            and callable(self._is_generation_current)
+            and not self._is_generation_current(self._generation)
+        ):
+            self.release()
+            return None
+        try:
+            return self._callback(*args, **kwargs)
+        finally:
+            self.release()
+
+    def __del__(self):
+        try:
+            self.release()
+        except Exception:
+            pass
+
+
+class _MerchantRulesOwnedGenerator:
+    """Iterator with explicit close-time release for one Merchant Rules operation."""
+
+    __slots__ = (
+        "_owner",
+        "_generator",
+        "_generation",
+        "_release",
+        "_capture_actions",
+        "_reset_flags",
+        "_reset_values_before_start",
+        "_started",
+        "_finished",
+    )
+
+    def __init__(
+        self,
+        owner,
+        generator,
+        generation: int,
+        release: Callable[[], None],
+        *,
+        capture_actions: bool,
+        reset_flags: tuple[str, ...] = (),
+        reset_values_before_start: tuple[tuple[str, object], ...] = (),
+    ):
+        self._owner = owner
+        self._generator = generator
+        self._generation = int(generation)
+        self._release = release
+        self._capture_actions = bool(capture_actions)
+        self._reset_flags = tuple(str(flag_name) for flag_name in reset_flags if str(flag_name))
+        self._reset_values_before_start = tuple(
+            (str(field_name), value)
+            for field_name, value in reset_values_before_start
+            if str(field_name)
+        )
+        self._started = False
+        self._finished = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._finished:
+            raise StopIteration
+        if not self._owner._merchant_rules_is_generation_current(self._generation):
+            self.close()
+            raise StopIteration
+
+        self._started = True
+        try:
+            if self._capture_actions:
+                yielded_value = self._owner._advance_merchant_rules_owned_generator(
+                    self._generator,
+                    self._generation,
+                )
+            else:
+                previous_generation = self._owner._merchant_rules_active_generation
+                self._owner._merchant_rules_active_generation = self._generation
+                try:
+                    yielded_value = next(self._generator)
+                finally:
+                    self._owner._merchant_rules_active_generation = previous_generation
+        except StopIteration as stop:
+            self._finish()
+            raise stop
+        except BaseException:
+            self.close()
+            raise
+
+        if not self._owner._merchant_rules_is_generation_current(self._generation):
+            self.close()
+            raise StopIteration
+        return yielded_value
+
+    def close(self) -> None:
+        if self._finished:
+            return
+        try:
+            if self._started:
+                self._owner._close_merchant_rules_generator(
+                    self._generator,
+                    self._generation,
+                    capture_actions=self._capture_actions,
+                )
+            else:
+                close = getattr(self._generator, "close", None)
+                if callable(close):
+                    close()
+        finally:
+            self._finish()
+
+    def _finish(self) -> None:
+        if self._finished:
+            return
+        self._finished = True
+        release = self._release
+        self._release = None
+        try:
+            if callable(release):
+                release()
+        finally:
+            owner = self._owner
+            reset_flags = self._reset_flags
+            self._reset_flags = ()
+            for flag_name in reset_flags:
+                try:
+                    setattr(owner, flag_name, False)
+                except Exception:
+                    pass
+            reset_values = self._reset_values_before_start
+            self._reset_values_before_start = ()
+            if not self._started:
+                for field_name, value in reset_values:
+                    try:
+                        setattr(owner, field_name, value)
+                    except Exception:
+                        pass
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 @dataclass(frozen=True)
@@ -1000,23 +1262,114 @@ DEPOSIT_FILTER_SUMMONING_FRAGMENTS: tuple[str, ...] = (
     "support flare",
 )
 OUTPOST_SERVICE_SEARCH_MAX_DIST = 15_000.0
+SERVICE_ROLE_NAME_RETRY_SECONDS = 8.0
+SERVICE_ROLE_NAME_RETRY_POLL_SECONDS = 0.25
+SERVICE_ROLE_EVENT_POLL_SECONDS = 0.5
+SERVICE_ROLE_MEANINGFUL_MOVE_DIST = 750.0
 MERCHANT_NAME_QUERY = "[Merchant]"
 MATERIAL_TRADER_NAME_QUERY = "[Material Trader]"
 RARE_MATERIAL_TRADER_NAME_QUERY = "[Rare Material Trader]"
 RUNE_TRADER_NAME_QUERY = "Rune Trader"
 SCROLL_TRADER_NAME_QUERY = "Scroll Trader"
 RARE_SCROLL_TRADER_NAME_QUERY = "[Rare Scroll Trader]"
+# Localized service-role aliases used only after language-independent
+# map-specific, encoded, and model selectors fail. Matching is exact against
+# the final bracketed role suffix (or a whole role-only display name), never an
+# arbitrary NPC-name substring.
+SERVICE_ROLE_ALIASES: dict[str, tuple[str, ...]] = {
+    MERCHANT_TYPE_MERCHANT: (
+        "Merchant",
+        "Marchand",
+        "Marchande",
+        "Händler",
+        "Haendler",
+        "Kaufmann",
+        "Kauffrau",
+        "Mercante",
+        "Mercader",
+        "Comerciante",
+        "Handlarz",
+        "Торговец",
+        "상인",
+        "商人",
+    ),
+    MERCHANT_TYPE_MATERIALS: (
+        "Material Trader",
+        "Marchand de matériaux",
+        "Marchande de matériaux",
+        "Materialienhändler",
+        "Materialienhaendler",
+        "Mercante di materiali",
+        "Mercader de materiales",
+        "Comerciante de materiales",
+        "Handlarz materiałów",
+        "Торговец материалами",
+        "재료 상인",
+        "材料商人",
+    ),
+    MERCHANT_TYPE_RARE_MATERIALS: (
+        "Rare Material Trader",
+        "Marchand de matériaux rares",
+        "Marchande de matériaux rares",
+        "Händler für seltene Materialien",
+        "Haendler fuer seltene Materialien",
+        "Mercante di materiali rari",
+        "Mercader de materiales raros",
+        "Comerciante de materiales raros",
+        "Handlarz rzadkich materiałów",
+        "Торговец редкими материалами",
+        "희귀 재료 상인",
+        "稀有材料商人",
+    ),
+    MERCHANT_TYPE_RUNE_TRADER: (
+        "Rune Trader",
+        "Marchand de runes",
+        "Marchande de runes",
+        "Runenhändler",
+        "Runenhaendler",
+        "Mercante di rune",
+        "Mercader de runas",
+        "Comerciante de runas",
+        "Handlarz run",
+        "Торговец рунами",
+        "룬 상인",
+        "符文商人",
+    ),
+    MERCHANT_TYPE_SCROLL_TRADER: (
+        "Scroll Trader",
+        "Marchand de parchemins",
+        "Marchande de parchemins",
+        "Schriftrollenhändler",
+        "Schriftrollenhaendler",
+        "Mercante di pergamene",
+        "Mercader de pergaminos",
+        "Comerciante de pergaminos",
+        "Handlarz zwojów",
+        "Торговец свитками",
+        "두루마리 상인",
+        "卷轴商人",
+    ),
+    "rare_scroll_trader": (
+        "Rare Scroll Trader",
+        "Marchand de parchemins rares",
+        "Marchande de parchemins rares",
+        "Händler für seltene Schriftrollen",
+        "Haendler fuer seltene Schriftrollen",
+        "Mercante di pergamene rare",
+        "Mercader de pergaminos raros",
+        "Comerciante de pergaminos raros",
+        "Handlarz rzadkich zwojów",
+        "Торговец редкими свитками",
+        "희귀 두루마리 상인",
+        "稀有卷轴商人",
+    ),
+}
 XUNLAI_AGENT_NAME_QUERY = "Xunlai Agent"
 XUNLAI_CHEST_NAME_QUERY = "Xunlai Chest"
 XUNLAI_AGENT_MODEL_IDS: tuple[int, ...] = (220, 221, 3287)
 XUNLAI_CHEST_MODEL_ID = 5001
 RUNE_STANDALONE_KIND = "rune"
 WEAPON_MOD_STANDALONE_KIND = "weapon_mod"
-WEAPON_MOD_CHOICE_KIND_GENERIC = "generic"
-WEAPON_MOD_CHOICE_KIND_VARIANT = "variant"
-WEAPON_MOD_GENERIC_KEY_PREFIX = "identifier:"
-WEAPON_MOD_VARIANT_KEY_PREFIX = "variant:"
-WEAPON_MOD_CHOICE_SEPARATOR = "|"
 WEAPON_MOD_TARGET_ITEM_TYPE_MODIFIER_ID = 9656
 RARITY_OPTION_ORDER: tuple[tuple[str, str], ...] = (
     ("white", "White"),
@@ -1162,12 +1515,21 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     },
     "inventory_right_click_shortcuts": {
         "short": "Adds Merchant Rules shortcuts to inventory item right-clicks.",
-        "long": "These shortcuts add Merchant Rules entries from the clicked inventory item. Live actions stay off unless enabled separately.",
+        "long": (
+            "Configuration shortcuts change settings for every matching copy, not only the clicked item. "
+            "Direct Deposit and Destroy actions affect only the clicked item or stack. "
+            "ID and Salvage kit actions target eligible inventory items by rarity."
+        ),
         "why": "Leave this off if Inventory+ should own the inventory right-click menu.",
     },
     "inventory_right_click_live_actions": {
         "short": "Adds live Deposit This Item and Destroy This Item shortcuts.",
-        "long": "Live shortcuts target only the clicked item or stack. Destroy always asks for a second click, and deposit asks for a second click when the item is kept out of deposits.",
+        "long": (
+            "Direct Deposit and Destroy actions affect only the clicked item or stack. "
+            "ID and Salvage kit actions target eligible inventory items by rarity. "
+            "Destroy always asks for a second click, and deposit asks for a second click when the item is "
+            "kept out of deposits."
+        ),
         "why": "Leave this off unless you want Merchant Rules to perform direct right-click inventory actions.",
     },
     "workspace_overview": {
@@ -1228,8 +1590,8 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     "workspace_rules_protections": {
         "short": "Manage items that should stay safe from sell, destroy, and salvage.",
         "long": (
-            "Protections centralizes kept models, weapon types, requirements, upgrades, runes, and deposit "
-            "keep-outs."
+            "Sell rules decide what can be sold. Protections keeps matching items safe from Sell, Salvage, "
+            "Destroy, and Sell from Xunlai."
         ),
         "why": "Protection mistakes are the highest-risk setup mistakes, so audit this area before broad actions.",
     },
@@ -1312,7 +1674,7 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
         "why": "Run this after rule or inventory changes so Execute is based on current information.",
     },
     "preview_plan_travel_execute": {
-        "short": "Travels if needed, rebuilds the live plan, then executes it.",
+        "short": "Travels if needed, rechecks current items and available services, then executes.",
         "long": "Use this when Auto Travel points to an outpost where the needed services are available.",
     },
     "preview_plan_execute_here": {
@@ -1342,8 +1704,8 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     "auto_travel": {
         "short": "Lets Merchant Rules travel to the selected outpost before executing.",
         "long": (
-            "When enabled, Travel + Execute uses the target outpost, rebuilds the live plan there, and then "
-            "runs it."
+            "When enabled, Travel + Execute uses the target outpost, rechecks current items and available "
+            "services there, and then executes."
         ),
         "why": "Travel is useful when the needed merchant, trader, crafter, or Xunlai access is not here.",
     },
@@ -1374,11 +1736,14 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     },
     "manual_vendor_buy_categories": {
         "short": "Chooses which Buy sections may run automatically when you open a merchant.",
-        "long": "Preview Plan and normal execution continue using every enabled Buy rule.",
+        "long": "Preview Plan, Travel + Execute, and Execute Here continue using every enabled Buy rule.",
     },
     "manual_vendor_sell_categories": {
         "short": "Chooses which Sell sections may run automatically when you open a merchant.",
-        "long": "Preview Plan and normal execution continue using every enabled Sell rule. Item protections always remain active.",
+        "long": (
+            "Preview Plan, Travel + Execute, and Execute Here continue using every enabled Sell rule. "
+            "Item protections always remain active."
+        ),
     },
     "manual_vendor_any_merchant": {
         "short": "Allows the selected sell groups to use any regular merchant.",
@@ -1413,6 +1778,10 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
         "short": "Limits how many this rule can buy in one run.",
         "long": "Set 0 for no extra cap, or use a number to slow spending across repeated runs.",
         "why": "A cap helps avoid spending too much gold or material stock at once.",
+    },
+    "buy_check_xunlai_first": {
+        "short": "During Execute, checks Xunlai Storage before buying.",
+        "long": "Matching items are withdrawn first, then Merchant Rules buys only what is still needed.",
     },
     "buy_after_purchase": {
         "short": "Chooses what happens to this target after a fully confirmed purchase.",
@@ -1463,8 +1832,7 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     "identify_before_execute": {
         "short": "Identifies selected rarities before Execute continues.",
         "long": (
-            "After identifying, Merchant Rules rebuilds the live plan so sell and salvage rules see the "
-            "updated items."
+            "After identifying, Merchant Rules rechecks current items so Sell and Salvage rules see the updates."
         ),
     },
     "identify_on_inventory_change": {
@@ -1493,14 +1861,18 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
     "salvage_specific_upgrade_targets": {
         "short": "Specific upgrades this salvage rule can target.",
         "long": (
-            "Weapon entries can match exact names or minimum rolls. Armor entries store exact "
-            "runes.json Rune and Insignia identifiers."
+            "Weapon entries can match exact names or minimum rolls. Armor entries match the exact selected "
+            "rune or insignia."
         ),
+    },
+    "salvage_common_material_targets": {
+        "short": "Known possible common materials recorded for the item.",
+        "long": "The catalog records possible common salvage outputs; it cannot guarantee which material the game will return.",
     },
     "cleanup_auto_entry": {
         "short": "Runs Xunlai Deposits once after entering an outpost or Guild Hall.",
         "long": (
-            "Auto deposits use the deposit targets, keep-outs, and linked protected-item deposit sources "
+            "Auto deposits use the deposit targets, keep-outs, and linked Weapons or Armor protection rules "
             "you configured."
         ),
     },
@@ -1510,6 +1882,29 @@ HELPER_TOOLTIP_TEXTS: dict[str, dict[str, str]] = {
             "This stores matching configured items without running buy, sell, identify, salvage, or destroy "
             "actions."
         ),
+    },
+    "gold_balance_enabled": {
+        "short": "Keeps this character near the target amount of gold when the selected options run.",
+    },
+    "gold_balance_target": {
+        "short": (
+            "The amount of gold to keep on this character. Extra gold is deposited. "
+            "Missing gold is withdrawn if available."
+        ),
+    },
+    "gold_balance_on_outpost_entry": {
+        "short": "Balances gold once when you enter an outpost or Guild Hall with Xunlai access.",
+    },
+    "gold_balance_after_mr_trading": {
+        "short": "Balances gold once after Merchant Rules finishes its own buying or selling.",
+    },
+    "gold_balance_after_manual_session": {
+        "short": (
+            "Balances gold once after you close a merchant or trader window after buying or selling yourself."
+        ),
+    },
+    "gold_balance_manual_now": {
+        "short": "Balances your gold toward the target right now.",
     },
     "cleanup_keep_on_character": {
         "short": "How many of this deposit target to leave on your character.",
@@ -1708,50 +2103,6 @@ MODEL_ID_ATTRIBUTE_FALLBACK_LABELS: dict[str, str] = {
 MODEL_ID_ATTRIBUTE_FALLBACK_SUFFIX_KEYS: tuple[str, ...] = tuple(
     sorted(MODEL_ID_ATTRIBUTE_FALLBACK_LABELS.keys(), key=len, reverse=True)
 )
-RUNE_ATTRIBUTE_LABELS: dict[int, str] = {
-    0: "Fast Casting",
-    1: "Illusion Magic",
-    2: "Domination Magic",
-    3: "Inspiration Magic",
-    4: "Blood Magic",
-    5: "Death Magic",
-    6: "Soul Reaping",
-    7: "Curses",
-    8: "Air Magic",
-    9: "Earth Magic",
-    10: "Fire Magic",
-    11: "Water Magic",
-    12: "Energy Storage",
-    13: "Healing Prayers",
-    14: "Smiting Prayers",
-    15: "Protection Prayers",
-    16: "Divine Favor",
-    17: "Strength",
-    18: "Axe Mastery",
-    19: "Hammer Mastery",
-    20: "Swordsmanship",
-    21: "Tactics",
-    22: "Beast Mastery",
-    23: "Expertise",
-    24: "Wilderness Survival",
-    25: "Marksmanship",
-    29: "Dagger Mastery",
-    30: "Deadly Arts",
-    31: "Shadow Arts",
-    32: "Communing",
-    33: "Restoration Magic",
-    34: "Channeling Magic",
-    35: "Critical Strikes",
-    36: "Spawning Power",
-    37: "Spear Mastery",
-    38: "Command",
-    39: "Motivation",
-    40: "Leadership",
-    41: "Scythe Mastery",
-    42: "Wind Prayers",
-    43: "Earth Prayers",
-    44: "Mysticism",
-}
 ARMOR_CATALOG_ITEM_TYPES: frozenset[str] = frozenset({
     "headpiece",
     "chestpiece",
@@ -1833,6 +2184,34 @@ class MerchantStockTarget:
     target_count: int = 0
     max_per_run: int = 0
     after_purchase: str = AFTER_PURCHASE_KEEP
+    check_xunlai_first: bool = False
+
+
+@dataclass(frozen=True)
+class LiveServiceRoleScan:
+    """One bounded view of currently materialized outpost service candidates."""
+
+    player_xy: tuple[float, float] | None
+    player_xy_source: str
+    candidate_ids: tuple[int, ...]
+    candidate_fingerprint: tuple[int, ...]
+    resolved_coords: dict[str, tuple[float, float]]
+    pending_agent_ids: frozenset[int]
+
+
+@dataclass(frozen=True)
+class RequestScopedMerchantStockTarget:
+    """Represent one immutable carried-stock requirement supplied by a remote execution."""
+
+    model_id: int
+    target_count: int
+
+
+@dataclass(frozen=True)
+class MerchantRulesExecutionContext:
+    """Carry non-persistent inputs through one owned Merchant Rules execution."""
+
+    merchant_stock_targets: tuple[RequestScopedMerchantStockTarget, ...] = ()
 
 
 @dataclass
@@ -1958,6 +2337,7 @@ class SalvageRule:
 
     enabled: bool = True
     model_ids: list[int] = field(default_factory=list)
+    target_common_material_model_ids: list[int] = field(default_factory=list)
     rarities: dict[str, bool] = field(default_factory=dict)
     categories: dict[str, bool] = field(default_factory=dict)
     target_weapon_mod_identifiers: list[str] = field(default_factory=list)
@@ -2161,6 +2541,15 @@ class SalvageCandidate:
 
 
 @dataclass(frozen=True)
+class PlannedSpecificUpgradeSalvageOwner:
+    """Snapshot the Specific-upgrade rule that owns one final execution-plan item."""
+
+    model_id: int
+    rule_index: int
+    rule_snapshot: SalvageRule
+
+
+@dataclass(frozen=True)
 class SalvageUpgradeTargetMatch:
     label: str = ""
     required_option: str = ""
@@ -2196,6 +2585,7 @@ class ArmorUpgradeIdentity:
     semantic_kind: str
     option: str
     signature: tuple[tuple[int, int, int], ...]
+    generic_carrier_upgrade_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -2412,6 +2802,7 @@ class _MerchantRulesMaterialsSalvageTransaction:
 
     item_id: int
     model_id: int
+    item_type_id: int
     starting_quantity: int
     kit_id: int
     kit_model_id: int
@@ -3378,6 +3769,7 @@ class PlannedMerchantBuy:
     quantity: int
     label: str
     cleanup: PurchaseTargetCleanup = field(default_factory=PurchaseTargetCleanup)
+    check_xunlai_first: bool = False
 
 
 @dataclass
@@ -3412,6 +3804,7 @@ class PlannedTraderSale:
     item_id: int
     model_id: int
     label: str
+    expected_rune_identifiers: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass
@@ -3457,6 +3850,144 @@ class PlannedConsumableCraft:
     cleanup: PurchaseTargetCleanup = field(default_factory=PurchaseTargetCleanup)
 
 
+@dataclass(frozen=True)
+class MerchantServiceSelector:
+    """Authoritative map-specific identity and validation data for one service NPC."""
+
+    label: str
+    encoded_identity: tuple[int, ...]
+    model_id: int
+    expected_xy: tuple[float, float]
+    coordinate_tolerance: float = 75.0
+
+
+MERCHANT_RULES_MAP_SERVICE_SELECTORS: dict[
+    int,
+    dict[str, tuple[MerchantServiceSelector, ...]],
+] = {
+    EMBARK_BEACH_MAP_ID: {
+        MERCHANT_TYPE_MERCHANT: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(2, 129, 173, 31, 237, 205, 243, 155, 255, 87, 0, 0),
+                model_id=3330,
+                expected_xy=(-2750.0, 731.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(2, 129, 174, 31, 171, 160, 102, 166, 149, 27, 0, 0),
+                model_id=4775,
+                expected_xy=(2326.0, 3681.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(2, 129, 172, 31, 139, 192, 228, 198, 113, 51, 0, 0),
+                model_id=2090,
+                expected_xy=(2158.0, -2006.0),
+            ),
+        ),
+        MERCHANT_TYPE_MATERIALS: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(254, 109, 30, 235, 107, 191, 42, 41, 0, 0),
+                model_id=3340,
+                expected_xy=(-2561.0, 259.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 88, 32, 99, 210, 77, 201, 205, 48, 0, 0),
+                model_id=4781,
+                expected_xy=(2406.0, 4190.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(92, 45, 80, 202, 145, 215, 194, 67, 0, 0),
+                model_id=2071,
+                expected_xy=(2997.0, -2271.0),
+            ),
+        ),
+        MERCHANT_TYPE_RARE_MATERIALS: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(255, 109, 135, 153, 184, 205, 30, 37, 0, 0),
+                model_id=3343,
+                expected_xy=(-2692.0, 198.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 199, 45, 144, 183, 23, 138, 240, 116, 0, 0),
+                model_id=4784,
+                expected_xy=(2537.0, 4024.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(93, 45, 63, 224, 133, 233, 124, 106, 0, 0),
+                model_id=2033,
+                expected_xy=(2928.0, -2452.0),
+            ),
+        ),
+        MERCHANT_TYPE_RUNE_TRADER: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(2, 129, 124, 114, 238, 158, 123, 209, 57, 127, 0, 0),
+                model_id=5732,
+                expected_xy=(-2755.0, 1110.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 160, 33, 49, 157, 17, 141, 9, 99, 0, 0),
+                model_id=5732,
+                expected_xy=(1755.0, 3822.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(94, 45, 111, 230, 232, 194, 214, 12, 0, 0),
+                model_id=2035,
+                expected_xy=(1598.0, -1572.0),
+            ),
+        ),
+        MERCHANT_TYPE_SCROLL_TRADER: (
+            MerchantServiceSelector(
+                label="west",
+                encoded_identity=(1, 110, 147, 146, 148, 160, 13, 98, 0, 0),
+                model_id=3344,
+                expected_xy=(-2970.0, 8.0),
+            ),
+            MerchantServiceSelector(
+                label="north",
+                encoded_identity=(1, 129, 219, 63, 48, 212, 52, 142, 112, 113, 0, 0),
+                model_id=5453,
+                expected_xy=(1816.0, 3250.0),
+            ),
+            MerchantServiceSelector(
+                label="southwest",
+                encoded_identity=(137, 45, 47, 165, 126, 187, 122, 40, 0, 0),
+                model_id=2100,
+                expected_xy=(2556.0, -2853.0),
+            ),
+        ),
+    },
+    179: {
+        MERCHANT_TYPE_RUNE_TRADER: (
+            MerchantServiceSelector(
+                label="Isle of the Dead",
+                encoded_identity=(220, 12, 0, 0),
+                model_id=203,
+                expected_xy=(-3654.0, -2400.0),
+            ),
+        ),
+        MERCHANT_TYPE_SCROLL_TRADER: (
+            MerchantServiceSelector(
+                label="Isle of the Dead",
+                encoded_identity=(221, 12, 0, 0),
+                model_id=207,
+                expected_xy=(-4033.0, -3860.0),
+            ),
+        ),
+    },
+}
+
+
 @dataclass
 class StockLocationCounts:
     key: str
@@ -3482,6 +4013,7 @@ class PlannedStorageTransfer:
     quantity: int
     model_id: int = 0
     reason: str = ""
+    xunlai_first_merchant_stock: bool = False
 
 
 @dataclass
@@ -3545,6 +4077,7 @@ class PlanResult:
     identify_claimed_item_ids: list[int] = field(default_factory=list)
     identify_item_ids: list[int] = field(default_factory=list)
     salvage_item_ids: list[int] = field(default_factory=list)
+    salvage_specific_upgrade_owners: dict[int, PlannedSpecificUpgradeSalvageOwner] = field(default_factory=dict)
     destroy_actions: list[PlannedDestroyAction] = field(default_factory=list)
     destroy_item_ids: list[int] = field(default_factory=list)
     merchant_sell_item_ids: list[int] = field(default_factory=list)
@@ -3554,6 +4087,8 @@ class PlanResult:
     inventory_snapshot_captured: bool = False
     inventory_model_counts: dict[int, int] = field(default_factory=dict)
     inventory_item_count: int = 0
+    xunlai_first_merchant_stock_targets: dict[int, str] = field(default_factory=dict)
+    xunlai_first_storage_scan_reliable: bool = True
     has_actions: bool = False
 
 
@@ -3649,6 +4184,22 @@ class GoldTopUpResult:
     reason: str = ""
 
 
+@dataclass
+class GoldBalanceResult:
+    """Report one bounded carried-gold balancing attempt."""
+
+    status: str
+    trigger: str = ""
+    target_gold: int = 0
+    carried_before: int = 0
+    storage_before: int = 0
+    carried_after: int = 0
+    storage_after: int = 0
+    requested: int = 0
+    moved: int = 0
+    reason: str = ""
+
+
 def _default_rarity_flags() -> dict[str, bool]:
     return {
         "white": True,
@@ -3736,6 +4287,21 @@ def _get_rarity_options_for_rule(rule_kind: str) -> tuple[tuple[str, str], ...]:
     return RARITY_OPTION_ORDER
 
 
+def _get_catalog_entry_priority(
+    model_id: object,
+    item_type: object,
+    category: object = "",
+    sub_category: object = "",
+) -> int:
+    return _catalog_get_catalog_entry_priority(
+        model_id,
+        item_type,
+        category,
+        sub_category,
+        scroll_trader_stock_model_ids=frozenset(SCROLL_TRADER_STOCK_MODEL_IDS),
+    )
+
+
 def _safe_int(value: object, default: int = 0) -> int:
     try:
         if isinstance(value, str):
@@ -3743,6 +4309,10 @@ def _safe_int(value: object, default: int = 0) -> int:
         return int(value)
     except Exception:
         return default
+
+
+def _normalize_gold_target(value: object) -> int:
+    return min(MAX_CHARACTER_GOLD, max(0, _safe_int(value, 0)))
 
 
 def _coerce_list(value: object) -> list[object]:
@@ -3753,68 +4323,6 @@ def _coerce_list(value: object) -> list[object]:
     if isinstance(value, tuple):
         return list(value)
     return []
-
-
-def _normalize_weapon_mod_target_item_type(raw_value: object) -> str:
-    if raw_value is None:
-        return ""
-    enum_name = str(getattr(raw_value, "name", "") or "").strip()
-    if enum_name:
-        return enum_name
-    if isinstance(raw_value, str):
-        candidate = raw_value.strip()
-        if not candidate:
-            return ""
-        if candidate in getattr(ItemType, "__members__", {}):
-            return candidate
-        try:
-            return ItemType(int(candidate, 0)).name
-        except Exception:
-            return candidate
-    try:
-        return ItemType(int(raw_value)).name
-    except Exception:
-        return str(raw_value or "").strip()
-
-
-def _normalize_weapon_mod_component_kind(raw_value: object) -> str:
-    return str(raw_value or "").strip()
-
-
-def _normalize_weapon_mod_variant_parts(
-    identifier: object,
-    target_item_type: object,
-    component_kind: object,
-) -> tuple[str, str, str]:
-    return (
-        str(identifier or "").strip(),
-        _normalize_weapon_mod_target_item_type(target_item_type),
-        _normalize_weapon_mod_component_kind(component_kind),
-    )
-
-
-def _make_weapon_mod_identifier_choice_key(identifier: object) -> str:
-    safe_identifier = str(identifier or "").strip()
-    return f"{WEAPON_MOD_GENERIC_KEY_PREFIX}{safe_identifier}" if safe_identifier else ""
-
-
-def _make_weapon_mod_variant_choice_key(
-    identifier: object,
-    target_item_type: object,
-    component_kind: object,
-) -> str:
-    safe_identifier, safe_target_item_type, safe_component_kind = _normalize_weapon_mod_variant_parts(
-        identifier,
-        target_item_type,
-        component_kind,
-    )
-    if not safe_identifier or not safe_target_item_type or not safe_component_kind:
-        return ""
-    return (
-        f"{WEAPON_MOD_VARIANT_KEY_PREFIX}{safe_identifier}"
-        f"{WEAPON_MOD_CHOICE_SEPARATOR}{safe_target_item_type}"
-        f"{WEAPON_MOD_CHOICE_SEPARATOR}{safe_component_kind}"
-    )
 
 
 def _parse_weapon_mod_choice_key(raw_key: object) -> tuple[str, str, str, str]:
@@ -3850,37 +4358,6 @@ def _weapon_mod_variant_rule_key(rule: object) -> tuple[str, str, str]:
 def _weapon_mod_variant_rule_choice_key(rule: object) -> str:
     identifier, target_item_type, component_kind = _weapon_mod_variant_rule_key(rule)
     return _make_weapon_mod_variant_choice_key(identifier, target_item_type, component_kind)
-
-
-def _humanize_weapon_mod_component_kind(component_kind: object) -> str:
-    safe_component_kind = _normalize_weapon_mod_component_kind(component_kind)
-    if not safe_component_kind:
-        return ""
-    return re.sub(r"(?<!^)(?=[A-Z])", " ", safe_component_kind).strip()
-
-
-def _get_weapon_mod_type_name(weapon_mod: object) -> str:
-    mod_type = getattr(weapon_mod, "mod_type", None)
-    return str(getattr(mod_type, "name", mod_type) or "").strip()
-
-
-def _is_expandable_weapon_mod_type(weapon_mod: object) -> bool:
-    return _get_weapon_mod_type_name(weapon_mod) in ("Prefix", "Suffix")
-
-
-def _format_weapon_mod_variant_label(weapon_mod: object, component_kind: object) -> str:
-    base_name = str(getattr(weapon_mod, "name", "") or getattr(weapon_mod, "identifier", "") or "").strip()
-    component_label = _humanize_weapon_mod_component_kind(component_kind)
-    if not base_name:
-        base_name = "Unknown Weapon Mod"
-    if not component_label:
-        return base_name
-    mod_type_name = _get_weapon_mod_type_name(weapon_mod)
-    if mod_type_name == "Prefix":
-        return f"{base_name} {component_label}"
-    if mod_type_name == "Suffix":
-        return f"{component_label} {base_name}"
-    return base_name
 
 
 def _normalize_weapon_mod_variant_rules(values: list[object]) -> list[WeaponModVariantRule]:
@@ -4194,23 +4671,6 @@ def _dedupe_weapon_item_type_ids(item_type_ids: list[object]) -> list[int]:
     return unique
 
 
-def _resolve_model_id_value(raw_value: object) -> int:
-    if isinstance(raw_value, str):
-        candidate = raw_value.strip()
-        if not candidate:
-            return 0
-        if candidate.startswith("ModelID."):
-            enum_name = candidate.split(".", 1)[1].strip()
-            enum_value = getattr(ModelID, enum_name, None)
-            if enum_value is not None:
-                try:
-                    return int(enum_value.value)
-                except Exception:
-                    return _safe_int(enum_value, 0)
-        return _safe_int(candidate, 0)
-    return _safe_int(raw_value, 0)
-
-
 def _parse_agent_selector_point(step: dict[str, object]) -> tuple[float, float] | None:
     point = step.get("point")
     if isinstance(point, (list, tuple)) and len(point) >= 2:
@@ -4259,6 +4719,59 @@ def _get_named_agent_target_definition(agent_kind: object, target_key: object) -
         return None
 
 
+def _normalize_service_role_text(value: object) -> str:
+    """Normalize a localized service-role label for exact comparisons."""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(character for character in text if not unicodedata.combining(character))
+    text = text.casefold()
+    return re.sub(r"\s+", " ", text).strip(" []\t\r\n")
+
+
+def _extract_agent_role_suffix(value: object) -> str:
+    """Return only a final complete ``[role]`` suffix, or a role-only name."""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    suffix_match = re.search(r"\[([^\[\]]+)\]\s*$", text)
+    if suffix_match is not None:
+        return str(suffix_match.group(1) or "").strip()
+    if "[" in text or "]" in text:
+        return ""
+    return text
+
+
+def _canonical_service_role(value: object) -> str:
+    """Map a localized role suffix or role-only name to its service key."""
+
+    normalized = _normalize_service_role_text(_extract_agent_role_suffix(value))
+    if not normalized:
+        return ""
+    for service_key, aliases in SERVICE_ROLE_ALIASES.items():
+        if any(normalized == _normalize_service_role_text(alias) for alias in aliases):
+            return service_key
+    return ""
+
+
+def _agent_name_matches_service_role(agent_name: object, expected_role: object) -> bool:
+    """Match a live NPC only by an exact localized service role."""
+
+    safe_expected_role = str(expected_role or "").strip()
+    canonical_expected = (
+        safe_expected_role
+        if safe_expected_role in SERVICE_ROLE_ALIASES
+        else _canonical_service_role(safe_expected_role)
+    )
+    if not canonical_expected:
+        return False
+    canonical_live = _canonical_service_role(agent_name)
+    return bool(canonical_live and canonical_live == canonical_expected)
+
+
 def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
     """Match a live agent name through Reforged's encoded-name facade.
 
@@ -4284,6 +4797,71 @@ def _agent_encoded_name_matches(agent_id: int, encoded_names: object) -> bool:
         return any(agent_enc_tuple == tuple(int(value) for value in encoded_name) for encoded_name in encoded_names)
     except Exception:
         return False
+
+
+def _coerce_agent_xy(value: object) -> tuple[float, float] | None:
+    if not isinstance(value, (tuple, list)) or len(value) < 2:
+        return None
+    try:
+        x = float(value[0])
+        y = float(value[1])
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(x) or not math.isfinite(y):
+        return None
+    return x, y
+
+
+def _get_agent_search_origin(agent_api: object) -> tuple[tuple[float, float] | None, str]:
+    """Prefer the live player agent and use the legacy position only when that API is absent."""
+
+    get_player_agent_id = getattr(Player, "GetAgentID", None)
+    get_agent_xy = getattr(agent_api, "GetXY", None)
+    if callable(get_player_agent_id) and callable(get_agent_xy):
+        try:
+            player_agent_id = max(0, _safe_int(get_player_agent_id(), 0))
+            if player_agent_id <= 0:
+                return None, "player agent unavailable"
+            fresh_xy = _coerce_agent_xy(get_agent_xy(player_agent_id))
+            if fresh_xy is None:
+                return None, "player agent coordinates unavailable"
+            return fresh_xy, "player agent"
+        except Exception:
+            # If the live-agent path exists but fails, an older Player.GetXY value may belong
+            # to the previous map instance. Fail closed instead of searching from stale data.
+            return None, "player agent coordinates unavailable"
+
+    try:
+        fallback_xy = _coerce_agent_xy(Player.GetXY())
+    except Exception:
+        fallback_xy = None
+    if fallback_xy is None:
+        return None, "player coordinates unavailable"
+    return fallback_xy, "Player.GetXY fallback"
+
+
+def _normalize_vendor_encoded_identity(raw_identity: object) -> tuple[int, ...] | None:
+    """Return exact encoded bytes without invoking any string decoder."""
+
+    if not isinstance(raw_identity, (bytes, bytearray, list, tuple)):
+        return None
+    try:
+        values = tuple(int(value) for value in raw_identity)
+    except (TypeError, ValueError):
+        return None
+    if any(value < 0 or value > 255 for value in values):
+        return None
+    return values
+
+
+def _named_agent_target_has_authoritative_identity(agent_kind: str, target_key: object) -> bool:
+    target = _get_named_agent_target_definition(agent_kind, target_key)
+    if target is None:
+        return False
+    if getattr(target, "encoded_names", ()):
+        return True
+    model_id = getattr(target, "model_id", None)
+    return model_id is not None and _safe_int(model_id, 0) > 0
 
 
 def _agent_named_target_display_matches(agent_id: int, named_target: object) -> bool:
@@ -4405,7 +4983,15 @@ def resolve_agent_xy_from_step(
             _log_agent_selector_failure(recipe_name, f"Unsupported agent resolver kind: {safe_agent_kind!r}")
         return None
 
-    px, py = Player.GetXY()
+    player_xy, player_xy_source = _get_agent_search_origin(Agent)
+    if player_xy is None:
+        if log_failures:
+            _log_agent_selector_failure(
+                recipe_name,
+                f"Could not resolve a safe player position at index {step_idx}: {player_xy_source}",
+            )
+        return None
+    px, py = player_xy
     agent_array = AgentArray.Filter.ByDistance(agent_array, (px, py), max_dist)
     agent_array = AgentArray.Sort.ByDistance(agent_array, (px, py))
     nearest = _parse_agent_selector_bool(safe_step.get("nearest", False), False)
@@ -4419,7 +5005,6 @@ def resolve_agent_xy_from_step(
             )
         return None
 
-    target_name_l = target_name.lower()
     exact_name = _parse_agent_selector_bool(safe_step.get("exact_name", False), False)
 
     def matches_agent(agent_id: int) -> bool:
@@ -4428,10 +5013,7 @@ def resolve_agent_xy_from_step(
                 return False
 
             if encoded_names and not _agent_encoded_name_matches(agent_id, encoded_names):
-                # Specific named selectors get a language-independent proper-name
-                # fallback.  This does not turn generic "Merchant" into a guess.
-                if not _agent_named_target_display_matches(agent_id, named_target):
-                    return False
+                return False
 
             if target_name:
                 agent_name = str(Agent.GetNameByID(agent_id) or "").strip()
@@ -4459,17 +5041,6 @@ def resolve_agent_xy_from_step(
     return None
 
 
-def _normalize_catalog_search_text(raw_value: object) -> str:
-    text = str(raw_value or "").strip().lower()
-    if not text:
-        return ""
-    text = unquote(text)
-    text = text.replace("_", " ")
-    text = re.sub(r"\.[a-z0-9]+$", "", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
 def _strip_item_display_markup(raw_value: object) -> str:
     text = str(raw_value or "").strip()
     if not text:
@@ -4481,177 +5052,6 @@ def _strip_item_display_markup(raw_value: object) -> str:
     text = re.sub(r"<[^>]+>", "", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
-
-
-def _build_catalog_alias_labels(name: object, skin: object = "", wiki_url: object = "") -> dict[str, str]:
-    alias_labels: dict[str, str] = {}
-
-    def _add_alias(raw_alias: object, display_label: object = ""):
-        normalized = _normalize_catalog_search_text(raw_alias)
-        if not normalized:
-            return
-        display = str(display_label or raw_alias or "").strip()
-        if not display:
-            display = normalized.title()
-        alias_labels.setdefault(normalized, display)
-
-    safe_name = str(name or "").strip()
-    if safe_name:
-        _add_alias(safe_name, safe_name)
-
-    safe_skin = str(skin or "").strip()
-    if safe_skin:
-        skin_label = os.path.splitext(os.path.basename(safe_skin))[0].strip()
-        if skin_label:
-            _add_alias(skin_label, skin_label)
-
-    safe_wiki_url = str(wiki_url or "").strip()
-    if safe_wiki_url:
-        wiki_stem = safe_wiki_url.rsplit("/", 1)[-1].split("?", 1)[0].split("#", 1)[0].strip()
-        wiki_label = unquote(wiki_stem).replace("_", " ").strip()
-        if wiki_label:
-            _add_alias(wiki_label, wiki_label)
-
-    return alias_labels
-
-
-def _humanize_model_id_enum_name(raw_name: object) -> str:
-    text = str(raw_name or "").strip()
-    if not text:
-        return ""
-    text = text.replace("_", " ")
-    text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", text)
-    text = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
-def _get_mirrored_item_priority(item_type: object) -> int:
-    normalized_type = str(item_type or "").strip().lower()
-    if normalized_type in {
-        "axe",
-        "bow",
-        "daggers",
-        "hammer",
-        "offhand",
-        "scythe",
-        "shield",
-        "spear",
-        "staff",
-        "sword",
-        "wand",
-        "headpiece",
-        "chestpiece",
-        "gloves",
-        "leggings",
-        "boots",
-    }:
-        return 10
-    if normalized_type in {"rune_mod", "salvage"}:
-        return 20
-    return 30
-
-
-def _get_catalog_entry_priority(
-    model_id: object,
-    item_type: object,
-    category: object = "",
-    sub_category: object = "",
-) -> int:
-    priority = _get_mirrored_item_priority(item_type)
-    if not _is_scroll_trader_stock_model(model_id):
-        return priority
-
-    normalized_type = _normalize_catalog_search_text(item_type)
-    normalized_category = _normalize_catalog_search_text(category)
-    normalized_sub_category = _normalize_catalog_search_text(sub_category)
-    if (
-        normalized_type == "scroll"
-        or normalized_category == "scroll"
-        or normalized_sub_category.endswith("scroll")
-    ):
-        return min(priority, 15)
-    return priority
-
-
-MODEL_ID_FALLBACK_ITEM_TYPE_SUFFIXES: tuple[tuple[str, str], ...] = (
-    ("Daggers", "Daggers"),
-    ("Scythe", "Scythe"),
-    ("Shield", "Shield"),
-    ("Spear", "Spear"),
-    ("Staff", "Staff"),
-    ("Sword", "Sword"),
-    ("Hammer", "Hammer"),
-    ("Focus", "Offhand"),
-    ("Offhand", "Offhand"),
-    ("Icon", "Offhand"),
-    ("Prism", "Offhand"),
-    ("Wand", "Wand"),
-    ("Bow", "Bow"),
-    ("Axe", "Axe"),
-    ("Headpiece", "Headpiece"),
-    ("Chestpiece", "Chestpiece"),
-    ("Gloves", "Gloves"),
-    ("Leggings", "Leggings"),
-    ("Boots", "Boots"),
-    ("SalvageKit", "Salvage"),
-)
-
-
-def _infer_model_id_fallback_item_type(enum_names: list[str], display_name: str) -> str:
-    candidates = [display_name, *enum_names]
-    for candidate in candidates:
-        compact = re.sub(r"[^A-Za-z0-9]+", "", str(candidate or ""))
-        normalized = _normalize_catalog_search_text(_humanize_model_id_enum_name(candidate))
-        tokens = set(normalized.split())
-        for suffix, item_type in MODEL_ID_FALLBACK_ITEM_TYPE_SUFFIXES:
-            suffix_lower = suffix.lower()
-            if compact.lower().endswith(suffix_lower) or suffix_lower in tokens:
-                return item_type
-    return ""
-
-
-def _iter_model_id_enum_members() -> list[tuple[str, int]]:
-    members = getattr(ModelID, "__members__", None)
-    if isinstance(members, dict):
-        raw_members = list(members.items())
-    else:
-        raw_members = [
-            (name, getattr(ModelID, name))
-            for name in dir(ModelID)
-            if not name.startswith("_")
-        ]
-
-    resolved_members: list[tuple[str, int]] = []
-    for raw_name, raw_value in raw_members:
-        name = str(raw_name or "").strip()
-        if not name:
-            continue
-        try:
-            model_id = int(raw_value.value)
-        except Exception:
-            model_id = _safe_int(raw_value, 0)
-        if model_id > 0:
-            resolved_members.append((name, model_id))
-    return resolved_members
-
-
-def _iter_item_handling_catalog_entries(raw_catalog: object) -> list[dict[str, object]]:
-    entries: list[dict[str, object]] = []
-
-    def _walk(raw_value: object):
-        if isinstance(raw_value, dict):
-            if ("model_id" in raw_value or "ModelID" in raw_value) and ("name" in raw_value or "Name" in raw_value):
-                entries.append(raw_value)
-                return
-            for child_value in raw_value.values():
-                _walk(child_value)
-        elif isinstance(raw_value, list):
-            for child_value in raw_value:
-                _walk(child_value)
-
-    _walk(raw_catalog)
-    return entries
 
 
 def _is_common_crafting_material_model(model_id: object) -> bool:
@@ -4953,6 +5353,23 @@ def _get_armor_upgrade_catalog_identity(identifier: object) -> tuple[ArmorUpgrad
     if not signature:
         return None, f"{name} has an empty catalog signature"
 
+    generic_carrier_upgrade_id: int | None = None
+    if (
+        semantic_kind == "Rune"
+        and safe_identifier.casefold() != SUPERIOR_SPAWNING_RUNE_CATALOG_IDENTIFIER.casefold()
+        and name.casefold() != SUPERIOR_SPAWNING_RUNE_CATALOG_IDENTIFIER.casefold()
+        and not any(
+            _get_stripped_modifier_identifier(triple[0]) == MODIFIER_IDENTIFIER_UPGRADE
+            for triple in signature
+        )
+    ):
+        generic_carrier_upgrade_id, carrier_error = _get_armor_rune_generic_carrier_upgrade_id(
+            safe_identifier,
+            name,
+        )
+        if carrier_error:
+            return None, carrier_error
+
     return (
         ArmorUpgradeIdentity(
             identifier=safe_identifier,
@@ -4960,6 +5377,7 @@ def _get_armor_upgrade_catalog_identity(identifier: object) -> tuple[ArmorUpgrad
             semantic_kind=semantic_kind,
             option=option,
             signature=tuple(signature),
+            generic_carrier_upgrade_id=generic_carrier_upgrade_id,
         ),
         "",
     )
@@ -4971,6 +5389,20 @@ def _is_tooltip_description_modifier(triple: tuple[int, int, int]) -> bool:
 
 def _get_modifier_upgrade_id(triple: tuple[int, int, int]) -> int:
     return (int(triple[1]) << 8) | int(triple[2])
+
+
+def _get_armor_upgrade_generic_carrier_triples(
+    raw_modifiers: tuple[tuple[int, int, int], ...],
+    upgrade_id: int | None,
+) -> tuple[tuple[int, int, int], ...]:
+    if upgrade_id is None:
+        return ()
+    return tuple(
+        triple
+        for triple in raw_modifiers
+        if _get_stripped_modifier_identifier(triple[0]) == MODIFIER_IDENTIFIER_UPGRADE
+        and _get_modifier_upgrade_id(triple) == int(upgrade_id)
+    )
 
 
 def _is_armor_upgrade_carrier_triple(triple: tuple[int, int, int]) -> bool:
@@ -4999,6 +5431,66 @@ def _has_superior_ritualist_rune_carrier(
 def _normalize_shared_upgrade_name(value: object) -> str:
     without_profession_suffix = re.sub(r"\[[^\]]+\]", "", str(value or ""))
     return re.sub(r"[^a-z0-9]+", "", without_profession_suffix.casefold())
+
+
+def _iter_item_upgrade_metadata_members() -> tuple[tuple[str, object], ...]:
+    members = getattr(ItemUpgrade, "__members__", None)
+    if members is not None and callable(getattr(members, "items", None)):
+        return tuple((str(name), member) for name, member in members.items())
+    return tuple(
+        (name, getattr(ItemUpgrade, name))
+        for name in dir(ItemUpgrade)
+        if not name.startswith("_")
+        and name not in {"UpgradeRune", "AppliesToRune"}
+        and getattr(ItemUpgrade, name, None) is not None
+    )
+
+
+def _get_armor_rune_generic_carrier_upgrade_id(
+    identifier: str,
+    name: str,
+) -> tuple[int | None, str]:
+    """Resolve a class Rune's generic armor carrier from existing upgrade metadata."""
+
+    normalized_candidates = {
+        _normalize_shared_upgrade_name(identifier),
+        _normalize_shared_upgrade_name(name),
+    }
+    normalized_candidates.discard("")
+    metadata_matches: dict[str, object] = {}
+    for metadata_name, metadata_member in _iter_item_upgrade_metadata_members():
+        if _normalize_shared_upgrade_name(metadata_name) in normalized_candidates:
+            metadata_matches[metadata_name] = metadata_member
+
+    normalized_name = _normalize_shared_upgrade_name(name)
+    if not metadata_matches:
+        if "runeof" in normalized_name and not normalized_name.startswith("runeof"):
+            return None, f"{name} has no exact ItemUpgrade Rune metadata"
+        return None, ""
+    if len(metadata_matches) != 1:
+        return None, f"{name} has ambiguous exact ItemUpgrade Rune metadata"
+
+    metadata_name = next(iter(metadata_matches))
+    rune_of_index = metadata_name.find("RuneOf")
+    if rune_of_index <= 0:
+        return None, f"{name} has no class Rune carrier metadata"
+    profession = metadata_name[:rune_of_index]
+    effect_name = metadata_name[rune_of_index + len("RuneOf"):]
+    tiers = tuple(tier for tier in ("Minor", "Major", "Superior") if effect_name.startswith(tier))
+    if len(tiers) != 1:
+        return None, f"{name} has no unique Rune tier in ItemUpgrade metadata"
+
+    generic_name = f"{tiers[0]}{profession}Rune"
+    generic_member = getattr(ItemUpgradeId, generic_name, None)
+    if generic_member is None:
+        return None, f"{name} has no ItemUpgradeId.{generic_name} carrier metadata"
+    try:
+        generic_carrier_upgrade_id = int(generic_member)
+    except (TypeError, ValueError):
+        return None, f"{name} has a malformed ItemUpgradeId.{generic_name} carrier"
+    if generic_carrier_upgrade_id not in ARMOR_UPGRADE_RUNE_CARRIER_IDS:
+        return None, f"{name} has an unsupported ItemUpgradeId.{generic_name} carrier"
+    return generic_carrier_upgrade_id, ""
 
 
 def _shared_upgrades_corroborate_named_suffix(
@@ -5127,6 +5619,25 @@ def _parse_exact_armor_upgrade_state(
                     upgrades=tuple(upgrades),
                     error=f"{identity.name} shares a signature carrier with another armor upgrade",
                 )
+        generic_carrier_triples = _get_armor_upgrade_generic_carrier_triples(
+            safe_raw_modifiers,
+            identity.generic_carrier_upgrade_id,
+        )
+        if identity.generic_carrier_upgrade_id is not None:
+            if len(generic_carrier_triples) != 1:
+                return ArmorUpgradeParseState(
+                    upgrades=tuple(upgrades),
+                    error=(
+                        f"{identity.name} does not have exactly one authoritative generic Rune carrier "
+                        f"for ItemUpgradeId {identity.generic_carrier_upgrade_id}"
+                    ),
+                )
+            generic_carrier = generic_carrier_triples[0]
+            if consumed_carriers[generic_carrier] > 0:
+                return ArmorUpgradeParseState(
+                    upgrades=tuple(upgrades),
+                    error=f"{identity.name} shares a signature carrier with another armor upgrade",
+                )
         if identity.identifier in seen_identifiers:
             return ArmorUpgradeParseState(
                 upgrades=tuple(upgrades),
@@ -5141,6 +5652,8 @@ def _parse_exact_armor_upgrade_state(
         seen_identifiers.add(identity.identifier)
         seen_options.add(identity.option)
         consumed_carriers.update(identity.signature)
+        if generic_carrier_triples:
+            consumed_carriers[generic_carrier_triples[0]] += 1
         upgrades.append(identity)
 
     superior_ritualist_carrier_positions = [
@@ -5259,13 +5772,24 @@ def _parse_exact_armor_upgrade_state(
 def _armor_upgrade_signature_is_exactly_present(
     raw_modifiers: tuple[tuple[int, int, int], ...],
     identity: ArmorUpgradeIdentity,
+    *,
+    require_generic_carrier: bool = False,
 ) -> bool:
     """Recognize an exact selected target even when another armor identity forces a safe block."""
 
-    return bool(
+    if not bool(
         identity.signature
         and all(raw_modifiers.count(triple) == 1 for triple in identity.signature)
-    )
+    ):
+        return False
+    if not require_generic_carrier or identity.generic_carrier_upgrade_id is None:
+        return True
+    return len(
+        _get_armor_upgrade_generic_carrier_triples(
+            raw_modifiers,
+            identity.generic_carrier_upgrade_id,
+        )
+    ) == 1
 
 
 def _get_armor_upgrade_post_extraction_error(
@@ -5300,10 +5824,35 @@ def _get_armor_upgrade_post_extraction_error(
         if current_counts[triple] != 0:
             return "selected armor upgrade signature remains after confirmation"
 
+    expected_target_carriers = _get_armor_upgrade_generic_carrier_triples(
+        expected.raw_modifiers,
+        target.generic_carrier_upgrade_id,
+    )
+    if target.generic_carrier_upgrade_id is not None:
+        if len(expected_target_carriers) != 1:
+            return "captured selected generic Rune carrier is not singular"
+        current_target_carriers = _get_armor_upgrade_generic_carrier_triples(
+            current.raw_modifiers,
+            target.generic_carrier_upgrade_id,
+        )
+        if current_target_carriers:
+            return "selected generic Rune carrier remains after confirmation"
+
     for upgrade in expected_remaining:
         for triple in upgrade.signature:
             if expected_counts[triple] != 1 or current_counts[triple] != 1:
                 return "unselected armor upgrade signature count changed after extraction"
+        expected_upgrade_carriers = _get_armor_upgrade_generic_carrier_triples(
+            expected.raw_modifiers,
+            upgrade.generic_carrier_upgrade_id,
+        )
+        if upgrade.generic_carrier_upgrade_id is not None:
+            current_upgrade_carriers = _get_armor_upgrade_generic_carrier_triples(
+                current.raw_modifiers,
+                upgrade.generic_carrier_upgrade_id,
+            )
+            if len(expected_upgrade_carriers) != 1 or current_upgrade_carriers != expected_upgrade_carriers:
+                return "unselected generic Rune carrier identity changed after extraction"
 
     for linkage in expected.linkages:
         expected_carrier_count = expected_counts[linkage.carrier]
@@ -5382,11 +5931,13 @@ def _normalize_merchant_stock_targets(raw_targets: object) -> list[MerchantStock
             target_count = entry.target_count
             max_per_run = entry.max_per_run
             after_purchase = entry.after_purchase
+            check_xunlai_first = entry.check_xunlai_first
         elif isinstance(entry, dict):
             model_id = entry.get("model_id", 0)
             target_count = entry.get("target_count", 0)
             max_per_run = entry.get("max_per_run", 0)
             after_purchase = entry.get("after_purchase", AFTER_PURCHASE_KEEP)
+            check_xunlai_first = entry.get("check_xunlai_first", False)
         else:
             continue
 
@@ -5401,10 +5952,49 @@ def _normalize_merchant_stock_targets(raw_targets: object) -> list[MerchantStock
                 target_count=max(0, _safe_int(target_count, 0)),
                 max_per_run=max(0, _safe_int(max_per_run, 0)),
                 after_purchase=_normalize_after_purchase_action(after_purchase),
+                check_xunlai_first=bool(check_xunlai_first),
             )
         )
 
     return normalized
+
+
+def _parse_request_scoped_merchant_stock(
+    raw_spec: object,
+) -> tuple[MerchantRulesExecutionContext, str]:
+    """Parse PR #80-compatible stock input without touching persisted buy rules."""
+
+    empty_context = MerchantRulesExecutionContext()
+    normalized_spec = str(raw_spec or "").strip()
+    if not normalized_spec.casefold().startswith("stock:"):
+        return empty_context, ""
+
+    targets_by_model_id: dict[int, int] = {}
+    for raw_entry in normalized_spec[len("stock:") :].split(","):
+        model_text, separator, target_text = str(raw_entry or "").strip().partition(":")
+        if not separator:
+            continue
+        model_id = _safe_int(model_text, 0)
+        target_count = _safe_int(target_text, 0)
+        if model_id <= 0 or target_count <= 0:
+            continue
+        targets_by_model_id[model_id] = max(target_count, targets_by_model_id.get(model_id, 0))
+
+    if not targets_by_model_id:
+        return (
+            empty_context,
+            "stock: requires at least one positive model_id:target_count entry.",
+        )
+
+    return (
+        MerchantRulesExecutionContext(
+            merchant_stock_targets=tuple(
+                RequestScopedMerchantStockTarget(model_id=model_id, target_count=targets_by_model_id[model_id])
+                for model_id in sorted(targets_by_model_id)
+            )
+        ),
+        "",
+    )
 
 
 def _normalize_consumable_crafter_count_mode(mode: object) -> str:
@@ -5423,6 +6013,20 @@ def _normalize_after_purchase_action(action: object) -> str:
 
 def _normalize_rune_identifier(identifier: object) -> str:
     return str(identifier or "").strip()
+
+
+def _normalize_rune_identifier_tuple(identifiers: object) -> tuple[str, ...]:
+    if not isinstance(identifiers, (list, tuple, set, frozenset)):
+        return ()
+    return tuple(
+        sorted(
+            {
+                safe_identifier
+                for identifier in identifiers
+                if (safe_identifier := _normalize_rune_identifier(identifier))
+            }
+        )
+    )
 
 
 def _normalize_rune_trader_targets(raw_targets: object) -> list[RuneTraderTarget]:
@@ -5958,76 +6562,6 @@ def _parse_stock_key(key: object) -> tuple[str, str]:
     return "", safe_key
 
 
-def _normalize_rune_catalog_profession(value: object) -> str:
-    safe_value = str(value or "").strip()
-    return safe_value or "_None"
-
-
-def _get_rune_profession_label(value: object) -> str:
-    profession = _normalize_rune_catalog_profession(value)
-    return "Common" if profession == "_None" else profession
-
-
-def _get_rune_kind_label(mod_type: object) -> str:
-    return "Insignia" if str(mod_type or "").strip().lower() == "prefix" else "Rune"
-
-
-def _get_rune_kind_sort_key(mod_type: object) -> int:
-    return 0 if _get_rune_kind_label(mod_type) == "Insignia" else 1
-
-
-def _get_rune_modifier_value(modifier: object, field_name: str) -> object:
-    if not isinstance(modifier, dict):
-        return ""
-    normalized_field = str(field_name or "").strip().lower()
-    if normalized_field == "arg1":
-        return modifier.get("Arg1", "")
-    if normalized_field == "arg2":
-        return modifier.get("Arg2", "")
-    if normalized_field == "arg":
-        return modifier.get("Arg", "")
-    return ""
-
-
-def _resolve_rune_description_template(description: str, modifiers: object) -> str:
-    safe_description = str(description or "").strip()
-    if not safe_description or "{" not in safe_description:
-        return safe_description
-    if not isinstance(modifiers, list):
-        return safe_description
-
-    modifiers_by_identifier: dict[int, dict[str, object]] = {}
-    for modifier in modifiers:
-        if not isinstance(modifier, dict):
-            continue
-        modifier_identifier = _safe_int(modifier.get("Identifier", 0), 0)
-        if modifier_identifier:
-            modifiers_by_identifier[modifier_identifier] = modifier
-
-    def replace_placeholder(match: re.Match) -> str:
-        field_name = str(match.group(1) or "")
-        modifier_identifier = _safe_int(match.group(2), 0)
-        modifier = modifiers_by_identifier.get(modifier_identifier)
-        if modifier is None:
-            return str(match.group(0))
-
-        value = _get_rune_modifier_value(modifier, field_name)
-        if modifier_identifier == MODIFIER_IDENTIFIER_RUNE_ATTRIBUTE and field_name.lower() == "arg1":
-            attribute_id = _safe_int(value, 0)
-            return RUNE_ATTRIBUTE_LABELS.get(attribute_id, f"Attribute {attribute_id}")
-        try:
-            return str(int(value))
-        except Exception:
-            return str(value or match.group(0))
-
-    return re.sub(r"\{(arg1|arg2|arg)\[(\d+)\]\}", replace_placeholder, safe_description)
-
-
-def _get_rune_rarity_sort_key(rarity: object) -> int:
-    rarity_order = {"blue": 0, "purple": 1, "gold": 2}
-    return rarity_order.get(str(rarity or "").strip().lower(), 99)
-
-
 def _sell_rule_can_include_material_storage(rule: SellRule) -> bool:
     return str(getattr(rule, "kind", "")) == SELL_KIND_COMMON_MATERIALS
 
@@ -6164,7 +6698,7 @@ def _normalize_destroy_rules(rules: list[DestroyRule]) -> list[DestroyRule]:
     return [_normalize_destroy_rule(rule) for rule in rules]
 
 
-def _normalize_salvage_option(raw_option: object) -> str:
+def _canonicalize_salvage_option(raw_option: object) -> str:
     safe_option = str(raw_option or "").strip().lower()
     aliases = {
         "": SALVAGE_OPTION_MATERIALS,
@@ -6186,36 +6720,59 @@ def _normalize_salvage_option(raw_option: object) -> str:
         "inscription": SALVAGE_OPTION_INSCRIPTION,
         "salvage inscription": SALVAGE_OPTION_INSCRIPTION,
     }
-    safe_option = aliases.get(safe_option, safe_option)
-    valid_options = {option for option, _label in SALVAGE_OPTION_ORDER}
-    return safe_option if safe_option in valid_options else SALVAGE_OPTION_MATERIALS
+    return aliases.get(safe_option, safe_option)
+
+
+def _normalize_salvage_operation(raw_option: object) -> str:
+    safe_option = _canonicalize_salvage_option(raw_option)
+    return safe_option if safe_option in SALVAGE_OPERATION_VALUES else SALVAGE_OPTION_MATERIALS
+
+
+def _normalize_salvage_rule_mode(raw_option: object) -> str:
+    safe_option = _canonicalize_salvage_option(raw_option)
+    if safe_option in SALVAGE_RULE_MODE_VALUES:
+        return safe_option
+    raise ValueError(
+        f"Unsupported Merchant Rules persisted Salvage rule mode {str(raw_option or '').strip()!r}. "
+        "Use Materials or Specific upgrade."
+    )
+
+
+def _normalize_common_material_model_ids(raw_model_ids: object) -> list[int]:
+    return [
+        model_id
+        for model_id in _dedupe_model_ids(
+            [_safe_int(value, 0) for value in _coerce_list(raw_model_ids)]
+        )
+        if model_id in COMMON_CRAFTING_MATERIAL_MODEL_IDS
+    ]
 
 
 def _resolve_salvage_operation(raw_option: object) -> str:
-    safe_option = _normalize_salvage_option(raw_option)
+    safe_option = _normalize_salvage_operation(raw_option)
     if safe_option == SALVAGE_OPTION_DEFAULT:
         return SALVAGE_OPTION_MATERIALS
     return safe_option
 
 
 def _get_salvage_option_label(raw_option: object) -> str:
-    safe_option = _normalize_salvage_option(raw_option)
-    for option, label in SALVAGE_OPTION_ORDER:
+    safe_option = _normalize_salvage_operation(raw_option)
+    for option, label in SALVAGE_OPERATION_ORDER:
         if option == safe_option:
             return label
     return "Salvage materials"
 
 
 def _get_salvage_option_dropdown_label(raw_option: object) -> str:
-    safe_option = _normalize_salvage_option(raw_option)
+    safe_option = _normalize_salvage_rule_mode(raw_option)
     for option, label in SALVAGE_OPTION_DROPDOWN_ORDER:
         if option == safe_option:
             return label
-    return f"Legacy: {_get_salvage_option_label(safe_option)}"
+    raise ValueError(f"Unsupported Merchant Rules persisted Salvage rule mode {safe_option!r}.")
 
 
 def _is_auto_exact_upgrade_salvage_option(raw_option: object) -> bool:
-    return _normalize_salvage_option(raw_option) == SALVAGE_OPTION_AUTO_UPGRADE
+    return _normalize_salvage_operation(raw_option) == SALVAGE_OPTION_AUTO_UPGRADE
 
 
 def _get_salvage_rule_upgrade_target_count(rule: object) -> int:
@@ -6273,6 +6830,13 @@ def _salvage_rule_has_upgrade_targets(rule: object) -> bool:
 def _salvage_rule_has_selectors(rule: SalvageRule) -> bool:
     return bool(
         _dedupe_model_ids(getattr(rule, "model_ids", []))
+        or (
+            _resolve_salvage_operation(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT))
+            == SALVAGE_OPTION_MATERIALS
+            and _normalize_common_material_model_ids(
+                getattr(rule, "target_common_material_model_ids", [])
+            )
+        )
         or any(bool(value) for value in _normalize_salvage_rarity_flags(getattr(rule, "rarities", {})).values())
         or any(bool(value) for value in _normalize_salvage_category_flags(getattr(rule, "categories", {})).values())
         or _salvage_rule_has_upgrade_targets(rule)
@@ -6286,6 +6850,9 @@ def _normalize_salvage_rule(raw_rule: object) -> SalvageRule | None:
         rule = SalvageRule(
             enabled=bool(raw_rule.enabled),
             model_ids=_dedupe_model_ids(raw_rule.model_ids),
+            target_common_material_model_ids=_normalize_common_material_model_ids(
+                getattr(raw_rule, "target_common_material_model_ids", [])
+            ),
             rarities=_normalize_salvage_rarity_flags(raw_rule.rarities),
             categories=_normalize_salvage_category_flags(raw_rule.categories),
             target_armor_upgrade_identifiers=_dedupe_identifiers(
@@ -6303,7 +6870,7 @@ def _normalize_salvage_rule(raw_rule: object) -> SalvageRule | None:
             target_weapon_mod_variant_thresholds=_normalize_weapon_mod_variant_threshold_rules(
                 _coerce_list(getattr(raw_rule, "target_weapon_mod_variant_thresholds", []))
             ),
-            salvage_option=_normalize_salvage_option(raw_rule.salvage_option),
+            salvage_option=_normalize_salvage_rule_mode(raw_rule.salvage_option),
             name=_normalize_rule_name(getattr(raw_rule, "name", "")),
         )
     elif isinstance(raw_rule, dict):
@@ -6313,6 +6880,9 @@ def _normalize_salvage_rule(raw_rule: object) -> SalvageRule | None:
                 _safe_int(value, 0)
                 for value in _coerce_list(raw_rule.get("model_ids", []))
             ]),
+            target_common_material_model_ids=_normalize_common_material_model_ids(
+                raw_rule.get("target_common_material_model_ids", [])
+            ),
             rarities=_normalize_salvage_rarity_flags(raw_rule.get("rarities", {})),
             categories=_normalize_salvage_category_flags(raw_rule.get("categories", {})),
             target_armor_upgrade_identifiers=_dedupe_identifiers(
@@ -6330,7 +6900,7 @@ def _normalize_salvage_rule(raw_rule: object) -> SalvageRule | None:
             target_weapon_mod_variant_thresholds=_normalize_weapon_mod_variant_threshold_rules(
                 _coerce_list(raw_rule.get("target_weapon_mod_variant_thresholds", []))
             ),
-            salvage_option=_normalize_salvage_option(raw_rule.get("salvage_option", SALVAGE_OPTION_DEFAULT)),
+            salvage_option=_normalize_salvage_rule_mode(raw_rule.get("salvage_option", SALVAGE_OPTION_DEFAULT)),
             name=_normalize_rule_name(raw_rule.get("name", "")),
         )
     else:
@@ -6452,9 +7022,11 @@ def _serialize_salvage_rule(rule: SalvageRule) -> dict[str, object]:
         "model_ids": list(normalized_rule.model_ids),
         "rarities": dict(normalized_rule.rarities),
         "categories": dict(normalized_rule.categories),
-        "salvage_option": _normalize_salvage_option(normalized_rule.salvage_option),
+        "salvage_option": _normalize_salvage_rule_mode(normalized_rule.salvage_option),
         "name": _normalize_rule_name(normalized_rule.name),
     }
+    if normalized_rule.target_common_material_model_ids:
+        payload["target_common_material_model_ids"] = list(normalized_rule.target_common_material_model_ids)
     if normalized_rule.target_armor_upgrade_identifiers:
         payload["target_armor_upgrade_identifiers"] = list(normalized_rule.target_armor_upgrade_identifiers)
     if normalized_rule.target_weapon_mod_identifiers:
@@ -6567,6 +7139,19 @@ class MerchantRulesWidget:
             scope: []
             for scope in PROFILE_SCOPES
         }
+        self.profile_known_filenames: dict[str, set[str]] = {
+            scope: set()
+            for scope in PROFILE_SCOPES
+        }
+        self.profile_selection_cleared_due_to_disappearance: dict[str, bool] = {
+            scope: False
+            for scope in PROFILE_SCOPES
+        }
+        self.profile_scan_conflicts: dict[str, dict[str, str]] = {
+            scope: {}
+            for scope in PROFILE_SCOPES
+        }
+        self._profile_migration_in_progress: set[str] = set()
         self.profile_selected_identities: dict[str, ProfileIdentity | None] = {
             scope: None
             for scope in PROFILE_SCOPES
@@ -6589,6 +7174,10 @@ class MerchantRulesWidget:
         }
         self.saved_profile_scan_warnings: dict[str, str] = {
             scope: ""
+            for scope in PROFILE_SCOPES
+        }
+        self.saved_profile_failure_signatures: dict[str, dict[str, tuple[str, str]]] = {
+            scope: {}
             for scope in PROFILE_SCOPES
         }
         self.profile_entries_loaded: dict[str, bool] = {
@@ -6620,6 +7209,11 @@ class MerchantRulesWidget:
         self.cleanup_protection_sources: list[CleanupProtectionSource] = []
         self.protected_item_model_ids: list[int] = []
         self.auto_cleanup_on_outpost_entry = False
+        self.gold_balance_enabled = False
+        self.gold_balance_on_outpost_entry = False
+        self.gold_balance_after_mr_trading = False
+        self.gold_balance_after_manual_session = False
+        self.target_carried_gold = DEFAULT_TARGET_CARRIED_GOLD
         self.auto_sell_on_manual_vendor_interaction = False
         self.auto_buy_on_manual_vendor_interaction = False
         self.manual_vendor_auto_buy_categories = _default_manual_vendor_category_flags(
@@ -6649,9 +7243,19 @@ class MerchantRulesWidget:
         self.instant_destroy_running = False
         self.salvage_running = False
         self.auto_cleanup_running = False
+        self.gold_balance_running = False
         self.manual_vendor_running = False
+        self.merchant_rules_owned_work_count = 0
+        self.merchant_rules_owned_action_count = 0
+        self.merchant_rules_remote_dispatch_count = 0
+        self.merchant_rules_profile_generation = 0
+        self._merchant_rules_generation_account_key = ""
+        self._merchant_rules_active_generation: int | None = None
+        self.pending_multibox_profile_reload: tuple[str, str, str] | None = None
+        self._merchant_rules_staged_multibox_reload_requests: set[tuple[str, str, str]] = set()
         self.execute_reservation_scope_active = False
         self.execute_reserved_item_ids: set[int] = set()
+        self.execute_xunlai_first_keep_by_model: dict[int, int] = {}
         self.destroy_auto_enabled = False
         self.destroy_instant_enabled = False
         self.destroy_include_protected_items = False
@@ -6659,6 +7263,8 @@ class MerchantRulesWidget:
         self.last_error = ""
         self.last_execution_summary = ""
         self.last_manual_vendor_summary = ""
+        self.last_gold_balance_summary = ""
+        self.last_gold_balance_status = GOLD_BALANCE_STATUS_DISABLED
         self.last_identify_summary = ""
         self.last_instant_destroy_summary = ""
         self.last_salvage_summary = ""
@@ -6683,6 +7289,7 @@ class MerchantRulesWidget:
         self.destroy_model_list_search_cache: dict[int, str] = {}
         self.salvage_model_search_cache: dict[int, str] = {}
         self.salvage_model_list_search_cache: dict[int, str] = {}
+        self.salvage_common_material_search_cache: dict[int, str] = {}
         self.salvage_weapon_mod_search_cache: dict[int, str] = {}
         self.salvage_armor_upgrade_search_cache: dict[int, str] = {}
         self.sell_model_text_cache: dict[int, str] = {}
@@ -6705,8 +7312,17 @@ class MerchantRulesWidget:
         self.map_instance_uptime_snapshot_ms = 0
         self.auto_cleanup_zone_attempted = False
         self.auto_cleanup_zone_token = ""
+        self.gold_entry_attempted = False
+        self.gold_entry_zone_token = ""
         self.manual_vendor_handled_signature = ""
         self.manual_vendor_cooldown_until_ms = 0
+        self.merchant_session_open = False
+        self.merchant_session_mr_owned = False
+        self.merchant_session_starting_gold: int | None = None
+        self.merchant_session_id = 0
+        self.manual_session_close_retry: tuple[int, int] | None = None
+        self.execution_currency_changing_work_completed = False
+        self.execution_completed_successfully = False
         self.inventory_modifier_cache: dict[int, InventoryModifierCacheEntry] = {}
         self.inventory_modifier_cache_hits = 0
         self.inventory_modifier_cache_misses = 0
@@ -6719,11 +7335,38 @@ class MerchantRulesWidget:
         self.execute_drift_requires_confirmation = False
         self.cached_context_map_id = -1
         self.cached_supported_context: tuple[bool, str, dict[str, tuple[float, float] | None]] | None = None
+        self._service_role_observed_coords: dict[str, tuple[float, float]] = {}
+        self._service_role_candidate_fingerprint: tuple[int, ...] | None = None
+        self._service_role_retry_fingerprint: tuple[int, ...] | None = None
+        self._service_role_player_anchor: tuple[float, float] | None = None
+        self._service_role_pending_agent_ids: set[int] = set()
+        self._service_role_name_retry_deadline_at = 0.0
+        self._service_role_next_poll_at = 0.0
+        self._service_role_lifecycle_active = False
+        self._service_role_preview_refresh_pending = False
         self.catalog_loaded = False
         self.catalog_load_error = ""
         self.catalog_by_model_id: dict[int, dict[str, object]] = {}
+        self._catalog_generation = 0
+        self._cleanup_deposit_filter_targets_cache_key: tuple[int, str, str] | None = (
+            None
+        )
+        self._cleanup_deposit_filter_targets_cache: list[CleanupTarget] = []
+        self._cleanup_targets_revision = 0
+        self._cleanup_target_display_cache_key: (
+            tuple[int, int, str, str, str] | None
+        ) = None
+        self._cleanup_target_display_cache: (
+            tuple[
+                list[CleanupTarget],
+                list[CleanupTarget],
+                list[CleanupTarget],
+            ]
+            | None
+        ) = None
         self.catalog_alias_to_model_ids: dict[str, list[int]] = {}
         self.catalog_alias_display_names: dict[str, str] = {}
+        self.common_salvage_model_ids_by_item_key: dict[tuple[int, int], tuple[int, ...]] = {}
         self.catalog_common_material_ids: list[int] = []
         self.catalog_merchant_essentials: list[dict[str, object]] = []
         self.catalog_rare_materials: list[dict[str, object]] = []
@@ -6773,6 +7416,7 @@ class MerchantRulesWidget:
         self.multibox_statuses: dict[str, MultiboxAccountStatus] = {}
         self.multibox_active_request_id = ""
         self.multibox_active_action = ""
+        self.multibox_active_profile_generation: int | None = None
         self.multibox_pending_accounts: list[str] = []
         self.multibox_running_email = ""
         self.multibox_running_started_at_ms = 0
@@ -6810,25 +7454,170 @@ class MerchantRulesWidget:
         self.multibox_request_counter = 0
 
     def _get_account_key(self) -> str:
-        account_email = str(Player.GetAccountEmail() or "").strip()
+        """Return a stable account key without replacing a reliable key during map loads."""
+
+        try:
+            account_email = str(Player.GetAccountEmail() or "").strip()
+        except Exception:
+            account_email = ""
         if account_email:
             return account_email
-        character_name = str(Player.GetName() or "").strip()
-        if character_name:
-            return character_name
-        return "default"
+        reliable_account_key = str(self.account_key or "").strip()
+        if reliable_account_key:
+            return reliable_account_key
+        try:
+            return str(Player.GetName() or "").strip()
+        except Exception:
+            return ""
 
     def _live_config_doc(self) -> JsonFactory:
         """The current account's live working config (account-scoped, self-persisting)."""
         return JsonFactory(LIVE_CONFIG_DOC_NAME)
 
     def _profile_doc(self, scope: str) -> JsonFactory:
-        """Return the saved-profile document for one explicit semantic scope."""
+        """Return a legacy bundled profile document for migration input only."""
         if scope == PROFILE_SCOPE_SHARED:
             return JsonFactory(SHARED_PROFILES_DOC_NAME, "global")
         if scope == PROFILE_SCOPE_ACCOUNT:
             return JsonFactory(ACCOUNT_PROFILES_DOC_NAME)
         raise ValueError(f"Unsupported Merchant Rules profile scope: {scope!r}")
+
+    def _profile_migration_doc(self, scope: str) -> JsonFactory:
+        """Return the additive migration journal for one profile scope."""
+
+        if scope == PROFILE_SCOPE_SHARED:
+            return JsonFactory(PROFILE_MIGRATION_STATE_DOC_NAME, "global")
+        if scope == PROFILE_SCOPE_ACCOUNT:
+            return JsonFactory(PROFILE_MIGRATION_STATE_DOC_NAME)
+        raise ValueError(f"Unsupported Merchant Rules profile scope: {scope!r}")
+
+    @staticmethod
+    def _profile_json_scope(scope: str) -> str:
+        if scope == PROFILE_SCOPE_SHARED:
+            return "global"
+        if scope == PROFILE_SCOPE_ACCOUNT:
+            return "account"
+        raise ValueError(f"Unsupported Merchant Rules profile scope: {scope!r}")
+
+    @staticmethod
+    def _validate_profile_filename(filename: str) -> str:
+        safe_filename = str(filename or "")
+        if (
+            not safe_filename
+            or safe_filename in {".", ".."}
+            or "/" in safe_filename
+            or "\\" in safe_filename
+            or os.path.basename(safe_filename) != safe_filename
+            or not safe_filename.casefold().endswith(".json")
+        ):
+            raise ValueError("The profile filename is not safe.")
+        stem = safe_filename[:-5]
+        if (
+            not stem
+            or len(stem) > PROFILE_FILENAME_MAX_STEM_LENGTH
+            or PROFILE_FILENAME_INVALID_CHARS.search(safe_filename)
+        ):
+            raise ValueError("The profile filename is not safe.")
+        if stem[-1:] in {".", " "}:
+            raise ValueError("The profile filename is not safe.")
+        if stem.upper().split(".", 1)[0] in PROFILE_FILENAME_RESERVED_NAMES:
+            raise ValueError("The profile filename is reserved by Windows.")
+        return safe_filename
+
+    @staticmethod
+    def _sanitize_profile_filename_stem(display_name: str) -> str:
+        stem = unicodedata.normalize("NFC", str(display_name or "").strip())
+        stem = PROFILE_FILENAME_INVALID_CHARS.sub("-", stem)
+        stem = " ".join(stem.split()).rstrip(" .")
+        if not stem:
+            stem = "Profile"
+        if stem.upper().split(".", 1)[0] in PROFILE_FILENAME_RESERVED_NAMES:
+            stem = f"_{stem}"
+        stem = stem[:PROFILE_FILENAME_MAX_STEM_LENGTH].rstrip(" .")
+        return stem or "Profile"
+
+    def _profile_document_name(self, filename: str) -> str:
+        safe_filename = self._validate_profile_filename(filename)
+        return f"{PROFILE_DOCUMENT_DIR}/{safe_filename}"
+
+    def _profile_file_doc(self, scope: str, filename: str) -> JsonFactory:
+        return JsonFactory(
+            self._profile_document_name(filename),
+            self._profile_json_scope(scope),
+        )
+
+    def _profile_directory_from_bound_doc(self, scope: str) -> str:
+        doc_path = str(self._profile_doc(scope).path() or "").strip()
+        if not doc_path:
+            return ""
+        document_directory = os.path.dirname(os.path.abspath(doc_path))
+        return os.path.abspath(os.path.join(document_directory, "Profiles"))
+
+    def _ensure_profiles_dir(self, scope: str, *, create: bool = True) -> str:
+        folder_path = self._profile_directory_from_bound_doc(scope)
+        if not folder_path:
+            return ""
+        if os.path.islink(folder_path):
+            raise OSError("The Merchant Rules profiles directory must not be a symbolic link.")
+        if create:
+            os.makedirs(folder_path, exist_ok=True)
+        if os.path.islink(folder_path) or not os.path.isdir(folder_path):
+            raise OSError("The Merchant Rules profiles directory is not a regular directory.")
+        return folder_path
+
+    def _profile_file_path(self, scope: str, filename: str) -> str:
+        safe_filename = self._validate_profile_filename(filename)
+        folder_path = self._ensure_profiles_dir(scope, create=True)
+        if not folder_path:
+            raise RuntimeError(
+                f"{self._profile_scope_label(scope)} are not ready for this account yet."
+            )
+        candidate_path = os.path.abspath(os.path.join(folder_path, safe_filename))
+        try:
+            common_path = os.path.commonpath((os.path.normcase(folder_path), os.path.normcase(candidate_path)))
+        except ValueError as exc:
+            raise ValueError("The profile filename is outside the Merchant Rules profiles folder.") from exc
+        if (
+            common_path != os.path.normcase(folder_path)
+            or os.path.normcase(os.path.dirname(candidate_path)) != os.path.normcase(folder_path)
+        ):
+            raise ValueError("The profile filename is outside the Merchant Rules profiles folder.")
+        return candidate_path
+
+    def _is_profile_file_present(self, scope: str, filename: str) -> bool:
+        try:
+            file_path = self._profile_file_path(scope, filename)
+        except Exception:
+            return False
+        return bool(os.path.isfile(file_path) and not os.path.islink(file_path))
+
+    def _enumerate_profile_filenames(self, scope: str) -> list[str]:
+        folder_path = self._ensure_profiles_dir(scope, create=True)
+        if not folder_path:
+            return []
+        filenames: list[str] = []
+        with os.scandir(folder_path) as entries:
+            for entry in entries:
+                filename = str(entry.name)
+                if not filename.casefold().endswith(".json"):
+                    continue
+                if not entry.is_file(follow_symlinks=False):
+                    continue
+                filenames.append(filename)
+        return sorted(filenames, key=lambda value: (value.casefold(), value))
+
+    def _allocate_profile_filename(self, scope: str, display_name: str) -> str:
+        base_stem = self._sanitize_profile_filename_stem(display_name)
+        existing_names = {
+            filename.casefold()
+            for filename in self._enumerate_profile_filenames(scope)
+        }
+        for suffix in range(1, 10000):
+            stem = base_stem if suffix == 1 else f"{base_stem} ({suffix})"
+            candidate = f"{stem}.json"
+            if candidate.casefold() not in existing_names:
+                return candidate
+        raise RuntimeError("Merchant Rules could not allocate a unique profile filename.")
 
     def _backup_doc(self) -> JsonFactory:
         """Account-scoped last-known-good live profile used by the Restore Backup action."""
@@ -6919,8 +7708,8 @@ class MerchantRulesWidget:
                 icon_path=self._get_floating_icon_path(),
                 window_id=FLOATING_ICON_WINDOW_ID,
                 window_name=FLOATING_ICON_WINDOW_NAME,
-                tooltip_visible="Hide Merchant Rules window",
-                tooltip_hidden="Show Merchant Rules window",
+                tooltip_visible="Left-click to hide Merchant Rules. Right-click for quick actions.",
+                tooltip_hidden="Left-click to show Merchant Rules. Right-click for quick actions.",
                 visible=bool(self.show_main_window),
                 on_toggle=self._on_floating_icon_visibility_toggled,
             )
@@ -6983,6 +7772,9 @@ class MerchantRulesWidget:
         if self.icon_xunlai_open_running:
             self.status_message = "Opening Xunlai..."
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            self.status_message = "Wait for Merchant Rules to finish its current work."
+            return
         if self._is_storage_open():
             self.status_message = "Xunlai is already open."
             return
@@ -6992,7 +7784,10 @@ class MerchantRulesWidget:
 
         self.icon_xunlai_open_running = True
         self.status_message = "Opening Xunlai..."
-        GLOBAL_CACHE.Coroutines.append(self._open_xunlai_from_icon())
+        self._queue_merchant_rules_owned_work(
+            self._open_xunlai_from_icon(),
+            reset_flags=("icon_xunlai_open_running",),
+        )
 
     def _open_xunlai_from_icon(self):
         try:
@@ -7094,6 +7889,8 @@ class MerchantRulesWidget:
     def _get_open_xunlai_block_reason(self) -> str:
         if self.icon_xunlai_open_running:
             return "Opening Xunlai..."
+        if self._merchant_rules_has_pending_or_active_work():
+            return "Merchant Rules is already busy."
         if self._is_storage_open():
             return ""
         if not Map.IsMapReady():
@@ -7175,7 +7972,7 @@ class MerchantRulesWidget:
                 storage_scan_reason = self._get_storage_scan_block_reason()
                 if self._draw_quick_action_button("Open Xunlai and Refresh Preview", storage_scan_reason):
                     self._show_preview_plan_window()
-                    GLOBAL_CACHE.Coroutines.append(self._open_xunlai_and_scan_preview())
+                    self._queue_merchant_rules_owned_work(self._open_xunlai_and_scan_preview())
                     self._close_quick_actions_menu()
 
             PyImGui.separator()
@@ -7714,12 +8511,12 @@ class MerchantRulesWidget:
             return f"{base_label} (Xunlai unavailable)", False, None, None
         available_quantity = self._get_inventory_shortcut_xunlai_pane_withdraw_quantity(item)
         if available_quantity is None:
-            return f"{base_label} (Xunlai unreadable)", False, None, None
+            return f"{base_label} (contents unavailable)", False, None, None
         if available_quantity <= 0:
             return f"No {item_name} in Xunlai Panes", False, available_quantity, None
         capacity = self._get_inventory_shortcut_xunlai_pane_withdraw_capacity(item)
         if capacity is None:
-            return f"{base_label} ({available_quantity} available / capacity unavailable)", False, available_quantity, None
+            return f"{base_label} ({available_quantity} available / inventory space unknown)", False, available_quantity, None
         if capacity <= 0:
             return f"{base_label} ({available_quantity} available / 0 fits)", False, available_quantity, capacity
         if capacity >= available_quantity:
@@ -7838,7 +8635,7 @@ class MerchantRulesWidget:
             if material_storage_quantity is not None
             else "not checked"
         )
-        label = f"Withdraw {item_name} From Both (Vault: {int(pane_quantity)} / Material Storage: {material_storage_label})"
+        label = f"Withdraw {item_name} From Both (Xunlai panes: {int(pane_quantity)} / Material Storage: {material_storage_label})"
         if capacity is None or capacity <= 0:
             return label, False
         return label, True
@@ -7905,7 +8702,11 @@ class MerchantRulesWidget:
             return header_base
 
         storage_open, vault_quantity = self._get_cached_inventory_shortcut_header_vault_state(item)
-        parts = [f"Vault: {vault_quantity}" if storage_open and vault_quantity is not None else "Vault: unavailable"]
+        parts = [
+            f"Xunlai panes: {vault_quantity}"
+            if storage_open and vault_quantity is not None
+            else "Xunlai panes: unavailable"
+        ]
         material_storage_quantity = self._get_inventory_shortcut_material_storage_quantity(item)
         if material_storage_quantity is not None:
             parts.append(f"Material Storage: {material_storage_quantity} last seen")
@@ -8630,17 +9431,7 @@ class MerchantRulesWidget:
         return f"{INVENTORY_SHORTCUT_LIVE_ACTION_SALVAGE_KIT_PREFIX}:{_normalize_rarity_key(rarity_key) or 'all'}"
 
     def _inventory_shortcut_runtime_block_reason(self) -> str:
-        if (
-            self.execution_running
-            or self.travel_preview_running
-            or self.identify_running
-            or self.instant_destroy_running
-            or self.salvage_running
-            or self.storage_scan_running
-            or self.auto_cleanup_running
-            or self.manual_vendor_running
-            or self.inventory_shortcuts_live_action_running
-        ):
+        if self._merchant_rules_has_pending_or_active_work():
             return "Merchant Rules is already busy."
         if not Map.IsMapReady():
             return "Wait for the current map to finish loading."
@@ -8649,6 +9440,10 @@ class MerchantRulesWidget:
     def _queue_inventory_shortcut_live_deposit(self, item: InventoryItemInfo) -> bool:
         if self.inventory_shortcuts_live_action_running:
             self.status_message = "A right-click inventory action is already running."
+            return False
+        block_reason = self._inventory_shortcut_runtime_block_reason()
+        if block_reason:
+            self.status_message = block_reason
             return False
         item_id = max(0, _safe_int(getattr(item, "item_id", 0), 0))
         model_id = max(0, _safe_int(getattr(item, "model_id", 0), 0))
@@ -8661,8 +9456,9 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_live_action_running = True
         self.status_message = f"Depositing {item_label}..."
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_deposit(item_id, model_id, quantity, item_label)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_deposit(item_id, model_id, quantity, item_label),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -8756,8 +9552,9 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_live_action_running = True
         self.status_message = f"Depositing all matching {item_name} stacks..."
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_deposit_all_matching(item_id, model_id, item_name)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_deposit_all_matching(item_id, model_id, item_name),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -8915,8 +9712,9 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_live_action_running = True
         self.status_message = f"Withdrawing {item_name} from Xunlai panes..."
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_xunlai_pane_withdraw(item_id, model_id, item_name)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_xunlai_pane_withdraw(item_id, model_id, item_name),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -9032,8 +9830,9 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_live_action_running = True
         self.status_message = f"Withdrawing {item_name} from Material Storage..."
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_material_storage_withdraw(item_id, model_id, item_name)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_material_storage_withdraw(item_id, model_id, item_name),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -9173,8 +9972,9 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_live_action_running = True
         self.status_message = f"Withdrawing {item_name} from Xunlai panes and Material Storage..."
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_both_withdraw(item_id, model_id, item_name)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_both_withdraw(item_id, model_id, item_name),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -9388,8 +10188,9 @@ class MerchantRulesWidget:
             f"Inventory shortcut Material Storage count refresh queued: model_id={model_id} name={item_name}"
         )
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_material_storage_count_refresh(item_id, model_id, item_name)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_material_storage_count_refresh(item_id, model_id, item_name),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -9468,8 +10269,9 @@ class MerchantRulesWidget:
         self.inventory_shortcuts_live_action_running = True
         self.status_message = f"Destroying {item_label}..."
         try:
-            GLOBAL_CACHE.Coroutines.append(
-                self._run_inventory_shortcut_live_destroy(item_id, model_id, quantity, item_label)
+            self._queue_merchant_rules_owned_work(
+                self._run_inventory_shortcut_live_destroy(item_id, model_id, quantity, item_label),
+                reset_flags=("inventory_shortcuts_live_action_running",),
             )
             return True
         except Exception as exc:
@@ -9587,9 +10389,9 @@ class MerchantRulesWidget:
         rarity_keys = self._get_kit_action_rarity_keys(rarity_key)
         subject = f"ID {rarity_label} Items"
         self.identify_running = True
-        self.status_message = f"{subject}: queued with clicked ID kit."
+        self.status_message = f"{subject} will use the selected Identification Kit."
         try:
-            GLOBAL_CACHE.Coroutines.append(
+            self._queue_merchant_rules_owned_work(
                 self._run_identify_pass(
                     running_already_marked=True,
                     mark_preview_dirty=True,
@@ -9597,7 +10399,8 @@ class MerchantRulesWidget:
                     rarity_keys=rarity_keys,
                     preferred_id_kit_id=validated_kit_id,
                     preferred_id_kit_model_id=kit_model_id,
-                )
+                ),
+                reset_flags=("identify_running",),
             )
             return True
         except Exception as exc:
@@ -9635,7 +10438,7 @@ class MerchantRulesWidget:
         rarity_keys = self._get_kit_action_rarity_keys(rarity_key)
         subject = f"Salvage {rarity_label} Items"
         self.salvage_running = True
-        self.status_message = f"{subject}: queued with clicked salvage kit."
+        self.status_message = f"{subject} will use the selected Salvage Kit."
         ConsoleLog(
             MODULE_NAME,
             f"Right-click salvage confirmed: {subject} using clicked "
@@ -9643,7 +10446,7 @@ class MerchantRulesWidget:
             Console.MessageType.Info,
         )
         try:
-            GLOBAL_CACHE.Coroutines.append(
+            self._queue_merchant_rules_owned_work(
                 self._run_salvage_pass(
                     running_already_marked=True,
                     summary_subject=subject,
@@ -9651,7 +10454,8 @@ class MerchantRulesWidget:
                     preferred_salvage_kit_id=validated_kit_id,
                     preferred_salvage_kit_model_id=kit_model_id,
                     explicit_salvage_request=True,
-                )
+                ),
+                reset_flags=("salvage_running",),
             )
             return True
         except Exception as exc:
@@ -9929,37 +10733,37 @@ class MerchantRulesWidget:
                     if self._draw_inventory_shortcut_kit_live_actions(selected_item):
                         PyImGui.separator()
                     self._draw_inventory_shortcut_menu_item(
-                        "Protect This Item",
+                        "Protect Matching Items",
                         selected_item,
                         self._apply_inventory_shortcut_protect,
                         UI_COLOR_SUCCESS,
                     )
                     self._draw_inventory_shortcut_menu_item(
-                        "Add To Deposit Targets",
+                        "Add Matching Items to Deposit Targets",
                         selected_item,
                         self._apply_inventory_shortcut_deposit_target,
                         UI_COLOR_TEAL,
                     )
                     self._draw_inventory_shortcut_menu_item(
-                        "Keep Out Of Deposits",
+                        "Keep Matching Items Out of Deposits",
                         selected_item,
                         self._apply_inventory_shortcut_deposit_keep_out,
                         UI_COLOR_WARNING_SOFT,
                     )
                     PyImGui.separator()
                     self._draw_inventory_shortcut_menu_item(
-                        "Add To Sell Rule",
+                        "Add Matching Items to a Sell Rule",
                         selected_item,
                         self._apply_inventory_shortcut_sell_rule,
                     )
                     self._draw_inventory_shortcut_menu_item(
-                        "Add To Salvage Rule",
+                        "Add Matching Items to a Salvage Rule",
                         selected_item,
                         self._apply_inventory_shortcut_salvage_rule,
                         UI_COLOR_WARNING_SOFT,
                     )
                     self._draw_inventory_shortcut_menu_item(
-                        "Add To Destroy Rule",
+                        "Add Matching Items to a Destroy Rule",
                         selected_item,
                         self._apply_inventory_shortcut_destroy_rule,
                         UI_COLOR_WARNING_SOFT,
@@ -9983,14 +10787,407 @@ class MerchantRulesWidget:
         self._clear_inventory_shortcut_xunlai_display_cache()
         self._set_main_window_visible(False, expand_on_show=True)
 
+    def _merchant_rules_is_generation_current(self, generation: int | None = None) -> bool:
+        if generation is None:
+            generation = self._merchant_rules_active_generation
+        if generation is not None and int(generation) != int(self.merchant_rules_profile_generation):
+            return False
+        if self.initialized and str(self.account_key or "").strip():
+            try:
+                current_account = self._get_account_key()
+                if current_account and current_account != self.account_key:
+                    return False
+            except Exception:
+                return False
+        return True
+
+    def _merchant_rules_operation_generation(self) -> int:
+        active_generation = self._merchant_rules_active_generation
+        if active_generation is not None:
+            return int(active_generation)
+        return int(self.merchant_rules_profile_generation)
+
+    def _release_merchant_rules_owned_work(self) -> None:
+        self.merchant_rules_owned_work_count = max(0, int(self.merchant_rules_owned_work_count) - 1)
+
+    def _release_merchant_rules_owned_action(self) -> None:
+        self.merchant_rules_owned_action_count = max(0, int(self.merchant_rules_owned_action_count) - 1)
+
+    def _track_merchant_rules_owned_action(
+        self,
+        callback: Callable,
+        *,
+        generation: int | None = None,
+    ) -> _MerchantRulesOwnedQueueCallback:
+        if self.merchant_session_open and (self.execution_running or self.manual_vendor_running):
+            self._mark_current_merchant_session_mr_owned()
+        self.merchant_rules_owned_action_count = max(0, int(self.merchant_rules_owned_action_count)) + 1
+        try:
+            captured_generation = self._merchant_rules_operation_generation() if generation is None else int(generation)
+            return _MerchantRulesOwnedQueueCallback(
+                callback,
+                self._release_merchant_rules_owned_action,
+                generation=captured_generation,
+                is_generation_current=self._merchant_rules_is_generation_current,
+            )
+        except BaseException:
+            self._release_merchant_rules_owned_action()
+            raise
+
+    def _begin_merchant_rules_action_capture(self, generation: int | None = None):
+        """Capture only Merchant Rules action submissions made during one generator tick."""
+
+        try:
+            manager = ActionQueueManager()
+        except Exception:
+            return None
+
+        captures: list[tuple[str, bool, object]] = []
+        manager_attributes = getattr(manager, "__dict__", {})
+
+        def install_capture(method_name: str, *, delayed: bool = False):
+            original = getattr(manager, method_name, None)
+            if not callable(original):
+                return
+            had_instance_override = bool(method_name in manager_attributes)
+            previous_instance_value = manager_attributes.get(method_name)
+
+            if delayed:
+
+                def captured_delayed(queue_name, delay, callback, *args, **kwargs):
+                    if str(queue_name or "").upper() not in MERCHANT_RULES_OWNED_ACTION_QUEUES:
+                        return original(queue_name, delay, callback, *args, **kwargs)
+                    owned_callback = self._track_merchant_rules_owned_action(
+                        callback,
+                        generation=generation,
+                    )
+                    try:
+                        return original(queue_name, delay, owned_callback, *args, **kwargs)
+                    except BaseException:
+                        owned_callback.release()
+                        raise
+
+                captured = captured_delayed
+            else:
+
+                def captured_immediate(queue_name, callback, *args, **kwargs):
+                    if str(queue_name or "").upper() not in MERCHANT_RULES_OWNED_ACTION_QUEUES:
+                        return original(queue_name, callback, *args, **kwargs)
+                    owned_callback = self._track_merchant_rules_owned_action(
+                        callback,
+                        generation=generation,
+                    )
+                    try:
+                        return original(queue_name, owned_callback, *args, **kwargs)
+                    except BaseException:
+                        owned_callback.release()
+                        raise
+
+                captured = captured_immediate
+
+            try:
+                setattr(manager, method_name, captured)
+            except Exception:
+                return
+            captures.append((method_name, had_instance_override, previous_instance_value))
+
+        install_capture("AddAction")
+        install_capture("AddActionWithDelay", delayed=True)
+        return manager, captures
+
+    def _end_merchant_rules_action_capture(self, capture) -> None:
+        if capture is None:
+            return
+        manager, captures = capture
+        for method_name, had_instance_override, previous_instance_value in reversed(captures):
+            try:
+                if had_instance_override:
+                    setattr(manager, method_name, previous_instance_value)
+                else:
+                    delattr(manager, method_name)
+            except Exception:
+                pass
+
+    def _close_merchant_rules_generator(
+        self,
+        generator,
+        generation: int | None = None,
+        *,
+        capture_actions: bool = True,
+    ) -> None:
+        close = getattr(generator, "close", None)
+        if not callable(close):
+            return
+        previous_generation = self._merchant_rules_active_generation
+        self._merchant_rules_active_generation = generation
+        capture = self._begin_merchant_rules_action_capture(generation) if capture_actions else None
+        try:
+            close()
+        except RuntimeError:
+            pass
+        finally:
+            self._end_merchant_rules_action_capture(capture)
+            self._merchant_rules_active_generation = previous_generation
+
+    def _advance_merchant_rules_owned_generator(self, generator, generation: int):
+        capture = self._begin_merchant_rules_action_capture(generation)
+        previous_generation = self._merchant_rules_active_generation
+        self._merchant_rules_active_generation = generation
+        try:
+            return next(generator)
+        finally:
+            self._end_merchant_rules_action_capture(capture)
+            self._merchant_rules_active_generation = previous_generation
+
+    def _track_merchant_rules_owned_work(
+        self,
+        generator,
+        *,
+        reset_flags: tuple[str, ...] = (),
+        reset_values_before_start: tuple[tuple[str, object], ...] = (),
+    ):
+        generation = self._merchant_rules_operation_generation()
+        self.merchant_rules_owned_work_count = max(0, int(self.merchant_rules_owned_work_count)) + 1
+        try:
+            return _MerchantRulesOwnedGenerator(
+                self,
+                generator,
+                generation,
+                self._release_merchant_rules_owned_work,
+                capture_actions=True,
+                reset_flags=reset_flags,
+                reset_values_before_start=reset_values_before_start,
+            )
+        except BaseException:
+            close = getattr(generator, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except BaseException:
+                    pass
+            self._release_merchant_rules_owned_work()
+            raise
+
+    def _queue_merchant_rules_owned_work(
+        self,
+        generator,
+        *,
+        reset_flags: tuple[str, ...] = (),
+        reset_values_before_start: tuple[tuple[str, object], ...] = (),
+    ):
+        try:
+            owned_generator = self._track_merchant_rules_owned_work(
+                generator,
+                reset_flags=reset_flags,
+                reset_values_before_start=reset_values_before_start,
+            )
+        except BaseException:
+            for flag_name in reset_flags:
+                setattr(self, flag_name, False)
+            for field_name, value in reset_values_before_start:
+                setattr(self, field_name, value)
+            raise
+        try:
+            GLOBAL_CACHE.Coroutines.append(cast(Generator[object, None, None], owned_generator))
+        except BaseException:
+            try:
+                owned_generator.close()
+            except BaseException:
+                pass
+            finally:
+                for flag_name in reset_flags:
+                    setattr(self, flag_name, False)
+                for field_name, value in reset_values_before_start:
+                    setattr(self, field_name, value)
+            raise
+        return owned_generator
+
+    def _release_merchant_rules_remote_dispatch(self) -> None:
+        self.merchant_rules_remote_dispatch_count = max(0, int(self.merchant_rules_remote_dispatch_count) - 1)
+
+    def _get_staged_multibox_reload_request_key(self, message) -> tuple[str, str, str]:
+        extra0, _extra1, _extra2, _extra3 = self._extract_multibox_message_extra_data(message)
+        return (
+            str(extra0 or "").strip(),
+            str(getattr(message, "SenderEmail", "") or "").strip(),
+            str(getattr(message, "ReceiverEmail", "") or Player.GetAccountEmail() or "").strip(),
+        )
+
+    def _stage_multibox_profile_reload(self, request_key: tuple[str, str, str]) -> None:
+        normalized_key: tuple[str, str, str] = (
+            str(request_key[0] or "").strip(),
+            str(request_key[1] or "").strip(),
+            str(request_key[2] or "").strip(),
+        )
+        self._merchant_rules_staged_multibox_reload_requests.add(normalized_key)
+        self.pending_multibox_profile_reload = normalized_key
+
+    def _release_staged_multibox_profile_reload(self, request_key: tuple[str, str, str]) -> None:
+        normalized_key: tuple[str, str, str] = (
+            str(request_key[0] or "").strip(),
+            str(request_key[1] or "").strip(),
+            str(request_key[2] or "").strip(),
+        )
+        was_staged = normalized_key in self._merchant_rules_staged_multibox_reload_requests
+        self._merchant_rules_staged_multibox_reload_requests.discard(normalized_key)
+        if was_staged and self.pending_multibox_profile_reload == normalized_key:
+            self.pending_multibox_profile_reload = None
+
+    def track_merchant_rules_remote_dispatch(self, message, generator):
+        opcode = self._get_multibox_message_opcode(message)
+        if opcode == MERCHANT_RULES_OPCODE_RELOAD_PROFILE:
+            if not self.initialized:
+                self._ensure_initialized()
+            request_key = self._get_staged_multibox_reload_request_key(message)
+            self._stage_multibox_profile_reload(request_key)
+            generation = self._merchant_rules_operation_generation()
+            try:
+                return _MerchantRulesOwnedGenerator(
+                    self,
+                    generator,
+                    generation,
+                    lambda: self._release_staged_multibox_profile_reload(request_key),
+                    capture_actions=False,
+                )
+            except BaseException:
+                self._release_staged_multibox_profile_reload(request_key)
+                close = getattr(generator, "close", None)
+                if callable(close):
+                    try:
+                        close()
+                    except BaseException:
+                        pass
+                raise
+        if opcode not in (MERCHANT_RULES_OPCODE_PREVIEW, MERCHANT_RULES_OPCODE_EXECUTE):
+            return generator
+        if not self.initialized:
+            self._ensure_initialized()
+        generation = self._merchant_rules_operation_generation()
+        self.merchant_rules_remote_dispatch_count = max(0, int(self.merchant_rules_remote_dispatch_count)) + 1
+        try:
+            return _MerchantRulesOwnedGenerator(
+                self,
+                generator,
+                generation,
+                self._release_merchant_rules_remote_dispatch,
+                capture_actions=False,
+            )
+        except BaseException:
+            close = getattr(generator, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except BaseException:
+                    pass
+            self._release_merchant_rules_remote_dispatch()
+            raise
+
+    def _merchant_rules_has_pending_or_active_work(
+        self,
+        *,
+        include_remote_dispatch: bool = True,
+        include_pending_reload: bool = True,
+    ) -> bool:
+        return bool(
+            int(self.merchant_rules_owned_work_count) > 0
+            or int(self.merchant_rules_owned_action_count) > 0
+            or (include_remote_dispatch and int(self.merchant_rules_remote_dispatch_count) > 0)
+            or self.execution_running
+            or self.travel_preview_running
+            or self.identify_running
+            or self.instant_destroy_running
+            or self.salvage_running
+            or self.storage_scan_running
+            or self.auto_cleanup_running
+            or self.gold_balance_running
+            or self.manual_vendor_running
+            or self.icon_xunlai_open_running
+            or self.inventory_shortcuts_live_action_running
+            or self._is_multibox_batch_running()
+            or bool(self.multibox_pending_accounts)
+            or bool(self.multibox_running_email)
+            or (include_pending_reload and self.pending_multibox_profile_reload is not None)
+            or (
+                self.pending_multibox_profile_reload is not None
+                and self.pending_multibox_profile_reload in self._merchant_rules_staged_multibox_reload_requests
+            )
+        )
+
+    def _get_profile_application_block_message(self, action: str) -> str:
+        if not self._merchant_rules_has_pending_or_active_work():
+            return ""
+        return f"Wait for Merchant Rules to finish its current work before {action}."
+
+    def _apply_multibox_profile_reload(self, *, preserve_workspace_state: bool = False):
+        if self._merchant_rules_has_pending_or_active_work():
+            return False
+        self._clear_loaded_profile_provenance("multibox synchronization")
+        try:
+            return self.reload_profile_from_disk(
+                status_message="Merchant Rules live config reloaded by multibox sync.",
+                preserve_window_geometry=bool(preserve_workspace_state),
+            )
+        except TypeError as exc:
+            if "preserve_window_geometry" not in str(exc):
+                raise
+            return self.reload_profile_from_disk(
+                status_message="Merchant Rules live config reloaded by multibox sync.",
+                preserve_workspace_state=bool(preserve_workspace_state),
+            )
+
+    def _request_multibox_profile_reload(
+        self,
+        *,
+        request_id: str = "",
+        sender_email: str = "",
+        receiver_email: str = "",
+    ) -> bool:
+        if self._merchant_rules_has_pending_or_active_work():
+            self.pending_multibox_profile_reload = (
+                str(request_id or ""),
+                str(sender_email or ""),
+                str(receiver_email or ""),
+            )
+            return False
+        self.pending_multibox_profile_reload = None
+        return bool(self._apply_multibox_profile_reload(preserve_workspace_state=False))
+
+    def _apply_pending_multibox_profile_reload_if_idle(self) -> bool:
+        pending_reload = self.pending_multibox_profile_reload
+        if pending_reload is None or self._merchant_rules_has_pending_or_active_work(include_pending_reload=False):
+            return False
+        if pending_reload in self._merchant_rules_staged_multibox_reload_requests:
+            return False
+
+        self.pending_multibox_profile_reload = None
+        request_id, sender_email, receiver_email = pending_reload
+        try:
+            applied = bool(self._apply_multibox_profile_reload(preserve_workspace_state=True))
+            if applied:
+                self._debug_log(
+                    "Deferred Merchant Rules multibox profile reload applied: "
+                    f"sender={sender_email or '<missing>'} receiver={receiver_email or '<missing>'} "
+                    f"request_id={request_id or '<missing>'}"
+                )
+            return applied
+        except Exception as exc:
+            self.profile_warning = f"Merchant Rules could not load the synced profile: {exc}"
+            self.status_message = self.profile_warning
+            ConsoleLog(MODULE_NAME, self.profile_warning, Console.MessageType.Error)
+            return False
+
     def _tick_runtime(self):
         self._ensure_initialized()
+        self._update_service_resolution_lifecycle()
+        self._apply_pending_multibox_profile_reload_if_idle()
         if self.inventory_shortcuts_material_storage_count_cache_captured_at_ms > 0 and not self._is_storage_open():
             self._clear_inventory_shortcut_material_storage_count_cache("storage closed")
         self._advance_multibox_batch()
+        self._update_manual_gold_session_runtime()
         self._update_manual_vendor_runtime()
         self._update_identify_runtime()
         self._update_auto_cleanup_runtime()
+        self._update_auto_gold_runtime()
         self._update_salvage_runtime()
         self._update_instant_destroy_runtime()
 
@@ -10009,12 +11206,76 @@ class MerchantRulesWidget:
             PyImGui.end()
             return False
         return True
+    @staticmethod
+    def _build_default_profile_payload(
+        *,
+        include_rule_templates: bool,
+    ) -> dict[str, object]:
+        """Build a fresh current payload without reading or changing live settings."""
+
+        return {
+            "version": PROFILE_VERSION,
+            "auto_cleanup_on_outpost_entry": False,
+            "gold_balance_enabled": False,
+            "gold_balance_on_outpost_entry": False,
+            "gold_balance_after_mr_trading": False,
+            "gold_balance_after_manual_session": False,
+            "target_carried_gold": DEFAULT_TARGET_CARRIED_GOLD,
+            "auto_sell_on_manual_vendor_interaction": False,
+            "auto_buy_on_manual_vendor_interaction": False,
+            "manual_vendor_auto_buy_categories": _default_manual_vendor_category_flags(
+                MANUAL_VENDOR_BUY_CATEGORY_KINDS
+            ),
+            "manual_vendor_auto_sell_categories": _default_manual_vendor_category_flags(
+                MANUAL_VENDOR_SELL_CATEGORY_KINDS
+            ),
+            "auto_sell_to_any_merchant": False,
+            "auto_sell_any_merchant_normal_items": False,
+            "auto_sell_any_merchant_materials": False,
+            "auto_sell_any_merchant_runes": False,
+            "inventory_right_click_shortcuts_enabled": False,
+            "inventory_right_click_live_actions_enabled": False,
+            "destroy_auto_enabled": False,
+            "auto_travel_enabled": False,
+            "target_outpost_id": 0,
+            "favorite_outpost_ids": [],
+            "debug_logging": False,
+            "helper_tooltips_enabled": HELPER_TOOLTIPS_ENABLED_DEFAULT,
+            "detailed_preview": False,
+            "buy_rules": (
+                [asdict(rule) for rule in _default_buy_rules()]
+                if include_rule_templates
+                else []
+            ),
+            "sell_rules": (
+                [asdict(rule) for rule in _default_sell_rules()]
+                if include_rule_templates
+                else []
+            ),
+            "destroy_rules": (
+                [asdict(rule) for rule in _default_destroy_rules()]
+                if include_rule_templates
+                else []
+            ),
+            "identify_settings": _serialize_identify_settings(IdentifySettings()),
+            "salvage_settings": _serialize_salvage_settings(SalvageSettings()),
+            "cleanup_targets": [],
+            "cleanup_blacklist_model_ids": [],
+            "cleanup_protection_sources": [],
+            "protected_item_model_ids": [],
+        }
+
     def _build_profile_payload(self) -> dict[str, object]:
-        """Serialize current settings into a normalized profile-v36 payload."""
+        """Serialize current settings into a normalized profile-v39 payload."""
 
         payload = {
             "version": PROFILE_VERSION,
             "auto_cleanup_on_outpost_entry": bool(self.auto_cleanup_on_outpost_entry),
+            "gold_balance_enabled": bool(self.gold_balance_enabled),
+            "gold_balance_on_outpost_entry": bool(self.gold_balance_on_outpost_entry),
+            "gold_balance_after_mr_trading": bool(self.gold_balance_after_mr_trading),
+            "gold_balance_after_manual_session": bool(self.gold_balance_after_manual_session),
+            "target_carried_gold": _normalize_gold_target(self.target_carried_gold),
             "auto_sell_on_manual_vendor_interaction": bool(self.auto_sell_on_manual_vendor_interaction),
             "auto_buy_on_manual_vendor_interaction": bool(self.auto_buy_on_manual_vendor_interaction),
             "manual_vendor_auto_buy_categories": _normalize_manual_vendor_category_flags(
@@ -10278,6 +11539,13 @@ class MerchantRulesWidget:
         return {
             "version": PROFILE_VERSION,
             "auto_cleanup_on_outpost_entry": bool(raw_payload.get("auto_cleanup_on_outpost_entry", False)),
+            "gold_balance_enabled": bool(raw_payload.get("gold_balance_enabled", False)),
+            "gold_balance_on_outpost_entry": bool(raw_payload.get("gold_balance_on_outpost_entry", False)),
+            "gold_balance_after_mr_trading": bool(raw_payload.get("gold_balance_after_mr_trading", False)),
+            "gold_balance_after_manual_session": bool(raw_payload.get("gold_balance_after_manual_session", False)),
+            "target_carried_gold": _normalize_gold_target(
+                raw_payload.get("target_carried_gold", DEFAULT_TARGET_CARRIED_GOLD)
+            ),
             "auto_sell_on_manual_vendor_interaction": bool(raw_payload.get("auto_sell_on_manual_vendor_interaction", False)),
             "auto_buy_on_manual_vendor_interaction": bool(raw_payload.get("auto_buy_on_manual_vendor_interaction", False)),
             "manual_vendor_auto_buy_categories": manual_vendor_auto_buy_categories,
@@ -10315,6 +11583,7 @@ class MerchantRulesWidget:
     def _apply_profile_payload(self, payload: dict[str, object]):
         """Replace in-memory rules and settings from an already normalized profile payload."""
 
+        previous_cleanup_targets = self.cleanup_targets
         self.buy_rules = [
             BuyRule(
                 enabled=bool(entry.get("enabled", False)),
@@ -10393,6 +11662,13 @@ class MerchantRulesWidget:
             _coerce_list(payload.get("protected_item_model_ids", []))
         )
         self.auto_cleanup_on_outpost_entry = bool(payload.get("auto_cleanup_on_outpost_entry", False))
+        self.gold_balance_enabled = bool(payload.get("gold_balance_enabled", False))
+        self.gold_balance_on_outpost_entry = bool(payload.get("gold_balance_on_outpost_entry", False))
+        self.gold_balance_after_mr_trading = bool(payload.get("gold_balance_after_mr_trading", False))
+        self.gold_balance_after_manual_session = bool(payload.get("gold_balance_after_manual_session", False))
+        self.target_carried_gold = _normalize_gold_target(
+            payload.get("target_carried_gold", DEFAULT_TARGET_CARRIED_GOLD)
+        )
         self.auto_sell_on_manual_vendor_interaction = bool(payload.get("auto_sell_on_manual_vendor_interaction", False))
         self.auto_buy_on_manual_vendor_interaction = bool(payload.get("auto_buy_on_manual_vendor_interaction", False))
         self.manual_vendor_auto_buy_categories = _normalize_manual_vendor_category_flags(
@@ -10431,6 +11707,9 @@ class MerchantRulesWidget:
         self.cleanup_blacklist_model_ids = _normalize_cleanup_blacklist_model_ids(self.cleanup_blacklist_model_ids)
         self.cleanup_protection_sources = _normalize_cleanup_protection_sources(self.cleanup_protection_sources)
         self.protected_item_model_ids = _normalize_protected_item_model_ids(self.protected_item_model_ids)
+        if self.cleanup_targets != previous_cleanup_targets:
+            self._cleanup_targets_revision += 1
+        self._invalidate_cleanup_target_display_cache()
         self.outpost_search_text = ""
         self.cleanup_model_search_text = ""
         self.cleanup_target_list_search_text = ""
@@ -10455,9 +11734,10 @@ class MerchantRulesWidget:
         return "SHARED" if scope == PROFILE_SCOPE_SHARED else "ACCOUNT"
 
     def _get_profiles_dir(self, scope: str) -> str:
-        doc = self._profile_doc(scope)
-        doc_path = doc.path()
-        return os.path.dirname(doc_path) if doc_path else doc.resolved_path()
+        try:
+            return self._ensure_profiles_dir(scope, create=True)
+        except Exception:
+            return ""
 
     def _build_shareable_profile_payload(self) -> dict[str, object]:
         return self._normalize_profile_payload(self._build_profile_payload())
@@ -10591,6 +11871,7 @@ class MerchantRulesWidget:
         self,
         display_name: str,
         *,
+        profile_id: str | None = None,
         payload: dict[str, object] | None = None,
         saved_at_unix_ms: int | None = None,
         saved_at_label: str | None = None,
@@ -10603,6 +11884,7 @@ class MerchantRulesWidget:
         return self._profile_store.build_shared_profile_wrapper(
             display_name,
             source_payload,
+            profile_id=profile_id,
             saved_at_unix_ms=saved_at_unix_ms,
             saved_at_label=saved_at_label,
             payload_is_normalized=payload is None,
@@ -10613,10 +11895,12 @@ class MerchantRulesWidget:
         raw_payload: object,
         *,
         fallback_name: str = "",
+        require_profile_id: bool = False,
     ) -> dict[str, object]:
         return self._profile_store.normalize_shared_profile_wrapper(
             raw_payload,
             fallback_name=fallback_name,
+            require_profile_id=require_profile_id,
         )
 
     def _load_profile_summary_from_key(
@@ -10624,11 +11908,14 @@ class MerchantRulesWidget:
         scope: str,
         profile_key: str,
         raw_payload: object,
+        *,
+        filename: str = "",
     ) -> ProfileSummary:
         return self._profile_store.load_profile_summary_from_key(
             scope,
             profile_key,
             raw_payload,
+            filename=filename,
         )
 
     def _get_saved_profile_read_error_text(self, exc: Exception) -> str:
@@ -10649,6 +11936,18 @@ class MerchantRulesWidget:
             details.append(f"{type(current).__name__}: {current}")
             current = current.__cause__
         return " <- ".join(details)
+
+    def _get_saved_profile_raw_fingerprint(self, raw_payload: object) -> str:
+        if isinstance(raw_payload, dict):
+            try:
+                return self._saved_profile_wrapper_fingerprint(raw_payload)
+            except Exception:
+                pass
+        try:
+            raw_text = f"{type(raw_payload).__name__}:{raw_payload!r}"
+        except Exception:
+            raw_text = type(raw_payload).__name__
+        return md5(raw_text.encode("utf-8", errors="backslashreplace")).hexdigest()
 
     def _get_profile_by_identity(
         self,
@@ -10677,6 +11976,8 @@ class MerchantRulesWidget:
         if selection_changed:
             self._clear_profile_confirmation_state()
         self.profile_selected_identities[scope] = next_identity
+        if safe_key:
+            self.profile_selection_cleared_due_to_disappearance[scope] = False
         selected_profile = self._get_selected_profile(scope)
         if selected_profile is not None and (
             selection_changed or not self.profile_name_input_dirty[scope]
@@ -10759,13 +12060,288 @@ class MerchantRulesWidget:
         return normalized_name
 
     def _new_profile_key(self, doc: JsonFactory) -> str:
-        """Allocate an opaque, display-name-independent root key."""
+        """Compatibility alias for the standalone opaque profile ID allocator."""
 
-        for _attempt in range(8):
-            profile_key = f"profile_{uuid4().hex}"
-            if not doc.has(profile_key):
-                return profile_key
-        raise RuntimeError("Merchant Rules could not create a new profile entry.")
+        del doc
+        return new_profile_id()
+
+    def _load_profile_migration_state(
+        self,
+        scope: str,
+    ) -> tuple[JsonFactory, dict[str, object]]:
+        doc = self._profile_migration_doc(scope)
+        raw_state = doc.get_json("", None)
+        if raw_state in (None, {}):
+            return doc, {
+                "schema": PROFILE_MIGRATION_SCHEMA,
+                "schema_version": PROFILE_MIGRATION_SCHEMA_VERSION,
+                "complete": False,
+                "entries": {},
+            }
+        if not isinstance(raw_state, dict):
+            raise ValueError("Merchant Rules profile migration state is malformed.")
+        schema = str(raw_state.get("schema", "") or "").strip()
+        if schema != PROFILE_MIGRATION_SCHEMA:
+            raise ValueError("Merchant Rules profile migration state is unsupported.")
+        schema_version = _safe_int(raw_state.get("schema_version", 0), 0)
+        if schema_version > PROFILE_MIGRATION_SCHEMA_VERSION:
+            raise ValueError("Merchant Rules profile migration state is newer than this version.")
+        entries = raw_state.get("entries", {})
+        if not isinstance(entries, dict):
+            raise ValueError("Merchant Rules profile migration state is malformed.")
+        return doc, {
+            "schema": PROFILE_MIGRATION_SCHEMA,
+            "schema_version": PROFILE_MIGRATION_SCHEMA_VERSION,
+            "complete": bool(raw_state.get("complete", False)),
+            "entries": dict(entries),
+        }
+
+    @staticmethod
+    def _migration_state_error_text(entry: object) -> str:
+        if not isinstance(entry, dict):
+            return "A legacy profile could not be migrated."
+        error = str(entry.get("error", "") or "").strip()
+        return error or "A legacy profile could not be migrated."
+
+    def _save_profile_migration_state(
+        self,
+        doc: JsonFactory,
+        state: dict[str, object],
+    ) -> None:
+        doc.set_json("", state)
+        if not doc.save():
+            doc.reload()
+            raise OSError("Merchant Rules could not save profile migration progress.")
+        if not doc.reload():
+            raise OSError("Merchant Rules could not verify profile migration progress.")
+        if doc.get_json("", None) != state:
+            raise RuntimeError("Merchant Rules profile migration progress failed verification.")
+
+    def _remap_migrated_account_provenance(
+        self,
+        legacy_key: str,
+        profile_id: str,
+    ) -> str:
+        """Update one valid legacy Account provenance key without touching unrelated state."""
+
+        doc = self._loaded_profile_state_doc()
+        raw_state = doc.get_json("", None)
+        if raw_state in (None, {}):
+            return ""
+        if not isinstance(raw_state, dict):
+            return ""
+        try:
+            provenance = self._normalize_loaded_profile_provenance(raw_state)
+        except Exception:
+            return ""
+        if provenance.source_identity != ProfileIdentity(PROFILE_SCOPE_ACCOUNT, legacy_key):
+            return ""
+
+        remapped_state = dict(raw_state)
+        remapped_state["source_key"] = profile_id
+        try:
+            doc.set_json("", remapped_state)
+            if not doc.save():
+                doc.reload()
+                return "Merchant Rules could not update the last-loaded Account profile record during migration."
+            if not doc.reload():
+                return "Merchant Rules could not verify the last-loaded Account profile record during migration."
+            verified = self._normalize_loaded_profile_provenance(doc.get_json("", None))
+            if verified.source_identity != ProfileIdentity(PROFILE_SCOPE_ACCOUNT, profile_id):
+                return "Merchant Rules could not verify the migrated Account profile provenance."
+            self.loaded_profile_provenance = verified
+            self.active_profile_display_name = (
+                f"[{self._profile_scope_badge(verified.source_identity.scope)}] "
+                f"{verified.display_name_snapshot}"
+            )
+            return ""
+        except Exception as exc:
+            try:
+                doc.reload()
+            except Exception:
+                pass
+            return f"Merchant Rules could not update the last-loaded Account profile record during migration: {exc}"
+
+    def _migrate_legacy_profiles(self, scope: str) -> list[str]:
+        """Copy legacy bundled entries to standalone files without changing the source document."""
+
+        if scope in self._profile_migration_in_progress:
+            return []
+        if not self._ensure_profiles_dir(scope, create=True):
+            return []
+
+        migration_doc, state = self._load_profile_migration_state(scope)
+        raw_entries = state.get("entries", {})
+        if not isinstance(raw_entries, dict):
+            raise ValueError("Merchant Rules profile migration state is malformed.")
+        if bool(state.get("complete", False)) and not any(
+            isinstance(entry, dict)
+            and str(entry.get("status", "") or "") == "pending"
+            for entry in raw_entries.values()
+        ):
+            return [
+                self._migration_state_error_text(entry)
+                for entry in raw_entries.values()
+                if isinstance(entry, dict) and str(entry.get("status", "") or "") in {"invalid", "conflict"}
+            ]
+        state["complete"] = False
+
+        legacy_root = self._profile_doc(scope).get_json("", None)
+        if legacy_root in (None, {}):
+            return []
+        if not isinstance(legacy_root, dict):
+            state["complete"] = True
+            state["entries"] = raw_entries
+            self._save_profile_migration_state(migration_doc, state)
+            return ["The old Merchant Rules profile collection is not a JSON object."]
+
+        warnings: list[str] = []
+        self._profile_migration_in_progress.add(scope)
+        try:
+            for raw_key, raw_entry in legacy_root.items():
+                legacy_key = str(raw_key or "").strip()
+                if not legacy_key:
+                    warnings.append("A legacy Merchant Rules profile had no saved key and was skipped.")
+                    continue
+                source_fingerprint = self._get_saved_profile_raw_fingerprint(raw_entry)
+                existing_record = raw_entries.get(legacy_key)
+                if isinstance(existing_record, dict):
+                    existing_status = str(existing_record.get("status", "") or "")
+                    if existing_status == "migrated":
+                        continue
+                    if (
+                        existing_status in {"invalid", "conflict"}
+                        and str(existing_record.get("source_fingerprint", "") or "") == source_fingerprint
+                    ):
+                        warnings.append(self._migration_state_error_text(existing_record))
+                        continue
+
+                try:
+                    previous_profile_id = (
+                        str(existing_record.get("profile_id", "") or "")
+                        if isinstance(existing_record, dict)
+                        else ""
+                    )
+                    if is_valid_profile_id(previous_profile_id):
+                        profile_id = previous_profile_id
+                    elif scope == PROFILE_SCOPE_SHARED and is_valid_profile_id(legacy_key):
+                        profile_id = legacy_key
+                    else:
+                        profile_id = new_profile_id()
+
+                    migrated_wrapper = self._profile_store.build_migrated_profile_wrapper(
+                        raw_entry,
+                        profile_id=profile_id,
+                        fallback_name=legacy_key,
+                    )
+
+                    previous_filename = (
+                        str(existing_record.get("filename", "") or "")
+                        if isinstance(existing_record, dict)
+                        else ""
+                    )
+                    if previous_filename:
+                        filename = self._validate_profile_filename(previous_filename)
+                    else:
+                        filename = self._allocate_profile_filename(
+                            scope,
+                            str(migrated_wrapper.get("name", legacy_key) or legacy_key),
+                        )
+
+                    pending_record = {
+                        "profile_id": profile_id,
+                        "filename": filename,
+                        "source_fingerprint": source_fingerprint,
+                        "status": "pending",
+                    }
+                    raw_entries[legacy_key] = pending_record
+                    state["entries"] = raw_entries
+                    # Account mappings are durable before the first target write; this is also
+                    # what makes a crash between allocation and creation resumable.
+                    self._save_profile_migration_state(migration_doc, state)
+
+                    expected = self._load_profile_summary_from_key(
+                        scope,
+                        profile_id,
+                        migrated_wrapper,
+                        filename=filename,
+                    )
+                    target_exists = self._is_profile_file_present(scope, filename)
+                    if target_exists:
+                        target_doc = self._profile_file_doc(scope, filename)
+                        if not target_doc.reload() or not self._is_profile_file_present(scope, filename):
+                            raise RuntimeError("The migrated profile file disappeared during verification.")
+                        observed = self._load_profile_summary_from_key(
+                            scope,
+                            profile_id,
+                            target_doc.get_json("", None),
+                            filename=filename,
+                        )
+                        if observed.fingerprint != expected.fingerprint:
+                            raise RuntimeError(
+                                f"The target file {filename!r} already contains different profile data."
+                            )
+                    else:
+                        self._persist_profile_wrapper(
+                            scope,
+                            profile_id,
+                            migrated_wrapper,
+                            filename=filename,
+                            preserve_wrapper=True,
+                            refresh_after=False,
+                        )
+
+                    if scope == PROFILE_SCOPE_ACCOUNT:
+                        provenance_warning = self._remap_migrated_account_provenance(
+                            legacy_key,
+                            profile_id,
+                        )
+                        if provenance_warning:
+                            warnings.append(provenance_warning)
+                            pending_record["status"] = "pending"
+                            pending_record["error"] = provenance_warning
+                            state["complete"] = False
+                            state["entries"] = raw_entries
+                            self._save_profile_migration_state(migration_doc, state)
+                            continue
+
+                    pending_record["status"] = "migrated"
+                    pending_record.pop("error", None)
+                    state["entries"] = raw_entries
+                    self._save_profile_migration_state(migration_doc, state)
+                except Exception as exc:
+                    error_text = f"Legacy profile {legacy_key!r} was not migrated: {exc}"
+                    record = raw_entries.get(legacy_key)
+                    if not isinstance(record, dict):
+                        record = {
+                            "source_fingerprint": source_fingerprint,
+                        }
+                        raw_entries[legacy_key] = record
+                    if "different profile data" in str(exc):
+                        record["status"] = "conflict"
+                    elif isinstance(exc, ValueError):
+                        record["status"] = "invalid"
+                    else:
+                        record["status"] = "pending"
+                    record["source_fingerprint"] = source_fingerprint
+                    record["error"] = error_text
+                    state["entries"] = raw_entries
+                    try:
+                        self._save_profile_migration_state(migration_doc, state)
+                    except Exception as state_exc:
+                        warnings.append(f"{error_text} Migration progress could not be saved: {state_exc}")
+                    warnings.append(error_text)
+
+            state["complete"] = all(
+                isinstance(entry, dict)
+                and str(entry.get("status", "") or "") in {"migrated", "invalid", "conflict"}
+                for entry in raw_entries.values()
+            )
+            state["entries"] = raw_entries
+            self._save_profile_migration_state(migration_doc, state)
+        finally:
+            self._profile_migration_in_progress.discard(scope)
+        return warnings
 
     def _refresh_profile_entries(
         self,
@@ -10774,70 +12350,138 @@ class MerchantRulesWidget:
         reload_document: bool = False,
         report_reload_failure: bool = True,
     ) -> bool:
-        """Refresh one scope while retaining readable entries and exact-key selection."""
+        """Refresh standalone profile files while retaining exact identity selection."""
 
-        doc = self._profile_doc(scope)
-        previous_entries = list(self.profile_entries[scope])
+        if scope not in PROFILE_SCOPES:
+            return False
         previous_identity = self.profile_selected_identities.get(scope)
         previous_selected = self._get_profile_by_identity(previous_identity)
         previous_fingerprint = previous_selected.fingerprint if previous_selected is not None else ""
 
-        if reload_document and not doc.reload():
+        if scope == PROFILE_SCOPE_ACCOUNT and not self._profile_directory_from_bound_doc(scope):
+            self.profile_entries[scope] = []
+            self.profile_entries_loaded[scope] = False
+            self.profile_known_filenames[scope].clear()
+            self.profile_scan_conflicts[scope].clear()
+            self.saved_profile_failure_signatures[scope].clear()
+            self.profile_selected_identities[scope] = None
+            self.profile_name_inputs[scope] = ""
+            self.profile_name_input_dirty[scope] = False
+            self._clear_profile_confirmation_state()
+            return False
+
+        try:
+            migration_warnings = self._migrate_legacy_profiles(scope)
+            filenames = self._enumerate_profile_filenames(scope)
+        except Exception as exc:
             self.profile_document_reload_failed[scope] = True
             self.profile_entries_loaded[scope] = True
             if report_reload_failure:
-                if scope == PROFILE_SCOPE_SHARED and not previous_entries:
-                    self.saved_profile_scan_warnings[scope] = (
-                        "Shared profiles are not available yet or could not be refreshed. "
-                        "Saving the first Shared profile will create the list."
-                    )
-                else:
-                    self.saved_profile_scan_warnings[scope] = (
-                        f"Could not refresh {self._profile_scope_label(scope)}. "
-                        "Showing the last profile list Merchant Rules could read."
-                    )
+                self.saved_profile_scan_warnings[scope] = (
+                    f"Could not refresh {self._profile_scope_label(scope)}. "
+                    "Showing the last profile list Merchant Rules could read."
+                )
+            ConsoleLog(
+                MODULE_NAME,
+                f"Could not enumerate {scope} Merchant Rules profile files: {self._format_exception_chain_for_log(exc)}",
+                Console.MessageType.Warning,
+            )
             return False
-        if reload_document:
-            self.profile_document_reload_failed[scope] = False
 
         entries: list[ProfileSummary] = []
         load_failures: list[str] = []
+        previous_failure_signatures = self.saved_profile_failure_signatures[scope]
+        current_failure_signatures: dict[str, tuple[str, str]] = {}
+        previous_known_filenames = set(self.profile_known_filenames[scope])
+        self.profile_known_filenames[scope] = set(filenames)
 
-        for profile_key in doc.keys(""):
-            safe_key = str(profile_key)
+        for filename in filenames:
+            raw_payload: object = None
             try:
+                profile_doc = self._profile_file_doc(scope, filename)
+                if reload_document or filename not in previous_known_filenames:
+                    if not profile_doc.reload():
+                        raise OSError("Merchant Rules could not reload this profile file.")
+                if not self._is_profile_file_present(scope, filename):
+                    raise FileNotFoundError("The profile file disappeared during refresh.")
+                raw_payload = profile_doc.get_json("", None)
+                if not isinstance(raw_payload, dict):
+                    raise ValueError("This saved profile is incomplete or damaged.")
+                normalized_wrapper = self._normalize_shared_profile_wrapper(
+                    raw_payload,
+                    require_profile_id=True,
+                )
+                profile_id = str(normalized_wrapper.get("profile_id", "") or "").strip()
                 summary = self._load_profile_summary_from_key(
                     scope,
-                    safe_key,
-                    doc.get_json(safe_key, {}),
+                    profile_id,
+                    raw_payload,
+                    filename=filename,
                 )
                 entries.append(summary)
             except Exception as exc:
-                load_failures.append(self._get_saved_profile_read_error_text(exc))
-                ConsoleLog(
-                    MODULE_NAME,
-                    (
-                        f"Could not read [{self._profile_scope_badge(scope)}] saved profile "
-                        f"key {safe_key!r}: {self._format_exception_chain_for_log(exc)}"
-                    ),
-                    Console.MessageType.Warning,
+                failure_text = self._format_exception_chain_for_log(exc)
+                failure_signature = (
+                    self._get_saved_profile_raw_fingerprint(raw_payload),
+                    failure_text,
                 )
+                current_failure_signatures[filename] = failure_signature
+                load_failures.append(self._get_saved_profile_read_error_text(exc))
+                if previous_failure_signatures.get(filename) != failure_signature:
+                    ConsoleLog(
+                        MODULE_NAME,
+                        (
+                            f"Could not read [{self._profile_scope_badge(scope)}] saved profile "
+                            f"file {filename!r}: {failure_text}"
+                        ),
+                        Console.MessageType.Warning,
+                    )
 
-        entries.sort(
+        duplicate_warnings: dict[str, str] = {}
+        unique_entries: list[ProfileSummary] = []
+        entries_by_identity: dict[str, ProfileSummary | None] = {}
+        for entry in entries:
+            profile_id = entry.key
+            previous_entry = entries_by_identity.get(profile_id)
+            if previous_entry is None and profile_id not in entries_by_identity:
+                entries_by_identity[profile_id] = entry
+                unique_entries.append(entry)
+                continue
+            if previous_entry is None:
+                continue
+            if previous_entry.serialized_payload == entry.serialized_payload:
+                duplicate_warnings[entry.filename] = (
+                    f"Profile ID {profile_id} appears in {previous_entry.filename!r} and "
+                    f"{entry.filename!r}; only {previous_entry.filename!r} is shown."
+                )
+                continue
+            unique_entries = [candidate for candidate in unique_entries if candidate.key != profile_id]
+            entries_by_identity[profile_id] = None
+            duplicate_warnings[previous_entry.filename] = (
+                f"Profile ID {profile_id} has conflicting contents in {previous_entry.filename!r} "
+                f"and {entry.filename!r}; neither file is available until the conflict is resolved."
+            )
+            duplicate_warnings[entry.filename] = duplicate_warnings[previous_entry.filename]
+
+        unique_entries.sort(
             key=lambda entry: (
                 str(entry.display_name).casefold(),
-                str(entry.key).casefold(),
+                str(entry.filename).casefold(),
             )
         )
-        self.profile_entries[scope] = entries
+        self.profile_entries[scope] = unique_entries
         self.profile_entries_loaded[scope] = True
+        self.saved_profile_failure_signatures[scope] = current_failure_signatures
+        self.profile_scan_conflicts[scope] = duplicate_warnings
+        self.profile_document_reload_failed[scope] = False
 
-        if load_failures:
-            preview = " | ".join(load_failures[:3])
-            if len(load_failures) > 3:
-                preview = f"{preview} | ...and {len(load_failures) - 3} more."
+        all_warnings = [*migration_warnings, *load_failures, *duplicate_warnings.values()]
+        if all_warnings:
+            preview = " | ".join(all_warnings[:3])
+            if len(all_warnings) > 3:
+                preview = f"{preview} | ...and {len(all_warnings) - 3} more."
             self.saved_profile_scan_warnings[scope] = (
-                f"Some {self._profile_scope_badge(scope).title()} profiles could not be read: {preview}"
+                f"Some {self._profile_scope_badge(scope).title()} profile files need attention: {preview}"
             )
         else:
             self.saved_profile_scan_warnings[scope] = ""
@@ -10845,7 +12489,7 @@ class MerchantRulesWidget:
         matching_entry = next(
             (
                 entry
-                for entry in entries
+                for entry in unique_entries
                 if entry.identity == previous_identity
             ),
             None,
@@ -10854,8 +12498,13 @@ class MerchantRulesWidget:
             if previous_fingerprint and matching_entry.fingerprint != previous_fingerprint:
                 self._clear_profile_confirmation_state()
             self._set_selected_profile_key(scope, matching_entry.key)
-        elif entries:
-            self._set_selected_profile_key(scope, entries[0].key)
+            self.profile_selection_cleared_due_to_disappearance[scope] = False
+        elif previous_identity is not None:
+            self._clear_profile_confirmation_state()
+            self._set_selected_profile_key(scope, "")
+            self.profile_selection_cleared_due_to_disappearance[scope] = True
+        elif unique_entries and not self.profile_selection_cleared_due_to_disappearance[scope]:
+            self._set_selected_profile_key(scope, unique_entries[0].key)
         else:
             self._set_selected_profile_key(scope, "")
         return True
@@ -10875,16 +12524,61 @@ class MerchantRulesWidget:
         scope: str,
         profile_key: str,
         wrapper: dict[str, object],
+        *,
+        filename: str,
+        preserve_wrapper: bool = False,
+        refresh_after: bool = True,
+        require_existing: bool = False,
+        expected_existing_fingerprint: str = "",
     ) -> ProfileSummary:
-        """Save one exact key immediately, reload it, and verify its normalized wrapper."""
+        """Save one standalone file through JsonFactory and verify its exact identity."""
 
-        doc = self._profile_doc(scope)
-        expected_wrapper = self._normalize_shared_profile_wrapper(
-            wrapper,
-            fallback_name=profile_key,
-        )
-        expected_fingerprint = self._saved_profile_wrapper_fingerprint(expected_wrapper)
-        doc.set_json(profile_key, expected_wrapper)
+        safe_filename = self._validate_profile_filename(filename)
+        safe_profile_id = str(profile_key or "").strip()
+        if not is_valid_profile_id(safe_profile_id):
+            raise ValueError("The saved profile identity is invalid.")
+        if not preserve_wrapper:
+            expected_wrapper = self._normalize_shared_profile_wrapper(
+                wrapper,
+                require_profile_id=True,
+            )
+            if str(expected_wrapper.get("profile_id", "") or "").strip() != safe_profile_id:
+                raise ValueError("The saved profile identity does not match its destination.")
+            wrapper_to_write = expected_wrapper
+        else:
+            wrapper_to_write = wrapper
+            expected_wrapper = self._normalize_shared_profile_wrapper(
+                wrapper_to_write,
+                require_profile_id=True,
+            )
+            if str(expected_wrapper.get("profile_id", "") or "").strip() != safe_profile_id:
+                raise ValueError("The saved profile identity does not match its destination.")
+
+        profile_path = self._profile_file_path(scope, safe_filename)
+        path_exists = os.path.lexists(profile_path)
+        if path_exists and not self._is_profile_file_present(scope, safe_filename):
+            raise OSError("The selected profile path is not a regular profile file.")
+        if require_existing and not path_exists:
+            raise FileNotFoundError("The selected profile file disappeared; no file was recreated.")
+        if not require_existing and path_exists:
+            raise FileExistsError(
+                f"The profile filename {safe_filename!r} is already in use; no file was overwritten."
+            )
+        doc = self._profile_file_doc(scope, safe_filename)
+        if require_existing:
+            if not doc.reload() or not self._is_profile_file_present(scope, safe_filename):
+                raise FileNotFoundError("The selected profile file disappeared; no file was recreated.")
+            existing = self._load_profile_summary_from_key(
+                scope,
+                safe_profile_id,
+                doc.get_json("", None),
+                filename=safe_filename,
+            )
+            if expected_existing_fingerprint and existing.fingerprint != expected_existing_fingerprint:
+                raise RuntimeError(
+                    "The selected profile changed elsewhere. Review it and confirm the action again."
+                )
+        doc.set_json("", wrapper_to_write)
         if not doc.save():
             doc.reload()
             raise OSError(f"Merchant Rules could not save {self._profile_scope_label(scope)}.")
@@ -10893,39 +12587,33 @@ class MerchantRulesWidget:
                 f"The change was saved, but Merchant Rules could not verify "
                 f"{self._profile_scope_label(scope)}."
             )
+        if not self._is_profile_file_present(scope, safe_filename):
+            raise OSError("The profile file could not be found after saving.")
         verified = self._load_profile_summary_from_key(
             scope,
-            profile_key,
-            doc.get_json(profile_key, {}),
+            safe_profile_id,
+            doc.get_json("", None),
+            filename=safe_filename,
         )
-        if verified.fingerprint != expected_fingerprint:
+        expected = self._load_profile_summary_from_key(
+            scope,
+            safe_profile_id,
+            expected_wrapper,
+            filename=safe_filename,
+        )
+        if (
+            verified.fingerprint != expected.fingerprint
+            or verified.serialized_payload != expected.serialized_payload
+            or verified.display_name != expected.display_name
+        ):
             raise RuntimeError(
                 f"Merchant Rules could not verify the saved {self._profile_scope_badge(scope).title()} profile."
             )
         self.profile_document_reload_failed[scope] = False
-        self._refresh_profile_entries(scope)
+        self.profile_known_filenames[scope].add(safe_filename)
+        if refresh_after:
+            self._refresh_profile_entries(scope)
         return verified
-
-    def _persist_profile_delete(self, identity: ProfileIdentity):
-        """Delete one exact key immediately, reload, and verify absence."""
-
-        doc = self._profile_doc(identity.scope)
-        if not doc.delete(identity.key):
-            raise RuntimeError("The selected profile disappeared before it could be deleted.")
-        if not doc.save():
-            doc.reload()
-            raise OSError(
-                f"Merchant Rules could not save {self._profile_scope_label(identity.scope)}."
-            )
-        if not doc.reload():
-            raise OSError(
-                f"The profile was deleted, but Merchant Rules could not verify "
-                f"{self._profile_scope_label(identity.scope)} afterward."
-            )
-        if doc.has(identity.key):
-            raise RuntimeError("Merchant Rules could not verify that the profile was deleted.")
-        self.profile_document_reload_failed[identity.scope] = False
-        self._refresh_profile_entries(identity.scope)
 
     def _resolve_profile_for_action(
         self,
@@ -10936,18 +12624,23 @@ class MerchantRulesWidget:
     ) -> ProfileSummary:
         """Re-resolve an exact key and reject stale confirmed shared actions."""
 
-        if identity.scope == PROFILE_SCOPE_SHARED and reload_shared:
-            if not self._refresh_profile_entries(
-                PROFILE_SCOPE_SHARED,
-                reload_document=True,
-            ):
-                raise OSError("Shared profiles could not be refreshed, so no changes were made.")
-        else:
-            self._refresh_profile_entries(identity.scope)
+        if identity.scope not in PROFILE_SCOPES:
+            raise RuntimeError("The selected profile scope is invalid.")
+        refresh_succeeded = self._refresh_profile_entries(
+            identity.scope,
+            reload_document=(reload_shared or identity.scope == PROFILE_SCOPE_ACCOUNT),
+        )
+        if not refresh_succeeded:
+            raise OSError(
+                f"{self._profile_scope_label(identity.scope)} could not be refreshed, so no changes were made."
+            )
 
         current = self._get_profile_by_identity(identity)
         if current is None:
             raise RuntimeError("The selected profile changed or disappeared; review the refreshed list.")
+        if not current.filename or not self._is_profile_file_present(identity.scope, current.filename):
+            self._clear_profile_confirmation_state()
+            raise RuntimeError("The selected profile file disappeared; review the refreshed list.")
         if expected_fingerprint and current.fingerprint != expected_fingerprint:
             self._clear_profile_confirmation_state()
             raise RuntimeError(
@@ -10958,15 +12651,12 @@ class MerchantRulesWidget:
         return current
 
     def _prepare_scope_for_new_profile(self, scope: str):
-        if scope == PROFILE_SCOPE_SHARED:
-            refreshed = self._refresh_profile_entries(
-                scope,
-                reload_document=True,
-            )
-            if not refreshed and self.profile_entries[scope]:
-                raise OSError("Shared profiles could not be refreshed, so no changes were made.")
-        else:
-            self._refresh_profile_entries(scope)
+        refreshed = self._refresh_profile_entries(
+            scope,
+            reload_document=True,
+        )
+        if not refreshed:
+            raise OSError(f"{self._profile_scope_label(scope)} could not be refreshed, so no changes were made.")
 
     def _save_current_as_new_profile(self, scope: str):
         self._ensure_initialized()
@@ -10977,11 +12667,19 @@ class MerchantRulesWidget:
                 scope,
                 requested_profile_name,
             )
-            doc = self._profile_doc(scope)
-            profile_key = self._new_profile_key(doc)
-            wrapper = self._build_shared_profile_wrapper(profile_name)
-            self._persist_profile_wrapper(scope, profile_key, wrapper)
-            self._select_profile_after_action(scope, profile_key)
+            profile_id = new_profile_id()
+            filename = self._allocate_profile_filename(scope, profile_name)
+            wrapper = self._build_shared_profile_wrapper(
+                profile_name,
+                profile_id=profile_id,
+            )
+            self._persist_profile_wrapper(
+                scope,
+                profile_id,
+                wrapper,
+                filename=filename,
+            )
+            self._select_profile_after_action(scope, profile_id)
             self._clear_profile_confirmation_state()
             self._set_saved_profile_feedback(
                 scope,
@@ -10995,6 +12693,47 @@ class MerchantRulesWidget:
                 scope,
                 warning=(
                     f"Failed to save {self._profile_scope_badge(scope).title()} profile: {exc}"
+                ),
+            )
+
+    def _create_blank_profile(self, scope: str):
+        self._ensure_initialized()
+        requested_profile_name = self.profile_name_inputs[scope]
+        try:
+            self._prepare_scope_for_new_profile(scope)
+            profile_name = self._ensure_profile_name_available(
+                scope,
+                requested_profile_name,
+            )
+            profile_id = new_profile_id()
+            filename = self._allocate_profile_filename(scope, profile_name)
+            wrapper = self._build_shared_profile_wrapper(
+                profile_name,
+                profile_id=profile_id,
+                payload=self._build_default_profile_payload(
+                    include_rule_templates=False,
+                ),
+            )
+            self._persist_profile_wrapper(
+                scope,
+                profile_id,
+                wrapper,
+                filename=filename,
+            )
+            self._select_profile_after_action(scope, profile_id)
+            self._clear_profile_confirmation_state()
+            self._set_saved_profile_feedback(
+                scope,
+                notice=(
+                    f"Created blank {self._profile_scope_badge(scope).title()} profile "
+                    f"'{profile_name}'."
+                ),
+            )
+        except Exception as exc:
+            self._set_saved_profile_feedback(
+                scope,
+                warning=(
+                    f"Failed to create blank {self._profile_scope_badge(scope).title()} profile: {exc}"
                 ),
             )
 
@@ -11024,13 +12763,21 @@ class MerchantRulesWidget:
                 requested_profile_name,
                 exclude_key=current.key,
             )
-            wrapper = self._build_shared_profile_wrapper(
-                new_name,
-                payload=current.payload,
-                saved_at_unix_ms=current.saved_at_unix_ms,
-                saved_at_label=current.saved_at_label,
+            wrapper = self._profile_store.rename_profile_wrapper(
+                current.raw_wrapper,
+                profile_id=current.key,
+                display_name=new_name,
+                fallback_payload=current.payload,
             )
-            self._persist_profile_wrapper(scope, current.key, wrapper)
+            self._persist_profile_wrapper(
+                scope,
+                current.key,
+                wrapper,
+                filename=current.filename,
+                preserve_wrapper=True,
+                require_existing=True,
+                expected_existing_fingerprint=current.fingerprint,
+            )
             self._select_profile_after_action(scope, current.key)
             self.profile_name_inputs[scope] = new_name
             self.profile_name_input_dirty[scope] = False
@@ -11070,8 +12817,18 @@ class MerchantRulesWidget:
                 expected_fingerprint=expected_fingerprint,
                 reload_shared=True,
             )
-            wrapper = self._build_shared_profile_wrapper(current.display_name)
-            self._persist_profile_wrapper(scope, current.key, wrapper)
+            wrapper = self._build_shared_profile_wrapper(
+                current.display_name,
+                profile_id=current.key,
+            )
+            self._persist_profile_wrapper(
+                scope,
+                current.key,
+                wrapper,
+                filename=current.filename,
+                require_existing=True,
+                expected_existing_fingerprint=current.fingerprint,
+            )
             self._select_profile_after_action(scope, current.key)
             self._clear_profile_confirmation_state()
             self._set_saved_profile_feedback(
@@ -11094,6 +12851,8 @@ class MerchantRulesWidget:
         scope: str,
         expected_fingerprint: str = "",
     ):
+        if self._get_profile_application_block_message("loading another profile"):
+            return False
         self._ensure_initialized()
         selected_profile = self._get_selected_profile(scope)
         if selected_profile is None:
@@ -11185,43 +12944,6 @@ class MerchantRulesWidget:
             self.status_message = warning
             self._set_saved_profile_feedback(scope, warning=warning)
 
-    def _delete_selected_profile(
-        self,
-        scope: str,
-        expected_fingerprint: str = "",
-    ):
-        self._ensure_initialized()
-        selected_profile = self._get_selected_profile(scope)
-        if selected_profile is None:
-            self._set_saved_profile_feedback(
-                scope,
-                warning=f"Select a {self._profile_scope_badge(scope).title()} profile to delete.",
-            )
-            return
-
-        try:
-            current = self._resolve_profile_for_action(
-                selected_profile.identity,
-                expected_fingerprint=expected_fingerprint,
-                reload_shared=True,
-            )
-            self._persist_profile_delete(current.identity)
-            self._clear_profile_confirmation_state()
-            self._set_saved_profile_feedback(
-                scope,
-                notice=(
-                    f"Deleted {self._profile_scope_badge(scope).title()} profile "
-                    f"'{current.display_name}'."
-                ),
-            )
-        except Exception as exc:
-            self._set_saved_profile_feedback(
-                scope,
-                warning=(
-                    f"Failed to delete {self._profile_scope_badge(scope).title()} profile: {exc}"
-                ),
-            )
-
     def _copy_selected_profile_to_other_scope(
         self,
         source_scope: str,
@@ -11252,10 +12974,14 @@ class MerchantRulesWidget:
                 destination_scope,
                 current.display_name,
             )
-            destination_doc = self._profile_doc(destination_scope)
-            destination_key = self._new_profile_key(destination_doc)
+            destination_key = new_profile_id()
+            destination_filename = self._allocate_profile_filename(
+                destination_scope,
+                destination_name,
+            )
             destination_wrapper = self._build_shared_profile_wrapper(
                 destination_name,
+                profile_id=destination_key,
                 payload=current.payload,
                 saved_at_unix_ms=current.saved_at_unix_ms,
                 saved_at_label=current.saved_at_label,
@@ -11264,6 +12990,7 @@ class MerchantRulesWidget:
                 destination_scope,
                 destination_key,
                 destination_wrapper,
+                filename=destination_filename,
             )
             self._select_profile_after_action(
                 destination_scope,
@@ -11294,8 +13021,11 @@ class MerchantRulesWidget:
             )
 
     def _open_profiles_folder(self, scope: str) -> bool:
-        folder_path = self._get_profiles_dir(scope)
+        folder_path = ""
         try:
+            folder_path = self._get_profiles_dir(scope)
+            if not folder_path:
+                raise OSError("The Merchant Rules profiles folder is not available yet.")
             startfile = getattr(os, "startfile", None)
             if startfile is None:
                 raise OSError("Opening folders is not supported on this platform.")
@@ -11431,6 +13161,9 @@ class MerchantRulesWidget:
     def _restore_profile_from_backup(self) -> bool:
         """Restore the account-scoped last-known-good JsonFactory profile."""
 
+        if self._get_profile_application_block_message("restoring the backup"):
+            return False
+
         try:
             normalized_payload = self._get_backup_payload()
         except Exception as exc:
@@ -11464,7 +13197,7 @@ class MerchantRulesWidget:
                 preserve_workspace_state=True,
             )
             self.profile_warning = ""
-            self.profile_notice = "Restored live config from the account-scoped JsonFactory backup."
+            self.profile_notice = "Restored current settings from this account's backup."
             return True
         except Exception as exc:
             self.profile_warning = f"Failed to restore Merchant Rules live config backup: {exc}"
@@ -11499,6 +13232,11 @@ class MerchantRulesWidget:
         profile loads.
         """
 
+        self.merchant_rules_profile_generation = max(
+            0,
+            int(self.merchant_rules_profile_generation),
+        ) + 1
+        self._merchant_rules_generation_account_key = self._get_account_key()
         safe_profile_display_name = str(profile_display_name or "").strip()
         if safe_profile_display_name:
             self.active_profile_display_name = safe_profile_display_name
@@ -11513,11 +13251,16 @@ class MerchantRulesWidget:
         self.last_identify_summary = ""
         self.last_salvage_summary = ""
         self.last_manual_vendor_summary = ""
+        self.last_gold_balance_summary = ""
+        self.last_gold_balance_status = GOLD_BALANCE_STATUS_DISABLED
         self.destroy_instant_enabled = False
         self.destroy_include_protected_items = False
         self.auto_cleanup_running = False
         self.auto_cleanup_zone_attempted = False
         self.auto_cleanup_zone_token = ""
+        self.gold_balance_running = False
+        self.gold_entry_attempted = False
+        self.gold_entry_zone_token = ""
         self.cleanup_model_search_text = ""
         self.cleanup_target_list_search_text = ""
         self.cleanup_blacklist_search_text = ""
@@ -11543,6 +13286,13 @@ class MerchantRulesWidget:
         self.manual_vendor_running = False
         self.manual_vendor_handled_signature = ""
         self.manual_vendor_cooldown_until_ms = 0
+        self.merchant_session_open = False
+        self.merchant_session_mr_owned = False
+        self.merchant_session_starting_gold = None
+        self.merchant_session_id = 0
+        self.manual_session_close_retry = None
+        self.execution_currency_changing_work_completed = False
+        self.execution_completed_successfully = False
         self._clear_sell_protection_jump("runtime reset after profile load")
         self._clear_inventory_shortcut_material_storage_count_cache("runtime reset after profile load")
         self._clear_inventory_shortcut_xunlai_display_cache()
@@ -11551,6 +13301,7 @@ class MerchantRulesWidget:
         self.map_snapshot = int(Map.GetMapID() or 0) if self.map_ready_snapshot else 0
         self.map_instance_uptime_snapshot_ms = int(Map.GetInstanceUptime() or 0) if self.map_ready_snapshot else 0
         self._invalidate_supported_context_cache()
+        self._reset_service_resolution_lifecycle()
         if status_message:
             self.status_message = status_message
         if log_profile_load_summary:
@@ -11561,11 +13312,16 @@ class MerchantRulesWidget:
         *,
         status_message: str = "Merchant Rules live config reloaded from disk.",
         preserve_workspace_state: bool = False,
+        preserve_window_geometry: bool | None = None,
         profile_display_name: str = "",
         log_profile_load_summary: bool = True,
     ):
         """Reload the active profile and optionally preserve workspace state."""
 
+        if self._get_profile_application_block_message("reloading the active profile"):
+            return False
+        if preserve_window_geometry is not None:
+            preserve_workspace_state = bool(preserve_window_geometry)
         workspace_snapshot = self.active_workspace if preserve_workspace_state else ""
         rules_workspace_snapshot = self.active_rules_workspace if preserve_workspace_state else ""
         self._ensure_initialized()
@@ -11589,16 +13345,38 @@ class MerchantRulesWidget:
             self._load_outpost_entries()
 
         current_account = self._get_account_key()
+        if not current_account:
+            return
         account_changed = current_account != self.account_key
         if account_changed:
+            if self._merchant_rules_generation_account_key != current_account:
+                self.merchant_rules_profile_generation = max(
+                    0,
+                    int(self.merchant_rules_profile_generation),
+                ) + 1
+                self._merchant_rules_generation_account_key = current_account
+            if self._merchant_rules_has_pending_or_active_work():
+                self._debug_log("Deferred account profile application until Merchant Rules work is idle.")
+                return
             self.account_key = current_account
+            self.profile_entries[PROFILE_SCOPE_ACCOUNT] = []
             self.profile_entries_loaded[PROFILE_SCOPE_ACCOUNT] = False
+            self.profile_selection_cleared_due_to_disappearance[PROFILE_SCOPE_ACCOUNT] = False
+            self.profile_known_filenames[PROFILE_SCOPE_ACCOUNT].clear()
+            self.profile_scan_conflicts[PROFILE_SCOPE_ACCOUNT].clear()
+            self.saved_profile_failure_signatures[PROFILE_SCOPE_ACCOUNT].clear()
+            self.profile_selected_identities[PROFILE_SCOPE_ACCOUNT] = None
+            self.profile_name_inputs[PROFILE_SCOPE_ACCOUNT] = ""
+            self.profile_name_input_dirty[PROFILE_SCOPE_ACCOUNT] = False
 
         for scope in PROFILE_SCOPES:
             if not self.profile_entries_loaded[scope]:
                 self._refresh_profile_entries(scope)
 
         if not self.initialized or account_changed:
+            if self._merchant_rules_has_pending_or_active_work():
+                self._debug_log("Deferred initial or account profile application until Merchant Rules work is idle.")
+                return
             self.config_path = self._live_config_doc().resolved_path()
             self._load_profile()
             self._load_loaded_profile_provenance()
@@ -11631,8 +13409,15 @@ class MerchantRulesWidget:
                 self._clear_inventory_shortcut_material_storage_count_cache("map/session state changed")
                 self._clear_inventory_shortcut_xunlai_display_cache()
             self._invalidate_supported_context_cache()
+            self._reset_service_resolution_lifecycle()
             self.auto_cleanup_zone_attempted = False
             self.auto_cleanup_zone_token = (
+                f"{current_map_id}:{current_instance_uptime_ms}"
+                if current_map_ready
+                else ""
+            )
+            self.gold_entry_attempted = False
+            self.gold_entry_zone_token = (
                 f"{current_map_id}:{current_instance_uptime_ms}"
                 if current_map_ready
                 else ""
@@ -11667,6 +13452,7 @@ class MerchantRulesWidget:
         self.destroy_model_list_search_cache.clear()
         self.salvage_model_search_cache.clear()
         self.salvage_model_list_search_cache.clear()
+        self.salvage_common_material_search_cache.clear()
         self.salvage_weapon_mod_search_cache.clear()
         self.salvage_armor_upgrade_search_cache.clear()
         self.sell_model_search_cache.clear()
@@ -11680,148 +13466,36 @@ class MerchantRulesWidget:
         self.sell_weapon_mod_search_cache.clear()
         self.sell_rune_search_cache.clear()
 
+    def _get_catalog_loader(self) -> CatalogLoader:
+        return CatalogLoader(
+            catalog_path=CATALOG_PATH,
+            drop_data_path=DROP_DATA_PATH,
+            item_handling_path=ITEM_HANDLING_ITEMS_CATALOG_PATH,
+            runes_catalog_path=RUNES_CATALOG_PATH,
+            mod_db=MOD_DB,
+            mod_db_load_error=MOD_DB_LOAD_ERROR,
+            model_id_members=_iter_model_id_enum_members,
+            armor_upgrade_identity=_get_armor_upgrade_catalog_identity,
+            scroll_trader_stock_model_ids=frozenset(SCROLL_TRADER_STOCK_MODEL_IDS),
+        )
+
     def _load_modifier_catalogs(self):
-        self.weapon_mod_entries = []
-        self.rune_entries = []
-        self.armor_upgrade_entries = []
-        self.weapon_mod_names = {}
-        self.weapon_mod_generic_names = {}
-        self.weapon_mod_variant_names = {}
-        self.rune_names = {}
-
-        for identifier, weapon_mod in sorted(MOD_DB.weapon_mods.items(), key=lambda row: row[1].name.lower() or row[0].lower()):
-            display_name = str(weapon_mod.name or identifier).strip()
-            safe_identifier = str(identifier)
-            generic_label = (
-                f"{display_name} (all supported weapons)"
-                if _is_expandable_weapon_mod_type(weapon_mod)
-                else display_name
-            )
-            entry = {
-                "identifier": _make_weapon_mod_identifier_choice_key(safe_identifier),
-                "name": generic_label,
-                "base_identifier": safe_identifier,
-                "entry_kind": WEAPON_MOD_CHOICE_KIND_GENERIC,
-            }
-            self.weapon_mod_entries.append(entry)
-            self.weapon_mod_names[safe_identifier] = display_name
-            self.weapon_mod_generic_names[safe_identifier] = generic_label
-
-            if _is_expandable_weapon_mod_type(weapon_mod):
-                for target_item_type, component_kind in getattr(weapon_mod, "item_mods", {}).items():
-                    target_item_type_name = _normalize_weapon_mod_target_item_type(target_item_type)
-                    safe_component_kind = _normalize_weapon_mod_component_kind(component_kind)
-                    variant_key = _make_weapon_mod_variant_choice_key(
-                        safe_identifier,
-                        target_item_type_name,
-                        safe_component_kind,
-                    )
-                    if not variant_key:
-                        continue
-                    variant_label = _format_weapon_mod_variant_label(weapon_mod, safe_component_kind)
-                    self.weapon_mod_entries.append(
-                        {
-                            "identifier": variant_key,
-                            "name": variant_label,
-                            "base_identifier": safe_identifier,
-                            "entry_kind": WEAPON_MOD_CHOICE_KIND_VARIANT,
-                            "target_item_type": target_item_type_name,
-                            "component_kind": safe_component_kind,
-                        }
-                    )
-                    self.weapon_mod_variant_names[variant_key] = variant_label
-
-        for identifier, rune in sorted(MOD_DB.runes.items(), key=lambda row: row[1].name.lower() or row[0].lower()):
-            display_name = str(rune.name or identifier).strip()
-            entry = {"identifier": str(identifier), "name": display_name}
-            self.rune_entries.append(entry)
-            self.rune_names[str(identifier)] = display_name
-            armor_identity, _identity_error = _get_armor_upgrade_catalog_identity(identifier)
-            if armor_identity is not None:
-                self.armor_upgrade_entries.append(entry)
+        result = self._get_catalog_loader().load_modifier_catalogs()
+        self.weapon_mod_entries = result.weapon_mod_entries
+        self.rune_entries = result.rune_entries
+        self.armor_upgrade_entries = result.armor_upgrade_entries
+        self.weapon_mod_names = result.weapon_mod_names
+        self.weapon_mod_generic_names = result.weapon_mod_generic_names
+        self.weapon_mod_variant_names = result.weapon_mod_variant_names
+        self.rune_names = result.rune_names
 
     def _load_rune_buy_catalog(self):
-        self.rune_buy_entries = []
-        self.rune_buy_entries_by_identifier = {}
-        self.rune_buy_identifier_by_exact_label = {}
-        self.rune_buy_entries_by_profession = {}
-        self.rune_buy_professions = []
-
-        if not os.path.exists(RUNES_CATALOG_PATH):
-            raise FileNotFoundError(f"Rune catalog missing: {RUNES_CATALOG_PATH}")
-
-        with open(RUNES_CATALOG_PATH, "r", encoding="utf-8") as file:
-            raw_catalog = json.load(file)
-
-        if not isinstance(raw_catalog, dict):
-            raise ValueError("Rune catalog must be a JSON object.")
-
-        entries: list[dict[str, object]] = []
-        for raw_identifier, raw_entry in raw_catalog.items():
-            if not isinstance(raw_entry, dict):
-                continue
-            identifier = _normalize_rune_identifier(raw_entry.get("Identifier", raw_identifier))
-            if not identifier:
-                continue
-            names = raw_entry.get("Names", {})
-            if isinstance(names, dict):
-                display_name = str(names.get("English", identifier) or identifier).strip()
-            else:
-                display_name = identifier
-            profession = _normalize_rune_catalog_profession(raw_entry.get("Profession", "_None"))
-            rarity = str(raw_entry.get("Rarity", "") or "").strip()
-            mod_type = str(raw_entry.get("ModType", "") or "").strip()
-            vendor_value = max(0, _safe_int(raw_entry.get("VendorValue", 0), 0))
-            descriptions = raw_entry.get("Descriptions", {})
-            if isinstance(descriptions, dict):
-                english_description = str(descriptions.get("English", "") or "").strip()
-            else:
-                english_description = ""
-            english_description = _resolve_rune_description_template(english_description, raw_entry.get("Modifiers", []))
-            entry = {
-                "identifier": identifier,
-                "name": display_name,
-                "description": english_description,
-                "profession": profession,
-                "profession_label": _get_rune_profession_label(profession),
-                "rarity": rarity,
-                "mod_type": mod_type,
-                "kind_label": _get_rune_kind_label(mod_type),
-                "vendor_value": vendor_value,
-            }
-            entries.append(entry)
-
-        entries.sort(
-            key=lambda entry: (
-                str(entry.get("profession_label", "")).lower(),
-                _get_rune_kind_sort_key(entry.get("mod_type", "")),
-                _get_rune_rarity_sort_key(entry.get("rarity", "")),
-                str(entry.get("name", "")).lower(),
-                str(entry.get("identifier", "")).lower(),
-            )
-        )
-        grouped_entries: dict[str, list[dict[str, object]]] = {}
-        for entry in entries:
-            profession = str(entry.get("profession", "_None") or "_None")
-            grouped_entries.setdefault(profession, []).append(entry)
-
-        profession_order = sorted(
-            grouped_entries.keys(),
-            key=lambda profession: (
-                0 if profession == "_None" else 1,
-                _get_rune_profession_label(profession).lower(),
-            ),
-        )
-
-        self.rune_buy_entries = entries
-        self.rune_buy_entries_by_identifier = {
-            str(entry.get("identifier", "")).strip(): entry
-            for entry in entries
-            if str(entry.get("identifier", "")).strip()
-        }
-        self._rebuild_rune_exact_display_lookup()
-        self.rune_buy_entries_by_profession = grouped_entries
-        self.rune_buy_professions = profession_order
+        result = self._get_catalog_loader().load_rune_buy_catalog()
+        self.rune_buy_entries = result.rune_buy_entries
+        self.rune_buy_entries_by_identifier = result.rune_buy_entries_by_identifier
+        self.rune_buy_identifier_by_exact_label = result.rune_buy_identifier_by_exact_label
+        self.rune_buy_entries_by_profession = result.rune_buy_entries_by_profession
+        self.rune_buy_professions = result.rune_buy_professions
 
     def _debug_log(self, message: str):
         if not self.debug_logging:
@@ -11841,7 +13515,7 @@ class MerchantRulesWidget:
             return str(coords)
 
     def _get_catalog_alias_group_count(self) -> int:
-        return sum(1 for model_ids in self.catalog_alias_to_model_ids.values() if len(model_ids) > 1)
+        return CatalogLoader.get_catalog_alias_group_count(self.catalog_alias_to_model_ids)
 
     def _get_catalog_summary_text(self) -> str:
         final_models = int(self.catalog_stats.get("final_models", len(self.catalog_by_model_id)) or 0)
@@ -11946,29 +13620,60 @@ class MerchantRulesWidget:
         return True
 
     def _queue_execute_now(self):
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         self.execute_drift_requires_confirmation = False
-        GLOBAL_CACHE.Coroutines.append(self._execute_now())
+        self._queue_merchant_rules_owned_work(self._execute_now())
 
     def _queue_execute_here(self):
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         self.execute_drift_requires_confirmation = False
-        GLOBAL_CACHE.Coroutines.append(self._execute_now(local_only=True))
+        self._queue_merchant_rules_owned_work(self._execute_now(local_only=True))
 
-    def _queue_cleanup_now(self, *, auto_triggered: bool = False):
+    def _queue_cleanup_now(
+        self,
+        *,
+        auto_triggered: bool = False,
+        reset_values_before_start: tuple[tuple[str, object], ...] = (),
+    ):
         if self.auto_cleanup_running:
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         self.auto_cleanup_running = True
-        GLOBAL_CACHE.Coroutines.append(self._execute_cleanup_now(auto_triggered=auto_triggered))
+        if auto_triggered and not reset_values_before_start:
+            reset_values_before_start = (
+                ("auto_cleanup_zone_attempted", False),
+                ("auto_cleanup_zone_token", ""),
+            )
+        self._queue_merchant_rules_owned_work(
+            self._execute_cleanup_now(auto_triggered=auto_triggered),
+            reset_flags=("auto_cleanup_running",),
+            reset_values_before_start=reset_values_before_start,
+        )
 
-    def _queue_identify_now(self, *, auto_triggered: bool = False):
+    def _queue_identify_now(
+        self,
+        *,
+        auto_triggered: bool = False,
+        reset_values_before_start: tuple[tuple[str, object], ...] = (),
+    ):
         if self.identify_running:
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         self.identify_running = True
-        GLOBAL_CACHE.Coroutines.append(
+        if auto_triggered and not reset_values_before_start:
+            reset_values_before_start = (("identify_rescan_requested", True),)
+        self._queue_merchant_rules_owned_work(
             self._run_identify_pass(
                 auto_triggered=auto_triggered,
                 running_already_marked=True,
                 summary_subject="Auto Identify" if auto_triggered else "Identify",
-            )
+            ),
+            reset_flags=("identify_running",),
+            reset_values_before_start=reset_values_before_start,
         )
 
     def _request_execute_now(self):
@@ -12006,6 +13711,7 @@ class MerchantRulesWidget:
         self.catalog_by_model_id = {}
         self.catalog_alias_to_model_ids = {}
         self.catalog_alias_display_names = {}
+        self.common_salvage_model_ids_by_item_key = {}
         self.catalog_common_material_ids = []
         self.catalog_merchant_essentials = []
         self.catalog_rare_materials = []
@@ -12013,6 +13719,14 @@ class MerchantRulesWidget:
         self._load_catalog()
         self.status_message = "Catalog reloaded."
         self._log_catalog_summary("Catalog reloaded")
+
+    def _invalidate_cleanup_deposit_filter_targets_cache(self) -> None:
+        self._cleanup_deposit_filter_targets_cache_key = None
+        self._cleanup_deposit_filter_targets_cache = []
+
+    def _invalidate_cleanup_target_display_cache(self) -> None:
+        self._cleanup_target_display_cache_key = None
+        self._cleanup_target_display_cache = None
 
     def _invalidate_supported_context_cache(self):
         self.cached_context_map_id = -1
@@ -12028,29 +13742,17 @@ class MerchantRulesWidget:
         priority: int = 100,
         extra: dict[str, object] | None = None,
     ):
-        safe_model_id = max(0, _safe_int(model_id, 0))
-        safe_name = str(name or "").strip()
-        if safe_model_id <= 0 or not safe_name:
-            return
-
-        current = self.catalog_by_model_id.get(safe_model_id)
-        if current is not None and int(current.get("priority", 999)) <= priority:
-            return
-
-        entry: dict[str, object] = {
-            "model_id": safe_model_id,
-            "name": safe_name,
-            "item_type": str(item_type or "").strip(),
-            "material_type": str(material_type or "").strip(),
-            "source": source,
-            "priority": int(priority),
-        }
-        if extra:
-            for key, value in extra.items():
-                if value not in (None, ""):
-                    entry[key] = value
-
-        self.catalog_by_model_id[safe_model_id] = entry
+        result = CatalogLoadResult(catalog_by_model_id=self.catalog_by_model_id)
+        CatalogLoader.register_catalog_entry(
+            result,
+            model_id,
+            name,
+            item_type,
+            material_type,
+            source,
+            priority,
+            extra,
+        )
 
     def _load_catalog_group(
         self,
@@ -12060,383 +13762,70 @@ class MerchantRulesWidget:
         default_item_type: str = "",
         default_material_type: str = "",
     ) -> list[dict[str, object]]:
-        loaded_entries: list[dict[str, object]] = []
-        for entry in entries:
-            model_id = max(0, _safe_int(entry.get("model_id", 0), 0))
-            if model_id <= 0:
-                continue
-
-            loaded_entry = {
-                "model_id": model_id,
-                "name": str(entry.get("name", "") or f"Model {model_id}"),
-                "item_type": str(entry.get("item_type", default_item_type) or default_item_type),
-                "material_type": str(entry.get("material_type", default_material_type) or default_material_type),
-            }
-            if "default_target" in entry:
-                loaded_entry["default_target"] = max(0, _safe_int(entry.get("default_target", 0), 0))
-
-            self._register_catalog_entry(
-                model_id=model_id,
-                name=str(loaded_entry["name"]),
-                item_type=str(loaded_entry["item_type"]),
-                material_type=str(loaded_entry["material_type"]),
-                source=source,
-                priority=priority,
-                extra={"default_target": loaded_entry.get("default_target", 0)},
-            )
-            loaded_entries.append(loaded_entry)
-        return loaded_entries
+        return self._get_catalog_loader().load_catalog_group(
+            self.catalog_by_model_id,
+            entries,
+            source,
+            priority,
+            default_item_type,
+            default_material_type,
+        )
 
     def _load_drop_data_catalog(self) -> int:
-        if not os.path.exists(DROP_DATA_PATH):
-            return 0
-
-        with open(DROP_DATA_PATH, "r", encoding="utf-8") as file:
-            rows = json.load(file)
-
-        loaded_count = 0
-        for row in rows:
-            model_id = _resolve_model_id_value(row.get("model_id", 0))
-            name = str(row.get("name", "")).strip()
-            if model_id <= 0 or not name:
-                continue
-            self._register_catalog_entry(
-                model_id=model_id,
-                name=name,
-                item_type=str(row.get("group", "")).strip(),
-                material_type=str(row.get("subgroup", "")).strip(),
-                source="modelid_drop_data",
-                priority=50,
-            )
-            loaded_count += 1
-        return loaded_count
+        return self._get_catalog_loader().load_drop_data_catalog(self.catalog_by_model_id)
 
     def _load_item_handling_catalog(self) -> int:
-        if not os.path.exists(ITEM_HANDLING_ITEMS_CATALOG_PATH):
-            return 0
-
-        with open(ITEM_HANDLING_ITEMS_CATALOG_PATH, "r", encoding="utf-8") as file:
-            raw_catalog = json.load(file)
-
-        loaded_count = 0
-        for entry in _iter_item_handling_catalog_entries(raw_catalog):
-            model_id = _resolve_model_id_value(entry.get("model_id", entry.get("ModelID", 0)))
-            name = str(entry.get("name") or entry.get("Name") or "").strip()
-            if model_id <= 0 or not name:
-                continue
-
-            item_type = str(entry.get("item_type") or entry.get("ItemType") or "").strip()
-            skin = str(entry.get("skin") or entry.get("Skin") or "").strip()
-            wiki_url = str(entry.get("wiki_url") or entry.get("WikiURL") or "").strip()
-            category = str(entry.get("category") or "").strip()
-            sub_category = str(entry.get("sub_category") or "").strip()
-            raw_attributes = entry.get("attributes", [])
-            attributes = (
-                [str(attribute).strip() for attribute in raw_attributes if str(attribute or "").strip()]
-                if isinstance(raw_attributes, list)
-                else []
-            )
-            alias_labels = _build_catalog_alias_labels(name, skin, wiki_url)
-
-            extra: dict[str, object] = {
-                "alias_labels": alias_labels,
-                "attributes": attributes,
-            }
-            if skin:
-                extra["skin"] = skin
-            if wiki_url:
-                extra["wiki_url"] = wiki_url
-            if category:
-                extra["category"] = category
-            if sub_category:
-                extra["sub_category"] = sub_category
-
-            self._register_catalog_entry(
-                model_id=model_id,
-                name=name,
-                item_type=item_type,
-                source="item_handling_items_catalog",
-                priority=_get_catalog_entry_priority(model_id, item_type, category, sub_category),
-                extra=extra,
-            )
-            loaded_count += 1
-        return loaded_count
+        return self._get_catalog_loader().load_item_handling_catalog(self.catalog_by_model_id)
 
     def _load_rune_model_catalog(self) -> int:
-        if not os.path.exists(RUNES_CATALOG_PATH):
-            return 0
-
-        with open(RUNES_CATALOG_PATH, "r", encoding="utf-8") as file:
-            raw_catalog = json.load(file)
-
-        if not isinstance(raw_catalog, dict):
-            return 0
-
-        grouped_entries: dict[int, tuple[set[str], set[str]]] = {}
-        for raw_identifier, raw_entry in raw_catalog.items():
-            if not isinstance(raw_entry, dict):
-                continue
-            model_id = max(0, _safe_int(raw_entry.get("ModelId", 0), 0))
-            if model_id <= 0:
-                continue
-
-            names = raw_entry.get("Names", {})
-            if isinstance(names, dict):
-                display_name = str(names.get("English", "") or "").strip()
-            else:
-                display_name = ""
-            if not display_name:
-                display_name = str(raw_entry.get("Identifier", raw_identifier) or "").strip()
-            if not display_name:
-                continue
-
-            mod_type = str(raw_entry.get("ModType", "") or "").strip()
-            normalized_name = _normalize_catalog_search_text(display_name)
-            if mod_type == "Prefix" or "insignia" in normalized_name:
-                kind = "insignia"
-            elif mod_type == "Suffix" or "rune" in normalized_name:
-                kind = "rune"
-            else:
-                kind = ""
-
-            names_for_model, kinds_for_model = grouped_entries.setdefault(model_id, (set(), set()))
-            names_for_model.add(display_name)
-            if kind:
-                kinds_for_model.add(kind)
-
-        loaded_count = 0
-        for model_id, (names_for_model, kinds_for_model) in grouped_entries.items():
-            names = sorted(str(name) for name in names_for_model if str(name or "").strip())
-            kinds = sorted(str(kind) for kind in kinds_for_model if str(kind or "").strip())
-            if not names:
-                continue
-
-            if len(names) == 1:
-                display_name = names[0]
-            elif kinds == ["insignia"]:
-                display_name = "Insignia"
-            elif kinds == ["rune"]:
-                display_name = "Rune"
-            else:
-                display_name = "Rune / Insignia"
-
-            alias_labels = _build_catalog_alias_labels(display_name)
-            for name in names:
-                alias_labels.update(_build_catalog_alias_labels(name))
-
-            extra: dict[str, object] = {
-                "alias_labels": alias_labels,
-                "rune_model_kinds": kinds,
-                "rune_model_names": names,
-            }
-            current = self.catalog_by_model_id.get(model_id)
-            if current is None:
-                self._register_catalog_entry(
-                    model_id=model_id,
-                    name=display_name,
-                    item_type="Rune_Mod",
-                    source="runes_catalog",
-                    priority=18,
-                    extra=extra,
-                )
-            else:
-                if not str(current.get("item_type", "") or "").strip():
-                    current["item_type"] = "Rune_Mod"
-                current_kinds = [
-                    str(kind)
-                    for kind in current.get("rune_model_kinds", [])
-                    if str(kind or "").strip()
-                ]
-                merged_kinds = sorted(set(current_kinds) | set(kinds))
-                if merged_kinds:
-                    current["rune_model_kinds"] = merged_kinds
-
-                current_names = [
-                    str(name)
-                    for name in current.get("rune_model_names", [])
-                    if str(name or "").strip()
-                ]
-                merged_names = sorted(set(current_names) | set(names))
-                if merged_names:
-                    current["rune_model_names"] = merged_names
-
-                current_alias_labels = current.get("alias_labels", {})
-                if not isinstance(current_alias_labels, dict):
-                    current_alias_labels = {}
-                current_alias_labels.update(alias_labels)
-                current["alias_labels"] = current_alias_labels
-            loaded_count += 1
-
-        return loaded_count
+        return self._get_catalog_loader().load_rune_model_catalog(self.catalog_by_model_id)
 
     def _load_model_id_fallback_catalog(self) -> int:
-        enum_names_by_model_id: dict[int, list[str]] = {}
-        for enum_name, model_id in _iter_model_id_enum_members():
-            if model_id <= 0:
-                continue
-            names = enum_names_by_model_id.setdefault(model_id, [])
-            if enum_name not in names:
-                names.append(enum_name)
-
-        loaded_count = 0
-        for model_id, enum_names in enum_names_by_model_id.items():
-            if model_id in self.catalog_by_model_id:
-                continue
-            if not enum_names:
-                continue
-
-            display_name = _humanize_model_id_enum_name(enum_names[0]) or f"Model {model_id}"
-            alias_labels = _build_catalog_alias_labels(display_name)
-            for enum_name in enum_names:
-                raw_name = str(enum_name or "").strip()
-                if not raw_name:
-                    continue
-                alias_labels.setdefault(_normalize_catalog_search_text(raw_name), raw_name)
-                humanized_name = _humanize_model_id_enum_name(raw_name)
-                if humanized_name:
-                    alias_labels.setdefault(_normalize_catalog_search_text(humanized_name), humanized_name)
-
-            self._register_catalog_entry(
-                model_id=model_id,
-                name=display_name,
-                item_type=_infer_model_id_fallback_item_type(enum_names, display_name),
-                source="modelid_enum_fallback",
-                priority=90,
-                extra={
-                    "alias_labels": alias_labels,
-                    "enum_names": list(enum_names),
-                },
-            )
-            loaded_count += 1
-        return loaded_count
+        return self._get_catalog_loader().load_model_id_fallback_catalog(self.catalog_by_model_id)
 
     def _rebuild_catalog_alias_index(self):
-        self.catalog_alias_to_model_ids = {}
-        self.catalog_alias_display_names = {}
-
-        for model_id, entry in self.catalog_by_model_id.items():
-            alias_labels = entry.get("alias_labels", {})
-            normalized_alias_labels: dict[str, str] = {}
-            if isinstance(alias_labels, dict):
-                for raw_alias, display_name in alias_labels.items():
-                    normalized_alias = _normalize_catalog_search_text(raw_alias)
-                    if normalized_alias:
-                        normalized_alias_labels[normalized_alias] = str(display_name or "").strip() or normalized_alias.title()
-
-            name = str(entry.get("name", "")).strip()
-            normalized_name = _normalize_catalog_search_text(name)
-            if normalized_name and normalized_name not in normalized_alias_labels:
-                normalized_alias_labels[normalized_name] = name
-
-            entry["alias_labels"] = normalized_alias_labels
-            for normalized_alias, display_name in normalized_alias_labels.items():
-                alias_model_ids = self.catalog_alias_to_model_ids.setdefault(normalized_alias, [])
-                if model_id not in alias_model_ids:
-                    alias_model_ids.append(model_id)
-                self.catalog_alias_display_names.setdefault(normalized_alias, display_name)
+        aliases, display_names = self._get_catalog_loader().rebuild_catalog_alias_index(self.catalog_by_model_id)
+        self.catalog_alias_to_model_ids = aliases
+        self.catalog_alias_display_names = display_names
 
     def _load_catalog(self):
         self.catalog_by_model_id = {}
         self.catalog_alias_to_model_ids = {}
         self.catalog_alias_display_names = {}
+        self.common_salvage_model_ids_by_item_key = {}
         self.catalog_common_material_ids = []
         self.catalog_merchant_essentials = []
         self.catalog_rare_materials = []
         self.catalog_stats = {}
         self.catalog_load_error = ""
-        load_errors: list[str] = []
-        common_entries: list[dict[str, object]] = []
-        rare_entries: list[dict[str, object]] = []
-        merchant_entries: list[dict[str, object]] = []
-        item_handling_items_count = 0
-        rune_model_catalog_count = 0
-        drop_data_count = 0
-        model_id_fallback_count = 0
-        item_handling_present = os.path.exists(ITEM_HANDLING_ITEMS_CATALOG_PATH)
 
-        try:
-            with open(CATALOG_PATH, "r", encoding="utf-8") as file:
-                raw_catalog = json.load(file)
-
-            materials = raw_catalog.get("materials", {})
-            merchant_items = raw_catalog.get("merchant_items", {})
-
-            common_entries = self._load_catalog_group(
-                entries=list(materials.get("common", [])),
-                source="merchant_rules_catalog.common",
-                priority=0,
-                default_item_type="material",
-                default_material_type="common",
-            )
-            rare_entries = self._load_catalog_group(
-                entries=list(materials.get("rare", [])),
-                source="merchant_rules_catalog.rare",
-                priority=0,
-                default_item_type="material",
-                default_material_type="rare",
-            )
-            merchant_entries = self._load_catalog_group(
-                entries=list(merchant_items.get("essentials", [])),
-                source="merchant_rules_catalog.essentials",
-                priority=0,
-            )
-
-            self.catalog_common_material_ids = _dedupe_model_ids([int(entry["model_id"]) for entry in common_entries])
-            self.catalog_rare_materials = rare_entries
-            self.catalog_merchant_essentials = merchant_entries
-        except Exception as exc:
-            load_errors.append(f"Catalog load failed: {exc}")
-
-        try:
-            item_handling_items_count = self._load_item_handling_catalog()
-        except Exception as exc:
-            load_errors.append(f"ItemHandling item catalog load failed: {exc}")
-
-        try:
-            drop_data_count = self._load_drop_data_catalog()
-        except Exception as exc:
-            load_errors.append(f"Drop-data name load failed: {exc}")
-
-        try:
-            self._load_modifier_catalogs()
-        except Exception as exc:
-            load_errors.append(f"Modifier data load failed: {exc}")
-
-        try:
-            self._load_rune_buy_catalog()
-        except Exception as exc:
-            load_errors.append(f"Rune buy catalog load failed: {exc}")
-
-        try:
-            rune_model_catalog_count = self._load_rune_model_catalog()
-        except Exception as exc:
-            load_errors.append(f"Rune model catalog load failed: {exc}")
-
-        if MOD_DB_LOAD_ERROR:
-            load_errors.append(MOD_DB_LOAD_ERROR)
-
-        try:
-            model_id_fallback_count = self._load_model_id_fallback_catalog()
-        except Exception as exc:
-            load_errors.append(f"ModelID fallback catalog load failed: {exc}")
-
-        self._rebuild_catalog_alias_index()
-        self.catalog_stats = {
-            "curated_common": len(common_entries),
-            "curated_rare": len(rare_entries),
-            "curated_essentials": len(merchant_entries),
-            "curated_total": len(common_entries) + len(rare_entries) + len(merchant_entries),
-            "item_handling_present": item_handling_present,
-            "item_handling_items": item_handling_items_count,
-            "rune_models": rune_model_catalog_count,
-            "drop_data": drop_data_count,
-            "modelid_fallback_items": model_id_fallback_count,
-            "final_models": len(self.catalog_by_model_id),
-            "alias_groups": self._get_catalog_alias_group_count(),
-        }
+        result: CatalogLoadResult = self._get_catalog_loader().load()
+        self.catalog_by_model_id = result.catalog_by_model_id
+        self.catalog_alias_to_model_ids = result.catalog_alias_to_model_ids
+        self.catalog_alias_display_names = result.catalog_alias_display_names
+        self.common_salvage_model_ids_by_item_key = result.common_salvage_model_ids_by_item_key
+        self.catalog_common_material_ids = result.catalog_common_material_ids
+        self.catalog_merchant_essentials = result.catalog_merchant_essentials
+        self.catalog_rare_materials = result.catalog_rare_materials
+        self.catalog_stats = result.catalog_stats
+        self.catalog_load_error = result.catalog_load_error
+        self.weapon_mod_entries = result.weapon_mod_entries
+        self.rune_entries = result.rune_entries
+        self.armor_upgrade_entries = result.armor_upgrade_entries
+        self.weapon_mod_names = result.weapon_mod_names
+        self.weapon_mod_generic_names = result.weapon_mod_generic_names
+        self.weapon_mod_variant_names = result.weapon_mod_variant_names
+        self.rune_names = result.rune_names
+        self.rune_buy_entries = result.rune_buy_entries
+        self.rune_buy_entries_by_identifier = result.rune_buy_entries_by_identifier
+        self.rune_buy_identifier_by_exact_label = result.rune_buy_identifier_by_exact_label
+        self.rune_buy_entries_by_profession = result.rune_buy_entries_by_profession
+        self.rune_buy_professions = result.rune_buy_professions
+        self._catalog_generation += 1
+        self._invalidate_cleanup_deposit_filter_targets_cache()
+        self._invalidate_cleanup_target_display_cache()
         self.catalog_loaded = True
-        if load_errors:
-            self.catalog_load_error = " | ".join(load_errors)
+        if self.catalog_load_error:
             ConsoleLog(MODULE_NAME, self.catalog_load_error, Console.MessageType.Warning)
 
     def _load_outpost_entries(self):
@@ -12811,12 +14200,46 @@ class MerchantRulesWidget:
             return 0
         return model_id
 
+    def _get_runtime_label_model_ids(self, label: object) -> set[int]:
+        plain_label = _strip_item_display_markup(str(label or "")).strip()
+        if not plain_label:
+            return set()
+        candidate_labels = [plain_label]
+        without_quantity = re.sub(r"^\d+\s+", "", plain_label).strip()
+        if without_quantity and without_quantity != plain_label:
+            candidate_labels.append(without_quantity)
+
+        matching_model_ids: set[int] = set()
+        for candidate_label in candidate_labels:
+            normalized_name = _normalize_catalog_search_text(candidate_label)
+            matching_model_ids.update(
+                max(0, _safe_int(model_id, 0))
+                for model_id in self.catalog_alias_to_model_ids.get(normalized_name, [])
+                if max(0, _safe_int(model_id, 0)) > 0
+            )
+        return matching_model_ids
+
+    def _runtime_item_label_contradicts_model(self, label: object, model_id: int) -> bool:
+        safe_model_id = max(0, _safe_int(model_id, 0))
+        plain_label = _strip_item_display_markup(str(label or "")).strip()
+        if safe_model_id <= 0 or not plain_label:
+            return False
+
+        generic_match = re.fullmatch(r"Model\s+(\d+)", plain_label, flags=re.IGNORECASE)
+        if generic_match is not None:
+            return max(0, _safe_int(generic_match.group(1), 0)) != safe_model_id
+
+        matching_model_ids = self._get_runtime_label_model_ids(plain_label)
+        return bool(matching_model_ids and safe_model_id not in matching_model_ids)
+
     def _format_preview_item_label(self, entry: ExecutionPlanEntry) -> str:
         stored_label = str(getattr(entry, "label", "") or "").strip()
         explicit_model_id = max(0, _safe_int(getattr(entry, "model_id", 0), 0))
         model_id = explicit_model_id if explicit_model_id > 0 else self._extract_preview_label_model_id(stored_label)
         if model_id <= 0:
             return stored_label
+        if self._runtime_item_label_contradicts_model(stored_label, model_id):
+            stored_label = ""
 
         catalog_name = str(self._get_model_name(model_id) or "").strip()
         label_without_model = stored_label
@@ -12932,24 +14355,9 @@ class MerchantRulesWidget:
         return self.rune_buy_entries_by_identifier.get(safe_identifier)
 
     def _rebuild_rune_exact_display_lookup(self) -> None:
-        identifiers_by_label: dict[str, set[str]] = {}
-        for entry in self.rune_buy_entries:
-            identifier = str(entry.get("identifier", "") or "").strip()
-            if not identifier:
-                continue
-            for label in (
-                str(entry.get("name", "") or "").strip(),
-                identifier,
-            ):
-                normalized_label = _normalize_catalog_search_text(label)
-                if normalized_label:
-                    identifiers_by_label.setdefault(normalized_label, set()).add(identifier)
-
-        self.rune_buy_identifier_by_exact_label = {
-            label: next(iter(identifiers))
-            for label, identifiers in identifiers_by_label.items()
-            if len(identifiers) == 1
-        }
+        result = CatalogLoadResult(rune_buy_entries=self.rune_buy_entries)
+        CatalogLoader.rebuild_rune_exact_display_lookup(result)
+        self.rune_buy_identifier_by_exact_label = result.rune_buy_identifier_by_exact_label
 
     def _get_rune_tooltip_text(self, identifier: str) -> str:
         entry = self._get_rune_buy_entry(identifier)
@@ -13068,6 +14476,49 @@ class MerchantRulesWidget:
             if int(entry.get("model_id", 0)) == safe_model_id:
                 return entry
         return None
+
+    def _merchant_stock_target_supports_xunlai_first(self, model_id: int) -> bool:
+        """Return whether v1 can identify this ordinary Merchant Stock target by model alone."""
+
+        safe_model_id = max(0, _safe_int(model_id, 0))
+        if safe_model_id <= 0 or _is_scroll_trader_stock_model(safe_model_id):
+            return False
+        if safe_model_id == int(ModelID.Vial_Of_Dye.value):
+            return False
+        if safe_model_id in ALL_CRAFTING_MATERIAL_MODEL_IDS or safe_model_id in CONSUMABLE_CRAFTER_RECIPES_BY_MODEL:
+            return False
+        entry = self._get_merchant_essential(safe_model_id)
+        if entry is None:
+            return False
+        return str(entry.get("item_type", "") or "").strip().casefold() != "dye"
+
+    def _get_configured_xunlai_first_keep_by_model(self) -> dict[int, int]:
+        """Build the active cleanup floor for supported opted-in Merchant Stock targets."""
+
+        keep_by_model: dict[int, int] = {}
+        for buy_rule in self.buy_rules:
+            normalized_rule = _normalize_buy_rule(buy_rule)
+            if normalized_rule is None or not normalized_rule.enabled or normalized_rule.kind != BUY_KIND_MERCHANT_STOCK:
+                continue
+            for target in _normalize_merchant_stock_targets(normalized_rule.merchant_stock_targets):
+                model_id = max(0, int(target.model_id))
+                target_count = max(0, int(target.target_count))
+                if (
+                    not bool(target.check_xunlai_first)
+                    or target_count <= 0
+                    or not self._merchant_stock_target_supports_xunlai_first(model_id)
+                ):
+                    continue
+                keep_by_model[model_id] = max(target_count, keep_by_model.get(model_id, 0))
+        return keep_by_model
+
+    def _get_xunlai_first_cleanup_keep_by_model(self) -> dict[int, int]:
+        if bool(getattr(self, "execute_reservation_scope_active", False)):
+            return dict(getattr(self, "execute_xunlai_first_keep_by_model", {}) or {})
+        return self._get_configured_xunlai_first_keep_by_model()
+
+    def _has_enabled_xunlai_first_merchant_stock_targets(self) -> bool:
+        return bool(self._get_configured_xunlai_first_keep_by_model())
 
     def _catalog_entry_matches_merchant_stock(self, entry: dict[str, object]) -> bool:
         return self._get_merchant_essential(_safe_int(entry.get("model_id", 0), 0)) is not None
@@ -13448,6 +14899,10 @@ class MerchantRulesWidget:
         if safe_category == DEPOSIT_FILTER_ALL:
             return []
         safe_subcategory = _normalize_deposit_filter_subcategory(safe_category, subcategory)
+        cache_key = (self._catalog_generation, safe_category, safe_subcategory)
+        if self._cleanup_deposit_filter_targets_cache_key == cache_key:
+            return self._cleanup_deposit_filter_targets_cache
+
         targets: list[CleanupTarget] = []
         seen_keys: set[tuple[int, str]] = set()
         for entry in self.catalog_by_model_id.values():
@@ -13469,7 +14924,77 @@ class MerchantRulesWidget:
                     continue
                 seen_keys.add(target_key)
                 targets.append(target)
-        return self._sort_targets_by_model_label_for_display(targets)
+        sorted_targets = cast(
+            list[CleanupTarget],
+            self._sort_targets_by_model_label_for_display(cast(list[object], targets)),
+        )
+        self._cleanup_deposit_filter_targets_cache_key = cache_key
+        self._cleanup_deposit_filter_targets_cache = sorted_targets
+        return sorted_targets
+
+    def _get_cleanup_target_display_state(
+        self,
+        category: object,
+        subcategory: object,
+        search_text: object,
+    ) -> tuple[list[CleanupTarget], list[CleanupTarget], list[CleanupTarget]]:
+        safe_category = _normalize_deposit_filter_category(category)
+        safe_subcategory = _normalize_deposit_filter_subcategory(
+            safe_category, subcategory
+        )
+        normalized_search_text = _normalize_catalog_search_text(search_text)
+        cache_key = (
+            self._cleanup_targets_revision,
+            self._catalog_generation,
+            safe_category,
+            safe_subcategory,
+            normalized_search_text,
+        )
+        if self._cleanup_target_display_cache_key == cache_key:
+            cached_state = self._cleanup_target_display_cache
+            if cached_state is not None:
+                return cached_state
+
+        normalized_targets = _normalize_cleanup_targets(self.cleanup_targets)
+        updated_targets = [
+            CleanupTarget(
+                model_id=int(target.model_id),
+                keep_on_character=max(0, int(target.keep_on_character)),
+                scope=_normalize_cleanup_target_scope(
+                    getattr(target, "scope", ""), target.model_id
+                ),
+            )
+            for target in normalized_targets
+        ]
+        display_targets = cast(
+            list[CleanupTarget],
+            self._sort_targets_by_model_label_for_display(
+                cast(list[object], updated_targets)
+            ),
+        )
+        if safe_category != DEPOSIT_FILTER_ALL:
+            display_targets = [
+                target
+                for target in display_targets
+                if self._cleanup_target_matches_deposit_filter(
+                    target,
+                    safe_category,
+                    safe_subcategory,
+                )
+            ]
+        if normalized_search_text:
+            display_targets = [
+                target
+                for target in display_targets
+                if self._model_id_matches_item_search_text(
+                    target.model_id, normalized_search_text
+                )
+            ]
+
+        cached_state = (normalized_targets, updated_targets, display_targets)
+        self._cleanup_target_display_cache_key = cache_key
+        self._cleanup_target_display_cache = cached_state
+        return cached_state
 
     def _search_protected_item_catalog(
         self,
@@ -13498,7 +15023,9 @@ class MerchantRulesWidget:
         subcategory: object,
         cleanup_targets: list[CleanupTarget],
     ) -> list[CleanupTarget]:
-        existing_target_keys = {_cleanup_target_key(target) for target in _normalize_cleanup_targets(cleanup_targets)}
+        existing_target_keys = {
+            _cleanup_target_key(target) for target in cleanup_targets
+        }
         return [
             target
             for target in self._get_cleanup_deposit_filter_targets(category, subcategory)
@@ -14004,6 +15531,16 @@ class MerchantRulesWidget:
         rule.model_ids = next_model_ids
         return True
 
+    def _set_salvage_rule_common_material_model_ids(self, rule: SalvageRule, model_ids: list[int]) -> bool:
+        next_model_ids = _normalize_common_material_model_ids(model_ids)
+        current_model_ids = _normalize_common_material_model_ids(
+            getattr(rule, "target_common_material_model_ids", [])
+        )
+        if next_model_ids == current_model_ids:
+            return False
+        rule.target_common_material_model_ids = next_model_ids
+        return True
+
     def _set_salvage_rule_armor_upgrade_identifiers(
         self,
         rule: SalvageRule,
@@ -14052,6 +15589,8 @@ class MerchantRulesWidget:
         if normalized_targets == self.cleanup_targets:
             return False
         self.cleanup_targets = normalized_targets
+        self._cleanup_targets_revision += 1
+        self._invalidate_cleanup_target_display_cache()
         return True
 
     def _add_cleanup_target(
@@ -14614,13 +16153,25 @@ class MerchantRulesWidget:
         PyImGui.end_child()
         return picked_model_id, visible_model_ids
 
-    def _draw_common_material_search_results(self, child_id: str, query: str) -> tuple[int, list[int]]:
+    def _draw_common_material_search_results(
+        self,
+        child_id: str,
+        query: str,
+        existing_model_ids: set[int] | None = None,
+        existing_badge_label: str = "",
+    ) -> tuple[int, list[int]]:
         normalized_query = str(query or "").strip()
         if not normalized_query:
             return 0, []
 
         results = self._search_common_material_catalog(normalized_query)
         visible_model_ids = _collect_model_ids_from_catalog_entries(results)
+        existing_ids = {
+            max(0, _safe_int(model_id, 0))
+            for model_id in (existing_model_ids or set())
+            if max(0, _safe_int(model_id, 0)) > 0
+        }
+        badge_label = str(existing_badge_label or "").strip()
         picked_model_id = 0
         child_height = 110 if len(results) > 4 else 80
         if PyImGui.begin_child(child_id, (0, child_height), True, PyImGui.WindowFlags.NoFlag):
@@ -14633,6 +16184,17 @@ class MerchantRulesWidget:
                     label = self._format_model_label(model_id)
                     if material_type:
                         label = f"{label} [{material_type}]"
+                    if badge_label and model_id in existing_ids:
+                        PyImGui.text_colored(
+                            label,
+                            self._get_item_name_text_color(
+                                model_id,
+                                category_hint=ITEM_NAME_CATEGORY_MATERIAL,
+                            ),
+                        )
+                        PyImGui.same_line(0, 8)
+                        self._draw_inline_badge(badge_label, UI_COLOR_MUTED)
+                        continue
                     if self._draw_colored_selectable(
                         label,
                         self._get_item_name_text_color(
@@ -15254,18 +16816,29 @@ class MerchantRulesWidget:
         PyImGui.end_child()
         return removed_identifier
 
-    def _resolve_rune_trader_coords(self, map_id: int, *, log_failures: bool = True) -> tuple[float, float] | None:
+    def _resolve_rune_trader_coords(
+        self,
+        map_id: int,
+        *,
+        log_failures: bool = True,
+        role_scan: LiveServiceRoleScan | None = None,
+        resolve_role_fallback: bool = True,
+    ) -> tuple[float, float] | None:
         selector_name = str(SUPPORTED_MAP_RUNE_TRADER_SELECTORS.get(int(map_id), "") or "").strip()
         return self._resolve_service_coords(
+            map_id=map_id,
+            service_type=MERCHANT_TYPE_RUNE_TRADER,
             selector_name=selector_name,
-            name_query=RUNE_TRADER_NAME_QUERY,
+            fallback_role=MERCHANT_TYPE_RUNE_TRADER,
             log_failures=log_failures,
+            role_scan=role_scan,
+            resolve_role_fallback=resolve_role_fallback,
         )
 
     def _get_scroll_trader_lookup(self) -> tuple[str, str]:
         if Map.IsGuildHall():
-            return "scroll_trader", SCROLL_TRADER_NAME_QUERY
-        return "rare_scroll_trader", RARE_SCROLL_TRADER_NAME_QUERY
+            return "scroll_trader", MERCHANT_TYPE_SCROLL_TRADER
+        return "rare_scroll_trader", "rare_scroll_trader"
 
     def _get_scroll_trader_service_label(self) -> str:
         return "Scroll Trader" if Map.IsGuildHall() else "Rare Scroll Trader"
@@ -15276,54 +16849,585 @@ class MerchantRulesWidget:
         selector_data: dict[str, str] | None = None,
         *,
         log_failures: bool = True,
+        role_scan: LiveServiceRoleScan | None = None,
+        resolve_role_fallback: bool = True,
     ) -> tuple[float, float] | None:
-        selector_key, name_query = self._get_scroll_trader_lookup()
+        selector_key, fallback_role = self._get_scroll_trader_lookup()
         selector_name = str(SUPPORTED_MAP_SCROLL_TRADER_SELECTORS.get(int(map_id), "") or "").strip()
         if not selector_name and selector_data:
             selector_name = str(selector_data.get(selector_key, "") or "").strip()
         return self._resolve_service_coords(
+            map_id=map_id,
+            service_type=MERCHANT_TYPE_SCROLL_TRADER,
             selector_name=selector_name,
-            name_query=name_query,
+            fallback_role=fallback_role,
             log_failures=log_failures,
+            role_scan=role_scan,
+            resolve_role_fallback=resolve_role_fallback,
         )
+
+    def _resolve_map_specific_service_coords(
+        self,
+        *,
+        map_id: int,
+        service_type: str,
+        selectors: tuple[MerchantServiceSelector, ...],
+        log_failures: bool,
+    ) -> tuple[float, float] | None:
+        safe_map_id = max(0, _safe_int(map_id, 0))
+        service_label = MERCHANT_TYPE_LABELS.get(service_type, service_type)
+        current_map_id = max(0, _safe_int(Map.GetMapID(), 0))
+        if safe_map_id <= 0 or current_map_id != safe_map_id:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector rejected: current map {current_map_id} "
+                    f"does not match required map {safe_map_id}.",
+                )
+            return None
+
+        try:
+            from Py4GWCoreLib import Agent
+            from Py4GWCoreLib import AgentArray
+        except Exception as exc:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector APIs are unavailable: {exc}",
+                )
+            return None
+
+        player_xy, player_xy_source = _get_agent_search_origin(Agent)
+        if player_xy is None:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector rejected: {player_xy_source}.",
+                )
+            return None
+
+        try:
+            npc_agent_ids = tuple(
+                dict.fromkeys(
+                    safe_agent_id
+                    for agent_id in AgentArray.GetNPCMinipetArray()
+                    if (safe_agent_id := max(0, _safe_int(agent_id, 0))) > 0
+                )
+            )
+        except Exception as exc:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Map-specific {service_label} selector could not read the NPC array: {exc}",
+                )
+            return None
+
+        encoded_identity_by_agent: dict[int, tuple[int, ...] | None] = {}
+        model_id_by_agent: dict[int, int] = {}
+        xy_by_agent: dict[int, tuple[float, float] | None] = {}
+
+        def get_encoded_identity(agent_id: int) -> tuple[int, ...] | None:
+            if agent_id not in encoded_identity_by_agent:
+                try:
+                    raw_identity = Agent.GetEncNameByID(agent_id)
+                except Exception:
+                    raw_identity = None
+                encoded_identity_by_agent[agent_id] = _normalize_vendor_encoded_identity(raw_identity)
+            return encoded_identity_by_agent[agent_id]
+
+        def get_model_id(agent_id: int) -> int:
+            if agent_id not in model_id_by_agent:
+                try:
+                    model_id_by_agent[agent_id] = max(0, _safe_int(Agent.GetModelID(agent_id), 0))
+                except Exception:
+                    model_id_by_agent[agent_id] = 0
+            return model_id_by_agent[agent_id]
+
+        def get_agent_xy(agent_id: int) -> tuple[float, float] | None:
+            if agent_id not in xy_by_agent:
+                try:
+                    xy_by_agent[agent_id] = _coerce_agent_xy(Agent.GetXY(agent_id))
+                except Exception:
+                    xy_by_agent[agent_id] = None
+            return xy_by_agent[agent_id]
+
+        candidates: list[tuple[float, str, tuple[float, float]]] = []
+        failure_details: list[str] = []
+        collision_details: list[str] = []
+        for selector in selectors:
+            expected_identity = _normalize_vendor_encoded_identity(selector.encoded_identity)
+            expected_xy = _coerce_agent_xy(selector.expected_xy)
+            expected_model_id = max(0, _safe_int(selector.model_id, 0))
+            try:
+                coordinate_tolerance = float(selector.coordinate_tolerance)
+            except (TypeError, ValueError):
+                coordinate_tolerance = 0.0
+            if (
+                not expected_identity
+                or expected_xy is None
+                or expected_model_id <= 0
+                or not math.isfinite(coordinate_tolerance)
+                or coordinate_tolerance <= 0.0
+            ):
+                failure_details.append(f"{selector.label}: invalid selector definition")
+                continue
+
+            encoded_matches = [
+                agent_id
+                for agent_id in npc_agent_ids
+                if get_encoded_identity(agent_id) == expected_identity
+            ]
+            if not encoded_matches:
+                failure_details.append(f"{selector.label}: encoded identity mismatch")
+                continue
+
+            model_matches = [
+                agent_id
+                for agent_id in encoded_matches
+                if get_model_id(agent_id) == expected_model_id
+            ]
+            if not model_matches:
+                failure_details.append(f"{selector.label}: model mismatch")
+                continue
+
+            complete_matches: list[tuple[int, tuple[float, float]]] = []
+            for agent_id in model_matches:
+                agent_xy = get_agent_xy(agent_id)
+                if agent_xy is None or math.dist(agent_xy, expected_xy) > coordinate_tolerance:
+                    continue
+                complete_matches.append((agent_id, agent_xy))
+            if not complete_matches:
+                failure_details.append(f"{selector.label}: coordinate mismatch")
+                continue
+            if len(complete_matches) > 1:
+                collision_detail = (
+                    f"{selector.label}: unexpected multiple-match collision "
+                    f"({len(complete_matches)} NPCs)"
+                )
+                failure_details.append(collision_detail)
+                collision_details.append(collision_detail)
+                continue
+
+            _agent_id, agent_xy = complete_matches[0]
+            distance_from_player = math.dist(player_xy, agent_xy)
+            if distance_from_player > OUTPOST_SERVICE_SEARCH_MAX_DIST:
+                failure_details.append(f"{selector.label}: outside the service search range")
+                continue
+            candidates.append((distance_from_player, str(selector.label), agent_xy))
+
+        if candidates:
+            if collision_details:
+                self._debug_log(
+                    f"Map-specific {service_label} selector collision detail: "
+                    f"{'; '.join(collision_details)}"
+                )
+            candidates.sort(key=lambda candidate: (candidate[0], candidate[1].casefold(), candidate[2]))
+            return candidates[0][2]
+
+        if log_failures:
+            detail_text = "; ".join(failure_details) if failure_details else "no selector definitions"
+            _log_agent_selector_failure(
+                MODULE_NAME,
+                f"Map-specific {service_label} selectors did not resolve on map {safe_map_id}: "
+                f"{detail_text}.",
+            )
+        return None
+
+    def _reset_service_resolution_lifecycle(self) -> None:
+        """Clear observations that are valid only for the current map instance."""
+
+        self._service_role_observed_coords = {}
+        self._service_role_candidate_fingerprint = None
+        self._service_role_retry_fingerprint = None
+        self._service_role_player_anchor = None
+        self._service_role_pending_agent_ids = set()
+        self._service_role_name_retry_deadline_at = 0.0
+        self._service_role_next_poll_at = 0.0
+        self._service_role_lifecycle_active = False
+        self._service_role_preview_refresh_pending = False
+
+    def _get_live_service_candidate_snapshot(
+        self,
+    ) -> tuple[tuple[float, float] | None, str, tuple[int, ...], tuple[int, ...]]:
+        """Read the current in-range NPC population without requesting names."""
+
+        try:
+            from Py4GWCoreLib import Agent
+            from Py4GWCoreLib import AgentArray
+
+            player_xy, player_xy_source = _get_agent_search_origin(Agent)
+            if player_xy is None:
+                return None, player_xy_source, (), ()
+
+            in_range_ids = AgentArray.Filter.ByDistance(
+                AgentArray.GetNPCMinipetArray(),
+                player_xy,
+                OUTPOST_SERVICE_SEARCH_MAX_DIST,
+            )
+            candidate_ids = tuple(
+                max(0, _safe_int(agent_id, 0))
+                for agent_id in AgentArray.Sort.ByDistance(in_range_ids, player_xy)
+                if max(0, _safe_int(agent_id, 0)) > 0
+            )
+            return (
+                player_xy,
+                player_xy_source,
+                candidate_ids,
+                tuple(sorted(set(candidate_ids))),
+            )
+        except Exception as exc:
+            return None, f"service candidate APIs unavailable ({type(exc).__name__})", (), ()
+
+    def _record_live_service_role_scan(self, scan: LiveServiceRoleScan) -> None:
+        """Retain safe role observations and maintain one bounded name-retry window."""
+
+        self._service_role_lifecycle_active = True
+        if scan.player_xy is None:
+            return
+
+        now = time.monotonic()
+        fingerprint_changed = scan.candidate_fingerprint != self._service_role_candidate_fingerprint
+        self._service_role_candidate_fingerprint = scan.candidate_fingerprint
+        self._service_role_player_anchor = scan.player_xy
+        self._service_role_observed_coords.update(scan.resolved_coords)
+        self._service_role_pending_agent_ids = set(scan.pending_agent_ids)
+
+        if scan.pending_agent_ids:
+            if fingerprint_changed or scan.candidate_fingerprint != self._service_role_retry_fingerprint:
+                self._service_role_retry_fingerprint = scan.candidate_fingerprint
+                self._service_role_name_retry_deadline_at = now + SERVICE_ROLE_NAME_RETRY_SECONDS
+            elif (
+                self._service_role_name_retry_deadline_at > 0.0
+                and now >= self._service_role_name_retry_deadline_at
+            ):
+                self._service_role_name_retry_deadline_at = 0.0
+        else:
+            self._service_role_retry_fingerprint = scan.candidate_fingerprint
+            self._service_role_name_retry_deadline_at = 0.0
+
+        retry_active = bool(
+            self._service_role_pending_agent_ids
+            and self._service_role_name_retry_deadline_at > now
+        )
+        self._service_role_next_poll_at = now + (
+            SERVICE_ROLE_NAME_RETRY_POLL_SECONDS
+            if retry_active
+            else SERVICE_ROLE_EVENT_POLL_SECONDS
+        )
+
+    def _scan_live_service_roles(
+        self,
+        *,
+        record_lifecycle: bool = True,
+    ) -> LiveServiceRoleScan:
+        """Decode each current candidate once and resolve nearest exact service roles."""
+
+        player_xy, player_xy_source, candidate_ids, fingerprint = (
+            self._get_live_service_candidate_snapshot()
+        )
+        resolved_coords: dict[str, tuple[float, float]] = {}
+        pending_agent_ids: set[int] = set()
+
+        if player_xy is not None:
+            try:
+                from Py4GWCoreLib import Agent
+
+                for agent_id in candidate_ids:
+                    try:
+                        live_name = str(Agent.GetNameByID(agent_id) or "").strip()
+                    except Exception:
+                        live_name = ""
+                    pending = not bool(live_name)
+                    if pending:
+                        pending_agent_ids.add(agent_id)
+                    service_role = _canonical_service_role(live_name) if live_name else ""
+                    if service_role:
+                        try:
+                            agent_xy = _coerce_agent_xy(Agent.GetXY(agent_id))
+                        except Exception:
+                            agent_xy = None
+                        if service_role not in resolved_coords and agent_xy is not None:
+                            resolved_coords[service_role] = agent_xy
+            except Exception:
+                pending_agent_ids.update(candidate_ids)
+
+        scan = LiveServiceRoleScan(
+            player_xy=player_xy,
+            player_xy_source=player_xy_source,
+            candidate_ids=candidate_ids,
+            candidate_fingerprint=fingerprint,
+            resolved_coords=resolved_coords,
+            pending_agent_ids=frozenset(pending_agent_ids),
+        )
+        if record_lifecycle:
+            self._record_live_service_role_scan(scan)
+        return scan
+
+    def _preview_uses_current_service_context(self) -> bool:
+        return bool(
+            self.preview_ready
+            and not self.preview_requires_execute_travel
+            and not bool(getattr(self.preview_plan, "multi_stop_route", False))
+        )
+
+    def _refresh_preview_from_service_context(
+        self,
+        supported_context: tuple[bool, str, dict[str, tuple[float, float] | None]],
+    ) -> None:
+        """Refresh an idle current-map preview after service availability changes."""
+
+        self.preview_plan = self._build_plan(
+            projected_preview=True,
+            supported_context_override=supported_context,
+        )
+        self.preview_ready = True
+        self._set_preview_projection_state()
+        self._clear_preview_inventory_diff()
+        self._service_role_preview_refresh_pending = False
+        self.status_message = "Live merchant/trader services changed. Preview refreshed automatically."
+
+    def _refresh_supported_context_from_service_lifecycle(
+        self,
+        *,
+        force_context_refresh: bool,
+    ) -> None:
+        previous_observations = dict(self._service_role_observed_coords)
+        previous_pending_agent_ids = set(self._service_role_pending_agent_ids)
+        role_scan = self._scan_live_service_roles()
+        lifecycle_state_changed = bool(
+            previous_observations != self._service_role_observed_coords
+            or previous_pending_agent_ids != self._service_role_pending_agent_ids
+        )
+        if not force_context_refresh and not lifecycle_state_changed:
+            return
+
+        old_context = (
+            self.cached_supported_context
+            if self.cached_context_map_id == max(0, _safe_int(Map.GetMapID(), 0))
+            else None
+        )
+        self._invalidate_supported_context_cache()
+        refreshed_context = self._get_supported_context(
+            passive=True,
+            log_context=False,
+            role_scan_override=role_scan,
+        )
+        context_changed = bool(
+            old_context is None
+            or old_context[0] != refreshed_context[0]
+            or old_context[2] != refreshed_context[2]
+        )
+        if not context_changed or not self._preview_uses_current_service_context():
+            return
+        if self._merchant_rules_has_pending_or_active_work():
+            self._service_role_preview_refresh_pending = True
+            return
+        self._refresh_preview_from_service_context(refreshed_context)
+
+    def _update_service_resolution_lifecycle(self) -> None:
+        """Cooperatively refresh generic roles after decoding or streaming events."""
+
+        if (
+            self._service_role_preview_refresh_pending
+            and not self._preview_uses_current_service_context()
+        ):
+            self._service_role_preview_refresh_pending = False
+        if (
+            self._service_role_preview_refresh_pending
+            and self._preview_uses_current_service_context()
+            and not self._merchant_rules_has_pending_or_active_work()
+            and self.cached_supported_context is not None
+            and self.cached_context_map_id == max(0, _safe_int(Map.GetMapID(), 0))
+        ):
+            self._refresh_preview_from_service_context(self.cached_supported_context)
+
+        if not self._service_role_lifecycle_active:
+            return
+        if not Map.IsMapReady() or (not Map.IsOutpost() and not Map.IsGuildHall()):
+            return
+
+        now = time.monotonic()
+        if now < self._service_role_next_poll_at:
+            return
+
+        player_xy, _player_xy_source, _candidate_ids, fingerprint = (
+            self._get_live_service_candidate_snapshot()
+        )
+        if player_xy is None:
+            self._service_role_next_poll_at = now + SERVICE_ROLE_EVENT_POLL_SECONDS
+            return
+
+        retry_active = bool(
+            self._service_role_pending_agent_ids
+            and self._service_role_name_retry_deadline_at > now
+        )
+        if (
+            self._service_role_name_retry_deadline_at > 0.0
+            and now >= self._service_role_name_retry_deadline_at
+        ):
+            self._service_role_name_retry_deadline_at = 0.0
+            retry_active = False
+
+        candidate_changed = fingerprint != self._service_role_candidate_fingerprint
+        moved_meaningfully = bool(
+            self._service_role_player_anchor is not None
+            and math.hypot(
+                player_xy[0] - self._service_role_player_anchor[0],
+                player_xy[1] - self._service_role_player_anchor[1],
+            )
+            >= SERVICE_ROLE_MEANINGFUL_MOVE_DIST
+        )
+        if retry_active or candidate_changed or moved_meaningfully:
+            self._refresh_supported_context_from_service_lifecycle(
+                force_context_refresh=bool(candidate_changed or moved_meaningfully),
+            )
+            return
+
+        self._service_role_next_poll_at = now + SERVICE_ROLE_EVENT_POLL_SECONDS
+
+    def _resolve_service_role_coords(
+        self,
+        *,
+        service_role: str,
+        log_failures: bool,
+        role_scan: LiveServiceRoleScan | None = None,
+    ) -> tuple[float, float] | None:
+        safe_service_role = str(service_role or "").strip()
+        aliases = SERVICE_ROLE_ALIASES.get(safe_service_role)
+        if not aliases:
+            if log_failures and safe_service_role:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Service-role fallback rejected unknown role {safe_service_role!r}.",
+                )
+            return None
+
+        live_scan = role_scan if role_scan is not None else self._scan_live_service_roles()
+        if live_scan.player_xy is None:
+            if log_failures:
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Could not resolve {aliases[0]} by localized role: {live_scan.player_xy_source}.",
+                )
+            return None
+
+        resolved = live_scan.resolved_coords.get(safe_service_role)
+        if resolved is None:
+            resolved = self._service_role_observed_coords.get(safe_service_role)
+        if resolved is not None:
+            return resolved
+
+        if log_failures:
+            _log_agent_selector_failure(
+                MODULE_NAME,
+                f"Could not resolve {aliases[0]} by exact localized service role "
+                f"within {OUTPOST_SERVICE_SEARCH_MAX_DIST:.0f}.",
+            )
+        return None
 
     def _resolve_service_coords(
         self,
         *,
+        map_id: int = 0,
+        service_type: str = "",
         selector_name: str = "",
-        name_query: str = "",
         model_id: int = 0,
+        fallback_role: str = "",
         log_failures: bool = True,
+        role_scan: LiveServiceRoleScan | None = None,
+        resolve_role_fallback: bool = True,
     ) -> tuple[float, float] | None:
-        lookup_steps: list[dict[str, object]] = []
+        safe_map_id = max(0, _safe_int(map_id, 0))
+        safe_service_type = str(service_type or "").strip()
+        map_specific_selectors = MERCHANT_RULES_MAP_SERVICE_SELECTORS.get(safe_map_id, {}).get(
+            safe_service_type,
+            (),
+        )
+        if map_specific_selectors:
+            return self._resolve_map_specific_service_coords(
+                map_id=safe_map_id,
+                service_type=safe_service_type,
+                selectors=map_specific_selectors,
+                log_failures=log_failures,
+            )
+
         safe_selector_name = str(selector_name or "").strip()
-        safe_name_query = str(name_query or "").strip()
         safe_model_id = max(0, _safe_int(model_id, 0))
-
-        # A runtime-confirmed model ID is the strongest language-independent
-        # lookup, so try it before encoded/name selectors.
-        if safe_model_id > 0:
-            lookup_steps.append({"model_id": safe_model_id})
-        if safe_selector_name:
-            lookup_steps.append({"npc": safe_selector_name})
-        if safe_name_query:
-            lookup_steps.append({"target": safe_name_query})
-        if not lookup_steps:
-            return None
-
-        last_lookup_index = len(lookup_steps) - 1
-        for lookup_index, step in enumerate(lookup_steps):
-            coords = resolve_agent_xy_from_step(
-                step,
+        safe_fallback_role = str(fallback_role or "").strip()
+        has_role_fallback = safe_fallback_role in SERVICE_ROLE_ALIASES
+        has_authoritative_selector = bool(
+            safe_selector_name and _named_agent_target_has_authoritative_identity("npc", safe_selector_name)
+        )
+        if has_authoritative_selector:
+            selector_coords = resolve_agent_xy_from_step(
+                {"npc": safe_selector_name},
                 recipe_name=MODULE_NAME,
-                step_idx=lookup_index,
+                step_idx=0,
                 agent_kind="npc",
                 default_max_dist=OUTPOST_SERVICE_SEARCH_MAX_DIST,
-                log_failures=bool(log_failures and lookup_index == last_lookup_index),
+                log_failures=bool(log_failures and safe_model_id <= 0 and not has_role_fallback),
             )
-            if coords is not None:
-                return coords
+            if selector_coords is not None:
+                return selector_coords
+            if safe_model_id <= 0 and not has_role_fallback:
+                return None
+        if safe_model_id > 0:
+            model_coords = resolve_agent_xy_from_step(
+                {"model_id": safe_model_id},
+                recipe_name=MODULE_NAME,
+                step_idx=0,
+                agent_kind="npc",
+                default_max_dist=OUTPOST_SERVICE_SEARCH_MAX_DIST,
+                log_failures=bool(log_failures and not has_authoritative_selector and not has_role_fallback),
+            )
+            if model_coords is not None:
+                return model_coords
+            if has_authoritative_selector and log_failures and not has_role_fallback:
+                service_label = MERCHANT_TYPE_LABELS.get(safe_service_type, safe_service_type or "service")
+                _log_agent_selector_failure(
+                    MODULE_NAME,
+                    f"Could not resolve {service_label} using encoded selector {safe_selector_name!r} "
+                    f"or map-scoped model ID {safe_model_id}.",
+                )
+            if not has_role_fallback:
+                return None
+        if has_role_fallback and resolve_role_fallback:
+            return self._resolve_service_role_coords(
+                service_role=safe_fallback_role,
+                log_failures=log_failures,
+                role_scan=role_scan,
+            )
+        if not safe_selector_name:
+            return None
+        if log_failures:
+            _log_agent_selector_failure(
+                MODULE_NAME,
+                f"Service selector {safe_selector_name!r} has no encoded name or model ID; resolution was skipped.",
+            )
         return None
+
+    def _get_service_resolution_diagnostics(self) -> str:
+        """Read positional counts without requesting or decoding any NPC names."""
+
+        try:
+            from Py4GWCoreLib import Agent
+            from Py4GWCoreLib import AgentArray
+
+            player_xy, source = _get_agent_search_origin(Agent)
+            npc_ids = list(AgentArray.GetNPCMinipetArray() or [])
+            if player_xy is None:
+                return f"player=unavailable source={source} total_npcs={len(npc_ids)} in_range_npcs=unavailable"
+            in_range_ids = AgentArray.Filter.ByDistance(
+                npc_ids,
+                player_xy,
+                OUTPOST_SERVICE_SEARCH_MAX_DIST,
+            )
+            return (
+                f"player=({player_xy[0]:.1f}, {player_xy[1]:.1f}) source={source} "
+                f"total_npcs={len(npc_ids)} in_range_npcs={len(in_range_ids)}"
+            )
+        except Exception as exc:
+            return f"player/NPC diagnostics unavailable: {type(exc).__name__}"
 
     def _resolve_storage_access_coords(self) -> tuple[float, float] | None:
         if not Map.IsMapReady():
@@ -15362,7 +17466,7 @@ class MerchantRulesWidget:
         return self._resolve_storage_access_coords() is not None
 
     def _load_profile(self):
-        """Load the account-scoped JsonFactory profile with fail-closed v36 safeguards."""
+        """Load the account-scoped JsonFactory profile with fail-closed v39 safeguards."""
 
         doc = self._live_config_doc()
         stored_payload = doc.get_json("", None)
@@ -15375,39 +17479,9 @@ class MerchantRulesWidget:
         self.profile_notice = ""
         self.profile_write_blocked = False
 
-        default_payload = {
-            "version": PROFILE_VERSION,
-            "auto_cleanup_on_outpost_entry": False,
-            "auto_sell_on_manual_vendor_interaction": False,
-            "auto_buy_on_manual_vendor_interaction": False,
-            "manual_vendor_auto_buy_categories": _default_manual_vendor_category_flags(
-                MANUAL_VENDOR_BUY_CATEGORY_KINDS
-            ),
-            "manual_vendor_auto_sell_categories": _default_manual_vendor_category_flags(
-                MANUAL_VENDOR_SELL_CATEGORY_KINDS
-            ),
-            "auto_sell_to_any_merchant": False,
-            "auto_sell_any_merchant_normal_items": False,
-            "auto_sell_any_merchant_materials": False,
-            "auto_sell_any_merchant_runes": False,
-            "inventory_right_click_shortcuts_enabled": False,
-            "inventory_right_click_live_actions_enabled": False,
-            "destroy_auto_enabled": False,
-            "auto_travel_enabled": False,
-            "target_outpost_id": 0,
-            "favorite_outpost_ids": [],
-            "debug_logging": False,
-            "helper_tooltips_enabled": HELPER_TOOLTIPS_ENABLED_DEFAULT,
-            "detailed_preview": False,
-            "buy_rules": [asdict(rule) for rule in (_default_buy_rules() if profile_exists else [])],
-            "sell_rules": [asdict(rule) for rule in (_default_sell_rules() if profile_exists else [])],
-            "destroy_rules": [asdict(rule) for rule in (_default_destroy_rules() if profile_exists else [])],
-            "identify_settings": _serialize_identify_settings(IdentifySettings()),
-            "cleanup_targets": [],
-            "cleanup_blacklist_model_ids": [],
-            "cleanup_protection_sources": [],
-            "protected_item_model_ids": [],
-        }
+        default_payload = self._build_default_profile_payload(
+            include_rule_templates=profile_exists,
+        )
         self._apply_profile_payload(default_payload)
 
         if not profile_exists:
@@ -15445,7 +17519,7 @@ class MerchantRulesWidget:
         if raw_version <= 0 and not self.profile_warning:
             self.profile_notice = "Loaded a legacy live config without a version marker."
         elif 0 < raw_version < PROFILE_VERSION and not self.profile_warning:
-            self.profile_notice = f"Loaded and normalized Merchant Rules live config v{raw_version}."
+            self.profile_notice = "Merchant Rules loaded older settings and updated them to the current format."
 
         if should_save_normalized and allow_normalized_save and normalized_payload is not None:
             if self._save_profile():
@@ -15459,6 +17533,9 @@ class MerchantRulesWidget:
     def _save_profile(self) -> bool:
         """Persist through JsonFactory while retaining a last-known-good account backup."""
 
+        if not self._merchant_rules_is_generation_current():
+            self._debug_log("Skipped a stale Merchant Rules profile save.")
+            return False
         payload = self._build_profile_payload()
         if self.profile_write_blocked:
             self.profile_warning = (
@@ -15571,7 +17648,13 @@ class MerchantRulesWidget:
 
         return required
 
-    def _get_supported_context(self, *, passive: bool = False) -> tuple[bool, str, dict[str, tuple[float, float] | None]]:
+    def _get_supported_context(
+        self,
+        *,
+        passive: bool = False,
+        log_context: bool = True,
+        role_scan_override: LiveServiceRoleScan | None = None,
+    ) -> tuple[bool, str, dict[str, tuple[float, float] | None]]:
         current_map_id = int(Map.GetMapID() or 0)
         if self.cached_supported_context is not None and self.cached_context_map_id == current_map_id:
             return self.cached_supported_context
@@ -15596,100 +17679,126 @@ class MerchantRulesWidget:
 
         map_id = current_map_id
         selector_data = SUPPORTED_MAP_NPC_SELECTORS.get(map_id) or {}
-        required_services = self._get_required_service_types()
         model_overrides = SUPPORTED_MAP_SERVICE_MODEL_IDS.get(map_id, {})
 
         selector_keys = {
-            MERCHANT_TYPE_MERCHANT: ("merchant", MERCHANT_NAME_QUERY),
-            MERCHANT_TYPE_MATERIALS: ("materials", MATERIAL_TRADER_NAME_QUERY),
-            MERCHANT_TYPE_RARE_MATERIALS: ("rare_materials", RARE_MATERIAL_TRADER_NAME_QUERY),
+            MERCHANT_TYPE_MERCHANT: "merchant",
+            MERCHANT_TYPE_MATERIALS: "materials",
+            MERCHANT_TYPE_RARE_MATERIALS: "rare_materials",
         }
 
-        for merchant_type, (selector_key, name_query) in selector_keys.items():
-            if merchant_type not in required_services:
-                continue
-            selector_name = selector_data.get(selector_key) or DEFAULT_NPC_SELECTORS.get(selector_key)
+        for merchant_type, selector_key in selector_keys.items():
+            map_selector_name = str(selector_data.get(selector_key) or "").strip()
+            selector_name = map_selector_name or DEFAULT_NPC_SELECTORS.get(selector_key)
+            model_id = 0 if map_selector_name else max(0, _safe_int(model_overrides.get(merchant_type, 0), 0))
             coords[merchant_type] = self._resolve_service_coords(
+                map_id=map_id,
+                service_type=merchant_type,
                 selector_name=str(selector_name or ""),
-                name_query=name_query,
-                model_id=max(0, _safe_int(model_overrides.get(merchant_type, 0), 0)),
+                model_id=model_id,
+                fallback_role=merchant_type,
                 log_failures=not passive,
+                resolve_role_fallback=False,
             )
 
-        if MERCHANT_TYPE_RUNE_TRADER in required_services:
-            coords[MERCHANT_TYPE_RUNE_TRADER] = self._resolve_rune_trader_coords(
-                map_id,
-                log_failures=not passive,
-            )
+        coords[MERCHANT_TYPE_RUNE_TRADER] = self._resolve_rune_trader_coords(
+            map_id,
+            log_failures=not passive,
+            resolve_role_fallback=False,
+        )
+        coords[MERCHANT_TYPE_SCROLL_TRADER] = self._resolve_scroll_trader_coords(
+            map_id,
+            selector_data,
+            log_failures=bool(not passive and self._has_enabled_scroll_trader_buy_rules()),
+            resolve_role_fallback=False,
+        )
 
-        if MERCHANT_TYPE_SCROLL_TRADER in required_services:
-            coords[MERCHANT_TYPE_SCROLL_TRADER] = self._resolve_scroll_trader_coords(
-                map_id,
-                selector_data,
-                log_failures=not passive,
-            )
-
-        required_vendor_services = {
-            service_type
-            for service_type in required_services
-            if service_type != MERCHANT_TYPE_CONSUMABLE_CRAFTER
+        fallback_roles = {
+            MERCHANT_TYPE_MERCHANT: MERCHANT_TYPE_MERCHANT,
+            MERCHANT_TYPE_MATERIALS: MERCHANT_TYPE_MATERIALS,
+            MERCHANT_TYPE_RARE_MATERIALS: MERCHANT_TYPE_RARE_MATERIALS,
+            MERCHANT_TYPE_RUNE_TRADER: MERCHANT_TYPE_RUNE_TRADER,
+            MERCHANT_TYPE_SCROLL_TRADER: self._get_scroll_trader_lookup()[1],
         }
-        required_count = len(required_services)
-        resolved_required_count = sum(
-            1
-            for service_type in required_services
-            if coords.get(service_type) is not None
-        )
-
-        location_label = "Guild Hall" if Map.IsGuildHall() else "Outpost"
-        base_message = (
-            f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). Using specific merchant selectors."
-            if map_id in SUPPORTED_MAP_NPC_SELECTORS
-            else f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). Using generic merchant selectors."
-        )
-
-        if required_count <= 0:
-            supported_map = True
-            reason = f"{base_message} No merchant/trader service is required by the enabled rules."
-        elif resolved_required_count <= 0:
-            supported_map = False
-            reason = f"{base_message} None of the required merchant/trader services could be resolved."
-        elif resolved_required_count < required_count:
-            supported_map = True
-            reason = (
-                f"{base_message} Partial required-service resolution succeeded "
-                f"({resolved_required_count}/{required_count})."
+        generic_fallback_roles = {
+            service_type: fallback_role
+            for service_type, fallback_role in fallback_roles.items()
+            if coords[service_type] is None
+            and not MERCHANT_RULES_MAP_SERVICE_SELECTORS.get(map_id, {}).get(service_type)
+        }
+        if generic_fallback_roles:
+            role_scan = (
+                role_scan_override
+                if role_scan_override is not None
+                else self._scan_live_service_roles()
             )
-        else:
-            supported_map = True
-            reason = f"{base_message} All required merchant/trader services resolved."
+            for service_type, fallback_role in generic_fallback_roles.items():
+                coords[service_type] = self._resolve_service_role_coords(
+                    service_role=fallback_role,
+                    log_failures=bool(
+                        not passive
+                        and (
+                            service_type != MERCHANT_TYPE_SCROLL_TRADER
+                            or self._has_enabled_scroll_trader_buy_rules()
+                        )
+                    ),
+                    role_scan=role_scan,
+                )
+
+        resolved_services = [
+            MERCHANT_TYPE_LABELS.get(service_type, service_type)
+            for service_type, service_coords in coords.items()
+            if service_coords is not None
+        ]
+        unresolved_services = [
+            MERCHANT_TYPE_LABELS.get(service_type, service_type)
+            for service_type, service_coords in coords.items()
+            if service_coords is None
+        ]
+        resolved_count = len(resolved_services)
+        location_label = "Guild Hall" if Map.IsGuildHall() else "Outpost"
+        has_merchant_rules_map_selectors = bool(MERCHANT_RULES_MAP_SERVICE_SELECTORS.get(map_id))
+        selector_mode_label = (
+            "verified trader locations"
+            if has_merchant_rules_map_selectors
+            else "location-specific trader information"
+            if map_id in SUPPORTED_MAP_NPC_SELECTORS
+            else "default trader information"
+        )
+        base_message = (
+            f"{location_label} ready: {Map.GetMapName(map_id)} ({map_id}). "
+            f"Using {selector_mode_label}."
+        )
+        supported_map = resolved_count > 0
+        resolved_text = ", ".join(resolved_services) if resolved_services else "none"
+        unresolved_text = ", ".join(unresolved_services) if unresolved_services else "none"
+        reason = f"{base_message} Resolved services: {resolved_text}. Unresolved services: {unresolved_text}."
 
         resolved_context = (supported_map, reason, coords)
-
-        # Do not permanently cache transient failures.  Agent arrays can be empty
-        # for a short time after an outpost load; caching that state made later
-        # Execute calls reuse stale None coordinates forever.
-        all_required_resolved = resolved_required_count >= required_count
-        if all_required_resolved:
-            self.cached_context_map_id = current_map_id
-            self.cached_supported_context = resolved_context
-        else:
-            self.cached_context_map_id = -1
-            self.cached_supported_context = None
-
-        selector_mode = "specific" if map_id in SUPPORTED_MAP_NPC_SELECTORS else "generic"
-        self._debug_log(
-            f"Context resolved: map={Map.GetMapName(map_id)} ({map_id}) selector_mode={selector_mode} "
-            f"required={sorted(required_services)} supported={supported_map} "
-            f"merchant={self._format_debug_coords(coords[MERCHANT_TYPE_MERCHANT])} "
-            f"materials={self._format_debug_coords(coords[MERCHANT_TYPE_MATERIALS])} "
-            f"rune={self._format_debug_coords(coords[MERCHANT_TYPE_RUNE_TRADER])} "
-            f"scroll={self._format_debug_coords(coords[MERCHANT_TYPE_SCROLL_TRADER])} "
-            f"rare={self._format_debug_coords(coords[MERCHANT_TYPE_RARE_MATERIALS])}"
+        self.cached_context_map_id = current_map_id
+        self.cached_supported_context = resolved_context
+        selector_mode = (
+            "merchant_rules_specific"
+            if has_merchant_rules_map_selectors
+            else "specific"
+            if map_id in SUPPORTED_MAP_NPC_SELECTORS
+            else "generic"
         )
-        if not all_required_resolved:
-            self._debug_log(f"Context detail: {reason}")
-        return resolved_context
+        if log_context:
+            self._debug_log(
+                f"Context resolved: map={Map.GetMapName(map_id)} ({map_id}) selector_mode={selector_mode} "
+                f"supported={supported_map} {self._get_service_resolution_diagnostics()} "
+                f"resolved_services={resolved_text} unresolved_services={unresolved_text} "
+                f"merchant={self._format_debug_coords(coords[MERCHANT_TYPE_MERCHANT])} "
+                f"materials={self._format_debug_coords(coords[MERCHANT_TYPE_MATERIALS])} "
+                f"rune={self._format_debug_coords(coords[MERCHANT_TYPE_RUNE_TRADER])} "
+                f"scroll={self._format_debug_coords(coords[MERCHANT_TYPE_SCROLL_TRADER])} "
+                f"rare={self._format_debug_coords(coords[MERCHANT_TYPE_RARE_MATERIALS])} "
+                f"consumable={self._format_debug_coords(coords[MERCHANT_TYPE_CONSUMABLE_CRAFTER])}"
+            )
+            if not supported_map or resolved_count < len(coords):
+                self._debug_log(f"Context detail: {reason}")
+        return self.cached_supported_context
 
     def _get_projected_supported_context(self, target_outpost_id: int) -> tuple[bool, str, dict[str, tuple[float, float] | None]]:
         safe_outpost_id = max(0, _safe_int(target_outpost_id, 0))
@@ -15712,11 +17821,10 @@ class MerchantRulesWidget:
                 MERCHANT_TYPE_CONSUMABLE_CRAFTER: None,
             }
 
-        selector_mode = "specific merchant selectors" if safe_outpost_id in SUPPORTED_MAP_NPC_SELECTORS else "generic merchant selectors"
         arrival_label = "Guild Hall arrival" if self._is_guild_hall_target(safe_outpost_id) else "arrival"
         reason = (
             f"Projected preview for {outpost_name} ({safe_outpost_id}). "
-            f"Travel + Execute will auto-travel, then rebuild live merchant handling after {arrival_label} using {selector_mode}. "
+            f"Travel + Execute will auto-travel, then recheck current items and available services after {arrival_label}. "
             "Destination NPC and storage access will be confirmed on arrival."
         )
         return True, reason, coords
@@ -15778,12 +17886,11 @@ class MerchantRulesWidget:
         is_guild_hall_target = self._is_guild_hall_target(safe_outpost_id)
         arrival_label = "Guild Hall arrival" if is_guild_hall_target else "arrival"
         travel_reason = (
-            "Travel to the Guild Hall. After arrival, Merchant Rules will check the available services "
-            "and rebuild the plan before executing."
+            "Travel to the Guild Hall. After arrival, Merchant Rules will recheck current items and available "
+            "services before executing."
             if is_guild_hall_target
             else (
-                "After arrival, Merchant Rules will check the available services and rebuild the plan "
-                "before executing."
+                "After arrival, Merchant Rules will recheck current items and available services before executing."
             )
         )
         result = PlanResult(
@@ -15808,7 +17915,12 @@ class MerchantRulesWidget:
         )
         return result
 
-    def _build_consumable_crafter_multi_stop_preview(self, destination_outpost_id: int) -> PlanResult:
+    def _build_consumable_crafter_multi_stop_preview(
+        self,
+        destination_outpost_id: int,
+        *,
+        execution_context: MerchantRulesExecutionContext | None = None,
+    ) -> PlanResult:
         safe_destination_id = max(0, _safe_int(destination_outpost_id, 0))
         destination_name = self._get_outpost_name(safe_destination_id)
         if safe_destination_id <= 0 or not destination_name:
@@ -15824,12 +17936,14 @@ class MerchantRulesWidget:
             projected_target_override_outpost_id=EMBARK_BEACH_MAP_ID,
             allow_consumable_multi_stop=False,
             consumable_crafter_only=True,
+            execution_context=execution_context,
         )
         destination_plan = self._build_plan(
             projected_preview=True,
             projected_target_override_outpost_id=safe_destination_id,
             allow_consumable_multi_stop=False,
             exclude_consumable_crafter=True,
+            execution_context=execution_context,
         )
 
         if not embark_plan.has_actions:
@@ -15904,6 +18018,7 @@ class MerchantRulesWidget:
             identify_claimed_item_ids=list(destination_plan.identify_claimed_item_ids),
             identify_item_ids=list(destination_plan.identify_item_ids),
             salvage_item_ids=list(destination_plan.salvage_item_ids),
+            salvage_specific_upgrade_owners=dict(destination_plan.salvage_specific_upgrade_owners),
             destroy_actions=list(destination_plan.destroy_actions),
             destroy_item_ids=list(destination_plan.destroy_item_ids),
             merchant_sell_item_ids=list(destination_plan.merchant_sell_item_ids),
@@ -15913,6 +18028,8 @@ class MerchantRulesWidget:
             inventory_snapshot_captured=bool(embark_plan.inventory_snapshot_captured or destination_plan.inventory_snapshot_captured),
             inventory_model_counts=dict(embark_plan.inventory_model_counts or destination_plan.inventory_model_counts),
             inventory_item_count=max(int(embark_plan.inventory_item_count), int(destination_plan.inventory_item_count)),
+            xunlai_first_merchant_stock_targets=dict(destination_plan.xunlai_first_merchant_stock_targets),
+            xunlai_first_storage_scan_reliable=bool(destination_plan.xunlai_first_storage_scan_reliable),
             has_actions=bool(embark_plan.has_actions or destination_plan.has_actions),
         )
         return result
@@ -16118,7 +18235,12 @@ class MerchantRulesWidget:
         )
         return parsed_state
 
-    def _build_inventory_item_info(self, item_id: int) -> InventoryItemInfo | None:
+    def _build_inventory_item_info(
+        self,
+        item_id: int,
+        *,
+        include_runtime_name: bool = True,
+    ) -> InventoryItemInfo | None:
         """Read and normalize one live inventory item for rule matching.
 
         Missing native data or parsing failures return ``None`` so callers cannot plan from a
@@ -16145,10 +18267,15 @@ class MerchantRulesWidget:
                 is_weapon_like=is_weapon_like,
                 is_armor_piece=is_armor_piece,
             )
+            runtime_name = (
+                str(GLOBAL_CACHE.Item.GetName(safe_item_id) or f"Model {model_id}")
+                if include_runtime_name
+                else f"Model {model_id}"
+            )
             return InventoryItemInfo(
                 item_id=safe_item_id,
                 model_id=model_id,
-                name=str(GLOBAL_CACHE.Item.GetName(safe_item_id) or f"Model {model_id}"),
+                name=runtime_name,
                 quantity=quantity,
                 value=value,
                 item_type_id=int(item_type_id),
@@ -16259,6 +18386,15 @@ class MerchantRulesWidget:
         if not self._is_storage_open():
             return []
         return self._collect_item_infos_from_ids(self._get_storage_item_ids())
+
+    def _collect_storage_items_with_reliability(self) -> tuple[list[InventoryItemInfo], bool]:
+        """Collect regular Xunlai panes and report whether every listed item was readable."""
+
+        if not self._is_storage_open():
+            return [], False
+        item_ids = self._get_storage_item_ids()
+        items = self._collect_item_infos_from_ids(item_ids)
+        return items, len(items) == len(item_ids)
 
     def _collect_material_storage_items(self) -> list[InventoryItemInfo]:
         if not self._is_storage_open():
@@ -16656,13 +18792,7 @@ class MerchantRulesWidget:
         generic_model_name = f"model {safe_model_id}".casefold() if safe_model_id > 0 else ""
 
         if plain_name and plain_name.casefold() != generic_model_name:
-            normalized_name = _normalize_catalog_search_text(plain_name)
-            matching_model_ids = [
-                int(model_id)
-                for model_id in self.catalog_alias_to_model_ids.get(normalized_name, [])
-                if max(0, _safe_int(model_id, 0)) > 0
-            ]
-            if not matching_model_ids or safe_model_id in matching_model_ids:
+            if not self._runtime_item_label_contradicts_model(plain_name, safe_model_id):
                 return raw_name
 
         if safe_model_id > 0:
@@ -17276,9 +19406,10 @@ class MerchantRulesWidget:
                 identity, _identity_error = _get_armor_upgrade_catalog_identity(identifier)
                 if identity is None:
                     continue
-                target_signature_present = bool(
-                    identity.signature
-                    and all(triple in raw_modifiers for triple in identity.signature)
+                target_signature_present = _armor_upgrade_signature_is_exactly_present(
+                    raw_modifiers,
+                    identity,
+                    require_generic_carrier=True,
                 )
                 alternate_minor_vigor_present = bool(
                     identity.signature == ((9224, 0, 0x00FF),)
@@ -17421,36 +19552,102 @@ class MerchantRulesWidget:
             f"rule is configured for {_get_salvage_option_label(safe_selected_option)}"
         )
 
+    def _get_common_material_target_match(
+        self,
+        rule: SalvageRule,
+        item: InventoryItemInfo,
+    ) -> tuple[bool, str]:
+        target_model_ids = _normalize_common_material_model_ids(
+            getattr(rule, "target_common_material_model_ids", [])
+        )
+        if not target_model_ids:
+            return True, ""
+        if _resolve_salvage_operation(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT)) != SALVAGE_OPTION_MATERIALS:
+            return True, ""
+
+        item_key = (
+            max(0, _safe_int(getattr(item, "item_type_id", 0), 0)),
+            max(0, _safe_int(getattr(item, "model_id", 0), 0)),
+        )
+        possible_outputs = self.common_salvage_model_ids_by_item_key.get(item_key)
+        if not possible_outputs:
+            return False, "Skipped: salvage output data unavailable"
+
+        possible_output_ids = set(int(model_id) for model_id in possible_outputs)
+        matched_model_ids = [model_id for model_id in target_model_ids if model_id in possible_output_ids]
+        if not matched_model_ids:
+            return False, ""
+
+        labels = [self._get_model_name(model_id) or f"Model {model_id}" for model_id in matched_model_ids]
+        return True, f"Known possible common salvage: {self._format_compact_list(labels, limit=3)}"
+
     def _get_salvage_rule_filter_reason(self, rule: SalvageRule, item: InventoryItemInfo) -> str:
         normalized_rule = _normalize_salvage_rule(rule)
         if normalized_rule is None or not bool(normalized_rule.enabled):
             return ""
-        if int(item.model_id) in set(int(model_id) for model_id in normalized_rule.model_ids):
-            return f"selected model {self._format_model_label(int(item.model_id))}"
 
-        upgrade_target_reason = self._get_salvage_rule_upgrade_target_reason(normalized_rule, item)
-        if upgrade_target_reason:
-            return upgrade_target_reason
+        is_targeted_specific_upgrade = (
+            _is_auto_exact_upgrade_salvage_option(normalized_rule.salvage_option)
+            and _salvage_rule_has_upgrade_targets(normalized_rule)
+        )
+        targeted_specific_upgrade_reason = (
+            self._get_salvage_rule_upgrade_target_reason(normalized_rule, item)
+            if is_targeted_specific_upgrade
+            else ""
+        )
+        if is_targeted_specific_upgrade and not targeted_specific_upgrade_reason:
+            return ""
 
-        rarity_key = _normalize_rarity_key(str(item.rarity or ""))
-        category_key = self._get_salvage_category_key_for_item(item)
         rarity_filter_active = any(bool(value) for value in normalized_rule.rarities.values())
         category_filter_active = any(bool(value) for value in normalized_rule.categories.values())
-        rarity_matches = bool(normalized_rule.rarities.get(rarity_key, False))
-        category_matches = bool(normalized_rule.categories.get(category_key, False))
-        if rarity_filter_active and not rarity_matches:
-            return ""
-        if category_filter_active and not category_matches:
-            return ""
-        if rarity_filter_active or category_filter_active:
-            reason_parts: list[str] = []
-            if rarity_filter_active:
-                reason_parts.append(f"rarity {str(item.rarity or rarity_key).strip() or rarity_key}")
-            if category_filter_active:
-                reason_parts.append(f"category {self._get_salvage_category_label(category_key)}")
-            return f"selected {' and '.join(reason_parts)}"
+        normal_selector_active = bool(normalized_rule.model_ids) or rarity_filter_active or category_filter_active
+        model_matches = int(item.model_id) in set(int(model_id) for model_id in normalized_rule.model_ids)
 
-        return ""
+        base_reason = ""
+        if model_matches:
+            base_reason = f"selected model {self._format_model_label(int(item.model_id))}"
+        else:
+            upgrade_target_reason = ""
+            if not is_targeted_specific_upgrade:
+                upgrade_target_reason = self._get_salvage_rule_upgrade_target_reason(normalized_rule, item)
+            if upgrade_target_reason:
+                base_reason = upgrade_target_reason
+            else:
+                rarity_key = _normalize_rarity_key(str(item.rarity or ""))
+                category_key = self._get_salvage_category_key_for_item(item)
+                rarity_matches = bool(normalized_rule.rarities.get(rarity_key, False))
+                category_matches = bool(normalized_rule.categories.get(category_key, False))
+                if rarity_filter_active and not rarity_matches:
+                    return ""
+                if category_filter_active and not category_matches:
+                    return ""
+                if rarity_filter_active or category_filter_active:
+                    reason_parts: list[str] = []
+                    if rarity_filter_active:
+                        reason_parts.append(f"rarity {str(item.rarity or rarity_key).strip() or rarity_key}")
+                    if category_filter_active:
+                        reason_parts.append(f"category {self._get_salvage_category_label(category_key)}")
+                    base_reason = f"selected {' and '.join(reason_parts)}"
+
+        if is_targeted_specific_upgrade:
+            if not base_reason and normal_selector_active:
+                return ""
+            if not model_matches:
+                base_reason = targeted_specific_upgrade_reason
+
+        target_model_ids = _normalize_common_material_model_ids(
+            getattr(normalized_rule, "target_common_material_model_ids", [])
+        )
+        if target_model_ids and _resolve_salvage_operation(normalized_rule.salvage_option) == SALVAGE_OPTION_MATERIALS:
+            if not base_reason:
+                base_reason = "selected common material output"
+            target_matches, target_reason = self._get_common_material_target_match(normalized_rule, item)
+            if not target_matches:
+                return ""
+            if target_reason:
+                return f"{base_reason}; {target_reason}"
+
+        return base_reason
 
     def _collect_enabled_salvage_rules(self) -> list[tuple[int, SalvageRule]]:
         settings = _normalize_salvage_settings(self.salvage_settings)
@@ -17472,6 +19669,30 @@ class MerchantRulesWidget:
             reason = self._get_salvage_rule_filter_reason(rule, item)
             if reason:
                 return rule_index, rule, reason
+        return None
+
+    def _get_planned_specific_upgrade_salvage_rule(
+        self,
+        owner: PlannedSpecificUpgradeSalvageOwner,
+    ) -> tuple[int, SalvageRule] | None:
+        """Resolve only the rule identity retained by the final live Execute plan."""
+
+        expected_rule = _normalize_salvage_rule(owner.rule_snapshot)
+        expected_rule_index = int(owner.rule_index)
+        if (
+            expected_rule is None
+            or expected_rule_index < 0
+            or not _is_auto_exact_upgrade_salvage_option(expected_rule.salvage_option)
+            or not _salvage_rule_has_upgrade_targets(expected_rule)
+        ):
+            return None
+
+        for current_rule_index, current_rule in self._collect_enabled_salvage_rules():
+            if int(current_rule_index) != expected_rule_index:
+                continue
+            if _normalize_salvage_rule(current_rule) != expected_rule:
+                return None
+            return int(current_rule_index), current_rule
         return None
 
     def _get_salvage_selection_reason(self, item: InventoryItemInfo) -> str:
@@ -17620,7 +19841,9 @@ class MerchantRulesWidget:
             selection_reason = rule_match[2] if rule_match is not None else ""
         if not selection_reason:
             return "not selected by salvage settings"
-        raw_selected_option = getattr(selected_rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
+        raw_selected_option = _normalize_salvage_rule_mode(
+            getattr(selected_rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
+        )
         armor_target_matches = (
             self._get_salvage_rule_armor_upgrade_target_matches(selected_rule, item)
             if selected_rule is not None
@@ -17730,6 +19953,7 @@ class MerchantRulesWidget:
         preferred_salvage_kit_model_id: int = 0,
         include_not_selected_blocks: bool = False,
         manual_salvage_rule: SalvageRule | None = None,
+        planned_specific_upgrade_owners: dict[int, PlannedSpecificUpgradeSalvageOwner] | None = None,
     ) -> tuple[list[SalvageCandidate], dict[str, int]]:
         """Select salvage candidates by rule precedence and bucket every blocked reason."""
 
@@ -17740,7 +19964,49 @@ class MerchantRulesWidget:
             rule_index = -1
             salvage_rule: SalvageRule | None = None
             selection_reason = ""
-            if explicit_rule is not None:
+            planned_owner = (
+                planned_specific_upgrade_owners.get(int(item.item_id))
+                if explicit_rule is None and planned_specific_upgrade_owners is not None
+                else None
+            )
+            if planned_owner is not None:
+                if int(item.model_id) != int(planned_owner.model_id):
+                    owner_block_reason = "planned Specific upgrade item identity changed before execution"
+                    blocked_counts[owner_block_reason] = blocked_counts.get(owner_block_reason, 0) + 1
+                    self._debug_log(
+                        f"MR Salvage skipped {self._format_inventory_item_log_label(item)} ({item.item_id}): "
+                        f"{owner_block_reason}."
+                    )
+                    continue
+                planned_rule_match = self._get_planned_specific_upgrade_salvage_rule(planned_owner)
+                if planned_rule_match is None:
+                    owner_block_reason = "planned Specific upgrade owner changed before execution"
+                    blocked_counts[owner_block_reason] = blocked_counts.get(owner_block_reason, 0) + 1
+                    self._debug_log(
+                        f"MR Salvage skipped {self._format_inventory_item_log_label(item)} ({item.item_id}): "
+                        f"{owner_block_reason}."
+                    )
+                    continue
+                rule_index, salvage_rule = planned_rule_match
+                selection_reason = self._get_salvage_rule_filter_reason(salvage_rule, item)
+                if not selection_reason:
+                    owner_block_reason = self._get_salvage_candidate_block_reason(
+                        item,
+                        enabled_sell_rules,
+                        salvage_rule=salvage_rule,
+                        require_salvage_kit=False,
+                        mode=mode,
+                    )
+                    if owner_block_reason in {"", "not selected by salvage settings"}:
+                        owner_block_reason = "planned Specific upgrade owner no longer matches"
+                    bucket = self._get_salvage_block_bucket(owner_block_reason) or owner_block_reason
+                    blocked_counts[bucket] = blocked_counts.get(bucket, 0) + 1
+                    self._debug_log(
+                        f"MR Salvage skipped {self._format_inventory_item_log_label(item)} ({item.item_id}): "
+                        f"{owner_block_reason}."
+                    )
+                    continue
+            elif explicit_rule is not None:
                 explicit_reason = self._get_salvage_rule_filter_reason(explicit_rule, item)
                 if explicit_reason:
                     salvage_rule = explicit_rule
@@ -17759,7 +20025,9 @@ class MerchantRulesWidget:
                 continue
             salvage_kit_id = 0
             if salvage_rule is not None:
-                salvage_option = getattr(salvage_rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
+                salvage_option = _normalize_salvage_rule_mode(
+                    getattr(salvage_rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
+                )
                 if max(0, _safe_int(preferred_salvage_kit_id, 0)) > 0:
                     salvage_kit_id = self._get_salvage_kit_id_for_option(
                         salvage_option,
@@ -17953,7 +20221,8 @@ class MerchantRulesWidget:
                     PlannedTraderSale(
                         item_id=item.item_id,
                         model_id=item.model_id,
-                        label=item.name,
+                        label=self._format_inventory_item_log_label(item),
+                        expected_rune_identifiers=_normalize_rune_identifier_tuple(item.rune_identifiers),
                     )
                 )
             else:
@@ -18129,7 +20398,8 @@ class MerchantRulesWidget:
                     PlannedTraderSale(
                         item_id=item.item_id,
                         model_id=item.model_id,
-                        label=item.name,
+                        label=target_label,
+                        expected_rune_identifiers=_normalize_rune_identifier_tuple(item.rune_identifiers),
                     )
                 )
                 plan.entries.append(
@@ -18208,6 +20478,11 @@ class MerchantRulesWidget:
         return ""
 
     def _apply_after_purchase_cleanup(self, cleanup: PurchaseTargetCleanup, *, label: str = "") -> bool:
+        if not self._merchant_rules_is_generation_current():
+            self._debug_log(
+                f"Skipped stale after-purchase cleanup for {label or getattr(cleanup, 'target_key', '')}."
+            )
+            return False
         action = _normalize_after_purchase_action(getattr(cleanup, "after_purchase", AFTER_PURCHASE_KEEP))
         if action == AFTER_PURCHASE_KEEP:
             return False
@@ -18792,9 +21067,13 @@ class MerchantRulesWidget:
         cleanup_items = list(items)
         cleanup_blacklist_model_ids = self._get_cleanup_blacklist_model_id_set()
         cleanup_targets = self._get_effective_cleanup_targets(enabled_sell_rules)
+        xunlai_first_keep_by_model = self._get_xunlai_first_cleanup_keep_by_model()
         for cleanup_target in cleanup_targets:
             target_model_id = max(0, int(cleanup_target.model_id))
-            keep_on_character = max(0, int(cleanup_target.keep_on_character))
+            configured_keep_on_character = max(0, int(cleanup_target.keep_on_character))
+            xunlai_first_keep = max(0, int(xunlai_first_keep_by_model.get(target_model_id, 0)))
+            keep_on_character = max(configured_keep_on_character, xunlai_first_keep)
+            xunlai_first_keep_controls = xunlai_first_keep > configured_keep_on_character
             target_label = self._format_cleanup_target_label_short(cleanup_target)
             matching_items = [
                 item
@@ -18838,6 +21117,14 @@ class MerchantRulesWidget:
                 continue
 
             if total_quantity <= keep_on_character:
+                keep_reason = (
+                    f"Keeping {keep_on_character} on character for Check Xunlai first."
+                    if xunlai_first_keep_controls
+                    else (
+                        f"All {total_quantity} matching items remain in inventory because "
+                        f"the keep amount is {keep_on_character}."
+                    )
+                )
                 plan.entries.append(
                     ExecutionPlanEntry(
                         "deposit",
@@ -18845,10 +21132,7 @@ class MerchantRulesWidget:
                         target_label,
                         total_quantity,
                         PLAN_STATE_SKIPPED,
-                        (
-                            f"All {total_quantity} matching items remain in inventory because "
-                            f"the keep amount is {keep_on_character}."
-                        ),
+                        keep_reason,
                     )
                 )
                 continue
@@ -18875,7 +21159,11 @@ class MerchantRulesWidget:
                     label=transfer.label,
                     model_id=transfer.model_id,
                     key=transfer.key,
-                    reason=f"Deposit target keeps {keep_on_character} on character.",
+                    reason=(
+                        f"Keeping {keep_on_character} on character for Check Xunlai first."
+                        if xunlai_first_keep_controls
+                        else f"Deposit target keeps {keep_on_character} on character."
+                    ),
                     storage_open=storage_open,
                 )
             cleanup_items = self._apply_planned_transfer_quantities(cleanup_items, planned_transfers)
@@ -18893,7 +21181,7 @@ class MerchantRulesWidget:
                     ExecutionPlanEntry(
                         "deposit",
                         MERCHANT_TYPE_STORAGE,
-                        "Linked protection source",
+                        "Linked protection rule",
                         0,
                         PLAN_STATE_SKIPPED,
                         "Linked sell rule no longer exists.",
@@ -19315,7 +21603,7 @@ class MerchantRulesWidget:
                     merchant_type=merchant_type,
                     item_id=item.item_id,
                     model_id=item.model_id,
-                    label=item.name,
+                    label=self._format_inventory_item_log_label(item),
                     batches_to_sell=batches_to_sell,
                     quantity_to_sell=sell_quantity,
                     batch_size=batch_size,
@@ -19865,6 +22153,16 @@ class MerchantRulesWidget:
             if item_id <= 0:
                 continue
             rule = _normalize_salvage_rule(candidate.rule) or SalvageRule()
+            if (
+                int(candidate.rule_index) >= 0
+                and _is_auto_exact_upgrade_salvage_option(rule.salvage_option)
+                and _salvage_rule_has_upgrade_targets(rule)
+            ):
+                plan.salvage_specific_upgrade_owners[item_id] = PlannedSpecificUpgradeSalvageOwner(
+                    model_id=int(item.model_id),
+                    rule_index=int(candidate.rule_index),
+                    rule_snapshot=_normalize_salvage_rule(rule) or SalvageRule(),
+                )
             rule_reference = (
                 self._format_salvage_rule_reference(int(candidate.rule_index), rule)
                 if int(candidate.rule_index) >= 0
@@ -19981,11 +22279,13 @@ class MerchantRulesWidget:
         plan: PlanResult,
         sim_model_counts: dict[int, int],
         *,
+        execution_context: MerchantRulesExecutionContext | None = None,
         sim_inventory_items: list[InventoryItemInfo] | None = None,
         storage_items: list[InventoryItemInfo] | None = None,
         consumable_crafter_only: bool = False,
         exclude_consumable_crafter: bool = False,
         allowed_rule_kinds: set[str] | None = None,
+        bypass_xunlai_first: bool = False,
     ) -> None:
         """Plan purchases against simulated inventory, storage, currency, and target reservations.
 
@@ -20064,7 +22364,32 @@ class MerchantRulesWidget:
                         - (max(0, int(ingredient_quantity)) * safe_quantity),
                     )
 
-        for buy_rule_index, buy_rule in enumerate(self.buy_rules):
+        buy_rule_sources: list[tuple[int, BuyRule]] = list(enumerate(self.buy_rules))
+        request_stock_targets = execution_context.merchant_stock_targets if execution_context is not None else ()
+        if request_stock_targets:
+            buy_rule_sources.append(
+                (
+                    -1,
+                    BuyRule(
+                        enabled=True,
+                        kind=BUY_KIND_MERCHANT_STOCK,
+                        merchant_type=MERCHANT_TYPE_MERCHANT,
+                        merchant_stock_targets=[
+                            MerchantStockTarget(
+                                model_id=max(0, int(target.model_id)),
+                                target_count=max(0, int(target.target_count)),
+                                max_per_run=0,
+                                after_purchase=AFTER_PURCHASE_KEEP,
+                                check_xunlai_first=False,
+                            )
+                            for target in request_stock_targets
+                        ],
+                        name="Request-scoped Merchant Stock",
+                    ),
+                )
+            )
+
+        for buy_rule_index, buy_rule in buy_rule_sources:
             normalized_buy_rule = _normalize_buy_rule(buy_rule)
             if normalized_buy_rule is None:
                 continue
@@ -20077,7 +22402,11 @@ class MerchantRulesWidget:
                 continue
             if exclude_consumable_crafter and buy_rule.kind == BUY_KIND_CONSUMABLE_CRAFTER_TARGET:
                 continue
-            buy_rule_reference = self._format_buy_rule_reference(buy_rule_index, buy_rule)
+            buy_rule_reference = (
+                "Request-scoped Merchant Stock"
+                if buy_rule_index < 0
+                else self._format_buy_rule_reference(buy_rule_index, buy_rule)
+            )
 
             if buy_rule.kind == BUY_KIND_MATERIAL_TARGET:
                 if not buy_rule.material_targets:
@@ -20274,6 +22603,11 @@ class MerchantRulesWidget:
                     model_label = self._format_model_label(merchant_stock_model_id)
                     target_merchant_type = MERCHANT_TYPE_SCROLL_TRADER if _is_scroll_trader_stock_model(merchant_stock_model_id) else merchant_type
                     target_merchant_coords = coords.get(target_merchant_type)
+                    use_xunlai_first = bool(
+                        not bypass_xunlai_first
+                        and merchant_stock_target.check_xunlai_first
+                        and self._merchant_stock_target_supports_xunlai_first(merchant_stock_model_id)
+                    )
                     if merchant_stock_model_id <= 0:
                         plan.entries.append(
                             ExecutionPlanEntry(
@@ -20299,7 +22633,7 @@ class MerchantRulesWidget:
                         )
                         continue
 
-                    if target_merchant_coords is None:
+                    if target_merchant_coords is None and not use_xunlai_first:
                         plan.entries.append(
                             ExecutionPlanEntry(
                                 action_type="buy",
@@ -20317,11 +22651,8 @@ class MerchantRulesWidget:
                         continue
 
                     current_count = sim_model_counts.get(merchant_stock_model_id, 0)
-                    needed = self._apply_max_per_run(
-                        int(merchant_stock_target.target_count) - current_count,
-                        int(merchant_stock_target.max_per_run),
-                    )
-                    if needed <= 0:
+                    full_shortage = max(0, int(merchant_stock_target.target_count) - current_count)
+                    if full_shortage <= 0:
                         plan.entries.append(
                             ExecutionPlanEntry(
                                 "buy",
@@ -20334,6 +22665,123 @@ class MerchantRulesWidget:
                                     f"target is {merchant_stock_target.target_count}."
                                 ),
                                 status_hint=PREVIEW_STATUS_ALREADY_DONE,
+                            )
+                        )
+                        continue
+
+                    planned_xunlai_withdraw_quantity = 0
+                    if use_xunlai_first:
+                        plan.xunlai_first_merchant_stock_targets[merchant_stock_model_id] = model_label
+                        if not plan.storage_exact:
+                            reason = (
+                                f"Inventory has {current_count}; target is {merchant_stock_target.target_count}. "
+                                "Xunlai Storage must be checked before Merchant Rules can determine whether to withdraw or buy."
+                            )
+                            if target_merchant_coords is None:
+                                reason = f"{reason} {MERCHANT_TYPE_LABELS[target_merchant_type]} could not be found in the current map."
+                            plan.entries.append(
+                                ExecutionPlanEntry(
+                                    "withdraw",
+                                    MERCHANT_TYPE_STORAGE,
+                                    model_label,
+                                    full_shortage,
+                                    PLAN_STATE_CONDITIONAL,
+                                    reason,
+                                    model_id=merchant_stock_model_id,
+                                )
+                            )
+                            continue
+                        if not plan.xunlai_first_storage_scan_reliable:
+                            plan.entries.append(
+                                ExecutionPlanEntry(
+                                    "withdraw",
+                                    MERCHANT_TYPE_STORAGE,
+                                    model_label,
+                                    0,
+                                    PLAN_STATE_SKIPPED,
+                                    "Xunlai Storage could not be checked reliably.",
+                                    model_id=merchant_stock_model_id,
+                                    status_hint=PREVIEW_STATUS_BLOCKED,
+                                )
+                            )
+                            continue
+
+                        stock_key = _make_model_stock_key(merchant_stock_model_id)
+                        withdraw_quantity = min(
+                            full_shortage,
+                            max(0, int(storage_model_counts.get(merchant_stock_model_id, 0))),
+                        )
+                        if withdraw_quantity > 0:
+                            raw_transfers = self._get_storage_transfer_items_for_stock_key(
+                                sim_storage_items,
+                                stock_key,
+                                quantity=withdraw_quantity,
+                                label=model_label,
+                                direction=STORAGE_TRANSFER_WITHDRAW,
+                            )
+                            transfers = [
+                                replace(
+                                    transfer,
+                                    reason="Check Xunlai first",
+                                    xunlai_first_merchant_stock=True,
+                                )
+                                for transfer in raw_transfers
+                            ]
+                            planned_xunlai_withdraw_quantity = sum(
+                                max(0, int(transfer.quantity)) for transfer in transfers
+                            )
+                            if planned_xunlai_withdraw_quantity > 0:
+                                plan.storage_transfers.extend(transfers)
+                                plan.entries.append(
+                                    ExecutionPlanEntry(
+                                        "withdraw",
+                                        MERCHANT_TYPE_STORAGE,
+                                        model_label,
+                                        planned_xunlai_withdraw_quantity,
+                                        PLAN_STATE_WILL_EXECUTE,
+                                        "Withdraw matching items from Xunlai before buying the remaining shortage.",
+                                        model_id=merchant_stock_model_id,
+                                    )
+                                )
+                                self._adjust_stock_count_for_key(
+                                    stock_key,
+                                    -planned_xunlai_withdraw_quantity,
+                                    model_counts=storage_model_counts,
+                                    identifier_counts=storage_identifier_counts,
+                                )
+                                self._adjust_stock_count_for_key(
+                                    stock_key,
+                                    planned_xunlai_withdraw_quantity,
+                                    model_counts=sim_model_counts,
+                                    identifier_counts=inventory_identifier_counts,
+                                )
+                                sim_storage_items = self._apply_planned_transfer_quantities(
+                                    sim_storage_items,
+                                    transfers,
+                                )
+                                current_count += planned_xunlai_withdraw_quantity
+
+                    remaining_shortage = max(0, int(merchant_stock_target.target_count) - current_count)
+                    needed = self._apply_max_per_run(
+                        remaining_shortage,
+                        int(merchant_stock_target.max_per_run),
+                    )
+                    if needed <= 0:
+                        continue
+                    if target_merchant_coords is None:
+                        plan.entries.append(
+                            ExecutionPlanEntry(
+                                action_type="buy",
+                                merchant_type=target_merchant_type,
+                                label=model_label,
+                                quantity=0,
+                                state=PLAN_STATE_SKIPPED,
+                                reason=(
+                                    f"{self._get_scroll_trader_service_label()} could not be found in the current map."
+                                    if target_merchant_type == MERCHANT_TYPE_SCROLL_TRADER
+                                    else f"{MERCHANT_TYPE_LABELS[target_merchant_type]} could not be found in the current map."
+                                ),
+                                model_id=merchant_stock_model_id,
                             )
                         )
                         continue
@@ -20352,6 +22800,7 @@ class MerchantRulesWidget:
                                     max_per_run=merchant_stock_target.max_per_run,
                                     after_purchase=merchant_stock_target.after_purchase,
                                     completes_target=current_count + needed >= int(merchant_stock_target.target_count),
+                                    xunlai_involved=planned_xunlai_withdraw_quantity > 0,
                                 ),
                             )
                         )
@@ -20374,7 +22823,9 @@ class MerchantRulesWidget:
                                     max_per_run=merchant_stock_target.max_per_run,
                                     after_purchase=merchant_stock_target.after_purchase,
                                     completes_target=current_count + needed >= int(merchant_stock_target.target_count),
+                                    xunlai_involved=planned_xunlai_withdraw_quantity > 0,
                                 ),
+                                check_xunlai_first=use_xunlai_first,
                             )
                         )
                         entry_reason = (
@@ -20384,6 +22835,7 @@ class MerchantRulesWidget:
                     cleanup_suffix = self._get_purchase_cleanup_preview_suffix(
                         merchant_stock_target.after_purchase,
                         completes_target=current_count + needed >= int(merchant_stock_target.target_count),
+                        xunlai_involved=planned_xunlai_withdraw_quantity > 0,
                     )
                     if cleanup_suffix:
                         entry_reason = f"{entry_reason} {cleanup_suffix}"
@@ -21028,6 +23480,7 @@ class MerchantRulesWidget:
     def _build_plan(
         self,
         *,
+        execution_context: MerchantRulesExecutionContext | None = None,
         cleanup_only: bool = False,
         projected_preview: bool = False,
         ignore_travel_target: bool = False,
@@ -21038,6 +23491,7 @@ class MerchantRulesWidget:
         buy_action_rule_kinds: set[str] | None = None,
         sell_action_rule_kinds: set[str] | None = None,
         supported_context_override: tuple[bool, str, dict[str, tuple[float, float] | None]] | None = None,
+        bypass_xunlai_first: bool = False,
     ) -> PlanResult:
         """Build the complete preview plan without performing live merchant actions.
 
@@ -21061,7 +23515,10 @@ class MerchantRulesWidget:
                     and self._should_use_consumable_crafter_multi_stop_route()
                 ):
                     target_outpost_id, _target_outpost_name = self._get_consumable_crafter_multi_stop_target()
-                    multi_stop_plan = self._build_consumable_crafter_multi_stop_preview(target_outpost_id)
+                    multi_stop_plan = self._build_consumable_crafter_multi_stop_preview(
+                        target_outpost_id,
+                        execution_context=execution_context,
+                    )
                     self._log_plan_summary("Plan built", multi_stop_plan)
                     self.last_plan_build_duration_ms = max(0.0, (time.perf_counter() - started_at) * 1000.0)
                     return multi_stop_plan
@@ -21103,8 +23560,21 @@ class MerchantRulesWidget:
             has_enabled_rules = self._has_enabled_rules_excluding_consumable_crafters()
         else:
             has_enabled_rules = self._has_enabled_rules()
-        if not has_enabled_rules:
-            self._debug_log("Plan build skipped inventory snapshot because no buy, sell, salvage, destroy, or cleanup rules are enabled.")
+        has_request_stock_targets = bool(
+            not cleanup_only
+            and not consumable_crafter_only
+            and (buy_action_rule_kinds is None or BUY_KIND_MERCHANT_STOCK in buy_action_rule_kinds)
+            and execution_context is not None
+            and any(
+                int(target.model_id) > 0 and int(target.target_count) > 0
+                for target in execution_context.merchant_stock_targets
+            )
+        )
+        if not has_enabled_rules and not has_request_stock_targets:
+            self._debug_log(
+                "Plan build skipped inventory snapshot because no buy, sell, salvage, destroy, or cleanup rules "
+                "are enabled and no request-scoped Merchant Stock targets apply."
+            )
             self._log_plan_summary("Plan built", plan)
             self.last_plan_build_duration_ms = max(0.0, (time.perf_counter() - started_at) * 1000.0)
             return plan
@@ -21147,9 +23617,26 @@ class MerchantRulesWidget:
             and not consumable_crafter_only
             and self._has_ready_xunlai_sell_rules(sell_action_rules)
         )
-        if needs_rune_storage_context or needs_consumable_storage_context or needs_xunlai_sell_storage_context:
+        needs_xunlai_first_storage_context = bool(
+            not cleanup_only
+            and not consumable_crafter_only
+            and not bypass_xunlai_first
+            and (buy_action_rule_kinds is None or BUY_KIND_MERCHANT_STOCK in buy_action_rule_kinds)
+            and self._has_enabled_xunlai_first_merchant_stock_targets()
+        )
+        if (
+            needs_rune_storage_context
+            or needs_consumable_storage_context
+            or needs_xunlai_sell_storage_context
+            or needs_xunlai_first_storage_context
+        ):
             if storage_open:
-                storage_items = self._collect_storage_items()
+                if needs_xunlai_first_storage_context:
+                    storage_items, plan.xunlai_first_storage_scan_reliable = (
+                        self._collect_storage_items_with_reliability()
+                    )
+                else:
+                    storage_items = self._collect_storage_items()
                 if needs_xunlai_sell_storage_context:
                     include_xunlai_material_storage = any(
                         bool(getattr(rule, "include_material_storage", False))
@@ -21518,7 +24005,8 @@ class MerchantRulesWidget:
                                     PlannedTraderSale(
                                         item_id=item.item_id,
                                         model_id=item.model_id,
-                                        label=item.name,
+                                        label=self._format_inventory_item_log_label(item),
+                                        expected_rune_identifiers=_normalize_rune_identifier_tuple(item.rune_identifiers),
                                     )
                                 )
                                 plan.entries.append(
@@ -21715,11 +24203,13 @@ class MerchantRulesWidget:
         self._plan_buy_actions(
             plan,
             sim_model_counts,
+            execution_context=execution_context,
             sim_inventory_items=sim_inventory_items,
             storage_items=storage_items,
             consumable_crafter_only=consumable_crafter_only,
             exclude_consumable_crafter=exclude_consumable_crafter,
             allowed_rule_kinds=buy_action_rule_kinds,
+            bypass_xunlai_first=bypass_xunlai_first,
         )
         self._plan_consumable_crafter_bag_space_warning(
             plan,
@@ -21766,6 +24256,398 @@ class MerchantRulesWidget:
             inv_widget.pause()
             return inv_widget
         return None
+
+    def _inventory_plus_is_enabled(self) -> bool:
+        try:
+            widget_handler = get_widget_handler()
+            inv_widget = widget_handler.get_widget_info("Inventory Plus")
+            if inv_widget is None:
+                inv_widget = widget_handler.get_widget_info("InventoryPlus")
+            if inv_widget is None:
+                return False
+            enabled = getattr(inv_widget, "enabled")
+            if not isinstance(enabled, bool):
+                return True
+            return enabled
+        except Exception:
+            return True
+
+    def _read_gold_snapshot(self) -> tuple[int, int] | None:
+        carried_gold = self._read_gold_amount("GetGoldOnCharacter")
+        storage_gold = self._read_gold_amount("GetGoldInStorage")
+        if carried_gold is None or storage_gold is None:
+            return None
+        return max(0, int(carried_gold)), max(0, int(storage_gold))
+
+    def _format_gold_target(self, gold_amount: int) -> str:
+        safe_amount = _normalize_gold_target(gold_amount)
+        if safe_amount % 1000 == 0:
+            return f"{safe_amount // 1000} platinum"
+        return f"{safe_amount} gold"
+
+    def _publish_gold_balance_result(self, result: GoldBalanceResult) -> None:
+        self.last_gold_balance_status = str(result.status)
+        target_label = self._format_gold_target(result.target_gold)
+        if result.reason:
+            self._debug_log(f"Gold balance internal detail: {result.reason}")
+        if result.status == GOLD_BALANCE_STATUS_BLOCKED:
+            summary = GOLD_BALANCE_INVENTORY_PLUS_MESSAGE
+        elif result.status == GOLD_BALANCE_STATUS_DISABLED:
+            summary = "Gold balancing is disabled."
+        elif result.status == GOLD_BALANCE_STATUS_TARGET_MET:
+            summary = f"Carried gold already matches the {target_label} target."
+        elif result.status == GOLD_BALANCE_STATUS_EXACT:
+            summary = f"Gold balance complete: carried gold is {target_label}."
+        elif result.status == GOLD_BALANCE_STATUS_PARTIAL:
+            summary = (
+                f"Gold moved {int(result.moved)} gold, but the {target_label} target was not reached."
+            )
+        elif result.status == GOLD_BALANCE_STATUS_NO_PROGRESS:
+            if result.reason == "storage does not contain enough gold":
+                summary = GOLD_BALANCE_STORAGE_EMPTY_MESSAGE
+            else:
+                summary = GOLD_BALANCE_NO_PROGRESS_MESSAGE
+        elif result.status == GOLD_BALANCE_STATUS_INVALID:
+            summary = GOLD_BALANCE_INVALID_MESSAGE
+        else:
+            unavailable_reason = str(result.reason or "")
+            if unavailable_reason == "Xunlai service was not found nearby":
+                summary = GOLD_BALANCE_XUNLAI_UNAVAILABLE_MESSAGE
+            elif unavailable_reason in {"gold deposit unavailable", "gold deposit failed"}:
+                summary = GOLD_BALANCE_DEPOSIT_FAILURE_MESSAGE
+            elif unavailable_reason in {"gold withdrawal unavailable", "gold withdrawal failed"}:
+                summary = GOLD_BALANCE_WITHDRAW_FAILURE_MESSAGE
+            else:
+                summary = GOLD_BALANCE_UNAVAILABLE_MESSAGE
+        self.last_gold_balance_summary = summary
+        self.status_message = summary
+        if result.status in {
+            GOLD_BALANCE_STATUS_BLOCKED,
+            GOLD_BALANCE_STATUS_INVALID,
+            GOLD_BALANCE_STATUS_UNAVAILABLE,
+        }:
+            self._debug_log(f"Gold balance skipped or stopped: {summary}")
+        else:
+            self._debug_log(f"Gold balance result: {summary}")
+
+    def _wait_for_gold_balance_service(self):
+        if self._has_local_storage_access():
+            return True
+
+        waited_ms = 0
+        while waited_ms < GOLD_BALANCE_SERVICE_TIMEOUT_MS:
+            yield from Routines.Yield.wait(GOLD_BALANCE_STEP_MS)
+            waited_ms += GOLD_BALANCE_STEP_MS
+            if self._has_local_storage_access():
+                return True
+        return bool(self._has_local_storage_access())
+
+    def _classify_gold_balance_snapshot(
+        self,
+        *,
+        trigger: str,
+        target_gold: int,
+        direction: str,
+        requested: int,
+        before: tuple[int, int],
+        after: tuple[int, int],
+    ) -> GoldBalanceResult:
+        carried_before, storage_before = before
+        carried_after, storage_after = after
+        if carried_before + storage_before != carried_after + storage_after:
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_INVALID,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_before,
+                storage_before=storage_before,
+                carried_after=carried_after,
+                storage_after=storage_after,
+                requested=requested,
+                reason="combined gold changed unexpectedly",
+            )
+
+        carried_delta = carried_after - carried_before
+        if direction == "deposit":
+            if carried_delta > 0 or carried_after < target_gold:
+                return GoldBalanceResult(
+                    status=GOLD_BALANCE_STATUS_INVALID,
+                    trigger=trigger,
+                    target_gold=target_gold,
+                    carried_before=carried_before,
+                    storage_before=storage_before,
+                    carried_after=carried_after,
+                    storage_after=storage_after,
+                    requested=requested,
+                    moved=max(0, -carried_delta),
+                    reason="deposit moved beyond the requested target",
+                )
+            moved = max(0, -carried_delta)
+        else:
+            if carried_delta < 0 or carried_after > target_gold:
+                return GoldBalanceResult(
+                    status=GOLD_BALANCE_STATUS_INVALID,
+                    trigger=trigger,
+                    target_gold=target_gold,
+                    carried_before=carried_before,
+                    storage_before=storage_before,
+                    carried_after=carried_after,
+                    storage_after=storage_after,
+                    requested=requested,
+                    moved=max(0, carried_delta),
+                    reason="withdrawal moved beyond the requested target",
+                )
+            moved = max(0, carried_delta)
+
+        if carried_after == target_gold:
+            status = GOLD_BALANCE_STATUS_EXACT
+        elif moved > 0:
+            status = GOLD_BALANCE_STATUS_PARTIAL
+        else:
+            status = GOLD_BALANCE_STATUS_NO_PROGRESS
+        return GoldBalanceResult(
+            status=status,
+            trigger=trigger,
+            target_gold=target_gold,
+            carried_before=carried_before,
+            storage_before=storage_before,
+            carried_after=carried_after,
+            storage_after=storage_after,
+            requested=requested,
+            moved=moved,
+        )
+
+    def _wait_for_gold_balance_readback(
+        self,
+        *,
+        trigger: str,
+        target_gold: int,
+        direction: str,
+        requested: int,
+        before: tuple[int, int],
+    ):
+        waited_ms = 0
+        last_result: GoldBalanceResult | None = None
+        while waited_ms <= GOLD_BALANCE_VERIFY_TIMEOUT_MS:
+            after = self._read_gold_snapshot()
+            if after is None:
+                return GoldBalanceResult(
+                    status=GOLD_BALANCE_STATUS_INVALID,
+                    trigger=trigger,
+                    target_gold=target_gold,
+                    carried_before=before[0],
+                    storage_before=before[1],
+                    requested=requested,
+                    reason="gold read-back was unavailable",
+                )
+            last_result = self._classify_gold_balance_snapshot(
+                trigger=trigger,
+                target_gold=target_gold,
+                direction=direction,
+                requested=requested,
+                before=before,
+                after=after,
+            )
+            if last_result.status in {
+                GOLD_BALANCE_STATUS_EXACT,
+                GOLD_BALANCE_STATUS_INVALID,
+            }:
+                return last_result
+            if waited_ms >= GOLD_BALANCE_VERIFY_TIMEOUT_MS:
+                break
+            yield from Routines.Yield.wait(GOLD_BALANCE_STEP_MS)
+            waited_ms += GOLD_BALANCE_STEP_MS
+        return last_result or GoldBalanceResult(
+            status=GOLD_BALANCE_STATUS_INVALID,
+            trigger=trigger,
+            target_gold=target_gold,
+            carried_before=before[0],
+            storage_before=before[1],
+            requested=requested,
+            reason="gold read-back did not produce a result",
+        )
+
+    def _balance_carried_gold(self, trigger: str):
+        target_gold = _normalize_gold_target(self.target_carried_gold)
+        before = self._read_gold_snapshot()
+        if before is None:
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_UNAVAILABLE,
+                trigger=trigger,
+                target_gold=target_gold,
+                reason="gold balances unavailable",
+            )
+
+        carried_gold, storage_gold = before
+        if carried_gold == target_gold:
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_TARGET_MET,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_gold,
+                storage_before=storage_gold,
+                carried_after=carried_gold,
+                storage_after=storage_gold,
+            )
+
+        service_ready = yield from self._wait_for_gold_balance_service()
+        if not service_ready:
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_UNAVAILABLE,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_gold,
+                storage_before=storage_gold,
+                reason="Xunlai service was not found nearby",
+            )
+
+        live_before = self._read_gold_snapshot()
+        if live_before is None:
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_INVALID,
+                trigger=trigger,
+                target_gold=target_gold,
+                reason="gold read-back was unavailable before the transfer",
+            )
+        carried_gold, storage_gold = live_before
+        if carried_gold == target_gold:
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_TARGET_MET,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_gold,
+                storage_before=storage_gold,
+                carried_after=carried_gold,
+                storage_after=storage_gold,
+            )
+
+        if carried_gold > target_gold:
+            direction = "deposit"
+            requested = carried_gold - target_gold
+            method_name = "DepositGold"
+        else:
+            direction = "withdraw"
+            requested = min(
+                target_gold - carried_gold,
+                max(0, storage_gold),
+                max(0, MAX_CHARACTER_GOLD - carried_gold),
+            )
+            method_name = "WithdrawGold"
+
+        if requested <= 0:
+            reason = (
+                "storage does not contain enough gold"
+                if direction == "withdraw"
+                else "the carried-gold difference was zero"
+            )
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_NO_PROGRESS,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_gold,
+                storage_before=storage_gold,
+                carried_after=carried_gold,
+                storage_after=storage_gold,
+                reason=reason,
+            )
+
+        transfer = self._get_inventory_api_method(method_name)
+        if transfer is None:
+            self._debug_log(f"Gold balance transfer method unavailable: {method_name}")
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_UNAVAILABLE,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_gold,
+                storage_before=storage_gold,
+                requested=requested,
+                reason=f"gold {direction} unavailable",
+            )
+
+        try:
+            transfer(int(requested))
+        except Exception as exc:
+            self._debug_log(f"Gold balance transfer failed using {method_name}: {exc}")
+            return GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_UNAVAILABLE,
+                trigger=trigger,
+                target_gold=target_gold,
+                carried_before=carried_gold,
+                storage_before=storage_gold,
+                requested=requested,
+                reason=f"gold {direction} failed",
+            )
+
+        yield from self._wait_for_action_queue_empty(
+            "ACTION",
+            timeout_ms=GOLD_BALANCE_VERIFY_TIMEOUT_MS,
+            step_ms=GOLD_BALANCE_STEP_MS,
+        )
+        return (yield from self._wait_for_gold_balance_readback(
+            trigger=trigger,
+            target_gold=target_gold,
+            direction=direction,
+            requested=requested,
+            before=live_before,
+        ))
+
+    def _run_gold_balance_trigger(self, trigger: str):
+        if not self.gold_balance_enabled:
+            result = GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_DISABLED,
+                trigger=trigger,
+                target_gold=_normalize_gold_target(self.target_carried_gold),
+            )
+            self._publish_gold_balance_result(result)
+            return result
+
+        if self._inventory_plus_is_enabled():
+            result = GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_BLOCKED,
+                trigger=trigger,
+                target_gold=_normalize_gold_target(self.target_carried_gold),
+                reason="Inventory+ is enabled",
+            )
+            self._publish_gold_balance_result(result)
+            return result
+
+        self.gold_balance_running = True
+        try:
+            result = yield from self._balance_carried_gold(trigger)
+        except Exception as exc:
+            result = GoldBalanceResult(
+                status=GOLD_BALANCE_STATUS_UNAVAILABLE,
+                trigger=trigger,
+                target_gold=_normalize_gold_target(self.target_carried_gold),
+                reason="unexpected balance error",
+            )
+            ConsoleLog(MODULE_NAME, f"Gold balance error: {exc}", Console.MessageType.Error)
+        finally:
+            self.gold_balance_running = False
+        self._publish_gold_balance_result(result)
+        return result
+
+    def _queue_manual_gold_balance(self) -> bool:
+        if self._get_action_block_reason("gold_balance"):
+            return False
+        self.status_message = GOLD_BALANCE_MANUAL_START_MESSAGE
+        try:
+            self._queue_merchant_rules_owned_work(
+                self._run_gold_balance_trigger("manual Balance Gold Now")
+            )
+            return True
+        except Exception as exc:
+            self.status_message = GOLD_BALANCE_QUEUE_FAILURE_MESSAGE
+            self.last_error = GOLD_BALANCE_QUEUE_FAILURE_MESSAGE
+            ConsoleLog(MODULE_NAME, f"Manual gold balance queue error: {exc}", Console.MessageType.Error)
+            return False
+
+    def _record_execution_currency_change(self, *outcomes: object) -> None:
+        if any(
+            isinstance(outcome, ExecutionPhaseOutcome) and int(outcome.completed) > 0
+            for outcome in outcomes
+        ):
+            self.execution_currency_changing_work_completed = True
 
     def _wait_for_merchant_inventory(self, timeout_ms: int = 2500, step_ms: int = 10):
         waited = 0
@@ -22817,6 +25699,7 @@ class MerchantRulesWidget:
         *,
         offered_items: list[int] | None = None,
         cleanup: PurchaseTargetCleanup | None = None,
+        live_target_count: int | None = None,
     ):
         safe_quantity = max(0, int(quantity))
         outcome = ExecutionPhaseOutcome(
@@ -22877,12 +25760,31 @@ class MerchantRulesWidget:
                 )
                 break
 
-            try:
-                before_count = max(0, int(GLOBAL_CACHE.Inventory.GetModelCount(int(model_id))))
-            except Exception as exc:
-                outcome.load_failures += 1
-                self._debug_log(f"Merchant stock buy could not read inventory count for model={model_id}: {exc}")
-                break
+            before_count: int
+            if live_target_count is not None:
+                try:
+                    before_count = max(0, int(GLOBAL_CACHE.Inventory.GetModelCount(int(model_id))))
+                except Exception as exc:
+                    remaining = max(0, safe_quantity - outcome.completed)
+                    outcome.load_failures += remaining
+                    self._debug_log(
+                        f"Xunlai-first merchant stock buy stopped because the live carried count "
+                        f"could not be read for model={model_id}: {exc}"
+                    )
+                    break
+                if before_count >= max(0, int(live_target_count)):
+                    self._debug_log(
+                        f"Xunlai-first merchant stock buy stopped at live target: model={model_id} "
+                        f"carried={before_count} target={max(0, int(live_target_count))}."
+                    )
+                    break
+            else:
+                try:
+                    before_count = max(0, int(GLOBAL_CACHE.Inventory.GetModelCount(int(model_id))))
+                except Exception as exc:
+                    outcome.load_failures += 1
+                    self._debug_log(f"Merchant stock buy could not read inventory count for model={model_id}: {exc}")
+                    break
             GLOBAL_CACHE.Trading.Merchant.BuyItem(matched_item_id, buy_price)
             queue_cleared = yield from self._wait_for_action_queue_empty("ACTION", timeout_ms=1500, step_ms=50)
             if not queue_cleared:
@@ -23133,6 +26035,164 @@ class MerchantRulesWidget:
         )
         return outcome
 
+    def _reacquire_planned_sale_item(
+        self,
+        planned_item_id: int,
+    ) -> tuple[InventoryItemInfo | None, str]:
+        safe_item_id = max(0, _safe_int(planned_item_id, 0))
+        if safe_item_id <= 0:
+            return None, "the planned item ID is invalid"
+        try:
+            inventory_item_ids = {int(item_id) for item_id in self._get_inventory_item_ids()}
+        except Exception:
+            return None, "the current inventory could not be read"
+        if safe_item_id not in inventory_item_ids:
+            return None, "the planned item is no longer in the inventory"
+
+        item = self._build_inventory_item_info(safe_item_id, include_runtime_name=False)
+        if item is None:
+            return None, "the planned item could not be read"
+        if int(item.item_id) != safe_item_id:
+            return None, "the current item ID no longer matches the planned item"
+        return item, ""
+
+    def _validate_planned_material_sale_identity(
+        self,
+        sale: PlannedMaterialSale,
+        required_quantity: int,
+    ) -> tuple[InventoryItemInfo | None, str]:
+        item, reason = self._reacquire_planned_sale_item(sale.item_id)
+        if item is None:
+            return None, reason
+
+        planned_model_id = max(0, _safe_int(sale.model_id, 0))
+        if planned_model_id <= 0 or int(item.model_id) != planned_model_id:
+            return None, "the current model ID no longer matches the planned material"
+        if int(item.quantity) < max(1, int(required_quantity)):
+            return None, "the current stack quantity is no longer sufficient for the planned sale"
+        if not bool(item.is_material):
+            return None, "the current item is no longer classified as a material"
+        current_merchant_type = self._get_material_merchant_type_by_model(int(item.model_id))
+        if current_merchant_type != str(sale.merchant_type or ""):
+            return None, "the current material trader destination no longer matches the plan"
+        return item, ""
+
+    def _validate_planned_trader_sale_identity(
+        self,
+        sale: PlannedTraderSale,
+    ) -> tuple[InventoryItemInfo | None, str]:
+        item, reason = self._reacquire_planned_sale_item(sale.item_id)
+        if item is None:
+            return None, reason
+
+        planned_model_id = max(0, _safe_int(sale.model_id, 0))
+        if planned_model_id <= 0 or int(item.model_id) != planned_model_id:
+            return None, "the current model ID no longer matches the planned rune or insignia"
+        if int(item.quantity) < 1:
+            return None, "the rune or insignia is no longer available"
+        if str(item.standalone_kind or "") != RUNE_STANDALONE_KIND:
+            return None, "the current item is no longer a standalone rune or insignia"
+
+        expected_identifiers = _normalize_rune_identifier_tuple(sale.expected_rune_identifiers)
+        if not expected_identifiers:
+            return None, "the plan has no exact rune or insignia modifier identity"
+        current_identifiers = _normalize_rune_identifier_tuple(item.rune_identifiers)
+        if current_identifiers != expected_identifiers:
+            return None, "the exact rune or insignia modifier identity changed after Preview"
+        return item, ""
+
+    def _wait_for_planned_sale_completion(
+        self,
+        sale: PlannedMaterialSale | PlannedTraderSale,
+        expected_quantity: int,
+        *,
+        timeout_ms: int = 350,
+        step_ms: int = 10,
+    ):
+        """Confirm one sale from fresh inventory membership, identity, and exact quantity."""
+
+        safe_item_id = max(0, _safe_int(sale.item_id, 0))
+        safe_model_id = max(0, _safe_int(sale.model_id, 0))
+        safe_expected_quantity = max(0, _safe_int(expected_quantity, 0))
+        safe_timeout_ms = max(0, _safe_int(timeout_ms, 0))
+        safe_step_ms = max(1, _safe_int(step_ms, 1))
+        elapsed_ms = 0
+        last_quantity: int | None = None
+        last_reason = "the expected inventory quantity was not observed"
+        if safe_item_id <= 0 or safe_model_id <= 0:
+            return False, True, "the planned sale identity is invalid"
+
+        while True:
+            try:
+                inventory_item_ids = {int(item_id) for item_id in self._get_inventory_item_ids()}
+            except Exception:
+                inventory_item_ids = None
+                last_reason = "the current inventory could not be read"
+
+            if inventory_item_ids is not None:
+                if safe_item_id not in inventory_item_ids:
+                    if safe_expected_quantity == 0:
+                        return True, False, ""
+                    last_reason = (
+                        f"the planned item disappeared while {safe_expected_quantity} unit(s) "
+                        "were expected to remain"
+                    )
+                else:
+                    item = self._build_inventory_item_info(safe_item_id, include_runtime_name=False)
+                    if item is None:
+                        return False, True, "the current item could not be read after the sale"
+                    if int(item.item_id) != safe_item_id:
+                        return False, True, "the current item ID no longer matches the planned item"
+                    if safe_model_id <= 0 or int(item.model_id) != safe_model_id:
+                        return False, True, "the current model ID no longer matches the planned item"
+
+                    if isinstance(sale, PlannedMaterialSale):
+                        if not bool(item.is_material):
+                            return False, True, "the current item is no longer classified as a material"
+                        current_merchant_type = self._get_material_merchant_type_by_model(int(item.model_id))
+                        if current_merchant_type != str(sale.merchant_type or ""):
+                            return False, True, "the current material trader destination no longer matches the plan"
+                    else:
+                        if str(item.standalone_kind or "") != RUNE_STANDALONE_KIND:
+                            return False, True, "the current item is no longer a standalone rune or insignia"
+                        expected_identifiers = _normalize_rune_identifier_tuple(sale.expected_rune_identifiers)
+                        current_identifiers = _normalize_rune_identifier_tuple(item.rune_identifiers)
+                        if not expected_identifiers or current_identifiers != expected_identifiers:
+                            return False, True, "the exact rune or insignia modifier identity changed after the sale"
+
+                    last_quantity = max(0, int(item.quantity))
+                    if last_quantity == safe_expected_quantity:
+                        return True, False, ""
+                    last_reason = (
+                        f"expected {safe_expected_quantity} unit(s) after the sale, "
+                        f"but observed {last_quantity}"
+                    )
+
+            if elapsed_ms >= safe_timeout_ms:
+                return False, False, last_reason
+            wait_ms = min(safe_step_ms, safe_timeout_ms - elapsed_ms)
+            if wait_ms <= 0:
+                return False, False, last_reason
+            yield from Routines.Yield.wait(wait_ms)
+            elapsed_ms += wait_ms
+
+    def _report_sale_identity_abort(
+        self,
+        phase_label: str,
+        item_id: int,
+        model_id: int,
+        reason: str,
+    ) -> None:
+        safe_label = self._format_model_label_short(max(0, _safe_int(model_id, 0)))
+        ConsoleLog(
+            MODULE_NAME,
+            f"{phase_label} skipped {safe_label}: {reason}.",
+            Console.MessageType.Warning,
+        )
+        self._debug_log(
+            f"{phase_label} identity check failed: item_id={int(item_id)} model_id={int(model_id)} reason={reason}."
+        )
+
     def _sell_planned_materials(
         self,
         coords: tuple[float, float],
@@ -23172,10 +26232,22 @@ class MerchantRulesWidget:
             return outcome
 
         for sale in material_sales:
-            for _ in range(max(0, int(sale.batches_to_sell))):
-                previous_quantity = int(GLOBAL_CACHE.Item.Properties.GetQuantity(sale.item_id))
-                if previous_quantity < sale.batch_size:
-                    outcome.depleted += 1
+            planned_batches = max(0, int(sale.batches_to_sell))
+            for batch_index in range(planned_batches):
+                remaining_batches = planned_batches - batch_index
+                required_quantity = remaining_batches * max(1, int(sale.batch_size))
+                live_item, identity_failure = self._validate_planned_material_sale_identity(
+                    sale,
+                    required_quantity,
+                )
+                if live_item is None:
+                    outcome.unavailable += remaining_batches
+                    self._report_sale_identity_abort(
+                        phase_label,
+                        sale.item_id,
+                        sale.model_id,
+                        identity_failure,
+                    )
                     break
 
                 quoted_value = yield from Routines.Yield.Merchant._wait_for_quote(  # pylint: disable=protected-access
@@ -23188,21 +26260,54 @@ class MerchantRulesWidget:
                     outcome.quote_failures += 1
                     break
 
+                live_item, identity_failure = self._validate_planned_material_sale_identity(
+                    sale,
+                    required_quantity,
+                )
+                if live_item is None:
+                    outcome.unavailable += remaining_batches
+                    self._report_sale_identity_abort(
+                        phase_label,
+                        sale.item_id,
+                        sale.model_id,
+                        identity_failure,
+                    )
+                    break
+                previous_quantity = int(live_item.quantity)
                 GLOBAL_CACHE.Trading.Trader.SellItem(sale.item_id, quoted_value)
-                updated_quantity = yield from Routines.Yield.Merchant._wait_for_stack_quantity_drop(  # pylint: disable=protected-access
-                    sale.item_id,
-                    previous_quantity,
+                expected_quantity = max(0, previous_quantity - max(1, int(sale.batch_size)))
+                (
+                    completed,
+                    post_sale_identity_failure,
+                    completion_reason,
+                ) = yield from self._wait_for_planned_sale_completion(
+                    sale,
+                    expected_quantity,
                     timeout_ms=350,
                     step_ms=10,
                 )
-                if updated_quantity >= previous_quantity:
+                if post_sale_identity_failure:
+                    outcome.unavailable += remaining_batches
+                    self._report_sale_identity_abort(
+                        phase_label,
+                        sale.item_id,
+                        sale.model_id,
+                        completion_reason,
+                    )
+                    break
+                if not completed:
                     outcome.timeout_failures += 1
+                    self._debug_log(
+                        f"{phase_label} completion check failed: item_id={sale.item_id} "
+                        f"expected_quantity={expected_quantity} reason={completion_reason}."
+                    )
                     break
                 outcome.completed += 1
                 yield from Routines.Yield.wait(40)
         self._debug_log(
             f"{phase_label}: completed={outcome.completed}/{outcome.attempted} quote_failures={outcome.quote_failures} "
-            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} load_failures={outcome.load_failures}"
+            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} "
+            f"identity_failures={outcome.unavailable} load_failures={outcome.load_failures}"
         )
         return outcome
 
@@ -23242,9 +26347,15 @@ class MerchantRulesWidget:
             return outcome
 
         for sale in trader_sales:
-            previous_quantity = int(GLOBAL_CACHE.Item.Properties.GetQuantity(sale.item_id))
-            if previous_quantity <= 0:
-                outcome.depleted += 1
+            live_item, identity_failure = self._validate_planned_trader_sale_identity(sale)
+            if live_item is None:
+                outcome.unavailable += 1
+                self._report_sale_identity_abort(
+                    phase_label,
+                    sale.item_id,
+                    sale.model_id,
+                    identity_failure,
+                )
                 continue
 
             quoted_value = yield from Routines.Yield.Merchant._wait_for_quote(  # pylint: disable=protected-access
@@ -23257,21 +26368,51 @@ class MerchantRulesWidget:
                 outcome.quote_failures += 1
                 continue
 
+            live_item, identity_failure = self._validate_planned_trader_sale_identity(sale)
+            if live_item is None:
+                outcome.unavailable += 1
+                self._report_sale_identity_abort(
+                    phase_label,
+                    sale.item_id,
+                    sale.model_id,
+                    identity_failure,
+                )
+                continue
+            previous_quantity = int(live_item.quantity)
             GLOBAL_CACHE.Trading.Trader.SellItem(sale.item_id, quoted_value)
-            updated_quantity = yield from Routines.Yield.Merchant._wait_for_stack_quantity_drop(  # pylint: disable=protected-access
-                sale.item_id,
-                previous_quantity,
+            expected_quantity = max(0, previous_quantity - 1)
+            (
+                completed,
+                post_sale_identity_failure,
+                completion_reason,
+            ) = yield from self._wait_for_planned_sale_completion(
+                sale,
+                expected_quantity,
                 timeout_ms=350,
                 step_ms=10,
             )
-            if updated_quantity >= previous_quantity:
+            if post_sale_identity_failure:
+                outcome.unavailable += 1
+                self._report_sale_identity_abort(
+                    phase_label,
+                    sale.item_id,
+                    sale.model_id,
+                    completion_reason,
+                )
+                continue
+            if not completed:
                 outcome.timeout_failures += 1
+                self._debug_log(
+                    f"{phase_label} completion check failed: item_id={sale.item_id} "
+                    f"expected_quantity={expected_quantity} reason={completion_reason}."
+                )
                 continue
             outcome.completed += 1
             yield from Routines.Yield.wait(40)
         self._debug_log(
             f"{phase_label}: completed={outcome.completed}/{outcome.attempted} quote_failures={outcome.quote_failures} "
-            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} load_failures={outcome.load_failures}"
+            f"quantity_failures={outcome.timeout_failures} depleted={outcome.depleted} "
+            f"identity_failures={outcome.unavailable} load_failures={outcome.load_failures}"
         )
         return outcome
 
@@ -23851,7 +26992,7 @@ class MerchantRulesWidget:
             if self.preview_plan.has_actions:
                 self.status_message = (
                     f"Projected preview complete. Travel + Execute will travel to {projected_target_outpost_name}, "
-                    "rebuild live, and then run the merchant plan. Execute Here can still run any green local entries."
+                    "recheck current items and services, then execute. Execute Here can still run entries marked Ready now."
                 )
             else:
                 self.status_message = (
@@ -24799,13 +27940,97 @@ class MerchantRulesWidget:
             )
         return self._format_compact_list(modes, limit=4) or "none"
 
-    def _is_merchant_window_open(self) -> bool:
+    def _is_qualifying_merchant_session_open(self) -> bool:
         try:
-            return _MerchantRulesSalvageFrameGuard.is_frame_effectively_visible(
+            if not _MerchantRulesSalvageFrameGuard.is_frame_effectively_visible(
                 Frame(FrameId.Merchant)
-            )
+            ):
+                return False
+            return bool(MerchantWindow.IsOpen() or TraderWindow.IsOpen())
         except Exception:
             return False
+
+    def _mark_current_merchant_session_mr_owned(self) -> None:
+        if self.merchant_session_open:
+            self.merchant_session_mr_owned = True
+
+    def _run_manual_gold_session_close(self, session_id: int, starting_gold: int):
+        if self.merchant_session_open or int(self.merchant_session_id) != int(session_id):
+            return
+        yield from Routines.Yield.wait(GOLD_SESSION_SETTLE_MS)
+        if self.merchant_session_open or int(self.merchant_session_id) != int(session_id):
+            return
+        final_gold = self._read_gold_amount("GetGoldOnCharacter")
+        if final_gold is None:
+            return
+        if int(final_gold) == int(starting_gold):
+            self.last_gold_balance_summary = "Manual merchant trading did not change carried gold."
+            self.last_gold_balance_status = GOLD_BALANCE_STATUS_TARGET_MET
+            return
+        if not self.gold_balance_enabled or not self.gold_balance_after_manual_session:
+            return
+        self._debug_log(
+            f"Manual merchant session {int(session_id)} changed carried gold from "
+            f"{int(starting_gold)} to {int(final_gold)}."
+        )
+        yield from self._run_gold_balance_trigger("manual merchant session close")
+
+    def _update_manual_gold_session_runtime(self) -> None:
+        session_open = self._is_qualifying_merchant_session_open()
+        if session_open:
+            if not self.merchant_session_open:
+                self.manual_session_close_retry = None
+                self.merchant_session_open = True
+                self.merchant_session_mr_owned = False
+                self.merchant_session_starting_gold = self._read_gold_amount("GetGoldOnCharacter")
+                self.merchant_session_id += 1
+            if self.execution_running or self.manual_vendor_running:
+                self._mark_current_merchant_session_mr_owned()
+            return
+
+        if self.manual_session_close_retry is not None:
+            retry_session_id, retry_starting_gold = self.manual_session_close_retry
+            if not self.gold_balance_enabled or not self.gold_balance_after_manual_session:
+                self.manual_session_close_retry = None
+                return
+            self.manual_session_close_retry = None
+            try:
+                self._queue_merchant_rules_owned_work(
+                    self._run_manual_gold_session_close(retry_session_id, retry_starting_gold)
+                )
+            except Exception as exc:
+                self.manual_session_close_retry = (retry_session_id, retry_starting_gold)
+                self.status_message = GOLD_BALANCE_QUEUE_FAILURE_MESSAGE
+                self.last_error = GOLD_BALANCE_QUEUE_FAILURE_MESSAGE
+                ConsoleLog(MODULE_NAME, f"Manual gold balance queue error: {exc}", Console.MessageType.Error)
+            return
+
+        if not self.merchant_session_open:
+            return
+
+        closed_session_id = int(self.merchant_session_id)
+        starting_gold = self.merchant_session_starting_gold
+        was_mr_owned = bool(self.merchant_session_mr_owned)
+        self.merchant_session_open = False
+        self.merchant_session_mr_owned = False
+        self.merchant_session_starting_gold = None
+        if was_mr_owned or starting_gold is None:
+            return
+        if not self.gold_balance_enabled or not self.gold_balance_after_manual_session:
+            return
+        self.manual_session_close_retry = (closed_session_id, int(starting_gold))
+        try:
+            self._queue_merchant_rules_owned_work(
+                self._run_manual_gold_session_close(closed_session_id, int(starting_gold))
+            )
+            self.manual_session_close_retry = None
+        except Exception as exc:
+            self.status_message = GOLD_BALANCE_QUEUE_FAILURE_MESSAGE
+            self.last_error = GOLD_BALANCE_QUEUE_FAILURE_MESSAGE
+            ConsoleLog(MODULE_NAME, f"Manual gold balance queue error: {exc}", Console.MessageType.Error)
+
+    def _is_merchant_window_open(self) -> bool:
+        return self._is_qualifying_merchant_session_open()
 
     def _get_offered_item_ids(self, service: object) -> list[int]:
         getter = getattr(service, "GetOfferedItems", None)
@@ -25189,6 +28414,7 @@ class MerchantRulesWidget:
                 buy_action_rule_kinds=buy_action_rule_kinds,
                 sell_action_rule_kinds=sell_action_rule_kinds,
                 supported_context_override=self._build_manual_vendor_supported_context(context),
+                bypass_xunlai_first=True,
             )
 
             paused_inventory_plus = self._pause_inventory_plus()
@@ -25363,6 +28589,14 @@ class MerchantRulesWidget:
 
             self.last_manual_vendor_summary = " ".join(summary for summary in phase_summaries if summary).strip()
             if completed_any:
+                self._mark_current_merchant_session_mr_owned()
+                if self.gold_balance_enabled and self.gold_balance_after_mr_trading:
+                    yield from self._run_gold_balance_trigger("after Merchant Rules trading")
+                    if self.last_gold_balance_summary:
+                        phase_summaries.append(self.last_gold_balance_summary)
+                        self.last_manual_vendor_summary = " ".join(
+                            summary for summary in phase_summaries if summary
+                        ).strip()
                 self._mark_preview_dirty("Manual merchant automation finished. Preview again to refresh the plan.")
             elif self.last_manual_vendor_summary:
                 self.status_message = "Manual merchant automation finished."
@@ -25392,6 +28626,8 @@ class MerchantRulesWidget:
     def _update_manual_vendor_runtime(self):
         if not Map.IsMapReady():
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         if not self._manual_vendor_settings_enabled():
             self.manual_vendor_handled_signature = ""
             return
@@ -25411,14 +28647,25 @@ class MerchantRulesWidget:
 
         self.manual_vendor_handled_signature = context.signature
         self.manual_vendor_running = True
-        GLOBAL_CACHE.Coroutines.append(
-            self._run_manual_vendor_pass(
-                context,
-                running_already_marked=True,
+        self._mark_current_merchant_session_mr_owned()
+        try:
+            self._queue_merchant_rules_owned_work(
+                self._run_manual_vendor_pass(
+                    context,
+                    running_already_marked=True,
+                ),
+                reset_flags=("manual_vendor_running",),
+                reset_values_before_start=(("manual_vendor_handled_signature", ""),),
             )
-        )
+        except Exception:
+            self.manual_vendor_handled_signature = ""
+            raise
 
-    def _execute_consumable_crafter_multi_stop_route(self):
+    def _execute_consumable_crafter_multi_stop_route(
+        self,
+        *,
+        execution_context: MerchantRulesExecutionContext | None = None,
+    ):
         self.execution_running = True
         self.last_error = ""
         self.last_execution_summary = ""
@@ -25428,10 +28675,17 @@ class MerchantRulesWidget:
         self._clear_preview_projection_state()
         paused_inventory_plus = None
         phase_summaries: list[str] = []
+        route_completed_successfully = False
         try:
             destination_outpost_id, destination_name = self._get_consumable_crafter_multi_stop_target()
             if destination_outpost_id <= 0:
-                yield from self._execute_now(local_only=False, allow_multi_stop=False)
+                yield from self._execute_now(
+                    local_only=False,
+                    allow_multi_stop=False,
+                    post_gold_balance=False,
+                    execution_context=execution_context,
+                )
+                route_completed_successfully = bool(self.execution_completed_successfully)
                 return
 
             embark_name = self._get_embark_beach_outpost_name()
@@ -25451,6 +28705,7 @@ class MerchantRulesWidget:
                 ignore_travel_target=True,
                 allow_consumable_multi_stop=False,
                 consumable_crafter_only=True,
+                execution_context=execution_context,
             )
             self.preview_plan = consumable_plan
             self._log_plan_summary("Multi-stop Embark plan", consumable_plan)
@@ -25464,6 +28719,7 @@ class MerchantRulesWidget:
                         ignore_travel_target=True,
                         allow_consumable_multi_stop=False,
                         consumable_crafter_only=True,
+                        execution_context=execution_context,
                     )
                     self.preview_plan = consumable_plan
                     self._log_plan_summary("Multi-stop Embark storage-refreshed plan", consumable_plan)
@@ -25481,6 +28737,7 @@ class MerchantRulesWidget:
                     consumable_plan.consumable_crafter_buys,
                     phase_label="Consumable crafters",
                 )
+            self._record_execution_currency_change(consumable_craft_outcome)
             self.last_execution_phase_durations_ms["consumable_crafters"] = max(
                 0.0,
                 (time.perf_counter() - consumable_crafts_started_at) * 1000.0,
@@ -25498,6 +28755,7 @@ class MerchantRulesWidget:
                 projected_target_override_outpost_id=destination_outpost_id,
                 allow_consumable_multi_stop=False,
                 exclude_consumable_crafter=True,
+                execution_context=execution_context,
             )
             self.preview_plan = remaining_preview
             if remaining_preview.has_actions:
@@ -25518,6 +28776,8 @@ class MerchantRulesWidget:
                     local_only=False,
                     allow_multi_stop=False,
                     exclude_consumable_crafter=True,
+                    post_gold_balance=False,
+                    execution_context=execution_context,
                 )
                 if self.last_error:
                     if phase_summaries:
@@ -25529,6 +28789,14 @@ class MerchantRulesWidget:
                         if combined_summary:
                             self.last_execution_summary = combined_summary
                     return
+                if not self.execution_completed_successfully:
+                    if phase_summaries:
+                        self.last_execution_summary = " ".join(
+                            summary for summary in [*phase_summaries, self.last_execution_summary] if summary
+                        ).strip()
+                    self.status_message = "Travel + Execute did not finish safely; post-run balancing was skipped."
+                    self._debug_log("Multi-stop execution aborted: nested execution did not complete successfully.")
+                    return
                 if self.last_execution_summary:
                     phase_summaries.append(self.last_execution_summary)
             else:
@@ -25539,6 +28807,8 @@ class MerchantRulesWidget:
                 self.last_execution_summary = "Execution finished, but no merchant actions reported a completed or attempted outcome."
             self.status_message = "Travel + Execute finished. Preview again to refresh the post-run state."
             self.preview_ready = False
+            route_completed_successfully = True
+            self.execution_completed_successfully = True
             self._debug_log(self.last_execution_summary)
         except Exception as exc:
             self.last_error = f"{exc}"
@@ -25546,6 +28816,20 @@ class MerchantRulesWidget:
             ConsoleLog(MODULE_NAME, f"Execution error: {exc}", Console.MessageType.Error)
             ConsoleLog(MODULE_NAME, traceback.format_exc(), Console.MessageType.Error)
         finally:
+            if (
+                route_completed_successfully
+                and self.gold_balance_enabled
+                and self.gold_balance_after_mr_trading
+                and self.execution_currency_changing_work_completed
+            ):
+                self.execution_running = True
+                yield from self._run_gold_balance_trigger("after Merchant Rules trading")
+                if self.last_gold_balance_summary:
+                    self.last_execution_summary = " ".join(
+                        summary
+                        for summary in [self.last_execution_summary, self.last_gold_balance_summary]
+                        if summary
+                    ).strip()
             self.execution_running = False
             if paused_inventory_plus is not None:
                 paused_inventory_plus.resume()
@@ -25558,6 +28842,8 @@ class MerchantRulesWidget:
         local_only: bool = False,
         allow_multi_stop: bool = True,
         exclude_consumable_crafter: bool = False,
+        post_gold_balance: bool = True,
+        execution_context: MerchantRulesExecutionContext | None = None,
     ):
         """Execute the preview as ordered cooperative phases with live revalidation.
 
@@ -25567,6 +28853,9 @@ class MerchantRulesWidget:
         """
 
         owned_reservation_scope = self._begin_execute_reservation_scope()
+        if post_gold_balance:
+            self.execution_currency_changing_work_completed = False
+        self.execution_completed_successfully = False
         if (
             allow_multi_stop
             and not local_only
@@ -25574,7 +28863,9 @@ class MerchantRulesWidget:
             and self._should_use_consumable_crafter_multi_stop_route()
         ):
             try:
-                yield from self._execute_consumable_crafter_multi_stop_route()
+                yield from self._execute_consumable_crafter_multi_stop_route(
+                    execution_context=execution_context,
+                )
             finally:
                 self._end_execute_reservation_scope(owned_reservation_scope)
             return
@@ -25587,6 +28878,31 @@ class MerchantRulesWidget:
         self._clear_preview_inventory_diff()
         paused_inventory_plus = None
         phase_summaries: list[str] = []
+        blocked_xunlai_first_models: set[int] = set()
+        reported_xunlai_first_failures: set[tuple[int, str]] = set()
+
+        def block_xunlai_first_targets(
+            targets: dict[int, str],
+            *,
+            failure_kind: str,
+        ) -> None:
+            for raw_model_id, raw_label in targets.items():
+                model_id = max(0, int(raw_model_id))
+                if model_id <= 0:
+                    continue
+                blocked_xunlai_first_models.add(model_id)
+                failure_key = (model_id, str(failure_kind))
+                if failure_key in reported_xunlai_first_failures:
+                    continue
+                reported_xunlai_first_failures.add(failure_key)
+                label = str(raw_label or self._format_model_label(model_id))
+                if failure_kind == "withdrawal":
+                    message = f"Stopped {label}: the Xunlai withdrawal could not be confirmed."
+                else:
+                    message = f"Skipped {label}: Xunlai Storage could not be checked."
+                phase_summaries.append(message)
+                self.status_message = message
+
         try:
             self._invalidate_supported_context_cache()
             self._clear_preview_projection_state()
@@ -25595,6 +28911,7 @@ class MerchantRulesWidget:
                 ignore_travel_target=local_only,
                 allow_consumable_multi_stop=allow_multi_stop,
                 exclude_consumable_crafter=exclude_consumable_crafter,
+                execution_context=execution_context,
             )
             self.preview_plan = plan
             local_availability = self._get_preview_here_availability()
@@ -25620,6 +28937,7 @@ class MerchantRulesWidget:
                 plan = self._build_plan(
                     allow_consumable_multi_stop=allow_multi_stop,
                     exclude_consumable_crafter=exclude_consumable_crafter,
+                    execution_context=execution_context,
                 )
                 self.preview_plan = plan
                 local_availability = self._get_preview_here_availability()
@@ -25658,6 +28976,7 @@ class MerchantRulesWidget:
                         ignore_travel_target=local_only,
                         allow_consumable_multi_stop=allow_multi_stop,
                         exclude_consumable_crafter=exclude_consumable_crafter,
+                        execution_context=execution_context,
                     )
                     self.preview_plan = plan
                     local_availability = self._get_preview_here_availability()
@@ -25678,11 +28997,25 @@ class MerchantRulesWidget:
                 )
             storage_scan_failed = False
             storage_available_here = bool(local_availability.get(MERCHANT_TYPE_STORAGE, False))
+            if (
+                plan.xunlai_first_merchant_stock_targets
+                and plan.storage_exact
+                and not plan.xunlai_first_storage_scan_reliable
+            ):
+                storage_scan_failed = True
+                block_xunlai_first_targets(
+                    plan.xunlai_first_merchant_stock_targets,
+                    failure_kind="scan",
+                )
             if self._plan_needs_exact_storage_scan(plan):
                 storage_opened = False
                 if local_only and not storage_available_here:
                     storage_scan_failed = True
                     phase_summaries.append("Rune trader buys were skipped because Xunlai is not available here.")
+                    block_xunlai_first_targets(
+                        plan.xunlai_first_merchant_stock_targets,
+                        failure_kind="scan",
+                    )
                 else:
                     self.status_message = "Opening Xunlai for exact storage-aware execution."
                     storage_opened = yield from self._ensure_storage_open(purpose="storage-aware execution")
@@ -25693,6 +29026,7 @@ class MerchantRulesWidget:
                         ignore_travel_target=local_only,
                         allow_consumable_multi_stop=allow_multi_stop,
                         exclude_consumable_crafter=exclude_consumable_crafter,
+                        execution_context=execution_context,
                     )
                     self.preview_plan = plan
                     local_availability = self._get_preview_here_availability()
@@ -25703,9 +29037,22 @@ class MerchantRulesWidget:
                     storage_available_here = bool(local_availability.get(MERCHANT_TYPE_STORAGE, False))
                     self._clear_preview_projection_state()
                     self._log_plan_summary("Execution storage-refreshed plan", plan)
+                    if (
+                        plan.xunlai_first_merchant_stock_targets
+                        and not plan.xunlai_first_storage_scan_reliable
+                    ):
+                        storage_scan_failed = True
+                        block_xunlai_first_targets(
+                            plan.xunlai_first_merchant_stock_targets,
+                            failure_kind="scan",
+                        )
                 elif not storage_scan_failed:
                     storage_scan_failed = True
                     phase_summaries.append("Storage-aware rune planning was skipped because Xunlai could not be opened.")
+                    block_xunlai_first_targets(
+                        plan.xunlai_first_merchant_stock_targets,
+                        failure_kind="scan",
+                    )
                     ConsoleLog(
                         MODULE_NAME,
                         "Could not open Xunlai for exact storage-aware execution; continuing with other runnable actions.",
@@ -25723,11 +29070,17 @@ class MerchantRulesWidget:
                         or plan.scroll_trader_buys
                     )
                     if not has_other_runnable_actions:
-                        self.status_message = "Could not open Xunlai for exact storage-aware execution."
+                        self.status_message = (
+                            phase_summaries[-1]
+                            if blocked_xunlai_first_models and phase_summaries
+                            else "Could not open Xunlai for exact storage-aware execution."
+                        )
                         self._debug_log("Execution aborted: exact storage-aware rune planning required Xunlai, but it could not be opened.")
                         return
             if not plan.has_actions:
-                if storage_scan_failed:
+                if blocked_xunlai_first_models and phase_summaries:
+                    self.status_message = phase_summaries[-1]
+                elif storage_scan_failed:
                     self.status_message = "Could not open Xunlai for exact storage-aware execution."
                 else:
                     self.status_message = "Nothing to execute for the current rules and inventory state."
@@ -25742,6 +29095,7 @@ class MerchantRulesWidget:
                 salvage_outcome = yield from self._run_salvage_pass(
                     summary_subject="Salvage during Execute",
                     planned_salvage_item_ids=set(plan.salvage_item_ids),
+                    planned_specific_upgrade_owners=plan.salvage_specific_upgrade_owners,
                 )
                 self.last_execution_phase_durations_ms["salvage"] = max(0.0, (time.perf_counter() - salvage_started_at) * 1000.0)
                 salvage_summary = self.last_salvage_summary or self._format_salvage_summary(
@@ -25775,6 +29129,7 @@ class MerchantRulesWidget:
                         ignore_travel_target=local_only,
                         allow_consumable_multi_stop=allow_multi_stop,
                         exclude_consumable_crafter=exclude_consumable_crafter,
+                        execution_context=execution_context,
                     )
                     self.preview_plan = plan
                     local_availability = self._get_preview_here_availability()
@@ -25830,6 +29185,7 @@ class MerchantRulesWidget:
                         ignore_travel_target=local_only,
                         allow_consumable_multi_stop=allow_multi_stop,
                         exclude_consumable_crafter=exclude_consumable_crafter,
+                        execution_context=execution_context,
                     )
                     self.preview_plan = plan
                     local_availability = self._get_preview_here_availability()
@@ -25931,16 +29287,53 @@ class MerchantRulesWidget:
                     storage_ready = yield from self._ensure_storage_open(purpose="planned storage transfers")
                 if storage_ready:
                     storage_transfer_ready = True
-                    storage_transfer_outcome = yield from self._execute_storage_transfers(
-                        storage_withdraw_transfers,
-                        phase_label="Storage withdraws",
-                    )
+                    xunlai_first_transfers_by_model: dict[int, list[PlannedStorageTransfer]] = {}
+                    other_storage_withdraw_transfers: list[PlannedStorageTransfer] = []
+                    for transfer in storage_withdraw_transfers:
+                        if bool(transfer.xunlai_first_merchant_stock):
+                            xunlai_first_transfers_by_model.setdefault(
+                                max(0, int(transfer.model_id)),
+                                [],
+                            ).append(transfer)
+                        else:
+                            other_storage_withdraw_transfers.append(transfer)
+
+                    if other_storage_withdraw_transfers:
+                        other_transfer_outcome = yield from self._execute_storage_transfers(  # pyright: ignore[reportGeneralTypeIssues]
+                            other_storage_withdraw_transfers,
+                            phase_label="Storage withdraws",
+                        )
+                        self._merge_phase_outcome(storage_transfer_outcome, other_transfer_outcome)
+
+                    for model_id, model_transfers in xunlai_first_transfers_by_model.items():
+                        model_transfer_outcome = yield from self._execute_storage_transfers(  # pyright: ignore[reportGeneralTypeIssues]
+                            model_transfers,
+                            phase_label="Xunlai-first withdraws",
+                        )
+                        self._merge_phase_outcome(storage_transfer_outcome, model_transfer_outcome)
+                        if (
+                            model_transfer_outcome.completed < model_transfer_outcome.attempted
+                            or model_transfer_outcome.timeout_failures > 0
+                            or model_transfer_outcome.load_failures > 0
+                        ):
+                            block_xunlai_first_targets(
+                                {
+                                    model_id: str(
+                                        plan.xunlai_first_merchant_stock_targets.get(
+                                            model_id,
+                                            self._format_model_label(model_id),
+                                        )
+                                    )
+                                },
+                                failure_kind="withdrawal",
+                            )
                     yield from Routines.Yield.wait(100)
                     self._invalidate_supported_context_cache()
                     plan = self._build_plan(
                         ignore_travel_target=local_only,
                         allow_consumable_multi_stop=allow_multi_stop,
                         exclude_consumable_crafter=exclude_consumable_crafter,
+                        execution_context=execution_context,
                     )
                     self.preview_plan = plan
                     local_availability = self._get_preview_here_availability()
@@ -25952,6 +29345,34 @@ class MerchantRulesWidget:
                     self._clear_preview_projection_state()
                     self._log_plan_summary("Execution post-storage plan", plan)
                     rune_trader_coords = plan.coords.get(MERCHANT_TYPE_RUNE_TRADER)
+                    merchant_coords = plan.coords.get(MERCHANT_TYPE_MERCHANT)
+                    if (
+                        plan.xunlai_first_merchant_stock_targets
+                        and not plan.xunlai_first_storage_scan_reliable
+                    ):
+                        block_xunlai_first_targets(
+                            plan.xunlai_first_merchant_stock_targets,
+                            failure_kind="scan",
+                        )
+                    pending_xunlai_first_targets = {
+                        max(0, int(transfer.model_id)): str(
+                            plan.xunlai_first_merchant_stock_targets.get(
+                                max(0, int(transfer.model_id)),
+                                transfer.label,
+                            )
+                        )
+                        for transfer in plan.storage_transfers
+                        if (
+                            str(transfer.direction) == STORAGE_TRANSFER_WITHDRAW
+                            and bool(transfer.xunlai_first_merchant_stock)
+                            and max(0, int(transfer.model_id)) > 0
+                        )
+                    }
+                    if pending_xunlai_first_targets:
+                        block_xunlai_first_targets(
+                            pending_xunlai_first_targets,
+                            failure_kind="withdrawal",
+                        )
                 else:
                     storage_transfer_outcome.load_failures += 1
                     ConsoleLog(
@@ -25961,6 +29382,14 @@ class MerchantRulesWidget:
                     )
                     phase_summaries.append("Rune trader buys were skipped because planned Xunlai transfers could not be completed.")
                     plan.rune_trader_buys = []
+                    block_xunlai_first_targets(
+                        {
+                            max(0, int(transfer.model_id)): str(transfer.label)
+                            for transfer in storage_withdraw_transfers
+                            if bool(transfer.xunlai_first_merchant_stock)
+                        },
+                        failure_kind="scan",
+                    )
             self.last_execution_phase_durations_ms["storage_transfers"] = max(0.0, (time.perf_counter() - storage_transfers_started_at) * 1000.0)
             storage_transfer_summary = self._format_execution_phase_summary(storage_transfer_outcome)
             if storage_transfer_summary:
@@ -26005,6 +29434,15 @@ class MerchantRulesWidget:
             if consumable_craft_summary:
                 phase_summaries.append(consumable_craft_summary)
 
+            if blocked_xunlai_first_models:
+                plan.merchant_stock_buys = [
+                    buy
+                    for buy in plan.merchant_stock_buys
+                    if not (
+                        buy.check_xunlai_first
+                        and int(buy.model_id) in blocked_xunlai_first_models
+                    )
+                ]
             merchant_buy_outcome = ExecutionPhaseOutcome(
                 label="Merchant stock",
                 measure_label="items",
@@ -26024,6 +29462,11 @@ class MerchantRulesWidget:
                             merchant_buy.quantity,
                             offered_items=merchant_items,
                             cleanup=merchant_buy.cleanup,
+                            live_target_count=(
+                                int(merchant_buy.cleanup.target_count)
+                                if merchant_buy.check_xunlai_first
+                                else None
+                            ),
                         )
                         self._merge_merchant_buy_result(
                             merchant_buy_outcome,
@@ -26123,6 +29566,30 @@ class MerchantRulesWidget:
             if cleanup_summary:
                 self.last_cleanup_summary = cleanup_summary
                 phase_summaries.append(cleanup_summary)
+
+            self._record_execution_currency_change(
+                material_sale_outcome,
+                rare_material_sale_outcome,
+                merchant_sell_outcome,
+                rune_sale_outcome,
+                xunlai_sell_outcome,
+                rune_buy_outcome,
+                scroll_buy_outcome,
+                consumable_craft_outcome,
+                merchant_buy_outcome,
+                common_buy_outcome,
+                rare_buy_outcome,
+            )
+            self.execution_completed_successfully = True
+            if (
+                post_gold_balance
+                and self.gold_balance_enabled
+                and self.gold_balance_after_mr_trading
+                and self.execution_currency_changing_work_completed
+            ):
+                yield from self._run_gold_balance_trigger("after Merchant Rules trading")
+                if self.last_gold_balance_summary:
+                    phase_summaries.append(self.last_gold_balance_summary)
 
             if local_only:
                 phase_summaries.insert(
@@ -26234,6 +29701,8 @@ class MerchantRulesWidget:
     def _update_auto_cleanup_runtime(self):
         if not Map.IsMapReady():
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         if not self.auto_cleanup_on_outpost_entry or not self._has_cleanup_sources():
             return
         if not (Map.IsOutpost() or Map.IsGuildHall()):
@@ -26254,6 +29723,49 @@ class MerchantRulesWidget:
 
         self.auto_cleanup_zone_attempted = True
         self._queue_cleanup_now(auto_triggered=True)
+
+    def _update_auto_gold_runtime(self):
+        if not Map.IsMapReady():
+            return
+        if not self.gold_balance_enabled or not self.gold_balance_on_outpost_entry:
+            return
+        if not (Map.IsOutpost() or Map.IsGuildHall()):
+            return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
+        if (
+            self.execution_running
+            or self.travel_preview_running
+            or self.identify_running
+            or self.instant_destroy_running
+            or self.salvage_running
+            or self.storage_scan_running
+            or self.auto_cleanup_running
+            or self.gold_balance_running
+            or self.manual_vendor_running
+        ):
+            return
+        if self.gold_entry_attempted:
+            return
+
+        self.gold_entry_attempted = True
+        if self._inventory_plus_is_enabled():
+            self._publish_gold_balance_result(
+                GoldBalanceResult(
+                    status=GOLD_BALANCE_STATUS_BLOCKED,
+                    trigger="outpost entry",
+                    target_gold=_normalize_gold_target(self.target_carried_gold),
+                    reason="Inventory+ is enabled",
+                )
+            )
+            return
+        try:
+            self._queue_merchant_rules_owned_work(
+                self._run_gold_balance_trigger("outpost entry")
+            )
+        except Exception:
+            self.gold_entry_attempted = False
+            raise
 
     def _get_inventory_signature(self, items: list[InventoryItemInfo] | None = None) -> tuple[tuple[int, int], ...]:
         if items is None:
@@ -26486,7 +29998,7 @@ class MerchantRulesWidget:
                     self._mark_preview_dirty("Inventory changed due to MR Identify. Preview again before execution.")
         except Exception as exc:
             self.last_error = f"{exc}"
-            self.last_identify_summary = "MR Identify failed. See the console log for details."
+            self.last_identify_summary = "Identify failed. See the console log for details."
             self.status_message = self.last_identify_summary
             ConsoleLog(MODULE_NAME, f"MR Identify error: {exc}", Console.MessageType.Error)
             ConsoleLog(MODULE_NAME, traceback.format_exc(), Console.MessageType.Error)
@@ -26508,6 +30020,8 @@ class MerchantRulesWidget:
     def _update_identify_runtime(self):
         if not Map.IsMapReady():
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         if (
             self.execution_running
             or self.travel_preview_running
@@ -26516,6 +30030,7 @@ class MerchantRulesWidget:
             or self.salvage_running
             or self.storage_scan_running
             or self.auto_cleanup_running
+            or self.gold_balance_running
             or self.manual_vendor_running
         ):
             return
@@ -26572,11 +30087,24 @@ class MerchantRulesWidget:
                 parts.append(f"Skipped {count} {reason}.")
         return " ".join(parts)
 
-    def _queue_salvage_now(self, *, auto_triggered: bool = False):
+    def _queue_salvage_now(
+        self,
+        *,
+        auto_triggered: bool = False,
+        reset_values_before_start: tuple[tuple[str, object], ...] = (),
+    ):
         if self.salvage_running:
             return
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         self.salvage_running = True
-        GLOBAL_CACHE.Coroutines.append(self._run_salvage_pass(auto_triggered=auto_triggered, running_already_marked=True))
+        if auto_triggered and not reset_values_before_start:
+            reset_values_before_start = (("salvage_rescan_requested", True),)
+        self._queue_merchant_rules_owned_work(
+            self._run_salvage_pass(auto_triggered=auto_triggered, running_already_marked=True),
+            reset_flags=("salvage_running",),
+            reset_values_before_start=reset_values_before_start,
+        )
 
     def _get_exact_upgrade_salvage_bridge(self) -> _MerchantRulesExactUpgradeSalvageBridge:
         bridge = getattr(self, "_exact_upgrade_salvage_bridge", None)
@@ -26781,12 +30309,14 @@ class MerchantRulesWidget:
             return False
         self.execute_reservation_scope_active = True
         self.execute_reserved_item_ids = set()
+        self.execute_xunlai_first_keep_by_model = self._get_configured_xunlai_first_keep_by_model()
         return True
 
     def _end_execute_reservation_scope(self, owned_scope: bool) -> None:
         if not bool(owned_scope):
             return
         self.execute_reserved_item_ids.clear()
+        self.execute_xunlai_first_keep_by_model.clear()
         self.execute_reservation_scope_active = False
 
 
@@ -26826,6 +30356,8 @@ class MerchantRulesWidget:
             return False, "target item left inventory before Materials confirmation"
         if int(live_item.model_id) != int(transaction.model_id):
             return False, "target item model changed before Materials confirmation"
+        if int(live_item.item_type_id) != int(transaction.item_type_id):
+            return False, "target item type changed before Materials confirmation"
         if max(0, int(live_item.quantity)) != max(0, int(transaction.starting_quantity)):
             return False, "target item quantity changed before Materials confirmation"
 
@@ -27055,7 +30587,7 @@ class MerchantRulesWidget:
                 self._debug_log(skip_message)
             return "blocked"
 
-        configured_option = _normalize_salvage_option(rule.salvage_option)
+        configured_option = _normalize_salvage_rule_mode(rule.salvage_option)
         selected_option = _resolve_salvage_operation(configured_option)
         auto_slot_resolution = SalvageUpgradeSlotResolution()
         if _is_auto_exact_upgrade_salvage_option(configured_option):
@@ -27256,6 +30788,7 @@ class MerchantRulesWidget:
             materials_transaction = _MerchantRulesMaterialsSalvageTransaction(
                 item_id=int(item_id),
                 model_id=int(live_item.model_id),
+                item_type_id=int(live_item.item_type_id),
                 starting_quantity=int(starting_quantity),
                 kit_id=int(salvage_kit_id),
                 kit_model_id=int(salvage_kit_model_id),
@@ -27348,7 +30881,9 @@ class MerchantRulesWidget:
         rule = _normalize_salvage_rule(getattr(candidate, "rule", None))
         if rule is None:
             return False
-        configured_option = _normalize_salvage_option(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT))
+        configured_option = _normalize_salvage_rule_mode(
+            getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
+        )
         if _is_auto_exact_upgrade_salvage_option(configured_option):
             return False
         return _resolve_salvage_operation(configured_option) not in SALVAGE_UPGRADE_OPTIONS
@@ -27510,6 +31045,7 @@ class MerchantRulesWidget:
         preferred_salvage_kit_model_id: int = 0,
         explicit_salvage_request: bool = False,
         planned_salvage_item_ids: set[int] | list[int] | tuple[int, ...] | None = None,
+        planned_specific_upgrade_owners: dict[int, PlannedSpecificUpgradeSalvageOwner] | None = None,
     ):
         """Run a bounded salvage pass with rule claims, kit checks, and stack-progress guards.
 
@@ -27548,6 +31084,12 @@ class MerchantRulesWidget:
                 for item_id in (planned_salvage_item_ids or [])
                 if max(0, _safe_int(item_id, 0)) > 0
             }
+            scoped_specific_upgrade_owners = {
+                int(item_id): owner
+                for item_id, owner in (planned_specific_upgrade_owners or {}).items()
+                if int(item_id) in scoped_item_ids
+            }
+            self._reserve_execute_item_ids(scoped_specific_upgrade_owners.keys())
             missing_scoped_item_count = 0
             if scoped_item_ids:
                 live_scoped_item_ids = {
@@ -27588,6 +31130,11 @@ class MerchantRulesWidget:
                 preferred_salvage_kit_model_id=preferred_salvage_kit_model_id,
                 include_not_selected_blocks=bool(explicit_salvage_request),
                 manual_salvage_rule=manual_salvage_rule,
+                planned_specific_upgrade_owners=(
+                    scoped_specific_upgrade_owners
+                    if scoped_specific_upgrade_owners
+                    else None
+                ),
             )
             if not candidates:
                 outcome = ExecutionPhaseOutcome(
@@ -27645,7 +31192,7 @@ class MerchantRulesWidget:
             return outcome
         except Exception as exc:
             self.last_error = f"{exc}"
-            self.last_salvage_summary = "MR Salvage failed. See the console log for details."
+            self.last_salvage_summary = "Salvage failed. See the console log for details."
             self.status_message = self.last_salvage_summary
             ConsoleLog(MODULE_NAME, f"MR Salvage error: {exc}", Console.MessageType.Error)
             ConsoleLog(MODULE_NAME, traceback.format_exc(), Console.MessageType.Error)
@@ -27662,6 +31209,8 @@ class MerchantRulesWidget:
 
     def _update_salvage_runtime(self):
         if not Map.IsMapReady():
+            return
+        if self._merchant_rules_has_pending_or_active_work():
             return
         if (
             self.execution_running
@@ -27818,7 +31367,9 @@ class MerchantRulesWidget:
         )
 
     def _queue_destroy_now(self):
-        GLOBAL_CACHE.Coroutines.append(
+        if self._merchant_rules_has_pending_or_active_work():
+            return
+        self._queue_merchant_rules_owned_work(
             self._run_destroy_pass(
                 require_auto_enabled=False,
                 summary_subject="Run Destroy Now",
@@ -27828,6 +31379,8 @@ class MerchantRulesWidget:
 
     def _update_instant_destroy_runtime(self):
         if not Map.IsMapReady():
+            return
+        if self._merchant_rules_has_pending_or_active_work():
             return
         if (
             self.execution_running
@@ -27856,7 +31409,10 @@ class MerchantRulesWidget:
 
         self.instant_destroy_rescan_requested = False
         self.instant_destroy_poll_timer.Reset()
-        GLOBAL_CACHE.Coroutines.append(self._run_instant_destroy_pass())
+        self._queue_merchant_rules_owned_work(
+            self._run_instant_destroy_pass(),
+            reset_values_before_start=(("instant_destroy_rescan_requested", True),),
+        )
 
     def _push_active_button_style(self, color: tuple[float, float, float, float]):
         base = (max(color[0] - 0.06, 0.0), max(color[1] - 0.10, 0.0), max(color[2] - 0.06, 0.0), 0.46)
@@ -27893,8 +31449,9 @@ class MerchantRulesWidget:
 
     def _get_destructive_confirm_label(self, label: str) -> str:
         safe_label = str(label or "")
-        _visible_label, separator, hidden_id = safe_label.partition("##")
-        return f"Are you sure?##{hidden_id}" if separator else "Are you sure?"
+        visible_label, separator, hidden_id = safe_label.partition("##")
+        confirm_label = f"Confirm {visible_label.strip()}"
+        return f"{confirm_label}##{hidden_id}" if separator else confirm_label
 
     def _push_destructive_confirm_button_style(self):
         base = (0.36, 0.27, 0.09, 0.98)
@@ -27906,7 +31463,22 @@ class MerchantRulesWidget:
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, active)
         PyImGui.push_style_color(PyImGui.ImGuiCol.Text, text)
 
-    def _draw_confirm_destructive_button(self, label: str, *, small: bool = False) -> bool:
+    def _draw_confirm_destructive_button(
+        self,
+        label: str,
+        *,
+        small: bool = False,
+        disabled_reason: str = "",
+    ) -> bool:
+        if disabled_reason:
+            PyImGui.begin_disabled(True)
+            if small:
+                PyImGui.small_button(label)
+            else:
+                PyImGui.button(label)
+            PyImGui.end_disabled()
+            self._draw_hover_tooltip(disabled_reason)
+            return False
         now_ms = int(time.time() * 1000)
         if self.pending_destructive_button_expires_at_ms <= now_ms:
             self._clear_pending_destructive_button()
@@ -27939,8 +31511,19 @@ class MerchantRulesWidget:
         *,
         small: bool = False,
         shared_affects_all_accounts: bool = True,
+        disabled_reason: str = "",
     ) -> tuple[bool, str]:
         """Two-step confirmation bound to the exact selected profile version."""
+
+        if disabled_reason:
+            PyImGui.begin_disabled(True)
+            if small:
+                PyImGui.small_button(label)
+            else:
+                PyImGui.button(label)
+            PyImGui.end_disabled()
+            self._draw_hover_tooltip(disabled_reason)
+            return False, ""
 
         now_ms = int(time.time() * 1000)
         if self.pending_destructive_button_expires_at_ms <= now_ms:
@@ -27960,11 +31543,10 @@ class MerchantRulesWidget:
             and profile.fingerprint == self.pending_profile_confirmation_fingerprint
         )
         if is_armed:
-            visible_label = (
-                "Confirm — Affects All Accounts"
-                if identity.scope == PROFILE_SCOPE_SHARED and shared_affects_all_accounts
-                else "Are you sure?"
-            )
+            original_action_label, _separator, _hidden_id = str(label or "").partition("##")
+            visible_label = f"Confirm {original_action_label.strip()}"
+            if identity.scope == PROFILE_SCOPE_SHARED and shared_affects_all_accounts:
+                visible_label = f"{visible_label} — Affects All Accounts"
             draw_label = f"{visible_label}##{base_key}"
             self._push_destructive_confirm_button_style()
         else:
@@ -28673,9 +32255,9 @@ class MerchantRulesWidget:
                 destination_label = self.preview_plan.multi_stop_destination_outpost_name
                 detail = (
                     f"Preview routes Consumable Crafter buys through {embark_label}, then continues to {destination_label} for remaining work. "
-                    "Execute Here runs only green local entries."
+                    "Execute Here runs only entries marked Ready now."
                     if destination_label
-                    else f"Preview routes Consumable Crafter buys through {embark_label} and stops there. Execute Here runs only green local entries."
+                    else f"Preview routes Consumable Crafter buys through {embark_label} and stops there. Execute Here runs only entries marked Ready now."
                 )
                 if actionable:
                     return "Multi-stop", UI_COLOR_INFO, detail
@@ -28686,8 +32268,8 @@ class MerchantRulesWidget:
                 target_label = self.preview_execute_travel_target_outpost_name or "the selected outpost"
                 detail = (
                     f"Preview is projected assuming Auto Travel reaches {target_label}. "
-                    "Travel + Execute will travel, rebuild live merchant handling, and then run the plan. "
-                    "Execute Here runs only green local entries."
+                    "Travel + Execute will travel, recheck current items and available services, then execute. "
+                    "Execute Here runs only entries marked Ready now."
                 )
                 if actionable:
                     return "Projected", UI_COLOR_INFO, detail
@@ -28695,7 +32277,14 @@ class MerchantRulesWidget:
                     return "Projected", UI_COLOR_MUTED, detail
                 return "Projected", UI_COLOR_MUTED, detail
             if actionable:
-                return "Ready", UI_COLOR_SUCCESS, f"{len(actionable)} action(s) queued from the current preview."
+                action_count = len(actionable)
+                action_word = "action" if action_count == 1 else "actions"
+                ready_verb = "is" if action_count == 1 else "are"
+                return (
+                    "Ready",
+                    UI_COLOR_SUCCESS,
+                    f"{action_count} {action_word} {ready_verb} ready in the current preview.",
+                )
             if skipped:
                 return "Ready", UI_COLOR_MUTED, "Preview is current, but nothing will execute."
             return "Ready", UI_COLOR_MUTED, "Preview is current."
@@ -28763,9 +32352,11 @@ class MerchantRulesWidget:
                 UI_COLOR_SECONDARY_TEXT,
             )
 
-        PyImGui.begin_disabled(not backup_exists)
+        restore_block_message = self._get_profile_application_block_message("restoring the backup")
+        PyImGui.begin_disabled(not backup_exists or bool(restore_block_message))
         restore_clicked = self._draw_confirm_destructive_button(
-            "Restore Last Backup##merchant_rules_restore_backup"
+            "Restore Last Backup##merchant_rules_restore_backup",
+            disabled_reason=restore_block_message,
         )
         PyImGui.end_disabled()
         PyImGui.same_line(0, 8)
@@ -28991,11 +32582,11 @@ class MerchantRulesWidget:
 
         parts = [f"{len(enabled_rarities)} rarity tier(s)"] if enabled_rarities else ["Protection only"]
         if enabled_rarities and normalized_rule.skip_customized:
-            parts.append("Skip customized")
+            parts.append("Keep customized")
         if enabled_rarities and normalized_rule.skip_unidentified:
-            parts.append("Skip unidentified")
+            parts.append("Keep unidentified")
         if normalized_rule.blacklist_model_ids:
-            parts.append(f"Models {len(normalized_rule.blacklist_model_ids)}")
+            parts.append(f"Kept models {len(normalized_rule.blacklist_model_ids)}")
         if normalized_rule.kind == SELL_KIND_WEAPONS and normalized_rule.blacklist_item_type_ids:
             parts.append(f"Weapon types {len(normalized_rule.blacklist_item_type_ids)}")
         if normalized_rule.kind == SELL_KIND_WEAPONS:
@@ -29038,9 +32629,9 @@ class MerchantRulesWidget:
                 + len(normalized_rule.protected_weapon_mod_variant_thresholds)
             )
             if protected_mod_count > 0:
-                parts.append(f"Protected mods {protected_mod_count}")
+                parts.append(f"Kept upgrades {protected_mod_count}")
         if normalized_rule.kind == SELL_KIND_ARMOR and normalized_rule.protected_rune_identifiers:
-            parts.append(f"Protected runes {len(normalized_rule.protected_rune_identifiers)}")
+            parts.append(f"Kept runes / insignias {len(normalized_rule.protected_rune_identifiers)}")
         if normalized_rule.kind == SELL_KIND_ARMOR and normalized_rule.include_standalone_runes:
             parts.append("Sell loose runes")
         return " | ".join(parts), True
@@ -29299,13 +32890,11 @@ class MerchantRulesWidget:
 
         return diagnostics
 
-    def _draw_rule_overlap_diagnostics(self, messages: list[str]):
+    def _draw_rule_overlap_diagnostics(self, messages: list[str], warning_text: str):
         if not messages:
             return
         self._draw_section_heading("Diagnostics")
-        self._draw_warning_text(
-            "Potential rule overlap detected. Hard protections win first; otherwise earlier sell rules claim matching items.",
-        )
+        self._draw_warning_text(warning_text)
         for message in messages[:6]:
             self._draw_secondary_text(message)
         if len(messages) > 6:
@@ -29314,7 +32903,7 @@ class MerchantRulesWidget:
     def _get_action_block_reason(self, action: str) -> str:
         """Return the centralized runtime, preview, travel, and confirmation gate for an action."""
 
-        busy = self.execution_running or self.travel_preview_running or self.identify_running or self.instant_destroy_running or self.salvage_running or self.storage_scan_running or self.auto_cleanup_running or self.manual_vendor_running
+        busy = self._merchant_rules_has_pending_or_active_work()
         if action == "preview":
             return "Merchant Rules is already busy." if busy else ""
         if action == "travel_preview":
@@ -29355,12 +32944,18 @@ class MerchantRulesWidget:
             if busy:
                 return "Merchant Rules is already busy."
             if not self._has_cleanup_sources():
-                return "No Xunlai deposit targets or linked sources are configured."
+                return "No Xunlai deposit targets or linked protection rules are configured."
             if not Map.IsMapReady():
                 return "Wait for the current map to finish loading."
             if not self._can_use_local_storage_actions():
                 return "Run Deposits Now requires an outpost or Guild Hall."
             return ""
+        if action == "gold_balance":
+            if self._inventory_plus_is_enabled():
+                return GOLD_BALANCE_INVENTORY_PLUS_MESSAGE
+            if not self.gold_balance_enabled:
+                return GOLD_BALANCE_DISABLED_ACTION_MESSAGE
+            return "Merchant Rules is already busy." if busy else ""
         if action == "salvage":
             if busy:
                 return "Merchant Rules is already busy."
@@ -29616,11 +33211,14 @@ class MerchantRulesWidget:
         status instead of treating the batch as an all-or-nothing operation.
         """
 
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         selected_emails = self._get_selected_multibox_emails()
         if not selected_emails:
             return
         self.multibox_active_action = "sync"
         self.multibox_active_request_id = self._next_multibox_request_id("sync")
+        self.multibox_active_profile_generation = int(self.merchant_rules_profile_generation)
         self._clear_multibox_batch_runtime()
         payload = self._build_profile_payload()
         for account_email in selected_emails:
@@ -29671,11 +33269,14 @@ class MerchantRulesWidget:
     def _start_multibox_batch(self, action: str, opcode: int):
         """Create a request-scoped preview or execute batch for selected active followers."""
 
+        if self._merchant_rules_has_pending_or_active_work():
+            return
         selected_emails = self._get_selected_multibox_emails()
         if not selected_emails:
             return
         self.multibox_active_action = str(action or "").strip() or "preview"
         self.multibox_active_request_id = self._next_multibox_request_id(self.multibox_active_action)
+        self.multibox_active_profile_generation = int(self.merchant_rules_profile_generation)
         self._clear_multibox_batch_runtime()
         include_protected_flag = "1" if self.destroy_include_protected_items else "0"
         instant_destroy_flag = "1" if self._is_destroy_auto_enabled() else "0"
@@ -29771,6 +33372,15 @@ class MerchantRulesWidget:
         """
 
         if self.multibox_active_action not in ("preview", "execute"):
+            return
+        if (
+            self.multibox_active_profile_generation is not None
+            and int(self.multibox_active_profile_generation) != int(self.merchant_rules_profile_generation)
+        ):
+            self._debug_log(
+                "Discarded stale Merchant Rules multibox batch after a profile generation change."
+            )
+            self._clear_multibox_batch_runtime()
             return
         current_time_ms = int(time.time() * 1000)
         if self.multibox_active_action == "execute" and self.multibox_running_email:
@@ -29885,6 +33495,29 @@ class MerchantRulesWidget:
     def _get_multibox_plan_counts(self, plan: PlanResult) -> tuple[int, int]:
         actionable_entries, skipped_entries = self._split_preview_entries(plan.entries)
         return len(actionable_entries), len(skipped_entries)
+
+    def _get_unmet_request_stock_targets(
+        self,
+        execution_context: MerchantRulesExecutionContext | None,
+    ) -> list[tuple[RequestScopedMerchantStockTarget, int]]:
+        request_targets = execution_context.merchant_stock_targets if execution_context is not None else ()
+        if not request_targets:
+            return []
+        inventory_counts = self._get_inventory_model_counts(self._collect_inventory_items())
+        return [
+            (target, max(0, int(inventory_counts.get(int(target.model_id), 0))))
+            for target in request_targets
+            if max(0, int(inventory_counts.get(int(target.model_id), 0))) < max(0, int(target.target_count))
+        ]
+
+    def _format_unmet_request_stock_targets(
+        self,
+        unmet_targets: list[tuple[RequestScopedMerchantStockTarget, int]],
+    ) -> str:
+        return ", ".join(
+            f"{self._format_model_label_short(target.model_id)} {current_count}/{target.target_count}"
+            for target, current_count in unmet_targets
+        )
 
     def _extract_multibox_message_extra_data(self, message) -> tuple[str, str, str, str]:
         values: list[str] = []
@@ -30031,6 +33664,8 @@ class MerchantRulesWidget:
             return "Xunlai Deposits is already running."
         if self.manual_vendor_running:
             return "Merchant Rules manual merchant automation is already running."
+        if self._merchant_rules_has_pending_or_active_work(include_remote_dispatch=False):
+            return "Merchant Rules owned work is already running."
         if not Map.IsMapReady():
             return "Current map is still loading."
         return ""
@@ -30136,9 +33771,16 @@ class MerchantRulesWidget:
         return True
 
     def handle_shared_multibox_message(self, message):
+        generator = self._handle_shared_multibox_message(message)
+        opcode = self._get_multibox_message_opcode(message)
+        if opcode in (MERCHANT_RULES_OPCODE_PREVIEW, MERCHANT_RULES_OPCODE_EXECUTE):
+            return self._track_merchant_rules_owned_work(generator)
+        return generator
+
+    def _handle_shared_multibox_message(self, message):
         """Handle a follower command while restoring temporary destructive and HeroAI state.
 
-        The generator validates receiver and opcode data, applies request-scoped execution flags,
+        The generator validates receiver and opcode data, applies request-scoped execution inputs and flags,
         sends a correlated result, and restores all temporary options in ``finally``.
         """
 
@@ -30181,11 +33823,34 @@ class MerchantRulesWidget:
             return
 
         if opcode == MERCHANT_RULES_OPCODE_RELOAD_PROFILE:
-            self._clear_loaded_profile_provenance("multibox synchronization")
-            self.reload_profile_from_disk(
-                status_message="Merchant Rules live config reloaded by multibox sync.",
+            request_key = (request_id, sender_email, receiver_email)
+            if request_key in self._merchant_rules_staged_multibox_reload_requests:
+                self._merchant_rules_staged_multibox_reload_requests.discard(request_key)
+                if self.pending_multibox_profile_reload != request_key:
+                    return
+            self._request_multibox_profile_reload(
+                request_id=request_id,
+                sender_email=sender_email,
+                receiver_email=receiver_email,
             )
             return
+
+        execution_context = MerchantRulesExecutionContext()
+        if opcode == MERCHANT_RULES_OPCODE_EXECUTE:
+            execution_context, request_parse_error = _parse_request_scoped_merchant_stock(extra1)
+            if request_parse_error:
+                self._send_multibox_result_message(
+                    sender_email,
+                    request_id=request_id,
+                    opcode=MERCHANT_RULES_OPCODE_ERROR_RESULT,
+                    primary_count=0,
+                    secondary_count=1,
+                    success_flag=False,
+                    status_label="Invalid Stock Request",
+                    summary="Request-scoped Merchant Stock was rejected.",
+                    detail=request_parse_error,
+                )
+                return
 
         hero_ai_snapshot: dict[str, bool] | None = None
         original_include_protected = False
@@ -30233,7 +33898,7 @@ class MerchantRulesWidget:
                     status_label="Starting",
                     summary="Remote execute is starting.",
                 )
-                yield from self._execute_now()
+                yield from self._execute_now(execution_context=execution_context)
                 if str(self.last_error or "").strip():
                     self._send_multibox_result_message(
                         sender_email,
@@ -30247,6 +33912,23 @@ class MerchantRulesWidget:
                         detail=str(self.last_error or self.status_message or ""),
                     )
                 else:
+                    unmet_request_targets = self._get_unmet_request_stock_targets(execution_context)
+                    if unmet_request_targets:
+                        primary_count, secondary_count = self._get_multibox_plan_counts(self.preview_plan)
+                        target_word = "target" if len(unmet_request_targets) == 1 else "targets"
+                        remain_word = "remains" if len(unmet_request_targets) == 1 else "remain"
+                        self._send_multibox_result_message(
+                            sender_email,
+                            request_id=request_id,
+                            opcode=MERCHANT_RULES_OPCODE_ERROR_RESULT,
+                            primary_count=primary_count,
+                            secondary_count=secondary_count,
+                            success_flag=False,
+                            status_label="Stock Unmet",
+                            summary=f"{len(unmet_request_targets)} requested stock {target_word} {remain_word} unmet.",
+                            detail=self._format_unmet_request_stock_targets(unmet_request_targets),
+                        )
+                        return
                     result = self.build_remote_execute_result()
                     self._send_multibox_result_message(
                         sender_email,
@@ -30291,6 +33973,10 @@ class MerchantRulesWidget:
             if restore_destroy_session_state:
                 self.destroy_include_protected_items = original_include_protected
                 self.destroy_instant_enabled = original_instant_destroy
+            if execution_context.merchant_stock_targets:
+                self.preview_plan = PlanResult()
+                self.preview_ready = False
+                self._clear_preview_projection_state()
 
     def build_remote_preview_result(self) -> dict[str, object]:
         """Summarize the follower's current preview into a transport-safe result payload."""
@@ -30356,7 +34042,7 @@ class MerchantRulesWidget:
         elif projected_preview:
             target_label = self.preview_execute_travel_target_outpost_name or "the selected outpost"
             detail_parts = [
-                f"Projected after travel to {target_label}. Travel + Execute will auto-travel and rebuild live merchant handling on arrival.",
+                f"Projected after travel to {target_label}. Travel + Execute will auto-travel, recheck current items and available services, then execute.",
             ]
             if self._plan_needs_exact_storage_scan(self.preview_plan):
                 detail_parts.append("Storage-aware rune planning is still partial until Xunlai is opened for an exact storage scan.")
@@ -30446,6 +34132,16 @@ class MerchantRulesWidget:
                 f"Ignored Merchant Rules multibox result from {normalized_email}: request_id={request_id} current={self.multibox_active_request_id}"
             )
             return False
+        if (
+            self.multibox_active_profile_generation is not None
+            and int(self.multibox_active_profile_generation) != int(self.merchant_rules_profile_generation)
+        ):
+            self._debug_log(
+                f"Ignored stale Merchant Rules multibox result from {normalized_email}: "
+                f"request_id={request_id} generation={self.multibox_active_profile_generation} "
+                f"current_generation={self.merchant_rules_profile_generation}"
+            )
+            return False
 
         current_time_ms = int(time.time() * 1000)
         if opcode == MERCHANT_RULES_OPCODE_STATUS_RESULT:
@@ -30500,6 +34196,10 @@ class MerchantRulesWidget:
 
     def _draw_multibox_section(self):
         self._draw_section_heading("Multibox")
+        self._draw_secondary_text(
+            "Actions apply to the selected accounts. Sync copies this account's setup to them; "
+            "Preview and Execute otherwise use each account's own setup."
+        )
         accounts = self._get_multibox_accounts()
         if not accounts:
             self._draw_secondary_text("No other active multibox accounts were detected.")
@@ -30567,19 +34267,36 @@ class MerchantRulesWidget:
                 PyImGui.end_table()
         PyImGui.end_child()
 
-        batch_running = self._is_multibox_batch_running()
+        multibox_block_message = self._get_profile_application_block_message(
+            "starting another multibox operation"
+        )
         no_selection = not selected_emails
-        PyImGui.begin_disabled(no_selection or batch_running)
-        sync_clicked = self._draw_confirm_destructive_button("Sync Rules To Selected##merchant_rules_multibox_sync_selected")
+        multibox_disabled = no_selection or bool(multibox_block_message)
+        PyImGui.begin_disabled(multibox_disabled)
+        sync_clicked = self._draw_confirm_destructive_button(
+            "Sync Rules To Selected##merchant_rules_multibox_sync_selected",
+            disabled_reason=multibox_block_message,
+        )
         PyImGui.end_disabled()
+        self._draw_hover_tooltip(
+            "Replaces each selected account's current Merchant Rules settings with this account's settings. "
+            "Saved profiles, window layout, and session-only Destroy settings are not copied."
+        )
         PyImGui.same_line(0, 8)
-        PyImGui.begin_disabled(no_selection or batch_running)
+        PyImGui.begin_disabled(multibox_disabled)
         preview_clicked = PyImGui.button("Preview Selected")
         PyImGui.end_disabled()
+        self._draw_hover_tooltip(
+            "Builds a plan on each selected account without moving its character or items."
+        )
         PyImGui.same_line(0, 8)
-        PyImGui.begin_disabled(no_selection or batch_running)
+        PyImGui.begin_disabled(multibox_disabled)
         execute_clicked = PyImGui.button("Execute Selected")
         PyImGui.end_disabled()
+        self._draw_hover_tooltip(
+            "Runs each selected account's current setup, one account at a time. "
+            "This account's current Destroy Safety choice applies only to this run."
+        )
 
         selected_statuses = [
             self.multibox_statuses.get(_normalize_multibox_account_email(email))
@@ -30595,6 +34312,7 @@ class MerchantRulesWidget:
         )
         error_count = sum(1 for status in selected_statuses if status is not None and status.state == "error")
 
+        batch_running = self._is_multibox_batch_running()
         if batch_running and self.multibox_active_action == "preview":
             self._draw_secondary_text(
                 f"Remote preview progress: {running_count} running | {finished_count} finished | {error_count} issue(s)."
@@ -30806,7 +34524,7 @@ class MerchantRulesWidget:
         self._draw_secondary_text(
             f"{len(_normalize_cleanup_targets(self.cleanup_targets))} explicit target(s) | "
             f"{len(_normalize_cleanup_blacklist_model_ids(self.cleanup_blacklist_model_ids))} keep-out item(s) | "
-            f"{len(_normalize_cleanup_protection_sources(self.cleanup_protection_sources))} linked source(s)",
+            f"{len(_normalize_cleanup_protection_sources(self.cleanup_protection_sources))} linked protection rule(s)",
             wrapped=False,
         )
         if self.auto_cleanup_running:
@@ -31028,7 +34746,10 @@ class MerchantRulesWidget:
                 if Map.IsMapIDMatch(current_map_id, self.target_outpost_id):
                     PyImGui.text_wrapped("You are already in the selected outpost, so preview will show the full merchant plan.")
                 else:
-                    PyImGui.text_wrapped("Preview projects the post-travel plan. Travel + Execute will travel there, rebuild live merchant handling, and then run it.")
+                    PyImGui.text_wrapped(
+                        "Preview projects the post-travel plan. Travel + Execute will travel there, recheck "
+                        "current items and available services, then execute."
+                    )
             else:
                 PyImGui.text_wrapped("No specific target selected. Auto-travel stays idle until you choose an outpost.")
 
@@ -31701,14 +35422,14 @@ class MerchantRulesWidget:
             PyImGui.table_setup_column("Source", PyImGui.TableColumnFlags.WidthFixed, 85.0)
             PyImGui.table_setup_column("Type", PyImGui.TableColumnFlags.WidthFixed, 190.0)
             PyImGui.table_setup_column("Value", PyImGui.TableColumnFlags.WidthFixed, 285.0)
-            PyImGui.table_setup_column("Owner Kind", PyImGui.TableColumnFlags.WidthFixed, 110.0)
-            PyImGui.table_setup_column("Owner Rule", PyImGui.TableColumnFlags.WidthFixed, 300.0)
+            PyImGui.table_setup_column("Applies To", PyImGui.TableColumnFlags.WidthFixed, 110.0)
+            PyImGui.table_setup_column("Rule", PyImGui.TableColumnFlags.WidthFixed, 300.0)
             PyImGui.table_setup_column("Enabled", PyImGui.TableColumnFlags.WidthFixed, 72.0)
             PyImGui.table_setup_column("Order", PyImGui.TableColumnFlags.WidthFixed, 58.0)
             PyImGui.table_setup_column("Edit", PyImGui.TableColumnFlags.WidthFixed, 58.0)
 
             PyImGui.table_next_row()
-            for column_index, column_label in enumerate(("Source", "Type", "Value", "Owner Kind", "Owner Rule", "Enabled", "Order", "Edit")):
+            for column_index, column_label in enumerate(("Source", "Type", "Value", "Applies To", "Rule", "Enabled", "Order", "Edit")):
                 PyImGui.table_set_column_index(column_index)
                 self._draw_secondary_text(column_label, wrapped=False)
 
@@ -31818,7 +35539,7 @@ class MerchantRulesWidget:
         self._draw_secondary_text(
             (
                 f"{len(entries)} protection {entry_word} across {len(owner_rule_indices)} sell rule(s). "
-                f"{len(enabled_owner_rule_indices)} owner rule(s) enabled, {disabled_owner_rule_count} disabled."
+                f"{len(enabled_owner_rule_indices)} Sell rule(s) enabled, {disabled_owner_rule_count} disabled."
             ),
             wrapped=False,
         )
@@ -31855,7 +35576,7 @@ class MerchantRulesWidget:
             else 0
         )
         next_owner_filter_index = PyImGui.combo(
-            "Owner Scope##merchant_rules_protections_owner_filter",
+            "Applies To##merchant_rules_protections_owner_filter",
             current_owner_filter_index,
             owner_filter_labels,
         )
@@ -32148,7 +35869,7 @@ class MerchantRulesWidget:
         PyImGui.text_colored(state_label, state_color)
         PyImGui.same_line(0, 8)
         self._draw_secondary_text(
-            "Matching settings for this protection group. Sell criteria stay in Sell.",
+            "These protections use this Sell rule's rarity filters and are active only while the rule is enabled.",
             wrapped=False,
         )
 
@@ -32156,12 +35877,12 @@ class MerchantRulesWidget:
             index,
             "",
             "General",
-            "These options keep matching customized or unidentified items out of this sell rule.",
+            "Protect customized or unidentified items that match this rule's rarity filters. These protections apply while the rule is enabled.",
         )
         skip_customized = self._draw_protection_checkbox(
             f"Keep customized items##protections_sell_skip_customized_{index}",
             bool(rule.skip_customized),
-            "Keeps matching customized items out of this sell rule.",
+            "Protects matching customized items from Sell, Salvage, Destroy, and Sell from Xunlai while this rule is enabled.",
         )
         if skip_customized != rule.skip_customized:
             rule.skip_customized = skip_customized
@@ -32170,7 +35891,7 @@ class MerchantRulesWidget:
         skip_unidentified = self._draw_protection_checkbox(
             f"Keep unidentified items##protections_sell_skip_unidentified_{index}",
             bool(rule.skip_unidentified),
-            "Keeps matching unidentified items out of this sell rule.",
+            "Protects matching unidentified items from Sell, Salvage, Destroy, and Sell from Xunlai while this rule is enabled.",
         )
         if skip_unidentified != rule.skip_unidentified:
             rule.skip_unidentified = skip_unidentified
@@ -32247,10 +35968,13 @@ class MerchantRulesWidget:
         self._draw_secondary_text(
             "Protect matching weapons, armor, upgrades, runes, insignias, and inscriptions from destructive actions.",
         )
-        self._draw_secondary_text("Uses weapon and armor matching settings.", wrapped=False)
+        self._draw_secondary_text(
+            "Each group uses its Weapons or Armor Sell rule's matching filters.",
+            wrapped=False,
+        )
         if not sell_rule_indices:
             self._draw_secondary_text(
-                "No weapon or armor sell rules exist yet. Add one in Sell to create a protection owner."
+                "Add a Weapons or Armor rule in Sell before configuring matching equipment protections."
             )
             return False
 
@@ -32373,7 +36097,7 @@ class MerchantRulesWidget:
 
         self._draw_section_heading("Protections")
         self._draw_colored_text(
-            "Protections keeps item safety settings in one place while preserving the existing rule behavior.",
+            "Manage items Merchant Rules should keep safe.",
             UI_COLOR_INFO,
         )
         self._draw_secondary_text(
@@ -32440,7 +36164,7 @@ class MerchantRulesWidget:
         self._draw_subsection_label(f"Selected Items: {len(merchant_stock_targets)}")
         if any(_is_scroll_trader_stock_model(target.model_id) for target in merchant_stock_targets):
             self._draw_secondary_text(
-                "Confirmed scroll trader stock in this legacy stock list will route to Scroll Trader / Rare Scroll Trader, never to a regular Merchant."
+                "Scrolls in this list are bought only from a Scroll Trader or Rare Scroll Trader, never from a regular Merchant."
             )
         if not merchant_stock_targets:
             self._draw_secondary_text("No merchant stock items selected yet.", wrapped=False)
@@ -32452,6 +36176,11 @@ class MerchantRulesWidget:
                 target_count=merchant_stock_target.target_count,
                 max_per_run=merchant_stock_target.max_per_run,
                 after_purchase=merchant_stock_target.after_purchase,
+                check_xunlai_first=(
+                    bool(merchant_stock_target.check_xunlai_first)
+                    if self._merchant_stock_target_supports_xunlai_first(merchant_stock_target.model_id)
+                    else False
+                ),
             )
             for merchant_stock_target in merchant_stock_targets
         ]
@@ -32459,10 +36188,11 @@ class MerchantRulesWidget:
         removed_model_id = 0
         child_height = min(220, 58 + (32 * len(updated_targets)))
         if PyImGui.begin_child(f"buy_merchant_stock_selected_{index}", (0, child_height), True, PyImGui.WindowFlags.NoFlag):
-            if PyImGui.begin_table(f"buy_merchant_stock_selected_table_{index}", 5, self._get_dense_list_table_flags()):
+            if PyImGui.begin_table(f"buy_merchant_stock_selected_table_{index}", 6, self._get_dense_list_table_flags()):
                 PyImGui.table_setup_column("Item", PyImGui.TableColumnFlags.WidthStretch)
                 PyImGui.table_setup_column("Target", PyImGui.TableColumnFlags.WidthFixed, 130.0)
                 PyImGui.table_setup_column("Max/Run", PyImGui.TableColumnFlags.WidthFixed, 130.0)
+                PyImGui.table_setup_column("Check Xunlai first", PyImGui.TableColumnFlags.WidthFixed, 135.0)
                 PyImGui.table_setup_column("After purchase", PyImGui.TableColumnFlags.WidthFixed, 160.0)
                 PyImGui.table_setup_column("Remove", PyImGui.TableColumnFlags.WidthFixed, 60.0)
 
@@ -32474,11 +36204,14 @@ class MerchantRulesWidget:
                 PyImGui.table_set_column_index(2)
                 PyImGui.text("Max/Run")
                 PyImGui.table_set_column_index(3)
-                PyImGui.text("After purchase")
+                PyImGui.text("Check Xunlai first")
                 PyImGui.table_set_column_index(4)
+                PyImGui.text("After purchase")
+                PyImGui.table_set_column_index(5)
                 PyImGui.text("Remove")
 
-                for target_row in display_targets:
+                for target_object in display_targets:
+                    target_row = cast(MerchantStockTarget, target_object)
                     PyImGui.table_next_row()
                     PyImGui.table_set_column_index(0)
                     PyImGui.text_colored(
@@ -32507,12 +36240,22 @@ class MerchantRulesWidget:
                     target_row.max_per_run = max(0, int(new_max_per_run))
 
                     PyImGui.table_set_column_index(3)
+                    if self._merchant_stock_target_supports_xunlai_first(target_row.model_id):
+                        target_row.check_xunlai_first = PyImGui.checkbox(
+                            f"##buy_stock_xunlai_first_{index}_{target_row.model_id}",
+                            bool(target_row.check_xunlai_first),
+                        )
+                        self._draw_helper_tooltip("buy_check_xunlai_first")
+                    else:
+                        PyImGui.text_colored("Not available", UI_COLOR_MUTED)
+
+                    PyImGui.table_set_column_index(4)
                     target_row.after_purchase = self._draw_after_purchase_action_combo(
                         f"##buy_stock_after_purchase_{index}_{target_row.model_id}",
                         target_row.after_purchase,
                     )
 
-                    PyImGui.table_set_column_index(4)
+                    PyImGui.table_set_column_index(5)
                     if PyImGui.small_button(f"X##buy_stock_remove_{index}_{target_row.model_id}"):
                         removed_model_id = target_row.model_id
                         break
@@ -32558,6 +36301,7 @@ class MerchantRulesWidget:
                 target_count=target.target_count,
                 max_per_run=target.max_per_run,
                 after_purchase=target.after_purchase,
+                check_xunlai_first=bool(target.check_xunlai_first),
             )
             for target in scroll_targets
         ]
@@ -32698,6 +36442,7 @@ class MerchantRulesWidget:
                 target_count=target.target_count,
                 max_per_run=target.max_per_run,
                 after_purchase=target.after_purchase,
+                check_xunlai_first=bool(target.check_xunlai_first),
             )
             for target in crafter_targets
         ]
@@ -33194,6 +36939,7 @@ class MerchantRulesWidget:
                             f"##sell_rune_keep_count_{index}_{target_row.identifier}",
                             int(target_row.keep_count),
                         )
+                        self._draw_helper_tooltip("whitelist_keep_count")
                         PyImGui.pop_item_width()
                         target_row.keep_count = max(0, int(new_keep_count))
 
@@ -33759,10 +37505,14 @@ class MerchantRulesWidget:
             entry_predicate = self._catalog_entry_matches_weapon_blacklist
         elif rule.kind == SELL_KIND_ARMOR:
             include_standalone_runes = bool(rule.include_standalone_runes)
-            entry_predicate = lambda entry: self._catalog_entry_matches_armor_blacklist(
-                entry,
-                include_standalone_runes=include_standalone_runes,
-            )
+
+            def _armor_blacklist_entry_predicate(entry: dict[str, object]) -> bool:
+                return self._catalog_entry_matches_armor_blacklist(
+                    entry,
+                    include_standalone_runes=include_standalone_runes,
+                )
+
+            entry_predicate = _armor_blacklist_entry_predicate
 
         PyImGui.separator()
         self._draw_subsection_heading("Add Models to Keep")
@@ -33915,7 +37665,7 @@ class MerchantRulesWidget:
             bool(getattr(rule, "all_weapons_perfect_stats_only", False)),
         )
         self._draw_hover_tooltip(
-            "When enabled, this range keeps only weapons whose base damage, energy, or armor exactly matches the perfect-base value."
+            "Keep this weapon only when its base damage, energy, or armor matches the maximum value for its weapon type."
         )
         if new_all_weapons_perfect_stats_only != bool(getattr(rule, "all_weapons_perfect_stats_only", False)):
             rule.all_weapons_perfect_stats_only = bool(new_all_weapons_perfect_stats_only)
@@ -33940,9 +37690,7 @@ class MerchantRulesWidget:
                 changed = True
 
         self._draw_secondary_text(
-            f"Inclusive range. Set either endpoint to 0 to disable. Req 0 / unknown does not match range rules; "
-            f"use unconditional model protection for unknown reqs. Values are capped at {MAX_WEAPON_REQUIREMENT}. "
-            f"Perfect stats only holds unidentified items when needed stats are unavailable."
+            f"Set either endpoint to 0 to disable this range. Values are limited to {MAX_WEAPON_REQUIREMENT}."
         )
 
         self._draw_light_separator()
@@ -34038,7 +37786,9 @@ class MerchantRulesWidget:
                                 bool(getattr(requirement_rule, "perfect_stats_only", False)),
                             )
                         )
-                        self._draw_hover_tooltip("Keep this model only when its base stats exactly match the perfect-base value.")
+                        self._draw_hover_tooltip(
+                            "Keep this weapon only when its base damage, energy, or armor matches the maximum value for its weapon type."
+                        )
 
                         PyImGui.table_set_column_index(4)
                         if PyImGui.small_button(f"X##sell_weapon_requirement_remove_{index}_{requirement_rule.model_id}"):
@@ -34084,8 +37834,9 @@ class MerchantRulesWidget:
             self.sell_weapon_requirement_search_cache[index] = self._get_model_name(picked_model_id) or str(picked_model_id)
 
         self._draw_secondary_text(
-            "Requirement ranges are inclusive and apply only to equippable weapons with a parsed req value. "
-            "Valid per-model ranges decide that model before the all-weapons range is considered."
+            "Requirement ranges include both endpoints and apply only when Merchant Rules can read an "
+            "equippable weapon's requirement. To protect a model regardless of requirement, add it under "
+            "Keep These Models."
         )
         self._end_sell_jump_target_group(index, SELL_PROTECTION_ANCHOR_REQUIREMENTS)
         return changed
@@ -35025,7 +38776,8 @@ class MerchantRulesWidget:
 
         self._draw_section_heading("Identify")
         self._draw_secondary_text(
-            "Identify targets unidentified inventory items by exact rarity. Identify before Execute runs after any configured travel, then Merchant Rules rebuilds the live plan before the rest of Execute continues."
+            "Identify targets unidentified inventory items by exact rarity. Identify before Execute runs after "
+            "any configured travel, then Merchant Rules rechecks current items before the remaining actions continue."
         )
 
         selector_count = self._draw_identify_status_badges(settings)
@@ -35167,6 +38919,10 @@ class MerchantRulesWidget:
         if category_labels:
             selector_parts.append(f"Categories: {', '.join(category_labels)}")
 
+        common_material_target_ids = _normalize_common_material_model_ids(
+            getattr(normalized_rule, "target_common_material_model_ids", [])
+        )
+
         option_label = _get_salvage_option_label(normalized_rule.salvage_option)
         selected_option = _resolve_salvage_operation(normalized_rule.salvage_option)
         is_auto_upgrade_option = _is_auto_exact_upgrade_salvage_option(normalized_rule.salvage_option)
@@ -35179,6 +38935,10 @@ class MerchantRulesWidget:
                 selector_parts.append(f"Rarities: {', '.join(rarity_labels)}")
             if category_labels:
                 selector_parts.append(f"Categories: {', '.join(category_labels)}")
+            if common_material_target_ids:
+                selector_parts.append(
+                    f"Known possible common outputs: {len(common_material_target_ids)}"
+                )
             if upgrade_target_count > 0:
                 selector_parts.append("upgrade targets ignored")
             if not selector_parts:
@@ -35189,8 +38949,6 @@ class MerchantRulesWidget:
             return f"{option_label} | Choose at least one specific upgrade target.", False
         if upgrade_target_count > 0:
             selector_parts.append(f"specific upgrades {upgrade_target_count}")
-            if selected_option not in SALVAGE_UPGRADE_OPTIONS and not is_auto_upgrade_option:
-                option_label = f"{option_label} (specific-upgrade targets require prefix/suffix/inscription)"
         if (
             (selected_option in SALVAGE_UPGRADE_OPTIONS or is_auto_upgrade_option)
             and not self._has_salvage_upgrade_support_for_rule(normalized_rule)
@@ -35231,7 +38989,9 @@ class MerchantRulesWidget:
         return ready_rule_count
 
     def _draw_salvage_option_combo(self, index: int, rule: SalvageRule) -> bool:
-        current_option = _normalize_salvage_option(getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT))
+        current_option = _normalize_salvage_rule_mode(
+            getattr(rule, "salvage_option", SALVAGE_OPTION_DEFAULT)
+        )
         preview_label = _get_salvage_option_dropdown_label(current_option)
         combo_flags = getattr(getattr(PyImGui, "ImGuiComboFlags", None), "NoFlag", 0)
         selectable_flags = getattr(getattr(PyImGui, "SelectableFlags", None), "NoFlag", 0)
@@ -35304,8 +39064,8 @@ class MerchantRulesWidget:
         )
 
         self._draw_secondary_text(
-            "Targets matching items for Merchant Rules salvage planning/protection. "
-            "Run Salvage extracts only when this upgrade choice can be selected safely."
+            "Choose the exact upgrades this rule may extract. An item is salvaged only when Merchant Rules "
+            "can safely select that upgrade."
         )
         if is_auto_upgrade_option and target_entry_count <= 0:
             self._draw_secondary_text("Specific upgrade needs at least one specific upgrade target.")
@@ -35315,8 +39075,7 @@ class MerchantRulesWidget:
             and target_entry_count > 0
         ):
             self._draw_colored_text(
-                "Specific-upgrade targets require prefix, suffix, or inscription salvage. "
-                "Run Salvage skips these targets while this rule uses default/material salvage.",
+                "Specific-upgrade targets are ignored while this rule uses Materials.",
                 UI_COLOR_WARNING_SOFT,
             )
         elif (
@@ -35324,8 +39083,7 @@ class MerchantRulesWidget:
             and not target_support_available
         ):
             self._draw_secondary_text(
-                "This extraction mode is not available right now. "
-                "Matching items stay protected and Run Salvage skips extraction."
+                "This extraction method is unavailable. Matching items remain protected and are skipped."
             )
 
         self._draw_subsection_label(f"Target Entries: {target_entry_count}")
@@ -35465,7 +39223,7 @@ class MerchantRulesWidget:
             f"Search Armor Runes / Insignias##merchant_rules_salvage_armor_upgrade_search_{index}",
             armor_search_text,
         )
-        self._draw_hover_tooltip("Search exact runes.json Rune or Insignia names and identifiers.")
+        self._draw_hover_tooltip("Search rune or insignia names or identifiers.")
         if updated_armor_search_text != armor_search_text:
             self.salvage_armor_upgrade_search_cache[index] = updated_armor_search_text
 
@@ -35509,6 +39267,70 @@ class MerchantRulesWidget:
 
         return changed
 
+    def _draw_salvage_common_material_target_editor(self, index: int, rule: SalvageRule) -> bool:
+        changed = False
+        target_model_ids = _normalize_common_material_model_ids(
+            getattr(rule, "target_common_material_model_ids", [])
+        )
+        self._draw_subsection_heading("Known Possible Common Materials")
+        self._draw_subsection_label(f"Selected Materials: {len(target_model_ids)}")
+        self._draw_helper_tooltip("salvage_common_material_targets")
+        self._draw_secondary_text(
+            "Items match when any selected material is recorded as a possible common salvage output.",
+            wrapped=False,
+        )
+
+        removed_model_id = self._draw_selected_model_ids(
+            "salvage_common_materials",
+            index,
+            target_model_ids,
+        )
+        if removed_model_id > 0:
+            changed = self._set_salvage_rule_common_material_model_ids(
+                rule,
+                [model_id for model_id in target_model_ids if int(model_id) != int(removed_model_id)],
+            ) or changed
+
+        if self._draw_confirm_destructive_button(
+            f"Clear Common Material Targets##merchant_rules_salvage_common_material_clear_{index}"
+        ):
+            changed = self._set_salvage_rule_common_material_model_ids(rule, []) or changed
+
+        search_text = self.salvage_common_material_search_cache.get(index, "")
+        updated_search_text = PyImGui.input_text(
+            f"Search possible common outputs##merchant_rules_salvage_common_material_search_{index}",
+            search_text,
+        )
+        self.salvage_common_material_search_cache[index] = updated_search_text
+        self._draw_hover_tooltip(
+            "Search the current catalog of common crafting materials. These are known possible outputs, not guarantees."
+        )
+
+        selected_ids = set(target_model_ids)
+        picked_model_id, visible_model_ids = self._draw_common_material_search_results(
+            f"merchant_rules_salvage_common_material_results_{index}",
+            updated_search_text,
+            existing_model_ids=selected_ids,
+            existing_badge_label="Already selected",
+        )
+        addable_model_ids = [model_id for model_id in visible_model_ids if model_id not in selected_ids]
+        if self._draw_add_all_matches_button(
+            f"merchant_rules_salvage_common_material_add_all_{index}",
+            len(visible_model_ids),
+            len(addable_model_ids),
+        ):
+            changed = self._set_salvage_rule_common_material_model_ids(
+                rule,
+                target_model_ids + addable_model_ids,
+            ) or changed
+        if picked_model_id > 0:
+            changed = self._set_salvage_rule_common_material_model_ids(
+                rule,
+                target_model_ids + [picked_model_id],
+            ) or changed
+            self.salvage_common_material_search_cache[index] = self._get_model_name(picked_model_id) or str(picked_model_id)
+        return changed
+
     def _draw_salvage_rule_editor(self, index: int, rule: SalvageRule, settings: SalvageSettings) -> bool:
         changed = False
         summary_text, ready = self._get_salvage_rule_summary(rule)
@@ -35540,17 +39362,12 @@ class MerchantRulesWidget:
 
         self._draw_section_heading("Basic")
         changed = self._draw_salvage_option_combo(index, rule) or changed
-        configured_option = _normalize_salvage_option(rule.salvage_option)
-        selected_option = _resolve_salvage_operation(rule.salvage_option)
         is_auto_upgrade_option = _is_auto_exact_upgrade_salvage_option(rule.salvage_option)
-        if selected_option in SALVAGE_UPGRADE_OPTIONS or is_auto_upgrade_option:
+        if is_auto_upgrade_option:
             if self._has_salvage_upgrade_support_for_rule(rule):
-                if is_auto_upgrade_option:
-                    self._draw_secondary_text(
-                        "Infers prefix, suffix, or inscription from the matched specific upgrade target."
-                    )
-                else:
-                    self._draw_secondary_text("Uses a Perfect, Expert, or Superior Salvage Kit when available.")
+                self._draw_secondary_text(
+                    "Uses the matching saved target to choose the prefix, suffix, or inscription."
+                )
             else:
                 self._draw_secondary_text(
                     "Prefix, suffix, and inscription extraction require deterministic slot targeting. "
@@ -35568,6 +39385,10 @@ class MerchantRulesWidget:
         changed = self._draw_salvage_category_toggles(rule, f"rule_{index}") or changed
         if bool(rule.categories.get(SALVAGE_CATEGORY_OTHER, False)):
             self._draw_warning_text("Other Items may include unexpected salvageable item types. Keep it off unless testing specific drops.")
+
+        if _resolve_salvage_operation(rule.salvage_option) == SALVAGE_OPTION_MATERIALS:
+            PyImGui.separator()
+            changed = self._draw_salvage_common_material_target_editor(index, rule) or changed
 
         PyImGui.separator()
         self._draw_subsection_heading("Specific Upgrade Targets")
@@ -35695,6 +39516,9 @@ class MerchantRulesWidget:
         self._draw_secondary_text(
             "Salvage uses per-rule choices. Protection, customized-item, unidentified non-white, and live salvage checks always run first."
         )
+        self._draw_secondary_text(
+            "Salvage rules are evaluated top to bottom. The first matching rule wins. Move Up/Down changes priority."
+        )
 
         run_salvage_reason = self._get_action_block_reason("salvage")
         ready_rule_count = self._draw_salvage_status_badges(settings)
@@ -35735,6 +39559,9 @@ class MerchantRulesWidget:
             self.rule_ui_structure_changed = True
             self._refresh_rule_ui_caches()
             changed = True
+        self._draw_hover_tooltip(
+            "Rules are checked top to bottom. The first matching rule wins. Use Move Up/Down to change priority."
+        )
 
         if not settings.rules:
             self._draw_secondary_text("No salvage rules yet.")
@@ -35879,7 +39706,7 @@ class MerchantRulesWidget:
         )
         PyImGui.same_line(0, 6)
         if auto_enabled:
-            self._draw_inline_badge("Pickup", UI_COLOR_SUCCESS if ready else UI_COLOR_WARNING)
+            self._draw_inline_badge("Outpost entry", UI_COLOR_SUCCESS if ready else UI_COLOR_WARNING)
         else:
             self._draw_inline_badge("Manual", UI_COLOR_MUTED)
 
@@ -36132,7 +39959,8 @@ class MerchantRulesWidget:
     def _draw_cleanup_workspace(self):
         cleanup_changed = False
         automation_changed = False
-        cleanup_targets = _normalize_cleanup_targets(self.cleanup_targets)
+        gold_automation_changed = False
+        cleanup_targets = self.cleanup_targets
         cleanup_blacklist_model_ids = _normalize_cleanup_blacklist_model_ids(self.cleanup_blacklist_model_ids)
         cleanup_sources = _normalize_cleanup_protection_sources(self.cleanup_protection_sources)
 
@@ -36140,6 +39968,83 @@ class MerchantRulesWidget:
         self._draw_secondary_text(
             "Xunlai Deposits stores selected items after sell and destroy checks. It can also auto-run once when you enter an outpost or Guild Hall."
         )
+
+        self._draw_section_heading("Carried Gold", UI_COLOR_INFO)
+        self._draw_secondary_text(
+            "Keep a chosen amount of gold on this character. Automatic options are optional."
+        )
+
+        if self._inventory_plus_is_enabled():
+            self._draw_warning_text(GOLD_BALANCE_INVENTORY_PLUS_MESSAGE)
+            self._draw_secondary_text(
+                "Inventory+ can also move gold, so Merchant Rules will not balance gold while Inventory+ is turned on."
+            )
+
+        gold_balance_enabled = PyImGui.checkbox(
+            "Maintain carried gold##merchant_rules_gold_balance_enabled",
+            bool(self.gold_balance_enabled),
+        )
+        self._draw_helper_tooltip("gold_balance_enabled")
+        if gold_balance_enabled != self.gold_balance_enabled:
+            self.gold_balance_enabled = gold_balance_enabled
+            automation_changed = True
+            gold_automation_changed = True
+
+        PyImGui.push_item_width(150)
+        current_target_platinum = max(0, min(100, int(self.target_carried_gold) // 1000))
+        updated_target_platinum = PyImGui.input_int(
+            "Target carried gold (platinum)##merchant_rules_target_carried_gold",
+            current_target_platinum,
+        )
+        PyImGui.pop_item_width()
+        self._draw_helper_tooltip("gold_balance_target")
+        if updated_target_platinum != current_target_platinum:
+            self.target_carried_gold = _normalize_gold_target(int(updated_target_platinum) * 1000)
+            automation_changed = True
+            gold_automation_changed = True
+
+        gold_entry_enabled = PyImGui.checkbox(
+            "On outpost entry##merchant_rules_gold_balance_on_outpost_entry",
+            bool(self.gold_balance_on_outpost_entry),
+        )
+        self._draw_helper_tooltip("gold_balance_on_outpost_entry")
+        if gold_entry_enabled != self.gold_balance_on_outpost_entry:
+            self.gold_balance_on_outpost_entry = gold_entry_enabled
+            automation_changed = True
+            gold_automation_changed = True
+        post_mr_enabled = PyImGui.checkbox(
+            "After Merchant Rules trading##merchant_rules_gold_balance_after_mr_trading",
+            bool(self.gold_balance_after_mr_trading),
+        )
+        self._draw_helper_tooltip("gold_balance_after_mr_trading")
+        if post_mr_enabled != self.gold_balance_after_mr_trading:
+            self.gold_balance_after_mr_trading = post_mr_enabled
+            automation_changed = True
+            gold_automation_changed = True
+        manual_session_enabled = PyImGui.checkbox(
+            "After manual merchant trading##merchant_rules_gold_balance_after_manual_session",
+            bool(self.gold_balance_after_manual_session),
+        )
+        self._draw_helper_tooltip("gold_balance_after_manual_session")
+        if manual_session_enabled != self.gold_balance_after_manual_session:
+            self.gold_balance_after_manual_session = manual_session_enabled
+            automation_changed = True
+            gold_automation_changed = True
+
+        gold_balance_action_reason = self._get_action_block_reason("gold_balance")
+        PyImGui.begin_disabled(bool(gold_balance_action_reason))
+        balance_gold_clicked = PyImGui.button(
+            "Balance Gold Now##merchant_rules_gold_balance_now"
+        )
+        PyImGui.end_disabled()
+        self._draw_helper_tooltip("gold_balance_manual_now")
+        if gold_balance_action_reason and gold_balance_action_reason != GOLD_BALANCE_INVENTORY_PLUS_MESSAGE:
+            self._draw_secondary_text(f"Balance Gold Now: {gold_balance_action_reason}")
+        if self.last_gold_balance_summary and self.last_gold_balance_summary != GOLD_BALANCE_INVENTORY_PLUS_MESSAGE:
+            self._draw_secondary_text(self.last_gold_balance_summary)
+
+        PyImGui.separator()
+        self._draw_section_heading("Item Deposits")
 
         auto_cleanup_enabled = PyImGui.checkbox(
             "Auto-run deposits when entering an outpost or Guild Hall##merchant_rules_auto_cleanup_on_entry",
@@ -36149,8 +40054,8 @@ class MerchantRulesWidget:
         if auto_cleanup_enabled != self.auto_cleanup_on_outpost_entry:
             self.auto_cleanup_on_outpost_entry = auto_cleanup_enabled
             automation_changed = True
+
         run_cleanup_reason = self._get_action_block_reason("cleanup")
-        PyImGui.same_line(0, 8)
         PyImGui.begin_disabled(bool(run_cleanup_reason))
         run_cleanup_clicked = PyImGui.button("Run Deposits Now##merchant_rules_cleanup_workspace_run_now")
         PyImGui.end_disabled()
@@ -36158,13 +40063,13 @@ class MerchantRulesWidget:
 
         self._draw_cleanup_status_badges(cleanup_targets, cleanup_blacklist_model_ids, cleanup_sources)
         self._draw_secondary_text(
-            f"Deposit targets: {len(cleanup_targets)} | Keep-out items: {len(cleanup_blacklist_model_ids)} | Linked protection sources: {len(cleanup_sources)}",
+            f"Deposit targets: {len(cleanup_targets)} | Keep-out items: {len(cleanup_blacklist_model_ids)} | Linked protection rules: {len(cleanup_sources)}",
             wrapped=False,
         )
         if run_cleanup_reason:
             self._draw_warning_text(f"Run Deposits Now: {run_cleanup_reason}")
         elif not cleanup_targets and not cleanup_sources:
-            self._draw_warning_text("Xunlai Deposits needs at least one target or linked protection source.")
+            self._draw_warning_text("Xunlai Deposits needs at least one target or linked protection rule.")
         if self.auto_cleanup_running:
             PyImGui.text_colored("Xunlai Deposits is running.", UI_COLOR_INFO)
         if self.last_cleanup_summary:
@@ -36174,7 +40079,8 @@ class MerchantRulesWidget:
         PyImGui.separator()
         self._draw_section_heading("Deposit Targets")
         self._draw_secondary_text(
-            "Pick exact item or material models to stash in Xunlai. Keep On Character is owned by deposit settings and does not sync back to sell rules."
+            "Pick exact item or material models to stash in Xunlai. Keep On Character applies only to deposits; "
+            "it does not change Sell keep counts."
         )
 
         self._draw_subsection_heading("Deposit Items")
@@ -36193,34 +40099,18 @@ class MerchantRulesWidget:
             active_deposit_filter_category,
             self.cleanup_item_type_filter_subcategory,
         )
+        normalized_cleanup_target_search = _normalize_catalog_search_text(
+            self.cleanup_target_list_search_text
+        )
         deposit_filter_active = active_deposit_filter_category != DEPOSIT_FILTER_ALL
-        deposit_list_search_active = bool(_normalize_catalog_search_text(self.cleanup_target_list_search_text))
-
-        updated_targets = [
-            CleanupTarget(
-                model_id=int(target.model_id),
-                keep_on_character=max(0, int(target.keep_on_character)),
-                scope=_normalize_cleanup_target_scope(getattr(target, "scope", ""), target.model_id),
+        deposit_list_search_active = bool(normalized_cleanup_target_search)
+        cleanup_targets, updated_targets, display_targets = (
+            self._get_cleanup_target_display_state(
+                active_deposit_filter_category,
+                active_deposit_filter_subcategory,
+                normalized_cleanup_target_search,
             )
-            for target in cleanup_targets
-        ]
-        display_targets = self._sort_targets_by_model_label_for_display(updated_targets)
-        if deposit_filter_active:
-            display_targets = [
-                target
-                for target in display_targets
-                if self._cleanup_target_matches_deposit_filter(
-                    target,
-                    active_deposit_filter_category,
-                    active_deposit_filter_subcategory,
-                )
-            ]
-        if deposit_list_search_active:
-            display_targets = [
-                target
-                for target in display_targets
-                if self._model_id_matches_item_search_text(target.model_id, self.cleanup_target_list_search_text)
-            ]
+        )
         removed_cleanup_target_key: tuple[int, str] | None = None
         if display_targets:
             child_height = min(220, 58 + (32 * len(display_targets)))
@@ -36238,11 +40128,15 @@ class MerchantRulesWidget:
                     PyImGui.table_set_column_index(2)
                     PyImGui.text("Remove")
 
+                    row_height = 32.0
                     for target in display_targets:
                         target_key = _cleanup_target_key(target)
                         target_widget_key = f"{target_key[0]}_{target_key[1]}"
-                        PyImGui.table_next_row()
+                        PyImGui.table_next_row(0, row_height)
                         PyImGui.table_set_column_index(0)
+                        if not PyImGui.is_rect_visible((1, row_height)):
+                            PyImGui.dummy((1, row_height))
+                            continue
                         PyImGui.text_colored(
                             self._format_cleanup_target_label_short(target),
                             self._get_cleanup_target_item_name_text_color(target),
@@ -36284,19 +40178,12 @@ class MerchantRulesWidget:
         if updated_targets != cleanup_targets:
             if self._set_cleanup_targets(updated_targets):
                 cleanup_changed = True
-                cleanup_targets = _normalize_cleanup_targets(self.cleanup_targets)
+                cleanup_targets = self.cleanup_targets
 
         if deposit_filter_active or deposit_list_search_active:
-            shown_count = len([
-                target
-                for target in updated_targets
-                if self._cleanup_target_matches_deposit_filter(
-                    target,
-                    active_deposit_filter_category,
-                    active_deposit_filter_subcategory,
-                )
-                and self._model_id_matches_item_search_text(target.model_id, self.cleanup_target_list_search_text)
-            ])
+            shown_count = len(display_targets)
+            if removed_cleanup_target_key is not None:
+                shown_count = max(0, shown_count - 1)
             self._draw_secondary_text(
                 f"{shown_count} of {len(updated_targets)} deposit item(s) shown.",
                 wrapped=False,
@@ -36320,7 +40207,7 @@ class MerchantRulesWidget:
             next_targets.extend(addable_filtered_targets)
             if self._set_cleanup_targets(next_targets):
                 cleanup_changed = True
-                cleanup_targets = _normalize_cleanup_targets(self.cleanup_targets)
+                cleanup_targets = self.cleanup_targets
 
         updated_cleanup_search = PyImGui.input_text(
             "Search items to deposit##merchant_rules_cleanup_search",
@@ -36349,7 +40236,7 @@ class MerchantRulesWidget:
             next_targets.extend(addable_cleanup_targets)
             if self._set_cleanup_targets(next_targets):
                 cleanup_changed = True
-                cleanup_targets = _normalize_cleanup_targets(self.cleanup_targets)
+                cleanup_targets = self.cleanup_targets
 
         if picked_cleanup_target is not None:
             if self._add_cleanup_target(
@@ -36357,7 +40244,7 @@ class MerchantRulesWidget:
                 scope=picked_cleanup_target.scope,
             ):
                 cleanup_changed = True
-                cleanup_targets = _normalize_cleanup_targets(self.cleanup_targets)
+                cleanup_targets = self.cleanup_targets
             self.cleanup_model_search_text = (
                 self._get_model_name(picked_cleanup_target.model_id)
                 or str(picked_cleanup_target.model_id)
@@ -36369,7 +40256,7 @@ class MerchantRulesWidget:
             "Deposit keep-outs and protected-item deposits are managed in Protections.",
         )
         self._draw_secondary_text(
-            f"{len(cleanup_blacklist_model_ids)} keep-out item(s) | {len(cleanup_sources)} linked protected-item deposit source(s)",
+            f"{len(cleanup_blacklist_model_ids)} keep-out item(s) | {len(cleanup_sources)} linked Weapons or Armor protection rule(s)",
             wrapped=False,
         )
         if PyImGui.button("Edit Keep-Outs##merchant_rules_cleanup_edit_keepouts"):
@@ -36405,9 +40292,9 @@ class MerchantRulesWidget:
                     cleanup_actionable_entries,
                     show_reasons=bool(self.detailed_preview),
                 )
-            if cleanup_skipped_entries:
-                if cleanup_actionable_entries:
-                    PyImGui.spacing()
+                if cleanup_skipped_entries:
+                    if cleanup_actionable_entries:
+                        PyImGui.spacing()
                 if PyImGui.collapsing_header(
                     f"Not Changed ({len(cleanup_skipped_entries)})##merchant_rules_cleanup_preview_skipped"
                 ):
@@ -36420,13 +40307,18 @@ class MerchantRulesWidget:
 
         if automation_changed:
             self._save_profile()
-            self.status_message = (
-                "Auto deposits on outpost entry enabled."
-                if self.auto_cleanup_on_outpost_entry
-                else "Auto deposits on outpost entry disabled."
-            )
+            if gold_automation_changed:
+                self.status_message = "Carried-gold settings saved."
+            else:
+                self.status_message = (
+                    "Auto deposits on outpost entry enabled."
+                    if self.auto_cleanup_on_outpost_entry
+                    else "Auto deposits on outpost entry disabled."
+                )
         if run_cleanup_clicked:
             self._queue_cleanup_now()
+        if balance_gold_clicked:
+            self._queue_manual_gold_balance()
         if cleanup_changed:
             self._save_profile()
             self._mark_preview_dirty("Xunlai deposit settings changed. Preview again before execution.")
@@ -36863,9 +40755,6 @@ class MerchantRulesWidget:
                             status_key=status_key,
                         ),
                     )
-                    raw_reason = str(entry.reason or "").strip()
-                    if raw_reason and raw_reason != displayed_reason:
-                        self._draw_hover_tooltip(f"Internal detail: {raw_reason}")
 
                 PyImGui.table_set_column_index(4)
                 if muted:
@@ -36912,6 +40801,20 @@ class MerchantRulesWidget:
             r"\1, ",
             display_reason,
         )
+        display_reason = display_reason.replace(
+            "all-weapons perfect-base range",
+            "requirement range for all weapon types with maximum base stats",
+        )
+        display_reason = display_reason.replace(
+            "model perfect-base range",
+            "requirement range for this model with maximum base stats",
+        )
+        display_reason = display_reason.replace(
+            "all-weapons requirement range",
+            "requirement range for all weapon types",
+        )
+        display_reason = display_reason.replace("all-weapons", "all weapon types")
+        display_reason = display_reason.replace("perfect-base", "maximum base stats")
         return display_reason
 
     def _normalize_preview_entry_reason_display_text(
@@ -36969,8 +40872,8 @@ class MerchantRulesWidget:
             display_reason = re.sub(
                 r"Travel first, then rebuild the merchant plan in (?:specific|generic) selectors\.?",
                 (
-                    "After arrival, Merchant Rules will check the available services and rebuild the plan "
-                    "before executing."
+                    "After arrival, Merchant Rules will recheck current items and available services before "
+                    "executing."
                 ),
                 display_reason,
             )
@@ -36980,7 +40883,7 @@ class MerchantRulesWidget:
             )
             display_reason = display_reason.replace(
                 "Travel to the selected Auto Travel destination for remaining Merchant Rules work.",
-                "After crafting, travel here and rebuild the remaining merchant plan.",
+                "After crafting, travel here and recheck current items and available services.",
             )
 
         if action_type == "identify":
@@ -37080,7 +40983,7 @@ class MerchantRulesWidget:
             )
             display_reason = display_reason.replace(
                 "No protected inventory items matched this linked deposit source.",
-                "No inventory items match this linked Sell-rule source.",
+                "No inventory items match this linked Weapons or Armor protection rule.",
             )
             if state != PLAN_STATE_SKIPPED and display_reason.startswith("Protected by "):
                 protection_detail = display_reason[len("Protected by ") :]
@@ -37271,6 +41174,10 @@ class MerchantRulesWidget:
             self._draw_warning_text("Execution paused because inventory drift was detected after preview.")
             for diff_row in self.preview_inventory_diff_rows:
                 self._draw_secondary_text(diff_row)
+            self._draw_secondary_text(
+                "Execute Anyway rebuilds the plan from your current inventory and settings, then runs the "
+                "updated plan without showing it first."
+            )
             PyImGui.begin_disabled(bool(preview_reason))
             re_preview_clicked = PyImGui.button("Re-Preview##merchant_rules_preview_plan_repreview")
             PyImGui.end_disabled()
@@ -37294,7 +41201,7 @@ class MerchantRulesWidget:
         if compare_clicked:
             self._compare_current_inventory_against_preview()
         if storage_scan_clicked:
-            GLOBAL_CACHE.Coroutines.append(self._open_xunlai_and_scan_preview())
+            self._queue_merchant_rules_owned_work(self._open_xunlai_and_scan_preview())
         if re_preview_clicked:
             self._scan_preview()
             self._select_default_preview_plan_workspace()
@@ -37329,7 +41236,7 @@ class MerchantRulesWidget:
                 if self._can_use_local_storage_actions()
                 else (
                     "Xunlai Storage counts are not available yet. Travel + Execute will open storage at the "
-                    "destination and rebuild the plan before moving or buying anything."
+                    "destination and recheck current items before moving or buying anything."
                 )
             )
             self._draw_warning_text(exact_scan_message)
@@ -37349,8 +41256,8 @@ class MerchantRulesWidget:
 
         if self.preview_ready and self.preview_plan.identify_item_ids:
             self._draw_secondary_text(
-                "Identify runs first. Execute then rebuilds the plan, so identified items may match later Sell, "
-                "Salvage, or Destroy rules."
+                "Identify runs first. Travel + Execute or Execute Here then rechecks current items, so identified "
+                "items may match later Sell, Salvage, or Destroy rules."
             )
 
         if self.preview_ready and self.preview_plan.multi_stop_route:
@@ -37366,21 +41273,22 @@ class MerchantRulesWidget:
             )
             self._draw_colored_text(route_detail, UI_COLOR_INFO)
             self._draw_secondary_text(
-                "Destination rows are rebuilt after travel. Ready-now rows can also run through Execute Here."
+                "Current items and available services are rechecked after travel. Entries marked Ready now can "
+                "also run through Execute Here."
             )
         elif self.preview_ready and self._preview_has_execute_travel_pending():
             target_label = self.preview_execute_travel_target_outpost_name or "the selected outpost"
             self._draw_colored_text(
                 (
                     f"Projected preview assumes Auto Travel reaches {target_label}. "
-                    "Travel + Execute will rebuild the live plan before running it."
+                    "Travel + Execute will recheck current items and available services before executing."
                 ),
                 UI_COLOR_INFO,
             )
             self._draw_secondary_text(
                 (
-                    "Ready-now rows can also run here. Rows marked After travel or Needs live check wait for "
-                    "the travel target or the matching service."
+                    "Entries marked Ready now can also run through Execute Here. Rows marked After travel or "
+                    "Needs live check wait for the travel target or the matching service."
                 )
             )
 
@@ -37732,7 +41640,7 @@ class MerchantRulesWidget:
         )
         self._draw_secondary_text(
             "These category switches affect only automatic actions when you open a merchant. "
-            "Preview Plan and normal execution continue using every enabled Buy rule."
+            "Preview Plan, Travel + Execute, and Execute Here continue using every enabled Buy rule."
         )
         self._draw_secondary_text(
             "Automatic selling is configured under Sell. Buying and selling can run from the same "
@@ -37787,7 +41695,7 @@ class MerchantRulesWidget:
         self.manual_vendor_auto_sell_categories = flags
         self._draw_secondary_text(
             "These category switches affect only automatic actions when you open a merchant. "
-            "Preview Plan and normal execution continue using every enabled Sell rule. "
+            "Preview Plan, Travel + Execute, and Execute Here continue using every enabled Sell rule. "
             "Protected items always remain protected."
         )
 
@@ -37886,7 +41794,8 @@ class MerchantRulesWidget:
                 else "Live inventory right-click actions disabled."
             )
         self._draw_secondary_text(
-            "Live actions target only the clicked item or stack. Destroy always requires a second click.",
+            "Direct Deposit and Destroy actions affect only the clicked item or stack. "
+            "ID and Salvage kit actions target eligible inventory items by rarity.",
             wrapped=False,
         )
 
@@ -37905,7 +41814,8 @@ class MerchantRulesWidget:
         ]
 
     def _format_profile_reference(self, profile: ProfileSummary) -> str:
-        return f"[{self._profile_scope_badge(profile.scope)}] {profile.display_name}"
+        filename = f" ({profile.filename})" if profile.filename else ""
+        return f"[{self._profile_scope_badge(profile.scope)}] {profile.display_name}{filename}"
 
     def _format_profile_reference_list(self, profiles: list[ProfileSummary]) -> str:
         references = [
@@ -37992,6 +41902,11 @@ class MerchantRulesWidget:
         profile: ProfileSummary,
         current_payload_serialized: str,
     ):
+        if profile.filename:
+            self._draw_colored_text("File:", UI_COLOR_WARNING_SOFT, wrapped=False)
+            PyImGui.same_line(0, 4)
+            self._draw_colored_text(profile.filename, UI_COLOR_INFO, wrapped=False)
+            PyImGui.same_line(0, 8)
         saved_label = profile.saved_at_label or "Unknown"
         self._draw_colored_text("Saved:", UI_COLOR_WARNING_SOFT, wrapped=False)
         PyImGui.same_line(0, 4)
@@ -38070,7 +41985,7 @@ class MerchantRulesWidget:
                     "Profile Unavailable",
                     UI_COLOR_DANGER,
                     "Merchant Rules can no longer find or read this profile. "
-                    "It may have been deleted or saved by a newer version.",
+                    "It may have been removed or saved by a newer version.",
                 )
                 PyImGui.same_line(0, 6)
                 self._draw_colored_text(
@@ -38196,9 +42111,8 @@ class MerchantRulesWidget:
 
         self._draw_section_heading(self._profile_scope_label(scope))
         if scope == PROFILE_SCOPE_SHARED:
-            self._draw_warning_text(
-                "Shared profiles are available to every account. Saving, replacing, renaming, deleting, "
-                "or copying a profile into Shared affects every account."
+            self._draw_secondary_text(
+                "Shared profiles are available to all accounts. Add a new profile file here and it will appear automatically."
             )
             self._draw_secondary_text(
                 "Loading a Shared profile changes only this account's current settings. "
@@ -38209,6 +42123,7 @@ class MerchantRulesWidget:
                 "Account profiles, current settings, and Restore Backup are available only to this account. "
                 "This account also keeps its own record of the last profile loaded."
             )
+            self._draw_secondary_text("Add a new profile file here and it will appear automatically.")
 
         warning = self.saved_profile_warnings[scope]
         notice = self.saved_profile_notices[scope]
@@ -38233,16 +42148,32 @@ class MerchantRulesWidget:
                     scope,
                     notice=f"{scope_badge.title()} profiles refreshed.",
                 )
-            if scope == PROFILE_SCOPE_SHARED:
-                self.shared_profile_refresh_timer.Reset()
+            self.shared_profile_refresh_timer.Reset()
             selected_profile = self._get_selected_profile(scope)
+        self._draw_hover_tooltip(
+            "Refresh the profile list. Refreshing does not load a profile."
+        )
         PyImGui.same_line(0, 8)
+        open_folder_label = (
+            "Open Shared Profiles Folder"
+            if scope == PROFILE_SCOPE_SHARED
+            else "Open Account Profiles Folder"
+        )
         if PyImGui.small_button(
-            f"Open Profiles Folder##merchant_rules_{scope_id}_profiles_open_folder"
+            f"{open_folder_label}##merchant_rules_{scope_id}_profiles_open_folder"
         ):
             self._clear_profile_confirmation_state()
             self._open_profiles_folder(scope)
             selected_profile = self._get_selected_profile(scope)
+        self._draw_hover_tooltip(
+            (
+                "Open the folder used by Shared profiles. You can add new profile files while Guild Wars is running. "
+                "Close all Guild Wars clients before permanently deleting or replacing an existing file."
+                if scope == PROFILE_SCOPE_SHARED
+                else "Open the folder used by Account profiles. You can add new profile files while Guild Wars is running. "
+                "Close all Guild Wars clients before permanently deleting or replacing an existing file."
+            )
+        )
 
         PyImGui.same_line(0, 8)
         self._draw_colored_text(
@@ -38261,9 +42192,9 @@ class MerchantRulesWidget:
         ):
             if not entries:
                 empty_text = (
-                    "No Shared profiles saved yet. Enter a name below to create one."
+                    "No Shared profile files found. Add a profile file to this folder, or enter a name below to create one."
                     if scope == PROFILE_SCOPE_SHARED
-                    else "No profiles have been saved for this account yet. Enter a name below to create one."
+                    else "No Account profile files found. Add a profile file to this folder, or enter a name below to create one."
                 )
                 self._draw_secondary_text(empty_text)
             else:
@@ -38296,7 +42227,7 @@ class MerchantRulesWidget:
         )
         if selected_profile is None:
             self._draw_secondary_text(
-                "Select a profile to load, rename, replace, copy, or delete."
+                "Select a profile to load, rename, replace, or copy."
             )
         else:
             self._draw_selected_profile_detail_line(
@@ -38304,6 +42235,12 @@ class MerchantRulesWidget:
                 selected_profile.display_name,
                 UI_COLOR_INFO,
             )
+            if selected_profile.filename:
+                self._draw_selected_profile_detail_line(
+                    "File:",
+                    selected_profile.filename,
+                    UI_COLOR_INFO,
+                )
             if selected_profile.saved_at_label:
                 self._draw_selected_profile_detail_line(
                     "Saved:",
@@ -38334,6 +42271,13 @@ class MerchantRulesWidget:
             "Renaming does not create a new profile."
         )
 
+        create_blank_clicked = PyImGui.button(
+            f"Create Blank Profile##merchant_rules_{scope_id}_profile_create_blank"
+        )
+        self._draw_hover_tooltip(
+            "Create a new profile with no rules. Your current settings stay unchanged, and the new profile is not loaded."
+        )
+
         self._draw_subsection_heading("Save Current Settings")
         self._draw_hover_tooltip(
             "Create a new profile from your current settings, or replace the selected profile with them."
@@ -38353,8 +42297,6 @@ class MerchantRulesWidget:
         load_fingerprint = ""
         overwrite_clicked = False
         overwrite_fingerprint = ""
-        delete_clicked = False
-        delete_fingerprint = ""
         copy_clicked = False
 
         PyImGui.begin_disabled(selected_profile is None)
@@ -38378,13 +42320,15 @@ class MerchantRulesWidget:
         self._draw_hover_tooltip(
             "Use the selected profile as this account's current Merchant Rules settings."
         )
-        PyImGui.begin_disabled(selected_profile is None)
+        load_block_message = self._get_profile_application_block_message("loading another profile")
+        PyImGui.begin_disabled(selected_profile is None or bool(load_block_message))
         if selected_profile is not None:
             load_clicked, load_fingerprint = self._draw_confirm_profile_action_button(
                 f"Load Selected##merchant_rules_{scope_id}_profile_load",
                 "load",
                 selected_profile,
                 shared_affects_all_accounts=False,
+                disabled_reason=load_block_message,
             )
         else:
             PyImGui.button(f"Load Selected##merchant_rules_{scope_id}_profile_load")
@@ -38392,7 +42336,8 @@ class MerchantRulesWidget:
 
         self._draw_subsection_heading("Profile Management")
         self._draw_hover_tooltip(
-            "Rename, copy, or delete the selected profile. "
+            "Rename changes the profile name shown in Merchant Rules. The file name stays the same. "
+            "Copy creates an independent profile. "
             "These actions do not change which profile was last loaded."
         )
         PyImGui.begin_disabled(selected_profile is None)
@@ -38415,19 +42360,10 @@ class MerchantRulesWidget:
         copy_clicked = PyImGui.button(
             f"{destination_label}##merchant_rules_{scope_id}_profile_copy"
         )
-        PyImGui.same_line(0, 8)
-        if selected_profile is not None:
-            delete_clicked, delete_fingerprint = self._draw_confirm_profile_action_button(
-                f"Delete Selected##merchant_rules_{scope_id}_profile_delete",
-                "delete",
-                selected_profile,
-            )
-        else:
-            PyImGui.button(f"Delete Selected##merchant_rules_{scope_id}_profile_delete")
         PyImGui.end_disabled()
 
         if PyImGui.collapsing_header(
-            f"Technical & Storage Details##merchant_rules_{scope_id}_profile_details"
+            f"Profile File Details##merchant_rules_{scope_id}_profile_details"
         ):
             self._draw_selected_profile_detail_line(
                 "Scope:",
@@ -38436,19 +42372,22 @@ class MerchantRulesWidget:
             )
             if selected_profile is not None:
                 self._draw_selected_profile_detail_line(
-                    "Selected Stable Key:",
-                    selected_profile.key,
+                    "File:",
+                    selected_profile.filename,
                     UI_COLOR_SECONDARY_TEXT,
                 )
             else:
-                self._draw_secondary_text("Selected Stable Key: no selected profile.")
+                self._draw_secondary_text("File: no selected profile.")
             self._draw_secondary_text(
-                f"Profiles Document: {self._profile_doc(scope).resolved_path()}"
+                f"Profiles Folder: {self._get_profiles_dir(scope) or 'Not available until this account is ready.'}"
             )
             self._draw_secondary_text(
-                "Profiles remain sorted by display name; every operation resolves the exact scope and stable key."
+                "The file name stays the same when you rename a profile."
             )
 
+        if create_blank_clicked:
+            self._clear_profile_confirmation_state()
+            self._create_blank_profile(scope)
         if save_new_clicked:
             self._clear_profile_confirmation_state()
             self._save_current_as_new_profile(scope)
@@ -38464,15 +42403,14 @@ class MerchantRulesWidget:
             self._load_selected_profile(scope, load_fingerprint)
         if overwrite_clicked:
             self._save_current_over_selected_profile(scope, overwrite_fingerprint)
-        if delete_clicked:
-            self._delete_selected_profile(scope, delete_fingerprint)
 
     def _draw_profiles_workspace(self):
         if self.shared_profile_refresh_timer.IsExpired():
-            self._refresh_profile_entries(
-                PROFILE_SCOPE_SHARED,
-                reload_document=True,
-            )
+            for scope in PROFILE_SCOPES:
+                self._refresh_profile_entries(
+                    scope,
+                    reload_document=True,
+                )
             self.shared_profile_refresh_timer.Reset()
 
         current_payload_serialized = self._serialize_shareable_profile_payload(
@@ -38582,13 +42520,19 @@ class MerchantRulesWidget:
         if self.active_rules_workspace == RULES_WORKSPACE_BUY:
             diagnostics = self._get_buy_rule_overlap_diagnostics()
             if diagnostics:
-                self._draw_rule_overlap_diagnostics(diagnostics)
+                self._draw_rule_overlap_diagnostics(
+                    diagnostics,
+                    "Potential overlap detected. Earlier Buy rules are applied first and can affect what later rules still need.",
+                )
                 PyImGui.separator()
             self._draw_buy_rules_section()
         elif self.active_rules_workspace == RULES_WORKSPACE_SELL:
             diagnostics = self._get_sell_rule_overlap_diagnostics()
             if diagnostics:
-                self._draw_rule_overlap_diagnostics(diagnostics)
+                self._draw_rule_overlap_diagnostics(
+                    diagnostics,
+                    "Potential overlap detected. Protections apply first; otherwise earlier Sell rules handle matching items first.",
+                )
                 PyImGui.separator()
             self._draw_sell_rules_section()
         elif self.active_rules_workspace == RULES_WORKSPACE_IDENTIFY:
@@ -38602,7 +42546,10 @@ class MerchantRulesWidget:
         else:
             diagnostics = self._get_destroy_rule_overlap_diagnostics()
             if diagnostics:
-                self._draw_rule_overlap_diagnostics(diagnostics)
+                self._draw_rule_overlap_diagnostics(
+                    diagnostics,
+                    "Potential overlap detected. Protections and Salvage apply first; otherwise earlier Destroy rules handle matching items first.",
+                )
                 PyImGui.separator()
             self._draw_destroy_rules_section()
 
@@ -38690,7 +42637,7 @@ def tooltip():
     PyImGui.begin_tooltip()
     PyImGui.text(MODULE_NAME)
     PyImGui.separator()
-    PyImGui.bullet_text("Single-account merchant planner with optional auto-travel.")
+    PyImGui.bullet_text("Merchant planner with optional auto-travel and multibox coordination.")
     PyImGui.bullet_text("Weapon and armor sell rules can filter by rarity while Protections manages kept models, upgrades, runes, and insignias.")
     PyImGui.bullet_text("Pinned travel targets and searchable outpost selection.")
     PyImGui.bullet_text("Preview projects the full post-travel merchant plan without moving the character.")
@@ -38698,13 +42645,17 @@ def tooltip():
     PyImGui.bullet_text("Top-level Overview, Preview Plan, Rules, and Profiles workspaces.")
     PyImGui.bullet_text("Xunlai Deposits is a separate workspace with explicit stash targets and optional outpost-entry auto deposits.")
     PyImGui.bullet_text("Protected Items and Equipment & Upgrades keep selected models, gear, upgrades, runes, and insignias safe.")
-    PyImGui.bullet_text("Identify can target exact rarities and optionally run before Execute rebuilds the live merchant plan.")
+    PyImGui.bullet_text(
+        "Identify can target exact rarities and run before Travel + Execute or Execute Here rechecks current items."
+    )
     PyImGui.bullet_text("Destroy supports Destroy Safety, Preview -> Execute, saved Auto Destroy, and session Auto Destroy.")
     PyImGui.bullet_text("Leader-driven multibox sync, preview, and execute for selected active accounts.")
     PyImGui.bullet_text(
         "Shared and account-only profiles load locally first, then propagate only through explicit Sync Rules to Selected."
     )
-    PyImGui.bullet_text("Standalone weapon mods, runes, and insignias can route through Rune Trader when found.")
+    PyImGui.bullet_text(
+        "Loose runes and insignias can sell to the Rune Trader; standalone weapon upgrades sell to a regular Merchant."
+    )
     PyImGui.bullet_text("Exact rune and insignia sell rules can target selected loose rune names.")
     PyImGui.bullet_text("Uses main-branch merchant routines.")
     PyImGui.end_tooltip()
