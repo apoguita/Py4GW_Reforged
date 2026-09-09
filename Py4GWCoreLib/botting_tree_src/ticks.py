@@ -188,7 +188,15 @@ class BottingTreeTicksMixin:
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
 
-        if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
+        # Keep the planner frozen for the whole recovery transaction, not only
+        # while the party is physically dead. On the first shrine-revival frame
+        # the party may already be alive, but the recovery service still needs one
+        # tick to resolve and request the correct named step restart.
+        if (
+            bool(bb.get('party_wipe_recovery_active', False))
+            or Routines.Checks.Party.IsPartyWiped()
+            or GLOBAL_CACHE.Party.IsPartyDefeated()
+        ):
             bb['PLANNER_STATUS'] = 'PAUSED: Party wipe recovery'
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING

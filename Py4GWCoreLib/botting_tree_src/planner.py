@@ -9,6 +9,11 @@ class BottingTreePlannerMixin:
     planner_tree: BehaviorTree
     tree: BehaviorTree
     _planner_steps: list[tuple[str, Callable[[], object] | object]]
+    _planner_recovery_anchors: dict[str, tuple[int, float, float]]
+    _planner_recovery_pass_id: int
+    _planner_shrine_recovery_checkpoints: dict[str, str]
+    _active_planner_shrine_recovery_checkpoint: tuple[int, str, str] | None
+    _nearest_shrine_recovery_enabled: bool
     _planner_sequence_name: str
     planner_repeat: bool
 
@@ -88,8 +93,32 @@ class BottingTreePlannerMixin:
         if not restart_step_name:
             return False
 
+        # A wipe restart rebuilds the planner and Start() clears the blackboard.
+        # Capture the recovery metadata before that reset, then restore the useful
+        # read-only context afterwards for restart-safe script mechanics.
+        restart_reason = str(
+            self.GetBlackboardValue(
+                "restart_step_reason_request",
+                "",
+            )
+            or ""
+        )
+        restart_origin_step = str(
+            self.GetBlackboardValue(
+                "restart_step_origin_step_name_request",
+                "",
+            )
+            or ""
+        )
+
         self.ClearBlackboardValue(
             "restart_step_name_request"
+        )
+        self.ClearBlackboardValue(
+            "restart_step_reason_request"
+        )
+        self.ClearBlackboardValue(
+            "restart_step_origin_step_name_request"
         )
 
         # Ne pas effacer l'étape active avant que le nouveau
@@ -110,6 +139,20 @@ class BottingTreePlannerMixin:
                 restart_step_name,
             )
 
+            if restart_reason:
+                self.SetBlackboardValue(
+                    "planner_restart_reason",
+                    restart_reason,
+                )
+                self.SetBlackboardValue(
+                    "planner_restart_origin_step_name",
+                    restart_origin_step,
+                )
+                self.SetBlackboardValue(
+                    "planner_restart_target_step_name",
+                    restart_step_name,
+                )
+
         return restarted
 
     def tick(self):
@@ -127,6 +170,8 @@ class BottingTreePlannerMixin:
 
     def SetPlannerTree(self, planner_tree: BehaviorTree | None):
         self._planner_steps = []
+        self._planner_recovery_anchors.clear()
+        self._planner_recovery_pass_id = 0
         self._planner_sequence_name = 'PlannerSequence'
         self._set_planner_tree(planner_tree)
 
@@ -159,6 +204,190 @@ class BottingTreePlannerMixin:
                 ],
             )
         )
+
+    def _begin_named_planner_recovery_pass(self, node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        """Start a fresh planner pass and discard anchors from the previous run."""
+        self._planner_recovery_pass_id += 1
+        self._planner_recovery_anchors.clear()
+        self._active_planner_shrine_recovery_checkpoint = None
+
+        node.blackboard["planner_recovery_pass_id"] = self._planner_recovery_pass_id
+        # Wipe context is intentionally valid only for the resumed remainder of
+        # the current pass. A genuinely new run starts clean.
+        node.blackboard.pop("planner_restart_reason", None)
+        node.blackboard.pop("planner_restart_origin_step_name", None)
+        node.blackboard.pop("planner_restart_target_step_name", None)
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _record_named_planner_recovery_anchor(self, step_name: str) -> None:
+        """Remember where a named planner step successfully completed.
+
+        Recovery only records living-player positions in an explorable map. The
+        stored anchors survive the planner Reset()/Start() performed during a
+        restart, but are cleared when a fresh planner pass begins.
+        """
+        try:
+            from ..Agent import Agent
+            from ..Map import Map
+            from ..Player import Player
+
+            if not Map.IsMapReady() or not Map.IsExplorable():
+                return
+
+            player_id = int(Player.GetAgentID() or 0)
+            if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+                return
+
+            map_id = int(Map.GetMapID() or 0)
+            x, y = Agent.GetXY(player_id)
+            self._planner_recovery_anchors[str(step_name)] = (
+                map_id,
+                float(x),
+                float(y),
+            )
+        except Exception:
+            # Recovery metadata must never make a successful planner step fail.
+            return
+
+    def ConfigureShrineRecoveryCheckpoints(
+        self,
+        checkpoints: dict[str, str] | None = None,
+    ) -> None:
+        """Configure phase-aware shrine recovery checkpoints.
+
+        ``checkpoints`` maps a completed named planner step to the named step that
+        should become the recovery target from that point onward on the same map.
+        The active checkpoint is cleared on every genuinely fresh planner pass.
+
+        This is intentionally optional. Bots that do not configure checkpoints
+        keep the normal nearest-anchor behavior unchanged.
+        """
+        normalized: dict[str, str] = {}
+        for trigger_step, target_step in (checkpoints or {}).items():
+            trigger = str(trigger_step or "").strip()
+            target = str(target_step or "").strip()
+            if trigger and target:
+                normalized[trigger] = target
+        self._planner_shrine_recovery_checkpoints = normalized
+        self._active_planner_shrine_recovery_checkpoint = None
+
+    def _activate_shrine_recovery_checkpoint_for_completed_step(
+        self,
+        step_name: str,
+    ) -> None:
+        target_step = str(
+            self._planner_shrine_recovery_checkpoints.get(str(step_name), "")
+            or ""
+        ).strip()
+        if not target_step:
+            return
+
+        try:
+            from ..Map import Map
+
+            if not Map.IsMapReady() or not Map.IsExplorable():
+                return
+            map_id = int(Map.GetMapID() or 0)
+        except Exception:
+            return
+
+        self._active_planner_shrine_recovery_checkpoint = (
+            map_id,
+            str(step_name),
+            target_step,
+        )
+
+    def _resolve_active_shrine_recovery_checkpoint(
+        self,
+        map_id: int,
+        failed_step_name: str,
+    ) -> str | None:
+        checkpoint = self._active_planner_shrine_recovery_checkpoint
+        if checkpoint is None:
+            return None
+
+        checkpoint_map_id, _trigger_step, target_step = checkpoint
+        if int(checkpoint_map_id) != int(map_id):
+            return None
+
+        step_names = self.GetNamedPlannerStepNames()
+        if not step_names:
+            return None
+        if failed_step_name not in step_names or target_step not in step_names:
+            return None
+
+        # Never allow a checkpoint to jump forward past the step where the wipe
+        # occurred. If the configured target is no longer valid, geometry/fallback
+        # recovery below remains authoritative.
+        if step_names.index(target_step) > step_names.index(failed_step_name):
+            return None
+
+        return target_step
+
+    def ResolveNearestShrineRecoveryStep(
+        self,
+        map_id: int,
+        position: tuple[float, float],
+        failed_step_name: str,
+    ) -> tuple[str, float] | str | None:
+        """Resolve a safe restart step from completed anchors near the shrine.
+
+        A phase-aware checkpoint, when active for the current map, takes priority
+        over geometry. This prevents an old waypoint near a shrine from winning
+        merely because the route later revisits that same shrine.
+
+        Only completed anchors from the current planner pass, on the current map,
+        and strictly before the failed step are eligible. Recovery resumes from
+        the step immediately after the selected completed anchor, so an already
+        completed one-shot interaction is not replayed merely because that anchor
+        itself is closest to the shrine.
+        """
+        step_names = self.GetNamedPlannerStepNames()
+        if not step_names or failed_step_name not in step_names:
+            return None
+
+        checkpoint_step = self._resolve_active_shrine_recovery_checkpoint(
+            map_id,
+            failed_step_name,
+        )
+        if checkpoint_step:
+            return checkpoint_step
+
+        failed_index = step_names.index(failed_step_name)
+        if failed_index <= 0:
+            return None
+
+        try:
+            px, py = float(position[0]), float(position[1])
+        except Exception:
+            return None
+
+        best: tuple[str, float] | None = None
+        for completed_name, anchor in tuple(self._planner_recovery_anchors.items()):
+            if completed_name not in step_names:
+                continue
+
+            completed_index = step_names.index(completed_name)
+            if completed_index < 0 or completed_index >= failed_index:
+                continue
+
+            try:
+                anchor_map_id, ax, ay = anchor
+                if int(anchor_map_id) != int(map_id):
+                    continue
+                distance = ((float(ax) - px) ** 2 + (float(ay) - py) ** 2) ** 0.5
+            except Exception:
+                continue
+
+            restart_index = completed_index + 1
+            if restart_index > failed_index or restart_index >= len(step_names):
+                continue
+
+            restart_name = step_names[restart_index]
+            if best is None or distance < best[1]:
+                best = (restart_name, distance)
+
+        return best
 
     def _build_named_planner_tree(
         self,
@@ -211,7 +440,25 @@ class BottingTreePlannerMixin:
                 action_fn=_mark,
                 aftercast_ms=0,
             )
-        
+
+        def _mark_completed_step(
+            step_name: str,
+        ) -> BehaviorTree.Node:
+            def _mark(
+                node: BehaviorTree.Node,
+                step_name: str = step_name,
+            ) -> BehaviorTree.NodeState:
+                node.blackboard["last_completed_planner_step_name"] = step_name
+                self._record_named_planner_recovery_anchor(step_name)
+                self._activate_shrine_recovery_checkpoint_for_completed_step(step_name)
+                return BehaviorTree.NodeState.SUCCESS
+
+            return BehaviorTree.ActionNode(
+                name=f"MarkCompletedStep({step_name})",
+                action_fn=_mark,
+                aftercast_ms=0,
+            )
+
         children: list[BehaviorTree.Node] = [
             BehaviorTree.SequenceNode(
                 name=f'Step: {step_name}',
@@ -221,10 +468,23 @@ class BottingTreePlannerMixin:
                         name=step_name,
                         subtree_fn=lambda node, subtree_or_builder=subtree_or_builder: _as_tree(subtree_or_builder),
                     ),
+                    _mark_completed_step(step_name),
                 ],
             )
             for step_name, subtree_or_builder in steps[start_index:]
         ]
+
+        # Only a genuinely fresh pass clears recovery anchors. Restarting from a
+        # named step after a wipe deliberately preserves already-completed anchors.
+        if start_from is None:
+            children.insert(
+                0,
+                BehaviorTree.ActionNode(
+                    name='BeginPlannerRecoveryPass',
+                    action_fn=self._begin_named_planner_recovery_pass,
+                    aftercast_ms=0,
+                ),
+            )
         if repeat:
             full_pass = self._build_named_planner_tree(steps, start_from=None, name=f'{name} Full Pass', repeat=False)
 
@@ -318,11 +578,19 @@ class BottingTreePlannerMixin:
         repeat: bool = False,
     ):
         self._planner_steps = list(steps)
+        self._planner_recovery_anchors.clear()
+        self._planner_recovery_pass_id = 0
+        self._active_planner_shrine_recovery_checkpoint = None
         self._planner_sequence_name = name
         self.planner_repeat = repeat
         self._set_planner_tree(self._build_named_planner_tree(self._planner_steps, start_from=start_from, name=name, repeat=repeat))
         self.EnsurePartyWipeRecoveryService(
             default_step_name=lambda: (self.GetNamedPlannerStepNames() or [None])[0],
+            shrine_step_resolver=(
+                self.ResolveNearestShrineRecoveryStep
+                if self._nearest_shrine_recovery_enabled
+                else None
+            ),
         )
 
     def SetCurrentNamedPlannerSteps(
