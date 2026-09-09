@@ -1,21 +1,4 @@
-# ============================================================================
 # Reputation Farmer BT - All-In-One Faction / Title Farmer
-# ============================================================================
-# A single BottingTree driver that farms any one of the selectable faction
-# reputation (title) routes. Each faction is described by a small route
-# dataclass; the selected route's planner steps are built with the same BT
-# wrappers used by the working Vanguard / Luxon (Mount Qinkai) / Kurzick
-# (Drazach Thicket) bots, so almost no bespoke combat code lives here.
-#
-# The six vanquish-family routes (Vanguard, Asuran, Norn, Deldrimor, Luxon,
-# Kurzick) and the two Nightfall bounty loops (Sunspear, Lightbringer) are
-# fully implemented with coordinates taken from the existing repo bots.
-#
-# Combat / movement follow the Nightfall Leveler BT conventions:
-#   - ConfigureAggressiveEnv() wraps tree.Config.Aggressive(...)
-#   - every fight path is a BT.VanquishNode(...) point list
-#   - travel + hard mode via BT.Sequence(map_id_or_name=..., hard_mode=True)
-# ============================================================================
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -40,38 +23,25 @@ MODULE_NAME = "Reputation Farmer BT"
 MODULE_ICON = "Assets/Textures/Skill_Icons/[1887] - Lightbringers Insight.jpg"
 ROUTINE_NAME = "ReputationFarmerSequence"
 
-# Goal for the vanquish-family loop: max faction held on hand, then donate.
 FACTION_GOAL = 10_000
 VQ_MAX_RUNS = 6
-# A run that fails repeatedly and instantly is retried in place; this budget
-# must comfortably exceed a legitimate full run (VQ runs can take tens of
-# minutes), because the repeater's timeout covers total elapsed time of the
-# child, RUNNING included. After it, FAILURE reaches the planner, which
-# restarts the named step from the outpost.
 RUN_RETRY_TIMEOUT_MS = 30 * 60 * 1000
-
-# Canthan faction (Luxon/Kurzick) blessings require bribing the faction priest
-# from character gold. Equalize to this amount on hand in the outpost so every
-# run can afford the blessing even after the previous run spent the gold.
 BLESSING_GOLD = 500
 
-# ---------------------------------------------------------------------------
-# Hero team setup (modeled on Outpost Unlocker BT.py)
-# ---------------------------------------------------------------------------
+# Hero team setup
 BOT_BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 PARTY_FORMATION_CONFIG_PATH = os.path.join(BOT_BASE_DIR, "Reputation Farmer Party Formation.json")
 
-HERO_AGGRESSIVE_MODE = 1  # ForceHeroState behavior: 0=guard, 1=fight, 2=avoid
+HERO_AGGRESSIVE_MODE = 1
 
 TEAM_PRESET_SIZES = [4, 6, 8]
 TEAM_PRESET_SLOT_COUNTS = {4: 3, 6: 5, 8: 7}
 
-# HeroType enums from Py4GWCoreLib; used for the slot editor combo box.
 HERO_OPTIONS: List[HeroType] = [HeroType.None_] + [hero for hero in HeroType if hero != HeroType.None_]
 HERO_OPTION_LABELS = [hero.name.replace("_", " ") if hero != HeroType.None_ else "<Empty>" for hero in HERO_OPTIONS]
 HERO_ID_TO_OPTION_INDEX = {int(hero.value): index for index, hero in enumerate(HERO_OPTIONS)}
 
-# Default skillbar templates per hero (used when a hero is newly slotted in).
+# Default skillbar templates per hero.
 DEFAULT_HERO_TEMPLATES: dict = {
     HeroType.Norgu: "OQBDAawDSvAIgcQ5ZkAFgZAEBA",
     HeroType.Gwen: "OQhkAsC8gFKzJIHM9MdDBcaG4iB",
@@ -90,14 +60,11 @@ class PartyHeroSlot:
     hero_id: int = HeroType.None_.value
     template: str = ""
 
-# Consumable upkeeps (mirrors the shared CONSUMABLE_UPKEEPS list).
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSUMABLE_UPKEEPS,
     CONSET_UPKEEPS,
 )
 
-# Consets are the three EotN core consumables; pcons are everything else the
-# shared upkeep list maintains. The settings tab gates each group separately.
 PCON_UPKEEPS: Tuple[int, ...] = tuple(
     int(model_id) for model_id in CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS
 )
@@ -116,9 +83,15 @@ class Faction(Enum):
 
 @dataclass
 class Blessing:
-    """A faction blessing / shrine point along a vanquish route."""
     pos: Tuple[float, float]
     dialog_id: int = 0x84
+
+
+@dataclass
+class RouteSegment:
+    name: str = ""
+    blessing: Optional[Blessing] = None
+    path: Sequence[Tuple[float, float]] = ()
 
 
 @dataclass
@@ -134,18 +107,15 @@ class Route:
     pre_path: Sequence[Tuple[float, float]] = ()
     blessing_points: Sequence[Blessing] = ()
     kill_path: Sequence[Tuple[float, float]] = ()
+    segments: Sequence[RouteSegment] = ()
     bounty: bool = False
     bounty_pos: Optional[Tuple[float, float]] = None
     bounty_dialog: int = 0x85
-    entry_dialog_id: int = 0  # set to a dialog id when the explorable is entered via NPC dialog (e.g. Deldrimor)
+    entry_dialog_id: int = 0
 
 
-# ---------------------------------------------------------------------------
-# Route data (coordinates from the existing repo bots)
-# ---------------------------------------------------------------------------
-
+# Route data
 # Vanguard - Dalada Uplands (Ebon Vanguard title).
-# Source: Vanguard Farm BT.py (DALADA_OUTPOST/MAP + DALADA path).
 VANGUARD_ROUTE = Route(
     key="vanguard",
     name="Vanguard",
@@ -155,35 +125,64 @@ VANGUARD_ROUTE = Route(
     explorable_id=647,   # Dalada Uplands explorable
     exit_pos=(-15400.0, 13500.0),
     pre_path=[(-16016.0, 17340.0), (-15400.0, 13500.0)],
-    blessing_points=[
-        Blessing((-14971.0, 11013.0)),
-    ],
-    kill_path=[
-        # Dalada segment 1
-        (-14350.5, 12790.6), (-17600.7, 10388.3), (-16649.0, 6485.4), (-16131.3, 2494.2),
-        (-13528.1, -571.5), (-15663.4, -3959.4), (-18089.6, -7150.1), (-17921.5, -11167.4),
-        (-15917.0, -14662.3), (-13390.84, -16843.04), (-12191.4, -16190.6), (-8482.2, -14675.8),
-        (-7746.7, -18628.1), (-4699.0, -15996.0), (-734.2, -16733.1), (3209.2, -17521.2),
-        (7204.8, -17236.8), (10660.3, -15173.9), (14231.2, -13323.1), (15486.11, -14122.26),
-        (17868.1, -11540.7), (14280.7, -9705.3), (13958.0, -5657.5), (17851.7, -4510.7),
-        (14141.2, -2985.1), (10104.9, -2608.4), (10392.6, 1429.8), (14414.1, 923.4),
-        (16536.4, 4358.9), (17027.8, 8366.5), (14253.5, 11258.4), (12708.4, 14995.4),
-        (8842.1, 16056.3), (5366.9, 18114.6), (2657.9, 15144.8), (-1025.2, 16731.2),
-        (1142.8, 13355.0), (-2272.1, 11178.6), (-6246.7, 12038.8), (-8875.1, 15092.1),
-        (-9545.32, 16453.30), (-10593.52, 14475.55), (-11859.57, 12183.40), (-9680.6, 11168.8),
-        (-7630.3, 7678.4), (-3717.2, 8618.1), (-3227.72, 8829.67), (232.2, 9451.7),
-        (4266.0, 9959.4), (8007.6, 8342.5), (4888.8, 5766.7), (1037.3, 4668.6),
-        (-2887.1, 3697.4), (-6918.0, 4104.1), (-10897.1, 4922.3), (-14702.6, 6233.5),
-        (-10898.6, 4878.2), (-9045.5, 1321.2), (-8657.0, -2712.6), (-5189.2, -611.5),
-        (-1172.4, 95.6), (2474.3, 1913.7), (6476.9, 2343.3), (5489.0, -1545.9),
-        (5552.4, -5596.4), (7189.7, -9305.8), (8261.67, -12055.48), (5228.1, -5784.1),
-        (2164.1, -3177.7), (-1530.8, -4867.3), (156.3, -8499.8), (3819.1, -10133.5),
-        (2167.7, -13796.2), (-1821.5, -14135.8), (-5747.9, -13218.7),
+    segments=[
+        RouteSegment(
+            name="Vanguard Segment 1",
+            blessing=Blessing((-14971.0, 11013.0)),
+            path=[
+                (-14350.5, 12790.6), (-17600.7, 10388.3), (-16649.0, 6485.4), (-16131.3, 2494.2),
+                (-13528.1, -571.5), (-15663.4, -3959.4), (-18089.6, -7150.1), (-17921.5, -11167.4),
+                (-15917.0, -14662.3), (-13390.84, -16843.04), (-12191.4, -16190.6), (-8482.2, -14675.8),
+                (-7746.7, -18628.1), (-4699.0, -15996.0), (-734.2, -16733.1), (3209.2, -17521.2),
+                (7204.8, -17236.8), (10660.3, -15173.9), (14231.2, -13323.1), (15486.11, -14122.26),
+                (17868.1, -11540.7), (14280.7, -9705.3), (13958.0, -5657.5), (17851.7, -4510.7),
+                (14141.2, -2985.1), (10104.9, -2608.4), (10392.6, 1429.8), (14414.1, 923.4),
+                (16536.4, 4358.9), (17027.8, 8366.5), (14253.5, 11258.4), (12708.4, 14995.4),
+                (8842.1, 16056.3), (5366.9, 18114.6), (2657.9, 15144.8), (-1025.2, 16731.2),
+                (1142.8, 13355.0), (-2272.1, 11178.6), (-6246.7, 12038.8), (-8875.1, 15092.1),
+                (-9545.32, 16453.30), (-10593.52, 14475.55), (-11859.57, 12183.40), (-9680.6, 11168.8),
+                (-7630.3, 7678.4), (-3717.2, 8618.1), (-3227.72, 8829.67), (232.2, 9451.7),
+                (4266.0, 9959.4), (8007.6, 8342.5), (4888.8, 5766.7), (1037.3, 4668.6),
+                (-2887.1, 3697.4), (-6918.0, 4104.1), (-10897.1, 4922.3), (-14702.6, 6233.5),
+                (-10898.6, 4878.2), (-9045.5, 1321.2), (-8657.0, -2712.6), (-5189.2, -611.5),
+                (-1172.4, 95.6), (2474.3, 1913.7), (6476.9, 2343.3), (5489.0, -1545.9),
+                (5552.4, -5596.4), (7189.7, -9305.8), (8261.67, -12055.48), (5228.1, -5784.1),
+                (2164.1, -3177.7), (-1530.8, -4867.3), (156.3, -8499.8), (3819.1, -10133.5),
+                (2167.7, -13796.2), (-1821.5, -14135.8), (-5747.9, -13218.7),
+            ],
+        ),
+        RouteSegment(
+            name="Vanguard Segment 2",
+            blessing=Blessing((-2641.0, 449.0)),
+            path=[
+                (-1172.4, 95.6), (2474.3, 1913.7), (6476.9, 2343.3), (5489.0, -1545.9),
+                (5552.4, -5596.4), (7189.7, -9305.8), (8261.67, -12055.48), (5228.1, -5784.1),
+                (2164.1, -3177.7), (-1530.8, -4867.3), (156.3, -8499.8), (3819.1, -10133.5),
+                (2167.7, -13796.2), (-1821.5, -14135.8), (-5747.9, -13218.7),
+            ],
+        ),
+        RouteSegment(
+            name="Vanguard Segment 3",
+            blessing=Blessing((-3954.0, -11426.0)),
+            path=[
+                (-5747.9, -13218.7), (-9790.9, -13258.0), (-11047.5, -9448.2), (-7777.1, -7032.2),
+                (-4638.2, -4496.5), (-1131.0, -2524.7), (1852.3, 163.3), (5104.8, 2594.2),
+                (8307.3, 5060.4), (7509.3, 8998.1), (10537.1, 11668.0), (8091.5, 8492.2),
+                (11725.8, 6705.3), (7964.3, 8157.4), (4666.3, 10422.2),
+            ],
+        ),
+        RouteSegment(
+            name="Vanguard Segment 4",
+            blessing=Blessing((5884.0, 11749.0)),
+            path=[
+                (4666.3, 10422.2),
+                (1772.7, 13212.8),
+            ],
+        ),
     ],
 )
 
 # Asuran - Magus Stones / Rata Sum (Asuran title).
-# Source: Asura title farm by Wick Divinus.py + EotN storyline BT.
 ASURAN_ROUTE = Route(
     key="asuran",
     name="Asuran",
@@ -226,7 +225,6 @@ ASURAN_ROUTE = Route(
 )
 
 # Norn - Varajar Fells / Olafstead (Norn title).
-# Source: Norn title farmer by Wick Divinus.py.
 NORN_ROUTE = Route(
     key="norn",
     name="Norn",
@@ -236,31 +234,96 @@ NORN_ROUTE = Route(
     explorable_id=553,   # Varajar Fells
     exit_pos=(-1500.0, 1250.0),
     pre_path=[(-328.0, 1240.0), (-1500.0, 1250.0)],
-    blessing_points=[
-        Blessing((-1892.0, -4505.0)),
-    ],
-    kill_path=[
-        # Source: Norn title farmer by Wick Divinus.py - active routine
-        # (excludes blessing dialog steps; those are handled by TakeBlessing)
-        (-2034, -4512), (-5278, -5771), (-5456, -7921), (-8793, -5837), (-14092, -9662),
-        (-17260, -7906), (-21964, -12877), (-22275, -12462), (-21671, -2163),
-        (-19592, 772), (-13795, -751), (-17012, -5376), (-12071, -4274),
-        (-8351, -2633), (-4362, -1610), (-4316, 4033), (-8809, 5639),
-        (-14916, 2475), (-11282, 5466), (-16051, 6492), (-16934, 11145),
-        (-19378, 14555), (-22751, 14163), (-15932, 9386), (-13777, 8097),
-        (19416.26, 1142.77), (24169.45, -4288.69), (19745, -2718), (23504, 1801),
+    segments=[
+        RouteSegment(
+            name="Norn Approach - Shrine 1",
+            path=[
+                (-2484.73, 118.55), (-3059.12, -419.00), (-3301.01, -2008.23),
+                (-2034, -4512),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 1",
+            blessing=Blessing((-1892.0, -4505.0)),
+            path=[
+                (-5278, -5771), (-5456, -7921), (-8793, -5837), (-14092, -9662),
+                (-17260, -7906), (-21964, -12877), (-25341.00, -11957.00),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 2",
+            blessing=Blessing((-25341.0, -11957.0)),
+            path=[
+                (-22275, -12462), (-21671, -2163), (-19592, 772), (-13795, -751),
+                (-17012, -5376), (-10606.23, -1625.26), (-12158.00, -4277.00),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 3",
+            blessing=Blessing((-12158.0, -4277.0)),
+            path=[
+                (-12071, -4274), (-8351, -2633), (-4362, -1610), (-4316, 4033),
+                (-8809, 5639), (-14916, 2475), (-11204.00, 5479.00),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 4",
+            blessing=Blessing((-11204.0, 5479.0)),
+            path=[
+                (-11282, 5466), (-16051, 6492), (-16934, 11145), (-19378, 14555),
+                (-22889.00, 14165.00),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 5",
+            blessing=Blessing((-22889.0, 14165.0)),
+            path=[
+                (-22751, 14163), (-15932, 9386), (-13777, 8097), (-2217.00, 14914.00),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 6",
+            blessing=Blessing((-2217.0, 14914.0)),
+            path=[
+                (-2290, 14879), (-1810, 4679), (-6911, 5240), (-15471, 6384),
+                (-411, 5874), (2859, 3982), (4909, -4259), (7514, -6587),
+                (3800, -6182), (7755, -11467), (15403, -4243),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Continue Route - East",
+            path=[
+                (21597, -6798), (24522, -6532), (22883, -4248), (18606, -1894),
+                (14969, -4048), (13599, -7339), (10056, -4967), (10147, -1630),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 8",
+            blessing=Blessing((8963.0, 4043.0)),
+            path=[
+                (9339.46, 3859.12), (15576, 7156),
+            ],
+        ),
+        RouteSegment(
+            name="Norn Blessing 9",
+            blessing=Blessing((22838.0, 7914.0)),
+            path=[
+                (22961, 12757), (18067, 8766), (13311, 11917), (13714, 14520),
+                (11126, 10443), (5575, 4696), (-503, 9182), (1582, 15275),
+                (7857, 10409),
+            ],
+        ),
     ],
 )
 
-# Deldrimor - Depths of Tyria / Sifhalla (Deldrimor title).
-# Source: Deldrimor title farm by Wick Divinus.py.
+# Deldrimor - Depths of Tyria / Umbral Grotto (Deldrimor title).
 DELDRIMOR_ROUTE = Route(
     key="deldrimor",
     name="Deldrimor",
     icon="[2424] - Stout-Hearted.jpg",
     title_id=TitleID.Deldrimor,
-    outpost_id=639,      # Sifhalla
-    explorable_id=701,   # Depths of Tyria
+    outpost_id=639,
+    explorable_id=701,
     exit_pos=(-23884.0, 13954.0),
     entry_dialog_id=0x84,
     blessing_points=[
@@ -277,7 +340,6 @@ DELDRIMOR_ROUTE = Route(
     ],
 )
 # Luxon - Mount Qinkai / Aspenwood Gate (Luxon title).
-# Source: VQ Mount Quinkai Redux.py.
 LUXON_ROUTE = Route(
     key="luxon",
     name="Luxon",
@@ -300,7 +362,6 @@ LUXON_ROUTE = Route(
 )
 
 # Kurzick - Drazach Thicket / Eternal Grove (Kurzick title).
-# Source: VQ Drazach Thicket Redux.py.
 KURZICK_ROUTE = Route(
     key="kurzick",
     name="Kurzick",
@@ -322,7 +383,6 @@ KURZICK_ROUTE = Route(
 )
 
 # Sunspear - Arkjok Ward / Yohlon Haven (Sunspear title bounty loop).
-# Source: Sunspear title farm.py + Ewoog's Yohlon Haven Sunspear Title Farm.py.
 SUNSPEAR_ROUTE = Route(
     key="sunspear",
     name="Sunspear",
@@ -331,11 +391,9 @@ SUNSPEAR_ROUTE = Route(
     outpost_id=381,      # Yohlon Haven
     explorable_id=380,   # Arkjok Ward
     exit_pos=(4603.0, 904.0),
-    # Zudaash-Dejarin (-874, 1367) stands on the direct town-to-portal line
-    # and stalls the autopath; this waypoint steers above him (verified live).
     pre_path=[(-998.09, 1505.14)],
     bounty=True,
-    bounty_pos=(-17229.18, -12695.88),
+    bounty_pos=(-17223.00, -12543.00),
     bounty_dialog=0x85,
     kill_path=[
         (-18697.0, -12296.0),
@@ -346,7 +404,6 @@ SUNSPEAR_ROUTE = Route(
 )
 
 # Lightbringer - Mirror of Lyss / Gate of Pain (Lightbringer title bounty loop).
-# Source: Lightbringer - MirrorOfLyss.py.
 LIGHTBRINGER_ROUTE = Route(
     key="lightbringer",
     name="Lightbringer",
@@ -390,22 +447,23 @@ def _route_by_key(key: str) -> Optional[Route]:
             return route
     return None
 
-# ---------------------------------------------------------------------------
+
+# The six rank-tracked reputation routes farmed by auto-rotate.
+ROTATION_ROUTE_KEYS: Tuple[str, ...] = (
+    "vanguard",
+    "asuran",
+    "norn",
+    "deldrimor",
+    "sunspear",
+    "lightbringer",
+)
+
+
+def _reputation_routes() -> List[Route]:
+    return [route for route in ALL_ROUTES if route.key in ROTATION_ROUTE_KEYS]
+
 # Portal proximity gate
-# ---------------------------------------------------------------------------
-# Resign always drops the party at the default outpost spawn (verified live:
-# the zone-out-and-back entry-point trick does not affect resign returns), so
-# the town-to-portal walk runs every cycle. Pre-path steering legs are skipped
-# adaptively when the spawn ever ends up portal-side anyway.
-
-
 def _near_exit_gate(route: Route, radius: float = 1500.0) -> BehaviorTree:
-    """Skip-success when the player is already near the exit portal.
-
-    Used to make pre-path steering adaptive: from a portal-side spawn (after
-    the resign spawn trick) the steering leg is pointless; from the default
-    mid-town spawn it still runs.
-    """
 
     def _near_exit() -> BehaviorTree.NodeState:
         try:
@@ -424,25 +482,21 @@ def _near_exit_gate(route: Route, radius: float = 1500.0) -> BehaviorTree:
         BehaviorTree.ActionNode(name="Already Near Exit Portal?", action_fn=_near_exit)
     )
 
-# ---------------------------------------------------------------------------
 # Runtime state
-# ---------------------------------------------------------------------------
 botting_tree: Optional[BottingTree] = None
 initialized: bool = False
 
-# Selected faction (persisted across frames).
 selected_key: str = "vanguard"
-
-# Party mode: False = single account with hero team, True = multibox accounts.
 _multi_account: bool = False
-
-# Consumable groups maintained by the upkeep service while the bot runs.
+_farm_all: bool = False
+_target_rank: int = 5
+_farm_to_max: bool = False
+_active_farm_key: str = ""
 _activate_conset: bool = True
 _activate_pcons: bool = True
 
 
 def _enabled_consumable_upkeeps() -> Tuple[int, ...]:
-    """Consumable model IDs the upkeep service should maintain, per toggles."""
     enabled: List[int] = []
     if _activate_conset:
         enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
@@ -451,9 +505,7 @@ def _enabled_consumable_upkeeps() -> Tuple[int, ...]:
     return tuple(dict.fromkeys(enabled))
 
 
-# ---------------------------------------------------------------------------
 # Faction point getters
-# ---------------------------------------------------------------------------
 def _kurzick_faction() -> int:
     try:
         return int(Player.GetKurzickData()[0] or 0)
@@ -477,7 +529,6 @@ def _title_points(route: Route) -> int:
 
 
 def _faction_points(route: Route) -> int:
-    """Current faction buffer relevant to a route's reward loop."""
     if route.key == "kurzick":
         return _kurzick_faction()
     if route.key == "luxon":
@@ -485,20 +536,28 @@ def _faction_points(route: Route) -> int:
     return _title_points(route)
 
 
-# ---------------------------------------------------------------------------
-# Environment + reusable vanquish run
-# ---------------------------------------------------------------------------
+# NPC approach helper. Bare BT.Move treats the destination NPC as a wall
+# (ignore_destination_obstacles defaults False), so the approach orbits.
+# Arming destination-ignore drives straight at the NPC for the dialog.
+def _move_to_npc(pos: Tuple[float, float]) -> BehaviorTree:
+    return BT.Move(
+        pos,
+        tolerance=120.0,
+        log=True,
+        ignore_destination_obstacles=True,
+        destination_obstacle_ignore_distance=2500.0,
+        ignore_destination_npcs=True,
+        ignore_destination_gadgets=True,
+    )
+
+
 def AggressiveEnv() -> Sequence[BehaviorTree]:
-    """Aggressive env template (used only once we are on an explorable map)."""
     return [
         ensure_botting_tree().Config.Aggressive(multi_account=_multi_account, auto_loot=True),
     ]
 
 
-# ---------------------------------------------------------------------------
-# Hero team setup (modeled on Outpost Unlocker BT.py)
-# ---------------------------------------------------------------------------
-
+# Hero team setup
 def _normalize_team_size(party_size: int) -> int:
     if party_size <= 4:
         return 4
@@ -595,15 +654,91 @@ class Settings:
 settings = Settings()
 
 
-def _party_setup(route: Route) -> List[BehaviorTree]:
-    """Party formation while still in the outpost.
+def _hero_party_already_formed(hero_ids: List[int]) -> bool:
+    if not hero_ids:
+        return False
+    from Py4GWCoreLib import Party
 
-    Multibox mode summons/invites the configured accounts; single-account
-    mode loads the hero team (leader-only, outpost-gated).
-    """
+    try:
+        if not Map.IsOutpost():
+            return False
+        if not Party.IsPartyLoaded():
+            return False
+        if int(Party.GetPartySize() or 0) <= 1:
+            return False
+        existing_ids: set[int] = set()
+        for hero in Party.GetHeroes() or []:
+            try:
+                hero_id = int(getattr(hero, "hero_id", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if hero_id > 0:
+                existing_ids.add(hero_id)
+        return all(int(hero_id) in existing_ids for hero_id in hero_ids)
+    except Exception:
+        return False
+
+
+def _party_setup(route: Route) -> List[BehaviorTree]:
     if _multi_account:
-        return [BT.CreateParty(multibox_invite=True)]
+        return [_multibox_party_setup()]
     return [SetupHeroTeam()]
+
+
+def _multibox_party_already_formed() -> bool:
+    from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import (
+        _account_emails_not_on_same_map_as_local,
+        _account_is_in_local_party,
+    )
+
+    try:
+        if _account_emails_not_on_same_map_as_local():
+            return False
+        sender_email = str(Player.GetAccountEmail() or "")
+        if not sender_email:
+            return False
+        if GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(sender_email) is None:
+            return False
+        for account in GLOBAL_CACHE.ShMem.GetAllAccountData() or []:
+            receiver_email = str(getattr(account, "AccountEmail", "") or "")
+            if not receiver_email or receiver_email == sender_email:
+                continue
+            if not _account_is_in_local_party(account):
+                return False
+    except Exception:
+        return False
+    return True
+
+
+def _multibox_party_setup() -> BehaviorTree:
+    def _party_intact(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if _multibox_party_already_formed()
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BT.Selector(
+        name="MultiboxPartySetup",
+        children=[
+            BT.Sequence(
+                name="PartyAlreadyFormed?",
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name="MultiboxPartyAlreadyFormed?",
+                            action_fn=_party_intact,
+                        )
+                    ),
+                    BT.LogMessage(
+                        "Multibox party already formed - skipping disband/reinvite",
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+            BT.CreateParty(multibox_invite=True),
+        ],
+    )
 
 
 def SetupHeroTeam() -> BehaviorTree:
@@ -626,14 +761,43 @@ def SetupHeroTeam() -> BehaviorTree:
         hero_ids = [slot.hero_id for slot in selected_slots]
         skillbars = [(pos, slot.template) for pos, slot in enumerate(selected_slots, start=1) if slot.template]
 
-        return BT.Sequence(
-            name="Setup Hero Team",
+        def _team_present(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+            return (
+                BehaviorTree.NodeState.SUCCESS
+                if _hero_party_already_formed(hero_ids)
+                else BehaviorTree.NodeState.FAILURE
+            )
+
+        # Selector mirrors the multibox pattern: the fallback branch holds the
+        # ENTIRE re-formation (CreateParty itself opens with LeaveParty), so an
+        # intact hero team is never taken apart and reloaded every cycle.
+        return BT.Selector(
+            name="HeroPartySetup",
             children=[
-                BT.LeaveParty(),
-                BT.CreateParty(hero_ids=hero_ids, log=False),
-                BT.Wait(1000),
-                *[BT.LoadHeroSkillbar(position, template) for position, template in skillbars],
-                CoreBT.Party.ForceHeroState(HERO_AGGRESSIVE_MODE),
+                BT.Sequence(
+                    name="HeroTeamAlreadyFormed?",
+                    children=[
+                        BehaviorTree(
+                            BehaviorTree.ActionNode(
+                                name="HeroTeamAlreadyFormed?",
+                                action_fn=_team_present,
+                            )
+                        ),
+                        BT.LogMessage(
+                            "Hero team already formed - skipping leave party",
+                            module_name=MODULE_NAME,
+                        ),
+                    ],
+                ),
+                BT.Sequence(
+                    name="Form Hero Team",
+                    children=[
+                        BT.CreateParty(hero_ids=hero_ids, log=False),
+                        BT.Wait(1000),
+                        *[BT.LoadHeroSkillbar(position, template) for position, template in skillbars],
+                        CoreBT.Party.ForceHeroState(HERO_AGGRESSIVE_MODE),
+                    ],
+                ),
             ],
         )
 
@@ -644,24 +808,19 @@ def _killing_loop(route: Route) -> BehaviorTree:
     """The vanquish-style farming loop for one faction run.
 
     Mirrors the Nightfall Leveler / VQFarm convention: travel to outpost,
-    cross into the explorable map, take blessings, run the kill path, wait
-    out of combat, then resign back to the outpost.
+    cross into the explorable map, then either run per-leg route segments
+    (blessing + fight leg each) or collect the route's blessings and run its
+    single kill path, wait out of combat, then resign back to the outpost.
     """
     children: List[BehaviorTree] = [
         BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=True),
         *_party_setup(route),
     ]
-    # Canthan faction routes bribe their faction priest for the blessing. Top up
-    # gold to BLESSING_GOLD BEFORE leaving the outpost; storage/no bank access
-    # is only available while still in the outpost, so this must precede the
-    # exit step below or a run can start too poor to obtain the blessing.
+
     if route.key in ("kurzick", "luxon"):
         children.append(BT.EqualizeGold(target_gold=BLESSING_GOLD, log=True))
-    # Enter the explorable map. Most routes cross a plain zone line, but some
-    # (e.g. Deldrimor via Sifhalla) require talking to an NPC at the entrance —
-    # move to the entry point, send the dialog, then wait for the map to change.
     if route.entry_dialog_id:
-        children.append(BT.Move(route.exit_pos, tolerance=120.0, log=True))
+        children.append(_move_to_npc(route.exit_pos))
         children.append(BT.DialogAtXY(route.exit_pos, route.entry_dialog_id, target_distance=300.0, log=True))
         children.append(BT.WaitForMapLoad(map_id=route.explorable_id))
     elif route.exit_by_name:
@@ -675,15 +834,8 @@ def _killing_loop(route: Route) -> BehaviorTree:
 
     children.extend(AggressiveEnv())
 
-    # Blessings at fixed shrine points. TakeBlessing handles both the Canthan
-    # faction priests (luxon/kurzick: bribe + blessing dialog) and the EotN
-    # shrines (plain auto-dialog button 0). The EotN path uses SendAutomaticDialog
-    # instead of TargetNearestNPCXY, so it works on shrine objects that are not NPCs.
-    for blessing in route.blessing_points:
+    def _take_blessing(blessing: Blessing) -> None:
         if route.key in ("kurzick", "luxon"):
-            # Let TakeBlessing use its default blessing_dialog_id=0x86 —
-            # the Blessing dataclass default (0x84) is the bribe dialog, not
-            # the blessing dialog, so we must not forward it here.
             children.append(
                 BT.TakeBlessing(
                     blessing.pos,
@@ -699,19 +851,33 @@ def _killing_loop(route: Route) -> BehaviorTree:
                 )
             )
 
-    # The kill path is a VanquishNode list of aggro points.
-    if route.kill_path:
-        children.append(
-            BT.VanquishNode(
-                steps=list(route.kill_path),
-                name=f"{route.name} Kill Path",
-                flag_heroes_to_waypoint=False,
+
+    if route.segments:
+        for index, segment in enumerate(route.segments, start=1):
+            if segment.blessing is not None:
+                _take_blessing(segment.blessing)
+            if segment.path:
+                children.append(
+                    BT.VanquishNode(
+                        steps=list(segment.path),
+                        name=segment.name or f"{route.name} Leg {index}",
+                        flag_heroes_to_waypoint=False,
+                    )
+                )
+    else:
+        for blessing in route.blessing_points:
+            _take_blessing(blessing)
+
+        if route.kill_path:
+            children.append(
+                BT.VanquishNode(
+                    steps=list(route.kill_path),
+                    name=f"{route.name} Kill Path",
+                    flag_heroes_to_waypoint=False,
+                )
             )
-        )
 
     children.append(BT.WaitUntilOutOfCombat())
-    # Resign back to the outpost. multi_account dispatches the shared resign
-    # command to every account (see wrappers.Resign -> Multibox.ResignAllAccounts).
     children.append(
         BT.Resign(
             wait_for_map_load=True,
@@ -738,18 +904,9 @@ def _bounty_loop(route: Route) -> BehaviorTree:
         )
 
     children: List[BehaviorTree] = [
-        # Unconditional Travel: it doubles as the post-resign settle step the
-        # hero-team rebuild depends on (verified live: skipping it when already
-        # in the outpost breaks hero loading).
         BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=True),
-        # Bounty runs need the hero team just as much as the VQ loops; without
-        # this the bot walks into Arkjok solo (verified live).
         *_party_setup(route),
     ]
-    # Pre-path: optional manual waypoints in the outpost from spawn toward the
-    # exit. They steer the autopath around a stuck point before the exit
-    # crossing (Sunspear: an NPC in Yohlon Haven). Adaptive: when the party
-    # already spawns near the portal (resign spawn trick), the gate skips it.
     for point in route.pre_path:
         children.append(
             BehaviorTree(
@@ -764,13 +921,7 @@ def _bounty_loop(route: Route) -> BehaviorTree:
         )
     children.append(BT.MoveAndExitMap(route.exit_pos, target_map_id=route.explorable_id))
     children.extend(AggressiveEnv())
-    # Walk into targeting range of the bounty NPC first — DialogAtXY only targets
-    # the nearest NPC within target_distance of bounty_pos, so we must get close
-    # before it dialogs (otherwise the dialog node times out). Keeping bounty_pos
-    # as the anchor also picks the right Wandering Priest (there is one per exit).
-    children.append(BT.Move(route.bounty_pos, tolerance=120.0, log=True))
-    # Accept the bounty by targeting the nearest Wandering Priest to bounty_pos
-    # and sending the bounty dialog (dialog id route.bounty_dialog).
+    children.append(_move_to_npc(route.bounty_pos))
     children.append(
         BT.DialogAtXY(
             route.bounty_pos,
@@ -792,8 +943,6 @@ def _bounty_loop(route: Route) -> BehaviorTree:
         )
 
     children.append(BT.WaitUntilOutOfCombat())
-    # Same team resign as the VQ loop: in multibox every account resigns via
-    # the shared command instead of relying on the next run's Travel.
     children.append(
         BT.Resign(
             wait_for_map_load=True,
@@ -806,41 +955,68 @@ def _bounty_loop(route: Route) -> BehaviorTree:
 # ---------------------------------------------------------------------------
 # Planner step builders
 # ---------------------------------------------------------------------------
-def _goal_threshold(route: Route) -> Optional[int]:
-    """Point threshold at which the route is done.
+def _current_rank(route: Route) -> int:
+    """Current tier index (1-based) of a route's title, 0 when unranked.
 
-    Kurzick/Luxon stop at the faction donate cap (FACTION_GOAL). All other
-    titles farm until max rank, i.e. the highest tier requirement; with no
-    tier data the route never completes on points alone.
+    Uses the same points scan as the live UI readout, so the goal check and
+    the displayed tier always agree.
     """
-    if route.key in ("kurzick", "luxon"):
-        return FACTION_GOAL
+    points = _faction_points(route)
+    rank = 0
+    for tier in TITLE_TIERS.get(int(route.title_id), []):
+        if points >= tier.required:
+            rank = int(tier.tier)
+    return rank
+
+
+def _route_goal_rank(route: Route) -> Optional[int]:
+    """Target tier for a rank-tracked route, or None when no tier data exists.
+
+    `_farm_to_max` pushes to the title's top tier; otherwise the route farms
+    to `_target_rank` (default 5, where faction skills / most unlocks cap).
+    """
     tiers = TITLE_TIERS.get(int(route.title_id), [])
     if not tiers:
         return None
-    return int(max(tier.required for tier in tiers))
+    if _farm_to_max:
+        return int(max(tier.tier for tier in tiers))
+    return _target_rank
 
 
-def FarmFaction() -> BehaviorTree:
-    route = _route_by_key(selected_key)
-    if route is None:
-        return BT.LogMessage(f"Unknown faction: {selected_key}", module_name=MODULE_NAME)
+def _goal_threshold(route: Route) -> Optional[int]:
+    """Point threshold at which the route is done.
 
+    Kurzick/Luxon stop at the faction donate cap (FACTION_GOAL) — the Canthan
+    donation loop, which has no reputation-rank target. All rank-tracked routes
+    stop at the configured target: `_farm_to_max` pushes to the title's top
+    tier, otherwise `_target_rank` (default 5). With no tier data the route
+    never completes on points alone. The threshold is read live at tick time,
+    so changing `_farm_to_max` / `_target_rank` needs no planner rebuild.
+    """
+    if route.key in ("kurzick", "luxon"):
+        return FACTION_GOAL
+    goal_rank = _route_goal_rank(route)
+    if goal_rank is None:
+        return None
+    for tier in TITLE_TIERS.get(int(route.title_id), []):
+        if int(tier.tier) == goal_rank:
+            return int(tier.required)
+    return None
+
+
+def _build_farm_sequence(route: Route) -> BehaviorTree:
     def _goal_reached() -> BehaviorTree.NodeState:
+        global _active_farm_key
         threshold = _goal_threshold(route)
         if threshold is None:
             return BehaviorTree.NodeState.FAILURE
-        return (
-            BehaviorTree.NodeState.SUCCESS
-            if _faction_points(route) >= threshold
-            else BehaviorTree.NodeState.FAILURE
-        )
+        if _faction_points(route) >= threshold:
+            return BehaviorTree.NodeState.SUCCESS
+        _active_farm_key = route.key
+        return BehaviorTree.NodeState.FAILURE
 
     def _one_run() -> BehaviorTree:
         run_loop = _bounty_loop(route) if route.bounty else _killing_loop(route)
-        # Retry the run in place on transient failures (a single autopath miss
-        # used to bubble straight to the planner and bounce the bot back to
-        # the outpost). The timeout hands genuinely stuck runs to the planner.
         retried_run = BehaviorTree(
             BehaviorTree.RepeaterUntilSuccessNode(
                 child=run_loop.root,
@@ -858,9 +1034,6 @@ def FarmFaction() -> BehaviorTree:
             )
         )
 
-    # Donation is faction-to-guild (Luxon/Kurzick only, handled by the Donate
-    # step). Gold prep for the faction-priest blessing is done inside the
-    # killing loop (see _killing_loop), before the route exits the outpost.
     return BT.Sequence(
         name=f"Farm {route.name}",
         children=[
@@ -869,8 +1042,28 @@ def FarmFaction() -> BehaviorTree:
     )
 
 
-# Donation outposts: the shared DonateFaction handler (Messaging.py) only
-# donates while standing in the faction's guild hall town.
+def FarmFaction() -> BehaviorTree:
+    route = _route_by_key(selected_key)
+    if route is None:
+        return BT.LogMessage(f"Unknown faction: {selected_key}", module_name=MODULE_NAME)
+    return _build_farm_sequence(route)
+
+
+def FarmAll() -> BehaviorTree:
+    children: List[BehaviorTree] = []
+    for route in _reputation_routes():
+        threshold = _goal_threshold(route)
+        if threshold is None:
+            continue
+        children.append(_build_farm_sequence(route))
+    if not children:
+        return BT.LogMessage(
+            "All reputation routes have reached the target rank.",
+            module_name=MODULE_NAME,
+        )
+    return BT.Sequence(name="Farm All Reputation", children=children)
+
+
 HOUSE_ZU_HELZER = 77    # Kurzick donation outpost
 CAVALON = 193           # Luxon donation outpost
 
@@ -879,9 +1072,6 @@ def DonateFaction() -> BehaviorTree:
     route = _route_by_key(selected_key)
     if route is None:
         return BT.LogMessage(f"Unknown faction: {selected_key}", module_name=MODULE_NAME)
-
-    # Only the Canthan factions donate faction on-hand; the rest donate the title
-    # currency implicitly by switching the tracked title (converted by title-tracker).
     if route.key not in ("kurzick", "luxon"):
         return BT.Succeeder()
 
@@ -897,9 +1087,9 @@ def DonateFaction() -> BehaviorTree:
 
 
 def get_execution_steps() -> List[Tuple[str, Callable[[], BehaviorTree]]]:
+    if _farm_all:
+        return [("Farm All Reputation", FarmAll)]
     steps: List[Tuple[str, Callable[[], BehaviorTree]]] = [("Farm Faction", FarmFaction)]
-    # Only Luxon/Kurzick donate (faction-to-guild); other routes have no
-    # donate step at all, so the routine never touches it.
     route = _route_by_key(selected_key)
     if route is not None and route.key in ("kurzick", "luxon"):
         steps.append(("Donate Faction", DonateFaction))
@@ -933,9 +1123,7 @@ def ensure_botting_tree() -> BottingTree:
             configure_fn=_configure_upkeep,
         )
         botting_tree.UI.override_draw_config(draw_settings_tab)
-        # Bind a custom Main-tab body (farm dropdown + Start control) instead
-        # of the framework's planner "Start At" step list. Pattern mirrors
-        # EOTN_SKILL_UNLOCKER.py.
+        botting_tree.UI.override_draw_help(_draw_help_tab)
         botting_tree.UI._draw_main_child = types.MethodType(_draw_main_child_custom, botting_tree.UI)
     return botting_tree
 
@@ -1116,35 +1304,224 @@ def _draw_title_track(route: Route) -> None:
         PyImGui.text(f"+{gained:,} points ({pts_per_hour:,}/hr) - Running for: {formatted_time}")
 
 
+def _active_route() -> Optional[Route]:
+    """The route the UI should track.
+
+    In auto-rotate mode this is the route currently being farmed (`_active_farm_key`,
+    set live by the goal check). Before the planner has ticked (or if it is not
+    currently tracking yet), fall back to the first reputation route that still
+    needs work — so the Stats tab shows the real target (e.g. Lightbringer) on a
+    character where the other five are already done, instead of the preselected
+    Vanguard. In single mode it is simply the selected route.
+    """
+    if _farm_all:
+        if _active_farm_key:
+            route = _route_by_key(_active_farm_key)
+            if route is not None:
+                return route
+        for route in _reputation_routes():
+            threshold = _goal_threshold(route)
+            if threshold is None:
+                continue
+            if _faction_points(route) < threshold:
+                return route
+        routes = _reputation_routes()
+        return routes[0] if routes else None
+    return _route_by_key(selected_key)
+
+
 def _draw_statistics_tab() -> None:
-    """Top-level Statistics tab showing the selected route's title progress."""
-    selected = _route_by_key(selected_key)
-    if selected is None:
+    """Top-level Statistics tab showing the active route's title progress.
+
+    In auto-rotate mode this follows the route currently being farmed (falling
+    back to the next route that still needs work before the planner has ticked);
+    in single mode it is the selected route.
+    """
+    active = _active_route()
+    if active is None:
         PyImGui.text("No route selected.")
         return
     if PyImGui.begin_child("ReputationFarmerStatisticsChild", (500, 620), False):
-        _draw_title_track(selected)
+        _draw_title_track(active)
     PyImGui.end_child()
 
 
 
 
-def _apply_route_selection(new_key: str) -> None:
-    """Switch the active faction route and rebuild the planner tree.
+def _draw_help_tab() -> None:
+    """Help tab: practical notes for running the Reputation Farmer effectively."""
 
-    The planner tree is built from the step list once; rebuild it so the
-    Donate step only exists for Luxon/Kurzick routes. This resets the routine
-    to its first step, which is intended on a faction switch.
+    def _section(title: str) -> None:
+        PyImGui.separator()
+        PyImGui.text(title)
+        PyImGui.separator()
+
+    _section("What this farm does")
+    PyImGui.text_wrapped(
+        "Farms faction reputation (title) points for one selected route or for every "
+        "rank-tracked route in rotation. Six routes are EotN / Nightfall titles with a "
+        "rank ladder (Vanguard, Asuran, Norn, Deldrimor, Sunspear, Lightbringer). "
+        "Luxon and Kurzick are the Canthan faction loop: they farm on-hand faction "
+        "points and donate them to the guild hall instead of tracking a title rank."
+    )
+
+    _section("Two farm modes")
+    PyImGui.text_wrapped(
+        "Single mode (Farm Faction) runs only the route selected in the picker. "
+        "Auto-rotate (Farm All Reputation) runs every rank-tracked route in turn and "
+        "skips any route that already reached the target. Toggling the mode rebuilds "
+        "the planner and resets the routine to its first step, so pick your mode before "
+        "starting a long session."
+    )
+
+    _section("Target rank")
+    PyImGui.text_wrapped(
+        "Rank 5 is where faction skills and most unlocks cap for the EotN / Nightfall "
+        "titles, so it is the default stopping point. Max rank pushes a route to the "
+        "top of its title tier. The goal is checked live from your title points, so "
+        "changing the target mid-run needs no rebuild: routes that already qualify skip "
+        "and unfinished ones continue from where they left off."
+    )
+    PyImGui.text_wrapped(
+        "Once every route in the active mode has already reached Rank 5, the Rank 5 "
+        "option disappears from the Farm to dropdown and only Max rank remains. Since "
+        "all titles are already at the lower target, the bot automatically pushes on "
+        "to the top tier. In auto-rotate this applies when all six reputation routes "
+        "are at rank 5 or higher; in single-faction mode it applies to the selected "
+        "route alone."
+    )
+
+    _section("Vanquish vs bounty routes")
+    PyImGui.text_wrapped(
+        "Vanquish routes enter the explorable map, take the route's shrine blessings, "
+        "and clear their kill path. Sunspear and Lightbringer are bounty loops: each "
+        "run walks to the bounty priest, accepts the bounty through the dialog, then "
+        "clears the kill path. Both loop types travel to the route's outpost on hard "
+        "mode and resign back to it at the end of every run."
+    )
+
+    _section("Party setup")
+    PyImGui.text_wrapped(
+        "- Single account: the hero team is sized to the outpost's max party size "
+        "(4/6/8 presets). Edit the hero slots and skillbar templates on the Party tab "
+        "and Save. The team is re-formed at the start of a run only when a hero is "
+        "missing; an intact team is left alone."
+    )
+    PyImGui.text_wrapped(
+        "- Multibox: enable Multi Account (Multibox) Team before starting - the toggle "
+        "rebuilds the tree and resets the planner. The bot summons and invites every "
+        "account from shared memory, and only re-forms the party when an account is "
+        "missing or on a different map. Make sure every account is loaded before you "
+        "start."
+    )
+
+    _section("Practical tips")
+    PyImGui.text_wrapped(
+        "- A route's outpost must be unlocked: the bot travels to it every run and "
+        "enters the explorable on hard mode."
+    )
+    PyImGui.text_wrapped(
+        "- Luxon / Kurzick blessings require bribing the faction priest. The bot tops "
+        "gold up to 500g while in the outpost before each run, so keep at least that "
+        "much reachable from storage."
+    )
+    PyImGui.text_wrapped(
+        "- Consumable upkeep: toggle consets and pcons in Settings - Consumables. "
+        "Keep them in inventory or storage so the upkeep service can restock."
+    )
+    PyImGui.text_wrapped(
+        "- Runs retry in place (up to 30 minutes) before the planner restarts the "
+        "step from the outpost, so a single autopath miss usually does not waste the "
+        "run or the party."
+    )
+    PyImGui.text_wrapped(
+        "- Progress is measured by title points (or on-hand faction for Luxon / "
+        "Kurzick), not by the number of runs. The farm runs 6 runs per planner pass "
+        "and the planner repeats, so leave it alone until the readout shows the "
+        "target rank or donate cap is reached."
+    )
+
+
+def _rebuild_main_routine() -> None:
+    """Rebuild the planner tree from the current step list (mode / route change).
+
+    The plan step list changes between `Farm Faction` and `Farm All
+    Reputation`, and the Donate step only exists for Luxon / Kurzick routes,
+    so a rebuild is required whenever those change. Target-rank changes are
+    read live and do not need one.
     """
-    global selected_key, botting_tree
-    if new_key == selected_key:
-        return
-    selected_key = new_key
     ensure_botting_tree().SetMainRoutine(
         get_execution_steps(),
         name=ROUTINE_NAME,
         repeat=True,
     )
+
+
+def _apply_route_selection(new_key: str) -> None:
+    """Switch the active faction route and rebuild the planner tree.
+
+    Resets the routine to its first step, which is intended on a faction
+    switch.
+    """
+    global selected_key
+    if new_key == selected_key:
+        return
+    selected_key = new_key
+    _rebuild_main_routine()
+
+
+def _apply_rotation_mode(enable_all: bool) -> None:
+    """Turn auto-rotate on/off and rebuild the planner for the new step list.
+
+    The mode changes the plan from `Farm Faction` to `Farm All Reputation`, so
+    the tree must be rebuilt; the rank selector inside each mode is read live.
+    """
+    global _farm_all
+    if enable_all == _farm_all:
+        return
+    _farm_all = enable_all
+    _rebuild_main_routine()
+
+
+def _all_farmed_routes_at_target() -> bool:
+    """True when every route the current mode farms is already at the target rank.
+
+    Auto-rotate checks all reputation routes; single mode checks just the
+    selected route. When true, the "Rank {_target_rank}" selector option is
+    hidden so the only forward choice is Max rank.
+    """
+    routes = _reputation_routes() if _farm_all else [r for r in [_route_by_key(selected_key)] if r]
+    if not routes:
+        return False
+    return all(_current_rank(route) >= _target_rank for route in routes)
+
+
+def _draw_farm_controls(id_suffix: str = "") -> None:
+    """Rotation-mode + target-rank controls, shared by the Settings and Main tabs.
+
+    Auto-rotate farms every reputation route (the six EotN / Nightfall titles)
+    to the target; single mode farms only `selected_key`. The rank selector
+    picks the stopping point: Rank 5 (where faction skills / most unlocks cap)
+    or Max rank. Toggling the mode rebuilds the planner (the step list changes
+    between `Farm Faction` and `Farm All Reputation`); the rank selector is
+    read live by the goal check, so it needs no rebuild.
+
+    `id_suffix` keeps ImGui widget IDs unique when this is drawn in more than
+    one place at once (Main body + Settings tab), or ImGui raises conflicting
+    ID errors.
+    """
+    global _farm_all, _farm_to_max
+    new_all = PyImGui.checkbox(f"Auto-rotate all reputation factions##{id_suffix}", _farm_all)
+    if new_all != _farm_all:
+        _apply_rotation_mode(new_all)
+    only_max = _all_farmed_routes_at_target()
+    if only_max and not _farm_to_max:
+        _farm_to_max = True
+    target_labels = ["Max rank"] if only_max else [f"Rank {_target_rank}", "Max rank"]
+    target_index = 0 if only_max else (1 if _farm_to_max else 0)
+    new_index = PyImGui.combo(f"Farm to##{id_suffix}", target_index, target_labels)
+    if new_index != target_index:
+        _farm_to_max = bool(new_index)
 
 
 def _draw_route_selector() -> None:
@@ -1160,7 +1537,6 @@ def _draw_route_selector() -> None:
 
 
 def _draw_route_readout(route: Route) -> None:
-    """Live points / tier / session-goal readout for a selected route."""
     points = _faction_points(route)
     tiers = TITLE_TIERS.get(int(route.title_id), [])
     tier_name = "Unranked"
@@ -1170,33 +1546,42 @@ def _draw_route_readout(route: Route) -> None:
     PyImGui.text(f"{route.name} points: {points:,}")
     PyImGui.text(f"Current tier: {tier_name}")
     threshold = _goal_threshold(route)
-    if route.bounty:
-        goal = f"max rank ({threshold:,} points)" if threshold is not None else "max rank"
+    if route.key in ("kurzick", "luxon"):
+        goal = f"donate cap ({threshold:,} on-hand)" if threshold is not None else "donate cap"
     else:
-        goal = f"{threshold:,} points" if threshold is not None else "max rank"
+        goal_rank = _route_goal_rank(route)
+        target = "max rank" if goal_rank is None else f"rank {goal_rank}"
+        goal = f"{target} ({threshold:,} points)" if threshold is not None else target
     PyImGui.text(f"Session goal: {goal}")
 
 
 def _draw_faction_settings_tab() -> None:
-    """Faction selector + multibox toggle + live title readout."""
+    """Faction selector + rotation / target + multibox toggle + live readout."""
     global selected_key, botting_tree, _multi_account
     PyImGui.text("Faction")
+    PyImGui.separator()
+
+    _draw_farm_controls("Settings")
+
     PyImGui.separator()
 
     new_multi = PyImGui.checkbox("Multi Account (Multibox) Team", _multi_account)
     if new_multi != _multi_account:
         _multi_account = new_multi
-        # multi_account is a creation-time flag: drop the tree so it is
-        # recreated with the new party mode on the next ensure call.
         botting_tree = None
     PyImGui.separator()
+
+    if _farm_all:
+        PyImGui.text("Auto-rotate: every reputation faction is farmed to the target rank.")
+        PyImGui.text("The picker below only applies in single-faction mode.")
+        PyImGui.separator()
 
     _draw_route_selector()
 
     PyImGui.separator()
-    selected = _route_by_key(selected_key)
-    if selected is not None:
-        _draw_route_readout(selected)
+    display = _active_route()
+    if display is not None:
+        _draw_route_readout(display)
 
 
 def _draw_main_child_custom(
@@ -1224,20 +1609,28 @@ def _draw_main_child_custom(
         self._draw_texture(icon_path, (float(iconwidth), float(iconwidth)))
         PyImGui.table_set_column_index(1)
         PyImGui.text(self.parent.bot_name)
-        selected = _route_by_key(selected_key)
-        current_farm = selected.name if selected else selected_key
-        PyImGui.text(f"Current farm: {current_farm}")
+        if _farm_all:
+            active = _active_route()
+            active_name = active.name if active else "All reputation factions"
+            PyImGui.text(f"Current farm: Auto-rotate -> {active_name}")
+        else:
+            selected = _route_by_key(selected_key)
+            current_farm = selected.name if selected else selected_key
+            PyImGui.text(f"Current farm: {current_farm}")
         PyImGui.text(f"HeroAI: {self.parent.GetBlackboardValue('HEROAI_STATUS', 'Idle')}")
         PyImGui.text(f"Planner: {self.parent.GetBlackboardValue('PLANNER_STATUS', 'Idle')}")
         PyImGui.end_table()
 
-    # Selected farm dropdown (replaces the framework "Start At" step list).
-    route_index_by_key = {route.key: index for index, route in enumerate(ALL_ROUTES)}
-    current_index = route_index_by_key.get(selected_key, 0)
-    route_labels = [route.name for route in ALL_ROUTES]
-    selected_index = PyImGui.combo("Selected Farm", current_index, route_labels)
-    if selected_index != current_index:
-        _apply_route_selection(ALL_ROUTES[selected_index].key)
+    _draw_farm_controls("Main")
+    if _farm_all:
+        PyImGui.text("Auto-rotate: every reputation faction farmed to the target rank.")
+    else:
+        route_index_by_key = {route.key: index for index, route in enumerate(ALL_ROUTES)}
+        current_index = route_index_by_key.get(selected_key, 0)
+        route_labels = [route.name for route in ALL_ROUTES]
+        selected_index = PyImGui.combo("Selected Farm", current_index, route_labels)
+        if selected_index != current_index:
+            _apply_route_selection(ALL_ROUTES[selected_index].key)
 
     if self.parent.IsStarted():
         if PyImGui.button("Stop##BottingTreeStop"):
@@ -1273,9 +1666,6 @@ def main() -> None:
         initialized = True
     tree = ensure_botting_tree()
     tree.tick()
-    # Party formation is single-account only; render it as its own top-level
-    # tab (the framework appends extra_tabs after the Debug tab). The
-    # Statistics tab is always present and shows the selected route's title.
     extra_tabs: List[Tuple[str, Callable[[], None]]] = [("Statistics", _draw_statistics_tab)]
     if not _multi_account:
         extra_tabs.append(("Party", draw_party_tab))

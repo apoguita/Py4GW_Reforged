@@ -2,6 +2,7 @@ from itertools import chain
 from typing import List, Tuple, Generator, Any, Optional, Dict, Callable
 from dataclasses import dataclass
 from enum import Enum
+import json
 import time
 import os
 from Py4GWCoreLib import (GLOBAL_CACHE, Routines, Range, Py4GW, ConsoleLog, ModelID, Botting,
@@ -294,23 +295,29 @@ def BuildIllusionaryWeaponry(skill: EliteSkill) -> BehaviorTree:
     return BehaviorTree(BehaviorTree.SequenceNode(children=nodes, name="Illusionary Weaponry Capture"))
 
 def BuildPanic(skill: EliteSkill) -> BehaviorTree:
-    """Build BT sequence for Panic elite skill capture."""
+    """Build BT sequence for Panic elite skill capture.
+    
+    Note: Hell's Precipice outpost and mission share map ID 124, so we use
+    Ember Light Camp (map 35) as the starting point to avoid the conflict.
+    """
     nodes = [
         BT.LogMessage(message="Starting Panic capture", module_name=MODULE_NAME, print_to_console=True),
-        RecordStartingMap(),
+        RecordStartingMap(start_map=35),  # Use Ember Light Camp to avoid map ID conflict
         SaveCurrentBuild(),
         LoadSecondaryBuild(LocalProfession.MESMER),
         BT.Wait(duration_ms=2000),
         BuySignetOfCapture(LocalProfession.MESMER),
         BT.SendChatCommand(command="/leave", log=False),
         BT.Wait(duration_ms=2000),
-        BT.Travel(target_map_id=35),
-        AdvancedHeroTeam(),
+        BT.Travel(target_map_id=124),  # Travel to Hell's Precipice outpost
         BT.Wait(duration_ms=2000),
-        # Hell's Precipice special entrance
+        AdvancedHeroTeam(),  # Load party in outpost
+        BT.Wait(duration_ms=2000),
+        # Hell's Precipice special entrance (outpost and mission share map ID 124)
         BT.EnterChallenge(target_map_id=124),
-        BT.Wait(duration_ms=2000),
+        BT.Wait(duration_ms=6000),  # Match original EnterChallenge timeout
         ConfigureAggressiveEnv(),
+        # Use VanquishNode to clear enemies along the path
         BT.VanquishNode(steps=[(2573, 134), (3009, -4916)]),
         BT.Wait(duration_ms=7000),
         BT.VanquishNode(steps=[(5043.89, -7425.06), (9299, -9728), (7827.06, -13540.96)]),
@@ -8185,11 +8192,22 @@ def RestoreSavedBuild() -> BehaviorTree.ActionNode:
     )
 
 
-def RecordStartingMap() -> BehaviorTree.ActionNode:
-    """Record the current map so the bot can return after capture."""
+def RecordStartingMap(start_map: int = 0) -> BehaviorTree.ActionNode:
+    """Record the starting map so the bot can return after capture.
+    
+    Args:
+        start_map: If provided, sets this as the starting map directly (for cases
+                   where outpost and mission share the same map ID). If 0 or omitted,
+                   records the current map ID.
+    """
     def _record_action():
         global _starting_map_id
         try:
+            if start_map != 0:
+                _starting_map_id = start_map
+                ConsoleLog("Capture", f"Starting map set to: {_starting_map_id}", log=True)
+                return BehaviorTree.NodeState.SUCCESS
+            
             current_map = Map.GetMapID()
             _starting_map_id = int(current_map) if current_map is not None else None
             if _starting_map_id is None:
@@ -8752,47 +8770,232 @@ def LoadSecondaryBuild(profession: LocalProfession) -> BehaviorTree.ActionNode:
     )
 
 
-def SetupHeroTeam(hero_list: List[HeroType], skill_template_map: Dict[HeroType, str], behavior: int = 1) -> BehaviorTree:
-    """Setup hero team with specific heroes and skill templates."""
-    children = [BT.LeaveParty()]
-    
-    hero_ids = [int(hero.value) for hero in hero_list]
-    children.append(BT.CreateParty(hero_ids=hero_ids, log=False))
-    children.append(BT.Wait(duration_ms=1000))
-    
-    for position, hero in enumerate(hero_list, start=1):
-        if hero in skill_template_map and skill_template_map[hero]:
-            children.append(BT.LoadHeroSkillbar(hero_index=position, template=skill_template_map[hero], log=False))
-    
-    children.append(CoreBT.Party.ForceHeroState(behavior))
-    
-    return BT.Sequence(name='Setup Hero Team', children=children)
+# ============================================================================
+# HERO TEAM CONFIGURATION (ported from Reputation Farmer BT)
+# ============================================================================
+
+BOT_BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+PARTY_FORMATION_CONFIG_PATH = os.path.join(BOT_BASE_DIR, "Elite Skills Capture Party Formation.json")
+
+HERO_AGGRESSIVE_MODE = 1
+
+TEAM_PRESET_SIZES = [4, 6, 8]
+TEAM_PRESET_SLOT_COUNTS = {4: 3, 6: 5, 8: 7}
+
+HERO_OPTIONS: List[HeroType] = [HeroType.None_] + [hero for hero in HeroType if hero != HeroType.None_]
+HERO_OPTION_LABELS = [hero.name.replace("_", " ") if hero != HeroType.None_ else "<Empty>" for hero in HERO_OPTIONS]
+HERO_ID_TO_OPTION_INDEX = {int(hero.value): index for index, hero in enumerate(HERO_OPTIONS)}
+
+# Default skillbar templates per hero (same defaults as the Reputation Farmer).
+DEFAULT_HERO_TEMPLATES: dict = {
+    HeroType.Norgu: "OQBDAawDSvAIgcQ5ZkAFgZAEBA",
+    HeroType.Gwen: "OQhkAsC8gFKzJIHM9MdDBcaG4iB",
+    HeroType.Vekk: "OgVDI8gsS5AnATPmOHgCAZAFBA",
+    HeroType.MasterOfWhispers: "OABDUshnSyBVBoBKgbhVVfCWCA",
+    HeroType.Olias: "OAhjQoGYIP3hhWVVaO5EeDTqNA",
+    HeroType.Ogden: "OwUUMsG/E4SNgbE3N3ETfQgZAMEA",
+    HeroType.Razah: "OAWjMMgMJPYTr3jLcCNdmZgeAA",
+    HeroType.Xandra: "OAWjMMgMJPYTr3jLcCNdmZgeAA",
+    HeroType.ZhedShadowhoof: "OgVDI8gsS5AnATPmOHgCAZAFBA",
+}
+
+
+@dataclass
+class PartyHeroSlot:
+    hero_id: int = HeroType.None_.value
+    template: str = ""
+
+
+def _normalize_team_size(party_size: int) -> int:
+    if party_size <= 4:
+        return 4
+    if party_size <= 6:
+        return 6
+    return 8
+
+
+def _build_default_party_formations() -> "Dict[int, List[PartyHeroSlot]]":
+    gwen = PartyHeroSlot(hero_id=HeroType.Gwen.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.Gwen, ""))
+    vekk = PartyHeroSlot(hero_id=HeroType.Vekk.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.Vekk, ""))
+    olias = PartyHeroSlot(hero_id=HeroType.Olias.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.Olias, ""))
+    norgu = PartyHeroSlot(hero_id=HeroType.Norgu.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.Norgu, ""))
+    mow = PartyHeroSlot(hero_id=HeroType.MasterOfWhispers.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.MasterOfWhispers, ""))
+    razah = PartyHeroSlot(hero_id=HeroType.Razah.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.Razah, ""))
+    ogden = PartyHeroSlot(hero_id=HeroType.Ogden.value, template=DEFAULT_HERO_TEMPLATES.get(HeroType.Ogden, ""))
+    return {
+        4: [PartyHeroSlot(gwen.hero_id, gwen.template), PartyHeroSlot(vekk.hero_id, vekk.template), PartyHeroSlot(olias.hero_id, olias.template)],
+        6: [PartyHeroSlot(gwen.hero_id, gwen.template), PartyHeroSlot(norgu.hero_id, norgu.template), PartyHeroSlot(mow.hero_id, mow.template), PartyHeroSlot(olias.hero_id, olias.template), PartyHeroSlot(razah.hero_id, razah.template)],
+        8: [PartyHeroSlot(norgu.hero_id, norgu.template), PartyHeroSlot(gwen.hero_id, gwen.template), PartyHeroSlot(vekk.hero_id, vekk.template), PartyHeroSlot(mow.hero_id, mow.template), PartyHeroSlot(olias.hero_id, olias.template), PartyHeroSlot(razah.hero_id, razah.template), PartyHeroSlot(ogden.hero_id, ogden.template)],
+    }
+
+
+
+class Settings:
+    def __init__(self) -> None:
+        self.party_formations: "Dict[int, List[PartyHeroSlot]]" = _build_default_party_formations()
+        self.party_config_dirty: bool = False
+        self.party_config_status: str = ""
+
+    def get_party_slots(self, team_size: int) -> List[PartyHeroSlot]:
+        slot_count = TEAM_PRESET_SLOT_COUNTS.get(team_size, TEAM_PRESET_SLOT_COUNTS[8])
+        slots = self.party_formations.get(team_size)
+        if slots is None or len(slots) != slot_count:
+            defaults = _build_default_party_formations()
+            slots = [PartyHeroSlot(slot.hero_id, slot.template) for slot in defaults[team_size]]
+            self.party_formations[team_size] = slots
+        return slots
+
+    def reset_party_formations(self) -> None:
+        self.party_formations = _build_default_party_formations()
+        self.party_config_dirty = True
+        self.party_config_status = "Party presets reset to defaults. Save to keep them."
+
+    def load_party_formations(self) -> None:
+        self.party_formations = _build_default_party_formations()
+        if not os.path.exists(PARTY_FORMATION_CONFIG_PATH):
+            self.save_party_formations()
+            return
+        try:
+            with open(PARTY_FORMATION_CONFIG_PATH, "r", encoding="utf-8") as handle:
+                loaded = json.load(handle)
+            for team_size_str, slots in loaded.items():
+                team_size = int(team_size_str)
+                slot_count = TEAM_PRESET_SLOT_COUNTS.get(team_size, TEAM_PRESET_SLOT_COUNTS[8])
+                loaded_slots: List[PartyHeroSlot] = []
+                for slot_data in slots:
+                    loaded_slots.append(
+                        PartyHeroSlot(
+                            hero_id=int(slot_data.get("hero_id", 0)),
+                            template=str(slot_data.get("template", "")),
+                        )
+                    )
+                if len(loaded_slots) >= slot_count:
+                    self.party_formations[team_size] = loaded_slots[:slot_count]
+                else:
+                    self.party_formations[team_size] = loaded_slots + [
+                        PartyHeroSlot() for _ in range(slot_count - len(loaded_slots))
+                    ]
+        except Exception:
+            self.party_formations = _build_default_party_formations()
+            self.party_config_status = "Failed to load party formation config. Using defaults."
+            self.party_config_dirty = True
+
+    def save_party_formations(self) -> None:
+        serializable = {
+            str(team_size): [
+                {"hero_id": slot.hero_id, "template": slot.template}
+                for slot in slots
+            ]
+            for team_size, slots in self.party_formations.items()
+        }
+        try:
+            os.makedirs(os.path.dirname(PARTY_FORMATION_CONFIG_PATH), exist_ok=True)
+            with open(PARTY_FORMATION_CONFIG_PATH, "w", encoding="utf-8") as handle:
+                json.dump(serializable, handle, indent=2, sort_keys=True)
+                handle.write("\n")
+            self.party_config_dirty = False
+            self.party_config_status = "Party formation saved."
+        except Exception:
+            self.party_config_status = "Failed to save party formation."
+            self.party_config_dirty = True
+
+
+settings = Settings()
+
+
+def _hero_party_already_formed(hero_ids: List[int]) -> bool:
+    if not hero_ids:
+        return False
+    from Py4GWCoreLib import Party
+
+    try:
+        if not Map.IsOutpost():
+            return False
+        if not Party.IsPartyLoaded():
+            return False
+        if int(Party.GetPartySize() or 0) <= 1:
+            return False
+        existing_ids: set[int] = set()
+        for hero in Party.GetHeroes() or []:
+            try:
+                hero_id = int(getattr(hero, "hero_id", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if hero_id > 0:
+                existing_ids.add(hero_id)
+        return all(int(hero_id) in existing_ids for hero_id in hero_ids)
+    except Exception:
+        return False
+
+
+def HeroPartySetup() -> BehaviorTree:
+    """Config-driven hero team setup, built lazily as a Subtree.
+
+    Map.GetMaxPartySize() is read when this node TICKS (after the preceding
+    Travel has landed us in the destination outpost), not when the parent
+    sequence is constructed. An intact hero team is never taken apart and
+    reloaded every cycle; the fallback branch holds the ENTIRE re-formation
+    (CreateParty itself opens with LeaveParty).
+    """
+    def _build_team(_node: BehaviorTree.Node) -> BehaviorTree:
+        try:
+            team_size = _normalize_team_size(Map.GetMaxPartySize())
+        except Exception:
+            team_size = 8
+        selected_slots: List[PartyHeroSlot] = []
+        seen_hero_ids = set()
+        for slot in settings.get_party_slots(team_size):
+            hero_id = int(slot.hero_id)
+            if hero_id <= 0 or hero_id in seen_hero_ids:
+                continue
+            seen_hero_ids.add(hero_id)
+            selected_slots.append(PartyHeroSlot(hero_id=hero_id, template=slot.template.strip()))
+        hero_ids = [slot.hero_id for slot in selected_slots]
+        skillbars = [(pos, slot.template) for pos, slot in enumerate(selected_slots, start=1) if slot.template]
+
+        def _team_present(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+            return (
+                BehaviorTree.NodeState.SUCCESS
+                if _hero_party_already_formed(hero_ids)
+                else BehaviorTree.NodeState.FAILURE
+            )
+
+        return BT.Selector(
+            name="HeroPartySetup",
+            children=[
+                BT.Sequence(
+                    name="HeroTeamAlreadyFormed?",
+                    children=[
+                        BehaviorTree(
+                            BehaviorTree.ActionNode(
+                                name="HeroTeamAlreadyFormed?",
+                                action_fn=_team_present,
+                            )
+                        ),
+                        BT.LogMessage(
+                            "Hero team already formed - skipping leave party",
+                            module_name=MODULE_NAME,
+                        ),
+                    ],
+                ),
+                BT.Sequence(
+                    name="Form Hero Team",
+                    children=[
+                        BT.CreateParty(hero_ids=hero_ids, log=False),
+                        BT.Wait(duration_ms=1000),
+                        *[BT.LoadHeroSkillbar(position, template) for position, template in skillbars],
+                        CoreBT.Party.ForceHeroState(HERO_AGGRESSIVE_MODE),
+                    ],
+                ),
+            ],
+        )
+
+    return BT.Subtree("Setup Hero Team", _build_team)
 
 
 def AdvancedHeroTeam() -> BehaviorTree:
-    """Setup Dunkoro-based hero team for Pious Renewal capture."""
-    party_size = Map.GetMaxPartySize()
-
-    skill_template_map = {
-        HeroType.Gwen: "OQBDAqwDSnATP5AmOaAZAEBHgA",
-        HeroType.Vekk: "OgVDI8gsO5gTw0z0hTFAZgiA",
-        HeroType.ZhedShadowhoof: "OgVDI8gsO5gTw0z0hTFAZgiA",
-        HeroType.AcolyteSousuke: "OgVDI8gsO5gTw0z0hTFAZgiA",
-        HeroType.MasterOfWhispers: "OABDUshnSyBVBoBKgbhVVfCWCA",
-        HeroType.Olias: "OAhjQoGYIP3hhWVVaO5EeDTqNA",
-        HeroType.Dunkoro: "OwUUMsG/E4SNgbE3N3ETfQgZAMEA",
-        HeroType.Ogden: "OwUUMsG/E4SNgbE3N3ETfQgZAMEA",
-        HeroType.Livia: "OANDY7ZPPEEt4K5uWPCIVV7A",
-    }
-
-    hero_list = []
-
-    if party_size <= 4:
-        hero_list.extend([HeroType.Dunkoro, HeroType.Vekk, HeroType.Ogden])
-    else:
-        hero_list.extend([HeroType.Gwen, HeroType.Vekk, HeroType.AcolyteSousuke, HeroType.MasterOfWhispers, HeroType.Olias, HeroType.Dunkoro, HeroType.Ogden, HeroType.Livia])
-
-    return SetupHeroTeam(hero_list, skill_template_map, behavior=1)
+    """Setup the config-driven hero team (lazy, read at tick time)."""
+    return HeroPartySetup()
 
 
 # ============================================================================
@@ -9017,6 +9220,50 @@ def ensure_botting_tree() -> BottingTree:
         )
     return _botting_tree
 
+def draw_party_tab() -> None:
+    """Hero team setup tab: pick heroes + skillbar templates per team size."""
+    if settings.party_config_dirty:
+        PyImGui.text_colored("Unsaved party changes", (1.0, 0.8, 0.2, 1.0))
+    elif settings.party_config_status:
+        PyImGui.text_colored(settings.party_config_status, (0.6, 0.9, 0.6, 1.0))
+    if PyImGui.button("Save Party Formation"):
+        settings.save_party_formations()
+    PyImGui.same_line(0.0, 8.0)
+    if PyImGui.button("Reload Saved"):
+        settings.load_party_formations()
+    PyImGui.same_line(0.0, 8.0)
+    if PyImGui.button("Reset Defaults"):
+        settings.reset_party_formations()
+    PyImGui.separator()
+    if PyImGui.begin_tab_bar("PartyFormationTabs"):
+        for team_size in TEAM_PRESET_SIZES:
+            if PyImGui.begin_tab_item(f"Team of {team_size}"):
+                for slot_index in range(TEAM_PRESET_SLOT_COUNTS[team_size]):
+                    _draw_party_slot_editor(team_size, slot_index)
+                    PyImGui.separator()
+                PyImGui.end_tab_item()
+        PyImGui.end_tab_bar()
+
+
+def _draw_party_slot_editor(team_size: int, slot_index: int) -> None:
+    slot = settings.get_party_slots(team_size)[slot_index]
+    PyImGui.text(f"Hero {slot_index + 1}")
+    PyImGui.same_line(90.0, 8.0)
+    current_index = HERO_ID_TO_OPTION_INDEX.get(int(slot.hero_id), 0)
+    new_index = PyImGui.combo(f"##party_hero_{team_size}_{slot_index}", current_index, HERO_OPTION_LABELS)
+    if new_index != current_index:
+        hero = HERO_OPTIONS[new_index]
+        slot.hero_id = int(hero.value)
+        slot.template = "" if hero == HeroType.None_ else DEFAULT_HERO_TEMPLATES.get(hero, slot.template)
+        settings.party_config_dirty = True
+    PyImGui.text("Template")
+    PyImGui.same_line(90.0, 8.0)
+    new_template = PyImGui.input_text(f"##party_template_{team_size}_{slot_index}", slot.template)
+    if new_template != slot.template:
+        slot.template = new_template
+        settings.party_config_dirty = True
+
+
 def main() -> None:
     """Main entry point for the Elite Skills Capture BT bot."""
     tree = ensure_botting_tree()
@@ -9028,6 +9275,7 @@ def main() -> None:
     extra_tabs = [
         ("Skills", draw_skills_tab),
         ("Status", draw_main_tab),
+        ("Party", draw_party_tab),
     ]
     
     # Draw the BottingTree window with our custom tabs
