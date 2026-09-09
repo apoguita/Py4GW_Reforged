@@ -14,6 +14,7 @@ from Py4GWCoreLib import (
     Player,
 )
 import os
+import time
 import PySystem
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.enums_src.GameData_enums import Range
@@ -26,6 +27,7 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
 )
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Py4GWCoreLib import Agent, ConsoleLog, GLOBAL_CACHE, Player, Utils
+from Py4GWCoreLib.AgentArray import AgentArray
 from Py4GWCoreLib.Context import GWContext
 from Py4GWCoreLib.enums_src.GameData_enums import Attribute, Profession
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -131,6 +133,76 @@ def _prepare_standard_party_xandra() -> BehaviorTree:
                 BT.CreateParty(
                     hero_ids=heroes,
                     henchman_ids=[3],
+                    multibox_invite=False,
+                    log=True,
+                ),
+                *[
+                    BT.LoadHeroSkillbar(index, template, log=True)
+                    for index, template in enumerate(templates, start=1)
+                ],
+            ],
+        )
+
+def _prepare_standard_party_full() -> BehaviorTree:
+    heroes = [
+            HeroType.Vekk.value,
+            HeroType.Ogden.value,
+            HeroType.Gwen.value,
+            HeroType.MOX.value,
+            HeroType.Olias.value,
+            HeroType.Xandra.value,
+            HeroType.Livia.value
+        ]
+    templates = [
+            "OgljgwMpZO0iwB5Qp5N0h14dMA",
+            "OwUTMwmCZaj4upB8ioLKDoHghAA",
+            "OQhkAsC8gFKCNM95gpLDDRGcxA",
+            "OgejkqrMLOfb2Luj7Ku72jbzLA",
+            "OAhjUwGZYOyhqAVANUVncSzLGA",
+            "OAOjAyhDJPYTnp17xFOhmtkLGA",
+            "OAhjYkHcYOP1qqdwScxGmSzJHA"
+
+        ]
+    return BT.Sequence(
+            name="Prepare Standard EotN Party",
+            children=[
+                BT.CreateParty(
+                    hero_ids=heroes,
+                    multibox_invite=False,
+                    log=True,
+                ),
+                *[
+                    BT.LoadHeroSkillbar(index, template, log=True)
+                    for index, template in enumerate(templates, start=1)
+                ],
+            ],
+        )
+
+def _prepare_touch_team() -> BehaviorTree:
+    heroes = [
+            HeroType.Vekk.value,
+            HeroType.Ogden.value,
+            HeroType.Gwen.value,
+            HeroType.Olias.value,
+            HeroType.Xandra.value,
+            HeroType.Livia.value,
+            HeroType.PyreFierceshot.value
+        ]
+    templates = [
+            "OgNDwcnfO1CahWseAG/IkEdC",
+            "OwUTMwmCZaj4upB8ioLKDoHghAA",
+            "OQhkAsC8gFKTIc6lDMdyghQG4iB",
+            "OABCQsx0MTNUmQjohDN0ggAA",
+            "OAOjAyhDJPYTnp17xFOhmtkLGA",
+            "OAhjQwGc4QzM1QZCNiGO0QDCXMA",
+            "OgQUQ4DdXcN1QOhmA1IJGECHfDA"
+
+        ]
+    return BT.Sequence(
+            name="Prepare Standard EotN Party",
+            children=[
+                BT.CreateParty(
+                    hero_ids=heroes,
                     multibox_invite=False,
                     log=True,
                 ),
@@ -1375,6 +1447,146 @@ def EnsureSignetOfSpirits(log: bool = True) -> BehaviorTree:
     )
 
 
+def _learn_signet_of_spirits_from_elite_tome(
+    log: bool = True,
+) -> BehaviorTree:
+    """Learn Signet of Spirits with the validated native SkillTome routine."""
+
+    skill_id = int(
+        GLOBAL_CACHE.Skill.GetID(NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL) or 0
+    )
+    if skill_id <= 0:
+        return BT.Failer(name="Resolve Signet Of Spirits Failed")
+
+    # LearnSkillFromTome performs the complete native GW flow:
+    # UseItem -> select the SkillTome row with real PyMouse input ->
+    # click Learn -> verify IsSkillLearnt. No SendDialog is used.
+    return RoutinesBT.Player.LearnSkillFromTome(
+        skill_id=skill_id,
+        log=log,
+    )
+
+
+def EnsureSignetOfSpirits(log: bool = True) -> BehaviorTree:
+    """Learn Signet of Spirits when unlocked and a tome can be obtained."""
+
+    skill_name = NORN_TOURNAMENT_OPTIONAL_ELITE_SKILL
+
+    acquire_tome = BT.Selector(
+        name="Acquire Elite Ritualist Tome If Available",
+        children=[
+            BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
+            BT.Sequence(
+                name="Withdraw Stored Elite Ritualist Tome",
+                children=[
+                    _storage_has_model(
+                        RITUALIST_ELITE_TOME_MODEL_ID,
+                        1,
+                        "Check Stored Elite Ritualist Tome",
+                    ),
+                    BT.RestockItems(
+                        model_id=RITUALIST_ELITE_TOME_MODEL_ID,
+                        desired_quantity=1,
+                        allow_missing=False,
+                    ),
+                    BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
+                ],
+            ),
+            BT.Sequence(
+                name="Buy Elite Ritualist Tome With Zaishen Coin",
+                children=[
+                    BT.Selector(
+                        name="Check Gold Zaishen Coin Availability",
+                        children=[
+                            BT.HasItemQuantity(GOLD_ZAISHEN_COIN_MODEL_ID, 1),
+                            _storage_has_model(
+                                GOLD_ZAISHEN_COIN_MODEL_ID,
+                                1,
+                                "Check Stored Gold Zaishen Coin",
+                            ),
+                        ],
+                    ),
+                    BT.Travel(target_map_id=248, log=log),
+                    BT.RestockItems(
+                        model_id=GOLD_ZAISHEN_COIN_MODEL_ID,
+                        desired_quantity=1,
+                        allow_missing=False,
+                    ),
+                    BT.EqualizeGold(
+                        target_gold=100,
+                        deposit_all=False,
+                        log=log,
+                    ),
+                    BT.TargetAgentByName(
+                        agent_name="Jessie Llam",
+                        log=log,
+                    ),
+                    BT.InteractTarget(log=log),
+                    BT.Wait(1_000),
+                    BT.CraftItem(
+                        output_model_id=RITUALIST_ELITE_TOME_MODEL_ID,
+                        trade_model_ids=[GOLD_ZAISHEN_COIN_MODEL_ID],
+                        quantity_list=[1],
+                        cost=100,
+                        aftercast_ms=500,
+                    ),
+                    BT.Wait(1_000),
+                    BT.HasItemQuantity(RITUALIST_ELITE_TOME_MODEL_ID, 1),
+                ],
+            ),
+        ],
+    )
+
+    return BT.Selector(
+        name="Ensure Optional Signet Of Spirits",
+        children=[
+            _skill_state_condition(
+                skill_name,
+                learned=True,
+                name="Check Signet Of Spirits Learned",
+            ),
+            BT.Sequence(
+                name="Learn Signet Of Spirits If Resources Are Available",
+                children=[
+                    _skill_state_condition(
+                        skill_name,
+                        learned=False,
+                        name="Check Signet Of Spirits Account Unlock",
+                    ),
+                    acquire_tome,
+                    _learn_signet_of_spirits_from_elite_tome(log=log),
+                    _skill_state_condition(
+                        skill_name,
+                        learned=True,
+                        name="Verify Signet Of Spirits Learned",
+                    ),
+                    BT.LogMessage(
+                        message=(
+                            "Signet of Spirits was learned from an "
+                            "Elite Ritualist Tome."
+                        ),
+                        module_name=MODULE_NAME,
+                    ),
+                ],
+            ),
+            BT.Sequence(
+                name="Skip Optional Signet Of Spirits",
+                children=[
+                    BT.LogMessage(
+                        message=(
+                            "Signet of Spirits is unavailable or no usable Elite "
+                            "Ritualist Tome / Gold Zaishen Coin could be obtained; "
+                            "the tournament setup continues without it."
+                        ),
+                        module_name=MODULE_NAME,
+                    ),
+                    BT.Succeeder(name="Continue Without Signet Of Spirits"),
+                ],
+            ),
+        ],
+    )
+
+
 def _equip_norn_tournament_build(log: bool = True) -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
         player_id = int(Player.GetAgentID() or 0)
@@ -1736,8 +1948,8 @@ def _steps_CompleteCurseOfTheNornbear() -> list[PlannerStep]:
         ('Curse Of The Nornbear - 15 Move', lambda: BT.Move(Vec2f(14353.0, 23905.0))),
         ('Curse Of The Nornbear - 16 Pacifist', lambda: _pacifist()),
         ('Curse Of The Nornbear - 17 Move And Dialog', lambda: BT.MoveAndDialog(Vec2f(14353.0, 23905.0), 8620292)),
-        ('Curse Of The Nornbear - 18 Auto Dialog', lambda: BT.AutoDialog(137)),
-        ('Curse Of The Nornbear - 19 Auto Dialog', lambda: BT.AutoDialog(138)),
+        ('Curse Of The Nornbear - 18 Auto Dialog', lambda: BT.SendDialog(137)),
+        ('Curse Of The Nornbear - 19 Auto Dialog', lambda: BT.SendDialog(138)),
     ]
 
 
@@ -2036,7 +2248,8 @@ def _steps_FindingTheBloodstone() -> list[PlannerStep]:
 
 def _steps_LabSpace() -> list[PlannerStep]:
     return [
-        ('LabSpace - Unlock Rata Sum 0', lambda: BT.Travel(target_map_id=624)),        
+        ('LabSpace - Unlock Rata Sum 0', lambda: BT.Travel(target_map_id=624)),
+        ("LabSpace - Prepare Standard Party Full", lambda: _prepare_standard_party_full()),
         ('LabSpace - Unlock Rata Sum 1', lambda: BT.MoveAndExitMap(Vec2f(15360,12015), target_map_id=485)),
         *_planner_vanquish_point_steps('LabSpace - Unlock Rata Sum 2',[(13856,11004),(6067,-95),(-4525,-4292),(-5923,-7830),(-2872,-11614),(-6080,-13317),(-12623,-14600),(-17826,-14505),]),
         ('LabSpace - Unlock Rata Sum 3', lambda: BT.MoveAndExitMap(Vec2f(-20751,-20094), target_map_id=572)),
@@ -2055,6 +2268,643 @@ def _steps_LabSpace() -> list[PlannerStep]:
         ('LabSpace - 7', lambda:BT.MoveDirect(Vec2f(-18513,16437))),
         ('LabSpace - 7', lambda:BT.MoveAndDialog(Vec2f(-18794.00, 16287.00),8596487)),
     ]
+
+FLUCTUATION_MATRIX_MODEL_IDS = {
+    22782,
+    25413,
+}
+
+def _steps_TheElusiveGolemancer() -> list[PlannerStep]:
+    return [
+        ('TheElusiveGolemancer 0', lambda: BT.MoveAndExitMap(Vec2f(-20318,14531), target_map_id=658)),
+        ('TheElusiveGolemancer 1', lambda: BT.MoveAndDialog(Vec2f(-14542.0, 12237.0),129)),
+        ('TheElusiveGolemancer 1', lambda: BT.Move(Vec2f(-17204.16, 8545.91))),
+        ('TheElusiveGolemancer 2', lambda: BT.MoveAndInteractWithGadget(Vec2f(-17601.0, 8150.0), log=True)),
+        ('TheElusiveGolemancer 3', lambda: BT.Wait(20_000)),
+        ('TheElusiveGolemancer 4', lambda: BT.Move([Vec2f(-15960.14, 3309.37), Vec2f(-13369.91, -965.44)], avoid_obstacles=False, tolerance=800)),
+        ('TheElusiveGolemancer 5', lambda: BT.MoveAndInteractWithGadget(Vec2f(-11737.0, -3710.0), log=True)),
+            *_planner_vanquish_point_steps('TheElusiveGolemancer 6', [(-15108.84, -2793.48),(-16518.94, -662.78),]),
+            ('TheElusiveGolemancer 7', lambda: BT.WaitUntilOutOfCombat(timeout_ms=120_000)),
+            *_planner_vanquish_point_steps('TheElusiveGolemancer 8', [(-16898.24, -612.0), (-17391.0, -528.0), (-17597.36, 15027.91), (18755.0, -19827.0)]),
+            ('TheElusiveGolemancer 9', lambda: BT.WaitForMapLoad(map_id=659)),
+            ('TheElusiveGolemancer 10', lambda: BT.MoveAndInteractWithGadget(Vec2f(15979.0, -17531.0), log=True)),
+            ('TheElusiveGolemancer 11', lambda: _pacifist()),
+            *_planner_vanquish_point_steps('TheElusiveGolemancer 12', [(18031.51, -13929.63),(17886.86, -13218.39),]),
+            ('TheElusiveGolemancer 13', lambda: BT.MoveAndInteractWithGadget(Vec2f(15551.0, -13705.0), log=True)),
+            ('TheElusiveGolemancer 14', lambda: BT.Wait(3_000)),
+            ('TheElusiveGolemancer 11', lambda: _aggressive()),
+            *_planner_vanquish_point_steps('TheElusiveGolemancer 15', [(15551.0, -13705.0),(9928.16, -10998.24),(5953.36, -9815.89),(4531.82, -9827.91),(3035.53, -9450.54),(3485.59, -11380.60),],),
+            ('TheElusiveGolemancer 17', lambda: BT.MoveAndDialog((-229.0, -12033.0), 0x84)),
+            ('TheElusiveGolemancer 18', lambda: BT.Move(Vec2f(3176.96, -17026.31))),
+            ('TheElusiveGolemancer 19', lambda: BT.Wait(10_000)),
+            ('TheElusiveGolemancer 20', lambda: BT.MoveAndDialog((-2639.00, -15247.00), 0x84)),
+            ('TheElusiveGolemancer 21', lambda: BT.Move(Vec2f(3468.83, -16308.18))),
+            ('TheElusiveGolemancer 22', lambda: BT.Wait(10_000)),
+            ('TheElusiveGolemancer 23', lambda: _pacifist()),
+            ('TheElusiveGolemancer 24', lambda: BT.Move(Vec2f(5107.97, -17710.35))),
+            ('TheElusiveGolemancer 25', lambda: BT.FlagAllHeroes(5413.07, -19400.44)),
+            ('TheElusiveGolemancer 26', lambda: BT.PickupGroundItemByModelID(tuple(FLUCTUATION_MATRIX_MODEL_IDS),max_distance=10_000.0,timeout_ms=10_000,allow_unassigned=True,interaction_interval_ms=500,log=True,),),
+            ('TheElusiveGolemancer 27', lambda: BT.MoveAndInteractWithGadget(Vec2f(5356.0, -19374.0), log=True)),
+            ('TheElusiveGolemancer 28', lambda: _pixel_stack()),
+            ('TheElusiveGolemancer 29', lambda: BT.Wait(5_000)),
+            ('TheElusiveGolemancer 30', lambda: BT.DropBundle(log=True)),
+            ('TheElusiveGolemancer 31', lambda: BT.PickupGroundItemByModelID(tuple(FLUCTUATION_MATRIX_MODEL_IDS),max_distance=10_000.0,timeout_ms=10_000,allow_unassigned=True,interaction_interval_ms=500,log=True,),),
+            ('TheElusiveGolemancer 32', lambda: BT.Wait(1_000)),
+            ('TheElusiveGolemancer 33', lambda: BT.MoveAndInteractWithGadget(Vec2f(5356.0, -19374.0), log=True)),
+            ('TheElusiveGolemancer 34', lambda: _pixel_stack()),
+            ('TheElusiveGolemancer 35', lambda: BT.Wait(5_000)),
+            ('TheElusiveGolemancer 36', lambda: BT.DropBundle(log=True)),
+            ('TheElusiveGolemancer 37', lambda: BT.PickupGroundItemByModelID(tuple(FLUCTUATION_MATRIX_MODEL_IDS),max_distance=10_000.0,timeout_ms=10_000,allow_unassigned=True,interaction_interval_ms=500,log=True,)),
+            ('TheElusiveGolemancer 38', lambda: BT.Wait(1_000)),
+            ('TheElusiveGolemancer 39', lambda: BT.MoveAndInteractWithGadget(Vec2f(5356.0, -19374.0), log=True)),
+            ('TheElusiveGolemancer 40', lambda: _pixel_stack()),
+            ('TheElusiveGolemancer 41', lambda: BT.Wait(5_000)),
+            ('TheElusiveGolemancer 42', lambda: BT.DropBundle(log=True)),
+            ('TheElusiveGolemancer 43', lambda: BT.VanquishNode([(6882.36, -20769.41), (6566.0, -21425.0)], clear_area_radius=Range.Earshot.value)),
+            ('TheElusiveGolemancer 44', lambda: BT.WaitForMapLoad(map_id=660)),
+            ('TheElusiveGolemancer 45', lambda: _aggressive()),
+            *_planner_vanquish_point_steps('TheElusiveGolemancer 46', [(-12164.0, 10409.53),(-12584.28, 13570.28),(-15062.15, 16139.62),(-18265.0, 13647.0),]),
+            ('TheElusiveGolemancer 46', lambda: BT.WaitForMapLoad(map_id=640)),
+        ]
+
+def _unflag_alittlehelp_heroes_local() -> BehaviorTree:
+    def _unflag(hero_position: int) -> BehaviorTree:
+        def _action() -> BehaviorTree.NodeState:
+            try:
+                GLOBAL_CACHE.Party.Heroes.UnflagHero(hero_position)
+
+                ConsoleLog(
+                    MODULE_NAME,
+                    f"A Little Help: hero {hero_position} unflagged.",
+                    log=True,
+                )
+
+                return BehaviorTree.NodeState.SUCCESS
+
+            except Exception as exc:
+                ConsoleLog(
+                    MODULE_NAME,
+                    f"A Little Help: failed to unflag hero {hero_position}: {exc}",
+                    log=True,
+                )
+
+                return BehaviorTree.NodeState.FAILURE
+
+        return BehaviorTree(
+            BehaviorTree.ActionNode(
+                name=f"Unflag A Little Help Hero {hero_position}",
+                action_fn=_action,
+                aftercast_ms=125,
+            )
+        )
+
+    return BT.Sequence(
+        name="Unflag A Little Help Heroes",
+        children=[
+            _unflag(1),
+            _unflag(2),
+            _unflag(3),
+            BT.Wait(500),
+        ],
+    )
+
+
+def _steps_ALittleHelp() -> list[PlannerStep]:
+        return [
+('ALittleHelp 0', lambda: BT.MoveAndExitMap(Vec2f(20320,16861), target_map_id=501)),
+*_planner_vanquish_point_steps('ALittleHelp 1', [(-22469,-5887),(-12978,-8490),(2552,-9452),(9029,-9692),(14574,-9613)]),
+('ALittleHelp 2', lambda: BT.MoveAndDialog(Vec2f(17611.00, -9341.00), 8598532)),
+*_planner_vanquish_point_steps('ALittleHelp 3',[(8016,-10470),(1025,-8638),(-4327,-10132),(-8425,-12543),]),
+('ALittleHelp 4', lambda: BT.MoveAndExitMap(Vec2f(-8618,-14375), target_map_id=572)),
+*_planner_vanquish_point_steps('ALittleHelp 4',[(-5413,15875),(-15672,11827),(-10182,-115),(-16273,-5484),(-20039,-10133),(-21923,-9612),(-24115,-10567)]),
+('ALittleHelp 6', lambda: BT.WaitUntilOutOfCombat()),
+('ALittleHelp 7', lambda: BT.MoveAndDialog(Vec2f(-24216.00, -10563.00), 8598532)),
+('ALittleHelp 8', lambda: BT.Travel(target_map_name="Rata Sum")),
+('ALittleHelp 9', lambda: BT.MoveAndDialog(Vec2f(16051.00, 15183.00), 8598535)),
+('ALittleHelp 10', lambda: BT.SendDialog(132)),
+('ALittleHelp 11', lambda: BT.WaitForMapLoad(map_id=664)),
+('ALittleHelp 17', lambda: BT.Move(Vec2f(-16715.00, 8931.00))),
+('ALittleHelp 14', lambda: BT.FlagHero(1, -17880.37, 10046.01)),
+('ALittleHelp 15', lambda: BT.FlagHero(2, -17880.37, 10046.01)),
+('ALittleHelp 16', lambda: BT.FlagHero(3, -17880.37, 10046.01)),
+('ALittleHelp 17', lambda: BT.Move(Vec2f(-15538.57, 7641.21))),
+('ALittleHelp 18', lambda: BT.Wait(5000)),
+('ALittleHelp 18', lambda: BT.WaitForClearEnemiesInArea(-15538.57, 7641.21,stable_clear_ms=60_000, radius=Range.Spirit.value, log=True)),
+('ALittleHelp 19', lambda: _unflag_alittlehelp_heroes_local()),
+('ALittleHelp 20', lambda:BT.TargetAgentByName(agent_name='Sokka', log=True)),
+('ALittleHelp 21', lambda:BT.InteractTargetAndSendDialog(132)),
+('ALittleHelp 22', lambda: BT.DropBundle(log=True)),
+('ALittleHelp 23', lambda: BT.Wait(5000)),
+('ALittleHelp 21', lambda:BT.InteractTargetAndSendDialog(132)),
+('ALittleHelp 22', lambda: BT.DropBundle(log=True)),
+*_planner_vanquish_point_steps('ALittleHelp 23',[(-16519,9556),(-14161,7403),(-10389,9222),(-9492,10399),(-7471,13112),(-6188,15259),]),
+('ALittleHelp 24', lambda: BT.WaitForMapToChange(map_id=640)),
+('ALittleHelp 25', lambda: BT.MoveAndDialog(Vec2f(16051.00, 15183.00),8622855))
+
+]
+
+def _steps_Jalis() -> list[PlannerStep]:
+        return [
+('Jalis 0 - Travel Eyes of The North', lambda: BT.Travel(642)),
+('Jalis 1 - Enter Hall of Monuments ', lambda: BT.MoveAndExitMap(Vec2f(1522.0, 464.0), target_map_id=499)),
+('Jalis 2 - Navigate to Target Location', lambda: BT.Move([(-1797,-3176),(-8148,-3770),])),
+('Jalis 3 - Exit Current Map', lambda: BT.MoveAndExitMap(Vec2f(-10224,-3758), target_map_id=625)),
+*_planner_vanquish_point_steps('Jalis 4 - Vanquish Points',[(19160,18738),(1408,19625),(-2193,16151),(-4747,17842),]),
+('Jalis 5 - Interact for vision', lambda: BT.MoveAndDialog(Vec2f(-4874.00, 17584.00), 0x838907)),
+('Jalis 6 - Travel to Eyes of The North', lambda: BT.Travel(642)),
+('Jalis 7 - Exit Map', lambda: BT.MoveAndExitMap(Vec2f(-4575,5752), target_map_id=646)),
+('Jalis 8 - Interact with Jalis', lambda: BT.MoveAndDialog(Vec2f(-6662.00, 6584.00), 0x63F)),
+('Jalis 9 - Travel Eyes of The North', lambda: BT.Travel(642)),
+('Jalis 10 - Prepare Touch Team', lambda: _prepare_touch_team()),
+('Jalis 10 - Exit Map', lambda: BT.MoveAndExitMap(Vec2f(1522.0, 464.0), target_map_id=499)),
+('Jalis 11 - Navigate to Target Location', lambda: BT.Move([(-1797,-3176),(-8148,-3770),])),
+('Jalis 12 - Enter to Battledepths', lambda: BT.MoveAndExitMap(Vec2f(-10224,-3758), target_map_id=625)),
+*_planner_vanquish_point_steps('Jalis 13 - Vanquish Points',[(19160,18738),(1408,19625),(-2193,16151),(-4747,17842),]),
+('Jalis 14 - Interact with Jalis', lambda: BT.MoveAndDialog(Vec2f(-4874.00, 17584.00), 0x833101)),
+*_planner_vanquish_point_steps('Jalis 15 - Vanquish Points', [(1115,11797),(6542,12098),(7916,10192),(6055,7277),]),
+('Jalis 16 - Enter to HeartofTheShiverspeak', lambda: BT.MoveAndExitMap(Vec2f(5873,8216), target_map_id=607)),
+        ]
+
+HEART_BUDGER_MODEL_ID = 6230
+HEART_CYNDR_MODEL_ID = 6965
+HEART_CYNDR_XANDRA_HERO_POSITION = 5
+HEART_CYNDR_BLACKBOARD_KEY = "heart_cyndr_agent_id"
+HEART_CYNDR_XANDRA_FLAG = Vec2f(-6814.0, -14431.0)
+
+
+def _heart_player_near(
+    pos: Vec2f,
+    *,
+    tolerance: float = 250.0,
+    name: str = "Check Heart Position",
+) -> BehaviorTree:
+    def _check() -> BehaviorTree.NodeState:
+        try:
+            x, y = Player.GetXY()
+        except Exception:
+            return BehaviorTree.NodeState.FAILURE
+
+        dx = float(x) - float(pos.x)
+        dy = float(y) - float(pos.y)
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if dx * dx + dy * dy <= float(tolerance) ** 2
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name=name,
+            condition_fn=_check,
+        )
+    )
+
+
+def _heart_wait_bundle_state(
+    *,
+    holding: bool,
+    timeout_ms: int = 5_000,
+    name: str,
+) -> BehaviorTree:
+    def _check() -> BehaviorTree.NodeState:
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0:
+            return BehaviorTree.NodeState.FAILURE
+
+        has_bundle = bool(Agent.IsHoldingItem(player_id))
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if has_bundle == bool(holding)
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilSuccessNode(
+            name=name,
+            condition_fn=_check,
+            throttle_interval_ms=150,
+            timeout_ms=max(0, int(timeout_ms)),
+        )
+    )
+
+
+def _heart_destroy_wall(
+    *,
+    name: str,
+    wall_pos: Vec2f,
+    verify_pos: Vec2f,
+) -> BehaviorTree:
+    """Destroy a cracked wall and prove the player can physically cross it."""
+
+    def _cross_check(label: str) -> BehaviorTree:
+        return BT.Sequence(
+            name=label,
+            children=[
+                BT.Move(
+                    verify_pos,
+                    pause_on_combat=False,
+                    tolerance=175.0,
+                    ignore_destination_obstacles=True,
+                    log=True,
+                ),
+                _heart_player_near(
+                    verify_pos,
+                    tolerance=275.0,
+                    name=f"{label} - Verify Player Crossed Wall",
+                ),
+            ],
+        )
+
+    def _breach_attempt(attempt: int) -> BehaviorTree:
+        return BT.Sequence(
+            name=f"{name} - Breach Attempt {attempt}",
+            children=[
+                _pacifist(),
+                BT.MoveAndInteractByModelID(
+                    HEART_BUDGER_MODEL_ID,
+                    log=True,
+                ),
+                _heart_wait_bundle_state(
+                    holding=True,
+                    timeout_ms=5_000,
+                    name=f"{name} - Attempt {attempt} Wait For Powder Keg",
+                ),
+                BT.Move(
+                    wall_pos,
+                    pause_on_combat=False,
+                    tolerance=50.0,
+                    log=True,
+                ),
+                _heart_wait_bundle_state(
+                    holding=True,
+                    timeout_ms=750,
+                    name=f"{name} - Attempt {attempt} Verify Keg Still Carried",
+                ),
+                BT.DropBundle(log=True),
+                _heart_wait_bundle_state(
+                    holding=False,
+                    timeout_ms=2_000,
+                    name=f"{name} - Attempt {attempt} Verify Keg Dropped",
+                ),
+                BT.Wait(3_500),
+                _cross_check(f"{name} - Attempt {attempt} Cross Wall"),
+                _aggressive(),
+            ],
+        )
+
+    return BT.Selector(
+        name=name,
+        children=[
+            BT.Sequence(
+                name=f"{name} - Wall Already Open",
+                children=[
+                    _cross_check(f"{name} - Probe Existing Passage"),
+                    _aggressive(),
+                ],
+            ),
+            _breach_attempt(1),
+            _breach_attempt(2),
+            _breach_attempt(3),
+            BT.Sequence(
+                name=f"{name} - Breach Failed",
+                children=[
+                    _aggressive(),
+                    BT.LogMessage(
+                        message=f"{name}: wall could not be crossed after 3 powder-keg attempts.",
+                        module_name=MODULE_NAME,
+                    ),
+                    BT.Failer(name=f"{name} - Stop After Failed Wall Breach"),
+                ],
+            ),
+        ],
+    )
+
+
+def _heart_find_agent_by_model_id(model_id: int) -> int:
+    try:
+        for agent_id in AgentArray.GetAgentArray():
+            agent_id = int(agent_id or 0)
+            if agent_id > 0 and int(Agent.GetModelID(agent_id) or 0) == int(model_id):
+                return agent_id
+    except Exception:
+        pass
+    return 0
+
+
+def _heart_wait_for_cyndr(timeout_ms: int = 15_000) -> BehaviorTree:
+    def _find(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        agent_id = _heart_find_agent_by_model_id(HEART_CYNDR_MODEL_ID)
+        if agent_id <= 0:
+            return BehaviorTree.NodeState.FAILURE
+
+        node.blackboard[HEART_CYNDR_BLACKBOARD_KEY] = agent_id
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilSuccessNode(
+            name="Heart - Wait For Cyndr",
+            condition_fn=_find,
+            throttle_interval_ms=250,
+            timeout_ms=max(0, int(timeout_ms)),
+        )
+    )
+
+
+def _heart_cyndr_is_dead() -> BehaviorTree:
+    def _check(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        agent_id = int(node.blackboard.get(HEART_CYNDR_BLACKBOARD_KEY, 0) or 0)
+        if agent_id <= 0:
+            agent_id = _heart_find_agent_by_model_id(HEART_CYNDR_MODEL_ID)
+            if agent_id > 0:
+                node.blackboard[HEART_CYNDR_BLACKBOARD_KEY] = agent_id
+
+        if agent_id <= 0:
+            return BehaviorTree.NodeState.FAILURE
+
+        living = Agent.GetLivingAgentByID(agent_id)
+        dead = bool(
+            Agent.IsDead(agent_id)
+            or (living is not None and float(Agent.GetHealth(agent_id) or 0.0) <= 0.001)
+        )
+        return (
+            BehaviorTree.NodeState.SUCCESS
+            if dead
+            else BehaviorTree.NodeState.FAILURE
+        )
+
+    return BehaviorTree(
+        BehaviorTree.ConditionNode(
+            name="Heart - Check Cyndr Dead",
+            condition_fn=_check,
+        )
+    )
+
+
+HEART_CYNDR_XANDRA_SKILL_SEQUENCE = (2, 1, 3, 4, 5, 6)
+
+
+def _heart_set_xandra_manual_skill_ai(enabled: bool) -> BehaviorTree:
+    """Enable/disable HeroAI for Xandra slots 1-6 while we force the setup order."""
+
+    def _apply() -> BehaviorTree.NodeState:
+        hero_position = HEART_CYNDR_XANDRA_HERO_POSITION
+        hero_agent_id = int(
+            GLOBAL_CACHE.Party.Heroes.GetHeroAgentIDByPartyPosition(hero_position) or 0
+        )
+        if hero_agent_id <= 0:
+            ConsoleLog(
+                MODULE_NAME,
+                "Heart: Xandra is unavailable while configuring her Cyndr skill AI.",
+                log=True,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            for slot in range(1, 7):
+                GLOBAL_CACHE.Party.Heroes.SetSkillAIEnabled(
+                    hero_agent_id,
+                    slot,
+                    bool(enabled),
+                )
+        except Exception as exc:
+            ConsoleLog(
+                MODULE_NAME,
+                f"Heart: failed to configure Xandra skill AI: {exc}",
+                log=True,
+            )
+            return BehaviorTree.NodeState.FAILURE
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=(
+                "Heart - Enable Xandra Cyndr Skill AI"
+                if enabled
+                else "Heart - Disable Xandra Cyndr Skill AI"
+            ),
+            action_fn=_apply,
+            aftercast_ms=100,
+        )
+    )
+
+
+def _heart_xandra_skill_ready(slot: int) -> bool:
+    try:
+        skillbar = GLOBAL_CACHE.SkillBar.GetHeroSkillbar(
+            HEART_CYNDR_XANDRA_HERO_POSITION
+        )
+        if slot < 1 or slot > len(skillbar):
+            return False
+
+        skill_data = skillbar[slot - 1]
+        skill_id = int(getattr(getattr(skill_data, "id", None), "id", 0) or 0)
+        recharge = getattr(skill_data, "get_recharge", 0)
+        if callable(recharge):
+            recharge = recharge()
+        try:
+            recharge = float(recharge or 0.0)
+        except (TypeError, ValueError):
+            recharge = 0.0
+
+        return bool(skill_id > 0 and recharge <= 0.0)
+    except Exception:
+        return False
+
+
+def _heart_force_xandra_skill(slot: int) -> BehaviorTree:
+    """Cast one ready Xandra slot manually; unavailable/recharging slots are skipped."""
+
+    def _cast() -> BehaviorTree.NodeState:
+        hero_position = HEART_CYNDR_XANDRA_HERO_POSITION
+        hero_agent_id = int(
+            GLOBAL_CACHE.Party.Heroes.GetHeroAgentIDByPartyPosition(hero_position) or 0
+        )
+        if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+            ConsoleLog(
+                MODULE_NAME,
+                f"Heart: Xandra unavailable for forced slot {slot}; continuing.",
+                log=True,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        if not _heart_xandra_skill_ready(slot):
+            ConsoleLog(
+                MODULE_NAME,
+                f"Heart: Xandra slot {slot} is not ready; keeping ordered setup moving.",
+                log=True,
+            )
+            return BehaviorTree.NodeState.SUCCESS
+
+        try:
+            GLOBAL_CACHE.SkillBar.HeroUseSkill(
+                0,
+                int(slot),
+                int(hero_position),
+            )
+            ConsoleLog(
+                MODULE_NAME,
+                f"Heart: forced Xandra slot {slot} for Cyndr setup.",
+                log=True,
+            )
+        except Exception as exc:
+            ConsoleLog(
+                MODULE_NAME,
+                f"Heart: failed to force Xandra slot {slot}: {exc}",
+                log=True,
+            )
+            # Do not leave Xandra's manual setup half-configured because one
+            # dispatch failed; continue so the sequence can re-enable HeroAI.
+            return BehaviorTree.NodeState.SUCCESS
+
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _finished_casting() -> BehaviorTree.NodeState:
+        hero_agent_id = int(
+            GLOBAL_CACHE.Party.Heroes.GetHeroAgentIDByPartyPosition(
+                HEART_CYNDR_XANDRA_HERO_POSITION
+            ) or 0
+        )
+        if hero_agent_id <= 0 or Agent.IsDead(hero_agent_id):
+            return BehaviorTree.NodeState.SUCCESS
+        try:
+            return (
+                BehaviorTree.NodeState.RUNNING
+                if Agent.IsCasting(hero_agent_id)
+                else BehaviorTree.NodeState.SUCCESS
+            )
+        except Exception:
+            return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Sequence(
+        name=f"Heart - Xandra Forced Slot {slot}",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name=f"Heart - Cast Xandra Slot {slot}",
+                    action_fn=_cast,
+                    aftercast_ms=0,
+                )
+            ),
+            # Give the client a moment to publish the hero casting state before
+            # checking it, otherwise two HeroUseSkill commands can be queued too fast.
+            BT.Wait(150),
+            BT.Selector(
+                name=f"Heart - Wait Xandra Slot {slot} Or Continue",
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.WaitUntilNode(
+                            name=f"Heart - Wait Xandra Slot {slot} Cast End",
+                            condition_fn=_finished_casting,
+                            throttle_interval_ms=100,
+                            timeout_ms=4_500,
+                        )
+                    ),
+                    BT.Succeeder(
+                        name=f"Heart - Xandra Slot {slot} Cast Wait Timeout Continue"
+                    ),
+                ],
+            ),
+            BT.Wait(100),
+        ],
+    )
+
+
+def _heart_xandra_cyndr_skill_sequence() -> BehaviorTree:
+    """Force Xandra's requested Cyndr setup order: 2 -> 1 -> 3 -> 4 -> 5 -> 6."""
+    return BT.Sequence(
+        name="Heart - Xandra Cyndr Skill Sequence 2-1-3-4-5-6",
+        children=[
+            _heart_set_xandra_manual_skill_ai(False),
+            *[
+                _heart_force_xandra_skill(slot)
+                for slot in HEART_CYNDR_XANDRA_SKILL_SEQUENCE
+            ],
+            _heart_set_xandra_manual_skill_ai(True),
+        ],
+    )
+
+def _heart_unflag_cyndr_dps_heroes() -> BehaviorTree:
+    """Unflag every Touch-team hero except Xandra."""
+
+    def _apply() -> BehaviorTree.NodeState:
+        hero_count = int(GLOBAL_CACHE.Party.GetHeroCount() or 0)
+        failed = False
+
+        for hero_position in range(1, hero_count + 1):
+            if hero_position == HEART_CYNDR_XANDRA_HERO_POSITION:
+                continue
+            try:
+                GLOBAL_CACHE.Party.Heroes.UnflagHero(hero_position)
+            except Exception as exc:
+                failed = True
+                ConsoleLog(
+                    MODULE_NAME,
+                    f"Heart: failed to unflag hero {hero_position}: {exc}",
+                    log=True,
+                )
+
+        return (
+            BehaviorTree.NodeState.FAILURE
+            if failed
+            else BehaviorTree.NodeState.SUCCESS
+        )
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Heart - Unflag All Touch Heroes Except Xandra",
+            action_fn=_apply,
+            aftercast_ms=250,
+        )
+    )
+
+
+def _heart_wait_until_cyndr_dead(timeout_ms: int = 10 * 60_000) -> BehaviorTree:
+    """Wait for the Touch team to kill Cyndr without using powder kegs."""
+    return BehaviorTree(
+        BehaviorTree.RepeaterUntilSuccessNode(
+            name="Heart - Wait Until Cyndr Is Dead",
+            child=BT.Node(_heart_cyndr_is_dead()),
+            timeout_ms=max(0, int(timeout_ms)),
+        )
+    )
+
+def _steps_LabSpace() -> list[PlannerStep]:
+    return [
+        ('LabSpace - Unlock Rata Sum 0', lambda: BT.Travel(target_map_id=624)),        
+        ('LabSpace - Unlock Rata Sum 1', lambda: BT.MoveAndExitMap(Vec2f(15360,12015), target_map_id=485)),
+        *_planner_vanquish_point_steps('LabSpace - Unlock Rata Sum 2',[(13856,11004),(6067,-95),(-4525,-4292),(-5923,-7830),(-2872,-11614),(-6080,-13317),(-12623,-14600),(-17826,-14505),]),
+        ('LabSpace - Unlock Rata Sum 3', lambda: BT.MoveAndExitMap(Vec2f(-20751,-20094), target_map_id=572)),
+        *_planner_vanquish_point_steps('LabSpace - Unlock Rata Sum 4',[(16143,13302),(11572,13967),(4551,15089),(-1219,14737),(-6124,15859),(-11606,14416),(-17312,12108),(-20647,9415),(-23916,9351),(-25863,10650),]),
+        ('LabSpace - Unlock Rata Sum 5', lambda: BT.MoveAndExitMap(Vec2f(-26394,10028), target_map_id=569)),
+        *_planner_vanquish_point_steps('LabSpace - Unlock Rata Sum 6',[ (17610,-6862),(17279,-1470),(17874,7038), (16322,13060)]),
+        ('LabSpace - Unlock Rata Sum 7', lambda: BT.MoveAndExitMap(Vec2f(16411,14405), target_map_id=640)),
+        ('LabSpace - 1', lambda: BT.MoveAndDialog(Vec2f(16024.0, 18468.0), 8596484)),
+
+def _heart_cyndr_encounter() -> BehaviorTree:
+    """Defeat Cyndr with the validated Touch team.
+
+    Boss powder-keg mechanics are intentionally not used here. Xandra stays
+    fixed in the room and performs the requested 2 -> 1 -> 3 -> 4 -> 5 -> 6
+    sequence once. Every other hero is explicitly unflagged so HeroAI can
+    freely engage Cyndr and can also reach the player for resurrection.
+    """
+    return BT.Sequence(
+        name="Heart - Defeat Cyndr With Touch Team",
+        children=[
+            _aggressive(),
+            _heart_unflag_cyndr_dps_heroes(),
+            BT.FlagHero(
+                HEART_CYNDR_XANDRA_HERO_POSITION,
+                HEART_CYNDR_XANDRA_FLAG.x,
+                HEART_CYNDR_XANDRA_FLAG.y,
+            ),
+            BT.Wait(400),
+            BT.TargetAgentByModelID(HEART_CYNDR_MODEL_ID, log=True),
+            _heart_xandra_cyndr_skill_sequence(),
+            _heart_wait_until_cyndr_dead(),
+        ],
+    )
 
 FLUCTUATION_MATRIX_MODEL_IDS = {
     22782,
@@ -2143,14 +2993,96 @@ def _steps_ALittleHelp() -> list[PlannerStep]:
 ('ALittleHelp 21', lambda:BT.InteractTargetAndSendDialog(132)),
 ('ALittleHelp 22', lambda: BT.DropBundle(log=True)),
 
+def _steps_HeartofTheShiverspeak() -> list[PlannerStep]:
+    return [
+        *_planner_vanquish_point_steps('HeartofTheShiverspeak - 01', [(16656,10285),(14959,6248),(11603,7924),(11184,6397),(11129,2735),(7633,832),], clear_area_radius=Range.Earshot.value),
+        ('HeartofTheShiverspeak - 02 Move And Dialog', lambda: BT.MoveAndDialog(Vec2f(7361.00, 591.00), 0x833104)),
+        *_planner_vanquish_point_steps('HeartofTheShiverspeak - 03 Kill', [(10241,-1296),(11520,-2522),]),
+        (
+            'HeartofTheShiverspeak - 04 Destroy Wall 1',
+            lambda: _heart_destroy_wall(
+                name='Heart Wall 1',
+                wall_pos=Vec2f(12216, -3053),
+                verify_pos=Vec2f(12777, -3380),
+            ),
+        ),
+        *_planner_vanquish_point_steps('HeartofTheShiverspeak - 05 Vanquish Route 01', [(12216,-3053),(18707,-6839),]),
+        ('HeartofTheShiverspeak - 06 Exit Level 1', lambda: BT.MoveAndExitMap(Vec2f(19368,-6902), target_map_id=608)),
+        *_planner_vanquish_point_steps('HeartofTheShiverspeak - 07 Vanquish Route 02', [(-16570,-10792),(-17411,-7548),(-17428,-4996),]),
+        (
+            'HeartofTheShiverspeak - 08 Destroy Wall 2',
+            lambda: _heart_destroy_wall(
+                name='Heart Wall 2',
+                wall_pos=Vec2f(-17080,-3726),
+                verify_pos=Vec2f(-17107,-3076),
+            ),
+        ),
+        *_planner_vanquish_point_steps('HeartofTheShiverspeak - 09 Vanquish Route 03', [(-17329,2321),(-18794,3595),]),
+        ('HeartofTheShiverspeak - 10 Wait For Level 3', lambda: BT.WaitForMapToChange(map_id=609)),
+        (
+            'HeartofTheShiverspeak - 11 Destroy Wall 3',
+            lambda: _heart_destroy_wall(
+                name='Heart Wall 3',
+                wall_pos=Vec2f(1273,-17228),
+                verify_pos=Vec2f(728,-16696),
+            ),
+        ),
+        *_planner_vanquish_point_steps('HeartofTheShiverspeak - 12 Vanquish Route 04', [(828,-16794),(-722,-14645),(-1331,-13489),(-4122,-10775),]),
+        (
+            'HeartofTheShiverspeak - 13 Destroy Wall 4',
+            lambda: _heart_destroy_wall(
+                name='Heart Wall 4',
+                wall_pos=Vec2f(-5170,-11489),
+                verify_pos=Vec2f(-5499,-11675),
+            ),
+        ),
+        ('HeartofTheShiverspeak - 14 Move to Cyndr Room', lambda: BT.Move([(-5499,-11675),(-6779,-14780)], pause_on_combat=False)),
+        ('HeartofTheShiverspeak - 15 Wait For Cyndr', lambda: _heart_wait_for_cyndr()),
+        ('HeartofTheShiverspeak - 16 Defeat Cyndr', lambda: _heart_cyndr_encounter()),
+        ('HeartofTheShiverspeak - 17 Exit Level 3', lambda: BT.MoveAndInteract(Vec2f(-5739.00, -17127.00))),
+        ('HeartofTheShiverspeak - 18 Move To Exit', lambda: BT.MoveAndInteract(Vec2f(-6592.00, -16928.00),)),
+        ('HeartofTheShiverspeak - 19 Wait For Map Change', lambda: BT.WaitForMapToChange(map_id=625, timeout_ms=190_000)),
+        ('HeartofTheShiverspeak - 20 Talk to Jalis', lambda: BT.MoveAndDialog(Vec2f(-4874.00, 17584.00),0x833107)),
+        ('HeartofTheShiverspeak - 21 Talk to Jalis for next step', lambda: BT.SendDialog(0x84)),
+    ]
 
-
-
+def _steps_DestructionsDepth() -> list[PlannerStep]:
+    return [
+        ('DestructionsDepth - 01 Wait for map change', lambda: BT.WaitForMapToChange(map_id=670)),
+        ('DestructionsDepth - 02 Move and interact with golem 1', lambda: BT.MoveAndDialog(Vec2f(14875.00, -577.00),0x88)),
+        ('DestructionsDepth - 10 Change Golem Type', lambda: BT.MoveAndDialog(Vec2f(14875.00, -577.00),0x85)),
+        ('DestructionsDepth - 03 Wait mana', lambda: BT.Wait(5000)),
+        ('DestructionsDepth - 03 Move and interact with golem 2', lambda: BT.MoveAndDialog(Vec2f(14615.07, -518.46),0x88)),
+        ('DestructionsDepth - 03 Wait mana', lambda: BT.Wait(5000)),
+        ('DestructionsDepth - 04 Move and interact with golem 3', lambda: BT.MoveAndDialog(Vec2f(14206.00, -373.00),0x88)),
+        *_planner_vanquish_point_steps('DestructionsDepth - 05 Vanquish Route', [(13838,-1004),(9735,-795),(6821,-1560),(7233,-4327),(4614,-3797),]),
+        ('DestructionsDepth - 06 Wait open door', lambda: BT.Wait(15000)),
+        *_planner_vanquish_point_steps('DestructionsDepth - 07 Vanquish Route', [(1602,-4001),(531,-5912),(-2602,-7593),(-3055,-9348),(-2090,-14031),(-5409,-16717),(-8116,-16917),]),
+        ('DestructionsDepth - 08 Move and exit', lambda: BT.MoveAndExitMap(Vec2f(-7550,-18381),target_map_id=671)),
+        ('DestructionsDepth - 09 Move and interact with golem 1', lambda: BT.MoveAndDialog(Vec2f(1863.00, 2429.00),0x88)),
+        ('DestructionsDepth - 10 Change Golem Type', lambda: BT.MoveAndDialog(Vec2f(1863.00, 2429.00),0x85)),
+        ('DestructionsDepth - 10 Wait mana', lambda: BT.Wait(5000)),
+        ('DestructionsDepth - 11 Move and interact with golem 2', lambda: BT.MoveAndDialog(Vec2f(2115.00, 2518.00),0x88)),
+        ('DestructionsDepth - 12 Wait mana', lambda: BT.Wait(5000)),
+        ('DestructionsDepth - 13 Move and interact with golem 3', lambda: BT.MoveAndDialog(Vec2f(2333.00, 2556.00),0x88)),
+        *_planner_vanquish_point_steps('DestructionsDepth - 14 Vanquish Route', [(5039,2032),(5939,152),(7203,-3396),(5053,-7207),]),
+        ('DestructionsDepth - 15 Clear Area', lambda: BT.ClearEnemiesInArea(Vec2f(5053,-7207),radius=Range.Compass.value,)),
+        ('DestructionsDepth - 16 Wait for Clear Enemies', lambda: BT.WaitForClearEnemiesInArea(5053,-7207, radius=Range.Compass.value, stable_clear_ms=60_000,)),
+        *_planner_vanquish_point_steps('DestructionsDepth - 17 Vanquish Route', [(7318,-3547),(12260,-3868),(14750,-5535),(15423,-17214),]),
+        ('DestructionsDepth - 18 Move and exit', lambda: BT.MoveAndExitMap(Vec2f(15474,-18742),target_map_id=672)),
+        ('DestructionsDepth - 19 Move and interact with golem 1', lambda: BT.MoveAndDialog(Vec2f(-40.00, 3742.00),0x88)),
+        ('DestructionsDepth - 20 Change Golem Type', lambda: BT.MoveAndDialog(Vec2f(-40.00, 3742.00),0x85)),
+        ('DestructionsDepth - 20 Wait mana', lambda: BT.Wait(5000)),
+        ('DestructionsDepth - 21 Move and interact with golem 2', lambda: BT.MoveAndDialog(Vec2f(331.00, 3745.00),0x88)),
+        ('DestructionsDepth - 22 Change Golem Type', lambda: BT.MoveAndDialog(Vec2f(331.00, 3745.00),0x85)),
+        ('DestructionsDepth - 22 Wait mana', lambda: BT.Wait(5000)),
+        ('DestructionsDepth - 23 Move and interact with golem 3', lambda: BT.MoveAndDialog(Vec2f(-369.00, 3750.00),0x88)),
+        *_planner_vanquish_point_steps('DestructionsDepth - 24 Vanquish Route', [(-1781,3491),(-1056,4167),(1150,4138),(2034,3173),(934,1862),(1386,656),(-664,370),]),
+        ('DestructionsDepth - 25 Wait for Map Change', lambda: BT.WaitForMapToChange(map_id=652)),
+        
 
 
     ]
-
-
 
 # ---------------------------------------------------------------------------
 # Optional Olias unlock
@@ -2543,6 +3475,9 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         *_steps_LabSpace(),
         *_steps_TheElusiveGolemancer(),
         *_steps_ALittleHelp(),
+        *_steps_Jalis(),
+        *_steps_HeartofTheShiverspeak(),
+        *_steps_DestructionsDepth()
     ]
 
 

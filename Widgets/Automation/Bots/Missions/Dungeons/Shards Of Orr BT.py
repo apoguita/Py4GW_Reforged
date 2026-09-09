@@ -2773,7 +2773,7 @@ def TorchAwareVanquish(
     points: Sequence[PathPoint],
     name: str,
     *,
-    clear_area_radius: float = Range.Spirit.value,
+    clear_area_radius: float = Range.Spellcast.value,
     pause_on_combat: bool | None = None,
     flag_heroes_to_waypoint: bool = False,
     move_tolerance: float = 500.0,
