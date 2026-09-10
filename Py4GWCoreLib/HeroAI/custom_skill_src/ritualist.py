@@ -218,8 +218,9 @@ class RitualistSkills:
         skill = CustomSkill()
         skill.SkillID = GLOBAL_CACHE.Skill.GetID("Ancestors_Rage")
         skill.SkillType = SkillType.Skill.value
-        skill.TargetAllegiance = Skilltarget.AllyMartial.value
+        skill.TargetAllegiance = Skilltarget.AllyWithAdjacentEnemies.value
         skill.Nature = SkillNature.Offensive.value
+        skill.Conditions.TargetingStrict = True
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()

@@ -37,6 +37,11 @@ class Agent:
         """
         return Agent.GetAgentByID(agent_id) is not None
 
+    @staticmethod
+    def IsTargettable(agent_id: int) -> bool:
+        """Return whether Guild Wars permits selecting this agent as a target."""
+        return bool(PyAgent.get_agent_is_targettable(agent_id))
+
     _agent_cache: dict[int, "AgentStruct"] = {}
     _living_cache: dict[int, "AgentLivingStruct"] = {}
     _item_cache: dict[int, "AgentItemStruct"] = {}

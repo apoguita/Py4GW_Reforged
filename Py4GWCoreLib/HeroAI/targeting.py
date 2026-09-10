@@ -109,6 +109,72 @@ def TargetLowestAlly(other_ally=False, filter_skill_id=0, distance=Range.Spellca
     return Utils.GetFirstFromArray(ally_array)
 
 
+def TargetAllyWithMostAdjacentEnemies(
+    distance=Range.Spellcast.value,
+    adjacent_range=Range.Adjacent.value,
+    min_enemies=2,
+):
+    """Select any living allied creature surrounded by enough living foes.
+
+    Unlike the ordinary ally selectors, this intentionally includes spirits
+    and minions and does not apply persistent-effect filtering. Ancestors'
+    Rage ends after one second, so an effect-presence filter would incorrectly
+    suppress valid summoned targets whose effects are not observable.
+    """
+    player_id = Player.GetAgentID()
+    player_xy = Player.GetXY()
+    candidate_ids = set(AgentArray.GetAllyArray() or [])
+    candidate_ids.update(AgentArray.GetSpiritPetArray() or [])
+    candidate_ids.update(AgentArray.GetMinionArray() or [])
+    candidate_ids.update(AgentArray.GetNPCMinipetArray() or [])
+    if player_id:
+        candidate_ids.add(player_id)
+
+    candidates = [
+        agent_id
+        for agent_id in candidate_ids
+        if agent_id
+        and Agent.IsValid(agent_id)
+        and Agent.IsTargettable(agent_id)
+        and Agent.IsAlive(agent_id)
+        and Utils.Distance(Agent.GetXY(agent_id), player_xy) <= distance
+    ]
+
+    enemy_ids = Routines.Agents.GetFilteredEnemyArray(
+        player_xy[0],
+        player_xy[1],
+        distance + adjacent_range,
+    )
+    enemy_ids = [
+        enemy_id
+        for enemy_id in enemy_ids or []
+        if Agent.IsValid(enemy_id) and Agent.IsAlive(enemy_id)
+    ]
+
+    scored: list[tuple[int, float, int]] = []
+    for agent_id in candidates:
+        target_xy = Agent.GetXY(agent_id)
+        enemy_count = sum(
+            1
+            for enemy_id in enemy_ids
+            if Utils.Distance(target_xy, Agent.GetXY(enemy_id)) <= adjacent_range
+        )
+        if enemy_count < min_enemies:
+            continue
+        scored.append(
+            (
+                -enemy_count,
+                Utils.Distance(target_xy, player_xy),
+                agent_id,
+            )
+        )
+
+    if not scored:
+        return 0
+    scored.sort()
+    return scored[0][2]
+
+
 def TargetMinionOrAllyNonEnchanted(filter_skill_id=0, distance=Range.Spellcast.value):
     minion_array = AgentArray.GetMinionArray()
     minion_array = AgentArray.Filter.ByDistance(minion_array, Player.GetXY(), distance)
