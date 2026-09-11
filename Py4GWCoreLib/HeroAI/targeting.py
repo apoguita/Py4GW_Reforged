@@ -109,6 +109,71 @@ def TargetLowestAlly(other_ally=False, filter_skill_id=0, distance=Range.Spellca
     return Utils.GetFirstFromArray(ally_array)
 
 
+def TargetSplinterWeapon(distance=Range.Spellcast.value):
+    """Resolve Splinter Weapon's ordered martial/summon target policy.
+
+    Party members deliberately outrank temporary allies, matching the game's
+    current AI priority. EVAS is the first non-party fallback because its
+    dagger chain reliably spends Splinter's limited attack charges; minions
+    are the final fallback. Candidates carrying any weapon spell are skipped
+    here so selection can continue into the next priority tier.
+    """
+    ebon_vanguard_assassin_model_id = 5903
+    player_id = Player.GetAgentID()
+    player_xy = Player.GetXY()
+
+    def is_eligible(agent_id: int) -> bool:
+        return bool(
+            agent_id
+            and Agent.IsValid(agent_id)
+            and Agent.IsTargettable(agent_id)
+            and Agent.IsAlive(agent_id)
+            and Utils.Distance(Agent.GetXY(agent_id), player_xy) <= distance
+            and not Routines.Checks.Agents.IsWeaponSpelled(agent_id)
+        )
+
+    if is_eligible(player_id) and Routines.Checks.Agents.IsMartial(player_id):
+        return player_id
+
+    party_candidates = [
+        agent_id
+        for agent_id in GetAllAlliesArray(distance, ordered=True) or []
+        if agent_id != player_id
+        and is_eligible(agent_id)
+        and Routines.Party.IsPartyMember(agent_id)
+        and Routines.Checks.Agents.IsMartial(agent_id)
+    ]
+    if party_candidates:
+        return party_candidates[0]
+
+    allied_creatures = set(AgentArray.GetAllyArray() or [])
+    allied_creatures.update(AgentArray.GetNPCMinipetArray() or [])
+    evas_candidates = [
+        agent_id
+        for agent_id in allied_creatures
+        if is_eligible(agent_id)
+        and Agent.GetModelID(agent_id) == ebon_vanguard_assassin_model_id
+    ]
+    if evas_candidates:
+        return min(
+            evas_candidates,
+            key=lambda agent_id: (Utils.Distance(Agent.GetXY(agent_id), player_xy), agent_id),
+        )
+
+    minion_candidates = [
+        agent_id
+        for agent_id in AgentArray.GetMinionArray() or []
+        if is_eligible(agent_id)
+    ]
+    if minion_candidates:
+        return min(
+            minion_candidates,
+            key=lambda agent_id: (Utils.Distance(Agent.GetXY(agent_id), player_xy), agent_id),
+        )
+
+    return 0
+
+
 def TargetMinionOrAllyNonEnchanted(filter_skill_id=0, distance=Range.Spellcast.value):
     minion_array = AgentArray.GetMinionArray()
     minion_array = AgentArray.Filter.ByDistance(minion_array, Player.GetXY(), distance)
