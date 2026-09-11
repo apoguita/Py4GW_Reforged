@@ -390,7 +390,7 @@ class RitualistSkills:
         skill = CustomSkill()
         skill.SkillID = GLOBAL_CACHE.Skill.GetID("Splinter_Weapon")
         skill.SkillType = SkillType.WeaponSpell.value
-        skill.TargetAllegiance = Skilltarget.AllyMartial.value
+        skill.TargetAllegiance = Skilltarget.SplinterWeapon.value
         skill.Nature = SkillNature.Buff.value
         skill_data[skill.SkillID] = skill
 
