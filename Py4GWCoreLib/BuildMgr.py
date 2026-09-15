@@ -419,6 +419,7 @@ class BuildMgr:
             TargetLowestAllyMartial,
             TargetLowestAllyMelee,
             TargetLowestAllyRanged,
+            TargetAllyWithMostAdjacentEnemies,
             TargetAllyNonEnchanted,
             TargetAllyNonWeaponSpelled,
             TargetMinionNonEnchanted,
@@ -455,6 +456,8 @@ class BuildMgr:
             return TargetAllyNonEnchanted(**range_kwargs)
         if target_allegiance == Skilltarget.NonWeaponSpelledAlly.value:
             return Player.GetAgentID() if TargetAllyNonWeaponSpelled(**range_kwargs) else 0
+        if target_allegiance == Skilltarget.AllyWithAdjacentEnemies.value:
+            return TargetAllyWithMostAdjacentEnemies(distance=ally_distance)
 
         if target_allegiance in (
             Skilltarget.Ally.value,

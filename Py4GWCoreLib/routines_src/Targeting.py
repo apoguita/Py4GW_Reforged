@@ -667,9 +667,17 @@ class Targeting:
         return best_corpse_id
 
     @staticmethod
-    def CountNearbyEnemies(agent_id, cluster_radius, *, cached_data=None):
+    def CountNearbyEnemies(
+        agent_id,
+        cluster_radius,
+        *,
+        cached_data=None,
+        exclude_center=True,
+    ):
         """Count alive enemies within ``cluster_radius`` of ``agent_id``,
-        excluding ``agent_id`` itself. Returns 0 for invalid inputs.
+        excluding ``agent_id`` itself by default. Set ``exclude_center=False``
+        when the center is an ally, corpse, or other non-enemy anchor and every
+        nearby enemy should count. Returns 0 for invalid inputs.
 
         ``cached_data`` follows the same convention as the rest of the
         Targeting helpers - caller passes HeroAI's live cache when
@@ -690,7 +698,8 @@ class Targeting:
             nearby,
             lambda nid: Agent.IsValid(nid) and not Agent.IsDead(nid),
         )
-        return max(0, len(nearby) - 1)
+        center_adjustment = 1 if exclude_center else 0
+        return max(0, len(nearby) - center_adjustment)
 
     @staticmethod
     def PickClusteredTarget(
@@ -699,15 +708,22 @@ class Targeting:
         *,
         filter_radius=None,
         cached_data=None,
+        candidate_agent_ids=None,
+        min_enemy_targets=0,
+        candidate_is_enemy=True,
     ):
-        """Pick the enemy with the most direct neighbors within
-        ``cluster_radius``.
+        """Pick the candidate with the most enemy targets in range.
 
-        Candidate pool is enemies within ``filter_radius`` (defaults to
-        ``cluster_radius``) of the player. When ``preferred_condition`` is
-        provided, candidates are restricted to matches; if none match,
-        returns 0 so the caller can drive its own fallback. Ties broken
-        by distance to player.
+        The default candidate pool is enemies within ``filter_radius``
+        (defaults to ``cluster_radius``) of the player, preserving the original
+        enemy-cluster behavior. Callers may instead supply explicit candidates,
+        such as allied creatures for an ally-centered point-blank effect.
+
+        ``candidate_is_enemy`` controls whether the center itself is excluded
+        from the enemy count. ``min_enemy_targets`` applies after that choice.
+        When ``preferred_condition`` is provided, candidates are restricted to
+        matches; if none match, returns 0 so the caller can drive its own
+        fallback. Ties are broken by distance to the player.
 
         Suited to AoE-on-cast skills where the effect applies in a single
         radius around the cast target (e.g. Panic, Painful Bond, Cry of
@@ -729,22 +745,53 @@ class Targeting:
         effective_filter_radius = float(filter_radius if filter_radius is not None else cluster_radius)
 
         player_pos = Player.GetXY()
-        enemy_array = AgentArray.GetEnemyArray()
-        enemy_array = AgentArray.Filter.ByDistance(enemy_array, player_pos, effective_filter_radius)
-        enemy_array = AgentArray.Filter.ByCondition(enemy_array, lambda agent_id: Agent.IsAlive(agent_id))
-        if not enemy_array:
+        candidates = (
+            list(candidate_agent_ids or [])
+            if candidate_agent_ids is not None
+            else AgentArray.GetEnemyArray()
+        )
+        candidates = AgentArray.Filter.ByDistance(
+            candidates,
+            player_pos,
+            effective_filter_radius,
+        )
+        candidates = AgentArray.Filter.ByCondition(
+            candidates,
+            lambda agent_id: Agent.IsValid(agent_id) and Agent.IsAlive(agent_id),
+        )
+        if not candidates:
             return 0
 
-        candidates = enemy_array
         if preferred_condition is not None:
-            candidates = [agent_id for agent_id in enemy_array if preferred_condition(agent_id)]
+            candidates = [
+                agent_id
+                for agent_id in candidates
+                if preferred_condition(agent_id)
+            ]
             if not candidates:
                 return 0
+
+        candidate_scores = {
+            candidate_id: Targeting.CountNearbyEnemies(
+                candidate_id,
+                cluster_radius,
+                cached_data=cached_data,
+                exclude_center=candidate_is_enemy,
+            )
+            for candidate_id in candidates
+        }
+        candidates = [
+            candidate_id
+            for candidate_id in candidates
+            if candidate_scores[candidate_id] >= max(0, int(min_enemy_targets))
+        ]
+        if not candidates:
+            return 0
 
         scored = sorted(
             candidates,
             key=lambda c: (
-                -Targeting.CountNearbyEnemies(c, cluster_radius, cached_data=cached_data),
+                -candidate_scores[c],
                 Utils.Distance(player_pos, Agent.GetXY(c)),
             ),
         )

@@ -109,6 +109,46 @@ def TargetLowestAlly(other_ally=False, filter_skill_id=0, distance=Range.Spellca
     return Utils.GetFirstFromArray(ally_array)
 
 
+def TargetAllyWithMostAdjacentEnemies(
+    distance=Range.Spellcast.value,
+    adjacent_range=Range.Adjacent.value,
+    min_enemies=2,
+):
+    """Select any living allied creature surrounded by enough living foes.
+
+    Unlike the ordinary ally selectors, this intentionally includes spirits
+    and minions and does not apply persistent-effect filtering. Ancestors'
+    Rage ends after one second, so an effect-presence filter would incorrectly
+    suppress valid summoned targets whose effects are not observable.
+    """
+    player_id = Player.GetAgentID()
+    player_xy = Player.GetXY()
+    candidate_ids = set(AgentArray.GetAllyArray() or [])
+    candidate_ids.update(AgentArray.GetSpiritPetArray() or [])
+    candidate_ids.update(AgentArray.GetMinionArray() or [])
+    candidate_ids.update(AgentArray.GetNPCMinipetArray() or [])
+    if player_id:
+        candidate_ids.add(player_id)
+
+    candidates = [
+        agent_id
+        for agent_id in candidate_ids
+        if agent_id
+        and Agent.IsValid(agent_id)
+        and Agent.IsTargettable(agent_id)
+        and Agent.IsAlive(agent_id)
+        and Utils.Distance(Agent.GetXY(agent_id), player_xy) <= distance
+    ]
+
+    return Routines.Targeting.PickClusteredTarget(
+        adjacent_range,
+        filter_radius=distance,
+        candidate_agent_ids=candidates,
+        min_enemy_targets=min_enemies,
+        candidate_is_enemy=False,
+    )
+
+
 def TargetMinionOrAllyNonEnchanted(filter_skill_id=0, distance=Range.Spellcast.value):
     minion_array = AgentArray.GetMinionArray()
     minion_array = AgentArray.Filter.ByDistance(minion_array, Player.GetXY(), distance)
