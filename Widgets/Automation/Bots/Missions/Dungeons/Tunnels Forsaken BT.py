@@ -9,7 +9,9 @@ import PyImGui
 
 from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, Routines, SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
+from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
@@ -20,7 +22,6 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS,
 )
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
@@ -31,7 +32,7 @@ MODULE_NAME = 'Tunnels of the Forsaken BT'
 INI_PATH = 'Widgets/Automation/Bots/Missions/Dungeons/Tunnels Of The Forsaken BT'
 INI_FILENAME = 'Tunnels_Of_The_Forsaken_BT.ini'
 
-START_OUTPOST = 40  # Default/legacy start; 6-men mode selects Yak's Bend at runtime.
+START_OUTPOST = 40  # Default 4-player start; 6-player mode selects Yak's Bend at runtime.
 SURFACE_MAPS = (99, 103, 13, 102)
 DUNGEON_MAPS = (880, 881, 882)
 QUEST_ID = 0x5B5
@@ -95,6 +96,19 @@ _runtime_consumables_enabled = True
 _runtime_looting_enabled = True
 _configured_consumable_upkeeps: tuple[int, ...] | None = None
 _inventory_status_snapshot: dict[str, dict[str, object]] = {}
+
+# Direct multibox PCon runtime state.
+_PCON_DIRECT_DISPATCH_INTERVAL_MS = 650
+PCON_USAGE_LOG = False
+_pcon_direct_index = 0
+_pcon_direct_last_dispatch_ms = 0
+_pcon_direct_runtime_logged = False
+_pcon_direct_last_recipient_signature: tuple[str, ...] = ()
+_pcon_direct_morale_remote_index = 0
+_PCON_PARTY_MORALE_TARGET_BY_MODEL = {
+    int(ModelID.Four_Leaf_Clover.value): 100,
+    int(ModelID.Honeycomb.value): 110,
+}
 
 # Persistent statistics.
 _total_runs = 0
@@ -789,14 +803,238 @@ def _consumables_allowed() -> bool:
 
 
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
-    if not _consumables_allowed():
+    """Return Core-managed conset upkeeps; PCons use the direct dispatcher."""
+    if not _runtime_consumables_enabled:
         return ()
     enabled: list[int] = []
     if _activate_conset:
         enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
-    if _activate_pcons:
-        enabled.extend(int(model_id) for model_id in PCON_UPKEEPS)
     return tuple(dict.fromkeys(enabled))
+
+def _pcon_effect_name(model_id: int) -> str:
+    model_id = int(model_id)
+    overrides = {
+        int(ModelID.Blue_Rock_Candy.value): "Blue_Rock_Candy_Rush",
+        int(ModelID.Green_Rock_Candy.value): "Green_Rock_Candy_Rush",
+        int(ModelID.Red_Rock_Candy.value): "Red_Rock_Candy_Rush",
+        int(ModelID.Birthday_Cupcake.value): "Birthday_Cupcake_skill",
+        int(ModelID.Bowl_Of_Skalefin_Soup.value): "Skale_Vigor",
+        int(ModelID.Candy_Apple.value): "Candy_Apple_skill",
+        int(ModelID.Candy_Corn.value): "Candy_Corn_skill",
+        int(ModelID.Drake_Kabob.value): "Drake_Skin",
+        int(ModelID.Golden_Egg.value): "Golden_Egg_skill",
+        int(ModelID.Pahnai_Salad.value): "Pahnai_Salad_item_effect",
+        int(ModelID.Slice_Of_Pumpkin_Pie.value): "Pie_Induced_Ecstasy",
+        int(ModelID.War_Supplies.value): "Well_Supplied",
+    }
+    if model_id in overrides:
+        return overrides[model_id]
+    return str(CONSUMABLE_MODELID_TO_EFFECT_NAME.get(model_id, "") or "")
+
+
+def _pcon_account_map_tuple(account: object) -> tuple[int, int, int, int]:
+    map_obj = getattr(getattr(account, "AgentData", None), "Map", None)
+    return (
+        int(getattr(account, "MapID", 0) or getattr(map_obj, "MapID", 0) or 0),
+        int(getattr(account, "MapRegion", 0) or getattr(map_obj, "Region", 0) or 0),
+        int(getattr(account, "MapDistrict", 0) or getattr(map_obj, "District", 0) or 0),
+        int(getattr(account, "MapLanguage", 0) or getattr(map_obj, "Language", 0) or 0),
+    )
+
+
+def _pcon_account_party_id(account: object) -> int:
+    return int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+
+
+def _direct_pcon_party_emails() -> list[str]:
+    local_email = str(Player.GetAccountEmail() or "").strip()
+    if not local_email:
+        return []
+    try:
+        local_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(local_email)
+    except Exception:
+        local_account = None
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False) or [])
+    except TypeError:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData() or [])
+    except Exception:
+        accounts = []
+
+    local_party_id = _pcon_account_party_id(local_account) if local_account is not None else 0
+    local_map = _pcon_account_map_tuple(local_account) if local_account is not None else None
+    result: list[str] = []
+    seen: set[str] = set()
+    for account in accounts:
+        email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not email or email in seen:
+            continue
+        if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+            continue
+        account_party_id = _pcon_account_party_id(account)
+        same_party = local_party_id > 0 and account_party_id == local_party_id
+        same_map_fallback = (
+            local_party_id <= 0
+            and local_map is not None
+            and _pcon_account_map_tuple(account) == local_map
+        )
+        if not same_party and not same_map_fallback:
+            continue
+        seen.add(email)
+        result.append(email)
+    if local_email not in seen:
+        result.append(local_email)
+    return result
+
+
+def _reset_direct_pcon_runtime() -> None:
+    global _pcon_direct_index, _pcon_direct_last_dispatch_ms
+    global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
+    global _pcon_direct_morale_remote_index
+    _pcon_direct_index = 0
+    _pcon_direct_last_dispatch_ms = 0
+    _pcon_direct_runtime_logged = False
+    _pcon_direct_last_recipient_signature = ()
+    _pcon_direct_morale_remote_index = 0
+
+
+def _bot_is_started() -> bool:
+    if botting_tree is None:
+        return False
+    try:
+        fn = getattr(botting_tree, "IsStarted", None)
+        if callable(fn):
+            return bool(fn())
+    except Exception:
+        pass
+    return bool(getattr(botting_tree, "started", False))
+
+
+def _shared_party_min_morale_for_direct_pcons() -> int | None:
+    try:
+        entries = GLOBAL_CACHE.ShMem.GetSharedPartyMorale() or []
+    except Exception:
+        return None
+    values: list[int] = []
+    for entry in entries:
+        try:
+            morale = int(entry[1] or 0)
+        except (TypeError, ValueError, IndexError):
+            continue
+        if morale > 0:
+            values.append(morale)
+    return min(values) if values else None
+
+
+def _dispatch_party_morale_pcon(model_id: int, recipients: list[str], sender_email: str) -> None:
+    global _pcon_direct_morale_remote_index
+    target_morale = _PCON_PARTY_MORALE_TARGET_BY_MODEL.get(int(model_id))
+    if target_morale is None:
+        return
+    party_min_morale = _shared_party_min_morale_for_direct_pcons()
+    if party_min_morale is None or party_min_morale >= int(target_morale):
+        return
+
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    if not local_is_dead and GLOBAL_CACHE.Inventory.GetModelCount(int(model_id)) > 0:
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(int(model_id)) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PCons] Party morale use: model={int(model_id)}, morale={party_min_morale} -> target={int(target_morale)}.",
+                    PySystem.Console.MessageType.Info,
+                )
+            return
+
+    remote_recipients = [email for email in recipients if email and email != sender_email]
+    if not remote_recipients:
+        return
+    receiver_email = remote_recipients[_pcon_direct_morale_remote_index % len(remote_recipients)]
+    _pcon_direct_morale_remote_index = (_pcon_direct_morale_remote_index + 1) % max(1, len(remote_recipients))
+    try:
+        GLOBAL_CACHE.ShMem.SendMessage(
+            sender_email,
+            receiver_email,
+            SharedCommandType.PCon,
+            (int(model_id), 0, 0, 0),
+        )
+    except Exception:
+        return
+
+
+def _tick_direct_pcon_upkeep() -> None:
+    global _pcon_direct_index, _pcon_direct_last_dispatch_ms
+    global _pcon_direct_runtime_logged, _pcon_direct_last_recipient_signature
+
+    if not _bot_is_started() or not _activate_pcons or not _consumables_allowed():
+        if _pcon_direct_runtime_logged or _pcon_direct_last_dispatch_ms:
+            _reset_direct_pcon_runtime()
+        return
+    if not PCON_UPKEEPS:
+        return
+
+    now_ms = int(time.monotonic() * 1000.0)
+    if now_ms - int(_pcon_direct_last_dispatch_ms) < _PCON_DIRECT_DISPATCH_INTERVAL_MS:
+        return
+    _pcon_direct_last_dispatch_ms = now_ms
+
+    recipients = _direct_pcon_party_emails()
+    if not recipients:
+        return
+    recipient_signature = tuple(sorted(recipients))
+    if not _pcon_direct_runtime_logged or recipient_signature != _pcon_direct_last_recipient_signature:
+        _pcon_direct_runtime_logged = True
+        _pcon_direct_last_recipient_signature = recipient_signature
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[PCons] Direct multibox upkeep active: models={len(PCON_UPKEEPS)}, accounts={len(recipients)}.",
+            PySystem.Console.MessageType.Info,
+        )
+
+    model_id = int(PCON_UPKEEPS[_pcon_direct_index % len(PCON_UPKEEPS)])
+    _pcon_direct_index = (_pcon_direct_index + 1) % len(PCON_UPKEEPS)
+    sender_email = str(Player.GetAccountEmail() or "").strip()
+    if not sender_email:
+        return
+    if model_id in _PCON_PARTY_MORALE_TARGET_BY_MODEL:
+        _dispatch_party_morale_pcon(model_id, recipients, sender_email)
+        return
+
+    effect_name = _pcon_effect_name(model_id)
+    effect_id = int(GLOBAL_CACHE.Skill.GetID(effect_name) or 0) if effect_name else 0
+    if effect_id <= 0:
+        return
+    local_agent_id = int(Player.GetAgentID() or 0)
+    local_is_dead = bool(local_agent_id and Agent.IsDead(local_agent_id))
+    local_has_effect = bool(local_agent_id and GLOBAL_CACHE.Effects.HasEffect(local_agent_id, effect_id))
+    if not local_is_dead and not local_has_effect and GLOBAL_CACHE.Inventory.GetModelCount(model_id) > 0:
+        item_id = int(GLOBAL_CACHE.Item.GetItemIdFromModelID(model_id) or 0)
+        if item_id > 0:
+            GLOBAL_CACHE.Inventory.UseItem(item_id)
+            if PCON_USAGE_LOG:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[PCons] Local use: model={model_id}, effect={effect_id} ({effect_name}).",
+                    PySystem.Console.MessageType.Info,
+                )
+
+    params = (model_id, effect_id, 0, 0)
+    for receiver_email in recipients:
+        if not receiver_email or receiver_email == sender_email:
+            continue
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.PCon,
+                params,
+            )
+        except Exception:
+            continue
+
 
 
 def _configure_runtime_upkeeps(
@@ -807,28 +1045,29 @@ def _configure_runtime_upkeeps(
     global _runtime_consumables_enabled, _runtime_looting_enabled
     global _configured_consumable_upkeeps
 
+    previous_runtime_enabled = _runtime_consumables_enabled
     if consumables_enabled is not None:
         _runtime_consumables_enabled = bool(consumables_enabled)
     if looting_enabled is not None:
         _runtime_looting_enabled = bool(looting_enabled)
+    if previous_runtime_enabled != _runtime_consumables_enabled:
+        _reset_direct_pcon_runtime()
 
     if botting_tree is None:
         return
-
     enabled_consumables = _enabled_consumable_upkeeps()
     botting_tree.Config.ConfigureUpkeep(
         looting_enabled=_runtime_looting_enabled,
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
-        enable_party_wipe_recovery=False,
+        enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
     )
-    # ConfigureUpkeep rebuilds the service list, so reinstall the Forsaken-specific
-    # wipe recovery service every time runtime upkeep configuration changes.
     botting_tree.AddServiceTree(
-        "ForsakenPartyWipeRecoveryService",
-        ForsakenPartyWipeRecoveryService,
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
@@ -839,9 +1078,19 @@ def _sync_runtime_upkeeps() -> None:
 
 
 def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
+    """Enable or suspend conset and direct PCon upkeep at runtime."""
     def _apply(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        _configure_runtime_upkeeps(consumables_enabled=enabled)
+        if botting_tree is None:
+            return BehaviorTree.NodeState.FAILURE
+        if _runtime_consumables_enabled != bool(enabled):
+            _configure_runtime_upkeeps(consumables_enabled=enabled)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Consumable upkeep resumed for the dungeon run." if enabled else "Consumable upkeep suspended during the end-of-dungeon sequence.",
+                PySystem.Console.MessageType.Info,
+            )
         return BehaviorTree.NodeState.SUCCESS
+
     return BehaviorTree(
         BehaviorTree.ActionNode(
             name="Resume Consumable Upkeep" if enabled else "Suspend Consumable Upkeep",
@@ -1182,22 +1431,189 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
 
 
 def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
-    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+    """Broadcast a best-effort summoning-stone request to every active account."""
+    def _dispatch(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         if not _use_summoning_stone or not _consumables_allowed():
-            return BT.Succeeder("Summoning Stone Disabled")
+            return BehaviorTree.NodeState.SUCCESS
+        sender_email = str(Player.GetAccountEmail() or "").strip()
         recipients = _inventory_recipient_emails()
-        if not recipients:
-            return BT.Succeeder("No Summoning Stone Recipients")
-        return BTShared.SendAndWait(
-            command=SharedCommandType.UseSummoningStone,
-            recipients=recipients,
-            include_self=True,
-            refs_blackboard_key=f"{MODULE_NAME}_summon_{level_key}_refs",
-            timeout_ms=10_000,
-            poll_interval_ms=100,
-            log=True,
+        if not sender_email or not recipients:
+            return BehaviorTree.NodeState.SUCCESS
+        for receiver_email in recipients:
+            try:
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender_email,
+                    receiver_email,
+                    SharedCommandType.UseSummoningStone,
+                    (0.0, 0.0, 0.0, 0.0),
+                    ("", "", "", ""),
+                )
+            except Exception:
+                continue
+        return BehaviorTree.NodeState.SUCCESS
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name=f"Use Summoning Stone {level_key} (Multibox Non Blocking)",
+            action_fn=_dispatch,
+            aftercast_ms=0,
         )
-    return BT.Subtree(name=f"Use Summoning Stone {level_key}", subtree_fn=_build)
+    )
+
+
+def SummoningStoneRecoveryService() -> BehaviorTree:
+    """Best-effort replacement summon when the active party summon dies mid-floor.
+
+    The regular level-start summoning calls remain authoritative.  This service only
+    becomes armed after it has actually seen a living summoning-stone ally on the
+    current dungeon map.  If that ally disappears without a map transition, accounts
+    are asked one at a time to try UseSummoningStone until a replacement appears.
+    Messaging performs the final per-client guards (active summon / Summoning Sickness).
+    """
+    ATTEMPT_INTERVAL_MS = 3_000.0
+    RETRY_CYCLE_DELAY_MS = 15_000.0
+
+    state: dict[str, object] = {
+        "map_id": 0,
+        "saw_active_summon": False,
+        "recovering": False,
+        "targets": [],
+        "target_index": 0,
+        "next_attempt_ms": 0.0,
+    }
+
+    def _reset_for_map(map_id: int) -> None:
+        state["map_id"] = int(map_id)
+        state["saw_active_summon"] = False
+        state["recovering"] = False
+        state["targets"] = []
+        state["target_index"] = 0
+        state["next_attempt_ms"] = 0.0
+
+    def _refresh_targets() -> list[tuple[str, str]]:
+        targets: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for email, label in _inventory_target_accounts():
+            email = str(email or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            targets.append((email, str(label or email)))
+        state["targets"] = targets
+        return targets
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BehaviorTree.NodeState.RUNNING
+        if not Map.IsMapReady() or Map.IsMapLoading() or not Map.IsExplorable():
+            return BehaviorTree.NodeState.RUNNING
+
+        map_id = int(Map.GetMapID() or 0)
+        if map_id not in DUNGEON_MAPS:
+            return BehaviorTree.NodeState.RUNNING
+        if map_id != int(state["map_id"] or 0):
+            # A floor transition intentionally removes the old summon.  Do not treat
+            # that as a death: Level1/2/3 Start already performs the normal summon.
+            _reset_for_map(map_id)
+            return BehaviorTree.NodeState.RUNNING
+
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+            return BehaviorTree.NodeState.RUNNING
+        if Routines.Checks.Party.IsPartyWiped():
+            return BehaviorTree.NodeState.RUNNING
+
+        try:
+            summon_alive = bool(has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()))
+        except Exception:
+            summon_alive = False
+
+        if summon_alive:
+            if bool(state["recovering"]):
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "[Summoning] Replacement summon detected; recovery stopped.",
+                    PySystem.Console.MessageType.Success,
+                )
+            state["saw_active_summon"] = True
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        # Do not replace the explicit level-start summon.  Recovery only starts after
+        # a real summon has been observed alive on this same floor.
+        if not bool(state["saw_active_summon"]):
+            return BehaviorTree.NodeState.RUNNING
+
+        now_ms = time.monotonic() * 1000.0
+        if not bool(state["recovering"]):
+            state["recovering"] = True
+            state["target_index"] = 0
+            state["next_attempt_ms"] = now_ms
+            _refresh_targets()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "[Summoning] Active party summon was lost; trying replacement stones account by account.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        if now_ms < float(state["next_attempt_ms"] or 0.0):
+            return BehaviorTree.NodeState.RUNNING
+
+        targets: list[tuple[str, str]] = list(state["targets"] or [])
+        if not targets:
+            targets = _refresh_targets()
+            if not targets:
+                state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+                return BehaviorTree.NodeState.RUNNING
+
+        target_index = int(state["target_index"] or 0)
+        if target_index >= len(targets):
+            # Nobody produced a summon during this pass (no stone, sickness, etc.).
+            # Wait before trying the accounts again instead of spamming messages.
+            state["target_index"] = 0
+            state["targets"] = _refresh_targets()
+            state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        if not sender_email:
+            state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        receiver_email, label = targets[target_index]
+        state["target_index"] = target_index + 1
+        state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.UseSummoningStone,
+                (0.0, 0.0, 0.0, 0.0),
+            )
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Asking {label} to try a replacement summoning stone.",
+                PySystem.Console.MessageType.Info,
+            )
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Replacement request failed for {label}: {exc}",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Summoning Stone Recovery Service",
+            action_fn=_tick,
+            aftercast_ms=500,
+        )
+    )
 
 
 
@@ -1843,6 +2259,7 @@ def _keystone_point_steps(
             run = BT.Sequence(
                 name=name,
                 children=[
+                    BottingTree.EnableCombatTree(),
                     KeystoneAwareVanquish(point, f"{name} Combat"),
                     PickupKeystone(allow_missing_after_drop=allow_missing_after_drop),
                 ],
@@ -1941,329 +2358,9 @@ SIX_MEN_BREACH_ROUTE = [
 L1_OPENING = [Vec2f(-13102.00, -6841.00), Vec2f(-11660.00, -7585.00), Vec2f(-7836.00, -9115.00)]
 L1_KEY_ROUTE = [Vec2f(-9672.00, -3286.00), Vec2f(-11186.00, -1788.00), Vec2f(-10727.00, -304.00), Vec2f(-8618.00, 3132.00),]
 L2_ROUTE = [Vec2f(-2196.00, 12191.00), Vec2f(1228.00, 16292.00), Vec2f(-764.00, 17454.00), Vec2f(-643.00, 20296.00), Vec2f(-2584.00, 21152.00), Vec2f(-3558.00, 21554.00), Vec2f(-3788.00, 21873.00), Vec2f(-6974.00, 20808.00), Vec2f(-9017.00, 21345.00), Vec2f(-9967,21872),Vec2f(-11685,21978),  Vec2f(-16238.00, 17982.00), Vec2f(-16724.00, 15846.00), Vec2f(-13865.00, 17135.00), Vec2f(-12848.00, 18506.00), Vec2f(-10956.00, 19044.00), Vec2f(-9889.00, 18907.00), Vec2f(-8953.00, 18720.00), Vec2f(-7921.00, 18913.00), Vec2f(-7456.00, 18718.00), Vec2f(-6272.00, 17188.00), Vec2f(-5910.00, 14892.00), Vec2f(-7177.00, 13320.00), Vec2f(-10482.00, 14259.00), Vec2f(-10816.00, 15686.00), Vec2f(-12402.00, 15310.00), Vec2f(-14553.00, 12670.00), Vec2f(-16047.00, 10162.00), Vec2f(-16759.00, 7708.00), Vec2f(-16748.00, 5350.00)]
-L3_ROUTE_A = [Vec2f(-11162.00, 3309.00), Vec2f(-10127.00, 2505.00), Vec2f(-17353.00, -952.00), Vec2f(-16397.00, -3496.00), Vec2f(-15176.00, -3768.00), Vec2f(-13875.00, -4543.00), Vec2f(-14111.00, -6232.00), Vec2f(-13875.00, -4543.00), Vec2f(-10724.00, -3552.00)]
+L3_ROUTE_A = [Vec2f(-11162.00, 3309.00), Vec2f(-10127.00, 2505.00), Vec2f(-17353.00, -952.00), Vec2f(-16397.00, -3496.00), Vec2f(-15176.00, -3768.00), Vec2f(-13875.00, -4543.00), Vec2f(-14111.00, -6232.00), Vec2f(-13875.00, -4543.00), Vec2f(-12599.00, -5454.00), Vec2f(-10724.00, -3552.00)]
 L3_ROUTE_B = [Vec2f(-9820.00, -2108.00), Vec2f(-8166.00, 1081.00), Vec2f(-5090.00, -78.00), Vec2f(-6212.00, -2777.00)]
 L3_BOSS_ROUTE = [Vec2f(-7771.00, -6279.00), Vec2f(-11025.00, -7480.00), Vec2f(-12939.00, -8238.00), Vec2f(-13836.00, -8918.00),]
-
-
-def _shrine_resume_candidates(map_id: int) -> list[tuple[str, Vec2f]]:
-    """Return route planner steps that are safe anchors after a shrine revival."""
-    if map_id == TUNNELS_L1:
-        return [
-            *[(f"Level 1 Opening - Point {index:02d}", point) for index, point in enumerate(L1_OPENING, start=1)],
-            *[(
-                f"Level 1 Elemental Keystone Route - Point {index:02d}",
-                point,
-            ) for index, point in enumerate(L1_KEY_ROUTE, start=1)],
-        ]
-
-    if map_id == TUNNELS_L2:
-        return [
-            (f"Level 2 Route - Point {index:02d}", point)
-            for index, point in enumerate(L2_ROUTE, start=1)
-        ]
-
-    if map_id == TUNNELS_L3:
-        return [
-            *[(f"Level 3 Route A - Point {index:02d}", point) for index, point in enumerate(L3_ROUTE_A, start=1)],
-            *[(f"Level 3 Door Approach - Point {index:02d}", point) for index, point in enumerate(L3_ROUTE_B, start=1)],
-            *[(f"Level 3 Boss Route - Point {index:02d}", point) for index, point in enumerate(L3_BOSS_ROUTE, start=1)],
-        ]
-
-    return []
-
-
-def _nearest_shrine_resume_step(
-    map_id: int,
-    position: tuple[float, float],
-    failed_step_name: str,
-) -> tuple[str, float]:
-    """Pick the closest already-reached planner waypoint to the current shrine."""
-    candidates = _shrine_resume_candidates(map_id)
-    if not candidates:
-        return "", float("inf")
-
-    # Never jump forward past the planner step where the wipe happened.
-    # This keeps quest/door progression safe even when another route section is
-    # geometrically close on the other side of a wall.
-    planner_names: list[str] = []
-    if botting_tree is not None:
-        try:
-            planner_names = list(botting_tree.GetNamedPlannerStepNames() or [])
-        except Exception:
-            planner_names = []
-
-    if planner_names and failed_step_name in planner_names:
-        failed_index = planner_names.index(failed_step_name)
-        eligible: list[tuple[str, Vec2f]] = []
-        for step_name, point in candidates:
-            try:
-                if planner_names.index(step_name) <= failed_index:
-                    eligible.append((step_name, point))
-            except ValueError:
-                continue
-        if eligible:
-            candidates = eligible
-
-    px, py = float(position[0]), float(position[1])
-
-    def _distance_sq(candidate: tuple[str, Vec2f]) -> float:
-        point = candidate[1]
-        dx = float(point.x) - px
-        dy = float(point.y) - py
-        return dx * dx + dy * dy
-
-    step_name, point = min(candidates, key=_distance_sq)
-    distance = _distance_sq((step_name, point)) ** 0.5
-    return step_name, distance
-
-
-def ForsakenPartyWipeRecoveryService() -> BehaviorTree:
-    """Resume a shrine wipe from the route step nearest to the resurrection shrine."""
-    state: dict[str, object] = {
-        "active": False,
-        "mode": "",
-        "failed_step_name": "",
-        "restart_step_name": "",
-        "last_return_ms": 0.0,
-        "player_was_dead": False,
-        "player_dead_pos": None,
-    }
-
-    def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
-        PySystem.Console.Log("ForsakenWipeRecovery", message, message_type)
-
-    def _resolve_current_step(node: BehaviorTree.Node) -> str:
-        step_name = str(node.blackboard.get("current_step_name", "") or "")
-        if step_name:
-            return step_name
-        return str(node.blackboard.get("last_active_planner_step_name", "") or "")
-
-    def _reset_state(node: BehaviorTree.Node) -> None:
-        state["active"] = False
-        state["mode"] = ""
-        state["failed_step_name"] = ""
-        state["restart_step_name"] = ""
-        state["last_return_ms"] = 0.0
-        state["player_was_dead"] = False
-        state["player_dead_pos"] = None
-        node.blackboard["party_wipe_recovery_active"] = False
-        node.blackboard["party_wipe_recovery_mode"] = ""
-        node.blackboard["party_wipe_recovery_step_name"] = ""
-
-    def _player_is_alive() -> bool:
-        player_id = int(Player.GetAgentID() or 0)
-        return bool(player_id > 0 and Agent.IsValid(player_id) and not Agent.IsDead(player_id))
-
-    def _can_resume_in_explorable() -> bool:
-        return bool(
-            Map.IsMapReady()
-            and Map.IsExplorable()
-            and GLOBAL_CACHE.Party.IsPartyLoaded()
-            and _player_is_alive()
-        )
-
-    def _can_resume_from_outpost() -> bool:
-        return bool(
-            Map.IsMapReady()
-            and Map.IsOutpost()
-            and GLOBAL_CACHE.Party.IsPartyLoaded()
-        )
-
-    def _detect_revive_teleport() -> bool:
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or not Agent.IsValid(player_id):
-            return False
-
-        current_pos = Agent.GetXY(player_id)
-        is_dead = bool(Agent.IsDead(player_id))
-
-        if is_dead:
-            if not bool(state["player_was_dead"]):
-                state["player_was_dead"] = True
-                state["player_dead_pos"] = current_pos
-                return False
-
-            death_pos = state["player_dead_pos"]
-            if death_pos:
-                dx = float(current_pos[0]) - float(death_pos[0])
-                dy = float(current_pos[1]) - float(death_pos[1])
-                if dx * dx + dy * dy > float(Range.Spellcast.value) ** 2:
-                    # Some GW revive flows move the dead agent to the shrine one
-                    # frame before it becomes alive. Keep the new shrine position.
-                    state["player_dead_pos"] = current_pos
-                    return True
-            return False
-
-        if not bool(state["player_was_dead"]):
-            return False
-
-        state["player_was_dead"] = False
-        death_pos = state["player_dead_pos"]
-        state["player_dead_pos"] = None
-        if not death_pos:
-            return False
-
-        dx = float(current_pos[0]) - float(death_pos[0])
-        dy = float(current_pos[1]) - float(death_pos[1])
-        return dx * dx + dy * dy > float(Range.Spellcast.value) ** 2
-
-    def _begin_recovery(node: BehaviorTree.Node, mode: str) -> None:
-        from Py4GWCoreLib.py4gwcorelib_src.ActionQueue import ActionQueueManager
-
-        failed_step_name = _resolve_current_step(node)
-        state["active"] = True
-        state["mode"] = mode
-        state["failed_step_name"] = failed_step_name
-        state["restart_step_name"] = failed_step_name
-        state["last_return_ms"] = 0.0
-
-        node.blackboard["party_wipe_recovery_active"] = True
-        node.blackboard["party_wipe_recovery_mode"] = mode
-        node.blackboard["party_wipe_recovery_step_name"] = failed_step_name
-
-        ActionQueueManager().ResetAllQueues()
-
-        if mode == "defeated":
-            _log(
-                f"Party defeated. Waiting for outpost before restarting '{failed_step_name}'.",
-                PySystem.Console.MessageType.Warning,
-            )
-        else:
-            _log(
-                f"Recoverable wipe on '{failed_step_name}'. Waiting for shrine revival.",
-                PySystem.Console.MessageType.Warning,
-            )
-
-    def _resolve_shrine_restart(node: BehaviorTree.Node) -> str:
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or not Agent.IsValid(player_id):
-            return str(state["failed_step_name"] or "")
-
-        map_id = int(Map.GetMapID() or 0)
-        shrine_pos = Agent.GetXY(player_id)
-        failed_step_name = str(state["failed_step_name"] or "")
-        step_name, distance = _nearest_shrine_resume_step(
-            map_id,
-            shrine_pos,
-            failed_step_name,
-        )
-
-        if step_name:
-            _log(
-                f"Shrine at ({shrine_pos[0]:.0f}, {shrine_pos[1]:.0f}) -> "
-                f"nearest safe resume '{step_name}' ({distance:.0f} units).",
-                PySystem.Console.MessageType.Success,
-            )
-            return step_name
-
-        _log(
-            f"No shrine resume waypoint resolved on map {map_id}; falling back to '{failed_step_name}'.",
-            PySystem.Console.MessageType.Warning,
-        )
-        return failed_step_name
-
-    def _request_restart(node: BehaviorTree.Node, *, shrine: bool) -> bool:
-        if shrine:
-            step_name = _resolve_shrine_restart(node)
-        else:
-            step_name = str(state["restart_step_name"] or state["failed_step_name"] or "")
-
-        if not step_name:
-            _log("Recovery completed but no planner step could be resolved.", PySystem.Console.MessageType.Warning)
-            return False
-
-        state["restart_step_name"] = step_name
-        node.blackboard["party_wipe_recovery_step_name"] = step_name
-        node.blackboard["current_step_name"] = step_name
-        node.blackboard["last_active_planner_step_name"] = step_name
-        node.blackboard["restart_step_name_request"] = step_name
-
-        # A wipe can happen while the special L2 wall passage has CombatTree
-        # disabled. Always restore combat before the resumed planner step starts.
-        node.blackboard["combat_enabled_request"] = True
-        return True
-
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        # SetNamedPlannerSteps always installs the Core recovery service. Keep it
-        # suppressed so it cannot restart the stale pre-wipe planner step; this
-        # Forsaken-specific service owns both shrine and outpost recovery.
-        node.blackboard["party_wipe_recovery_suppressed"] = True
-
-        now = time.monotonic() * 1000.0
-        revived_at_shrine = _detect_revive_teleport()
-        party_wiped = bool(Routines.Checks.Party.IsPartyWiped())
-        party_defeated = bool(GLOBAL_CACHE.Party.IsPartyDefeated())
-
-        if not bool(state["active"]):
-            if not (party_wiped or party_defeated or revived_at_shrine):
-                node.blackboard["party_wipe_recovery_active"] = False
-                return BehaviorTree.NodeState.RUNNING
-
-            recovery_mode = "defeated" if party_defeated else "shrine"
-            _begin_recovery(node, recovery_mode)
-
-            # The service can first notice the wipe on the same frame as the
-            # shrine teleport. Resolve from the actual shrine position directly.
-            if recovery_mode == "shrine" and revived_at_shrine and _can_resume_in_explorable():
-                restarted = _request_restart(node, shrine=True)
-                _reset_state(node)
-                return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
-
-            return BehaviorTree.NodeState.RUNNING
-
-        if party_defeated and state["mode"] != "defeated":
-            state["mode"] = "defeated"
-            _log(
-                "Recoverable wipe became a party defeat; switching to outpost recovery.",
-                PySystem.Console.MessageType.Warning,
-            )
-
-        node.blackboard["party_wipe_recovery_active"] = True
-        node.blackboard["party_wipe_recovery_mode"] = str(state["mode"] or "")
-        node.blackboard["party_wipe_recovery_step_name"] = str(
-            state["restart_step_name"] or state["failed_step_name"] or ""
-        )
-
-        if state["mode"] == "shrine":
-            if _can_resume_from_outpost():
-                state["mode"] = "defeated"
-                node.blackboard["party_wipe_recovery_mode"] = "defeated"
-                _log(
-                    "Party returned to an outpost during shrine recovery; switching to outpost recovery.",
-                    PySystem.Console.MessageType.Warning,
-                )
-            else:
-                shrine_recovery_complete = bool(
-                    revived_at_shrine
-                    or (not party_wiped and _can_resume_in_explorable())
-                )
-                if shrine_recovery_complete:
-                    restarted = _request_restart(node, shrine=True)
-                    _reset_state(node)
-                    return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
-
-                return BehaviorTree.NodeState.RUNNING
-
-        if _can_resume_from_outpost():
-            restarted = _request_restart(node, shrine=False)
-            _reset_state(node)
-            return BehaviorTree.NodeState.SUCCESS if restarted else BehaviorTree.NodeState.FAILURE
-
-        if now - float(state["last_return_ms"] or 0.0) >= 1000.0:
-            GLOBAL_CACHE.Party.ReturnToOutpost()
-            state["last_return_ms"] = now
-            _log("Requesting return to outpost after party defeat.")
-
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name="Forsaken Party Wipe Recovery",
-            action_fn=_tick,
-            aftercast_ms=0,
-        )
-    )
 
 
 def _map_guarded_point(
@@ -2318,12 +2415,18 @@ def _vanquish_point_steps(
             point: Vec2f=point,
             name: str=name,
         ) -> BehaviorTree:
-            child = BT.VanquishNode(
-                [point],
-                name=name,
-                clear_area_radius=clear_area_radius,
-                pause_on_combat=pause_on_combat,
-                log=False,
+            child = BT.Sequence(
+                name=f"{name} - Combat Enabled",
+                children=[
+                    BottingTree.EnableCombatTree(),
+                    BT.VanquishNode(
+                        [point],
+                        name=name,
+                        clear_area_radius=clear_area_radius,
+                        pause_on_combat=pause_on_combat,
+                        log=False,
+                    ),
+                ],
             )
             return _map_guarded_point(
                 name=name,
@@ -2498,7 +2601,7 @@ def PrepareRun() -> BehaviorTree:
                 ),
             ),
             InventoryCheckAndMaintenance(),
-            BT.CreateParty(hero_ids=[24,25],multibox_invite=True, timeout_ms=30_000, log=True),
+            BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
             BT.AbandonQuest(quest_id=QUEST_ID, multi_account=True, include_self=True, timeout_ms=10_000, log=True),
             _runtime_difficulty_node(),
             _runtime_restock_node(),
@@ -2558,6 +2661,7 @@ def Level1_Start() -> BehaviorTree:
     run = BT.Sequence(
         name="Tunnels Level 1 Start",
         children=[
+            _runtime_consumable_upkeep_node(True),
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
             ResetKeystoneCombatPolicy(),
@@ -2681,14 +2785,12 @@ def Level3_OpenDoor() -> BehaviorTree:
 
 
 def Level3_FinishRun() -> BehaviorTree:
-    """Finish the dungeon through reward/chest handling only."""
+    """Collect the dungeon reward and finish timing immediately before the chest."""
     return BT.Sequence(
         name="Level 3 Reward And Chest",
         children=[
             BT.WaitForClearEnemiesInArea(-13836.00, -8918.00, stable_clear_ms=2000, log=True),
-            _record_run_end_node(),
             BT.IsCurrentMap(map_id=TUNNELS_L3, log=True),
-            _runtime_consumable_upkeep_node(False),
             BT.MoveAndDialog(
                 Vec2f(-16098, -8626),
                 dialog_id=0x85B507,
@@ -2699,6 +2801,8 @@ def Level3_FinishRun() -> BehaviorTree:
             BT.InteractTargetAndSendDialog(0x85B507, multi_account=True, log=True),
             BT.SendDialog(0x85B507, multi_account=True, log=True),
             BT.WaitForQuestCleared(QUEST_ID, timeout_ms=15_000),
+            _record_run_end_node(),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(
                 pos=Vec2f(-16066, -8370),
                 search_distance=2_500.0,
@@ -2809,12 +2913,13 @@ def _configure_botting_tree(tree: BottingTree) -> None:
         resurrection_scroll=True,
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=_enabled_consumable_upkeeps(),
-        enable_party_wipe_recovery=False,
+        enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
     )
     tree.AddServiceTree(
-        "ForsakenPartyWipeRecoveryService",
-        ForsakenPartyWipeRecoveryService,
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
 
 
@@ -2844,8 +2949,9 @@ def main() -> None:
     tree = ensure_botting_tree()
     _sync_runtime_upkeeps()
     tree.tick()
+    _tick_direct_pcon_upkeep()
     tree.UI.draw_window(icon_path=TEXTURE,
-        main_child_dimensions=(430, 390),
+        main_child_dimensions=(550, 390),
         extra_tabs=[("Statistics", _draw_statistics), ("Config", _draw_run_config)],
     )
 

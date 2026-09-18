@@ -55,12 +55,14 @@ class BottingTreeUpkeepMixin:
         self,
         default_step_name: str | Callable[[], str | None] | None = None,
         return_interval_ms: float = 1000.0,
+        shrine_step_resolver: Callable[[int, tuple[float, float], str], tuple[str, float] | str | None] | None = None,
     ) -> None:
         self.AddServiceTree(
             'PartyWipeRecoveryService',
             lambda: self.PartyWipeRecoveryServiceTree(
                 default_step_name=default_step_name,
                 return_interval_ms=return_interval_ms,
+                shrine_step_resolver=shrine_step_resolver,
             ),
         )
 
@@ -68,10 +70,12 @@ class BottingTreeUpkeepMixin:
         self,
         default_step_name: str | Callable[[], str | None] | None = None,
         return_interval_ms: float = 1000.0,
+        shrine_step_resolver: Callable[[int, tuple[float, float], str], tuple[str, float] | str | None] | None = None,
     ) -> None:
         subtree_or_builder = lambda: self.PartyWipeRecoveryServiceTree(
             default_step_name=default_step_name,
             return_interval_ms=return_interval_ms,
+            shrine_step_resolver=shrine_step_resolver,
         )
         for index, (service_name, _existing) in enumerate(self._service_steps):
             if service_name != 'PartyWipeRecoveryService':

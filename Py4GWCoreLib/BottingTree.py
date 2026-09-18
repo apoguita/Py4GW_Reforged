@@ -110,6 +110,19 @@ class BottingTree(
         self._previous_isolation_group_id: int | None = None
         self.headless_heroai = HeroAIHeadlessTree()
         self._planner_steps: list[tuple[str, Callable[[], object] | object]] = []
+        # Named-planner recovery anchors live on the BottingTree instance so they
+        # survive the Reset()/Start() cycle used by a wipe restart. They are
+        # cleared at the beginning of every fresh planner pass.
+        self._planner_recovery_anchors: dict[str, tuple[int, float, float]] = {}
+        self._planner_recovery_pass_id = 0
+        # Optional phase-aware shrine checkpoints. A script can declare that once
+        # a specific named step has completed, any later shrine recovery on that
+        # map must resume from a specific checkpoint instead of using geometry
+        # alone. This handles routes that revisit the same resurrection shrine at
+        # different progression phases (for example Shards of Orr Level 3).
+        self._planner_shrine_recovery_checkpoints: dict[str, str] = {}
+        self._active_planner_shrine_recovery_checkpoint: tuple[int, str, str] | None = None
+        self._nearest_shrine_recovery_enabled = False
         self._planner_sequence_name = 'PlannerSequence'
         self._service_steps: list[tuple[str, Callable[[], object] | object]] = []
         self._service_trees: list[tuple[str, BehaviorTree]] = []

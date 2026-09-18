@@ -12,6 +12,7 @@ class BottingTreeServicesMixin:
     def PartyWipeRecoveryServiceTree(
         default_step_name: str | Callable[[], str | None] | None = None,
         return_interval_ms: float = 1000.0,
+        shrine_step_resolver: Callable[[int, tuple[float, float], str], tuple[str, float] | str | None] | None = None,
     ) -> BehaviorTree:
         """
         Recover the planner after a party wipe.
@@ -21,7 +22,10 @@ class BottingTreeServicesMixin:
         1. Recoverable wipe:
            - the party dies in an explorable area;
            - the player is revived at a shrine;
-           - the current named planner step is restarted in the same instance.
+           - an optional resolver may select a safe already-reached named step
+             near that shrine;
+           - if no safe step can be resolved, the current named planner step is
+             restarted exactly as before.
 
         2. Party defeated:
            - the party can no longer revive normally;
@@ -32,6 +36,7 @@ class BottingTreeServicesMixin:
             "active": False,
             "mode": "",
             "step_name": "",
+            "failed_step_name": "",
             "last_return_ms": 0.0,
             "player_was_dead": False,
             "player_dead_pos": None,
@@ -116,6 +121,7 @@ class BottingTreeServicesMixin:
             state["active"] = False
             state["mode"] = ""
             state["step_name"] = ""
+            state["failed_step_name"] = ""
             state["last_return_ms"] = 0.0
             state["player_was_dead"] = False
             state["player_dead_pos"] = None
@@ -132,14 +138,78 @@ class BottingTreeServicesMixin:
                 "party_wipe_recovery_step_name"
             ] = ""
 
-        def _request_step_restart(
+        def _resolve_shrine_step(
             node: BehaviorTree.Node,
-        ) -> bool:
-            step_name = str(
-                state["step_name"]
+        ) -> tuple[str, float | None]:
+            failed_step_name = str(
+                state["failed_step_name"]
+                or state["step_name"]
+                or _resolve_recovery_step(node)
                 or _resolve_default_step_name()
             )
 
+            if not callable(shrine_step_resolver):
+                return failed_step_name, None
+
+            try:
+                from ..Agent import Agent
+                from ..Map import Map
+                from ..Player import Player
+
+                player_id = int(Player.GetAgentID() or 0)
+                if player_id <= 0 or not Agent.IsValid(player_id):
+                    return failed_step_name, None
+
+                resolved = shrine_step_resolver(
+                    int(Map.GetMapID() or 0),
+                    Agent.GetXY(player_id),
+                    failed_step_name,
+                )
+
+                if isinstance(resolved, tuple):
+                    resolved_name = str(resolved[0] or "")
+                    distance = float(resolved[1])
+                else:
+                    resolved_name = str(resolved or "")
+                    distance = None
+
+                if resolved_name:
+                    return resolved_name, distance
+            except Exception as exc:
+                _log(
+                    f"Shrine step resolver failed: {exc}. Falling back to '{failed_step_name}'.",
+                    PySystem.Console.MessageType.Warning,
+                )
+
+            return failed_step_name, None
+
+        def _request_step_restart(
+            node: BehaviorTree.Node,
+            *,
+            shrine: bool = False,
+        ) -> bool:
+            if shrine:
+                step_name, distance = _resolve_shrine_step(node)
+                failed_step_name = str(
+                    state["failed_step_name"]
+                    or state["step_name"]
+                    or _resolve_default_step_name()
+                )
+
+                if step_name and step_name != failed_step_name:
+                    distance_text = "" if distance is None else f" ({distance:.0f} units from shrine)"
+                    _log(
+                        f"Shrine recovery selected safe step '{step_name}'{distance_text} instead of '{failed_step_name}'.",
+                        PySystem.Console.MessageType.Success,
+                    )
+                state["step_name"] = step_name
+            else:
+                step_name = str(
+                    state["step_name"]
+                    or _resolve_default_step_name()
+                )
+
+            step_name = str(step_name or "")
             if not step_name:
                 _log(
                     (
@@ -150,10 +220,14 @@ class BottingTreeServicesMixin:
                 )
                 return False
 
-            node.blackboard[
-                "restart_step_name_request"
-            ] = step_name
-
+            node.blackboard["party_wipe_recovery_step_name"] = step_name
+            node.blackboard["restart_step_name_request"] = step_name
+            node.blackboard["restart_step_reason_request"] = (
+                "shrine" if shrine else "defeated"
+            )
+            node.blackboard["restart_step_origin_step_name_request"] = str(
+                state["failed_step_name"] or step_name
+            )
             return True
 
         def _detect_revive_teleport() -> bool:
@@ -272,6 +346,7 @@ class BottingTreeServicesMixin:
             state["active"] = True
             state["mode"] = mode
             state["step_name"] = step_name
+            state["failed_step_name"] = step_name
             state["last_return_ms"] = 0.0
 
             node.blackboard[
@@ -368,7 +443,8 @@ class BottingTreeServicesMixin:
                     and _can_resume_in_explorable()
                 ):
                     restarted = _request_step_restart(
-                        node
+                        node,
+                        shrine=True,
                     )
 
                     if restarted:
@@ -455,7 +531,8 @@ class BottingTreeServicesMixin:
 
                     if shrine_recovery_complete:
                         restarted = _request_step_restart(
-                            node
+                            node,
+                            shrine=True,
                         )
 
                         if restarted:
