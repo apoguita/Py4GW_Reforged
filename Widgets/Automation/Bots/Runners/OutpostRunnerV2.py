@@ -18,10 +18,17 @@ import re
 import math
 import time
 import PyImGui
+import importlib
 import importlib.util
 projects_base_path = PySystem.Console.get_projects_path()
 ac_folder_path = os.path.join(projects_base_path, "Sources", "aC_Scripts")
 from Sources.aC_Scripts.aC_api import *
+from Sources.aC_Scripts.OutpostRunner import route_mechanics as _route_mechanics
+
+_route_mechanics = importlib.reload(_route_mechanics)
+extended_portal_path = _route_mechanics.extended_portal_path
+register_outpost_departure = _route_mechanics.register_outpost_departure
+register_botting_segment = _route_mechanics.register_botting_segment
 RUNS_DIR = os.path.join(ac_folder_path, "OutpostRunner", "maps")
 
 MODULE_NAME = "Outpost Runner v2"
@@ -140,18 +147,29 @@ def bot_routine(bot: Botting) -> None:
 
         # -- Exit outpost --
         first_map_id = run.segments[0]["map_id"] if run.segments else 0
-        bot.Move.FollowPathAndExitMap(run.outpost_path, target_map_id=first_map_id)
+        register_outpost_departure(
+            bot,
+            run.outpost_path,
+            target_map_id=first_map_id,
+            step_name=f'{run.run_name}_leave_outpost',
+        )
 
         # -- Follow explorable segments --
         for seg_i, entry in enumerate(run.segments):
-            seg_path = entry.get("path", [])
-            if seg_path:
-                next_map_id = (
-                    run.segments[seg_i + 1]["map_id"]
-                    if seg_i + 1 < len(run.segments)
-                    else entry["map_id"]
-                )
-                bot.Move.FollowAutoPath(seg_path)
+            next_map_id = (
+                run.segments[seg_i + 1]["map_id"]
+                if seg_i + 1 < len(run.segments)
+                else entry["map_id"]
+            )
+            transition_map_id = next_map_id if next_map_id != entry["map_id"] else 0
+            owns_map_travel = register_botting_segment(
+                bot,
+                run.run_name,
+                seg_i,
+                entry,
+                target_map_id=transition_map_id,
+            )
+            if transition_map_id and not owns_map_travel:
                 bot.Wait.ForMapToChange(next_map_id)
 
     # All runs finished

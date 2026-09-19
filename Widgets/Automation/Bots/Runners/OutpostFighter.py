@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,13 +16,18 @@ from Py4GWCoreLib import Routines
 from Sources.aC_Scripts.OutpostRunner.map_loader import get_regions
 from Sources.aC_Scripts.OutpostRunner.map_loader import get_runs
 from Sources.aC_Scripts.OutpostRunner.map_loader import load_map_data
+from Sources.aC_Scripts.OutpostRunner import route_mechanics as _route_mechanics
+
+_route_mechanics = importlib.reload(_route_mechanics)
+extended_portal_path = _route_mechanics.extended_portal_path
+register_outpost_departure = _route_mechanics.register_outpost_departure
+register_botting_segment = _route_mechanics.register_botting_segment
 
 BOT_NAME = 'Outpost Fighter'
 MODULE_NAME = BOT_NAME
 
 WIDGETS_TO_ENABLE: tuple[str, ...] = (
     'HeroAI',
-    'Return to outpost on defeat',
 )
 
 bot = Botting(
@@ -146,26 +152,27 @@ def _build_route_steps(bot_instance: Botting, route: RoutePlan, index: int) -> N
     bot_instance.Multibox.ApplyWidgetPolicy(enable_widgets=WIDGETS_TO_ENABLE)
 
     first_map_id = int(route.segments[0].get('map_id', 0))
-    bot_instance.Move.FollowPathAndExitMap(
+    register_outpost_departure(
+        bot_instance,
         route.outpost_path,
         target_map_id=first_map_id,
         step_name=f'{route.definition.run_name}_leave_outpost',
     )
 
     for segment_index, segment in enumerate(route.segments):
-        segment_path = list(segment.get('path', []))
-        if not segment_path:
-            continue
-
-        bot_instance.Move.FollowAutoPath(
-            segment_path,
-            step_name=f'{route.definition.run_name}_segment_{segment_index + 1}',
-        )
-
         next_segment = route.segments[segment_index + 1] if segment_index + 1 < len(route.segments) else None
         current_map_id = int(segment.get('map_id', 0))
         next_map_id = int(next_segment.get('map_id', 0)) if next_segment else 0
-        if next_map_id and next_map_id != current_map_id:
+        transition_map_id = next_map_id if next_map_id and next_map_id != current_map_id else 0
+        owns_map_travel = register_botting_segment(
+            bot_instance,
+            route.definition.run_name,
+            segment_index,
+            segment,
+            target_map_id=transition_map_id,
+            resume_key_prefix=f'outpost-fighter:{_queue_version}:{index}',
+        )
+        if transition_map_id and not owns_map_travel:
             bot_instance.Wait.ForMapToChange(target_map_id=next_map_id)
 
     bot_instance.Wait.UntilOutOfCombat()
@@ -182,7 +189,6 @@ def bot_routine(bot_instance: Botting) -> None:
         ConsoleLog(BOT_NAME, 'No routes queued.', PySystem.Console.MessageType.Error)
         return
 
-    bot_instance.helpers.Events.set_on_unmanaged_fail(lambda: False)
     bot_instance.Events.OnPartyWipeCallback(lambda: OnPartyWipe(bot_instance))
 
     bot_instance.States.AddHeader(BOT_NAME)
@@ -212,22 +218,22 @@ def _on_party_wipe(bot_instance: Botting):
     while not Routines.Checks.Map.MapValid() or not Player.IsPlayerLoaded():
         yield from Routines.Yield.wait(500)
 
-    if not Map.IsOutpost():
-        yield from bot_instance.helpers.Multibox._resignParty()
-        yield from bot_instance.Wait._coro_until_on_outpost()
-
-    if not _current_route_anchor:
+    if Map.IsOutpost() and _current_route_anchor:
+        ConsoleLog(
+            BOT_NAME,
+            f'Party returned to an outpost. Restarting route {_current_route_index + 1}.',
+            PySystem.Console.MessageType.Warning,
+        )
+        bot_instance.config.FSM.jump_to_state_by_name(_current_route_anchor)
         bot_instance.config.FSM.resume()
+        yield
         return
 
     ConsoleLog(
         BOT_NAME,
-        f'Party wiped. Restarting route {_current_route_index + 1} from its starting outpost.',
+        'Party revived at the resurrection shrine. Resuming the current route without resigning.',
         PySystem.Console.MessageType.Warning,
     )
-    if bot_instance.config.FSM.current_state:
-        bot_instance.config.FSM.current_state.reset()
-    bot_instance.config.FSM.jump_to_state_by_name(_current_route_anchor)
     bot_instance.config.FSM.resume()
     yield
 
@@ -335,7 +341,7 @@ def _draw_help() -> None:
     PyImGui.bullet_text('Fights enemies that engage the party without chasing unrelated groups.')
     PyImGui.bullet_text('Eligible drops are collected according to your Loot Filters settings.')
     PyImGui.bullet_text('The bot always enters explorable areas in Normal Mode.')
-    PyImGui.bullet_text('A full party wipe restarts the current route from its starting outpost.')
+    PyImGui.bullet_text('After a full party wipe, the party resurrects at the shrine and continues forward.')
 
 
 bot.SetMainRoutine(bot_routine)
