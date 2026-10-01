@@ -147,85 +147,88 @@ class UIMessage(IntEnum):
     kTradePlayerUpdated         = 0x10000105 # 0x10000105, wparam = GW::TraderPlayer*
     kItemUpdated                = 0x10000106 # 0x10000106, wparam = UIPacket::kItemUpdated*
     kMapChange                  = 0x10000111 # 0x10000111, wparam = map id
-    kCalledTargetChange         = 0x10000115 # 0x10000115, wparam = { player_number, target_id }
-    kErrorMessage               = 0x10000119 # 0x10000119, wparam = { int error_index, wchar_t* error_encoded_string }
-    kPartyHardModeChanged       = 0x1000011A # 0x1000011A, wparam = { int is_hard_mode }
-    kPartyAddHenchman           = 0x1000011B # 0x1000011B
-    kPartyRemoveHenchman        = 0x1000011C # 0x1000011C
-    kPartyAddHero               = 0x1000011E # 0x1000011E
-    kPartyRemoveHero            = 0x1000011F # 0x1000011F
-    kPartyAddPlayer             = 0x10000124 # 0x10000124
-    kPartyRemovePlayer          = 0x10000126 # 0x10000126
-    kDisableEnterMissionBtn     = 0x1000012A # 0x1000012A, wparam = boolean (1 = disabled, 0 = enabled)
-    kShowCancelEnterMissionBtn  = 0x1000012D # 0x1000012D
-    kPartyDefeated              = 0x1000012F # 0x1000012F
-    #kEnterChallengeRelated      = 0x10000130
-    kPartySearchInviteReceived  = 0x10000137 # 0x10000137, wparam = UIPacket::kPartySearchInviteReceived*
-    kPartySearchInviteSent      = 0x10000139 # 0x10000139
-    kPartyShowConfirmDialog     = 0x1000013A # 0x1000013A, wparam = UIPacket::kPartyShowConfirmDialog
-    kPreferenceEnumChanged      = 0x10000140 # 0x10000140, wparam = UiPacket::kPreferenceEnumChanged
-    kPreferenceFlagChanged      = 0x10000141 # 0x10000141, wparam = UiPacket::kPreferenceFlagChanged
-    kPreferenceValueChanged     = 0x10000142 # 0x10000142, wparam = UiPacket::kPreferenceValueChanged
-    kUIPositionChanged          = 0x10000143 # 0x10000143, wparam = UIPacket::kUIPositionChanged
-    kPreBuildLoginScene         = 0x10000144 # 0x10000144, Called with no args right before login scene is drawn
-    kQuestAdded                 = 0x1000014E # 0x1000014E, wparam = { quest_id, ... }
-    kQuestDetailsChanged        = 0x1000014F # 0x1000014F, wparam = { quest_id, ... }
-    kQuestRemoved               = 0x10000150 # 0x10000150, wparam = { quest_id, ... }
-    kClientActiveQuestChanged   = 0x10000151 # 0x10000151, wparam = { quest_id, ... }. Triggered when the game requests the current quest to change
-    kServerActiveQuestChanged   = 0x10000153 # 0x10000153, wparam = UIPacket::kServerActiveQuestChanged*. Triggered when the server requests the current quest to change
-    kUnknownQuestRelated        = 0x10000154 # 0x10000154
-    kDungeonComplete            = 0x10000156 # 0x10000156
-    kMissionComplete            = 0x10000157 # 0x10000157
-    kVanquishComplete           = 0x10000159 # 0x10000159
-    kObjectiveAdd               = 0x1000015A # 0x1000015A, wparam = UIPacket::kObjectiveAdd*
-    kObjectiveComplete          = 0x1000015B # 0x1000015B, wparam = UIPacket::kObjectiveComplete*
-    kObjectiveUpdated           = 0x1000015C # 0x1000015C, wparam = UIPacket::kObjectiveUpdated*
-    kTradeSessionStart          = 0x10000165 # 0x10000165, wparam = { trade_state, player_number }
-    kTradeSessionUpdated        = 0x1000016b # 0x1000016b, no args
-    kTriggerLogoutPrompt        = 0x1000016E # 0x1000016E, no args
-    kToggleOptionsWindow        = 0x1000016F # 0x1000016F, no args
-    kRedrawItem                 = 0x10000174 # 0x10000174, wparam = uint32_t item_id
-    kCheckUIState               = 0x10000176 # 0x10000175
-    kCloseSettings              = 0x10000177 # 0x10000176
-    kChangeSettingsTab          = 0x10000178 # 0x10000177, wparam = uint32_t is_interface_tab
+    # 0x10000113 is a newly inserted, currently unidentified UI message.
+    kCalledTargetChange         = 0x10000116 # 0x10000116, wparam = { player_number, target_id }
+    kErrorMessage               = 0x1000011A # 0x1000011A, wparam = { int error_index, wchar_t* error_encoded_string }
+    kPartyHardModeChanged       = 0x1000011B # 0x1000011B, wparam = { int is_hard_mode }
+    kPartyAddHenchman           = 0x1000011C # 0x1000011C
+    kPartyRemoveHenchman        = 0x1000011D # 0x1000011D
+    kPartyAddHero               = 0x1000011F # 0x1000011F
+    kPartyRemoveHero            = 0x10000120 # 0x10000120
+    kPartyAddPlayer             = 0x10000125 # 0x10000125
+    kPartyRemovePlayer          = 0x10000127 # 0x10000127
+    kDisableEnterMissionBtn     = 0x1000012B # 0x1000012B, wparam = boolean (1 = disabled, 0 = enabled)
+    kShowCancelEnterMissionBtn  = 0x1000012E # 0x1000012E
+    kPartyDefeated              = 0x10000130 # 0x10000130
+    #kEnterChallengeRelated      = 0x10000131
+    kPartySearchInviteReceived  = 0x10000138 # 0x10000138, wparam = UIPacket::kPartySearchInviteReceived*
+    kPartySearchInviteSent      = 0x1000013A # 0x1000013A
+    kPartyShowConfirmDialog     = 0x1000013B # 0x1000013B, wparam = UIPacket::kPartyShowConfirmDialog
+    kPreferenceEnumChanged      = 0x10000141 # 0x10000141, wparam = UiPacket::kPreferenceEnumChanged
+    kPreferenceFlagChanged      = 0x10000142 # 0x10000142, wparam = UiPacket::kPreferenceFlagChanged
+    kPreferenceValueChanged     = 0x10000143 # 0x10000143, wparam = UiPacket::kPreferenceValueChanged
+    kUIPositionChanged          = 0x10000144 # 0x10000144, wparam = UIPacket::kUIPositionChanged
+    kPreBuildLoginScene         = 0x10000145 # 0x10000145, Called with no args right before login scene is drawn
+    # 0x10000148 is a newly inserted, currently unidentified UI message.
+    kQuestAdded                 = 0x10000150 # 0x10000150, wparam = { quest_id, ... }
+    kQuestDetailsChanged        = 0x10000151 # 0x10000151, wparam = { quest_id, ... }
+    kQuestRemoved               = 0x10000152 # 0x10000152, wparam = { quest_id, ... }
+    kClientActiveQuestChanged   = 0x10000153 # 0x10000153, wparam = { quest_id, ... }. Triggered when the game requests the current quest to change
+    kServerActiveQuestChanged   = 0x10000155 # 0x10000155, wparam = UIPacket::kServerActiveQuestChanged*. Triggered when the server requests the current quest to change
+    kUnknownQuestRelated        = 0x10000156 # 0x10000156
+    kDungeonComplete            = 0x10000158 # 0x10000158
+    kMissionComplete            = 0x10000159 # 0x10000159
+    kVanquishComplete           = 0x1000015B # 0x1000015B
+    kObjectiveAdd               = 0x1000015C # 0x1000015C, wparam = UIPacket::kObjectiveAdd*
+    kObjectiveComplete          = 0x1000015D # 0x1000015D, wparam = UIPacket::kObjectiveComplete*
+    kObjectiveUpdated           = 0x1000015E # 0x1000015E, wparam = UIPacket::kObjectiveUpdated*
+    kTradeSessionStart          = 0x10000167 # 0x10000167, wparam = { trade_state, player_number }
+    kTradeSessionUpdated        = 0x1000016D # 0x1000016D, no args
+    kTriggerLogoutPrompt        = 0x10000170 # 0x10000170, no args
+    kToggleOptionsWindow        = 0x10000171 # 0x10000171, no args
+    kRedrawItem                 = 0x10000176 # 0x10000176, wparam = uint32_t item_id
+    kCheckUIState               = 0x10000178 # 0x10000178
+    kCloseSettings              = 0x10000179 # 0x10000179
+    kChangeSettingsTab          = 0x1000017A # 0x1000017A, wparam = uint32_t is_interface_tab
     
-    kDestroyUIPositionOverlay   = 0x1000017D # 0x10000179 previously
-    kEnableUIPositionOverlay    = 0x1000017E # 0x1000017a, wparam = uint32_t enable previously
+    kDestroyUIPositionOverlay   = 0x1000017F
+    kEnableUIPositionOverlay    = 0x10000180 # wparam = uint32_t enable
       
-    kGuildHall                  = 0x10000180 # 0x1000017F, wparam = gh key (uint32_t[4])
-    kLeaveGuildHall             = 0x10000182 # 0x10000181
-    kTravel                     = 0x10000183 # 0x10000182
-    kOpenWikiUrl                = 0x10000184 # 0x10000183, wparam = char* url
-    kSetPreGameContext_Value0   = 0x10000187 # 0x10000187, wparam = uint32_t value
-    kGetPreGameContext_Value0   = 0x10000189 # 0x10000189, lparam = *uint32_t value_out
-    kSetPreGameContext_Value1   = 0x1000018A # 0x1000018A, wparam = uint32_t value
-    kGetPreGameContext_Value1   = 0x1000018B # 0x1000018B, lparam = *uint32_t value_out
-    kAppendMessageToChat        = 0x10000194 # 0x10000194, wparam = wchar_t* message
-    kHideHeroPanel              = 0x100001A2 # 0x100001A2, wparam = hero_id
-    kShowHeroPanel              = 0x100001A3 # 0x100001A3, wparam = hero_id
-    kGetInventoryAgentId        = 0x100001A7 # 0x100001A7, wparam = 0, lparam = uint32_t* agent_id_out
-    kInventoryRelated1          = 0x100001A8 # 0x100001A8
-    kInventoryRelated2          = 0x100001A9 # 0x100001A9
-    kInventoryRelated3          = 0x100001AA # 0x100001AA
-    kEquipItem                  = 0x100001AB # 0x100001AB, wparam = { item_id, agent_id }
-    kMoveItem                   = 0x100001AC # 0x100001AC, wparam = { item_id, to_bag, to_slot, bool prompt }
-    kItemRelated_1              = 0x100001AD # 0x100001AD
-    kItemTooltip                = 0x100001AE # 0x100001AE
-    kItemRelated_3              = 0x100001AF # 0x100001AF
-    kItemRelated_4              = 0x100001B0 # 0x100001B0
-    kInitiateTrade              = 0x100001B1 # 0x100001B1
-    kInventoryAgentChanged      = 0x100001C1 # 0x100001C1, Triggered when inventory needs updating due to agent change; no args
-    kInventoryRelated_1         = 0x100001C2 # 0x100001C2
-    kInventoryRelated_2         = 0x100001C3 # 0x100001C3
-    kMissionStatusRelated       = 0x100001C4 # 0x100001C4
-    kUnused_1c2                 = 0x100001C5 # 0x100001C5
-    kCollapseExpandSkillListSection = 0x100001C6 # 0x100001C6
-    kTemplateRelated_1          = 0x100001C7 # 0x100001C7
-    kTemplateRelated_2          = 0x100001C8 # 0x100001C8
-    kPromptSaveTemplate         = 0x100001C9 # 0x100001C9
-    kOpenTemplate               = 0x100001CA # 0x100001CA, wparam = GW::UI::ChatTemplate*
-    kTemplateRelated_3          = 0x100001CB # 0x100001CB
-    kTemplateRelated_4          = 0x100001CC # 0x100001CC
+    # 0x10000181 is a newly inserted, currently unidentified UI message.
+    kGuildHall                  = 0x10000183 # 0x10000183, wparam = gh key (uint32_t[4])
+    kLeaveGuildHall             = 0x10000185 # 0x10000185
+    kTravel                     = 0x10000186 # 0x10000186
+    kOpenWikiUrl                = 0x10000187 # 0x10000187, wparam = char* url
+    kSetPreGameContext_Value0   = 0x1000018A # 0x1000018A, wparam = uint32_t value
+    kGetPreGameContext_Value0   = 0x1000018C # 0x1000018C, lparam = *uint32_t value_out
+    kSetPreGameContext_Value1   = 0x1000018D # 0x1000018D, wparam = uint32_t value
+    kGetPreGameContext_Value1   = 0x1000018E # 0x1000018E, lparam = *uint32_t value_out
+    kAppendMessageToChat        = 0x10000197 # 0x10000197, wparam = wchar_t* message
+    kHideHeroPanel              = 0x100001A5 # 0x100001A5, wparam = hero_id
+    kShowHeroPanel              = 0x100001A6 # 0x100001A6, wparam = hero_id
+    kGetInventoryAgentId        = 0x100001AA # 0x100001AA, wparam = 0, lparam = uint32_t* agent_id_out
+    kInventoryRelated1          = 0x100001AB # 0x100001AB
+    kInventoryRelated2          = 0x100001AC # 0x100001AC
+    kInventoryRelated3          = 0x100001AD # 0x100001AD
+    kEquipItem                  = 0x100001AE # 0x100001AE, wparam = { item_id, agent_id }
+    kMoveItem                   = 0x100001AF # 0x100001AF, wparam = { item_id, to_bag, to_slot, bool prompt }
+    kItemRelated_1              = 0x100001B0 # 0x100001B0
+    kItemTooltip                = 0x100001B1 # 0x100001B1
+    kItemRelated_3              = 0x100001B2 # 0x100001B2
+    kItemRelated_4              = 0x100001B3 # 0x100001B3
+    kInitiateTrade              = 0x100001B4 # 0x100001B4
+    kInventoryAgentChanged      = 0x100001C4 # 0x100001C4, Triggered when inventory needs updating due to agent change; no args
+    kInventoryRelated_1         = 0x100001C5 # 0x100001C5
+    kInventoryRelated_2         = 0x100001C6 # 0x100001C6
+    kMissionStatusRelated       = 0x100001C7 # 0x100001C7
+    kUnused_1c2                 = 0x100001C8 # 0x100001C8
+    kCollapseExpandSkillListSection = 0x100001C9 # 0x100001C9
+    kTemplateRelated_1          = 0x100001CA # 0x100001CA
+    kTemplateRelated_2          = 0x100001CB # 0x100001CB
+    kPromptSaveTemplate         = 0x100001CC # 0x100001CC
+    kOpenTemplate               = 0x100001CD # 0x100001CD, wparam = GW::UI::ChatTemplate*
+    kTemplateRelated_3          = 0x100001CE # 0x100001CE
+    kTemplateRelated_4          = 0x100001CF # 0x100001CF
 
     kSendEnterMission           = 0x30000002  # wparam = uint32_t arena_id
     kSendLoadSkillbar           = 0x30000003  # wparam = UIPacket::kSendLoadSkillbar*

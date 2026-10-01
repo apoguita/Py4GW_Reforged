@@ -108,21 +108,22 @@ class CharContextStruct(Structure):
         ("host", c_uint8 * 0x18),           # +0x01A0
         ("token2", c_uint32),               # +0x01B8 player id
         ("h01BC", c_uint32 * 27),           # +0x01BC
-        ("district_number", c_int32),       # +0x0228
-        ("language", c_uint32),             # +0x022C GW::Constants::Language
-        ("observe_map_id", c_uint32),       # +0x0230
-        ("current_map_id", c_uint32),       # +0x0234
-        ("observe_map_type", c_uint32),     # +0x0238
-        ("current_map_type", c_uint32),     # +0x023C
-        ("h0240", c_uint32 * 5),            # +0x0240
-        ("observer_matches_array", GW_Array), # +0x0254 Array<ObserverMatch*>
-        ("h0264", c_uint32 * 17),           # +0x0264
-        ("player_flags", c_uint32),         # +0x02A8
-        ("player_number", c_uint32),        # +0x02AC
-        ("h02B0", c_uint32 * 40),           # +0x02B0
-        ("progress_bar_ptr", POINTER(ProgressBar)),     # +0x0350 ProgressBar*
-        ("h0354", c_uint32 * 29),           # +0x0354
-        ("player_email_ptr", c_wchar * 0x40),   # +0x03C8 wchar_t[64]
+        ("h0228", c_uint32),                # +0x0228 (added by 2026-09-30 client update)
+        ("district_number", c_int32),       # +0x022C
+        ("language", c_uint32),             # +0x0230 GW::Constants::Language
+        ("observe_map_id", c_uint32),       # +0x0234
+        ("current_map_id", c_uint32),       # +0x0238
+        ("observe_map_type", c_uint32),     # +0x023C
+        ("current_map_type", c_uint32),     # +0x0240
+        ("h0244", c_uint32 * 5),            # +0x0244
+        ("observer_matches_array", GW_Array), # +0x0258 Array<ObserverMatch*>
+        ("h0268", c_uint32 * 17),           # +0x0268
+        ("player_flags", c_uint32),         # +0x02AC
+        ("player_number", c_uint32),        # +0x02B0
+        ("h02B4", c_uint32 * 43),           # +0x02B4
+        ("progress_bar_ptr", POINTER(ProgressBar)),     # +0x0360 ProgressBar*
+        ("h0364", c_uint32 * 29),           # +0x0364
+        ("player_email_ptr", c_wchar * 0x40),   # +0x03D8 wchar_t[64]
     ]
     @property
     def player_uuid(self) -> tuple[int, int, int, int]:
@@ -252,6 +253,10 @@ class CharContext:
         return CharContext._cached_ctx
         
 assert sizeof(ProgressBar) == 0x2C
-assert sizeof(CharContextStruct) == 0x448
+assert CharContextStruct.district_number.offset == 0x22C
+assert CharContextStruct.current_map_id.offset == 0x238
+assert CharContextStruct.progress_bar_ptr.offset == 0x360
+assert CharContextStruct.player_email_ptr.offset == 0x3D8
+assert sizeof(CharContextStruct) == 0x458
 
 CharContext.enable()

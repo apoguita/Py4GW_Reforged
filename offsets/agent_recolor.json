@@ -4,7 +4,7 @@
     "av_char_get_consider_color_assertion": {
       "assertion_file": "AvApi.cpp",
       "assertion_message": "agent",
-      "line_number": "0x1e9"
+      "line_number": "0x1f4"
     },
     "char_get_text_data_color_writes": {
       "pattern": "\\x89\\x77\\x0C\\x89\\x07\\xC7\\x47\\x04\\x00\\x00\\x00\\x00\\x89\\x77\\x08\\xC6\\x47\\x0F\\xC0",
