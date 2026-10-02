@@ -16,6 +16,9 @@ from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums import Range
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
+from Py4GWCoreLib.Player import Player
+from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -45,8 +48,10 @@ MAP_CATALOG: dict[str, tuple[str, ...]] = {
         'Dalada_Uplands',
     ),
     'EOTN_Far_Silverpeaks': (
+        'Bjora_Marches',
         'Drakkar_Lake',
         'Ice_Cliff_Chasms',
+        'Jaga_Moraine',
         'Norrhart_Domains',
         'Varajar_Fells',
     ),
@@ -431,6 +436,65 @@ def _action(name: str, action_fn: Callable[[], BehaviorTree.NodeState]) -> Behav
     )
 
 
+def _build_messaging_loot(name: str) -> BehaviorTree:
+    state = {
+        'message_index': -1,
+        'started_at': 0.0,
+    }
+
+    def _loot() -> BehaviorTree.NodeState:
+        account_email = str(Player.GetAccountEmail() or '').strip()
+
+        if not account_email:
+            return BehaviorTree.NodeState.SUCCESS
+
+        if state['message_index'] < 0:
+            message_index = int(
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    account_email,
+                    account_email,
+                    SharedCommandType.PickUpLoot,
+                    (0, 0, 0, 0),
+                )
+            )
+
+            if message_index < 0:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    'Unable to dispatch PickUpLoot message.',
+                    PySystem.Console.MessageType.Warning,
+                )
+                return BehaviorTree.NodeState.SUCCESS
+
+            state['message_index'] = message_index
+            state['started_at'] = time.monotonic()
+            return BehaviorTree.NodeState.RUNNING
+
+        index, message = GLOBAL_CACHE.ShMem.PreviewNextMessage(account_email)
+
+        still_active = (
+            index != -1
+            and message is not None
+            and message.Command == SharedCommandType.PickUpLoot
+        )
+
+        if still_active:
+            if time.monotonic() - state['started_at'] < 20.0:
+                return BehaviorTree.NodeState.RUNNING
+
+            PySystem.Console.Log(
+                MODULE_NAME,
+                'PickUpLoot timed out after 20 seconds; continuing route.',
+                PySystem.Console.MessageType.Warning,
+            )
+
+        state['message_index'] = -1
+        state['started_at'] = 0.0
+        return BehaviorTree.NodeState.SUCCESS
+
+    return _action(name, _loot)
+
+
 def _vanquish_completed() -> bool:
     if not (Map.IsExplorable() and Map.IsVanquishable()):
         return False
@@ -553,13 +617,23 @@ def _build_keyword_action(
 
     if key == 'bless':
         faction, dialog_id = _blessing_parameters(definition.region)
-        child = BT.TakeBlessing(
-            pos=_coordinate(value, 'bless'),
-            faction=faction,
-            blessing_dialog_id=dialog_id,
-            multi_account=False,
-            log=True,
-        )
+
+        if definition.region.startswith('EOTN_'):
+            child = BT.MoveAndDialog(
+                pos=_coordinate(value, 'bless'),
+                dialog_id=dialog_id,
+                multi_account=False,
+                log=True,
+            )
+        else:
+            child = BT.TakeBlessing(
+                pos=_coordinate(value, 'bless'),
+                faction=faction,
+                blessing_dialog_id=dialog_id,
+                multi_account=False,
+                log=True,
+            )
+
     elif key == 'gadget':
         child = BT.MoveAndInteractWithGadget(
             pos=_coordinate(value, 'gadget'),
@@ -798,8 +872,24 @@ def _build_forward_point(
         name=f'ForwardPoint:{point_number}',
         log=False,
     )
-    return _skip_if_completed(child, f'ForwardPoint:{point_number}')
 
+    child = _skip_if_completed(
+        child,
+        f'ForwardPoint:{point_number}',
+    )
+
+    if not auto_loot:
+        return child
+
+    return BT.Sequence(
+        name=f'ForwardPointWithLoot:{point_number}',
+        children=[
+            child,
+            _build_messaging_loot(
+                f'LootAfterForwardPoint:{point_number}'
+            ),
+        ],
+    )
 
 def _build_forward_action(
     definition: VanquishDefinition,
