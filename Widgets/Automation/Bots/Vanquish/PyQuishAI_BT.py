@@ -11,11 +11,17 @@ from typing import TypeAlias
 import PyImGui
 import PySystem
 
+from Py4GWCoreLib import GLOBAL_CACHE
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.enums import Range
+from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
+    CONSET_UPKEEPS,
+    CONSUMABLE_UPKEEPS,
+)
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -34,6 +40,61 @@ TEXTURE = os.path.join(
     'textures',
     'VQ_Helmet.png',
 )
+
+# Consumable upkeep. The core list already separates the conset trio from the
+# plain pcons, so the same split the Reputation Farmer uses is reused here
+# rather than hard-coding model IDs a second time.
+PCON_UPKEEPS: tuple[int, ...] = tuple(
+    int(model_id) for model_id in CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS
+)
+
+CONSET_MODEL_IDS: tuple[int, ...] = tuple(int(model_id) for model_id in CONSET_UPKEEPS)
+
+
+def _display_name(model_id: int) -> str:
+    """Human label for a consumable model.
+
+    The enum member name is the single owner of a readable identifier here.
+    `CONSUMABLE_UPKEEP_PRESETS` is keyed by preset slug rather than model ID, so
+    it cannot answer a reverse lookup without rebuilding an index the core
+    already declines to expose.
+    """
+    for member in ModelID:
+        if int(member.value) == int(model_id):
+            return member.name.replace('_', ' ').replace(' Of ', ' of ')
+    return f'Model {model_id}'
+
+
+# Selection state, populated by `_load_settings`. Defaults mirror the previous
+# all-on behaviour so an existing INI keeps working unchanged.
+_selected_conset: set[int] = set(CONSET_MODEL_IDS)
+_selected_pcons: set[int] = set(PCON_UPKEEPS)
+
+# Models whose upkeep is a party-morale rule rather than an effect upkeep: the
+# service drinks them on a morale threshold, so they are worth flagging in the
+# UI instead of presenting every row as interchangeable.
+PARTY_MORALE_MODEL_IDS: frozenset[int] = frozenset(
+    {
+        int(ModelID.Honeycomb.value),
+    }
+)
+
+# Storage restock targets pulled into bags before each run. `allow_missing` is
+# on at the tree level, so an item the player simply does not own is skipped
+# instead of failing the run.
+CONSUMABLE_RESTOCK_QUANTITY = 10
+RESTOCK_SETTLE_MS = 750
+CONSUMABLE_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(
+    (int(model_id), CONSUMABLE_RESTOCK_QUANTITY) for model_id in CONSUMABLE_UPKEEPS
+)
+
+_SETTINGS_SECTION = 'Settings'
+_KEY_RESTOCK_CONSET = 'RestockConset'
+_KEY_ACTIVATE_CONSET = 'ActivateConset'
+_KEY_RESTOCK_PCONS = 'RestockPcons'
+_KEY_ACTIVATE_PCONS = 'ActivatePcons'
+_KEY_SELECTED_CONSET = 'SelectedConsets'
+_KEY_SELECTED_PCONS = 'SelectedPcons'
 
 Coordinate: TypeAlias = tuple[float, float]
 
@@ -315,12 +376,195 @@ forward_clear_radius = 2500
 reverse_clear_radius_1 = 3500
 reverse_clear_radius_2 = 5000
 
+# Consumable upkeep state (persisted per account, same keys as the other BTs).
+_settings = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account')
+_settings_loaded = False
+_restock_conset = True
+_activate_conset = True
+_restock_pcons = True
+_activate_pcons = True
+
 initialized = False
 ini_key = ''
 botting_tree: BottingTree | None = None
 pending_rebuild = False
 last_load_error = ''
 stats = SessionStats()
+
+
+def _parse_model_id_list(raw: str, allowed: Sequence[int]) -> set[int]:
+    """Parse a comma-separated model ID string, keeping only known models.
+
+    Unknown or malformed entries are dropped rather than raising: the INI is
+    user-editable and a stray value should not break widget init.
+    """
+    allowed_set = {int(model_id) for model_id in allowed}
+    parsed: set[int] = set()
+    for chunk in str(raw or '').split(','):
+        text = chunk.strip()
+        if not text:
+            continue
+        try:
+            value = int(text)
+        except ValueError:
+            continue
+        if value in allowed_set:
+            parsed.add(value)
+    return parsed
+
+
+def _serialize_model_id_list(model_ids: set[int]) -> str:
+    return ','.join(str(model_id) for model_id in sorted(int(value) for value in model_ids))
+
+
+def _load_settings() -> None:
+    global _settings_loaded
+    global _restock_conset, _activate_conset
+    global _restock_pcons, _activate_pcons
+    global _selected_conset, _selected_pcons
+
+    if _settings_loaded:
+        return
+    _restock_conset = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_CONSET, True)
+    _activate_conset = _settings.get_bool(_SETTINGS_SECTION, _KEY_ACTIVATE_CONSET, True)
+    _restock_pcons = _settings.get_bool(_SETTINGS_SECTION, _KEY_RESTOCK_PCONS, True)
+    _activate_pcons = _settings.get_bool(_SETTINGS_SECTION, _KEY_ACTIVATE_PCONS, True)
+
+    stored_conset = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, '')
+    if stored_conset.strip():
+        _selected_conset = _parse_model_id_list(stored_conset, CONSET_MODEL_IDS)
+
+    stored_pcons = _settings.get_str(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, '')
+    if stored_pcons.strip():
+        _selected_pcons = _parse_model_id_list(stored_pcons, PCON_UPKEEPS)
+
+    _settings_loaded = True
+
+
+def _save_settings() -> None:
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_CONSET, _restock_conset)
+    _settings.set(_SETTINGS_SECTION, _KEY_ACTIVATE_CONSET, _activate_conset)
+    _settings.set(_SETTINGS_SECTION, _KEY_RESTOCK_PCONS, _restock_pcons)
+    _settings.set(_SETTINGS_SECTION, _KEY_ACTIVATE_PCONS, _activate_pcons)
+    _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_CONSET, _serialize_model_id_list(_selected_conset))
+    _settings.set(_SETTINGS_SECTION, _KEY_SELECTED_PCONS, _serialize_model_id_list(_selected_pcons))
+
+
+def _enabled_consumable_upkeeps() -> tuple[int, ...]:
+    """Upkeep model IDs for the currently enabled and individually selected items.
+
+    Ordering follows the core lists (consets then pcons); duplicates are
+    collapsed because `ConfigureUpkeep` would otherwise register two services
+    for one model.
+    """
+    enabled: list[int] = []
+    if _activate_conset:
+        enabled.extend(model_id for model_id in CONSET_MODEL_IDS if model_id in _selected_conset)
+    if _activate_pcons:
+        enabled.extend(model_id for model_id in PCON_UPKEEPS if model_id in _selected_pcons)
+    return tuple(dict.fromkeys(enabled))
+
+
+def _consumable_restock_items() -> tuple[tuple[int, int], ...]:
+    """Restock targets for the enabled groups only."""
+    wanted: set[int] = set()
+    if _restock_conset:
+        wanted.update(model_id for model_id in CONSET_MODEL_IDS if model_id in _selected_conset)
+    if _restock_pcons:
+        wanted.update(model_id for model_id in PCON_UPKEEPS if model_id in _selected_pcons)
+    return tuple(
+        (model_id, quantity)
+        for model_id, quantity in CONSUMABLE_RESTOCK_ITEMS
+        if model_id in wanted
+    )
+
+
+def _consumables_short_of_target() -> bool:
+    """True when any enabled model is still below its bag target."""
+    for model_id, quantity in _consumable_restock_items():
+        try:
+            if int(GLOBAL_CACHE.Inventory.GetModelCount(model_id) or 0) < int(quantity):
+                return True
+        except Exception:
+            return True
+    return False
+
+
+def _runtime_restock_node() -> BehaviorTree:
+    """Resolve the restock list when the step is ticked, not when it is built.
+
+    `get_execution_steps` builds the whole plan once at tree creation, so a
+    restock node baked in at build time would freeze the list that was enabled
+    at that moment. Building it inside a Subtree keeps the Consumables toggles
+    meaningful for the next run without a full plan rebuild.
+
+    `RoutinesBT.Items.RestockItems` samples the storage cache once per item and,
+    with `allow_missing=True`, treats a cold zero read as "nothing to do" and
+    advances. The first model in the list therefore risks being skipped on the
+    run's opening frames (observed live: Essence of Celerity, first in
+    CONSET_UPKEEPS, only landed on a second run). The remediation is a settle
+    wait plus a second pass -- but the wait is gated on the bags actually being
+    short, so a run whose consumables are already stocked pays no delay at all.
+    """
+
+    def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+        items = _consumable_restock_items()
+        if not items:
+            return BT.Succeeder('Restock Disabled')
+        return BT.Sequence(
+            name='Restock Passes',
+            children=[
+                BT.RestockItemsFromList(tuple(items), allow_missing=True),
+                _restock_retry_guard(),
+            ],
+        )
+
+    return BT.Subtree(name='Restock Selected Consumables', subtree_fn=_build)
+
+
+def _restock_retry_guard() -> BehaviorTree:
+    """Settle, then re-run the restock only if something is still missing.
+
+    The selector semantics matter here: a first child that returns SUCCESS
+    short-circuits the whole guard (nothing missing, no delay), while returning
+    FAILURE hands control to the settle-and-retry branch. Returning RUNNING
+    would pin the selector to the first child permanently, so it is deliberately
+    not used.
+    """
+
+    def _nothing_missing(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if _consumables_short_of_target():
+            return BehaviorTree.NodeState.FAILURE
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Subtree(
+        name='Restock Retry Guard',
+        subtree_fn=lambda _node: BehaviorTree(
+            BehaviorTree.SelectorNode(
+                name='Retry Restock If Short',
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name='Consumables Already Stocked',
+                            action_fn=_nothing_missing,
+                        )
+                    ),
+                    BehaviorTree(
+                        BehaviorTree.SequenceNode(
+                            name='Settle And Retry',
+                            children=[
+                                BT.Wait(duration_ms=RESTOCK_SETTLE_MS),
+                                BT.RestockItemsFromList(
+                                    _consumable_restock_items(),
+                                    allow_missing=True,
+                                ),
+                            ],
+                        )
+                    ),
+                ],
+            )
+        ),
+    )
 
 
 def _selected_region() -> str:
@@ -770,19 +1014,29 @@ def _build_completion_fallback() -> BehaviorTree:
 
 
 def _build_run_preparation(definition: VanquishDefinition) -> BehaviorTree:
+    children: list[BehaviorTree] = [
+        ensure_botting_tree().Config.Aggressive(
+            multi_account=False,
+            auto_loot=auto_loot,
+            resurrection_scroll=False,
+        ),
+    ]
+
+    if _restock_conset or _restock_pcons:
+        children.append(_runtime_restock_node())
+
+    children.extend(
+        [
+            _action('RecordRunStart', _mark_run_started),
+            _build_transit_tree(definition),
+        ]
+    )
+
     return BT.Sequence(
         name=f'Prepare:{definition.map_name}',
         map_id_or_name=definition.outpost_id,
         hard_mode=True,
-        children=[
-            ensure_botting_tree().Config.Aggressive(
-                multi_account=False,
-                auto_loot=auto_loot,
-                resurrection_scroll=False,
-            ),
-            _action('RecordRunStart', _mark_run_started),
-            _build_transit_tree(definition),
-        ],
+        children=children,
     )
 
 
@@ -950,6 +1204,24 @@ def get_execution_steps(definition: VanquishDefinition) -> list[tuple[str, Calla
     return steps
 
 
+def _configure_upkeep(tree: BottingTree) -> None:
+    """Push the run configuration and the consumable upkeep service.
+
+    Called once at creation and again whenever a consumables toggle changes;
+    `ConfigureUpkeep` only replaces the upkeep trees, so it does not disturb a
+    running planner (the same runtime-reconfigure pattern the Reputation Farmer
+    and Shards Of Orr BTs use).
+    """
+    tree.Config.ConfigureUpkeep(
+        looting_enabled=auto_loot,
+        resurrection_scroll=False,
+        enable_party_wipe_recovery=True,
+        heroai_state_logging=True,
+        heroai_state_log_interval_ms=5000,
+        consumable_upkeeps=_enabled_consumable_upkeeps(),
+    )
+
+
 def ensure_botting_tree() -> BottingTree:
     global botting_tree
     global last_load_error
@@ -967,13 +1239,7 @@ def ensure_botting_tree() -> BottingTree:
             reset=False,
             multi_account=False,
             auto_loot=auto_loot,
-            configure_fn=lambda tree: tree.Config.ConfigureUpkeep(
-                looting_enabled=auto_loot,
-                resurrection_scroll=False,
-                enable_party_wipe_recovery=True,
-                heroai_state_logging=True,
-                heroai_state_log_interval_ms=5000,
-            ),
+            configure_fn=_configure_upkeep,
         )
         botting_tree.UI.override_draw_help(_draw_help)
         loaded_region_index = region_index
@@ -1083,6 +1349,157 @@ def _draw_config() -> None:
         _request_rebuild()
     PyImGui.end_disabled()
 
+def _apply_consumable_upkeep_change() -> None:
+    """Re-push the upkeep service so toggles apply without a tree rebuild.
+
+    `ConfigureUpkeep` replaces only the upkeep trees, so this is safe while the
+    bot is running; the restock toggles take effect on the next run preparation.
+    """
+    if botting_tree is None:
+        return
+    _configure_upkeep(botting_tree)
+
+
+def _draw_consumable_group(
+    label: str,
+    model_ids: tuple[int, ...],
+    selected: set[int],
+    activate: bool,
+    restock: bool,
+    on_change,
+) -> tuple[bool, bool, set[int]]:
+    """Draw one conset/pcon group: master toggles plus a per-item checklist.
+
+    Returns the (possibly updated) activate flag, restock flag and selection so
+    the caller can persist them and re-push the upkeep service.
+    """
+    new_selection = set(selected)
+
+    # The collapsing header's identity is its label, so the volatile "n/m
+    # selected" count must not live in the portion ImGui hashes. Everything
+    # before "###" is display-only; the part after it is the stable identity.
+    # Without this split the label changes on every toggle, which ImGui reads as
+    # a brand-new item defaulting to closed -- collapsing the list on each click.
+    if PyImGui.collapsing_header(
+        f'{label} ({len(new_selection)}/{len(model_ids)} selected)###{label}_group_header'
+    ):
+        PyImGui.text_colored(
+            'Only ticked items are used and restocked.' if activate else 'Group is off; selection is remembered.',
+            (200, 200, 200, 255) if activate else (255, 190, 80, 255),
+        )
+
+        if PyImGui.button(f'Select all##{label}'):
+            new_selection = set(model_ids)
+            on_change()
+        PyImGui.same_line(0.0, 6.0)
+        if PyImGui.button(f'Select none##{label}'):
+            new_selection = set()
+            on_change()
+
+        for model_id in model_ids:
+            checked = model_id in new_selection
+            new_checked = PyImGui.checkbox(f'{_display_name(model_id)}##{label}_{model_id}', checked)
+            if new_checked != checked:
+                if new_checked:
+                    new_selection.add(model_id)
+                else:
+                    new_selection.discard(model_id)
+                on_change()
+            if model_id in PARTY_MORALE_MODEL_IDS:
+                PyImGui.same_line(0.0, 6.0)
+                PyImGui.text_colored(
+                    '(party morale rule)',
+                    (150, 190, 255, 255),
+                )
+
+    return activate, restock, new_selection
+
+
+def _draw_consumables() -> None:
+    global _restock_conset, _activate_conset
+    global _restock_pcons, _activate_pcons
+    global _selected_conset, _selected_pcons
+
+    def _persist() -> None:
+        _save_settings()
+
+    def _persist_and_apply() -> None:
+        _save_settings()
+        _apply_consumable_upkeep_change()
+
+    PyImGui.text('Consumable Upkeep')
+    PyImGui.separator()
+    PyImGui.text_wrapped(
+        'Upkeep consumes from bags. Restock pulls the item from storage into '
+        'bags during the Prepare step, so run preparation needs enough free slots '
+        'and a storage window the bot can reach.'
+    )
+    PyImGui.text_wrapped(
+        'Each group has a master switch for whether the bot uses/restocks it at '
+        'all, and a per-item checklist for which consumables are included.'
+    )
+    PyImGui.separator()
+
+    PyImGui.text('ConSets')
+    new_activate_conset = PyImGui.checkbox('Use Consets##group', _activate_conset)
+    if new_activate_conset != _activate_conset:
+        _activate_conset = new_activate_conset
+        _persist_and_apply()
+    PyImGui.same_line(0.0, 12.0)
+    new_restock_conset = PyImGui.checkbox('Restock Consets from storage##group', _restock_conset)
+    if new_restock_conset != _restock_conset:
+        _restock_conset = new_restock_conset
+        _persist()
+
+    _, _, updated_conset = _draw_consumable_group(
+        'Conset items',
+        CONSET_MODEL_IDS,
+        _selected_conset,
+        _activate_conset,
+        _restock_conset,
+        _persist_and_apply,
+    )
+    if updated_conset != _selected_conset:
+        _selected_conset = updated_conset
+
+    PyImGui.separator()
+
+    PyImGui.text('PCons')
+    new_activate_pcons = PyImGui.checkbox('Use Pcons##group', _activate_pcons)
+    if new_activate_pcons != _activate_pcons:
+        _activate_pcons = new_activate_pcons
+        _persist_and_apply()
+    PyImGui.same_line(0.0, 12.0)
+    new_restock_pcons = PyImGui.checkbox('Restock Pcons from storage##group', _restock_pcons)
+    if new_restock_pcons != _restock_pcons:
+        _restock_pcons = new_restock_pcons
+        _persist()
+
+    _, _, updated_pcons = _draw_consumable_group(
+        'Pcon items',
+        PCON_UPKEEPS,
+        _selected_pcons,
+        _activate_pcons,
+        _restock_pcons,
+        _persist_and_apply,
+    )
+    if updated_pcons != _selected_pcons:
+        _selected_pcons = updated_pcons
+
+    PyImGui.separator()
+    active = _enabled_consumable_upkeeps()
+    if active:
+        PyImGui.text(f'Upkeep active for {len(active)} consumable model(s).')
+    else:
+        PyImGui.text_colored('Consumable upkeep is disabled.', (255, 190, 80, 255))
+
+    scheduled = _consumable_restock_items()
+    if scheduled:
+        PyImGui.text(f'Restock list: {len(scheduled)} model(s) per run.')
+    else:
+        PyImGui.text('Restock list: empty.')
+
+
 def _draw_help() -> None:
     PyImGui.text_wrapped('PyQuishAI rebuilt on BottingTree and BehaviorTree nodes only. No legacy FSM is used.')
     PyImGui.separator()
@@ -1091,6 +1508,8 @@ def _draw_help() -> None:
     PyImGui.text_wrapped('A failed movement or party-wipe recovery restarts the current point instead of the full route.')
     PyImGui.text_wrapped('Choose the Prepare step in Navigation to force a complete restart from the outpost.')
     PyImGui.text_wrapped('The bot performs the forward route, followed by up to two reverse sweeps if foes remain.')
+    PyImGui.text_wrapped('Consumable upkeep is configured in the Consumables tab: consets and pcons are separated.')
+    PyImGui.text_wrapped('Enable Restock to pull consumables from storage into bags during each Prepare step.')
 
 
 def _format_time(seconds: float) -> str:
@@ -1143,6 +1562,7 @@ def main() -> None:
             ini_key = Settings(f'{INI_PATH}/{INI_FILENAME}', 'account').name
             if not ini_key:
                 return
+        _load_settings()
         try:
             ensure_botting_tree()
         except Exception as error:
@@ -1164,6 +1584,7 @@ def main() -> None:
         additional_ui=_draw_run_status,
         extra_tabs=[
             ('Config', _draw_config),
+            ('Consumables', _draw_consumables),
         ],
     )
 

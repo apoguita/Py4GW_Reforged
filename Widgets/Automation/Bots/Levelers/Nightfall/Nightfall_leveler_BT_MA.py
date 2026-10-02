@@ -5,6 +5,9 @@
 # original [H] header step becomes a named planner step in BottingTree.
 # Party wipe handling is provided by BottingTree party-wipe recovery service
 # (equivalent to the original OnPartyDefeated FSM hook.)
+#
+# MA variant: copy of Nightfall_leveler_BT.py targeting the MA ruleset, which
+# forbids account-unlocked skills and any storage use.
 # ============================================================================
 from __future__ import annotations
 
@@ -16,7 +19,6 @@ from Py4GWCoreLib import (
     Agent,
     ConsoleLog,
     GLOBAL_CACHE,
-    Inventory,
     Item,
     Map,
     Player,
@@ -24,17 +26,13 @@ from Py4GWCoreLib import (
 )
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.enums_src.GameData_enums import EXPERIENCE_PROGRESSION
-from Py4GWCoreLib.enums_src.Item_enums import Bags
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
-from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
+from Py4GWCoreLib.routines_src.Agents import Agents as RoutinesAgents
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
-from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
-    CONSUMABLE_UPKEEPS,
-)
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
-MODULE_NAME = "Nightfall Leveler BT"
+MODULE_NAME = "Nightfall Leveler BT MA"
 MODULE_ICON = "Assets\\Textures\\Module_Icons\\Leveler - Nightfall.png"
 ICON_PATH = os.path.join(
     PySystem.Console.get_projects_path(),
@@ -44,16 +42,19 @@ ICON_PATH = os.path.join(
     "Leveler - Nightfall.png",
 )
 MODULE_CATEGORY = "Bots"
-MODULE_TAGS = ["automation", "leveling", "nightfall", "campaign", "botting", "bt"]
+MODULE_TAGS = ["automation", "leveling", "nightfall", "campaign", "botting", "bt", "ma"]
 MODULE_DESCRIPTION = (
     "Behavior Tree based Nightfall campaign leveler. Levels a fresh character "
     "from 1 to 20, unlocks campaign content, EotN pool, Factions routes and "
     "Olias. Supports all Nightfall-primary professions with per-profession "
-    "skillbars, armor and weapon crafting.\n\n"
+    "skillbars.\n\n"
+    "MA ruleset variant: no account-unlocked skills, no crafting, no storage "
+    "use, no consumables (pcons or resurrection scrolls), no Fire Imp, no bonus "
+    "weapons, no Keiran's Bow, and no hero skillbars (party sets are built "
+    "normally).\n\n"
     "• BT-based automation using the BottingTree planner stack\n"
     "• Full Nightfall storyline up to and including Consulate Docks\n"
-    "• Crafted armor/weapons for every profession (incl. double-mats crafting)\n"
-    "• Profession unlock routes: GTOB trainers, mercenary heroes, Xunlai storage\n"
+    "• Profession unlock routes: GTOB trainers\n"
     "• EotN unlocks: Boreal Station, Eye of the North pool, Kilroy Stonekin\n"
     "• Factions routes: Kaineng Center, Marketplace, Seitung Harbor, Minister Cho\n"
     "• Prophecies routes: Lion's Arch, Olias unlock, Temple of the Ages (D/R)\n\n"
@@ -108,8 +109,6 @@ VEKK_ENC_STRING = "\\x8102\\x064F"
 
 # HeroID.MOX — M.O.X., the Dervish golem hero (EotN), Hero_enums.py
 MOX_HERO_ID = 16
-# Player-level Dervish hero skillbar template for M.O.X.
-MOX_SKILLBAR_TEMPLATE = "OgGikys8AdZuD4xrQx+KAKvA"
 
 NEHDUKAH_ENC_STRING = "\\x8101\\x246C\\xFDB5\\xB6AD\\x56AB"
 
@@ -134,66 +133,17 @@ def ensure_botting_tree() -> BottingTree:
     return botting_tree
 
 
-# The Imp summoning stone services are gated by this flag instead of being
-# added/removed at runtime: rebuilding the service list mid-run tears down the
-# root tree (planner included), which aborts the currently running mission
-# step. Toggling the flag takes effect on the next service tick with no rebuild.
-_imp_services_enabled: bool = True
-
-
-def _gated_imp_service(name: str, subtree_factory: Callable[[], BehaviorTree]) -> BehaviorTree:
-    """Build an imp service node that only runs while _imp_services_enabled."""
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if not _imp_services_enabled:
-            state = node.blackboard.get(f"{name}_gate_state")
-            if state is not None and state.get("subtree") is not None:
-                state["subtree"].reset()
-                state["subtree"] = None
-            return BehaviorTree.NodeState.RUNNING
-        return RoutinesBT.Upkeepers._tick_service_subtree(
-            node,
-            state_key=f"{name}_gate_state",
-            subtree_factory=subtree_factory,
-        )
-
-    return BehaviorTree(
-        BehaviorTree.ConditionNode(
-            name=name,
-            condition_fn=_tick,
-        )
-    )
-
-
 def _configure_upkeep(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
         looting_enabled=True,
-        resurrection_scroll=True,
+        # MA ruleset: no consumables at all, so no resurrection scrolls and no
+        # pcon upkeep service are registered.
+        resurrection_scroll=False,
         auto_inventory_handler_enabled=True,
-        consumable_upkeeps=tuple(
-            int(model_id)
-            for model_id in CONSUMABLE_UPKEEPS
-        ),
-        # Igneous Summoning Stone (Fire Imp, model 30847) upkeep is registered
-        # below as flag-gated services; UnlockKilroyStonekin flips the gate
-        # off for the mission and back on afterwards.
         enable_outpost_imp_service=False,
         enable_explorable_imp_service=False,
         heroai_state_logging=False,
         enable_party_wipe_recovery=True,
-    )
-    tree.AddServiceTree(
-        "OutpostImpService",
-        lambda: _gated_imp_service(
-            "OutpostImpService",
-            lambda: RoutinesBT.Upkeepers.OutpostImpService(),
-        ),
-    )
-    tree.AddServiceTree(
-        "ExplorableImpService",
-        lambda: _gated_imp_service(
-            "ExplorableImpService",
-            lambda: RoutinesBT.Upkeepers.ExplorableImpService(),
-        ),
     )
 
 
@@ -217,7 +167,8 @@ def ConfigureAggressiveEnv() -> BehaviorTree:
         account_isolation=True,
         pause_on_danger=True,
         auto_loot=True,
-        resurrection_scroll=True,
+        # MA ruleset: resurrection scrolls are consumables and are not used.
+        resurrection_scroll=False,
         reset_hero_ai=False,
     )
 
@@ -229,127 +180,14 @@ def ConfigurePacifistEnv() -> BehaviorTree:
         account_isolation=True,
         pause_on_danger=False,
         auto_loot=True,
-        resurrection_scroll=True,
+        # MA ruleset: resurrection scrolls are consumables and are not used.
+        resurrection_scroll=False,
         reset_hero_ai=False,
     )
 
 
-def _should_run_double_mats_crafting() -> bool:
-    """Professions that craft with double materials (common + dust)."""
-    return _profession_name() in ("Paragon", "Elementalist", "Monk", "Necromancer")
-
 
 # ============================================================================
-# Per-profession data tables (equivalent of classic GetArmor/Weapon helpers)
-# ============================================================================
-
-def _get_armor_material() -> int:
-    """Mirrors GetArmorMaterialPerProfession() -> ModelID."""
-    primary = _profession_name()
-    if primary == "Warrior":
-        return ModelID.Iron_Ingot.value
-    if primary == "Monk":
-        return ModelID.Bolt_Of_Cloth.value
-    if primary == "Dervish":
-        return ModelID.Tanned_Hide_Square.value
-    if primary == "Mesmer":
-        return ModelID.Bolt_Of_Cloth.value
-    if primary == "Necromancer":
-        return ModelID.Tanned_Hide_Square.value
-    if primary == "Ritualist":
-        return ModelID.Bolt_Of_Cloth.value
-    if primary == "Elementalist":
-        return ModelID.Bolt_Of_Cloth.value
-    if primary == "Ranger":
-        return ModelID.Bolt_Of_Cloth.value
-    return ModelID.Tanned_Hide_Square.value
-
-
-def _get_weapon_material() -> list[int]:
-    """Mirrors GetWeaponMaterialPerProfession() -> list of one material id."""
-    primary = _profession_name()
-    if primary == "Elementalist":
-        return [ModelID.Wood_Plank.value]
-    if primary == "Monk":
-        return [ModelID.Wood_Plank.value]
-    if primary == "Necromancer":
-        return [ModelID.Iron_Ingot.value]
-    return [ModelID.Iron_Ingot.value]
-
-
-def _get_first_weapon_material() -> list[int]:
-    """Mirrors GetFirstWeaponMaterialPerProfession()."""
-    primary = _profession_name()
-    if primary == "Elementalist":
-        return [ModelID.Wood_Plank.value]
-    if primary == "Monk":
-        return [ModelID.Wood_Plank.value]
-    if primary == "Mesmer":
-        return [ModelID.Iron_Ingot.value]
-    if primary == "Necromancer":
-        return [ModelID.Wood_Plank.value]
-    return [ModelID.Iron_Ingot.value]
-
-
-def _get_armor_pieces() -> tuple[int, int, int, int, int]:
-    """Mirrors GetArmorPiecesByProfession() -> (HEAD, CHEST, GLOVES, PANTS, BOOTS)."""
-    primary = _profession_name()
-    if primary == "Warrior":
-        return 17525, 17531, 17532, 17533, 17530
-    if primary == "Dervish":
-        return 17705, 17676, 17677, 17678, 17675
-    if primary == "Ranger":
-        return 17619, 17621, 17622, 17623, 17620
-    if primary == "Mesmer":
-        return 17191, 17196, 17197, 17198, 17195
-    if primary == "Paragon":
-        return 17777, 17791, 17792, 17793, 17790
-    if primary == "Elementalist":
-        return 17333, 17350, 17351, 17352, 17349
-    if primary == "Monk":
-        return 17402, 17406, 17407, 17408, 17405
-    return 17249, 17251, 17252, 17253, 17250  # Necromancer
-
-
-def _get_crafted_weapons() -> list[int]:
-    """Mirrors GetWeaponByProfession()."""
-    primary = _profession_name()
-    if primary == "Warrior":
-        return [18910]
-    if primary == "Ranger":
-        return [18903, 18912]
-    if primary == "Paragon":
-        return [18913, 18856]
-    if primary == "Dervish":
-        return [18910]
-    if primary == "Elementalist":
-        return [18921]
-    if primary == "Mesmer":
-        return [18914]
-    if primary == "Monk":
-        return [18926]
-    return [18914]  # Necromancer
-
-
-def _get_first_crafted_weapons() -> list[int]:
-    """Mirrors GetFirstWeaponByProfession()."""
-    primary = _profession_name()
-    if primary == "Warrior":
-        return [16227]
-    if primary == "Ranger":
-        return [15777]
-    if primary == "Paragon":
-        return [18711]
-    if primary == "Dervish":
-        return [16227]
-    if primary == "Elementalist":
-        return [18896]
-    if primary == "Mesmer":
-        return [18712]
-    if primary == "Monk":
-        return [18901]
-    return [18893]  # Necromancer
-
 
 # ============================================================================
 # Skill bar + equipment helpers
@@ -477,26 +315,20 @@ def StandardHeroTeam(henchman_ids: list[int] | None = None) -> BehaviorTree:
     def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
         party_size = Map.GetMaxPartySize()
         hero_list: list[int] = []
-        skill_templates: list[str] = []
         if party_size <= 8:
             hero_list.extend([24, 26, 27])  # Gwen, Vekk, Ogden
-            skill_templates = [
-                "OQhkAsC8gFKzJY6lDMd40hQG4iB",  # Gwen
-                "OgVDI8gsO5gTw0z0hTFAZgiA",     # Vekk
-                "OwUUMsG/E4SNgbE3N3ETfQgZAMEA",  # Ogden
-            ]
 
-        children: list[BehaviorTree | BehaviorTree.Node] = [
-            RoutinesBT.Party.LoadParty(
-                hero_ids=hero_list,
-                henchman_ids=[],
-                log=True,
-            ),
-        ]
-        for position, template in enumerate(skill_templates, start=1):
-            children.append(BT.LoadHeroSkillbar(hero_index=position, template=template, log=True))
-            children.append(BT.Wait(duration_ms=500))
-        return BT.Sequence(name="Standard Hero Team", children=children)
+        # MA ruleset: party composition only, hero skillbars are never loaded.
+        return BT.Sequence(
+            name="Standard Hero Team",
+            children=[
+                RoutinesBT.Party.LoadParty(
+                    hero_ids=hero_list,
+                    henchman_ids=[],
+                    log=True,
+                ),
+            ],
+        )
 
     return BT.Subtree(
         name="Standard Hero Team",
@@ -565,232 +397,6 @@ def AddHenchmenLA() -> BehaviorTree:
 
 
 # ============================================================================
-# Crafting helpers (equivalent of classic generator states)
-# ============================================================================
-
-def _RestockForCrafting(pairs: list[tuple[int, int]]) -> BehaviorTree:
-    """Withdraw crafting materials from Xunlai storage into inventory.
-
-    BuyMaterials and CraftItem both operate on inventory bags only, so any
-    materials parked in storage must be pulled out before the crafter is
-    opened. allow_missing=True keeps the trader-purchase path viable when
-    storage is empty.
-    """
-    children: list[BehaviorTree | BehaviorTree.Node] = []
-    for model_id, quantity in pairs:
-        children.append(
-            RoutinesBT.Items.RestockItems(
-                model_id=model_id, desired_quantity=quantity, allow_missing=True))
-    return BT.Sequence(name="Restock Crafting Materials", children=children)
-
-
-def BuyMaterials() -> BehaviorTree:
-    """Buy 2 batches of the profession armor material."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        material_id = _get_armor_material()
-        return RoutinesBT.Items.BuyMaterials(model_id=material_id, batches=2, log=True)
-
-    return BT.Subtree(
-        name="Buy Materials",
-        subtree_fn=_resolve,
-    )
-
-
-def BuyWeaponMaterials() -> BehaviorTree:
-    """Buy 1 batch of the profession weapon material."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        materials = _get_weapon_material()
-        if not materials:
-            return BT.Succeeder(name="SkipBuyWeaponMaterials")
-        return RoutinesBT.Items.BuyMaterials(model_id=materials[0], batches=1, log=True)
-
-    return BT.Subtree(
-        name="Buy Weapon Materials",
-        subtree_fn=_resolve,
-    )
-
-
-def BuyDoubleMaterials(material_type: str = "common") -> BehaviorTree:
-    """Buy the common (and optional rare) materials used for double-mats armor."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        children: list[BehaviorTree | BehaviorTree.Node] = []
-        if material_type == "common":
-            if _profession_name() in ("Paragon", "Monk", "Elementalist", "Necromancer"):
-                children.append(RoutinesBT.Items.BuyMaterials(
-                    model_id=_get_armor_material(), batches=2, log=True))
-                children.append(BT.Wait(duration_ms=500))
-                children.append(RoutinesBT.Items.BuyMaterials(
-                    model_id=ModelID.Pile_Of_Glittering_Dust.value, batches=1, log=True))
-            else:
-                children.append(RoutinesBT.Items.BuyMaterials(
-                    model_id=_get_armor_material(), batches=2, log=True))
-        else:
-            # "rare" material for professions that need it.
-            rare_ids: dict[str, list[tuple[int, int]]] = {
-                "Warrior": [(ModelID.Deldrimor_Steel_Ingot.value, 20)],
-                "Dervish": [(ModelID.Monstrous_Claw.value, 20)],
-                "Ranger": [(ModelID.Fur_Square.value, 20)],
-                "Monk": [(ModelID.Pile_Of_Glittering_Dust.value, 20)],
-                "Mesmer": [(ModelID.Pile_Of_Glittering_Dust.value, 20)],
-                "Necromancer": [(ModelID.Pile_Of_Glittering_Dust.value, 20)],
-                "Elementalist": [(ModelID.Pile_Of_Glittering_Dust.value, 20)],
-                "Paragon": [(ModelID.Deldrimor_Steel_Ingot.value, 20)],
-            }
-            for model_id, count in rare_ids.get(_profession_name(), []):
-                children.append(RoutinesBT.Items.BuyMaterials(
-                    model_id=model_id, batches=count // 10, log=True))
-        return BT.Sequence(name=f"BuyDoubleMaterials({material_type})", children=children)
-
-    return BT.Subtree(
-        name=f"Buy Double Materials {material_type}",
-        subtree_fn=_resolve,
-    )
-
-
-def _craft_armor_pieces() -> BehaviorTree:
-    """Craft + equip the profession armor set (copy of classic CraftArmor)."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        head, chest, gloves, pants, boots = _get_armor_pieces()
-        material = [_get_armor_material()]
-        armor_pieces: list[tuple[int, list[int], list[int]]] = [
-            (head, material, [2]),
-            (gloves, material, [2]),
-            (chest, material, [6]),
-            (pants, material, [4]),
-            (boots, material, [2]),
-        ]
-        children: list[BehaviorTree | BehaviorTree.Node] = []
-        for item_id, mats, qtys in armor_pieces:
-            children.append(RoutinesBT.Items.CraftItem(
-                output_model_id=item_id, cost=75, trade_model_ids=mats, quantity_list=qtys))
-            children.append(BT.EquipItemByModelID(item_id, log=True))
-        return BT.Sequence(name="Craft Armor", children=children)
-
-    return BT.Subtree(
-        name="Craft Armor",
-        subtree_fn=_resolve,
-    )
-
-
-def _craft_double_mats_armor_pieces() -> BehaviorTree:
-    """Craft + equip armor using double materials (common + dust for head)."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        head, chest, gloves, pants, boots = _get_armor_pieces()
-        primary = _profession_name()
-
-        if primary in ("Paragon", "Monk", "Elementalist", "Necromancer"):
-            dust = ModelID.Pile_Of_Glittering_Dust.value
-            main_mat = _get_armor_material()
-            armor_pieces: list[tuple[int, list[int], list[int]]] = [
-                (head, [dust], [2]),
-                (chest, [main_mat], [6]),
-                (gloves, [main_mat], [2]),
-                (pants, [main_mat], [4]),
-                (boots, [main_mat], [2]),
-            ]
-        else:
-            material = [_get_armor_material()]
-            armor_pieces = [
-                (head, material, [2]),
-                (chest, material, [6]),
-                (gloves, material, [2]),
-                (pants, material, [4]),
-                (boots, material, [2]),
-            ]
-
-        children: list[BehaviorTree | BehaviorTree.Node] = []
-        for item_id, mats, qtys in armor_pieces:
-            children.append(RoutinesBT.Items.CraftItem(
-                output_model_id=item_id, cost=75, trade_model_ids=mats, quantity_list=qtys))
-            children.append(BT.EquipItemByModelID(item_id, log=True))
-        return BT.Sequence(name="Craft Armor Double Mats", children=children)
-
-    return BT.Subtree(
-        name="Craft Armor Double Mats",
-        subtree_fn=_resolve,
-    )
-
-
-def _craft_weapons() -> BehaviorTree:
-    """Craft + equip the profession weapon set (mirror of classic CraftWeapon)."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        weapon_ids = _get_crafted_weapons()
-        materials = _get_weapon_material()
-        children: list[BehaviorTree | BehaviorTree.Node] = []
-        for weapon_id in weapon_ids:
-            children.append(RoutinesBT.Items.CraftItem(
-                output_model_id=weapon_id, cost=50,
-                trade_model_ids=materials, quantity_list=[1]))
-            children.append(BT.EquipItemByModelID(weapon_id, log=True))
-        return BT.Sequence(name="Craft Weapons", children=children)
-
-    return BT.Subtree(
-        name="Craft Weapons",
-        subtree_fn=_resolve,
-    )
-
-
-def _craft_first_weapon() -> BehaviorTree:
-    """Craft + equip the first weapon (mirror of classic Craft1stWeapon)."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        weapon_ids = _get_first_crafted_weapons()
-        materials = _get_first_weapon_material()
-        children: list[BehaviorTree | BehaviorTree.Node] = []
-        for weapon_id in weapon_ids:
-            children.append(RoutinesBT.Items.CraftItem(
-                output_model_id=weapon_id, cost=20,
-                trade_model_ids=materials, quantity_list=[1]))
-            children.append(BT.EquipItemByModelID(weapon_id, log=True))
-        return BT.Sequence(name="Craft First Weapon", children=children)
-
-    return BT.Subtree(
-        name="Craft First Weapon",
-        subtree_fn=_resolve,
-    )
-
-
-def DestroyStarterArmorAndUselessItems() -> BehaviorTree:
-    """Equivalent of the classic destroy_starter_armor_and_useless_items() generator."""
-    STARTER_ARMOR_BY_PROFESSION: dict[str, list[int]] = {
-        "Dervish": [15712, 15710, 15711, 15713, 15709],
-        "Paragon": [15717, 15715, 15716, 15718, 15714],
-        "Warrior": [15702, 15700, 15701, 15703, 15699],
-        "Ranger": [15707, 15705, 15706, 15708, 15704],
-        "Monk": [15697, 15695, 15696, 15698, 15694],
-        "Elementalist": [15692, 15690, 15691, 15693, 15689],
-        "Mesmer": [15682, 15680, 15681, 15683, 15679],
-        "Necromancer": [15687, 15685, 15686, 15688, 15684],
-    }
-    USELESS_ITEMS: list[int] = [
-        17081,  # Battle Commendation
-        477, 2787, 2652, 2694, 2982, 2742, 15591, 15593,  # starter weapons
-        18901,  # Monk 1st Staff
-        16227,  # 1st Scythe (Warrior/Dervish)
-        30853,  # MOX Manual
-    ]
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        models = list(STARTER_ARMOR_BY_PROFESSION.get(_profession_name(), []))
-        models.extend(USELESS_ITEMS)
-        children: list[BehaviorTree | BehaviorTree.Node] = []
-        for model in models:
-            children.append(RoutinesBT.Items.DestroyItem(modelID_or_encStr=model, log=False))
-        return BT.Sequence(name="Destroy Starter Armor And Useless Items", children=children)
-
-    return BT.Subtree(
-        name="Destroy Starter Armor And Useless Items",
-        subtree_fn=_resolve,
-    )
-
-
-# ============================================================================
 # Utility leaf nodes
 # ============================================================================
 
@@ -817,6 +423,30 @@ def _clear_target() -> BehaviorTree.Node:
         return BehaviorTree.NodeState.SUCCESS
 
     return BehaviorTree.ActionNode(name="Clear Target", action_fn=_action)
+
+
+def _wait_for_npc_quest(model_or_enc_str: int | str, timeout_ms: int = 90000) -> BehaviorTree:
+    """Wait until the NPC matching a model id / enc string shows a quest marker.
+
+    Replaces blind post-combat waits: Hog Hunt's marker only appears once the
+    area's hostiles have spawned, so poll the NPC's has_quest flag instead of
+    sleeping a fixed duration.
+    """
+
+    def _npc_has_quest() -> BehaviorTree.NodeState:
+        npc_id = int(RoutinesAgents.GetAgentIDByModelOrEncStr(model_or_enc_str) or 0)
+        if npc_id != 0 and Agent.HasQuest(npc_id):
+            return BehaviorTree.NodeState.SUCCESS
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.WaitUntilNode(
+            name=f"Wait For NPC Quest ({model_or_enc_str})",
+            condition_fn=_npc_has_quest,
+            throttle_interval_ms=150,
+            timeout_ms=timeout_ms,
+        )
+    )
 
 
 class RepeatWhileBelowLevel10XP(BehaviorTree.RepeaterUntilFailureNode):
@@ -905,8 +535,7 @@ def NeverFightAlone() -> BehaviorTree:
         children=[
             BT.Travel(target_map_id=CHAHBEK_VILLAGE, log=True),
             PrepareForBattle(hero_list=[6], henchman_list=[1, 2]),
-            BT.SpawnAndDestroyBonusItems(
-                exclude_list=[ModelID.Igneous_Summoning_Stone.value]),
+            # /bonus spawn-and-destroy removed for the MA ruleset (no bonus weapons).
             EquipWeapon(),
             BT.MoveAndDialog((3433, -5900), 0x82C701, log=True),
             BT.DialogAtXY((3433, -5900), 0x82C707, log=True),
@@ -920,8 +549,6 @@ def ChahbekVillageMission() -> BehaviorTree:
         name="Chahbek Village Mission",
         children=[
             BT.Travel(target_map_id=CHAHBEK_VILLAGE, log=True),
-            BT.LoadHeroSkillbar(
-                hero_index=1, template="OQASEF6EC1vcNABWAAAA", log=True),
             BT.DialogAtXY((3485, -5246), 0x81, log=True),
             BT.DialogAtXY((3485, -5246), 0x84, log=True),
             BT.Wait(2000),
@@ -940,14 +567,14 @@ def ChahbekVillageMission() -> BehaviorTree:
             BT.InteractWithGadgetAtXY((-1731, -4138)),  # Cata 2 load
             BT.Wait(2000),
             BT.InteractWithGadgetAtXY((-1731, -4138)),  # Cata 2 fire
-            BT.VanquishNode(steps=[(-2331, -419), (-1685, 1459), (-2895, -6247), (-3938, -6315)]),  # Boss
+            BT.VanquishNode(steps=[(-2331, -419), (-1685, 1459), (-2895, -6247), (-3938, -6315)]),
             BT.WaitForMapLoad(map_id=456),
         ],
     )
 
 
 # ---------------------------------------------------------------------------
-# Primary Training / vault / inventory
+# Primary Training
 # ---------------------------------------------------------------------------
 
 def _get_skills() -> BehaviorTree:
@@ -1004,38 +631,6 @@ def PrimaryTraining() -> BehaviorTree:
     )
 
 
-def APersonalVault() -> BehaviorTree:
-    """Mirror of classic A_Personal_Vault()."""
-    return BT.Sequence(
-        name="Quest: A Personal Vault",
-        children=[
-            BT.Travel(target_map_id=KAMADAN, log=True),
-            BT.MoveAndDialog((-9251, 11826), 0x82A101, log=True),
-            BT.MoveAndDialog((-7761, 14393), 0x84, log=True),
-            BT.MoveAndDialog((-9251, 11826), 0x82A107, log=True),
-            BT.EqualizeGold(5000),
-        ],
-    )
-
-
-def ExtendInventorySpace() -> BehaviorTree:
-    """Mirror of classic Extend_Inventory_Space() (bags 1-2 + belt pouch)."""
-    merchant = (-4861, -7441)
-    return BT.Sequence(
-        name="Extend Inventory Space",
-        children=[
-            BT.Travel(target_map_id=GTOB, log=True),
-            BT.EqualizeGold(5000),
-            BT.MoveAndBuyMerchantItem(merchant, ModelID.Bag.value, quantity=1, log=True),  # Bag 1
-            BT.EquipInventoryBag(ModelID.Bag.value, Bags.Bag1, log=True),
-            BT.BuyMerchantItem(ModelID.Bag.value, quantity=1, log=True),  # Bag 2
-            BT.EquipInventoryBag(ModelID.Bag.value, Bags.Bag2, log=True),
-            BT.BuyMerchantItem(ModelID.Belt_Pouch.value, quantity=1, log=True),
-            BT.EquipInventoryBag(ModelID.Belt_Pouch.value, Bags.BeltPouch, log=True),
-        ],
-    )
-
-
 def MaterialGirl() -> BehaviorTree:
     """Mirror of classic Material_Girl()."""
     return BT.Sequence(
@@ -1070,9 +665,9 @@ def HogHunt() -> BehaviorTree:
     """Mirror of classic Hog_Hunt().
 
     The classic's interact_Nehdukah managed coroutine (interact by enc string,
-    poll for dialog buttons, send 0x828D01) maps onto the owning
-    TargetAgentByModelIDAndSendDialog node, which handles target, interact and
-    dialog submission with its own retry handling.
+    poll for dialog buttons, send 0x828D01) maps onto: wait for Nehdukah's
+    quest marker, then target, interact, and only send the dialog id after the
+    dialog window has had time to open.
     """
     return BT.Sequence(
         name="Quest: Hog Hunt",
@@ -1086,14 +681,18 @@ def HogHunt() -> BehaviorTree:
             BT.MoveAndDialog((-1297.00, 3229.00), 0x85, log=True),  # Insect bounty
             _clear_target(),
             BT.VanquishNode(steps=[(-269.29, 1981.00), (-1894.08, 2403.29)]),
-            BT.Wait(90000),
-            BT.TargetAgentByModelIDAndSendDialog(
-                NEHDUKAH_ENC_STRING, 0x828D01, log=True),  # Accept quest
+            _wait_for_npc_quest(NEHDUKAH_ENC_STRING),
+            BT.TargetAgentByModelIDAndInteract(NEHDUKAH_ENC_STRING, log=True),
+            BT.Wait(duration_ms=1000),  # Let the dialog window open before sending.
+            BT.SendDialog(0x828D01, log=True),  # Accept quest
             BT.VanquishNode(steps=[(-6038.05, 2229.41), (-10117.84, 3935.15), (-12969.55, 9102.46)]),
             BT.WaitUntilOnCombat(),
             BT.MoveAndKill(pos=(-12743.11, 8789.06)),  # 2nd spawn wave
             BT.VanquishNode(steps=[(-8175.91, 7331.07), (-6762.51, 2301.88), (-149.15, 1838.02), (-1158.39, 1917.86)]),
-            BT.TargetAgentByModelIDAndSendDialog(4869, 0x828D07, log=True),
+            _wait_for_npc_quest(NEHDUKAH_ENC_STRING),
+            BT.TargetAgentByModelIDAndInteract(NEHDUKAH_ENC_STRING, log=True),
+            BT.Wait(duration_ms=1000),  # Let the dialog window open before sending.
+            BT.SendDialog(0x828D07, log=True),  # Complete quest
             BT.Travel(target_map_id=SUNSPEAR_GREAT_HALL, random_travel=True,
                       log=True),
         ],
@@ -1148,33 +747,6 @@ def AttributePointsQuest1() -> BehaviorTree:
     )
 
 
-def CraftFirstWeapon() -> BehaviorTree:
-    """Mirror of classic Craft_First_Weapon()."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        # One material set for the single first-weapon craft.
-        pairs = [
-            (model_id, len(_get_first_crafted_weapons()))
-            for model_id in _get_first_weapon_material()
-        ]
-        return BT.Sequence(
-            name="Craft first weapon",
-            children=[
-                _RestockForCrafting(pairs),
-                BT.Travel(target_map_id=KAMADAN, log=True),
-                BT.MoveAndInteract((-11270, 8785), log=True),
-                BT.Wait(1000),
-                _craft_first_weapon(),
-                EquipSkillBar(),
-            ],
-        )
-
-    return BT.Subtree(
-        name="Craft first weapon",
-        subtree_fn=_resolve,
-    )
-
-
 def ProofOfCourageAndSuwashThePirate() -> BehaviorTree:
     """Mirror of classic Proof_of_Courage_and_Suwash_the_Pirate()."""
     return BT.Sequence(
@@ -1209,7 +781,7 @@ def AHiddenThreat() -> BehaviorTree:
         children=[
             BT.Travel(target_map_id=SUNSPEAR_GREAT_HALL, log=True),
             PrepareForBattle(hero_list=[], henchman_list=[1, 2, 4]),
-            BT.MoveAndDialog((-1835, 6505), 0x825A01, log=True),  # Shaurom
+            BT.HandleQuest(602, (-1835, 6505), 0x825A01, mode=BT.Questmode.Accept, log=True),  # Shaurom
             BT.MoveAndExitMap(pos=(-3172, 3271), target_map_id=PLAINS_OF_JARIN, log=True),
             ConfigureAggressiveEnv(),
             BT.VanquishNode(steps=[(-4680.29, 1867.42), (-13276.00, -151.00), (-17946.33, 2426.69), (-18552.92, 4336.15), (-17614.74, 11699.77), (-18657.45, 14601.87), (-16911.47, 19039.31)]),
@@ -1217,7 +789,7 @@ def AHiddenThreat() -> BehaviorTree:
             BT.WaitUntilOutOfCombat(),
             BT.MoveAndExitMap(pos=(-20136, 16757), target_map_id=THE_ASTRELARIUM, log=True),
             BT.Travel(target_map_id=SUNSPEAR_GREAT_HALL, log=True),
-            BT.MoveAndDialog((-1835, 6505), 0x825A07, log=True),  # reward
+            BT.HandleQuest(602, (-1835, 6505), 0x825A07, mode=BT.Questmode.Complete, require_quest_marker=True, log=True),  # reward
         ],
     )
 
@@ -1394,87 +966,6 @@ def LeavingALegacy() -> BehaviorTree:
     )
 
 
-def CraftPlayerArmor() -> BehaviorTree:
-    """Mirrors the classic armor crafting: double-mats for Paragon/Elementalist/Monk/Necromancer, standard otherwise."""
-    standard = BT.Sequence(
-        name="Craft Standard Armor",
-        children=[
-            # Head 2 + chest 6 + gloves 2 + pants 4 + boots 2 = 16 units.
-            _RestockForCrafting([(_get_armor_material(), 16)]),
-            BT.MoveAndInteract(pos=(3857.42, 1700.62)),  # Material merchant
-            BuyMaterials(),
-            BT.MoveAndInteract(pos=(3944, 2378)),  # Armor crafter
-            BT.Wait(duration_ms=1000),
-            _craft_armor_pieces(),
-        ],
-    )
-    double_mats = BT.Sequence(
-        name="Craft Double Mats Armor",
-        children=[
-            # Chest 6 + gloves 2 + pants 4 + boots 2 = 14 main material,
-            # plus 2 dust for the head piece.
-            _RestockForCrafting([
-                (_get_armor_material(), 14),
-                (ModelID.Pile_Of_Glittering_Dust.value, 2),
-            ]),
-            # Classic buys BOTH materials (common + dust) at the dedicated
-            # material trader NPC, not the material merchant or the crafter.
-            BT.MoveAndInteract(pos=(3839.00, 1618.00)),  # Material trader
-            BuyDoubleMaterials(),
-            BT.MoveAndInteract(pos=(3944, 2378)),  # Armor crafter
-            BT.Wait(duration_ms=1000),
-            _craft_double_mats_armor_pieces(),
-        ],
-    )
-    return BT.Sequence(
-        name="Craft Player Armor",
-        children=[
-            BT.Travel(target_map_id=491),
-            BT.EqualizeGold(5000),
-            BT.GetNodeByProfession(
-                ParagonNode=double_mats,
-                ElementalistNode=double_mats,
-                MonkNode=double_mats,
-                NecromancerNode=double_mats,
-                WarriorNode=standard,
-                RangerNode=standard,
-                DervishNode=standard,
-                MesmerNode=standard,
-            ),
-        ],
-    )
-
-
-def CraftPlayerWeapon() -> BehaviorTree:
-    """Mirrors the classic Craft_Player_Weapon() (Dec weapon crafter, model 4778)."""
-
-    def _resolve(_node: BehaviorTree.Node) -> BehaviorTree:
-        # One full material set per crafted weapon (each CraftItem consumes
-        # quantity_list=[1] of every trade material).
-        pairs = [
-            (model_id, len(_get_crafted_weapons()))
-            for model_id in _get_weapon_material()
-        ]
-        return BT.Sequence(
-            name="Craft Weapon",
-            children=[
-                BT.Travel(target_map_id=491),
-                _RestockForCrafting(pairs),
-                BT.MoveAndInteract(pos=(3857.42, 1700.62)),
-                BuyWeaponMaterials(),
-                BT.Move(pos=(4108.39, 2211.65)),
-                BT.TargetAndDialogByModelID(modelID_or_encStr=4778, dialog_id=0x86),
-                BT.Wait(duration_ms=1000),
-                _craft_weapons(),
-            ],
-        )
-
-    return BT.Subtree(
-        name="Craft Weapon",
-        subtree_fn=_resolve,
-    )
-
-
 # ============================================================================
 # Leveling & region travel
 # ============================================================================
@@ -1628,8 +1119,7 @@ def ToMinisterCho() -> BehaviorTree:
             BT.MoveAndExitMap(pos=(-14961, 11453), target_map_name="Sunqua Vale"),
             ConfigurePacifistEnv(),
             BT.VanquishNode(steps=[(16182.62, -7841.86), (6611.58, 15847.51)]),
-            BT.Move((6874, 16391)),
-                        BT.WaitForMapLoad(map_id=214, timeout_ms=30000),
+            BT.MoveAndExitMap(pos=(6874, 16391), target_map_id=214),
         ],
     )
 
@@ -1764,7 +1254,6 @@ def ToBorealStation() -> BehaviorTree:
             # M.O.X. (HeroID 16) joins as hero 1 for the trip to Boreal Station.
             PrepareForBattle(hero_list=[MOX_HERO_ID], henchman_list=[3, 4]),
             EquipSkillBar(),
-            BT.LoadHeroSkillbar(hero_index=1, template=MOX_SKILLBAR_TEMPLATE, log=True),
             BT.MoveAndExitMap(pos=(-9326, 18151), target_map_id=PLAINS_OF_JARIN),
             ConfigureAggressiveEnv(),
             BT.MoveAndKill(pos=(15407, 209)),
@@ -1823,7 +1312,6 @@ def UnlockEyeOfTheNorthPool() -> BehaviorTree:
             BT.WaitForMapLoad(map_id=646, timeout_ms=30000),
             BT.MoveAndDialogByModelID(modelID_or_encStr=GWEN_ENC_STRING, dialog_id=0x89),  # Gwen
             BT.MoveAndDialogByModelID(modelID_or_encStr=GWEN_ENC_STRING, dialog_id=0x831904),  # Gwen
-            #BT.DialogAtXY(pos=(-6572.70, 6588.83), dialog_id=0x8A), #for the Keiran Bow
             BT.MoveAndDialogByModelID(modelID_or_encStr=OGDEN_ENC_STRING, dialog_id=0x838904),  # Ogden
             BT.MoveAndDialogByModelID(modelID_or_encStr=VEKK_ENC_STRING, dialog_id=0x839304),  # Vekk
         ],
@@ -1851,32 +1339,6 @@ def ToGunnarsHold() -> BehaviorTree:
             BT.MoveAndExitMap(pos=(15578, -6548), target_map_id=644),
             BT.WaitForMapLoad(map_id=644, timeout_ms=30000),
         ],
-    )
-
-
-def _set_imp_services(enabled: bool) -> BehaviorTree:
-    """Toggle the Igneous Summoning Stone upkeep services for the current run.
-
-    Only flips the module-level gate flag; the services were registered once
-    at tree creation. No tree rebuild happens here, so this is safe to call
-    mid-mission (a ConfigureUpkeep re-call would reset the root tree and
-    abort the running step).
-    """
-    def _apply(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        global _imp_services_enabled
-        _imp_services_enabled = enabled
-        ConsoleLog(
-            "UnlockKilroyStonekin",
-            f"Imp summoning stone services {'enabled' if enabled else 'disabled'}.",
-        )
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name="Enable Imp Stone" if enabled else "Disable Imp Stone",
-            action_fn=_apply,
-            aftercast_ms=0,
-        )
     )
 
 
@@ -1950,8 +1412,6 @@ def UnlockKilroyStonekin() -> BehaviorTree:
     return BT.Sequence(
         name="Unlock Kilroy Stonekin",
         children=[
-            # The Imp summoning stone is not allowed in this mission.
-            _set_imp_services(enabled=False),
             BT.Travel(target_map_id=644),
             BT.MoveAndDialog(pos=(17341.00, -4796.00), dialog_id=0x835A01),
             BT.DialogAtXY(pos=(17341.00, -4796.00), dialog_id=0x84),
@@ -1967,9 +1427,8 @@ def UnlockKilroyStonekin() -> BehaviorTree:
             BT.Move(pos=(19290.50, -11552.23)),
             BT.WaitUntilOnOutpost(timeout_ms=180000),
             BT.WaitForMapLoad(map_id=644, timeout_ms=30000),
-            # Back in Gunnar's Hold: restore the imp stone services and the
-            # weapons worn before the brass knuckles went on.
-            _set_imp_services(enabled=True),
+            # Back in Gunnar's Hold: restore the weapons worn before the brass
+            # knuckles went on. No imp services to re-enable under the MA ruleset.
             _restore_equipped_weapons(),
             BT.MoveAndDialog(pos=(17341.00, -4796.00), dialog_id=0x835A07),
             BT.Succeeder(name="Profession weapons restored from snapshot"),
@@ -2018,32 +1477,8 @@ def UnlockSunspearSkills() -> BehaviorTree:
     )
 
 
-def UnlockXunlaiMaterialStorage() -> BehaviorTree:
-    """Mirrors the classic Unlock_Xunlai_Material_Storage()."""
-    return BT.Sequence(
-        name="Unlock Xunlai Material Storage",
-        children=[
-            BT.LeaveParty(),
-            BT.Travel(target_map_id=248),
-            BT.Move((-5540.40, -5733.11)),
-            BT.Move((-7050.04, -6392.59)),
-            BT.DialogAtXY(pos=(-7050.04, -6392.59), dialog_id=0x800001),
-            BT.DialogAtXY(pos=(-7050.04, -6392.59), dialog_id=0x800002),
-        ],
-    )
-
-
-def UnlockMercenaryHeroes() -> BehaviorTree:
-    """Mirrors the classic Unlock_Mercenary_Heroes()."""
-    return BT.Sequence(
-        name="Unlock Mercenary Heroes",
-        children=[
-            BT.LeaveParty(),
-            BT.Travel(target_map_id=248),
-            BT.Move((-4231.87, -8965.95)),
-            BT.DialogAtXY(pos=(-4231.87, -8965.95), dialog_id=0x800004),
-        ],
-    )
+# Unlock_Xunlai_Material_Storage and Unlock_Mercenary_Heroes are intentionally
+# skipped for the MA ruleset (no storage access, no mercenary heroes).
 
 
 def SecondaryTraining() -> BehaviorTree:
@@ -2087,7 +1522,7 @@ def SecondaryTraining() -> BehaviorTree:
                 BT.LeaveParty(),
                 BT.MoveAndDialog(pos=(-7910, 9740), dialog_id=0x825901, log=True),
                 BT.MoveAndDialog(pos=(-7525, 6288), dialog_id=0x84, log=True),
-                BT.WaitForMapToChange(map_id=456),
+                BT.WaitForMapLoad(map_id=456),
                 ConfigurePacifistEnv(),
                 trainer_dialog,
                 BT.MoveAndDialog(
@@ -2129,7 +1564,8 @@ def _secondary_training_nodes() -> BehaviorTree:
         skip = PROFESSION_TRAINERS.get(primary)
         children: list[BehaviorTree | BehaviorTree.Node] = [
             BT.Travel(target_map_id=GTOB, log=True),
-            BT.EqualizeGold(5000),
+            # Gold top-up removed for the MA ruleset: EqualizeGold deposits to and
+            # withdraws from Xunlai storage gold, which an MA character cannot use.
             BT.Move(pos=(-3151.22, -7255.13)),
         ]
         for dialog_id in ALL_TRAINERS:
@@ -2163,37 +1599,32 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Never Fight Alone", NeverFightAlone),
         ("Chahbek Village Mission", ChahbekVillageMission),
         ("Primary Training", PrimaryTraining),
-        ("A Personal Vault", APersonalVault),
-        ("Extend Inventory Space", ExtendInventorySpace),
-        # Armored_Transport is intentionally skipped (classic was commented out).
         ("Material Girl", MaterialGirl),
         ("Hog Hunt", HogHunt),
         ("To Champions Dawn", ToChampionsDawn),
         ("Quality Steel", QualitySteel),
         ("Attribute Points Quest 1", AttributePointsQuest1),
-        ("Craft First Weapon", CraftFirstWeapon),
-        # Missing_Shipment is intentionally skipped (classic was commented out).
         ("Proof of Courage and Suwash the Pirate", ProofOfCourageAndSuwashThePirate),
         ("A Hidden Threat", AHiddenThreat),
         ("Identity Theft", IdentityTheft),
-        ("Configure Player Build", ConfigurePlayerBuild),
         ("Honing Your Skills", HoningYourSkills),
         ("Command Training", CommandTraining),
         ("Secondary Training", SecondaryTraining),
+        ("Configure Player Build", ConfigurePlayerBuild),
         ("Leaving A Legacy", LeavingALegacy),
     ]
 
-    # Equipment crafting
-    steps.append(("Craft Player Armor", CraftPlayerArmor))
-    steps.append(("Craft Player Weapon", CraftPlayerWeapon))
-    steps.append(("Destroy Starter Armor", DestroyStarterArmorAndUselessItems))
+    # Equipment crafting and the follow-up starter-gear cleanup
+    # (Craft_Player_Armor, Craft_Player_Weapon,
+    # destroy_starter_armor_and_useless_items) are intentionally skipped for the
+    # MA ruleset.
 
     # Leveling
     steps.append(("Farm Until Level 10", FarmUntilLevel10))
     steps.append(("To Consulate Docks", ToConsulateDocks))
     #steps.append(("Unlock Remaining Secondary Professions", UnlockRemainingSecondaryProfessions))
-    steps.append(("Unlock Mercenary Heroes", UnlockMercenaryHeroes))
-    steps.append(("Unlock Xunlai Material Storage", UnlockXunlaiMaterialStorage))
+    # Unlock_Mercenary_Heroes and Unlock_Xunlai_Material_Storage are intentionally
+    # skipped for the MA ruleset.
     steps.append(("Attribute Points Quest 2", AttributePointsQuest2))
     steps.append(("Unlock Sunspear Skills", UnlockSunspearSkills))
 

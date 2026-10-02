@@ -119,7 +119,7 @@ def _stop_bot():
 
 
 def _disable_party_wipe_callback():
-    bot.Events.OnPartyWipeCallback(None)
+    bot.Events.OnPartyWipeCallback(lambda: None)
     yield
 
 
@@ -186,6 +186,7 @@ def bot_routine(bot_instance: Botting) -> None:
     bot_instance.Events.OnPartyWipeCallback(lambda: OnPartyWipe(bot_instance))
 
     bot_instance.States.AddHeader(BOT_NAME)
+    bot_instance.Properties.Enable("auto_loot")
     bot_instance.Templates.Aggressive(
         pause_on_danger=True,
         halt_on_death=False,
