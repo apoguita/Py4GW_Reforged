@@ -1,3 +1,8 @@
+# ============================================================
+# HeroAI Consumable Auto Upkeep - Official Base Patch v02
+# Adds the consumable upkeep scheduler call only.
+# ============================================================
+
 #region Imports
 import math
 import os
@@ -27,7 +32,7 @@ from Py4GWCoreLib.HeroAI import resurrection_scroll
 
 from Py4GWCoreLib.HeroAI.windows import (HeroAI_FloatingWindows ,HeroAI_Windows,)
 from Py4GWCoreLib.HeroAI.ui_base import HeroAI_BaseUI
-from Py4GWCoreLib.HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay)
+from Py4GWCoreLib.HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay, tick_consumable_upkeep)
 from Py4GWCoreLib.HeroAI import team_viewer_broadcast
 from Py4GWCoreLib import (GLOBAL_CACHE, Agent,
                           Range, Routines, ThrottledTimer, SharedCommandType)
@@ -440,6 +445,7 @@ def main():
     
     try:
         cached_data.Update()
+        tick_consumable_upkeep(cached_data)
 
         EnsureFollowModuleIni()
         HeroAI_FloatingWindows.update()
