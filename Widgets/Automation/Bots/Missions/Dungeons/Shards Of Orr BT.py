@@ -20,6 +20,7 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.Sky.DungeonParty import DungeonPartyConfig
 from Sources.Sky.Support import attach_botting_tree_support
+from Sources.Sky.ConsumableRestockUI import draw_restock_group_grid
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
 import PyImGui
@@ -968,28 +969,45 @@ def _draw_restock_config() -> None:
 
     PyImGui.text("Restock targets per account")
     PyImGui.text_wrapped(
-        "Each value is the target quantity for EACH account in the current party. "
-        "The bot only withdraws the missing amount from that account's Xunlai storage. "
-        "Set an item to 0 to disable restock for that item."
+        "Set the target quantity shown below each icon. The same target is sent to "
+        "every account in the current party, and each account only withdraws what "
+        "it is missing from its own Xunlai storage. Set a target to 0 to disable "
+        "that item."
+    )
+    PyImGui.text_wrapped(
+        "Hover an icon for the item name, ModelID and current restock state."
     )
 
-    current_group = ""
-    for group, label, model_id, _setting_key, default in RESTOCK_ITEM_DEFINITIONS:
-        if group != current_group:
-            PyImGui.separator()
-            PyImGui.text(group)
-            current_group = group
+    group_enabled = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_morale_cons),
+        "Summoning": bool(_use_summoning_stone),
+    }
 
-        current = max(0, int(_restock_quantities.get(model_id, default)))
-        value = max(0, int(PyImGui.input_int(f"{label}##restock_{model_id}", current)))
-        if value != current:
-            _restock_quantities[model_id] = value
+    groups: dict[str, list[tuple[str, int, int]]] = {}
+    for group, label, model_id, _setting_key, default in RESTOCK_ITEM_DEFINITIONS:
+        groups.setdefault(group, []).append((label, int(model_id), int(default)))
+
+    for group in ("Conset", "Personal PCons", "Morale", "Summoning"):
+        items = groups.get(group, [])
+        if not items:
+            continue
+        if draw_restock_group_grid(
+            group,
+            items,
+            _restock_quantities,
+            group_enabled=group_enabled.get(group, True),
+            columns=4,
+            icon_size=48.0,
+        ):
             changed = True
 
     PyImGui.separator()
     PyImGui.text_wrapped(
-        "The group switches in the Config tab still control whether Conset, Personal PCons, "
-        "Morale consumables and Summoning Stones are included in the restock step."
+        "The group switches in the Config tab control whether Conset, Personal PCons, "
+        "Morale consumables and Summoning Stones are included in the restock step. "
+        "Disabling a group never deletes its saved per-item targets."
     )
 
     if changed:
