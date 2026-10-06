@@ -36,6 +36,29 @@ class InspirationMagic:
             aftercast_delay=250,
         ))
 
+    @coordinates_whiteboard_skill_target(Skill.GetID("Leech_Signet"))
+    def Leech_Signet(self) -> BuildCoroutine:
+        from Py4GWCoreLib import Range, Routines
+
+        leech_signet_id: int = Skill.GetID("Leech_Signet")
+        if not self.build.IsSkillEquipped(leech_signet_id):
+            return False
+
+        # Leech Signet interrupts spells, not chants. Reuse the shared
+        # spell-only targeting routine and the interrupt whiteboard.
+        target_agent_id: int = Routines.Targeting.GetEnemyCastingSpell(
+            Range.Spellcast.value
+        )
+        if not target_agent_id:
+            return False
+
+        return (yield from self.build.CastSkillIDAndRestoreTarget(
+            skill_id=leech_signet_id,
+            target_agent_id=target_agent_id,
+            log=False,
+            aftercast_delay=250,
+        ))
+
     def Drain_Enchantment(
         self,
         *,
