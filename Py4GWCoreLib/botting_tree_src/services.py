@@ -1,5 +1,5 @@
 import time
-from typing import Callable
+from typing import Callable, Sequence
 
 from .. import Py4GW
 from ..GlobalCache import GLOBAL_CACHE
@@ -8,6 +8,268 @@ from ..py4gwcorelib_src.BehaviorTree import BehaviorTree
 import PySystem
 
 class BottingTreeServicesMixin:
+    @staticmethod
+    def SummoningStonePartyServiceTree(
+        enabled: bool | Callable[[], bool] = True,
+        map_ids: Sequence[int] | None = None,
+        initial_grace_ms: float = 3000.0,
+        attempt_interval_ms: float = 5000.0,
+        retry_cycle_delay_ms: float = 15000.0,
+        log: bool = True,
+    ) -> BehaviorTree:
+        """Keep one summoning-stone ally active for a multibox party.
+
+        The service does not choose an item itself. It asks active accounts in the
+        local party, one at a time, through ``SharedCommandType.UseSummoningStone``.
+        The receiver-side Messaging handler owns inventory priority, Summoning
+        Sickness checks and the final item use. Once an active summon is observed,
+        requests stop; if that summon disappears, a new account-by-account cycle
+        begins.
+        """
+        state: dict[str, object] = {
+            "map_id": 0,
+            "map_entered_ms": 0.0,
+            "saw_active_summon": False,
+            "recovering": False,
+            "targets": [],
+            "target_index": 0,
+            "next_attempt_ms": 0.0,
+        }
+        allowed_maps = {int(map_id) for map_id in (map_ids or ()) if int(map_id) > 0}
+
+        def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
+            if not log:
+                return
+            PySystem.Console.Log(
+                "SummoningStonePartyService",
+                message,
+                message_type,
+            )
+
+        def _enabled() -> bool:
+            try:
+                return bool(enabled() if callable(enabled) else enabled)
+            except Exception:
+                return False
+
+        def _reset_for_map(map_id: int) -> None:
+            state["map_id"] = int(map_id)
+            state["map_entered_ms"] = time.monotonic() * 1000.0
+            state["saw_active_summon"] = False
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+
+        def _reset_disabled() -> None:
+            state["map_id"] = 0
+            state["map_entered_ms"] = 0.0
+            state["saw_active_summon"] = False
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+
+        def _party_id(account: object) -> int:
+            try:
+                return int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+            except Exception:
+                return 0
+
+        def _map_tuple(account: object) -> tuple[int, int, int, int]:
+            map_obj = getattr(getattr(account, "AgentData", None), "Map", None)
+            return (
+                int(getattr(account, "MapID", 0) or getattr(map_obj, "MapID", 0) or 0),
+                int(getattr(account, "MapRegion", 0) or getattr(map_obj, "Region", 0) or 0),
+                int(getattr(account, "MapDistrict", 0) or getattr(map_obj, "District", 0) or 0),
+                int(getattr(account, "MapLanguage", 0) or getattr(map_obj, "Language", 0) or 0),
+            )
+
+        def _label(account: object, email: str) -> str:
+            try:
+                name = str(getattr(getattr(account, "AgentData", None), "CharacterName", "") or "").strip()
+                if name:
+                    return name
+            except Exception:
+                pass
+            return email
+
+        def _refresh_targets() -> list[tuple[str, str]]:
+            from ..Player import Player
+
+            sender_email = str(Player.GetAccountEmail() or "").strip()
+            if not sender_email:
+                state["targets"] = []
+                return []
+
+            try:
+                local_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(sender_email)
+            except Exception:
+                local_account = None
+            local_party_id = _party_id(local_account) if local_account is not None else 0
+            local_map = _map_tuple(local_account) if local_account is not None else None
+
+            try:
+                accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False) or [])
+            except TypeError:
+                accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData() or [])
+            except Exception:
+                accounts = []
+
+            targets: list[tuple[str, str]] = []
+            seen: set[str] = set()
+            for account in accounts:
+                email = str(getattr(account, "AccountEmail", "") or "").strip()
+                if not email or email in seen:
+                    continue
+                if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+                    continue
+                if hasattr(account, "IsSlotActive") and not bool(getattr(account, "IsSlotActive", False)):
+                    continue
+
+                account_party_id = _party_id(account)
+                same_party = local_party_id > 0 and account_party_id == local_party_id
+                same_map_fallback = (
+                    local_party_id <= 0
+                    and local_map is not None
+                    and _map_tuple(account) == local_map
+                )
+                if not same_party and not same_map_fallback:
+                    continue
+
+                seen.add(email)
+                targets.append((email, _label(account, email)))
+
+            if sender_email not in seen:
+                targets.insert(0, (sender_email, str(Player.GetName() or sender_email)))
+            else:
+                targets.sort(key=lambda entry: 0 if entry[0] == sender_email else 1)
+
+            state["targets"] = targets
+            return targets
+
+        def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+            from ..Agent import Agent
+            from ..Item import has_active_party_summon
+            from ..Map import Map
+            from ..Player import Player
+            from ..enums import SharedCommandType
+
+            if not _enabled():
+                if int(state["map_id"] or 0) != 0:
+                    _reset_disabled()
+                return BehaviorTree.NodeState.RUNNING
+
+            if Map.IsMapLoading() or not Map.IsMapReady() or not Map.IsExplorable():
+                return BehaviorTree.NodeState.RUNNING
+            if not GLOBAL_CACHE.Party.IsPartyLoaded():
+                return BehaviorTree.NodeState.RUNNING
+
+            map_id = int(Map.GetMapID() or 0)
+            if allowed_maps and map_id not in allowed_maps:
+                return BehaviorTree.NodeState.RUNNING
+            if map_id != int(state["map_id"] or 0):
+                _reset_for_map(map_id)
+                _log(
+                    f"Map {map_id}: summon watcher active; first check after {max(0.0, float(initial_grace_ms)) / 1000.0:.1f}s."
+                )
+                return BehaviorTree.NodeState.RUNNING
+
+            player_id = int(Player.GetAgentID() or 0)
+            if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+                return BehaviorTree.NodeState.RUNNING
+            if Routines.Checks.Party.IsPartyWiped():
+                return BehaviorTree.NodeState.RUNNING
+
+            try:
+                summon_alive = bool(has_active_party_summon())
+            except Exception:
+                summon_alive = False
+
+            if summon_alive:
+                if bool(state["recovering"]):
+                    _log("Summoned ally detected; request cycle stopped.", PySystem.Console.MessageType.Success)
+                elif not bool(state["saw_active_summon"]):
+                    _log("Summoned ally observed; replacement monitoring armed.")
+                state["saw_active_summon"] = True
+                state["recovering"] = False
+                state["targets"] = []
+                state["target_index"] = 0
+                state["next_attempt_ms"] = 0.0
+                return BehaviorTree.NodeState.RUNNING
+
+            now_ms = time.monotonic() * 1000.0
+            initial_missing = not bool(state["saw_active_summon"])
+            if initial_missing and now_ms - float(state["map_entered_ms"] or 0.0) < max(0.0, float(initial_grace_ms)):
+                return BehaviorTree.NodeState.RUNNING
+
+            if not bool(state["recovering"]):
+                state["recovering"] = True
+                state["target_index"] = 0
+                state["next_attempt_ms"] = now_ms
+                _refresh_targets()
+                _log(
+                    "No summon observed; trying party accounts one by one."
+                    if initial_missing
+                    else "Active summon disappeared; trying a replacement account by account.",
+                    PySystem.Console.MessageType.Warning,
+                )
+
+            if now_ms < float(state["next_attempt_ms"] or 0.0):
+                return BehaviorTree.NodeState.RUNNING
+
+            targets: list[tuple[str, str]] = list(state["targets"] or [])
+            if not targets:
+                targets = _refresh_targets()
+                if not targets:
+                    state["next_attempt_ms"] = now_ms + max(250.0, float(retry_cycle_delay_ms))
+                    return BehaviorTree.NodeState.RUNNING
+
+            target_index = int(state["target_index"] or 0)
+            if target_index >= len(targets):
+                state["target_index"] = 0
+                state["targets"] = _refresh_targets()
+                state["next_attempt_ms"] = now_ms + max(250.0, float(retry_cycle_delay_ms))
+                _log(
+                    f"No summon detected after trying {len(targets)} account(s); retrying in {max(250.0, float(retry_cycle_delay_ms)) / 1000.0:.1f}s.",
+                    PySystem.Console.MessageType.Warning,
+                )
+                return BehaviorTree.NodeState.RUNNING
+
+            sender_email = str(Player.GetAccountEmail() or "").strip()
+            if not sender_email:
+                state["next_attempt_ms"] = now_ms + max(250.0, float(attempt_interval_ms))
+                return BehaviorTree.NodeState.RUNNING
+
+            receiver_email, label = targets[target_index]
+            state["target_index"] = target_index + 1
+            state["next_attempt_ms"] = now_ms + max(250.0, float(attempt_interval_ms))
+            try:
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender_email,
+                    receiver_email,
+                    SharedCommandType.UseSummoningStone,
+                    (0.0, 0.0, 0.0, 0.0),
+                )
+                _log(
+                    f"Asking {label} to try a summoning stone ({target_index + 1}/{len(targets)})."
+                )
+            except Exception as exc:
+                _log(
+                    f"Summoning-stone request failed for {label}: {exc}",
+                    PySystem.Console.MessageType.Warning,
+                )
+
+            return BehaviorTree.NodeState.RUNNING
+
+        return BehaviorTree(
+            BehaviorTree.ActionNode(
+                name="SummoningStonePartyService",
+                action_fn=_tick,
+                aftercast_ms=250,
+            )
+        )
+
     @staticmethod
     def PartyWipeRecoveryServiceTree(
         default_step_name: str | Callable[[], str | None] | None = None,
