@@ -5,6 +5,7 @@ import PySystem
 
 from ..GlobalCache import GLOBAL_CACHE
 from ..Routines import Routines
+from ..UIManager import UIManager
 from ..py4gwcorelib_src.BehaviorTree import BehaviorTree
 from .account_config import BottingTreeAccountConfig
 from .enums import HeroAIStatus, PlannerStatus
@@ -120,6 +121,26 @@ class BottingTreeTicksMixin:
             self.headless_heroai.reset()
             return BehaviorTree.NodeState.RUNNING
 
+        # Never let HeroAI resume combat while an NPC dialog is still open.
+        # Planner/dialog steps must remain free to continue, so this guard lives
+        # in the HeroAI tick instead of blocking MoveAndDialog/SendDialog.
+        if UIManager.IsNPCDialogVisible():
+            if self._should_log_heroai_state('npc_dialog'):
+                PySystem.Console.Log(
+                    'BottingTree',
+                    'HeroAI paused because an NPC dialog is open.',
+                    PySystem.Console.MessageType.Info,
+                )
+            self._last_heroai_state = 'npc_dialog'
+            bb['COMBAT_ACTIVE'] = False
+            bb['LOOTING_ACTIVE'] = False
+            bb['PAUSE_MOVEMENT'] = False
+            bb['HEROAI_STATUS'] = HeroAIStatus.NPC_DIALOG.value
+            bb['HEROAI_SUCCESS'] = False
+            bb['HEROAI_BUILD_CONTRACT'] = self.headless_heroai.GetBuildContractName()
+            self.headless_heroai.reset()
+            return BehaviorTree.NodeState.RUNNING
+
         self.EnsureHeroAIOptionsEnabled()
 
         if Routines.Checks.Map.IsLoading() or not Routines.Checks.Map.IsExplorable():
@@ -188,7 +209,15 @@ class BottingTreeTicksMixin:
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
 
-        if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
+        # Keep the planner frozen for the whole recovery transaction, not only
+        # while the party is physically dead. On the first shrine-revival frame
+        # the party may already be alive, but the recovery service still needs one
+        # tick to resolve and request the correct named step restart.
+        if (
+            bool(bb.get('party_wipe_recovery_active', False))
+            or Routines.Checks.Party.IsPartyWiped()
+            or GLOBAL_CACHE.Party.IsPartyDefeated()
+        ):
             bb['PLANNER_STATUS'] = 'PAUSED: Party wipe recovery'
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
