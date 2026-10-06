@@ -12,6 +12,8 @@ from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib import Routines
+from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -19,9 +21,10 @@ from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_UPKEEPS, CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Py4GWCoreLib.HeroAI.command_api import HeroAICommandAPI
+from Sources.Sky.DungeonParty import DungeonPartyConfig
+from Sources.Sky.Support import attach_botting_tree_support
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
 import PyImGui
@@ -40,10 +43,9 @@ MODULE_TAGS = ["Oola's Lab", "Dungeon", "EotN"]
 MODULE_ALIASES = ["Oola", "Oolas Lab"]
 MODULE_DESCRIPTION = """Fully automated multibox BottingTree run for Oola's Lab.
 
-The bot uses the Shards of Orr BT framework for multibox party control, quest
-handling, consumables, inventory maintenance, MerchantRules and persistent
-statistics, while keeping Oola's Lab route, keys, Flux Matrix mechanic and
-final chest logic.
+The bot handles party control, quest progression, consumables, inventory
+maintenance, MerchantRules, persistent statistics, dungeon keys, the Flux
+Matrix mechanic and the final chest.
 """
 
 INI_PATH = "Widgets/Automation/Bots/Missions/Dungeons/Oolas Lab BT"
@@ -66,7 +68,6 @@ LITTLE_WORKSHOP_OF_HORRORS = 827  # 0x33B
 DWARVEN_BLESSING_DIALOG = 0x84
 
 DUNGEON_KEY_MODEL_ID = 25410
-OOLA_PARTY_HERO_IDS = [4, 21, 1, 15]  # Master of Whispers, Livia, Norgu, Razah
 FLUX_MATRIX_MODEL_ID = 22782
 FLUX_GOLEM_MODEL_ID = 6885  # Malfunctioning Enduring Golem
 
@@ -78,13 +79,12 @@ QUEST_REFRESH_US_REGION = 0
 QUEST_REFRESH_DISTRICT = 1
 QUEST_REFRESH_LANGUAGE = 0
 
-# Original Oola AutoIt summoning-stone priority, executed through the current
-# BTItems.UseConsumable helper rather than the legacy inventory code.
+# Summoning-stone priority used for restocking.
 SUMMON_MODEL_IDS = (37810,30209,31155)
 
 
 # =============================================================================
-# Runtime configuration / persistent state (SoO framework)
+# Runtime configuration and persistent state
 # =============================================================================
 
 _SETTINGS_SECTION = "Settings"
@@ -98,6 +98,7 @@ _INVENTORY_QUERY_POLL_MS = 200
 _INVENTORY_QUERY_TIMEOUT_MS = 10_000
 
 _settings_ini = Settings(f"{INI_PATH}/{INI_FILENAME}", "global")
+_dungeon_party = DungeonPartyConfig(_settings_ini)
 _settings_loaded = False
 _statistics_loaded = False
 
@@ -256,8 +257,7 @@ L2_ROUTE = [
     Vec2f(-10242.0, -10288.0),
 ]
 
-# Former point 16 from the old Level 2 route.  Keep this as a pure movement
-# step with combat disabled immediately before the Flux Golem mechanic.
+# Pure movement step with combat disabled immediately before the Flux Golem mechanic.
 L2_PRE_FLUX_PATH = [Vec2f(-10237.0, -7304.0)]
 
 FLUX_APPROACH_PATH = [
@@ -480,7 +480,7 @@ def _map_guarded_point(
     child: BehaviorTree,
     skip_if_in_maps: Sequence[int] = (),
 ) -> BehaviorTree:
-    """Same point-level resume pattern used by the current Shards of Orr BT."""
+    """Expose each route point as an independent planner step."""
     branches: list[BehaviorTree] = [
         BT.Sequence(
             name=f"{name} - Active Map",
@@ -643,6 +643,149 @@ def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
             aftercast_ms=0,
         )
     )
+
+def SummoningStoneRecoveryService() -> BehaviorTree:
+    """Replace a summoning-stone ally that dies during the current floor.
+
+    Level-start summon actions remain authoritative. The service arms only after
+    a living summon has been observed on the current floor and respects the live
+    runtime toggle on every tick.
+    """
+    ATTEMPT_INTERVAL_MS = 3_000.0
+    RETRY_CYCLE_DELAY_MS = 15_000.0
+    state: dict[str, object] = {
+        "map_id": 0,
+        "saw_active_summon": False,
+        "recovering": False,
+        "targets": [],
+        "target_index": 0,
+        "next_attempt_ms": 0.0,
+    }
+
+    def _reset_for_map(map_id: int) -> None:
+        state["map_id"] = int(map_id)
+        state["saw_active_summon"] = False
+        state["recovering"] = False
+        state["targets"] = []
+        state["target_index"] = 0
+        state["next_attempt_ms"] = 0.0
+
+    def _refresh_targets() -> list[tuple[str, str]]:
+        targets: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for email, label in _inventory_target_accounts():
+            email = str(email or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            targets.append((email, str(label or email)))
+        state["targets"] = targets
+        return targets
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BehaviorTree.NodeState.RUNNING
+        if not Map.IsMapReady() or Map.IsMapLoading() or not Map.IsExplorable():
+            return BehaviorTree.NodeState.RUNNING
+
+        map_id = int(Map.GetMapID() or 0)
+        if map_id != int(state["map_id"] or 0):
+            _reset_for_map(map_id)
+            return BehaviorTree.NodeState.RUNNING
+
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+            return BehaviorTree.NodeState.RUNNING
+        if Routines.Checks.Party.IsPartyWiped():
+            return BehaviorTree.NodeState.RUNNING
+
+        try:
+            summon_alive = bool(has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()))
+        except Exception:
+            summon_alive = False
+
+        if summon_alive:
+            if bool(state["recovering"]):
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "[Summoning] Replacement summon detected; recovery stopped.",
+                    PySystem.Console.MessageType.Success,
+                )
+            state["saw_active_summon"] = True
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        if not bool(state["saw_active_summon"]):
+            return BehaviorTree.NodeState.RUNNING
+
+        now_ms = time.monotonic() * 1000.0
+        if not bool(state["recovering"]):
+            state["recovering"] = True
+            state["target_index"] = 0
+            state["next_attempt_ms"] = now_ms
+            _refresh_targets()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "[Summoning] Active party summon was lost; trying replacement stones account by account.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        if now_ms < float(state["next_attempt_ms"] or 0.0):
+            return BehaviorTree.NodeState.RUNNING
+
+        targets: list[tuple[str, str]] = list(state["targets"] or [])
+        if not targets:
+            targets = _refresh_targets()
+            if not targets:
+                state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+                return BehaviorTree.NodeState.RUNNING
+
+        target_index = int(state["target_index"] or 0)
+        if target_index >= len(targets):
+            state["target_index"] = 0
+            state["targets"] = _refresh_targets()
+            state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        if not sender_email:
+            state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        receiver_email, label = targets[target_index]
+        state["target_index"] = target_index + 1
+        state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.UseSummoningStone,
+                (0.0, 0.0, 0.0, 0.0),
+            )
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Asking {label} to try a replacement summoning stone.",
+                PySystem.Console.MessageType.Info,
+            )
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Replacement request failed for {label}: {exc}",
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Summoning Stone Recovery Service",
+            action_fn=_tick,
+            aftercast_ms=500,
+        )
+    )
+
 
 
 def _agent_player_number_or_model_id(agent_id: int) -> int:
@@ -1212,7 +1355,7 @@ def Level1_OpenLock() -> BehaviorTree:
 
 
 def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
-    """One translation of AutoIt's LoadFlux -> GoToGolem -> DropBundle cycle."""
+    """Pick up a Flux Matrix, carry it to the golem, then drop the bundle."""
     return BT.Sequence(
         name="Load Flux And Drop It On Golem",
         children=[
@@ -1226,7 +1369,7 @@ def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
             ),
             BT.Wait(2_000),
 
-            # Rejoindre le chargeur de Flux.
+            # Move to the Flux charger.
             BT.Move(FLUX_APPROACH_PATH, pause_on_combat=False, tolerance=250.0, log=False),
 
             BT.MoveAndInteractWithGadget(
@@ -1747,7 +1890,12 @@ def _configure_runtime_upkeeps(
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
+    )
+    botting_tree.AddServiceTree(
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
@@ -3277,8 +3425,13 @@ def ensure_botting_tree() -> BottingTree:
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
+                enable_nearest_shrine_recovery=True,
                 heroai_state_logging=False,
             ),
+        )
+        botting_tree.AddServiceTree(
+            "SummoningStoneRecoveryService",
+            SummoningStoneRecoveryService,
         )
 
     return botting_tree
@@ -3306,7 +3459,7 @@ def PreparePartyAndSupplies() -> BehaviorTree:
     """Prepare a fresh run from Rata Sum.
 
     Resume cases inside Oola or in Magus Stones are left untouched.
-    A fresh Rata start follows the Shards of Orr pattern: form the multibox
+    A fresh Rata start forms the multibox party, refreshes the quest state,
     party, abandon the dungeon quest on every account, then let the quest
     handler take it again cleanly.
     """
@@ -3335,14 +3488,13 @@ def PreparePartyAndSupplies() -> BehaviorTree:
         children=[
             StartupInventoryCheck(),
 
-            BT.CreateParty(
-                hero_ids=OOLA_PARTY_HERO_IDS,
+            _dungeon_party.create_party_node(
                 multibox_invite=True,
                 timeout_ms=30_000,
                 log=True,
             ),
 
-            # Same startup quest reset used by Shards of Orr.
+            # Refresh the quest state before starting the dungeon route.
             BT.AbandonQuest(
                 quest_id=LITTLE_WORKSHOP_OF_HORRORS,
                 multi_account=True,
@@ -3499,6 +3651,7 @@ def Level1_Start() -> BehaviorTree:
         BT.Sequence(
             name="Start Oola Level 1",
             children=[
+                _runtime_consumable_upkeep_node(True),
                 _mark_run_start_node(),
                 _inventory_statistics_node(after_chest=False),
                 BT.AddModelToLootWhitelist(DUNGEON_KEY_MODEL_ID),
@@ -3639,7 +3792,6 @@ def Level3_FinalClear() -> BehaviorTree:
                 center_tolerance=750.0,
                 log=True,
             ),
-            _record_run_end_node(),
         ],
     )
 
@@ -3649,6 +3801,9 @@ def OpenFinalChest() -> BehaviorTree:
         name="Open Oola's Chest",
         children=[
             BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
+            BT.Move(OOLA_FINAL_CHEST, pause_on_combat=False, tolerance=Range.Nearby.value, log=False),
+            _record_run_end_node(),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(
                 pos=OOLA_FINAL_CHEST,
                 search_distance=1_000.0,
@@ -4227,7 +4382,7 @@ def _draw_run_config() -> None:
                 settings_changed = True
 
         PyImGui.text_wrapped(
-            "Same multibox inventory logic as Shards of Orr: every active "
+            "Every active account is checked through the shared multibox inventory logic: "
             "client is queried locally. If one account is below a threshold, "
             "all active accounts return to Rata Sum, travel to Eye of the North "
             "for MerchantRules maintenance, then return to Rata Sum before the "
@@ -4301,12 +4456,14 @@ def main() -> None:
     tree.tick()
     _tick_direct_pcon_upkeep()
 
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
         iconwidth=96,
-        main_child_dimensions=(420, 380),
+        main_child_dimensions=(550, 380),
         extra_tabs=[
             ("Statistics", _draw_statistics),
+            ("Party", _dungeon_party.draw_tab),
             ("Config", _draw_run_config),
         ],
     )

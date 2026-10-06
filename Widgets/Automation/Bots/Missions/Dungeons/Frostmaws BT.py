@@ -15,6 +15,8 @@ from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.BottingTree import BottingTree
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib import Routines
+from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -27,6 +29,8 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS,
 )
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
+from Sources.Sky.DungeonParty import DungeonPartyConfig
+from Sources.Sky.Support import attach_botting_tree_support
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import (
     get_inventory_count,
@@ -47,7 +51,7 @@ DUNGEON_MAPS = (630, 631, 632, 633, 634)
 QUEST_ID = 0x32A
 GREAT_TEMPLE_OF_BALTHAZAR = 248
 
-# Frozen Soil / Terre gelee. Verified in Frostmaw runtime:
+# Frozen Soil. Verified in Frostmaw runtime:
 # effect/skill ID 471, hostile spirit model ID 2933.
 FROZEN_SOIL_EFFECT_ID = 471
 FROZEN_SOIL_SPIRIT_MODEL_ID = 2933
@@ -119,6 +123,7 @@ FROSTMAW_DROP_TRACKERS: dict[str, dict[str, object]] = {
 }
 
 _settings = Settings(f"{INI_PATH}/{INI_FILENAME}", "global")
+_dungeon_party = DungeonPartyConfig(_settings)
 _settings_loaded = False
 _statistics_loaded = False
 
@@ -1055,7 +1060,12 @@ def _configure_runtime_upkeeps(
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
+    )
+    botting_tree.AddServiceTree(
+        "SummoningStoneRecoveryService",
+        SummoningStoneRecoveryService,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
@@ -1610,6 +1620,149 @@ def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
         )
     )
 
+def SummoningStoneRecoveryService() -> BehaviorTree:
+    """Replace a summoning-stone ally that dies during the current floor.
+
+    Level-start summon actions remain authoritative. The service arms only after
+    a living summon has been observed on the current floor and respects the live
+    runtime toggle on every tick.
+    """
+    ATTEMPT_INTERVAL_MS = 3_000.0
+    RETRY_CYCLE_DELAY_MS = 15_000.0
+    state: dict[str, object] = {
+        "map_id": 0,
+        "saw_active_summon": False,
+        "recovering": False,
+        "targets": [],
+        "target_index": 0,
+        "next_attempt_ms": 0.0,
+    }
+
+    def _reset_for_map(map_id: int) -> None:
+        state["map_id"] = int(map_id)
+        state["saw_active_summon"] = False
+        state["recovering"] = False
+        state["targets"] = []
+        state["target_index"] = 0
+        state["next_attempt_ms"] = 0.0
+
+    def _refresh_targets() -> list[tuple[str, str]]:
+        targets: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for email, label in _inventory_target_accounts():
+            email = str(email or "").strip()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            targets.append((email, str(label or email)))
+        state["targets"] = targets
+        return targets
+
+    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if not _use_summoning_stone or not _consumables_allowed():
+            return BehaviorTree.NodeState.RUNNING
+        if not Map.IsMapReady() or Map.IsMapLoading() or not Map.IsExplorable():
+            return BehaviorTree.NodeState.RUNNING
+
+        map_id = int(Map.GetMapID() or 0)
+        if map_id != int(state["map_id"] or 0):
+            _reset_for_map(map_id)
+            return BehaviorTree.NodeState.RUNNING
+
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
+            return BehaviorTree.NodeState.RUNNING
+        if Routines.Checks.Party.IsPartyWiped():
+            return BehaviorTree.NodeState.RUNNING
+
+        try:
+            summon_alive = bool(has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()))
+        except Exception:
+            summon_alive = False
+
+        if summon_alive:
+            if bool(state["recovering"]):
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "[Summoning] Replacement summon detected; recovery stopped.",
+                    PySystem.Console.MessageType.Success,
+                )
+            state["saw_active_summon"] = True
+            state["recovering"] = False
+            state["targets"] = []
+            state["target_index"] = 0
+            state["next_attempt_ms"] = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        if not bool(state["saw_active_summon"]):
+            return BehaviorTree.NodeState.RUNNING
+
+        now_ms = time.monotonic() * 1000.0
+        if not bool(state["recovering"]):
+            state["recovering"] = True
+            state["target_index"] = 0
+            state["next_attempt_ms"] = now_ms
+            _refresh_targets()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "[Summoning] Active party summon was lost; trying replacement stones account by account.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        if now_ms < float(state["next_attempt_ms"] or 0.0):
+            return BehaviorTree.NodeState.RUNNING
+
+        targets: list[tuple[str, str]] = list(state["targets"] or [])
+        if not targets:
+            targets = _refresh_targets()
+            if not targets:
+                state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+                return BehaviorTree.NodeState.RUNNING
+
+        target_index = int(state["target_index"] or 0)
+        if target_index >= len(targets):
+            state["target_index"] = 0
+            state["targets"] = _refresh_targets()
+            state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        if not sender_email:
+            state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+            return BehaviorTree.NodeState.RUNNING
+
+        receiver_email, label = targets[target_index]
+        state["target_index"] = target_index + 1
+        state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
+        try:
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                receiver_email,
+                SharedCommandType.UseSummoningStone,
+                (0.0, 0.0, 0.0, 0.0),
+            )
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Asking {label} to try a replacement summoning stone.",
+                PySystem.Console.MessageType.Info,
+            )
+        except Exception as exc:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[Summoning] Replacement request failed for {label}: {exc}",
+                PySystem.Console.MessageType.Warning,
+            )
+        return BehaviorTree.NodeState.RUNNING
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Summoning Stone Recovery Service",
+            action_fn=_tick,
+            aftercast_ms=500,
+        )
+    )
+
+
 
 def _frozen_soil_affected_alive_members(member_ids: Sequence[int]) -> list[int]:
     """Return living party members currently under the Frozen Soil effect."""
@@ -1628,10 +1781,9 @@ def _frozen_soil_affected_alive_members(member_ids: Sequence[int]) -> list[int]:
 def _find_frozen_soil_spirit(reference_ids: Sequence[int]) -> int:
     """Resolve only the verified Frostmaw Frozen Soil spirit (model 2933).
 
-    Do not fall back to another nearby spirit.  Runtime evidence from Frostmaw
-    confirmed model 2933 for Esprit de Terre gelee; the previous generic
-    fallback could incorrectly select spirits such as Spirit of Life while the
-    Frozen Soil effect was still fading from the party.
+    Do not fall back to another nearby spirit. Model 2933 is the verified
+    Frozen Soil spirit; selecting another spirit can block resurrection while
+    the Frozen Soil effect is still fading from the party.
     """
     reference_positions: list[tuple[float, float]] = []
     for agent_id in reference_ids:
@@ -2996,7 +3148,7 @@ def PrepareRun() -> BehaviorTree:
         children=[
             _travel_all_accounts(SIFHALLA, "frostmaw_start"),
             InventoryCheckAndMaintenance(),
-            BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
+            _dungeon_party.create_party_node(multibox_invite=True, timeout_ms=30_000, log=True),
             BT.AbandonQuest(quest_id=QUEST_ID, multi_account=True, include_self=True, timeout_ms=10_000, log=True),
             _runtime_difficulty_node(),
             _runtime_restock_node(),
@@ -3086,6 +3238,7 @@ def Level1_Start() -> BehaviorTree:
         child=BT.Sequence(
             name="Frostmaw Level 1 Start",
             children=[
+                _runtime_consumable_upkeep_node(True),
                 _mark_run_start_node(),
                 _inventory_statistics_node(after_chest=False),
                 UseAvailableSummoningStone("l1"),
@@ -3249,8 +3402,9 @@ def Level5_OpenChest() -> BehaviorTree:
         name="Open Burrows Chest And Collect Reward",
         children=[
             BT.IsCurrentMap(map_id=FROSTMAW_L5, log=True),
-            _runtime_consumable_upkeep_node(False),
+            BT.Move(chest_pos, pause_on_combat=False, tolerance=Range.Nearby.value, log=False),
             _record_run_end_node(),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(
                 gadget_id=BURROWS_CHEST_GADGET_ID,
                 pos=chest_pos,
@@ -3494,7 +3648,7 @@ def PrepareNextDungeonRun() -> BehaviorTree:
         children=[
             BT.IsCurrentMap(map_id=SIFHALLA, log=True),
             BT.IsQuestState(quest_id=QUEST_ID, state='active', log=True),
-            BT.CreateParty(multibox_invite=True, timeout_ms=30000, log=True),
+            _dungeon_party.create_party_node(multibox_invite=True, timeout_ms=30_000, log=True),
             _runtime_difficulty_node(),
             _runtime_restock_node(),
             TravelFrostmaw(),
@@ -3584,8 +3738,13 @@ def ensure_botting_tree() -> BottingTree:
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
+                enable_nearest_shrine_recovery=True,
                 heroai_state_logging=False,
             ),
+        )
+        botting_tree.AddServiceTree(
+            "SummoningStoneRecoveryService",
+            SummoningStoneRecoveryService,
         )
     return botting_tree
 
@@ -3659,9 +3818,10 @@ def main() -> None:
     _sync_runtime_upkeeps()
     tree.tick()
     _tick_direct_pcon_upkeep()
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(icon_path=TEXTURE,
-        main_child_dimensions=(430, 390),
-        extra_tabs=[("Statistics", _draw_statistics), ("Config", _draw_run_config)],
+        main_child_dimensions=(550, 390),
+        extra_tabs=[("Statistics", _draw_statistics), ("Party", _dungeon_party.draw_tab), ("Config", _draw_run_config)],
     )
 
 
