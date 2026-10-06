@@ -3641,6 +3641,16 @@ def ProcessMessages():
             GLOBAL_CACHE.Coroutines.append(RestockAllPcons(index, message))
         case SharedCommandType.RestockConset:
             GLOBAL_CACHE.Coroutines.append(RestockConset(index, message))
+        case SharedCommandType.SetResurrectionScroll:
+            # The generic fallback previously consumed this command without
+            # applying it, causing the native HeroAI button to toggle only local.
+            try:
+                from Py4GWCoreLib.HeroAI import resurrection_scroll
+                resurrection_scroll.apply_state_command(message)
+            except Exception as exc:
+                ConsoleLog(MODULE_NAME, f"SetResurrectionScroll failed: {exc}", Console.MessageType.Error, False)
+            finally:
+                GLOBAL_CACHE.ShMem.MarkMessageAsFinished(account_email, index)
         case SharedCommandType.RestockResurrectionScroll:
             GLOBAL_CACHE.Coroutines.append(RestockResurrectionScroll(index, message))
         case SharedCommandType.RestockSummoningStones:
