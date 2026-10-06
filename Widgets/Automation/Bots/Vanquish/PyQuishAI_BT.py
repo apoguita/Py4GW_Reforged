@@ -18,6 +18,10 @@ from Py4GWCoreLib.enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
+from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
+    CONSET_UPKEEPS,
+    CONSUMABLE_UPKEEPS,
+)
 from Sources.Sky.Support import attach_botting_tree_support
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 

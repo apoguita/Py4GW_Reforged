@@ -18,7 +18,6 @@ from Py4GWCoreLib import (
     SharedCommandType,
 )
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
@@ -546,9 +545,13 @@ def _configure_runtime_upkeeps() -> None:
         heroai_state_logging=False,
     )
 
-    botting_tree.AddServiceTree(
-        "SummoningStoneRecoveryService",
-        SummoningStoneRecoveryService,
+    botting_tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+        map_ids=(ARACHNI_LEVEL_1, ARACHNI_LEVEL_2),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
 
     _configured_consumable_upkeeps = enabled_consumables
@@ -2748,163 +2751,6 @@ def _consumables_allowed() -> bool:
     )
 
 
-def UseAvailableSummoningStone() -> BehaviorTree:
-    def _dispatch(
-        _node: BehaviorTree.Node,
-    ) -> BehaviorTree.NodeState:
-        if (
-            not _use_summoning_stone
-            or not _consumables_allowed()
-        ):
-            return BehaviorTree.NodeState.SUCCESS
-
-        sender_email = str(
-            Player.GetAccountEmail() or ""
-        ).strip()
-        recipients = _active_party_emails()
-
-        if not sender_email or not recipients:
-            return BehaviorTree.NodeState.SUCCESS
-
-        for receiver_email in recipients:
-            try:
-                GLOBAL_CACHE.ShMem.SendMessage(
-                    sender_email,
-                    receiver_email,
-                    SharedCommandType.UseSummoningStone,
-                    (0.0, 0.0, 0.0, 0.0),
-                    ("", "", "", ""),
-                )
-            except Exception:
-                continue
-
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name="Use Summoning Stone In Arachni",
-            action_fn=_dispatch,
-            aftercast_ms=0,
-        )
-    )
-
-
-def SummoningStoneRecoveryService() -> BehaviorTree:
-    ATTEMPT_INTERVAL_MS = 3_000.0
-    RETRY_CYCLE_DELAY_MS = 15_000.0
-
-    state: dict[str, object] = {
-        "map_id": 0,
-        "saw_active_summon": False,
-        "recovering": False,
-        "targets": [],
-        "target_index": 0,
-        "next_attempt_ms": 0.0,
-    }
-
-    def _reset_for_map(map_id: int) -> None:
-        state["map_id"] = map_id
-        state["saw_active_summon"] = False
-        state["recovering"] = False
-        state["targets"] = []
-        state["target_index"] = 0
-        state["next_attempt_ms"] = 0.0
-
-    def _tick(
-        _node: BehaviorTree.Node,
-    ) -> BehaviorTree.NodeState:
-        if (
-            not _use_summoning_stone
-            or not _consumables_allowed()
-        ):
-            return BehaviorTree.NodeState.RUNNING
-
-        map_id = int(Map.GetMapID() or 0)
-
-        if map_id != int(state["map_id"]):
-            _reset_for_map(map_id)
-
-        try:
-            if Routines.Checks.Party.IsPartyWiped():
-                return BehaviorTree.NodeState.RUNNING
-        except Exception:
-            pass
-
-        try:
-            active_summon = bool(
-                has_active_party_summon(
-                    GLOBAL_CACHE.Party.GetOthers()
-                )
-            )
-        except Exception:
-            active_summon = False
-
-        if active_summon:
-            state["saw_active_summon"] = True
-            state["recovering"] = False
-            state["targets"] = []
-            state["target_index"] = 0
-            return BehaviorTree.NodeState.RUNNING
-
-        if not bool(state["saw_active_summon"]):
-            return BehaviorTree.NodeState.RUNNING
-
-        now_ms = time.monotonic() * 1000.0
-
-        if now_ms < float(state["next_attempt_ms"]):
-            return BehaviorTree.NodeState.RUNNING
-
-        sender_email = str(
-            Player.GetAccountEmail() or ""
-        ).strip()
-        if not sender_email:
-            return BehaviorTree.NodeState.RUNNING
-
-        if not bool(state["recovering"]):
-            state["targets"] = _active_party_emails()
-            state["target_index"] = 0
-            state["recovering"] = True
-
-        targets = list(state["targets"])
-        index = int(state["target_index"])
-
-        if index >= len(targets):
-            state["recovering"] = False
-            state["targets"] = []
-            state["target_index"] = 0
-            state["next_attempt_ms"] = (
-                now_ms + RETRY_CYCLE_DELAY_MS
-            )
-            return BehaviorTree.NodeState.RUNNING
-
-        receiver_email = str(targets[index])
-        state["target_index"] = index + 1
-        state["next_attempt_ms"] = (
-            now_ms + ATTEMPT_INTERVAL_MS
-        )
-
-        try:
-            GLOBAL_CACHE.ShMem.SendMessage(
-                sender_email,
-                receiver_email,
-                SharedCommandType.UseSummoningStone,
-                (0.0, 0.0, 0.0, 0.0),
-                ("", "", "", ""),
-            )
-        except Exception:
-            pass
-
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name="Arachni Summoning Stone Recovery",
-            action_fn=_tick,
-            aftercast_ms=500,
-        )
-    )
-
-
 # =============================================================================
 # Asura Flame Staff handling
 # =============================================================================
@@ -4375,7 +4221,6 @@ def Level1Start() -> BehaviorTree:
                 ResetStaffCombatPolicy(),
                 ResolveStaffCombatPolicy(),
                 MarkRunStart(),
-                UseAvailableSummoningStone(),
                 BT.MoveAndDialog(Vec2f(17507.00, 18900.00), dialog_id=0x84, multi_account=True, log=True)
             ],
         ),
@@ -4534,7 +4379,6 @@ def Level2StartAndAcquireStaff() -> BehaviorTree:
         child=BT.Sequence(
             name="Start Arachni Level 2",
             children=[
-                UseAvailableSummoningStone(),
                 BT.Move(
                     L2_STAFF_POSITION,
                     pause_on_combat=False,
@@ -4753,9 +4597,13 @@ def _configure_botting_tree(
         enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
     )
-    tree.AddServiceTree(
-        "SummoningStoneRecoveryService",
-        SummoningStoneRecoveryService,
+    tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+        map_ids=(ARACHNI_LEVEL_1, ARACHNI_LEVEL_2),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
 
 

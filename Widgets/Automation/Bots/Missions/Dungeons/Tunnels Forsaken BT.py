@@ -9,7 +9,6 @@ import PyImGui
 
 from Py4GWCoreLib import Agent, AgentArray, GLOBAL_CACHE, Inventory, Map, Player, Routines, SharedCommandType
 from Py4GWCoreLib.BottingTree import BottingTree
-from Py4GWCoreLib.Item import has_active_party_summon
 from Py4GWCoreLib.Listeners import Listeners
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
@@ -1065,9 +1064,13 @@ def _configure_runtime_upkeeps(
         enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
     )
-    botting_tree.AddServiceTree(
-        "SummoningStoneRecoveryService",
-        SummoningStoneRecoveryService,
+    botting_tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+        map_ids=(TUNNELS_L1, TUNNELS_L2, TUNNELS_L3),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
@@ -1428,193 +1431,6 @@ def InventoryCheckAndMaintenance() -> BehaviorTree:
         ],
     )
     return BT.Selector(name="Optional Inventory Maintenance", children=[disabled, enabled])
-
-
-def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
-    """Broadcast a best-effort summoning-stone request to every active account."""
-    def _dispatch(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if not _use_summoning_stone or not _consumables_allowed():
-            return BehaviorTree.NodeState.SUCCESS
-        sender_email = str(Player.GetAccountEmail() or "").strip()
-        recipients = _inventory_recipient_emails()
-        if not sender_email or not recipients:
-            return BehaviorTree.NodeState.SUCCESS
-        for receiver_email in recipients:
-            try:
-                GLOBAL_CACHE.ShMem.SendMessage(
-                    sender_email,
-                    receiver_email,
-                    SharedCommandType.UseSummoningStone,
-                    (0.0, 0.0, 0.0, 0.0),
-                    ("", "", "", ""),
-                )
-            except Exception:
-                continue
-        return BehaviorTree.NodeState.SUCCESS
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"Use Summoning Stone {level_key} (Multibox Non Blocking)",
-            action_fn=_dispatch,
-            aftercast_ms=0,
-        )
-    )
-
-
-def SummoningStoneRecoveryService() -> BehaviorTree:
-    """Best-effort replacement summon when the active party summon dies mid-floor.
-
-    The regular level-start summoning calls remain authoritative.  This service only
-    becomes armed after it has actually seen a living summoning-stone ally on the
-    current dungeon map.  If that ally disappears without a map transition, accounts
-    are asked one at a time to try UseSummoningStone until a replacement appears.
-    Messaging performs the final per-client guards (active summon / Summoning Sickness).
-    """
-    ATTEMPT_INTERVAL_MS = 3_000.0
-    RETRY_CYCLE_DELAY_MS = 15_000.0
-
-    state: dict[str, object] = {
-        "map_id": 0,
-        "saw_active_summon": False,
-        "recovering": False,
-        "targets": [],
-        "target_index": 0,
-        "next_attempt_ms": 0.0,
-    }
-
-    def _reset_for_map(map_id: int) -> None:
-        state["map_id"] = int(map_id)
-        state["saw_active_summon"] = False
-        state["recovering"] = False
-        state["targets"] = []
-        state["target_index"] = 0
-        state["next_attempt_ms"] = 0.0
-
-    def _refresh_targets() -> list[tuple[str, str]]:
-        targets: list[tuple[str, str]] = []
-        seen: set[str] = set()
-        for email, label in _inventory_target_accounts():
-            email = str(email or "").strip()
-            if not email or email in seen:
-                continue
-            seen.add(email)
-            targets.append((email, str(label or email)))
-        state["targets"] = targets
-        return targets
-
-    def _tick(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if not _use_summoning_stone or not _consumables_allowed():
-            return BehaviorTree.NodeState.RUNNING
-        if not Map.IsMapReady() or Map.IsMapLoading() or not Map.IsExplorable():
-            return BehaviorTree.NodeState.RUNNING
-
-        map_id = int(Map.GetMapID() or 0)
-        if map_id not in DUNGEON_MAPS:
-            return BehaviorTree.NodeState.RUNNING
-        if map_id != int(state["map_id"] or 0):
-            # A floor transition intentionally removes the old summon.  Do not treat
-            # that as a death: Level1/2/3 Start already performs the normal summon.
-            _reset_for_map(map_id)
-            return BehaviorTree.NodeState.RUNNING
-
-        player_id = int(Player.GetAgentID() or 0)
-        if player_id <= 0 or not Agent.IsValid(player_id) or Agent.IsDead(player_id):
-            return BehaviorTree.NodeState.RUNNING
-        if Routines.Checks.Party.IsPartyWiped():
-            return BehaviorTree.NodeState.RUNNING
-
-        try:
-            summon_alive = bool(has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()))
-        except Exception:
-            summon_alive = False
-
-        if summon_alive:
-            if bool(state["recovering"]):
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    "[Summoning] Replacement summon detected; recovery stopped.",
-                    PySystem.Console.MessageType.Success,
-                )
-            state["saw_active_summon"] = True
-            state["recovering"] = False
-            state["targets"] = []
-            state["target_index"] = 0
-            state["next_attempt_ms"] = 0.0
-            return BehaviorTree.NodeState.RUNNING
-
-        # Do not replace the explicit level-start summon.  Recovery only starts after
-        # a real summon has been observed alive on this same floor.
-        if not bool(state["saw_active_summon"]):
-            return BehaviorTree.NodeState.RUNNING
-
-        now_ms = time.monotonic() * 1000.0
-        if not bool(state["recovering"]):
-            state["recovering"] = True
-            state["target_index"] = 0
-            state["next_attempt_ms"] = now_ms
-            _refresh_targets()
-            PySystem.Console.Log(
-                MODULE_NAME,
-                "[Summoning] Active party summon was lost; trying replacement stones account by account.",
-                PySystem.Console.MessageType.Warning,
-            )
-
-        if now_ms < float(state["next_attempt_ms"] or 0.0):
-            return BehaviorTree.NodeState.RUNNING
-
-        targets: list[tuple[str, str]] = list(state["targets"] or [])
-        if not targets:
-            targets = _refresh_targets()
-            if not targets:
-                state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
-                return BehaviorTree.NodeState.RUNNING
-
-        target_index = int(state["target_index"] or 0)
-        if target_index >= len(targets):
-            # Nobody produced a summon during this pass (no stone, sickness, etc.).
-            # Wait before trying the accounts again instead of spamming messages.
-            state["target_index"] = 0
-            state["targets"] = _refresh_targets()
-            state["next_attempt_ms"] = now_ms + RETRY_CYCLE_DELAY_MS
-            return BehaviorTree.NodeState.RUNNING
-
-        sender_email = str(Player.GetAccountEmail() or "").strip()
-        if not sender_email:
-            state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
-            return BehaviorTree.NodeState.RUNNING
-
-        receiver_email, label = targets[target_index]
-        state["target_index"] = target_index + 1
-        state["next_attempt_ms"] = now_ms + ATTEMPT_INTERVAL_MS
-
-        try:
-            GLOBAL_CACHE.ShMem.SendMessage(
-                sender_email,
-                receiver_email,
-                SharedCommandType.UseSummoningStone,
-                (0.0, 0.0, 0.0, 0.0),
-            )
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[Summoning] Asking {label} to try a replacement summoning stone.",
-                PySystem.Console.MessageType.Info,
-            )
-        except Exception as exc:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"[Summoning] Replacement request failed for {label}: {exc}",
-                PySystem.Console.MessageType.Warning,
-            )
-
-        return BehaviorTree.NodeState.RUNNING
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name="Summoning Stone Recovery Service",
-            action_fn=_tick,
-            aftercast_ms=500,
-        )
-    )
-
 
 
 def _on_map_or_skip(
@@ -2666,7 +2482,6 @@ def Level1_Start() -> BehaviorTree:
             _inventory_statistics_node(after_chest=False),
             ResetKeystoneCombatPolicy(),
             ResolveKeystoneCombatPolicy(),
-            UseAvailableSummoningStone("l1"),
             BT.AddModelToLootWhitelist(ELEMENTAL_KEYSTONE_MODEL_ID),
             BT.Move(Vec2f(-15247, -5785), pause_on_combat=False, log=False),
         ],
@@ -2724,7 +2539,6 @@ def Level2_Start() -> BehaviorTree:
         children=[
             # Safety restore in case a previous interrupted wall passage left combat disabled.
             BottingTree.EnableCombatTree(),
-            UseAvailableSummoningStone("l2"),
         ],
     )
     return _on_map_or_skip(
@@ -2758,7 +2572,6 @@ def Level3_Start() -> BehaviorTree:
         children=[
             BT.IsCurrentMap(map_id=TUNNELS_L3, log=True),
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
-            UseAvailableSummoningStone("l3"),
         ],
     )
 
@@ -2917,9 +2730,13 @@ def _configure_botting_tree(tree: BottingTree) -> None:
         enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
     )
-    tree.AddServiceTree(
-        "SummoningStoneRecoveryService",
-        SummoningStoneRecoveryService,
+    tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+        map_ids=(TUNNELS_L1, TUNNELS_L2, TUNNELS_L3),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
 
 
