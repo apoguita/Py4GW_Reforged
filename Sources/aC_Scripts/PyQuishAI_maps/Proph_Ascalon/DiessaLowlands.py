@@ -1,4 +1,6 @@
 DiessaLowlands = [
+    {
+        "path": [
     (-20296,14688),
     (-18526,14753),
     (-17165,11540),
@@ -11,6 +13,20 @@ DiessaLowlands = [
     (-12062,10422),
     (-11884,8833),
     (-6721,6493),
+        ],
+    },
+    {
+        # ROUTE-20260928-161040-467 ("DL: Detour 1").
+        # Replaces the obstacle-prone direct approach to (-9849, 5349).
+        "continuous_path": [
+            (-8154.76, 5986.55),
+            (-8652.32, 5903.67),
+            (-9068.21, 5619.17),
+            (-9424.5, 5468.6),
+        ],
+    },
+    {
+        "path": [
     (-9849,5349),
     (-11770,6007),
     (-9595,5400),
@@ -97,18 +113,51 @@ DiessaLowlands = [
     (-1218,-5715),
     (4,-6623),
     (-946,-7541),
-    (-1545,-8141),
-    (-3883,-10860),
+        ],
+    },
+    {
+        # LOC-20261005-165251-855 ("DL New Bridge Start") to
+        # LOC-20261005-165238-466 ("DL New Bridge End"). The bridge deck
+        # overlaps traversable ground in XY, so Gearward can select the lower
+        # plane. Cross directly between the two deck endpoints without
+        # autopathing or intermediate waypoints.
+        "literal_path": [
+            (-1554.53, -8095.58),
+            (-3974.73, -10649.39),
+        ],
+    },
+    {
+        # Sweep the far side after the outbound literal crossing. Do not
+        # restore (-5564, -10602): runtime movement evidence showed its
+        # combat-resume autopath selecting the lower plane beneath the bridge.
+        # These are the original far-side exploration points that follow the
+        # unambiguous southern anchor. The next literal path returns directly
+        # to the captured bridge end before crossing back.
+        "path": [
     (-3743,-12348),
-    (-5564,-10602),
     (-4465,-11283),
     (-5140,-11862),
     (-5518,-12196),
     (-5168,-11824),
     (-4608,-11235),
-    (-4080,-10665),
-    (-1554,-8099),
-    (-926,-7547),
+        ],
+    },
+    {
+        # Return across the same bridge using the exact captured deck
+        # endpoints in reverse after the restored far-side exploration sweep.
+        # Starting at the captured bridge end replaces the old ambiguous
+        # bridge-adjacent autopath target (-4080, -10665).
+        "literal_path": [
+            (-3974.73, -10649.39),
+            (-1554.53, -8095.58),
+        ],
+    },
+    {
+        "path": [
+    # The reverse literal crossing already returns to the bridge start.
+    # Skip the old bridge-adjacent autopath point (-926, -7547), whose XY
+    # can resolve onto the overlapping lower plane, and hand directly to the
+    # first unambiguous continuation point.
     (49,-6636),
     (-3086,-5833),
     (-4748,-6263),
@@ -116,6 +165,22 @@ DiessaLowlands = [
     (-7387,-9441),
     (-10436,-7893),
     (-10952,-2549),
+        ],
+    },
+    {
+        # ROUTE-20261005-170011-879 ("DL New Detour 1"). Inserted between
+        # the existing route anchors to move around the tree without replacing
+        # the sweep that follows. The duplicated finish sample is omitted.
+        "continuous_path": [
+            (-10895.51, -2635.5),
+            (-11111.68, -2177.75),
+            (-11613.83, -2156.07),
+            (-11884.95, -2696.36),
+            (-11971.09, -3038.46),
+        ],
+    },
+    {
+        "path": [
     (-11594,-5076),
     (-10704,-654),
     (-8724,1194),
@@ -132,18 +197,50 @@ DiessaLowlands = [
     (-14099,126),
     (-15058,-3831),
     (-13613,-6649),
-    (-11822,-11488),
+    # Split the former direct leg to (-11355, -13208) around the blocking
+    # tree. The first point is the observed safe end of the preceding state;
+    # the second is the user-provided avoidance waypoint.
+    (-11900.66,-11450.16),
+    (-11480.64,-11684.6),
     (-11355,-13208),
     (-12101,-14362),
     (-15051,-12087),
+        ],
+    },
+    {
+        # ROUTE-20260928-170830-103 ("DL: Detour 2"), outbound.
+        "continuous_path": [
+            (-16505.6, -11395.24),
+            (-16979.5, -11214.91),
+            (-16951.06, -11688.12),
+        ],
+    },
+    {
+        "path": [
     (-16718,-13141),
     (-21415,-15163),
     (-16851,-13219),
+        ],
+    },
+    {
+        # The same obstacle-prone corridor is traversed in reverse after the
+        # western sweep, so preserve the capture in reverse order here.
+        "continuous_path": [
+            (-16951.06, -11688.12),
+            (-16979.5, -11214.91),
+            (-16505.6, -11395.24),
+        ],
+    },
+    {
+        "path": [
     (-15683,-9290),
     (-15618,-7314),
     (-16636,-10085),
     (-17011,-12736),
     (-18893,-10169),
+    # User-provided rubble avoidance between installed states 195 and 196.
+    (-17033.37,-10827.06),
+    (-16892.25,-12053.03),
     (-19030,-9687),
     (-19030,-8796),
     (-19264,-8224),
@@ -162,6 +259,8 @@ DiessaLowlands = [
     (-19961,1863),
     (-16989,1528),
     (-16992,-553),
+        ],
+    },
 ]
 
 DiessaLowlands_outpost_path = [
