@@ -1,7 +1,7 @@
 from Py4GWCoreLib import Profession
 from Py4GWCoreLib import BuildMgr
 from Py4GWCoreLib import Routines
-from Py4GWCoreLib import Agent, Party, Player
+from Py4GWCoreLib import Agent, Party, Player, Range, Utils
 from Py4GWCoreLib.Skill import Skill
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 from Py4GWCoreLib.Builds.Skills import SkillsTemplate
@@ -50,7 +50,11 @@ class Tao_Dagger_Spam(BuildMgr):
     def _run_local_skill_logic(self):
         def _should_cast_comfort_animal() -> bool:
             pet_id = Party.Pets.GetPetID(Player.GetAgentID())
-            if not pet_id:
+            if not pet_id or not Agent.IsValid(pet_id):
+                return False
+            # Comfort Animal can reach around compass range, not spellcast range.
+            # Skip the cast entirely until the pet returns into safe range.
+            if Utils.Distance(Player.GetXY(), Agent.GetXY(pet_id)) > Range.SafeCompass.value:
                 return False
             if not Agent.IsAlive(pet_id):
                 return True

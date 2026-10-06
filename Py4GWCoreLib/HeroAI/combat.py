@@ -6,6 +6,7 @@ import Py4GW
 import PyPing
 from Py4GWCoreLib import Player, GLOBAL_CACHE, SpiritModelID, Timer, Agent, Routines, Range, Allegiance, AgentArray, Utils
 from Py4GWCoreLib import Weapon, Effects
+from Py4GWCoreLib.UIManager import UIManager
 from Py4GWCoreLib.enums import SPIRIT_BUFF_MAP, ModelID
 from Py4GWCoreLib.GlobalCache.HexRemovalPriority import get_hexed_ally_for_removal
 from Py4GWCoreLib.EnemyBlacklist import EnemyBlacklist
@@ -1683,6 +1684,19 @@ class CombatClass:
                 self.in_casting_routine = False
                 return False, 0
 
+        # Comfort Animal has an unusually long pet-only range (a little beyond
+        # compass range). Reject an absent, unloaded or distant pet BEFORE any
+        # cast attempt, including when automatic targeting is disabled.
+        if skill_id == self.comfort_animal:
+            pet_id = int(GLOBAL_CACHE.Party.Pets.GetPetID(player_id) or 0)
+            if (
+                pet_id == 0
+                or not Agent.IsValid(pet_id)
+                or Utils.Distance(Player.GetXY(), Agent.GetXY(pet_id)) > Range.SafeCompass.value
+            ):
+                self.in_casting_routine = False
+                return False, 0
+
         # --- Expensive target resolution (only if all cheap checks passed) ---
         v_target = self.GetAppropiateTarget(slot)
 
@@ -2121,6 +2135,13 @@ class CombatClass:
         """
         Execute the first castable skill in the prioritized skill order.
         """
+        # NPC dialogs can stay open after SendDialog has already returned.
+        # Never cast a skill or fall through to auto-attack while that UI is open.
+        if UIManager.IsNPCDialogVisible():
+            self.in_casting_routine = False
+            self.ResetSkillPointer()
+            return False
+
         if not ooc:
             self._maybe_call_leader_selected_target(cached_data)
 

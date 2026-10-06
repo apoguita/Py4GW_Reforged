@@ -1,7 +1,7 @@
 from Py4GWCoreLib import Profession
 from Py4GWCoreLib import BuildMgr
 from Py4GWCoreLib import Routines
-from Py4GWCoreLib import Agent, Party, Player, Range
+from Py4GWCoreLib import Agent, Party, Player, Range, Utils
 from Py4GWCoreLib.Skill import Skill
 from Py4GWCoreLib.Builds.Any.HeroAI import HeroAI_Build
 
@@ -39,6 +39,14 @@ class Pre_Searing_Ignite(BuildMgr):
     def _run_local_skill_logic(self):
         player_agent_id = Player.GetAgentID()
 
+        def _should_cast_comfort_animal() -> bool:
+            pet_id = int(Party.Pets.GetPetID(player_agent_id) or 0)
+            if pet_id == 0 or not Agent.IsValid(pet_id):
+                return False
+            if Utils.Distance(Player.GetXY(), Agent.GetXY(pet_id)) > Range.SafeCompass.value:
+                return False
+            return not Agent.IsAlive(pet_id) or Agent.GetHealth(pet_id) < 0.01
+
         if not Routines.Checks.Skills.CanCast():
             return False
 
@@ -56,15 +64,14 @@ class Pre_Searing_Ignite(BuildMgr):
             )):
                 return True
 
-        if self.IsSkillEquipped(Comfort_Animal_ID):
-            pet_id = Party.Pets.GetPetID(player_agent_id)
-            if pet_id and (not Agent.IsAlive(pet_id) or Agent.GetHealth(pet_id) < 0.01):
-                if (yield from self.CastSkillID(
-                    skill_id=Comfort_Animal_ID,
-                    log=False,
-                    aftercast_delay=250,
-                )):
-                    return True
+        if self.IsSkillEquipped(Comfort_Animal_ID) and _should_cast_comfort_animal():
+            if (yield from self.CastSkillID(
+                skill_id=Comfort_Animal_ID,
+                extra_condition=_should_cast_comfort_animal,
+                log=False,
+                aftercast_delay=250,
+            )):
+                return True
 
         if self.IsSkillEquipped(Troll_Unguent_ID):
             should_cast_troll = (
