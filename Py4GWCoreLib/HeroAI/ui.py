@@ -1,16 +1,15 @@
 # ============================================================
-# HeroAI Consumable Auto Upkeep - Official Patch v05 - 2026-10-03
-# - Based on the tested Personal v10 consumable logic.
-# - Party DP uses only Four-Leaf Clover / Oath of Purity and coordinates one
-#   real carrier account for the whole party until party DP is cleared.
-# - Pumpkin Cookie first uses personal DP removers, then Pumpkin Cookies until
-#   this character reaches +10% morale.
-# - Party Morale supports Rainbow Candy Cane, Honeycomb, Elixir of Valor, and
-#   Seal of the Dragon Empire through one-carrier party coordination.
-# - Powerstone remains independent and unchanged.
-# - Alcohol keeps the existing target level and adds anti-repeat protection for
-#   3-point / level-5 alcohol while the drunk-state update is pending.
-# - Conset coordination and all existing window/master-switch behavior remain.
+# HeroAI Consumable Auto Upkeep - Official Patch v06 - 2026-10-06
+# - Based on the clean Official Patch v05 structure and the tested Personal v17 feature set.
+# - One Auto switch: party leader click resets all injected party accounts ON/OFF;
+#   any follower can override only its own account until the next leader reset.
+# - Floating Consumables/Summoning window keeps its last dragged ImGui position.
+# - Leader right-click on a consumable performs one manual party-use pass without
+#   changing automatic icon selections; Summoning right-click broadcasts one use
+#   attempt to every party account and lets the game enforce the one-summon limit.
+# - Adds Lunar Fortune, Experience Scroll, Resurrection Scroll, and the 21-item
+#   Summoning page with party-safe automatic coordination.
+# - Uses official Item Models paths for Igneous, Lunar Fortune and Resurrection.
 # ============================================================
 
 from collections.abc import Callable
@@ -44,6 +43,7 @@ from Py4GWCoreLib.Overlay import Overlay
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Map import Map
 from Py4GWCoreLib.Agent import Agent
+from Py4GWCoreLib.Item import has_active_party_summon, has_summoning_sickness
 from Py4GWCoreLib.EnemyBlacklist import draw_blacklist_ui
 from Py4GWCoreLib.UIManager import UIManager
 from Py4GWCoreLib.enums_src.GameData_enums import Allegiance, Profession, ProfessionShort, Range
@@ -97,12 +97,13 @@ template_account: str = ""
 template_code = ""
 configure_consumables_window_open: bool = False
 configure_base_consumables_window_open: bool = False
-# Personal v07: stable but draggable shared consumables popup.
-# OpenPopup is issued once per request. The saved position is applied only on
-# appearance, then updated from the actual window position while the user drags.
+# Official v06: draggable floating Consumables window with persistent ImGui position.
+# FirstUseEver supplies only the very first default; afterward ImGui restores the
+# user's last dragged location from its normal saved window settings.
 _configure_consumables_popup_pending: bool = False
 _configure_consumables_popup_anchor: tuple[float, float] = (20.0, 20.0)
 _configure_consumables_popup_position_initialized: bool = False
+_consumables_ui_page: str = "consumables"
 
 
 def _live_hero_options(account_data: AccountStruct) -> HeroAIOptionStruct | None:
@@ -147,35 +148,19 @@ class HealthState(Enum):
 def show_configure_consumables_window():
     global configure_consumables_window_open
     global _configure_consumables_popup_pending
-    global _configure_consumables_popup_anchor
-    global _configure_consumables_popup_position_initialized
 
-    if not configure_consumables_window_open:
-        # Only choose a mouse-adjacent starting point the first time this client
-        # opens the popup. After the user drags it, keep the last dragged position
-        # for subsequent reopen operations in the same session.
-        if not _configure_consumables_popup_position_initialized:
-            try:
-                io = PyImGui.get_io()
-                mouse_x = float(io.mouse_pos_x)
-                mouse_y = float(io.mouse_pos_y)
-                display_x = float(io.display_size_x)
-                display_y = float(io.display_size_y)
+    # True toggle from the HeroAI candy-cane button.
+    if configure_consumables_window_open:
+        configure_consumables_window_open = False
+        _configure_consumables_popup_pending = False
+        return
 
-                popup_w = 285.0
-                popup_h = 330.0
-                x = max(8.0, min(mouse_x, max(8.0, display_x - popup_w - 8.0)))
-                y = max(8.0, min(mouse_y - 170.0, max(8.0, display_y - popup_h - 8.0)))
-                _configure_consumables_popup_anchor = (x, y)
-            except Exception:
-                _configure_consumables_popup_anchor = (20.0, 20.0)
-
-            _configure_consumables_popup_position_initialized = True
-
-        _configure_consumables_popup_pending = True
-
+    # Official v06: do not recalculate a mouse-adjacent position here. On the
+    # next draw we provide only a FirstUseEver default, allowing Dear ImGui's
+    # normal saved window settings to restore the last dragged position.
+    _configure_consumables_popup_pending = True
     configure_consumables_window_open = True
-    
+
 def show_base_configure_consumables_window():
     global configure_base_consumables_window_open
     configure_base_consumables_window_open = not configure_base_consumables_window_open
@@ -1671,6 +1656,9 @@ def send_command_to_all_heroes(accounts: list[AccountStruct], command: SharedCom
 
 # Category sentinels. Negative values are UI/runtime categories, never real item ModelIDs.
 _TOWN_CAKE_SENTINEL = -10001
+_LUNAR_FORTUNE_SENTINEL = -10002
+_XP_SCROLL_SENTINEL = -10003
+_RES_SCROLL_SENTINEL = -10004
 
 consumables = [
     (ModelID.Essence_Of_Celerity, ("Assets\\Textures\\Consumables\\Trimmed\\Essence_of_Celerity.png", (ModelID.Essence_Of_Celerity.value, GLOBAL_CACHE.Skill.GetID("Essence_of_Celerity_item_effect"), 0, 0))),
@@ -1699,6 +1687,11 @@ consumables = [
     (ModelID.Drake_Kabob, ("Assets\\Textures\\Consumables\\Trimmed\\Drake_Kabob.png", (ModelID.Drake_Kabob.value, GLOBAL_CACHE.Skill.GetID("Drake_Skin"), 0, 0))),
     (ModelID.Bowl_Of_Skalefin_Soup, ("Assets\\Textures\\Consumables\\Trimmed\\Bowl_of_Skalefin_Soup.png", (ModelID.Bowl_Of_Skalefin_Soup.value, GLOBAL_CACHE.Skill.GetID("Skale_Vigor"), 0, 0))),
     (ModelID.Pahnai_Salad, ("Assets\\Textures\\Consumables\\Trimmed\\Pahnai_Salad.png", (ModelID.Pahnai_Salad.value, GLOBAL_CACHE.Skill.GetID("Pahnai_Salad_item_effect"), 0, 0))),
+
+    # Special grouped/event-driven buttons.
+    (_LUNAR_FORTUNE_SENTINEL, ("Assets\\Textures\\Item Models\\29424-Lunar_Fortune.png", (0, 0, 0, 0))),
+    (_XP_SCROLL_SENTINEL, ("Assets\\Textures\\Item Models\\05595-Scroll_of_Berserkers_Insight.png", (0, 0, 0, 0))),
+    (_RES_SCROLL_SENTINEL, ("Assets\\Textures\\Item Models\\26501-Scroll_Of_Resurrection.png", (0, 0, 0, 0))),
 ]
 
 # Per-account persistent auto-upkeep state. Every injected GW account keeps its
@@ -1708,14 +1701,16 @@ _CONSUMABLE_AUTO_SECTION = "AutoUpkeep"
 _CONSUMABLE_MASTER_SECTION = "Master"
 _CONSUMABLE_ACCOUNT_MASTER_KEY = "enabled"
 
-# Machine-global master state. Only the LIVE party leader is allowed to change
-# it in the UI. Other clients reload it periodically so a leader click propagates
-# to all injected accounts without changing the shared-memory struct layout.
+# Machine-global leader command. The LIVE party leader can reset every injected
+# account to the same Auto ON/OFF state. Followers apply each command once, then
+# remain free to override their own account locally until the leader clicks again.
 _consumable_global_settings = NativeSettings("HeroAI/ConsumableAutoGlobal.ini", "global")
 _CONSUMABLE_GLOBAL_MASTER_SECTION = "Master"
 _CONSUMABLE_GLOBAL_MASTER_KEY = "enabled"
+_CONSUMABLE_GLOBAL_COMMAND_TOGGLE_KEY = "command_toggle"
 _CONSUMABLE_GLOBAL_RELOAD_INTERVAL_MS = 750
 _consumable_global_last_reload_ms = 0
+_consumable_global_last_command_toggle: bool | None = None
 
 _CONSUMABLE_AUTO_MIN_INTERVAL_MS = 650
 _consumable_auto_running: dict[str, bool] = {}
@@ -1743,6 +1738,71 @@ _PARTY_MORALE_MODELS = (
     int(ModelID.Elixir_Of_Valor.value),
     int(ModelID.Seal_Of_The_Dragon_Empire.value),
 )
+
+_LUNAR_FORTUNE_MODELS = (
+    int(ModelID.Lunar_Fortune_2007_Pig.value),
+    int(ModelID.Lunar_Fortune_2008_Rat.value),
+    int(ModelID.Lunar_Fortune_2009_Ox.value),
+    int(ModelID.Lunar_Fortune_2010_Tiger.value),
+    int(ModelID.Lunar_Fortune_2011_Rabbit.value),
+    int(ModelID.Lunar_Fortune_2012_Dragon.value),
+    int(ModelID.Lunar_Fortune_2013_Snake.value),
+    int(ModelID.Lunar_Fortune_2014_Horse.value),
+    int(ModelID.Lunar_Fortune_2015_Sheep.value),
+    int(ModelID.Lunar_Fortune_2016_Monkey.value),
+    int(ModelID.Lunar_Fortune_2017_Rooster.value),
+    int(ModelID.Lunar_Fortune_2018_Dog.value),
+)
+_LUNAR_BLESSING_EFFECT_ID = 1926
+_LUNAR_FORTUNE_INTERVAL_MS = 120
+
+# Party-wide experience-scroll group. Effects are authoritative; no local
+# duration guessing is used. Skill IDs match the game's Insight effects.
+_XP_SCROLL_MODELS = (
+    int(ModelID.Scroll_Of_Berserkers_Insight.value),
+    int(ModelID.Scroll_Of_The_Lightbringer.value),
+    int(ModelID.Scroll_of_Slayers_Insight.value),
+    int(ModelID.Scroll_Of_Heros_Insight.value),
+    int(ModelID.Scroll_Of_Rampagers_Insight.value),
+    int(ModelID.Scroll_Of_Hunters_Insight.value),
+    int(ModelID.Scroll_Of_Adventurers_Insight.value),
+)
+_XP_INSIGHT_EFFECT_IDS = (765, 767, 768, 857, 894, 895, 1887)
+_XP_SCROLL_CONFIRM_TIMEOUT_MS = 1800
+_XP_SCROLL_CONFIRM_POLL_MS = 100
+_XP_SCROLL_LOCK_STALE_SECONDS = 6.0
+_xp_was_in_combat: dict[str, bool] = {}
+
+_RES_SCROLL_MODEL_ID = int(ModelID.Scroll_Of_Resurrection.value)
+
+# Summoning page. These are the 21 summon items currently exposed by Py4R's
+# ModelID enum and bundled textures. The four newer Reforged Ascalonian horn
+# variants are not assigned guessed IDs.
+summoning_consumables = [
+    (ModelID.Amber_Summon, "Assets\\Textures\\Item Models\\30961-Amber_Summoning_Stone.png", "Amber Summoning Stone"),
+    (ModelID.Arctic_Summon, "Assets\\Textures\\Item Models\\Arctic_Summoning_Stone.png", "Arctic Summoning Stone"),
+    (ModelID.Automaton_Summon, "Assets\\Textures\\Item Models\\30846-Automaton_Summoning_Stone.png", "Automaton Summoning Stone"),
+    (ModelID.Celestial_Summon, "Assets\\Textures\\Item Models\\34176-Celestial_Summoning_Stone.png", "Celestial Summoning Stone"),
+    (ModelID.Chitinous_Summon, "Assets\\Textures\\Item Models\\30959-Chitinous_Summoning_Stone.png", "Chitinous Summoning Stone"),
+    (ModelID.Demonic_Summon, "Assets\\Textures\\Item Models\\30963-Demonic_Summoning_Stone.png", "Demonic Summoning Stone"),
+    (ModelID.Fossilized_Summon, "Assets\\Textures\\Item Models\\30965-Fossilized_Summoning_Stone.png", "Fossilized Summoning Stone"),
+    (ModelID.Frosty_Summon, "Assets\\Textures\\Item Models\\31023-Frosty_Summoning_Stone.png", "Frosty Summoning Stone"),
+    (ModelID.Gelatinous_Summon, "Assets\\Textures\\Item Models\\30964-Gelatinous_Summoning_Stone.png", "Gelatinous Summoning Stone"),
+    (ModelID.Ghastly_Summon, "Assets\\Textures\\Item Models\\32557-Ghastly_Summoning_Stone.png", "Ghastly Summoning Stone"),
+    (ModelID.Igneous_Summoning_Stone, "Assets\\Textures\\Item Models\\30847-Igneous_Summoning_Stone.png", "Igneous Summoning Stone"),
+    (ModelID.Imperial_Guard_Summon, "Assets\\Textures\\Item Models\\Imperial_Guard_Reinforcement_Order.png", "Imperial Guard Reinforcement Order"),
+    (ModelID.Jadeite_Summon, "Assets\\Textures\\Item Models\\Jadeite_Summoning_Stone.png", "Jadeite Summoning Stone"),
+    (ModelID.Legionnaire_Summoning_Crystal, "Assets\\Textures\\Item Models\\37810-Legionnaire_Summoning_Crystal.png", "Legionnaire Summoning Crystal"),
+    (ModelID.Merchant_Summon, "Assets\\Textures\\Item Models\\Mercantile_Summoning_Stone.png", "Mercantile Summoning Stone"),
+    (ModelID.Mischievous_Summon, "Assets\\Textures\\Item Models\\Mischievous_Summoning_Stone.png", "Mischievous Summoning Stone"),
+    (ModelID.Mysterious_Summon, "Assets\\Textures\\Item Models\\Mysterious_Summoning_Stone.png", "Mysterious Summoning Stone"),
+    (ModelID.Mystical_Summon, "Assets\\Textures\\Item Models\\Mystical_Summoning_Stone.png", "Mystical Summoning Stone"),
+    (ModelID.Shining_Blade_Summon, "Assets\\Textures\\Item Models\\Shining_Blade_War_Horn.png", "Shining Blade War Horn"),
+    (ModelID.Tengu_Summon, "Assets\\Textures\\Item Models\\30209-Tengu_Support_Flare.png", "Tengu Support Flare"),
+    (ModelID.Zaishen_Summon, "Assets\\Textures\\Item Models\\Zaishen_Summoning_Stone.png", "Zaishen Summoning Stone"),
+]
+_SUMMON_AUTO_KEY = "__summoning_auto__"
+_SUMMON_AUTO_MIN_INTERVAL_MS = 1000
 
 # 3-point alcohol provides level-5 intoxication. Prevent another strong alcohol
 # use while the first drink is still waiting for the client drunk-state update.
@@ -1800,7 +1860,8 @@ def _set_account_consumable_master_enabled(enabled: bool) -> None:
     )
 
 
-def _global_consumable_master_enabled(refresh: bool = True) -> bool:
+def _global_consumable_master_command(refresh: bool = True) -> tuple[bool, bool]:
+    """Read the latest leader reset command as (enabled, command_toggle)."""
     global _consumable_global_last_reload_ms
     try:
         now_ms = int(Utils.GetBaseTimestamp())
@@ -1811,35 +1872,79 @@ def _global_consumable_master_enabled(refresh: bool = True) -> bool:
                     _consumable_global_settings.reload()
                 except Exception:
                     pass
-        return bool(_consumable_global_settings.get_bool(
+        enabled = bool(_consumable_global_settings.get_bool(
             _CONSUMABLE_GLOBAL_MASTER_SECTION,
             _CONSUMABLE_GLOBAL_MASTER_KEY,
             True,
         ))
+        command_toggle = bool(_consumable_global_settings.get_bool(
+            _CONSUMABLE_GLOBAL_MASTER_SECTION,
+            _CONSUMABLE_GLOBAL_COMMAND_TOGGLE_KEY,
+            False,
+        ))
+        return enabled, command_toggle
     except Exception:
-        return True
+        return True, False
 
 
 def _set_global_consumable_master_enabled(enabled: bool) -> None:
+    """Leader-only one-shot reset command for every injected account."""
+    global _consumable_global_last_command_toggle
     if not _is_live_party_leader():
         return
+    try:
+        current_toggle = bool(_consumable_global_settings.get_bool(
+            _CONSUMABLE_GLOBAL_MASTER_SECTION,
+            _CONSUMABLE_GLOBAL_COMMAND_TOGGLE_KEY,
+            False,
+        ))
+    except Exception:
+        current_toggle = False
+    next_toggle = not current_toggle
     _consumable_global_settings.set_bool(
         _CONSUMABLE_GLOBAL_MASTER_SECTION,
         _CONSUMABLE_GLOBAL_MASTER_KEY,
         bool(enabled),
     )
-    # This setting is a deliberate cross-process contract. Force the leader's
-    # write now so follower clients can reload it on their next 750 ms refresh.
+    _consumable_global_settings.set_bool(
+        _CONSUMABLE_GLOBAL_MASTER_SECTION,
+        _CONSUMABLE_GLOBAL_COMMAND_TOGGLE_KEY,
+        next_toggle,
+    )
+    # Force the leader's command to disk so follower clients can see it quickly.
     try:
         _consumable_global_settings.save()
     except Exception:
         pass
+    _consumable_global_last_command_toggle = next_toggle
+
+
+def _sync_consumable_master_from_leader() -> None:
+    """Apply each leader reset command once; local overrides remain independent."""
+    global _consumable_global_last_command_toggle
+    enabled, command_toggle = _global_consumable_master_command(refresh=True)
+
+    # On first observation, adopt the current command generation without replaying
+    # an old command from a previous session. This preserves each account's saved
+    # local override until the leader actually clicks the Auto button again.
+    if _consumable_global_last_command_toggle is None:
+        _consumable_global_last_command_toggle = command_toggle
+        return
+
+    if command_toggle == _consumable_global_last_command_toggle:
+        return
+
+    _consumable_global_last_command_toggle = command_toggle
+    if not _is_live_party_leader():
+        _set_account_consumable_master_enabled(enabled)
 
 
 def _consumable_auto_key(model_id: ModelID | int) -> str:
     value = int(model_id.value if hasattr(model_id, "value") else model_id)
     if value == _TOWN_CAKE_SENTINEL:
         return "town_cake"
+    if value == _LUNAR_FORTUNE_SENTINEL:
+        return "lunar_fortune"
     if value == int(ModelID.Dwarven_Ale.value):
         return "alcohol"
     if value == int(ModelID.Rainbow_Candy_Cane.value):
@@ -1876,6 +1981,12 @@ def _consumable_auto_label(model_id: ModelID | int) -> str:
     value = int(model_id.value if hasattr(model_id, "value") else model_id)
     if value == _TOWN_CAKE_SENTINEL:
         return "Town Cake"
+    if value == _LUNAR_FORTUNE_SENTINEL:
+        return "Lunar Fortune"
+    if value == _XP_SCROLL_SENTINEL:
+        return "Experience Scroll"
+    if value == _RES_SCROLL_SENTINEL:
+        return "Resurrection Scroll"
     if value == int(ModelID.Dwarven_Ale.value):
         return "Alcohol"
     if value == int(ModelID.Rainbow_Candy_Cane.value):
@@ -2219,12 +2330,352 @@ def _upkeep_alcohol_with_strong_guard(target_alc_level: int = 2):
     yield from Routines.Yield.wait(500)
 
 
+
+def _lunar_blessing_active() -> bool:
+    try:
+        player_id = int(Player.GetAgentID() or 0)
+        return player_id > 0 and bool(
+            GLOBAL_CACHE.Effects.HasEffect(player_id, int(_LUNAR_BLESSING_EFFECT_ID))
+        )
+    except Exception:
+        return False
+
+
+def _upkeep_lunar_fortune():
+    """Rapidly open Lunar Fortunes until Lunar Blessing is detected."""
+    if not Routines.Checks.Map.MapValid() or not Map.IsExplorable():
+        yield from Routines.Yield.wait(500)
+        return
+
+    player_id = int(Player.GetAgentID() or 0)
+    if player_id <= 0 or Agent.IsDead(player_id):
+        yield from Routines.Yield.wait(500)
+        return
+
+    if _lunar_blessing_active():
+        yield from Routines.Yield.wait(500)
+        return
+
+    # The blessing is uncommon, so use fortunes quickly. Split the 120 ms gap
+    # into small polls so the moment Lunar Blessing appears we stop immediately.
+    attempts = 0
+    while attempts < 100:
+        if (
+            not Routines.Checks.Map.MapValid()
+            or not Map.IsExplorable()
+            or Agent.IsDead(player_id)
+            or _lunar_blessing_active()
+        ):
+            return
+
+        selected_item = 0
+        for model_id in _LUNAR_FORTUNE_MODELS:
+            selected_item = int(GLOBAL_CACHE.Inventory.GetFirstModelID(int(model_id)) or 0)
+            if selected_item:
+                break
+
+        if not selected_item:
+            yield from Routines.Yield.wait(500)
+            return
+
+        GLOBAL_CACHE.Inventory.UseItem(selected_item)
+        attempts += 1
+
+        elapsed = 0
+        while elapsed < _LUNAR_FORTUNE_INTERVAL_MS:
+            yield from Routines.Yield.wait(30)
+            elapsed += 30
+            if _lunar_blessing_active():
+                return
+
+    yield from Routines.Yield.wait(250)
+
+
+def _special_lock_path(filename: str) -> str:
+    try:
+        projects_path = str(PySystem.Console.get_projects_path() or "").strip()
+        if not projects_path:
+            return ""
+        lock_dir = os.path.join(projects_path, "Settings", "Global", "HeroAI")
+        os.makedirs(lock_dir, exist_ok=True)
+        return os.path.join(lock_dir, filename)
+    except Exception:
+        return ""
+
+
+def _try_acquire_special_lock(filename: str, stale_seconds: float) -> tuple[str, str] | None:
+    path = _special_lock_path(filename)
+    if not path:
+        return None
+    token = f"{Player.GetAccountEmail()}|{os.getpid()}|{time.time_ns()}"
+    for _ in range(2):
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            try:
+                os.write(fd, token.encode("utf-8", errors="ignore"))
+            finally:
+                os.close(fd)
+            return (path, token)
+        except FileExistsError:
+            try:
+                if (time.time() - os.path.getmtime(path)) > stale_seconds:
+                    os.remove(path)
+                    continue
+            except Exception:
+                pass
+            return None
+        except Exception:
+            return None
+    return None
+
+
+def _release_special_lock(lock_info: tuple[str, str] | None) -> None:
+    if not lock_info:
+        return
+    path, token = lock_info
+    try:
+        current = ""
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+                current = handle.read().strip()
+        except Exception:
+            pass
+        if not current or current == token:
+            os.remove(path)
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+
+
+def _xp_insight_active() -> bool:
+    """True if any real account in the current party reports an XP Insight effect."""
+    effect_ids = set(int(v) for v in _XP_INSIGHT_EFFECT_IDS)
+
+    # Local effect is the freshest signal.
+    player_id = int(Player.GetAgentID() or 0)
+    if player_id > 0:
+        for skill_id in effect_ids:
+            try:
+                if GLOBAL_CACHE.Effects.HasEffect(player_id, skill_id):
+                    return True
+            except Exception:
+                continue
+
+    # Cross-account shared-memory scan makes the gate truly party-wide.
+    try:
+        self_email = str(Player.GetAccountEmail() or "")
+        self_account = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(self_email) if self_email else None
+        party_id = int(getattr(getattr(self_account, "AgentPartyData", None), "PartyID", 0) or 0)
+        for account in GLOBAL_CACHE.ShMem.GetAllAccountData() or []:
+            if not bool(getattr(account, "IsSlotActive", False)):
+                continue
+            if not bool(getattr(account, "IsAccount", False)) or bool(getattr(account, "IsHero", False)):
+                continue
+            account_party_id = int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+            if party_id > 0 and account_party_id != party_id:
+                continue
+            buffs = getattr(getattr(account, "AgentData", None), "Buffs", None)
+            for buff in getattr(buffs, "Buffs", []) or []:
+                if int(getattr(buff, "SkillId", 0) or 0) in effect_ids:
+                    return True
+    except Exception:
+        pass
+    return False
+
+
+def _experience_scroll_auto_generator():
+    """On combat entry, let exactly one enabled carrier use one XP scroll."""
+    if not Routines.Checks.Map.MapValid() or not Map.IsExplorable():
+        return
+    player_id = int(Player.GetAgentID() or 0)
+    if player_id <= 0 or Agent.IsDead(player_id) or not Agent.IsInCombatStance(player_id):
+        return
+    if _xp_insight_active():
+        return
+
+    item_id = 0
+    for model_id in _XP_SCROLL_MODELS:
+        item_id = int(GLOBAL_CACHE.Inventory.GetFirstModelID(int(model_id)) or 0)
+        if item_id:
+            break
+    if not item_id:
+        return
+
+    lock_info = None
+    waited = 0
+    while lock_info is None and waited < 2500:
+        if _xp_insight_active():
+            return
+        if Agent.IsDead(player_id) or not Agent.IsInCombatStance(player_id):
+            return
+        lock_info = _try_acquire_special_lock(".xp_scroll_auto.lock", _XP_SCROLL_LOCK_STALE_SECONDS)
+        if lock_info is not None:
+            break
+        yield from Routines.Yield.wait(100)
+        waited += 100
+    if lock_info is None:
+        return
+    try:
+        if _xp_insight_active() or Agent.IsDead(player_id) or not Agent.IsInCombatStance(player_id):
+            return
+
+        item_id = 0
+        for model_id in _XP_SCROLL_MODELS:
+            item_id = int(GLOBAL_CACHE.Inventory.GetFirstModelID(int(model_id)) or 0)
+            if item_id:
+                break
+        if not item_id:
+            return
+
+        GLOBAL_CACHE.Inventory.UseItem(item_id)
+        elapsed = 0
+        while elapsed < _XP_SCROLL_CONFIRM_TIMEOUT_MS:
+            yield from Routines.Yield.wait(_XP_SCROLL_CONFIRM_POLL_MS)
+            elapsed += _XP_SCROLL_CONFIRM_POLL_MS
+            if _xp_insight_active():
+                return
+    finally:
+        _release_special_lock(lock_info)
+
+
+def _sync_resurrection_scroll_auto(enabled: bool) -> None:
+    """Drive the existing HeroAI resurrection-scroll engine from the PCons icon."""
+    try:
+        cfg = resurrection_scroll._settings
+        cfg.ensure_initialized()
+        changed = False
+        if bool(resurrection_scroll.is_enabled()) != bool(enabled):
+            cfg.set_account_resurrection_scroll_enabled(bool(enabled))
+            changed = True
+        if bool(enabled) and cfg.get_account_resurrection_scroll_skip_if_res_available():
+            cfg.set_account_resurrection_scroll_skip_if_res_available(False)
+            changed = True
+        if changed:
+            try:
+                resurrection_scroll._broadcast_local_state()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _item_texture_path(model_id: int, fallback: str) -> str:
+    """Resolve the actual carried item's GW.dat icon when possible."""
+    try:
+        if int(model_id) > 0:
+            item_id = int(GLOBAL_CACHE.Inventory.GetFirstModelID(int(model_id)) or 0)
+            if item_id:
+                raw_file_id = int(GLOBAL_CACHE.Item.GetModelFileID(item_id) or 0)
+                if raw_file_id > 0:
+                    return f"gwdat://{raw_file_id}"
+    except Exception:
+        pass
+    return fallback
+
+
+def _summoning_auto_generator():
+    """Use only THIS account's enabled summon, coordinated with one party-wide claim."""
+    if not Routines.Checks.Map.MapValid() or not Map.IsExplorable():
+        yield from Routines.Yield.wait(500)
+        return
+
+    player_id = int(Player.GetAgentID() or 0)
+    if player_id <= 0 or Agent.IsDead(player_id):
+        yield from Routines.Yield.wait(500)
+        return
+
+    try:
+        if has_summoning_sickness(player_id):
+            yield from Routines.Yield.wait(500)
+            return
+    except Exception:
+        pass
+
+    try:
+        if has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()):
+            yield from Routines.Yield.wait(500)
+            return
+    except Exception:
+        pass
+
+    try:
+        current_sp, _ = Player.GetSkillPointData()
+        if int(current_sp or 0) <= 0:
+            yield from Routines.Yield.wait(500)
+            return
+    except Exception:
+        pass
+
+    try:
+        player_level = int(Agent.GetLevel(player_id) or 0)
+    except Exception:
+        player_level = 20
+
+    selected_item_id = 0
+    for model, _texture_path, _label in summoning_consumables:
+        model_id = int(model.value)
+        if not _consumable_auto_enabled(model_id):
+            continue
+        if model_id == int(ModelID.Igneous_Summoning_Stone.value) and player_level >= 20:
+            continue
+        item_id = int(GLOBAL_CACHE.Inventory.GetFirstModelID(model_id) or 0)
+        if item_id:
+            selected_item_id = item_id
+            break
+
+    if not selected_item_id:
+        yield from Routines.Yield.wait(500)
+        return
+
+    lock_info = _try_acquire_special_lock(".summoning_auto.lock", 6.0)
+    if lock_info is None:
+        yield from Routines.Yield.wait(250)
+        return
+
+    try:
+        try:
+            if has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()):
+                return
+        except Exception:
+            pass
+        try:
+            if has_summoning_sickness(player_id):
+                return
+        except Exception:
+            pass
+        if Agent.IsDead(player_id):
+            return
+
+        GLOBAL_CACHE.Inventory.UseItem(selected_item_id)
+
+        elapsed = 0
+        while elapsed < 2500:
+            yield from Routines.Yield.wait(100)
+            elapsed += 100
+            try:
+                if has_active_party_summon(GLOBAL_CACHE.Party.GetOthers()):
+                    return
+            except Exception:
+                pass
+            try:
+                if has_summoning_sickness(player_id):
+                    return
+            except Exception:
+                pass
+    finally:
+        _release_special_lock(lock_info)
+
+    yield from Routines.Yield.wait(250)
+
 def _consumable_upkeep_generator(model_id: ModelID | int):
     value = int(model_id.value if hasattr(model_id, "value") else model_id)
     upkeepers = Routines.Yield.Upkeepers
 
     if value == _TOWN_CAKE_SENTINEL:
         return _upkeep_town_cake_while_moving()
+    if value == _LUNAR_FORTUNE_SENTINEL:
+        return _upkeep_lunar_fortune()
     if value == int(ModelID.Essence_Of_Celerity.value):
         return upkeepers.Upkeep_EssenceOfCelerity()
     if value == int(ModelID.Grail_Of_Might.value):
@@ -2730,9 +3181,23 @@ def tick_consumable_upkeep(cached_data: CacheData) -> None:
             player_dead,
         )
 
-        if not _global_consumable_master_enabled(refresh=True):
-            return
-        if not _account_consumable_master_enabled():
+        account_email = str(cached_data.account_email or Player.GetAccountEmail() or "")
+        try:
+            current_combat = bool(Agent.IsInCombatStance(player_id)) if not player_dead else False
+        except Exception:
+            current_combat = False
+        previous_combat = _xp_was_in_combat.get(account_email, current_combat)
+        entered_combat = bool(current_combat and not previous_combat)
+        _xp_was_in_combat[account_email] = current_combat
+
+        # Leader reset commands are one-shot. A follower may override its own Auto
+        # state afterward; the next leader click resets the whole party again.
+        _sync_consumable_master_from_leader()
+        account_master = _account_consumable_master_enabled()
+        _sync_resurrection_scroll_auto(
+            bool(account_master and _consumable_auto_enabled(_RES_SCROLL_SENTINEL))
+        )
+        if not account_master:
             return
 
         is_explorable = bool(Map.IsExplorable())
@@ -2742,6 +3207,17 @@ def tick_consumable_upkeep(cached_data: CacheData) -> None:
             if map_entry or party_wipe_revive:
                 _schedule_event_consumable(ModelID.Powerstone_Of_Courage, cached_data)
 
+            if entered_combat and _consumable_auto_enabled(_XP_SCROLL_SENTINEL):
+                xp_key = _consumable_auto_key(_XP_SCROLL_SENTINEL)
+                if not _consumable_auto_running.get(xp_key, False):
+                    _consumable_auto_running[xp_key] = True
+                    def _run_xp_and_release():
+                        try:
+                            yield from _experience_scroll_auto_generator()
+                        finally:
+                            _consumable_auto_running[xp_key] = False
+                    GLOBAL_CACHE.Coroutines.append(_run_xp_and_release())
+
         # Continuous upkeep categories (including Pumpkin Cookie morale upkeep) never run while dead.
         if player_dead:
             return
@@ -2749,7 +3225,12 @@ def tick_consumable_upkeep(cached_data: CacheData) -> None:
         now_ms = int(Utils.GetBaseTimestamp())
         for model_id, _ in consumables:
             value = int(model_id.value if hasattr(model_id, "value") else model_id)
-            if value == 0 or value in _EVENT_TRIGGER_MODELS or not _consumable_auto_enabled(value):
+            if (
+                value == 0
+                or value in _EVENT_TRIGGER_MODELS
+                or value in (_XP_SCROLL_SENTINEL, _RES_SCROLL_SENTINEL)
+                or not _consumable_auto_enabled(value)
+            ):
                 continue
 
             # Town Cake is intentionally the only category that runs in towns,
@@ -2770,6 +3251,29 @@ def tick_consumable_upkeep(cached_data: CacheData) -> None:
             _consumable_auto_last_start_ms[key] = now_ms
             _consumable_auto_running[key] = True
             GLOBAL_CACHE.Coroutines.append(_run_consumable_auto_once(value, cached_data))
+
+        # Summoning page toggles share one scheduler so enabling several stones
+        # can never dispatch multiple summons in the same tick.
+        if is_explorable and any(
+            _consumable_auto_enabled(int(model.value))
+            for model, _texture_path, _label in summoning_consumables
+        ):
+            summon_key = _SUMMON_AUTO_KEY
+            summon_last = int(_consumable_auto_last_start_ms.get(summon_key, 0) or 0)
+            if (
+                not _consumable_auto_running.get(summon_key, False)
+                and now_ms - summon_last >= _SUMMON_AUTO_MIN_INTERVAL_MS
+            ):
+                _consumable_auto_last_start_ms[summon_key] = now_ms
+                _consumable_auto_running[summon_key] = True
+
+                def _run_summoning_and_release():
+                    try:
+                        yield from _summoning_auto_generator()
+                    finally:
+                        _consumable_auto_running[summon_key] = False
+
+                GLOBAL_CACHE.Coroutines.append(_run_summoning_and_release())
     except Exception as exc:
         ConsoleLog("HeroAI", f"Consumable auto-upkeep tick error: {exc}", log=False)
 
@@ -2794,8 +3298,167 @@ def _post_pcon_message(params, cached_data: CacheData):
     _last_pcon_post_ms = now_ms
 
 
+def _manual_party_accounts(cached_data: CacheData) -> list[AccountStruct]:
+    """Real same-map party accounts for leader manual one-shot item commands."""
+    try:
+        accounts = _conset_party_accounts(cached_data)
+        if accounts:
+            return accounts
+    except Exception:
+        pass
+
+    result: list[AccountStruct] = []
+    try:
+        for account in cached_data.party.accounts.values():
+            if not bool(account.IsSlotActive) or not bool(account.IsAccount) or bool(account.IsHero):
+                continue
+            if not str(account.AccountEmail or ""):
+                continue
+            result.append(account)
+    except Exception:
+        pass
+    result.sort(key=lambda account: (int(account.AgentPartyData.PartyPosition), str(account.AccountEmail).casefold()))
+    return result
+
+
+def _first_shared_model_for_account(account: AccountStruct, model_ids) -> int:
+    """Return the first carried model for one account using the supplied priority."""
+    for raw_model in model_ids:
+        model_id = int(raw_model.value if hasattr(raw_model, "value") else raw_model)
+        if model_id > 0 and _shared_account_has_model(account, model_id):
+            return model_id
+    return 0
+
+
+def _manual_exact_pcon_params(model_id: int) -> tuple[int, int, int, int]:
+    """Use the existing exact-item PCon metadata when available."""
+    model_id = int(model_id)
+    params = _get_consumable_params(model_id)
+    if int(params[0] or 0) == model_id:
+        return tuple(int(v) for v in params)
+    return (model_id, 0, 0, 0)
+
+
+def _manual_send_exact_to_all(cached_data: CacheData, model_id: int, *, raw: bool = False) -> None:
+    """Broadcast one exact item use attempt to every party account.
+
+    raw=True deliberately strips effect/category metadata. Summoning manual mode
+    uses this so every client simply attempts the selected stone once and lets the
+    game itself enforce the one-active-summon rule.
+    """
+    model_id = int(model_id)
+    if model_id <= 0:
+        return
+    params = (model_id, 0, 0, 0) if raw else _manual_exact_pcon_params(model_id)
+    _post_pcon_message(params, cached_data)
+
+
+def _manual_send_group_to_each(cached_data: CacheData, model_ids) -> None:
+    """Each real party account uses at most one locally carried item from a category."""
+    sender_email = str(cached_data.account_email or Player.GetAccountEmail() or "")
+    if not sender_email:
+        return
+    for account in _manual_party_accounts(cached_data):
+        model_id = _first_shared_model_for_account(account, model_ids)
+        if model_id <= 0:
+            continue
+        GLOBAL_CACHE.ShMem.SendMessage(
+            sender_email,
+            str(account.AccountEmail),
+            SharedCommandType.PCon,
+            _manual_exact_pcon_params(model_id),
+        )
+
+
+def _manual_send_one_carrier(cached_data: CacheData, model_ids) -> None:
+    """Use one item from one carrier only, with model-priority then party-position order."""
+    sender_email = str(cached_data.account_email or Player.GetAccountEmail() or "")
+    if not sender_email:
+        return
+    accounts = _manual_party_accounts(cached_data)
+    for raw_model in model_ids:
+        model_id = int(raw_model.value if hasattr(raw_model, "value") else raw_model)
+        if model_id <= 0:
+            continue
+        for account in accounts:
+            if not _shared_account_has_model(account, model_id):
+                continue
+            GLOBAL_CACHE.ShMem.SendMessage(
+                sender_email,
+                str(account.AccountEmail),
+                SharedCommandType.PCon,
+                _manual_exact_pcon_params(model_id),
+            )
+            return
+
+
+def _manual_party_use_consumable_once(model_id: ModelID | int, cached_data: CacheData) -> None:
+    """Leader right-click action for the main Consumables page.
+
+    This is intentionally a manual one-shot path: it never changes auto toggles and
+    does not enter the automatic upkeep state machines.
+    """
+    if not _is_live_party_leader():
+        return
+
+    value = int(model_id.value if hasattr(model_id, "value") else model_id)
+
+    # Party-wide effects: one carrier only to avoid needless duplicate consumption.
+    if value in _CONSET_AUTO_MODELS:
+        _manual_send_one_carrier(cached_data, (value,))
+        return
+    if value == int(ModelID.Four_Leaf_Clover.value):
+        _manual_send_one_carrier(cached_data, _PARTY_DP_MODELS)
+        return
+    if value == int(ModelID.Rainbow_Candy_Cane.value):
+        _manual_send_one_carrier(cached_data, _PARTY_MORALE_MODELS)
+        return
+    if value == int(ModelID.Powerstone_Of_Courage.value):
+        _manual_send_one_carrier(cached_data, (int(ModelID.Powerstone_Of_Courage.value),))
+        return
+    if value == _XP_SCROLL_SENTINEL:
+        _manual_send_one_carrier(cached_data, _XP_SCROLL_MODELS)
+        return
+    if value == _RES_SCROLL_SENTINEL:
+        _manual_send_one_carrier(cached_data, (_RES_SCROLL_MODEL_ID,))
+        return
+
+    # Grouped personal categories: every account picks one item it actually carries.
+    if value == int(ModelID.Dwarven_Ale.value):
+        try:
+            _manual_send_group_to_each(cached_data, Routines.Yield.Upkeepers.ALCOHOL_ITEMS)
+        except Exception:
+            _manual_send_exact_to_all(cached_data, int(ModelID.Dwarven_Ale.value))
+        return
+    if value == _TOWN_CAKE_SENTINEL:
+        try:
+            _manual_send_group_to_each(cached_data, Routines.Yield.Upkeepers.CITY_SPEED_ITEMS)
+        except Exception:
+            pass
+        return
+    if value == _LUNAR_FORTUNE_SENTINEL:
+        _manual_send_group_to_each(cached_data, _LUNAR_FORTUNE_MODELS)
+        return
+
+    # Normal personal item: every account gets one use attempt.
+    if value > 0:
+        _manual_send_exact_to_all(cached_data, value)
+
+
+def _manual_party_use_summon_once(model_id: int, cached_data: CacheData) -> None:
+    """Leader right-click Summoning action: all accounts directly try once.
+
+    Per user requirement there is deliberately NO Active Summon precheck, NO
+    Summoning Sickness pre-filter and NO claim/lock in this manual path. Guild Wars
+    itself decides which attempt succeeds under its one-active-summon rule.
+    """
+    if not _is_live_party_leader():
+        return
+    _manual_send_exact_to_all(cached_data, int(model_id), raw=True)
+
+
 def _use_all_cons(cached_data: CacheData):
-    # Personal consumables keep the original all-account one-shot behavior.
+    # Per-account consumables keep the original all-account one-shot behavior.
     # Conset is different: each missing party-wide effect is supplied by exactly
     # one account that actually carries the item, and only while everyone is alive.
     for model_id, (_texture_path, params) in consumables:
@@ -2819,6 +3482,148 @@ def _use_all_cons(cached_data: CacheData):
         yield from Routines.Yield.wait(100)
 
 #_post_pcon_message((ModelID.Essence_Of_Celerity.value, GLOBAL_CACHE.Skill.GetID("Essence_of_Celerity_item_effect"), 0, 0))
+
+# UI-only inventory display cache. Inventory totals do not need to be scanned
+# every render frame; 400 ms is responsive enough for stack changes without
+# adding unnecessary inventory work to HeroAI's UI loop.
+_CONSUMABLE_UI_COUNT_REFRESH_MS = 400
+_consumable_ui_local_count_cache: dict[int, int] = {}
+_consumable_ui_local_count_epoch_ms = 0
+
+
+def _local_consumable_model_count(model_id: int) -> int:
+    global _consumable_ui_local_count_epoch_ms
+    model_id = int(model_id)
+    now_ms = int(Utils.GetBaseTimestamp())
+    if (
+        not _consumable_ui_local_count_epoch_ms
+        or now_ms - int(_consumable_ui_local_count_epoch_ms) >= _CONSUMABLE_UI_COUNT_REFRESH_MS
+    ):
+        _consumable_ui_local_count_cache.clear()
+        _consumable_ui_local_count_epoch_ms = now_ms
+
+    if model_id not in _consumable_ui_local_count_cache:
+        try:
+            _consumable_ui_local_count_cache[model_id] = max(
+                0, int(GLOBAL_CACHE.Inventory.GetModelCount(model_id) or 0)
+            )
+        except Exception:
+            _consumable_ui_local_count_cache[model_id] = 0
+    return int(_consumable_ui_local_count_cache[model_id])
+
+
+def _shared_account_model_count(account: AccountStruct, model_id: int) -> int:
+    """Return one account's shared quantity for a model without summing other accounts."""
+    try:
+        total = 0
+        bags = getattr(account, "InventoryBags", None)
+        if bags is None:
+            return 0
+        for bag in bags.iter_bags():
+            for slot in bag.Slots:
+                if int(getattr(slot, "ModelID", 0) or 0) == int(model_id):
+                    total += max(0, int(getattr(slot, "Quantity", 0) or 0))
+        return int(total)
+    except Exception:
+        return 0
+
+
+def _first_local_consumable_model(model_ids) -> tuple[int, int]:
+    """Pick the first locally carried item using the same ordered priority as upkeep."""
+    first_model = 0
+    for raw_model in model_ids:
+        model_id = int(raw_model.value if hasattr(raw_model, "value") else raw_model)
+        if first_model == 0:
+            first_model = model_id
+        quantity = _local_consumable_model_count(model_id)
+        if quantity > 0:
+            return model_id, quantity
+    return first_model, 0
+
+
+def _first_party_carrier_model(cached_data: CacheData, model_ids) -> tuple[int, int]:
+    """Mirror party-wide priority: model first, then the first real carrier account."""
+    first_model = 0
+    try:
+        accounts = _conset_party_accounts(cached_data)
+    except Exception:
+        accounts = []
+
+    for raw_model in model_ids:
+        model_id = int(raw_model.value if hasattr(raw_model, "value") else raw_model)
+        if first_model == 0:
+            first_model = model_id
+        for account in accounts:
+            quantity = _shared_account_model_count(account, model_id)
+            if quantity > 0:
+                # Do not sum the same model across carriers. The auto logic will
+                # use this first carrier, so display only this carrier's stack.
+                return model_id, quantity
+
+    # During early party-cache initialization, fall back to THIS account so the
+    # UI still has a useful quantity instead of flashing an artificial zero.
+    if not accounts and first_model:
+        return first_model, _local_consumable_model_count(first_model)
+    return first_model, 0
+
+
+def _consumable_display_model_and_quantity(model_id: ModelID | int, cached_data: CacheData) -> tuple[int, int]:
+    """Return the exact next-choice model and its single-stack/model quantity for this icon.
+
+    Grouped categories intentionally do NOT total all supported items together.
+    The selected model follows the same priority order as the corresponding
+    upkeep routine. Party-wide categories show the first real carrier that the
+    coordinator would command. Per-account categories show this account's stock.
+    """
+    value = int(model_id.value if hasattr(model_id, "value") else model_id)
+
+    if value in _CONSET_AUTO_MODELS:
+        return _first_party_carrier_model(cached_data, (value,))
+
+    if value == int(ModelID.Four_Leaf_Clover.value):
+        return _first_party_carrier_model(cached_data, _PARTY_DP_MODELS)
+
+    if value == int(ModelID.Rainbow_Candy_Cane.value):
+        return _first_party_carrier_model(cached_data, _PARTY_MORALE_MODELS)
+
+    if value == int(ModelID.Pumpkin_Cookie.value):
+        try:
+            morale = int(Player.GetMorale() or 0)
+        except Exception:
+            morale = 100
+        if 0 < morale < 100:
+            selected_model, quantity = _first_local_consumable_model(_PERSONAL_DP_MODELS)
+            if quantity > 0:
+                return selected_model, quantity
+        return (
+            int(ModelID.Pumpkin_Cookie.value),
+            _local_consumable_model_count(int(ModelID.Pumpkin_Cookie.value)),
+        )
+
+    if value == int(ModelID.Dwarven_Ale.value):
+        try:
+            return _first_local_consumable_model(Routines.Yield.Upkeepers.ALCOHOL_ITEMS)
+        except Exception:
+            return value, _local_consumable_model_count(value)
+
+    if value == _TOWN_CAKE_SENTINEL:
+        try:
+            return _first_local_consumable_model(Routines.Yield.Upkeepers.CITY_SPEED_ITEMS)
+        except Exception:
+            return 0, 0
+
+    if value == _LUNAR_FORTUNE_SENTINEL:
+        return _first_local_consumable_model(_LUNAR_FORTUNE_MODELS)
+
+    if value == _XP_SCROLL_SENTINEL:
+        return _first_local_consumable_model(_XP_SCROLL_MODELS)
+
+    if value == _RES_SCROLL_SENTINEL:
+        return _RES_SCROLL_MODEL_ID, _local_consumable_model_count(_RES_SCROLL_MODEL_ID)
+
+    return value, _local_consumable_model_count(value)
+
+
 def _draw_consumable_master_button(label: str, enabled: bool, button_id: str, width: float = 118.0) -> bool:
     """Compact ON/OFF master button with clear green/red state."""
     if enabled:
@@ -2843,33 +3648,24 @@ def _draw_consumable_master_button(label: str, enabled: bool, button_id: str, wi
 
 
 def _draw_consumable_master_toggles(cached_data: CacheData, suffix: str) -> None:
-    """Leader-only global switch + always-visible per-account independent switch."""
-    if _is_live_party_leader():
-        global_enabled = _global_consumable_master_enabled(refresh=False)
-        if _draw_consumable_master_button("Global Auto", global_enabled, f"GlobalAuto{suffix}"):
-            _set_global_consumable_master_enabled(not global_enabled)
-        ImGui.show_tooltip(
-            "Master switch for automatic consumables. Only the current party leader can see/control it.\n"
-            "OFF pauses automatic consumables on every account; icon selections are preserved."
-        )
-        PyImGui.same_line(0, 6)
-
+    """Single Auto switch: leader resets party; followers toggle only themselves."""
     account_enabled = _account_consumable_master_enabled()
-    if _draw_consumable_master_button("This Account", account_enabled, f"AccountAuto{suffix}"):
-        _set_account_consumable_master_enabled(not account_enabled)
-    ImGui.show_tooltip(
-        "Independent master switch for THIS logged-in account only.\n"
-        "OFF pauses only this account; its lit icon selections are preserved."
-    )
+    if _draw_consumable_master_button("Auto", account_enabled, f"Auto{suffix}"):
+        new_enabled = not account_enabled
+        _set_account_consumable_master_enabled(new_enabled)
+        if _is_live_party_leader():
+            _set_global_consumable_master_enabled(new_enabled)
 
 
-def _draw_consumable_toggle_grid(cached_data: CacheData, table_id: str):
-    """Draw Toolbox-style lit/dim auto-upkeep icons for the local account."""
+def _draw_consumable_toggle_grid(cached_data: CacheData, table_id: str) -> bool:
+    """Draw consumable toggles; return True when an icon consumed a right-click."""
+    right_click_handled = False
     style = ImGui.get_style()
-    btn_size = 32
-    style.CellPadding.push_style_var(2, 2)
+    btn_size = 48  # Official v06: enlarged icon grid
+    icon_inset = 4
+    style.CellPadding.push_style_var(3, 3)
     try:
-        if ImGui.begin_table(table_id, 6, PyImGui.TableFlags.SizingStretchProp):
+        if ImGui.begin_table(table_id, 7, PyImGui.TableFlags.SizingStretchProp):
             PyImGui.table_next_column()
 
             for model_id, (texture_path, _params) in consumables:
@@ -2882,35 +3678,85 @@ def _draw_consumable_toggle_grid(cached_data: CacheData, table_id: str):
                 PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
                 PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
                 PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
-                clicked = PyImGui.button(f"##AutoConConfig {table_id} {int(model_id.value if hasattr(model_id, 'value') else model_id)}", btn_size, btn_size)
+                clicked = PyImGui.button(
+                    f"##AutoConConfig {table_id} {int(model_id.value if hasattr(model_id, 'value') else model_id)}",
+                    btn_size,
+                    btn_size,
+                )
                 PyImGui.pop_style_color(4)
+
+                icon_right_clicked = bool(PyImGui.is_item_hovered() and PyImGui.is_mouse_clicked(1))
+                if icon_right_clicked:
+                    right_click_handled = True
+                    if _is_live_party_leader():
+                        _manual_party_use_consumable_once(model_id, cached_data)
 
                 if clicked:
                     active = not active
                     _set_consumable_auto_enabled(model_id, active)
 
                 x, y = PyImGui.get_item_rect_min()
-                ThemeTextures.Inventory_Slots.value.get_texture().draw_in_drawlist((x, y), (btn_size, btn_size))
-
-                # Off = visibly dim; On = full brightness with a strong green frame.
-                tint = (255, 255, 255, 255) if active else (115, 115, 115, 145)
-                ImGui.DrawTextureInDrawList(
-                    (x + 2, y + 2),
-                    (btn_size - 4, btn_size - 4),
-                    texture_path,
-                    tint=tint,
+                ThemeTextures.Inventory_Slots.value.get_texture().draw_in_drawlist(
+                    (x, y), (btn_size, btn_size)
                 )
+
+                _display_model, quantity = _consumable_display_model_and_quantity(model_id, cached_data)
+
+                # Enabled status is a soft background, not a border. Keep every
+                # item icon at normal brightness whether the toggle is ON or OFF.
                 if active:
-                    PyImGui.draw_list_add_rect(
+                    bg_color = (
+                        Color(245, 205, 70, 72).color_int
+                        if int(quantity) < 10
+                        else Color(80, 220, 115, 62).color_int
+                    )
+                    PyImGui.draw_list_add_rect_filled(
                         x + 1,
                         y + 1,
                         x + btn_size - 1,
                         y + btn_size - 1,
-                        Color(80, 235, 120, 255).color_int,
-                        2.0,
+                        bg_color,
+                        3.0,
                         0,
-                        2.0,
                     )
+
+                value = int(model_id.value if hasattr(model_id, 'value') else model_id)
+                draw_texture_path = texture_path
+                if value in (_LUNAR_FORTUNE_SENTINEL, _XP_SCROLL_SENTINEL):
+                    draw_texture_path = _item_texture_path(int(_display_model), texture_path)
+                elif value == _RES_SCROLL_SENTINEL:
+                    # Official v06: use the corrected Item Models Scroll of Resurrection icon.
+                    draw_texture_path = texture_path
+
+                ImGui.DrawTextureInDrawList(
+                    (x + icon_inset, y + icon_inset),
+                    (btn_size - icon_inset * 2, btn_size - icon_inset * 2),
+                    draw_texture_path,
+                    tint=(255, 255, 255, 255),
+                )
+
+                # Quantity always stays visible. It represents only the exact
+                # currently selected item, never the sum of a grouped category.
+                quantity_text = str(max(0, int(quantity)))
+                ImGui.push_font("Regular", 13)
+                try:
+                    text_w, text_h = PyImGui.calc_text_size(quantity_text)
+                    text_x = x + btn_size - text_w - 3
+                    text_y = y + btn_size - text_h - 2
+                    PyImGui.draw_list_add_text(
+                        text_x + 1,
+                        text_y + 1,
+                        Color(0, 0, 0, 230).color_int,
+                        quantity_text,
+                    )
+                    PyImGui.draw_list_add_text(
+                        text_x,
+                        text_y,
+                        Color(255, 255, 255, 255).color_int,
+                        quantity_text,
+                    )
+                finally:
+                    ImGui.pop_font()
 
                 label = _consumable_auto_label(model_id)
                 state = "ON" if active else "OFF"
@@ -2933,41 +3779,175 @@ def _draw_consumable_toggle_grid(cached_data: CacheData, table_id: str):
                         "\nClears party DP and gives +10% morale."
                         "\nUses on map entry and after a full-party wipe."
                     )
+                elif value == _LUNAR_FORTUNE_SENTINEL:
+                    extra = "\nUses Lunar Fortunes until Lunar Blessing is active."
+                elif value == _XP_SCROLL_SENTINEL:
+                    extra = "\nUses one party XP scroll on combat entry only when no Insight effect is active."
+                elif value == _RES_SCROLL_SENTINEL:
+                    extra = "\nUses a Resurrection Scroll when an ally dies within Earshot."
                 else:
                     extra = ""
+                manual_hint = (
+                    "\nRight-click: party uses once."
+                    if _is_live_party_leader()
+                    else "\nRight-click party-use is leader only."
+                )
                 ImGui.show_tooltip(
                     f"{label} - Auto upkeep {state}\n"
-                    f"Click to toggle for THIS account only.{extra}"
+                    f"Left-click toggles THIS account only.{manual_hint}{extra}"
                 )
                 PyImGui.table_next_column()
 
             ImGui.end_table()
     finally:
         style.CellPadding.pop_style_var()
+    return right_click_handled
+
+
+
+def _draw_summoning_toggle_grid(cached_data: CacheData, table_id: str) -> bool:
+    """Draw 21 summon toggles; return True when an icon consumed a right-click."""
+    right_click_handled = False
+    style = ImGui.get_style()
+    btn_size = 48
+    icon_inset = 4
+    style.CellPadding.push_style_var(3, 3)
+    try:
+        if ImGui.begin_table(table_id, 7, PyImGui.TableFlags.SizingStretchProp):
+            PyImGui.table_next_column()
+
+            for model, texture_path, label in summoning_consumables:
+                model_id = int(model.value)
+                active = _consumable_auto_enabled(model_id)
+
+                PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
+                PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
+                PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
+                PyImGui.push_style_color(PyImGui.ImGuiCol.Text, (0, 0, 0, 0))
+                clicked = PyImGui.button(
+                    f"##AutoSummonConfig {table_id} {model_id}",
+                    btn_size,
+                    btn_size,
+                )
+                PyImGui.pop_style_color(4)
+
+                icon_right_clicked = bool(PyImGui.is_item_hovered() and PyImGui.is_mouse_clicked(1))
+                if icon_right_clicked:
+                    right_click_handled = True
+                    if _is_live_party_leader():
+                        _manual_party_use_summon_once(model_id, cached_data)
+
+                if clicked:
+                    active = not active
+                    _set_consumable_auto_enabled(model_id, active)
+
+                x, y = PyImGui.get_item_rect_min()
+                ThemeTextures.Inventory_Slots.value.get_texture().draw_in_drawlist(
+                    (x, y), (btn_size, btn_size)
+                )
+
+                quantity = _local_consumable_model_count(model_id)
+                if active:
+                    bg_color = (
+                        Color(245, 205, 70, 72).color_int
+                        if int(quantity) < 10
+                        else Color(80, 220, 115, 62).color_int
+                    )
+                    PyImGui.draw_list_add_rect_filled(
+                        x + 1,
+                        y + 1,
+                        x + btn_size - 1,
+                        y + btn_size - 1,
+                        bg_color,
+                        3.0,
+                        0,
+                    )
+
+                if model_id == int(ModelID.Igneous_Summoning_Stone.value):
+                    # Official v06: keep the corrected Item Models Igneous icon consistently.
+                    draw_texture_path = texture_path
+                else:
+                    draw_texture_path = _item_texture_path(model_id, texture_path)
+                ImGui.DrawTextureInDrawList(
+                    (x + icon_inset, y + icon_inset),
+                    (btn_size - icon_inset * 2, btn_size - icon_inset * 2),
+                    draw_texture_path,
+                    tint=(255, 255, 255, 255),
+                )
+
+                quantity_text = str(max(0, int(quantity)))
+                ImGui.push_font("Regular", 13)
+                try:
+                    text_w, text_h = PyImGui.calc_text_size(quantity_text)
+                    text_x = x + btn_size - text_w - 3
+                    text_y = y + btn_size - text_h - 2
+                    PyImGui.draw_list_add_text(
+                        text_x + 1,
+                        text_y + 1,
+                        Color(0, 0, 0, 230).color_int,
+                        quantity_text,
+                    )
+                    PyImGui.draw_list_add_text(
+                        text_x,
+                        text_y,
+                        Color(255, 255, 255, 255).color_int,
+                        quantity_text,
+                    )
+                finally:
+                    ImGui.pop_font()
+
+                state = "ON" if active else "OFF"
+                manual_hint = (
+                    "\nRight-click: all party accounts try this summon once."
+                    if _is_live_party_leader()
+                    else "\nRight-click party-use is leader only."
+                )
+                ImGui.show_tooltip(
+                    f"{label} - Auto summon {state}\n"
+                    "Left-click toggles THIS account only; auto mode still waits for no active summon and no Summoning Sickness."
+                    f"{manual_hint}"
+                )
+                PyImGui.table_next_column()
+
+            ImGui.end_table()
+    finally:
+        style.CellPadding.pop_style_var()
+    return right_click_handled
+
+
+def _draw_consumable_page_row(cached_data: CacheData, suffix: str) -> None:
+    """Manual Use Cons plus one button to switch between Consumables and Summoning."""
+    global _consumables_ui_page
+
+    if PyImGui.button("Use Cons"):
+        GLOBAL_CACHE.Coroutines.append(_use_all_cons(cached_data))
+
+    PyImGui.same_line(0, 6)
+    if _consumables_ui_page == "summoning":
+        if PyImGui.button(f"< Consumables##ConPage{suffix}"):
+            _consumables_ui_page = "consumables"
+    else:
+        if PyImGui.button(f"Summoning >##ConPage{suffix}"):
+            _consumables_ui_page = "summoning"
 
 
 def draw_consumables_window(cached_data: CacheData):
     global configure_consumables_window_open
     global _configure_consumables_popup_pending
-    global _configure_consumables_popup_anchor
 
     if not configure_consumables_window_open:
         return
 
-    # v08 intentionally uses a normal floating ImGui window instead of a popup.
-    # Popups can be dismissed when game/UI focus changes during combat. A normal
-    # window remains visible until our own close rule is triggered.
+    # Official v06: the default is applied only if this window has never had a
+    # saved ImGui position. Otherwise ImGui restores the last dragged location.
     if _configure_consumables_popup_pending:
-        # Apply the remembered position only on the first frame after opening.
-        # After that ImGui owns the position, so normal dragging remains enabled.
-        PyImGui.set_next_window_pos(_configure_consumables_popup_anchor, PyImGui.ImGuiCond.Always)
+        PyImGui.set_next_window_pos(_configure_consumables_popup_anchor, PyImGui.ImGuiCond.FirstUseEver)
         _configure_consumables_popup_pending = False
 
     flags = (
         PyImGui.WindowFlags.NoTitleBar
         | PyImGui.WindowFlags.NoResize
         | PyImGui.WindowFlags.AlwaysAutoResize
-        | PyImGui.WindowFlags.NoSavedSettings
         | PyImGui.WindowFlags.NoFocusOnAppearing
     )
 
@@ -2977,27 +3957,19 @@ def draw_consumables_window(cached_data: CacheData):
         flags,
     )
 
+    right_click_handled = False
     if opened:
-        # Remember the live position after ImGui processes user dragging.
-        try:
-            current_pos = PyImGui.get_window_pos()
-            _configure_consumables_popup_anchor = (float(current_pos[0]), float(current_pos[1]))
-        except Exception:
-            pass
-
-        ImGui.text("Consumable auto upkeep")
-        ImGui.text("Lit icon = selected for this account")
         _draw_consumable_master_toggles(cached_data, "Popup")
-        if PyImGui.button("Use Cons"):
-            GLOBAL_CACHE.Coroutines.append(_use_all_cons(cached_data))
-        ImGui.show_tooltip("Manual one-shot use. Personal consumables are sent to all accounts; Conset uses one available carrier for the whole party. Auto master switches are ignored.")
+        _draw_consumable_page_row(cached_data, "Popup")
 
-        _draw_consumable_toggle_grid(cached_data, "##ConAutoTablePopup")
+        if _consumables_ui_page == "summoning":
+            right_click_handled = _draw_summoning_toggle_grid(cached_data, "##SummonAutoTablePopup")
+        else:
+            right_click_handled = _draw_consumable_toggle_grid(cached_data, "##ConAutoTablePopup")
 
-    # Preserve the requested quick-close behavior: one right-click anywhere
-    # closes this floating window. Left-clicks outside never close it, which
-    # keeps the panel usable throughout combat.
-    if PyImGui.is_mouse_clicked(1):
+    # Right-clicking an item icon is reserved for the leader's one-shot party use.
+    # Right-clicking anywhere else keeps the existing quick-close behavior.
+    if PyImGui.is_mouse_clicked(1) and not right_click_handled:
         configure_consumables_window_open = False
 
     PyImGui.end()
@@ -3015,14 +3987,13 @@ def draw_base_consumables_window(cached_data: CacheData):
         | PyImGui.WindowFlags.NoSavedSettings
     )
     if ImGui.Begin(ini_key=cached_data.consumables_ini_key, name="Configure Consumables", p_open=True, flags=_flags):
-        ImGui.text("Consumable auto upkeep")
-        ImGui.text("Lit icon = selected for this account")
         _draw_consumable_master_toggles(cached_data, "Base")
-        if PyImGui.button("Use Cons"):
-            GLOBAL_CACHE.Coroutines.append(_use_all_cons(cached_data))
-        ImGui.show_tooltip("Manual one-shot use. Personal consumables are sent to all accounts; Conset uses one available carrier for the whole party. Auto master switches are ignored.")
+        _draw_consumable_page_row(cached_data, "Base")
 
-        _draw_consumable_toggle_grid(cached_data, "##ConAutoTableBase")
+        if _consumables_ui_page == "summoning":
+            _draw_summoning_toggle_grid(cached_data, "##SummonAutoTableBase")
+        else:
+            _draw_consumable_toggle_grid(cached_data, "##ConAutoTableBase")
         ImGui.End(cached_data.consumables_ini_key)
 
 
