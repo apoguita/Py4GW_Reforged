@@ -82,7 +82,7 @@ SHARDS_TRAP_GADGET_IDS_BY_MAP: dict[int, frozenset[int]] = {
 SHARDS_TRAP_LOOKAHEAD = 1100.0
 SHARDS_TRAP_ROUTE_HALF_WIDTH = 430.0
 SHARDS_TRAP_HAZARD_RADIUS = 430.0
-SHARDS_TRAP_STEERING_DISTANCE = 700.0
+SHARDS_TRAP_STEERING_DISTANCE = 500.0
 SHARDS_TRAP_AVOIDANCE_UPDATE_MS = 150.0
 SHARDS_TRAP_NO_DETOUR_RELEASE_MS = 300.0
 
@@ -3262,8 +3262,29 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             self.child.blackboard = self.blackboard
             return self.child.tick()
 
-        # The bypass is deliberately committed even if the trap switches OFF
-        # mid-cycle. This prevents ON/OFF oscillation from restarting the route.
+        # If the hazardous cycle switches OFF, release immediately.  The whole
+        # point of the bypass is to avoid losing time waiting when a safe route
+        # is available, not to force completion of a detour that is no longer
+        # needed.
+        active_now = False
+        try:
+            agent = Agent.GetAgentByID(int(committed["agent_id"]))
+            properties = int(getattr(agent, "name_properties", 0) or 0) if agent is not None else 0
+            active_now = bool(properties & SHARDS_TRAP_ACTIVE_BIT)
+        except Exception:
+            active_now = False
+
+        if not active_now:
+            gid = int(committed["gadget_id"])
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapAvoid] Trap GID={gid} is OFF; resuming the original route immediately.",
+                PySystem.Console.MessageType.Info,
+            )
+            self._clear_committed()
+            self.child.blackboard = self.blackboard
+            return self.child.tick()
+
         if not _shards_trap_still_blocks(
             (float(committed["x"]), float(committed["y"])),
             route_target,
@@ -3271,7 +3292,7 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             gid = int(committed["gadget_id"])
             PySystem.Console.Log(
                 MODULE_NAME,
-                f"[TrapAvoid] Bypass complete for GID={gid}; resuming the original route.",
+                f"[TrapAvoid] 500u bypass complete for GID={gid}; resuming the original route.",
                 PySystem.Console.MessageType.Success,
             )
             self._clear_committed()
@@ -3331,45 +3352,16 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             return BehaviorTree.NodeState.RUNNING
 
         # Narrow corridor / no navmesh-safe lateral point. Only here do we wait.
-        active_now = False
-        try:
-            agent = Agent.GetAgentByID(int(committed["agent_id"]))
-            properties = int(getattr(agent, "name_properties", 0) or 0) if agent is not None else 0
-            active_now = bool(properties & SHARDS_TRAP_ACTIVE_BIT)
-        except Exception:
-            active_now = False
-
-        if active_now:
-            self._inactive_since_ms = 0.0
-            if not self._waiting_without_detour:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    f"[TrapAvoid] No walkable detour around GID={committed['gadget_id']}; "
-                    "waiting for the active cycle to end.",
-                    PySystem.Console.MessageType.Warning,
-                )
-            self._waiting_without_detour = True
-            self._stop_local_player()
-            return BehaviorTree.NodeState.RUNNING
-
-        if self._inactive_since_ms <= 0.0:
-            self._inactive_since_ms = now_ms
-            self._stop_local_player()
-            return BehaviorTree.NodeState.RUNNING
-
-        if now_ms - self._inactive_since_ms < SHARDS_TRAP_NO_DETOUR_RELEASE_MS:
-            self._stop_local_player()
-            return BehaviorTree.NodeState.RUNNING
-
-        gid = int(committed["gadget_id"])
-        PySystem.Console.Log(
-            MODULE_NAME,
-            f"[TrapAvoid] GID={gid} is inactive and no detour was available; resuming original route.",
-            PySystem.Console.MessageType.Info,
-        )
-        self._clear_committed()
-        self.child.blackboard = self.blackboard
-        return self.child.tick()
+        if not self._waiting_without_detour:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapAvoid] No safe 500u bypass around GID={committed['gadget_id']}; waiting for OFF.",
+                PySystem.Console.MessageType.Warning,
+            )
+        self._waiting_without_detour = True
+        self._inactive_since_ms = 0.0
+        self._stop_local_player()
+        return BehaviorTree.NodeState.RUNNING
 
 
 def ShardsTrapGuard(destination, child: BehaviorTree | BehaviorTree.Node, *, name: str = "Shards Trap Guard") -> BehaviorTree:
@@ -3384,6 +3376,213 @@ def ShardsTrapMove(pos, **kwargs) -> BehaviorTree:
         BT.Move(pos, **kwargs),
         name="Shards Trap Avoid - Move",
     )
+
+
+class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
+    """Prefer a 500u local bypass around active traps during Shards combat.
+
+    If no navmesh-safe lateral steering point exists, hold position only while
+    the trap is active.  As soon as it switches OFF, hand control back to the
+    wrapped combat node immediately.
+    """
+
+    def __init__(self, child: BehaviorTree | BehaviorTree.Node, *, name: str) -> None:
+        super().__init__(name=name, node_type="ShardsCombatTrapAvoid", node_category="decorator")
+        self.child = self._coerce_node(child)
+        self._committed: dict | None = None
+        self._side = 0
+        self._last_target: tuple[float, float] | None = None
+        self._last_command_ms = 0.0
+        self._waiting_without_detour = False
+
+    def get_children(self) -> list[BehaviorTree.Node]:
+        return [self.child]
+
+    def reset(self) -> None:
+        super().reset()
+        self.child.reset()
+        self._clear_committed()
+
+    @staticmethod
+    def _stop_local_player() -> None:
+        try:
+            px, py = Player.GetXY()
+            Player.Move(float(px), float(py))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _current_target_xy() -> tuple[float, float] | None:
+        try:
+            target_id = int(Player.GetTargetID() or 0)
+        except Exception:
+            target_id = 0
+        if target_id <= 0:
+            return None
+        try:
+            if not Agent.IsAlive(target_id):
+                return None
+        except Exception:
+            pass
+        try:
+            x, y = Agent.GetXY(target_id)
+            return float(x), float(y)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _trap_is_active(trap: dict | None) -> bool:
+        if trap is None:
+            return False
+        try:
+            agent = Agent.GetAgentByID(int(trap.get("agent_id", 0) or 0))
+            if agent is None:
+                return False
+            properties = int(getattr(agent, "name_properties", 0) or 0)
+            return bool(properties & SHARDS_TRAP_ACTIVE_BIT)
+        except Exception:
+            return False
+
+    def _active_blocker(self, target_xy: tuple[float, float] | None) -> dict | None:
+        if target_xy is None:
+            return None
+        return _shards_route_blocker(target_xy, active_only=True)
+
+    def _clear_committed(self) -> None:
+        self._committed = None
+        self._side = 0
+        self._last_target = None
+        self._last_command_ms = 0.0
+        self._waiting_without_detour = False
+
+    def _resume_child(self) -> BehaviorTree.NodeState:
+        self.child.blackboard = self.blackboard
+        return BehaviorTree.Node._normalize_state(self.child.tick())
+
+    def _tick_impl(self) -> BehaviorTree.NodeState:
+        target_xy = self._current_target_xy()
+
+        # Let the combat node select/refresh a target when none exists yet.
+        if target_xy is None:
+            self._clear_committed()
+            result = self._resume_child()
+            target_xy = self._current_target_xy()
+            if target_xy is None:
+                return result
+
+        if self._committed is None:
+            blocker = self._active_blocker(target_xy)
+            if blocker is None:
+                # Tick combat normally, then re-check because the child may have
+                # selected a new target and issued an approach command this frame.
+                result = self._resume_child()
+                target_xy = self._current_target_xy()
+                blocker = self._active_blocker(target_xy)
+                if blocker is None:
+                    return result
+
+            self._committed = blocker
+            self._side = 0
+            self._last_target = None
+            self._last_command_ms = 0.0
+            self._waiting_without_detour = False
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapCombat] Active trap GID={blocker['gadget_id']} AID={blocker['agent_id']} "
+                "blocks the combat route; trying a 500u bypass first.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        committed = self._committed
+        if committed is None:
+            return self._resume_child()
+
+        # OFF means immediate release.  We do not keep waiting for a completed
+        # bypass because the hazardous cycle no longer exists.
+        if not self._trap_is_active(committed):
+            gid = int(committed.get("gadget_id", 0) or 0)
+            if self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapCombat] Trap GID={gid} is OFF; resuming combat immediately.",
+                    PySystem.Console.MessageType.Info,
+                )
+            self._clear_committed()
+            return self._resume_child()
+
+        # If the active trap is no longer in front of the current target route,
+        # the local bypass has done its job.
+        if not _shards_trap_still_blocks(
+            (float(committed["x"]), float(committed["y"])),
+            target_xy,
+        ):
+            gid = int(committed.get("gadget_id", 0) or 0)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapCombat] 500u bypass complete for GID={gid}; resuming combat.",
+                PySystem.Console.MessageType.Info,
+            )
+            self._clear_committed()
+            return self._resume_child()
+
+        try:
+            px, py = Player.GetXY()
+            current_pos = (float(px), float(py))
+        except Exception:
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
+        decision = choose_avoidance_target(
+            current_pos,
+            target_xy,
+            _shards_trap_obstacles(committed),
+            lookahead=SHARDS_TRAP_LOOKAHEAD,
+            steering_distance=SHARDS_TRAP_STEERING_DISTANCE,
+            preferred_side=self._side,
+            is_walkable=_shards_trap_segment_walkable,
+        )
+
+        if decision is not None:
+            now_ms = time.monotonic() * 1000.0
+            target = (float(decision.target[0]), float(decision.target[1]))
+            changed = self._last_target is None or (
+                (target[0] - self._last_target[0]) ** 2
+                + (target[1] - self._last_target[1]) ** 2
+            ) >= 40.0 ** 2
+            command_due = now_ms - self._last_command_ms >= SHARDS_TRAP_AVOIDANCE_UPDATE_MS
+            if changed or command_due:
+                Player.Move(target[0], target[1])
+                self._last_target = target
+                self._last_command_ms = now_ms
+
+            side = int(decision.side)
+            if side != self._side or self._waiting_without_detour:
+                side_name = "left" if side > 0 else "right"
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapCombat] Steering {side_name} around GID={committed['gadget_id']} "
+                    f"via ({target[0]:.0f}, {target[1]:.0f}) (~500u step).",
+                    PySystem.Console.MessageType.Info,
+                )
+            self._side = side
+            self._waiting_without_detour = False
+            return BehaviorTree.NodeState.RUNNING
+
+        # No navmesh-safe bypass exists.  Pause only as the fallback, and only
+        # for as long as the trap remains ON.
+        if not self._waiting_without_detour:
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapCombat] No safe 500u bypass around GID={committed['gadget_id']}; waiting for OFF.",
+                PySystem.Console.MessageType.Warning,
+            )
+        self._waiting_without_detour = True
+        self._stop_local_player()
+        return BehaviorTree.NodeState.RUNNING
+
+
+def ShardsCombatTrapAvoid(child: BehaviorTree | BehaviorTree.Node, *, name: str = "Shards Combat Trap Avoid") -> BehaviorTree:
+    return BehaviorTree(_ShardsCombatTrapAvoidNode(child, name=name))
 
 def _torch_aware_combat_node(
     name: str,
@@ -5509,9 +5708,18 @@ def Level3_FendiFight() -> BehaviorTree:
         name="Run Fendi Boss Fight",
         children=[
             ShardsTrapMove(Vec2f(-13198.79, 13789.36), log=SHARDS_MOVEMENT_LOGS),
-            ClearFendiArenaWithBossPriority(),
-            BT.ClearEnemiesInArea(Vec2f(*FENDI_FIGHT_CENTER), radius=FENDI_FIGHT_RADIUS, log=True),
-            BT.WaitForClearEnemiesInArea(*FENDI_FIGHT_CENTER, radius=FENDI_FIGHT_RADIUS, allowed_alive_enemies=0, interact_interval_ms=750, stable_clear_ms=FENDI_STABLE_CLEAR_MS, keep_player_near_center=False, center_tolerance=750.0, log=True),
+            ShardsCombatTrapAvoid(
+                ClearFendiArenaWithBossPriority(),
+                name="Fendi Priority Combat - Trap Avoid",
+            ),
+            ShardsCombatTrapAvoid(
+                BT.ClearEnemiesInArea(Vec2f(*FENDI_FIGHT_CENTER), radius=FENDI_FIGHT_RADIUS, log=True),
+                name="Fendi Final Clear - Trap Avoid",
+            ),
+            ShardsCombatTrapAvoid(
+                BT.WaitForClearEnemiesInArea(*FENDI_FIGHT_CENTER, radius=FENDI_FIGHT_RADIUS, allowed_alive_enemies=0, interact_interval_ms=750, stable_clear_ms=FENDI_STABLE_CLEAR_MS, keep_player_near_center=False, center_tolerance=750.0, log=True),
+                name="Fendi Stable Clear - Trap Avoid",
+            ),
         ],
     )
 # endregion
