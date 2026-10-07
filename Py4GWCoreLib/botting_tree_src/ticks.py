@@ -222,16 +222,29 @@ class BottingTreeTicksMixin:
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
 
+        # A partial party death is owned by the shared member-recovery service.
+        # Freeze the planner immediately, including the first frame before the
+        # parallel service branch has published its active flag.
+        if (
+            bool(bb.get('party_member_recovery_active', False))
+            or Routines.Checks.Party.IsPartyMemberDead()
+        ):
+            bb['PLANNER_STATUS'] = 'PAUSED: Party member recovery'
+            bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
+            return BehaviorTree.NodeState.RUNNING
+
         if bb.get('COMBAT_ACTIVE', False) and self.pause_on_combat:
             if self._last_planner_gate_state != 'paused_on_combat':
                 self._last_planner_gate_state = 'paused_on_combat'
             bb['PLANNER_STATUS'] = PlannerStatus.PAUSED_ON_COMBAT.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_HEROAI.value
+            return BehaviorTree.NodeState.RUNNING
         elif bb.get('LOOTING_ACTIVE', False):
             if self._last_planner_gate_state != 'paused_on_looting':
                 self._last_planner_gate_state = 'paused_on_looting'
             bb['PLANNER_STATUS'] = PlannerStatus.PAUSED_ON_LOOTING.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_HEROAI.value
+            return BehaviorTree.NodeState.RUNNING
 
         if self.planner_tree is None:
             if self._last_planner_gate_state != 'idle_no_planner':

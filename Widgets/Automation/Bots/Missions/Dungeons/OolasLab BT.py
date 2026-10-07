@@ -311,165 +311,6 @@ OOLA_FINAL_CHEST = Vec2f(-18550.0, 13076.0)
 # =============================================================================
 
 
-class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
-    """Freeze the current run step while any party member is dead.
-
-    The child tree is deliberately *not* reset while blocked.  HeroAI and the
-    BottingTree background services keep running, so resurrection/recovery can
-    happen independently; once every party member is alive, the exact current
-    child resumes from its previous runtime state.
-    """
-
-    def __init__(self, child: BehaviorTree | BehaviorTree.Node, *, name: str) -> None:
-        super().__init__(
-            name=name,
-            node_type="PartyAliveGate",
-            node_category="decorator",
-        )
-        self.child = self._coerce_node(child)
-        self._blocked = False
-        self._last_block_key = ""
-
-    def get_children(self) -> list[BehaviorTree.Node]:
-        return [self.child]
-
-    def reset(self) -> None:
-        super().reset()
-        self.child.reset()
-        self._blocked = False
-        self._last_block_key = ""
-
-    @staticmethod
-    def _party_member_agent_ids() -> tuple[list[int], int]:
-        """Return resolved player/hero/henchman agent IDs and expected party size."""
-        try:
-            if not Map.IsMapReady() or not Party.IsPartyLoaded():
-                return [], 0
-
-            expected_size = max(0, int(Party.GetPartySize() or 0))
-            agent_ids: list[int] = []
-            seen: set[int] = set()
-
-            for player in Party.GetPlayers() or []:
-                login_number = int(getattr(player, "login_number", 0) or 0)
-                if login_number <= 0:
-                    continue
-                agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
-                if agent_id > 0 and agent_id not in seen:
-                    seen.add(agent_id)
-                    agent_ids.append(agent_id)
-
-            for member in (Party.GetHeroes() or []):
-                agent_id = int(getattr(member, "agent_id", 0) or 0)
-                if agent_id > 0 and agent_id not in seen:
-                    seen.add(agent_id)
-                    agent_ids.append(agent_id)
-
-            for member in (Party.GetHenchmen() or []):
-                agent_id = int(getattr(member, "agent_id", 0) or 0)
-                if agent_id > 0 and agent_id not in seen:
-                    seen.add(agent_id)
-                    agent_ids.append(agent_id)
-
-            return agent_ids, expected_size
-        except Exception:
-            return [], 0
-
-    @staticmethod
-    def _member_label(agent_id: int) -> str:
-        try:
-            name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
-            if name:
-                return name
-        except Exception:
-            pass
-        return f"agent {int(agent_id)}"
-
-    def _tick_impl(self) -> BehaviorTree.NodeState:
-        # During map loading, let the child continue handling its own transition.
-        # The death gate applies to stable party state in the outpost exit / explorable run.
-        try:
-            map_ready = bool(Map.IsMapReady())
-            party_loaded = bool(Party.IsPartyLoaded()) if map_ready else False
-        except Exception:
-            map_ready = False
-            party_loaded = False
-
-        if not map_ready or not party_loaded:
-            if self.blackboard is not None:
-                self.child.blackboard = self.blackboard
-            return self.child.tick()
-
-        member_ids, expected_size = self._party_member_agent_ids()
-
-        # If the party is loaded but not every party member can be resolved yet,
-        # do not advance the run until the party state is complete.
-        if expected_size > 0 and len(member_ids) < expected_size:
-            block_key = f"unresolved:{len(member_ids)}/{expected_size}"
-            if self._last_block_key != block_key:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        "[PartyAlive] Pausing run progression: party state incomplete "
-                        f"({len(member_ids)}/{expected_size} members resolved)."
-                    ),
-                    PySystem.Console.MessageType.Warning,
-                )
-                self._last_block_key = block_key
-            self._blocked = True
-            return BehaviorTree.NodeState.RUNNING
-
-        dead_ids: list[int] = []
-        for agent_id in member_ids:
-            try:
-                if Agent.IsDead(int(agent_id)):
-                    dead_ids.append(int(agent_id))
-            except Exception:
-                continue
-
-        if dead_ids:
-            dead_labels = tuple(self._member_label(agent_id) for agent_id in dead_ids)
-            block_key = "dead:" + "|".join(dead_labels)
-            if self._last_block_key != block_key:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        "[PartyAlive] Pausing current run step until every party member "
-                        f"is alive. Dead: {', '.join(dead_labels)}."
-                    ),
-                    PySystem.Console.MessageType.Warning,
-                )
-                self._last_block_key = block_key
-            self._blocked = True
-            return BehaviorTree.NodeState.RUNNING
-
-        if self._blocked:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                "[PartyAlive] Every party member is alive. Resuming current run step.",
-                PySystem.Console.MessageType.Success,
-            )
-            self._blocked = False
-            self._last_block_key = ""
-
-        if self.blackboard is not None:
-            self.child.blackboard = self.blackboard
-        return self.child.tick()
-
-
-def _guard_run_step(
-    step_name: str,
-    factory: Callable[[], BehaviorTree],
-) -> tuple[str, Callable[[], BehaviorTree]]:
-    """Wrap one planner step with the per-tick party-alive gate."""
-
-    def _build() -> BehaviorTree:
-        child = factory()
-        return BehaviorTree(_PauseWhilePartyNotAliveNode(child, name=f"Party Alive Guard - {step_name}"))
-
-    return step_name, _build
-
-
 def _inside_oola() -> BehaviorTree:
     return BT.Selector(
         name="Inside Oola's Lab",
@@ -3844,7 +3685,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     # chest.  It is checked every tick, so a death in the middle of a movement,
     # clear, Flux cycle or floor transition freezes that exact child without
     # resetting it.  HeroAI/background recovery remains free to resurrect.
-    guarded_run_steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
+    dungeon_run_steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
         ("Travel To Magus Stones", TravelToMagusStones),
         ("Magus Stones Start", MagusStonesStart),
         *_vanquish_point_steps(
@@ -3932,7 +3773,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Prepare Party And Supplies", PreparePartyAndSupplies),
         ("Handle Oola Quest", HandleOolaQuest),
 
-        *(_guard_run_step(step_name, factory)for step_name, factory in guarded_run_steps),
+        *dungeon_run_steps,
 
         # ---------------------------------------------------------------------
         # End of run / next run - the guard ends after the chest.

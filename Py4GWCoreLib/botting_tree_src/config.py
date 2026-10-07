@@ -280,6 +280,9 @@ class _BottingTreeConfig:
         enable_outpost_imp_service: bool = False,
         enable_explorable_imp_service: bool = False,
         consumable_upkeeps: list[int] | tuple[int, ...] | None = None,
+        enable_party_member_recovery: bool = True,
+        party_member_recovery_distance: float = 500.0,
+        party_member_recovery_log: bool = True,
         enable_party_wipe_recovery: bool = True,
         enable_nearest_shrine_recovery: bool = False,
         shrine_recovery_checkpoints: dict[str, str] | None = None,
@@ -339,6 +342,12 @@ class _BottingTreeConfig:
         self.parent._nearest_shrine_recovery_enabled = bool(enable_nearest_shrine_recovery)
         self.parent.ConfigureShrineRecoveryCheckpoints(shrine_recovery_checkpoints)
 
+        if enable_party_member_recovery:
+            self.parent.EnsurePartyMemberRecoveryService(
+                regroup_distance=party_member_recovery_distance,
+                log=party_member_recovery_log,
+            )
+
         if enable_party_wipe_recovery:
             default_step_name: str | Callable[[], str | None] | None = party_wipe_default_step_name
             if default_step_name is None:
@@ -369,6 +378,9 @@ class _BottingTreeConfig:
         enable_outpost_imp_service: bool = True,
         enable_explorable_imp_service: bool = True,
         consumable_upkeeps: list[int] | tuple[int, ...] | None = None,
+        enable_party_member_recovery: bool = True,
+        party_member_recovery_distance: float = 500.0,
+        party_member_recovery_log: bool = True,
         enable_party_wipe_recovery: bool = True,
         enable_nearest_shrine_recovery: bool = False,
         shrine_recovery_checkpoints: dict[str, str] | None = None,
@@ -391,6 +403,9 @@ class _BottingTreeConfig:
                 enable_outpost_imp_service=enable_outpost_imp_service,
                 enable_explorable_imp_service=enable_explorable_imp_service,
                 consumable_upkeeps=consumable_upkeeps,
+                enable_party_member_recovery=enable_party_member_recovery,
+                party_member_recovery_distance=party_member_recovery_distance,
+                party_member_recovery_log=party_member_recovery_log,
                 enable_party_wipe_recovery=enable_party_wipe_recovery,
                 enable_nearest_shrine_recovery=enable_nearest_shrine_recovery,
                 shrine_recovery_checkpoints=shrine_recovery_checkpoints,

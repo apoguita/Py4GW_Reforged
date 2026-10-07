@@ -100,6 +100,55 @@ class BottingTreeUpkeepMixin:
             return
         self.AddServiceTree('SummoningStonePartyService', subtree_or_builder)
 
+    def AddPartyMemberRecoveryService(
+        self,
+        *,
+        enabled: bool | Callable[[], bool] = True,
+        regroup_distance: float = 500.0,
+        move_tolerance: float = 100.0,
+        retry_interval_ms: float = 2000.0,
+        wait_log_interval_ms: float = 15000.0,
+        log: bool = True,
+    ) -> None:
+        self.AddServiceTree(
+            'PartyMemberRecoveryService',
+            lambda: self.PartyMemberRecoveryServiceTree(
+                enabled=enabled,
+                regroup_distance=regroup_distance,
+                move_tolerance=move_tolerance,
+                retry_interval_ms=retry_interval_ms,
+                wait_log_interval_ms=wait_log_interval_ms,
+                log=log,
+            ),
+        )
+
+    def EnsurePartyMemberRecoveryService(
+        self,
+        *,
+        enabled: bool | Callable[[], bool] = True,
+        regroup_distance: float = 500.0,
+        move_tolerance: float = 100.0,
+        retry_interval_ms: float = 2000.0,
+        wait_log_interval_ms: float = 15000.0,
+        log: bool = True,
+    ) -> None:
+        subtree_or_builder = lambda: self.PartyMemberRecoveryServiceTree(
+            enabled=enabled,
+            regroup_distance=regroup_distance,
+            move_tolerance=move_tolerance,
+            retry_interval_ms=retry_interval_ms,
+            wait_log_interval_ms=wait_log_interval_ms,
+            log=log,
+        )
+        for index, (service_name, _existing) in enumerate(self._service_steps):
+            if service_name != 'PartyMemberRecoveryService':
+                continue
+            self._service_steps[index] = (service_name, subtree_or_builder)
+            self._service_trees[index] = (service_name, self._coerce_runtime_tree(subtree_or_builder))
+            self._rebuild_root_tree()
+            return
+        self.AddServiceTree('PartyMemberRecoveryService', subtree_or_builder)
+
     def AddPartyWipeRecoveryService(
         self,
         default_step_name: str | Callable[[], str | None] | None = None,

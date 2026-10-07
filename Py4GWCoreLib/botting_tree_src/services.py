@@ -1,4 +1,5 @@
 import time
+import math
 from typing import Callable, Sequence
 
 from .. import Py4GW
@@ -267,6 +268,553 @@ class BottingTreeServicesMixin:
                 name="SummoningStonePartyService",
                 action_fn=_tick,
                 aftercast_ms=250,
+            )
+        )
+
+    @staticmethod
+    def PartyMemberRecoveryServiceTree(
+        enabled: bool | Callable[[], bool] = True,
+        regroup_distance: float = 500.0,
+        move_tolerance: float = 100.0,
+        retry_interval_ms: float = 2000.0,
+        wait_log_interval_ms: float = 15000.0,
+        log: bool = True,
+    ) -> BehaviorTree:
+        """Pause planner progression and regroup safely for a dead party member.
+
+        This is the shared BottingTree partial-death recovery service.  A full
+        party wipe is deliberately left to ``PartyWipeRecoveryServiceTree``.
+
+        Behaviour:
+        - any partial party death freezes planner progression;
+        - while combat is active, recovery movement/flags are cleared and no new
+          recovery order is issued;
+        - once combat is over, living members regroup at a point exactly
+          ``regroup_distance`` units from the selected corpse;
+        - remote HeroAI accounts are temporarily flagged to that safe point,
+          including when the local leader is the dead member;
+        - the living local player approaches the same safe point and HeroAI owns
+          the actual resurrection action;
+        - all recovery flags are restored as soon as combat resumes, the party is
+          alive again, the map changes, or wipe recovery takes ownership.
+        """
+        state: dict[str, object] = {
+            "target_id": 0,
+            "target_xy": None,
+            "regroup_xy": None,
+            "move_tree": None,
+            "next_retry_ms": 0.0,
+            "last_wait_log_ms": 0.0,
+            "last_log_key": "",
+            "flag_originals": {},
+            "flag_positions": {},
+        }
+
+        safe_distance = max(1.0, float(regroup_distance))
+        tolerance = max(1.0, float(move_tolerance))
+        retry_ms = max(100.0, float(retry_interval_ms))
+        wait_log_ms = max(1000.0, float(wait_log_interval_ms))
+
+        def _log(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
+            if log:
+                PySystem.Console.Log("PartyMemberRecoveryService", message, message_type)
+
+        def _enabled() -> bool:
+            try:
+                return bool(enabled() if callable(enabled) else enabled)
+            except Exception:
+                return False
+
+        def _is_our_position(x: float, y: float, positions: set[tuple[float, float]]) -> bool:
+            return any(
+                abs(float(x) - px) <= 1.0 and abs(float(y) - py) <= 1.0
+                for px, py in positions
+            )
+
+        def _restore_remote_flags() -> None:
+            originals: dict[str, tuple[bool, float, float, float, float, float]] = state["flag_originals"]  # type: ignore[assignment]
+            positions_by_email: dict[str, set[tuple[float, float]]] = state["flag_positions"]  # type: ignore[assignment]
+            restored = 0
+            preserved = 0
+            try:
+                for email, previous in list(originals.items()):
+                    try:
+                        options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(email)
+                        positions = positions_by_email.get(email, set())
+                        if options is None or not positions:
+                            continue
+                        # Only undo a flag that is still one of ours.  A manual
+                        # user unflag/reflag performed during recovery wins.
+                        if (
+                            not bool(options.IsFlagged)
+                            or not _is_our_position(
+                                float(options.FlagPos.x),
+                                float(options.FlagPos.y),
+                                positions,
+                            )
+                        ):
+                            preserved += 1
+                            continue
+                        (
+                            old_flagged,
+                            old_x,
+                            old_y,
+                            old_follow_x,
+                            old_follow_y,
+                            old_follow_z,
+                        ) = previous
+                        options.IsFlagged = bool(old_flagged)
+                        options.FlagPos.x = float(old_x)
+                        options.FlagPos.y = float(old_y)
+                        if _is_our_position(
+                            float(options.FollowPos.x),
+                            float(options.FollowPos.y),
+                            positions,
+                        ):
+                            options.FollowPos.x = float(old_follow_x)
+                            options.FollowPos.y = float(old_follow_y)
+                            options.FollowPos.z = float(old_follow_z)
+                        restored += 1
+                    except Exception as exc:
+                        _log(
+                            f"Unable to restore follower recovery flag: {exc}",
+                            PySystem.Console.MessageType.Warning,
+                        )
+                if restored or preserved:
+                    _log(
+                        f"Recovery flag cleanup: restored={restored}, preserved_user_flags={preserved}."
+                    )
+            finally:
+                originals.clear()
+                positions_by_email.clear()
+
+        def _clear_target(*, restore_flags: bool = True) -> None:
+            if restore_flags:
+                _restore_remote_flags()
+            move_tree = state.get("move_tree")
+            if move_tree is not None:
+                try:
+                    move_tree.reset()
+                except Exception:
+                    pass
+            state["target_id"] = 0
+            state["target_xy"] = None
+            state["regroup_xy"] = None
+            state["move_tree"] = None
+            state["next_retry_ms"] = 0.0
+            state["last_wait_log_ms"] = 0.0
+
+        def _set_blackboard(node: BehaviorTree.Node, *, active: bool, target_id: int = 0) -> None:
+            node.blackboard["party_member_recovery_active"] = bool(active)
+            node.blackboard["party_member_recovery_target_id"] = int(target_id)
+
+        def _party_member_agent_ids() -> tuple[list[int], int]:
+            from ..Agent import Agent
+
+            try:
+                expected_size = max(0, int(GLOBAL_CACHE.Party.GetPartySize() or 0))
+                agent_ids: list[int] = []
+                seen: set[int] = set()
+
+                for player in GLOBAL_CACHE.Party.GetPlayers() or []:
+                    login_number = int(getattr(player, "login_number", 0) or 0)
+                    if login_number <= 0:
+                        continue
+                    agent_id = int(GLOBAL_CACHE.Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
+                    if agent_id > 0 and Agent.IsValid(agent_id) and agent_id not in seen:
+                        seen.add(agent_id)
+                        agent_ids.append(agent_id)
+
+                for member in GLOBAL_CACHE.Party.GetHeroes() or []:
+                    agent_id = int(getattr(member, "agent_id", 0) or 0)
+                    if agent_id > 0 and Agent.IsValid(agent_id) and agent_id not in seen:
+                        seen.add(agent_id)
+                        agent_ids.append(agent_id)
+
+                for member in GLOBAL_CACHE.Party.GetHenchmen() or []:
+                    agent_id = int(getattr(member, "agent_id", 0) or 0)
+                    if agent_id > 0 and Agent.IsValid(agent_id) and agent_id not in seen:
+                        seen.add(agent_id)
+                        agent_ids.append(agent_id)
+
+                return agent_ids, expected_size
+            except Exception:
+                return [], 0
+
+        def _member_label(agent_id: int) -> str:
+            from ..Agent import Agent
+
+            try:
+                name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
+                if name:
+                    return name
+            except Exception:
+                pass
+            return f"agent {int(agent_id)}"
+
+        def _combat_active(node: BehaviorTree.Node) -> bool:
+            if bool(node.blackboard.get("COMBAT_ACTIVE", False)):
+                return True
+            try:
+                from ..botting_src.helpers_src.HeroAICombatRange import hero_ai_combat_detected
+                return bool(hero_ai_combat_detected(include_party=True))
+            except Exception:
+                try:
+                    return bool(Routines.Checks.Agents.InDanger())
+                except Exception:
+                    return False
+
+        def _safe_regroup_position(
+            corpse_xy: tuple[float, float],
+            local_id: int,
+            dead_ids: list[int],
+            member_ids: list[int],
+        ) -> tuple[float, float]:
+            from ..Agent import Agent
+
+            cx, cy = float(corpse_xy[0]), float(corpse_xy[1])
+            dead = {int(agent_id) for agent_id in dead_ids}
+            anchor: tuple[float, float] | None = None
+
+            if local_id > 0 and local_id not in dead:
+                try:
+                    ax, ay = Agent.GetXY(local_id)
+                    anchor = (float(ax), float(ay))
+                except Exception:
+                    anchor = None
+
+            if anchor is None:
+                best_distance_sq: float | None = None
+                for agent_id in member_ids:
+                    agent_id = int(agent_id)
+                    if agent_id <= 0 or agent_id in dead:
+                        continue
+                    try:
+                        ax, ay = Agent.GetXY(agent_id)
+                        ax, ay = float(ax), float(ay)
+                    except Exception:
+                        continue
+                    distance_sq = (ax - cx) ** 2 + (ay - cy) ** 2
+                    if best_distance_sq is None or distance_sq < best_distance_sq:
+                        best_distance_sq = distance_sq
+                        anchor = (ax, ay)
+
+            if anchor is None:
+                return (cx + safe_distance, cy)
+
+            dx = anchor[0] - cx
+            dy = anchor[1] - cy
+            length = math.hypot(dx, dy)
+            if length <= 1.0:
+                return (cx + safe_distance, cy)
+
+            scale = safe_distance / length
+            return (cx + dx * scale, cy + dy * scale)
+
+        def _flag_living_remote_accounts(
+            regroup_xy: tuple[float, float],
+            dead_ids: list[int],
+            member_ids: list[int],
+        ) -> None:
+            from ..Player import Player
+
+            try:
+                local_party_id = int(GLOBAL_CACHE.Party.GetPartyID() or 0)
+                if local_party_id <= 0:
+                    return
+                local_id = int(Player.GetAgentID() or 0)
+                known_members = {int(agent_id) for agent_id in member_ids}
+                dead_members = {int(agent_id) for agent_id in dead_ids}
+                originals: dict[str, tuple[bool, float, float, float, float, float]] = state["flag_originals"]  # type: ignore[assignment]
+                positions_by_email: dict[str, set[tuple[float, float]]] = state["flag_positions"]  # type: ignore[assignment]
+
+                pairs = GLOBAL_CACHE.ShMem.GetAllActiveAccountHeroAIPairs(sort_results=False)
+                for account, options in pairs or []:
+                    if account is None or options is None or not bool(getattr(account, "IsSlotActive", False)):
+                        continue
+                    if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+                        continue
+                    party_id = int(getattr(getattr(account, "AgentPartyData", None), "PartyID", 0) or 0)
+                    if party_id != local_party_id:
+                        continue
+                    agent_id = int(getattr(getattr(account, "AgentData", None), "AgentID", 0) or 0)
+                    if (
+                        agent_id <= 0
+                        or agent_id == local_id
+                        or agent_id not in known_members
+                        or agent_id in dead_members
+                    ):
+                        continue
+                    email = str(getattr(account, "AccountEmail", "") or "").strip()
+                    if not email:
+                        continue
+
+                    if email not in originals:
+                        originals[email] = (
+                            bool(options.IsFlagged),
+                            float(options.FlagPos.x),
+                            float(options.FlagPos.y),
+                            float(options.FollowPos.x),
+                            float(options.FollowPos.y),
+                            float(options.FollowPos.z),
+                        )
+
+                    positions_by_email.setdefault(email, set()).add(regroup_xy)
+                    options.FlagPos.x = float(regroup_xy[0])
+                    options.FlagPos.y = float(regroup_xy[1])
+                    options.IsFlagged = True
+                    # This also lets remote followers recover a dead leader.
+                    options.FollowPos.x = float(regroup_xy[0])
+                    options.FollowPos.y = float(regroup_xy[1])
+            except Exception as exc:
+                _log(
+                    f"Follower recovery positioning failed: {exc}",
+                    PySystem.Console.MessageType.Warning,
+                )
+
+        def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+            from ..Agent import Agent
+            from ..Map import Map
+            from ..Player import Player
+            from ..routines_src.behaviourtrees_src.movement import BTMovement
+
+            if not _enabled():
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=False)
+                state["last_log_key"] = ""
+                return BehaviorTree.NodeState.RUNNING
+
+            if (
+                Map.IsMapLoading()
+                or not Map.IsMapReady()
+                or not Map.IsExplorable()
+                or not GLOBAL_CACHE.Party.IsPartyLoaded()
+            ):
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=False)
+                state["last_log_key"] = ""
+                return BehaviorTree.NodeState.RUNNING
+
+            member_ids, expected_size = _party_member_agent_ids()
+            if not member_ids:
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=False)
+                return BehaviorTree.NodeState.RUNNING
+
+            dead_ids = [agent_id for agent_id in member_ids if Agent.IsDead(int(agent_id))]
+            if not dead_ids:
+                was_active = bool(node.blackboard.get("party_member_recovery_active", False))
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=False)
+                if was_active:
+                    _log("Every party member is alive. Planner recovery released.", PySystem.Console.MessageType.Success)
+                state["last_log_key"] = ""
+                return BehaviorTree.NodeState.RUNNING
+
+            # If party membership is still resolving, never issue remote flags.
+            # The planner remains paused because at least one resolved member is dead.
+            if expected_size > 0 and len(member_ids) < expected_size:
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=True)
+                key = f"unresolved:{len(member_ids)}/{expected_size}"
+                if state["last_log_key"] != key:
+                    _log(
+                        f"Party state incomplete ({len(member_ids)}/{expected_size}); postponing member recovery.",
+                        PySystem.Console.MessageType.Warning,
+                    )
+                    state["last_log_key"] = key
+                return BehaviorTree.NodeState.RUNNING
+
+            # A total wipe belongs exclusively to the existing wipe service.
+            if (
+                len(dead_ids) >= len(member_ids)
+                or Routines.Checks.Party.IsPartyWiped()
+                or bool(node.blackboard.get("party_wipe_recovery_active", False))
+            ):
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=False)
+                state["last_log_key"] = "wipe"
+                return BehaviorTree.NodeState.RUNNING
+
+            dead_labels = tuple(_member_label(agent_id) for agent_id in dead_ids)
+            _set_blackboard(node, active=True, target_id=int(state["target_id"] or 0))
+
+            # Dungeon-specific mechanics may temporarily block resurrection
+            # recovery without taking ownership of movement/flags themselves.
+            # The shared service remains the sole owner of corpse regrouping.
+            if bool(node.blackboard.get("party_member_recovery_blocked", False)):
+                reason = str(
+                    node.blackboard.get("party_member_recovery_block_reason", "external recovery blocker")
+                    or "external recovery blocker"
+                )
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=True)
+                key = "blocked:" + reason + ":" + "|".join(dead_labels)
+                if state["last_log_key"] != key:
+                    _log(
+                        f"Dead member recovery blocked by {reason}; recovery flags cleared and recovery postponed. "
+                        f"Dead: {', '.join(dead_labels)}."
+                    )
+                    state["last_log_key"] = key
+                return BehaviorTree.NodeState.RUNNING
+
+            # Partial death freezes the planner immediately, but corpse recovery
+            # must never compete with HeroAI combat movement.
+            if _combat_active(node):
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=True)
+                key = "combat:" + "|".join(dead_labels)
+                if state["last_log_key"] != key:
+                    _log(
+                        f"Dead member detected during combat; recovery flags cleared and recovery postponed. Dead: {', '.join(dead_labels)}."
+                    )
+                    state["last_log_key"] = key
+                return BehaviorTree.NodeState.RUNNING
+
+            local_id = int(Player.GetAgentID() or 0)
+            local_alive = local_id > 0 and local_id not in dead_ids and Agent.IsAlive(local_id)
+
+            if local_id in dead_ids:
+                target_id = local_id
+            elif local_alive:
+                try:
+                    px, py = Agent.GetXY(local_id)
+                    target_id = min(
+                        dead_ids,
+                        key=lambda agent_id: (
+                            (float(Agent.GetXY(agent_id)[0]) - float(px)) ** 2
+                            + (float(Agent.GetXY(agent_id)[1]) - float(py)) ** 2
+                        ),
+                    )
+                except Exception:
+                    target_id = int(dead_ids[0])
+            else:
+                target_id = int(dead_ids[0])
+
+            try:
+                tx, ty = Agent.GetXY(target_id)
+                target_xy = (float(tx), float(ty))
+            except Exception:
+                return BehaviorTree.NodeState.RUNNING
+
+            if (
+                int(state["target_id"] or 0) != target_id
+                or state["target_xy"] != target_xy
+                or state["regroup_xy"] is None
+            ):
+                regroup_xy = _safe_regroup_position(target_xy, local_id, dead_ids, member_ids)
+                # Preserve original follower flags across corpse changes; only the
+                # active movement target is reset here.
+                move_tree = state.get("move_tree")
+                if move_tree is not None:
+                    try:
+                        move_tree.reset()
+                    except Exception:
+                        pass
+                state["target_id"] = target_id
+                state["target_xy"] = target_xy
+                state["regroup_xy"] = regroup_xy
+                state["move_tree"] = None
+                state["next_retry_ms"] = 0.0
+                state["last_wait_log_ms"] = 0.0
+                _log(
+                    f"Recovery target {_member_label(target_id)} (agent={target_id}); safe regroup "
+                    f"at ({regroup_xy[0]:.0f}, {regroup_xy[1]:.0f}), {safe_distance:.0f}u from corpse."
+                )
+
+            regroup_xy = state["regroup_xy"]
+            if not isinstance(regroup_xy, tuple):
+                return BehaviorTree.NodeState.RUNNING
+
+            # Re-check immediately before writing flags to close the race where a
+            # fight begins between target selection and flag dispatch.
+            if _combat_active(node):
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=True)
+                state["last_log_key"] = "combat:" + "|".join(dead_labels)
+                return BehaviorTree.NodeState.RUNNING
+
+            _set_blackboard(node, active=True, target_id=target_id)
+            _flag_living_remote_accounts(regroup_xy, dead_ids, member_ids)
+
+            if not local_alive:
+                state["last_log_key"] = "recovering:" + "|".join(dead_labels)
+                return BehaviorTree.NodeState.RUNNING
+
+            try:
+                px, py = Agent.GetXY(local_id)
+                corpse_distance = math.hypot(float(px) - target_xy[0], float(py) - target_xy[1])
+                regroup_gap = math.hypot(float(px) - regroup_xy[0], float(py) - regroup_xy[1])
+            except Exception:
+                return BehaviorTree.NodeState.RUNNING
+
+            now_ms = time.monotonic() * 1000.0
+            if corpse_distance <= safe_distance or regroup_gap <= tolerance:
+                move_tree = state.get("move_tree")
+                if move_tree is not None:
+                    try:
+                        move_tree.reset()
+                    except Exception:
+                        pass
+                state["move_tree"] = None
+                if now_ms - float(state["last_wait_log_ms"] or 0.0) >= wait_log_ms:
+                    _log(
+                        f"In resurrection range of {_member_label(target_id)} ({corpse_distance:.0f}u); waiting for HeroAI resurrection."
+                    )
+                    state["last_wait_log_ms"] = now_ms
+                state["last_log_key"] = "recovering:" + "|".join(dead_labels)
+                return BehaviorTree.NodeState.RUNNING
+
+            if now_ms < float(state["next_retry_ms"] or 0.0):
+                return BehaviorTree.NodeState.RUNNING
+
+            move_tree = state.get("move_tree")
+            if move_tree is None:
+                move_tree = BTMovement.Move(
+                    float(regroup_xy[0]),
+                    float(regroup_xy[1]),
+                    tolerance=tolerance,
+                    timeout_ms=30000,
+                    pause_on_combat=True,
+                    flag_heroes_to_waypoint=False,
+                    log=False,
+                    ignore_destination_obstacles=True,
+                )
+                state["move_tree"] = move_tree
+                _log(
+                    f"Moving to safe regroup point {safe_distance:.0f}u from fallen {_member_label(target_id)}."
+                )
+
+            move_tree.blackboard = node.blackboard
+            result = BehaviorTree.Node._normalize_state(move_tree.tick())
+
+            # Combat may start during the movement tick itself. Clear every
+            # recovery flag before yielding control back to HeroAI.
+            if _combat_active(node):
+                _clear_target(restore_flags=True)
+                _set_blackboard(node, active=True)
+                state["last_log_key"] = "combat:" + "|".join(dead_labels)
+                return BehaviorTree.NodeState.RUNNING
+
+            if result == BehaviorTree.NodeState.FAILURE:
+                _log(
+                    f"Recovery approach to {_member_label(target_id)} failed; retrying in {retry_ms / 1000.0:.1f}s.",
+                    PySystem.Console.MessageType.Warning,
+                )
+                state["move_tree"] = None
+                state["next_retry_ms"] = now_ms + retry_ms
+            elif result == BehaviorTree.NodeState.SUCCESS:
+                state["move_tree"] = None
+                state["next_retry_ms"] = now_ms + 500.0
+
+            state["last_log_key"] = "recovering:" + "|".join(dead_labels)
+            return BehaviorTree.NodeState.RUNNING
+
+        return BehaviorTree(
+            BehaviorTree.ActionNode(
+                name="PartyMemberRecoveryService",
+                action_fn=_tick,
+                aftercast_ms=100,
             )
         )
 
