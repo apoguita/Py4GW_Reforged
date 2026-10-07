@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional, Tuple
 
 import PyAgent
@@ -1531,11 +1532,31 @@ class Agent:
 
     @staticmethod
     def GetOvercast(agent_id: int) -> float:
-        """Retrieve the overcast of the agent."""
-        living = Agent.GetLivingAgentByID(agent_id)
-        if living is None:
+        """Retrieve Overcast from the agent's full and usable energy caps."""
+        try:
+            from Py4GWCoreLib.Context import GWContext
+
+            world = GWContext.World.GetContext()
+            map_agents = world.map_agents if world is not None else None
+            if map_agents is None or agent_id <= 0 or agent_id >= len(map_agents):
+                return 0.0
+            record = map_agents[agent_id]
+            full_energy = float(record.max_energy2)
+            usable_energy = float(record.h0010)
+            second_full_energy = float(record.max_energy)
+            wrapper_full_energy = float(Agent.GetMaxEnergy(agent_id))
+            values = (full_energy, usable_energy, second_full_energy, wrapper_full_energy)
+            if not all(math.isfinite(value) for value in values):
+                return 0.0
+            if full_energy <= 0.0 or usable_energy > full_energy + 1.0:
+                return 0.0
+            if abs(full_energy - second_full_energy) > 1.0:
+                return 0.0
+            if abs(full_energy - wrapper_full_energy) > 1.0:
+                return 0.0
+            return max(0.0, full_energy - usable_energy)
+        except (AttributeError, IndexError, TypeError, ValueError):
             return 0.0
-        return living.h0128
     
     @staticmethod
     def GetProfessionsTexturePaths(agent_id: int) -> tuple[str, str]:

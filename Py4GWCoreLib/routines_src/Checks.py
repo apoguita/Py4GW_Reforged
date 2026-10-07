@@ -953,6 +953,22 @@ class Checks:
 #region Skills
     class Skills:
         @staticmethod
+        def IsProjectedOvercastAllowed(agent_id, skill_id, max_fraction):
+            """Check projected Overcast against the caster's full energy bar."""
+            from ..Agent import Agent
+            from ..GlobalCache import GLOBAL_CACHE
+
+            limit = float(max_fraction or 0.0)
+            if limit <= 0.0:
+                return True
+            full_energy = float(Agent.GetMaxEnergy(agent_id) or 0.0)
+            if full_energy <= 0.0:
+                return False
+            current = float(Agent.GetOvercast(agent_id) or 0.0)
+            added = float(GLOBAL_CACHE.Skill.Data.GetOvercast(skill_id) or 0.0)
+            return (current + added) / full_energy <= limit
+
+        @staticmethod
         def HasEnoughEnergy(agent_id, skill_id):
             """
             Purpose: Check if the player has enough energy to use the skill.
