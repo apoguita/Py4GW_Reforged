@@ -26,6 +26,13 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Sources.Sky.DungeonParty import DungeonPartyConfig
 from Sources.Sky.Support import attach_botting_tree_support
+from Sources.Sky.ConsumableRestockUI import (
+    DEFAULT_RESTOCK_DEFAULTS,
+    DEFAULT_RESTOCK_ITEM_DEFINITIONS,
+    draw_restock_group_grid,
+    load_restock_quantities,
+    save_restock_quantities,
+)
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import (
     get_inventory_count,
@@ -86,6 +93,7 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_restock_quantities: dict[int, int] = dict(DEFAULT_RESTOCK_DEFAULTS)
 _auto_loot = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
@@ -155,6 +163,7 @@ _master_gear_dropped_for_combat = False
 
 
 def _load_settings() -> None:
+    global _restock_quantities
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone, _auto_loot
@@ -192,6 +201,7 @@ def _load_settings() -> None:
         _settings.get_int(_SETTINGS_SECTION, "InventoryMinSalvageKits", 2),
     )
 
+    _restock_quantities = load_restock_quantities(_settings, _SETTINGS_SECTION)
     _settings_loaded = True
     _load_statistics()
 
@@ -224,7 +234,7 @@ def _save_settings() -> None:
         "InventoryMinSalvageKits",
         _inventory_min_salvage_kits,
     )
-
+    save_restock_quantities(_settings, _SETTINGS_SECTION, _restock_quantities)
 
 def _account_key(email: str) -> str:
     return str(email).replace("@", "_at_").replace(".", "_")
@@ -1014,19 +1024,88 @@ def _runtime_difficulty_node() -> BehaviorTree:
     )
 
 
+def _draw_restock_config() -> None:
+    global _restock_quantities
+
+    _load_settings()
+    changed = False
+
+    PyImGui.text("Restock targets per account")
+    PyImGui.text_wrapped(
+        "Set the target quantity shown below each icon. The same target is sent to "
+        "every account in the current party, and each account only withdraws what "
+        "it is missing from its own Xunlai storage. Set a target to 0 to disable "
+        "that item."
+    )
+    PyImGui.text_wrapped("Hover an icon for the item name, ModelID and current restock state.")
+
+    # These bots historically treat Clover/Honeycomb as PCons, so the Morale
+    # display group intentionally follows the PCon restock switch.
+    group_enabled = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_pcons),
+        "Summoning": bool(_use_summoning_stone),
+    }
+
+    groups: dict[str, list[tuple[str, int, int]]] = {}
+    for group, label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS:
+        groups.setdefault(group, []).append((label, int(model_id), int(default)))
+
+    for group in ("Conset", "Personal PCons", "Morale", "Summoning"):
+        items = groups.get(group, [])
+        if items and draw_restock_group_grid(
+            group,
+            items,
+            _restock_quantities,
+            group_enabled=group_enabled.get(group, True),
+            columns=4,
+            icon_size=48.0,
+        ):
+            changed = True
+
+    PyImGui.separator()
+    PyImGui.text_wrapped(
+        "The group switches in the Config tab control whether Conset, PCons and "
+        "Summoning Stones are included in the restock step. Disabling a group "
+        "keeps its saved per-item targets."
+    )
+
+    if changed:
+        _save_settings()
+
+
 def _runtime_restock_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        items: list[tuple[int, int]] = []
+        enabled_models: set[int] = set()
         if _restock_conset:
-            items.extend(CONSET_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in CONSET_UPKEEPS)
         if _restock_pcons:
-            items.extend(PCON_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in PCON_UPKEEPS)
         if _use_summoning_stone:
-            items.extend(SUMMON_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in SUMMON_MODEL_IDS)
+
+        items = [
+            (model_id, max(0, int(_restock_quantities.get(model_id, default))))
+            for _group, _label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS
+            if model_id in enabled_models
+            and max(0, int(_restock_quantities.get(model_id, default))) > 0
+        ]
         if not items:
-            return BT.Succeeder("Restock Disabled")
-        return BT.RestockItemsFromList(tuple(items), allow_missing=True)
-    return BT.Subtree(name="Restock Selected Supplies", subtree_fn=_build)
+            return BT.Succeeder("RestockDisabled")
+
+        return BTShared.RestockItems(
+            items,
+            party_only=True,
+            include_self=True,
+            allow_missing=True,
+            refs_blackboard_prefix="vloxen_restock_item",
+            timeout_ms=30_000,
+            poll_interval_ms=100,
+            log=True,
+        )
+
+    return BT.Subtree(name="Restock Selected Consumables", subtree_fn=_build)
 
 
 def _inventory_accounts() -> list[object]:
@@ -3033,7 +3112,7 @@ def main() -> None:
     attach_botting_tree_support(tree)
     tree.UI.draw_window(icon_path=TEXTURE,
         main_child_dimensions=(430, 390),
-        extra_tabs=[("Statistics", _draw_statistics), ("Party", _dungeon_party.draw_tab), ("Config", _draw_run_config)],
+        extra_tabs=[("Statistics", _draw_statistics), ("Party", _dungeon_party.draw_tab), ("Config", _draw_run_config), ("Restock", _draw_restock_config)],
     )
 
 

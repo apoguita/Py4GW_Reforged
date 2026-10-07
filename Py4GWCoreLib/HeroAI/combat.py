@@ -156,6 +156,7 @@ class CombatClass:
         self.plague_sending = GLOBAL_CACHE.Skill.GetID("Plague_Sending")
         self.plague_signet = GLOBAL_CACHE.Skill.GetID("Plague_Signet")
         self.plague_touch = GLOBAL_CACHE.Skill.GetID("Plague_Touch")
+        self.antidote_signet = GLOBAL_CACHE.Skill.GetID("Antidote_Signet")
         self.golden_fang_strike = GLOBAL_CACHE.Skill.GetID("Golden_Fang_Strike")
         self.golden_fox_strike = GLOBAL_CACHE.Skill.GetID("Golden_Fox_Strike")
         self.golden_lotus_strike = GLOBAL_CACHE.Skill.GetID("Golden_Lotus_Strike")
@@ -1122,6 +1123,12 @@ class CombatClass:
                 self.skills[slot].skill_id == self.plague_signet or
                 self.skills[slot].skill_id == self.plague_touch
                 ):
+                return Routines.Checks.Agents.IsConditioned(Player.GetAgentID())
+
+            if self.skills[slot].skill_id == self.antidote_signet:
+                # Antidote Signet always removes at least one condition and
+                # additionally clears Poison, Disease and Blindness. Unlike
+                # the generic CastConditions flags, this needs OR semantics.
                 return Routines.Checks.Agents.IsConditioned(Player.GetAgentID())
 
             if (self.skills[slot].skill_id == self.golden_fang_strike or

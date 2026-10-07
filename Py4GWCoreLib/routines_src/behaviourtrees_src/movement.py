@@ -171,7 +171,7 @@ class BTMovement:
         
     #region Move
     @staticmethod
-    def Move(
+    def _build_move_core(
         x: float,
         y: float,
         tolerance: float = 50.0,
@@ -200,7 +200,7 @@ class BTMovement:
         Build a tree that moves the player to target coordinates using autopathing, proactive local avoidance, and runtime recovery logic.
 
         Meta:
-            Expose: true
+            Expose: false
             Audience: advanced
             Display: Move
             Purpose: Move the player to target coordinates with waypoint tracking, local obstacle avoidance, pause handling, and timeout protection.
@@ -1500,6 +1500,103 @@ class BTMovement:
         return BehaviorTree(tree)
 
     @staticmethod
+    def Move(
+        x: float,
+        y: float,
+        tolerance: float = 50.0,
+        timeout_ms: int = 15000,
+        stall_threshold_ms: int = 500,
+        pause_on_combat: bool = True,
+        pause_flag_key: str = "PAUSE_MOVEMENT",
+        flag_heroes_to_waypoint: bool = False,
+        log: bool = False,
+        path_points_override: list[tuple[float, float]] | None = None,
+        avoid_obstacles: bool = True,
+        avoid_gadgets: bool = True,
+        ignore_destination_obstacles: bool = False,
+        avoidance_lookahead: float = 500.0,
+        avoidance_steering_distance: float = 400.0,
+        avoidance_clearance: float = 80.0,
+        avoidance_update_ms: int = 200,
+        destination_obstacle_position: Point2D | None = None,
+        destination_obstacle_ignore_distance: float = 1500.0,
+        ignore_destination_npcs: bool = True,
+        ignore_destination_gadgets: bool = True,
+        combat_release_delay_ms: int = 0,
+        pause_on_nearby_enemy_range: float = 0.0,
+    ) -> BehaviorTree:
+        """
+        Build a standard movement tree on top of the shared reactive movement core.
+
+        Meta:
+            Expose: true
+            Audience: advanced
+            Display: Move
+            Purpose: Move to coordinates using the shared autopathing, recovery, and local-avoidance runtime.
+            UserDescription: Use this for normal waypoint movement. All obstacle steering is provided by the shared BTMovement core.
+            Notes: Public compatibility facade over `_build_move_core`; interaction-specific approaches should use `Approach`.
+        """
+        return BTMovement._build_move_core(
+            x=x, y=y, tolerance=tolerance, timeout_ms=timeout_ms,
+            stall_threshold_ms=stall_threshold_ms, pause_on_combat=pause_on_combat,
+            pause_flag_key=pause_flag_key, flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+            log=log, path_points_override=path_points_override, avoid_obstacles=avoid_obstacles,
+            avoid_gadgets=avoid_gadgets, ignore_destination_obstacles=ignore_destination_obstacles,
+            avoidance_lookahead=avoidance_lookahead,
+            avoidance_steering_distance=avoidance_steering_distance,
+            avoidance_clearance=avoidance_clearance, avoidance_update_ms=avoidance_update_ms,
+            destination_obstacle_position=destination_obstacle_position,
+            destination_obstacle_ignore_distance=destination_obstacle_ignore_distance,
+            ignore_destination_npcs=ignore_destination_npcs,
+            ignore_destination_gadgets=ignore_destination_gadgets,
+            combat_release_delay_ms=combat_release_delay_ms,
+            pause_on_nearby_enemy_range=pause_on_nearby_enemy_range,
+        )
+
+    @staticmethod
+    def Approach(
+        x: float,
+        y: float,
+        tolerance: float = Range.Touch.value,
+        timeout_ms: int = 15000,
+        stall_threshold_ms: int = 500,
+        pause_on_combat: bool = False,
+        pause_flag_key: str = "PAUSE_MOVEMENT",
+        flag_heroes_to_waypoint: bool = False,
+        log: bool = False,
+        avoid_obstacles: bool = True,
+        avoid_gadgets: bool = True,
+        avoidance_lookahead: float = 500.0,
+        avoidance_steering_distance: float = 400.0,
+        avoidance_clearance: float = 80.0,
+        avoidance_update_ms: int = 200,
+    ) -> BehaviorTree:
+        """
+        Approach an interaction point while keeping reactive avoidance enabled through the final meters.
+
+        Meta:
+            Expose: true
+            Audience: intermediate
+            Display: Approach
+            Purpose: Move into interaction range without disabling obstacle avoidance near the destination.
+            UserDescription: Use this before interacting with items, NPCs, or gadgets when nearby agents must still be steered around.
+            Notes: Shares the exact same movement core as `Move`, but does not broadly ignore NPCs or gadgets near the destination.
+        """
+        return BTMovement._build_move_core(
+            x=x, y=y, tolerance=tolerance, timeout_ms=timeout_ms,
+            stall_threshold_ms=stall_threshold_ms, pause_on_combat=pause_on_combat,
+            pause_flag_key=pause_flag_key, flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+            log=log, avoid_obstacles=avoid_obstacles, avoid_gadgets=avoid_gadgets,
+            ignore_destination_obstacles=False,
+            avoidance_lookahead=avoidance_lookahead,
+            avoidance_steering_distance=avoidance_steering_distance,
+            avoidance_clearance=avoidance_clearance, avoidance_update_ms=avoidance_update_ms,
+            destination_obstacle_position=(float(x), float(y)),
+            destination_obstacle_ignore_distance=0.0,
+            ignore_destination_npcs=False, ignore_destination_gadgets=False,
+        )
+
+    @staticmethod
     def MoveDirect(
         path_points: list[Vec2f],
         tolerance: float = 50.0,
@@ -1642,13 +1739,22 @@ class BTMovement:
             agent_x, agent_y = Agent.GetXY(agent_id)
             node.blackboard["resolved_agent_id"] = agent_id
             node.blackboard["resolved_agent_xy"] = (agent_x, agent_y)
-            return BTMovement.Move(
+            if ignore_destination_obstacles:
+                return BTMovement.Move(
+                    x=agent_x,
+                    y=agent_y,
+                    tolerance=Range.Adjacent.value,
+                    pause_on_combat=pause_on_combat,
+                    flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+                    ignore_destination_obstacles=True,
+                    log=log,
+                )
+            return BTMovement.Approach(
                 x=agent_x,
                 y=agent_y,
                 tolerance=Range.Adjacent.value,
                 pause_on_combat=pause_on_combat,
                 flag_heroes_to_waypoint=flag_heroes_to_waypoint,
-                ignore_destination_obstacles=ignore_destination_obstacles,
                 log=log,
             )
 

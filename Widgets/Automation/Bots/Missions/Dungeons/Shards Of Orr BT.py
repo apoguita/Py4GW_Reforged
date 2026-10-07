@@ -18,6 +18,8 @@ from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_UPKEEPS, CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
+from Py4GWCoreLib.routines_src.behaviourtrees_src.local_avoidance import CircularObstacle, choose_avoidance_target
+from Py4GWCoreLib.Pathing import AutoPathing
 from Sources.Sky.DungeonParty import DungeonPartyConfig
 from Sources.Sky.Support import attach_botting_tree_support
 from Sources.Sky.ConsumableRestockUI import draw_restock_group_grid
@@ -66,6 +68,23 @@ ARBOR_BAY = 485
 SOO_LEVEL_1 = 581
 SOO_LEVEL_2 = 582
 SOO_LEVEL_3 = 583
+
+# Shards-only environmental trap handling. These GadgetIDs were confirmed by
+# a full three-level probe run. Keep this local to Shards: 0x8000 is an
+# activation bit used by other gadgets too, so it must never be treated as a
+# global CoreLib trap rule.
+SHARDS_TRAP_ACTIVE_BIT = 0x8000
+SHARDS_TRAP_GADGET_IDS_BY_MAP: dict[int, frozenset[int]] = {
+    SOO_LEVEL_1: frozenset(range(8164, 8174)),
+    SOO_LEVEL_2: frozenset(range(8164, 8167)),
+    SOO_LEVEL_3: frozenset((8015, 8035, *range(8142, 8149))),
+}
+SHARDS_TRAP_LOOKAHEAD = 1100.0
+SHARDS_TRAP_ROUTE_HALF_WIDTH = 430.0
+SHARDS_TRAP_HAZARD_RADIUS = 430.0
+SHARDS_TRAP_STEERING_DISTANCE = 700.0
+SHARDS_TRAP_AVOIDANCE_UPDATE_MS = 150.0
+SHARDS_TRAP_NO_DETOUR_RELEASE_MS = 300.0
 
 # Quest / dialogs
 LOST_SOULS_QUEST_ID = 0x324
@@ -267,7 +286,9 @@ L1_PATH_AFTER_DOOR = [Vec2f(17442.4, 2577.83), Vec2f(20181.6, 1203.7), Vec2f(204
 TORCH_MODEL_IDS = (22341, 22342)
 TORCH_BUFF_ID = 2545
 # Temporary diagnostic mode for torch pickup. Disable after testing.
-TORCH_DIAGNOSTICS = True
+TORCH_DIAGNOSTICS = False
+TORCH_PROGRESS_LOGS = False
+SHARDS_MOVEMENT_LOGS = False
 TORCH_DIAGNOSTIC_INTERVAL_MS = 3_000
 TORCH_INITIAL_RETRACE_GRACE_MS = 1_000
 # Martial leaders keep carrying the torch until enemies are genuinely close.
@@ -2701,7 +2722,7 @@ def EnsureTorchFromChest(
                 BT.MoveAndInteractWithGadget(
                     chest_pos,
                     pause_on_combat=False,
-                    log=True,
+                    log=False,
                 ),
                 _mark_torch_chest_opened_node(key),
                 PickupTorch(),
@@ -2955,6 +2976,415 @@ def _enemy_in_torch_combat_range(radius: float = TORCH_COMBAT_TRIGGER_RADIUS) ->
         return False
 
 
+def _shards_trap_destination_xy(destination) -> tuple[float, float] | None:
+    """Resolve a single destination from a point or path accepted by BT.Move."""
+    try:
+        if hasattr(destination, "x") and hasattr(destination, "y"):
+            return float(destination.x), float(destination.y)
+        if isinstance(destination, Sequence) and not isinstance(destination, (str, bytes)):
+            values = list(destination)
+            if not values:
+                return None
+            if len(values) >= 2 and isinstance(values[0], (int, float)) and isinstance(values[1], (int, float)):
+                return float(values[0]), float(values[1])
+            return _shards_trap_destination_xy(values[-1])
+    except Exception:
+        return None
+    return None
+
+
+
+def _shards_known_traps(*, active_only: bool = False) -> list[dict]:
+    """Return confirmed Shards traps on the current map."""
+    try:
+        if not Map.IsMapReady() or Map.IsMapLoading():
+            return []
+        map_id = int(Map.GetMapID() or 0)
+        allowed_ids = SHARDS_TRAP_GADGET_IDS_BY_MAP.get(map_id)
+        if not allowed_ids:
+            return []
+
+        result: list[dict] = []
+        for raw_agent_id in AgentArray.GetGadgetArray() or []:
+            agent_id = int(raw_agent_id or 0)
+            if agent_id <= 0:
+                continue
+            try:
+                gadget = Agent.GetGadgetAgentByID(agent_id)
+                gadget_id = int(getattr(gadget, "gadget_id", 0) or 0) if gadget is not None else 0
+                if gadget_id not in allowed_ids:
+                    continue
+                agent = Agent.GetAgentByID(agent_id)
+                if agent is None:
+                    continue
+                properties = int(getattr(agent, "name_properties", 0) or 0)
+                active = bool(properties & SHARDS_TRAP_ACTIVE_BIT)
+                if active_only and not active:
+                    continue
+                tx, ty = Agent.GetXY(agent_id)
+                result.append({
+                    "map_id": map_id,
+                    "agent_id": agent_id,
+                    "gadget_id": gadget_id,
+                    "active": active,
+                    "properties": properties,
+                    "x": float(tx),
+                    "y": float(ty),
+                })
+            except Exception:
+                continue
+        return result
+    except Exception:
+        return []
+
+
+def _shards_route_blocker(
+    destination_xy: tuple[float, float] | None,
+    *,
+    active_only: bool = True,
+) -> dict | None:
+    """Return the nearest confirmed Shards trap intersecting the forward route."""
+    if destination_xy is None:
+        return None
+    try:
+        player_id = int(Player.GetAgentID() or 0)
+        if player_id <= 0 or Agent.IsDead(player_id):
+            return None
+        px, py = Agent.GetXY(player_id)
+        px, py = float(px), float(py)
+        dx = float(destination_xy[0]) - px
+        dy = float(destination_xy[1]) - py
+        segment_len_sq = dx * dx + dy * dy
+        if segment_len_sq <= 1.0:
+            return None
+        segment_len = segment_len_sq ** 0.5
+
+        best: dict | None = None
+        for trap in _shards_known_traps(active_only=active_only):
+            tx, ty = float(trap["x"]), float(trap["y"])
+            rel_x = tx - px
+            rel_y = ty - py
+            projection = (rel_x * dx + rel_y * dy) / segment_len_sq
+            if projection < 0.0 or projection > 1.0:
+                continue
+            along = projection * segment_len
+            if along > SHARDS_TRAP_LOOKAHEAD:
+                continue
+            closest_x = px + projection * dx
+            closest_y = py + projection * dy
+            route_offset = ((tx - closest_x) ** 2 + (ty - closest_y) ** 2) ** 0.5
+            if route_offset > SHARDS_TRAP_ROUTE_HALF_WIDTH:
+                continue
+            player_distance = ((tx - px) ** 2 + (ty - py) ** 2) ** 0.5
+            candidate = dict(trap)
+            candidate.update({
+                "distance": player_distance,
+                "along": along,
+                "route_offset": route_offset,
+            })
+            if best is None or float(candidate["along"]) < float(best["along"]):
+                best = candidate
+        return best
+    except Exception:
+        return None
+
+
+def _shards_trap_still_blocks(
+    trap_xy: tuple[float, float],
+    destination_xy: tuple[float, float] | None,
+) -> bool:
+    """Keep a bypass committed until the trap is no longer inside the forward corridor."""
+    if destination_xy is None:
+        return False
+    try:
+        px, py = Player.GetXY()
+        px, py = float(px), float(py)
+        dx = float(destination_xy[0]) - px
+        dy = float(destination_xy[1]) - py
+        length_sq = dx * dx + dy * dy
+        if length_sq <= 1.0:
+            return False
+        rel_x = float(trap_xy[0]) - px
+        rel_y = float(trap_xy[1]) - py
+        projection = (rel_x * dx + rel_y * dy) / length_sq
+        if projection <= 0.0:
+            return False
+        projection = min(1.0, projection)
+        cx = px + projection * dx
+        cy = py + projection * dy
+        offset = ((float(trap_xy[0]) - cx) ** 2 + (float(trap_xy[1]) - cy) ** 2) ** 0.5
+        return offset < SHARDS_TRAP_HAZARD_RADIUS
+    except Exception:
+        return False
+
+
+def _shards_trap_obstacles(committed: dict | None = None) -> list[CircularObstacle]:
+    """Build circular obstacles from active traps plus the currently committed bypass."""
+    obstacles: dict[int, CircularObstacle] = {}
+    for trap in _shards_known_traps(active_only=True):
+        agent_id = int(trap["agent_id"])
+        obstacles[agent_id] = CircularObstacle(
+            agent_id=agent_id,
+            position=(float(trap["x"]), float(trap["y"])),
+            radius=SHARDS_TRAP_HAZARD_RADIUS,
+        )
+    if committed is not None:
+        agent_id = int(committed["agent_id"])
+        obstacles[agent_id] = CircularObstacle(
+            agent_id=agent_id,
+            position=(float(committed["x"]), float(committed["y"])),
+            radius=SHARDS_TRAP_HAZARD_RADIUS,
+        )
+    return list(obstacles.values())
+
+
+def _shards_trap_segment_walkable(start: tuple[float, float], end: tuple[float, float]) -> bool:
+    """Use the existing Core navmesh to reject detours through static geometry."""
+    try:
+        navmesh = AutoPathing().get_navmesh()
+        if navmesh is None:
+            return True
+        return bool(
+            navmesh.contains(float(end[0]), float(end[1]), margin=40.0)
+            and navmesh.has_line_of_sight(
+                (float(start[0]), float(start[1])),
+                (float(end[0]), float(end[1])),
+                margin=40.0,
+                step_dist=50.0,
+            )
+        )
+    except Exception:
+        return False
+
+
+class _ShardsTrapAvoidNode(BehaviorTree.Node):
+    """Locally bypass confirmed active Shards traps without pausing the BottingTree."""
+
+    def __init__(self, child: BehaviorTree | BehaviorTree.Node, destination, *, name: str) -> None:
+        super().__init__(name=name, node_type="ShardsTrapAvoid", node_category="decorator")
+        self.child = self._coerce_node(child)
+        self.destination_xy = _shards_trap_destination_xy(destination)
+        self._committed: dict | None = None
+        self._side = 0
+        self._last_target: tuple[float, float] | None = None
+        self._last_eval_ms = 0.0
+        self._last_command_ms = 0.0
+        self._waiting_without_detour = False
+        self._inactive_since_ms = 0.0
+
+    def get_children(self) -> list[BehaviorTree.Node]:
+        return [self.child]
+
+    def reset(self) -> None:
+        super().reset()
+        self.child.reset()
+        self._committed = None
+        self._side = 0
+        self._last_target = None
+        self._last_eval_ms = 0.0
+        self._last_command_ms = 0.0
+        self._waiting_without_detour = False
+        self._inactive_since_ms = 0.0
+
+    @staticmethod
+    def _stop_local_player() -> None:
+        try:
+            px, py = Player.GetXY()
+            Player.Move(float(px), float(py))
+        except Exception:
+            pass
+
+    def _route_target(self) -> tuple[float, float] | None:
+        """Prefer the wrapped Move's live waypoint when it is available."""
+        try:
+            blackboard = self.blackboard if isinstance(self.blackboard, dict) else {}
+            waypoint = blackboard.get("move_current_waypoint")
+            if isinstance(waypoint, Sequence) and len(waypoint) >= 2:
+                return float(waypoint[0]), float(waypoint[1])
+        except Exception:
+            pass
+        return self.destination_xy
+
+    def _clear_committed(self) -> None:
+        self._committed = None
+        self._side = 0
+        self._last_target = None
+        self._last_eval_ms = 0.0
+        self._last_command_ms = 0.0
+        self._waiting_without_detour = False
+        self._inactive_since_ms = 0.0
+
+    def _tick_impl(self) -> BehaviorTree.NodeState:
+        # Combat movement owns itself. Do not inject trap steering while the
+        # party is fighting, otherwise this decorator can fight HeroAI/Vanquish.
+        try:
+            if Routines.Checks.Agents.InDanger():
+                if self._committed is not None:
+                    self._clear_committed()
+                    self.child.reset()
+                self.child.blackboard = self.blackboard
+                return self.child.tick()
+        except Exception:
+            pass
+
+        route_target = self._route_target()
+        if route_target is None:
+            self.child.blackboard = self.blackboard
+            return self.child.tick()
+
+        # Start a bypass only when a CONFIRMED Shards trap is currently active.
+        if self._committed is None:
+            blocker = _shards_route_blocker(route_target, active_only=True)
+            if blocker is None:
+                self.child.blackboard = self.blackboard
+                return self.child.tick()
+
+            self._committed = blocker
+            self._side = 0
+            self._last_target = None
+            self._last_eval_ms = 0.0
+            self._last_command_ms = 0.0
+            self._waiting_without_detour = False
+            self._inactive_since_ms = 0.0
+
+            # Stop the wrapped movement once. From here until the trap is passed,
+            # only this decorator issues local movement commands.
+            self.child.reset()
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapAvoid] Active trap GID={blocker['gadget_id']} AID={blocker['agent_id']} "
+                f"blocks the corridor ({blocker['distance']:.0f}u away). Starting local bypass.",
+                PySystem.Console.MessageType.Warning,
+            )
+
+        committed = self._committed
+        if committed is None:
+            self.child.blackboard = self.blackboard
+            return self.child.tick()
+
+        # The bypass is deliberately committed even if the trap switches OFF
+        # mid-cycle. This prevents ON/OFF oscillation from restarting the route.
+        if not _shards_trap_still_blocks(
+            (float(committed["x"]), float(committed["y"])),
+            route_target,
+        ):
+            gid = int(committed["gadget_id"])
+            PySystem.Console.Log(
+                MODULE_NAME,
+                f"[TrapAvoid] Bypass complete for GID={gid}; resuming the original route.",
+                PySystem.Console.MessageType.Success,
+            )
+            self._clear_committed()
+            self.child.blackboard = self.blackboard
+            return self.child.tick()
+
+        now_ms = time.monotonic() * 1000.0
+        if now_ms - self._last_eval_ms < SHARDS_TRAP_AVOIDANCE_UPDATE_MS:
+            return BehaviorTree.NodeState.RUNNING
+        self._last_eval_ms = now_ms
+
+        try:
+            current = Player.GetXY()
+            current_pos = (float(current[0]), float(current[1]))
+        except Exception:
+            return BehaviorTree.NodeState.RUNNING
+
+        decision = choose_avoidance_target(
+            current_pos,
+            route_target,
+            _shards_trap_obstacles(committed),
+            lookahead=SHARDS_TRAP_LOOKAHEAD,
+            steering_distance=SHARDS_TRAP_STEERING_DISTANCE,
+            preferred_side=self._side,
+            is_walkable=_shards_trap_segment_walkable,
+        )
+
+        if decision is not None:
+            target = (float(decision.target[0]), float(decision.target[1]))
+            changed = self._last_target is None or (
+                (target[0] - self._last_target[0]) ** 2
+                + (target[1] - self._last_target[1]) ** 2
+            ) >= 40.0 ** 2
+            command_due = now_ms - self._last_command_ms >= SHARDS_TRAP_AVOIDANCE_UPDATE_MS
+            if changed or command_due:
+                Player.Move(target[0], target[1])
+                self._last_target = target
+                self._last_command_ms = now_ms
+
+            if self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapAvoid] Walkable detour recovered for GID={committed['gadget_id']}; continuing bypass.",
+                    PySystem.Console.MessageType.Info,
+                )
+            if self._side != int(decision.side) or self._waiting_without_detour:
+                side_name = "left" if int(decision.side) > 0 else "right"
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapAvoid] Steering {side_name} around GID={committed['gadget_id']} "
+                    f"via ({target[0]:.0f}, {target[1]:.0f}), clearance={decision.clearance:.0f}u.",
+                    PySystem.Console.MessageType.Info,
+                )
+            self._side = int(decision.side)
+            self._waiting_without_detour = False
+            self._inactive_since_ms = 0.0
+            return BehaviorTree.NodeState.RUNNING
+
+        # Narrow corridor / no navmesh-safe lateral point. Only here do we wait.
+        active_now = False
+        try:
+            agent = Agent.GetAgentByID(int(committed["agent_id"]))
+            properties = int(getattr(agent, "name_properties", 0) or 0) if agent is not None else 0
+            active_now = bool(properties & SHARDS_TRAP_ACTIVE_BIT)
+        except Exception:
+            active_now = False
+
+        if active_now:
+            self._inactive_since_ms = 0.0
+            if not self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapAvoid] No walkable detour around GID={committed['gadget_id']}; "
+                    "waiting for the active cycle to end.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            self._waiting_without_detour = True
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
+        if self._inactive_since_ms <= 0.0:
+            self._inactive_since_ms = now_ms
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
+        if now_ms - self._inactive_since_ms < SHARDS_TRAP_NO_DETOUR_RELEASE_MS:
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
+        gid = int(committed["gadget_id"])
+        PySystem.Console.Log(
+            MODULE_NAME,
+            f"[TrapAvoid] GID={gid} is inactive and no detour was available; resuming original route.",
+            PySystem.Console.MessageType.Info,
+        )
+        self._clear_committed()
+        self.child.blackboard = self.blackboard
+        return self.child.tick()
+
+
+def ShardsTrapGuard(destination, child: BehaviorTree | BehaviorTree.Node, *, name: str = "Shards Trap Guard") -> BehaviorTree:
+    return BehaviorTree(_ShardsTrapAvoidNode(child, destination, name=name))
+
+
+def ShardsTrapMove(pos, **kwargs) -> BehaviorTree:
+    """Shards-local BT.Move wrapper with dynamic trap bypass."""
+    kwargs.setdefault("log", SHARDS_MOVEMENT_LOGS)
+    return ShardsTrapGuard(
+        pos,
+        BT.Move(pos, **kwargs),
+        name="Shards Trap Avoid - Move",
+    )
+
 def _torch_aware_combat_node(
     name: str,
     combat_factory: Callable[[], BehaviorTree],
@@ -2983,7 +3413,7 @@ def _torch_aware_combat_node(
         # the diagnostic after-snapshots) would never get a subsequent tick.
         if drop_tree is not None or should_drop_torch:
             if drop_tree is None:
-                drop_tree = DropTorchForCombat(log=True)
+                drop_tree = DropTorchForCombat(log=TORCH_PROGRESS_LOGS)
 
             drop_tree.blackboard = node.blackboard
             drop_result = BehaviorTree.Node._normalize_state(drop_tree.tick())
@@ -3026,7 +3456,7 @@ def TorchAwareVanquish(
     """Vanquish a path while martial builds automatically drop the torch for combat."""
 
     def _create() -> BehaviorTree:
-        return BT.VanquishNode(
+        child = BT.VanquishNode(
             list(points),
             name=name,
             clear_area_radius=clear_area_radius,
@@ -3035,6 +3465,8 @@ def TorchAwareVanquish(
             move_tolerance=move_tolerance,
             log=False,
         )
+        destination = list(points)[-1] if points else None
+        return ShardsTrapGuard(destination, child, name=f"Shards Trap Guard - {name}")
 
     return _torch_aware_combat_node(name, _create)
 
@@ -3048,7 +3480,11 @@ def TorchAwareMoveAndKill(
     """Preserve MoveAndKill semantics while applying the automatic torch combat policy."""
 
     def _create() -> BehaviorTree:
-        return BT.MoveAndKill(pos, clear_area_radius=clear_area_radius, log=False)
+        return ShardsTrapGuard(
+            pos,
+            BT.MoveAndKill(pos, clear_area_radius=clear_area_radius, log=False),
+            name=f"Shards Trap Guard - {name}",
+        )
 
     return _torch_aware_combat_node(name, _create)
 
@@ -3405,11 +3841,12 @@ def PickupTorch(*, allow_shrine_skip: bool = True) -> BehaviorTree:
             started_at = now
 
         if not search_logged:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                'Torch is required for the active mechanic. Looking for it on the ground...',
-                PySystem.Console.MessageType.Info,
-            )
+            if TORCH_PROGRESS_LOGS:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    'Torch is required for the active mechanic. Looking for it on the ground...',
+                    PySystem.Console.MessageType.Info,
+                )
             search_logged = True
 
         elapsed_ms = int((now - started_at) * 1000.0)
@@ -3473,7 +3910,7 @@ def PickupTorch(*, allow_shrine_skip: bool = True) -> BehaviorTree:
                 if elapsed_ms < TORCH_INITIAL_RETRACE_GRACE_MS:
                     return BehaviorTree.NodeState.RUNNING
                 drop_x, drop_y = _last_torch_drop_position
-                return_to_drop_tree = BT.Move(
+                return_to_drop_tree = ShardsTrapMove(
                     Vec2f(float(drop_x), float(drop_y)),
                     tolerance=DROP_RETRACE_TOLERANCE,
                     pause_on_combat=False,
@@ -3582,7 +4019,7 @@ def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTre
     first_x, first_y = points[0]
 
     children.append(
-        BT.MoveAndInteractWithGadget(pos=Vec2f(float(first_x), float(first_y)), gadget_id=None, search_distance=300.0, interaction_distance=220.0, interaction_count=2, interaction_interval_ms=250, timeout_ms=15000, pause_on_combat=False, multi_account=False, include_self=True, log=True)
+        BT.MoveAndInteractWithGadget(pos=Vec2f(float(first_x), float(first_y)), gadget_id=None, search_distance=300.0, interaction_distance=220.0, interaction_count=2, interaction_interval_ms=250, timeout_ms=15000, pause_on_combat=False, multi_account=False, include_self=True, log=False)
     )
 
     for index in range(
@@ -3608,7 +4045,7 @@ def BrazierSequence(name: str, points: list[tuple[float, float]]) -> BehaviorTre
             effect_apply_timeout_ms=3000,
             timeout_ms=90000,
             max_recoveries=5,
-            log=True,)
+            log=False,)
         )
 
     return BT.Sequence(name=name, children=children)
@@ -3646,9 +4083,9 @@ def MoveBetweenBraziersWithFlameRecovery(
 
     next_pos = Vec2f(float(next_brazier[0]), float(next_brazier[1]))
 
-    move_to_next = BT.Move(next_pos, tolerance=float(interaction_distance), pause_on_combat=False, ignore_destination_obstacles=True, log=False)
+    move_to_next = ShardsTrapMove(next_pos, tolerance=float(interaction_distance), pause_on_combat=False, ignore_destination_obstacles=True, log=False)
 
-    move_to_previous = BT.Move(previous_pos, tolerance=float(interaction_distance), pause_on_combat=False, ignore_destination_obstacles=True, log=False)
+    move_to_previous = ShardsTrapMove(previous_pos, tolerance=float(interaction_distance), pause_on_combat=False, ignore_destination_obstacles=True, log=False)
 
     relight_previous = BT.MoveAndInteractWithGadget(pos=previous_pos, gadget_id=None, search_distance=300.0, interaction_distance=float(interaction_distance), interaction_count=max(1, int(interaction_count)), interaction_interval_ms=max(0, int(interaction_interval_ms)), timeout_ms=15000, pause_on_combat=False, multi_account=False, include_self=True, log=log)
 
@@ -3657,7 +4094,12 @@ def MoveBetweenBraziersWithFlameRecovery(
     state = {'phase': 'move_to_next', 'started_at': 0.0, 'phase_started_at': 0.0, 'recovery_count': 0}
 
     def _trace(message: str, message_type=PySystem.Console.MessageType.Info) -> None:
-        if not log:
+        # Routine brazier progress is intentionally quiet, but real recovery
+        # warnings/errors must remain visible.
+        if not log and message_type not in (
+            PySystem.Console.MessageType.Warning,
+            PySystem.Console.MessageType.Error,
+        ):
             return
 
         PySystem.Console.Log(MODULE_NAME, f'[{name}] {message}', message_type)
@@ -4019,13 +4461,13 @@ def TravelToShandra() -> BehaviorTree:
     normal_travel = BT.Sequence(
         name="Travel To Shandra From Vlox",
         children=[
-            BT.MoveAndExitMap(VLOXS_EXIT, target_map_id=ARBOR_BAY, log=True),
+            BT.MoveAndExitMap(VLOXS_EXIT, target_map_id=ARBOR_BAY, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
-            BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=ARBOR_BLESSING_DIALOG, multi_account=True, log=True),
-            BT.Move(ARBOR_TO_SHANDRA_PATH, pause_on_combat=True, log=False),
+            BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=ARBOR_BLESSING_DIALOG, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
+            ShardsTrapMove(ARBOR_TO_SHANDRA_PATH, pause_on_combat=True, log=False),
             BT.WaitUntilOutOfCombat(timeout_ms=60_000),
-            BT.Move(SHANDRA_APPROACH,avoid_obstacles=False,  pause_on_combat=False, log=False),
+            ShardsTrapMove(SHANDRA_APPROACH,avoid_obstacles=False,  pause_on_combat=False, log=False),
         ],
     )
     return BT.Selector(children=[skip_if_already_in_level_1, normal_travel], name="Travel To Shandra")
@@ -4044,10 +4486,10 @@ def TravelToShandraStart() -> BehaviorTree:
     normal_start = BT.Sequence(
         name="Travel To Shandra - Start From Vlox",
         children=[
-            BT.MoveAndExitMap(VLOXS_EXIT, target_map_id=ARBOR_BAY, log=True),
+            BT.MoveAndExitMap(VLOXS_EXIT, target_map_id=ARBOR_BAY, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
-            BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=ARBOR_BLESSING_DIALOG, multi_account=True, log=True),
+            BT.MoveAndDialog(ARBOR_BLESSING_NPC, dialog_id=ARBOR_BLESSING_DIALOG, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
         ],
     )
     return BT.Selector(
@@ -4071,7 +4513,7 @@ def TravelToShandraFinalPoint() -> BehaviorTree:
         children=[
             BT.IsCurrentMap(map_id=ARBOR_BAY, log=False),
             BT.WaitUntilOutOfCombat(timeout_ms=60_000),
-            BT.Move(SHANDRA_APPROACH, avoid_obstacles=False, pause_on_combat=False, log=False),
+            ShardsTrapMove(SHANDRA_APPROACH, avoid_obstacles=False, pause_on_combat=False, log=False),
         ],
     )
     return BT.Selector(
@@ -4094,9 +4536,9 @@ def HandleShandraQuest() -> BehaviorTree:
         name="Collect And Retake Lost Souls",
         children=[
             BT.IsQuestState(quest_id=LOST_SOULS_QUEST_ID, state="complete", log=True),
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_REWARD_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_REWARD_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForQuestCleared(LOST_SOULS_QUEST_ID, timeout_ms=15_000),
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForActiveQuest(LOST_SOULS_QUEST_ID, timeout_ms=15_000),
         ],
     )
@@ -4104,7 +4546,7 @@ def HandleShandraQuest() -> BehaviorTree:
         name="Take Lost Souls",
         children=[
             BT.IsQuestState(quest_id=LOST_SOULS_QUEST_ID, state="missing", log=True),
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForActiveQuest(LOST_SOULS_QUEST_ID, timeout_ms=15_000),
         ],
     )
@@ -4123,7 +4565,7 @@ def EnterShardsOfOrr(enable_consumables_on_entry: bool=False) -> BehaviorTree:
     normal_entry = BT.Sequence(
         name="Enter Shards of Orr From Arbor Bay",
         children=[
-            BT.Move(SOO_ENTRANCE_PATH, pause_on_combat=False, ignore_destination_obstacles=True, log=False),
+            ShardsTrapMove(SOO_ENTRANCE_PATH, pause_on_combat=False, ignore_destination_obstacles=True, log=False),
             BT.WaitForMapLoad(map_id=SOO_LEVEL_1, timeout_ms=60_000),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
@@ -4460,7 +4902,7 @@ class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
             if now_ms < self._rescue_next_retry_ms:
                 return BehaviorTree.NodeState.RUNNING
             if self._rescue_move_tree is None:
-                self._rescue_move_tree = BT.Move(
+                self._rescue_move_tree = ShardsTrapMove(
                     Vec2f(*target_xy), pause_on_combat=True,
                     tolerance=self.RES_MOVE_TOLERANCE,
                     flag_heroes_to_waypoint=False,
@@ -4548,7 +4990,7 @@ def _movement_point_steps(
         steps.append(
             (
                 name,
-                lambda point=point, name=name: _map_guarded_point(name=name, map_id=map_id, child=BT.Move(point, pause_on_combat=pause_on_combat, tolerance=tolerance, flag_heroes_to_waypoint=flag_heroes_to_waypoint, ignore_destination_obstacles=ignore_destination_obstacles, log=False), skip_if_in_maps=skip_if_in_maps),
+                lambda point=point, name=name: _map_guarded_point(name=name, map_id=map_id, child=ShardsTrapMove(point, pause_on_combat=pause_on_combat, tolerance=tolerance, flag_heroes_to_waypoint=flag_heroes_to_waypoint, ignore_destination_obstacles=ignore_destination_obstacles, log=False), skip_if_in_maps=skip_if_in_maps),
             )
         )
 
@@ -4573,7 +5015,7 @@ def _vanquish_point_steps(
         steps.append(
             (
                 name,
-                lambda point=point, name=name: _map_guarded_point(name=name, map_id=map_id, child=BT.VanquishNode([point], name=name, clear_area_radius=clear_area_radius, pause_on_combat=pause_on_combat, flag_heroes_to_waypoint=flag_heroes_to_waypoint, move_tolerance=move_tolerance, log=False), skip_if_in_maps=skip_if_in_maps),
+                lambda point=point, name=name: _map_guarded_point(name=name, map_id=map_id, child=ShardsTrapGuard(point, BT.VanquishNode([point], name=name, clear_area_radius=clear_area_radius, pause_on_combat=pause_on_combat, flag_heroes_to_waypoint=flag_heroes_to_waypoint, move_tolerance=move_tolerance, log=False), name=f"Shards Trap Guard - {name}"), skip_if_in_maps=skip_if_in_maps),
             )
         )
 
@@ -4639,7 +5081,7 @@ def Level1_Start() -> BehaviorTree:
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
             BT.AddModelToLootWhitelist(25410),
-            BT.MoveAndDialog(Vec2f(-11686.0, 10427.0), dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
+            BT.MoveAndDialog(Vec2f(-11686.0, 10427.0), dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
         ],
     )
 
@@ -4653,7 +5095,7 @@ def Level1_OpenDoor() -> BehaviorTree:
                 'level1_main_door',
                 Vec2f(15100.0, 5443.0),
                 pause_on_combat=True,
-                log=True,
+                log=SHARDS_MOVEMENT_LOGS,
             ),
         ],
     )
@@ -4687,7 +5129,7 @@ def Level2_Start() -> BehaviorTree:
             ResetTorchCombatPolicy(),
             ResolveTorchCombatPolicy(),
             BT.AddModelToLootWhitelist(25410),
-            BT.MoveAndDialog(L2_BLESSING_NPC, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
+            BT.MoveAndDialog(L2_BLESSING_NPC, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.ClearEnemiesInArea(Vec2f(-15243.0, -17230.0), radius=Range.Compass.value, log=True),
             EnsureTorchFromChest('level2_torch_chest', L2_TORCH_CHEST),
         ],
@@ -4758,7 +5200,7 @@ def Level2_BrazierRoute2() -> BehaviorTree:
                 PickupTorch(allow_shrine_skip=False),
                 BrazierSequence('Level 2 Brazier Route 2', L2_BRAZIER_PART2),
                 _mark_restart_safe_mechanic_node('level2_brazier_route_2'),
-                DiscardTorch(log=True),
+                DiscardTorch(log=TORCH_PROGRESS_LOGS),
             ],
         )
 
@@ -4780,7 +5222,7 @@ def Level2_OpenDungeonLock() -> BehaviorTree:
                 'level2_dungeon_lock',
                 L2_DUNGEON_LOCK,
                 pause_on_combat=False,
-                log=True,
+                log=SHARDS_MOVEMENT_LOGS,
             ),
         ],
     )
@@ -4791,7 +5233,7 @@ def Level2_EnterLevel3() -> BehaviorTree:
     return BT.Sequence(
         name=name,
         children=[
-            _map_guarded_point(name=name, map_id=SOO_LEVEL_2, child=BT.Sequence(name=f'{name} And Load Level 3', children=[BT.Move(L2_EXIT_PATH[-1], pause_on_combat=False, tolerance=200.0, log=False), BT.WaitForMapLoad(map_id=SOO_LEVEL_3, timeout_ms=60000)]), skip_if_in_maps=(SOO_LEVEL_3,)),
+            _map_guarded_point(name=name, map_id=SOO_LEVEL_2, child=BT.Sequence(name=f'{name} And Load Level 3', children=[ShardsTrapMove(L2_EXIT_PATH[-1], pause_on_combat=False, tolerance=200.0, log=False), BT.WaitForMapLoad(map_id=SOO_LEVEL_3, timeout_ms=60000)]), skip_if_in_maps=(SOO_LEVEL_3,)),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             _mark_l3_start_node(),
             BT.Wait(2_000),
@@ -4808,7 +5250,7 @@ def Level3_Start() -> BehaviorTree:
     return BT.Sequence(
         name='Start Shards of Orr Level 3',
         children=[
-            BT.MoveAndDialog(L3_ENTRY_BLESSING, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=True),
+            BT.MoveAndDialog(L3_ENTRY_BLESSING, dialog_id=DWARVEN_BLESSING_DIALOG, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
         ],
     )
 
@@ -4831,7 +5273,7 @@ def Level3_TorchAndBraziers() -> BehaviorTree:
                 EnsureTorchFromChest('level3_torch_chest', L3_TORCH_CHEST),
                 BrazierSequence("Level 3 Brazier Route", L3_BRAZIERS),
                 _mark_restart_safe_mechanic_node('level3_brazier_route'),
-                DiscardTorch(log=True),
+                DiscardTorch(log=TORCH_PROGRESS_LOGS),
             ],
         )
 
@@ -4846,9 +5288,9 @@ def Level3_Brigant() -> BehaviorTree:
     return BT.Sequence(
         name="Run Shards of Orr Level 3",
         children=[
-            BT.MoveAndKill(Vec2f(-11147, 2644), clear_area_radius=Range.Spirit.value, log=False),
+            ShardsTrapGuard(Vec2f(-11147, 2644), BT.MoveAndKill(Vec2f(-11147, 2644), clear_area_radius=Range.Spirit.value, log=False), name="Shards Trap Guard - Level 3 Brigant Fight"),
             BT.AddModelToLootWhitelist(25410),
-            BT.Move(Vec2f(-9888.47, 2892.00)),
+            ShardsTrapMove(Vec2f(-9888.47, 2892.00)),
             BT.LootItems(distance=Range.SafeCompass.value),
             _mark_restart_safe_mechanic_node(_LEVEL3_BOSS_ROUTE_UNLOCKED_KEY),
         ],
@@ -4860,7 +5302,7 @@ def Level3_BrigantDoor() -> BehaviorTree:
         'level3_brigant_door',
         Vec2f(-9252.32, 6396.4),
         pause_on_combat=False,
-        log=True,
+        log=SHARDS_MOVEMENT_LOGS,
     )
 
 
@@ -5066,7 +5508,7 @@ def Level3_FendiFight() -> BehaviorTree:
     return BT.Sequence(
         name="Run Fendi Boss Fight",
         children=[
-            BT.Move(Vec2f(-13198.79, 13789.36),log=True),
+            ShardsTrapMove(Vec2f(-13198.79, 13789.36), log=SHARDS_MOVEMENT_LOGS),
             ClearFendiArenaWithBossPriority(),
             BT.ClearEnemiesInArea(Vec2f(*FENDI_FIGHT_CENTER), radius=FENDI_FIGHT_RADIUS, log=True),
             BT.WaitForClearEnemiesInArea(*FENDI_FIGHT_CENTER, radius=FENDI_FIGHT_RADIUS, allowed_alive_enemies=0, interact_interval_ms=750, stable_clear_ms=FENDI_STABLE_CLEAR_MS, keep_player_near_center=False, center_tolerance=750.0, log=True),
@@ -5084,14 +5526,14 @@ def Level3_Chest() -> BehaviorTree:
     return BT.Sequence(
         name="Open Fendi Chest",
         children=[
-            BT.Move(Vec2f(-15198.0, 16839.0), pause_on_combat=False, log=False),
-            BT.Move(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
+            ShardsTrapMove(Vec2f(-15198.0, 16839.0), pause_on_combat=False, log=False),
+            ShardsTrapMove(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
             # The timed run ends at the chest, immediately before interaction.
             _record_run_end_node(),
             # From this point until the next Level 1 start, consets, direct PCons
             # and summoning-stone usage/recovery are all suspended. Auto-loot stays on.
             _runtime_consumable_upkeep_node(False),
-            BT.MoveAndInteractWithGadget(gadget_id=FENDI_CHEST_GADGET_ID, pos=Vec2f(*FENDI_CHEST_POSITION), search_distance=700.0, interaction_distance=Range.Nearby.value, interaction_count=2, interaction_interval_ms=1000, account_settle_ms=3000, timeout_ms=90000, multi_account=True, include_self=True, log=True),
+            BT.MoveAndInteractWithGadget(gadget_id=FENDI_CHEST_GADGET_ID, pos=Vec2f(*FENDI_CHEST_POSITION), search_distance=700.0, interaction_distance=Range.Nearby.value, interaction_count=2, interaction_interval_ms=1000, account_settle_ms=3000, timeout_ms=90000, multi_account=True, include_self=True, log=SHARDS_MOVEMENT_LOGS),
             _inventory_statistics_node(after_chest=True),
         ],
     )
@@ -5135,7 +5577,7 @@ def CollectInsideReward() -> BehaviorTree:
             BT.InteractTargetAndSendDialog(dialog_id=SHANDRA_REWARD_DIALOG, multi_account=True, log=True),
             BT.SendDialog(dialog_id=SHANDRA_REWARD_DIALOG, multi_account=True, log=True),
             BT.WaitForQuestCleared(LOST_SOULS_QUEST_ID, timeout_ms=15000),
-            BT.Move(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
+            ShardsTrapMove(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
         ],
     )
 
@@ -5145,7 +5587,7 @@ def ResolveShandraQuestAfterRun() -> BehaviorTree:
     direct_retake = BT.Sequence(
         name="Retake Lost Souls Directly",
         children=[
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForActiveQuest(LOST_SOULS_QUEST_ID, timeout_ms=15000),
         ],
     )
@@ -5158,8 +5600,8 @@ def ResolveShandraQuestAfterRun() -> BehaviorTree:
             BT.MoveAndExitMap(LEVEL1_EXIT_TO_ARBOR, target_map_id=ARBOR_BAY, log=False),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
-            BT.Move([Vec2f(10218.0, -18864.0), SHANDRA_APPROACH], pause_on_combat=False, log=False),
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            ShardsTrapMove([Vec2f(10218.0, -18864.0), SHANDRA_APPROACH], pause_on_combat=False, log=False),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForActiveQuest(LOST_SOULS_QUEST_ID, timeout_ms=15000),
         ],
     )
@@ -5192,7 +5634,7 @@ def ResolveShandraQuestAfterRun() -> BehaviorTree:
         children=[
             BT.IsQuestState(quest_id=LOST_SOULS_QUEST_ID, state='complete', log=True),
             BT.LogMessage(message='The reward is still pending. Collecting it from Shandra in Arbor Bay.', module_name=MODULE_NAME),
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_REWARD_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_REWARD_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForQuestCleared(LOST_SOULS_QUEST_ID, timeout_ms=15000),
             BT.LogMessage(message='The Lost Souls reward was collected successfully in Arbor Bay.', module_name=MODULE_NAME),
 
@@ -5202,8 +5644,8 @@ def ResolveShandraQuestAfterRun() -> BehaviorTree:
             BT.MoveAndExitMap(LEVEL1_EXIT_TO_ARBOR, target_map_id=ARBOR_BAY, log=False),
             BT.WaitUntilOnExplorable(timeout_ms=30_000),
             BT.Wait(2_000),
-            BT.Move([Vec2f(10218.0, -18864.0), SHANDRA_APPROACH], pause_on_combat=False, log=False),
-            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=True),
+            ShardsTrapMove([Vec2f(10218.0, -18864.0), SHANDRA_APPROACH], pause_on_combat=False, log=False),
+            BT.MoveAndDialog(SHANDRA_APPROACH, SHANDRA_TAKE_DIALOG, pause_on_combat=False, multi_account=True, log=SHARDS_MOVEMENT_LOGS),
             BT.WaitForActiveQuest(LOST_SOULS_QUEST_ID, timeout_ms=15000),
         ],
     )
@@ -5270,7 +5712,7 @@ def CollectRewardAndReturnToArbor(end_countdown_timeout_ms: int=190000) -> Behav
         children=[
             BT.LogMessage(message='Shandra was not found inside the dungeon or the inside reward could not be collected. The reward will be handled in Arbor Bay.', module_name=MODULE_NAME),
             BT.Succeeder('InsideRewardUnavailable'),
-            BT.Move(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
+            ShardsTrapMove(FENDI_CHEST_SAFE_POSITION, pause_on_combat=False, log=False),
         ],
     )
 
@@ -5283,7 +5725,7 @@ def CollectRewardAndReturnToArbor(end_countdown_timeout_ms: int=190000) -> Behav
             BT.WaitUntilOnExplorable(timeout_ms=30000),
             BT.Wait(2000),
             BT.LogMessage(message='The party has returned to Arbor Bay. Preparing the next dungeon run.', module_name=MODULE_NAME),
-            BT.Move(SHANDRA_APPROACH,pause_on_combat=False,log=False),
+            ShardsTrapMove(SHANDRA_APPROACH,pause_on_combat=False,log=False),
         ],
     )
 

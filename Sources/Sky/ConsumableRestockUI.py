@@ -8,6 +8,40 @@ import PySystem
 
 from Py4GWCoreLib import ImGui
 from Py4GWCoreLib.enums_src.Texture_enums import get_texture_for_model
+from Py4GWCoreLib.enums_src.Model_enums import ModelID
+
+DEFAULT_RESTOCK_ITEM_DEFINITIONS: tuple[tuple[str, str, int, str, int], ...] = (
+    ("Conset", "Essence of Celerity", int(ModelID.Essence_Of_Celerity.value), "RestockQtyEssenceOfCelerity", 10),
+    ("Conset", "Grail of Might", int(ModelID.Grail_Of_Might.value), "RestockQtyGrailOfMight", 10),
+    ("Conset", "Armor of Salvation", int(ModelID.Armor_Of_Salvation.value), "RestockQtyArmorOfSalvation", 10),
+    ("Personal PCons", "Birthday Cupcake", int(ModelID.Birthday_Cupcake.value), "RestockQtyBirthdayCupcake", 10),
+    ("Personal PCons", "Golden Egg", int(ModelID.Golden_Egg.value), "RestockQtyGoldenEgg", 10),
+    ("Personal PCons", "Candy Corn", int(ModelID.Candy_Corn.value), "RestockQtyCandyCorn", 10),
+    ("Personal PCons", "Candy Apple", int(ModelID.Candy_Apple.value), "RestockQtyCandyApple", 10),
+    ("Personal PCons", "Pumpkin Pie", int(ModelID.Slice_Of_Pumpkin_Pie.value), "RestockQtyPumpkinPie", 10),
+    ("Personal PCons", "Drake Kabob", int(ModelID.Drake_Kabob.value), "RestockQtyDrakeKabob", 10),
+    ("Personal PCons", "Bowl of Skalefin Soup", int(ModelID.Bowl_Of_Skalefin_Soup.value), "RestockQtySkalefinSoup", 10),
+    ("Personal PCons", "Pahnai Salad", int(ModelID.Pahnai_Salad.value), "RestockQtyPahnaiSalad", 10),
+    ("Personal PCons", "War Supplies", int(ModelID.War_Supplies.value), "RestockQtyWarSupplies", 10),
+    ("Morale", "Four-Leaf Clover", int(ModelID.Four_Leaf_Clover.value), "RestockQtyFourLeafClover", 10),
+    ("Morale", "Honeycomb", int(ModelID.Honeycomb.value), "RestockQtyHoneycomb", 10),
+    ("Summoning", "Legionnaire Summoning Crystal", int(ModelID.Legionnaire_Summoning_Crystal.value), "RestockQtyLegionnaireCrystal", 10),
+    ("Summoning", "Tengu Summoning Stone", int(ModelID.Tengu_Summon.value), "RestockQtyTenguSummon", 10),
+    ("Summoning", "Mysterious Summoning Stone", int(ModelID.Mysterious_Summon.value), "RestockQtyMysteriousSummon", 10),
+)
+DEFAULT_RESTOCK_DEFAULTS = {model_id: default for _group, _label, model_id, _key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS}
+DEFAULT_RESTOCK_SETTING_KEYS = {model_id: key for _group, _label, model_id, key, _default in DEFAULT_RESTOCK_ITEM_DEFINITIONS}
+
+def load_restock_quantities(settings, section: str) -> dict[int, int]:
+    return {
+        model_id: max(0, settings.get_int(section, setting_key, DEFAULT_RESTOCK_DEFAULTS[model_id]))
+        for model_id, setting_key in DEFAULT_RESTOCK_SETTING_KEYS.items()
+    }
+
+def save_restock_quantities(settings, section: str, quantities: dict[int, int]) -> None:
+    for model_id, setting_key in DEFAULT_RESTOCK_SETTING_KEYS.items():
+        settings.set(section, setting_key, max(0, int(quantities.get(model_id, 0))))
+
 
 
 _ITEM_TEXTURE_DIR = os.path.join(
