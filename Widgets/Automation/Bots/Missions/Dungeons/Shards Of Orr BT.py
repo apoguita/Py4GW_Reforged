@@ -4762,6 +4762,7 @@ def InitializeBot() -> BehaviorTree:
                 multi_account=True,
                 auto_loot=True,
                 account_isolation=False,
+                resurrection_scroll=True,
             ),
             BT.SetPlayerStatus(PlayerStatus.Offline, log=True),
             BT.LogMessage(message="Shards of Orr BT initialized", module_name=MODULE_NAME),
