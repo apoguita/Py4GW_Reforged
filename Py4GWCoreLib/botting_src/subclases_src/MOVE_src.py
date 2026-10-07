@@ -33,6 +33,7 @@ class _MOVE:
         forced_timeout=-1,
         autopath: bool = True,
         fail_on_unmanaged: bool = True,
+        progress_callback: "Optional[Callable[[float], None]]" = None,
     ) -> Generator[Any, Any, bool]:
         from ...Routines import Routines
         from ...Map import Map
@@ -129,6 +130,7 @@ class _MOVE:
             tolerance=self._config.config_properties.movement_tolerance.get("value"),
             map_transition_exit_success=True,
             autopath=autopath,
+            progress_callback=progress_callback,
         )
 
         self._config.config_properties.follow_path_succeeded.set_now("value", success_movement)
@@ -221,12 +223,84 @@ class _MOVE:
         yield from self.parent.Interact._coro_with_item_at_xy(x, y)
 
 
-    def _coro_follow_path(self, path: List[Tuple[float, float]]) -> Generator[Any, Any, bool]:
-        yield from self._coro_set_path_to(path)
-        result = yield from self._coro_follow_path_to(autopath=False)
+    def _coro_follow_path(
+        self,
+        path: List[Tuple[float, float]],
+        resume_key: Optional[str] = None,
+    ) -> Generator[Any, Any, bool]:
+        """Follow an ordered path, optionally preserving forward progress."""
+        path_points = list(path or [])
+        if not path_points:
+            return True
+
+        progress_callback = None
+        if resume_key:
+            from ...Map import Map
+            from ...Player import Player
+            from ...Py4GWcorelib import Utils
+
+            store = getattr(self._config, "_restart_safe_path_progress", None)
+            if not isinstance(store, dict):
+                store = {}
+                setattr(self._config, "_restart_safe_path_progress", store)
+
+            current_map_id = int(Map.GetMapID())
+            current_uptime = int(Map.GetInstanceUptime() or 0)
+            record = store.get(str(resume_key))
+            floor_index = 0
+            if isinstance(record, dict) and int(record.get("map_id", -1)) == current_map_id:
+                saved_uptime = int(record.get("instance_uptime", 0) or 0)
+                if current_uptime + 1_000 >= saved_uptime:
+                    floor_index = max(
+                        0,
+                        min(int(record.get("next_index", 0) or 0), len(path_points)),
+                    )
+
+            current_xy = Player.GetXY()
+            tolerance = float(self._config.config_properties.movement_tolerance.get("value"))
+            if floor_index >= len(path_points):
+                if Utils.Distance(current_xy, path_points[-1]) <= tolerance:
+                    return True
+                floor_index = 0
+
+            nearest_index = min(
+                range(floor_index, len(path_points)),
+                key=lambda index: Utils.Distance(current_xy, path_points[index]),
+            )
+            remaining = path_points[nearest_index:]
+            store[str(resume_key)] = {
+                "map_id": current_map_id,
+                "instance_uptime": current_uptime,
+                "next_index": nearest_index,
+            }
+
+            def _record_progress(progress: float) -> None:
+                completed = nearest_index + min(
+                    len(remaining),
+                    max(0, int(round(float(progress) * len(remaining)))),
+                )
+                store[str(resume_key)] = {
+                    "map_id": int(Map.GetMapID()),
+                    "instance_uptime": int(Map.GetInstanceUptime() or 0),
+                    "next_index": completed,
+                }
+
+            progress_callback = _record_progress
+            path_points = remaining
+
+        yield from self._coro_set_path_to(path_points)
+        result = yield from self._coro_follow_path_to(
+            autopath=False,
+            progress_callback=progress_callback,
+        )
         return result
 
-    def _coro_follow_auto_path(self, points: List[Tuple[float, float]], step_name: str = "") -> Generator[Any, Any, None]:
+    def _coro_follow_auto_path(
+        self,
+        points: List[Tuple[float, float]],
+        step_name: str = "",
+        resume_key: Optional[str] = None,
+    ) -> Generator[Any, Any, None]:
         """
         For each (x, y) target point, compute an autopath and follow it.
         Input format matches FollowPath, but each point is autpathed independently.
@@ -234,9 +308,66 @@ class _MOVE:
         if step_name == "":
             step_name = f"FollowAutoPath_{self._config.get_counter('FOLLOW_AUTOPATH')}"
 
-        for x, y in points:
+        path_points = list(points or [])
+        start_index = 0
+        progress_store = None
+        if resume_key and path_points:
+            from ...Map import Map
+            from ...Player import Player
+            from ...Py4GWcorelib import Utils
+
+            progress_store = getattr(self._config, "_restart_safe_auto_path_progress", None)
+            if not isinstance(progress_store, dict):
+                progress_store = {}
+                setattr(self._config, "_restart_safe_auto_path_progress", progress_store)
+
+            current_map_id = int(Map.GetMapID())
+            current_uptime = int(Map.GetInstanceUptime() or 0)
+            record = progress_store.get(str(resume_key))
+            floor_index = 0
+            if isinstance(record, dict) and int(record.get("map_id", -1)) == current_map_id:
+                saved_uptime = int(record.get("instance_uptime", 0) or 0)
+                if current_uptime + 1_000 >= saved_uptime:
+                    floor_index = max(
+                        0,
+                        min(int(record.get("next_index", 0) or 0), len(path_points)),
+                    )
+
+            if floor_index >= len(path_points):
+                tolerance = float(self._config.config_properties.movement_tolerance.get("value"))
+                if Utils.Distance(Player.GetXY(), path_points[-1]) <= tolerance:
+                    return
+                floor_index = 0
+
+            current_xy = Player.GetXY()
+            start_index = min(
+                range(floor_index, len(path_points)),
+                key=lambda index: Utils.Distance(current_xy, path_points[index]),
+            )
+            progress_store[str(resume_key)] = {
+                "map_id": current_map_id,
+                "instance_uptime": current_uptime,
+                "next_index": start_index,
+            }
+
+        for index in range(start_index, len(path_points)):
+            x, y = path_points[index]
             yield from self._coro_get_path_to(x, y)   # autopath to this target
             yield from self._coro_follow_path_to()       # then execute the path
+            if progress_store is not None:
+                from ...GlobalCache import GLOBAL_CACHE
+                from ...Map import Map
+                from ...Routines import Routines
+
+                if not (
+                    Routines.Checks.Party.IsPartyWiped()
+                    or GLOBAL_CACHE.Party.IsPartyDefeated()
+                ):
+                    progress_store[str(resume_key)] = {
+                        "map_id": int(Map.GetMapID()),
+                        "instance_uptime": int(Map.GetInstanceUptime() or 0),
+                        "next_index": index + 1,
+                    }
 
     def _coro_follow_path_to_aggro(
         self,
@@ -863,8 +994,8 @@ class _MOVE:
         last_point = path[-1]
         yield from self.parent.Dialogs._coro_at_xy(last_point[0], last_point[1], dialog_id)
         
-    def _coro_follow_path_and_exit_map(self, path: List[Tuple[float, float]], target_map_id: int = 0, target_map_name: str = "", step_name: str="") -> Generator[Any, Any, None]:
-        yield from self._coro_follow_path(path)
+    def _coro_follow_path_and_exit_map(self, path: List[Tuple[float, float]], target_map_id: int = 0, target_map_name: str = "", step_name: str="", resume_key: Optional[str] = None) -> Generator[Any, Any, None]:
+        yield from self._coro_follow_path(path, resume_key=resume_key)
         yield from self.parent.Wait._coro_for_map_load(target_map_id=target_map_id, target_map_name=target_map_name)
         
     #region Yield Steps (ys_)
@@ -881,8 +1012,8 @@ class _MOVE:
         yield from self._coro_follow_path(path)
     
     @_yield_step(label="FollowAutoPath", counter_key="FOLLOW_AUTOPATH")
-    def ys_follow_auto_path(self, points: List[Tuple[float, float]], step_name: str = "") -> Generator[Any, Any, None]:
-        yield from self._coro_follow_auto_path(points, step_name)
+    def ys_follow_auto_path(self, points: List[Tuple[float, float]], step_name: str = "", resume_key: Optional[str] = None) -> Generator[Any, Any, None]:
+        yield from self._coro_follow_auto_path(points, step_name, resume_key=resume_key)
 
     @_yield_step(label="FollowAutoPathAggro", counter_key="FOLLOW_AUTOPATH_AGGRO")
     def ys_follow_auto_path_aggro(
@@ -934,8 +1065,8 @@ class _MOVE:
         yield from self._coro_follow_path_and_dialog(path, dialog_id, step_name)
         
     @_yield_step(label="FollowPathAndExitMap", counter_key="FOLLOW_PATH_AND_EXIT_MAP")
-    def ys_follow_path_and_exit_map(self, path: List[Tuple[float, float]], target_map_id: int = 0, target_map_name: str = "", step_name: str="") -> Generator[Any, Any, None]:
-        yield from self._coro_follow_path_and_exit_map(path, target_map_id, target_map_name, step_name)
+    def ys_follow_path_and_exit_map(self, path: List[Tuple[float, float]], target_map_id: int = 0, target_map_name: str = "", step_name: str="", resume_key: Optional[str] = None) -> Generator[Any, Any, None]:
+        yield from self._coro_follow_path_and_exit_map(path, target_map_id, target_map_name, step_name, resume_key=resume_key)
 
 
     #region public Helpers
@@ -964,11 +1095,11 @@ class _MOVE:
     def FollowPathAndDialog(self, path: List[Tuple[float, float]], dialog_id: int, step_name: str="") -> None:
         self.ys_follow_path_and_dialog(path, dialog_id, step_name=step_name)
 
-    def FollowPathAndExitMap(self, path: List[Tuple[float, float]], target_map_id: int = 0, target_map_name: str = "", step_name: str="") -> None:
-        self.ys_follow_path_and_exit_map(path, target_map_id, target_map_name, step_name=step_name)
+    def FollowPathAndExitMap(self, path: List[Tuple[float, float]], target_map_id: int = 0, target_map_name: str = "", step_name: str="", resume_key: Optional[str] = None) -> None:
+        self.ys_follow_path_and_exit_map(path, target_map_id, target_map_name, step_name=step_name, resume_key=resume_key)
 
-    def FollowAutoPath(self, points: List[Tuple[float, float]], step_name: str = "") -> None:
-        self.ys_follow_auto_path(points, step_name=step_name)
+    def FollowAutoPath(self, points: List[Tuple[float, float]], step_name: str = "", resume_key: Optional[str] = None) -> None:
+        self.ys_follow_auto_path(points, step_name=step_name, resume_key=resume_key)
 
     def FollowAutoPathAggro(
         self,
