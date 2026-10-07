@@ -4762,8 +4762,6 @@ def InitializeBot() -> BehaviorTree:
                 multi_account=True,
                 auto_loot=True,
                 account_isolation=False,
-                resurrection_scroll=True,
-                pause_on_danger=False,
             ),
             BT.SetPlayerStatus(PlayerStatus.Offline, log=True),
             BT.LogMessage(message="Shards of Orr BT initialized", module_name=MODULE_NAME),
@@ -5297,6 +5295,20 @@ def Level3_BrigantDoor() -> BehaviorTree:
 # region Level 3 - Fendi
 
 
+def _set_planner_pause_on_combat(enabled: bool, *, name: str) -> BehaviorTree:
+    """Request the shared BottingTree combat gate state on the next HeroAI tick.
+
+    Shards normally keeps the planner paused during combat so route movement cannot
+    fight HeroAI.  Fendi is the one deliberate exception: its combat node must keep
+    ticking to maintain boss priority and trap avoidance while the fight is active.
+    """
+    def _apply(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        node.blackboard["pause_on_combat_request"] = bool(enabled)
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(BehaviorTree.ActionNode(name=name, action_fn=_apply, aftercast_ms=0))
+
+
 FENDI_FIGHT_CENTER = (-15606.06, 15287.51)
 FENDI_FIGHT_RADIUS = float(Range.Compass.value)
 FENDI_TARGET_INTERVAL_MS = 750
@@ -5455,7 +5467,7 @@ def ClearFendiArenaWithBossPriority() -> BehaviorTree:
         target_changed = int(state["last_target_id"]) != int(target_id)
         interaction_due = now_ms - int(state["last_interact_ms"]) >= FENDI_TARGET_INTERVAL_MS
 
-        if target_changed:
+        if target_changed or interaction_due:
             Player.ChangeTarget(target_id)
             try:
                 Player.CallTarget(target_id)
@@ -5465,7 +5477,9 @@ def ClearFendiArenaWithBossPriority() -> BehaviorTree:
                 Player.Interact(target_id, False)
             except Exception:
                 pass
+            state["last_interact_ms"] = now_ms
 
+        if target_changed:
             target_name = _fendi_enemy_name(target_id) or f"agent {target_id}"
             try:
                 boss_glow = bool(Agent.HasBossGlow(target_id))
@@ -5474,16 +5488,6 @@ def ClearFendiArenaWithBossPriority() -> BehaviorTree:
 
             PySystem.Console.Log(MODULE_NAME, f'Fendi priority target -> {target_name} (id={target_id}, priority={priority_label}, boss_glow={boss_glow}, enemies={len(enemies)}).', PySystem.Console.MessageType.Info)
             state["last_target_id"] = target_id
-            state["last_interact_ms"] = now_ms
-            return BehaviorTree.NodeState.RUNNING
-
-        if interaction_due:
-            Player.ChangeTarget(target_id)
-            try:
-                Player.Interact(target_id, False)
-            except Exception:
-                pass
-            state["last_interact_ms"] = now_ms
 
         return BehaviorTree.NodeState.RUNNING
 
@@ -5494,7 +5498,14 @@ def Level3_FendiFight() -> BehaviorTree:
     return BT.Sequence(
         name="Run Fendi Boss Fight",
         children=[
+            # Defense in depth for restarts: route movement keeps the normal
+            # planner combat gate until the dedicated Fendi arena node begins.
+            _set_planner_pause_on_combat(True, name="Fendi - Keep Planner Paused During Approach"),
             ShardsTrapMove(Vec2f(-13198.79, 13789.36), log=SHARDS_MOVEMENT_LOGS),
+            # Fendi is intentionally different from route movement.  Its combat
+            # logic must keep ticking so boss priority and trap avoidance remain
+            # active while HeroAI is fighting.
+            _set_planner_pause_on_combat(False, name="Fendi - Allow Planner Combat Tick"),
             ShardsCombatTrapAvoid(
                 ClearFendiArenaWithBossPriority(),
                 name="Fendi Priority Combat - Trap Avoid",
@@ -5507,6 +5518,7 @@ def Level3_FendiFight() -> BehaviorTree:
                 BT.WaitForClearEnemiesInArea(*FENDI_FIGHT_CENTER, radius=FENDI_FIGHT_RADIUS, allowed_alive_enemies=0, interact_interval_ms=750, stable_clear_ms=FENDI_STABLE_CLEAR_MS, keep_player_near_center=False, center_tolerance=750.0, log=True),
                 name="Fendi Stable Clear - Trap Avoid",
             ),
+            _set_planner_pause_on_combat(True, name="Fendi - Restore Planner Combat Pause"),
         ],
     )
 # endregion
