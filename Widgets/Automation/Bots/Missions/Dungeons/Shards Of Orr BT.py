@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import os
 import time
+import math
 from Py4GWCoreLib.Listeners import Listeners
 import PySystem
 from Py4GWCoreLib.BottingTree import BottingTree
@@ -18,7 +19,6 @@ from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_UPKEEPS, CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
-from Py4GWCoreLib.routines_src.behaviourtrees_src.local_avoidance import CircularObstacle, choose_avoidance_target
 from Py4GWCoreLib.Pathing import AutoPathing
 from Sources.Sky.DungeonParty import DungeonPartyConfig
 from Sources.Sky.Support import attach_botting_tree_support
@@ -79,6 +79,9 @@ SHARDS_TRAP_GADGET_IDS_BY_MAP: dict[int, frozenset[int]] = {
     SOO_LEVEL_2: frozenset(range(8164, 8167)),
     SOO_LEVEL_3: frozenset((8015, 8035, *range(8142, 8149))),
 }
+# GID 8143 is the paired flame corridor on level 3. There is no reliable
+# lateral route around it, so an intersecting path must wait for the OFF cycle.
+SHARDS_TRAP_FORCE_PAUSE_IDS: frozenset[int] = frozenset((8143,))
 SHARDS_TRAP_LOOKAHEAD = 1100.0
 SHARDS_TRAP_ROUTE_HALF_WIDTH = 430.0
 SHARDS_TRAP_HAZARD_RADIUS = 430.0
@@ -3118,24 +3121,125 @@ def _shards_trap_still_blocks(
         return False
 
 
-def _shards_trap_obstacles(committed: dict | None = None) -> list[CircularObstacle]:
-    """Build circular obstacles from active traps plus the currently committed bypass."""
-    obstacles: dict[int, CircularObstacle] = {}
-    for trap in _shards_known_traps(active_only=True):
-        agent_id = int(trap["agent_id"])
-        obstacles[agent_id] = CircularObstacle(
-            agent_id=agent_id,
-            position=(float(trap["x"]), float(trap["y"])),
-            radius=SHARDS_TRAP_HAZARD_RADIUS,
+def _shards_point_to_segment_distance(
+    point: tuple[float, float],
+    start: tuple[float, float],
+    end: tuple[float, float],
+) -> tuple[float, float, tuple[float, float]]:
+    """Return (distance, projection 0..1, closest point) from *point* to segment."""
+    px, py = float(point[0]), float(point[1])
+    ax, ay = float(start[0]), float(start[1])
+    bx, by = float(end[0]), float(end[1])
+    dx, dy = bx - ax, by - ay
+    length_sq = dx * dx + dy * dy
+    if length_sq <= 1e-6:
+        return math.hypot(px - ax, py - ay), 0.0, (ax, ay)
+    projection = ((px - ax) * dx + (py - ay) * dy) / length_sq
+    projection = max(0.0, min(1.0, projection))
+    cx = ax + projection * dx
+    cy = ay + projection * dy
+    return math.hypot(px - cx, py - cy), projection, (cx, cy)
+
+
+def _shards_segment_clears_trap(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    trap_xy: tuple[float, float],
+    *,
+    radius: float = SHARDS_TRAP_HAZARD_RADIUS,
+) -> bool:
+    """True when the whole segment stays outside the trap hazard circle."""
+    distance, _, _ = _shards_point_to_segment_distance(trap_xy, start, end)
+    return distance >= float(radius)
+
+
+def _shards_trap_centered_bypass_target(
+    current_pos: tuple[float, float],
+    route_target: tuple[float, float],
+    trap: dict,
+    *,
+    preferred_side: int = 0,
+) -> tuple[tuple[float, float], int, float] | None:
+    """Choose a navmesh-safe waypoint on a 500u ring around the trap.
+
+    The trap centre, not the player, is the reference.  Candidates are sampled
+    on the left/right half of a 500u circle around the trap.  A candidate is
+    accepted only if the segment from the player to that point does not cross
+    the hazard circle.  Candidates whose onward segment to the real route target
+    is already clear are strongly preferred.
+    """
+    cx, cy = float(current_pos[0]), float(current_pos[1])
+    dx = float(route_target[0]) - cx
+    dy = float(route_target[1]) - cy
+    length = math.hypot(dx, dy)
+    if length <= 1.0:
+        return None
+    ux, uy = dx / length, dy / length
+    tx, ty = float(trap["x"]), float(trap["y"])
+    ring = float(SHARDS_TRAP_STEERING_DISTANCE)
+    hazard = float(SHARDS_TRAP_HAZARD_RADIUS)
+
+    # If already inside the hazard circle, first move directly away from its
+    # centre to the 500u safety ring.
+    from_trap_x = cx - tx
+    from_trap_y = cy - ty
+    from_trap_len = math.hypot(from_trap_x, from_trap_y)
+    if from_trap_len < hazard:
+        if from_trap_len <= 1.0:
+            from_trap_x, from_trap_y = -uy, ux
+            from_trap_len = 1.0
+        candidate = (
+            tx + (from_trap_x / from_trap_len) * ring,
+            ty + (from_trap_y / from_trap_len) * ring,
         )
-    if committed is not None:
-        agent_id = int(committed["agent_id"])
-        obstacles[agent_id] = CircularObstacle(
-            agent_id=agent_id,
-            position=(float(committed["x"]), float(committed["y"])),
-            radius=SHARDS_TRAP_HAZARD_RADIUS,
-        )
-    return list(obstacles.values())
+        if _shards_trap_segment_walkable(current_pos, candidate):
+            side_cross = ux * (candidate[1] - ty) - uy * (candidate[0] - tx)
+            side = 1 if side_cross >= 0.0 else -1
+            return candidate, side, ring
+        return None
+
+    # Sample points on a ring centred on the trap.  90 degrees is the natural
+    # lateral bypass.  Larger angles provide a safe tangent-like entry when the
+    # player is already fairly close to the trap.
+    angle_degrees = (90.0, 110.0, 130.0, 150.0, 70.0, 50.0)
+    side_order = [preferred_side] if preferred_side in (-1, 1) else [1, -1]
+    if preferred_side in (-1, 1):
+        side_order.append(-preferred_side)
+
+    best: tuple[tuple[float, float], int, float, float] | None = None
+    for side in side_order:
+        for angle_deg in angle_degrees:
+            angle = math.radians(angle_deg * side)
+            cos_a = math.cos(angle)
+            sin_a = math.sin(angle)
+            rx = ux * cos_a - uy * sin_a
+            ry = ux * sin_a + uy * cos_a
+            candidate = (tx + rx * ring, ty + ry * ring)
+
+            if not _shards_trap_segment_walkable(current_pos, candidate):
+                continue
+            approach_clearance, _, _ = _shards_point_to_segment_distance(
+                (tx, ty), current_pos, candidate
+            )
+            if approach_clearance < hazard:
+                continue
+
+            onward_clear = _shards_segment_clears_trap(
+                candidate, route_target, (tx, ty), radius=hazard
+            )
+            # Progress along the original route.  Prefer a one-step bypass that
+            # also gives a clear segment back to the original waypoint.
+            progress = (candidate[0] - cx) * ux + (candidate[1] - cy) * uy
+            travel = math.hypot(candidate[0] - cx, candidate[1] - cy)
+            score = (100000.0 if onward_clear else 0.0) + progress * 10.0 - travel
+            if preferred_side in (-1, 1) and side == preferred_side:
+                score += 250.0
+            if best is None or score > best[3]:
+                best = (candidate, side, approach_clearance, score)
+
+    if best is None:
+        return None
+    return best[0], best[1], best[2]
 
 
 def _shards_trap_segment_walkable(start: tuple[float, float], end: tuple[float, float]) -> bool:
@@ -3253,7 +3357,7 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             PySystem.Console.Log(
                 MODULE_NAME,
                 f"[TrapAvoid] Active trap GID={blocker['gadget_id']} AID={blocker['agent_id']} "
-                f"blocks the corridor ({blocker['distance']:.0f}u away). Starting local bypass.",
+                f"intersects the planned path ({blocker['distance']:.0f}u away, offset={blocker['route_offset']:.0f}u). Starting trap-centred bypass.",
                 PySystem.Console.MessageType.Warning,
             )
 
@@ -3310,18 +3414,28 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
         except Exception:
             return BehaviorTree.NodeState.RUNNING
 
-        decision = choose_avoidance_target(
+        gid = int(committed.get("gadget_id", 0) or 0)
+        if gid in SHARDS_TRAP_FORCE_PAUSE_IDS:
+            if not self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapAvoid] GID={gid} requires a forced pause; waiting for OFF.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            self._waiting_without_detour = True
+            self._inactive_since_ms = 0.0
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
+        bypass = _shards_trap_centered_bypass_target(
             current_pos,
             route_target,
-            _shards_trap_obstacles(committed),
-            lookahead=SHARDS_TRAP_LOOKAHEAD,
-            steering_distance=SHARDS_TRAP_STEERING_DISTANCE,
+            committed,
             preferred_side=self._side,
-            is_walkable=_shards_trap_segment_walkable,
         )
 
-        if decision is not None:
-            target = (float(decision.target[0]), float(decision.target[1]))
+        if bypass is not None:
+            target, side, clearance = bypass
             changed = self._last_target is None or (
                 (target[0] - self._last_target[0]) ** 2
                 + (target[1] - self._last_target[1]) ** 2
@@ -3335,18 +3449,20 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             if self._waiting_without_detour:
                 PySystem.Console.Log(
                     MODULE_NAME,
-                    f"[TrapAvoid] Walkable detour recovered for GID={committed['gadget_id']}; continuing bypass.",
+                    f"[TrapAvoid] Walkable trap-centred detour recovered for GID={committed['gadget_id']}.",
                     PySystem.Console.MessageType.Info,
                 )
-            if self._side != int(decision.side) or self._waiting_without_detour:
-                side_name = "left" if int(decision.side) > 0 else "right"
+            if self._side != int(side) or self._waiting_without_detour:
+                side_name = "left" if int(side) > 0 else "right"
                 PySystem.Console.Log(
                     MODULE_NAME,
-                    f"[TrapAvoid] Steering {side_name} around GID={committed['gadget_id']} "
-                    f"via ({target[0]:.0f}, {target[1]:.0f}), clearance={decision.clearance:.0f}u.",
+                    f"[TrapAvoid] Path intersects GID={committed['gadget_id']} "
+                    f"(offset={float(committed.get('route_offset', 0.0)):.0f}u); "
+                    f"bypassing {side_name} at 500u around trap centre via "
+                    f"({target[0]:.0f}, {target[1]:.0f}), approach clearance={clearance:.0f}u.",
                     PySystem.Console.MessageType.Info,
                 )
-            self._side = int(decision.side)
+            self._side = int(side)
             self._waiting_without_detour = False
             self._inactive_since_ms = 0.0
             return BehaviorTree.NodeState.RUNNING
@@ -3489,7 +3605,7 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
             PySystem.Console.Log(
                 MODULE_NAME,
                 f"[TrapCombat] Active trap GID={blocker['gadget_id']} AID={blocker['agent_id']} "
-                "blocks the combat route; trying a 500u bypass first.",
+                "intersects the combat path; trying a trap-centred 500u bypass first.",
                 PySystem.Console.MessageType.Warning,
             )
 
@@ -3532,19 +3648,28 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
             self._stop_local_player()
             return BehaviorTree.NodeState.RUNNING
 
-        decision = choose_avoidance_target(
+        gid = int(committed.get("gadget_id", 0) or 0)
+        if gid in SHARDS_TRAP_FORCE_PAUSE_IDS:
+            if not self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapCombat] GID={gid} requires a forced pause; waiting for OFF.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            self._waiting_without_detour = True
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
+        bypass = _shards_trap_centered_bypass_target(
             current_pos,
             target_xy,
-            _shards_trap_obstacles(committed),
-            lookahead=SHARDS_TRAP_LOOKAHEAD,
-            steering_distance=SHARDS_TRAP_STEERING_DISTANCE,
+            committed,
             preferred_side=self._side,
-            is_walkable=_shards_trap_segment_walkable,
         )
 
-        if decision is not None:
+        if bypass is not None:
             now_ms = time.monotonic() * 1000.0
-            target = (float(decision.target[0]), float(decision.target[1]))
+            target, side, clearance = bypass
             changed = self._last_target is None or (
                 (target[0] - self._last_target[0]) ** 2
                 + (target[1] - self._last_target[1]) ** 2
@@ -3555,16 +3680,17 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
                 self._last_target = target
                 self._last_command_ms = now_ms
 
-            side = int(decision.side)
             if side != self._side or self._waiting_without_detour:
                 side_name = "left" if side > 0 else "right"
                 PySystem.Console.Log(
                     MODULE_NAME,
-                    f"[TrapCombat] Steering {side_name} around GID={committed['gadget_id']} "
-                    f"via ({target[0]:.0f}, {target[1]:.0f}) (~500u step).",
+                    f"[TrapCombat] Combat path intersects GID={committed['gadget_id']} "
+                    f"(offset={float(committed.get('route_offset', 0.0)):.0f}u); "
+                    f"bypassing {side_name} at 500u around trap centre via "
+                    f"({target[0]:.0f}, {target[1]:.0f}), approach clearance={clearance:.0f}u.",
                     PySystem.Console.MessageType.Info,
                 )
-            self._side = side
+            self._side = int(side)
             self._waiting_without_detour = False
             return BehaviorTree.NodeState.RUNNING
 
