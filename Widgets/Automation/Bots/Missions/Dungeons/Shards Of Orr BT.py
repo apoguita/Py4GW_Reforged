@@ -79,8 +79,10 @@ SHARDS_TRAP_GADGET_IDS_BY_MAP: dict[int, frozenset[int]] = {
     SOO_LEVEL_2: frozenset(range(8164, 8167)),
     SOO_LEVEL_3: frozenset((8015, 8035, *range(8142, 8149))),
 }
-# GID 8143 is the paired flame corridor on level 3. There is no reliable
-# lateral route around it, so an intersecting path must wait for the OFF cycle.
+# Level 2 corridors do not offer a reliable lateral bypass: when an active
+# trap intersects the planned route, wait for its OFF cycle instead of steering
+# around it.  GID 8143 has the same restriction on level 3.
+SHARDS_TRAP_FORCE_PAUSE_MAPS: frozenset[int] = frozenset((SOO_LEVEL_2,))
 SHARDS_TRAP_FORCE_PAUSE_IDS: frozenset[int] = frozenset((8143,))
 SHARDS_TRAP_LOOKAHEAD = 1100.0
 SHARDS_TRAP_ROUTE_HALF_WIDTH = 430.0
@@ -3043,6 +3045,21 @@ def _shards_known_traps(*, active_only: bool = False) -> list[dict]:
         return []
 
 
+def _shards_trap_requires_forced_pause(trap: dict | None) -> bool:
+    """Return True when this Shards trap must be waited out instead of bypassed."""
+    if not trap:
+        return False
+    try:
+        map_id = int(trap.get("map_id", 0) or 0)
+        gadget_id = int(trap.get("gadget_id", 0) or 0)
+    except Exception:
+        return False
+    return (
+        map_id in SHARDS_TRAP_FORCE_PAUSE_MAPS
+        or gadget_id in SHARDS_TRAP_FORCE_PAUSE_IDS
+    )
+
+
 def _shards_route_blocker(
     destination_xy: tuple[float, float] | None,
     *,
@@ -3356,10 +3373,14 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             # Stop the wrapped movement once. From here until the trap is passed,
             # only this decorator issues local movement commands.
             self.child.reset()
+            if _shards_trap_requires_forced_pause(blocker):
+                action_text = "Forced-pause trap; waiting for OFF."
+            else:
+                action_text = "Starting trap-centred bypass."
             PySystem.Console.Log(
                 MODULE_NAME,
                 f"[TrapAvoid] Active trap GID={blocker['gadget_id']} AID={blocker['agent_id']} "
-                f"intersects the planned path ({blocker['distance']:.0f}u away, offset={blocker['route_offset']:.0f}u). Starting trap-centred bypass.",
+                f"intersects the planned path ({blocker['distance']:.0f}u away, offset={blocker['route_offset']:.0f}u). {action_text}",
                 PySystem.Console.MessageType.Warning,
             )
 
@@ -3417,11 +3438,11 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             return BehaviorTree.NodeState.RUNNING
 
         gid = int(committed.get("gadget_id", 0) or 0)
-        if gid in SHARDS_TRAP_FORCE_PAUSE_IDS:
+        if _shards_trap_requires_forced_pause(committed):
             if not self._waiting_without_detour:
                 PySystem.Console.Log(
                     MODULE_NAME,
-                    f"[TrapAvoid] GID={gid} requires a forced pause; waiting for OFF.",
+                    f"[TrapAvoid] GID={gid} is configured for forced pause on this map; waiting for OFF.",
                     PySystem.Console.MessageType.Warning,
                 )
             self._waiting_without_detour = True
@@ -3604,10 +3625,14 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
             self._last_target = None
             self._last_command_ms = 0.0
             self._waiting_without_detour = False
+            if _shards_trap_requires_forced_pause(blocker):
+                action_text = "forced pause until OFF"
+            else:
+                action_text = "trying a trap-centred 500u bypass first"
             PySystem.Console.Log(
                 MODULE_NAME,
                 f"[TrapCombat] Active trap GID={blocker['gadget_id']} AID={blocker['agent_id']} "
-                "intersects the combat path; trying a trap-centred 500u bypass first.",
+                f"intersects the combat path; {action_text}.",
                 PySystem.Console.MessageType.Warning,
             )
 
@@ -3651,11 +3676,11 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
             return BehaviorTree.NodeState.RUNNING
 
         gid = int(committed.get("gadget_id", 0) or 0)
-        if gid in SHARDS_TRAP_FORCE_PAUSE_IDS:
+        if _shards_trap_requires_forced_pause(committed):
             if not self._waiting_without_detour:
                 PySystem.Console.Log(
                     MODULE_NAME,
-                    f"[TrapCombat] GID={gid} requires a forced pause; waiting for OFF.",
+                    f"[TrapCombat] GID={gid} is configured for forced pause on this map; waiting for OFF.",
                     PySystem.Console.MessageType.Warning,
                 )
             self._waiting_without_detour = True
