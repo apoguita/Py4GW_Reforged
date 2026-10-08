@@ -300,6 +300,35 @@ class SmitingPrayers:
             aftercast_delay=250,
         ))
 
+    def Symbol_of_Wrath(self) -> BuildCoroutine:
+        symbol_of_wrath_id: int = Skill.GetID("Symbol_of_Wrath")
+
+        if not self.build.IsSkillEquipped(symbol_of_wrath_id):
+            return False
+        if not self.build.CanCastSkillID(symbol_of_wrath_id):
+            return False
+        if not self.build.IsInAggro():
+            return False
+
+        player_x, player_y = Player.GetXY()
+        enemy_array = Routines.Agents.GetFilteredEnemyArray(
+            player_x,
+            player_y,
+            Range.Adjacent.value,
+        )
+        enemy_array = AgentArray.Filter.ByCondition(
+            enemy_array,
+            lambda agent_id: Agent.IsValid(agent_id) and Agent.IsAlive(agent_id),
+        )
+        if not enemy_array:
+            return False
+
+        return (yield from self.build.CastSkillID(
+            skill_id=symbol_of_wrath_id,
+            log=False,
+            aftercast_delay=250,
+        ))
+
     def Smiters_Boon(self) -> BuildCoroutine:
         smiters_boon_id: int = Skill.GetID("Smiters_Boon")
         refresh_window_ms = 2000

@@ -154,6 +154,110 @@ class DeathMagic:
     def Animate_Vampiric_Horror(self) -> BuildCoroutine:
         return (yield from self._animate_minion("Animate_Vampiric_Horror"))
 
+    def Aura_of_the_Lich(
+        self,
+        *,
+        refresh_window_ms: int = 2500,
+        rebuild_below_minions: int = 4,
+        corpse_defer_ms: int = 3500,
+        assume_active_ms: int = 5000,
+    ) -> BuildCoroutine:
+        """Smart upkeep for Aura of the Lich.
+
+        The skill consumes every exploitable corpse in earshot.  This helper
+        therefore avoids blindly refreshing the enchantment while a healthy
+        minion army is already present and useful corpses are waiting for a
+        single-corpse animation such as Animate Bone Fiend.
+
+        Behaviour:
+        - only runs in/near aggro;
+        - if Masochism is equipped, waits for Masochism to be active first;
+        - keeps Aura up, refreshing only inside ``refresh_window_ms``;
+        - casts immediately when the owned minion count is low;
+        - otherwise, if corpses are available, gives the normal animate skill a
+          short window to consume them before Aura is allowed to sweep them all;
+        - filters minions by owner so another MM in the party does not affect
+          this follower's decisions.
+        """
+        aura_id: int = Skill.GetID("Aura_of_the_Lich")
+        masochism_id: int = Skill.GetID("Masochism")
+
+        if not self.build.IsSkillEquipped(aura_id):
+            return False
+        if not (self.build.IsInAggro() or self.build.IsCloseToAggro()):
+            return False
+
+        player_agent_id = Player.GetAgentID()
+        now_ms = int(Utils.GetBaseTimestamp())
+
+        # Prefer the +2 Death Magic/Soul Reaping buff before Aura creates its
+        # horrors.  If Masochism is not on the bar, Aura remains independent.
+        if (
+            self.build.IsSkillEquipped(masochism_id)
+            and not Routines.Checks.Agents.HasEffect(player_agent_id, masochism_id)
+        ):
+            return False
+
+        assumed_effects = getattr(self.build, "_self_effect_assumed_until", {})
+        if int(assumed_effects.get(aura_id, 0) or 0) > now_ms:
+            return False
+
+        aura_active = Routines.Checks.Agents.HasEffect(player_agent_id, aura_id)
+        if aura_active:
+            remaining_ms = int(
+                GLOBAL_CACHE.Effects.GetEffectTimeRemaining(player_agent_id, aura_id) or 0
+            )
+            if remaining_ms > max(0, int(refresh_window_ms)):
+                assumed_effects.pop(aura_id, None)
+                setattr(self.build, "_aotl_missing_since_ms", 0)
+                return False
+
+        # Count only living minions owned by this character.
+        owned_minions = [
+            agent_id
+            for agent_id in (AgentArray.GetMinionArray() or [])
+            if Agent.IsAlive(agent_id)
+            and Agent.GetOwnerID(agent_id) == player_agent_id
+        ]
+        minion_count = len(owned_minions)
+
+        # Aura consumes every corpse in earshot, so do not erase a pile of
+        # corpses just to refresh +1 Death Magic while the army is already
+        # healthy. Let Animate Bone Fiend (or another normal animation skill)
+        # have a brief chance to use them one by one first.
+        corpses = Routines.Agents.GetExploitableCorpses(Range.Earshot.value) or []
+        corpse_count = len(corpses)
+
+        should_rebuild = minion_count < max(0, int(rebuild_below_minions))
+        if corpse_count > 0 and not should_rebuild:
+            missing_since_ms = int(getattr(self.build, "_aotl_missing_since_ms", 0) or 0)
+            if aura_active:
+                # Still active inside the refresh window: defer this refresh and
+                # preserve the corpses for the normal minion animation lane.
+                return False
+
+            if missing_since_ms <= 0:
+                setattr(self.build, "_aotl_missing_since_ms", now_ms)
+                return False
+
+            if now_ms - missing_since_ms < max(0, int(corpse_defer_ms)):
+                return False
+        else:
+            setattr(self.build, "_aotl_missing_since_ms", 0)
+
+        cast_result = yield from self.build.CastSkillID(
+            skill_id=aura_id,
+            log=False,
+            aftercast_delay=250,
+        )
+        if cast_result:
+            assumed_effects[aura_id] = now_ms + max(0, int(assume_active_ms))
+            setattr(self.build, "_self_effect_assumed_until", assumed_effects)
+            setattr(self.build, "_aotl_missing_since_ms", 0)
+            return True
+
+        return False
+
     def Dark_Aura(
         self,
         *,

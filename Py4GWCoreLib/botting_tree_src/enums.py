@@ -5,6 +5,7 @@ class HeroAIStatus(Enum):
     WAITING_MAP = 'PAUSED: Waiting for explorable map'
     PLAYER_DEAD = 'PAUSED: Player dead'
     PLAYER_KNOCKED_DOWN = 'PAUSED: Player knocked down'
+    NPC_DIALOG = 'PAUSED: NPC dialog open'
     DISABLED = 'PAUSED: Headless HeroAI disabled'
     COMBAT_TICK = 'COMBAT: Tick'
     OOC_TICK = 'COMBAT: OOC Tick'

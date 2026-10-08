@@ -23,8 +23,14 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import *
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants import *
 from Py4GWCoreLib.routines_src.behaviourtrees_src.composite import BTComposite
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
+from Sources.Sky.ConsumableRestockUI import (
+    DEFAULT_RESTOCK_DEFAULTS,
+    DEFAULT_RESTOCK_ITEM_DEFINITIONS,
+    draw_restock_group_grid,
+    load_restock_quantities,
+    save_restock_quantities,
+)
 from Py4GWCoreLib.enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Widgets.System.Messaging import get_inventory_state, reset_inventory_state
@@ -56,9 +62,8 @@ DUNGEON_CHEST_POS           = (-16066., -8370.)
 TUNNELS_AGGRO_RANGE = Range.Spellcast.value + 100.0
 
 # ── Consumables ──────────────────────────────────────────────────────────────
-# Same generic, non-content-locked stones Shards Of Orr's own
-# UseAvailableSummoningStone() offers -- carry over only if these are actually
-# in the loadout; harmless (no-op) if not carried.
+# Generic, non-content-locked stones restocked for the reusable
+# BottingTree SummoningStonePartyService.
 SUMMON_MODEL_IDS = (30209, 37810, 31155)  # Tengu Summon, Legionnaire Summoning Crystal, Mysterious Summon
 PCON_UPKEEPS = tuple((int(model_id) for model_id in CONSUMABLE_UPKEEPS if int(model_id) not in CONSET_UPKEEPS))
 CONSET_RESTOCK_ITEMS: tuple[tuple[int, int], ...] = tuple(((int(model_id), 10) for model_id in CONSET_UPKEEPS))
@@ -99,6 +104,7 @@ _activate_conset: bool = True
 _restock_pcons: bool = True
 _activate_pcons: bool = True
 _use_summoning_stone: bool = True
+_restock_quantities: dict[int, int] = dict(DEFAULT_RESTOCK_DEFAULTS)
 _inventory_maintenance_enabled: bool = True
 _inventory_min_free_slots: int = 5
 _inventory_min_id_kits: int = 1
@@ -181,6 +187,7 @@ _HERO_ICONS_BASE = os.path.normpath(os.path.join(
 
 
 def _load_settings() -> None:
+    global _restock_quantities
     global _use_hard_mode, _restock_conset, _activate_conset, _restock_pcons, _activate_pcons
     global _use_summoning_stone, _inventory_maintenance_enabled
     global _inventory_min_free_slots, _inventory_min_id_kits, _inventory_min_salvage_kits
@@ -197,7 +204,7 @@ def _load_settings() -> None:
     _inventory_min_free_slots = max(0, _settings_ini.get_int(_SETTINGS_SECTION, _INVENTORY_MIN_FREE_SLOTS_KEY, 5))
     _inventory_min_id_kits = max(0, _settings_ini.get_int(_SETTINGS_SECTION, _INVENTORY_MIN_ID_KITS_KEY, 1))
     _inventory_min_salvage_kits = max(0, _settings_ini.get_int(_SETTINGS_SECTION, _INVENTORY_MIN_SALVAGE_KITS_KEY, 2))
-
+    _restock_quantities = load_restock_quantities(_settings_ini, _SETTINGS_SECTION)
 
 def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, _USE_MULTIBOX_KEY, _is_multibox())
@@ -211,12 +218,11 @@ def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, _INVENTORY_MIN_FREE_SLOTS_KEY, _inventory_min_free_slots)
     _settings_ini.set(_SETTINGS_SECTION, _INVENTORY_MIN_ID_KITS_KEY, _inventory_min_id_kits)
     _settings_ini.set(_SETTINGS_SECTION, _INVENTORY_MIN_SALVAGE_KITS_KEY, _inventory_min_salvage_kits)
-
+    save_restock_quantities(_settings_ini, _SETTINGS_SECTION, _restock_quantities)
 
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
     """Consumables that must be continuously maintained. Summoning stones are
-    excluded -- they're one-shot items, handled separately by
-    UseAvailableSummoningStone(), not the continuous upkeep service."""
+    managed separately by the reusable BottingTree party service."""
     enabled: list[int] = []
     if _activate_conset:
         enabled.extend(CONSET_UPKEEPS)
@@ -225,37 +231,88 @@ def _enabled_consumable_upkeeps() -> tuple[int, ...]:
     return tuple(dict.fromkeys((int(model_id) for model_id in enabled)))
 
 
+def _draw_restock_config() -> None:
+    global _restock_quantities
+
+    _load_settings()
+    changed = False
+
+    PyImGui.text("Restock targets per account")
+    PyImGui.text_wrapped(
+        "Set the target quantity shown below each icon. The same target is sent to "
+        "every account in the current party, and each account only withdraws what "
+        "it is missing from its own Xunlai storage. Set a target to 0 to disable "
+        "that item."
+    )
+    PyImGui.text_wrapped("Hover an icon for the item name, ModelID and current restock state.")
+
+    # These bots historically treat Clover/Honeycomb as PCons, so the Morale
+    # display group intentionally follows the PCon restock switch.
+    group_enabled = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_pcons),
+        "Summoning": bool(_use_summoning_stone),
+    }
+
+    groups: dict[str, list[tuple[str, int, int]]] = {}
+    for group, label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS:
+        groups.setdefault(group, []).append((label, int(model_id), int(default)))
+
+    for group in ("Conset", "Personal PCons", "Morale", "Summoning"):
+        items = groups.get(group, [])
+        if items and draw_restock_group_grid(
+            group,
+            items,
+            _restock_quantities,
+            group_enabled=group_enabled.get(group, True),
+            columns=4,
+            icon_size=48.0,
+        ):
+            changed = True
+
+    PyImGui.separator()
+    PyImGui.text_wrapped(
+        "The group switches in the Config tab control whether Conset, PCons and "
+        "Summoning Stones are included in the restock step. Disabling a group "
+        "keeps its saved per-item targets."
+    )
+
+    if changed:
+        _save_settings()
+
+
 def _runtime_restock_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        items: list[tuple[int, int]] = []
+        enabled_models: set[int] = set()
         if _restock_conset:
-            items.extend(CONSET_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in CONSET_UPKEEPS)
         if _restock_pcons:
-            items.extend(PCON_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in PCON_UPKEEPS)
         if _use_summoning_stone:
-            items.extend(SUMMON_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in SUMMON_MODEL_IDS)
+
+        items = [
+            (model_id, max(0, int(_restock_quantities.get(model_id, default))))
+            for _group, _label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS
+            if model_id in enabled_models
+            and max(0, int(_restock_quantities.get(model_id, default))) > 0
+        ]
         if not items:
-            return BT.Succeeder('RestockDisabled')
-        return BT.RestockItemsFromList(tuple(items), allow_missing=True)
+            return BT.Succeeder("RestockDisabled")
 
-    return BT.Subtree(name='Restock Selected Consumables', subtree_fn=_build)
-
-
-def UseAvailableSummoningStone() -> BehaviorTree:
-    """Use the first available summoning stone once. Kept outside the continuous
-    consumable upkeep service since these are one-shot items, not something to
-    keep re-buffing."""
-    if not _use_summoning_stone:
-        return BT.Succeeder('SummoningStoneDisabled')
-
-    stone_attempts = [
-        BT.Sequence(
-            name=f'Use Summoning Stone {model_id}',
-            children=[BTItems.HasItemQuantity(int(model_id), 1), BTItems.UseConsumable(int(model_id))],
+        return BTShared.RestockItems(
+            items,
+            party_only=True,
+            include_self=True,
+            allow_missing=True,
+            refs_blackboard_prefix="tunnels_farm_restock_item",
+            timeout_ms=30_000,
+            poll_interval_ms=100,
+            log=True,
         )
-        for model_id in SUMMON_MODEL_IDS
-    ]
-    return BT.Selector(name='Use Available Summoning Stone', children=stone_attempts + [BT.Succeeder('NoSummoningStoneAvailable')])
+
+    return BT.Subtree(name="Restock Selected Consumables", subtree_fn=_build)
 
 
 def _draw_bot_config() -> None:
@@ -603,77 +660,20 @@ def _draw_hero_settings_tab() -> None:
     PyImGui.end_child()
 
 
-def _party_wipe_revive_in_place_node() -> BehaviorTree:
-    """Restart the in-progress planner step after a party wipe.
-
-    Tunnels of the Forsaken auto-revives the party at an in-instance shrine at
-    the start of the current floor instead of returning them to an outpost, so
-    the BottingTree's stock party-wipe recovery service (which waits on
-    Map.IsOutpost()) never fires and the planner just keeps ticking the step
-    from wherever it left off. This watches the death/defeat flags directly:
-    once they clear after a wipe, it requests a restart of whichever named
-    step (e.g. 'Floor 2') was active when the wipe happened, via the same
-    'restart_step_name_request' blackboard key the stock service uses.
-
-    GW's "defeated" flag also flips momentarily when the party legitimately
-    Resigns (e.g. after clearing Floor 3), which would otherwise be
-    misdetected as a wipe and force-restart a dungeon step from Piken Square.
-    A genuine shrine revive never changes map, while a Resign always leaves
-    the dungeon, so the map id at defeat-cleared time gates the restart.
-    """
-    state: dict = {'active': False, 'step_name': '', 'map_id': 0}
-
-    def _tick(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
-        from Py4GWCoreLib.Routines import Routines
-        from Py4GWCoreLib.Map import Map
-
-        if not Map.IsMapReady():
-            # Mid map-transition; state isn't reliable, don't act on it.
-            return BehaviorTree.NodeState.RUNNING
-
-        is_defeated = bool(
-            Routines.Checks.Party.IsPartyWiped()
-            or GLOBAL_CACHE.Party.IsPartyDefeated()
-        )
-
-        if not state['active']:
-            if not is_defeated:
-                return BehaviorTree.NodeState.RUNNING
-            state['active'] = True
-            state['step_name'] = str(node.blackboard.get('current_step_name', '') or '')
-            state['map_id'] = Map.GetMapID()
-            return BehaviorTree.NodeState.RUNNING
-
-        if is_defeated:
-            return BehaviorTree.NodeState.RUNNING
-
-        if state['step_name'] and Map.GetMapID() == state['map_id']:
-            node.blackboard['restart_step_name_request'] = state['step_name']
-        state['active'] = False
-        state['step_name'] = ''
-        state['map_id'] = 0
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name='PartyWipeReviveInPlace',
-            action_fn=_tick,
-            aftercast_ms=0,
-        )
-    )
-
-
 def _apply_upkeep_config(tree: BottingTree) -> None:
     tree.Config.ConfigureUpkeep(
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=_enabled_consumable_upkeeps(),
-        # The stock party-wipe recovery service waits for a return to an
-        # outpost before restarting a step, but this dungeon auto-revives
-        # the party at an in-instance shrine instead. Use our own
-        # _party_wipe_revive_in_place_node service below instead.
-        enable_party_wipe_recovery=False,
+        enable_party_wipe_recovery=True,
         heroai_state_logging=False,
+    )
+    tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone,
+        map_ids=(THE_BREACH, TUNNELS_LVL_1, TUNNELS_LVL_2, TUNNELS_LVL_3),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
 
 
@@ -709,7 +709,6 @@ def ensure_botting_tree() -> BottingTree:
             isolation_enabled=not multi_account,
             configure_fn=_apply_upkeep_config,
         )
-        botting_tree.AddServiceTree('PartyWipeReviveInPlace', _party_wipe_revive_in_place_node)
         botting_tree.UI.override_draw_help(_draw_help_page)
         _tree_party_mode = _party_mode
 
@@ -1367,9 +1366,6 @@ def TheBreachApproach() -> list[tuple[str, Callable[[], BehaviorTree]]]:
             skip_if_in_maps=(THE_BREACH, TUNNELS_LVL_1, TUNNELS_LVL_2, TUNNELS_LVL_3),
         )
 
-    def _use_summoning_stone() -> BehaviorTree:
-        return _map_guarded_step('Use Summoning Stone (Breach) Map Guard', THE_BREACH, UseAvailableSummoningStone())
-
     def _enter_tunnels_level_1() -> BehaviorTree:
         return _map_guarded_step(
             'Enter Tunnels Level 1 Map Guard',
@@ -1380,7 +1376,6 @@ def TheBreachApproach() -> list[tuple[str, Callable[[], BehaviorTree]]]:
 
     return [
         ('Enter The Breach', _enter_the_breach),
-        ('Use Summoning Stone (Breach)', _use_summoning_stone),
         *_vanquish_point_steps('Breach Kill Route', THE_BREACH, breach_route, skip_if_in_maps=(TUNNELS_LVL_1, TUNNELS_LVL_2, TUNNELS_LVL_3)),
         ('Enter Tunnels Level 1', _enter_tunnels_level_1),
     ]
@@ -1393,11 +1388,7 @@ def Floor1ToNPC() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         (-7836., -9115.),
     ]
 
-    def _use_summoning_stone() -> BehaviorTree:
-        return _map_guarded_step('Use Summoning Stone (Floor 1) Map Guard', TUNNELS_LVL_1, UseAvailableSummoningStone(), skip_if_in_maps=(TUNNELS_LVL_2, TUNNELS_LVL_3))
-
     return [
-        ('Use Summoning Stone (Floor 1)', _use_summoning_stone),
         *_vanquish_point_steps('Floor 1 Route A', TUNNELS_LVL_1, points, skip_if_in_maps=(TUNNELS_LVL_2, TUNNELS_LVL_3)),
     ]
 
@@ -1466,9 +1457,6 @@ def Floor2() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         (-16748.,  5350.),
     ]
 
-    def _use_summoning_stone() -> BehaviorTree:
-        return _map_guarded_step('Use Summoning Stone (Floor 2) Map Guard', TUNNELS_LVL_2, UseAvailableSummoningStone(), skip_if_in_maps=(TUNNELS_LVL_3,))
-
     def _enter_tunnels_level_3() -> BehaviorTree:
         return _map_guarded_step(
             'Enter Tunnels Level 3 Map Guard',
@@ -1478,7 +1466,6 @@ def Floor2() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         )
 
     return [
-        ('Use Summoning Stone (Floor 2)', _use_summoning_stone),
         *_vanquish_point_steps('Floor 2 Route', TUNNELS_LVL_2, route, skip_if_in_maps=(TUNNELS_LVL_3,)),
         ('Enter Tunnels Level 3', _enter_tunnels_level_3),
     ]
@@ -1510,9 +1497,6 @@ def Floor3() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         (-13186., -8718.),
         (-15949., -8561.),
     ]
-
-    def _use_summoning_stone() -> BehaviorTree:
-        return _map_guarded_step('Use Summoning Stone (Floor 3) Map Guard', TUNNELS_LVL_3, UseAvailableSummoningStone())
 
     def _route_a_loot() -> BehaviorTree:
         return _map_guarded_step('Floor 3 Route A Loot Map Guard', TUNNELS_LVL_3, BT.LootItems())
@@ -1560,7 +1544,6 @@ def Floor3() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         )
 
     return [
-        ('Use Summoning Stone (Floor 3)', _use_summoning_stone),
         *_vanquish_point_steps('Floor 3 Route A', TUNNELS_LVL_3, route_a),
         ('Floor 3 Route A Loot', _route_a_loot),
         *_vanquish_point_steps('Floor 3 Route B', TUNNELS_LVL_3, route_b),
@@ -1597,7 +1580,7 @@ def main() -> None:
 
     tree = ensure_botting_tree()
     tree.tick()
-    tree.UI.draw_window(icon_path=TEXTURE, extra_tabs=[('Bot Config', _draw_bot_config), ('Heroes', _draw_hero_settings_tab)])
+    tree.UI.draw_window(icon_path=TEXTURE, extra_tabs=[('Bot Config', _draw_bot_config), ('Heroes', _draw_hero_settings_tab), ('Restock', _draw_restock_config)])
 
 
 if __name__ == '__main__':

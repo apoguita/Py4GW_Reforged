@@ -657,6 +657,59 @@ class _Multibox:
     def set_account_isolation(self, isolated: bool, account_email: str = ""):
         yield from self._set_account_isolation(isolated, account_email)
 
+    def _party_restock_account_emails(self, include_self: bool = True) -> list[str]:
+        player_data = self._get_player_data()
+        if player_data is None:
+            return []
+        sender_email = str(player_data.AccountEmail or "").strip()
+        party_id = int(player_data.PartyID or 0)
+        result: list[str] = []
+        seen: set[str] = set()
+        for account in self._get_all_account_data():
+            email = str(account.AccountEmail or "").strip()
+            if not email or email in seen:
+                continue
+            if email == sender_email:
+                if include_self:
+                    result.append(email)
+                    seen.add(email)
+                continue
+            if party_id > 0 and int(account.PartyID or 0) == party_id:
+                result.append(email)
+                seen.add(email)
+        if include_self and sender_email and sender_email not in seen:
+            result.insert(0, sender_email)
+        return result
+
+    def _restock_items_message(self, items):
+        from ...GlobalCache import GLOBAL_CACHE
+        from ...Routines import Routines
+        sender_email = str(Player.GetAccountEmail() or "").strip()
+        if not sender_email:
+            return
+
+        raw_items = items.items() if isinstance(items, dict) else items
+        normalized: list[tuple[int, int]] = []
+        seen_models: set[int] = set()
+        for model_id, quantity in raw_items:
+            model = int(model_id)
+            target = max(0, int(quantity))
+            if model <= 0 or target <= 0 or model in seen_models:
+                continue
+            seen_models.add(model)
+            normalized.append((model, target))
+
+        recipients = self._party_restock_account_emails(include_self=True)
+        for model_id, target in normalized:
+            for receiver_email in recipients:
+                GLOBAL_CACHE.ShMem.SendMessage(
+                    sender_email,
+                    receiver_email,
+                    SharedCommandType.RestockItem,
+                    (model_id, target, 1, 0),
+                )
+            yield from Routines.Yield.wait(250)
+
     def _restock_all_pcons_message(self, quantity: int):
         from ...GlobalCache import GLOBAL_CACHE
         from ...Routines import Routines
@@ -722,6 +775,10 @@ class _Multibox:
                 (widget_name, "", "", ""),
             )
         yield from Routines.Yield.wait(500)
+
+    @_yield_step(label="RestockItems", counter_key="RESTOCK_ITEMS")
+    def restock_items(self, items):
+        yield from self._restock_items_message(items)
 
     @_yield_step(label="RestockAllPcons", counter_key="RESTOCK_ALL_PCONS")
     def restock_all_pcons(self, quantity: int = 250):

@@ -18,13 +18,11 @@ from Py4GWCoreLib.enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
-from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
-from Py4GWCoreLib.Player import Player
-from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS,
 )
+from Sources.Sky.Support import attach_botting_tree_support
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -1669,6 +1667,7 @@ def main() -> None:
     tree = ensure_botting_tree()
     tree.tick()
     _freeze_stopped_run(tree)
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
         additional_ui=_draw_run_status,

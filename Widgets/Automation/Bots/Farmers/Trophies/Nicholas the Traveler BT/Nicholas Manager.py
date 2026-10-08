@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from Sources.Sky.Support import attach_botting_tree_support
+
 import importlib.util
 import os
 import sys
@@ -890,6 +892,7 @@ def main() -> None:
     farm = selected_farm()
     texture = _resolve_farm_texture(farm)
 
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=texture,
         iconwidth=96,

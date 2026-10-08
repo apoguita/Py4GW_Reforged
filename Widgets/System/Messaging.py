@@ -3074,6 +3074,31 @@ def RestockSummoningStones(index: int, message: SharedMessageStruct):
 # endregion
 
 
+#region RestockItem
+def RestockItem(index: int, message: SharedMessageStruct):
+    """Restock one inventory model to a per-account target quantity."""
+    GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
+    model_id = max(0, int(message.Params[0]))
+    desired_quantity = max(0, int(message.Params[1]))
+    allow_missing = bool(int(message.Params[2]))
+
+    if model_id > 0 and desired_quantity > 0:
+        yield from Routines.Yield.Items.RestockItems(
+            model_id,
+            desired_quantity,
+            allow_missing=allow_missing,
+        )
+
+    GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
+    ConsoleLog(
+        MODULE_NAME,
+        f"RestockItem processed: model={model_id}, target={desired_quantity}.",
+        Console.MessageType.Info,
+        False,
+    )
+# endregion
+
+
 #region WithdrawGold
 def WithdrawGold(index: int, message: SharedMessageStruct):
     GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
@@ -3641,10 +3666,22 @@ def ProcessMessages():
             GLOBAL_CACHE.Coroutines.append(RestockAllPcons(index, message))
         case SharedCommandType.RestockConset:
             GLOBAL_CACHE.Coroutines.append(RestockConset(index, message))
+        case SharedCommandType.SetResurrectionScroll:
+            # The generic fallback previously consumed this command without
+            # applying it, causing the native HeroAI button to toggle only local.
+            try:
+                from Py4GWCoreLib.HeroAI import resurrection_scroll
+                resurrection_scroll.apply_state_command(message)
+            except Exception as exc:
+                ConsoleLog(MODULE_NAME, f"SetResurrectionScroll failed: {exc}", Console.MessageType.Error, False)
+            finally:
+                GLOBAL_CACHE.ShMem.MarkMessageAsFinished(account_email, index)
         case SharedCommandType.RestockResurrectionScroll:
             GLOBAL_CACHE.Coroutines.append(RestockResurrectionScroll(index, message))
         case SharedCommandType.RestockSummoningStones:
             GLOBAL_CACHE.Coroutines.append(RestockSummoningStones(index, message))
+        case SharedCommandType.RestockItem:
+            GLOBAL_CACHE.Coroutines.append(RestockItem(index, message))
         case SharedCommandType.WithdrawGold:
             GLOBAL_CACHE.Coroutines.append(WithdrawGold(index, message))
         case SharedCommandType.InventoryQuery:
