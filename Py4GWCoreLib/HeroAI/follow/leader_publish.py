@@ -104,7 +104,7 @@ class FollowPublisherState:
     registered_follow_sections: set[str] = field(default_factory=set)
     selected_id_cache: str = ""
     points_cache: list[tuple[float, float]] = field(default_factory=list)
-    map_signature: tuple[int, int, int, int, int] | None = None
+    map_signature: tuple[int, int, int, int] | None = None
     hold_until_leader_moves: bool = False
     leader_entry_pos: tuple[float, float] | None = None
     leader_in_combat_last: bool = False
@@ -291,14 +291,116 @@ class FollowFormationPublisher:
         return ((local_x * c) - (local_y * s), (local_x * s) + (local_y * c))
 
     @staticmethod
-    def _same_party_and_map(a: AccountStruct, b: AccountStruct) -> bool:
+    def _account_matches_map_signature(
+        account: AccountStruct,
+        map_signature: tuple[int, int, int, int],
+    ) -> bool:
+        """Match only the stable instance identity used by Follow.
+
+        PartyID is intentionally excluded. Guild Wars can republish/rebuild the
+        party identity while a player reconnects even though every surviving
+        client is still in the same map instance. Treating PartyID as map
+        identity used to invalidate Normal Follow for the whole party.
+        """
         return (
-            a.AgentPartyData.PartyID == b.AgentPartyData.PartyID and
-            a.AgentData.Map.MapID == b.AgentData.Map.MapID and
-            a.AgentData.Map.Region == b.AgentData.Map.Region and
-            a.AgentData.Map.District == b.AgentData.Map.District and
-            a.AgentData.Map.Language == b.AgentData.Map.Language
+            int(account.AgentData.Map.MapID),
+            int(account.AgentData.Map.Region),
+            int(account.AgentData.Map.District),
+            int(account.AgentData.Map.Language),
+        ) == map_signature
+
+    @staticmethod
+    def _get_live_party_identity() -> tuple[set[int], set[int]]:
+        """Return the live GW party roster as AgentIDs and LoginNumbers."""
+        agent_ids: set[int] = set()
+        login_numbers: set[int] = set()
+        try:
+            for member in Party.GetPlayers() or []:
+                login_number = int(getattr(member, "login_number", 0) or 0)
+                if login_number <= 0:
+                    continue
+                login_numbers.add(login_number)
+                try:
+                    agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
+                except Exception:
+                    agent_id = 0
+                if agent_id > 0:
+                    agent_ids.add(agent_id)
+        except Exception:
+            pass
+        return agent_ids, login_numbers
+
+    @staticmethod
+    def _get_live_party_position_maps() -> tuple[dict[int, int], dict[int, int]]:
+        positions_by_agent_id: dict[int, int] = {}
+        positions_by_login_number: dict[int, int] = {}
+        try:
+            for party_position, member in enumerate(Party.GetPlayers() or []):
+                login_number = int(getattr(member, "login_number", 0) or 0)
+                if login_number <= 0:
+                    continue
+                positions_by_login_number[login_number] = party_position
+                try:
+                    agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
+                except Exception:
+                    agent_id = 0
+                if agent_id > 0:
+                    positions_by_agent_id[agent_id] = party_position
+        except Exception:
+            pass
+        return positions_by_agent_id, positions_by_login_number
+
+    def _resolve_party_position(
+        self,
+        account: AccountStruct,
+        positions_by_agent_id: dict[int, int],
+        positions_by_login_number: dict[int, int],
+    ) -> int:
+        login_number = int(getattr(account.AgentData, "LoginNumber", 0) or 0)
+        if login_number > 0 and login_number in positions_by_login_number:
+            return positions_by_login_number[login_number]
+
+        agent_id = int(getattr(account.AgentData, "AgentID", 0) or 0)
+        if agent_id > 0 and agent_id in positions_by_agent_id:
+            return positions_by_agent_id[agent_id]
+
+        party_position = int(getattr(account.AgentPartyData, "PartyPosition", -1))
+        if party_position < 0 or party_position > self.ini.max_follow_slots:
+            return -1
+        return party_position
+
+    @staticmethod
+    def _account_is_live_party_member(
+        account: AccountStruct,
+        live_agent_ids: set[int],
+        live_login_numbers: set[int],
+    ) -> bool:
+        agent_id = int(getattr(account.AgentData, "AgentID", 0) or 0)
+        login_number = int(getattr(account.AgentData, "LoginNumber", 0) or 0)
+        return bool(
+            (agent_id > 0 and agent_id in live_agent_ids)
+            or (login_number > 0 and login_number in live_login_numbers)
         )
+
+    def _is_publishable_party_account(
+        self,
+        all_accounts: AllAccounts,
+        index: int,
+        leader_index: int,
+        map_signature: tuple[int, int, int, int],
+        live_agent_ids: set[int],
+        live_login_numbers: set[int],
+    ) -> bool:
+        account = all_accounts.AccountData[index]
+        if not all_accounts._is_slot_active(index):
+            return False
+        if not account.IsAccount:
+            return False
+        if all_accounts._is_slot_isolated_from_viewer(index, leader_index):
+            return False
+        if not self._account_matches_map_signature(account, map_signature):
+            return False
+        return self._account_is_live_party_member(account, live_agent_ids, live_login_numbers)
 
     def _is_nonzero_vec2(self, vec: Vec2f) -> bool:
         return abs(float(vec.x)) > self.tuning.nonzero_epsilon or abs(float(vec.y)) > self.tuning.nonzero_epsilon
@@ -348,7 +450,7 @@ class FollowFormationPublisher:
         self,
         all_accounts: AllAccounts,
         leader_index: int,
-        current_map_signature: tuple[int, int, int, int, int],
+        current_map_signature: tuple[int, int, int, int],
         leader_x: float,
         leader_y: float,
     ) -> None:
@@ -469,6 +571,9 @@ class FollowFormationPublisher:
         all_accounts: AllAccounts,
         leader_index: int,
         leader_account: AccountStruct,
+        map_signature: tuple[int, int, int, int],
+        live_agent_ids: set[int],
+        live_login_numbers: set[int],
     ) -> bool:
         from ..settings import Settings
 
@@ -479,11 +584,16 @@ class FollowFormationPublisher:
             return bool(getattr(leader_account, "InAggro", False))
 
         for index in range(self.shared_memory_manager.max_num_players):
+            if not self._is_publishable_party_account(
+                all_accounts,
+                index,
+                leader_index,
+                map_signature,
+                live_agent_ids,
+                live_login_numbers,
+            ):
+                continue
             account = all_accounts.AccountData[index]
-            if not (account.IsSlotActive and account.IsAccount) or all_accounts._is_slot_isolated_from_viewer(index, leader_index):
-                continue
-            if not self._same_party_and_map(leader_account, account):
-                continue
             if bool(getattr(account, "InAggro", False)):
                 return True
         return False
@@ -681,12 +791,14 @@ class FollowFormationPublisher:
         leader_zplane = int(Agent.GetZPlane(leader_agent_id))
         leader_facing = Agent.GetRotationAngle(leader_agent_id)
 
+        # Follow's map identity must stay stable when only party membership
+        # metadata changes during a reconnect. Read it from the live client and
+        # deliberately exclude PartyID.
         current_map_signature = (
-            self._as_int(leader_account.AgentData.Map.MapID),
-            self._as_int(leader_account.AgentData.Map.Region),
-            self._as_int(leader_account.AgentData.Map.District),
-            self._as_int(leader_account.AgentData.Map.Language),
-            self._as_int(leader_account.AgentPartyData.PartyID),
+            self._as_int(Map.GetMapID()),
+            self._as_int(Map.GetRegion()[0]),
+            self._as_int(Map.GetDistrict()),
+            self._as_int(Map.GetLanguage()[0]),
         )
         if self.state.map_signature != current_map_signature:
             self._handle_map_signature_change(
@@ -704,7 +816,16 @@ class FollowFormationPublisher:
             if Utils.Distance((leader_x, leader_y), (entry_x, entry_y)) > self.tuning.leader_move_release_distance:
                 self.state.hold_until_leader_moves = False
 
-        leader_in_combat = self._is_combat_active_for_mode(all_accounts, leader_index, leader_account)
+        live_party_agent_ids, live_party_login_numbers = self._get_live_party_identity()
+        live_positions_by_agent_id, live_positions_by_login_number = self._get_live_party_position_maps()
+        leader_in_combat = self._is_combat_active_for_mode(
+            all_accounts,
+            leader_index,
+            leader_account,
+            current_map_signature,
+            live_party_agent_ids,
+            live_party_login_numbers,
+        )
         if not force:
             if leader_in_combat:
                 if not self.combat_publish_timer.IsExpired():
@@ -727,21 +848,35 @@ class FollowFormationPublisher:
         )
         party_positions: list[tuple[float, float]] = []
         for index in range(self.shared_memory_manager.max_num_players):
+            if not self._is_publishable_party_account(
+                all_accounts,
+                index,
+                leader_index,
+                current_map_signature,
+                live_party_agent_ids,
+                live_party_login_numbers,
+            ):
+                continue
             account = all_accounts.AccountData[index]
-            if not (account.IsSlotActive and account.IsAccount) or all_accounts._is_slot_isolated_from_viewer(index, leader_index):
-                continue
-            if not self._same_party_and_map(leader_account, account):
-                continue
             party_positions.append((float(account.AgentData.Pos.x), float(account.AgentData.Pos.y)))
 
         for index in range(self.shared_memory_manager.max_num_players):
+            if not self._is_publishable_party_account(
+                all_accounts,
+                index,
+                leader_index,
+                current_map_signature,
+                live_party_agent_ids,
+                live_party_login_numbers,
+            ):
+                continue
             account: AccountStruct = all_accounts.AccountData[index]
-            if not (account.IsSlotActive and account.IsAccount) or all_accounts._is_slot_isolated_from_viewer(index, leader_index):
-                continue
-            if not self._same_party_and_map(leader_account, account):
-                continue
 
-            party_pos = int(account.AgentPartyData.PartyPosition)
+            party_pos = self._resolve_party_position(
+                account,
+                live_positions_by_agent_id,
+                live_positions_by_login_number,
+            )
             options: HeroAIOptionStruct = all_accounts.HeroAIOptions[index]
 
             if party_pos <= 0:
