@@ -16,7 +16,6 @@ _4_deldrimorwarcamp_to_camprankor_segments = [
     {
         "map_id": explorable_name_to_id["Grenth's Footprint"],
         "path": [
-            (-2835.64, -4288.15),
             (-2898.59, -3784.91),
             (-2969, -3283.09),
             (-2968.54, -2776.19),
@@ -74,7 +73,6 @@ _4_deldrimorwarcamp_to_camprankor_segments = [
     {
         "map_id": explorable_name_to_id["Snake Dance"],
         "path": [
-            (7571.86, -2955.53),
             (7106.27, -2760.61),
             (6632.1, -2587.5),
             (6151.33, -2434.9),

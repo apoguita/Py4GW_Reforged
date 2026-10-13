@@ -17,7 +17,6 @@ _9_thegranitecitadel_to_copperhammermines_segments = [
     {
         "map_id": explorable_name_to_id["Spearhead Peak"],
         "path": [
-            (-11514.46, 15385.34),
             (-11496.9, 14881.48),
             (-11556.95, 14382.22),
             (-11658.1, 13890.26),
