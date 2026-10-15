@@ -233,6 +233,30 @@ class CombatClass:
                                ]
         
         self.drunken_master = GLOBAL_CACHE.Skill.GetID("Drunken_Master")
+        self.pious_renewal = GLOBAL_CACHE.Skill.GetID("Pious_Renewal")
+        self.pious_teardown_skill_ids = {
+            skill_id
+            for skill_id in (
+                GLOBAL_CACHE.Skill.GetID(name)
+                for name in (
+                    "Eremites_Attack",
+                    "Irresistible_Sweep",
+                    "Irresistible_Sweep_PvP",
+                    "Pious_Assault",
+                    "Pious_Assault_PvP",
+                    "Reapers_Sweep",
+                    "Rending_Sweep",
+                    "Twin_Moon_Sweep",
+                    "Twin_Moon_Sweep_PvP",
+                    "Wearying_Strike",
+                    "Wounding_Strike",
+                    "Wounding_Strike_PvP",
+                    "Pious_Fury",
+                    "Pious_Fury_PvP",
+                )
+            )
+            if skill_id
+        }
         self.alcohol_skills = [
             self.drunken_master,
             GLOBAL_CACHE.Skill.GetID("Dwarven_Stability"),
@@ -1589,6 +1613,62 @@ class CombatClass:
 
         return skill_id in self.active_spirit_buff_skill_ids
 
+    def _has_pious_renewal_bar(self) -> bool:
+        return bool(self.pious_renewal) and any(
+            skill.skill_id == self.pious_renewal for skill in self.skills
+        )
+
+    def _newest_dervish_enchantment(self) -> int | None:
+        """Return the last-applied Dervish enchantment, or None if order is unknown."""
+        try:
+            effects = GLOBAL_CACHE.Effects.GetEffects(Player.GetAgentID())
+            if effects is None:
+                return None
+
+            newest_skill_id = 0
+            newest_timestamp = -1
+            ambiguous = False
+            invalid_timestamp = False
+            for effect in effects:
+                skill_id = int(effect.skill_id)
+                _, skill_type = GLOBAL_CACHE.Skill.GetType(skill_id)
+                _, profession = GLOBAL_CACHE.Skill.GetProfession(skill_id)
+                if skill_type != "Enchantment" or profession != "Dervish":
+                    continue
+
+                duration = float(getattr(effect, "duration", 0.0) or 0.0)
+                time_elapsed = int(getattr(effect, "time_elapsed", 0) or 0)
+                if duration > 0.0 and time_elapsed >= int(duration * 1000.0):
+                    continue
+
+                timestamp = int(effect.timestamp)
+                if timestamp <= 0:
+                    invalid_timestamp = True
+                    continue
+                if timestamp > newest_timestamp:
+                    newest_skill_id = skill_id
+                    newest_timestamp = timestamp
+                    ambiguous = False
+                elif timestamp == newest_timestamp:
+                    ambiguous = True
+
+            return None if ambiguous or invalid_timestamp else newest_skill_id
+        except (AttributeError, TypeError, ValueError):
+            return None
+
+    def _can_refresh_pious_renewal(self, skill_id: int) -> bool:
+        if skill_id != self.pious_renewal or not self._has_pious_renewal_bar():
+            return False
+        newest_enchantment = self._newest_dervish_enchantment()
+        return newest_enchantment not in (None, 0, self.pious_renewal)
+
+    def _can_teardown_pious_renewal(self, skill_id: int) -> bool:
+        return (
+            skill_id in self.pious_teardown_skill_ids
+            and self._has_pious_renewal_bar()
+            and self._newest_dervish_enchantment() == self.pious_renewal
+        )
+
     def IsReadyToCast(self, slot: int) -> tuple[bool, int]:
 
         #return False, 0 
@@ -1730,6 +1810,7 @@ class CombatClass:
         )
         if (
             target_allegiance != Skilltarget.NonWeaponSpelledAlly.value
+            and not self._can_refresh_pious_renewal(skill_id)
             and self.HasEffect(v_target, skill_id, exact_weapon_spell=exact_weapon_spell)
         ):
             self.in_casting_routine = False
@@ -1739,6 +1820,14 @@ class CombatClass:
             if self.HasEffect(v_target, self.blood_is_power) or self.HasEffect(v_target, self.blood_ritual):
                 self.in_casting_routine = False
                 return False, v_target
+
+        if (
+            skill_id in self.pious_teardown_skill_ids
+            and self._has_pious_renewal_bar()
+            and not self._can_teardown_pious_renewal(skill_id)
+        ):
+            self.in_casting_routine = False
+            return False, v_target
 
         # Check if the skill has the required conditions
         if not self.AreCastConditionsMet(slot, v_target):
@@ -1906,7 +1995,11 @@ class CombatClass:
 
             skill_id = self.skills[slot].skill_id
 
-            if ooc and not self.IsOOCSkill(slot):
+            if (
+                ooc
+                and not self.IsOOCSkill(slot)
+                and not self._can_teardown_pious_renewal(skill_id)
+            ):
                 continue
 
             is_ready_to_cast, target_agent_id = self.IsReadyToCast(slot)
@@ -2131,6 +2224,14 @@ class CombatClass:
 
         skill_id = self.skills[slot].skill_id
         self.SetSkillPointer(slot)
+
+        if (
+            skill_id in self.pious_teardown_skill_ids
+            and self._has_pious_renewal_bar()
+            and not self._can_teardown_pious_renewal(skill_id)
+        ):
+            self.ResetSkillPointer()
+            return False
         
         self.in_casting_routine = True
         self.aftercast = 250
