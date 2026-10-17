@@ -177,6 +177,7 @@ _dungeon_party = DungeonPartyConfig(_settings_ini)
 _settings_loaded = False
 
 _use_hard_mode = True
+_run_lowcost = False
 _restock_conset = True
 _activate_conset = True
 _restock_pcons = True
@@ -347,7 +348,7 @@ botting_tree: BottingTree | None = None
 
 def _load_settings() -> None:
     global _settings_loaded
-    global _use_hard_mode, _restock_conset, _activate_conset
+    global _use_hard_mode, _run_lowcost, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _restock_morale_cons, _activate_morale_cons, _use_summoning_stone
     global _restock_quantities
     global _inventory_maintenance_enabled
@@ -360,6 +361,7 @@ def _load_settings() -> None:
         return
 
     _use_hard_mode = _settings_ini.get_bool(_SETTINGS_SECTION, "HardMode", True)
+    _run_lowcost = _settings_ini.get_bool(_SETTINGS_SECTION, "RunLowcost", False)
     _restock_conset = _settings_ini.get_bool(_SETTINGS_SECTION, "RestockConset", True)
     _activate_conset = _settings_ini.get_bool(_SETTINGS_SECTION, "ActivateConset", True)
     _restock_pcons = _settings_ini.get_bool(_SETTINGS_SECTION, "RestockPcons", True)
@@ -382,6 +384,7 @@ def _load_settings() -> None:
 
 def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, "HardMode", _use_hard_mode)
+    _settings_ini.set(_SETTINGS_SECTION, "RunLowcost", _run_lowcost)
     _settings_ini.set(_SETTINGS_SECTION, "RestockConset", _restock_conset)
     _settings_ini.set(_SETTINGS_SECTION, "ActivateConset", _activate_conset)
     _settings_ini.set(_SETTINGS_SECTION, "RestockPcons", _restock_pcons)
@@ -507,12 +510,30 @@ def _consumables_allowed() -> bool:
     )
 
 
+def _allow_conset_pcons_on_current_floor() -> bool:
+    """In lowcost mode, keep consets and personal PCons for Shards Level 3.
+
+    Called both by the Core conset upkeep and the direct multibox PCon
+    dispatcher. The normal run mode deliberately bypasses this map gate.
+    """
+    if not _run_lowcost:
+        return True
+    try:
+        return (
+            Map.IsMapReady()
+            and not Map.IsMapLoading()
+            and int(Map.GetMapID() or 0) == SOO_LEVEL_3
+        )
+    except Exception:
+        return False
+
+
 def _enabled_consumable_upkeeps() -> tuple[int, ...]:
     """Generic Core upkeep services. PCons use the direct dispatcher."""
     if not _runtime_consumables_enabled:
         return ()
     enabled: list[int] = []
-    if _activate_conset:
+    if _activate_conset and _allow_conset_pcons_on_current_floor():
         enabled.extend(int(model_id) for model_id in CONSET_UPKEEPS)
     return tuple(dict.fromkeys(enabled))
 
@@ -723,9 +744,14 @@ def _tick_direct_pcon_upkeep() -> None:
     except Exception:
         return
 
-    enabled_models = ((PCON_UPKEEPS if _activate_pcons else ()) +
+    # Lowcost applies only to consets and personal PCons. Morale consumables
+    # retain their own separate Config switch on every dungeon level.
+    pcons_enabled_here = _activate_pcons and _allow_conset_pcons_on_current_floor()
+    enabled_models = ((PCON_UPKEEPS if pcons_enabled_here else ()) +
                       (MORALE_CON_MODEL_IDS if _activate_morale_cons else ()))
     if not enabled_models:
+        if _pcon_direct_runtime_logged or _pcon_direct_last_dispatch_ms:
+            _reset_direct_pcon_runtime()
         return
 
     now_ms = int(time.monotonic() * 1000.0)
@@ -743,7 +769,7 @@ def _tick_direct_pcon_upkeep() -> None:
         _pcon_direct_last_recipient_signature = recipient_signature
         PySystem.Console.Log(
             MODULE_NAME,
-            f"[Consumables] Direct multibox upkeep: pcons={len(PCON_UPKEEPS) if _activate_pcons else 0}, "
+            f"[Consumables] Direct multibox upkeep: pcons={len(PCON_UPKEEPS) if pcons_enabled_here else 0}, "
             f"morale_cons={len(MORALE_CON_MODEL_IDS) if _activate_morale_cons else 0}, accounts={len(recipients)}.",
             PySystem.Console.MessageType.Info,
         )
@@ -871,7 +897,7 @@ def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
 def _draw_run_config() -> None:
     import PyImGui
 
-    global _use_hard_mode
+    global _use_hard_mode, _run_lowcost
     global _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons
     global _restock_morale_cons, _activate_morale_cons
@@ -893,6 +919,18 @@ def _draw_run_config() -> None:
     if value != _use_hard_mode:
         _use_hard_mode = value
         changed = True
+
+    value = PyImGui.checkbox('Run Lowcost', _run_lowcost)
+    if value != _run_lowcost:
+        _run_lowcost = value
+        changed = True
+        upkeep_changed = True
+        _reset_direct_pcon_runtime()
+    PyImGui.text_wrapped(
+        'When enabled, consets and personal PCons are used only on Level 3. '
+        'Their normal activation switches still apply. Restock, morale '
+        'consumables and summoning stones are unchanged.'
+    )
 
     PyImGui.separator()
     PyImGui.text("Conset")
