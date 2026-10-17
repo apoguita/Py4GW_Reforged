@@ -4475,7 +4475,7 @@ FARMS: tuple[FarmDefinition, ...] = (
         flow='direct',
         outpost_map_id=14,
         farm_map_id=54,
-        exit_point=(-4212.0, 26608.0),
+        exit_point=(-5136,27966),
         farm_path=(
             (-2252.0, -4813.0),
             (-6.0, -2627.0),

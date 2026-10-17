@@ -15,14 +15,6 @@ class RangerSkills:
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()
-        skill.SkillID = GLOBAL_CACHE.Skill.GetID("Antidote_Signet")
-        skill.SkillType = SkillType.Signet.value
-        skill.TargetAllegiance = Skilltarget.Self.value
-        skill.Nature = SkillNature.CustomA.value
-        skill.Conditions.HasBlindness = True
-        skill_data[skill.SkillID] = skill
-
-        skill = CustomSkill()
         skill.SkillID = GLOBAL_CACHE.Skill.GetID("Distracting_Shot")
         skill.SkillType = SkillType.Attack.value
         skill.TargetAllegiance = Skilltarget.EnemyCasting.value
@@ -1041,7 +1033,10 @@ class RangerSkills:
         skill.SkillType = SkillType.Signet.value
         skill.TargetAllegiance = Skilltarget.Self.value
         skill.Nature = SkillNature.Condi_Cleanse.value
-        skill.Conditions.HasCondition = True
+        # Antidote Signet removes Poison, Disease and Blindness, plus one
+        # additional condition. A dedicated UniqueProperty check in combat.py
+        # therefore allows it to be used for any condition on the caster.
+        skill.Conditions.UniqueProperty = True
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()

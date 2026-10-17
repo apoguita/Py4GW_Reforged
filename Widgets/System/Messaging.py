@@ -1142,7 +1142,40 @@ def InteractWithTarget(index: int, message: SharedMessageStruct):
         DisableHeroAIOptions(message.ReceiverEmail)
         yield from Routines.Yield.wait(100)
         x, y = Agent.GetXY(target)
-        yield from Routines.Yield.Movement.FollowPath([(x, y)])
+        if Agent.IsGadget(target):
+            # A gadget is a solid collision object. Global proactive steering
+            # correctly avoids its center, but the default FollowPath tolerance
+            # (150 units) can then never be reached. Approach normally until
+            # near the gadget, then bypass only that *last* movement command.
+            # The follower's regular avoidance stays enabled everywhere else.
+            interaction_range = float(Range.Nearby.value)
+            approach_tolerance = interaction_range + 90.0
+            if Utils.Distance(Player.GetXY(), (x, y)) > approach_tolerance:
+                yield from Routines.Yield.Movement.FollowPath(
+                    [(x, y)], tolerance=approach_tolerance, timeout=12_000
+                )
+            close_deadline = time.monotonic() + 4.0
+            while (Agent.IsValid(target)
+                   and Utils.Distance(Player.GetXY(), (x, y)) > interaction_range - 15.0
+                   and time.monotonic() < close_deadline):
+                # This direct final approach stops proactive avoidance from
+                # steering endlessly around the *object being interacted with*.
+                Player.Move(float(x), float(y), avoid_obstacles=False)
+                yield from Routines.Yield.wait(250)
+            # Cancel any outstanding detour / move before clicking the gadget.
+            stop_x, stop_y = Player.GetXY()
+            Player.Move(float(stop_x), float(stop_y), avoid_obstacles=False)
+            distance = Utils.Distance(Player.GetXY(), (x, y))
+            if distance > interaction_range:
+                ConsoleLog(
+                    MODULE_NAME,
+                    f"Gadget interaction: target {target} still {distance:.0f} units away; trying interact anyway.",
+                    Console.MessageType.Warning,
+                    log=True,
+                )
+        else:
+            # NPC/dialogue interactions keep the existing behavior.
+            yield from Routines.Yield.Movement.FollowPath([(x, y)])
         yield from Routines.Yield.wait(100)
         yield from Routines.Yield.Player.InteractAgent(target)
 
@@ -1153,6 +1186,62 @@ def InteractWithTarget(index: int, message: SharedMessageStruct):
 
 
 # endregion
+def _approach_multibox_dialog_target(target: int):
+    """Move to a dialog NPC while avoiding everything except the final target.
+
+    The generic Player.Move steering may treat a dialog NPC as a collision
+    obstacle. FollowPath must not insist on reaching the NPC's exact center;
+    bypass avoidance only for the short final approach, then stop before
+    interacting. This is shared by dialog and blessing commands.
+    """
+    if not Agent.IsValid(target):
+        ConsoleLog(MODULE_NAME, f"Dialog target {target} is no longer valid.", Console.MessageType.Warning, True)
+        return False
+    nearby = float(Range.Nearby.value)
+    approach_tolerance = nearby + 90.0
+    x, y = Agent.GetXY(target)
+    if Utils.Distance(Player.GetXY(), (x, y)) > approach_tolerance:
+        yield from Routines.Yield.Movement.FollowPath(
+            [(x, y)], tolerance=approach_tolerance, timeout=18_000
+        )
+
+    x, y = Agent.GetXY(target)
+    distance = Utils.Distance(Player.GetXY(), (x, y))
+    if distance > approach_tolerance + 60.0:
+        ConsoleLog(
+            MODULE_NAME,
+            f"Dialog target {target}: approach failed, distance={distance:.0f}; skipping dialog.",
+            Console.MessageType.Warning, True,
+        )
+        return False
+
+    deadline = time.monotonic() + 4.0
+    while Agent.IsValid(target) and time.monotonic() < deadline:
+        x, y = Agent.GetXY(target)
+        if Utils.Distance(Player.GetXY(), (x, y)) <= nearby - 15.0:
+            break
+        # Do not disable global avoidance during the route, only here.
+        Player.Move(float(x), float(y), avoid_obstacles=False)
+        yield from Routines.Yield.wait(250)
+
+    # Cancel the current direct movement before interaction.
+    x0, y0 = Player.GetXY()
+    Player.Move(float(x0), float(y0), avoid_obstacles=False)
+    if not Agent.IsValid(target):
+        ConsoleLog(MODULE_NAME, f"Dialog target {target} disappeared.", Console.MessageType.Warning, True)
+        return False
+    x, y = Agent.GetXY(target)
+    distance = Utils.Distance(Player.GetXY(), (x, y))
+    if distance > nearby:
+        ConsoleLog(
+            MODULE_NAME,
+            f"Dialog target {target}: still {distance:.0f} units away (nearby={nearby:.0f}); skipping dialog.",
+            Console.MessageType.Warning, True,
+        )
+        return False
+    return True
+
+
 # region TakeDialogWithTarget
 def TakeDialogWithTarget(index: int, message: SharedMessageStruct):
     ConsoleLog(MODULE_NAME, f"Processing TakeDialogWithTarget message: {message}", Console.MessageType.Info, False)
@@ -1172,8 +1261,8 @@ def TakeDialogWithTarget(index: int, message: SharedMessageStruct):
     try:
         DisableHeroAIOptions(message.ReceiverEmail)
         yield from Routines.Yield.wait(100)
-        x, y = Agent.GetXY(target)
-        yield from Routines.Yield.Movement.FollowPath([(x, y)])
+        if not (yield from _approach_multibox_dialog_target(target)):
+            return
         yield from Routines.Yield.wait(100)
         yield from Routines.Yield.Player.InteractAgent(target)
         # Deprecated legacy transport name; the payload now represents the
@@ -1207,8 +1296,8 @@ def SendDialogToTarget(index: int, message: SharedMessageStruct):
     try:
         DisableHeroAIOptions(message.ReceiverEmail)
         yield from Routines.Yield.wait(100)
-        x, y = Agent.GetXY(target)
-        yield from Routines.Yield.Movement.FollowPath([(x, y)])
+        if not (yield from _approach_multibox_dialog_target(target)):
+            return
         yield from Routines.Yield.wait(100)
         yield from Routines.Yield.Player.InteractAgent(target)
         yield from Routines.Yield.wait(500)
@@ -1287,8 +1376,8 @@ def GetBlessing(index: int, message: SharedMessageStruct):
     try:
         DisableHeroAIOptions(message.ReceiverEmail)
         yield from Routines.Yield.wait(100)
-        x, y = Agent.GetXY(target)
-        yield from Routines.Yield.Movement.FollowPath([(x, y)])
+        if not (yield from _approach_multibox_dialog_target(target)):
+            return
         yield from Routines.Yield.wait(100)
         yield from Routines.Yield.Player.InteractAgent(target)
         yield from Routines.Yield.wait(250)
@@ -3074,6 +3163,31 @@ def RestockSummoningStones(index: int, message: SharedMessageStruct):
 # endregion
 
 
+#region RestockItem
+def RestockItem(index: int, message: SharedMessageStruct):
+    """Restock one inventory model to a per-account target quantity."""
+    GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
+    model_id = max(0, int(message.Params[0]))
+    desired_quantity = max(0, int(message.Params[1]))
+    allow_missing = bool(int(message.Params[2]))
+
+    if model_id > 0 and desired_quantity > 0:
+        yield from Routines.Yield.Items.RestockItems(
+            model_id,
+            desired_quantity,
+            allow_missing=allow_missing,
+        )
+
+    GLOBAL_CACHE.ShMem.MarkMessageAsFinished(message.ReceiverEmail, index)
+    ConsoleLog(
+        MODULE_NAME,
+        f"RestockItem processed: model={model_id}, target={desired_quantity}.",
+        Console.MessageType.Info,
+        False,
+    )
+# endregion
+
+
 #region WithdrawGold
 def WithdrawGold(index: int, message: SharedMessageStruct):
     GLOBAL_CACHE.ShMem.MarkMessageAsRunning(message.ReceiverEmail, index)
@@ -3641,10 +3755,22 @@ def ProcessMessages():
             GLOBAL_CACHE.Coroutines.append(RestockAllPcons(index, message))
         case SharedCommandType.RestockConset:
             GLOBAL_CACHE.Coroutines.append(RestockConset(index, message))
+        case SharedCommandType.SetResurrectionScroll:
+            # The generic fallback previously consumed this command without
+            # applying it, causing the native HeroAI button to toggle only local.
+            try:
+                from Py4GWCoreLib.HeroAI import resurrection_scroll
+                resurrection_scroll.apply_state_command(message)
+            except Exception as exc:
+                ConsoleLog(MODULE_NAME, f"SetResurrectionScroll failed: {exc}", Console.MessageType.Error, False)
+            finally:
+                GLOBAL_CACHE.ShMem.MarkMessageAsFinished(account_email, index)
         case SharedCommandType.RestockResurrectionScroll:
             GLOBAL_CACHE.Coroutines.append(RestockResurrectionScroll(index, message))
         case SharedCommandType.RestockSummoningStones:
             GLOBAL_CACHE.Coroutines.append(RestockSummoningStones(index, message))
+        case SharedCommandType.RestockItem:
+            GLOBAL_CACHE.Coroutines.append(RestockItem(index, message))
         case SharedCommandType.WithdrawGold:
             GLOBAL_CACHE.Coroutines.append(WithdrawGold(index, message))
         case SharedCommandType.InventoryQuery:

@@ -37,354 +37,6 @@ _TARGET_REACHED_FARM_KEY = ""
 _INVENTORY_QUERY_TIMEOUT_MS = 10_000
 _INVENTORY_QUERY_POLL_MS = 100
 
-# Nicholas loot is orchestrated directly from NicoBase while a farm waypoint
-# is running. The leader interacts with wanted loot directly; followers receive
-# SharedCommandType.PickUpLoot.
-_NICHOLAS_LOOT_ORCHESTRATOR_STATE: dict[str, dict[str, object]] = {}
-
-
-def _selected_nicholas_drop_agents(farm: FarmDefinition) -> list[int]:
-    """Return raw ground agents matching the selected Nicholas model."""
-    try:
-        from Py4GWCoreLib.Item import Item
-    except Exception:
-        return []
-
-    wanted_model_id = int(farm.model_id)
-    matches: list[int] = []
-
-    try:
-        item_agents = AgentArray.GetItemArray()
-    except Exception:
-        return matches
-
-    for raw_agent_id in item_agents:
-        try:
-            agent_id = int(raw_agent_id)
-            item_agent = Agent.GetItemAgentByID(agent_id)
-            if item_agent is None:
-                continue
-            item_id = int(item_agent.item_id)
-            if item_id <= 0:
-                continue
-            if int(Item.GetModelID(item_id)) == wanted_model_id:
-                matches.append(agent_id)
-        except Exception:
-            continue
-
-    return matches
-
-
-def _dispatch_nicholas_pickup_to_followers(
-    farm: FarmDefinition,
-    drop_agent_id: int,
-    *,
-    retry_after_ms: int = 5000,
-) -> bool:
-    """
-    Dispatch follower pickup once per ground drop.
-
-    The same ``drop_agent_id`` is not re-dispatched on every tree tick. If the
-    item is still present after ``retry_after_ms``, one retry is allowed.
-    """
-    key = str(farm.key)
-    state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
-        key,
-        {
-            "local_agent_id": 0,
-            "remote_drops": {},
-        },
-    )
-
-    remote_drops = state.setdefault("remote_drops", {})
-    if not isinstance(remote_drops, dict):
-        remote_drops = {}
-        state["remote_drops"] = remote_drops
-
-    agent_id = int(drop_agent_id)
-    now_ms = int(time.monotonic() * 1000.0)
-
-    drop_state = remote_drops.setdefault(
-        agent_id,
-        {
-            "last_dispatch_ms": 0,
-            "dispatch_count": 0,
-        },
-    )
-
-    last_dispatch_ms = int(drop_state.get("last_dispatch_ms", 0) or 0)
-    dispatch_count = int(drop_state.get("dispatch_count", 0) or 0)
-
-    should_dispatch = (
-        dispatch_count == 0
-        or (
-            dispatch_count == 1
-            and now_ms - last_dispatch_ms >= int(retry_after_ms)
-        )
-    )
-    if not should_dispatch:
-        return False
-
-    sender_email = str(Player.GetAccountEmail() or "").strip()
-    if not sender_email:
-        return False
-
-    recipients: list[str] = []
-
-    try:
-        accounts = GLOBAL_CACHE.ShMem.GetAllAccountData() or []
-    except Exception:
-        accounts = []
-
-    for account in accounts:
-        try:
-            receiver_email = str(getattr(account, "AccountEmail", "") or "").strip()
-            if not receiver_email or receiver_email == sender_email:
-                continue
-            if not bool(getattr(account, "IsAccount", False)):
-                continue
-
-            account_map = int(
-                getattr(
-                    getattr(getattr(account, "AgentData", None), "Map", None),
-                    "MapID",
-                    0,
-                )
-                or 0
-            )
-            if account_map != int(farm.farm_map_id):
-                continue
-
-            message_index = int(
-                GLOBAL_CACHE.ShMem.SendMessage(
-                    sender_email,
-                    receiver_email,
-                    SharedCommandType.PickUpLoot,
-                    (0, 0, 0, 0),
-                )
-            )
-            if message_index >= 0:
-                recipients.append(receiver_email)
-        except Exception:
-            continue
-
-    if not recipients:
-        return False
-
-    drop_state["last_dispatch_ms"] = now_ms
-    drop_state["dispatch_count"] = dispatch_count + 1
-
-    if dispatch_count == 0:
-        PySystem.Console.Log(
-            MODULE_NAME,
-            (
-                f"Nicholas loot: {farm.name} pickup dispatched to "
-                f"{len(recipients)} follower(s)."
-            ),
-            PySystem.Console.MessageType.Info,
-        )
-    else:
-        PySystem.Console.Log(
-            MODULE_NAME,
-            (
-                f"Nicholas loot: {farm.name} pickup retry dispatched to "
-                f"{len(recipients)} follower(s) after {int(retry_after_ms / 1000)}s."
-            ),
-            PySystem.Console.MessageType.Info,
-        )
-
-    return True
-
-
-def _cleanup_nicholas_remote_drop_state(
-    farm: FarmDefinition,
-    visible_agent_ids: set[int],
-) -> None:
-    """Forget follower-dispatch state for drops no longer visible."""
-    state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
-        str(farm.key),
-        {
-            "local_agent_id": 0,
-            "remote_drops": {},
-        },
-    )
-
-    remote_drops = state.setdefault("remote_drops", {})
-    if not isinstance(remote_drops, dict):
-        state["remote_drops"] = {}
-        return
-
-    for agent_id in list(remote_drops):
-        if int(agent_id) not in visible_agent_ids:
-            remote_drops.pop(agent_id, None)
-
-
-
-def _priority_local_nicholas_loot_tick(
-    farm: FarmDefinition,
-    _node: BehaviorTree.Node,
-) -> BehaviorTree.NodeState:
-    """
-    Directly pick the selected Nicholas trophy on the BottingTree leader.
-
-    This uses the same local LootFilters authority proven by the diagnostics,
-    but does NOT go through HeroAI or a self-addressed PickUpLoot message.
-    Returning RUNNING gives the local pickup priority over the farm waypoint.
-    """
-    try:
-        if int(Map.GetMapID()) != int(farm.farm_map_id):
-            return BehaviorTree.NodeState.FAILURE
-
-        from Py4GWCoreLib.Item import Item
-        from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
-
-        wanted_model_id = int(farm.model_id)
-        loot_array = LootFilters().GetLootArray(Range.Earshot.value)
-
-        selected_agent_id = 0
-        for raw_agent_id in loot_array:
-            try:
-                agent_id = int(raw_agent_id)
-                item_agent = Agent.GetItemAgentByID(agent_id)
-                if item_agent is None:
-                    continue
-                item_id = int(item_agent.item_id)
-                if item_id <= 0:
-                    continue
-                if int(Item.GetModelID(item_id)) != wanted_model_id:
-                    continue
-                selected_agent_id = agent_id
-                break
-            except Exception:
-                continue
-
-        if selected_agent_id <= 0:
-            state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
-                str(farm.key),
-                {"local_agent_id": 0, "remote_drops": {}},
-            )
-            state["local_agent_id"] = 0
-            return BehaviorTree.NodeState.FAILURE
-
-        state = _NICHOLAS_LOOT_ORCHESTRATOR_STATE.setdefault(
-            str(farm.key),
-            {"local_agent_id": 0, "remote_drops": {}},
-        )
-
-        if int(state.get("local_agent_id", 0) or 0) != selected_agent_id:
-            state["local_agent_id"] = selected_agent_id
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"Nicholas loot: {farm.name} pickup started on leader.",
-                PySystem.Console.MessageType.Info,
-            )
-
-        # This is the same native interaction used by RoutinesBT.Items.LootItems.
-        # Guild Wars handles the approach to an interactable item.
-        Player.ChangeTarget(selected_agent_id)
-        Player.Interact(selected_agent_id, False)
-
-        return BehaviorTree.NodeState.RUNNING
-
-    except Exception as exc:
-        PySystem.Console.Log(
-            MODULE_NAME,
-            f"Nicholas direct local loot failed for {farm.name}: {exc}",
-            PySystem.Console.MessageType.Warning,
-        )
-        return BehaviorTree.NodeState.FAILURE
-
-
-def _nicholas_remote_loot_monitor_tick(
-    farm: FarmDefinition,
-    _node: BehaviorTree.Node,
-) -> BehaviorTree.NodeState:
-    """
-    Dispatch follower pickup once per visible selected trophy.
-
-    A still-visible drop gets at most one retry after five seconds. Removed
-    drops are forgotten so a future drop dispatches immediately.
-    """
-    try:
-        if int(Map.GetMapID()) != int(farm.farm_map_id):
-            _cleanup_nicholas_remote_drop_state(farm, set())
-            return BehaviorTree.NodeState.SUCCESS
-
-        visible_agent_ids = {
-            int(agent_id)
-            for agent_id in _selected_nicholas_drop_agents(farm)
-        }
-
-        _cleanup_nicholas_remote_drop_state(farm, visible_agent_ids)
-
-        for agent_id in visible_agent_ids:
-            _dispatch_nicholas_pickup_to_followers(
-                farm,
-                agent_id,
-                retry_after_ms=5000,
-            )
-
-    except Exception as exc:
-        PySystem.Console.Log(
-            MODULE_NAME,
-            f"Nicholas follower loot dispatch failed for {farm.name}: {exc}",
-            PySystem.Console.MessageType.Warning,
-        )
-
-    return BehaviorTree.NodeState.SUCCESS
-
-
-
-def _with_nicholas_loot_orchestrator(
-    farm: FarmDefinition,
-    child: BehaviorTree,
-    *,
-    name: str,
-) -> BehaviorTree:
-    """
-    Give the selected Nicholas trophy priority while a farm waypoint is active.
-
-    Leader:
-      LootFilters candidate -> direct Player.Interact -> resume farm.
-
-    Followers:
-      selected-model ground detection -> SharedCommandType.PickUpLoot.
-    """
-    local_priority = BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"{name} - Direct Nicholas Loot",
-            action_fn=lambda node: _priority_local_nicholas_loot_tick(farm, node),
-            aftercast_ms=0,
-        )
-    )
-
-    priority_child = BT.Selector(
-        name=f"{name} - Nicholas Loot Priority",
-        children=[
-            local_priority,
-            child,
-        ],
-    )
-
-    remote_monitor = BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"{name} - Follower Nicholas Loot Dispatch",
-            action_fn=lambda node: _nicholas_remote_loot_monitor_tick(farm, node),
-            aftercast_ms=0,
-        )
-    )
-
-    return BehaviorTree(
-        BehaviorTree.ParallelNode(
-            name=f"{name} - With Nicholas Loot",
-            children=[
-                priority_child,
-                remote_monitor,
-            ],
-        )
-    )
-
-
 def configure_tree(tree: BottingTree) -> BottingTree:
     """
     Common Nicholas runtime policy.
@@ -424,165 +76,17 @@ def disable_merchant_rules_all_accounts() -> BehaviorTree:
 
 
 
-def _add_farm_item_loot_local(farm: FarmDefinition) -> BehaviorTree:
-    """
-    Add the selected Nicholas model DIRECTLY to the new LIVE LootFilters system.
-
-    Do not use BT.AddModelToLootWhitelist here. Some Py4GW installations still
-    expose an older implementation backed by legacy LootConfig, while the
-    current HeroAI loot filter reads LootFilters(). This direct mutation makes
-    Nicholas use the exact same authority that _verify_farm_item_loot_live()
-    inspects immediately afterwards.
-    """
-    def _add(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        try:
-            from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
-
-            model_id = int(farm.model_id)
-            loot = LootFilters()
-            loot.add_model(model_id)
-
-            added = model_id in loot.live.added_model_ids
-
-            return (
-                BehaviorTree.NodeState.SUCCESS
-                if added
-                else BehaviorTree.NodeState.FAILURE
-            )
-
-        except Exception as exc:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"Direct LIVE loot add failed for {farm.name}: {exc}",
-                PySystem.Console.MessageType.Error,
-            )
-            return BehaviorTree.NodeState.FAILURE
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"Direct Live Loot Add - {farm.name}",
-            action_fn=_add,
-            aftercast_ms=50,
-        )
-    )
-
-
-def _verify_farm_item_loot_live(farm: FarmDefinition) -> BehaviorTree:
-    """
-    Verify the leader's LIVE LootFilters state for the selected Nicholas item.
-
-    Stable model additions normally survive map changes.  This check exists so
-    Nicholas does not silently continue farming when another LIVE loot rule
-    prevents the requested trophy from ever being offered to HeroAI.
-
-    We deliberately DO NOT override the user's blacklist/veto policy here.
-    Instead we fail with an explicit console message.
-    """
-    def _check(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        try:
-            from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller import LootFilters
-            from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.expected_types import expected_type
-
-            loot = LootFilters()
-            model_id = int(farm.model_id)
-            item_type = expected_type(model_id)
-
-            enabled = bool(loot.live.enabled)
-            added = model_id in loot.live.added_model_ids
-            model_blacklisted = model_id in loot.live.blacklist_model_ids
-            type_vetoed = (
-                item_type is not None
-                and int(item_type) in loot.live.blacklist_item_types
-            )
-
-            if not enabled:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        "Loot Filters master switch is OFF. "
-                        f"{farm.name} cannot be auto-looted."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            if model_blacklisted:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"{farm.name} [{model_id}] is model-blacklisted. "
-                        "The blacklist vetoes the Nicholas script whitelist."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            if type_vetoed:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"The item type for {farm.name} is vetoed in Loot Filters. "
-                        "Item-type vetoes beat script-added models."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            if not added:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        f"{farm.name} [{model_id}] is missing from the LIVE "
-                        "script-added model whitelist."
-                    ),
-                    PySystem.Console.MessageType.Error,
-                )
-                return BehaviorTree.NodeState.FAILURE
-
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"Nicholas loot enabled: {farm.name} [{model_id}].",
-                PySystem.Console.MessageType.Info,
-            )
-            return BehaviorTree.NodeState.SUCCESS
-
-        except Exception as exc:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                f"Could not verify live loot state for {farm.name}: {exc}",
-                PySystem.Console.MessageType.Error,
-            )
-            return BehaviorTree.NodeState.FAILURE
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"Verify Live Loot - {farm.name}",
-            action_fn=_check,
-            aftercast_ms=0,
-        )
-    )
-
-
 def whitelist_farm_item_all_accounts(farm: FarmDefinition) -> BehaviorTree:
-    """
-    Add the selected Nicholas trophy model to the LIVE loot whitelist.
+    """Add this farm's model to the standard LIVE loot whitelist on every client.
 
-    Leader:
-      - mutate LootFilters().live directly and verify it locally.
-
-    Followers:
-      - use the stock SharedCommandType.AddModelToLootWhitelist command (71).
-
-    This version deliberately does NOT depend on custom InventoryQuery extensions
-    in Messaging.py, so it is compatible with the original Messaging widget.
+    HeroAI/BottingTree remain responsible for ordinary automatic pickup. No
+    Nicholas-specific Player.Interact or follower PickUpLoot is needed.
     """
     model_id = int(farm.model_id)
-
     return BT.Sequence(
         name=f"Whitelist Farm Item - {farm.name}",
         children=[
-            _add_farm_item_loot_local(farm),
-
+            BT.AddModelToLootWhitelist(model_id),
             BTShared.SendAndWait(
                 command=SharedCommandType.AddModelToLootWhitelist,
                 params=(float(model_id), 0.0, 0.0, 0.0),
@@ -594,8 +98,6 @@ def whitelist_farm_item_all_accounts(farm: FarmDefinition) -> BehaviorTree:
                 log=False,
                 aftercast_ms=100,
             ),
-
-            _verify_farm_item_loot_live(farm),
         ],
     )
 
@@ -731,7 +233,7 @@ def _refresh_farm_runtime_after_entry(
     Prepare Nicholas loot after entering the farm map.
 
     Wait until every farming account has finished zoning, then push the selected
-    trophy model once. Pickup is handled by the Nicholas loot orchestrator.
+    trophy model to the standard loot whitelist on all accounts.
     """
     return _map_guarded_node(
         name=f"Prepare Farm Loot - {farm.name}",
@@ -958,8 +460,7 @@ def prepare_farm(
                         log=False,
                     ),
 
-                    # Party first: farm_party_accounts() can now identify every
-                    # farming client before we push/verify the LIVE loot model.
+                    # Party first: register the selected model on every farming client.
                     whitelist_farm_item_all_accounts(farm),
 
                     _mark_prepare_session_ready(tree, farm),
@@ -1911,7 +1412,6 @@ def _vanquish_point_steps(
     move_tolerance: float = 175.0,
     skip_if_in_maps: tuple[int, ...] = (),
     blackboard_skip_key: str = "",
-    loot_farm: FarmDefinition | None = None,
 ) -> list[tuple[str, Callable[[], BehaviorTree]]]:
     """Create one planner step per combat/farm waypoint."""
     steps: list[tuple[str, Callable[[], BehaviorTree]]] = []
@@ -1932,13 +1432,6 @@ def _vanquish_point_steps(
                 move_tolerance=move_tolerance,
                 log=False,
             )
-
-            if loot_farm is not None:
-                farm_node = _with_nicholas_loot_orchestrator(
-                    loot_farm,
-                    farm_node,
-                    name=name,
-                )
 
             node = _map_guarded_node(
                 name=name,
@@ -2207,13 +1700,6 @@ def _route_loop_action_steps(
                     move_tolerance=175.0,
                     log=False,
                 )
-
-                if expected_map_id == int(farm.farm_map_id):
-                    aggro_node = _with_nicholas_loot_orchestrator(
-                        farm,
-                        aggro_node,
-                        name=name,
-                    )
 
                 node = _map_guarded_node(
                     name=name,
@@ -2756,7 +2242,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
             )
         )
 
@@ -2832,7 +2317,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
             )
         )
 
@@ -2930,7 +2414,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
                 skip_if_in_maps=(farm.reset_map_id,),
             )
         )
@@ -2977,7 +2460,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
             )
         )
 
@@ -3031,7 +2513,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
             )
         )
 
@@ -3097,7 +2578,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
             )
         )
 
@@ -3185,7 +2665,6 @@ def build_execution_steps(
                 pause_on_combat=True,
                 flag_heroes_to_waypoint=False,
                 move_tolerance=175.0,
-                loot_farm=farm,
             )
         )
 

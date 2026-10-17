@@ -85,6 +85,9 @@ def _fail_log(source: str, message: str, message_type=Console.MessageType.Warnin
 
 DEFAULT_MOVE_TOLERANCE = 150.0
 
+# Set True to display only local-avoidance diagnostic messages.
+SHOW_AVOIDANCE_LOGS = False
+
 class BTMovement:
     """
     Public BT helper group for movement-first composite routines.
@@ -126,6 +129,11 @@ class BTMovement:
         waypoint_index: int | None
         paused_since_ms: int | None
         paused_total_ms: int
+        last_progress_ms: int | None
+        best_distance: float | None
+        last_avoidance_target: Point2D | None
+        best_avoidance_distance: float | None
+        planner_pause_epoch: int
 
     class _MoveState(TypedDict):
         path_gen: Any | None
@@ -485,8 +493,17 @@ class BTMovement:
                     return "nearby_enemy"
                 node.blackboard.pop("move_pause_nearby_enemy_id", None)
 
-            if pause_on_combat and bool(node.blackboard.get("COMBAT_ACTIVE", False)):
-                return "combat"
+            if pause_on_combat:
+                if bool(node.blackboard.get("COMBAT_ACTIVE", False)):
+                    return "combat"
+                # The HeroAI flag can briefly be False while the player is
+                # attacking or still in a combat stance. Use existing Agent
+                # APIs rather than treating a nearby idle enemy as combat.
+                player_id = int(Player.GetAgentID() or 0)
+                if player_id > 0 and (
+                    Agent.IsAttacking(player_id) or Agent.IsInCombatStance(player_id)
+                ):
+                    return "combat_stance"
             if bool(node.blackboard.get(pause_flag_key, False)):
                 return "external_pause"
             if Checks.Player.IsCasting():
@@ -520,7 +537,9 @@ class BTMovement:
                 if abs(move_x - last_x) <= 10 and abs(move_y - last_y) <= 10:
                     move_x += random.uniform(-10.0, 10.0)
                     move_y += random.uniform(-10.0, 10.0)
-            Player.Move(move_x, move_y)
+            # BT.Move already owns proactive waypoint steering. Do not let
+            # Player.Move's fallback controller fight BT's local avoidance.
+            Player.Move(move_x, move_y, avoid_obstacles=not avoid_obstacles)
             if flag_heroes_to_waypoint and Map.IsExplorable() and Party.IsPartyLeader():
                 flag_x, flag_y = flag_target or (target_x, target_y)
                 flag_waypoint = (float(flag_x), float(flag_y))
@@ -753,7 +772,7 @@ class BTMovement:
                 ):
                     node.blackboard["move_avoidance_ignored_target_id"] = agent_id
                     logged_ignored_target_ids = state["avoidance_logged_ignored_target_ids"]
-                    if log and agent_id not in logged_ignored_target_ids:
+                    if log and SHOW_AVOIDANCE_LOGS and agent_id not in logged_ignored_target_ids:
                         _log(
                             "Move",
                             (
@@ -844,7 +863,7 @@ class BTMovement:
                         now,
                         flag_target=waypoint,
                     )
-                    if log:
+                    if log and SHOW_AVOIDANCE_LOGS:
                         _log(
                             "Move",
                             f"Local path is clear after avoiding obstacle {previous_blocker_id}; resuming waypoint {waypoint}.",
@@ -862,6 +881,30 @@ class BTMovement:
                 preferred_side=int(state["avoidance_side"]),
                 is_walkable=_is_local_segment_walkable,
             )
+            if decision is None:
+                # Retry with relaxed *navmesh clearance*, not with unchecked movement.
+                # Some maps reject every detour at the standard clearance even when
+                # the player's own position is close to an obstacle boundary.
+                def _walkable_with_relaxed_margin(start: Point2D, end: Point2D) -> bool:
+                    from ...Pathing import AutoPathing
+                    mesh = AutoPathing().get_navmesh()
+                    if mesh is None:
+                        return True
+                    try:
+                        return bool(
+                            mesh.contains(end[0], end[1], margin=5.0)
+                            and mesh.has_line_of_sight(start, end, margin=5.0, step_dist=50.0)
+                        )
+                    except Exception:
+                        return False
+
+                decision = choose_avoidance_target(
+                    current_pos, waypoint, obstacles,
+                    lookahead=max(100.0, float(avoidance_lookahead)),
+                    steering_distance=max(150.0, float(avoidance_steering_distance)),
+                    preferred_side=int(state["avoidance_side"]),
+                    is_walkable=_walkable_with_relaxed_margin,
+                )
             if decision is None:
                 _clear_avoidance(preserve_side=True)
                 blocker_id = int(blocker.agent_id)
@@ -891,7 +934,7 @@ class BTMovement:
                     or last_log_ms is None
                     or now - last_log_ms >= 2_000
                 )
-                if log and log_due:
+                if log and SHOW_AVOIDANCE_LOGS and log_due:
                     _log(
                         "Move",
                         (
@@ -937,7 +980,7 @@ class BTMovement:
                 ):
                     state["avoidance_last_command_ms"] = now
 
-            if log and (not was_active or previous_blocker_id != int(decision.blocker_id)):
+            if log and SHOW_AVOIDANCE_LOGS and (not was_active or previous_blocker_id != int(decision.blocker_id)):
                 side_name = "left" if decision.side > 0 else "right"
                 _log(
                     "Move",
@@ -1300,6 +1343,11 @@ class BTMovement:
             "waypoint_index": None,
             "paused_since_ms": None,
             "paused_total_ms": 0,
+            "last_progress_ms": None,
+            "best_distance": None,
+            "last_avoidance_target": None,
+            "best_avoidance_distance": None,
+            "planner_pause_epoch": 0,
         }
 
         def _reset_timeout() -> None:
@@ -1318,103 +1366,146 @@ class BTMovement:
             timeout_state["waypoint_index"] = None
             timeout_state["paused_since_ms"] = None
             timeout_state["paused_total_ms"] = 0
+            timeout_state["last_progress_ms"] = None
+            timeout_state["best_distance"] = None
+            timeout_state["last_avoidance_target"] = None
+            timeout_state["best_avoidance_distance"] = None
 
         def _timeout(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-            """
-            Watch the active waypoint for movement timeout conditions.
+            """Fail only after sustained lack of progress (or a bounded hard deadline).
 
-            Meta:
-                Expose: false
-                Audience: advanced
-                Display: Internal Timeout Helper
-                Purpose: Fail the movement routine when waypoint progress exceeds the configured timeout budget.
-                UserDescription: Internal support routine.
-                Notes: Extends the timeout budget during resume recovery and ignores time spent while movement is paused.
+            A waypoint may legitimately take longer than 15s.  The old watchdog
+            measured total elapsed time at the same path_index, even when the
+            player was making progress.  This watchdog instead observes actual
+            improvement toward the waypoint.  During active local avoidance it
+            also accepts improvement toward the temporary steering target.
             """
             from ...Py4GWcorelib import Utils
 
-            if state["completed"] and state["result_state"] == "finished":
-                if log:
-                    _log("Move", f"Timeout watcher finished because movement succeeded ({state['result_reason']}).", message_type=Console.MessageType.Info, log=log)
+            if state["completed"]:
                 _reset_timeout()
                 return BehaviorTree.NodeState.SUCCESS
 
-            if state["completed"] and state["result_state"] == "failed":
-                if log:
-                    _log("Move", f"Timeout watcher finished because movement failed: {state['result_reason']}.", message_type=Console.MessageType.Info, log=log)
-                _reset_timeout()
-                return BehaviorTree.NodeState.SUCCESS
-
-            if not pause_on_combat:
+            # Keep the existing convention: Move with pause_on_combat=False has
+            # no timeout watcher, because movement can compete with combat.
+            if not pause_on_combat or timeout_ms <= 0:
                 _reset_timeout()
                 return BehaviorTree.NodeState.RUNNING
-
-            pause_reason: str = _get_pause_reason(node)
-            is_paused: bool = bool(pause_reason)
 
             now: int = Utils.GetBaseTimestamp()
-
-            if is_paused:
+            # The global Planner gate prevents MoveTimeout from receiving any
+            # ticks during combat/loot/recovery. The first tick after that gate
+            # must start a fresh inactivity window, not count the battle time.
+            pause_epoch = int(node.blackboard.get("MOVE_WATCHDOG_PAUSE_EPOCH", 0) or 0)
+            if timeout_state["planner_pause_epoch"] != pause_epoch:
+                _reset_timeout()
+                timeout_state["planner_pause_epoch"] = pause_epoch
+                return BehaviorTree.NodeState.RUNNING
+            pause_reason: str = _get_pause_reason(node)
+            # Do not run the clock during death/combat/casting, release grace,
+            # navmesh loading or any other phase with no active move command.
+            if (
+                pause_reason
+                or (state["combat_release_pending"] and state["combat_release_started_ms"] is not None)
+                or state["path_points"] is None
+                or state["path_index"] >= len(state["path_points"])
+                or not state["move_issued"]
+            ):
                 _reset_timeout()
                 return BehaviorTree.NodeState.RUNNING
 
-            if state["path_points"] is None or state["path_index"] >= len(state["path_points"]):
-                return BehaviorTree.NodeState.RUNNING
+            current_pos: Point2D = Player.GetXY()
+            waypoint: Point2D = state["path_points"][state["path_index"]]
+            distance: float = Utils.Distance(current_pos, waypoint)
 
-            if timeout_state["waypoint_index"] != state["path_index"]:
+            def _init_tracking() -> None:
                 timeout_state["started_ms"] = now
+                timeout_state["last_progress_ms"] = now
                 timeout_state["waypoint_index"] = state["path_index"]
+                timeout_state["best_distance"] = distance
+                timeout_state["last_avoidance_target"] = None
+                timeout_state["best_avoidance_distance"] = None
                 timeout_state["paused_since_ms"] = None
                 timeout_state["paused_total_ms"] = 0
-                return BehaviorTree.NodeState.RUNNING
 
-            if timeout_state["started_ms"] is None:
-                timeout_state["started_ms"] = now
-                timeout_state["waypoint_index"] = state["path_index"]
-                return BehaviorTree.NodeState.RUNNING
-
-            if state["resume_recovery_restart_pending"]:
-                timeout_state["started_ms"] = now
-                timeout_state["waypoint_index"] = state["path_index"]
-                timeout_state["paused_since_ms"] = None
-                timeout_state["paused_total_ms"] = 0
+            if (
+                timeout_state["waypoint_index"] != state["path_index"]
+                or timeout_state["started_ms"] is None
+                or state["resume_recovery_restart_pending"]
+            ):
+                _init_tracking()
                 state["resume_recovery_restart_pending"] = False
                 return BehaviorTree.NodeState.RUNNING
 
-            RECOVERY_FACTOR: int = 3
-            elapsed_ms: int = now - cast(int, timeout_state["started_ms"]) - timeout_state["paused_total_ms"]
-            effective_timeout_ms: int = timeout_ms * RECOVERY_FACTOR if state["resume_recovery_active"] else timeout_ms
-            if effective_timeout_ms > 0 and elapsed_ms >= effective_timeout_ms:
-                current_pos: Point2D = Player.GetXY()
-                waypoint: Point2D | None = None
-                distance_to_waypoint: float | None = None
-                if state["path_points"] is not None and 0 <= state["path_index"] < len(state["path_points"]):
-                    waypoint = state["path_points"][state["path_index"]]
-                    distance_to_waypoint = Utils.Distance(current_pos, waypoint)
+            # Only *meaningful* improvement resets the inactivity timer.  Using
+            # a minimum advancement avoids timer refreshes from position jitter.
+            PROGRESS_UNITS: float = 40.0
+            best_distance = timeout_state["best_distance"]
+            if best_distance is None or distance <= best_distance - PROGRESS_UNITS:
+                timeout_state["best_distance"] = distance
+                timeout_state["last_progress_ms"] = now
+                timeout_state["last_avoidance_target"] = None
+                timeout_state["best_avoidance_distance"] = None
+            elif state["avoidance_active"] and state["avoidance_target"] is not None:
+                # A valid detour can initially move *away* from the main
+                # waypoint.  Track physical advancement toward that steering
+                # target without counting repeated move commands as progress.
+                steering_target: Point2D = state["avoidance_target"]
+                steering_distance = Utils.Distance(current_pos, steering_target)
+                previous_target = timeout_state["last_avoidance_target"]
+                if previous_target is None or Utils.Distance(previous_target, steering_target) >= 80.0:
+                    timeout_state["last_avoidance_target"] = steering_target
+                    timeout_state["best_avoidance_distance"] = steering_distance
+                else:
+                    avoidance_best = timeout_state["best_avoidance_distance"]
+                    if avoidance_best is None or steering_distance <= avoidance_best - PROGRESS_UNITS:
+                        timeout_state["best_avoidance_distance"] = steering_distance
+                        timeout_state["last_progress_ms"] = now
+            else:
+                timeout_state["last_avoidance_target"] = None
+                timeout_state["best_avoidance_distance"] = None
+
+            last_progress_ms = timeout_state["last_progress_ms"]
+            inactivity_ms = max(0, now - int(last_progress_ms if last_progress_ms is not None else now))
+            elapsed_ms = max(0, now - cast(int, timeout_state["started_ms"]))
+            base_budget_ms = int(timeout_ms) * (3 if state["resume_recovery_active"] else 1)
+            # Extra time for a legitimate steering maneuver; no arbitrary
+            # extra time while physically stationary.
+            inactivity_budget_ms = max(base_budget_ms, 20_000) if state["avoidance_active"] else base_budget_ms
+            # Even repeated lateral detours cannot extend a waypoint forever.
+            hard_budget_ms = max(120_000, max(0, base_budget_ms) * 8)
+            timeout_kind = (
+                "waypoint_hard_limit" if elapsed_ms >= hard_budget_ms
+                else "no_progress" if inactivity_budget_ms > 0 and inactivity_ms >= inactivity_budget_ms
+                else ""
+            )
+            if timeout_kind:
                 state["failure_details"] = {
+                    "timeout_kind": timeout_kind,
                     "timeout_elapsed_ms": int(elapsed_ms),
-                    "timeout_budget_ms": int(effective_timeout_ms),
+                    "timeout_inactivity_ms": int(inactivity_ms),
+                    "timeout_budget_ms": int(inactivity_budget_ms),
+                    "timeout_hard_budget_ms": int(hard_budget_ms),
                     "base_timeout_ms": int(timeout_ms),
-                    "paused_total_ms": int(timeout_state["paused_total_ms"]),
-                    "paused_since_ms": timeout_state["paused_since_ms"],
+                    "paused_total_ms": 0,
                     "resume_recovery_active": bool(state["resume_recovery_active"]),
                     "resume_recovery_reason": state["resume_recovery_reason"],
                     "current_pause_reason": state["current_pause_reason"],
                     "current_pos": current_pos,
                     "current_waypoint": waypoint,
-                    "distance_to_waypoint": distance_to_waypoint,
+                    "distance_to_waypoint": distance,
+                    "best_distance_to_waypoint": timeout_state["best_distance"],
+                    "avoidance_active": bool(state["avoidance_active"]),
                 }
                 _fail_log(
                     "Move",
                     (
-                        f"Movement timed out after {elapsed_ms}ms on path_index={state['path_index']} "
-                        f"(budget={effective_timeout_ms}ms, base_timeout={timeout_ms}ms, "
-                        f"paused_total={timeout_state['paused_total_ms']}ms, "
-                        f"resume_recovery_active={state['resume_recovery_active']}, "
-                        f"resume_recovery_reason='{state['resume_recovery_reason']}', "
-                        f"current_pause_reason='{state['current_pause_reason']}', "
-                        f"current_pos={current_pos}, "
-                        f"waypoint={waypoint}, distance_to_waypoint={distance_to_waypoint})."
+                        f"Movement stopped ({timeout_kind}) after {elapsed_ms}ms on path_index={state['path_index']} "
+                        f"(inactivity={inactivity_ms}ms, budget={inactivity_budget_ms}ms, "
+                        f"hard_limit={hard_budget_ms}ms, base_timeout={timeout_ms}ms, "
+                        f"avoidance_active={state['avoidance_active']}, "
+                        f"current_pos={current_pos}, waypoint={waypoint}, "
+                        f"distance_to_waypoint={distance:.1f})."
                     ),
                 )
                 _finalize_move(node, "failed", "timeout")
@@ -1498,6 +1589,58 @@ class BTMovement:
             children=[move_node, timeout_node, map_transition_node],
         )
         return BehaviorTree(tree)
+
+    @staticmethod
+    def Approach(
+        x: float,
+        y: float,
+        tolerance: float = Range.Touch.value,
+        timeout_ms: int = 15000,
+        stall_threshold_ms: int = 500,
+        pause_on_combat: bool = False,
+        pause_flag_key: str = "PAUSE_MOVEMENT",
+        flag_heroes_to_waypoint: bool = False,
+        log: bool = False,
+        avoid_obstacles: bool = True,
+        avoid_gadgets: bool = True,
+        avoidance_lookahead: float = 500.0,
+        avoidance_steering_distance: float = 400.0,
+        avoidance_clearance: float = 80.0,
+        avoidance_update_ms: int = 200,
+    ) -> BehaviorTree:
+        """
+        Move into interaction range while maintaining obstacle avoidance up to the target.
+
+        Meta:
+            Expose: true
+            Audience: intermediate
+            Display: Approach
+            Purpose: Approach an interactive item, NPC or gadget using the shared BT Move runtime.
+            UserDescription: Use this to approach a pickup target without skipping nearby obstacles.
+            Notes: Compatibility facade for Work Branch calls on top of Apo's BTMovement.Move; shares the same mover and navigation logic.
+        """
+        return BTMovement.Move(
+            x=x,
+            y=y,
+            tolerance=tolerance,
+            timeout_ms=timeout_ms,
+            stall_threshold_ms=stall_threshold_ms,
+            pause_on_combat=pause_on_combat,
+            pause_flag_key=pause_flag_key,
+            flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+            log=log,
+            avoid_obstacles=avoid_obstacles,
+            avoid_gadgets=avoid_gadgets,
+            ignore_destination_obstacles=False,
+            avoidance_lookahead=avoidance_lookahead,
+            avoidance_steering_distance=avoidance_steering_distance,
+            avoidance_clearance=avoidance_clearance,
+            avoidance_update_ms=avoidance_update_ms,
+            destination_obstacle_position=(float(x), float(y)),
+            destination_obstacle_ignore_distance=0.0,
+            ignore_destination_npcs=False,
+            ignore_destination_gadgets=False,
+        )
 
     @staticmethod
     def MoveDirect(

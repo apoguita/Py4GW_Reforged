@@ -20,6 +20,10 @@ Draw_Conditions_ID = Skill.GetID("Draw_Conditions")
 Vigorous_Spirit_ID = Skill.GetID("Vigorous_Spirit")
 Remove_Hex_ID = Skill.GetID("Remove_Hex")
 Cure_Hex_ID = Skill.GetID("Cure_Hex")
+Protective_Spirit_ID = Skill.GetID("Protective_Spirit")
+Spirit_Bond_ID = Skill.GetID("Spirit_Bond")
+Leech_Signet_ID = Skill.GetID("Leech_Signet")
+Great_Dwarf_Weapon_ID = Skill.GetID("Great_Dwarf_Weapon")
 
 
 @dataclass(slots=True)
@@ -44,17 +48,21 @@ class Healing_Burst(BuildMgr):
         super().__init__(
             name="Healing Burst",
             required_primary=Profession.Monk,
-            template_code="OwUUMoG/CoSeRbE5g3EAAAAAAAAA",
+            template_code="OwUUMsG+QITeRbE3E1D5gaR9AriA",
             required_skills=[
                 Healing_Burst_ID,
-                Dwaynas_Kiss_ID,
-                Draw_Conditions_ID,
             ],
             optional_skills=[
+                Dwaynas_Kiss_ID,
+                Draw_Conditions_ID,
                 Seed_of_Life_ID,
                 Vigorous_Spirit_ID,
                 Remove_Hex_ID,
                 Cure_Hex_ID,
+                Protective_Spirit_ID,
+                Spirit_Bond_ID,
+                Leech_Signet_ID,
+                Great_Dwarf_Weapon_ID,
             ],
         )
         if match_only:
@@ -170,16 +178,31 @@ class Healing_Burst(BuildMgr):
         return snapshot
 
     def _run_local_skill_logic(self):
+        # Keep the 1s party-health history alive even when casting is blocked.
+        # Seed's spike selector needs samples BEFORE any direct heal lands.
+        if self.IsSkillEquipped(Seed_of_Life_ID):
+            self.UpdatePartyHealthMonitor(sample_interval_ms=150, window_ms=1000)
+
         if not Routines.Checks.Skills.CanCast():
             return False
 
-        support_snapshot = self._get_required_support_snapshot()
-        if not support_snapshot.any_required_support_needed:
-            return False
+        # Evaluate Seed first: Healing Burst previously ended the tick before
+        # Seed's 8%/1s spike detector could see the injured ally.
+        if self.IsSkillEquipped(Seed_of_Life_ID) and (yield from self.skills.Monk.NoAttribute.Seed_of_Life()):
+            return True
 
+        support_snapshot = self._get_required_support_snapshot()
         player_energy_pct = float(Agent.GetEnergy(Player.GetAgentID()))
 
         if support_snapshot.healing_burst_needed and (yield from self.skills.Monk.HealingPrayers.Healing_Burst()):
+            return True
+
+        # Spike protection must not depend on the direct-heal snapshot.
+        # Both shared methods already check their own target, aggro and buff rules.
+        if self.IsSkillEquipped(Spirit_Bond_ID) and (yield from self.skills.Monk.ProtectionPrayers.Spirit_Bond()):
+            return True
+
+        if self.IsSkillEquipped(Protective_Spirit_ID) and (yield from self.skills.Monk.ProtectionPrayers.Protective_Spirit(prebuff_melee_precombat=True)):
             return True
 
         if (yield from self.skills.Monk.NoAttribute.Remove_Hex(min_priority=HexRemovalPriority.HIGH)):
@@ -189,9 +212,6 @@ class Healing_Burst(BuildMgr):
             return True
 
         if support_snapshot.dwaynas_kiss_needed and (yield from self.skills.Monk.HealingPrayers.Dwaynas_Kiss()):
-            return True
-
-        if support_snapshot.seed_of_life_needed and (yield from self.skills.Monk.NoAttribute.Seed_of_Life()):
             return True
 
         if player_energy_pct >= 0.50 and (yield from self.skills.Monk.NoAttribute.Remove_Hex(min_priority=HexRemovalPriority.MEDIUM)):
@@ -209,10 +229,19 @@ class Healing_Burst(BuildMgr):
         if player_energy_pct >= 0.70 and (yield from self.skills.Monk.HealingPrayers.Cure_Hex()):
             return True
 
-        if not (self.IsInAggro()):
+        if not self.IsInAggro():
             return False
+
+        # Interrupt enemy spells when there is no higher-priority healing action.
+        if self.IsSkillEquipped(Leech_Signet_ID) and (yield from self.skills.Mesmer.InspirationMagic.Leech_Signet()):
+            return True
 
         if self.IsSkillEquipped(Vigorous_Spirit_ID) and (yield from self.skills.Monk.HealingPrayers.Vigorous_Spirit()):
             return True
+
+        # Offensive support comes last, after all healing/protection attempts.
+        if self.IsSkillEquipped(Great_Dwarf_Weapon_ID) and player_energy_pct >= 0.50:
+            if (yield from self.skills.Any.NoAttribute.Great_Dwarf_Weapon()):
+                return True
 
         return False

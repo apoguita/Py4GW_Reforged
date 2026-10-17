@@ -23,6 +23,11 @@ from Py4GW_widget_manager import get_widget_handler
 from Py4GWCoreLib.routines_src.Yield import Utils
 from Py4GWCoreLib.routines_src.Yield import Yield
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count
+from Sources.Sky.ConsumableRestockUI import (
+    DEFAULT_RESTOCK_ITEM_DEFINITIONS,
+    DEFAULT_RESTOCK_SETTING_KEYS,
+    draw_restock_group_grid,
+)
 
 # ==================== CONFIGURATION ====================
 BOT_NAME = "Bogroot Growths"
@@ -61,6 +66,16 @@ _save_requested: bool  = False
 # ==================== SETTINGS ====================
 _use_hard_mode:      bool = True
 _randomize_district: bool = True
+_restock_conset: bool = True
+_restock_pcons: bool = True
+_use_summoning_stone: bool = False
+# Legacy bots previously restocked Consets/PCons to 250. Preserve that default;
+# summoning stones stay disabled by default because these scripts did not restock them.
+_legacy_restock_defaults = {
+    int(model_id): (0 if group == "Summoning" else 250)
+    for group, _label, model_id, _setting_key, _default in DEFAULT_RESTOCK_ITEM_DEFINITIONS
+}
+_restock_quantities: dict[int, int] = dict(_legacy_restock_defaults)
 
 _FIXED_ID_KITS_TARGET          = 3
 _FIXED_SALVAGE_KITS_TARGET     = 10
@@ -167,6 +182,7 @@ bot = Botting(
 
 # ==================== CORE ROUTINE ====================
 def farm_froggy_routine(bot: Botting) -> None:
+    _ensure_ini_initialized()  # load restock targets before FSM construction
     
     # ===== INITIAL CONFIGURATION =====
     # Register wipe callback
@@ -190,8 +206,7 @@ def farm_froggy_routine(bot: Botting) -> None:
     bot.States.AddCustomState(loop_marker, "Reset Post Merchant")
     bot.States.AddCustomState(lambda: _summon_and_invite_party(), "Initial Party Invite")
     bot.States.AddCustomState(lambda: _reenable_merchant_widgets(), "Re-enable widgets (all in Vlox's Falls)")
-    bot.Multibox.RestockAllPcons()
-    bot.Multibox.RestockConset()
+    bot.States.AddCustomState(_coro_restock_configured_consumables, "Restock configured consumables")
     bot.Multibox.RestockResurrectionScroll(250)
 
 
@@ -1583,6 +1598,7 @@ def _gh_merchant_setup_if_inventory_full() -> Generator:
 # --- Config Load / Save ---
 
 def _ensure_ini_initialized() -> bool:
+    global _restock_conset, _restock_pcons, _use_summoning_stone, _restock_quantities
     """Load all settings and statistics from INI on first call. Returns True when ready."""
     global _settings_loaded
     global _use_hard_mode, _randomize_district
@@ -1601,6 +1617,13 @@ def _ensure_ini_initialized() -> bool:
     _S = _SETTINGS_SECTION
     _use_hard_mode      = _settings_ini.get_bool(_S, "use_hard_mode",      True)
     _randomize_district = _settings_ini.get_bool(_S, "randomize_district", True)
+    _restock_conset = _settings_ini.get_bool(_S, "RestockConset", True)
+    _restock_pcons = _settings_ini.get_bool(_S, "RestockPcons", True)
+    _use_summoning_stone = _settings_ini.get_bool(_S, "UseSummoningStone", False)
+    _restock_quantities = {
+        int(model_id): max(0, _settings_ini.get_int(_S, setting_key, _legacy_restock_defaults[int(model_id)]))
+        for model_id, setting_key in DEFAULT_RESTOCK_SETTING_KEYS.items()
+    }
 
     _M = _MERCHANT_SECTION
     _merchant_enabled                    = _settings_ini.get_bool(_M, "enabled",                    False)
@@ -1669,6 +1692,11 @@ def _write_settings() -> None:
     _S = _SETTINGS_SECTION
     _settings_ini.set(_S, "use_hard_mode",      str(_use_hard_mode))
     _settings_ini.set(_S, "randomize_district", str(_randomize_district))
+    _settings_ini.set(_S, "RestockConset", str(_restock_conset))
+    _settings_ini.set(_S, "RestockPcons", str(_restock_pcons))
+    _settings_ini.set(_S, "UseSummoningStone", str(_use_summoning_stone))
+    for model_id, setting_key in DEFAULT_RESTOCK_SETTING_KEYS.items():
+        _settings_ini.set(_S, setting_key, str(max(0, int(_restock_quantities.get(int(model_id), 0)))))
 
     _M = _MERCHANT_SECTION
     _settings_ini.set(_M, "enabled",                    str(_merchant_enabled))
@@ -2707,6 +2735,81 @@ def apply_widget_policy_step() -> Generator:
     yield from _disable_widgets_on_alts_only(_ALT_ONLY_DISABLE_WIDGETS)
     yield
 
+def _coro_restock_configured_consumables() -> Generator:
+    """Apply the current UI restock profile when this FSM step actually runs."""
+    _ensure_ini_initialized()
+    items = _configured_restock_items()
+    if items:
+        # Use the existing multibox message generator so profile changes made in
+        # the UI before Start are read at runtime, not frozen when the FSM is built.
+        yield from bot.Multibox._helpers.Multibox._restock_items_message(items)
+    yield
+
+
+def _configured_restock_items() -> list[tuple[int, int]]:
+    enabled_groups = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_pcons),
+        "Summoning": bool(_use_summoning_stone),
+    }
+    return [
+        (int(model_id), max(0, int(_restock_quantities.get(int(model_id), default))))
+        for group, _label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS
+        if enabled_groups.get(group, True)
+        and max(0, int(_restock_quantities.get(int(model_id), default))) > 0
+    ]
+
+
+def _draw_restock_config() -> None:
+    import PyImGui
+    global _restock_conset, _restock_pcons, _use_summoning_stone, _restock_quantities
+
+    _ensure_ini_initialized()
+    changed = False
+
+    PyImGui.text("Restock targets per account")
+    PyImGui.text_wrapped(
+        "Set the target quantity shown below each icon. Every account in the current "
+        "party receives the same target and only withdraws what it is missing. "
+        "Set a target to 0 to disable that item."
+    )
+
+    for label, attr in (
+        ("Restock conset from storage", "_restock_conset"),
+        ("Restock pcons from storage", "_restock_pcons"),
+        ("Restock summoning stones", "_use_summoning_stone"),
+    ):
+        old = bool(globals()[attr])
+        new = PyImGui.checkbox(label, old)
+        if new != old:
+            globals()[attr] = new
+            changed = True
+
+    group_enabled = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_pcons),
+        "Summoning": bool(_use_summoning_stone),
+    }
+    groups: dict[str, list[tuple[str, int, int]]] = {}
+    for group, item_label, model_id, _setting_key, _default in DEFAULT_RESTOCK_ITEM_DEFINITIONS:
+        default = int(_legacy_restock_defaults.get(int(model_id), 250))
+        groups.setdefault(group, []).append((item_label, int(model_id), default))
+
+    for group in ("Conset", "Personal PCons", "Morale", "Summoning"):
+        items = groups.get(group, [])
+        if items and draw_restock_group_grid(
+            group, items, _restock_quantities,
+            group_enabled=group_enabled.get(group, True),
+            columns=4, icon_size=48.0,
+        ):
+            changed = True
+
+    if changed:
+        _save_settings()
+
+
 # --- Settings and Bot UI Helpers ---
 
 def _draw_difficulty_setting() -> None:
@@ -2870,6 +2973,10 @@ def _draw_froggy_window_with_stats_tab() -> None:
                 _draw_froggy_stats()
                 PyImGui.end_tab_item()
 
+            if PyImGui.begin_tab_item("Restock"):
+                _draw_restock_config()
+                PyImGui.end_tab_item()
+
             PyImGui.end_tab_bar()
 
     ImGui.End(bot.config.ini_key)
@@ -2917,7 +3024,7 @@ def main():
         bot.UI.draw_window(
             icon_path=TEXTURE,
             main_child_dimensions=(500, 350),
-            extra_tabs=[("Statistics", _draw_froggy_stats)],
+            extra_tabs=[("Statistics", _draw_froggy_stats), ("Restock", _draw_restock_config)],
         )
     else:
         _draw_froggy_window_with_stats_tab()

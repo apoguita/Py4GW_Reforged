@@ -28,6 +28,7 @@ from Py4GWCoreLib.py4gwcorelib_src.system_settings.loot_filters.controller impor
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
+from Sources.Sky.Support import attach_botting_tree_support
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 
 
@@ -56,7 +57,7 @@ PLAYER_BUILDS_BY_PRIMARY = {
     'Necromancer': 'OAFUYCqWVyS4k9F8E7gUizB5iwF',
     'Mesmer': 'OQFUAixS1qS4k9F8E7gUioA5iwF',
     'Elementalist': 'OgFUwi1S1qS4k9F8E7gUitT5iwF',
-    'Assassin': 'OwFkQpV63OG0dZfBPxOYDkLTuIcB',
+    'Assassin': 'OwFkQdV6XOqEOZfBPxOIloLTuYAA',
     'Ritualist': 'OAGkQGhLlWpEOZfBPxOIlo0UuIcB',
     'Paragon': 'OQGjgOUcFT4k9F8E7gUiBA5iwF',
     'Dervish': 'OgGlwWrJlWpqFhT2XwTsDSJSglL29B',
@@ -2955,6 +2956,7 @@ def LootAndReturn() -> BehaviorTree:
 
             BT.Travel(
                 target_map_id=KAINENG_CENTER,
+                random_travel=True,
                 log=True,
             ),
             BT.WaitForMapLoad(KAINENG_CENTER, timeout_ms=45_000),
@@ -3022,6 +3024,7 @@ def main() -> None:
 
     tree = ensure_botting_tree()
     tree.tick()
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
         main_child_dimensions=(440, 390),

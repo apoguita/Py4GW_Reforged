@@ -158,6 +158,57 @@ def _account_is_in_local_party(account) -> bool:
     return agent_id in _local_party_player_agent_ids()
 
 
+def _account_emails_in_local_party(*, include_self: bool = True) -> list[str]:
+    """Return active shared-memory accounts that belong to the local in-game party."""
+    sender_email = str(Player.GetAccountEmail() or "").strip()
+    if not sender_email:
+        return []
+
+    try:
+        sender_data = GLOBAL_CACHE.ShMem.GetAccountDataFromEmail(sender_email)
+    except Exception:
+        sender_data = None
+
+    try:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData(sort_results=False) or [])
+    except TypeError:
+        accounts = list(GLOBAL_CACHE.ShMem.GetAllAccountData() or [])
+    except Exception:
+        accounts = []
+
+    local_party_id = _party_id_from_account(sender_data) if sender_data is not None else 0
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for account in accounts:
+        receiver_email = str(getattr(account, "AccountEmail", "") or "").strip()
+        if not receiver_email or receiver_email in seen:
+            continue
+        if bool(getattr(account, "IsHero", False)) or bool(getattr(account, "IsNPC", False)):
+            continue
+        if hasattr(account, "IsSlotActive") and not bool(getattr(account, "IsSlotActive", False)):
+            continue
+
+        if receiver_email == sender_email:
+            if include_self:
+                result.append(receiver_email)
+                seen.add(receiver_email)
+            continue
+
+        account_party_id = _party_id_from_account(account)
+        same_party_id = local_party_id > 0 and account_party_id == local_party_id
+        same_live_party = _account_is_in_local_party(account)
+        if not same_party_id and not same_live_party:
+            continue
+
+        result.append(receiver_email)
+        seen.add(receiver_email)
+
+    if include_self and sender_email not in seen:
+        result.insert(0, sender_email)
+    return result
+
+
 def _account_character_name(account) -> str:
     return str(
         getattr(account, "CharacterName", "")
@@ -405,6 +456,86 @@ class BTShared:
                         log=log,
                     ),
                 ],
+            )
+        )
+
+    @staticmethod
+    def RestockItems(
+        items: dict[int, int] | list[tuple[int, int]] | tuple[tuple[int, int], ...],
+        *,
+        party_only: bool = True,
+        include_self: bool = True,
+        allow_missing: bool = True,
+        refs_blackboard_prefix: str = "restock_item_refs",
+        timeout_ms: int = 30000,
+        poll_interval_ms: int = 100,
+        log: bool = False,
+    ) -> BehaviorTree:
+        """Restock each requested model to a target quantity on every selected account.
+
+        Quantities are per account, not shared across the party. A target <= 0 is
+        skipped. With ``party_only=True`` recipients are limited to the local
+        in-game party, including the local client when requested.
+        """
+        raw_items = items.items() if isinstance(items, dict) else items
+        normalized: list[tuple[int, int]] = []
+        seen_models: set[int] = set()
+        for model_id, quantity in raw_items:
+            model = int(model_id)
+            target = max(0, int(quantity))
+            if model <= 0 or target <= 0 or model in seen_models:
+                continue
+            seen_models.add(model)
+            normalized.append((model, target))
+
+        def _build(_node: BehaviorTree.Node) -> BehaviorTree:
+            if not normalized:
+                return BehaviorTree(
+                    BehaviorTree.ActionNode(
+                        name="RestockItemsDisabled",
+                        action_fn=lambda _inner: BehaviorTree.NodeState.SUCCESS,
+                    )
+                )
+
+            recipients = (
+                _account_emails_in_local_party(include_self=include_self)
+                if party_only
+                else None
+            )
+            if party_only and not recipients:
+                return BehaviorTree(
+                    BehaviorTree.ActionNode(
+                        name="RestockItemsNoRecipients",
+                        action_fn=lambda _inner: BehaviorTree.NodeState.SUCCESS,
+                    )
+                )
+
+            children: list[BehaviorTree] = []
+            for index, (model_id, target) in enumerate(normalized):
+                children.append(
+                    BTShared.SendAndWait(
+                        command=SharedCommandType.RestockItem,
+                        params=(float(model_id), float(target), float(int(allow_missing)), 0.0),
+                        recipients=recipients,
+                        include_self=include_self,
+                        refs_blackboard_key=f"{refs_blackboard_prefix}_{index}_{model_id}",
+                        timeout_ms=timeout_ms,
+                        poll_interval_ms=poll_interval_ms,
+                        log=log,
+                    )
+                )
+
+            return BehaviorTree(
+                BehaviorTree.SequenceNode(
+                    name="RestockItemsOnParty",
+                    children=children,
+                )
+            )
+
+        return BehaviorTree(
+            BehaviorTree.SubtreeNode(
+                name="RestockItemsOnParty",
+                subtree_fn=_build,
             )
         )
 

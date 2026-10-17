@@ -13,6 +13,7 @@ from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib import GLOBAL_CACHE, Agent, Map, Player, SharedCommandType, Inventory, ImGui
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib import Routines
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -23,8 +24,16 @@ from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import (
     CONSET_UPKEEPS,
     CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS,
 )
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
+from Sources.Sky.DungeonParty import DungeonPartyConfig
+from Sources.Sky.Support import attach_botting_tree_support
+from Sources.Sky.ConsumableRestockUI import (
+    DEFAULT_RESTOCK_DEFAULTS,
+    DEFAULT_RESTOCK_ITEM_DEFINITIONS,
+    draw_restock_group_grid,
+    load_restock_quantities,
+    save_restock_quantities,
+)
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
 
@@ -189,6 +198,7 @@ _INVENTORY_QUERY_POLL_MS = 200
 _INVENTORY_QUERY_TIMEOUT_MS = 10_000
 
 _settings = Settings(f"{INI_PATH}/{INI_FILENAME}", "global")
+_dungeon_party = DungeonPartyConfig(_settings)
 _settings_loaded = False
 _statistics_loaded = False
 
@@ -198,6 +208,7 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_restock_quantities: dict[int, int] = dict(DEFAULT_RESTOCK_DEFAULTS)
 _auto_loot = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
@@ -252,6 +263,7 @@ _current_l2_time = 0.0
 
 
 def _load_settings() -> None:
+    global _restock_quantities
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
@@ -273,6 +285,7 @@ def _load_settings() -> None:
     _inventory_min_free_slots = max(0, _settings.get_int(_SETTINGS_SECTION, "InventoryMinFreeSlots", 5))
     _inventory_min_id_kits = max(0, _settings.get_int(_SETTINGS_SECTION, "InventoryMinIdKits", 1))
     _inventory_min_salvage_kits = max(0, _settings.get_int(_SETTINGS_SECTION, "InventoryMinSalvageKits", 2))
+    _restock_quantities = load_restock_quantities(_settings, _SETTINGS_SECTION)
     _settings_loaded = True
     _load_statistics()
 
@@ -289,7 +302,7 @@ def _save_settings() -> None:
     _settings.set(_SETTINGS_SECTION, "InventoryMinFreeSlots", _inventory_min_free_slots)
     _settings.set(_SETTINGS_SECTION, "InventoryMinIdKits", _inventory_min_id_kits)
     _settings.set(_SETTINGS_SECTION, "InventoryMinSalvageKits", _inventory_min_salvage_kits)
-
+    save_restock_quantities(_settings, _SETTINGS_SECTION, _restock_quantities)
 
 def _load_statistics() -> None:
     global _statistics_loaded
@@ -669,15 +682,47 @@ def _configure_runtime_upkeeps(enabled: bool | None = None) -> None:
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
+    )
+    botting_tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+        map_ids=(BOGROOT_LEVEL_1, BOGROOT_LEVEL_2),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
 
 def _sync_consumable_upkeeps() -> None:
-    # Floor loading no longer tears down PCons; only conset services are synced.
+    # Only conset services require synchronization; PCons use the direct dispatcher.
     if _enabled_consumable_upkeeps() != _configured_consumable_upkeeps:
         _configure_runtime_upkeeps()
+
+def _runtime_consumable_upkeep_node(enabled: bool) -> BehaviorTree:
+    """Enable or suspend conset and direct PCon upkeep at runtime."""
+    def _apply(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        if botting_tree is None:
+            return BehaviorTree.NodeState.FAILURE
+        if _runtime_consumables_enabled != bool(enabled):
+            _configure_runtime_upkeeps(enabled=enabled)
+            PySystem.Console.Log(
+                MODULE_NAME,
+                "Consumable upkeep resumed for the dungeon run." if enabled else "Consumable upkeep suspended during the end-of-dungeon sequence.",
+                PySystem.Console.MessageType.Info,
+            )
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Resume Consumable Upkeep" if enabled else "Suspend Consumable Upkeep",
+            action_fn=_apply,
+            aftercast_ms=0,
+        )
+    )
+
 
 
 def _runtime_consumable_node(enabled: bool) -> BehaviorTree:
@@ -695,60 +740,88 @@ def _runtime_difficulty_node() -> BehaviorTree:
     return BT.Subtree(name="Apply Selected Difficulty", subtree_fn=lambda _node: BT.SetHardMode(_use_hard_mode, log=True))
 
 
+def _draw_restock_config() -> None:
+    global _restock_quantities
+
+    _load_settings()
+    changed = False
+
+    PyImGui.text("Restock targets per account")
+    PyImGui.text_wrapped(
+        "Set the target quantity shown below each icon. The same target is sent to "
+        "every account in the current party, and each account only withdraws what "
+        "it is missing from its own Xunlai storage. Set a target to 0 to disable "
+        "that item."
+    )
+    PyImGui.text_wrapped("Hover an icon for the item name, ModelID and current restock state.")
+
+    # These bots historically treat Clover/Honeycomb as PCons, so the Morale
+    # display group intentionally follows the PCon restock switch.
+    group_enabled = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_pcons),
+        "Summoning": bool(_use_summoning_stone),
+    }
+
+    groups: dict[str, list[tuple[str, int, int]]] = {}
+    for group, label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS:
+        groups.setdefault(group, []).append((label, int(model_id), int(default)))
+
+    for group in ("Conset", "Personal PCons", "Morale", "Summoning"):
+        items = groups.get(group, [])
+        if items and draw_restock_group_grid(
+            group,
+            items,
+            _restock_quantities,
+            group_enabled=group_enabled.get(group, True),
+            columns=4,
+            icon_size=48.0,
+        ):
+            changed = True
+
+    PyImGui.separator()
+    PyImGui.text_wrapped(
+        "The group switches in the Config tab control whether Conset, PCons and "
+        "Summoning Stones are included in the restock step. Disabling a group "
+        "keeps its saved per-item targets."
+    )
+
+    if changed:
+        _save_settings()
+
+
 def _runtime_restock_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        items: list[tuple[int, int]] = []
+        enabled_models: set[int] = set()
         if _restock_conset:
-            items.extend(CONSET_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in CONSET_UPKEEPS)
         if _restock_pcons:
-            items.extend(PCON_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in PCON_UPKEEPS)
         if _use_summoning_stone:
-            items.extend(SUMMON_RESTOCK_ITEMS)
+            enabled_models.update(int(model_id) for model_id in SUMMON_MODEL_IDS)
+
+        items = [
+            (model_id, max(0, int(_restock_quantities.get(model_id, default))))
+            for _group, _label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS
+            if model_id in enabled_models
+            and max(0, int(_restock_quantities.get(model_id, default))) > 0
+        ]
         if not items:
-            return BT.Succeeder("Restock Disabled")
-        return BT.RestockItemsFromList(tuple(items), allow_missing=True)
-    return BT.Subtree(name="Restock Selected Supplies", subtree_fn=_build)
+            return BT.Succeeder("RestockDisabled")
 
-
-def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
-    """Broadcast a best-effort summon request to every active account.
-
-    This is deliberately fire-and-forget. A receiver may already have an active
-    summon, have summoning sickness, or have no usable stone; none of those cases
-    is allowed to block the dungeon planner.
-    """
-
-    def _dispatch(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if not _use_summoning_stone or not _consumables_allowed():
-            return BehaviorTree.NodeState.SUCCESS
-
-        sender_email = str(Player.GetAccountEmail() or "").strip()
-        recipients = _inventory_recipient_emails()
-        if not sender_email or not recipients:
-            return BehaviorTree.NodeState.SUCCESS
-
-        for receiver_email in recipients:
-            try:
-                GLOBAL_CACHE.ShMem.SendMessage(
-                    sender_email,
-                    receiver_email,
-                    SharedCommandType.UseSummoningStone,
-                    (0.0, 0.0, 0.0, 0.0),
-                    ("", "", "", ""),
-                )
-            except Exception:
-                # Optional consumable: failure on one account must not stall all.
-                continue
-
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"Use Summoning Stone {level_key} (Non Blocking)",
-            action_fn=_dispatch,
-            aftercast_ms=0,
+        return BTShared.RestockItems(
+            items,
+            party_only=True,
+            include_self=True,
+            allow_missing=True,
+            refs_blackboard_prefix="bogroot_restock_item",
+            timeout_ms=30_000,
+            poll_interval_ms=100,
+            log=True,
         )
-    )
+
+    return BT.Subtree(name="Restock Selected Consumables", subtree_fn=_build)
 
 
 def _draw_run_config() -> None:
@@ -1894,8 +1967,17 @@ def ensure_botting_tree() -> BottingTree:
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
+                enable_nearest_shrine_recovery=True,
                 heroai_state_logging=False,
             ),
+        )
+        botting_tree.EnsureSummoningStonePartyService(
+            enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+            map_ids=(BOGROOT_LEVEL_1, BOGROOT_LEVEL_2),
+            initial_grace_ms=2_000,
+            attempt_interval_ms=5_000,
+            retry_cycle_delay_ms=15_000,
+            log=True,
         )
     return botting_tree
 
@@ -1941,7 +2023,7 @@ def PreparePartyAndSupplies() -> BehaviorTree:
         random_travel=True,
         children=[
             StartupInventoryCheck(),
-            BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
+            _dungeon_party.create_party_node(multibox_invite=True, timeout_ms=30_000, log=True),
             BT.AbandonQuest(
                 quest_id=TEKKS_QUEST_ID,
                 multi_account=True,
@@ -2169,10 +2251,10 @@ def Level1_Start() -> BehaviorTree:
     return BT.Sequence(
         name="Bogroot Level 1 - Start",
         children=[
+            _runtime_consumable_upkeep_node(True),
             _mark_run_start_node(),
             _inventory_statistics_node(after_chest=False),
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
-            UseAvailableSummoningStone("l1"),
             BT.MoveAndDialog(
                 L1_BLESSING,
                 dialog_id=DWARVEN_BLESSING_DIALOG,
@@ -2209,7 +2291,6 @@ def Level2_Start() -> BehaviorTree:
         name="Bogroot Level 2 - Start",
         children=[
             BT.AddModelToLootWhitelist(BOSS_KEY_MODEL_ID),
-            UseAvailableSummoningStone("l2"),
             BT.MoveAndDialog(
                 L2_ENTRY_BLESSING,
                 dialog_id=DWARVEN_BLESSING_DIALOG,
@@ -2283,6 +2364,8 @@ def OpenFinalChest() -> BehaviorTree:
         children=[
             BT.Move(BOGROOT_CHEST_POSITION, pause_on_combat=False, log=False),
             BT.Wait(2_000),
+            _record_run_end_node(),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(
                 pos=BOGROOT_CHEST_POSITION,
                 search_distance=700.0,
@@ -2297,7 +2380,6 @@ def OpenFinalChest() -> BehaviorTree:
             ),
             BT.LootItems(distance=Range.Spirit.value),
             _inventory_statistics_node(after_chest=True),
-            _record_run_end_node(),
             BT.Wait(5_000),
         ],
     )
@@ -2360,7 +2442,7 @@ def CollectRewardAndReturnToSparkfly(end_countdown_timeout_ms: int = 190_000) ->
         name="Collect Tekks Reward Inside Dungeon",
         children=[
             # Do not gate the lookup behind IsQuestState('complete').  As in
-            # Shards of Orr, the mirrored quest state can lag immediately after
+            # The mirrored quest state can lag immediately after
             # the boss/chest.  Tekks presence + WaitForQuestCleared is the source
             # of truth for a successful inside reward.
             BT.IsCurrentMap(map_id=BOGROOT_LEVEL_2, log=True),
@@ -2465,7 +2547,7 @@ def CollectTekksRewardInsideDungeon() -> BehaviorTree:
 
 
 def ResolveTekksQuestAfterRun() -> BehaviorTree:
-    """Leave Sparkfly with Tekks' War active, mirroring the Shards restart flow."""
+    """Leave Sparkfly with Tekks' War active for the next dungeon run."""
 
     direct_retake = BT.Sequence(
         name="Retake Tekks' War Directly",
@@ -2614,7 +2696,7 @@ def PrepareNextBogrootRun() -> BehaviorTree:
         children=[
             BT.IsCurrentMap(map_id=GADDS_ENCAMPMENT, log=True),
             BT.IsQuestState(quest_id=TEKKS_QUEST_ID, state="active", log=True),
-            BT.CreateParty(multibox_invite=True, timeout_ms=30_000, log=True),
+            _dungeon_party.create_party_node(multibox_invite=True, timeout_ms=30_000, log=True),
             _runtime_difficulty_node(),
             _runtime_restock_node(),
             TravelToTekksStart(),
@@ -2769,13 +2851,16 @@ def main() -> None:
     _sync_consumable_upkeeps()
     tree.tick()
     _tick_direct_pcon_upkeep()
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
         iconwidth=96,
-        main_child_dimensions=(440, 400),
+        main_child_dimensions=(550, 400),
         extra_tabs=[
             ("Statistics", _draw_statistics),
+            ("Party", _dungeon_party.draw_tab),
             ("Run Config", _draw_run_config),
+            ("Restock", _draw_restock_config),
         ],
     )
 
