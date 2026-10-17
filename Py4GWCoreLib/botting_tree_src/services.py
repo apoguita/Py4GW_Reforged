@@ -35,6 +35,7 @@ class BottingTreeServicesMixin:
             "targets": [],
             "target_index": 0,
             "next_attempt_ms": 0.0,
+            "next_probe_ms": 0.0,
         }
         allowed_maps = {int(map_id) for map_id in (map_ids or ()) if int(map_id) > 0}
 
@@ -61,6 +62,7 @@ class BottingTreeServicesMixin:
             state["targets"] = []
             state["target_index"] = 0
             state["next_attempt_ms"] = 0.0
+            state["next_probe_ms"] = 0.0
 
         def _reset_disabled() -> None:
             state["map_id"] = 0
@@ -70,6 +72,7 @@ class BottingTreeServicesMixin:
             state["targets"] = []
             state["target_index"] = 0
             state["next_attempt_ms"] = 0.0
+            state["next_probe_ms"] = 0.0
 
         def _party_id(account: object) -> int:
             try:
@@ -186,6 +189,21 @@ class BottingTreeServicesMixin:
                 summon_alive = bool(has_active_party_summon())
             except Exception:
                 summon_alive = False
+
+            if not summon_alive:
+                probe_now_ms = time.monotonic() * 1000.0
+                if probe_now_ms >= float(state.get("next_probe_ms", 0.0) or 0.0):
+                    state["next_probe_ms"] = probe_now_ms + 60000.0
+                    _log(f"Summon detector loaded from: {has_active_party_summon.__code__.co_filename}")
+                    diagnostic = has_active_party_summon.__globals__.get("summon_detection_diagnostics")
+                    if callable(diagnostic):
+                        try:
+                            for line in diagnostic(max_agents=10):
+                                _log("[SummonProbe] " + line)
+                        except Exception as exc:
+                            _log("[SummonProbe] diagnostic error: " + repr(exc), PySystem.Console.MessageType.Warning)
+                    else:
+                        _log("[SummonProbe] v2 diagnostic missing: loaded Item.py may be outdated.", PySystem.Console.MessageType.Warning)
 
             if summon_alive:
                 if bool(state["recovering"]):

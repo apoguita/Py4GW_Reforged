@@ -204,7 +204,15 @@ class BottingTreeTicksMixin:
     def _tick_planner(self: _BottingTreeTicksHost, node: BehaviorTree.Node) -> BehaviorTree.NodeState:
         bb = node.blackboard
 
+        def _mark_planner_paused() -> None:
+            # The Planner stops ticking its active Move subtree during combat,
+            # looting, and party recovery. The Move watchdog cannot observe a
+            # pause on a frame when it is not ticked. Keep a generation marker
+            # so that the next Move tick drops its pre-pause timestamps.
+            bb["MOVE_WATCHDOG_PAUSE_EPOCH"] = int(bb.get("MOVE_WATCHDOG_PAUSE_EPOCH", 0) or 0) + 1
+
         if not self.started or self.paused:
+            _mark_planner_paused()
             bb['PLANNER_STATUS'] = PlannerStatus.IDLE.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
@@ -218,6 +226,7 @@ class BottingTreeTicksMixin:
             or Routines.Checks.Party.IsPartyWiped()
             or GLOBAL_CACHE.Party.IsPartyDefeated()
         ):
+            _mark_planner_paused()
             bb['PLANNER_STATUS'] = 'PAUSED: Party wipe recovery'
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
@@ -229,17 +238,20 @@ class BottingTreeTicksMixin:
             bool(bb.get('party_member_recovery_active', False))
             or Routines.Checks.Party.IsPartyMemberDead()
         ):
+            _mark_planner_paused()
             bb['PLANNER_STATUS'] = 'PAUSED: Party member recovery'
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_PLANNER.value
             return BehaviorTree.NodeState.RUNNING
 
         if bb.get('COMBAT_ACTIVE', False) and self.pause_on_combat:
+            _mark_planner_paused()
             if self._last_planner_gate_state != 'paused_on_combat':
                 self._last_planner_gate_state = 'paused_on_combat'
             bb['PLANNER_STATUS'] = PlannerStatus.PAUSED_ON_COMBAT.value
             bb['PLANNER_OWNER'] = PlannerStatus.OWNER_HEROAI.value
             return BehaviorTree.NodeState.RUNNING
         elif bb.get('LOOTING_ACTIVE', False):
+            _mark_planner_paused()
             if self._last_planner_gate_state != 'paused_on_looting':
                 self._last_planner_gate_state = 'paused_on_looting'
             bb['PLANNER_STATUS'] = PlannerStatus.PAUSED_ON_LOOTING.value

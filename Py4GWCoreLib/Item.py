@@ -691,10 +691,52 @@ class Item:
 
 SUMMONING_SICKNESS_EFFECT_ID = 2886
 
-# Legacy public symbols kept for backward compatibility with callers such as
-# Pycons. Summon detection no longer relies on names or ModelIDs.
-KNOWN_SUMMONING_STONE_CREATURE_MODEL_IDS = frozenset()
-KNOWN_SUMMONING_STONE_CREATURE_ENC_NAMES = frozenset()
+KNOWN_SUMMONING_STONE_CREATURE_MODEL_IDS = frozenset({
+    513,         # Fire Imp
+    1726,        # Fire Imp variant
+    8028,        # Legionnaire
+    9055, 9076,  # Tengu Support Flare - Warrior
+    9056, 9077,  # Tengu Support Flare - Ranger
+    9058, 9079,  # Tengu Support Flare - Monk
+    9060, 9081,  # Tengu Support Flare - Mesmer
+    9062, 9083,  # Tengu Support Flare - Ritualist
+    9065, 9086,  # Tengu Support Flare - Assassin
+    9067, 9088,  # Tengu Support Flare - Elementalist
+    9069, 9090,  # Tengu Support Flare - Necromancer
+    9264,        # Imperial Guard Reinforcement Order / Canthan Guard
+})
+
+KNOWN_SUMMONING_STONE_CREATURE_ENC_NAMES = frozenset({
+    "\\x8103\\x06FE",  # Imperial Guard Reinforcement Order / Canthan Guard
+})
+
+
+def party_player_agent_ids() -> set[int]:
+    from .Party import Party
+    from .Player import Player
+
+    out: set[int] = set()
+    try:
+        me = int(Player.GetAgentID() or 0)
+        if me > 0:
+            out.add(me)
+    except Exception:
+        pass
+
+    try:
+        for player in Party.GetPlayers() or []:
+            try:
+                login_number = int(getattr(player, "login_number", 0) or 0)
+                if login_number <= 0:
+                    continue
+                agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
+                if agent_id > 0:
+                    out.add(agent_id)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
 
 
 def has_summoning_sickness(agent_id: int | None = None) -> bool:
@@ -766,6 +808,54 @@ def is_active_summoning_stone_ally(agent_id: int) -> bool:
         return False
 
 
+_SUMMON_SCAN_VERSION = "summon-agent-scan-v2-20261017"
+
+
+def _summon_scan_candidates():
+    """Collect only agent IDs that Py4GW already exposes in its public arrays.
+
+    The raw agent array is checked first, as in the original Work Branch. The
+    category arrays are additional sources: some builds enumerate allies and
+    NPC/minipets differently. The detector itself remains unchanged.
+    """
+    from .AgentArray import AgentArray
+    from .Party import Party
+
+    seen = set()
+    candidate_ids = []
+    counts = {}
+    errors = {}
+    sources = (
+        ("all", AgentArray.GetAgentArray),
+        ("ally", AgentArray.GetAllyArray),
+        ("npc_minipet", AgentArray.GetNPCMinipetArray),
+        ("spirit_pet", AgentArray.GetSpiritPetArray),
+        ("others", Party.GetOthers),
+    )
+    for label, reader in sources:
+        try:
+            records = reader() or []
+            # Iterate in the supplied order; errors in one array must not
+            # prevent another array from being examined.
+            count = 0
+            for raw in records:
+                try:
+                    agent_id = int(raw or 0)
+                except (ValueError, TypeError):
+                    continue
+                if agent_id <= 0:
+                    continue
+                count += 1
+                if agent_id not in seen:
+                    seen.add(agent_id)
+                    candidate_ids.append(agent_id)
+            counts[label] = count
+        except Exception as exc:
+            counts[label] = -1
+            errors[label] = type(exc).__name__ + ": " + str(exc)[:100]
+    return candidate_ids, counts, errors
+
+
 def has_active_party_summon(others: Iterable[int] | None = None) -> bool:
     """Return True when any living summoning-item ally exists in the instance.
 
@@ -790,3 +880,48 @@ def has_active_party_summon(others: Iterable[int] | None = None) -> bool:
 
     return False
 
+
+def summon_detection_diagnostics(max_agents: int = 10) -> list[str]:
+    """Concise live-game probe for failed summoning-stone detection.
+
+    Reports only agent numbers and flags (no player names, email or account
+    identifiers). This is called sparingly by SummoningStonePartyService.
+    """
+    from .Agent import Agent
+    candidate_ids, counts, errors = _summon_scan_candidates()
+    lines = [f"scan={_SUMMON_SCAN_VERSION}; arrays={counts}; unique={len(candidate_ids)}"]
+    for key, error in errors.items():
+        lines.append(f"{key} read error: {error}")
+    def _safe(method, aid, default="?"):
+        try:
+            val = method(aid)
+            return val if val is not None else default
+        except Exception as exc:
+            return "ERR:" + type(exc).__name__
+    candidates = []
+    for aid in candidate_ids:
+        alive = _safe(Agent.IsAlive, aid, False)
+        allegiance = _safe(Agent.GetAllegiance, aid)
+        allegiance_num = allegiance[0] if isinstance(allegiance, (tuple, list)) and allegiance else allegiance
+        npc = _safe(Agent.IsNPC, aid, False)
+        login = _safe(Agent.GetLoginNumber, aid, -1)
+        model_id = _safe(Agent.GetModelID, aid, -1)
+        owner_id = _safe(Agent.GetOwnerID, aid, 0)
+        party_visible = _safe(Agent.CanBeViewedInPartyWindow, aid, False)
+        spawned = _safe(Agent.IsSpawned, aid, False)
+        type_map = _safe(Agent.GetTypeMap, aid, 0)
+        npc_flags = _safe(Agent.GetNPCFlags, aid, -1)
+        # Show promising allies first rather than unrelated monsters/players.
+        likely = (int(allegiance_num) in (4, 6) if isinstance(allegiance_num, int) else False)
+        known = isinstance(model_id, int) and model_id in KNOWN_SUMMONING_STONE_CREATURE_MODEL_IDS
+        interesting = (bool(npc) and bool(alive) and (likely or bool(party_visible) or bool(owner_id))) or known
+        if interesting:
+            recognized = is_active_summoning_stone_ally(aid)
+            candidates.append((int(bool(known))*3 + int(likely)*2 + int(bool(party_visible)),
+                               f"id={aid} model={model_id} alive={alive} allegiance={allegiance_num} npc={npc} "
+                               f"login={login} spawned={spawned} party={party_visible} type={type_map} "
+                               f"flags={npc_flags} owner={owner_id} recognized={recognized}"))
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    lines.append(f"interesting_agents={len(candidates)}; showing={min(len(candidates), max_agents)}")
+    lines.extend(line for _, line in candidates[:max(0, max_agents)])
+    return lines

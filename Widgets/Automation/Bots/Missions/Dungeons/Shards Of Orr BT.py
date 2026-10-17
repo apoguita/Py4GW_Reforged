@@ -3313,7 +3313,7 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
     def _stop_local_player() -> None:
         try:
             px, py = Player.GetXY()
-            Player.Move(float(px), float(py))
+            Player.Move(float(px), float(py), avoid_obstacles=False)
         except Exception:
             pass
 
@@ -3342,11 +3342,21 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
         # party is fighting, otherwise this decorator can fight HeroAI/Vanquish.
         try:
             if Routines.Checks.Agents.InDanger():
-                if self._committed is not None:
-                    self._clear_committed()
-                    self.child.reset()
-                self.child.blackboard = self.blackboard
-                return self.child.tick()
+                # A forced-wait trap must win over the combat short-circuit.
+                # Preserve the latch while ON, even if a combat target moves.
+                if self._committed is not None and _shards_trap_requires_forced_pause(self._committed):
+                    aid = int(self._committed["agent_id"])
+                    agent = Agent.GetAgentByID(aid)
+                    if agent is not None and (int(getattr(agent, "name_properties", 0) or 0) & SHARDS_TRAP_ACTIVE_BIT):
+                        self._stop_local_player()
+                        return BehaviorTree.NodeState.RUNNING
+                forced_blocker = _shards_route_blocker(self._route_target(), active_only=True)
+                if forced_blocker is None or not _shards_trap_requires_forced_pause(forced_blocker):
+                    if self._committed is not None:
+                        self._clear_committed()
+                        self.child.reset()
+                    self.child.blackboard = self.blackboard
+                    return self.child.tick()
         except Exception:
             pass
 
@@ -3412,6 +3422,21 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             self.child.blackboard = self.blackboard
             return self.child.tick()
 
+        # Forced-wait hazards never use the geometric bypass-complete exit.
+        # A moving enemy or target can change the trajectory without turning OFF.
+        if _shards_trap_requires_forced_pause(committed):
+            gid = int(committed.get("gadget_id", 0) or 0)
+            if not self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapAvoid] GID={gid} is configured for forced pause on this map; waiting for OFF.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            self._waiting_without_detour = True
+            self._inactive_since_ms = 0.0
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
         if not _shards_trap_still_blocks(
             (float(committed["x"]), float(committed["y"])),
             route_target,
@@ -3438,18 +3463,6 @@ class _ShardsTrapAvoidNode(BehaviorTree.Node):
             return BehaviorTree.NodeState.RUNNING
 
         gid = int(committed.get("gadget_id", 0) or 0)
-        if _shards_trap_requires_forced_pause(committed):
-            if not self._waiting_without_detour:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    f"[TrapAvoid] GID={gid} is configured for forced pause on this map; waiting for OFF.",
-                    PySystem.Console.MessageType.Warning,
-                )
-            self._waiting_without_detour = True
-            self._inactive_since_ms = 0.0
-            self._stop_local_player()
-            return BehaviorTree.NodeState.RUNNING
-
         bypass = _shards_trap_centered_bypass_target(
             current_pos,
             route_target,
@@ -3546,7 +3559,7 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
     def _stop_local_player() -> None:
         try:
             px, py = Player.GetXY()
-            Player.Move(float(px), float(py))
+            Player.Move(float(px), float(py), avoid_obstacles=False)
         except Exception:
             pass
 
@@ -3601,8 +3614,13 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
     def _tick_impl(self) -> BehaviorTree.NodeState:
         target_xy = self._current_target_xy()
 
-        # Let the combat node select/refresh a target when none exists yet.
+        # A vanished/changed target must not release a forced wait while ON.
         if target_xy is None:
+            if self._committed is not None and _shards_trap_requires_forced_pause(self._committed):
+                if self._trap_is_active(self._committed):
+                    self._waiting_without_detour = True
+                    self._stop_local_player()
+                    return BehaviorTree.NodeState.RUNNING
             self._clear_committed()
             result = self._resume_child()
             target_xy = self._current_target_xy()
@@ -3653,6 +3671,21 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
             self._clear_committed()
             return self._resume_child()
 
+        # Strict safety gate: GID 8143 (and other explicitly configured
+        # forced-wait traps) stay locked until the active bit turns OFF.
+        # NEVER consult geometric "bypass complete" for a forced wait.
+        if _shards_trap_requires_forced_pause(committed):
+            gid = int(committed.get("gadget_id", 0) or 0)
+            if not self._waiting_without_detour:
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    f"[TrapCombat] GID={gid} is configured for forced pause on this map; waiting for OFF.",
+                    PySystem.Console.MessageType.Warning,
+                )
+            self._waiting_without_detour = True
+            self._stop_local_player()
+            return BehaviorTree.NodeState.RUNNING
+
         # If the active trap is no longer in front of the current target route,
         # the local bypass has done its job.
         if not _shards_trap_still_blocks(
@@ -3676,17 +3709,6 @@ class _ShardsCombatTrapAvoidNode(BehaviorTree.Node):
             return BehaviorTree.NodeState.RUNNING
 
         gid = int(committed.get("gadget_id", 0) or 0)
-        if _shards_trap_requires_forced_pause(committed):
-            if not self._waiting_without_detour:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    f"[TrapCombat] GID={gid} is configured for forced pause on this map; waiting for OFF.",
-                    PySystem.Console.MessageType.Warning,
-                )
-            self._waiting_without_detour = True
-            self._stop_local_player()
-            return BehaviorTree.NodeState.RUNNING
-
         bypass = _shards_trap_centered_bypass_target(
             current_pos,
             target_xy,

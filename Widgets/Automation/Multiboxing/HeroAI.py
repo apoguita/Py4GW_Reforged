@@ -1,8 +1,3 @@
-# ============================================================
-# HeroAI Consumable Auto Upkeep - Official Base Patch v02
-# Adds the consumable upkeep scheduler call only.
-# ============================================================
-
 #region Imports
 import math
 import os
@@ -32,7 +27,7 @@ from Py4GWCoreLib.HeroAI import resurrection_scroll
 
 from Py4GWCoreLib.HeroAI.windows import (HeroAI_FloatingWindows ,HeroAI_Windows,)
 from Py4GWCoreLib.HeroAI.ui_base import HeroAI_BaseUI
-from Py4GWCoreLib.HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay, tick_consumable_upkeep)
+from Py4GWCoreLib.HeroAI.ui import (draw_configure_window, draw_skip_cutscene_overlay)
 from Py4GWCoreLib.HeroAI import team_viewer_broadcast
 from Py4GWCoreLib import (GLOBAL_CACHE, Agent,
                           Range, Routines, ThrottledTimer, SharedCommandType)
@@ -445,7 +440,6 @@ def main():
     
     try:
         cached_data.Update()
-        tick_consumable_upkeep(cached_data)
 
         EnsureFollowModuleIni()
         HeroAI_FloatingWindows.update()
@@ -453,6 +447,11 @@ def main():
         resurrection_scroll.tick()
         
         if initialize(cached_data):
+            # GID 8143 is a forced-wait fire hazard in Shards level 3. Each
+            # account must locally suspend its own HeroAI, not just the leader.
+            from Py4GWCoreLib.py4gwcorelib_src.shards_flame_hold import SHARDS_FLAME_HOLD
+            if SHARDS_FLAME_HOLD.hold_if_needed():
+                return
             modulo += 1
             if modulo >= 2:
                 modulo = 0
