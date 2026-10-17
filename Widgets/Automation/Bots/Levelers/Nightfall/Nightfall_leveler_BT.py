@@ -260,6 +260,8 @@ def _get_armor_material() -> int:
         return ModelID.Bolt_Of_Cloth.value
     if primary == "Elementalist":
         return ModelID.Bolt_Of_Cloth.value
+    if primary == "Ranger":
+        return ModelID.Bolt_Of_Cloth.value
     return ModelID.Tanned_Hide_Square.value
 
 
@@ -1210,7 +1212,7 @@ def AHiddenThreat() -> BehaviorTree:
             BT.MoveAndDialog((-1835, 6505), 0x825A01, log=True),  # Shaurom
             BT.MoveAndExitMap(pos=(-3172, 3271), target_map_id=PLAINS_OF_JARIN, log=True),
             ConfigureAggressiveEnv(),
-            BT.VanquishNode(steps=[(-4680.29, 1867.42), (-13276.00, -151.00), (-17946.33, 2426.69), (-17614.74, 11699.77), (-18657.45, 14601.87), (-16911.47, 19039.31)]),
+            BT.VanquishNode(steps=[(-4680.29, 1867.42), (-13276.00, -151.00), (-17946.33, 2426.69), (-18552.92, 4336.15), (-17614.74, 11699.77), (-18657.45, 14601.87), (-16911.47, 19039.31)]),
             BT.WaitUntilOnCombat(),
             BT.WaitUntilOutOfCombat(),
             BT.MoveAndExitMap(pos=(-20136, 16757), target_map_id=THE_ASTRELARIUM, log=True),
@@ -1821,7 +1823,7 @@ def UnlockEyeOfTheNorthPool() -> BehaviorTree:
             BT.WaitForMapLoad(map_id=646, timeout_ms=30000),
             BT.MoveAndDialogByModelID(modelID_or_encStr=GWEN_ENC_STRING, dialog_id=0x89),  # Gwen
             BT.MoveAndDialogByModelID(modelID_or_encStr=GWEN_ENC_STRING, dialog_id=0x831904),  # Gwen
-            BT.DialogAtXY(pos=(-6572.70, 6588.83), dialog_id=0x8A), #for the Keiran Bow
+            #BT.DialogAtXY(pos=(-6572.70, 6588.83), dialog_id=0x8A), #for the Keiran Bow
             BT.MoveAndDialogByModelID(modelID_or_encStr=OGDEN_ENC_STRING, dialog_id=0x838904),  # Ogden
             BT.MoveAndDialogByModelID(modelID_or_encStr=VEKK_ENC_STRING, dialog_id=0x839304),  # Vekk
         ],
@@ -2189,7 +2191,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     # Leveling
     steps.append(("Farm Until Level 10", FarmUntilLevel10))
     steps.append(("To Consulate Docks", ToConsulateDocks))
-    steps.append(("Unlock Remaining Secondary Professions", UnlockRemainingSecondaryProfessions))
+    #steps.append(("Unlock Remaining Secondary Professions", UnlockRemainingSecondaryProfessions))
     steps.append(("Unlock Mercenary Heroes", UnlockMercenaryHeroes))
     steps.append(("Unlock Xunlai Material Storage", UnlockXunlaiMaterialStorage))
     steps.append(("Attribute Points Quest 2", AttributePointsQuest2))

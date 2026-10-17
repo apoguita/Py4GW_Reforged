@@ -19,7 +19,6 @@ from enum import Enum
 import math
 import os
 import random
-import time
 from typing import Optional
 import PySystem
 import PyImGui
@@ -54,7 +53,6 @@ from Py4GWCoreLib.enums_src.Multiboxing_enums import SharedCommandType
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Console import ConsoleLog
 from Py4GWCoreLib.py4gwcorelib_src.Timer import ThrottledTimer, Timer
-from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings as NativeSettings
 from Py4GWCoreLib.py4gwcorelib_src.Utils import Utils
 from Py4GWCoreLib.py4gwcorelib_src.WidgetManager import get_widget_handler
 from Py4GWCoreLib.FrameTree import Frame, FrameId, FrameTree
@@ -3679,22 +3677,8 @@ def _use_all_cons(cached_data: CacheData):
     # Conset is different: each missing party-wide effect is supplied by exactly
     # one account that actually carries the item, and only while everyone is alive.
     for model_id, (_texture_path, params) in consumables:
-        value = int(model_id.value if hasattr(model_id, "value") else model_id)
-        if value <= 0 or value == int(ModelID.Dwarven_Ale.value) or value in _EVENT_TRIGGER_MODELS:
+        if model_id == 0:
             continue
-
-        if value in _CONSET_AUTO_MODELS:
-            yield from _run_partywide_conset_once(value, tuple(int(v) for v in params), cached_data)
-            continue
-
-        if value == int(ModelID.Four_Leaf_Clover.value):
-            yield from _run_partywide_dp_once(cached_data)
-            continue
-
-        if value == int(ModelID.Rainbow_Candy_Cane.value):
-            yield from _run_partywide_morale_once(cached_data)
-            continue
-
         _post_pcon_message(params, cached_data)
         yield from Routines.Yield.wait(100)
 
@@ -3874,12 +3858,19 @@ def _draw_consumable_toggle_grid(cached_data: CacheData, table_id: str) -> bool:
         if ImGui.begin_table(table_id, 7, PyImGui.TableFlags.SizingStretchProp):
             PyImGui.table_next_column()
 
-            for model_id, (texture_path, _params) in consumables:
+        ImGui.text("Consumable configuration window")
+        if PyImGui.button("Use Cons"):
+            GLOBAL_CACHE.Coroutines.append(_use_all_cons(cached_data))
+        ImGui.show_tooltip("Use all consumables on all accounts.")
+        btn_size = 32
+        style.CellPadding.push_style_var(2, 2)
+        if ImGui.begin_table("##ConTable", 6, PyImGui.TableFlags.SizingStretchProp):
+            PyImGui.table_next_column()
+            
+            for model_id, (texture_path, params) in consumables:        
                 if model_id == 0:
                     PyImGui.table_next_column()
                     continue
-
-                active = _consumable_auto_enabled(model_id)
                 PyImGui.push_style_color(PyImGui.ImGuiCol.Button, (0, 0, 0, 0))
                 PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, (0, 0, 0, 0))
                 PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, (0, 0, 0, 0))
@@ -3971,9 +3962,9 @@ def _draw_consumable_toggle_grid(cached_data: CacheData, table_id: str) -> bool:
                     "Right-click: party uses once."
                 )
                 PyImGui.table_next_column()
-
+                        
             ImGui.end_table()
-    finally:
+            
         style.CellPadding.pop_style_var()
     return right_click_handled
 
@@ -4107,7 +4098,8 @@ def draw_consumables_window(cached_data: CacheData):
 
 def draw_base_consumables_window(cached_data: CacheData):
     global configure_base_consumables_window_open
-
+    style = ImGui.get_style()
+    
     if not configure_base_consumables_window_open:
         return
 
@@ -4126,7 +4118,7 @@ def draw_base_consumables_window(cached_data: CacheData):
         else:
             _draw_consumable_toggle_grid(cached_data, "##ConAutoTableBase")
         ImGui.End(cached_data.consumables_ini_key)
-
+        
 
 def draw_command_panel(window: WindowModule, cached_data: CacheData):
     style = ImGui.get_style()
