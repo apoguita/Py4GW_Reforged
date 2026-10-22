@@ -1531,11 +1531,11 @@ class Agent:
 
     @staticmethod
     def GetOvercast(agent_id: int) -> float:
-        """Retrieve the overcast of the agent."""
-        living = Agent.GetLivingAgentByID(agent_id)
-        if living is None:
+        """Retrieve live overcast points from the native energy-bar boundary."""
+        try:
+            return max(0.0, float(PyAgent.get_overcast(agent_id)))
+        except (AttributeError, TypeError, ValueError):
             return 0.0
-        return living.h0128
     
     @staticmethod
     def GetProfessionsTexturePaths(agent_id: int) -> tuple[str, str]:
