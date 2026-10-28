@@ -18,6 +18,7 @@ class BottingTreeServicesMixin:
         retry_cycle_delay_ms: float = 15000.0,
         log: bool = True,
         excluded_summon_npc_names: Sequence[str] = (),
+        diagnostics: bool = False,
     ) -> BehaviorTree:
         """Keep one summoning-stone ally active for a multibox party.
 
@@ -26,7 +27,8 @@ class BottingTreeServicesMixin:
         The receiver-side Messaging handler owns inventory priority, Summoning
         Sickness checks and the final item use. Once an active summon is observed,
         requests stop; if that summon disappears, a new account-by-account cycle
-        begins.
+        begins. Detailed detection probes and per-account requests are opt-in via
+        diagnostics=True; normal logs only report important state changes/errors.
         """
         state: dict[str, object] = {
             "map_id": 0,
@@ -37,6 +39,7 @@ class BottingTreeServicesMixin:
             "target_index": 0,
             "next_attempt_ms": 0.0,
             "next_probe_ms": 0.0,
+            "no_summon_warning_logged": False,
         }
         allowed_maps = {int(map_id) for map_id in (map_ids or ()) if int(map_id) > 0}
         excluded_names = frozenset(str(name).strip().casefold() for name in excluded_summon_npc_names if str(name).strip())
@@ -65,6 +68,7 @@ class BottingTreeServicesMixin:
             state["target_index"] = 0
             state["next_attempt_ms"] = 0.0
             state["next_probe_ms"] = 0.0
+            state["no_summon_warning_logged"] = False
 
         def _reset_disabled() -> None:
             state["map_id"] = 0
@@ -75,6 +79,7 @@ class BottingTreeServicesMixin:
             state["target_index"] = 0
             state["next_attempt_ms"] = 0.0
             state["next_probe_ms"] = 0.0
+            state["no_summon_warning_logged"] = False
 
         def _party_id(account: object) -> int:
             try:
@@ -176,9 +181,10 @@ class BottingTreeServicesMixin:
                 return BehaviorTree.NodeState.RUNNING
             if map_id != int(state["map_id"] or 0):
                 _reset_for_map(map_id)
-                _log(
-                    f"Map {map_id}: summon watcher active; first check after {max(0.0, float(initial_grace_ms)) / 1000.0:.1f}s."
-                )
+                if diagnostics:
+                    _log(
+                        f"Map {map_id}: summon watcher active; first check after {max(0.0, float(initial_grace_ms)) / 1000.0:.1f}s."
+                    )
                 return BehaviorTree.NodeState.RUNNING
 
             player_id = int(Player.GetAgentID() or 0)
@@ -194,9 +200,9 @@ class BottingTreeServicesMixin:
             except Exception:
                 summon_alive = False
 
-            # Bogroot probe also runs when the detector reports an active summon:
-            # that is the key signal when an escort NPC creates a false positive.
-            if not summon_alive or excluded_names:
+            # Optional deep probe. Keep disabled during normal runs: agent dumps
+            # are expensive/noisy and provide no value when summon detection works.
+            if diagnostics and (not summon_alive or excluded_names):
                 probe_now_ms = time.monotonic() * 1000.0
                 if probe_now_ms >= float(state.get("next_probe_ms", 0.0) or 0.0):
                     state["next_probe_ms"] = probe_now_ms + 60000.0
@@ -214,13 +220,14 @@ class BottingTreeServicesMixin:
             if summon_alive:
                 if bool(state["recovering"]):
                     _log("Summoned ally detected; request cycle stopped.", PySystem.Console.MessageType.Success)
-                elif not bool(state["saw_active_summon"]):
+                elif diagnostics and not bool(state["saw_active_summon"]):
                     _log("Summoned ally observed; replacement monitoring armed.")
                 state["saw_active_summon"] = True
                 state["recovering"] = False
                 state["targets"] = []
                 state["target_index"] = 0
                 state["next_attempt_ms"] = 0.0
+                state["no_summon_warning_logged"] = False
                 return BehaviorTree.NodeState.RUNNING
 
             now_ms = time.monotonic() * 1000.0
@@ -233,12 +240,12 @@ class BottingTreeServicesMixin:
                 state["target_index"] = 0
                 state["next_attempt_ms"] = now_ms
                 _refresh_targets()
-                _log(
-                    "No summon observed; trying party accounts one by one."
-                    if initial_missing
-                    else "Active summon disappeared; trying a replacement account by account.",
-                    PySystem.Console.MessageType.Warning,
-                )
+                # Missing a summon on entry is expected; only warn when one
+                # disappears after being observed. Verbose starts are opt-in.
+                if not initial_missing:
+                    _log("Active summon disappeared; trying a replacement.", PySystem.Console.MessageType.Warning)
+                elif diagnostics:
+                    _log("No summon observed; trying party accounts one by one.")
 
             if now_ms < float(state["next_attempt_ms"] or 0.0):
                 return BehaviorTree.NodeState.RUNNING
@@ -255,10 +262,14 @@ class BottingTreeServicesMixin:
                 state["target_index"] = 0
                 state["targets"] = _refresh_targets()
                 state["next_attempt_ms"] = now_ms + max(250.0, float(retry_cycle_delay_ms))
-                _log(
-                    f"No summon detected after trying {len(targets)} account(s); retrying in {max(250.0, float(retry_cycle_delay_ms)) / 1000.0:.1f}s.",
-                    PySystem.Console.MessageType.Warning,
-                )
+                # Warn only once per missing-summon episode, not on every retry
+                # cycle. Continue retrying with the original schedule.
+                if not bool(state["no_summon_warning_logged"]):
+                    _log(
+                        f"No summoned ally after trying {len(targets)} account(s); retrying silently.",
+                        PySystem.Console.MessageType.Warning,
+                    )
+                    state["no_summon_warning_logged"] = True
                 return BehaviorTree.NodeState.RUNNING
 
             sender_email = str(Player.GetAccountEmail() or "").strip()
@@ -276,9 +287,10 @@ class BottingTreeServicesMixin:
                     SharedCommandType.UseSummoningStone,
                     (0.0, 0.0, 0.0, 0.0),
                 )
-                _log(
-                    f"Asking {label} to try a summoning stone ({target_index + 1}/{len(targets)})."
-                )
+                if diagnostics:
+                    _log(
+                        f"Asking {label} to try a summoning stone ({target_index + 1}/{len(targets)})."
+                    )
             except Exception as exc:
                 _log(
                     f"Summoning-stone request failed for {label}: {exc}",
