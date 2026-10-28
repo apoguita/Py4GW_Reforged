@@ -5997,10 +5997,6 @@ def ClearFendiArenaWithBossPriority() -> BehaviorTree:
         if target_changed or interaction_due:
             Player.ChangeTarget(target_id)
             try:
-                Player.CallTarget(target_id)
-            except Exception:
-                pass
-            try:
                 Player.Interact(target_id, False)
             except Exception:
                 pass
