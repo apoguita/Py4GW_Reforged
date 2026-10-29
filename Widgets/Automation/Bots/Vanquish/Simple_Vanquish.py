@@ -136,6 +136,29 @@ def _take_blessing(bot: Botting, x: float, y: float):
     yield from Routines.Yield.wait(500)
 
 
+def _hold_cartography_point(bot: Botting, location_data):
+    from Py4GWCoreLib.routines_src.behaviourtrees_src.cartography import HoldCartographyPoint
+    from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
+
+    tree = HoldCartographyPoint(
+        tuple(location_data["xy"]),
+        direction=location_data["direction"],
+        hold_seconds=3.0,
+        name=location_data["name"],
+    )
+    try:
+        while True:
+            state = tree.tick()
+            if state == BehaviorTree.NodeState.SUCCESS:
+                return True
+            if state == BehaviorTree.NodeState.FAILURE:
+                bot.Stop()
+                return False
+            yield from Routines.Yield.wait(50)
+    finally:
+        tree.reset()
+
+
 def _handle_keyword(bot, key, value):
     """Process a single keyword action from a complex path segment."""
     if key == "bless":
@@ -158,6 +181,14 @@ def _handle_keyword(bot, key, value):
         bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Sending dialog target.")
         bot.Wait.ForTime(500)
         bot.Multibox.SendDialogToTarget(value)
+    elif key == "literal_path":
+        bot.Move.FollowPath(value)
+    elif key == "cartography_hold":
+        bot.Wait.UntilOutOfCombat()
+        bot.States.AddCustomState(
+            lambda data=value: _hold_cartography_point(bot, data),
+            str(value["name"]),
+        )
     elif key == "wait":
         bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Waiting...")
         bot.Wait.ForTime(value)
@@ -228,13 +259,13 @@ def _get_first_path_coord(path):
     if isinstance(first, dict):
         for entry in path:
             for key, value in entry.items():
-                if key == "path" and value:
+                if key in {"path", "literal_path"} and value:
                     return (value[0][0], value[0][1])
         return (0.0, 0.0)
     elif isinstance(first, list):
         for segment in path:
             for key, value in segment:
-                if key == "path" and value:
+                if key in {"path", "literal_path"} and value:
                     return (value[0][0], value[0][1])
         return (0.0, 0.0)
     else:
@@ -440,7 +471,11 @@ def bot_routine(bot: Botting) -> None:
                     bot.Wait.ForMapToChange(next_map)
                     section_idx += 1
             else:
-                bot.Move.FollowPathAndExitMap(vq.outpost_path, target_map_id=vq.explorable_id)
+                if vq.explorable_id == 486:
+                    bot.Move.FollowPath(vq.outpost_path)
+                    bot.Wait.ForMapLoad(target_map_id=vq.explorable_id, timeout_ms=15000)
+                else:
+                    bot.Move.FollowPathAndExitMap(vq.outpost_path, target_map_id=vq.explorable_id)
         elif not has_outpost_path and not has_explorable:
             bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"No outpost exit path. Starting Vanquish from outpost.")
             for i in range(transit_count):
