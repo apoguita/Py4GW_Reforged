@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from Py4GWCoreLib.BuildMgr import BuildCoroutine
-from Py4GWCoreLib import GLOBAL_CACHE, Player, Routines
+from Py4GWCoreLib import Agent, GLOBAL_CACHE, Player, Routines
 from Py4GWCoreLib.Skill import Skill
 
 if TYPE_CHECKING:
@@ -34,9 +34,9 @@ class Command:
         """Anti-touch party shout and optional refrain-renewal heartbeat.
 
         Guild Wars treats this shout specially: reapplying it ends the existing
-        copy first, which triggers echoes. With its current 10-second recharge,
+        copy first, which triggers echoes.  With its current 10-second recharge,
         an HR bar can therefore cast it whenever ready even though the shout's
-        nominal duration is 20 seconds. Other callers retain the conservative
+        nominal duration is 20 seconds.  Other callers retain the conservative
         combat-only behavior and may wait until the running copy is nearly over.
         """
         cant_touch_this_id: int = Skill.GetID("Cant_Touch_This")
@@ -78,6 +78,8 @@ class Command:
         if not self.build.IsSkillEquipped(fall_back_id):
             return False
         if self.build.IsInAggro() or self.build.IsCloseToAggro():
+            return False
+        if not Agent.IsMoving(player_agent_id):
             return False
         if Routines.Checks.Agents.HasEffect(player_agent_id, fall_back_id):
             return False
