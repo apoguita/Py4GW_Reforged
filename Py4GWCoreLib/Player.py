@@ -758,17 +758,20 @@ class Player:
         ActionQueueManager().AddAction("ACTION",_do_action)
 
     @staticmethod
-    def Move(x:float, y:float, zPlane:int=0):
+    def Move(x: float, y: float, zPlane: int = 0, *, avoid_obstacles: bool = True):
+        """Move this game client, proactively avoiding visible collidable agents.
+
+        Py4GW callers (leader/followers/direct moves) use one predictable
+        steering entry point. The original destination is preserved and
+        restored when a temporary detour is complete. BT.Move's own movement
+        runtime can opt out here to avoid duplicate steering.
         """
-        Purpose: Move the player to specified X and Y coordinates.
-        Args:
-            x (float): X coordinate.
-            y (float): Y coordinate.
-        Returns: None
-        """
-        from .native_src.methods.PlayerMethods import PlayerMethods
-        ActionQueueManager().AddAction("ACTION",
-        PlayerMethods.Move, x, y, zPlane)
+        from .py4gwcorelib_src.proactive_move import PROACTIVE_MOVE
+        if avoid_obstacles:
+            PROACTIVE_MOVE.request(x, y, zPlane)
+        else:
+            PROACTIVE_MOVE.reset()
+            PROACTIVE_MOVE._issue_raw(x, y, zPlane)
         
     @staticmethod
     def DepositFaction(faction_id):

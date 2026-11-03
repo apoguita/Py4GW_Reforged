@@ -62,7 +62,7 @@ class FarmDefinition:
 
     farm_map_id: int = 0
     exit_point: tuple[float, float] | None = None
-    clear_radius: str = "Earshot"
+    clear_radius: str = "Spirit"
 
     transit_map_id: int = 0
     transit_path: tuple[tuple[float, float], ...] = ()
@@ -126,6 +126,66 @@ class FarmDefinition:
 
 FARMS: tuple[FarmDefinition, ...] = (
 
+    FarmDefinition(
+        key='alpine_seed',
+        name='Alpine Seed',
+        model_id=497,
+        default_target=10,
+        flow='direct',
+        outpost_map_id=133,
+        farm_map_id=100,
+        exit_point=(-10807.0, 35759.0),
+        farm_path=(
+            (15566.0, -14648.0),
+            (8896.0, -15293.0),
+            (7235.0, -16320.0),
+            (5047.0, -11445.0),
+            (11919.0, -5716.0),
+            (12926.0, -3902.0),
+            (7672,700),
+        ),
+        clear_radius='Spirit',
+        nicholas_item_name='Alpine Seed',
+        items_for_5_gifts=10,
+        collector_item_name='',
+        collector_item_model_id=0,
+        exchange_town_map_id=0,
+        exchange_actions=(),
+        nicholas_position=None,
+        exchange_source_file='',
+    ),
+
+    FarmDefinition(
+        key='amphibian_tongue',
+        name='Amphibian Tongue',
+        model_id=27036,
+        default_target=10,
+        flow='direct',
+        outpost_map_id=638,
+        farm_map_id=558,
+        exit_point=(-9589.0, -19466.0),
+        farm_path=(
+            (-11378.0, -17316.0),
+            (-11052.0, -10945.0),
+            (-10147.0, -5946.0),
+            (-10493.0, 697.0),
+            (-10865.0, 12622.0),
+            (-7770.0, 15541.0),
+            (-3701.0, 9615.0),
+            (-6532.0, 3512.0),
+            (1871.0, 10411.0),
+            (-694.0, 15983.0),
+        ),
+        clear_radius='Spirit',
+        nicholas_item_name='Amphibian Tongue',
+        items_for_5_gifts=10,
+        collector_item_name='',
+        collector_item_model_id=0,
+        exchange_town_map_id=0,
+        exchange_actions=(),
+        nicholas_position=None,
+        exchange_source_file='',
+    ),
     FarmDefinition(
         key='abnormal_seed',
         name='Abnormal Seed',
@@ -1385,6 +1445,33 @@ FARMS: tuple[FarmDefinition, ...] = (
  ('aggro', (-6281.0, -14961.38), 0),
  ('move', (-5926.7, -14853.96), 0)),
         nicholas_position=(-5926.7, -14853.96),
+        exchange_source_file='',
+    ),
+    FarmDefinition(
+        key='guardian_moss',
+        name='Guardian Moss',
+        model_id=849,
+        default_target=5,
+        flow='direct',
+        outpost_map_id=283,
+        farm_map_id=211,
+        exit_point=(-13329.0, 11003.0),
+        farm_path=(
+            (-10202.0, -1596.0),
+            (355.0, -586.0),
+            (7959.0, -1722.0),
+            (18041.0, -2556.0),
+            (19730.0, 5009.0),
+            (21823.0, 3916.0),
+        ),
+        clear_radius='Spirit',
+        nicholas_item_name='Guardian Moss',
+        items_for_5_gifts=5,
+        collector_item_name='',
+        collector_item_model_id=0,
+        exchange_town_map_id=0,
+        exchange_actions=(),
+        nicholas_position=None,
         exchange_source_file='',
     ),
     FarmDefinition(
@@ -3234,23 +3321,12 @@ FARMS: tuple[FarmDefinition, ...] = (
         flow='route_loop',
         outpost_map_id=440,
         farm_map_id=439,
-
-        # Route-loop uses the explicit setup/reset actions below. Keep the
-        # known outpost exit here as documentation / compatibility metadata.
         exit_point=(1946.0, -1747.0),
         outpost_path=(
             (-411.51, -5821.02),
             (1294.60, -2071.13),
         ),
 
-        # FARM ROUTE 2
-        #
-        # This is the repeated farming route after the one-time Route 1 setup.
-        # When it finishes, reset_actions sends the party:
-        #
-        #   439 -> 443 -> 439
-        #
-        # then this Farm Path starts again.
         farm_path=(
             (13853.0, 14251.0),
             (15145.0, 5674.0),
@@ -3264,17 +3340,7 @@ FARMS: tuple[FarmDefinition, ...] = (
         ),
         clear_radius='Earshot',
 
-        # FIRST RUN ONLY
-        #
-        # Mouth of Torment (440)
-        #   -> The Ruptured Heart (439)
-        #   -> FARM ROUTE 1
-        #   -> portal at (21113, 18139) to map 443
-        #   -> return portal at (-25835, -6533) to map 439
-        #
-        # The final Route 1 coordinate is the portal itself, so it is handled
-        # by the explicit 'exit' action rather than duplicated as an aggro
-        # waypoint.
+
         setup_actions=(
             ('move', 440, (-411.51, -5821.02), 0, 0),
             ('move', 440, (1294.60, -2071.13), 0, 0),
@@ -3302,11 +3368,6 @@ FARMS: tuple[FarmDefinition, ...] = (
             ('exit', 443, (-25835.0, -6533.0), 439, 0),
         ),
 
-        # BETWEEN EVERY ROUTE 2 RUN
-        #
-        # 439 -> portal -> 443 -> return portal -> 439 -> Route 2 again.
-        # No /resign is used for Sandblasted reset; the generic NicoBase
-        # Sandblasted route-loop protection keeps reset_fallback disabled.
         reset_actions=(
             ('exit', 439, (21113.0, 18139.0), 443, 0),
             ('exit', 443, (-25835.0, -6533.0), 439, 0),
@@ -4475,7 +4536,7 @@ FARMS: tuple[FarmDefinition, ...] = (
         flow='direct',
         outpost_map_id=14,
         farm_map_id=54,
-        exit_point=(-4212.0, 26608.0),
+        exit_point=(-5136,27966),
         farm_path=(
             (-2252.0, -4813.0),
             (-6.0, -2627.0),
@@ -4538,7 +4599,7 @@ FARMS: tuple[FarmDefinition, ...] = (
         flow='direct',
         outpost_map_id=39,
         farm_map_id=33,
-        exit_point=(-5223.0, -84.0),
+        exit_point=(-4763,-14),
         farm_path=(
             (-3785.0, 830.0),
             (-3860.0, 3400.0),
@@ -5140,7 +5201,7 @@ FARMS: tuple[FarmDefinition, ...] = (
     FarmDefinition(
         key='stolen_supplies',
         name='Stolen Supplies',
-        model_id=851,
+        model_id=840,
         default_target=15,
         flow='direct',
         outpost_map_id=250,
@@ -5597,7 +5658,7 @@ FARMS: tuple[FarmDefinition, ...] = (
         flow='direct',
         outpost_map_id=12,
         farm_map_id=44,
-        exit_point=(-16790.39, -2610.71),
+        exit_point=(-16379,-2699),
         farm_path=(
             (24160.1, 12360.0),
             (24645.93, 11529.33),
@@ -5618,7 +5679,6 @@ FARMS: tuple[FarmDefinition, ...] = (
             (1346.63, 4473.22),
             (1438.63, 3708.22),
             (2078.0, 1689.0),
-            (3290.0, 2754.0),
             (2691.24, -131.56),
             (1086.77, -4360.92),
             (2027.51, -7545.96),

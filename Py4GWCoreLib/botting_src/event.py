@@ -185,21 +185,27 @@ class OnPartyMemberInDanger(Event):
 class OnPartyMemberDeadBehind(Event):
     def should_trigger(self):
         from Py4GWCoreLib import Routines, GLOBAL_CACHE
+        from .helpers_src.HeroAICombatRange import hero_ai_combat_detected
+
         if not Routines.Checks.Map.MapValid() or not Routines.Checks.Map.IsExplorable():
             return False
 
         if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
             return False
 
+        # Corpse recovery must never start while HeroAI still considers the
+        # local player or any party member to be in combat.  Waiting here keeps
+        # the recovery callback from pausing the bot and issuing regroup orders
+        # during an active fight.
+        if hero_ai_combat_detected(include_party=True):
+            return False
+
         # True only if dead party member is behind (outside earshot)
-        behind = Routines.Checks.Party.IsDeadPartyMemberBehind()
-        #if behind:
-        #    print("OnPartyMemberDeadBehind triggered")
-            
-        return behind
+        return Routines.Checks.Party.IsDeadPartyMemberBehind()
     
     def should_reset(self):
         from ..Routines import Checks, Routines, GLOBAL_CACHE
+        from .helpers_src.HeroAICombatRange import hero_ai_combat_detected
 
         # reset if map is invalid
         if not Routines.Checks.Map.MapValid():
@@ -207,6 +213,13 @@ class OnPartyMemberDeadBehind(Event):
 
         if Routines.Checks.Party.IsPartyWiped() or GLOBAL_CACHE.Party.IsPartyDefeated():
             return True
+
+        # If combat starts again after recovery was triggered, unlatch the
+        # event.  The running recovery coroutine aborts on the same condition,
+        # then the event may trigger again once combat is actually over.
+        if hero_ai_combat_detected(include_party=True):
+            return True
+
         # reset if no dead party member behind
         if not Checks.Party.IsDeadPartyMemberBehind():
             return True

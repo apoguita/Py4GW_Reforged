@@ -46,6 +46,7 @@ Docstring parsing rules
 from __future__ import annotations
 
 import time
+import math
 from collections.abc import Generator, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, Optional, cast
@@ -68,6 +69,7 @@ from ...UIManager import (
 )
 from ...enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from ...enums_src.Item_enums import Bags, Rarity, SalvageMode
+from ...enums_src.GameData_enums import Range
 from ...Item import Bag, Item
 from Sources.frenkeyLib.ItemHandling.Items.item_snapshot import ItemSnapshot
 from Sources.frenkeyLib.ItemHandling.UIManagerExtensions import UIManagerExtensions
@@ -77,6 +79,7 @@ from ...py4gwcorelib_src.system_settings.loot_filters import LootFilters
 from ...py4gwcorelib_src.BehaviorTree import BehaviorTree
 from .composite import BTComposite
 from .player import BTPlayer
+from .movement import BTMovement
 from ...FrameTree import Frame, FrameId, FrameKeyError
 
 
@@ -2539,8 +2542,8 @@ class BTItems:
         """
         Pick up the nearest ground item matching one of the supplied model IDs.
 
-        The routine targets and interacts with the matching ground-item agent,
-        allowing the game client to handle movement and pickup naturally.
+        The routine resolves the matching ground-item agent, approaches it through
+        the shared BTMovement reactive-avoidance core, then interacts at pickup range.
 
         Meta:
         Expose: true
@@ -2549,7 +2552,7 @@ class BTItems:
         Purpose: Find and pick up a specific nearby ground item by model ID.
         UserDescription: Use this for bundles, torches, quest objects, or other
         ground items that should be picked up by the local account.
-        Notes: Does not use LootConfig, multibox loot, or shared loot locks.
+        Notes: Does not use LootConfig, multibox loot, or shared loot locks. Ground-item approach inherits BTMovement obstacle avoidance.
         """
         accepted_model_ids = (
             {int(model_ids)}
@@ -2565,6 +2568,8 @@ class BTItems:
             "target_agent_id": 0,
             "last_interaction_at": 0.0,
             "interacted": False,
+            "approach_tree": None,
+            "approach_target_xy": None,
         }
 
         def _trace(message: str) -> None:
@@ -2580,6 +2585,11 @@ class BTItems:
             state["target_agent_id"] = 0
             state["last_interaction_at"] = 0.0
             state["interacted"] = False
+            approach_tree = state.get("approach_tree")
+            if isinstance(approach_tree, BehaviorTree):
+                approach_tree.reset()
+            state["approach_tree"] = None
+            state["approach_target_xy"] = None
 
         def _item_exists(agent_id: int) -> bool:
             if agent_id <= 0:
@@ -2659,7 +2669,7 @@ class BTItems:
 
             return 0
 
-        def _pickup_item() -> BehaviorTree.NodeState:
+        def _pickup_item(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
             now = time.monotonic()
 
             if not accepted_model_ids:
@@ -2714,6 +2724,60 @@ class BTItems:
                     f"Found item agent "
                     f"{target_agent_id}."
                 )
+
+            try:
+                target_x, target_y = Agent.GetXY(target_agent_id)
+                player_x, player_y = Player.GetXY()
+                target_xy = (float(target_x), float(target_y))
+                distance_to_item = math.dist((float(player_x), float(player_y)), target_xy)
+            except Exception:
+                target_xy = None
+                distance_to_item = 0.0
+
+            pickup_tolerance = max(80.0, float(Range.Touch.value))
+            if target_xy is not None and distance_to_item > pickup_tolerance:
+                approach_tree = state.get("approach_tree")
+                approach_target_xy = state.get("approach_target_xy")
+                if (
+                    not isinstance(approach_tree, BehaviorTree)
+                    or approach_target_xy is None
+                    or math.dist(approach_target_xy, target_xy) > 20.0
+                ):
+                    if isinstance(approach_tree, BehaviorTree):
+                        approach_tree.reset()
+                    approach_tree = BTMovement.Approach(
+                        x=target_xy[0],
+                        y=target_xy[1],
+                        tolerance=pickup_tolerance,
+                        timeout_ms=max(1_000, int(timeout_ms)),
+                        pause_on_combat=False,
+                        flag_heroes_to_waypoint=False,
+                        avoid_obstacles=True,
+                        avoid_gadgets=True,
+                        log=log,
+                    )
+                    state["approach_tree"] = approach_tree
+                    state["approach_target_xy"] = target_xy
+                    _trace(
+                        f"Approaching item agent {target_agent_id} through the shared reactive movement core."
+                    )
+
+                approach_tree.blackboard = node.blackboard
+                approach_result = approach_tree.tick()
+                if approach_result == BehaviorTree.NodeState.RUNNING:
+                    return BehaviorTree.NodeState.RUNNING
+                if approach_result == BehaviorTree.NodeState.FAILURE:
+                    _trace(
+                        f"Reactive approach failed for item agent {target_agent_id}."
+                    )
+                    approach_tree.reset()
+                    state["approach_tree"] = None
+                    state["approach_target_xy"] = None
+                    return BehaviorTree.NodeState.FAILURE
+
+                approach_tree.reset()
+                state["approach_tree"] = None
+                state["approach_target_xy"] = None
 
             interval_s = (
                 max(

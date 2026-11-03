@@ -155,7 +155,21 @@ def choose_avoidance_target(
 
             clearance = segment_clearance(start, candidate, obstacles)
             if clearance < 0.0:
-                continue
+                # If we are already inside the blocker's collision circle, a
+                # straight segment starts in collision by definition. Without
+                # this recovery case every steering candidate is rejected and
+                # BT.Move repeatedly issues its original blocked waypoint.
+                blocker_start_distance = math.dist(start, blocker.position)
+                blocker_end_distance = math.dist(candidate, blocker.position)
+                already_overlapping = blocker_start_distance < blocker.radius
+                moving_outward = blocker_end_distance > blocker_start_distance + 30.0
+                other_clearance = segment_clearance(
+                    start, candidate,
+                    [obstacle for obstacle in obstacles if obstacle.agent_id != blocker.agent_id],
+                )
+                if not (already_overlapping and moving_outward and other_clearance >= 0.0):
+                    continue
+                clearance = min(0.0, blocker_end_distance - blocker.radius)
 
             progress = (
                 (candidate[0] - start[0]) * (delta_x / target_distance)

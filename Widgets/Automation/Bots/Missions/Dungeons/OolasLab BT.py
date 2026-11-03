@@ -12,6 +12,7 @@ from Py4GWCoreLib.ImGui_src.types import Alignment
 from Py4GWCoreLib.py4gwcorelib_src.Color import Color
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 from Py4GWCoreLib.Listeners import Listeners
+from Py4GWCoreLib import Routines
 from Py4GWCoreLib.enums import CONSUMABLE_MODELID_TO_EFFECT_NAME
 from Py4GWCoreLib.enums_src.GameData_enums import Range
 from Py4GWCoreLib.enums_src.Model_enums import ModelID
@@ -19,9 +20,17 @@ from Py4GWCoreLib.enums_src.Player_enums import PlayerStatus
 from Py4GWCoreLib.native_src.internals.types import Vec2f
 from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.routines_src.behaviourtrees_src.constants.lists import CONSET_UPKEEPS, CONSUMABLE_UPKEEPS as ALL_CONSUMABLE_UPKEEPS
-from Py4GWCoreLib.routines_src.behaviourtrees_src.items import BTItems
 from Py4GWCoreLib.routines_src.behaviourtrees_src.shared import BTShared
 from Py4GWCoreLib.HeroAI.command_api import HeroAICommandAPI
+from Sources.Sky.DungeonParty import DungeonPartyConfig
+from Sources.Sky.Support import attach_botting_tree_support
+from Sources.Sky.ConsumableRestockUI import (
+    DEFAULT_RESTOCK_DEFAULTS,
+    DEFAULT_RESTOCK_ITEM_DEFINITIONS,
+    draw_restock_group_grid,
+    load_restock_quantities,
+    save_restock_quantities,
+)
 from Sources.ApoSource.ApoBottingLib import wrappers as BT
 from Widgets.System.Messaging import get_inventory_count, reset_inventory_count, get_inventory_state, reset_inventory_state
 import PyImGui
@@ -40,10 +49,9 @@ MODULE_TAGS = ["Oola's Lab", "Dungeon", "EotN"]
 MODULE_ALIASES = ["Oola", "Oolas Lab"]
 MODULE_DESCRIPTION = """Fully automated multibox BottingTree run for Oola's Lab.
 
-The bot uses the Shards of Orr BT framework for multibox party control, quest
-handling, consumables, inventory maintenance, MerchantRules and persistent
-statistics, while keeping Oola's Lab route, keys, Flux Matrix mechanic and
-final chest logic.
+The bot handles party control, quest progression, consumables, inventory
+maintenance, MerchantRules, persistent statistics, dungeon keys, the Flux
+Matrix mechanic and the final chest.
 """
 
 INI_PATH = "Widgets/Automation/Bots/Missions/Dungeons/Oolas Lab BT"
@@ -66,7 +74,6 @@ LITTLE_WORKSHOP_OF_HORRORS = 827  # 0x33B
 DWARVEN_BLESSING_DIALOG = 0x84
 
 DUNGEON_KEY_MODEL_ID = 25410
-OOLA_PARTY_HERO_IDS = [4, 21, 1, 15]  # Master of Whispers, Livia, Norgu, Razah
 FLUX_MATRIX_MODEL_ID = 22782
 FLUX_GOLEM_MODEL_ID = 6885  # Malfunctioning Enduring Golem
 
@@ -78,13 +85,12 @@ QUEST_REFRESH_US_REGION = 0
 QUEST_REFRESH_DISTRICT = 1
 QUEST_REFRESH_LANGUAGE = 0
 
-# Original Oola AutoIt summoning-stone priority, executed through the current
-# BTItems.UseConsumable helper rather than the legacy inventory code.
+# Summoning-stone priority used for restocking.
 SUMMON_MODEL_IDS = (37810,30209,31155)
 
 
 # =============================================================================
-# Runtime configuration / persistent state (SoO framework)
+# Runtime configuration and persistent state
 # =============================================================================
 
 _SETTINGS_SECTION = "Settings"
@@ -98,6 +104,7 @@ _INVENTORY_QUERY_POLL_MS = 200
 _INVENTORY_QUERY_TIMEOUT_MS = 10_000
 
 _settings_ini = Settings(f"{INI_PATH}/{INI_FILENAME}", "global")
+_dungeon_party = DungeonPartyConfig(_settings_ini)
 _settings_loaded = False
 _statistics_loaded = False
 
@@ -107,6 +114,7 @@ _activate_conset = True
 _restock_pcons = True
 _activate_pcons = True
 _use_summoning_stone = True
+_restock_quantities: dict[int, int] = dict(DEFAULT_RESTOCK_DEFAULTS)
 _auto_loot = True
 _inventory_maintenance_enabled = True
 _inventory_min_free_slots = 5
@@ -256,8 +264,7 @@ L2_ROUTE = [
     Vec2f(-10242.0, -10288.0),
 ]
 
-# Former point 16 from the old Level 2 route.  Keep this as a pure movement
-# step with combat disabled immediately before the Flux Golem mechanic.
+# Pure movement step with combat disabled immediately before the Flux Golem mechanic.
 L2_PRE_FLUX_PATH = [Vec2f(-10237.0, -7304.0)]
 
 FLUX_APPROACH_PATH = [
@@ -304,165 +311,6 @@ OOLA_FINAL_CHEST = Vec2f(-18550.0, 13076.0)
 # =============================================================================
 
 
-class _PauseWhilePartyNotAliveNode(BehaviorTree.Node):
-    """Freeze the current run step while any party member is dead.
-
-    The child tree is deliberately *not* reset while blocked.  HeroAI and the
-    BottingTree background services keep running, so resurrection/recovery can
-    happen independently; once every party member is alive, the exact current
-    child resumes from its previous runtime state.
-    """
-
-    def __init__(self, child: BehaviorTree | BehaviorTree.Node, *, name: str) -> None:
-        super().__init__(
-            name=name,
-            node_type="PartyAliveGate",
-            node_category="decorator",
-        )
-        self.child = self._coerce_node(child)
-        self._blocked = False
-        self._last_block_key = ""
-
-    def get_children(self) -> list[BehaviorTree.Node]:
-        return [self.child]
-
-    def reset(self) -> None:
-        super().reset()
-        self.child.reset()
-        self._blocked = False
-        self._last_block_key = ""
-
-    @staticmethod
-    def _party_member_agent_ids() -> tuple[list[int], int]:
-        """Return resolved player/hero/henchman agent IDs and expected party size."""
-        try:
-            if not Map.IsMapReady() or not Party.IsPartyLoaded():
-                return [], 0
-
-            expected_size = max(0, int(Party.GetPartySize() or 0))
-            agent_ids: list[int] = []
-            seen: set[int] = set()
-
-            for player in Party.GetPlayers() or []:
-                login_number = int(getattr(player, "login_number", 0) or 0)
-                if login_number <= 0:
-                    continue
-                agent_id = int(Party.Players.GetAgentIDByLoginNumber(login_number) or 0)
-                if agent_id > 0 and agent_id not in seen:
-                    seen.add(agent_id)
-                    agent_ids.append(agent_id)
-
-            for member in (Party.GetHeroes() or []):
-                agent_id = int(getattr(member, "agent_id", 0) or 0)
-                if agent_id > 0 and agent_id not in seen:
-                    seen.add(agent_id)
-                    agent_ids.append(agent_id)
-
-            for member in (Party.GetHenchmen() or []):
-                agent_id = int(getattr(member, "agent_id", 0) or 0)
-                if agent_id > 0 and agent_id not in seen:
-                    seen.add(agent_id)
-                    agent_ids.append(agent_id)
-
-            return agent_ids, expected_size
-        except Exception:
-            return [], 0
-
-    @staticmethod
-    def _member_label(agent_id: int) -> str:
-        try:
-            name = str(Agent.GetNameByID(int(agent_id)) or "").strip()
-            if name:
-                return name
-        except Exception:
-            pass
-        return f"agent {int(agent_id)}"
-
-    def _tick_impl(self) -> BehaviorTree.NodeState:
-        # During map loading, let the child continue handling its own transition.
-        # The death gate applies to stable party state in the outpost exit / explorable run.
-        try:
-            map_ready = bool(Map.IsMapReady())
-            party_loaded = bool(Party.IsPartyLoaded()) if map_ready else False
-        except Exception:
-            map_ready = False
-            party_loaded = False
-
-        if not map_ready or not party_loaded:
-            if self.blackboard is not None:
-                self.child.blackboard = self.blackboard
-            return self.child.tick()
-
-        member_ids, expected_size = self._party_member_agent_ids()
-
-        # If the party is loaded but not every party member can be resolved yet,
-        # do not advance the run until the party state is complete.
-        if expected_size > 0 and len(member_ids) < expected_size:
-            block_key = f"unresolved:{len(member_ids)}/{expected_size}"
-            if self._last_block_key != block_key:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        "[PartyAlive] Pausing run progression: party state incomplete "
-                        f"({len(member_ids)}/{expected_size} members resolved)."
-                    ),
-                    PySystem.Console.MessageType.Warning,
-                )
-                self._last_block_key = block_key
-            self._blocked = True
-            return BehaviorTree.NodeState.RUNNING
-
-        dead_ids: list[int] = []
-        for agent_id in member_ids:
-            try:
-                if Agent.IsDead(int(agent_id)):
-                    dead_ids.append(int(agent_id))
-            except Exception:
-                continue
-
-        if dead_ids:
-            dead_labels = tuple(self._member_label(agent_id) for agent_id in dead_ids)
-            block_key = "dead:" + "|".join(dead_labels)
-            if self._last_block_key != block_key:
-                PySystem.Console.Log(
-                    MODULE_NAME,
-                    (
-                        "[PartyAlive] Pausing current run step until every party member "
-                        f"is alive. Dead: {', '.join(dead_labels)}."
-                    ),
-                    PySystem.Console.MessageType.Warning,
-                )
-                self._last_block_key = block_key
-            self._blocked = True
-            return BehaviorTree.NodeState.RUNNING
-
-        if self._blocked:
-            PySystem.Console.Log(
-                MODULE_NAME,
-                "[PartyAlive] Every party member is alive. Resuming current run step.",
-                PySystem.Console.MessageType.Success,
-            )
-            self._blocked = False
-            self._last_block_key = ""
-
-        if self.blackboard is not None:
-            self.child.blackboard = self.blackboard
-        return self.child.tick()
-
-
-def _guard_run_step(
-    step_name: str,
-    factory: Callable[[], BehaviorTree],
-) -> tuple[str, Callable[[], BehaviorTree]]:
-    """Wrap one planner step with the per-tick party-alive gate."""
-
-    def _build() -> BehaviorTree:
-        child = factory()
-        return BehaviorTree(_PauseWhilePartyNotAliveNode(child, name=f"Party Alive Guard - {step_name}"))
-
-    return step_name, _build
-
-
 def _inside_oola() -> BehaviorTree:
     return BT.Selector(
         name="Inside Oola's Lab",
@@ -480,7 +328,7 @@ def _map_guarded_point(
     child: BehaviorTree,
     skip_if_in_maps: Sequence[int] = (),
 ) -> BehaviorTree:
-    """Same point-level resume pattern used by the current Shards of Orr BT."""
+    """Expose each route point as an independent planner step."""
     branches: list[BehaviorTree] = [
         BT.Sequence(
             name=f"{name} - Active Map",
@@ -600,47 +448,6 @@ def _repeat_until_success(
             child=BT.Node(child),
             timeout_ms=timeout_ms,
             name=name,
-        )
-    )
-
-
-def UseAvailableSummoningStone(level_key: str) -> BehaviorTree:
-    """Broadcast a best-effort summon request to every active account.
-
-    This is deliberately fire-and-forget. A receiver may already have an active
-    summon, have summoning sickness, or have no usable stone; none of those cases
-    is allowed to block the dungeon planner.
-    """
-
-    def _dispatch(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        if not _use_summoning_stone or not _consumables_allowed():
-            return BehaviorTree.NodeState.SUCCESS
-
-        sender_email = str(Player.GetAccountEmail() or "").strip()
-        recipients = _inventory_recipient_emails()
-        if not sender_email or not recipients:
-            return BehaviorTree.NodeState.SUCCESS
-
-        for receiver_email in recipients:
-            try:
-                GLOBAL_CACHE.ShMem.SendMessage(
-                    sender_email,
-                    receiver_email,
-                    SharedCommandType.UseSummoningStone,
-                    (0.0, 0.0, 0.0, 0.0),
-                    ("", "", "", ""),
-                )
-            except Exception:
-                # Optional consumable: failure on one account must not stall all.
-                continue
-
-        return BehaviorTree.NodeState.SUCCESS
-
-    return BehaviorTree(
-        BehaviorTree.ActionNode(
-            name=f"Use Summoning Stone {level_key} (Non Blocking)",
-            action_fn=_dispatch,
-            aftercast_ms=0,
         )
     )
 
@@ -1212,7 +1019,7 @@ def Level1_OpenLock() -> BehaviorTree:
 
 
 def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
-    """One translation of AutoIt's LoadFlux -> GoToGolem -> DropBundle cycle."""
+    """Pick up a Flux Matrix, carry it to the golem, then drop the bundle."""
     return BT.Sequence(
         name="Load Flux And Drop It On Golem",
         children=[
@@ -1226,7 +1033,7 @@ def _flux_cycle(state: dict[str, object]) -> BehaviorTree:
             ),
             BT.Wait(2_000),
 
-            # Rejoindre le chargeur de Flux.
+            # Move to the Flux charger.
             BT.Move(FLUX_APPROACH_PATH, pause_on_combat=False, tolerance=250.0, log=False),
 
             BT.MoveAndInteractWithGadget(
@@ -1335,6 +1142,7 @@ def Level2_OpenDungeonLock() -> BehaviorTree:
 # =============================================================================
 
 def _load_settings() -> None:
+    global _restock_quantities
     global _settings_loaded
     global _use_hard_mode, _restock_conset, _activate_conset
     global _restock_pcons, _activate_pcons, _use_summoning_stone
@@ -1356,6 +1164,7 @@ def _load_settings() -> None:
     _inventory_min_free_slots = max(0, _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinFreeSlots", 5))
     _inventory_min_id_kits = max(0, _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinIdKits", 1))
     _inventory_min_salvage_kits = max(0, _settings_ini.get_int(_SETTINGS_SECTION, "InventoryMinSalvageKits", 2))
+    _restock_quantities = load_restock_quantities(_settings_ini, _SETTINGS_SECTION)
     _settings_loaded = True
     _load_statistics()
 
@@ -1372,7 +1181,7 @@ def _save_settings() -> None:
     _settings_ini.set(_SETTINGS_SECTION, "InventoryMinFreeSlots", _inventory_min_free_slots)
     _settings_ini.set(_SETTINGS_SECTION, "InventoryMinIdKits", _inventory_min_id_kits)
     _settings_ini.set(_SETTINGS_SECTION, "InventoryMinSalvageKits", _inventory_min_salvage_kits)
-
+    save_restock_quantities(_settings_ini, _SETTINGS_SECTION, _restock_quantities)
 
 def _load_statistics() -> None:
     global _statistics_loaded, _total_runs, _total_run_time, _fastest_run, _slowest_run
@@ -1747,7 +1556,16 @@ def _configure_runtime_upkeeps(
         auto_inventory_handler_enabled=True,
         consumable_upkeeps=enabled_consumables,
         enable_party_wipe_recovery=True,
+        enable_nearest_shrine_recovery=True,
         heroai_state_logging=False,
+    )
+    botting_tree.EnsureSummoningStonePartyService(
+        enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+        map_ids=(OOLA_LEVEL_1, OOLA_LEVEL_2, OOLA_LEVEL_3),
+        initial_grace_ms=2_000,
+        attempt_interval_ms=5_000,
+        retry_cycle_delay_ms=15_000,
+        log=True,
     )
     _configured_consumable_upkeeps = enabled_consumables
 
@@ -1775,13 +1593,87 @@ def _runtime_difficulty_node() -> BehaviorTree:
     )
 
 
+def _draw_restock_config() -> None:
+    global _restock_quantities
+
+    _load_settings()
+    changed = False
+
+    PyImGui.text("Restock targets per account")
+    PyImGui.text_wrapped(
+        "Set the target quantity shown below each icon. The same target is sent to "
+        "every account in the current party, and each account only withdraws what "
+        "it is missing from its own Xunlai storage. Set a target to 0 to disable "
+        "that item."
+    )
+    PyImGui.text_wrapped("Hover an icon for the item name, ModelID and current restock state.")
+
+    # These bots historically treat Clover/Honeycomb as PCons, so the Morale
+    # display group intentionally follows the PCon restock switch.
+    group_enabled = {
+        "Conset": bool(_restock_conset),
+        "Personal PCons": bool(_restock_pcons),
+        "Morale": bool(_restock_pcons),
+        "Summoning": bool(_use_summoning_stone),
+    }
+
+    groups: dict[str, list[tuple[str, int, int]]] = {}
+    for group, label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS:
+        groups.setdefault(group, []).append((label, int(model_id), int(default)))
+
+    for group in ("Conset", "Personal PCons", "Morale", "Summoning"):
+        items = groups.get(group, [])
+        if items and draw_restock_group_grid(
+            group,
+            items,
+            _restock_quantities,
+            group_enabled=group_enabled.get(group, True),
+            columns=4,
+            icon_size=48.0,
+        ):
+            changed = True
+
+    PyImGui.separator()
+    PyImGui.text_wrapped(
+        "The group switches in the Config tab control whether Conset, PCons and "
+        "Summoning Stones are included in the restock step. Disabling a group "
+        "keeps its saved per-item targets."
+    )
+
+    if changed:
+        _save_settings()
+
+
 def _runtime_restock_node() -> BehaviorTree:
     def _build(_node: BehaviorTree.Node) -> BehaviorTree:
-        items: list[tuple[int, int]] = []
-        if _restock_conset: items.extend(CONSET_RESTOCK_ITEMS)
-        if _restock_pcons: items.extend(PCON_RESTOCK_ITEMS)
-        if _use_summoning_stone: items.extend(SUMMON_RESTOCK_ITEMS)
-        return BT.RestockItemsFromList(tuple(items), allow_missing=True) if items else BT.Succeeder("RestockDisabled")
+        enabled_models: set[int] = set()
+        if _restock_conset:
+            enabled_models.update(int(model_id) for model_id in CONSET_UPKEEPS)
+        if _restock_pcons:
+            enabled_models.update(int(model_id) for model_id in PCON_UPKEEPS)
+        if _use_summoning_stone:
+            enabled_models.update(int(model_id) for model_id in SUMMON_MODEL_IDS)
+
+        items = [
+            (model_id, max(0, int(_restock_quantities.get(model_id, default))))
+            for _group, _label, model_id, _setting_key, default in DEFAULT_RESTOCK_ITEM_DEFINITIONS
+            if model_id in enabled_models
+            and max(0, int(_restock_quantities.get(model_id, default))) > 0
+        ]
+        if not items:
+            return BT.Succeeder("RestockDisabled")
+
+        return BTShared.RestockItems(
+            items,
+            party_only=True,
+            include_self=True,
+            allow_missing=True,
+            refs_blackboard_prefix="oola_restock_item",
+            timeout_ms=30_000,
+            poll_interval_ms=100,
+            log=True,
+        )
+
     return BT.Subtree(name="Restock Selected Consumables", subtree_fn=_build)
 
 
@@ -3277,8 +3169,17 @@ def ensure_botting_tree() -> BottingTree:
                 auto_inventory_handler_enabled=True,
                 consumable_upkeeps=_enabled_consumable_upkeeps(),
                 enable_party_wipe_recovery=True,
+                enable_nearest_shrine_recovery=True,
                 heroai_state_logging=False,
             ),
+        )
+        botting_tree.EnsureSummoningStonePartyService(
+            enabled=lambda: _use_summoning_stone and _consumables_allowed(),
+            map_ids=(OOLA_LEVEL_1, OOLA_LEVEL_2, OOLA_LEVEL_3),
+            initial_grace_ms=2_000,
+            attempt_interval_ms=5_000,
+            retry_cycle_delay_ms=15_000,
+            log=True,
         )
 
     return botting_tree
@@ -3306,7 +3207,7 @@ def PreparePartyAndSupplies() -> BehaviorTree:
     """Prepare a fresh run from Rata Sum.
 
     Resume cases inside Oola or in Magus Stones are left untouched.
-    A fresh Rata start follows the Shards of Orr pattern: form the multibox
+    A fresh Rata start forms the multibox party, refreshes the quest state,
     party, abandon the dungeon quest on every account, then let the quest
     handler take it again cleanly.
     """
@@ -3335,14 +3236,13 @@ def PreparePartyAndSupplies() -> BehaviorTree:
         children=[
             StartupInventoryCheck(),
 
-            BT.CreateParty(
-                hero_ids=OOLA_PARTY_HERO_IDS,
+            _dungeon_party.create_party_node(
                 multibox_invite=True,
                 timeout_ms=30_000,
                 log=True,
             ),
 
-            # Same startup quest reset used by Shards of Orr.
+            # Refresh the quest state before starting the dungeon route.
             BT.AbandonQuest(
                 quest_id=LITTLE_WORKSHOP_OF_HORRORS,
                 multi_account=True,
@@ -3499,10 +3399,10 @@ def Level1_Start() -> BehaviorTree:
         BT.Sequence(
             name="Start Oola Level 1",
             children=[
+                _runtime_consumable_upkeep_node(True),
                 _mark_run_start_node(),
                 _inventory_statistics_node(after_chest=False),
                 BT.AddModelToLootWhitelist(DUNGEON_KEY_MODEL_ID),
-                UseAvailableSummoningStone("l1"),
                 BT.MoveAndAutoDialog(
                     L1_BLESSING,
                     buttons=0,
@@ -3561,7 +3461,6 @@ def Level2_Start() -> BehaviorTree:
             name="Start Oola Level 2",
             children=[
                 BT.AddModelToLootWhitelist(DUNGEON_KEY_MODEL_ID),
-                UseAvailableSummoningStone("l2"),
                 BT.MoveAndAutoDialog(
                     L2_BLESSING,
                     buttons=0,
@@ -3611,7 +3510,6 @@ def Level3_Start() -> BehaviorTree:
         name="Start Oola Level 3",
         children=[
             BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
-            UseAvailableSummoningStone("l3"),
             BT.MoveAndAutoDialog(
                 L3_BLESSING,
                 buttons=0,
@@ -3639,7 +3537,6 @@ def Level3_FinalClear() -> BehaviorTree:
                 center_tolerance=750.0,
                 log=True,
             ),
-            _record_run_end_node(),
         ],
     )
 
@@ -3649,6 +3546,9 @@ def OpenFinalChest() -> BehaviorTree:
         name="Open Oola's Chest",
         children=[
             BT.IsCurrentMap(OOLA_LEVEL_3, log=True),
+            BT.Move(OOLA_FINAL_CHEST, pause_on_combat=False, tolerance=Range.Nearby.value, log=False),
+            _record_run_end_node(),
+            _runtime_consumable_upkeep_node(False),
             BT.MoveAndInteractWithGadget(
                 pos=OOLA_FINAL_CHEST,
                 search_distance=1_000.0,
@@ -3785,7 +3685,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
     # chest.  It is checked every tick, so a death in the middle of a movement,
     # clear, Flux cycle or floor transition freezes that exact child without
     # resetting it.  HeroAI/background recovery remains free to resurrect.
-    guarded_run_steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
+    dungeon_run_steps: list[tuple[str, Callable[[], BehaviorTree]]] = [
         ("Travel To Magus Stones", TravelToMagusStones),
         ("Magus Stones Start", MagusStonesStart),
         *_vanquish_point_steps(
@@ -3873,7 +3773,7 @@ def get_execution_steps() -> list[tuple[str, Callable[[], BehaviorTree]]]:
         ("Prepare Party And Supplies", PreparePartyAndSupplies),
         ("Handle Oola Quest", HandleOolaQuest),
 
-        *(_guard_run_step(step_name, factory)for step_name, factory in guarded_run_steps),
+        *dungeon_run_steps,
 
         # ---------------------------------------------------------------------
         # End of run / next run - the guard ends after the chest.
@@ -4227,7 +4127,7 @@ def _draw_run_config() -> None:
                 settings_changed = True
 
         PyImGui.text_wrapped(
-            "Same multibox inventory logic as Shards of Orr: every active "
+            "Every active account is checked through the shared multibox inventory logic: "
             "client is queried locally. If one account is below a threshold, "
             "all active accounts return to Rata Sum, travel to Eye of the North "
             "for MerchantRules maintenance, then return to Rata Sum before the "
@@ -4301,12 +4201,15 @@ def main() -> None:
     tree.tick()
     _tick_direct_pcon_upkeep()
 
+    attach_botting_tree_support(tree)
     tree.UI.draw_window(
         icon_path=TEXTURE,
         iconwidth=96,
-        main_child_dimensions=(420, 380),
+        main_child_dimensions=(550, 380),
         extra_tabs=[
             ("Statistics", _draw_statistics),
+            ("Party", _dungeon_party.draw_tab),
             ("Config", _draw_run_config),
+            ("Restock", _draw_restock_config),
         ],
     )

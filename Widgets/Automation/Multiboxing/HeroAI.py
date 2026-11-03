@@ -447,6 +447,11 @@ def main():
         resurrection_scroll.tick()
         
         if initialize(cached_data):
+            # GID 8143 is a forced-wait fire hazard in Shards level 3. Each
+            # account must locally suspend its own HeroAI, not just the leader.
+            from Py4GWCoreLib.py4gwcorelib_src.shards_flame_hold import SHARDS_FLAME_HOLD
+            if SHARDS_FLAME_HOLD.hold_if_needed():
+                return
             modulo += 1
             if modulo >= 2:
                 modulo = 0

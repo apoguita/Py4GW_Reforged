@@ -126,7 +126,6 @@ def TargetSplinterWeapon(distance=Range.Spellcast.value):
         return bool(
             agent_id
             and Agent.IsValid(agent_id)
-            and Agent.IsTargettable(agent_id)
             and Agent.IsAlive(agent_id)
             and Utils.Distance(Agent.GetXY(agent_id), player_xy) <= distance
             and not Routines.Checks.Agents.IsWeaponSpelled(agent_id)

@@ -361,7 +361,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
     CatalogEntry('Spider Leg', 422, 'Trophies', ''),
     CatalogEntry('Spider Web', 224, 'Trophies', ''),
     CatalogEntry('Spiked Crest', 434, 'Trophies', ''),
-    CatalogEntry('Stolen Provisions', 851, 'Trophies', ''),
+    CatalogEntry('Stolen Provisions', 840, 'Trophies', ''),
     CatalogEntry('Stolen Shipment', 1424, 'Trophies', ''),
     CatalogEntry('Stolen Supplies', 37937, 'Trophies', ''),
     CatalogEntry('Stone Carving', 820, 'Trophies', ''),
