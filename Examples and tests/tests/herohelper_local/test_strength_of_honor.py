@@ -106,6 +106,14 @@ class FakeHelper:
         return holds_physical_weapon()
 
     @staticmethod
+    def get_physical_party_targets(melee_only=False):
+        return [1] if FakeAgent.weapon_item_type in {2,15,27,32,35} else []
+
+    @staticmethod
+    def check_for_effects(target, skills):
+        return False
+
+    @staticmethod
     def get_spell_cast_range():
         return 1248.0
 
@@ -122,6 +130,9 @@ def fake_execute_hero_skill(*args):
     executed_skills.append(args)
 
 
+FakeHelper.find_maintenance_cast = staticmethod(_load_function("find_maintenance_cast", {"Helper": FakeHelper}, class_name="Helper"))
+
+
 smart_honor = _load_function(
     "smart_honor",
     {
@@ -130,6 +141,7 @@ smart_honor = _load_function(
         "Skill": FakeSkill,
         "Helper": FakeHelper,
         "execute_hero_skill": fake_execute_hero_skill,
+        "execute_maintenance_skill": lambda selection: fake_execute_hero_skill(*selection[0]) if selection else None,
     },
 )
 
@@ -270,8 +282,8 @@ class StrengthOfHonorBehaviorTests(unittest.TestCase):
         FakeHelper.reset()
         executed_skills.clear()
 
-    def test_bow_reaches_shared_smartcast_and_manual_hero_command(self):
-        FakeAgent.weapon_item_type = 5
+    def test_melee_reaches_shared_smartcast_and_manual_hero_command(self):
+        FakeAgent.weapon_item_type = 2
 
         smart_honor()
 
@@ -279,8 +291,15 @@ class StrengthOfHonorBehaviorTests(unittest.TestCase):
         call = FakeHelper.smartcast_calls[0]
         self.assertEqual(call["skill_id"], 243)
         self.assertTrue(call["allow_out_of_combat"])
-        self.assertTrue(call["effect_check"])
+        self.assertFalse(call["effect_check"])
+        self.assertEqual(call["cast_target_id"], 1)
         self.assertEqual(executed_skills, [FakeHelper.smartcast_result])
+
+    def test_bow_is_excluded_from_strength_of_honor(self):
+        FakeAgent.weapon_item_type = 5
+        smart_honor()
+        self.assertEqual(FakeHelper.smartcast_calls, [])
+        self.assertEqual(executed_skills, [])
 
     def test_wand_stops_before_shared_smartcast(self):
         FakeAgent.weapon_item_type = 22
@@ -291,7 +310,7 @@ class StrengthOfHonorBehaviorTests(unittest.TestCase):
         self.assertEqual(executed_skills, [])
 
     def test_existing_shared_smartcast_rejection_remains_authoritative(self):
-        FakeAgent.weapon_item_type = 5
+        FakeAgent.weapon_item_type = 2
         FakeHelper.smartcast_result = None
 
         smart_honor()
@@ -317,6 +336,23 @@ class SmartSkillPersistenceTests(unittest.TestCase):
 
         self.assertTrue(config.smart_honor_enabled)
         self.assertEqual(config.save_calls, 1)
+
+
+class PartyMaintenanceTests(unittest.TestCase):
+    def test_covered_target_is_skipped_and_caster_exclusion_is_forwarded(self):
+        calls=[]
+        helper=type('SelectionHelper',(),{})
+        helper.check_for_effects=staticmethod(lambda target,skills:target==1)
+        helper.get_spell_cast_range=staticmethod(lambda:1248.0)
+        def cast(**kwargs):
+            calls.append(kwargs)
+            return (2,4,241,kwargs['cast_target_id'])
+        helper.smartcast_hero_skill=staticmethod(cast)
+        fn=_load_function('find_maintenance_cast',{'Helper':helper},class_name='Helper')
+        result=fn(241,[1,2,3],exclude_caster_target=True)
+        self.assertEqual(result[1],2)
+        self.assertEqual(len(calls),1)
+        self.assertTrue(calls[0]['exclude_caster_target'])
 
 
 if __name__ == "__main__":

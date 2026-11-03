@@ -362,9 +362,10 @@ class Helper:
         Helper.last_map_id = Map.GetMapID()
 
         for idx, hero in enumerate(Party.GetHeroes() or [], start=1):
-            Helper._cache_skills_for_hero(idx)
+            Helper._cache_skills_for_hero(idx, hero.agent_id)
 
         return Helper.hero_skill_cache
+
 
     @staticmethod
     def reset_hero_skill_cache():
@@ -376,7 +377,7 @@ class Helper:
         return Map.GetMapID() != Helper.last_map_id
 
     @staticmethod
-    def _cache_skills_for_hero(hero_index):
+    def _cache_skills_for_hero(hero_index, hero_agent_id):
         skillbar = SkillBar.GetHeroSkillbar(hero_index)
         if not skillbar:
             return
@@ -384,10 +385,12 @@ class Helper:
         for slot, skill in enumerate(skillbar, start=1):
             Helper.hero_skill_cache.append({
                 "hero_index": hero_index,
+                "hero_agent_id": hero_agent_id,
                 "skill_slot": slot,
                 "skill_id": skill.id.id,
                 "skill_name": Skill.GetName(skill.id.id)
             })
+
 
     effect_cache = {}
     @staticmethod
@@ -686,7 +689,8 @@ class Helper:
                               effect_check=False, cast_target_id=None, hero_target=False,
                               distance_check_range=None, allow_out_of_combat=False,
                               min_health_perc=None, min_energy_perc=None,
-                              target_distance_check_range=None):
+                              target_distance_check_range=None,
+                              exclude_caster_target=False):
 
         heroes_ready = Helper.get_heroes_with_skill(skill_id)
         if not heroes_ready:
@@ -712,8 +716,10 @@ class Helper:
 
         for hero in heroes_ready:
             hero_index = hero["hero_index"]
-            hero_id = Party.Heroes.GetHeroAgentIDByPartyPosition(hero_index)
+            hero_id = hero.get("hero_agent_id") or Party.Heroes.GetHeroAgentIDByPartyPosition(hero_index)
             if not hero_id:
+                continue
+            if exclude_caster_target and hero_id == cast_target_id:
                 continue
 
             distance = Utils.Distance(Player.GetXY(), Agent.GetXY(hero_id))
@@ -745,6 +751,7 @@ class Helper:
             return hero_index, hero["skill_slot"], skill_id, cast_target_id
 
         return None
+
 
     agent_name_cache = {}
     cached_agent_ids = set()
@@ -797,17 +804,9 @@ class Helper:
         return profession in {"Assassin", "Dervish", "Warrior", "Paragon", "Ranger"}
     
     @staticmethod
-    def holds_melee_weapon():
-        items = ItemArray.GetItemArray(ItemArray.CreateBagList(Bag.Equipped_Items))
-        if not items:
-            return False
-
-        main_hand = items[0] if items else None
-        if not main_hand:
-            return False
-
-        item_type, _ = Item.GetItemType(main_hand)
-        return item_type in {2, 15, 27, 32, 35, 36}  # axe, hammer, sword, daggers, scythe, spear
+    def holds_melee_weapon(agent_id=None):
+        agent_id = agent_id or Player.GetAgentID()
+        return bool(agent_id and Agent.GetWeaponItemType(agent_id) in {2, 15, 27, 32, 35})
 
     @staticmethod
     def holds_physical_weapon():
@@ -831,8 +830,82 @@ class Helper:
             for word in words
         )
 
+    @staticmethod
+    def find_maintenance_cast(
+        skill_id,
+        target_ids,
+        exclude_caster_target=False,
+        **smartcast_options,
+    ):
+        if not target_ids:
+            return None
+
+        uncovered_targets = [
+            target_id for target_id in target_ids
+            if not Helper.check_for_effects(target_id, [skill_id])
+        ]
+        if not uncovered_targets:
+            return None
+
+        for target_id in uncovered_targets:
+            result = Helper.smartcast_hero_skill(
+                skill_id=skill_id,
+                cast_target_id=target_id,
+                effect_check=False,
+                target_distance_check_range=Helper.get_spell_cast_range(),
+                exclude_caster_target=exclude_caster_target,
+                **smartcast_options,
+            )
+            if result:
+                return result, target_id
+
+        return None
+
+    @staticmethod
+    def get_party_member_ids():
+        targets = []
+        player_id = Player.GetAgentID()
+        if player_id:
+            targets.append(player_id)
+
+        for party_player in Party.GetPlayers() or []:
+            party_player_id = Party.Players.GetAgentIDByLoginNumber(party_player.login_number)
+            if party_player_id and party_player_id not in targets:
+                targets.append(party_player_id)
+
+        for hero in Party.GetHeroes() or []:
+            hero_id = hero.agent_id
+            if hero_id and hero_id not in targets:
+                targets.append(hero_id)
+
+        return targets
+
+    @staticmethod
+    def get_physical_party_targets(melee_only=False):
+        classifier = Helper.holds_melee_weapon if melee_only else Helper.holds_physical_weapon
+        return [
+            agent_id for agent_id in Helper.get_party_member_ids()
+            if Helper.is_agent_alive(agent_id) and classifier(agent_id)
+        ]
+
+
 
 hero_aftercast_timers = {}
+def execute_maintenance_skill(selection):
+    if not selection:
+        return
+
+    result, target_id = selection
+    hero_index, skill_slot, skill_id, _ = result
+    now = time.time()
+    if not Helper.can_hero_cast_skill(hero_index, skill_id):
+        return
+    if hero_index in hero_aftercast_timers and now < hero_aftercast_timers[hero_index]:
+        return
+
+    execute_hero_skill(*result)
+
+
 def execute_hero_skill(hero_index, skill_slot, skill_id, target_id):
     now = time.time()
 
@@ -1084,21 +1157,19 @@ def smart_honor():
     player_id = Player.GetAgentID()
     if not Helper.is_agent_alive(player_id):
         return
-    if not Helper.holds_physical_weapon():
-        return
 
-    result = Helper.smartcast_hero_skill(
-        skill_id=Skill.GetID("Strength_of_Honor"),
+    honor_id = Skill.GetID("Strength_of_Honor")
+    selection = Helper.find_maintenance_cast(
+        skill_id=honor_id,
+        target_ids=Helper.get_physical_party_targets(melee_only=True),
         min_enemies=0,
         enemy_range_check=Helper.get_spell_cast_range(),
-        effect_check=True,
         distance_check_range=Helper.get_spell_cast_range(),
         allow_out_of_combat=True,
         min_energy_perc=0.25
     )
+    execute_maintenance_skill(selection)
 
-    if result:
-        execute_hero_skill(*result)
 
 def smart_life_bond():
     if Party.GetHeroCount() == 0:
@@ -1109,21 +1180,20 @@ def smart_life_bond():
     player_id = Player.GetAgentID()
     if not Helper.is_agent_alive(player_id):
         return
-    if not Helper.is_melee_class() or not Helper.holds_melee_weapon():
-        return
 
-    result = Helper.smartcast_hero_skill(
-        skill_id=Skill.GetID("Life_Bond"),
+    life_bond_id = Skill.GetID("Life_Bond")
+    selection = Helper.find_maintenance_cast(
+        skill_id=life_bond_id,
+        target_ids=Helper.get_physical_party_targets(melee_only=True),
+        exclude_caster_target=True,
         min_enemies=0,
         enemy_range_check=Helper.get_spell_cast_range(),
-        effect_check=True,
         distance_check_range=Helper.get_spell_cast_range(),
         allow_out_of_combat=True,
         min_energy_perc=0.25
     )
+    execute_maintenance_skill(selection)
 
-    if result:
-        execute_hero_skill(*result)
 
 def smart_dark_aura():
     if Party.GetHeroCount() == 0:
@@ -1460,8 +1530,8 @@ def draw_tab_smart_skills(config):
             ("Panic", "smart_panic_enabled", "Casts Panic on clustered enemy groups, preferring caster clumps.", "Panic"),
         ]),
         ("Monk", [
-            ("Strength of Honor", "smart_honor_enabled", "[DISABLE HERO CASTING] Maintains Honor on physical weapon user.", "Strength_of_Honor"),
-            ("Life Bond", "smart_life_bond_enabled", "[DISABLE HERO CASTING] Maintains Life Bond on melee player.", "Life_Bond"),
+            ("Strength of Honor", "smart_honor_enabled", "[DISABLE HERO CASTING] Maintains Honor on melee party members; bows and spears are excluded.", "Strength_of_Honor"),
+            ("Life Bond", "smart_life_bond_enabled", "[DISABLE HERO CASTING] Maintains Life Bond on melee party members other than the caster.", "Life_Bond"),
             ("Vigorous Spirit", "smart_vigorous_enabled", "Casts Vigorous Spirit on melee player in combat.", "Vigorous_Spirit"),
         ]),
         ("Necromancer", [
