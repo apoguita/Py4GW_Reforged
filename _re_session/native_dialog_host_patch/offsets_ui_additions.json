@@ -1,0 +1,51 @@
+{
+  "_comment": "Verified additions for offsets/ui.json. Every pattern below was matched against the installed client (F:\\GW\\GW1\\Gw.exe, sha256 8E50EDFB83515FABFEC50BFD9D17968E8635A39B4C3E796E311BBC5CD15E5878, 2026-09-30) and matched EXACTLY ONCE in .text. Merge the objects into the existing 'patterns' and 'resolvers' sections; do not replace the files.",
+  "patterns": {
+    "frame_msg_call_base": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x1C\\x56\\x8B\\x75\\x08\\x8B\\x0E\\x85\\xC9\\x0F\\x84\\x91\\x01\\x00\\x00",
+      "mask": "xxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "frame_get_native_size": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x0C\\x85\\xC0\\x75\\x20\\x68\\xFD\\x07\\x00\\x00",
+      "mask": "xxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "set_hover_target": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x08\\x83\\x3D\\x00\\x00\\x00\\x00\\x00\\x74\\x68\\x8B\\x45\\x08\\x56\\x85\\xC0\\x74\\x05\\x8B\\x75\\x0C",
+      "mask": "xxxxxxxx????xxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_text_selectable_proc": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x68\\xA1\\x00\\x00\\x00\\x00\\x33\\xC5\\x89\\x45\\xFC\\x53\\x8B\\x5D\\x08\\x56\\x8B\\x75\\x10",
+      "mask": "xxxxxxx????xxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    }
+  },
+  "resolvers": {
+    "frame_msg_call_base_func": {
+      "steps": [
+        { "name": "scan_entry", "op": "scan", "pattern": "frame_msg_call_base", "out": "final" }
+      ]
+    },
+    "frame_get_native_size_func": {
+      "steps": [
+        { "name": "scan_entry", "op": "scan", "pattern": "frame_get_native_size", "out": "final" }
+      ]
+    },
+    "set_hover_target_func": {
+      "steps": [
+        { "name": "scan_entry", "op": "scan", "pattern": "set_hover_target", "out": "final" }
+      ]
+    },
+    "ctl_text_selectable_proc_func": {
+      "steps": [
+        { "name": "scan_entry", "op": "scan", "pattern": "ctl_text_selectable_proc", "out": "final" }
+      ]
+    }
+  }
+}

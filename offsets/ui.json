@@ -30,7 +30,7 @@
       "assertion_file": "\\Code\\Engine\\Controls\\CtlView.cpp",
       "assertion_message": "pageId",
       "line_number": "0",
-      "offset": "0x19",
+      "offset": "0x0",
       "section": "text"
     },
     "find_related_frame": {
@@ -352,7 +352,7 @@
     },
     "gr_model_set_material_constant_anchor": {
       "pattern": "\\xFF\\x75\\x14\\x8B\\xCE\\xFF\\x75\\x10\\xFF\\x75\\x0C\\xE8\\xED\\x21\\x00\\x00\\x5E\\x5D\\xC3",
-      "mask": "xxxxxxxxxxxxxxxxxx",
+      "mask": "xxxxxxxxxxxxxxxxxxx",
       "offset": "0x0",
       "section": "text"
     },
@@ -365,6 +365,143 @@
     "item_image_frame_content_add_anchor": {
       "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x24\\x56\\x8B\\x75\\x08\\x57\\x8B\\xF9\\xF6\\x06\\x20",
       "mask": "xxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "frame_msg_call_base": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x1C\\x56\\x8B\\x75\\x08\\x8B\\x0E\\x85\\xC9\\x0F\\x84\\x91\\x01\\x00\\x00",
+      "mask": "xxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "frame_get_native_size": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x0C\\x85\\xC0\\x75\\x20\\x68\\x03\\x08\\x00\\x00",
+      "mask": "xxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "set_hover_target": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x08\\x83\\x3D\\x00\\x00\\x00\\x00\\x00\\x74\\x68\\x8B\\x45\\x08\\x56\\x85\\xC0\\x74\\x05\\x8B\\x75\\x0C",
+      "mask": "xxxxxxxx????xxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_text_selectable_proc": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x68\\xA1\\x00\\x00\\x00\\x00\\x33\\xC5\\x89\\x45\\xFC\\x53\\x8B\\x5D\\x08\\x56\\x8B\\x75\\x10",
+      "mask": "xxxxxxx????xxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    }
+,
+    "ui_ctl_page_proc": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x55\\x08\\x83\\xEC\\x10\\x8B\\x4D\\x0C\\x8B\\x42\\x04\\x83\\xF8\\x04\\x74\\x56\\x83\\xF8\\x15",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "clear_focus_frame": {
+      "pattern": "\\x55\\x8B\\xEC\\x57\\x8B\\x7D\\x08\\x3B\\x3D\\x00\\x00\\x00\\x00\\x0F\\x84\\xA0\\x00\\x00\\x00\\x56",
+      "mask": "xxxxxxxxx????xxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "plain_container_proc": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x08\\x83\\x78\\x04\\x31\\x75\\x11\\x6A\\x00\\xFF\\x75\\x0C\\x6A\\x07\\xFF\\x30",
+      "mask": "xxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_frame_list_selectable_proc": {
+      "pattern": "\\x55\\x8B\\xEC\\x56\\x8B\\x75\\x08\\x57\\x8B\\x7D\\x0C\\x8B\\x46\\x04\\x83\\xC0\\xFC\\x83\\xF8\\x66\\x0F\\x87",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_frame_list_selectable_get_selection": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x08\\x56\\x8B\\x75\\x0C\\x85\\xF6\\x75\\x14\\x68",
+      "mask": "xxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "frame_set_position_pos_size": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x08\\x85\\xC0\\x75\\x16\\x68\\x00\\x00\\x00\\x00\\xBA\\x00\\x00\\x00\\x00\\xB9\\x00\\x00\\x00\\x00\\xE8\\x00\\x00\\x00\\x00\\x5D\\xC3\\x50\\xE8\\x00\\x00\\x00\\x00\\x83\\xC4\\x04\\x8D\\x88\\xD0\\x00\\x00\\x00\\x6A\\x06\\xFF\\x75\\x10\\xFF\\x75\\x0C\\xE8\\x00\\x00\\x00\\x00",
+      "mask": "xxxxxxxxxxx????x????x????x????xxxx????xxxxxxxxxxxxxxxxxx????",
+      "offset": "0x0",
+      "section": "text"
+    }
+,
+    "ctl_layout_clear": {
+      "pattern": "\\x53\\x8B\\xD9\\x56\\x57\\x8B\\x73\\x08\\x8B\\x43\\x10\\x8D\\x3C\\x86\\x3B\\xF7\\x74\\x1A\\x8B\\x06\\x85\\xC0\\x74\\x0D",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_layout_align_translator": {
+      "pattern": "\\x55\\x8B\\xEC\\x53\\x56\\x57\\x8B\\x7D\\x08\\x83\\xFF\\x03\\x0F\\x87\\x91\\x00\\x00\\x00\\xFF\\x24\\xBD\\x68\\x73\\x60",
+      "mask": "xxxxxxxxxxxxxxxxxxxxx???",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_layout_fix_gap_margin_flags": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x4D\\x0C\\x84\\xC9\\x78\\x03\\x83\\xE1\\xD1\\x8B\\x45\\x08\\xF7\\xC1\\x00\\x01\\x00\\x00\\x75\\x03",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    }
+,
+    "layout_ctor": {
+      "pattern": "\\xC7\\x41\\x04\\x00\\x00\\x00\\x00\\x8B\\xC1\\xC7\\x41\\x0C\\x00\\x00\\x00\\x00\\xC7\\x41\\x10\\x00\\x00\\x00\\x00\\xC7",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "layout_dtor": {
+      "pattern": "\\x53\\x56\\x57\\x8B\\xF9\\x8B\\x77\\x08\\xC7\\x07\\xF0\\x9C\\xA5\\x00\\x8B\\x47\\x10\\x8D\\x1C\\x86\\x3B\\xF3\\x74\\x1A",
+      "mask": "xxxxxxxxxx????xxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    }
+,
+    "ctl_layout_set_frame_id": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x08\\x89\\x41\\x04\\x5D\\xC2\\x04\\x00\\xCC\\xCC\\xCC\\x55\\x8B\\xEC\\x8B\\x55\\x08\\x8B\\x02",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_layout_size": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x08\\x53\\x56\\x8B\\xF1\\x57\\x8B\\x7D\\x08\\x83\\x7E\\x10\\x00\\x0F\\x84\\xDC\\x00\\x00\\x00",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_layout_size_query": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x14\\x56\\x8B\\xF1\\x83\\x7E\\x10\\x00\\x75\\x11\\x8B\\x45\\x08\\xD9\\xEE\\xD9\\x50\\x04\\xD9",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_layout_size_internal": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x64\\x53\\x56\\x57\\x8B\\x7D\\x08\\x8B\\xD9\\x85\\xFF\\x75\\x14\\x68\\x93\\x01\\x00\\x00\\xBA",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "ctl_layout_size_query_internal": {
+      "pattern": "\\x55\\x8B\\xEC\\x83\\xEC\\x40\\x53\\x56\\x8B\\x75\\x0C\\x8B\\xD9\\x57\\x85\\xF6\\x75\\x14\\x68\\x75\\x02\\x00\\x00\\xBA",
+      "mask": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "offset": "0x0",
+      "section": "text"
+    }
+,
+    "frame_schedule_size": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x08\\x85\\xC0\\x75\\x16\\x68\\x00\\x00\\x00\\x00\\xBA\\x00\\x00\\x00\\x00\\xB9\\x00\\x00\\x00\\x00\\xE8\\x00\\x00\\x00\\x00\\x5D\\xC3\\x50\\xE8\\x00\\x00\\x00\\x00\\x83\\xC4\\x04\\x8D\\x88\\xD0\\x00\\x00\\x00\\x6A\\x01\\xE8\\x00\\x00\\x00\\x00",
+      "mask": "xxxxxxxxxxx????x????x????x????xxxx????xxxxxxxxxxxx????",
+      "offset": "0x0",
+      "section": "text"
+    },
+    "frame_native_size_changed": {
+      "pattern": "\\x55\\x8B\\xEC\\x8B\\x45\\x08\\x85\\xC0\\x75\\x16\\x68\\x00\\x00\\x00\\x00\\xBA\\x00\\x00\\x00\\x00\\xB9\\x00\\x00\\x00\\x00\\xE8\\x00\\x00\\x00\\x00\\x5D\\xC3\\x50\\xE8\\x00\\x00\\x00\\x00\\x83\\xC4\\x04\\x8D\\x88\\xD0\\x00\\x00\\x00\\x5D\\xE9\\x00\\x00\\x00\\x00",
+      "mask": "xxxxxxxxxxx????x????x????x????xxxx????xxxxxxxxxxx????",
       "offset": "0x0",
       "section": "text"
     }
@@ -402,7 +539,8 @@
     },
     "get_child_frame_id_func": {
       "steps": [
-        { "name": "scan_callsite", "op": "scan", "pattern": "get_child_frame_id_anchor", "out": "callsite" },
+        { "name": "scan_anchor", "op": "scan", "pattern": "get_child_frame_id_anchor", "out": "anchor" },
+        { "name": "scan_callsite", "op": "scan_in_range", "pattern": "near_call_opcode", "start": "anchor", "end": "anchor", "start_add": "0xF", "end_add": "0x40", "out": "callsite" },
         { "name": "resolve_target", "op": "function_from_near_call", "in": "callsite", "out": "final" }
       ]
     },
@@ -918,6 +1056,160 @@
       "steps": [
         { "name": "scan_target", "op": "scan", "pattern": "tabs_frame_callback", "out": "scan" },
         { "name": "to_function_start", "op": "to_function_start", "in": "scan", "scan_range": "0xFFF", "out": "final" }
+      ]
+    },
+    "frame_msg_call_base_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "frame_msg_call_base", "out": "final" }
+      ]
+    },
+    "frame_get_native_size_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "frame_get_native_size", "out": "final" }
+      ]
+    },
+    "set_hover_target_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "set_hover_target", "out": "final" }
+      ]
+    },
+    "ctl_text_selectable_proc_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "ctl_text_selectable_proc", "out": "final" }
+      ]
+    },
+    "ui_ctl_page_proc_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "ui_ctl_page_proc", "out": "final" }
+      ]
+    },
+    "clear_focus_frame_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "clear_focus_frame", "out": "final" }
+      ]
+    },
+    "plain_container_proc_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "plain_container_proc", "out": "final" }
+      ]
+    },
+    "ctl_frame_list_selectable_proc_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "ctl_frame_list_selectable_proc", "out": "final" }
+      ]
+    },
+    "ctl_frame_list_selectable_get_selection_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "ctl_frame_list_selectable_get_selection", "out": "final" }
+      ]
+    },
+    "frame_set_position_pos_size_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        { "name": "scan_target", "op": "scan", "pattern": "frame_set_position_pos_size", "out": "final" }
+      ]
+    },
+    "ctl_layout_clear_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_clear","out":"final"}
+      ]
+    },
+    "ctl_layout_align_translator_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_align_translator","out":"final"}
+      ]
+    },
+    "ctl_layout_fix_gap_margin_flags_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_fix_gap_margin_flags","out":"final"}
+      ]
+    },
+    "layout_ctor_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"layout_ctor","out":"final"}
+      ]
+    },
+    "layout_dtor_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"layout_dtor","out":"final"}
+      ]
+    },
+    "ctl_layout_set_frame_id_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_set_frame_id","out":"final"}
+      ]
+    },
+    "ctl_layout_size_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_size","out":"final"}
+      ]
+    },
+    "ctl_layout_size_query_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_size_query","out":"final"}
+      ]
+    },
+    "ctl_layout_size_internal_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_size_internal","out":"final"}
+      ]
+    },
+    "ctl_layout_size_query_internal_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"ctl_layout_size_query_internal","out":"final"}
+      ]
+    },
+    "frame_schedule_size_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"frame_schedule_size","out":"final"}
+      ]
+    },
+    "frame_native_size_changed_func": {
+      "log_level": "warning",
+      "on_fail": "continue",
+      "steps": [
+        {"name":"scan_target","op":"scan","pattern":"frame_native_size_changed","out":"final"}
       ]
     }
   }
