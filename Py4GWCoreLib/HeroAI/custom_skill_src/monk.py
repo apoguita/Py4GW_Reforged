@@ -1031,7 +1031,7 @@ class MonkSkills:
         skill = CustomSkill()
         skill.SkillID = GLOBAL_CACHE.Skill.GetID("Strength_of_Honor")
         skill.SkillType = SkillType.Enchantment.value
-        skill.TargetAllegiance = Skilltarget.AllyMartialMelee.value
+        skill.TargetAllegiance = Skilltarget.StrengthOfHonor.value
         skill.Nature = SkillNature.Buff.value
         skill.Conditions.TargetingStrict = True
         skill.Conditions.IsOutOfCombat = True

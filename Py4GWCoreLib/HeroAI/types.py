@@ -144,6 +144,7 @@ class Skilltarget (IntEnum):
     HexedAlly = 41
     EnemyNotNearby = 42
     SplinterWeapon = 44
+    StrengthOfHonor = auto()
 
 
 
