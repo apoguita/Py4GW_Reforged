@@ -278,3 +278,7 @@ Py4GW_Reforged_Launcher/*.exe
 # store) -- not meant for the eventual PR to Apo, just internal working notes
 Py4GW_Reforged_Launcher/dev_notes/
 Py4GW.dll
+
+# Local Ghidra RE scratch (analysis project, redirected settings, symbol dumps).
+# Machine-generated and large; regenerate with _ghidra/scripts, never commit.
+/_ghidra/
