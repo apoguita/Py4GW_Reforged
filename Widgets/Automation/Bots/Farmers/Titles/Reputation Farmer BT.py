@@ -39,6 +39,17 @@ PARTY_FORMATION_CONFIG_PATH = os.path.join(BOT_BASE_DIR, "Reputation Farmer Part
 
 HERO_AGGRESSIVE_MODE = 1
 
+# Chest-watchdog allowlist for chest gadget models that `GetNearestChest` does
+# not cover (it only matches GadgetModelID names starting with "CHEST_").
+# 44: "Locked Chest" gadget (live-verified 2026-09-14 on Mount Qinkai via the
+# watchdog's "gadget models seen" diagnostic). All 8 farm routes run in Hard
+# Mode, so every farm's chests are expected to be this same Locked Chest model
+# (user-confirmed); a run's "gadget models seen" line remains the check if any
+# route ever surfaces a different ID. Extra IDs are safe to add -- a match only
+# causes a detour to that chest, never a wrong behavior. Note: NORMAL MODE
+# runs of these maps would spawn different chest gadget models (not covered).
+EXTRA_CHEST_MODEL_IDS: Tuple[int, ...] = (44,)
+
 TEAM_PRESET_SIZES = [4, 6, 8]
 TEAM_PRESET_SLOT_COUNTS = {4: 3, 6: 5, 8: 7}
 
@@ -93,10 +104,29 @@ class Blessing:
 
 
 @dataclass
+class RouteAction:
+    """One extra step executed after a segment's kill path.
+
+    One node per action, in list order. Gadget interactions target the
+    nearest gadget to the given XY and are leader-only; Hero AI suspension is
+    disabled on purpose -- the suspend/restore toggle is exactly what the
+    headless hero loop does not need churned mid-run.
+    """
+
+    name: str
+    wait_ms: int = 0
+    wait_out_of_combat: bool = False
+    loot: bool = False
+    gadget_pos: Optional[Tuple[float, float]] = None
+    chest_watch: bool = False
+
+
+@dataclass
 class RouteSegment:
     name: str = ""
     blessing: Optional[Blessing] = None
     path: Sequence[Tuple[float, float]] = ()
+    actions: Sequence[RouteAction] = ()
 
 
 @dataclass
@@ -117,6 +147,7 @@ class Route:
     bounty_pos: Optional[Tuple[float, float]] = None
     bounty_dialog: int = 0x85
     entry_dialog_id: int = 0
+    chest_watch: bool = False
 
 
 # Route data
@@ -124,6 +155,7 @@ class Route:
 VANGUARD_ROUTE = Route(
     key="vanguard",
     name="Vanguard",
+    chest_watch=True,
     icon="[2233] - Ebon Battle Standard of Honor.jpg",
     title_id=TitleID.Ebon_Vanguard,
     outpost_id=648,      # Dalada Uplands outpost
@@ -191,6 +223,7 @@ VANGUARD_ROUTE = Route(
 ASURAN_ROUTE = Route(
     key="asuran",
     name="Asuran",
+    chest_watch=True,
     icon="[2372] - Edification.jpg",
     title_id=TitleID.Asuran,
     outpost_id=640,      # Rata Sum
@@ -233,6 +266,7 @@ ASURAN_ROUTE = Route(
 NORN_ROUTE = Route(
     key="norn",
     name="Norn",
+    chest_watch=True,
     icon="[2373] - Heart of the Norn.jpg",
     title_id=TitleID.Norn,
     outpost_id=645,      # Olafstead
@@ -325,6 +359,10 @@ NORN_ROUTE = Route(
 DELDRIMOR_ROUTE = Route(
     key="deldrimor",
     name="Deldrimor",
+    # No route-level chest_watch: the Boss Lock leg ends ~3.6k from the
+    # hand-placed boss chest -- inside the 4500 detection radius -- so a
+    # route-level watchdog would detour and open the boss chest before the
+    # boss fight. The dungeon chest stays on the explicit RouteActions below.
     icon="[2424] - Stout-Hearted.jpg",
     title_id=TitleID.Deldrimor,
     outpost_id=639,
@@ -334,14 +372,54 @@ DELDRIMOR_ROUTE = Route(
     blessing_points=[
         Blessing((-14078.0, 15449.0)),
     ],
-    kill_path=[
-        (-14804, 10703), (-15628, 9589), (-17602, 6858), (-19769, 5046),
-        (-16697.96, 1302.89), (-15090.34, 2057.10), (-14450.00, 3411.00),
-        (-13824.00, 924.00), (-13752.06, -504.66), (-12084.77, -1592.58),
-        (-12745.70, -3899.97), (-13262.00, -7346.00), (-14891.95, -10069.69),
-        (-9573.00, -10963.00), (-15756.00, -12335.00), (-17542.00, -14048.00),
-        (-13088.00, -17749.00), (-13004.20, -17304.91), (-11136.00, -18043.00),
-        (-7422.59, -18622.13),
+    # Segment split mirrors the multibox's Deldrimor dungeon mechanics: the
+    # former single kill_path is cut at the door / boss / chest anchors so
+    # each segment can carry its RouteActions.
+    segments=[
+        RouteSegment(
+            name="Deldrimor Descent",
+            path=[
+                (-14804, 10703), (-15628, 9589), (-17602, 6858), (-19769, 5046),
+                (-16697.96, 1302.89), (-15090.34, 2057.10), (-14450.00, 3411.00),
+                (-13824.00, 924.00), (-13752.06, -504.66), (-12084.77, -1592.58),
+                (-12745.70, -3899.97), (-13262.00, -7346.00), (-14891.95, -10069.69),
+            ],
+            actions=[
+                RouteAction(name="Regroup And Loot Key Drop", wait_out_of_combat=True, loot=True),
+            ],
+        ),
+        RouteSegment(
+            name="Deldrimor Door",
+            path=[(-9573.00, -10963.00), (-15756.00, -12335.00)],
+            actions=[
+                RouteAction(name="Door Lock", gadget_pos=(-15435.00, -12277.00)),
+                RouteAction(name="Door Opens", wait_ms=3000),
+            ],
+        ),
+        RouteSegment(
+            name="Deldrimor Regroup",
+            path=[(-17542.00, -14048.00), (-13088.00, -17749.00), (-13004.20, -17304.91)],
+            actions=[
+                RouteAction(name="Regroup And Loot", wait_out_of_combat=True, loot=True),
+            ],
+        ),
+        RouteSegment(
+            name="Deldrimor Boss Lock",
+            path=[(-11136.00, -18043.00)],
+            actions=[
+                RouteAction(name="Boss Lock", gadget_pos=(-11136.00, -18043.00)),
+                RouteAction(name="Boss Spawn", wait_ms=3000),
+            ],
+        ),
+        RouteSegment(
+            name="Deldrimor Boss And Chest",
+            path=[(-7422.59, -18622.13)],
+            actions=[
+                RouteAction(name="Boss Fight Window", wait_ms=60_000),
+                RouteAction(name="Chest", gadget_pos=(-7594.00, -18657.00)),
+                RouteAction(name="Loot Chest", loot=True),
+            ],
+        ),
     ],
 )
 # Luxon - Mount Qinkai / Aspenwood Gate (Luxon title).
@@ -354,6 +432,12 @@ LUXON_ROUTE = Route(
     explorable_id=200,   # Mount Qinkai
     exit_pos=(-5490.0, 13672.0),
     blessing_points=[Blessing((-8394.0, -9801.0))],
+    # Chest watch at route level: _vanquish_legs chunks the kill_path into
+    # 2-waypoint legs with a chest detour after each -- the code-driven
+    # replacement of the hand-split segments used in the first Luxon rollout
+    # (live-verified behavior: random spawns, ledger-guarded, model 44).
+    # Waypoints are the original kill_path, unchanged.
+    chest_watch=True,
     kill_path=[
         (-13087.83, -9683.66), (-14952.93, -7771.10), (-16848.37, -9525.87),
         (-11624.00, -3465.98), (-13161.35, -1919.82), (-9122.62, -581.28),
@@ -370,6 +454,7 @@ LUXON_ROUTE = Route(
 KURZICK_ROUTE = Route(
     key="kurzick",
     name="Kurzick",
+    chest_watch=True,
     icon="[1813] - Lightbringer.jpg",
     title_id=TitleID.Kurzick,
     outpost_id=222,      # Eternal Grove outpost
@@ -391,6 +476,7 @@ KURZICK_ROUTE = Route(
 SUNSPEAR_ROUTE = Route(
     key="sunspear",
     name="Sunspear",
+    chest_watch=True,
     icon="[1816] - Sunspear Rebirth Signet.jpg",
     title_id=TitleID.Sunspear,
     outpost_id=381,      # Yohlon Haven
@@ -412,6 +498,7 @@ SUNSPEAR_ROUTE = Route(
 LIGHTBRINGER_ROUTE = Route(
     key="lightbringer",
     name="Lightbringer",
+    chest_watch=True,
     icon="[1813] - Lightbringer.jpg",
     title_id=TitleID.Lightbringer,
     outpost_id=433,      # Gate of Pain
@@ -556,6 +643,233 @@ def _move_to_npc(pos: Tuple[float, float]) -> BehaviorTree:
     )
 
 
+def _ensure_at_outpost(route: Route) -> BehaviorTree:
+    """No-op while the leader is at the route's outpost; otherwise resign home.
+
+    Opens every run loop: legitimate runs start here right after the farm
+    sequence's one-time startup travel (already home -> no-op), later runs
+    start here after the end-of-run resign (no-op), and a Run Retry that
+    restarted mid-route is rescued back to the outpost instead of re-walking
+    an un-blessed route. Resign carries the hero team with the leader, so one
+    node recovers the whole solo party.
+    """
+
+    def _at_outpost(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            if (
+                Map.IsMapReady()
+                and Map.IsOutpost()
+                and int(Map.GetMapID()) == int(route.outpost_id)
+            ):
+                return BehaviorTree.NodeState.SUCCESS
+        except Exception:
+            pass
+        return BehaviorTree.NodeState.FAILURE
+
+    return BT.Selector(
+        name=f"Ensure At The {route.name} Outpost",
+        children=[
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name=f"Already At The {route.name} Outpost",
+                    action_fn=_at_outpost,
+                )
+            ),
+            BT.Resign(
+                wait_for_map_load=True,
+                target_map_id=route.outpost_id,
+                multi_account=_multi_account,
+                timeout_ms=60_000,
+                log=True,
+            ),
+        ],
+    )
+
+
+def _chest_detour(radius: int = 4500) -> BehaviorTree:
+    """One chest-watchdog step: detour to a locked chest within `radius`, else fall through.
+
+    The watchdog samples at segment boundaries (see the route's segments); when
+    a chest gadget is in range the run detours, moves to it, and interacts --
+    the locked-chest dialog itself is answered by the native
+    `auto_open_locked_chest` listener (System Settings), so this node only owns
+    detection + travel + interaction. Detection failure is the healthy common
+    case and simply continues the run; an already-opened/missing chest gadget
+    reads the same way, making the step idempotent across run retries.
+    """
+
+    # Closure-local capture of the chest found by the finder action, consumed
+    # by the lazily-built detour subtree on the next tick of the same sequence.
+    target: Dict[str, float] = {}
+    # Agent ID of the chest being engaged this detour; consumed by the
+    # record action after the interact completes.
+    state: Dict[str, int] = {"id": 0}
+
+    def _find_chest(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        try:
+            from Py4GWCoreLib import Agent, AgentArray
+            from Py4GWCoreLib.enums_src.Model_enums import GadgetModelID
+
+            # One ledger-aware detector: nearest chest gadget not already
+            # engaged this instance. GetNearestChest can not express the
+            # exclusion, and re-detecting an opened chest (its gadget may
+            # linger) would send the run back to it at the next boundary.
+            known_chests = {
+                int(e.value) for e in GadgetModelID if e.name.startswith("CHEST_")
+            } | set(EXTRA_CHEST_MODEL_IDS)
+            gadgets_in_range = AgentArray.Filter.ByDistance(
+                AgentArray.GetGadgetArray(), Player.GetXY(), radius
+            )
+            gadgets_in_range = AgentArray.Sort.ByDistance(
+                gadgets_in_range, Player.GetXY()
+            )
+            chest_id = 0
+            for agent_id in gadgets_in_range:
+                gadget_id = int(Agent.GetGadgetID(agent_id))
+                if gadget_id not in known_chests:
+                    continue
+                if int(agent_id) in _consumed_chests:
+                    continue
+                chest_id = int(agent_id)
+                break
+            if chest_id == 0:
+                # Diagnostic: no UNCONSUMED known chest matched. Report the
+                # gadget models seen in range so an unlisted chest type can be
+                # added to EXTRA_CHEST_MODEL_IDS from live evidence, not
+                # guesswork.
+                models = sorted(
+                    {int(Agent.GetGadgetID(agent_id)) for agent_id in gadgets_in_range}
+                )
+                known_seen = sum(
+                    1
+                    for agent_id in gadgets_in_range
+                    if int(Agent.GetGadgetID(agent_id)) in known_chests
+                )
+                PySystem.Console.Log(
+                    MODULE_NAME,
+                    "Chest Watchdog: no unconsumed chest in range (%d); gadget models seen: %s; "
+                    "known chests in range already engaged: %d"
+                    % (radius, models or "none", known_seen),
+                    PySystem.Console.MessageType.Info,
+                )
+                return BehaviorTree.NodeState.FAILURE
+            chest_x, chest_y = Agent.GetXY(chest_id)
+            state["id"] = chest_id
+            target["x"] = float(chest_x)
+            target["y"] = float(chest_y)
+        except Exception:
+            return BehaviorTree.NodeState.FAILURE
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _build_detour(_node: BehaviorTree.Node) -> BehaviorTree:
+        if "x" not in target or "y" not in target:
+            return BT.LogMessage(
+                "Chest Watchdog: no chest position captured - skipping.",
+                module_name=MODULE_NAME,
+            )
+        return BT.MoveAndInteractWithGadget((target["x"], target["y"]), log=True)
+
+    def _record_chest_consumed(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        # Reached and interacted -- success or not, that chest is done for
+        # this instance (one attempt, never spammed). A detour interrupted
+        # before reaching the chest fails the subtree above and skips this
+        # node, so the chest stays eligible for the next boundary check.
+        if state["id"]:
+            _consumed_chests.add(state["id"])
+            state["id"] = 0
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BT.Selector(
+        name="Chest Watchdog",
+        children=[
+            BT.Sequence(
+                name="Detour To Locked Chest",
+                children=[
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name="Locked Chest Nearby?",
+                            action_fn=_find_chest,
+                        )
+                    ),
+                    BT.Subtree("Open Locked Chest", _build_detour),
+                    BehaviorTree(
+                        BehaviorTree.ActionNode(
+                            name="Record Chest Consumed",
+                            action_fn=_record_chest_consumed,
+                        )
+                    ),
+                ],
+            ),
+            BT.LogMessage(
+                "Chest Watchdog: no chest in range - continuing.",
+                module_name=MODULE_NAME,
+            ),
+        ],
+    )
+
+
+def _vanquish_legs(
+    route: Route,
+    name: str,
+    steps: Sequence[Tuple[float, float]],
+    log: bool = False,
+) -> List[BehaviorTree]:
+    """Build one VanquishNode per 2-waypoint leg of `steps`.
+
+    With the route's chest_watch flag off this is a single VanquishNode (the
+    legacy behavior). With the flag on, a chest detour follows every leg:
+    dense sampling keeps a passed chest within detection radius (chest spawns
+    are random, live-verified), and the per-instance ledger keeps repeated
+    checks spam-free. This is the code-driven replacement for the hand-split
+    segment data used in the first Luxon rollout; the per-segment
+    RouteAction(chest_watch=True) mechanism remains for explicit placement.
+    """
+    if not route.chest_watch:
+        return [
+            BT.VanquishNode(
+                steps=list(steps),
+                name=name,
+                flag_heroes_to_waypoint=False,
+                log=log,
+            )
+        ]
+    nodes: List[BehaviorTree] = []
+    for leg_index, start in enumerate(range(0, len(steps), 2), start=1):
+        nodes.append(
+            BT.VanquishNode(
+                steps=list(steps[start : start + 2]),
+                name=f"{name} {leg_index}",
+                flag_heroes_to_waypoint=False,
+                log=log,
+            )
+        )
+        nodes.append(_chest_detour())
+    return nodes
+
+
+def _route_action_nodes(route: Route, segment: RouteSegment) -> List[BehaviorTree]:
+    """Build the BT nodes for a segment's post-path dungeon actions.
+
+    One node per RouteAction, in list order. Gadget interactions target the
+    nearest gadget to the given XY and are leader-only; Hero AI suspension is
+    disabled on purpose -- the suspend/restore toggle is exactly what the
+    headless hero loop does not need churned mid-run.
+    """
+    nodes: List[BehaviorTree] = []
+    for action in segment.actions:
+        if action.gadget_pos is not None:
+            nodes.append(BT.MoveAndInteractWithGadget(action.gadget_pos, log=True))
+        if action.wait_ms:
+            nodes.append(BT.Wait(action.wait_ms))
+        if action.wait_out_of_combat:
+            nodes.append(BT.WaitUntilOutOfCombat(timeout_ms=120_000))
+        if action.loot:
+            nodes.append(BT.LootItems())
+        if action.chest_watch:
+            nodes.append(_chest_detour())
+    return nodes
+
+
 def AggressiveEnv() -> Sequence[BehaviorTree]:
     return [
         ensure_botting_tree().Config.Aggressive(multi_account=_multi_account, auto_loot=True),
@@ -612,6 +926,39 @@ _BLESSING_IDS_BY_ROUTE: Dict[str, Tuple[int, ...]] = {
 }
 
 
+# Blessing shrines already taken in the current explorable instance, keyed by
+# position. All shrines of a faction route grant the SAME effect (e.g. every
+# Norn shrine grants Norn Hunting Party), so effect presence can NOT decide
+# whether an individual shrine was taken -- it only proves the FIRST one was.
+# Skipping on effect presence made the bot walk past shrines 2..N; tracking by
+# position (reset on each fresh instance) is the correct idempotency key.
+_blessings_taken: set = set()
+# Chest gadgets already engaged this instance (agent IDs). Mirrors the shrine
+# tracker: a chest is one-shot, an opened chest's gadget may still be visible,
+# and without the ledger the watchdog would walk back to it at every boundary
+# inside detection radius. Reset per instance together with the shrine tracker.
+_consumed_chests: set = set()
+
+
+def _reset_blessing_tracking() -> BehaviorTree:
+    """Clear the per-instance shrine tracker. Runs right after entering the
+    explorable: a new map instance has fresh shrines, while a Run Retry that
+    restarts mid-route keeps its tracker so taken shrines are not re-clicked
+    (one-shot shrines never re-open their dialog -- seen live)."""
+
+    def _reset(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        _blessings_taken.clear()
+        _consumed_chests.clear()
+        return BehaviorTree.NodeState.SUCCESS
+
+    return BehaviorTree(
+        BehaviorTree.ActionNode(
+            name="Reset Blessing Tracking (New Instance)",
+            action_fn=_reset,
+        )
+    )
+
+
 def _confirm_effect(
     candidate_ids: Tuple[int, ...],
     name: str,
@@ -650,6 +997,10 @@ def _confirmed_interaction(
     attempts: int = 3,
     settle_ms: int = 1500,
     confirm_timeout_ms: int = 10000,
+    already: Optional[Callable[[], bool]] = None,
+    on_confirmed: Optional[Callable[[], None]] = None,
+    retry: bool = True,
+    record_even_on_failure: bool = False,
 ) -> BehaviorTree:
     """Run an interaction and confirm the blessing/bounty actually landed.
 
@@ -662,12 +1013,21 @@ def _confirmed_interaction(
 
     Solo build: the leader is the only player, so this effect check IS the
     whole party's confirmation.
+
+    Idempotency: `already`, when provided, is the skip test for THIS
+    interaction (blessings pass a per-shrine position check -- see
+    `_blessings_taken`; all shrines of a route share one effect, so effect
+    presence must not gate them). Without `already`, the legacy effect-presence
+    check applies (bounty accepts, where one effect really does mean taken).
     """
     def _already_confirmed(_node: BehaviorTree.Node) -> BehaviorTree.NodeState:
-        # Idempotency gate: if the route's effect is already on the leader
-        # (previous attempt landed, or an earlier run left it active), skip the
-        # interaction -- one-shot shrines never re-open their dialog, so
-        # re-clicking would only spin until the retry timeout (seen live).
+        if already is not None:
+            try:
+                if already():
+                    return BehaviorTree.NodeState.SUCCESS
+            except Exception:
+                pass
+            return BehaviorTree.NodeState.FAILURE
         try:
             me = int(Player.GetAgentID() or 0)
             if me > 0:
@@ -679,12 +1039,40 @@ def _confirmed_interaction(
         return BehaviorTree.NodeState.FAILURE
 
     interaction_children: List[BehaviorTree] = [interaction, BT.Wait(settle_ms)]
+    if record_even_on_failure:
+        # One-shot interactions (shrines can only be dialoged once): a failed
+        # or missing dialog is treated as consumed, never re-attempted. The
+        # selector succeeds via the fallback whether the interaction lands or
+        # not, so the record node below always runs.
+        take_once = BehaviorTree(
+            BehaviorTree.SelectorNode(
+                name=f"{name} Take Once",
+                children=[
+                    interaction.root,
+                    BehaviorTree.SucceederNode(name=f"{name} Shrine Consumed"),
+                ],
+            )
+        )
+        interaction_children = [take_once, BT.Wait(settle_ms)]
     if confirm_ids:
         interaction_children.append(
             _confirm_effect(
                 confirm_ids,
                 name=f"{name} Confirmation",
                 timeout_ms=confirm_timeout_ms,
+            )
+        )
+    if on_confirmed is not None:
+        def _record_confirmed(_node: BehaviorTree.Node, _cb=on_confirmed) -> BehaviorTree.NodeState:
+            _cb()
+            return BehaviorTree.NodeState.SUCCESS
+
+        interaction_children.append(
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name=f"{name} Record Confirmed",
+                    action_fn=_record_confirmed,
+                )
             )
         )
 
@@ -706,6 +1094,10 @@ def _confirmed_interaction(
     ]
 
     attempt = BT.Sequence(name=f"{name} Attempt", children=attempt_children)
+    if not retry:
+        # Single-shot interaction: no retry wrapper. The shrine is consumed
+        # (record_even_on_failure) or confirmed on the first attempt.
+        return attempt
     return BehaviorTree(
         BehaviorTree.RepeaterUntilSuccessNode(
             child=attempt.root,
@@ -912,13 +1304,15 @@ def SetupHeroTeam() -> BehaviorTree:
 def _killing_loop(route: Route) -> BehaviorTree:
     """The vanquish-style farming loop for one faction run.
 
-    Mirrors the Nightfall Leveler / VQFarm convention: travel to outpost,
-    cross into the explorable map, then either run per-leg route segments
-    (blessing + fight leg each) or collect the route's blessings and run its
-    single kill path, wait out of combat, then resign back to the outpost.
+    Mirrors the Nightfall Leveler / VQFarm convention: the farm sequence
+    travels to the outpost once at startup, every run opens with an at-outpost
+    guard (resign home if a retry left the party inside the explorable), then
+    runs per-leg route segments (blessing + fight leg + dungeon actions each)
+    or collects the route's blessings and runs its single kill path, waits
+    out of combat, then resigns back to the outpost.
     """
     children: List[BehaviorTree] = [
-        BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=True),
+        _ensure_at_outpost(route),
         *_party_setup(route),
     ]
 
@@ -937,6 +1331,7 @@ def _killing_loop(route: Route) -> BehaviorTree:
             BT.MoveAndExitMap(route.exit_pos, target_map_id=route.explorable_id)
         )
 
+    children.append(_reset_blessing_tracking())
     children.extend(AggressiveEnv())
 
     def _take_blessing(blessing: Blessing) -> None:
@@ -954,35 +1349,50 @@ def _killing_loop(route: Route) -> BehaviorTree:
         children.append(
             _confirmed_interaction(
                 blessing_tree,
-                confirm_ids=_BLESSING_IDS_BY_ROUTE.get(route.key, ()),
+                # Shrines are one-shot: exactly one dialog attempt each, and a
+                # shrine whose dialog does not open is treated as consumed and
+                # recorded, so the take is never re-attempted (seen live
+                # 2026-09-13: SendAutomaticDialog timeouts looping on the same
+                # shrine). All shrines of a route share one effect, so no
+                # effect confirmation is possible or needed here; the
+                # per-shrine position tracker prevents re-clicks instead.
+                confirm_ids=(),
                 name=f"{route.name} Blessing",
+                already=lambda pos=blessing.pos: pos in _blessings_taken,
+                on_confirmed=lambda pos=blessing.pos: _blessings_taken.add(pos),
+                retry=False,
+                record_even_on_failure=True,
             )
         )
 
 
     if route.segments:
+        # Route-level blessing_points still apply to segmented routes: take
+        # them before the legs, else a route converted from kill_path to
+        # segments silently drops its blessing (seen live on Luxon after the
+        # chest-watch conversion). The per-instance shrine tracker makes this
+        # idempotent on run retries.
+        for blessing in route.blessing_points:
+            _take_blessing(blessing)
         for index, segment in enumerate(route.segments, start=1):
             if segment.blessing is not None:
                 _take_blessing(segment.blessing)
             if segment.path:
-                children.append(
-                    BT.VanquishNode(
-                        steps=list(segment.path),
-                        name=segment.name or f"{route.name} Leg {index}",
-                        flag_heroes_to_waypoint=False,
+                children.extend(
+                    _vanquish_legs(
+                        route,
+                        segment.name or f"{route.name} Leg {index}",
+                        segment.path,
                     )
                 )
+            children.extend(_route_action_nodes(route, segment))
     else:
         for blessing in route.blessing_points:
             _take_blessing(blessing)
 
         if route.kill_path:
-            children.append(
-                BT.VanquishNode(
-                    steps=list(route.kill_path),
-                    name=f"{route.name} Kill Path",
-                    flag_heroes_to_waypoint=False,
-                )
+            children.extend(
+                _vanquish_legs(route, f"{route.name} Kill Path", route.kill_path)
             )
 
     children.append(BT.WaitUntilOutOfCombat())
@@ -1000,10 +1410,11 @@ def _killing_loop(route: Route) -> BehaviorTree:
 def _bounty_loop(route: Route) -> BehaviorTree:
     """One Nightfall bounty run (Sunspear / Lightbringer).
 
-    Mirrors the legacy bounty bots: travel to the outpost, cross into the
-    explorable map, accept the bounty from the NPC via dialog, run the kill
-    path, then wait out of combat (the next run's Travel returns to the
-    outpost, replacing the legacy resign step).
+    Mirrors the legacy bounty bots: cross into the explorable map from the
+    route's outpost (the farm sequence travels there once at startup; every
+    run opens with an at-outpost guard), accept the bounty from the NPC via
+    dialog, run the kill path, then wait out of combat and resign back to
+    the outpost.
     """
     if route.bounty_pos is None:
         return BT.LogMessage(
@@ -1012,7 +1423,7 @@ def _bounty_loop(route: Route) -> BehaviorTree:
         )
 
     children: List[BehaviorTree] = [
-        BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=True),
+        _ensure_at_outpost(route),
         *_party_setup(route),
     ]
     for point in route.pre_path:
@@ -1028,6 +1439,7 @@ def _bounty_loop(route: Route) -> BehaviorTree:
             )
         )
     children.append(BT.MoveAndExitMap(route.exit_pos, target_map_id=route.explorable_id))
+    children.append(_reset_blessing_tracking())
     children.extend(AggressiveEnv())
     children.append(
         _confirmed_interaction(
@@ -1050,12 +1462,9 @@ def _bounty_loop(route: Route) -> BehaviorTree:
     )
 
     if route.kill_path:
-        children.append(
-            BT.VanquishNode(
-                steps=list(route.kill_path),
-                name=f"{route.name} Bounty Kill Path",
-                flag_heroes_to_waypoint=False,
-                log=True,
+        children.extend(
+            _vanquish_legs(
+                route, f"{route.name} Bounty Kill Path", route.kill_path, log=True
             )
         )
 
@@ -1122,15 +1531,45 @@ def _goal_threshold(route: Route) -> Optional[int]:
 
 
 def _build_farm_sequence(route: Route) -> BehaviorTree:
+    goal_state = {"decision": ""}
+
+    def _log_goal_decision(decision: str, detail: str) -> None:
+        # Edge-triggered: the goal check runs every tick, so only log changes.
+        if goal_state["decision"] == decision:
+            return
+        goal_state["decision"] = decision
+        PySystem.Console.Log(MODULE_NAME, f"{route.name}: {detail}", PySystem.Console.MessageType.Info)
+
     def _goal_reached() -> BehaviorTree.NodeState:
         global _active_farm_key
         threshold = _goal_threshold(route)
         if threshold is None:
+            _log_goal_decision("skip", "no goal threshold configured; farming skipped.")
             return BehaviorTree.NodeState.FAILURE
-        if _faction_points(route) >= threshold:
+        points = _faction_points(route)
+        if points >= threshold:
+            _log_goal_decision("skip", f"goal {threshold:,} reached ({points:,} points); run skipped.")
             return BehaviorTree.NodeState.SUCCESS
         _active_farm_key = route.key
+        _log_goal_decision("farm", f"{points:,}/{threshold:,} points; farming.")
         return BehaviorTree.NodeState.FAILURE
+
+    def _farm_startup() -> BehaviorTree:
+        # Travel-once: the outpost travel (hard mode) runs when the farm
+        # sequence starts, gated by the same goal check as the runs. Every
+        # run loop opens with _ensure_at_outpost instead, which no-ops while
+        # the party is already home and rescues a retry that restarted
+        # mid-route. Heroes travel with the leader, so no regroup wait is
+        # needed here (the multibox's 10s settle is alt-only).
+        return BT.Selector(
+            name=f"{route.name} Startup Goal Gate",
+            children=[
+                BehaviorTree(
+                    BehaviorTree.ActionNode(name="Goal Reached?", action_fn=_goal_reached)
+                ),
+                BT.Travel(target_map_id=route.outpost_id, random_travel=True, hard_mode=True),
+            ],
+        )
 
     def _one_run() -> BehaviorTree:
         run_loop = _bounty_loop(route) if route.bounty else _killing_loop(route)
@@ -1154,6 +1593,7 @@ def _build_farm_sequence(route: Route) -> BehaviorTree:
     return BT.Sequence(
         name=f"Farm {route.name}",
         children=[
+            _farm_startup(),
             BT.Repeater(name=f"Farm {route.name}", repeat_count=VQ_MAX_RUNS, children=[_one_run()]),
         ],
     )
@@ -1513,8 +1953,15 @@ def _draw_help_tab() -> None:
         "Vanquish routes enter the explorable map, take the route's shrine blessings, "
         "and clear their kill path. Sunspear and Lightbringer are bounty loops: each "
         "run walks to the bounty priest, accepts the bounty through the dialog, then "
-        "clears the kill path. Both loop types travel to the route's outpost on hard "
-        "mode and resign back to it at the end of every run."
+        "clears the kill path. Both loop types resign back to the route's outpost at "
+        "the end of every run; the outpost travel itself happens once per farm "
+        "sequence, and every run opens with an at-outpost guard that resigns the "
+        "party home if a retry left it inside the explorable."
+    )
+    PyImGui.text_wrapped(
+        "Segment dungeon steps (Deldrimor): some segments carry post-path actions -- "
+        "door and boss locks, fixed spawn and fight windows, out-of-combat regroups, "
+        "and loot sweeps -- executed in order after the segment's kill path."
     )
 
     _section("Party setup")
