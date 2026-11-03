@@ -125,7 +125,7 @@ def _matches_required_weapon(required_weapon: str) -> bool:
         _, current_weapon_name = Agent.GetWeaponType(player_id)
         return _normalize_weapon_requirement_name(current_weapon_name) == normalized_required_weapon
 
-def _PrioritizeSkills(Skill_Data, Skill_Order):
+def _PrioritizeSkills(Skill_Data, Skill_Order, combat_distance=Range.Spellcast.value):
         """
         Create a priority-based skill execution order.
         """
@@ -139,6 +139,11 @@ def _PrioritizeSkills(Skill_Data, Skill_Order):
         ptr_chk = [False] * MAX_SKILLS
         ordered_skills = []
         
+        effective_natures = {}
+        for candidate in original_skills:
+            selector = getattr(candidate.custom_skill_data, "PrioritySelector", None)
+            effective_natures[id(candidate)] = selector(combat_distance) if callable(selector) else candidate.custom_skill_data.Nature
+
         priorities = [
             SkillNature.CustomA,
             SkillNature.Interrupt,
@@ -173,7 +178,7 @@ def _PrioritizeSkills(Skill_Data, Skill_Order):
             #for i in range(ptr,MAX_SKILLS):
             for i in range(MAX_SKILLS):
                 skill = original_skills[i]
-                if not ptr_chk[i] and skill.custom_skill_data.Nature == priority.value:
+                if not ptr_chk[i] and effective_natures[id(skill)] == priority.value:
                     Skill_Order[ptr] = i
                     ptr_chk[i] = True
                     ptr += 1
@@ -346,6 +351,9 @@ def _GetAppropiateTarget(
 
         targeting_strict = skills[slot].custom_skill_data.Conditions.TargetingStrict
         target_allegiance =skills[slot].custom_skill_data.TargetAllegiance
+        selector = getattr(skills[slot].custom_skill_data, "TargetSelector", None)
+        if callable(selector):
+            return int(selector(combat_distance) or 0)
         
         
         nearest_enemy = Routines.Agents.GetNearestEnemy(combat_distance)
@@ -1347,7 +1355,7 @@ class SkillManager:
             """
             Create a priority-based skill execution order.
             """
-            self.skills = _PrioritizeSkills(self._SkillData, self.skill_order)
+            self.skills = _PrioritizeSkills(self._SkillData, self.skill_order, self.get_combat_distance())
             
   
         def GetSkills(self):
@@ -1447,6 +1455,9 @@ class SkillManager:
 
             targeting_strict = self.skills[slot].custom_skill_data.Conditions.TargetingStrict
             target_allegiance = self.skills[slot].custom_skill_data.TargetAllegiance
+            selector = getattr(self.skills[slot].custom_skill_data, "TargetSelector", None)
+            if callable(selector):
+                return int(selector(self.get_combat_distance()) or 0)
 
             # Lazy helpers — only call expensive scans when a branch actually needs them
             _nearest_enemy = None
