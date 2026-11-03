@@ -232,10 +232,8 @@ class Minion_Master(BuildMgr):
                 extra_minion_needs_boost = minion_count > current_cap
                 maintain_for_combat = self.IsInAggro() or self.IsCloseToAggro()
                 if needs_summon or extra_minion_needs_boost or maintain_for_combat:
-                    if (yield from self.CastSkillID(
-                        skill_id=MASOCHISM_ID,
-                        log=False,
-                        aftercast_delay=250,
+                    if (yield from self.skillbook.Necromancer.SoulReaping.Masochism(
+                        require_aggro=False,
                     )):
                         return True
                     if needs_summon:
