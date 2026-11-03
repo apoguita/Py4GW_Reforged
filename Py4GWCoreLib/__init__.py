@@ -42,6 +42,9 @@ import PyScanner
 import PyImGui
 import PyCallback
 
+from .pyimgui_input_compat import install as _install_pyimgui_input_compat
+_install_pyimgui_input_compat()
+
 # ── Legacy Console: inject into builtins so all legacy code (100+ bare
 #    `Console.xxx()` and `ConsoleLog()` calls) works without per-file migration. ──
 import builtins
