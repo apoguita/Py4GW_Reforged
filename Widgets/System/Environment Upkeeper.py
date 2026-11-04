@@ -1,4 +1,5 @@
 import PyImGui
+import traceback
 from Py4GWCoreLib import *
 from Py4GWCoreLib.HotkeyManager import HOTKEY_MANAGER
 
@@ -106,7 +107,17 @@ def main():
         try:
             next(routine)
         except StopIteration:
-            GLOBAL_CACHE.Coroutines.remove(routine)
+            if routine in GLOBAL_CACHE.Coroutines:
+                GLOBAL_CACHE.Coroutines.remove(routine)
+        except Exception as exc:
+            # Retire one failed command and continue servicing the remaining list.
+            ConsoleLog(
+                MODULE_NAME,
+                f"Shared coroutine failed and was retired: {exc}\n{traceback.format_exc()}",
+                PySystem.Console.MessageType.Error,
+            )
+            if routine in GLOBAL_CACHE.Coroutines:
+                GLOBAL_CACHE.Coroutines.remove(routine)
     
     if Map.IsMapLoading() or Map.IsInCinematic():
         widget_config.action_queue_manager.ResetNonTransitionQueues()
