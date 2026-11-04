@@ -63,6 +63,12 @@ class CapturedBlessingSpec:
                 raise ValueError(f"{key} must be a positive finite distance")
             return parsed
 
+        def point(key: str) -> tuple[float, float]:
+            coordinates = tuple(float(v) for v in value[key])
+            if len(coordinates) != 2:
+                raise ValueError(f"{key} must contain exactly two coordinates")
+            return coordinates[0], coordinates[1]
+
         effect_ids = tuple(int(v) for v in value["effect_ids"])
         requested_mode = str(value.get("interaction_mode", "first"))
         # Older captured Norn routes label later hunters as ``refresh`` even
@@ -76,8 +82,8 @@ class CapturedBlessingSpec:
         return cls(
             name=str(value["name"]),
             interaction_mode=interaction_mode,
-            target_xy=tuple(float(v) for v in value["target_xy"]),
-            player_approach_xy=tuple(float(v) for v in value["player_approach_xy"]),
+            target_xy=point("target_xy"),
+            player_approach_xy=point("player_approach_xy"),
             effect_ids=effect_ids,
             encoded_name=str(value.get("encoded_name") or ""),
             model_id=int(value.get("model_id", 0) or 0),
@@ -532,42 +538,23 @@ class Py4GWCapturedBlessingRuntime:
             UIManager.Keyup(keybind, 0)
 
     def _all_agents(self) -> list[int]:
+        """Use the shared array owner; snapshot readiness is not feature-owned."""
         from Py4GWCoreLib.AgentArray import AgentArray
-        from Py4GWCoreLib.Context import GWContext
-
-        sources: list[tuple[str, Any]] = [
-            ("shared_all", AgentArray.GetAgentArray),
-            ("shared_npc", AgentArray.GetNPCMinipetArray),
-        ]
-        source_counts: dict[str, int] = {}
-        source_errors: dict[str, str] = {}
-        candidates: list[int] = []
 
         try:
-            context = GWContext.AgentArray.GetContext()
+            candidates = AgentArray.GetAgentArray()
         except Exception as error:
-            context = None
-            source_errors["context"] = f"{type(error).__name__}: {error}"
-        if context is not None:
-            sources.extend([
-                ("context_all", context.GetAgentArray),
-                ("context_npc", context.GetNPCMinipetArray),
-            ])
-
-        for source_name, getter in sources:
-            try:
-                values = [int(agent_id) for agent_id in (getter() or []) if int(agent_id) > 0]
-                source_counts[source_name] = len(values)
-                candidates.extend(values)
-            except Exception as error:
-                source_counts[source_name] = 0
-                source_errors[source_name] = f"{type(error).__name__}: {error}"
-
+            self._last_agent_sources = {
+                "counts": {"shared_all": 0},
+                "errors": {"shared_all": f"{type(error).__name__}: {error}"},
+            }
+            self.emit({"event": "agent_array_failed", "error": str(error)})
+            return []
         self._last_agent_sources = {
-            "counts": source_counts,
-            "errors": source_errors,
+            "counts": {"shared_all": len(candidates)},
+            "errors": {},
         }
-        return list(dict.fromkeys(candidates))
+        return candidates
 
     def resolve_target(self, spec: CapturedBlessingSpec, search_radius: float | None = None) -> int:
         from Py4GWCoreLib.Agent import Agent
@@ -634,11 +621,13 @@ class Py4GWCapturedBlessingRuntime:
 
     def player_xy(self) -> tuple[float, float]:
         from Py4GWCoreLib.Player import Player
-        return tuple(Player.GetXY())
+        x, y = Player.GetXY()
+        return float(x), float(y)
 
     def target_xy(self, agent_id: int) -> tuple[float, float]:
         from Py4GWCoreLib.Agent import Agent
-        return tuple(Agent.GetXY(agent_id))
+        x, y = Agent.GetXY(agent_id)
+        return float(x), float(y)
 
     def move(self, x: float, y: float) -> None:
         from Py4GWCoreLib.Player import Player

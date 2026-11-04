@@ -943,6 +943,11 @@ def TakeBlessing(
     final movement node; it does not mutate shared or subsequent movement.
     """
     if captured_blessing is not None:
+        if multi_account:
+            raise ValueError(
+                'captured Norn challenges currently support local execution only; '
+                'multi_account=True is not supported for this new optional path'
+            )
         from Sources.aC_Scripts.aC_api.Captured_Blessing import (
             CanonicalCapturedBlessingRunner,
             CapturedBlessingSpec,
@@ -1263,7 +1268,7 @@ def TakeBlessing(
                     action_fn=_capture_dialog_baseline,
                 )
             ),
-            _move_and_interact(
+            MoveAndInteract(
                 pos=pos,
                 log=log,
                 avoid_obstacles=avoid_final_approach_obstacles,
@@ -1614,7 +1619,7 @@ def MoveAndTarget(
         pause_on_combat=pause_on_combat,
     )
 
-def _move_and_interact(
+def MoveAndInteract(
     pos: PointOrPath,
     target_distance: float = Range.Area.value,
     move_tolerance: float = 150.0,
@@ -1641,22 +1646,6 @@ def _move_and_interact(
     )
 
 
-def MoveAndInteract(
-    pos: PointOrPath,
-    target_distance: float = Range.Area.value,
-    move_tolerance: float = 150.0,
-    pause_on_combat: bool | None = None,
-    flag_heroes_to_waypoint: bool = False,
-    log: bool = False,
-) -> BehaviorTree:
-    return _move_and_interact(
-        pos=pos,
-        target_distance=target_distance,
-        move_tolerance=move_tolerance,
-        pause_on_combat=pause_on_combat,
-        flag_heroes_to_waypoint=flag_heroes_to_waypoint,
-        log=log,
-    )
 
 def MoveAndInteractWithGadget(
     pos: PointOrPath | None = None,

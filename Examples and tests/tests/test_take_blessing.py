@@ -63,22 +63,30 @@ class TakeBlessingStructureTests(unittest.TestCase):
         ):
             self.assertIn(fragment, body)
 
+    def test_captured_norn_does_not_silently_ignore_multibox(self) -> None:
+        node = _function(WRAPPERS, "TakeBlessing")
+        namespace = {}
+        exec(compile(ast.Module(body=[node], type_ignores=[]), str(WRAPPERS), "exec",
+                     flags=__import__("__future__").annotations.compiler_flag), namespace)
+        with self.assertRaisesRegex(ValueError, "local execution only"):
+            namespace["TakeBlessing"]((0, 0), captured_blessing={}, multi_account=True)
+
     def test_final_approach_option_is_transaction_local(self) -> None:
         source = WRAPPERS.read_text(encoding="utf-8")
-        private = _function(WRAPPERS, "_move_and_interact")
         public = _function(WRAPPERS, "MoveAndInteract")
-        private_body = ast.get_source_segment(source, private) or ""
         public_body = ast.get_source_segment(source, public) or ""
-        self.assertIn("avoid_obstacles=avoid_obstacles", private_body)
-        self.assertIn("return _move_and_interact(", public_body)
-        self.assertNotIn("avoid_obstacles=", public_body)
+        self.assertIn("avoid_obstacles=avoid_obstacles", public_body)
+        self.assertEqual([arg.arg for arg in public.args.kwonlyargs], ["avoid_obstacles"])
+        default = public.args.kw_defaults[0]
+        assert isinstance(default, ast.Constant)
+        self.assertTrue(default.value)
+        self.assertNotIn("def _move_and_interact", source)
 
 
 class CapturedNornLifecycleTests(unittest.TestCase):
     def test_reacquires_displaced_norn_and_interacts_once_after_fight(self) -> None:
         spec = importlib.util.spec_from_file_location("captured_blessing_test", CAPTURED)
-        self.assertIsNotNone(spec)
-        self.assertIsNotNone(spec.loader)
+        assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)
@@ -149,6 +157,7 @@ class CapturedNornLifecycleTests(unittest.TestCase):
         )
         runner.start()
 
+        done, success, reason = False, False, "not_started"
         for _ in range(20):
             done, success, reason = runner.update()
             if runtime.combat_enables:
