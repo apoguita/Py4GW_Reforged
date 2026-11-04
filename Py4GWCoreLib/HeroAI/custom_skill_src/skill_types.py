@@ -1,3 +1,4 @@
+from typing import Callable
 from Py4GWCoreLib import Range
 
 from ..types import SkillNature
@@ -108,8 +109,8 @@ class CustomSkill:
         self.Nature = SkillNature.Offensive.value
         self.Conditions = CastConditions()
         # Optional skill-owned policies; absent policies retain existing engine behavior.
-        self.TargetSelector = None
-        self.PrioritySelector = None
+        self.TargetSelector: Callable[[float], int] | None = None
+        self.PrioritySelector: Callable[[float], int] | None = None
         # When True, this skill participates in the cross-hero whiteboard:
         # before casting, other heroes in the same IsolationGroupID who see an
         # unexpired (SkillID, TargetAgentID) claim will skip this slot.

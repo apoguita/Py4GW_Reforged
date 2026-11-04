@@ -360,8 +360,8 @@ class CombatClass:
         
         effective_natures = {}
         for candidate in original_skills:
-            selector = getattr(candidate.custom_skill_data, "PrioritySelector", None)
-            effective_natures[id(candidate)] = selector(self.get_combat_distance()) if callable(selector) else candidate.custom_skill_data.Nature
+            selector = candidate.custom_skill_data.PrioritySelector
+            effective_natures[id(candidate)] = selector(self.get_combat_distance()) if selector is not None else candidate.custom_skill_data.Nature
 
         priorities = [
             SkillNature.CustomA,
@@ -784,8 +784,8 @@ class CombatClass:
 
         targeting_strict = self.skills[slot].custom_skill_data.Conditions.TargetingStrict
         target_allegiance = self.skills[slot].custom_skill_data.TargetAllegiance
-        selector = getattr(self.skills[slot].custom_skill_data, "TargetSelector", None)
-        if callable(selector):
+        selector = self.skills[slot].custom_skill_data.TargetSelector
+        if selector is not None:
             return int(selector(self.get_combat_distance()) or 0)
         conditions = self.skills[slot].custom_skill_data.Conditions
         preferred_enemy_target: int = 0

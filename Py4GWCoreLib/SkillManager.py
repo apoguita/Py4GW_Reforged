@@ -10,7 +10,7 @@ from Py4GWCoreLib.GlobalCache import GLOBAL_CACHE
 
 from .AgentArray import AgentArray
 from .Player import Player
-from typing import Optional
+from typing import Optional, Callable
 from .Py4GWcorelib import ThrottledTimer
 from .Py4GWcorelib import Console
 from .Py4GWcorelib import ConsoleLog
@@ -141,8 +141,8 @@ def _PrioritizeSkills(Skill_Data, Skill_Order, combat_distance=Range.Spellcast.v
         
         effective_natures = {}
         for candidate in original_skills:
-            selector = getattr(candidate.custom_skill_data, "PrioritySelector", None)
-            effective_natures[id(candidate)] = selector(combat_distance) if callable(selector) else candidate.custom_skill_data.Nature
+            selector: Callable[[float], int] | None = candidate.custom_skill_data.PrioritySelector
+            effective_natures[id(candidate)] = selector(combat_distance) if selector is not None else candidate.custom_skill_data.Nature
 
         priorities = [
             SkillNature.CustomA,
@@ -351,8 +351,8 @@ def _GetAppropiateTarget(
 
         targeting_strict = skills[slot].custom_skill_data.Conditions.TargetingStrict
         target_allegiance =skills[slot].custom_skill_data.TargetAllegiance
-        selector = getattr(skills[slot].custom_skill_data, "TargetSelector", None)
-        if callable(selector):
+        selector: Callable[[float], int] | None = skills[slot].custom_skill_data.TargetSelector
+        if selector is not None:
             return int(selector(combat_distance) or 0)
         
         
@@ -1455,8 +1455,8 @@ class SkillManager:
 
             targeting_strict = self.skills[slot].custom_skill_data.Conditions.TargetingStrict
             target_allegiance = self.skills[slot].custom_skill_data.TargetAllegiance
-            selector = getattr(self.skills[slot].custom_skill_data, "TargetSelector", None)
-            if callable(selector):
+            selector: Callable[[float], int] | None = self.skills[slot].custom_skill_data.TargetSelector
+            if selector is not None:
                 return int(selector(self.get_combat_distance()) or 0)
 
             # Lazy helpers — only call expensive scans when a branch actually needs them

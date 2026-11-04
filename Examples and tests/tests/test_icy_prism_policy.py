@@ -1,9 +1,10 @@
+from typing import Any
 import ast
 from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
 ROOT = Path(__file__).resolve().parents[2]
-def load(path, name, ns, owner=None):
+def load(path, name, ns: dict[str, Any], owner=None) -> Any:
     tree=ast.parse((ROOT/path).read_text(encoding="utf-8-sig"))
     body=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name==owner).body if owner else tree.body
     node=next(n for n in body if isinstance(n,ast.FunctionDef) and n.name==name)
@@ -27,7 +28,7 @@ class PrismPolicyTests(unittest.TestCase):
         self.assertEqual(target(),0);self.assertEqual(priority(),99)
     def test_water_hex_detection_rejects_other_attributes_and_non_hexes(self):
         effects=[]
-        ns={'Agent':NS(IsValid=lambda _:True,IsHexed=lambda _:True),'GLOBAL_CACHE':NS(Effects=NS(GetBuffs=lambda _:[],GetEffects=lambda _:effects),Skill=NS(GetType=lambda sid:(1 if sid!=3 else 2,''),Attribute=NS(GetAttribute=lambda sid:NS(attribute_id=7 if sid!=2 else 8)))),'SkillType':NS(Hex=NS(value=1)),'Attribute':NS(WaterMagic=NS(value=7))}
+        ns: dict[str, Any]={'Agent':NS(IsValid=lambda _:True,IsHexed=lambda _:True),'GLOBAL_CACHE':NS(Effects=NS(GetBuffs=lambda _:[],GetEffects=lambda _:effects),Skill=NS(GetType=lambda sid:(1 if sid!=3 else 2,''),Attribute=NS(GetAttribute=lambda sid:NS(attribute_id=7 if sid!=2 else 8)))),'SkillType':NS(Hex=NS(value=1)),'Attribute':NS(WaterMagic=NS(value=7))}
         fn=load('Py4GWCoreLib/HeroAI/custom_skill_src/icy_prism.py','HasWaterMagicHex',ns)
         self.assertFalse(fn(2))
         effects[:]=[NS(skill_id=2),NS(skill_id=3)]
@@ -47,7 +48,7 @@ class PrismPolicyTests(unittest.TestCase):
         def policy(distance):
             calls.append(distance)
             return nature.OffensiveA.value
-        skills=[NS(custom_skill_data=NS(Nature=nature.Offensive.value)) for _ in range(8)]
+        skills=[NS(custom_skill_data=NS(Nature=nature.Offensive.value, PrioritySelector=None)) for _ in range(8)]
         skills[-1].custom_skill_data.PrioritySelector=policy
         ns={'Range':NS(Spellcast=NS(value=1248)),'MAX_SKILLS':8,'SkillNature':nature,'SkillType':enum_ns['SkillType'],'copy':__import__('copy')}
         fn=load('Py4GWCoreLib/SkillManager.py','_PrioritizeSkills',ns)
