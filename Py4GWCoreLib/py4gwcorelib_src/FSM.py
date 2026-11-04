@@ -649,10 +649,12 @@ class FSM:
         """Check whether the FSM has finished executing all states."""
         return self.finished
 
-    def jump_to_state_by_name(self, state_name):
+    def jump_to_state_by_name(self, state_name, *, cancel_current_state: bool = False):
         """Jump to a specific state by its name."""
         for state in self.states:
             if state.name == state_name:
+                if cancel_current_state and self.current_state is not None and self.current_state is not state:
+                    self.current_state.reset()
                 self.current_state = state
                 self.current_state.reset() # Reset the state upon jumping to it
                 self.current_state.enter()
