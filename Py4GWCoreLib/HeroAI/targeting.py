@@ -601,6 +601,8 @@ def TargetStrengthOfHonor(distance=Range.Spellcast.value):
     on their incomplete effect tables and without repeatedly enchanting the
     same summon.
     """
+    from .utils import CheckForEffect
+
     strength_of_honor_id = GLOBAL_CACHE.Skill.GetID("Strength_of_Honor")
     player_id = Player.GetAgentID()
     player_xy = Player.GetXY()
@@ -617,14 +619,16 @@ def TargetStrengthOfHonor(distance=Range.Spellcast.value):
 
     try:
         collect_maintained_targets(GLOBAL_CACHE.Effects.GetBuffs(player_id))
-    except Exception:
-        pass
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Strength of Honor", f"Maintained-target lookup failed: {error}", Console.MessageType.Error)
 
     try:
         for account in GLOBAL_CACHE.ShMem.GetAllActiveSlotsData() or []:
             collect_maintained_targets(account.AgentData.Buffs.Buffs)
-    except Exception:
-        pass
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Strength of Honor", f"Maintained-target lookup failed: {error}", Console.MessageType.Error)
 
     def is_eligible(agent_id: int) -> bool:
         return bool(
