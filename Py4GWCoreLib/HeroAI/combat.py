@@ -16,7 +16,7 @@ from .targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, Get
 from .targeting import GetEnemyBleeding, GetEnemyPoisoned, GetEnemyCrippled
 from .interrupt import is_interrupt_feasible, _queue_outcome
 from .types import SkillNature, Skilltarget, SkillType
-from .constants import MAX_NUM_PLAYERS
+from .constants import MAX_NUM_PLAYERS, should_use_junundu_wail
 from .call_target import CallTarget
 from .settings import Settings
 
@@ -1195,17 +1195,14 @@ class CombatClass:
                 return Routines.Checks.Agents.IsHexed(Player.GetAgentID()) or Routines.Checks.Agents.IsConditioned(Player.GetAgentID())
             
             if (self.skills[slot].skill_id == self.junundu_wail):
-                nearest_corpse = Routines.Agents.GetDeadAlly(Range.Earshot.value)
-                if nearest_corpse != 0:
-                    return True
-                
-                life = Agent.GetHealth(Player.GetAgentID()) < Conditions.LessLife
-                nearest = Routines.Agents.GetNearestEnemy(self.get_combat_distance())
-                if nearest == 0:
-                    return life
-                
-                return False
-
+                return should_use_junundu_wail(
+                    player_health=Agent.GetHealth(Player.GetAgentID()),
+                    health_threshold=Conditions.LessLife,
+                    dead_party_members_in_earshot=len(
+                        Routines.Agents.GetDeadAllyArray(Range.Earshot.value)
+                    ),
+                    has_enemy_in_earshot=Routines.Agents.GetNearestEnemy(Range.Earshot.value) != 0,
+                )
 
             if (self.skills[slot].skill_id == self.junundu_tunnel):
                 return Routines.Agents.GetNearestEnemy(self.get_combat_distance()) == 0
