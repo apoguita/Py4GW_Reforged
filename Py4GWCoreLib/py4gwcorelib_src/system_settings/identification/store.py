@@ -40,6 +40,7 @@ def load() -> IdentificationSettings:
         id_blues=settings.get_bool("rarity", "blue", True),
         id_purples=settings.get_bool("rarity", "purple", True),
         id_golds=settings.get_bool("rarity", "gold", True),
+        prefer_infinite_id_kit=settings.get_bool("general", "prefer_infinite_kit", False),
         filter_set_id=settings.get_str("general", "filter_set", ""),
     )
 
@@ -50,6 +51,7 @@ def save(config: IdentificationSettings) -> None:
         return
     settings.set("general", "enabled", bool(config.enabled))
     settings.set("general", "filter_set", str(config.filter_set_id))
+    settings.set("general", "prefer_infinite_kit", bool(config.prefer_infinite_id_kit))
     settings.set("rarity", "white", bool(config.id_whites))
     settings.set("rarity", "blue", bool(config.id_blues))
     settings.set("rarity", "purple", bool(config.id_purples))

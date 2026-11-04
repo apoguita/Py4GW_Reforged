@@ -298,6 +298,7 @@ def _register_identification() -> None:
             SettingsSectionOperation(document, "general", {
                 "enabled": config.enabled,
                 "filter_set": config.filter_set_id,
+                "prefer_infinite_kit": config.prefer_infinite_id_kit,
             }),
             SettingsSectionOperation(document, "rarity", {
                 "white": config.id_whites,
@@ -356,6 +357,7 @@ def _register_salvage() -> None:
                 "rare_materials": config.salvage_rare_materials,
                 "matching_upgrades": config.salvage_matching_upgrades,
                 "auto_confirm_warning": config.auto_confirm_materials_warning,
+                "prefer_infinite_kit": config.prefer_infinite_salvage_kit,
             }),
             JsonPathOperation(
                 salvage_store.FILTERS_DOCUMENT,

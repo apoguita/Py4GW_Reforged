@@ -52,6 +52,14 @@ def _draw_general(controller: IdentificationController) -> None:
             changed = True
 
     PyImGui.separator()
+    prefer_infinite = PyImGui.checkbox(
+        "Prefer Infinite Identification Kit##id_prefer_infinite_kit", settings.prefer_infinite_id_kit
+    )
+    if prefer_infinite != settings.prefer_infinite_id_kit:
+        settings.prefer_infinite_id_kit = prefer_infinite
+        changed = True
+
+    PyImGui.separator()
     PyImGui.text("Identification exclusion filter set")
     PyImGui.text_colored(
         "These filters belong only to Identification and are managed in the Filters and Filter "

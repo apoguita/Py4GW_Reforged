@@ -678,6 +678,12 @@ class InventorySettingsController:
     def _first_kit(self, kind: str) -> int:
         if not _map_is_ready():
             return 0
+        if kind == "identify":
+            from ..identification.controller import get_controller as get_identification_controller
+
+            preferred_kit_id = get_identification_controller().preferred_kit_id()
+            if preferred_kit_id > 0:
+                return preferred_kit_id
         candidates: list[tuple[int, int]] = []
         for entry in self._monitor.scan(INVENTORY_BAGS):
             if not self._bags.allows(entry.bag, entry.slot):

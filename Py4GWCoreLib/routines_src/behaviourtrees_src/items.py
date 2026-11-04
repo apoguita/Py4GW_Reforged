@@ -142,6 +142,7 @@ class SalvageKitInfo:
     is_lesser: bool
     is_expert: bool
     is_perfect: bool
+    is_infinite: bool = False
 
 
 @dataclass
@@ -191,17 +192,21 @@ def scan_salvage_kits(bag_ids: Iterable[int]) -> list[SalvageKitInfo]:
             seen.add(item_id)
             try:
                 uses = int(Item.Usage.GetUses(item_id))
-                if uses <= 0 or not _salvage_usage_fact(item_id, "IsSalvageKit"):
+                model_id = int(Item.GetModelID(item_id))
+                # The native flags and use count of the infinite kit are unverified, so its model decides.
+                is_infinite = model_id == int(ModelID.Infinite_Superior_Salvage_Kit)
+                if not is_infinite and (uses <= 0 or not _salvage_usage_fact(item_id, "IsSalvageKit")):
                     continue
                 kit = SalvageKitInfo(
                     item_id=item_id,
-                    model_id=int(Item.GetModelID(item_id)),
+                    model_id=model_id,
                     uses=uses,
                     bag=bag,
                     slot=_salvage_entry_value(entry, "slot", -1),
                     is_lesser=_salvage_usage_fact(item_id, "IsLesserKit"),
-                    is_expert=_salvage_usage_fact(item_id, "IsExpertSalvageKit"),
+                    is_expert=is_infinite or _salvage_usage_fact(item_id, "IsExpertSalvageKit"),
                     is_perfect=_salvage_usage_fact(item_id, "IsPerfectSalvageKit"),
+                    is_infinite=is_infinite,
                 )
                 if not (kit.is_lesser or kit.is_expert or kit.is_perfect):
                     _salvage_trace(
@@ -221,7 +226,7 @@ def select_salvage_kit(
     allow_expert_for_common_materials: bool = True,
 ) -> SalvageKitInfo | None:
     """Select the least-used compatible kit while preserving capability priority."""
-    kits = scan_salvage_kits(bag_ids)
+    kits = [kit for kit in scan_salvage_kits(bag_ids) if not kit.is_infinite]
     if mode == SalvageMode.LesserCraftingMaterials:
         preferred = [kit for kit in kits if kit.is_lesser]
         if not preferred and allow_expert_for_common_materials:
@@ -2153,6 +2158,12 @@ class BTItems:
             ModelID.Salvage_Kit,
             ModelID.Salvage_Kit_preSearing,
         )
+        # The infinite kit is opt-in: only an explicit preferred_kit_id selects it, never the fallback scans.
+        preferred_expert_kit_model_ids = (
+            ModelID.Expert_Salvage_Kit,
+            ModelID.Superior_Salvage_Kit,
+            ModelID.Infinite_Superior_Salvage_Kit,
+        )
 
         def _reset_state(node: BehaviorTree.Node):
             node.blackboard.pop(state_key, None)
@@ -2167,7 +2178,11 @@ class BTItems:
                 return 0
 
             preferred = ItemSnapshot.from_item_id(preferred_kit_id)
-            if preferred is None or not preferred.is_valid or not preferred.is_salvage_kit or preferred.uses <= 0:
+            if preferred is None or not preferred.is_valid:
+                return 0
+            if preferred.model_id == ModelID.Infinite_Superior_Salvage_Kit:
+                return preferred.id if ModelID.Infinite_Superior_Salvage_Kit in valid_model_ids else 0
+            if not preferred.is_salvage_kit or preferred.uses <= 0:
                 return 0
 
             try:
@@ -2178,7 +2193,7 @@ class BTItems:
             return preferred.id if preferred_model_id in valid_model_ids else 0
 
         def _get_expert_salvage_kit() -> int:
-            preferred = _resolve_preferred_kit((ModelID.Expert_Salvage_Kit, ModelID.Superior_Salvage_Kit))
+            preferred = _resolve_preferred_kit(preferred_expert_kit_model_ids)
             if preferred > 0:
                 return preferred
 
@@ -2197,7 +2212,10 @@ class BTItems:
             return min(expert_kits, key=lambda kit: kit.uses).id
 
         def _get_lesser_salvage_kit() -> int:
-            preferred = _resolve_preferred_kit(lesser_kit_model_ids)
+            accepted_model_ids = lesser_kit_model_ids
+            if allow_expert_for_common_materials:
+                accepted_model_ids += preferred_expert_kit_model_ids
+            preferred = _resolve_preferred_kit(accepted_model_ids)
             if preferred > 0:
                 return preferred
 
@@ -2221,7 +2239,7 @@ class BTItems:
                 ModelID.Expert_Salvage_Kit,
                 ModelID.Superior_Salvage_Kit,
             )
-            preferred = _resolve_preferred_kit(valid_model_ids)
+            preferred = _resolve_preferred_kit(valid_model_ids + (ModelID.Infinite_Superior_Salvage_Kit,))
             if preferred > 0:
                 return preferred
 

@@ -12,6 +12,7 @@ class IdentificationSettings:
     id_blues: bool = True
     id_purples: bool = True
     id_golds: bool = True
+    prefer_infinite_id_kit: bool = False
     filter_set_id: str = ""
 
     def rarity_enabled(self, rarity: str) -> bool:
@@ -29,5 +30,6 @@ class IdentificationSettings:
             "id_blues": self.id_blues,
             "id_purples": self.id_purples,
             "id_golds": self.id_golds,
+            "prefer_infinite_id_kit": self.prefer_infinite_id_kit,
             "filter_set_id": self.filter_set_id,
         }

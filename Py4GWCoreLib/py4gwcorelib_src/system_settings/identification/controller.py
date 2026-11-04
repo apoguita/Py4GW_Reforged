@@ -5,6 +5,8 @@ import time
 from typing import Any, Optional
 
 from Py4GWCoreLib import ThrottledTimer
+from Py4GWCoreLib.enums_src.Item_enums import INVENTORY_BAGS
+from Py4GWCoreLib.enums_src.Model_enums import ModelID
 
 from ..inventory.monitor import InventoryMonitor
 from ..inventory import store as inventory_store
@@ -111,10 +113,33 @@ class IdentificationController:
         except Exception:
             return False
 
+    def preferred_kit_id(self) -> int:
+        """Return the allowed infinite kit when the option selects it, otherwise 0.
+
+        The kit's native flags and use count are unverified, so its model decides.
+        """
+        if not self._settings.prefer_infinite_id_kit or self._map_context() is None:
+            return 0
+        try:
+            from Py4GWCoreLib.Item import Item
+
+            policy = inventory_store.load_bags()
+            for entry in self._monitor.scan(INVENTORY_BAGS, force=True):
+                if (
+                    int(Item.GetModelID(entry.item_id)) == int(ModelID.Infinite_Identification_Kit)
+                    and policy.allows(entry.bag, entry.slot)
+                ):
+                    return entry.item_id
+        except Exception:
+            return 0
+        return 0
+
     def _has_usable_id_kit(self) -> bool:
-        """Require the exact legacy-selected kit to live in an allowed Bags slot."""
+        """Require the preferred or legacy-selected kit to live in an allowed Bags slot."""
         if self._map_context() is None:
             return False
+        if self.preferred_kit_id() > 0:
+            return True
         try:
             from Py4GWCoreLib.Inventory import Inventory
 
@@ -265,7 +290,11 @@ class IdentificationController:
             from Sources.frenkeyLib.ItemHandling.BTNodes import BTNodes
 
             node = BTNodes.Items.IdentifyItems(
-                [item_id], fail_if_no_kit=True, succeed_if_already_identified=True, aftercast_ms=150
+                [item_id],
+                fail_if_no_kit=True,
+                succeed_if_already_identified=True,
+                aftercast_ms=150,
+                preferred_kit_id=self.preferred_kit_id(),
             )
             state = node.tick()
             if state == BehaviorTree.NodeState.FAILURE:

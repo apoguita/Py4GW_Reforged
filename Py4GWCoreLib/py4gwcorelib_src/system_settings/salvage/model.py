@@ -18,6 +18,7 @@ class SalvageSettings:
     salvage_rare_materials: bool = False
     salvage_matching_upgrades: bool = True
     auto_confirm_materials_warning: bool = False
+    prefer_infinite_salvage_kit: bool = False
     debug_enabled: bool = False
     filter_set_id: str = ""
 
@@ -40,6 +41,7 @@ class SalvageSettings:
             "salvage_rare_materials": self.salvage_rare_materials,
             "salvage_matching_upgrades": self.salvage_matching_upgrades,
             "auto_confirm_materials_warning": self.auto_confirm_materials_warning,
+            "prefer_infinite_salvage_kit": self.prefer_infinite_salvage_kit,
             "debug_enabled": self.debug_enabled,
             "filter_set_id": self.filter_set_id,
         }

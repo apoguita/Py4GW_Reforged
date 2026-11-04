@@ -75,6 +75,7 @@ def _draw_general(controller: SalvageController) -> None:
         ("Salvage nonmatching items for rare materials", "salvage_rare_materials"),
         ("Extract a matching upgrade", "salvage_matching_upgrades"),
         ("Auto-confirm materials warning", "auto_confirm_materials_warning"),
+        ("Prefer Infinite Superior Salvage Kit", "prefer_infinite_salvage_kit"),
     ):
         value = bool(getattr(settings, attribute))
         picked = PyImGui.checkbox("%s##salvage_action_%s" % (label, attribute), value)

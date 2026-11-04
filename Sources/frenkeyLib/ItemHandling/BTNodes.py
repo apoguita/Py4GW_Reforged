@@ -584,6 +584,7 @@ class BTNodes:
             fail_if_no_kit: bool = True,
             succeed_if_already_identified: bool = True,
             aftercast_ms: int = 150,
+            preferred_kit_id: int = 0,
         ):
             """
             Build an action node that identifies one or more inventory items.
@@ -607,7 +608,7 @@ class BTNodes:
                     if item is None or not item.is_valid or not item.is_inventory_item:
                         continue
                     
-                    kit_id = Inventory.GetFirstIDKit()
+                    kit_id = preferred_kit_id or Inventory.GetFirstIDKit()
                     
                     if kit_id == 0:
                         return BehaviorTree.NodeState.FAILURE if fail_if_no_kit else (BehaviorTree.NodeState.SUCCESS if identified_any else (BehaviorTree.NodeState.SUCCESS if succeed_if_already_identified else BehaviorTree.NodeState.FAILURE))

@@ -51,6 +51,7 @@ def load() -> SalvageSettings:
         salvage_rare_materials=settings.get_bool("actions", "rare_materials", False),
         salvage_matching_upgrades=settings.get_bool("actions", "matching_upgrades", True),
         auto_confirm_materials_warning=settings.get_bool("actions", "auto_confirm_warning", False),
+        prefer_infinite_salvage_kit=settings.get_bool("actions", "prefer_infinite_kit", False),
         debug_enabled=settings.get_bool("debug", "enabled", False),
     )
 
@@ -69,6 +70,7 @@ def save(config: SalvageSettings) -> None:
     settings.set("actions", "rare_materials", bool(config.salvage_rare_materials))
     settings.set("actions", "matching_upgrades", bool(config.salvage_matching_upgrades))
     settings.set("actions", "auto_confirm_warning", bool(config.auto_confirm_materials_warning))
+    settings.set("actions", "prefer_infinite_kit", bool(config.prefer_infinite_salvage_kit))
     settings.set("debug", "enabled", bool(config.debug_enabled))
 
 

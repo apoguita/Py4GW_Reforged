@@ -263,6 +263,49 @@ check(
     disabled_master_dispatches_nothing(),
 )
 
+
+def preferred_kit(mode: str, prefer_infinite: bool, kits: list[types.SimpleNamespace]) -> int:
+    """Run real kit selection against a fake scan where every Bags slot is allowed."""
+    instance = Controller.__new__(Controller)
+    instance._settings = types.SimpleNamespace(prefer_infinite_salvage_kit=prefer_infinite)
+    instance._map_context = lambda: object()
+    controller.scan_salvage_kits = lambda _bags: kits
+    controller.inventory_store = types.SimpleNamespace(
+        load_bags=lambda: types.SimpleNamespace(allows=lambda _bag, _slot: True)
+    )
+    return instance._preferred_kit_id(mode)
+
+
+def kit(item_id: int, uses: int, lesser: bool = False, expert: bool = False, infinite: bool = False):
+    return types.SimpleNamespace(
+        item_id=item_id,
+        uses=uses,
+        bag=None,
+        slot=0,
+        is_lesser=lesser,
+        is_expert=expert or infinite,
+        is_perfect=False,
+        is_infinite=infinite,
+    )
+
+
+lesser_kit = kit(100, 25, lesser=True)
+expert_kit = kit(101, 25, expert=True)
+infinite_kit = kit(102, 0, infinite=True)
+all_kits = [lesser_kit, expert_kit, infinite_kit]
+
+for salvage_action in ("materials", "rare_materials", "upgrades", "upgrade_slot:4"):
+    check(
+        "enabled option prefers the infinite kit for %s" % salvage_action,
+        102,
+        preferred_kit(salvage_action, True, all_kits),
+    )
+check("disabled option keeps the lesser kit for materials", 100, preferred_kit("materials", False, all_kits))
+check("disabled option keeps the expert kit for rare materials", 101, preferred_kit("rare_materials", False, all_kits))
+check("disabled option never selects a lone infinite kit", 0, preferred_kit("materials", False, [infinite_kit]))
+check("enabled option falls back when no infinite kit exists", 100, preferred_kit("materials", True, [lesser_kit]))
+check("enabled option ignores unknown salvage actions", 0, preferred_kit("unknown", True, all_kits))
+
 print("=" * 68)
 print("%d case(s) failed" % failures)
 sys.exit(1 if failures else 0)

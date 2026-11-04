@@ -460,6 +460,11 @@ class SalvageController:
             for kit in scan_salvage_kits(tuple(int(bag.value) for bag in INVENTORY_BAGS))
             if policy.allows(kit.bag, kit.slot)
         ]
+        infinite_kits = [kit for kit in kits if kit.is_infinite]
+        kits = [kit for kit in kits if not kit.is_infinite]
+        supported_mode = mode in ("materials", "rare_materials") or self._is_upgrade_action(mode)
+        if self._settings.prefer_infinite_salvage_kit and infinite_kits and supported_mode:
+            return infinite_kits[0].item_id
         if mode == "materials":
             lesser_kits = [kit for kit in kits if kit.is_lesser]
             compatible = lesser_kits or [kit for kit in kits if kit.is_expert]
