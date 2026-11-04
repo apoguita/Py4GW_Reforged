@@ -1,5 +1,6 @@
 """Exercise the compatibility module with native input and keyboard boundaries doubled."""
 import importlib.util,sys,unittest
+from typing import Any
 from pathlib import Path
 from types import ModuleType,SimpleNamespace as NS
 from unittest.mock import patch
@@ -7,13 +8,15 @@ ROOT=Path(__file__).resolve().parents[2]
 class TextInputTests(unittest.TestCase):
  def setUp(self):
   self.keys=set();self.now=0.;self.active=True;self.value=None
-  gui=ModuleType('PyImGui')
+  gui: Any=ModuleType('PyImGui')
   def input_text(label,text,*args,**kwargs):return text if self.value is None else self.value
   gui.input_text=input_text;gui.input_text_multiline=input_text
   gui.input_text_with_hint=lambda label,hint,text,*a,**k:input_text(label,text)
   gui.get_item_id=lambda:1;gui.is_item_active=lambda:self.active;gui.is_item_focused=lambda:False
   gui.is_item_hovered=lambda:False;gui.is_mouse_clicked=lambda _:False;gui.get_io=lambda:NS(want_text_input=self.active)
-  spec=importlib.util.spec_from_file_location('input_compat_test',ROOT/'Py4GWCoreLib/pyimgui_input_compat.py');self.m=importlib.util.module_from_spec(spec)
+  spec=importlib.util.spec_from_file_location('input_compat_test',ROOT/'Py4GWCoreLib/pyimgui_input_compat.py')
+  assert spec is not None and spec.loader is not None
+  self.m: Any=importlib.util.module_from_spec(spec)
   with patch.dict(sys.modules,{'PyImGui':gui}):spec.loader.exec_module(self.m)
   self.m._down=lambda vk:vk in self.keys;self.m.time=NS(monotonic=lambda:self.now)
   self.gui=gui;self.m.install()
