@@ -15,8 +15,8 @@ from .custom_skill_src.pve import PVESkills
 
 
 class CustomSkillClass:
-    # Constants1
-    MaxSkillData = 3433
+    # Include Soul Ignition (skill ID 3446).
+    MaxSkillData = 3447
 
     def __init__(self):
         self.skill_data = [CustomSkill() for _ in range(self.MaxSkillData)]
