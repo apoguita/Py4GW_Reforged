@@ -20,7 +20,7 @@ class SuppressionTests(unittest.TestCase):
         path='Py4GWCoreLib/GlobalCache/WhiteboardLocks.py'
         intent=NS(OwnerEmail='owner',KindID=1,SkillID=1000026,TargetAgentID=7,IsolationGroupID=2,ExpiresAtTick=200)
         entries=[(0,intent)];cleared=[]
-        core=ModuleType('Py4GWCoreLib');core.GLOBAL_CACHE=NS(ShMem=NS(GetAllAccounts=lambda:NS(GetAllIntents=lambda:entries,ClearIntent=cleared.append)))
+        core=ModuleType('Py4GWCoreLib');setattr(core,'GLOBAL_CACHE',NS(ShMem=NS(GetAllAccounts=lambda:NS(GetAllIntents=lambda:entries,ClearIntent=cleared.append))))
         ns={'LOOT_SUPPRESSION_KEY_BASE':1000000,'WhiteboardLockKind':NS(LOOT_ITEM=1),'_owner_context':lambda:('owner',2),'_loot_suppression_key':lambda:1000026}
         check=load(path,'is_loot_suppressed',ns)
         clear=load(path,'clear_loot_suppressions',ns)

@@ -722,7 +722,9 @@ def is_loot_suppressed(item_agent_id: int, now_tick: int | None = None) -> bool:
             if int(intent.ExpiresAtTick) <= int(now_tick):
                 continue
             return True
-    except Exception:
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Loot suppression", f"Read failed: {error}", Console.MessageType.Error)
         return False
     return False
 
@@ -771,7 +773,9 @@ def post_loot_suppression(
             int(WhiteboardReentryPolicy.OWNER_REENTRANT),
             int(WhiteboardClaimStrength.HARD),
         ))
-    except Exception:
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Loot suppression", f"Publish failed: {error}", Console.MessageType.Error)
         return -1
 
 
@@ -795,5 +799,7 @@ def clear_loot_suppressions() -> int:
         for slot_index in slots:
             all_accounts.ClearIntent(slot_index)
         return len(slots)
-    except Exception:
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Loot suppression", f"Cleanup failed: {error}", Console.MessageType.Error)
         return 0
