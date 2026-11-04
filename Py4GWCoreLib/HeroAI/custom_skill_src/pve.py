@@ -60,7 +60,7 @@ class PVESkills:
         skill.SkillID = GLOBAL_CACHE.Skill.GetID("Seven_Weapon_Stance")
         skill.SkillType = SkillType.Stance.value
         skill.TargetAllegiance = Skilltarget.Self.value
-        skill.Nature = SkillNature.Buff.value
+        skill.Nature = SkillNature.CustomC.value
         skill_data[skill.SkillID] = skill
 
         skill = CustomSkill()
