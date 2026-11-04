@@ -1,4 +1,5 @@
 from Py4GWCoreLib import *
+from Py4GWCoreLib.enums_src.Item_enums import ItemType
 from Py4GWCoreLib.py4gwcorelib_src.Settings import Settings
 import PyPing
 
@@ -806,11 +807,11 @@ class Helper:
     @staticmethod
     def holds_melee_weapon(agent_id=None):
         agent_id = agent_id or Player.GetAgentID()
-        return bool(agent_id and Agent.GetWeaponItemType(agent_id) in {2, 15, 27, 32, 35})
+        return bool(agent_id and Agent.GetWeaponItemType(agent_id) in {ItemType.Axe, ItemType.Hammer, ItemType.Sword, ItemType.Daggers, ItemType.Scythe})
 
     @staticmethod
-    def holds_physical_weapon():
-        player_id = Player.GetAgentID()
+    def holds_physical_weapon(agent_id=None):
+        player_id = agent_id or Player.GetAgentID()
         if not player_id:
             return False
 

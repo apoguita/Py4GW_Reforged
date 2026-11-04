@@ -83,7 +83,7 @@ class FakeSkill:
 class FakeHelper:
     delay_ready = True
     alive = True
-    smartcast_result = (2, 4, 243, 1)
+    smartcast_result: tuple[int, int, int, int] | None = (2, 4, 243, 1)
     smartcast_calls = []
 
     @classmethod
@@ -130,7 +130,7 @@ def fake_execute_hero_skill(*args):
     executed_skills.append(args)
 
 
-FakeHelper.find_maintenance_cast = staticmethod(_load_function("find_maintenance_cast", {"Helper": FakeHelper}, class_name="Helper"))
+setattr(FakeHelper, "find_maintenance_cast", staticmethod(_load_function("find_maintenance_cast", {"Helper": FakeHelper}, class_name="Helper")))
 
 
 smart_honor = _load_function(
@@ -209,6 +209,7 @@ class FakeUIHelper:
 
 
 class FakeConfig:
+    smart_honor_enabled: bool
     def __init__(self):
         for attr in (
             "smart_panic_enabled",
@@ -341,7 +342,7 @@ class SmartSkillPersistenceTests(unittest.TestCase):
 class PartyMaintenanceTests(unittest.TestCase):
     def test_covered_target_is_skipped_and_caster_exclusion_is_forwarded(self):
         calls=[]
-        helper=type('SelectionHelper',(),{})
+        helper=__import__('types').SimpleNamespace()
         helper.check_for_effects=staticmethod(lambda target,skills:target==1)
         helper.get_spell_cast_range=staticmethod(lambda:1248.0)
         def cast(**kwargs):
