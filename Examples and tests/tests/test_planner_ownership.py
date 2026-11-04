@@ -1,14 +1,20 @@
 """Real planner/movement trees with native clock, position and commands doubled."""
 from __future__ import annotations
 import ast, builtins, dataclasses, math, random, unittest
+from typing import Any
 from pathlib import Path
 from types import SimpleNamespace as NS
 ROOT=Path(__file__).resolve().parents[2]
 CORE=ROOT/'Py4GWCoreLib'
 def definitions(path,namespace,names=None):
-    nodes=[n for n in ast.parse(path.read_text(encoding='utf-8-sig')).body if isinstance(n,(ast.FunctionDef,ast.ClassDef)) and (names is None or n.name in names)]
+    nodes: list[ast.stmt]=[n for n in ast.parse(path.read_text(encoding='utf-8-sig')).body if isinstance(n,(ast.FunctionDef,ast.ClassDef)) and (names is None or n.name in names)]
     exec(compile(ast.fix_missing_locations(ast.Module(body=nodes,type_ignores=[])),str(path),'exec',flags=__import__('__future__').annotations.compiler_flag),namespace)
 class NativeWorld:
+    bt: Any
+    state: Any
+    ns: dict[str, Any]
+    host: Any
+    bb: dict[str, Any]
 
     def __init__(self):
         self.clock = 10000
@@ -30,7 +36,7 @@ class NativeWorld:
 
             def __getattr__(self, name):
                 return ''
-        ns = dict(__name__=__name__, ColorPalette=NS(GetColor=lambda name: None), IconsFontAwesome5=Icons(), Console=NS(MessageType=Icons()), ConsoleLog=lambda *a, **k: None, Utils=NS(GetBaseTimestamp=lambda: self.clock))
+        ns: dict[str, Any] = dict(__name__=__name__, ColorPalette=NS(GetColor=lambda name: None), IconsFontAwesome5=Icons(), Console=NS(MessageType=Icons()), ConsoleLog=lambda *a, **k: None, Utils=NS(GetBaseTimestamp=lambda: self.clock))
         exec('from abc import ABC, abstractmethod\nfrom enum import Enum, auto\nfrom typing import *\nimport uuid, inspect', ns)
         definitions(CORE / 'py4gwcorelib_src/BehaviorTree.py', ns, {'BehaviorTree'})
         self.bt = ns['BehaviorTree']
@@ -48,7 +54,8 @@ class NativeWorld:
             self.keys.append(('down', key))
             if key == 1:
                 self.holding = False
-                self.add_ground()
+                # Drop-key behavior is outside this movement-only fixture.
+                pass
         ui = NS(Keydown=down, Keyup=lambda key, *a: self.keys.append(('up', key)))
         control = NS(ControlAction_DropItem=NS(value=1), ControlAction_StrafeLeft=NS(value=2), ControlAction_StrafeRight=NS(value=3))
 
@@ -93,7 +100,7 @@ def world():
     definitions(CORE/'botting_tree_src/ticks.py',n,{'BottingTreeTicksMixin'})
     n['Routines']=NS(Checks=NS(Party=NS(IsPartyWiped=lambda:w.dead)))
     n['GLOBAL_CACHE'].Party=NS(IsPartyDefeated=lambda:w.dead)
-    class Host(n['BottingTreeTicksMixin']):pass
+    Host = type('Host', (n['BottingTreeTicksMixin'],), {})
     h=Host();h.started=True;h.paused=False;h.pause_on_combat=True;h._last_planner_gate_state=None
     h.RestoreAccountIsolation=lambda:None;h.GetNamedPlannerStepNames=lambda:[]
     w.host=h;w.bb={};return w
