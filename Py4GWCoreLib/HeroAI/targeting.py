@@ -591,3 +591,86 @@ def TargetCasterClusterEnemy(
 
     scored.sort(key=lambda item: (-item[0], item[1]))
     return _filter_blacklisted(scored[0][2])
+
+
+def TargetStrengthOfHonor(distance=Range.Spellcast.value):
+    """Prefer unbuffed melee party members, then melee summons.
+
+    Maintained enchantments expose their target through the caster's buff
+    record. That lets temporary non-party allies participate without relying
+    on their incomplete effect tables and without repeatedly enchanting the
+    same summon.
+    """
+    from .utils import CheckForEffect
+
+    strength_of_honor_id = GLOBAL_CACHE.Skill.GetID("Strength_of_Honor")
+    player_id = Player.GetAgentID()
+    player_xy = Player.GetXY()
+
+    maintained_targets: set[int] = set()
+
+    def collect_maintained_targets(buffs) -> None:
+        for buff in buffs or []:
+            if int(getattr(buff, "skill_id", getattr(buff, "SkillId", 0)) or 0) != strength_of_honor_id:
+                continue
+            target_id = int(getattr(buff, "target_agent_id", getattr(buff, "TargetAgentID", 0)) or 0)
+            if target_id:
+                maintained_targets.add(target_id)
+
+    try:
+        collect_maintained_targets(GLOBAL_CACHE.Effects.GetBuffs(player_id))
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Strength of Honor", f"Maintained-target lookup failed: {error}", Console.MessageType.Error)
+
+    try:
+        for account in GLOBAL_CACHE.ShMem.GetAllActiveSlotsData() or []:
+            collect_maintained_targets(account.AgentData.Buffs.Buffs)
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Strength of Honor", f"Maintained-target lookup failed: {error}", Console.MessageType.Error)
+
+    def is_eligible(agent_id: int) -> bool:
+        return bool(
+            agent_id
+            and agent_id not in maintained_targets
+            and Agent.IsValid(agent_id)
+            and Agent.IsTargettable(agent_id)
+            and Agent.IsAlive(agent_id)
+            and Utils.Distance(Agent.GetXY(agent_id), player_xy) <= distance
+            and Routines.Checks.Agents.IsMelee(agent_id)
+        )
+
+    party_candidates = [
+        agent_id
+        for agent_id in GetAllAlliesArray(distance, ordered=True) or []
+        if Routines.Party.IsPartyMember(agent_id)
+        and is_eligible(agent_id)
+        and not CheckForEffect(agent_id, strength_of_honor_id)
+    ]
+    if party_candidates:
+        return party_candidates[0]
+
+    summon_ids = set(AgentArray.GetAllyArray() or [])
+    summon_ids.update(AgentArray.GetSpiritPetArray() or [])
+    summon_ids.update(AgentArray.GetMinionArray() or [])
+    summon_ids.update(AgentArray.GetNPCMinipetArray() or [])
+    summon_candidates = [
+        agent_id
+        for agent_id in summon_ids
+        if not Routines.Party.IsPartyMember(agent_id)
+        and (
+            Agent.IsPet(agent_id)
+            or Agent.IsMinion(agent_id)
+            or Agent.GetOwnerID(agent_id) != 0
+            or Agent.CanBeViewedInPartyWindow(agent_id)
+        )
+        and is_eligible(agent_id)
+    ]
+    if summon_candidates:
+        return min(
+            summon_candidates,
+            key=lambda agent_id: (Utils.Distance(Agent.GetXY(agent_id), player_xy), agent_id),
+        )
+
+    return 0

@@ -1,7 +1,7 @@
 from Py4GWCoreLib.HeroAI.custom_skill import CustomSkillClass
 from Py4GWCoreLib.HeroAI.types import SkillType,SkillNature, Skilltarget
 
-from Py4GWCoreLib.HeroAI.targeting import TargetLowestAlly, TargetLowestAllyEnergy, TargetClusteredEnemy, TargetLowestAllyCaster, TargetLowestAllyMartial, TargetLowestAllyMelee, TargetLowestAllyRanged, TargetSplinterWeapon, GetAllAlliesArray
+from Py4GWCoreLib.HeroAI.targeting import TargetLowestAlly, TargetLowestAllyEnergy, TargetClusteredEnemy, TargetLowestAllyCaster, TargetLowestAllyMartial, TargetLowestAllyMelee, TargetLowestAllyRanged, TargetSplinterWeapon, TargetStrengthOfHonor, GetAllAlliesArray
 from Py4GWCoreLib.HeroAI.targeting import TargetMinionOrAllyNonEnchanted, TargetMinionNonEnchanted, TargetAllyNonEnchanted, TargetAllyNonWeaponSpelled
 from Py4GWCoreLib.HeroAI.targeting import GetEnemyAttacking, GetEnemyCasting, GetEnemyCastingSpell, GetEnemyInjured, GetEnemyConditioned, GetEnemyHealthy
 from Py4GWCoreLib.HeroAI.targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, GetEnemyMoving, GetEnemyKnockedDown
@@ -459,6 +459,8 @@ def _GetAppropiateTarget(
                 v_target = lowest_ally
         elif target_allegiance == Skilltarget.SplinterWeapon:
             v_target = TargetSplinterWeapon()
+        elif target_allegiance == Skilltarget.StrengthOfHonor:
+            v_target = TargetStrengthOfHonor()
         elif target_allegiance == Skilltarget.OtherAlly:
             if skills[slot].custom_skill_data.Nature == SkillNature.EnergyBuff.value:
                 v_target = _TargetLowestAllyEnergy(other_ally=True, filter_skill_id=skills[slot].skill_id)
@@ -1567,6 +1569,8 @@ class SkillManager:
                     v_target = get_lowest_ally()
             elif target_allegiance == Skilltarget.SplinterWeapon:
                 v_target = TargetSplinterWeapon()
+            elif target_allegiance == Skilltarget.StrengthOfHonor:
+                v_target = TargetStrengthOfHonor()
             elif target_allegiance == Skilltarget.OtherAlly:
                 if self.skills[slot].custom_skill_data.Nature == SkillNature.EnergyBuff.value:
                     v_target = Routines.Targeting.TargetLowestAllyEnergy(other_ally=True, filter_skill_id=self.skills[slot].skill_id)
