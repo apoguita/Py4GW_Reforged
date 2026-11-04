@@ -8,6 +8,7 @@ from Py4GWCoreLib.Builds.Skills import SkillsTemplate
 from Py4GWCoreLib.Player import Player
 from Py4GWCoreLib.Skill import Skill
 from Py4GWCoreLib.enums_src.GameData_enums import Attribute
+from Py4GWCoreLib.enums_src.Model_enums import AgentModelID
 
 
 MASOCHISM_ID = Skill.GetID("Masochism")
@@ -38,7 +39,6 @@ ORDINARY_ANIMATE_SKILLS = [
     (ANIMATE_VAMPIRIC_HORROR_ID, "Animate_Vampiric_Horror"),
 ]
 
-FLESH_GOLEM_MODEL_ID = 2795
 MINION_MASTER_MATCH_PRIORITY = 100
 
 
@@ -144,7 +144,7 @@ class Minion_Master(BuildMgr):
                 continue
             if Agent.GetOwnerID(minion_agent_id) != player_agent_id:
                 continue
-            if Agent.GetPlayerNumber(minion_agent_id) == FLESH_GOLEM_MODEL_ID:
+            if Agent.GetPlayerNumber(minion_agent_id) == AgentModelID.FLESH_GOLEM:
                 return True
         return False
 

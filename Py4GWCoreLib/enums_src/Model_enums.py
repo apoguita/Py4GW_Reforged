@@ -2,6 +2,7 @@ from enum import IntEnum
 import PySkill
 
 class AgentModelID(IntEnum):
+    FLESH_GOLEM = 2795
     CHARR_AXEMASTER = 6630
     FOG_NIGHTMARE = 1732
     FROST_WURM = 6491
