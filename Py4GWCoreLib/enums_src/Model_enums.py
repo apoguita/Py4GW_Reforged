@@ -3134,6 +3134,8 @@ class ModelID(IntEnum):
     Balthazar_s_Staff_37936 = 37936
     Stolen_Supplies_37937 = 37937
     Balthazar_s_Sword_37938 = 37938
+    Stalker_s_Ration = 38613
+    Bird_s_Eye_Compass = 38614
 
 
 # region AgentModels

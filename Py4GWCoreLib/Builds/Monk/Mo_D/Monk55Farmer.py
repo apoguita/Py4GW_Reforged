@@ -167,7 +167,17 @@ class Monk55Farmer(BuildMgr):
     # Kept separate from AGGRO_RADIUS: the bubble is deliberately generous, but
     # the damage skills still need a target we can actually hit.
     ENGAGE_RADIUS = Range.Spellcast.value  # 1248
-    CONDITION_TOLERANCE = 1  # hold the clear until a second condition stacks
+    # REMOVED: CONDITION_TOLERANCE. It held Smite Condition until a second
+    # degen stacked, so a single poison or bleed was left on the monk. That was
+    # cost-management for a spell that also does 126 flat holy damage to GoK's
+    # undead - more than the SoJ it was deferred behind. With the energy gate
+    # doing the real cost control, a lone degen is now cleansed as soon as the
+    # pool can afford it. Do not reintroduce a wait here: the cleanse gate is
+    # the energy test, and nothing else.
+
+    # How long PS stays wanted after the last hostile leaves AGGRO_RADIUS.
+    # See _ps_wanted.
+    PS_LINGER_S = 2.0
 
     def __init__(self, match_only: bool = False):
         super().__init__(
@@ -268,6 +278,58 @@ class Monk55Farmer(BuildMgr):
         # again on the next pass of the same tick.
         self._pending_regen: bool = False
         self._pending_cover: int = 0
+        # Latch for the PS threat gate: monotonic ms until which PS stays wanted
+        # after the last hostile left AGGRO_RADIUS. 0.0 = disarmed.
+        self._ps_latch_until_ms: float = 0.0
+
+    def _ps_wanted(self, now_ms: float) -> bool:
+        """True when Protective Spirit should be up - threat, or a live latch.
+
+        Replaces the previous behaviour, which maintained PS continuously. That
+        was deliberate (see the unengaged branch in _run_local_skill_logic: an
+        unengaged stretch used to let PS expire entirely, and the next pull then
+        started uncapped), but it meant every step between fights re-cast a
+        ~24s cap against an empty map. On a long farming run that is constant
+        energy for nothing, and it is the same loot-timeout pressure the Ritualist
+        build was fixed for.
+
+        The latch keeps the fix and drops the waste: a hostile inside
+        THREAT_RADIUS arms it, and once armed PS stays wanted for PS_LINGER_S
+        after the LAST hostile is seen. So a mob that dies just before the cap
+        would lapse does not drop it, and the monk arrives at the next mob
+        already capped - but walking a genuinely empty stretch finally costs
+        nothing.
+
+        AGGRO_RADIUS, NOT THREAT_RADIUS. This was THREAT_RADIUS (4800) in the
+        first version and it never gated anything: _threat_count counts ALL
+        hostiles including non-aggroed ones, and a farming zone almost always
+        has something inside 4800, so the latch was permanently armed. The
+        visible symptom was PS firing ahead of the permanent enchants on every
+        tick, because ps_due was always true and the engine loop below it was
+        skipped every time.
+
+        THREAT_RADIUS is the right radius for a pre-cast on approach - that is
+        what the in-combat ladder uses it for, and it should stay wide so PS
+        lands before the pull bubble grabs. It is the wrong radius for "are we
+        in a fight at all", which is a much stricter question and wants the
+        same 2500 the pull bubble itself uses.
+
+        AGGRO_RADIUS is also self-consistent: the bubble pulls from inside 2500,
+        so "no hostile inside 2500" means we are not committed and there is
+        nothing to cap.
+
+        Fails CLOSED on an unreadable threat list - a false "safe" costs the
+        monk. That asymmetry is only safe because the normal path is narrow;
+        with a 4800 radius it masked the bug above.
+        """
+        try:
+            threatened = self._threat_count(self.AGGRO_RADIUS) > 0
+        except Exception:
+            return True
+        if threatened:
+            self._ps_latch_until_ms = now_ms + (self.PS_LINGER_S * 1000.0)
+            return True
+        return now_ms < self._ps_latch_until_ms
 
     def _foe_count(self, max_distance: float) -> int:
         try:
@@ -566,6 +628,29 @@ class Monk55Farmer(BuildMgr):
             >= self._core_reserve_points(player_id)
         )
 
+    def _ooc_can_afford_cleanse(self, player_id: int, skill_id: int) -> bool:
+        """True when a cleanse can be paid for out of combat.
+
+        Deliberately LOOSER than _can_afford_damage, which holds back a damage
+        cast until the pool can still cover PS + regen + a shield. That reserve
+        exists to keep the survivability kit castable mid-fight. Out of combat
+        nothing is attacking, so there is no kit to protect and no pull to walk
+        into for the next several seconds - a monk that spends its last energy
+        clearing a bleed with 400 health and no mobs around is strictly better
+        off than one that keeps the energy and dies of the bleed.
+
+        The floor here is just the cast itself. Deep wound is handled by the
+        same test, and it is the condition that actually ends runs, so a monk
+        that cannot afford to clear it has bigger problems than energy anyway.
+
+        Fails CLOSED: an unreadable energy reading must not be read as
+        affordable, or a cleanse could be issued that silently never fires.
+        """
+        try:
+            return self._energy_points(player_id) >= self._skill_cost_points(player_id, skill_id)
+        except Exception:
+            return False
+
     def _cover_remaining_ms(self, player_id: int, skill_id: int, now_ms: float) -> float:
         """Milliseconds of cover left, for either shield.
 
@@ -726,9 +811,24 @@ class Monk55Farmer(BuildMgr):
         """How many conditions are stacked on the player right now.
 
         Agent.py has no "count conditions" call, only per-condition booleans, so
-        this sums the flags the events we actually see in GoK can apply.
+        this sums the flags the events we actually see in GoK can apply - plus
+        an effect-based sweep for the ones the bitfield cannot expose.
+
+        THE BITFIELD IS NOT COMPLETE. Agent exposes IsBleeding, IsCrippled,
+        IsDeepWounded, IsPoisoned and IsConditioned, and there is no
+        IsDisease or IsBurning - the underlying LivingAgent simply does not
+        expose them that way. So a monk standing in diseased water or burning
+        from a fire trail counted ZERO conditions, no cleanse was ever issued,
+        and the degen killed it out of combat with nothing responding. This is
+        not a GoK problem: environmental hazards apply degenerations across most
+        of the game, so the gap is everywhere, not just here.
+
+        The same limitation is documented and worked around in
+        Builds/Necromancer/N_Any/Contagion.py, which counts every condition by
+        skill id for exactly this reason. This is that approach, scoped to the
+        conditions that matter for a cleanse decision rather than all ten.
         """
-        return sum(
+        bitfield_count = sum(
             (
                 Agent.IsBleeding(player_id),
                 Agent.IsCrippled(player_id),
@@ -737,6 +837,43 @@ class Monk55Farmer(BuildMgr):
                 Agent.IsConditioned(player_id),
             )
         )
+        if bitfield_count:
+            return bitfield_count
+        # Only pay for the effect sweep when the cheap path found nothing.
+        # A cleanse triggers on "> 0", so one hit is all this needs to return,
+        # and the sweep is the expensive path - it is only worth it when the
+        # bitfield has already said "nothing wrong", which is precisely the case
+        # it gets wrong.
+        return 1 if self._has_unreadable_condition(player_id) else 0
+
+    def _has_unreadable_condition(self, agent_id: int) -> bool:
+        """True when a condition the agent bitfield cannot see is present.
+
+        Disease and Burning are the two that matter here: neither has an Is*
+        helper on Agent, and both are applied by ordinary play rather than by
+        an exotic skill. Disease comes from plagued areas and water - Kryta's
+        pools are the common case - and Burning from fire, which is on the bar
+        in a great many zones. Either one drains health every tick on its own,
+        with no enemy required to keep applying it.
+
+        Checked as effects, not flags, because the effect exists where the bit
+        does not. Blind, Dazed, Weakness and Cracked Armor are deliberately NOT
+        here: they impair rather than degenerate, so they do not drain a farmer
+        to death and a cleanse is not the answer to them.
+        """
+        for condition_name in ("Disease", "Burning"):
+            try:
+                condition_id = GLOBAL_CACHE.Skill.GetID(condition_name)
+                if not condition_id:
+                    # GetID returns 0 on a name miss, silently. 0 never matches a
+                    # real effect, so skipping is correct rather than a false
+                    # positive - but it must not be treated as "checked".
+                    continue
+                if self._has_effect(agent_id, condition_id):
+                    return True
+            except Exception:
+                continue
+        return False
 
     def _self_engines(self) -> tuple[int, ...]:
         """Energy engines this build maintains, in cast order.
@@ -858,12 +995,58 @@ class Monk55Farmer(BuildMgr):
             return False
 
         now_ms = time.monotonic() * 1000.0
+
+        # 0. Condition clear, FIRST and unconditionally in this handler.
+        #
+        # This used to not exist here at all, and that is a straight death
+        # sentence: this method is the only thing running while the monk walks,
+        # so a degen picked up out of combat had no response whatsoever. Nothing
+        # in the in-combat ladder runs, because the ladder is not being called -
+        # HeroAI routes here instead. The monk bled or poisoned to death in an
+        # empty corridor, and the cleanse sat several methods away, unreachable.
+        #
+        # It goes first because a condition is the only thing in this handler
+        # that can kill outright. PS is a cap and the engines are income; both
+        # matter, but neither is as urgent as removing the thing actively
+        # draining health every tick with nothing shooting back.
+        #
+        # No SoJ exemption and no two-condition wait here, for the same reasons
+        # as the in-combat site: there is no knockdown out of combat to be
+        # polite to, and there is no combat to be polite in. The energy gate is
+        # the only limit, and it is deliberately not the damage-tier gate's
+        # core-reserve arithmetic - see below.
+        condition_clear = self._condition_clear_skill_id()
+        if (
+            condition_clear
+            and self._cooldown_ok(condition_clear, now_ms)
+            and (
+                self._active_condition_count(player_id) > 0
+                or Agent.IsDeepWounded(player_id)
+            )
+            and self._ooc_can_afford_cleanse(player_id, condition_clear)
+        ):
+            if (
+                yield from self.CastSkillID(
+                    condition_clear,
+                    target_agent_id=player_id,
+                    aftercast_delay=self._aftercast(condition_clear),
+                )
+            ):
+                self._mark_cast(condition_clear, now_ms)
+                return True
+
         # Same trade as the in-combat tick: PS outranks the engines. The OOC
         # handler is the only thing running while the monk walks between
         # fights, so it is also the only place a PS that decayed during travel
         # can be put back before the next pull.
+        #
+        # _ps_wanted is the gate. A PS that decayed mid-walk is re-cast when a
+        # hostile is already within AGGRO_RADIUS (or inside the linger), which
+        # is the pre-cast this handler exists to provide - not a constant upkeep
+        # against an empty map.
         ps_due = (
             self.IsSkillEquipped(PROT_SPIRIT_ID)
+            and self._ps_wanted(now_ms)
             and self._needs_recast(player_id, PROT_SPIRIT_ID, now_ms)
         )
         if not ps_due:
@@ -1032,21 +1215,22 @@ class Monk55Farmer(BuildMgr):
                 self._protection_pair_pending = True
                 return True
 
-        # While travelling unengaged, the maintenance kit is still worth keeping
-        # alive - Protective Spirit above all. It used to be skipped here on the
-        # reasoning that an empty map has nothing to tank, and that was wrong:
-        # PS counts down while walking, so an unengaged stretch can expire it
-        # entirely. The next pull then starts with no PS at all, and PS caps
-        # every single hit at 10% of max health, so a full-damage pack lands on
-        # a monk who looks covered. This is why the recast "only happened once
-        # it had run out".
+        # While travelling unengaged, PS used to be maintained unconditionally.
+        # That was a real fix for a real bug - PS counts down while walking, so
+        # an unengaged stretch could expire it entirely and the next pull started
+        # with no cap - but it also meant re-casting a ~24s cap against an empty
+        # map on every step of a long run, which is the loot-timeout pressure the
+        # Ritualist build was fixed for.
         #
-        # The regen and cover casts stay gated on contact: there is no point
-        # spending those in an empty map, and the shield windows would churn.
+        # _ps_wanted keeps the fix and drops the waste: the cap is held while a
+        # hostile is inside AGGRO_RADIUS and for PS_LINGER_S after the last one
+        # goes, so a mob dying just before the cap would lapse does not drop it.
+        # A genuinely empty stretch now costs nothing.
         if self._foe_count(self.AGGRO_RADIUS) == 0:
             self._engaged = False
             if (
                 self.IsSkillEquipped(PROT_SPIRIT_ID)
+                and self._ps_wanted(now_ms)
                 and self._needs_recast(player_id, PROT_SPIRIT_ID, now_ms)
             ):
                 if (
@@ -1165,9 +1349,65 @@ class Monk55Farmer(BuildMgr):
 
             break
 
-        # Having just spent the tick on the survivability stack, stop here. The
-        # signet and the damage skills are all optional, and queueing one on top
-        # of a fresh Protective Spirit is how the stack stops landing in order.
+        # Having just spent the tick on the survivability stack, stop here for the
+        # SIGNET and the damage tier - they are all optional, and queueing one on
+        # top of a fresh Protective Spirit is how the stack stops landing in
+        # order.
+        #
+        # Condition removal is deliberately NOT gated by this. It used to be, and
+        # that starved it completely: Smite Condition sits below this return, and
+        # PS / regen / cover are essentially never all up on the same tick, so
+        # cast_this_tick was almost always true and the one skill that can clear
+        # conditions was never even tested. With three conditions stacked and the
+        # monk unable to clear any of them, that is fatal - and the gate was
+        # justified in a comment as "spend the tick on survival", which is a
+        # reason to not ALSO cast a signet, not a reason to skip a cleanse.
+        #
+        # Deep wound, or ANY single condition, is a trigger. The energy test is
+        # the only cost gate: if the pool covers the cast and still leaves the
+        # core reserve intact, there is no reason to defer a cleanse by a tick.
+        #
+        # Two deliberate changes from the previous version of this gate.
+        #
+        # 1. The Shield of Judgment stand-down is GONE. It used to hold the
+        #    cleanse while a knockdown pinned the pack, on the reasoning that
+        #    energy income stops while foes are down so the pool is thinnest.
+        #    That reasoning ignored what the knock is FOR: the pack is pinned
+        #    and not hitting, which is the cheapest possible moment to spend.
+        #    SC is also a flat holy damage skill, and against GoK's undead that
+        #    is 126 per cast, double for having hit a monk that SoJ covers at
+        #    106. Deferring it through the free window throws away the best
+        #    damage the rotation ever gets.
+        #
+        # 2. CONDITION_TOLERANCE no longer applies. It existed to avoid paying
+        #    twice for a second degen, which is right when a cleanse is
+        #    expensive relative to what is left. When the energy is free that
+        #    argument inverts: there is no second payment to avoid, because
+        #    there is no pressure on the pool.
+        soj_active = self._soj_up_or_ready(player_id)
+        condition_clear = self._condition_clear_skill_id()
+        if (
+            condition_clear
+            and self._cooldown_ok(condition_clear, now_ms)
+            and (
+                self._active_condition_count(player_id) > 0
+                or Agent.IsDeepWounded(player_id)
+            )
+            and (
+                Agent.IsDeepWounded(player_id)
+                or self._can_afford_damage(player_id, condition_clear)
+            )
+        ):
+            if (
+                yield from self.CastSkillID(
+                    condition_clear,
+                    target_agent_id=player_id,
+                    aftercast_delay=self._aftercast(condition_clear),
+                )
+            ):
+                self._mark_cast(condition_clear, now_ms)
+                return True
+
         if cast_this_tick:
             return True
 
@@ -1212,35 +1452,21 @@ class Monk55Farmer(BuildMgr):
         # the pack stays down, so it can wait for the window to close.
         #
         # Deep wound still overrides both: it is the condition that ends a run.
-        # soj_active is computed here because the condition gate below needs it
-        # too, and it used to be defined further down inside the damage tier -
-        # which is why this reference was unbound.
-        soj_active = self._soj_up_or_ready(player_id)
-        condition_clear = self._condition_clear_skill_id()
-        if (
-            condition_clear
-            and self._cooldown_ok(condition_clear, now_ms)
-            and (
-                self._active_condition_count(player_id) > self.CONDITION_TOLERANCE
-                or Agent.IsDeepWounded(player_id)
-            )
-            and (
-                Agent.IsDeepWounded(player_id)
-                or (
-                    not soj_active
-                    and self._can_afford_damage(player_id, condition_clear)
-                )
-            )
-        ):
-            if (
-                yield from self.CastSkillID(
-                    condition_clear,
-                    target_agent_id=player_id,
-                    aftercast_delay=self._aftercast(condition_clear),
-                )
-            ):
-                self._mark_cast(condition_clear, now_ms)
-                return True
+        # 5. Condition removal now lives ABOVE the cast_this_tick return, so that
+        # a tick which spent itself on the survivability stack can still cleanse.
+        # The cast site is the one there; it is not repeated here.
+        #
+        # What it still enforces there: the energy gate, so a cleanse cannot
+        # take the pool below the core reserve - which is what left the monk with
+        # no shield at n=15 in the live log. Deep wound still overrides it.
+        #
+        # What it NO LONGER enforces: the two-or-more tolerance and the
+        # knockdown stand-down. Both were cost-management for a spell that is
+        # also this build's second-biggest holy damage source. See the cast site
+        # for the reasoning.
+        #
+        # soj_active is defined above, next to the cast site; the damage tier
+        # below still uses it.
 
         # 5b. Optional support skills, only when they are actually slotted. The
         # rule for this whole block: anything in the build's skill list works if
