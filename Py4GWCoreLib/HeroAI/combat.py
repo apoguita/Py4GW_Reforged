@@ -16,7 +16,7 @@ from .targeting import GetEnemyHexed, GetEnemyDegenHexed, GetEnemyEnchanted, Get
 from .targeting import GetEnemyBleeding, GetEnemyPoisoned, GetEnemyCrippled
 from .interrupt import is_interrupt_feasible, _queue_outcome
 from .types import SkillNature, Skilltarget, SkillType
-from .constants import MAX_NUM_PLAYERS
+from .constants import MAX_NUM_PLAYERS, should_prioritize_swirling_aura
 from .call_target import CallTarget
 from .settings import Settings
 
@@ -353,6 +353,8 @@ class CombatClass:
         for i in range(MAX_SKILLS):
             original_skills.append(self.SkillData(i+1))
 
+        player_overcast = Agent.GetOvercast(Player.GetAgentID())
+
         # Initialize the pointer and tracking list
         ptr = 0
         ptr_chk = [False] * MAX_SKILLS
@@ -392,7 +394,10 @@ class CombatClass:
             #for i in range(ptr,MAX_SKILLS):
             for i in range(MAX_SKILLS):
                 skill = original_skills[i]
-                if not ptr_chk[i] and skill.custom_skill_data.Nature == priority.value:
+                effective_nature = skill.custom_skill_data.Nature
+                if should_prioritize_swirling_aura(skill.skill_id, player_overcast):
+                    effective_nature = SkillNature.SelfTargeted.value
+                if not ptr_chk[i] and effective_nature == priority.value:
                     self.skill_order[ptr] = i
                     ptr_chk[i] = True
                     ptr += 1

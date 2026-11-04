@@ -36,3 +36,11 @@ PARTY_WINDOW_FRAME_EXPLORABLE_OFFSETS = [0]
 SKILLBAR_WINDOW_HASH = 641635682
 
 """ AI CONSTANTS """
+
+
+SWIRLING_AURA = GLOBAL_CACHE.Skill.GetID("Swirling_Aura")
+
+
+def should_prioritize_swirling_aura(skill_id: int, player_overcast: float) -> bool:
+    """Promote Swirling Aura when its self activation will also buff the party."""
+    return skill_id == SWIRLING_AURA and player_overcast > 0.0
