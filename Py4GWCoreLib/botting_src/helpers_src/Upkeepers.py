@@ -23,6 +23,7 @@ class _Upkeepers:
         self.cancel_movement_triggered = False
         self._hero_ai_pause_applied = False
         self._hero_ai_pause_snapshot = None
+        self._hero_ai_pause_account_email = ""
         self._hero_ai_legacy_range_override_applied = False
         
     
@@ -39,6 +40,7 @@ class _Upkeepers:
         if current_options is None:
             return
 
+        self._hero_ai_pause_account_email = account_email
         self._hero_ai_pause_snapshot = (
             current_options.Following,
             current_options.Targeting,
@@ -51,23 +53,27 @@ class _Upkeepers:
         self._hero_ai_pause_applied = True
 
     def release_hero_ai_pause(self) -> None:
-        """Restore the exact HeroAI options captured by a temporary pause."""
+        """Restore owned pause values without overwriting newer manual choices."""
         if not self._hero_ai_pause_applied:
             self.cancel_movement_triggered = False
             return
 
-        account_email = Player.GetAccountEmail()
+        account_email = self._hero_ai_pause_account_email
         current_options = (
             GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_email)
             if account_email else None
         )
         if current_options and self._hero_ai_pause_snapshot is not None:
-            current_options.Following = bool(self._hero_ai_pause_snapshot[0])
-            current_options.Targeting = bool(self._hero_ai_pause_snapshot[1])
-            current_options.Combat = bool(self._hero_ai_pause_snapshot[2])
+            if not current_options.Following:
+                current_options.Following = bool(self._hero_ai_pause_snapshot[0])
+            if not current_options.Targeting:
+                current_options.Targeting = bool(self._hero_ai_pause_snapshot[1])
+            if not current_options.Combat:
+                current_options.Combat = bool(self._hero_ai_pause_snapshot[2])
             GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, current_options)
         self._hero_ai_pause_applied = False
         self._hero_ai_pause_snapshot = None
+        self._hero_ai_pause_account_email = ""
         self.cancel_movement_triggered = False
 
     def upkeep_hero_ai(self):
