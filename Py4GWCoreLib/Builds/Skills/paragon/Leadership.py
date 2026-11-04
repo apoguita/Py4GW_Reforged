@@ -25,7 +25,13 @@ class Leadership:
         return int(getattr(leadership, "level", 0) or 0)
 
     def IsHeroicRefrainSelfReady(self) -> bool:
-        """Return whether the self copy has completed the +4 bootstrap."""
+        """True only after the self copy has produced the rank-20 state.
+
+        At the build's normal 16 Leadership, the first self cast gives +3 and
+        raises Leadership to 19.  Recasting at rank 19 gives +4 and raises the
+        live attribute to 20.  Checking that observable end state keeps a
+        recharge tick from being mistaken for completed bootstrap.
+        """
         heroic_refrain_id = Skill.GetID("Heroic_Refrain")
         player_agent_id = Player.GetAgentID()
         return (
@@ -37,22 +43,33 @@ class Leadership:
         return not self.IsHeroicRefrainSelfReady()
 
     #region H
-    def Heroic_Refrain(self) -> BuildCoroutine:
+    def Heroic_Refrain_Self(self) -> BuildCoroutine:
         heroic_refrain_id: int = Skill.GetID("Heroic_Refrain")
-        heroic_refrain = self.build.GetCustomSkill(heroic_refrain_id)
 
         if not self.build.IsSkillEquipped(heroic_refrain_id):
             return False
 
         player_agent_id = Player.GetAgentID()
-        if self._heroic_refrain_needs_self_bootstrap(heroic_refrain_id):
-            return (yield from self.build.CastSkillIDAndRestoreTarget(
-                skill_id=heroic_refrain_id,
-                target_agent_id=player_agent_id,
-                log=False,
-                aftercast_delay=250,
-            ))
-        target_agent_id = self.build.ResolveAllyTarget(
+        if not self._heroic_refrain_needs_self_bootstrap(heroic_refrain_id):
+            return False
+
+        return (yield from self.build.CastSkillIDAndRestoreTarget(
+            skill_id=heroic_refrain_id,
+            target_agent_id=player_agent_id,
+            log=False,
+            aftercast_delay=250,
+        ))
+
+    def Heroic_Refrain_Party(self) -> BuildCoroutine:
+        heroic_refrain_id: int = Skill.GetID("Heroic_Refrain")
+        heroic_refrain = self.build.GetCustomSkill(heroic_refrain_id)
+
+        if not self.build.IsSkillEquipped(heroic_refrain_id):
+            return False
+        if not self.IsHeroicRefrainSelfReady():
+            return False
+
+        target_agent_id = self.build.ResolveAllyTargetInRange(
             heroic_refrain_id,
             heroic_refrain,
         )
@@ -65,6 +82,11 @@ class Leadership:
             log=False,
             aftercast_delay=250,
         ))
+
+    def Heroic_Refrain(self) -> BuildCoroutine:
+        if (yield from self.Heroic_Refrain_Self()):
+            return True
+        return (yield from self.Heroic_Refrain_Party())
     #endregion
 
     #region A

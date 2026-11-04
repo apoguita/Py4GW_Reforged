@@ -34,9 +34,9 @@ class Command:
         """Anti-touch party shout and optional refrain-renewal heartbeat.
 
         Guild Wars treats this shout specially: reapplying it ends the existing
-        copy first, which triggers echoes. With its current 10-second recharge,
+        copy first, which triggers echoes.  With its current 10-second recharge,
         an HR bar can therefore cast it whenever ready even though the shout's
-        nominal duration is 20 seconds. Other callers retain the conservative
+        nominal duration is 20 seconds.  Other callers retain the conservative
         combat-only behavior and may wait until the running copy is nearly over.
         """
         cant_touch_this_id: int = Skill.GetID("Cant_Touch_This")

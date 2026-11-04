@@ -72,9 +72,10 @@ class Paragon_Refrain(BuildMgr):
             # Warrior-only helpers below remain guarded by IsSkillEquipped.
             required_secondary=Profession(0),
             template_code="OQGkUNlnpiy0ZNQYPWNm72G4VhoH",
-            # The elite is the complete archetype fingerprint. Other bar slots
-            # determine available behavior, not whether this controller owns
-            # the build.
+            # Heroic Refrain is the archetype fingerprint. The other seven
+            # slots only determine which upkeep and support helpers are
+            # available; they must not decide whether this controller owns the
+            # bar.
             required_skills=[
                 Heroic_Refrain_ID,
             ],
@@ -140,22 +141,44 @@ class Paragon_Refrain(BuildMgr):
         Everything here has to be reachable while travelling: the refrains are
         maintained continuously, not re-established at every pull.
         """
-        # The elite, and the reason for the bar, must be first. Its helper casts
-        # on self until the Leadership bootstrap reaches 20, then walks the
-        # party. Refrains cast before that bootstrap would use the lower rank.
-        if self.IsSkillEquipped(Heroic_Refrain_ID):
-            if (yield from self.skillbook.Paragon.Leadership.Heroic_Refrain()):
-                return True
+        # The two self casts must precede every other skill: the first raises
+        # Leadership to 19 and the second produces the rank-20 copy. If the
+        # self copy is later lost, the same check naturally bootstraps it again.
+        if self.IsSkillEquipped(Heroic_Refrain_ID) and (
+            yield from self.skillbook.Paragon.Leadership.Heroic_Refrain_Self()
+        ):
+            return True
 
-            # Heroic_Refrain returns False both when bootstrap is complete and
-            # when the second self cast is merely recharging. Only the live
-            # rank-20 postcondition permits lower-rank refrains to be spread.
+        # "No self cast" can mean either bootstrap is complete or HR is still
+        # recharging between its +3 and +4 self copies.  Do not let the latter
+        # leak into lower-rank party refrains or combat skills.  The live rank
+        # 20 attribute is the postcondition, not the helper's cast result.
+        if self.IsSkillEquipped(Heroic_Refrain_ID):
             if not self.skillbook.Paragon.Leadership.IsHeroicRefrainSelfReady():
                 return True
 
-        # Spread every equipped party refrain immediately after Heroic Refrain,
-        # in or out of combat. Entering combat must not postpone an incomplete
-        # distribution behind the rest of the combat rotation.
+        # Maintenance deadlines outrank distribution and refill work. CTT is
+        # deliberately reapplied while active; ToF waits for its 10-second copy
+        # to end. This order also keeps the first party copies alive while HR's
+        # own recharge makes full-party distribution progress over many ticks.
+        if self.IsSkillEquipped(Cant_Touch_This_ID) and (
+            yield from self.skillbook.Paragon.Command.Cant_Touch_This(maintain_refrains=True)
+        ):
+            return True
+
+        if self.IsSkillEquipped(Theyre_on_Fire_ID) and (
+            yield from self.skillbook.Paragon.Leadership.Theyre_on_Fire()
+        ):
+            return True
+
+        # Repair party HR only after the heartbeat has had its chance.
+        if self.IsSkillEquipped(Heroic_Refrain_ID) and (
+            yield from self.skillbook.Paragon.Leadership.Heroic_Refrain_Party()
+        ):
+            return True
+
+        # Then repair or initially distribute the remaining party echoes. All
+        # maintainable refrains are restricted to heartbeat (earshot) range.
         if (yield from self._run_refrain_spreading()):
             return True
 
@@ -164,20 +187,7 @@ class Paragon_Refrain(BuildMgr):
         if self.IsSkillEquipped(Aggressive_Refrain_ID) and (yield from self.skillbook.Paragon.Leadership.Aggressive_Refrain()):
             return True
 
-        # Reapplying CTT ends its existing party shout and renews Heroic
-        # Refrain and the other maintainable echoes on each affected ally.
-        if self.IsSkillEquipped(Cant_Touch_This_ID) and (
-            yield from self.skillbook.Paragon.Command.Cant_Touch_This(maintain_refrains=True)
-        ):
-            return True
-
         if self.IsSkillEquipped(Anthem_of_Flame_ID) and (yield from self.skillbook.Paragon.Leadership.Anthem_of_Flame()):
-            return True
-
-        # The renewal engine. PvX: this shout alone is enough to keep Heroic
-        # Refrain up on the whole party, and it is also what keeps Aggressive
-        # Refrain alive above.
-        if self.IsSkillEquipped(Theyre_on_Fire_ID) and (yield from self.skillbook.Paragon.Leadership.Theyre_on_Fire()):
             return True
 
         if self.IsInAggro():
@@ -189,6 +199,7 @@ class Paragon_Refrain(BuildMgr):
             return True
 
         return False
+
 
     def _run_refrain_spreading(self):
         """Spread the maintainable echoes over the party.
@@ -206,8 +217,8 @@ class Paragon_Refrain(BuildMgr):
         if self.IsSkillEquipped(Energizing_Finale_ID) and (yield from self.skillbook.Paragon.Motivation.Energizing_Finale()):
             return True
 
-        # Burning Refrain and Blazing Finale pay off most on the traditional
-        # "They're on Fire!" variant, but remain valid maintainable echoes.
+        # Burning Refrain and Blazing Finale both pay off through "They're on
+        # Fire!", which is permanently up on this bar.
         if self.IsSkillEquipped(Burning_Refrain_ID) and (yield from self.skillbook.Paragon.Motivation.Burning_Refrain()):
             return True
 

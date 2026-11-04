@@ -30,6 +30,7 @@ SKILL_IDS = {
             "Anthem_of_Flame",
             "Theyre_on_Fire",
             "Fall_Back",
+            "Cant_Touch_This",
         )
     )
 }
@@ -152,20 +153,21 @@ class _SkillMethod:
 
 
 def _skill_group(names, calls, outcomes):
-    group = type("SkillGroup", (), {})()
+    group = __import__("types").SimpleNamespace()
     for name in names:
         setattr(group, name, _SkillMethod(name, calls, outcomes))
     return group
 
 
 def _skillbook(calls, outcomes):
-    root = type("Skillbook", (), {})()
-    root.Paragon = type("Paragon", (), {})()
+    root = __import__("types").SimpleNamespace()
+    root.Paragon = __import__("types").SimpleNamespace()
     root.Paragon.Leadership = _skill_group(
-        ("Heroic_Refrain", "Aggressive_Refrain", "Anthem_of_Flame", "Theyre_on_Fire"),
+        ("Heroic_Refrain_Self", "Heroic_Refrain_Party", "Aggressive_Refrain", "Anthem_of_Flame", "Theyre_on_Fire"),
         calls,
         outcomes,
     )
+    root.Paragon.Leadership.IsHeroicRefrainSelfReady = lambda: calls.count("Heroic_Refrain_Self") >= 2
     root.Paragon.Motivation = _skill_group(
         (
             "Mending_Refrain",
@@ -186,7 +188,8 @@ class ParagonRefrainReportedBarTests(unittest.TestCase):
         _ChecksSkills.can_cast = True
         self.calls = []
         self.outcomes = {
-            "Heroic_Refrain": [True, True, True, False],
+            "Heroic_Refrain_Self": [True, True, False],
+            "Heroic_Refrain_Party": [True, False],
             "Hasty_Refrain": [True, False],
             "Aggressive_Refrain": [True, False],
             "Theyre_on_Fire": [True, False],
@@ -226,12 +229,12 @@ class ParagonRefrainReportedBarTests(unittest.TestCase):
         self.assertEqual(
             final_calls,
             [
-                "Heroic_Refrain",
-                "Heroic_Refrain",
-                "Heroic_Refrain",
+                "Heroic_Refrain_Self",
+                "Heroic_Refrain_Self",
+                "Theyre_on_Fire",
+                "Heroic_Refrain_Party",
                 "Hasty_Refrain",
                 "Aggressive_Refrain",
-                "Theyre_on_Fire",
             ],
         )
         self.assertNotIn("combat", final_calls)
