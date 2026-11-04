@@ -21,6 +21,8 @@ from Py4GWCoreLib.py4gwcorelib_src.BehaviorTree import BehaviorTree
 from Py4GWCoreLib.routines_src.BehaviourTrees import BT as RoutinesBT
 from Py4GWCoreLib.routines_src.behaviourtrees_src.player import BT
 
+TAKE_BLESSING_V2_BUILD_ID = "take-blessing-v2-complete-norn-lifecycle-20261028"
+
 def Node(tree_or_node) -> BehaviorTree.Node:
     return BehaviorTree.Node._coerce_node(tree_or_node)
 
@@ -918,11 +920,161 @@ def TakeBlessing(
     log: bool = False,
     pre_dialog_wait_ms: int = 125,
     post_dialog_wait_ms: int = 125,
+    avoid_final_approach_obstacles: bool = True,
+    captured_blessing: Mapping[str, object] | None = None,
 ) -> BehaviorTree:
+    """Canonical cross-campaign blessing owner.
+
+    Faction blessings and multi-button conversations retain their released
+    behavior.  The ordinary single-choice path preserves its
+    sequence and timings, but terminal success may be either the requested
+    visible choice dispatch or a fresh non-empty response with no choices.
+
+    ``captured_blessing`` accepts the same immutable mapping consumed by
+    Simple Vanquish's ``CapturedBlessingSpec``.  A Norn Hunting Party mapping
+    selects that implementation's complete ``CapturedBlessingRunnerV2``
+    lifecycle inside this public owner: identity-bound initial approach and
+    interaction, visible challenge choice, hostile/combat handoff, bounded
+    post-fight reacquisition, final approach and interaction, and terminal
+    result.  The behavior-tree planner remains on the same node throughout;
+    route execution cannot advance while the challenge is active.
+
+    ``avoid_final_approach_obstacles`` is an opt-in geometry control for a
+    captured later-blessing approach.  Its default deliberately preserves the
+    existing V2 behavior.  Setting it false affects only this transaction's
+    final movement node; it does not mutate shared or subsequent movement.
+    """
+    if captured_blessing is not None:
+        from Sources.aC_Scripts.aC_api.Captured_Blessing import (
+            CapturedBlessingRunnerV2,
+            CapturedBlessingSpec,
+            Py4GWCapturedBlessingRuntime,
+        )
+
+        spec = CapturedBlessingSpec.from_mapping(captured_blessing)
+        if spec.interaction_mode != 'norn_challenge':
+            raise ValueError(
+                'captured_blessing is reserved for the canonical Norn challenge '
+                'lifecycle; ordinary blessings use the existing TakeBlessingV2 arguments'
+            )
+
+        class _BottingTreeCapturedBlessingRuntime(Py4GWCapturedBlessingRuntime):
+            """Run the unchanged captured controller under BottingTree ownership."""
+
+            def __init__(self, node: BehaviorTree.Node):
+                self._node = node
+                self._sink = self._emit_to_v2_log
+                self._last_agent_sources = {}
+                self._last_resolution_diagnostic = None
+                self._saved_headless_enabled = bool(
+                    node.blackboard.get('headless_heroai_enabled', True)
+                )
+                self._saved_pause_on_combat = bool(
+                    node.blackboard.get('pause_on_combat', True)
+                )
+                self._automation_restored = False
+                # The canonical controller must continue polling while HeroAI
+                # owns combat.  The only active planner node remains this
+                # transaction, so no route movement can advance concurrently.
+                node.blackboard['pause_on_combat_request'] = False
+
+            def _emit_to_v2_log(self, event):
+                event_copy = dict(event)
+                self._node.blackboard['take_blessing_v2_norn_event'] = event_copy
+                events = self._node.blackboard.setdefault(
+                    'take_blessing_v2_norn_events', []
+                )
+                events.append(event_copy)
+                if len(events) > 256:
+                    del events[:-256]
+                if log:
+                    import json
+                    from Py4GWCoreLib.Py4GWcorelib import Console, ConsoleLog
+
+                    ConsoleLog(
+                        'TakeBlessingV2',
+                        json.dumps(event_copy, sort_keys=True, default=str),
+                        Console.MessageType.Info,
+                        log=True,
+                    )
+
+            def _request_headless(self, enabled: bool) -> None:
+                self._node.blackboard['headless_heroai_enabled_request'] = bool(enabled)
+                self._node.blackboard['headless_heroai_reset_runtime_request'] = True
+
+            def pause_automation(self) -> None:
+                self._request_headless(False)
+
+            def enable_combat_automation(self) -> None:
+                self._request_headless(True)
+
+            def restore_automation(self) -> None:
+                if self._automation_restored:
+                    return
+                self._automation_restored = True
+                self._request_headless(self._saved_headless_enabled)
+                self._node.blackboard['pause_on_combat_request'] = self._saved_pause_on_combat
+
+        class _CapturedNornBlessingNode(BehaviorTree.ActionNode):
+            def __init__(self):
+                self._runner = None
+                self._pending_result = None
+                super().__init__(
+                    name='TakeBlessingV2CapturedNornLifecycle',
+                    action_fn=self._tick_captured_norn,
+                    aftercast_ms=0,
+                )
+
+            def _tick_captured_norn(self, node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+                if self._pending_result is not None:
+                    request_keys = (
+                        'headless_heroai_enabled_request',
+                        'headless_heroai_reset_runtime_request',
+                        'pause_on_combat_request',
+                    )
+                    if any(key in node.blackboard for key in request_keys):
+                        return BehaviorTree.NodeState.RUNNING
+                    success, reason = self._pending_result
+                    self._pending_result = None
+                    node.blackboard['take_blessing_v2_dialog_outcome'] = reason
+                    node.blackboard['take_blessing_v2_norn_success'] = bool(success)
+                    return (
+                        BehaviorTree.NodeState.SUCCESS
+                        if success
+                        else BehaviorTree.NodeState.FAILURE
+                    )
+
+                if self._runner is None:
+                    runtime = _BottingTreeCapturedBlessingRuntime(node)
+                    self._runner = CapturedBlessingRunnerV2(runtime, spec)
+                    self._runner.start()
+
+                done, success, reason = self._runner.update()
+                if not done:
+                    return BehaviorTree.NodeState.RUNNING
+
+                # The canonical runner restores automation before reporting
+                # done.  Hold this public node until BottingTree consumes those
+                # restoration requests, so no successor can run under the
+                # temporary challenge settings.
+                self._pending_result = (bool(success), str(reason))
+                self._runner = None
+                return BehaviorTree.NodeState.RUNNING
+
+            def reset(self) -> None:
+                if self._runner is not None:
+                    self._runner.cancel()
+                    self._runner = None
+                self._pending_result = None
+                super().reset()
+
+        return BehaviorTree(_CapturedNornBlessingNode())
+
     faction_name = str(faction or '').strip().lower()
     if faction_name and faction_name not in {'luxon', 'kurzick'}:
         raise ValueError("faction must be 'luxon', 'kurzick', or empty.")
 
+    resolved_buttons = [buttons] if isinstance(buttons, int) else list(buttons)
     if faction_name:
         bribe_key = f'{faction_name}_blessing_bribe_priest'
 
@@ -930,7 +1082,9 @@ def TakeBlessing(
             current_luxon = int(node.blackboard.get('current_luxon_faction', 0) or 0)
             current_kurzick = int(node.blackboard.get('current_kurzick_faction', 0) or 0)
             node.blackboard[bribe_key] = (
-                current_kurzick >= current_luxon if faction_name == 'luxon' else current_luxon >= current_kurzick
+                current_kurzick >= current_luxon
+                if faction_name == 'luxon'
+                else current_luxon >= current_kurzick
             )
             return BehaviorTree.NodeState.SUCCESS
 
@@ -956,7 +1110,10 @@ def TakeBlessing(
                 MoveAndInteract(pos=pos, log=log),
                 LogMessage(message=f"Obtaining {faction_name.title()} blessing"),
                 Wait(pre_dialog_wait_ms, log=log),
-                Subtree(name=f'MaybeBribe{faction_name.title()}Priest', subtree_fn=_maybe_bribe),
+                Subtree(
+                    name=f'MaybeBribe{faction_name.title()}Priest',
+                    subtree_fn=_maybe_bribe,
+                ),
                 InteractTargetAndSendDialog(
                     dialog_id=blessing_dialog_id,
                     log=log,
@@ -966,49 +1123,193 @@ def TakeBlessing(
             ],
         )
 
-    return Sequence(
-        name='Take Blessing',
-        children=[
-            MoveAndInteract(pos=pos, log=log),
-            LogMessage(message='Obtaining blessing'),
-            Wait(pre_dialog_wait_ms, log=log),
-            _pause_heroai_for_action(
-                RoutinesBT.Composite.Sequence(
-                    *(
-                        [
-                            _capture_current_target(),
-                            RoutinesBT.Composite.Sequence(
+    if len(resolved_buttons) != 1:
+        return Sequence(
+            name='Take Blessing',
+            children=[
+                MoveAndInteract(pos=pos, log=log),
+                LogMessage(message='Obtaining blessing'),
+                Wait(pre_dialog_wait_ms, log=log),
+                _pause_heroai_for_action(
+                    RoutinesBT.Composite.Sequence(
+                        *(
+                            [
+                                _capture_current_target(),
+                                RoutinesBT.Composite.Sequence(
+                                    *[
+                                        RoutinesBT.Player.SendAutomaticDialog(
+                                            button_number=int(button),
+                                            log=log,
+                                        )
+                                        for button in ([buttons] if isinstance(buttons, int) else list(buttons))
+                                    ],
+                                    _send_multibox_get_blessing_with_target(
+                                        buttons=[buttons] if isinstance(buttons, int) else list(buttons),
+                                        log=log,
+                                    ),
+                                    name='TakeBlessingMultiboxSequence',
+                                ),
+                            ]
+                            if multi_account
+                            else [
                                 *[
                                     RoutinesBT.Player.SendAutomaticDialog(
                                         button_number=int(button),
                                         log=log,
                                     )
                                     for button in ([buttons] if isinstance(buttons, int) else list(buttons))
-                                ],
-                                _send_multibox_get_blessing_with_target(
-                                    buttons=[buttons] if isinstance(buttons, int) else list(buttons),
-                                    log=log,
-                                ),
-                                name='TakeBlessingMultiboxSequence',
-                            ),
-                        ]
-                        if multi_account
-                        else [
-                            *[
-                                RoutinesBT.Player.SendAutomaticDialog(
-                                    button_number=int(button),
-                                    log=log,
-                                )
-                                for button in ([buttons] if isinstance(buttons, int) else list(buttons))
+                                ]
                             ]
-                        ]
+                        ),
+                        name='TakeBlessingDialogGuard',
                     ),
-                    name='TakeBlessingDialogGuard',
+                    suspend_shared_options=True,
+                ),
+                Wait(post_dialog_wait_ms, log=log),
+            ],
+        )
+
+    baseline_key = 'take_blessing_v2_dialog_baseline'
+    outcome_key = 'take_blessing_v2_dialog_outcome'
+    requested_button = int(resolved_buttons[0])
+    state: dict[str, int | None] = {'started_ms': None}
+
+    def _dialog_fingerprint():
+        from Py4GWCoreLib import Dialog
+
+        active = Dialog.get_active_dialog()
+        if active is None:
+            return None
+        return (
+            int(getattr(active, 'context_dialog_id', 0) or 0),
+            int(getattr(active, 'agent_id', 0) or 0),
+            str(getattr(active, 'raw_message', '') or ''),
+        )
+
+    def _capture_dialog_baseline(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        node.blackboard[baseline_key] = _dialog_fingerprint()
+        node.blackboard.pop(outcome_key, None)
+        state['started_ms'] = None
+        return BehaviorTree.NodeState.SUCCESS
+
+    def _complete_dialog(node: BehaviorTree.Node) -> BehaviorTree.NodeState:
+        from Py4GWCoreLib import Dialog
+        from Py4GWCoreLib.Player import Player
+        from Py4GWCoreLib.Py4GWcorelib import Utils
+
+        now = Utils.GetBaseTimestamp()
+        if state['started_ms'] is None:
+            state['started_ms'] = now
+
+        try:
+            active = Dialog.get_active_dialog()
+            buttons_now = [
+                button
+                for button in Dialog.get_active_dialog_buttons()
+                if int(getattr(button, 'dialog_id', 0) or 0) != 0
+            ]
+        except Exception:
+            active = None
+            buttons_now = []
+
+        if requested_button < len(buttons_now):
+            Player.SendAutomaticDialog(requested_button)
+            node.blackboard[outcome_key] = 'choice_sent'
+            state['started_ms'] = None
+            return BehaviorTree.NodeState.SUCCESS
+
+        if active is not None and not buttons_now:
+            raw_message = str(getattr(active, 'raw_message', '') or '').strip()
+            fingerprint = _dialog_fingerprint()
+            if raw_message and fingerprint != node.blackboard.get(baseline_key):
+                node.blackboard[outcome_key] = 'fresh_buttonless_response'
+                state['started_ms'] = None
+                return BehaviorTree.NodeState.SUCCESS
+
+        if now - int(state['started_ms']) >= 3000:
+            state['started_ms'] = None
+            return BehaviorTree.NodeState.FAILURE
+        return BehaviorTree.NodeState.RUNNING
+
+    def _maybe_multibox(node: BehaviorTree.Node) -> BehaviorTree:
+        if node.blackboard.get(outcome_key) == 'fresh_buttonless_response':
+            return Succeeder(name='SkipButtonlessBlessingMultiboxChoice')
+        return _send_multibox_get_blessing_with_target(
+            buttons=resolved_buttons,
+            log=log,
+        )
+
+    dialog_children: list[BehaviorTree] = []
+    if multi_account:
+        dialog_children.append(_capture_current_target())
+    dialog_children.append(
+        BehaviorTree(
+            BehaviorTree.ActionNode(
+                name='TakeBlessingV2DialogCompletion',
+                action_fn=_complete_dialog,
+                aftercast_ms=250,
+            )
+        )
+    )
+    if multi_account:
+        dialog_children.append(
+            Subtree(name='TakeBlessingV2MaybeMultibox', subtree_fn=_maybe_multibox)
+        )
+
+    return Sequence(
+        name='Take Blessing V2',
+        children=[
+            BehaviorTree(
+                BehaviorTree.ActionNode(
+                    name='CaptureTakeBlessingV2DialogBaseline',
+                    action_fn=_capture_dialog_baseline,
+                )
+            ),
+            _move_and_interact(
+                pos=pos,
+                log=log,
+                avoid_obstacles=avoid_final_approach_obstacles,
+            ),
+            LogMessage(message='Obtaining blessing'),
+            Wait(pre_dialog_wait_ms, log=log),
+            _pause_heroai_for_action(
+                RoutinesBT.Composite.Sequence(
+                    *dialog_children,
+                    name='TakeBlessingV2DialogGuard',
                 ),
                 suspend_shared_options=True,
             ),
             Wait(post_dialog_wait_ms, log=log),
         ],
+    )
+
+
+def TakeBlessingV2(
+    pos: PointOrPath,
+    faction: str | None = None,
+    buttons: int | SequenceABC[int] = 0,
+    blessing_dialog_id: int | str = 0x86,
+    bribe_dialog_id: int | str = 0x84,
+    multi_account: bool = False,
+    log: bool = False,
+    pre_dialog_wait_ms: int = 125,
+    post_dialog_wait_ms: int = 125,
+    avoid_final_approach_obstacles: bool = True,
+    captured_blessing: Mapping[str, object] | None = None,
+) -> BehaviorTree:
+    """Compatibility alias for the canonical :func:`TakeBlessing` owner."""
+    return TakeBlessing(
+        pos=pos,
+        faction=faction,
+        buttons=buttons,
+        blessing_dialog_id=blessing_dialog_id,
+        bribe_dialog_id=bribe_dialog_id,
+        multi_account=multi_account,
+        log=log,
+        pre_dialog_wait_ms=pre_dialog_wait_ms,
+        post_dialog_wait_ms=post_dialog_wait_ms,
+        avoid_final_approach_obstacles=avoid_final_approach_obstacles,
+        captured_blessing=captured_blessing,
     )
 
 def DonateFaction(
@@ -1343,13 +1644,15 @@ def MoveAndTarget(
         pause_on_combat=pause_on_combat,
     )
 
-def MoveAndInteract(
+def _move_and_interact(
     pos: PointOrPath,
     target_distance: float = Range.Area.value,
     move_tolerance: float = 150.0,
     pause_on_combat: bool | None = None,
     flag_heroes_to_waypoint: bool = False,
     log: bool = False,
+    *,
+    avoid_obstacles: bool = True,
 ) -> BehaviorTree:
     return RoutinesBT.Composite.Sequence(
         Move(
@@ -1358,12 +1661,31 @@ def MoveAndInteract(
             pause_on_combat=pause_on_combat,
             flag_heroes_to_waypoint=flag_heroes_to_waypoint,
             ignore_destination_obstacles=True,
+            avoid_obstacles=avoid_obstacles,
             log=log,
         ),
         _wait_until_player_stops_moving(log=log),
         Wait(_POST_MOVEMENT_SETTLE_MS, log=log),
         TargetNearestAndInteract(pos=pos, target_distance=target_distance, log=log),
         name="MoveAndInteract",
+    )
+
+
+def MoveAndInteract(
+    pos: PointOrPath,
+    target_distance: float = Range.Area.value,
+    move_tolerance: float = 150.0,
+    pause_on_combat: bool | None = None,
+    flag_heroes_to_waypoint: bool = False,
+    log: bool = False,
+) -> BehaviorTree:
+    return _move_and_interact(
+        pos=pos,
+        target_distance=target_distance,
+        move_tolerance=move_tolerance,
+        pause_on_combat=pause_on_combat,
+        flag_heroes_to_waypoint=flag_heroes_to_waypoint,
+        log=log,
     )
 
 def MoveAndInteractWithGadget(
