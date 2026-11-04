@@ -22,10 +22,9 @@ def _function(path: Path, name: str) -> ast.FunctionDef:
 
 
 class TakeBlessingStructureTests(unittest.TestCase):
-    def test_public_compatibility_boundary(self) -> None:
+    def test_public_boundary(self) -> None:
         source = WRAPPERS.read_text(encoding="utf-8")
         canonical = _function(WRAPPERS, "TakeBlessing")
-        alias = _function(WRAPPERS, "TakeBlessingV2")
         expected = [
             "pos",
             "faction",
@@ -40,17 +39,6 @@ class TakeBlessingStructureTests(unittest.TestCase):
             "captured_blessing",
         ]
         self.assertEqual([arg.arg for arg in canonical.args.args], expected)
-        self.assertEqual([arg.arg for arg in alias.args.args], expected)
-
-        self.assertEqual(len(alias.body), 2)
-        returned = alias.body[1]
-        self.assertIsInstance(returned, ast.Return)
-        call = returned.value
-        self.assertIsInstance(call, ast.Call)
-        self.assertIsInstance(call.func, ast.Name)
-        self.assertEqual(call.func.id, "TakeBlessing")
-        self.assertEqual([kw.arg for kw in call.keywords], expected)
-        self.assertEqual([ast.unparse(kw.value) for kw in call.keywords], expected)
 
         recursive_calls = [
             node
@@ -65,7 +53,7 @@ class TakeBlessingStructureTests(unittest.TestCase):
         for fragment in (
             "StoreFactionData(log=log)",
             "TakeBlessingMultiboxSequence",
-            "CapturedBlessingRunnerV2(runtime, spec)",
+            "CanonicalCapturedBlessingRunner(runtime, spec)",
             "Player.SendAutomaticDialog(requested_button)",
             "fresh_buttonless_response",
             "now - int(state['started_ms']) >= 3000",
@@ -155,7 +143,7 @@ class CapturedNornLifecycleTests(unittest.TestCase):
             "effect_ids": (2469, 2470, 2471, 2472, 2551, 2591, 2592, 2593, 2594, 2595),
         }
         runtime = Runtime()
-        runner = module.CapturedBlessingRunnerV2(
+        runner = module.CanonicalCapturedBlessingRunner(
             runtime,
             module.CapturedBlessingSpec.from_mapping(captured),
         )

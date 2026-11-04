@@ -436,7 +436,7 @@ class CapturedBlessingRunner:
             self._restored = True
 
 
-class CapturedBlessingRunnerV2(CapturedBlessingRunner):
+class CanonicalCapturedBlessingRunner(CapturedBlessingRunner):
     """Named pilot owner for dispatch-only post-challenge Norn completion.
 
     Guild Wars can grant or upgrade a Norn blessing immediately after the
@@ -449,7 +449,7 @@ class CapturedBlessingRunnerV2(CapturedBlessingRunner):
     def _prepare_attempt_dialog(self) -> None:
         # Successful blessing responses are dismissed naturally by subsequent
         # route movement.  ControlAction_CloseAllPanels is intentionally not
-        # used by V2 because it also closes unrelated player windows.
+        # used by the canonical owner because it also closes unrelated player windows.
         return
 
     def _resolution_radius(self, final: bool) -> float | None:
