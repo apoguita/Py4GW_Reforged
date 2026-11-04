@@ -201,8 +201,6 @@ class Paragon_Refrain(BuildMgr):
         return False
 
 
-
-
     def _run_refrain_spreading(self):
         """Spread the maintainable echoes over the party.
 

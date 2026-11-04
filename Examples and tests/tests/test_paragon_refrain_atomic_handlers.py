@@ -153,15 +153,15 @@ class _SkillMethod:
 
 
 def _skill_group(names, calls, outcomes):
-    group = type("SkillGroup", (), {})()
+    group = __import__("types").SimpleNamespace()
     for name in names:
         setattr(group, name, _SkillMethod(name, calls, outcomes))
     return group
 
 
 def _skillbook(calls, outcomes):
-    root = type("Skillbook", (), {})()
-    root.Paragon = type("Paragon", (), {})()
+    root = __import__("types").SimpleNamespace()
+    root.Paragon = __import__("types").SimpleNamespace()
     root.Paragon.Leadership = _skill_group(
         ("Heroic_Refrain_Self", "Heroic_Refrain_Party", "Aggressive_Refrain", "Anthem_of_Flame", "Theyre_on_Fire"),
         calls,
