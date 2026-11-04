@@ -36,3 +36,15 @@ PARTY_WINDOW_FRAME_EXPLORABLE_OFFSETS = [0]
 SKILLBAR_WINDOW_HASH = 641635682
 
 """ AI CONSTANTS """
+
+
+def should_use_junundu_wail(
+    player_health: float,
+    health_threshold: float,
+    dead_party_members_in_earshot: int,
+    has_enemy_in_earshot: bool,
+) -> bool:
+    """Heal or resurrect after combat; mass-resurrect during combat."""
+    if has_enemy_in_earshot:
+        return dead_party_members_in_earshot >= 2
+    return dead_party_members_in_earshot >= 1 or player_health < health_threshold
