@@ -674,3 +674,132 @@ def clear_loot_lock(item_agent_id: int) -> bool:
         return cleared > 0
     except Exception:
         return False
+
+LOOT_SUPPRESSION_KEY_BASE = 1_000_000
+LOOT_SUPPRESSION_DURATION_MS = 6 * 60 * 60 * 1000
+
+
+def _loot_suppression_key(map_id: int | None = None) -> int:
+    if map_id is None:
+        try:
+            from Py4GWCoreLib.Map import Map
+
+            map_id = int(Map.GetMapID() or 0)
+        except Exception:
+            map_id = 0
+    return LOOT_SUPPRESSION_KEY_BASE + max(0, int(map_id))
+
+
+def is_loot_suppressed(item_agent_id: int, now_tick: int | None = None) -> bool:
+    """True when this account already failed this drop in the current map.
+
+    Unlike a loot claim, failure suppression deliberately includes locks posted by the
+    same account.  That is what carries the terminal result from the Messaging widget
+    back to independently loaded HeroAI and Botting loot selectors.
+    """
+    if item_agent_id <= 0:
+        return False
+    try:
+        from Py4GWCoreLib import GLOBAL_CACHE
+
+        email, group_id = _owner_context()
+        if not email:
+            return False
+        if now_tick is None:
+            now_tick = int(PySystem.get_tick_count64())
+        suppression_key = _loot_suppression_key()
+        for _slot_index, intent in GLOBAL_CACHE.ShMem.GetAllAccounts().GetAllIntents():
+            if intent.OwnerEmail != email:
+                continue
+            if int(intent.KindID) != int(WhiteboardLockKind.LOOT_ITEM):
+                continue
+            if int(intent.SkillID) != suppression_key:
+                continue
+            if int(intent.TargetAgentID) != int(item_agent_id):
+                continue
+            if int(intent.IsolationGroupID) != int(group_id):
+                continue
+            if int(intent.ExpiresAtTick) <= int(now_tick):
+                continue
+            return True
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Loot suppression", f"Read failed: {error}", Console.MessageType.Error)
+        return False
+    return False
+
+
+def post_loot_suppression(
+    item_agent_id: int,
+    duration_ms: int = LOOT_SUPPRESSION_DURATION_MS,
+) -> int:
+    """Suppress one failed drop for this account until map change (with TTL safety)."""
+    if item_agent_id <= 0:
+        return -1
+    try:
+        from Py4GWCoreLib import GLOBAL_CACHE
+
+        email, group_id = _owner_context()
+        if not email:
+            return -1
+        now = int(PySystem.get_tick_count64())
+        expires_at = now + max(int(duration_ms), LOOT_LOCK_MIN_DURATION_MS)
+        suppression_key = _loot_suppression_key()
+        all_accounts = GLOBAL_CACHE.ShMem.GetAllAccounts()
+
+        for slot_index, intent in all_accounts.GetAllIntents():
+            if intent.OwnerEmail != email:
+                continue
+            if int(intent.KindID) != int(WhiteboardLockKind.LOOT_ITEM):
+                continue
+            if int(intent.SkillID) != suppression_key:
+                continue
+            if int(intent.TargetAgentID) != int(item_agent_id):
+                continue
+            if int(intent.IsolationGroupID) != int(group_id):
+                continue
+            intent.ExpiresAtTick = max(int(intent.ExpiresAtTick), expires_at)
+            return int(slot_index)
+
+        return int(GLOBAL_CACHE.ShMem.PostLock(
+            email,
+            int(WhiteboardLockKind.LOOT_ITEM),
+            suppression_key,
+            int(item_agent_id),
+            expires_at,
+            int(group_id),
+            int(WhiteboardLockMode.SHARED),
+            255,
+            int(WhiteboardReentryPolicy.OWNER_REENTRANT),
+            int(WhiteboardClaimStrength.HARD),
+        ))
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Loot suppression", f"Publish failed: {error}", Console.MessageType.Error)
+        return -1
+
+
+def clear_loot_suppressions() -> int:
+    """Clear this account's failed-drop suppressions after a real map change."""
+    try:
+        from Py4GWCoreLib import GLOBAL_CACHE
+
+        email, group_id = _owner_context()
+        if not email:
+            return 0
+        all_accounts = GLOBAL_CACHE.ShMem.GetAllAccounts()
+        slots = [
+            int(slot_index)
+            for slot_index, intent in all_accounts.GetAllIntents()
+            if intent.OwnerEmail == email
+            and int(intent.KindID) == int(WhiteboardLockKind.LOOT_ITEM)
+            and int(intent.SkillID) >= LOOT_SUPPRESSION_KEY_BASE
+            and int(intent.IsolationGroupID) == int(group_id)
+        ]
+        for slot_index in slots:
+            all_accounts.ClearIntent(slot_index)
+        return len(slots)
+    except Exception as error:
+        from Py4GWCoreLib import ConsoleLog, Console
+        ConsoleLog("Loot suppression", f"Cleanup failed: {error}", Console.MessageType.Error)
+        return 0
