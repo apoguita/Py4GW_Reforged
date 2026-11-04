@@ -23,9 +23,59 @@ class _Upkeepers:
         self.cancel_movement_triggered = False
         self._hero_ai_pause_applied = False
         self._hero_ai_pause_snapshot = None
+        self._hero_ai_pause_account_email = ""
         self._hero_ai_legacy_range_override_applied = False
         
     
+    def apply_hero_ai_pause(self) -> None:
+        """Apply a temporary HeroAI pause immediately and snapshot prior options."""
+        if self._hero_ai_pause_applied:
+            return
+
+        account_email = Player.GetAccountEmail()
+        current_options = (
+            GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_email)
+            if account_email else None
+        )
+        if current_options is None:
+            return
+
+        self._hero_ai_pause_account_email = account_email
+        self._hero_ai_pause_snapshot = (
+            current_options.Following,
+            current_options.Targeting,
+            current_options.Combat,
+        )
+        current_options.Following = False
+        current_options.Targeting = False
+        current_options.Combat = False
+        GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, current_options)
+        self._hero_ai_pause_applied = True
+
+    def release_hero_ai_pause(self) -> None:
+        """Restore owned pause values without overwriting newer manual choices."""
+        if not self._hero_ai_pause_applied:
+            self.cancel_movement_triggered = False
+            return
+
+        account_email = self._hero_ai_pause_account_email
+        current_options = (
+            GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_email)
+            if account_email else None
+        )
+        if current_options and self._hero_ai_pause_snapshot is not None:
+            if not current_options.Following:
+                current_options.Following = bool(self._hero_ai_pause_snapshot[0])
+            if not current_options.Targeting:
+                current_options.Targeting = bool(self._hero_ai_pause_snapshot[1])
+            if not current_options.Combat:
+                current_options.Combat = bool(self._hero_ai_pause_snapshot[2])
+            GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, current_options)
+        self._hero_ai_pause_applied = False
+        self._hero_ai_pause_snapshot = None
+        self._hero_ai_pause_account_email = ""
+        self.cancel_movement_triggered = False
+
     def upkeep_hero_ai(self):
         from ...Routines import Routines
         from ...GlobalCache import GLOBAL_CACHE
@@ -46,19 +96,7 @@ class _Upkeepers:
             pause_requested = bool(getattr(self._config.upkeep, "hero_ai_paused", None) and self._config.upkeep.hero_ai_paused.is_active())
 
             if pause_requested:
-                account_email = Player.GetAccountEmail()
-                current_options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_email) if account_email else None
-                if current_options and not self._hero_ai_pause_applied:
-                    self._hero_ai_pause_snapshot = (
-                        current_options.Following,
-                        current_options.Targeting,
-                        current_options.Combat,
-                    )
-                    current_options.Following = False
-                    current_options.Targeting = False
-                    current_options.Combat = False
-                    GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, current_options)
-                    self._hero_ai_pause_applied = True
+                self.apply_hero_ai_pause()
 
                 # If an interaction started while moving, stop once and let it settle.
                 if Agent.IsMoving(Player.GetAgentID()) and not self.cancel_movement_triggered:
@@ -68,16 +106,7 @@ class _Upkeepers:
                 yield from Routines.Yield.wait(200)
                 continue
             elif self._hero_ai_pause_applied:
-                account_email = Player.GetAccountEmail()
-                current_options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(account_email) if account_email else None
-                if current_options and self._hero_ai_pause_snapshot is not None:
-                    current_options.Following = bool(self._hero_ai_pause_snapshot[0])
-                    current_options.Targeting = bool(self._hero_ai_pause_snapshot[1])
-                    current_options.Combat = bool(self._hero_ai_pause_snapshot[2])
-                    GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, current_options)
-                self._hero_ai_pause_applied = False
-                self._hero_ai_pause_snapshot = None
-                self.cancel_movement_triggered = False
+                self.release_hero_ai_pause()
 
             if not self._config.upkeep.hero_ai.is_active():
                 set_botting_range_mode(False)

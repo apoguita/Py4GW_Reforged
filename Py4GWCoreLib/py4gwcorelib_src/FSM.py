@@ -21,6 +21,7 @@ class FSM:
         self.log_actions = log_actions  # Whether to log state transitions and actions
         self.finished = False  # Track whether the FSM has completed all states
         self.paused = False
+        self.operator_paused = False
         self.on_transition = None
         self.on_complete = None
         self.managed_coroutines = []   # already added for self-managed coroutines
@@ -461,7 +462,16 @@ class FSM:
         self.paused = False
 
     def is_paused(self):
-        return self.paused
+        return self.paused or self.operator_paused
+
+    def pause_by_operator(self):
+        self.operator_paused = True
+
+    def resume_by_operator(self):
+        self.operator_paused = False
+
+    def is_operator_paused(self):
+        return self.operator_paused
 
     def set_transition_callback(self, callback_fn):
         self.on_transition = callback_fn
@@ -512,7 +522,7 @@ class FSM:
         :param event_name: The name of the event to trigger.
         :return: True if the event caused a transition, False otherwise.
         """
-        if self.paused or self.finished or not self.current_state:
+        if self.is_paused() or self.finished or not self.current_state:
             return False # Cannot transition if paused, finished, or not started
 
         target_state_name = self.current_state.event_transitions.get(event_name)
@@ -584,7 +594,7 @@ class FSM:
                 except ValueError:
                     pass
                 
-        if self.paused:
+        if self.is_paused():
             if self.log_actions:
                 ConsoleLog("FSM", f"{self.name}: FSM is paused.", PySystem.Console.MessageType.Warning)
             return
