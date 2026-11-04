@@ -169,18 +169,20 @@ class _TEMPLATES:
             fsm.AddManagedCoroutine("OnDeathBehind_OPD", lambda: self.parent.Events._on_party_member_death_behind())
                     
             
-        def PrepareForFarm(self, map_id_to_travel: int, party_reset_mode: str = "kick"):
+        def PrepareForFarm(self, map_id_to_travel: int, party_reset_mode: str = "kick", single_account: bool = False):
             bot = self.parent
             bot.States.AddHeader("Prepare For Farm")
             bot.Events.OnPartyMemberBehindCallback(lambda: self.OnPartyMemberBehind())
             bot.Events.OnPartyMemberInDangerCallback(lambda: self.OnPartyMemberInDanger())
             bot.Events.OnPartyMemberDeadBehindCallback(lambda: self.OnPartyMemberDeathBehind())
-            if str(party_reset_mode).lower() == "leave":
-                bot.Multibox.LeavePartyOnAllAccounts()
-            else:
-                bot.Multibox.KickAllAccounts()
+            if not single_account:
+                if str(party_reset_mode).lower() == "leave":
+                    bot.Multibox.LeavePartyOnAllAccounts()
+                else:
+                    bot.Multibox.KickAllAccounts()
             #bot.Map.Travel(target_map_id=map_id_to_travel)
             bot.Travel_To_Random_District(target_map_id=map_id_to_travel)
-            bot.Multibox.SummonAllAccounts()
-            bot.Wait.ForTime(4000)
-            bot.Multibox.InviteAllAccounts()
+            if not single_account:
+                bot.Multibox.SummonAllAccounts()
+                bot.Wait.ForTime(4000)
+                bot.Multibox.InviteAllAccounts()
