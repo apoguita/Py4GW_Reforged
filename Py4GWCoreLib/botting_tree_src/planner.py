@@ -357,6 +357,15 @@ class BottingTreePlannerMixin:
         if not self._planner_steps:
             return False
 
+        # A named retry is not a fresh run. Preserve only the route owner's
+        # progress records; MovePath validates map/uptime on reuse. Callers
+        # must clear/change keys when starting a fresh run or instance.
+        # Do not preserve transient movement, interaction or restart requests.
+        route_progress = {
+            key: dict(value) for key, value in self.tree.blackboard.items()
+            if key.startswith('bt_move_path_progress:') and isinstance(value, dict)
+        }
+        self.planner_tree.reset()
         sequence_name = name or self._planner_sequence_name
 
         self._set_planner_tree(
@@ -373,6 +382,7 @@ class BottingTreePlannerMixin:
         else:
             self.Reset()
 
+        self.tree.blackboard.update(route_progress)
         return True
 
     def BuildAllSequences(
