@@ -55,11 +55,29 @@ def fixture(filename, result=State.SUCCESS):
         elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.value is not None:
             try: ns[n.target.id] = ast.literal_eval(n.value)
             except (ValueError, TypeError): pass
-    functions: list[ast.stmt] = [n for n in module.body if isinstance(n, ast.FunctionDef) and n.name in {"_take_kurzick_blessing", "bot_routine"}]
+    functions: list[ast.stmt] = [n for n in module.body if isinstance(n, ast.FunctionDef) and n.name in {"_take_kurzick_blessing", "_prepare_for_farm", "bot_routine"}]
     exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), "exec"), ns)
     return ns, bot, tree, calls
 
 class RouteBlessingTests(unittest.TestCase):
+    def test_single_account_preparation_preserves_party_and_callbacks(self):
+        for filename in BOTS:
+            ns, _, _, _ = fixture(filename)
+            events = []
+            ns["_prepare_for_farm"](Recorder(events), 77)
+            self.assertEqual([e[0] for e in events], ["bot.States.AddHeader", "bot.Events.OnPartyMemberBehindCallback", "bot.Events.OnPartyMemberInDangerCallback", "bot.Events.OnPartyMemberDeadBehindCallback", "bot.Travel_To_Random_District"])
+            self.assertEqual(events[-1][2], {"target_map_id": 77})
+            for event in events[1:4]:
+                event[1][0]()
+            self.assertEqual([e[0] for e in events[-3:]], ["bot.Templates.Routines.OnPartyMemberBehind", "bot.Templates.Routines.OnPartyMemberInDanger", "bot.Templates.Routines.OnPartyMemberDeathBehind"])
+
+    def test_multibox_preparation_delegates_to_upstream(self):
+        for filename in BOTS:
+            ns, _, _, _ = fixture(filename)
+            events = []
+            ns["_prepare_for_farm"](Recorder(events), 77, single_account=False)
+            self.assertEqual(events, [("bot.Templates.Routines.PrepareForFarm", (), {"map_id_to_travel": 77})])
+
     def test_route_registers_blessing_before_existing_path_owner(self):
         for filename in BOTS:
             with self.subTest(bot=filename):
