@@ -82,9 +82,6 @@ class HeroAIHeadlessTree:
         if not self._has_active_pick_up_loot_message():
             return False
 
-        if self._loot_throttle_check.IsExpired():
-            return False
-
         return True
 
     def _handle_looting(self) -> BehaviorTree.NodeState:
@@ -106,9 +103,6 @@ class HeroAIHeadlessTree:
                 self.cached_data.in_looting_routine = False
                 return BehaviorTree.NodeState.FAILURE
             if GLOBAL_CACHE.Inventory.GetFreeSlotCount() <= 1:
-                self.cached_data.in_looting_routine = False
-                return BehaviorTree.NodeState.FAILURE
-            if self._loot_throttle_check.IsExpired():
                 self.cached_data.in_looting_routine = False
                 return BehaviorTree.NodeState.FAILURE
             return BehaviorTree.NodeState.RUNNING
