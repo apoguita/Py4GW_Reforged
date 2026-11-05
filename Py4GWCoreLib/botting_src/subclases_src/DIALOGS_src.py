@@ -13,6 +13,7 @@ class _DIALOGS:
         self.parent = parent
         self._config = parent.config
         self._helpers = parent.helpers
+        self._Events = parent.helpers.Events
         self.hero_ai_status = False
         self.hero_ai_pause_status = False
 
@@ -47,6 +48,35 @@ class _DIALOGS:
         yield from self._coro_pause_hero_ai()
         yield from self.parent.Interact._coro_with_model(model_id=model_id, dialog_id=dialog)
         yield from self._coro_restore_hero_ai()
+
+    def _coro_move_and_auto_dialog_by_model_id(
+        self,
+        model_id_or_encoded_name: int | str,
+        button_numbers: list[int],
+        target_map_id: int,
+        timeout_ms: int = 90000,
+    ):
+        from Sources.ApoSource.ApoBottingLib import wrappers as BT
+        from ...routines_src.yield_src.helpers import _run_bt_tree
+
+        tree = BT.Sequence(
+            name="Move through fixed multi-page dialogue",
+            children=[
+                BT.MoveAndAutoDialogByModelID(
+                    modelID_or_encStr=model_id_or_encoded_name,
+                    button_number=list(button_numbers),  # pyright: ignore[reportArgumentType]
+                ),
+                BT.WaitForMapLoad(
+                    map_id=target_map_id,
+                    timeout_ms=timeout_ms,
+                ),
+            ],
+        )
+        succeeded = yield from _run_bt_tree(tree, return_bool=True)
+        if not succeeded:
+            self._Events.on_unmanaged_fail()
+            return False
+        return True
     
     #region Yield Steps (ys_)
     @_yield_step("PauseHeroAI","PAUSE_HERO_AI")
@@ -65,6 +95,22 @@ class _DIALOGS:
     def ys_with_model(self, model_id: int, dialog:int, step_name: str=""):
         yield from self._coro_with_model(model_id, dialog)
 
+    @_yield_step("MoveAndAutoDialogByModelID", "MOVE_AND_AUTO_DIALOG_BY_MODEL_ID")
+    def ys_move_and_auto_dialog_by_model_id(
+        self,
+        model_id_or_encoded_name: int | str,
+        button_numbers: list[int],
+        target_map_id: int,
+        timeout_ms: int = 90000,
+        step_name: str = "",
+    ):
+        yield from self._coro_move_and_auto_dialog_by_model_id(
+            model_id_or_encoded_name=model_id_or_encoded_name,
+            button_numbers=button_numbers,
+            target_map_id=target_map_id,
+            timeout_ms=timeout_ms,
+        )
+
     #region Helpers
     def AtXY(self, x: float, y: float, dialog:int, step_name: str="") -> None:
         if step_name == "":
@@ -76,3 +122,19 @@ class _DIALOGS:
         if step_name == "":
             step_name = f"DialogWithModel_{self._config.get_counter('DIALOG_AT')}"
         self.ys_with_model(model_id, dialog)
+
+    def MoveAndAutoDialogByModelID(
+        self,
+        model_id_or_encoded_name: int | str,
+        button_numbers: list[int],
+        target_map_id: int,
+        timeout_ms: int = 90000,
+        step_name: str = "",
+    ) -> None:
+        self.ys_move_and_auto_dialog_by_model_id(
+            model_id_or_encoded_name=model_id_or_encoded_name,
+            button_numbers=button_numbers,
+            target_map_id=target_map_id,
+            timeout_ms=timeout_ms,
+            step_name=step_name,
+        )

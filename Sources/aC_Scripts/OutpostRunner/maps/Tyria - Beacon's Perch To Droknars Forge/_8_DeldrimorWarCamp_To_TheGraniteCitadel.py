@@ -17,7 +17,6 @@ _8_deldrimorwarcamp_to_thegranitecitadel_segments = [
     {
         "map_id": explorable_name_to_id["Grenth's Footprint"],
         "path": [
-            (-2908.64, -4574.38),
             (-2800, -4077),
             (-2406.15, -3767.3),
             (-2045.27, -3414.51),
