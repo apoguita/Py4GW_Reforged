@@ -62,6 +62,11 @@ import time
 from ...native_src.internals.types import PointOrPath, PointPath, Vec2f
 
 
+# Remote interaction commands cannot be cancelled. Retain active detached
+# commands so later transactions cannot duplicate them.
+_DETACHED_GADGET_COMMANDS: dict[tuple[str, str, int], float] = {}
+
+
 def _log(source: str, message: str, *, log: bool = False, message_type=Console.MessageType.Info) -> None:
     ConsoleLog(source, message, message_type, log=log)
 
@@ -647,6 +652,8 @@ class BTAgents:
         include_self: bool = True,
         log: bool = False,
         suspend_hero_ai: bool = True,
+        pause_on_combat: bool = False,
+        detached_command_unknown_timeout_ms: int = 5_000,
     ) -> BehaviorTree:
         """
         Build a tree that finds a gadget by its internal gadget id, moves to it,
@@ -691,6 +698,7 @@ class BTAgents:
             account_interaction_count: int
 
             current_account_email: str
+            current_sender_email: str
             current_message_index: int
             remote_command_deadline: float
 
@@ -698,6 +706,9 @@ class BTAgents:
 
             hero_ai_snapshot: dict[str, Any] | None
             hero_ai_suspended: bool
+            owner_blackboard: dict[str, Any] | None
+            combat_paused: bool
+            combat_pause_started: float
 
         resolved_search_point: Vec2f | None = None
 
@@ -724,6 +735,7 @@ class BTAgents:
             "account_interaction_count": 0,
 
             "current_account_email": "",
+            "current_sender_email": "",
             "current_message_index": -1,
             "remote_command_deadline": 0.0,
 
@@ -731,15 +743,18 @@ class BTAgents:
 
             "hero_ai_snapshot": None,
             "hero_ai_suspended": False,
+            "owner_blackboard": None,
+            "combat_paused": False,
+            "combat_pause_started": 0.0,
         }
 
-        def _snapshot_and_suspend_local_hero_ai() -> None:
+        def _snapshot_and_suspend_local_hero_ai() -> bool:
             if not suspend_hero_ai or state["hero_ai_suspended"]:
-                return
+                return True
 
             account_email = str(Player.GetAccountEmail() or "").strip()
             if not account_email:
-                return
+                return False
 
             try:
                 options = GLOBAL_CACHE.ShMem.GetHeroAIOptionsFromEmail(
@@ -749,8 +764,9 @@ class BTAgents:
                 options = None
 
             if options is None:
-                return
+                return False
 
+            snapshot: dict[str, Any] | None = None
             try:
                 skills = getattr(options, "Skills", None)
                 skill_snapshot = (
@@ -759,7 +775,7 @@ class BTAgents:
                     else []
                 )
 
-                state["hero_ai_snapshot"] = {
+                snapshot = {
                     "account_email": account_email,
                     "Following": bool(getattr(options, "Following", False)),
                     "Avoidance": bool(getattr(options, "Avoidance", False)),
@@ -791,6 +807,7 @@ class BTAgents:
                     account_email,
                     options,
                 )
+                state["hero_ai_snapshot"] = snapshot
                 state["hero_ai_suspended"] = True
 
                 _log(
@@ -798,9 +815,34 @@ class BTAgents:
                     "Temporarily suspended local HeroAI for gadget interaction.",
                     log=log,
                 )
+                return True
             except Exception:
+                if snapshot is not None:
+                    try:
+                        for option_name in (
+                            "Following",
+                            "Avoidance",
+                            "Looting",
+                            "Targeting",
+                            "Combat",
+                        ):
+                            if hasattr(options, option_name):
+                                setattr(
+                                    options,
+                                    option_name,
+                                    bool(snapshot.get(option_name, False)),
+                                )
+                        skills = getattr(options, "Skills", None)
+                        saved_skills = list(snapshot.get("Skills", []) or [])
+                        if skills is not None:
+                            for index in range(min(len(skills), len(saved_skills))):
+                                skills[index] = bool(saved_skills[index])
+                        GLOBAL_CACHE.ShMem.SetHeroAIOptionsByEmail(account_email, options)
+                    except Exception:
+                        pass
                 state["hero_ai_snapshot"] = None
                 state["hero_ai_suspended"] = False
+                return False
 
         def _restore_local_hero_ai() -> None:
             if not state["hero_ai_suspended"]:
@@ -861,7 +903,21 @@ class BTAgents:
                 pass
 
         def _reset() -> None:
+            # This function is the single exit cleanup for normal completion,
+            # failure, timeout, interrupt, exception, and external reset.
+            # The late-bound helper conservatively retains remote_wait command
+            # ownership before any transient fields are cleared.
+            _capture_active_remote_command()
             _restore_local_hero_ai()
+            owner_blackboard = state.get("owner_blackboard")
+            if isinstance(owner_blackboard, dict):
+                try:
+                    if not bool(owner_blackboard.get("INTERACTION_SCOPE_ACTIVE", False)):
+                        owner_blackboard["INTERACTION_ACTIVE"] = False
+                except Exception:
+                    # Blackboard bookkeeping must not interrupt the owner's
+                    # mandatory movement/HeroAI/state cleanup.
+                    pass
             state["phase"] = "find"
             state["started_at"] = 0.0
 
@@ -876,6 +932,7 @@ class BTAgents:
             state["account_interaction_count"] = 0
 
             state["current_account_email"] = ""
+            state["current_sender_email"] = ""
             state["current_message_index"] = -1
             state["remote_command_deadline"] = 0.0
 
@@ -883,6 +940,9 @@ class BTAgents:
 
             state["hero_ai_snapshot"] = None
             state["hero_ai_suspended"] = False
+            state["owner_blackboard"] = None
+            state["combat_paused"] = False
+            state["combat_pause_started"] = 0.0
 
         def _stop_local_player() -> None:
             try:
@@ -1163,64 +1223,81 @@ class BTAgents:
 
             return account_emails
 
-        def _message_is_active(
+        def _message_activity(
             message_index: int,
             sender_email: str,
             receiver_email: str,
-        ) -> bool:
+        ) -> str:
             if message_index < 0:
-                return False
+                return "inactive"
 
             try:
                 message = GLOBAL_CACHE.ShMem.GetInbox(
                     message_index
                 )
             except Exception:
-                return False
+                return "unknown"
 
             if message is None:
-                return False
+                return "unknown"
 
             try:
-                return bool(
-                    getattr(message, "Active", False)
-                    and str(
-                        getattr(
-                            message,
-                            "SenderEmail",
-                            "",
-                        )
-                        or ""
-                    )
-                    == sender_email
-                    and str(
-                        getattr(
-                            message,
-                            "ReceiverEmail",
-                            "",
-                        )
-                        or ""
-                    )
-                    == receiver_email
-                    and int(
-                        getattr(
-                            message,
-                            "Command",
-                            -1,
-                        )
-                    )
-                    == int(
-                        SharedCommandType
-                        .InteractWithTarget
-                    )
+                if not bool(getattr(message, "Active", False)):
+                    return "inactive"
+                matches = bool(
+                    str(getattr(message, "SenderEmail", "") or "") == sender_email
+                    and str(getattr(message, "ReceiverEmail", "") or "") == receiver_email
+                    and int(getattr(message, "Command", -1)) == int(SharedCommandType.InteractWithTarget)
                 )
+                return "active" if matches else "unknown"
             except Exception:
-                return False
+                return "unknown"
+
+        def _capture_active_remote_command() -> None:
+            if state["phase"] != "remote_wait":
+                return
+            message_index = int(state["current_message_index"])
+            receiver_email = str(state["current_account_email"] or "")
+            sender_email = str(state["current_sender_email"] or "")
+            if (
+                message_index >= 0
+                and sender_email
+                and receiver_email
+            ):
+                activity = _message_activity(message_index, sender_email, receiver_email)
+                if activity != "inactive":
+                    key = (sender_email, receiver_email, message_index)
+                    _DETACHED_GADGET_COMMANDS.setdefault(key, time.monotonic())
+
+        def _detached_remote_command_state(node: BehaviorTree.Node) -> str:
+            now = time.monotonic()
+            pending = 0
+            unknown_expired = 0
+            for key, first_seen in tuple(_DETACHED_GADGET_COMMANDS.items()):
+                sender_email, receiver_email, message_index = key
+                activity = _message_activity(message_index, sender_email, receiver_email)
+                if activity == "inactive":
+                    _DETACHED_GADGET_COMMANDS.pop(key, None)
+                    continue
+                pending += 1
+                if (
+                    activity == "unknown"
+                    and (now - first_seen) * 1000.0
+                    >= max(1, int(detached_command_unknown_timeout_ms))
+                ):
+                    unknown_expired += 1
+            node.blackboard["gadget_detached_remote_commands"] = pending
+            node.blackboard["gadget_detached_remote_unknown_expired"] = unknown_expired
+            if unknown_expired:
+                return "failed"
+            return "pending" if pending else "clear"
 
         def _move_and_interact(
             node: BehaviorTree.Node,
         ) -> BehaviorTree.NodeState:
             now = time.monotonic()
+            state["owner_blackboard"] = node.blackboard
+            node.blackboard["INTERACTION_ACTIVE"] = True
 
             if bool(
                 node.blackboard.get(
@@ -1232,8 +1309,47 @@ class BTAgents:
                 _reset()
                 return BehaviorTree.NodeState.FAILURE
 
+            detached_state = _detached_remote_command_state(node)
+            if detached_state == "pending":
+                return BehaviorTree.NodeState.RUNNING
+            if detached_state == "failed":
+                _fail_log(
+                    "MoveAndInteractWithGadgetByID",
+                    "A detached remote gadget command remained unreadable past the bounded timeout; duplicate dispatch is blocked.",
+                )
+                _stop_local_player()
+                _reset()
+                return BehaviorTree.NodeState.FAILURE
+
             if state["started_at"] <= 0.0:
                 state["started_at"] = now
+
+            phase = state["phase"]
+            if pause_on_combat and phase in {
+                "local_move",
+                "local_suspend",
+                "local_interact",
+            }:
+                combat_active = bool(
+                    node.blackboard.get("COMBAT_ACTIVE", False)
+                )
+                if combat_active:
+                    if not state["combat_paused"]:
+                        state["combat_paused"] = True
+                        state["combat_pause_started"] = now
+                    if state["hero_ai_suspended"] or not suspend_hero_ai:
+                        _stop_local_player()
+                    _restore_local_hero_ai()
+                    node.blackboard["gadget_combat_paused"] = True
+                    return BehaviorTree.NodeState.RUNNING
+                if state["combat_paused"]:
+                    paused_for = max(0.0, now - state["combat_pause_started"])
+                    state["started_at"] += paused_for
+                    if state["next_action_at"] > 0.0:
+                        state["next_action_at"] += paused_for
+                    state["combat_paused"] = False
+                    state["combat_pause_started"] = 0.0
+                    node.blackboard["gadget_combat_paused"] = False
 
             elapsed_ms = (
                 now - state["started_at"]
@@ -1253,8 +1369,6 @@ class BTAgents:
                 _stop_local_player()
                 _reset()
                 return BehaviorTree.NodeState.FAILURE
-
-            phase = state["phase"]
 
             # -------------------------------------------------
             # Resolve the gadget
@@ -1382,6 +1496,16 @@ class BTAgents:
             # -------------------------------------------------
 
             if phase == "local_move":
+                if not _snapshot_and_suspend_local_hero_ai():
+                    node.blackboard["gadget_ownership_acquired"] = False
+                    _fail_log(
+                        "MoveAndInteractWithGadgetByID",
+                        "Could not acquire exclusive local HeroAI ownership before gadget approach.",
+                    )
+                    _reset()
+                    return BehaviorTree.NodeState.FAILURE
+
+                node.blackboard["gadget_ownership_acquired"] = True
                 distance_to_gadget = float(
                     Utils.Distance(
                         Player.GetXY(),
@@ -1404,7 +1528,6 @@ class BTAgents:
                     return BehaviorTree.NodeState.RUNNING
 
                 _stop_local_player()
-                _snapshot_and_suspend_local_hero_ai()
 
                 state["phase"] = (
                     "local_suspend"
@@ -1491,6 +1614,9 @@ class BTAgents:
 
                 state[
                     "current_account_email"
+                ] = ""
+                state[
+                    "current_sender_email"
                 ] = ""
                 state[
                     "current_message_index"
@@ -1619,6 +1745,9 @@ class BTAgents:
                     "current_account_email"
                 ] = receiver_email
                 state[
+                    "current_sender_email"
+                ] = sender_email
+                state[
                     "current_message_index"
                 ] = message_index
 
@@ -1654,9 +1783,7 @@ class BTAgents:
                 return BehaviorTree.NodeState.RUNNING
 
             if phase == "remote_wait":
-                sender_email = str(
-                    Player.GetAccountEmail() or ""
-                )
+                sender_email = str(state["current_sender_email"] or "")
                 receiver_email = state[
                     "current_account_email"
                 ]
@@ -1664,11 +1791,12 @@ class BTAgents:
                     "current_message_index"
                 ]
 
-                if _message_is_active(
+                activity = _message_activity(
                     message_index,
                     sender_email,
                     receiver_email,
-                ):
+                )
+                if activity != "inactive":
                     if (
                         now
                         < state[
@@ -1680,17 +1808,23 @@ class BTAgents:
                     _fail_log(
                         "MoveAndInteractWithGadgetByID",
                         (
-                            "Remote interaction timed out "
+                            "Remote interaction remained active or unreadable past its deadline "
                             f"for {receiver_email}; "
-                            "continuing with the next step."
+                            "duplicate dispatch is blocked."
                         ),
                     )
+                    _stop_local_player()
+                    _reset()
+                    return BehaviorTree.NodeState.FAILURE
 
                 state[
                     "account_interaction_count"
                 ] += 1
                 state[
                     "current_account_email"
+                ] = ""
+                state[
+                    "current_sender_email"
                 ] = ""
                 state[
                     "current_message_index"
@@ -1733,6 +1867,9 @@ class BTAgents:
                     "current_account_email"
                 ] = ""
                 state[
+                    "current_sender_email"
+                ] = ""
+                state[
                     "current_message_index"
                 ] = -1
 
@@ -1745,8 +1882,26 @@ class BTAgents:
             _reset()
             return BehaviorTree.NodeState.FAILURE
 
+        class _GadgetInteractionNode(BehaviorTree.ActionNode):
+            def _tick_impl(self) -> BehaviorTree.NodeState:
+                try:
+                    return super()._tick_impl()
+                except Exception as error:
+                    _fail_log(
+                        "MoveAndInteractWithGadgetByID",
+                        f"Exception during gadget transaction: {type(error).__name__}: {error}",
+                    )
+                    _stop_local_player()
+                    _reset()
+                    return BehaviorTree.NodeState.FAILURE
+
+            def reset(self) -> None:
+                _stop_local_player()
+                _reset()
+                super().reset()
+
         return BehaviorTree(
-            BehaviorTree.ActionNode(
+            _GadgetInteractionNode(
                 name=(
                     "MoveAndInteractWithGadgetByID"
                     f"({gadget_id})"
