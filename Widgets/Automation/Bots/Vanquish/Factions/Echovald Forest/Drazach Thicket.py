@@ -284,7 +284,7 @@ def _draw_help():
         PyImGui.text("Vanquish progress is available once the run is inside the explorable area.")
 
     PyImGui.separator()
-    PyImGui.bullet_text("PrepareForFarm already wires regroup and party-danger callbacks.")
+    PyImGui.bullet_text("Farm preparation wires regroup and party-danger callbacks.")
     PyImGui.bullet_text("Party wipe recovery now jumps to a stable return-to-outpost header.")
     PyImGui.bullet_text("The indoor path has several ambush rooms and pop-up groups.")
 
@@ -412,12 +412,25 @@ def _take_kurzick_blessing(bot: Botting):
                 bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
 
 
+def _prepare_for_farm(bot: Botting, map_id_to_travel: int, single_account: bool = True) -> None:
+    """Keep this widget's single-account party preparation out of shared templates."""
+    routines = bot.Templates.Routines
+    if not single_account:
+        routines.PrepareForFarm(map_id_to_travel=map_id_to_travel)
+        return
+    bot.States.AddHeader("Prepare For Farm")
+    bot.Events.OnPartyMemberBehindCallback(lambda: routines.OnPartyMemberBehind())
+    bot.Events.OnPartyMemberInDangerCallback(lambda: routines.OnPartyMemberInDanger())
+    bot.Events.OnPartyMemberDeadBehindCallback(lambda: routines.OnPartyMemberDeathBehind())
+    bot.Travel_To_Random_District(target_map_id=map_id_to_travel)
+
+
 def bot_routine(bot: Botting) -> None:
     bot.Events.OnPartyWipeCallback(lambda: OnPartyWipe(bot))
 
     bot.States.AddHeader(BOT_NAME)
     bot.Templates.Multibox_Aggressive()
-    bot.Templates.Routines.PrepareForFarm(map_id_to_travel=OUTPOST_TO_START)
+    _prepare_for_farm(bot, map_id_to_travel=OUTPOST_TO_START)
 
     bot.Party.SetHardMode(True)
     bot.Move.XYAndExitMap(*COORDS_TO_EXIT_OUTPOST, EXPLORABLE_TO_VANQUISH)
