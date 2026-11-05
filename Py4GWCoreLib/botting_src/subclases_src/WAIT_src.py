@@ -20,7 +20,7 @@ class _WAIT:
         from ...Routines import Routines
         yield from Routines.Yield.wait(duration, break_on_map_transition=True)
         
-    def _coro_for_map_load(self, target_map_id, target_map_name="", timeout_ms: int = 10000):
+    def _coro_for_map_load(self, target_map_id, target_map_name="", timeout_ms: int = 15000):
         from ...Routines import Routines
         import Py4GW
         wait_of_map_load = yield from Routines.Yield.Map.WaitforMapLoad(
