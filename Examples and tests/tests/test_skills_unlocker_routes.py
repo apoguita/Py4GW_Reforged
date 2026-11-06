@@ -1,8 +1,5 @@
 from pathlib import Path
-from enum import Enum, auto
 import re
-from types import SimpleNamespace
-from typing import Any, Generator
 import unittest
 
 
@@ -41,12 +38,12 @@ class SkillsUnlockerRouteTests(unittest.TestCase):
         self.assertLess(wait, pickup)
         self.assertLess(pickup, reward)
 
-    def test_sneak_attack_reuses_existing_bundle_and_blessing_owners(self):
+    def test_sneak_attack_reuses_existing_fsm_interaction_owners(self):
         route = function_source("Unlock_sneak_attack")
-        self.assertIn("BT.TakeBlessing", route)
-        self.assertIn("buttons=0", route)
-        self.assertIn("buttons=[]", route)
+        self.assertIn("bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)", route)
+        self.assertIn("bot.Move.XYAndInteractNPC(*PLAN_A_RETURN_BLESSING_XY)", route)
         self.assertIn("bot.Interact.WithItemAtXY", route)
+        self.assertNotIn("BT.TakeBlessing", route)
         self.assertNotIn("ReliableInteractionController", route)
         self.assertNotIn("Player.Interact", route)
 
@@ -56,57 +53,6 @@ class SkillsUnlockerRouteTests(unittest.TestCase):
         self.assertIn("PLAN_A_CARRY_FROM_RETURN_BLESSING_ROUTE_XY", route)
         self.assertIn("(-3235.89, -1021.53)", SOURCE)
         self.assertIn("(-20912.11, 12164.77)", SOURCE)
-
-    def test_behavior_tree_adapter_advances_only_on_success(self):
-        class FakeNodeState(Enum):
-            RUNNING = auto()
-            SUCCESS = auto()
-            FAILURE = auto()
-
-        class FakeBehaviorTree:
-            NodeState = FakeNodeState
-
-        class FakeTree:
-            def __init__(self, result):
-                self.result = result
-                self.reset_count = 0
-
-            def tick(self):
-                return self.result
-
-            def reset(self):
-                self.reset_count += 1
-
-        class FakeYield:
-            @staticmethod
-            def wait(milliseconds):
-                yield ("wait", milliseconds)
-
-        config = SimpleNamespace(fsm_running=True, state_description="")
-        namespace = {
-            "Any": Any,
-            "BehaviorTree": FakeBehaviorTree,
-            "Generator": Generator,
-            "Routines": SimpleNamespace(Yield=FakeYield),
-            "bot": SimpleNamespace(config=config),
-        }
-        exec(function_source("_run_behavior_tree"), namespace)
-        run_tree = namespace["_run_behavior_tree"]
-
-        success_tree = FakeTree(FakeNodeState.SUCCESS)
-        with self.assertRaises(StopIteration) as success:
-            next(run_tree(success_tree))
-        self.assertIs(success.exception.value, True)
-        self.assertEqual(success_tree.reset_count, 1)
-
-        failure_tree = FakeTree(FakeNodeState.FAILURE)
-        failure_state = run_tree(failure_tree)
-        self.assertEqual(next(failure_state), ("wait", 250))
-        self.assertIn("Blocked", config.state_description)
-        config.fsm_running = False
-        with self.assertRaises(StopIteration):
-            next(failure_state)
-        self.assertEqual(failure_tree.reset_count, 1)
 
     def test_courage_rezones_before_accepting_quest_and_uses_explicit_dialogs(self):
         route = function_source("Unlock_ebon_battle_standard_of_courage")
@@ -130,10 +76,11 @@ class SkillsUnlockerRouteTests(unittest.TestCase):
         self.assertIn("(-21275.70, 12287.56)", SOURCE)
         self.assertIn("(-21326.57, 12232.69)", SOURCE)
 
-    def test_courage_delegates_blessing_to_upstream_owner(self):
+    def test_courage_uses_existing_fsm_blessing_interaction(self):
         route = function_source("Unlock_ebon_battle_standard_of_courage")
-        self.assertIn("BT.TakeBlessing", route)
-        self.assertIn("buttons=0", route)
+        self.assertIn("bot.Move.XYAndDialog(*EBOSC_ENTRY_BLESSING_XY, 0x84)", route)
+        self.assertNotIn("BT.TakeBlessing", route)
+        self.assertNotIn("_run_behavior_tree", SOURCE)
         self.assertNotIn("click_dialog_button", SOURCE)
         self.assertNotIn("Player.Interact", route)
 
