@@ -8,7 +8,7 @@ UI:
 - Main window (Start/Stop, Settings, Consumables)
   - Compact width forced
   - Enabled consumables list is a dropdown (collapsible)
-- Settings window (Debug Logging, HeroAI)
+- Settings window (Debug Logging)
 - Consumables window:
   - Search/filter box
   - Select All Visible / Clear All Visible
@@ -16,7 +16,7 @@ UI:
   - Restock disabled (consume only)
 
 Notes:
-- HeroAI applied live.
+- HeroAI is managed automatically by the bot framework.
 - Consumables upkeep applied live (no restart), using Multibox._use_consumable_message when possible.
 """
 
@@ -78,7 +78,7 @@ def _set_next_window_fixed_width(width):
         pass
 
 
-def _draw_badge(text, enabled=True):
+def _draw_badge(text, badge_id, enabled=True):
     """
     Green ON / Grey OFF pill.
     """
@@ -95,10 +95,13 @@ def _draw_badge(text, enabled=True):
         PyImGui.push_style_color(PyImGui.ImGuiCol.Button, bg)
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonHovered, bg_h)
         PyImGui.push_style_color(PyImGui.ImGuiCol.ButtonActive, bg_a)
-        PyImGui.small_button(f" {text} ")
-        PyImGui.pop_style_color(3)
+        try:
+            return PyImGui.small_button(f" {text} ###{badge_id}")
+        finally:
+            PyImGui.pop_style_color(3)
     except Exception:
         PyImGui.text(f"[{text}]")
+        return False
 
 
 def _model_id_value(name: str, default: int = 0) -> int:
@@ -135,9 +138,9 @@ sync_timer.Start()
 class Config:
     def __init__(self):
         self.debug_logging = ini_handler.get_bool(BOT_NAME, "debug_logging", False)
-        self.hero_ai_enabled = ini_handler.get_bool(BOT_NAME, "hero_ai_enabled", False)
         self.show_consumables_list = ini_handler.get_bool(BOT_NAME, "show_consumables_list", False)
         self.consumables_enabled = {}
+        self.consumables_active = ini_handler.get_bool(BOT_NAME, "consumables_active", True)
 
     def save_throttled(self):
         if not sync_timer.HasElapsed(SYNC_INTERVAL_MS):
@@ -145,7 +148,7 @@ class Config:
         sync_timer.Start()
 
         ini_handler.set(BOT_NAME, "debug_logging", str(bool(self.debug_logging)))
-        ini_handler.set(BOT_NAME, "hero_ai_enabled", str(bool(self.hero_ai_enabled)))
+        ini_handler.set(BOT_NAME, "consumables_active", str(bool(self.consumables_active)))
         ini_handler.set(BOT_NAME, "show_consumables_list", str(bool(self.show_consumables_list)))
 
         for k, v in self.consumables_enabled.items():
@@ -249,32 +252,6 @@ properties.Disable("halt_on_death")
 properties.Set("movement_timeout", value=-1)
 
 
-def _apply_hero_ai_live():
-    enabled = bool(bot_config.hero_ai_enabled)
-
-    try:
-        if hasattr(properties, "ApplyNow"):
-            try:
-                properties.ApplyNow("hero_ai", "active", enabled)
-            except Exception:
-                try:
-                    properties.ApplyNow("hero_ai", enabled)
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    try:
-        if enabled:
-            properties.Enable("hero_ai")
-        else:
-            properties.Disable("hero_ai")
-    except Exception:
-        pass
-
-
-_apply_hero_ai_live()
-
 bot.Events.OnPartyMemberBehindCallback(lambda: bot.Templates.Routines.OnPartyMemberBehind())
 bot.Events.OnPartyMemberDeadBehindCallback(lambda: bot.Templates.Routines.OnPartyMemberDeathBehind())
 
@@ -302,7 +279,7 @@ def _coro_upkeep_consumables():
         yield from bot.Wait._coro_for_time(1500)
 
         keys = _enabled_keys()
-        if not keys:
+        if not keys or not bot_config.consumables_active:
             continue
 
         try:
@@ -314,6 +291,8 @@ def _coro_upkeep_consumables():
             pass
 
         for key in keys:
+            if not bot_config.consumables_active:
+                break
             spec = ALL_BY_KEY.get(key)
             if not spec:
                 continue
@@ -349,9 +328,13 @@ def _coro_upkeep_consumables():
                 continue
 
             # Fallback: Inventory.UseItem
+            if not bot_config.consumables_active:
+                break
             try:
                 if key == "honeycomb":
                     for _ in range(4):
+                        if not bot_config.consumables_active:
+                            break
                         GLOBAL_CACHE.Inventory.UseItem(model_id)
                         yield from bot.Wait._coro_for_time(250)
                 else:
@@ -629,14 +612,21 @@ def _draw_main_window():
 
     PyImGui.separator()
 
-    PyImGui.text("HeroAI:")
-    _same_line(10)
-    _draw_badge("ON" if bot_config.hero_ai_enabled else "OFF", enabled=bot_config.hero_ai_enabled)
-
     enabled = _enabled_keys()
     PyImGui.text("Consumables:")
     _same_line(10)
-    _draw_badge("ON" if enabled else "OFF", enabled=bool(enabled))
+    consumables_on = bot_config.consumables_active and bool(enabled)
+    if _draw_badge("ON" if consumables_on else "OFF", "consumables_badge", enabled=consumables_on):
+        if enabled:
+            bot_config.consumables_active = not bot_config.consumables_active
+        else:
+            bot_config.consumables_active = True
+            show_consumables[0] = True
+
+    if show_consumables[0]:
+        _same_line(10)
+        if PyImGui.small_button("Close##close_consumables"):
+            show_consumables[0] = False
 
     opened = False
     try:
@@ -659,7 +649,7 @@ def _draw_main_window():
                 _same_line(6)
                 PyImGui.text_wrapped(label)
                 _same_line(10)
-                _draw_badge("ON", True)
+                _draw_badge("ON", f"enabled_consumable_{k}", True)
 
         try:
             if not hasattr(PyImGui, "collapsing_header"):
@@ -677,11 +667,6 @@ def _draw_settings_window():
         bot_config.debug_logging = PyImGui.checkbox("##debug_logging", bool(bot_config.debug_logging))
 
         PyImGui.separator()
-
-        before = bool(bot_config.hero_ai_enabled)
-        bot_config.hero_ai_enabled = PyImGui.checkbox("Enable HeroAI##hero_ai", before)
-        if bool(bot_config.hero_ai_enabled) != before:
-            _apply_hero_ai_live()
 
         bot_config.save_throttled()
     PyImGui.end()
