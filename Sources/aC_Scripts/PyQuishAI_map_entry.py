@@ -74,50 +74,58 @@ def _load_runtime_dependencies():
 
 def run_fixed_map_entry(bot, entry_data: Mapping[str, Any]):
     """Run one fixed-dialog entry and restore the host bot's prior HeroAI pause."""
-    entry = _normalize_map_entry(entry_data)
-    BottingTree, Map, Routines, wrappers = _load_runtime_dependencies()
-    current_map_id = int(Map.GetMapID() or 0)
-
-    if current_map_id == entry["expected_map_id"]:
-        return True
-    if current_map_id != entry["source_map_id"]:
-        bot.Stop()
-        raise RuntimeError(
-            f"{entry['name']}: expected source map {entry['source_map_id']}, "
-            f"found {current_map_id}"
-        )
-
-    planner = BottingTree.Create(
-        bot_name=f"Simple Vanquish map entry: {entry['name']}",
-        pause_on_combat=False,
-        multi_account=False,
-        auto_loot=False,
-        isolation_enabled=False,
-    )
-    saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
+    planner = None
+    saved_pause = False
+    pause_restore_required = False
     try:
-        bot.Properties.ApplyNow("hero_ai_paused", "active", True)
-        getattr(planner, "SetHeadlessHeroAIEnabled")(False)
-        planner.SetPlannerTree(build_fixed_map_entry_tree(entry, wrappers=wrappers))
-        planner.Start()
-
-        deadline = time.monotonic() + (entry["timeout_ms"] / 1_000.0) + 15.0
-        while planner.IsStarted():
-            if time.monotonic() >= deadline:
-                bot.Stop()
-                raise RuntimeError(f"{entry['name']}: canonical map-entry owner timed out")
-            planner.tick()
-            yield from Routines.Yield.wait(50)
-
-        status = str(planner.GetBlackboardValue("PLANNER_STATUS", ""))
-        if status != "PLANNER: Completed":
-            bot.Stop()
-            raise RuntimeError(
-                f"{entry['name']}: canonical map-entry owner failed ({status or 'no status'})"
-            )
-        return True
-    finally:
         try:
-            planner.Stop()
+            entry = _normalize_map_entry(entry_data)
+            BottingTree, Map, Routines, wrappers = _load_runtime_dependencies()
+            current_map_id = int(Map.GetMapID() or 0)
+
+            if current_map_id == entry["expected_map_id"]:
+                return True
+            if current_map_id != entry["source_map_id"]:
+                raise RuntimeError(
+                    f"{entry['name']}: expected source map {entry['source_map_id']}, "
+                    f"found {current_map_id}"
+                )
+
+            planner = BottingTree.Create(
+                bot_name=f"Simple Vanquish map entry: {entry['name']}",
+                pause_on_combat=False,
+                multi_account=False,
+                auto_loot=False,
+                isolation_enabled=False,
+            )
+            saved_pause = bool(bot.Properties.Get("hero_ai_paused", "active"))
+            pause_restore_required = True
+            bot.Properties.ApplyNow("hero_ai_paused", "active", True)
+            getattr(planner, "SetHeadlessHeroAIEnabled")(False)
+            planner.SetPlannerTree(build_fixed_map_entry_tree(entry, wrappers=wrappers))
+            planner.Start()
+
+            deadline = time.monotonic() + (entry["timeout_ms"] / 1_000.0) + 15.0
+            while planner.IsStarted():
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(f"{entry['name']}: canonical map-entry owner timed out")
+                planner.tick()
+                yield from Routines.Yield.wait(50)
+
+            status = str(planner.GetBlackboardValue("PLANNER_STATUS", ""))
+            if status != "PLANNER: Completed":
+                raise RuntimeError(
+                    f"{entry['name']}: canonical map-entry owner failed "
+                    f"({status or 'no status'})"
+                )
+            return True
         finally:
-            bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+            try:
+                if planner is not None:
+                    planner.Stop()
+            finally:
+                if pause_restore_required:
+                    bot.Properties.ApplyNow("hero_ai_paused", "active", saved_pause)
+    except Exception:
+        bot.Stop()
+        raise

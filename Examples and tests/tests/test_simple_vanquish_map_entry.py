@@ -70,8 +70,9 @@ class _FakeBot:
 
 
 class _FakePlanner:
-    def __init__(self, status="PLANNER: Completed"):
+    def __init__(self, status="PLANNER: Completed", tick_error=None):
         self.status = status
+        self.tick_error = tick_error
         self.started = False
         self.headless = None
         self.tree = None
@@ -90,6 +91,8 @@ class _FakePlanner:
         return self.started
 
     def tick(self):
+        if self.tick_error is not None:
+            raise self.tick_error
         self.started = False
 
     def GetBlackboardValue(self, key, default=""):
@@ -224,6 +227,28 @@ class SimpleVanquishMapEntryTests(unittest.TestCase):
 
         self.assertIs(bot.stopped, True)
         self.assertEqual(bot.Properties.writes, [True, True])
+        self.assertEqual(planner.stop_calls, 1)
+
+    def test_runner_stops_route_and_restores_pause_when_owner_raises(self):
+        module = _load_module()
+        wrappers = _FakeWrappers()
+        planner = _FakePlanner(tick_error=ValueError("owner tick exploded"))
+        _FakeBottingTree.planner = planner
+        bot = _FakeBot(paused=False)
+
+        with (
+            mock.patch.object(_FakeMap, "map_id", 250),
+            mock.patch.object(
+                module,
+                "_load_runtime_dependencies",
+                return_value=(_FakeBottingTree, _FakeMap, _FakeRoutines, wrappers),
+            ),
+            self.assertRaisesRegex(ValueError, "owner tick exploded"),
+        ):
+            _finish(module.run_fixed_map_entry(bot, ZEN_ENTRY))
+
+        self.assertIs(bot.stopped, True)
+        self.assertEqual(bot.Properties.writes, [True, False])
         self.assertEqual(planner.stop_calls, 1)
 
     def test_widget_registers_map_entry_as_one_custom_state(self):
