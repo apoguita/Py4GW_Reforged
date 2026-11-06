@@ -11,6 +11,7 @@ from Py4GWCoreLib.enums_src.Region_enums import District
 projects_base_path = PySystem.Console.get_projects_path()
 ac_folder_path = os.path.join(projects_base_path, "Sources", "aC_Scripts")
 from Sources.aC_Scripts.aC_api import *
+from Sources.aC_Scripts.PyQuishAI_map_entry import run_fixed_map_entry
 MAPS_DIR = os.path.join(ac_folder_path,"PyQuishAI_maps")
 
 MODULE_NAME = "Simple Vanquish"
@@ -138,7 +139,16 @@ def _take_blessing(bot: Botting, x: float, y: float):
 
 def _handle_keyword(bot, key, value):
     """Process a single keyword action from a complex path segment."""
-    if key == "bless":
+    if key == "map_entry":
+        bot.UI.PrintMessageToConsole(
+            BotSettings.BOT_NAME,
+            f"Entering map through {value.get('name', 'captured NPC')}.",
+        )
+        bot.States.AddCustomState(
+            lambda data=value: run_fixed_map_entry(bot, data),
+            f"Map Entry ({value.get('name', 'captured NPC')})",
+        )
+    elif key == "bless":
         bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Interacting with Blessing.")
         bot.States.AddCustomState(
             lambda x=value[0], y=value[1]: _take_blessing(bot, x, y),
