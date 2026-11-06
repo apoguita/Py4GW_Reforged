@@ -931,13 +931,12 @@ def TakeBlessing(
     visible choice dispatch or a fresh non-empty response with no choices.
 
     ``captured_blessing`` accepts the same immutable mapping consumed by
-    Simple Vanquish's ``CapturedBlessingSpec``.  A Norn Hunting Party mapping
-    selects that implementation's complete ``CanonicalCapturedBlessingRunner``
-    lifecycle inside this public owner: identity-bound initial approach and
-    interaction, visible challenge choice, hostile/combat handoff, bounded
-    post-fight reacquisition, final approach and interaction, and terminal
-    result.  The behavior-tree planner remains on the same node throughout;
-    route execution cannot advance while the challenge is active.
+    Simple Vanquish's ``CapturedBlessingSpec``.  Every captured mapping uses
+    that implementation's identity-bound ``CanonicalCapturedBlessingRunner``
+    lifecycle.  Norn Hunting Party mappings additionally retain the hostile
+    combat handoff, bounded post-fight reacquisition, and final interaction.
+    The behavior-tree planner remains on the same node throughout, so route
+    execution cannot advance while the captured transaction is active.
 
     ``avoid_final_approach_obstacles`` is an opt-in geometry control for a
     captured later-blessing approach.  Its default deliberately preserves the
@@ -957,7 +956,7 @@ def TakeBlessing(
     if captured_blessing is not None:
         if multi_account:
             raise ValueError(
-                'captured Norn challenges currently support local execution only; '
+                'captured blessings currently support local execution only; '
                 'multi_account=True is not supported for this new optional path'
             )
         from Sources.aC_Scripts.aC_api.Captured_Blessing import (
@@ -967,11 +966,6 @@ def TakeBlessing(
         )
 
         spec = CapturedBlessingSpec.from_mapping(captured_blessing)
-        if spec.interaction_mode != 'norn_challenge':
-            raise ValueError(
-                'captured_blessing is reserved for the canonical Norn challenge '
-                'lifecycle; ordinary blessings use the existing TakeBlessing arguments'
-            )
 
         class _BottingTreeCapturedBlessingRuntime(Py4GWCapturedBlessingRuntime):
             """Run the unchanged captured controller under BottingTree ownership."""
