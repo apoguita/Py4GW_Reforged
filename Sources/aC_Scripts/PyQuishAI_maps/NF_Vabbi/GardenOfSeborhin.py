@@ -1,6 +1,21 @@
 GardenOfSeborhin = [
     {
-        "bless": (4032.00, -14621.00),
+        "path": [(3993.67, -14554.07)]
+    },
+    {
+        "bless": {
+            "name": "Garden of Seborhin - Elemental Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (3993.67, -14554.07),
+            "player_approach_xy": (3993.67, -14554.07),
+            "target_xy": (4032.0, -14621.0),
+            "encoded_name": "\\x8101\\x5258\\xB8A3\\x6147",
+            "model_id": 5734,
+            "target_name": "Whispers Informant",
+            "effect_ids": (1826, 1827, 1846, 2032, 2033),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261020-GARDEN-Elemental Hunt",
+        },
         "path": [
             (1130.0, -13809.0),
             (-535.0, -10938.0),
@@ -30,10 +45,23 @@ GardenOfSeborhin = [
             (14878.0, -1820.0),
             (11847.0, -909.0),
             (9404.0, -1424.0),
+            (8281.87, -860.74),
         ]
     },
     {
-        "bless": (3960.0, -14652.0),
+        "bless": {
+            "name": "Garden of Seborhin - Plant Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (8281.87, -860.74),
+            "player_approach_xy": (8281.87, -860.74),
+            "target_xy": (8254.0, -923.0),
+            "encoded_name": "\\x8101\\x525D\\xEB7E\\xF19D\\x23FD",
+            "model_id": 5683,
+            "target_name": "Vabbian Scout",
+            "effect_ids": (1795, 1833, 1834, 1973, 1974),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261020-GARDEN-ORIGINAL-EASTERN-PLANT-SCOUT",
+        },
         "path": [
             (7828.0, 858.0),
             (3117.0, 1011.0),
@@ -42,10 +70,23 @@ GardenOfSeborhin = [
             (2047.0, 2054.0),
             (6273.0, 2179.0),
             (7826.0, 2244.0),
+            (8352.16, 4400.11),
         ]
     },
     {
-        "bless": (8315.0, -949.0),
+        "bless": {
+            "name": "Garden of Seborhin - Heket Hunt",
+            "interaction_mode": "first",
+            "route_standoff_xy": (8352.16, 4400.11),
+            "player_approach_xy": (8352.16, 4400.11),
+            "target_xy": (8286.0, 4445.0),
+            "encoded_name": "\\x8101\\x525F\\xE7AE\\x8B08\\x62AA",
+            "model_id": 5683,
+            "target_name": "Vabbian Scout",
+            "effect_ids": (1837, 1838, 1977, 1978),
+            "initial_choice_settle_s": 0.25,
+            "capture_id": "USER-20261020-GARDEN-Heket Hunt",
+        },
         "path": [
             (10904.0, 4469.0),
             (11142.0, 1598.0),
