@@ -416,6 +416,44 @@ FF_RETURN_TO_VAEL_ROUTE_XY = (
     (-13529.29, 12939.93), (-13928.33, 13250.89), (-14427.77, 13318.61),
     (-14885.74, 13528.51), (-15217.94, 13907.06), (-15551.80, 14287.50),
 )
+SUGSS_VYRRGIS_XY = (-6889.0, 10096.0)
+SUGSS_VAEL_TO_WAIT_ROUTE_XY = (
+    (-15791.29, 14029.65), (-15997.59, 13546.23),
+    (-16201.09, 13087.90), (-16406.80, 12626.61),
+    (-16628.53, 12177.65), (-16884.95, 11744.28),
+    (-17139.19, 11306.61), (-17391.37, 10871.90),
+    (-17629.55, 10429.62), (-17724.44, 9935.10),
+    (-17547.42, 9465.23), (-17267.71, 9044.67),
+    (-16986.21, 8621.42), (-16707.09, 8201.76),
+    (-16357.47, 7836.28), (-15977.46, 7503.07),
+    (-15624.83, 7147.64), (-15452.16, 6676.25),
+    (-15361.74, 6182.54), (-15272.70, 5686.12),
+    (-15024.42, 5245.85), (-14731.36, 4837.21),
+    (-14290.89, 4597.18), (-13795.76, 4493.68),
+    (-13291.70, 4539.80), (-12814.90, 4710.01),
+    (-12347.22, 4905.94), (-11848.44, 5000.54),
+    (-11354.19, 4911.04), (-10914.41, 4657.56),
+    (-10444.72, 4831.79), (-9940.35, 4879.57),
+    (-9631.10, 5019.25),
+)
+SUGSS_WAIT_TO_VYRRGIS_ROUTE_XY = (
+    (-10133.87, 4971.00), (-10628.96, 4900.63),
+    (-11126.32, 4953.46), (-10898.94, 5404.39),
+    (-10497.83, 5752.88), (-10162.47, 6129.64),
+    (-9934.70, 6583.62), (-9660.79, 7007.09),
+    (-9361.05, 7414.05), (-9026.59, 7787.99),
+    (-8687.05, 8166.23), (-8339.57, 8558.45),
+    (-7994.94, 8923.74), (-7648.58, 9290.87),
+    (-7251.82, 9599.14),
+)
+SUGSS_LONGEYE_EXIT_ROUTE_XY = (
+    (-22997.79, 14871.12), (-23082.89, 14374.86),
+    (-22941.73, 13892.13), (-22616.54, 13511.23),
+    (-22291.35, 13130.33),
+)
+SUGSS_LONGEYE_PORTAL_ROUTE_XY = (
+    (-21630.0, 12565.0), (-21287.94, 12272.60),
+)
 
 
 def draw_window_light(
@@ -722,7 +760,7 @@ def Unlock_sneak_attack(bot: Botting) -> None:
     bot.States.JumpToStepName("MENU_IDLE")
 
 
-def Unlock_tryptophan_signet(bot: Botting) -> None:
+def _build_forbidden_fruit_flow(bot: Botting, return_to_menu: bool) -> None:
     bot.States.AddHeader("[Unlock] Tryptophan Signet — Forbidden Fruit")
     bot.Templates.Aggressive(
         halt_on_death=True,
@@ -771,6 +809,46 @@ def Unlock_tryptophan_signet(bot: Botting) -> None:
     bot.Move.XYAndDialog(*FF_VAEL_XY, 0x837F07)
     bot.Properties.Enable("hero_ai")
     bot.Properties.Enable("pause_on_danger")
+    bot.UI.CancelSkillRewardWindow()
+    if return_to_menu:
+        bot.States.JumpToStepName("MENU_IDLE")
+
+
+def Unlock_tryptophan_signet(bot: Botting) -> None:
+    _build_forbidden_fruit_flow(bot, return_to_menu=True)
+
+
+def Unlock_weakness_trap(bot: Botting) -> None:
+    # Chain from Forbidden Fruit so the character remains beside Vael in
+    # Sacnoth Stream instead of repeating the trip from Longeye's Ledge.
+    _build_forbidden_fruit_flow(bot, return_to_menu=False)
+    bot.States.AddHeader(
+        "[Unlock] Weakness Trap — Single Ugly Grawl Seeks Same for Mindless Destruction in Ascalon"
+    )
+    bot.Templates.Aggressive(
+        halt_on_death=True,
+        movement_timeout=15000,
+        auto_loot=False,
+    )
+
+    # Accept Vael's follow-up quest through its explicit dialog choice.
+    bot.Move.XYAndDialog(*FF_VAEL_XY, 0x837301)
+    bot.Move.FollowAutoPath(list(SUGSS_VAEL_TO_WAIT_ROUTE_XY))
+    bot.Wait.ForTime(40000)
+
+    # Enter the stronghold, reach Vyrrgis, and let HeroAI finish the fight.
+    bot.Move.FollowAutoPath(list(SUGSS_WAIT_TO_VYRRGIS_ROUTE_XY))
+    bot.Move.XY(*SUGSS_VYRRGIS_XY)
+    bot.Wait.UntilOutOfCombat()
+
+    # Captain Langmar awards both quest rewards outside Longeye's Ledge.
+    bot.Map.Travel(target_map_id=650)
+    bot.Wait.ForMapLoad(target_map_id=650)
+    bot.Move.FollowAutoPath(list(SUGSS_LONGEYE_EXIT_ROUTE_XY))
+    bot.Move.FollowPathAndExitMap(
+        list(SUGSS_LONGEYE_PORTAL_ROUTE_XY), target_map_id=649
+    )
+    bot.Move.XYAndDialog(-21069.0, 12353.0, 0x837307)
     bot.UI.CancelSkillRewardWindow()
     bot.States.JumpToStepName("MENU_IDLE")
 
