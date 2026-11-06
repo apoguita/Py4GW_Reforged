@@ -1,6 +1,41 @@
+NORN_HUNTING_PARTY_EFFECT_IDS = (
+    2469, 2470, 2471, 2472, 2551, 2591, 2592, 2593, 2594, 2595,
+)
+
+SONYA_OUTBOUND_ROUTE = [
+    # ROUTE-20261010-141933-392 ("Drakkar: 43 to Sonya"), points 0-14.
+    (-8147.45, 19841.03),
+    (-8147.63, 20409.14),
+    (-8484.62, 20788.26),
+    (-8930.60, 21029.76),
+    (-9386.75, 21245.58),
+    (-9831.69, 21495.52),
+    (-10200.81, 21844.26),
+    (-10276.58, 22348.04),
+    (-10138.51, 22830.29),
+    (-9933.37, 23294.02),
+    (-10010.68, 23790.97),
+    (-10396.19, 24117.44),
+    (-10791.26, 24424.76),
+    (-11196.20, 24728.60),
+    (-11532.70, 25010.15),
+]
+
+
 Drakkar_Lake = [
     {
-        "bless": (7367.00, 23752.00),
+        "norn_blessing": {
+            "name": "Drakkar Lake - Durdan Cliffjumper",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (7416.57, 23696.12),
+            "player_approach_xy": (7416.57, 23696.12),
+            "target_xy": (7367.00, 23752.00),
+            "encoded_name": "\\x8102\\x24DD\\xAE9D\\xFC30\\x120C",
+            "model_id": 6425,
+            "target_name": "Durdan Cliffjumper",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-9",
+        },
         "path": [
             (7555,23089),
             (2741,22562),
@@ -13,6 +48,29 @@ Drakkar_Lake = [
             (-12195,18284),
             (-10531,20488),
             (-7968,20780),
+        ],
+    },
+    {
+        "path": SONYA_OUTBOUND_ROUTE,
+        "norn_blessing": {
+            "name": "Drakkar Lake - Sonya the Crimson",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (-11654.34, 25038.80),
+            "player_approach_xy": (-11654.34, 25038.80),
+            "target_xy": (-11603.00, 24975.00),
+            "encoded_name": "\\x8102\\x24D8\\xE982\\xB7FA\\x4F0A",
+            "model_id": 6431,
+            "target_name": "Sonya the Crimson",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-1",
+        },
+    },
+    {
+        # Return to the same waypoint-43 connector start before continuing.
+        "path": list(reversed(SONYA_OUTBOUND_ROUTE)),
+    },
+    {
+        "path": [
             (-10576,16125),
             (-9204,10706),
             (-6529,9267),
@@ -28,20 +86,84 @@ Drakkar_Lake = [
             (-4220,5138),
             (-5414,-1302),
             (-6623,-4591),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Beojorn",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (-5227.87, -4217.41),
+            "player_approach_xy": (-5227.87, -4217.41),
+            "target_xy": (-5160.00, -4251.00),
+            "encoded_name": "\\x8102\\x24F3\\xF70F\\xB332\\x75DA",
+            "model_id": 6428,
+            "target_name": "Beojorn",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-3",
+        },
+    },
+    {
+        "path": [
             (-11514,-11112),
             (-11176,-6840),
             (-11386,-12601),
             (-9931,-16651),
             (-13562,-20175),
             (-12634,-21665),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Gafir Yogsson",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (-11578.05, -20907.38),
+            "player_approach_xy": (-11578.05, -20907.38),
+            "target_xy": (-11560.00, -20852.00),
+            "encoded_name": "\\x8102\\x24FB\\xB71F\\xEDAF\\x0594",
+            "model_id": 6425,
+            "target_name": "Gafir Yogsson",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-4",
+        },
+    },
+    {
+        "path": [
             (-7199,-23374),
             (-3466,-23758),
             (2079,-21398),
             (4934,-24033),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Valka Beastcrusher",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (5827.83, -23485.30),
+            "player_approach_xy": (5827.83, -23485.30),
+            "target_xy": (5897.00, -23446.00),
+            "encoded_name": "\\x8102\\x145D\\xB5CF\\x6506",
+            "model_id": 6431,
+            "target_name": "Valka Beastcrusher",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-5",
+        },
+    },
+    {
+        "path": [
             (7898,-24252),
             (6265,-19792),
             (9216,-18653),
             (14212,-17061),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Mandof",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (15160.83, -17160.04),
+            "player_approach_xy": (15160.83, -17160.04),
+            "target_xy": (15233.00, -17127.00),
+            "encoded_name": "\\x8102\\x24F6\\xF30E\\xEFF7\\x7530",
+            "model_id": 6425,
+            "target_name": "Mandof",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-6",
+        },
+    },
+    {
+        "path": [
             (12354,-16208),
             (12254,-7206),
             (14515,-8691),
@@ -50,11 +172,43 @@ Drakkar_Lake = [
             (14862,-1104),
             (12789,-3774),
             (13358,2864),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Wiglaf",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (14452.95, 2351.45),
+            "player_approach_xy": (14452.95, 2351.45),
+            "target_xy": (14523.00, 2357.00),
+            "encoded_name": "\\x8102\\x24EC\\x93D9\\xF2A0\\x2482",
+            "model_id": 6425,
+            "target_name": "Wiglaf",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-7",
+        },
+    },
+    {
+        "path": [
             (10513,6935),
             (11128,13610),
             (12357,5837),
             (14092,9457),
             (14024,16114),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Ruven",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (12369.77, 16782.61),
+            "player_approach_xy": (12369.77, 16782.61),
+            "target_xy": (12338.00, 16844.00),
+            "encoded_name": "\\x8102\\x24E2\\x84F5\\x19CB",
+            "model_id": 6425,
+            "target_name": "Ruven",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-8",
+        },
+    },
+    {
+        "path": [
             (7985,21878),
             (2574,21853),
             (1705,18341),
@@ -70,11 +224,36 @@ Drakkar_Lake = [
             (-2659,7297),
             (1425,9273),
             (3841,6111),
+        ],
+        "norn_blessing": {
+            "name": "Drakkar Lake - Ion Thomsson",
+            "interaction_mode": "norn_challenge",
+            "route_standoff_xy": (4337.31, 5598.57),
+            "player_approach_xy": (4337.31, 5598.57),
+            "target_xy": (4297.00, 5538.00),
+            "encoded_name": "\\x8102\\x24E7\\xFCB8\\xE5E0\\x040A",
+            "model_id": 6425,
+            "target_name": "Ion Thomsson",
+            "effect_ids": NORN_HUNTING_PARTY_EFFECT_IDS,
+            "capture_id": "user-20261010-screenshot-10",
+        },
+    },
+    {
+        "path": [
             (7047,8482),
             (6871,5715),
             (9044,2704),
             (10004,-1894),
             (8563,-7658),
+            # ROUTE-20261010-151113-266 ("Drakkar: Detour 1")
+            # Bypasses the tree-obstructed direct leg to (5956, -16580).
+            (6568.99,-13832.35),
+            (6321.83,-14271.61),
+            (6009.84,-14671.32),
+            (6164.83,-15154.93),
+            (6352.20,-15620.13),
+            (6532.11,-16135.91),
+            (6572.55,-16251.85),
             (5956,-16580),
             (-3926,-17266),
             (-7103,-19285),
@@ -88,7 +267,7 @@ Drakkar_Lake = [
             (4789,645),
             (6745,-3807),
             (5977,-7175),
-        ]
+        ],
     },
 ]
 
