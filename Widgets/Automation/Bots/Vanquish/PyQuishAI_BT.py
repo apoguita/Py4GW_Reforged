@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 from collections.abc import Mapping
 from collections.abc import Sequence
-from typing import TypeAlias
+from typing import Any, TypeAlias, cast
 
 import PyImGui
 import PySystem
@@ -49,6 +49,13 @@ PCON_UPKEEPS: tuple[int, ...] = tuple(
 )
 
 CONSET_MODEL_IDS: tuple[int, ...] = tuple(int(model_id) for model_id in CONSET_UPKEEPS)
+CAPTURED_BLESSING_KEYS = frozenset({
+    'bless',
+    'vanguard_blessing',
+    'norn_blessing',
+    'asuran_blessing',
+})
+ROUTE_BLESSING_KEYS = CAPTURED_BLESSING_KEYS | {'faction_blessing'}
 
 
 def _display_name(model_id: int) -> str:
@@ -795,24 +802,39 @@ def _build_keyword_action(
             children.append(BT.Move(path, pause_on_combat=True, log=False))
         return children
 
-    if key == 'bless':
+    if key in ROUTE_BLESSING_KEYS:
         faction, dialog_id = _blessing_parameters(definition.region)
         if isinstance(value, Mapping):
             captured_blessing = dict(value)
             route_standoff = captured_blessing.get(
                 'route_standoff_xy',
-                captured_blessing.get('player_approach_xy'),
+                captured_blessing.get(
+                    'player_approach_xy',
+                    captured_blessing.get('target_xy'),
+                ),
             )
-            child = BT.TakeBlessing(
-                pos=_coordinate(route_standoff, 'bless.route_standoff_xy'),
-                faction=faction,
-                buttons=_integer(captured_blessing.get('buttons', 0), 'bless.buttons'),
-                blessing_dialog_id=dialog_id,
-                multi_account=False,
-                log=True,
-                captured_blessing=captured_blessing,
-            )
+            route_faction = str(captured_blessing.get('faction', '')).strip().lower()
+            if route_faction:
+                child = cast(Any, BT.TakeBlessing)(
+                    pos=_coordinate(route_standoff, f'{key}.route_standoff_xy'),
+                    faction=route_faction,
+                    blessing_dialog_id=dialog_id,
+                    multi_account=False,
+                    log=True,
+                )
+            else:
+                child = cast(Any, BT.TakeBlessing)(
+                    pos=_coordinate(route_standoff, f'{key}.route_standoff_xy'),
+                    faction=faction,
+                    buttons=_integer(captured_blessing.get('buttons', 0), f'{key}.buttons'),
+                    blessing_dialog_id=dialog_id,
+                    multi_account=False,
+                    log=True,
+                    captured_blessing=captured_blessing,
+                )
         else:
+            if key != 'bless':
+                raise ValueError(f'{key} requires a baked route mapping')
             child = BT.TakeBlessing(
                 pos=_coordinate(value, 'bless'),
                 faction=faction,

@@ -7,10 +7,12 @@ import importlib.util
 import time
 import random
 from Py4GWCoreLib.enums_src.Region_enums import District
+from collections.abc import Mapping
 
 projects_base_path = PySystem.Console.get_projects_path()
 ac_folder_path = os.path.join(projects_base_path, "Sources", "aC_Scripts")
 from Sources.aC_Scripts.aC_api import *
+from Sources.aC_Scripts.PyQuishAI_blessing import ROUTE_BLESSING_KEYS, run_route_blessing
 from Sources.aC_Scripts.PyQuishAI_map_entry import run_fixed_map_entry
 MAPS_DIR = os.path.join(ac_folder_path,"PyQuishAI_maps")
 
@@ -148,12 +150,20 @@ def _handle_keyword(bot, key, value):
             lambda data=value: run_fixed_map_entry(bot, data),
             f"Map Entry ({value.get('name', 'captured NPC')})",
         )
-    elif key == "bless":
+    elif key in ROUTE_BLESSING_KEYS:
         bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Interacting with Blessing.")
-        bot.States.AddCustomState(
-            lambda x=value[0], y=value[1]: _take_blessing(bot, x, y),
-            f"Take Blessing ({value[0]}, {value[1]})",
-        )
+        if isinstance(value, Mapping):
+            bot.States.AddCustomState(
+                lambda data=value: run_route_blessing(bot, data),
+                f"Take Blessing ({value.get('name', 'captured NPC')})",
+            )
+        elif key == "bless":
+            bot.States.AddCustomState(
+                lambda x=value[0], y=value[1]: _take_blessing(bot, x, y),
+                f"Take Blessing ({value[0]}, {value[1]})",
+            )
+        else:
+            raise ValueError(f"{key} requires a baked route mapping")
     elif key == "gadget":
         bot.UI.PrintMessageToConsole(BotSettings.BOT_NAME, f"Interacting with Gadget.")
         bot.Move.XY(*value)
@@ -270,6 +280,8 @@ def _build_reversed_path(vanquish_path):
             reversed_entry = {}
             for key in reversed_keys:
                 value = entry[key]
+                if key in ROUTE_BLESSING_KEYS and isinstance(value, Mapping):
+                    continue
                 if isinstance(value, list):
                     reversed_entry[key] = value[::-1]
                 else:
@@ -281,6 +293,8 @@ def _build_reversed_path(vanquish_path):
         for segment in reversed(vanquish_path):
             reversed_segment = []
             for key, value in reversed(segment):
+                if key in ROUTE_BLESSING_KEYS and isinstance(value, Mapping):
+                    continue
                 if isinstance(value, list):
                     reversed_segment.append((key, value[::-1]))
                 else:
